@@ -15,14 +15,21 @@ using the patch method that **must be called before** importing sqlalchemy::
     # Use a PIN to specify metadata related to this engine
     Pin.override(engine, service='replica-db')
 """
-from ...utils.importlib import require_modules
+from opentelemetry.auto_instrumentation.instrumentor import BaseInstrumentor
+from .engine import trace_engine
+from .patch import patch, unpatch
 
 
-required_modules = ['sqlalchemy', 'sqlalchemy.event']
+class SQLAlchemyInstrumentor(BaseInstrumentor):
+    """An instrumentor for Redis
+    See `BaseInstrumentor`
+    """
 
-with require_modules(required_modules) as missing_modules:
-    if not missing_modules:
-        from .patch import patch, unpatch
-        from .engine import trace_engine
+    def __init__(self):
+        super().__init__()
 
-        __all__ = ['trace_engine', 'patch', 'unpatch']
+    def _instrument(self):
+        patch()
+
+    def _uninstrument(self):
+        unpatch
