@@ -22,6 +22,11 @@ from ddtrace.ext import SpanTypes, sql as sqlx, net as netx
 from ddtrace.pin import Pin
 from ddtrace.settings import config
 
+from opentelemetry import trace
+from opentelemetry.trace.status import Status, StatusCanonicalCode
+
+from .version import __version__
+
 
 def trace_engine(engine, tracer=None, service=None):
     """
@@ -31,7 +36,7 @@ def trace_engine(engine, tracer=None, service=None):
     :param ddtrace.Tracer tracer: a tracer instance. will default to the global
     :param str service: the name of the service to trace.
     """
-    tracer = tracer or ddtrace.tracer  # by default use global
+    tracer = tracer or trace.get_tracer(__name__, __version__)
     EngineTracer(tracer, service, engine)
 
 
@@ -45,17 +50,19 @@ def _wrap_create_engine(func, module, args, kwargs):
     # name is used by default; users can update this setting
     # using the PIN object
     engine = func(*args, **kwargs)
-    EngineTracer(ddtrace.tracer, None, engine)
+    EngineTracer(trace.get_tracer(__name__, __version__), None, engine)
     return engine
 
 
 class EngineTracer(object):
-    def __init__(self, tracer, service, engine):
+    def __init__(self, tracer: trace.Tracer, service, engine):
         self.tracer = tracer
         self.engine = engine
         self.vendor = sqlx.normalize_vendor(engine.name)
         self.service = service or self.vendor
         self.name = "%s.query" % self.vendor
+        # TODO: revisit, might be better done w/ context attach/detach
+        self.current_span = None
 
         # attach the PIN
         Pin(app=self.vendor, tracer=tracer, service=self.service).onto(engine)
@@ -70,15 +77,13 @@ class EngineTracer(object):
             # don't trace the execution
             return
 
-        span = pin.tracer.trace(self.name, service=pin.service, span_type=SpanTypes.SQL, resource=statement,)
+        self.current_span = self.tracer.start_span(self.name)
+        with self.tracer.use_span(self.current_span, end_on_exit=False):
+            self.current_span.set_attribute("service", pin.service)
+            self.current_span.set_attribute("resource", statement)
 
-        if not _set_tags_from_url(span, conn.engine.url):
-            _set_tags_from_cursor(span, self.vendor, cursor)
-
-        # set analytics sample rate
-        sample_rate = config.sqlalchemy.get_analytics_sample_rate()
-        if sample_rate is not None:
-            span.set_tag(ANALYTICS_SAMPLE_RATE_KEY, sample_rate)
+            if not _set_attributes_from_url(self.current_span, conn.engine.url):
+                _set_attributes_from_cursor(self.current_span, self.vendor, cursor)
 
     def _after_cur_exec(self, conn, cursor, statement, *args):
         pin = Pin.get_from(self.engine)
@@ -86,15 +91,14 @@ class EngineTracer(object):
             # don't trace the execution
             return
 
-        span = pin.tracer.current_span()
-        if not span:
+        if not self.current_span:
             return
 
         try:
             if cursor and cursor.rowcount >= 0:
-                span.set_tag(sqlx.ROWS, cursor.rowcount)
+                self.current_span.set_attribute(sqlx.ROWS, cursor.rowcount)
         finally:
-            span.finish()
+            self.current_span.end()
 
     def _dbapi_error(self, conn, cursor, statement, *args):
         pin = Pin.get_from(self.engine)
@@ -102,35 +106,37 @@ class EngineTracer(object):
             # don't trace the execution
             return
 
-        span = pin.tracer.current_span()
-        if not span:
+        if not self.current_span:
             return
 
         try:
-            span.set_traceback()
+            # span.set_traceback()
+            self.current_span.set_status(Status(StatusCanonicalCode.UNKNOWN, str("something happened")))
         finally:
-            span.finish()
+            self.current_span.end()
 
 
-def _set_tags_from_url(span, url):
+def _set_attributes_from_url(span: trace.Span, url):
     """ set connection tags from the url. return true if successful. """
     if url.host:
-        span.set_tag(netx.TARGET_HOST, url.host)
+        span.set_attribute(netx.TARGET_HOST, url.host)
     if url.port:
-        span.set_tag(netx.TARGET_PORT, url.port)
+        span.set_attribute(netx.TARGET_PORT, url.port)
     if url.database:
-        span.set_tag(sqlx.DB, url.database)
+        span.set_attribute(sqlx.DB, url.database)
 
-    return bool(span.get_tag(netx.TARGET_HOST))
+    # TODO: is checking an attribute needed here?
+    # return bool(span.get_tag(netx.TARGET_HOST))
+    return True
 
 
-def _set_tags_from_cursor(span, vendor, cursor):
+def _set_attributes_from_cursor(span: trace.Span, vendor, cursor):
     """ attempt to set db connection tags by introspecting the cursor. """
     if "postgres" == vendor:
         if hasattr(cursor, "connection") and hasattr(cursor.connection, "dsn"):
             dsn = getattr(cursor.connection, "dsn", None)
             if dsn:
                 d = sqlx.parse_pg_dsn(dsn)
-                span.set_tag(sqlx.DB, d.get("dbname"))
-                span.set_tag(netx.TARGET_HOST, d.get("host"))
-                span.set_tag(netx.TARGET_PORT, d.get("port"))
+                span.set_attribute(sqlx.DB, d.get("dbname"))
+                span.set_attribute(netx.TARGET_HOST, d.get("host"))
+                span.set_attribute(netx.TARGET_PORT, d.get("port"))
