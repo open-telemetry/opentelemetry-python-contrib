@@ -3,12 +3,12 @@ import redis
 from ddtrace.vendor import wrapt
 
 # project
-from ddtrace import config
-from ddtrace.constants import ANALYTICS_SAMPLE_RATE_KEY
 from ddtrace.pin import Pin
-from ddtrace.ext import SpanTypes, redis as redisx
+from ddtrace.ext import redis as redisx
 from ddtrace.utils.wrappers import unwrap
-from .util import format_command_args, _extract_conn_tags
+from opentelemetry import trace
+from .util import format_command_args, _extract_conn_attributes
+from .version import __version__
 
 
 def patch():
@@ -58,21 +58,19 @@ def unpatch():
 # tracing functions
 #
 def traced_execute_command(func, instance, args, kwargs):
+    tracer = trace.get_tracer(__name__, __version__)
     pin = Pin.get_from(instance)
     if not pin or not pin.enabled():
         return func(*args, **kwargs)
 
-    with pin.tracer.trace(redisx.CMD, service=pin.service, span_type=SpanTypes.REDIS) as s:
+    with tracer.start_as_current_span(redisx.CMD) as span:
+        span.set_attribute("service", pin.service)
         query = format_command_args(args)
-        s.resource = query
-        s.set_tag(redisx.RAWCMD, query)
-        if pin.tags:
-            s.set_tags(pin.tags)
-        s.set_tags(_get_tags(instance))
-        s.set_metric(redisx.ARGS_LEN, len(args))
-        # set analytics sample rate if enabled
-        s.set_tag(ANALYTICS_SAMPLE_RATE_KEY, config.redis.get_analytics_sample_rate())
-        # run the command
+        span.set_attribute(redisx.RAWCMD, query)
+        for key, value in _get_attributes(instance).items():
+            span.set_attribute(key, value)
+        # TODO: set metric
+        # s.set_metric(redisx.ARGS_LEN, len(args))
         return func(*args, **kwargs)
 
 
@@ -85,6 +83,7 @@ def traced_pipeline(func, instance, args, kwargs):
 
 
 def traced_execute_pipeline(func, instance, args, kwargs):
+    tracer = trace.get_tracer(__name__, __version__)
     pin = Pin.get_from(instance)
     if not pin or not pin.enabled():
         return func(*args, **kwargs)
@@ -92,17 +91,16 @@ def traced_execute_pipeline(func, instance, args, kwargs):
     # FIXME[matt] done in the agent. worth it?
     cmds = [format_command_args(c) for c, _ in instance.command_stack]
     resource = "\n".join(cmds)
-    tracer = pin.tracer
-    with tracer.trace(redisx.CMD, resource=resource, service=pin.service, span_type=SpanTypes.REDIS) as s:
-        s.set_tag(redisx.RAWCMD, resource)
-        s.set_tags(_get_tags(instance))
-        s.set_metric(redisx.PIPELINE_LEN, len(instance.command_stack))
 
-        # set analytics sample rate if enabled
-        s.set_tag(ANALYTICS_SAMPLE_RATE_KEY, config.redis.get_analytics_sample_rate())
-
+    with tracer.start_as_current_span(redisx.CMD) as span:
+        span.set_attribute("service", pin.service)
+        span.set_attribute(redisx.RAWCMD, resource)
+        for key, value in _get_attributes(instance).items():
+            span.set_attribute(key, value)
+        # TODO: set metric
+        # s.set_metric(redisx.PIPELINE_LEN, len(instance.command_stack))
         return func(*args, **kwargs)
 
 
-def _get_tags(conn):
-    return _extract_conn_tags(conn.connection_pool.connection_kwargs)
+def _get_attributes(conn):
+    return _extract_conn_attributes(conn.connection_pool.connection_kwargs)

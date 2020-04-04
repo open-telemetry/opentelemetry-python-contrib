@@ -10,7 +10,7 @@ VALUE_TOO_LONG_MARK = "..."
 CMD_MAX_LEN = 1000
 
 
-def _extract_conn_tags(conn_kwargs):
+def _extract_conn_attributes(conn_kwargs):
     """ Transform redis conn info into dogtrace metas """
     try:
         return {

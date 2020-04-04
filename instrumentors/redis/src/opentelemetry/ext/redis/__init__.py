@@ -16,14 +16,20 @@
     # Use a pin to specify metadata related to this client
     Pin.override(client, service='redis-queue')
 """
+from opentelemetry.auto_instrumentation.instrumentor import BaseInstrumentor
+from .patch import patch, unpatch
 
-from ddtrace.utils.importlib import require_modules
 
-required_modules = ["redis", "redis.client"]
+class RedisInstrumentor(BaseInstrumentor):
+    """An instrumentor for Redis
+    See `BaseInstrumentor`
+    """
 
-with require_modules(required_modules) as missing_modules:
-    if not missing_modules:
-        from .patch import patch
-        from .tracers import get_traced_redis, get_traced_redis_from
+    def __init__(self):
+        super().__init__()
 
-        __all__ = ["get_traced_redis", "get_traced_redis_from", "patch"]
+    def _instrument(self):
+        patch()
+
+    def _uninstrument(self):
+        unpatch
