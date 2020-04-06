@@ -1,28 +1,46 @@
 # -*- coding: utf-8 -*-
+import unittest
+
 import redis
 
-from ddtrace import Pin, compat
-from ddtrace.constants import ANALYTICS_SAMPLE_RATE_KEY
-from ddtrace.contrib.redis.patch import patch, unpatch
+from ddtrace import Pin
+from opentelemetry import trace
+from opentelemetry.ext.redis.patch import patch, unpatch
+from opentelemetry.sdk.trace import Tracer, TracerProvider
+from opentelemetry.sdk.trace.export import SimpleExportSpanProcessor
+from opentelemetry.sdk.trace.export.in_memory_span_exporter import InMemorySpanExporter
 
-from tests.opentracer.utils import init_tracer
-from ..config import REDIS_CONFIG
-from ...test_tracer import get_dummy_tracer
-from ...base import BaseTracerTestCase
+REDIS_CONFIG = {
+    "host": "localhost",
+    "port": 6379,
+}
 
 
-class TestRedisPatch(BaseTracerTestCase):
+class TestRedisPatch(unittest.TestCase):
 
     TEST_SERVICE = "redis-patch"
     TEST_PORT = REDIS_CONFIG["port"]
+
+    def get_spans(self):
+        return self._span_exporter.get_finished_spans()
+
+    @classmethod
+    def setUpClass(cls):
+        cls._tracer_provider = TracerProvider()
+        trace.set_tracer_provider(cls._tracer_provider)
+        cls._tracer = Tracer(cls._tracer_provider, None)
+        cls._span_exporter = InMemorySpanExporter()
+        cls._span_processor = SimpleExportSpanProcessor(cls._span_exporter)
+        cls._tracer_provider.add_span_processor(cls._span_processor)
 
     def setUp(self):
         super(TestRedisPatch, self).setUp()
         patch()
         r = redis.Redis(port=self.TEST_PORT)
         r.flushall()
-        Pin.override(r, service=self.TEST_SERVICE, tracer=self.tracer)
+        Pin.override(r, service=self.TEST_SERVICE, tracer=self._tracer)
         self.r = r
+        self._span_exporter.clear()
 
     def tearDown(self):
         unpatch()
@@ -34,24 +52,25 @@ class TestRedisPatch(BaseTracerTestCase):
         spans = self.get_spans()
         assert len(spans) == 1
         span = spans[0]
-        assert span.service == self.TEST_SERVICE
+        assert span.attributes["service"] == self.TEST_SERVICE
         assert span.name == "redis.command"
-        assert span.span_type == "redis"
-        assert span.error == 0
+        assert span.status.canonical_code == trace.status.StatusCanonicalCode.OK
         meta = {
             "out.host": "localhost",
         }
-        metrics = {
-            "out.port": self.TEST_PORT,
-            "out.redis_db": 0,
-        }
+        # TODO: bring back once we add metrics
+        # metrics = {
+        #     "out.port": self.TEST_PORT,
+        #     "out.redis_db": 0,
+        # }
         for k, v in meta.items():
-            assert span.get_tag(k) == v
-        for k, v in metrics.items():
-            assert span.get_metric(k) == v
+            assert span.attributes.get(k) == v
+        # TODO: bring back once we add metrics
+        # for k, v in metrics.items():
+        #     assert span.get_metric(k) == v
 
-        assert span.get_tag("redis.raw_command").startswith("MGET 0 1 2 3")
-        assert span.get_tag("redis.raw_command").endswith("...")
+        assert span.attributes.get("redis.raw_command").startswith("MGET 0 1 2 3")
+        assert span.attributes.get("redis.raw_command").endswith("...")
 
     def test_basics(self):
         us = self.r.get("cheese")
@@ -59,34 +78,15 @@ class TestRedisPatch(BaseTracerTestCase):
         spans = self.get_spans()
         assert len(spans) == 1
         span = spans[0]
-        assert span.service == self.TEST_SERVICE
+        assert span.attributes["service"] == self.TEST_SERVICE
         assert span.name == "redis.command"
-        assert span.span_type == "redis"
-        assert span.error == 0
-        assert span.get_metric("out.redis_db") == 0
-        assert span.get_tag("out.host") == "localhost"
-        assert span.get_tag("redis.raw_command") == "GET cheese"
-        assert span.get_metric("redis.args_length") == 2
-        assert span.resource == "GET cheese"
-        assert span.get_metric(ANALYTICS_SAMPLE_RATE_KEY) is None
-
-    def test_analytics_without_rate(self):
-        with self.override_config("redis", dict(analytics_enabled=True)):
-            us = self.r.get("cheese")
-            assert us is None
-            spans = self.get_spans()
-            assert len(spans) == 1
-            span = spans[0]
-            assert span.get_metric(ANALYTICS_SAMPLE_RATE_KEY) == 1.0
-
-    def test_analytics_with_rate(self):
-        with self.override_config("redis", dict(analytics_enabled=True, analytics_sample_rate=0.5)):
-            us = self.r.get("cheese")
-            assert us is None
-            spans = self.get_spans()
-            assert len(spans) == 1
-            span = spans[0]
-            assert span.get_metric(ANALYTICS_SAMPLE_RATE_KEY) == 0.5
+        assert span.status.canonical_code == trace.status.StatusCanonicalCode.OK
+        # TODO: bring back once we add metrics
+        # assert span.get_metric("out.redis_db") == 0
+        assert span.attributes.get("out.host") == "localhost"
+        assert span.attributes.get("redis.raw_command") == "GET cheese"
+        # TODO: bring back once we add metrics
+        # assert span.get_metric("redis.args_length") == 2
 
     def test_pipeline_traced(self):
         with self.r.pipeline(transaction=False) as p:
@@ -98,17 +98,14 @@ class TestRedisPatch(BaseTracerTestCase):
         spans = self.get_spans()
         assert len(spans) == 1
         span = spans[0]
-        assert span.service == self.TEST_SERVICE
+        assert span.attributes["service"] == self.TEST_SERVICE
         assert span.name == "redis.command"
-        assert span.resource == "SET blah 32\nRPUSH foo éé\nHGETALL xxx"
-        assert span.span_type == "redis"
-        assert span.error == 0
-        assert span.get_metric("out.redis_db") == 0
-        assert span.get_tag("out.host") == "localhost"
-        assert span.get_tag("redis.raw_command") == "SET blah 32\nRPUSH foo éé\nHGETALL xxx"
-        assert span.get_metric("redis.pipeline_length") == 3
-        assert span.get_metric("redis.pipeline_length") == 3
-        assert span.get_metric(ANALYTICS_SAMPLE_RATE_KEY) is None
+        assert span.status.canonical_code == trace.status.StatusCanonicalCode.OK
+        # assert span.get_metric("out.redis_db") == 0
+        assert span.attributes.get("out.host") == "localhost"
+        assert span.attributes.get("redis.raw_command") == "SET blah 32\nRPUSH foo éé\nHGETALL xxx"
+        # assert span.get_metric("redis.pipeline_length") == 3
+        # assert span.get_metric("redis.pipeline_length") == 3
 
     def test_pipeline_immediate(self):
         with self.r.pipeline() as p:
@@ -119,13 +116,12 @@ class TestRedisPatch(BaseTracerTestCase):
         spans = self.get_spans()
         assert len(spans) == 2
         span = spans[0]
-        assert span.service == self.TEST_SERVICE
+        assert span.attributes["service"] == self.TEST_SERVICE
         assert span.name == "redis.command"
-        assert span.resource == "SET a 1"
-        assert span.span_type == "redis"
-        assert span.error == 0
-        assert span.get_metric("out.redis_db") == 0
-        assert span.get_tag("out.host") == "localhost"
+        assert span.attributes.get("redis.raw_command") == "SET a 1"
+        assert span.status.canonical_code == trace.status.StatusCanonicalCode.OK
+        # assert span.get_metric("out.redis_db") == 0
+        assert span.attributes.get("out.host") == "localhost"
 
     def test_meta_override(self):
         r = self.r
@@ -137,22 +133,20 @@ class TestRedisPatch(BaseTracerTestCase):
         spans = self.get_spans()
         assert len(spans) == 1
         span = spans[0]
-        assert span.service == self.TEST_SERVICE
-        assert "cheese" in span.meta and span.meta["cheese"] == "camembert"
+        assert span.attributes["service"] == self.TEST_SERVICE
+        # TODO: is this test needed?
+        # assert "cheese" in span.attributes and span.attributes["cheese"] == "camembert"
 
     def test_patch_unpatch(self):
-        tracer = get_dummy_tracer()
-        writer = tracer.writer
-
         # Test patch idempotence
         patch()
         patch()
 
         r = redis.Redis(port=REDIS_CONFIG["port"])
-        Pin.get_from(r).clone(tracer=tracer).onto(r)
         r.get("key")
 
-        spans = writer.pop()
+        spans = self.get_spans()
+        self._span_exporter.clear()
         assert spans, spans
         assert len(spans) == 1
 
@@ -162,46 +156,44 @@ class TestRedisPatch(BaseTracerTestCase):
         r = redis.Redis(port=REDIS_CONFIG["port"])
         r.get("key")
 
-        spans = writer.pop()
+        spans = self.get_spans()
+        self._span_exporter.clear()
         assert not spans, spans
 
         # Test patch again
         patch()
 
         r = redis.Redis(port=REDIS_CONFIG["port"])
-        Pin.get_from(r).clone(tracer=tracer).onto(r)
         r.get("key")
 
-        spans = writer.pop()
+        spans = self.get_spans()
+        self._span_exporter.clear()
         assert spans, spans
         assert len(spans) == 1
 
-    def test_opentracing(self):
-        """Ensure OpenTracing works with redis."""
-        ot_tracer = init_tracer("redis_svc", self.tracer)
+    def test_opentelemetry(self):
+        """Ensure OpenTelemetry works with redis."""
+        ot_tracer = trace.get_tracer("redis_svc")
 
-        with ot_tracer.start_active_span("redis_get"):
+        with ot_tracer.start_as_current_span("redis_get"):
             us = self.r.get("cheese")
             assert us is None
 
         spans = self.get_spans()
         assert len(spans) == 2
-        ot_span, dd_span = spans
+        child_span, parent_span = spans
 
         # confirm the parenting
-        assert ot_span.parent_id is None
-        assert dd_span.parent_id == ot_span.span_id
+        assert parent_span.parent is None
+        assert child_span.parent.context.trace_id == parent_span.context.trace_id
 
-        assert ot_span.name == "redis_get"
-        assert ot_span.service == "redis_svc"
+        assert parent_span.name == "redis_get"
+        assert parent_span.instrumentation_info.name == "redis_svc"
 
-        assert dd_span.service == self.TEST_SERVICE
-        assert dd_span.name == "redis.command"
-        assert dd_span.span_type == "redis"
-        assert dd_span.error == 0
-        assert dd_span.get_metric("out.redis_db") == 0
-        assert dd_span.get_tag("out.host") == "localhost"
-        assert dd_span.get_tag("redis.raw_command") == "GET cheese"
-        assert dd_span.get_metric("redis.args_length") == 2
-        assert dd_span.resource == "GET cheese"
-
+        assert child_span.attributes.get("service") == self.TEST_SERVICE
+        assert child_span.name == "redis.command"
+        assert child_span.status.canonical_code == trace.status.StatusCanonicalCode.OK
+        # assert dd_span.get_metric("out.redis_db") == 0
+        assert child_span.attributes.get("out.host") == "localhost"
+        assert child_span.attributes.get("redis.raw_command") == "GET cheese"
+        # assert dd_span.get_metric("redis.args_length") == 2

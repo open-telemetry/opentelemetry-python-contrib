@@ -60,8 +60,8 @@ def unpatch():
 def traced_execute_command(func, instance, args, kwargs):
     tracer = trace.get_tracer(__name__, __version__)
     pin = Pin.get_from(instance)
-    if not pin or not pin.enabled():
-        return func(*args, **kwargs)
+    # if not pin or not pin.enabled():
+    #     return func(*args, **kwargs)
 
     with tracer.start_as_current_span(redisx.CMD) as span:
         span.set_attribute("service", pin.service)
@@ -85,8 +85,8 @@ def traced_pipeline(func, instance, args, kwargs):
 def traced_execute_pipeline(func, instance, args, kwargs):
     tracer = trace.get_tracer(__name__, __version__)
     pin = Pin.get_from(instance)
-    if not pin or not pin.enabled():
-        return func(*args, **kwargs)
+    # if not pin or not pin.enabled():
+    #     return func(*args, **kwargs)
 
     # FIXME[matt] done in the agent. worth it?
     cmds = [format_command_args(c) for c, _ in instance.command_stack]
