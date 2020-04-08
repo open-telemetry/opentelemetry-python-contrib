@@ -19,5 +19,5 @@ Installation
 References
 ----------
 
-* `OpenTelemetry SQLAlchemy Tracing <https://opentelemetry-python.readthedocs.io/en/latest/ext/<REPLACE ME>/<REPLACE ME>.html>`_
+* `OpenTelemetry <REPLACE ME>/ Tracing <https://opentelemetry-python.readthedocs.io/en/latest/ext/<REPLACE ME>/<REPLACE ME>.html>`_
 * `OpenTelemetry Project <https://opentelemetry.io/>`_
