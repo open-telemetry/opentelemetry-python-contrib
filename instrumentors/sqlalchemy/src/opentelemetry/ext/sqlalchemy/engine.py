@@ -73,9 +73,10 @@ class EngineTracer(object):
 
     def _before_cur_exec(self, conn, cursor, statement, *args):
         pin = Pin.get_from(self.engine)
-        if not pin or not pin.enabled():
-            # don't trace the execution
-            return
+        # TODO: check if tracing enabled
+        # if not pin or not pin.enabled():
+        #     # don't trace the execution
+        #     return
 
         self.current_span = self.tracer.start_span(self.name)
         with self.tracer.use_span(self.current_span, end_on_exit=False):
@@ -87,9 +88,10 @@ class EngineTracer(object):
 
     def _after_cur_exec(self, conn, cursor, statement, *args):
         pin = Pin.get_from(self.engine)
-        if not pin or not pin.enabled():
-            # don't trace the execution
-            return
+        # TODO: check if tracing enabled
+        # if not pin or not pin.enabled():
+        #     # don't trace the execution
+        #     return
 
         if not self.current_span:
             return
@@ -102,9 +104,10 @@ class EngineTracer(object):
 
     def _dbapi_error(self, conn, cursor, statement, *args):
         pin = Pin.get_from(self.engine)
-        if not pin or not pin.enabled():
-            # don't trace the execution
-            return
+        # TODO: check if tracing enabled
+        # if not pin or not pin.enabled():
+        #     # don't trace the execution
+        #     return
 
         if not self.current_span:
             return
@@ -125,9 +128,7 @@ def _set_attributes_from_url(span: trace.Span, url):
     if url.database:
         span.set_attribute(sqlx.DB, url.database)
 
-    # TODO: is checking an attribute needed here?
-    # return bool(span.get_tag(netx.TARGET_HOST))
-    return True
+    return bool(span.attributes.get(netx.TARGET_HOST, False))
 
 
 def _set_attributes_from_cursor(span: trace.Span, vendor, cursor):
