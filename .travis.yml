@@ -5,23 +5,18 @@ language: python
 cache: pip
 
 python:
-  # - '3.4'
-  # - '3.5'
-  # - '3.6'
-  # - '3.7'
+  - '3.4'
+  - '3.5'
+  - '3.6'
+  - '3.7'
   - '3.8'
-  # - 'pypy3'
+  - 'pypy3'
 
 services:
   - docker
 
 install:
   - pip install tox-travis
-
-# for now we only care about code in
-# instrumentors directory
-before_script:
-  - cd instrumentors
 
 script:
   - tox
