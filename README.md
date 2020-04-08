@@ -17,24 +17,24 @@ git mv reference/ddtrace/contrib/jinja2 instrumentors/
 git mv reference/tests/contrib/jinja2 instrumentors/jinja2/tests
 ```
 
-3. Make the package installable
-   1. Move source code to package path
+3. Make the package installable: move source code to package path
 
 ```bash
 mkdir -p instrumentors/jinja2/src/opentelemetry/ext/jinja2
 git mv instrumentors/jinja2/*.py instrumentors/jinja2/src/opentelemetry/ext/jinja2
 ```
 
-   2. Add `README.rst`, `setup.cfg` and `setup.py` files and update them accordingly
+4. Add `README.rst`, `setup.cfg` and `setup.py` files and update them accordingly
 
 ```bash
 cp _template/* instrumentors/jinja2/
 ```
 
-   3. Add `version.py` file and update it accordingly
+5. Add `version.py` file and update it accordingly
+
 ```bash
 mv instrumentors/jinja2/version.py instrumentors/jinja2/src/opentelemetry/ext/jinja2/version.py
 ```
 
-4. Fix relative import paths to using ddtrace package instead of using relative paths
-5. Update the code and tests to use the OpenTelemetry API
+6. Fix relative import paths to using ddtrace package instead of using relative paths
+7. Update the code and tests to use the OpenTelemetry API
