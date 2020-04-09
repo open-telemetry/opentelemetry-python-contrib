@@ -2,8 +2,8 @@
 import unittest
 
 import redis
-
 from ddtrace import Pin
+
 from opentelemetry import trace
 from opentelemetry.instrumentation.redis.patch import patch, unpatch
 from opentelemetry.sdk.trace import Tracer, TracerProvider

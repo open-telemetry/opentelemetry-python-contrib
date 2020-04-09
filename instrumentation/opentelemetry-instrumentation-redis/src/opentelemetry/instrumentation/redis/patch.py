@@ -1,11 +1,11 @@
 # 3p
 # pylint:disable=relative-beyond-top-level
 import redis
-
 from ddtrace.ext import redis as redisx
 from ddtrace.pin import Pin
 from ddtrace.utils.wrappers import unwrap
 from ddtrace.vendor import wrapt
+
 from opentelemetry import trace
 
 from .util import _extract_conn_attributes, format_command_args
