@@ -17,17 +17,13 @@
     Pin.override(client, service='redis-queue')
 """
 from opentelemetry.auto_instrumentation.instrumentor import BaseInstrumentor
-
-from .patch import patch, unpatch
+from opentelemetry.instrumentation.redis.patch import patch, unpatch
 
 
 class RedisInstrumentor(BaseInstrumentor):
     """An instrumentor for Redis
     See `BaseInstrumentor`
     """
-
-    def __init__(self):
-        super().__init__()
 
     def _instrument(self):
         patch()

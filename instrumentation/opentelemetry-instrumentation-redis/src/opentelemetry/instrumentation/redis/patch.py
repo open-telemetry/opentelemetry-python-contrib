@@ -1,4 +1,5 @@
 # 3p
+# pylint:disable=relative-beyond-top-level
 import redis
 
 from ddtrace.ext import redis as redisx
@@ -53,8 +54,14 @@ def unpatch():
             unwrap(redis.StrictRedis, "execute_command")
             unwrap(redis.StrictRedis, "pipeline")
             unwrap(redis.Redis, "pipeline")
-            unwrap(redis.client.BasePipeline, "execute")
-            unwrap(redis.client.BasePipeline, "immediate_execute_command")
+            unwrap(
+                redis.client.BasePipeline,  # pylint:disable=no-member
+                "execute",
+            )
+            unwrap(
+                redis.client.BasePipeline,  # pylint:disable=no-member
+                "immediate_execute_command",
+            )
         else:
             unwrap(redis.Redis, "execute_command")
             unwrap(redis.Redis, "pipeline")

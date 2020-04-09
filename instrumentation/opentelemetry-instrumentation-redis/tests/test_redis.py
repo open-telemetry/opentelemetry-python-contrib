@@ -198,7 +198,7 @@ class TestRedisPatch(unittest.TestCase):
 
         spans = self.get_spans()
         assert len(spans) == 2
-        child_span, parent_span = spans
+        child_span, parent_span = spans[0], spans[1]
 
         # confirm the parenting
         assert parent_span.parent is None

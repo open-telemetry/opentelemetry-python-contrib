@@ -19,7 +19,7 @@ def _extract_conn_attributes(conn_kwargs):
             net.TARGET_PORT: conn_kwargs["port"],
             redisx.DB: conn_kwargs["db"] or 0,
         }
-    except Exception:
+    except Exception:  # pylint: disable=broad-except
         return {}
 
 
@@ -46,7 +46,7 @@ def format_command_args(args):
 
             out.append(cmd)
             length += len(cmd)
-        except Exception:
+        except Exception:  # pylint: disable=broad-except
             out.append(VALUE_PLACEHOLDER)
             break
 
