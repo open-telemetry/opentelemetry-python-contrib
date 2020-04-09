@@ -8,8 +8,8 @@ The steps below describe the process to port integrations from the reference dir
 1. Move the code into the instrumentation directory
 
 ```
-mkdir -p instrumentation/opentelemetry-instrumentation-jinja2/src/opentelemetry/ext/jinja2
-git mv reference/ddtrace/contrib/jinja2 instrumentation/opentelemetry-instrumentation-jinja2/src/opentelemetry/ext/jinja2
+mkdir -p instrumentation/opentelemetry-instrumentation-jinja2/src/opentelemetry/instrumentation/jinja2
+git mv reference/ddtrace/contrib/jinja2 instrumentation/opentelemetry-instrumentation-jinja2/src/opentelemetry/instrumentation/jinja2
 ```
 
 2. Move the tests
@@ -27,7 +27,7 @@ cp _template/* instrumentation/opentelemetry-instrumentation-jinja2/
 4. Add `version.py` file and update it accordingly
 
 ```bash
-mv instrumentation/opentelemetry-instrumentation-jinja2/version.py instrumentation/opentelemetry-instrumentation-jinja2/src/opentelemetry/ext/jinja2/version.py
+mv instrumentation/opentelemetry-instrumentation-jinja2/version.py instrumentation/opentelemetry-instrumentation-jinja2/src/opentelemetry/instrumentation/jinja2/version.py
 ```
 
 5. Fix relative import paths to using ddtrace package instead of using relative paths
