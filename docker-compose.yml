@@ -1,0 +1,8 @@
+version: "3"
+# remember to use this compose file __ONLY__ for development/testing purposes
+
+services:
+    redis:
+        image: redis:4.0-alpine
+        ports:
+            - "127.0.0.1:6379:6379"
