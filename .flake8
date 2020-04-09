@@ -16,6 +16,3 @@ exclude =
   target
   reference/
   __pycache__
-  ext/opentelemetry-ext-jaeger/src/opentelemetry/ext/jaeger/gen/
-  ext/opentelemetry-ext-jaeger/build/*
-  docs/examples/opentelemetry-example-app/src/opentelemetry_example_app/grpc/gen/

@@ -15,15 +15,5 @@ function cov {
 
 coverage erase
 
-cov opentelemetry-api
-cov opentelemetry-sdk
-cov ext/opentelemetry-ext-flask
-cov ext/opentelemetry-ext-http-requests
-cov ext/opentelemetry-ext-jaeger
-cov ext/opentelemetry-ext-opentracing-shim
-cov ext/opentelemetry-ext-wsgi
-cov ext/opentelemetry-ext-zipkin
-cov docs/examples/opentelemetry-example-app
-
 coverage report
 coverage xml
