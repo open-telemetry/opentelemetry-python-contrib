@@ -2,7 +2,8 @@
 Some utils used by the dogtrace redis integration
 """
 from ddtrace.compat import stringify
-from ddtrace.ext import redis as redisx, net
+from ddtrace.ext import net
+from ddtrace.ext import redis as redisx
 
 VALUE_PLACEHOLDER = "?"
 VALUE_MAX_LEN = 100

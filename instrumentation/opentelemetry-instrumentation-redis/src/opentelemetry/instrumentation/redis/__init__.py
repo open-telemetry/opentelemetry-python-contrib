@@ -17,6 +17,7 @@
     Pin.override(client, service='redis-queue')
 """
 from opentelemetry.auto_instrumentation.instrumentor import BaseInstrumentor
+
 from .patch import patch, unpatch
 
 
@@ -32,4 +33,4 @@ class RedisInstrumentor(BaseInstrumentor):
         patch()
 
     def _uninstrument(self):
-        unpatch
+        unpatch()

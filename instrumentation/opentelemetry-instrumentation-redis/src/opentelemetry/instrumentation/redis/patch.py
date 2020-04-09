@@ -1,13 +1,13 @@
 # 3p
 import redis
-from ddtrace.vendor import wrapt
 
-# project
-from ddtrace.pin import Pin
 from ddtrace.ext import redis as redisx
+from ddtrace.pin import Pin
 from ddtrace.utils.wrappers import unwrap
+from ddtrace.vendor import wrapt
 from opentelemetry import trace
-from .util import format_command_args, _extract_conn_attributes
+
+from .util import _extract_conn_attributes, format_command_args
 from .version import __version__
 
 
@@ -28,12 +28,20 @@ def patch():
         _w("redis", "StrictRedis.pipeline", traced_pipeline)
         _w("redis", "Redis.pipeline", traced_pipeline)
         _w("redis.client", "BasePipeline.execute", traced_execute_pipeline)
-        _w("redis.client", "BasePipeline.immediate_execute_command", traced_execute_command)
+        _w(
+            "redis.client",
+            "BasePipeline.immediate_execute_command",
+            traced_execute_command,
+        )
     else:
         _w("redis", "Redis.execute_command", traced_execute_command)
         _w("redis", "Redis.pipeline", traced_pipeline)
         _w("redis.client", "Pipeline.execute", traced_execute_pipeline)
-        _w("redis.client", "Pipeline.immediate_execute_command", traced_execute_command)
+        _w(
+            "redis.client",
+            "Pipeline.immediate_execute_command",
+            traced_execute_command,
+        )
     Pin(service=redisx.DEFAULT_SERVICE, app=redisx.APP).onto(redis.StrictRedis)
 
 
