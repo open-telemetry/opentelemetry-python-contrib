@@ -18,11 +18,11 @@ import setuptools
 BASE_DIR = os.path.dirname(__file__)
 VERSION_FILENAME = os.path.join(
     # REPLACE ME: the path to the version file e.g
-    # BASE_DIR, "src", "opentelemetry", "ext", "sqlalchemy", "version.py"
+    # BASE_DIR, "src", "opentelemetry", "instrumentation", "sqlalchemy", "version.py"
     BASE_DIR,
     "src",
     "opentelemetry",
-    "ext",
+    "instrumentation",
     "<REPLACE ME>",
     "version.py",
 )
@@ -35,8 +35,8 @@ setuptools.setup(
     entry_points={
         "opentelemetry_instrumentor": [
             # REPLACE ME: the entrypoint for the instrumentor e.g
-            # "sqlalchemy = opentelemetry.ext.sqlalchemy:SQLAlchemyInstrumentor"
-            "<REPLACE ME> = opentelemetry.ext.<REPLACE>"
+            # "sqlalchemy = opentelemetry.instrumentation.sqlalchemy:SQLAlchemyInstrumentor"
+            "<REPLACE ME> = opentelemetry.instrumentation.<REPLACE>"
         ]
     },
 )
