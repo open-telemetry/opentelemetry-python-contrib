@@ -2,7 +2,6 @@
 import unittest
 
 import redis
-from ddtrace import Pin
 
 from opentelemetry import trace
 from opentelemetry.instrumentation.redis.patch import patch, unpatch
@@ -20,7 +19,7 @@ REDIS_CONFIG = {
 
 class TestRedisPatch(unittest.TestCase):
 
-    TEST_SERVICE = "redis-patch"
+    TEST_SERVICE = "redis"
     TEST_PORT = REDIS_CONFIG["port"]
 
     def get_spans(self):
@@ -30,7 +29,7 @@ class TestRedisPatch(unittest.TestCase):
     def setUpClass(cls):
         cls._tracer_provider = TracerProvider()
         trace.set_tracer_provider(cls._tracer_provider)
-        cls._tracer = Tracer(cls._tracer_provider, None)
+        cls._tracer = trace.get_tracer(cls.TEST_SERVICE)
         cls._span_exporter = InMemorySpanExporter()
         cls._span_processor = SimpleExportSpanProcessor(cls._span_exporter)
         cls._tracer_provider.add_span_processor(cls._span_processor)
@@ -40,9 +39,6 @@ class TestRedisPatch(unittest.TestCase):
         patch()
         redis_client = redis.Redis(port=self.TEST_PORT)
         redis_client.flushall()
-        Pin.override(
-            redis_client, service=self.TEST_SERVICE, tracer=self._tracer
-        )
         self.redis_client = redis_client
         self._span_exporter.clear()
 
@@ -142,17 +138,11 @@ class TestRedisPatch(unittest.TestCase):
 
     def test_meta_override(self):
         redis_client = self.redis_client
-        pin = Pin.get_from(redis_client)
-        if pin:
-            pin.clone(tags={"cheese": "camembert"}).onto(redis_client)
-
         redis_client.get("cheese")
         spans = self.get_spans()
         assert len(spans) == 1
         span = spans[0]
         assert span.attributes["service"] == self.TEST_SERVICE
-        # TODO: is this test needed?
-        # assert "cheese" in span.attributes and span.attributes["cheese"] == "camembert"
 
     def test_patch_unpatch(self):
         # Test patch idempotence
