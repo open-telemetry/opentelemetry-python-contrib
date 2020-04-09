@@ -1,5 +1,5 @@
 OpenTelemetry Redis Instrumentation
-===========================
+===================================
 
 |pypi|
 
