@@ -27,8 +27,8 @@ with open(
 setup(
     version=PACKAGE_INFO["__version__"],
     entry_points={
-        "opentelemetry_auto_instrumentation_instrumentor": [
-            "django = opentelemetry.ext.django:DjangoInstrumentor"
+        "opentelemetry_instrumentor": [
+            "django = opentelemetry.instrumentors.django:DjangoInstrumentor"
         ]
     },
 )

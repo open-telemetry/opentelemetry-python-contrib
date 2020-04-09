@@ -48,6 +48,10 @@ class DjangoInstrumentor(BaseInstrumentor):
             "MIDDLEWARE" if VERSION >= (1, 10, 0) else "MIDDLEWARE_CLASSES"
         )
 
+        # FIXME Find a better solution for this thing
+        from os import environ
+        environ.setdefault('DJANGO_SETTINGS_MODULE', 'instrumentation_example.settings')
+
         settings_middleware = getattr(
             settings,
             self._middleware_setting,
