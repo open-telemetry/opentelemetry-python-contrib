@@ -1,4 +1,4 @@
-OpenTelemetry <REPLACE ME> Tracing
+OpenTelemetry <REPLACE ME> Instrumentation
 ===========================
 
 |pypi|
