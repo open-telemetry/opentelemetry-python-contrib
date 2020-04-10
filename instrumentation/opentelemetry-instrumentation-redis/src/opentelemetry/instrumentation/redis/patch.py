@@ -14,7 +14,7 @@
 #
 # pylint:disable=relative-beyond-top-level
 import redis
-import wrapt
+from wrapt import ObjectProxy, wrap_function_wrapper
 
 from opentelemetry import trace
 from opentelemetry.instrumentation.redis import constants
@@ -33,22 +33,29 @@ def patch():
         return
     setattr(redis, "_opentelemetry_patch", True)
 
-    _w = wrapt.wrap_function_wrapper
     if redis.VERSION < (3, 0, 0):
-        _w("redis", "StrictRedis.execute_command", traced_execute_command)
-        _w("redis", "StrictRedis.pipeline", traced_pipeline)
-        _w("redis", "Redis.pipeline", traced_pipeline)
-        _w("redis.client", "BasePipeline.execute", traced_execute_pipeline)
-        _w(
+        wrap_function_wrapper(
+            "redis", "StrictRedis.execute_command", traced_execute_command
+        )
+        wrap_function_wrapper("redis", "StrictRedis.pipeline", traced_pipeline)
+        wrap_function_wrapper("redis", "Redis.pipeline", traced_pipeline)
+        wrap_function_wrapper(
+            "redis.client", "BasePipeline.execute", traced_execute_pipeline
+        )
+        wrap_function_wrapper(
             "redis.client",
             "BasePipeline.immediate_execute_command",
             traced_execute_command,
         )
     else:
-        _w("redis", "Redis.execute_command", traced_execute_command)
-        _w("redis", "Redis.pipeline", traced_pipeline)
-        _w("redis.client", "Pipeline.execute", traced_execute_pipeline)
-        _w(
+        wrap_function_wrapper(
+            "redis", "Redis.execute_command", traced_execute_command
+        )
+        wrap_function_wrapper("redis", "Redis.pipeline", traced_pipeline)
+        wrap_function_wrapper(
+            "redis.client", "Pipeline.execute", traced_execute_pipeline
+        )
+        wrap_function_wrapper(
             "redis.client",
             "Pipeline.immediate_execute_command",
             traced_execute_command,
@@ -57,11 +64,7 @@ def patch():
 
 def unwrap(obj, attr):
     func = getattr(obj, attr, None)
-    if (
-        func
-        and isinstance(func, wrapt.ObjectProxy)
-        and hasattr(func, "__wrapped__")
-    ):
+    if isinstance(func, ObjectProxy) and hasattr(func, "__wrapped__"):
         setattr(obj, attr, func.__wrapped__)
 
 
