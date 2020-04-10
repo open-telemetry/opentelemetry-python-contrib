@@ -55,13 +55,10 @@ class TestRedisPatch(unittest.TestCase):
         assert (
             span.status.canonical_code == trace.status.StatusCanonicalCode.OK
         )
-        meta = {
-            "out.host": "localhost",
-            "out.port": self.TEST_PORT,
-            "out.redis_db": 0,
-        }
-        for key, value in meta.items():
-            assert span.attributes.get(key) == value
+
+        assert span.attributes.get("out.redis_db") == 0
+        assert span.attributes.get("out.host") == "localhost"
+        assert span.attributes.get("out.port") == self.TEST_PORT
 
         assert span.attributes.get("redis.raw_command").startswith(
             "MGET 0 1 2 3"
