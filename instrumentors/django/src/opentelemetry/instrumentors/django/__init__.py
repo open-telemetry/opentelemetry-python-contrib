@@ -13,9 +13,12 @@
 # limitations under the License.
 
 from logging import getLogger
+from os import environ
 
 from django import VERSION
 from django.conf import settings
+
+from opentelemetry.configuration import Configuration
 
 from opentelemetry.auto_instrumentation.instrumentor import BaseInstrumentor
 
@@ -44,13 +47,19 @@ class DjangoInstrumentor(BaseInstrumentor):
         # Django settings.MIDDLEWARE is a list of strings, each one a Python
         # path to a class or a function that acts as middleware.
 
+        # FIXME this is probably a pattern that will show up in the rest of the
+        # instrumentors. Find a better way of implementing this.
+        if not Configuration().django_instrument:
+            return
+
         self._middleware_setting = (
             "MIDDLEWARE" if VERSION >= (1, 10, 0) else "MIDDLEWARE_CLASSES"
         )
 
-        # FIXME Find a better solution for this thing
-        from os import environ
-        environ.setdefault('DJANGO_SETTINGS_MODULE', 'instrumentation_example.settings')
+        if "DJANGO_SETTINGS_MODULE" not in environ.keys():
+            raise Exception(
+                "Missing environment variable DJANGO_SETTINGS_MODULE"
+            )
 
         settings_middleware = getattr(
             settings,
