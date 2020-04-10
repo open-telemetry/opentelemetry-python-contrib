@@ -17,10 +17,13 @@ import redis
 from wrapt import ObjectProxy, wrap_function_wrapper
 
 from opentelemetry import trace
-from opentelemetry.instrumentation.redis import constants
 
 from .util import _extract_conn_attributes, format_command_args
 from .version import __version__
+
+_DEFAULT_SERVICE = "redis"
+_CMD = "redis.command"
+_RAWCMD = "redis.raw_command"
 
 
 def patch():
@@ -94,15 +97,15 @@ def unpatch():
 # tracing functions
 #
 def traced_execute_command(func, instance, args, kwargs):
-    tracer = trace.get_tracer(constants.DEFAULT_SERVICE, __version__)
+    tracer = trace.get_tracer(_DEFAULT_SERVICE, __version__)
 
-    with tracer.start_as_current_span(constants.CMD) as span:
+    with tracer.start_as_current_span(_CMD) as span:
         span.set_attribute("service", tracer.instrumentation_info.name)
         query = format_command_args(args)
-        span.set_attribute(constants.RAWCMD, query)
+        span.set_attribute(_RAWCMD, query)
         for key, value in _get_attributes(instance).items():
             span.set_attribute(key, value)
-        span.set_attribute(constants.ARGS_LEN, len(args))
+        span.set_attribute("redis.args_length", len(args))
         return func(*args, **kwargs)
 
 
@@ -112,17 +115,19 @@ def traced_pipeline(func, instance, args, kwargs):
 
 
 def traced_execute_pipeline(func, instance, args, kwargs):
-    tracer = trace.get_tracer(constants.DEFAULT_SERVICE, __version__)
+    tracer = trace.get_tracer(_DEFAULT_SERVICE, __version__)
 
     cmds = [format_command_args(c) for c, _ in instance.command_stack]
     resource = "\n".join(cmds)
 
-    with tracer.start_as_current_span(constants.CMD) as span:
+    with tracer.start_as_current_span(_CMD) as span:
         span.set_attribute("service", tracer.instrumentation_info.name)
-        span.set_attribute(constants.RAWCMD, resource)
+        span.set_attribute(_RAWCMD, resource)
         for key, value in _get_attributes(instance).items():
             span.set_attribute(key, value)
-        span.set_attribute(constants.PIPELINE_LEN, len(instance.command_stack))
+        span.set_attribute(
+            "redis.pipeline_length", len(instance.command_stack)
+        )
         return func(*args, **kwargs)
 
 

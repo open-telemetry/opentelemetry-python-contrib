@@ -16,23 +16,14 @@
 Some utils used by the redis integration
 """
 
-from opentelemetry.instrumentation.redis import constants
-
-VALUE_PLACEHOLDER = "?"
-VALUE_MAX_LEN = 100
-VALUE_TOO_LONG_MARK = "..."
-CMD_MAX_LEN = 1000
-TARGET_HOST = "out.host"
-TARGET_PORT = "out.port"
-
 
 def _extract_conn_attributes(conn_kwargs):
     """ Transform redis conn info into dogtrace metas """
     try:
         return {
-            TARGET_HOST: conn_kwargs["host"],
-            TARGET_PORT: conn_kwargs["port"],
-            constants.DB: conn_kwargs["db"] or 0,
+            "out.host": conn_kwargs["host"],
+            "out.port": conn_kwargs["port"],
+            "out.redis_db": conn_kwargs["db"] or 0,
         }
     except Exception:  # pylint: disable=broad-except
         return {}
@@ -45,24 +36,28 @@ def format_command_args(args):
       - Skip binary content
       - Truncate
     """
+    value_placeholder = "?"
+    value_max_len = 100
+    value_too_long_mark = "..."
+    cmd_max_len = 1000
     length = 0
     out = []
     for arg in args:
         try:
             cmd = str(arg)
 
-            if len(cmd) > VALUE_MAX_LEN:
-                cmd = cmd[:VALUE_MAX_LEN] + VALUE_TOO_LONG_MARK
+            if len(cmd) > value_max_len:
+                cmd = cmd[:value_max_len] + value_too_long_mark
 
-            if length + len(cmd) > CMD_MAX_LEN:
-                prefix = cmd[: CMD_MAX_LEN - length]
-                out.append("%s%s" % (prefix, VALUE_TOO_LONG_MARK))
+            if length + len(cmd) > cmd_max_len:
+                prefix = cmd[: cmd_max_len - length]
+                out.append("%s%s" % (prefix, value_too_long_mark))
                 break
 
             out.append(cmd)
             length += len(cmd)
         except Exception:  # pylint: disable=broad-except
-            out.append(VALUE_PLACEHOLDER)
+            out.append(value_placeholder)
             break
 
     return " ".join(out)
