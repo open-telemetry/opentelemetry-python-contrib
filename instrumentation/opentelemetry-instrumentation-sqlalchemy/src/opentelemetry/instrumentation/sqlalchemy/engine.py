@@ -10,9 +10,6 @@ instance you are using::
 
     engine.connect().execute('select count(*) from users')
 """
-# project
-from ddtrace.ext import net as netx
-from ddtrace.ext import sql as sqlx
 
 # 3p
 from sqlalchemy.event import listen
@@ -20,6 +17,41 @@ from sqlalchemy.event import listen
 from opentelemetry import trace
 from opentelemetry.instrumentation.sqlalchemy.version import __version__
 from opentelemetry.trace.status import Status, StatusCanonicalCode
+
+# request targets
+TARGET_HOST = "out.host"
+TARGET_PORT = "out.port"
+
+# tags
+QUERY = "sql.query"  # the query text
+ROWS = "sql.rows"  # number of rows returned by a query
+DB = "sql.db"  # the name of the database
+
+
+def normalize_vendor(vendor):
+    """ Return a canonical name for a type of database. """
+    if not vendor:
+        return "db"  # should this ever happen?
+
+    if "sqlite" in vendor:
+        return "sqlite"
+
+    if "postgres" in vendor or vendor == "psycopg2":
+        return "postgres"
+
+    return vendor
+
+
+def parse_pg_dsn(dsn):
+    """
+    Return a dictionary of the components of a postgres DSN.
+
+    >>> parse_pg_dsn('user=dog port=1543 dbname=dogdata')
+    {'user':'dog', 'port':'1543', 'dbname':'dogdata'}
+    """
+    # FIXME: replace by psycopg2.extensions.parse_dsn when available
+    # https://github.com/psycopg/psycopg2/pull/321
+    return {c.split("=")[0]: c.split("=")[1] for c in dsn.split() if "=" in c}
 
 
 def trace_engine(engine, tracer=None, service=None):
@@ -31,7 +63,7 @@ def trace_engine(engine, tracer=None, service=None):
     :param str service: the name of the service to trace.
     """
     tracer = tracer or trace.get_tracer(
-        sqlx.normalize_vendor(engine.name), __version__
+        normalize_vendor(engine.name), __version__
     )
     EngineTracer(tracer, service, engine)
 
@@ -48,7 +80,7 @@ def _wrap_create_engine(func, module, args, kwargs):
     # using the PIN object
     engine = func(*args, **kwargs)
     EngineTracer(
-        trace.get_tracer(sqlx.normalize_vendor(engine.name), __version__),
+        trace.get_tracer(normalize_vendor(engine.name), __version__),
         None,
         engine,
     )
@@ -59,7 +91,7 @@ class EngineTracer:
     def __init__(self, tracer: trace.Tracer, service, engine):
         self.tracer = tracer
         self.engine = engine
-        self.vendor = sqlx.normalize_vendor(engine.name)
+        self.vendor = normalize_vendor(engine.name)
         self.service = service or self.vendor
         self.name = "%s.query" % self.vendor
         # TODO: revisit, might be better done w/ context attach/detach
@@ -90,7 +122,7 @@ class EngineTracer:
 
         try:
             if cursor and cursor.rowcount >= 0:
-                self.current_span.set_attribute(sqlx.ROWS, cursor.rowcount)
+                self.current_span.set_attribute(ROWS, cursor.rowcount)
         finally:
             self.current_span.end()
 
@@ -111,22 +143,22 @@ class EngineTracer:
 def _set_attributes_from_url(span: trace.Span, url):
     """ set connection tags from the url. return true if successful. """
     if url.host:
-        span.set_attribute(netx.TARGET_HOST, url.host)
+        span.set_attribute(TARGET_HOST, url.host)
     if url.port:
-        span.set_attribute(netx.TARGET_PORT, url.port)
+        span.set_attribute(TARGET_PORT, url.port)
     if url.database:
-        span.set_attribute(sqlx.DB, url.database)
+        span.set_attribute(DB, url.database)
 
-    return bool(span.attributes.get(netx.TARGET_HOST, False))
+    return bool(span.attributes.get(TARGET_HOST, False))
 
 
 def _set_attributes_from_cursor(span: trace.Span, vendor, cursor):
     """ attempt to set db connection tags by introspecting the cursor. """
-    if "postgres" == vendor:
+    if vendor == "postgres":
         if hasattr(cursor, "connection") and hasattr(cursor.connection, "dsn"):
             dsn = getattr(cursor.connection, "dsn", None)
             if dsn:
-                data = sqlx.parse_pg_dsn(dsn)
-                span.set_attribute(sqlx.DB, data.get("dbname"))
-                span.set_attribute(netx.TARGET_HOST, data.get("host"))
-                span.set_attribute(netx.TARGET_PORT, data.get("port"))
+                data = parse_pg_dsn(dsn)
+                span.set_attribute(DB, data.get("dbname"))
+                span.set_attribute(TARGET_HOST, data.get("host"))
+                span.set_attribute(TARGET_PORT, data.get("port"))

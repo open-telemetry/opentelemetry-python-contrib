@@ -14,6 +14,13 @@ from .utils import TracerTestBase
 Base = declarative_base()
 
 
+def _create_engine(engine_args):
+    # create a SQLAlchemy engine
+    config = dict(engine_args)
+    url = config.pop("url")
+    return create_engine(url, **config)
+
+
 class Player(Base):
     """Player entity used to test SQLAlchemy ORM"""
 
@@ -50,12 +57,6 @@ class SQLAlchemyTestMixin(TracerTestBase):
     SERVICE = None
     ENGINE_ARGS = None
 
-    def create_engine(self, engine_args):
-        # create a SQLAlchemy engine
-        config = dict(engine_args)
-        url = config.pop("url")
-        return create_engine(url, **config)
-
     @contextlib.contextmanager
     def connection(self):
         # context manager that provides a connection
@@ -72,21 +73,22 @@ class SQLAlchemyTestMixin(TracerTestBase):
         """
 
     def setUp(self):
+        # pylint: disable=invalid-name
         super(SQLAlchemyTestMixin, self).setUp()
 
         # create an engine with the given arguments
-        self.engine = self.create_engine(self.ENGINE_ARGS)
+        self.engine = _create_engine(self.ENGINE_ARGS)
 
         # create the database / entities and prepare a session for the test
         Base.metadata.drop_all(bind=self.engine)
         Base.metadata.create_all(self.engine, checkfirst=False)
-        Session = sessionmaker(bind=self.engine)
-        self.session = Session()
+        self.session = sessionmaker(bind=self.engine)()
         # trace the engine
         trace_engine(self.engine, self._tracer)
         self._span_exporter.clear()
 
     def tearDown(self):
+        # pylint: disable=invalid-name
         # clear the database and dispose the engine
         self.session.close()
         Base.metadata.drop_all(bind=self.engine)

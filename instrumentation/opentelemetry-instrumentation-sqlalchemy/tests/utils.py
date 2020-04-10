@@ -9,6 +9,7 @@ from opentelemetry.sdk.trace.export.in_memory_span_exporter import (
 class TracerTestBase:
     @classmethod
     def setUpClass(cls):
+        # pylint: disable=invalid-name
         cls._tracer_provider = TracerProvider()
         trace.set_tracer_provider(cls._tracer_provider)
         cls._tracer = Tracer(cls._tracer_provider, None)

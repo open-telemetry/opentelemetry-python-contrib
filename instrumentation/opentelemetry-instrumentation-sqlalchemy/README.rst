@@ -1,5 +1,5 @@
 OpenTelemetry SQLAlchemy Tracing
-===========================
+================================
 
 |pypi|
 
