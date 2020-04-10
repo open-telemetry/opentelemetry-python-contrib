@@ -22,7 +22,6 @@ from .util import _extract_conn_attributes, format_command_args
 from .version import __version__
 
 _DEFAULT_SERVICE = "redis"
-_CMD = "redis.command"
 _RAWCMD = "redis.raw_command"
 
 
@@ -98,10 +97,9 @@ def unpatch():
 #
 def traced_execute_command(func, instance, args, kwargs):
     tracer = trace.get_tracer(_DEFAULT_SERVICE, __version__)
-
-    with tracer.start_as_current_span(_CMD) as span:
+    query = format_command_args(args)
+    with tracer.start_as_current_span(query) as span:
         span.set_attribute("service", tracer.instrumentation_info.name)
-        query = format_command_args(args)
         span.set_attribute(_RAWCMD, query)
         for key, value in _get_attributes(instance).items():
             span.set_attribute(key, value)
@@ -120,7 +118,7 @@ def traced_execute_pipeline(func, instance, args, kwargs):
     cmds = [format_command_args(c) for c, _ in instance.command_stack]
     resource = "\n".join(cmds)
 
-    with tracer.start_as_current_span(_CMD) as span:
+    with tracer.start_as_current_span(resource) as span:
         span.set_attribute("service", tracer.instrumentation_info.name)
         span.set_attribute(_RAWCMD, resource)
         for key, value in _get_attributes(instance).items():

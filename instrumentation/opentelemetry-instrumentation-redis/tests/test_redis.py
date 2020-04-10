@@ -91,7 +91,7 @@ class TestRedisPatch(unittest.TestCase):
         assert len(spans) == 1
         span = spans[0]
         assert span.attributes["service"] == self.TEST_SERVICE
-        assert span.name == "redis.command"
+        assert span.name == "SET blah 32\nRPUSH foo éé\nHGETALL xxx"
         assert (
             span.status.canonical_code == trace.status.StatusCanonicalCode.OK
         )
