@@ -2,18 +2,16 @@ import os
 import unittest
 
 import psycopg2
-
-from opentelemetry import trace
+import pytest
 from sqlalchemy.exc import ProgrammingError
 
-import pytest
+from opentelemetry import trace
 
 from .mixins import SQLAlchemyTestMixin
 
-
 POSTGRES_CONFIG = {
     "host": "127.0.0.1",
-    "port": int(os.getenv("TEST_POSTGRES_PORT", 5432)),
+    "port": int(os.getenv("TEST_POSTGRES_PORT", "5432")),
     "user": os.getenv("TEST_POSTGRES_USER", "postgres"),
     "password": os.getenv("TEST_POSTGRES_PASSWORD", "postgres"),
     "dbname": os.getenv("TEST_POSTGRES_DB", "postgres"),
@@ -26,17 +24,16 @@ class PostgresTestCase(SQLAlchemyTestMixin, unittest.TestCase):
     VENDOR = "postgres"
     SQL_DB = "postgres"
     SERVICE = "postgres"
-    ENGINE_ARGS = {"url": "postgresql://%(user)s:%(password)s@%(host)s:%(port)s/%(dbname)s" % POSTGRES_CONFIG}
-
-    def setUp(self):
-        super(PostgresTestCase, self).setUp()
-
-    def tearDown(self):
-        super(PostgresTestCase, self).tearDown()
+    ENGINE_ARGS = {
+        "url": "postgresql://%(user)s:%(password)s@%(host)s:%(port)s/%(dbname)s"
+        % POSTGRES_CONFIG
+    }
 
     def check_meta(self, span):
         # check database connection tags
-        self.assertEqual(span.attributes.get("out.host"), POSTGRES_CONFIG["host"])
+        self.assertEqual(
+            span.attributes.get("out.host"), POSTGRES_CONFIG["host"]
+        )
         # self.assertEqual(span.get_metric("out.port"), POSTGRES_CONFIG["port"])
 
     def test_engine_execute_errors(self):
@@ -52,13 +49,18 @@ class PostgresTestCase(SQLAlchemyTestMixin, unittest.TestCase):
         # span fields
         self.assertEqual(span.name, "{}.query".format(self.VENDOR))
         self.assertEqual(span.attributes.get("service"), self.SERVICE)
-        self.assertEqual(span.attributes.get("resource"), "SELECT * FROM a_wrong_table")
+        self.assertEqual(
+            span.attributes.get("resource"), "SELECT * FROM a_wrong_table"
+        )
         self.assertEqual(span.attributes.get("sql.db"), self.SQL_DB)
         # self.assertIsNone(span.attributes.get("sql.rows") or span.get_metric("sql.rows"))
         self.check_meta(span)
         self.assertTrue(span.end_time - span.start_time > 0)
         # check the error
-        self.assertEqual(span.status.canonical_code, trace.status.StatusCanonicalCode.UNKNOWN)
+        self.assertEqual(
+            span.status.canonical_code,
+            trace.status.StatusCanonicalCode.UNKNOWN,
+        )
         # TODO: error handling
         # self.assertTrue('relation "a_wrong_table" does not exist' in span.attributes.get("error.msg"))
         # assert "psycopg2.errors.UndefinedTable" in span.attributes.get("error.type")
@@ -73,4 +75,7 @@ class PostgresCreatorTestCase(PostgresTestCase):
     VENDOR = "postgres"
     SQL_DB = "postgres"
     SERVICE = "postgres"
-    ENGINE_ARGS = {"url": "postgresql://", "creator": lambda: psycopg2.connect(**POSTGRES_CONFIG)}
+    ENGINE_ARGS = {
+        "url": "postgresql://",
+        "creator": lambda: psycopg2.connect(**POSTGRES_CONFIG),
+    }

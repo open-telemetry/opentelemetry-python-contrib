@@ -1,13 +1,12 @@
-
 from opentelemetry import trace
-
 from opentelemetry.sdk.trace import Tracer, TracerProvider
 from opentelemetry.sdk.trace.export import SimpleExportSpanProcessor
-from opentelemetry.sdk.trace.export.in_memory_span_exporter import InMemorySpanExporter
+from opentelemetry.sdk.trace.export.in_memory_span_exporter import (
+    InMemorySpanExporter,
+)
 
 
 class TracerTestBase:
-
     @classmethod
     def setUpClass(cls):
         cls._tracer_provider = TracerProvider()

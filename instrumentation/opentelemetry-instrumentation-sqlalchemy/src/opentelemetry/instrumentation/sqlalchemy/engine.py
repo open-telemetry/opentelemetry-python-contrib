@@ -11,16 +11,12 @@ instance you are using::
 
     engine.connect().execute('select count(*) from users')
 """
+# project
+from ddtrace.ext import net as netx
+from ddtrace.ext import sql as sqlx
+from ddtrace.pin import Pin
 # 3p
 from sqlalchemy.event import listen
-
-# project
-import ddtrace
-
-from ddtrace.constants import ANALYTICS_SAMPLE_RATE_KEY
-from ddtrace.ext import SpanTypes, sql as sqlx, net as netx
-from ddtrace.pin import Pin
-from ddtrace.settings import config
 
 from opentelemetry import trace
 from opentelemetry.trace.status import Status, StatusCanonicalCode
@@ -83,16 +79,14 @@ class EngineTracer(object):
             self.current_span.set_attribute("service", pin.service)
             self.current_span.set_attribute("resource", statement)
 
-            if not _set_attributes_from_url(self.current_span, conn.engine.url):
-                _set_attributes_from_cursor(self.current_span, self.vendor, cursor)
+            if not _set_attributes_from_url(
+                self.current_span, conn.engine.url
+            ):
+                _set_attributes_from_cursor(
+                    self.current_span, self.vendor, cursor
+                )
 
     def _after_cur_exec(self, conn, cursor, statement, *args):
-        pin = Pin.get_from(self.engine)
-        # TODO: check if tracing enabled
-        # if not pin or not pin.enabled():
-        #     # don't trace the execution
-        #     return
-
         if not self.current_span:
             return
 
@@ -103,18 +97,14 @@ class EngineTracer(object):
             self.current_span.end()
 
     def _dbapi_error(self, conn, cursor, statement, *args):
-        pin = Pin.get_from(self.engine)
-        # TODO: check if tracing enabled
-        # if not pin or not pin.enabled():
-        #     # don't trace the execution
-        #     return
-
         if not self.current_span:
             return
 
         try:
             # span.set_traceback()
-            self.current_span.set_status(Status(StatusCanonicalCode.UNKNOWN, str("something happened")))
+            self.current_span.set_status(
+                Status(StatusCanonicalCode.UNKNOWN, str("something happened"))
+            )
         finally:
             self.current_span.end()
 

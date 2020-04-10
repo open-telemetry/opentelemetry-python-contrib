@@ -16,8 +16,7 @@ using the patch method that **must be called before** importing sqlalchemy::
     Pin.override(engine, service='replica-db')
 """
 from opentelemetry.auto_instrumentation.instrumentor import BaseInstrumentor
-from .engine import trace_engine
-from .patch import patch, unpatch
+from opentelemetry.instrumentation.sqlalchemy.patch import patch, unpatch
 
 
 class SQLAlchemyInstrumentor(BaseInstrumentor):
@@ -25,11 +24,8 @@ class SQLAlchemyInstrumentor(BaseInstrumentor):
     See `BaseInstrumentor`
     """
 
-    def __init__(self):
-        super().__init__()
-
     def _instrument(self):
         patch()
 
     def _uninstrument(self):
-        unpatch
+        unpatch()

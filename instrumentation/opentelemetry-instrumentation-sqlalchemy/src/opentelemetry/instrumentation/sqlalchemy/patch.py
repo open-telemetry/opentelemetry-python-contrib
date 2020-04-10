@@ -1,9 +1,14 @@
 import sqlalchemy
+import wrapt
+from wrapt import wrap_function_wrapper as _w
 
-from ddtrace.vendor.wrapt import wrap_function_wrapper as _w
+from opentelemetry.instrumentation.sqlalchemy.engine import _wrap_create_engine
 
-from .engine import _wrap_create_engine
-from ddtrace.utils.wrappers import unwrap
+
+def unwrap(obj, attr):
+    f = getattr(obj, attr, None)
+    if f and isinstance(f, wrapt.ObjectProxy) and hasattr(f, "__wrapped__"):
+        setattr(obj, attr, f.__wrapped__)
 
 
 def patch():

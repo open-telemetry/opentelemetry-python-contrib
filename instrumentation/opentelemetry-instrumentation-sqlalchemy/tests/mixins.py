@@ -1,18 +1,13 @@
 # stdlib
 import contextlib
 
-# 3rd party
-from opentelemetry import trace
-from opentelemetry.ext.sqlalchemy import trace_engine
-
+from sqlalchemy import Column, Integer, String, create_engine
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.orm import sessionmaker
-from sqlalchemy import (
-    create_engine,
-    Column,
-    Integer,
-    String,
-)
+
+# 3rd party
+from opentelemetry import trace
+from opentelemetry.instrumentation.sqlalchemy.engine import trace_engine
 
 from .utils import TracerTestBase
 
@@ -115,7 +110,9 @@ class SQLAlchemyTestMixin(TracerTestBase):
         assert span.attributes.get("sql.db") == self.SQL_DB
         # assert span.get_metric("sql.rows") == 1
         self.check_meta(span)
-        assert span.status.canonical_code == trace.status.StatusCanonicalCode.OK
+        assert (
+            span.status.canonical_code == trace.status.StatusCanonicalCode.OK
+        )
         assert (span.end_time - span.start_time) > 0
 
     def test_session_query(self):
@@ -136,7 +133,9 @@ class SQLAlchemyTestMixin(TracerTestBase):
         )
         assert span.attributes.get("sql.db") == self.SQL_DB
         self.check_meta(span)
-        assert span.status.canonical_code == trace.status.StatusCanonicalCode.OK
+        assert (
+            span.status.canonical_code == trace.status.StatusCanonicalCode.OK
+        )
         assert (span.end_time - span.start_time) > 0
 
     def test_engine_connect_execute(self):
@@ -155,7 +154,9 @@ class SQLAlchemyTestMixin(TracerTestBase):
         assert span.attributes.get("resource") == "SELECT * FROM players"
         assert span.attributes.get("sql.db") == self.SQL_DB
         self.check_meta(span)
-        assert span.status.canonical_code == trace.status.StatusCanonicalCode.OK
+        assert (
+            span.status.canonical_code == trace.status.StatusCanonicalCode.OK
+        )
         assert (span.end_time - span.start_time) > 0
 
     def test_traced_service(self):
@@ -181,7 +182,9 @@ class SQLAlchemyTestMixin(TracerTestBase):
 
         # confirm the parenting
         assert parent_span.parent is None
-        assert child_span.parent.context.trace_id == parent_span.context.trace_id
+        assert (
+            child_span.parent.context.trace_id == parent_span.context.trace_id
+        )
 
         assert parent_span.name == "sqlalch_op"
         assert parent_span.instrumentation_info.name == "sqlalch_svc"
@@ -191,7 +194,10 @@ class SQLAlchemyTestMixin(TracerTestBase):
         assert child_span.attributes.get("service") == self.SERVICE
         assert child_span.attributes.get("resource") == "SELECT * FROM players"
         assert child_span.attributes.get("sql.db") == self.SQL_DB
-        assert child_span.status.canonical_code == trace.status.StatusCanonicalCode.OK
+        assert (
+            child_span.status.canonical_code
+            == trace.status.StatusCanonicalCode.OK
+        )
         assert (child_span.end_time - child_span.start_time) > 0
 
     def test_analytics_default(self):
