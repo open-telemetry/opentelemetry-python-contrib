@@ -36,9 +36,8 @@ class TestRedisPatch(unittest.TestCase):
 
     def setUp(self):
         patch()
-        redis_client = redis.Redis(port=self.TEST_PORT)
-        redis_client.flushall()
-        self.redis_client = redis_client
+        self.redis_client = redis.Redis(port=self.TEST_PORT)
+        self.redis_client.flushall()
         self._span_exporter.clear()
 
     def tearDown(self):
@@ -66,8 +65,7 @@ class TestRedisPatch(unittest.TestCase):
         assert span.attributes.get("redis.raw_command").endswith("...")
 
     def test_basics(self):
-        us = self.redis_client.get("cheese")
-        assert us is None
+        assert self.redis_client.get("cheese") is None
         spans = self.get_spans()
         assert len(spans) == 1
         span = spans[0]
@@ -123,8 +121,7 @@ class TestRedisPatch(unittest.TestCase):
         assert span.attributes.get("out.host") == "localhost"
 
     def test_meta_override(self):
-        redis_client = self.redis_client
-        redis_client.get("cheese")
+        self.redis_client.get("cheese")
         spans = self.get_spans()
         assert len(spans) == 1
         span = spans[0]
@@ -135,8 +132,7 @@ class TestRedisPatch(unittest.TestCase):
         patch()
         patch()
 
-        redis_client = redis.Redis(port=REDIS_CONFIG["port"])
-        redis_client.get("key")
+        self.redis_client.get("key")
 
         spans = self.get_spans()
         self._span_exporter.clear()
@@ -146,8 +142,7 @@ class TestRedisPatch(unittest.TestCase):
         # Test unpatch
         unpatch()
 
-        redis_client = redis.Redis(port=REDIS_CONFIG["port"])
-        redis_client.get("key")
+        self.redis_client.get("key")
 
         spans = self.get_spans()
         self._span_exporter.clear()
@@ -156,8 +151,7 @@ class TestRedisPatch(unittest.TestCase):
         # Test patch again
         patch()
 
-        redis_client = redis.Redis(port=REDIS_CONFIG["port"])
-        redis_client.get("key")
+        self.redis_client.get("key")
 
         spans = self.get_spans()
         self._span_exporter.clear()
@@ -169,8 +163,7 @@ class TestRedisPatch(unittest.TestCase):
         ot_tracer = trace.get_tracer("redis_svc")
 
         with ot_tracer.start_as_current_span("redis_get"):
-            us = self.redis_client.get("cheese")
-            assert us is None
+            assert self.redis_client.get("cheese") is None
 
         spans = self.get_spans()
         assert len(spans) == 2
