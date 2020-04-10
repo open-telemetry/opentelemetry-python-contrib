@@ -17,6 +17,5 @@ class TracerTestBase:
         cls._tracer_provider.add_span_processor(cls._span_processor)
 
     def pop_traces(self):
-        self._span_exporter
         spans = self._span_exporter.get_finished_spans()
         return spans

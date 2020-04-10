@@ -6,9 +6,13 @@ from opentelemetry.instrumentation.sqlalchemy.engine import _wrap_create_engine
 
 
 def unwrap(obj, attr):
-    f = getattr(obj, attr, None)
-    if f and isinstance(f, wrapt.ObjectProxy) and hasattr(f, "__wrapped__"):
-        setattr(obj, attr, f.__wrapped__)
+    func = getattr(obj, attr, None)
+    if (
+        func
+        and isinstance(func, wrapt.ObjectProxy)
+        and hasattr(func, "__wrapped__")
+    ):
+        setattr(obj, attr, func.__wrapped__)
 
 
 def patch():

@@ -2,8 +2,7 @@
 To trace sqlalchemy queries, add instrumentation to the engine class or
 instance you are using::
 
-    from ddtrace import tracer
-    from ddtrace.contrib.sqlalchemy import trace_engine
+    from opentelemetry.instrumentation.sqlalchemy.engine import trace_engine
     from sqlalchemy import create_engine
 
     engine = create_engine('sqlite:///:memory:')
@@ -14,14 +13,13 @@ instance you are using::
 # project
 from ddtrace.ext import net as netx
 from ddtrace.ext import sql as sqlx
-from ddtrace.pin import Pin
+
 # 3p
 from sqlalchemy.event import listen
 
 from opentelemetry import trace
+from opentelemetry.instrumentation.sqlalchemy.version import __version__
 from opentelemetry.trace.status import Status, StatusCanonicalCode
-
-from .version import __version__
 
 
 def trace_engine(engine, tracer=None, service=None):
@@ -32,10 +30,13 @@ def trace_engine(engine, tracer=None, service=None):
     :param ddtrace.Tracer tracer: a tracer instance. will default to the global
     :param str service: the name of the service to trace.
     """
-    tracer = tracer or trace.get_tracer(__name__, __version__)
+    tracer = tracer or trace.get_tracer(
+        sqlx.normalize_vendor(engine.name), __version__
+    )
     EngineTracer(tracer, service, engine)
 
 
+# pylint: disable=unused-argument
 def _wrap_create_engine(func, module, args, kwargs):
     """Trace the SQLAlchemy engine, creating an `EngineTracer`
     object that will listen to SQLAlchemy events. A PIN object
@@ -46,11 +47,15 @@ def _wrap_create_engine(func, module, args, kwargs):
     # name is used by default; users can update this setting
     # using the PIN object
     engine = func(*args, **kwargs)
-    EngineTracer(trace.get_tracer(__name__, __version__), None, engine)
+    EngineTracer(
+        trace.get_tracer(sqlx.normalize_vendor(engine.name), __version__),
+        None,
+        engine,
+    )
     return engine
 
 
-class EngineTracer(object):
+class EngineTracer:
     def __init__(self, tracer: trace.Tracer, service, engine):
         self.tracer = tracer
         self.engine = engine
@@ -60,23 +65,15 @@ class EngineTracer(object):
         # TODO: revisit, might be better done w/ context attach/detach
         self.current_span = None
 
-        # attach the PIN
-        Pin(app=self.vendor, tracer=tracer, service=self.service).onto(engine)
-
         listen(engine, "before_cursor_execute", self._before_cur_exec)
         listen(engine, "after_cursor_execute", self._after_cur_exec)
         listen(engine, "dbapi_error", self._dbapi_error)
 
+    # pylint: disable=unused-argument
     def _before_cur_exec(self, conn, cursor, statement, *args):
-        pin = Pin.get_from(self.engine)
-        # TODO: check if tracing enabled
-        # if not pin or not pin.enabled():
-        #     # don't trace the execution
-        #     return
-
         self.current_span = self.tracer.start_span(self.name)
         with self.tracer.use_span(self.current_span, end_on_exit=False):
-            self.current_span.set_attribute("service", pin.service)
+            self.current_span.set_attribute("service", self.vendor)
             self.current_span.set_attribute("resource", statement)
 
             if not _set_attributes_from_url(
@@ -86,6 +83,7 @@ class EngineTracer(object):
                     self.current_span, self.vendor, cursor
                 )
 
+    # pylint: disable=unused-argument
     def _after_cur_exec(self, conn, cursor, statement, *args):
         if not self.current_span:
             return
@@ -96,6 +94,7 @@ class EngineTracer(object):
         finally:
             self.current_span.end()
 
+    # pylint: disable=unused-argument
     def _dbapi_error(self, conn, cursor, statement, *args):
         if not self.current_span:
             return
@@ -127,7 +126,7 @@ def _set_attributes_from_cursor(span: trace.Span, vendor, cursor):
         if hasattr(cursor, "connection") and hasattr(cursor.connection, "dsn"):
             dsn = getattr(cursor.connection, "dsn", None)
             if dsn:
-                d = sqlx.parse_pg_dsn(dsn)
-                span.set_attribute(sqlx.DB, d.get("dbname"))
-                span.set_attribute(netx.TARGET_HOST, d.get("host"))
-                span.set_attribute(netx.TARGET_PORT, d.get("port"))
+                data = sqlx.parse_pg_dsn(dsn)
+                span.set_attribute(sqlx.DB, data.get("dbname"))
+                span.set_attribute(netx.TARGET_HOST, data.get("host"))
+                span.set_attribute(netx.TARGET_PORT, data.get("port"))

@@ -67,9 +67,9 @@ class SQLAlchemyTestMixin(TracerTestBase):
             conn.close()
 
     def check_meta(self, span):
-        # function that can be implemented according to the
-        # specific engine implementation
-        return
+        """function that can be implemented according to the
+        specific engine implementation
+        """
 
     def setUp(self):
         super(SQLAlchemyTestMixin, self).setUp()
@@ -158,13 +158,6 @@ class SQLAlchemyTestMixin(TracerTestBase):
             span.status.canonical_code == trace.status.StatusCanonicalCode.OK
         )
         assert (span.end_time - span.start_time) > 0
-
-    def test_traced_service(self):
-        # ensures that the service is set as expected
-        # TODO: fix
-        services = {}  # self.tracer.writer.pop_services()
-        expected = {}
-        assert services == expected
 
     def test_opentracing(self):
         """Ensure that sqlalchemy works with the opentracer."""
