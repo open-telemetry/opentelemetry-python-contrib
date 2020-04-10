@@ -14,8 +14,7 @@
 #
 # pylint:disable=relative-beyond-top-level
 import redis
-from ddtrace.utils.wrappers import unwrap
-from ddtrace.vendor import wrapt
+import wrapt
 
 from opentelemetry import trace
 from opentelemetry.instrumentation.redis import constants
@@ -35,7 +34,6 @@ def patch():
     setattr(redis, "_opentelemetry_patch", True)
 
     _w = wrapt.wrap_function_wrapper
-
     if redis.VERSION < (3, 0, 0):
         _w("redis", "StrictRedis.execute_command", traced_execute_command)
         _w("redis", "StrictRedis.pipeline", traced_pipeline)
@@ -57,10 +55,20 @@ def patch():
         )
 
 
+def unwrap(obj, attr):
+    func = getattr(obj, attr, None)
+    if (
+        func
+        and isinstance(func, wrapt.ObjectProxy)
+        and hasattr(func, "__wrapped__")
+    ):
+        setattr(obj, attr, func.__wrapped__)
+
+
 def unpatch():
     if getattr(redis, "_opentelemetry_patch", False):
         setattr(redis, "_opentelemetry_patch", False)
-
+        print("unpatch")
         if redis.VERSION < (3, 0, 0):
             unwrap(redis.StrictRedis, "execute_command")
             unwrap(redis.StrictRedis, "pipeline")
@@ -74,6 +82,7 @@ def unpatch():
                 "immediate_execute_command",
             )
         else:
+            print("unwrapping")
             unwrap(redis.Redis, "execute_command")
             unwrap(redis.Redis, "pipeline")
             unwrap(redis.client.Pipeline, "execute")
@@ -97,6 +106,7 @@ def traced_execute_command(func, instance, args, kwargs):
         return func(*args, **kwargs)
 
 
+# pylint: disable=unused-argument
 def traced_pipeline(func, instance, args, kwargs):
     return func(*args, **kwargs)
 

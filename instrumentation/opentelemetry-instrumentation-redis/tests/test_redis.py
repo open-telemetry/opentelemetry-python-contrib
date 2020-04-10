@@ -5,7 +5,7 @@ import redis
 
 from opentelemetry import trace
 from opentelemetry.instrumentation.redis.patch import patch, unpatch
-from opentelemetry.sdk.trace import Tracer, TracerProvider
+from opentelemetry.sdk.trace import TracerProvider
 from opentelemetry.sdk.trace.export import SimpleExportSpanProcessor
 from opentelemetry.sdk.trace.export.in_memory_span_exporter import (
     InMemorySpanExporter,
