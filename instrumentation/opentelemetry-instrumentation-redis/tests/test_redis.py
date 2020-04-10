@@ -57,17 +57,11 @@ class TestRedisPatch(unittest.TestCase):
         )
         meta = {
             "out.host": "localhost",
+            "out.port": self.TEST_PORT,
+            "out.redis_db": 0,
         }
-        # TODO: bring back once we add metrics
-        # metrics = {
-        #     "out.port": self.TEST_PORT,
-        #     "out.redis_db": 0,
-        # }
         for key, value in meta.items():
             assert span.attributes.get(key) == value
-        # TODO: bring back once we add metrics
-        # for k, v in metrics.items():
-        #     assert span.get_metric(k) == v
 
         assert span.attributes.get("redis.raw_command").startswith(
             "MGET 0 1 2 3"
@@ -85,12 +79,10 @@ class TestRedisPatch(unittest.TestCase):
         assert (
             span.status.canonical_code == trace.status.StatusCanonicalCode.OK
         )
-        # TODO: bring back once we add metrics
-        # assert span.get_metric("out.redis_db") == 0
+        assert span.attributes.get("out.redis_db") == 0
         assert span.attributes.get("out.host") == "localhost"
         assert span.attributes.get("redis.raw_command") == "GET cheese"
-        # TODO: bring back once we add metrics
-        # assert span.get_metric("redis.args_length") == 2
+        assert span.attributes.get("redis.args_length") == 2
 
     def test_pipeline_traced(self):
         with self.redis_client.pipeline(transaction=False) as pipeline:
@@ -107,14 +99,13 @@ class TestRedisPatch(unittest.TestCase):
         assert (
             span.status.canonical_code == trace.status.StatusCanonicalCode.OK
         )
-        # assert span.get_metric("out.redis_db") == 0
+        assert span.attributes.get("out.redis_db") == 0
         assert span.attributes.get("out.host") == "localhost"
         assert (
             span.attributes.get("redis.raw_command")
             == "SET blah 32\nRPUSH foo éé\nHGETALL xxx"
         )
-        # assert span.get_metric("redis.pipeline_length") == 3
-        # assert span.get_metric("redis.pipeline_length") == 3
+        assert span.attributes.get("redis.pipeline_length") == 3
 
     def test_pipeline_immediate(self):
         with self.redis_client.pipeline() as pipeline:
@@ -131,7 +122,7 @@ class TestRedisPatch(unittest.TestCase):
         assert (
             span.status.canonical_code == trace.status.StatusCanonicalCode.OK
         )
-        # assert span.get_metric("out.redis_db") == 0
+        assert span.attributes.get("out.redis_db") == 0
         assert span.attributes.get("out.host") == "localhost"
 
     def test_meta_override(self):
@@ -203,7 +194,7 @@ class TestRedisPatch(unittest.TestCase):
             child_span.status.canonical_code
             == trace.status.StatusCanonicalCode.OK
         )
-        # assert dd_span.get_metric("out.redis_db") == 0
+        assert child_span.attributes.get("out.redis_db") == 0
         assert child_span.attributes.get("out.host") == "localhost"
         assert child_span.attributes.get("redis.raw_command") == "GET cheese"
-        # assert dd_span.get_metric("redis.args_length") == 2
+        assert child_span.attributes.get("redis.args_length") == 2

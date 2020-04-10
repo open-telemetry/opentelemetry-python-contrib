@@ -99,8 +99,7 @@ def traced_execute_command(func, instance, args, kwargs):
         span.set_attribute(constants.RAWCMD, query)
         for key, value in _get_attributes(instance).items():
             span.set_attribute(key, value)
-        # TODO: set metric
-        # s.set_metric(ARGS_LEN, len(args))
+        span.set_attribute(constants.ARGS_LEN, len(args))
         return func(*args, **kwargs)
 
 
@@ -112,7 +111,6 @@ def traced_pipeline(func, instance, args, kwargs):
 def traced_execute_pipeline(func, instance, args, kwargs):
     tracer = trace.get_tracer(constants.DEFAULT_SERVICE, __version__)
 
-    # FIXME[matt] done in the agent. worth it?
     cmds = [format_command_args(c) for c, _ in instance.command_stack]
     resource = "\n".join(cmds)
 
@@ -121,8 +119,7 @@ def traced_execute_pipeline(func, instance, args, kwargs):
         span.set_attribute(constants.RAWCMD, resource)
         for key, value in _get_attributes(instance).items():
             span.set_attribute(key, value)
-        # TODO: set metric
-        # s.set_metric(PIPELINE_LEN, len(instance.command_stack))
+        span.set_attribute(constants.PIPELINE_LEN, len(instance.command_stack))
         return func(*args, **kwargs)
 
 
