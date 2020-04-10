@@ -68,7 +68,6 @@ def unwrap(obj, attr):
 def unpatch():
     if getattr(redis, "_opentelemetry_patch", False):
         setattr(redis, "_opentelemetry_patch", False)
-        print("unpatch")
         if redis.VERSION < (3, 0, 0):
             unwrap(redis.StrictRedis, "execute_command")
             unwrap(redis.StrictRedis, "pipeline")
@@ -82,7 +81,6 @@ def unpatch():
                 "immediate_execute_command",
             )
         else:
-            print("unwrapping")
             unwrap(redis.Redis, "execute_command")
             unwrap(redis.Redis, "pipeline")
             unwrap(redis.client.Pipeline, "execute")

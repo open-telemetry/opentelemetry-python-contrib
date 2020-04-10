@@ -35,7 +35,6 @@ class TestRedisPatch(unittest.TestCase):
         cls._tracer_provider.add_span_processor(cls._span_processor)
 
     def setUp(self):
-        super(TestRedisPatch, self).setUp()
         patch()
         redis_client = redis.Redis(port=self.TEST_PORT)
         redis_client.flushall()
@@ -44,7 +43,6 @@ class TestRedisPatch(unittest.TestCase):
 
     def tearDown(self):
         unpatch()
-        super(TestRedisPatch, self).tearDown()
 
     def test_long_command(self):
         self.redis_client.mget(*range(1000))
