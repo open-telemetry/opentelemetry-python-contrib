@@ -50,7 +50,8 @@ class TestRedisPatch(unittest.TestCase):
         assert len(spans) == 1
         span = spans[0]
         assert span.attributes["service"] == self.TEST_SERVICE
-        assert span.name == "redis.command"
+        assert span.name.startswith("MGET 0 1 2 3")
+        assert span.name.endswith("...")
         assert (
             span.status.canonical_code == trace.status.StatusCanonicalCode.OK
         )
@@ -70,7 +71,7 @@ class TestRedisPatch(unittest.TestCase):
         assert len(spans) == 1
         span = spans[0]
         assert span.attributes["service"] == self.TEST_SERVICE
-        assert span.name == "redis.command"
+        assert span.name == "GET cheese"
         assert (
             span.status.canonical_code == trace.status.StatusCanonicalCode.OK
         )
@@ -112,7 +113,7 @@ class TestRedisPatch(unittest.TestCase):
         assert len(spans) == 2
         span = spans[0]
         assert span.attributes["service"] == self.TEST_SERVICE
-        assert span.name == "redis.command"
+        assert span.name == "SET a 1"
         assert span.attributes.get("redis.raw_command") == "SET a 1"
         assert (
             span.status.canonical_code == trace.status.StatusCanonicalCode.OK
@@ -179,7 +180,7 @@ class TestRedisPatch(unittest.TestCase):
         assert parent_span.instrumentation_info.name == "redis_svc"
 
         assert child_span.attributes.get("service") == self.TEST_SERVICE
-        assert child_span.name == "redis.command"
+        assert child_span.name == "GET cheese"
         assert (
             child_span.status.canonical_code
             == trace.status.StatusCanonicalCode.OK
