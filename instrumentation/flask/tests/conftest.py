@@ -12,7 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from opentelemetry.instrumentors.flask import FlaskInstrumentor
+from opentelemetry.instrumentation.flask import FlaskInstrumentor
 
 _FLASK_INSTRUMENTOR = FlaskInstrumentor()
 

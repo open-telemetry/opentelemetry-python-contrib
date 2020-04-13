@@ -19,10 +19,15 @@ import logging
 
 import flask
 
-import opentelemetry.ext.wsgi as otel_wsgi
 from opentelemetry import context, propagators, trace
 from opentelemetry.auto_instrumentation.instrumentor import BaseInstrumentor
-from opentelemetry.instrumentors.flask.version import __version__
+from opentelemetry.ext.wsgi import (
+    add_response_attributes,
+    collect_request_attributes,
+    get_default_span_name,
+    get_header_from_environ,
+)
+from opentelemetry.instrumentation.flask.version import __version__
 from opentelemetry.util import time_ns
 
 logger = logging.getLogger(__name__)
@@ -51,9 +56,7 @@ class _InstrumentedFlask(flask.Flask):
             def _start_response(status, response_headers, *args, **kwargs):
                 span = flask.request.environ.get(_ENVIRON_SPAN_KEY)
                 if span:
-                    otel_wsgi.add_response_attributes(
-                        span, status, response_headers
-                    )
+                    add_response_attributes(span, status, response_headers)
                 else:
                     logger.warning(
                         "Flask environ's OpenTelemetry span "
@@ -72,17 +75,16 @@ class _InstrumentedFlask(flask.Flask):
         @self.before_request
         def _before_flask_request():
             environ = flask.request.environ
-            span_name = (
-                flask.request.endpoint
-                or otel_wsgi.get_default_span_name(environ)
+            span_name = flask.request.endpoint or get_default_span_name(
+                environ
             )
             token = context.attach(
-                propagators.extract(otel_wsgi.get_header_from_environ, environ)
+                propagators.extract(get_header_from_environ, environ)
             )
 
             tracer = trace.get_tracer(__name__, __version__)
 
-            attributes = otel_wsgi.collect_request_attributes(environ)
+            attributes = collect_request_attributes(environ)
             if flask.request.url_rule:
                 # For 404 that result from no route found, etc, we
                 # don't have a url_rule.

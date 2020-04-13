@@ -18,8 +18,8 @@ from flask import Flask, request
 from werkzeug.test import Client
 from werkzeug.wrappers import BaseResponse
 
-from opentelemetry import trace as trace_api
 from opentelemetry.ext.testutil.wsgitestutil import WsgiTestBase
+from opentelemetry.trace import SpanKind
 
 
 def expected_attributes(override_attributes):
@@ -89,7 +89,7 @@ class TestFlaskIntegration(WsgiTestBase):
         span_list = self.memory_exporter.get_finished_spans()
         self.assertEqual(len(span_list), 1)
         self.assertEqual(span_list[0].name, "hello_endpoint")
-        self.assertEqual(span_list[0].kind, trace_api.SpanKind.SERVER)
+        self.assertEqual(span_list[0].kind, SpanKind.SERVER)
         self.assertEqual(span_list[0].attributes, expected_attrs)
 
     def test_404(self):
@@ -108,7 +108,7 @@ class TestFlaskIntegration(WsgiTestBase):
         span_list = self.memory_exporter.get_finished_spans()
         self.assertEqual(len(span_list), 1)
         self.assertEqual(span_list[0].name, "/bye")
-        self.assertEqual(span_list[0].kind, trace_api.SpanKind.SERVER)
+        self.assertEqual(span_list[0].kind, SpanKind.SERVER)
         self.assertEqual(span_list[0].attributes, expected_attrs)
 
     def test_internal_error(self):
@@ -126,7 +126,7 @@ class TestFlaskIntegration(WsgiTestBase):
         span_list = self.memory_exporter.get_finished_spans()
         self.assertEqual(len(span_list), 1)
         self.assertEqual(span_list[0].name, "hello_endpoint")
-        self.assertEqual(span_list[0].kind, trace_api.SpanKind.SERVER)
+        self.assertEqual(span_list[0].kind, SpanKind.SERVER)
         self.assertEqual(span_list[0].attributes, expected_attrs)
 
 
