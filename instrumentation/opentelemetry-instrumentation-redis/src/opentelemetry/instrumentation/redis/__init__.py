@@ -14,14 +14,18 @@
 #
 """Instrument redis to report Redis queries.
 
-opentelemetry-auto-instrumentation will automatically patch your Redis client to make it work.
+There are two options for instrumenting code. The first option is to use
+the `opentelemetry-auto-instrumentation` executable which will automatically
+patch your Redis client. The second is to programmatically enable
+instrumentation via the following code:
+
 ::
 
-    from opentelemetry.instrumentation.redis.patch import patch
+    from opentelemetry.instrumentation.redis import RedisInstrumentor
     import redis
 
-    # If not patched yet, you can patch redis specifically
-    patch(redis=True)
+    # You can patch redis specifically
+    RedisInstrumentor().instrument()
 
     # This will report a span with the default settings
     client = redis.StrictRedis(host="localhost", port=6379)
