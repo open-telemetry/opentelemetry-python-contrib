@@ -47,38 +47,42 @@ class TestRedisPatch(unittest.TestCase):
         self.redis_client.mget(*range(1000))
 
         spans = self.get_spans()
-        assert len(spans) == 1
+        self.assertEqual(len(spans), 1)
         span = spans[0]
-        assert span.attributes["service"] == self.TEST_SERVICE
-        assert span.name.startswith("MGET 0 1 2 3")
-        assert span.name.endswith("...")
-        assert (
-            span.status.canonical_code is trace.status.StatusCanonicalCode.OK
+        self.assertEqual(span.attributes["service"], self.TEST_SERVICE)
+        self.assertTrue(span.name.startswith("MGET 0 1 2 3"))
+        self.assertTrue(span.name.endswith("..."))
+        self.assertIs(
+            span.status.canonical_code, trace.status.StatusCanonicalCode.OK
         )
 
-        assert span.attributes.get("out.redis_db") == 0
-        assert span.attributes.get("out.host") == "localhost"
-        assert span.attributes.get("out.port") == self.TEST_PORT
+        self.assertEqual(span.attributes.get("out.redis_db"), 0)
+        self.assertEqual(span.attributes.get("out.host"), "localhost")
+        self.assertEqual(span.attributes.get("out.port"), self.TEST_PORT)
 
-        assert span.attributes.get("redis.raw_command").startswith(
-            "MGET 0 1 2 3"
+        self.assertTrue(
+            span.attributes.get("redis.raw_command").startswith("MGET 0 1 2 3")
         )
-        assert span.attributes.get("redis.raw_command").endswith("...")
+        self.assertTrue(
+            span.attributes.get("redis.raw_command").endswith("...")
+        )
 
     def test_basics(self):
-        assert self.redis_client.get("cheese") is None
+        self.assertIsNone(self.redis_client.get("cheese"))
         spans = self.get_spans()
-        assert len(spans) == 1
+        self.assertEqual(len(spans), 1)
         span = spans[0]
-        assert span.attributes["service"] == self.TEST_SERVICE
-        assert span.name == "GET cheese"
-        assert (
-            span.status.canonical_code is trace.status.StatusCanonicalCode.OK
+        self.assertEqual(span.attributes["service"], self.TEST_SERVICE)
+        self.assertEqual(span.name, "GET cheese")
+        self.assertIs(
+            span.status.canonical_code, trace.status.StatusCanonicalCode.OK
         )
-        assert span.attributes.get("out.redis_db") == 0
-        assert span.attributes.get("out.host") == "localhost"
-        assert span.attributes.get("redis.raw_command") == "GET cheese"
-        assert span.attributes.get("redis.args_length") == 2
+        self.assertEqual(span.attributes.get("out.redis_db"), 0)
+        self.assertEqual(span.attributes.get("out.host"), "localhost")
+        self.assertEqual(
+            span.attributes.get("redis.raw_command"), "GET cheese"
+        )
+        self.assertEqual(span.attributes.get("redis.args_length"), 2)
 
     def test_pipeline_traced(self):
         with self.redis_client.pipeline(transaction=False) as pipeline:
@@ -88,20 +92,20 @@ class TestRedisPatch(unittest.TestCase):
             pipeline.execute()
 
         spans = self.get_spans()
-        assert len(spans) == 1
+        self.assertEqual(len(spans), 1)
         span = spans[0]
-        assert span.attributes["service"] == self.TEST_SERVICE
-        assert span.name == "SET blah 32\nRPUSH foo éé\nHGETALL xxx"
-        assert (
-            span.status.canonical_code is trace.status.StatusCanonicalCode.OK
+        self.assertEqual(span.attributes["service"], self.TEST_SERVICE)
+        self.assertEqual(span.name, "SET blah 32\nRPUSH foo éé\nHGETALL xxx")
+        self.assertIs(
+            span.status.canonical_code, trace.status.StatusCanonicalCode.OK
         )
-        assert span.attributes.get("out.redis_db") == 0
-        assert span.attributes.get("out.host") == "localhost"
-        assert (
-            span.attributes.get("redis.raw_command")
-            == "SET blah 32\nRPUSH foo éé\nHGETALL xxx"
+        self.assertEqual(span.attributes.get("out.redis_db"), 0)
+        self.assertEqual(span.attributes.get("out.host"), "localhost")
+        self.assertEqual(
+            span.attributes.get("redis.raw_command"),
+            "SET blah 32\nRPUSH foo éé\nHGETALL xxx",
         )
-        assert span.attributes.get("redis.pipeline_length") == 3
+        self.assertEqual(span.attributes.get("redis.pipeline_length"), 3)
 
     def test_pipeline_immediate(self):
         with self.redis_client.pipeline() as pipeline:
@@ -110,16 +114,16 @@ class TestRedisPatch(unittest.TestCase):
             pipeline.execute()
 
         spans = self.get_spans()
-        assert len(spans) == 2
+        self.assertEqual(len(spans), 2)
         span = spans[0]
-        assert span.attributes["service"] == self.TEST_SERVICE
-        assert span.name == "SET a 1"
-        assert span.attributes.get("redis.raw_command") == "SET a 1"
-        assert (
-            span.status.canonical_code is trace.status.StatusCanonicalCode.OK
+        self.assertEqual(span.attributes["service"], self.TEST_SERVICE)
+        self.assertEqual(span.name, "SET a 1")
+        self.assertEqual(span.attributes.get("redis.raw_command"), "SET a 1")
+        self.assertIs(
+            span.status.canonical_code, trace.status.StatusCanonicalCode.OK
         )
-        assert span.attributes.get("out.redis_db") == 0
-        assert span.attributes.get("out.host") == "localhost"
+        self.assertEqual(span.attributes.get("out.redis_db"), 0)
+        self.assertEqual(span.attributes.get("out.host"), "localhost")
 
     def test_patch_unpatch(self):
         # Test patch idempotence
@@ -130,8 +134,8 @@ class TestRedisPatch(unittest.TestCase):
 
         spans = self.get_spans()
         self._span_exporter.clear()
-        assert spans is not None, spans
-        assert len(spans) == 1
+        self.assertIsNotNone(spans)
+        self.assertEqual(len(spans), 1)
 
         # Test unpatch
         unpatch()
@@ -140,7 +144,7 @@ class TestRedisPatch(unittest.TestCase):
 
         spans = self.get_spans()
         self._span_exporter.clear()
-        assert not spans, spans
+        self.assertEqual(len(spans), 0)
 
         # Test patch again
         patch()
@@ -149,28 +153,30 @@ class TestRedisPatch(unittest.TestCase):
 
         spans = self.get_spans()
         self._span_exporter.clear()
-        assert spans is not None, spans
-        assert len(spans) == 1
+        self.assertIsNotNone(spans)
+        self.assertEqual(len(spans), 1)
 
     def test_opentelemetry(self):
         """Ensure OpenTelemetry works with redis."""
         ot_tracer = trace.get_tracer("redis_svc")
 
         with ot_tracer.start_as_current_span("redis_get"):
-            assert self.redis_client.get("cheese") is None
+            self.assertIsNone(self.redis_client.get("cheese"))
 
         spans = self.get_spans()
-        assert len(spans) == 2
+        self.assertEqual(len(spans), 2)
         child_span, parent_span = spans[0], spans[1]
 
         # confirm the parenting
-        assert parent_span.parent is None
-        assert (
-            child_span.parent.context.trace_id == parent_span.context.trace_id
+        self.assertIsNone(parent_span.parent)
+        self.assertEqual(
+            child_span.parent.context.trace_id, parent_span.context.trace_id
         )
 
-        assert parent_span.name == "redis_get"
-        assert parent_span.instrumentation_info.name == "redis_svc"
+        self.assertEqual(parent_span.name, "redis_get")
+        self.assertEqual(parent_span.instrumentation_info.name, "redis_svc")
 
-        assert child_span.attributes.get("service") == self.TEST_SERVICE
-        assert child_span.name == "GET cheese"
+        self.assertEqual(
+            child_span.attributes.get("service"), self.TEST_SERVICE
+        )
+        self.assertEqual(child_span.name, "GET cheese")
