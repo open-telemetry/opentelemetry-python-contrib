@@ -29,7 +29,7 @@ def _extract_conn_attributes(conn_kwargs):
         return {}
 
 
-def format_command_args(args):
+def _format_command_args(args):
     """Format a command by removing unwanted values
 
     Restrict what we keep from the values sent (with a SET, HGET, LPUSH, ...):

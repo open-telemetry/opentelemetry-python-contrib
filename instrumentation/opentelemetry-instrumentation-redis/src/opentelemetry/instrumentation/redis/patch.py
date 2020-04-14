@@ -18,7 +18,7 @@ from wrapt import ObjectProxy, wrap_function_wrapper
 
 from opentelemetry import trace
 
-from .util import _extract_conn_attributes, format_command_args
+from .util import _extract_conn_attributes, _format_command_args
 from .version import __version__
 
 _DEFAULT_SERVICE = "redis"
@@ -97,7 +97,7 @@ def unpatch():
 #
 def traced_execute_command(func, instance, args, kwargs):
     tracer = trace.get_tracer(_DEFAULT_SERVICE, __version__)
-    query = format_command_args(args)
+    query = _format_command_args(args)
     with tracer.start_as_current_span(query) as span:
         span.set_attribute("service", tracer.instrumentation_info.name)
         span.set_attribute(_RAWCMD, query)
@@ -115,7 +115,7 @@ def traced_pipeline(func, instance, args, kwargs):
 def traced_execute_pipeline(func, instance, args, kwargs):
     tracer = trace.get_tracer(_DEFAULT_SERVICE, __version__)
 
-    cmds = [format_command_args(c) for c, _ in instance.command_stack]
+    cmds = [_format_command_args(c) for c, _ in instance.command_stack]
     resource = "\n".join(cmds)
 
     with tracer.start_as_current_span(resource) as span:
