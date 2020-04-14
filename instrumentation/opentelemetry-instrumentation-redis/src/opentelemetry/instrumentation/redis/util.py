@@ -18,14 +18,14 @@ Some utils used by the redis integration
 
 
 def _extract_conn_attributes(conn_kwargs):
-    """ Transform redis conn info into dogtrace metas """
+    """ Transform redis conn info into dict """
     try:
         return {
             "out.host": conn_kwargs["host"],
             "out.port": conn_kwargs["port"],
             "out.redis_db": conn_kwargs["db"] or 0,
         }
-    except Exception:  # pylint: disable=broad-except
+    except KeyError:
         return {}
 
 
