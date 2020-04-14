@@ -11,16 +11,11 @@ from opentelemetry.sdk.trace.export.in_memory_span_exporter import (
     InMemorySpanExporter,
 )
 
-REDIS_CONFIG = {
-    "host": "localhost",
-    "port": 6379,
-}
-
 
 class TestRedisPatch(unittest.TestCase):
 
     TEST_SERVICE = "redis"
-    TEST_PORT = REDIS_CONFIG["port"]
+    TEST_PORT = 6379
 
     def get_spans(self):
         return self._span_exporter.get_finished_spans()
