@@ -45,8 +45,7 @@ class TestRedisPatch(unittest.TestCase):
         self.assertEqual(len(spans), 1)
         span = spans[0]
         self.assertEqual(span.attributes["service"], self.TEST_SERVICE)
-        self.assertTrue(span.name.startswith("MGET 0 1 2 3"))
-        self.assertTrue(span.name.endswith("..."))
+        self.assertEqual(span.name, "redis.command")
         self.assertIs(
             span.status.canonical_code, trace.status.StatusCanonicalCode.OK
         )
@@ -68,7 +67,7 @@ class TestRedisPatch(unittest.TestCase):
         self.assertEqual(len(spans), 1)
         span = spans[0]
         self.assertEqual(span.attributes["service"], self.TEST_SERVICE)
-        self.assertEqual(span.name, "GET cheese")
+        self.assertEqual(span.name, "redis.command")
         self.assertIs(
             span.status.canonical_code, trace.status.StatusCanonicalCode.OK
         )
@@ -90,7 +89,7 @@ class TestRedisPatch(unittest.TestCase):
         self.assertEqual(len(spans), 1)
         span = spans[0]
         self.assertEqual(span.attributes["service"], self.TEST_SERVICE)
-        self.assertEqual(span.name, "SET blah 32\nRPUSH foo éé\nHGETALL xxx")
+        self.assertEqual(span.name, "redis.command")
         self.assertIs(
             span.status.canonical_code, trace.status.StatusCanonicalCode.OK
         )
@@ -112,7 +111,7 @@ class TestRedisPatch(unittest.TestCase):
         self.assertEqual(len(spans), 2)
         span = spans[0]
         self.assertEqual(span.attributes["service"], self.TEST_SERVICE)
-        self.assertEqual(span.name, "SET a 1")
+        self.assertEqual(span.name, "redis.command")
         self.assertEqual(span.attributes.get("redis.raw_command"), "SET a 1")
         self.assertIs(
             span.status.canonical_code, trace.status.StatusCanonicalCode.OK
@@ -174,4 +173,4 @@ class TestRedisPatch(unittest.TestCase):
         self.assertEqual(
             child_span.attributes.get("service"), self.TEST_SERVICE
         )
-        self.assertEqual(child_span.name, "GET cheese")
+        self.assertEqual(child_span.name, "redis.command")

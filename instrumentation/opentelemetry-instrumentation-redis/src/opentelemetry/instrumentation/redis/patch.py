@@ -23,6 +23,7 @@ from .version import __version__
 
 _DEFAULT_SERVICE = "redis"
 _RAWCMD = "redis.raw_command"
+_CMD = "redis.command"
 
 
 def patch():
@@ -95,11 +96,10 @@ def unpatch():
 def traced_execute_command(func, instance, args, kwargs):
     tracer = trace.get_tracer(_DEFAULT_SERVICE, __version__)
     query = _format_command_args(args)
-    with tracer.start_as_current_span(query) as span:
+    with tracer.start_as_current_span(_CMD) as span:
         span.set_attribute("service", tracer.instrumentation_info.name)
         span.set_attribute(_RAWCMD, query)
-        for key, value in _get_attributes(instance).items():
-            span.set_attribute(key, value)
+        _set_connection_attributes(span, instance)
         span.set_attribute("redis.args_length", len(args))
         return func(*args, **kwargs)
 
@@ -115,16 +115,18 @@ def traced_execute_pipeline(func, instance, args, kwargs):
     cmds = [_format_command_args(c) for c, _ in instance.command_stack]
     resource = "\n".join(cmds)
 
-    with tracer.start_as_current_span(resource) as span:
+    with tracer.start_as_current_span(_CMD) as span:
         span.set_attribute("service", tracer.instrumentation_info.name)
         span.set_attribute(_RAWCMD, resource)
-        for key, value in _get_attributes(instance).items():
-            span.set_attribute(key, value)
+        _set_connection_attributes(span, instance)
         span.set_attribute(
             "redis.pipeline_length", len(instance.command_stack)
         )
         return func(*args, **kwargs)
 
 
-def _get_attributes(conn):
-    return _extract_conn_attributes(conn.connection_pool.connection_kwargs)
+def _set_connection_attributes(span, conn):
+    for key, value in _extract_conn_attributes(
+        conn.connection_pool.connection_kwargs
+    ).items():
+        span.set_attribute(key, value)
