@@ -92,9 +92,6 @@ def unpatch():
             unwrap(redis.client.Pipeline, "immediate_execute_command")
 
 
-#
-# tracing functions
-#
 def traced_execute_command(func, instance, args, kwargs):
     tracer = trace.get_tracer(_DEFAULT_SERVICE, __version__)
     query = _format_command_args(args)
