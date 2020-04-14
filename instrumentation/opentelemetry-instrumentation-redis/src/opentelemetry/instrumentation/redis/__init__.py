@@ -21,11 +21,11 @@ instrumentation via the following code:
 
 ::
 
-    from opentelemetry.instrumentation.redis import RedisInstrumentor
+    from opentelemetry.instrumentation.redis.patch import patch
     import redis
 
     # You can patch redis specifically
-    RedisInstrumentor().instrument()
+    patch()
 
     # This will report a span with the default settings
     client = redis.StrictRedis(host="localhost", port=6379)
