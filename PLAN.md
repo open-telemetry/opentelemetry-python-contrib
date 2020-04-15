@@ -70,3 +70,32 @@ Initially the documentation for each package will live in pypi and will provide 
 
 ## Will third party exporters be allowed in the contrib repo?
 Based on prior commits to the [opentelemetry-collector-contrib](https://github.com/open-telemetry/opentelemetry-collector-contrib) repo, it appears the answer is yes.
+
+
+## Handling dependency with the opentelemetry-python repo
+
+opentelemetry-python api and sdk packages are developed in the opentelemetry-python repo, those are released together. A new branch is created for each release. Development of new features is carried out on the master branch, while bugs could be backported to the different release branches. (This process is not done right now but it’ll be needed once it's GA, imagine about a security bug that needs to be fixed soon).
+
+The opentelemetry-python-contrib repo contains different packages as instrumentations and exporters. Different integrations are released separately, there is a branch for each major release of the API and SDK packages. The master branch is used to perform changes upon changes in the api/sdk packages.
+
+The following should describe the workflow for common cases
+
+#### A breaking change is done on the API/SDK packages
+The different contrib packages should be updated to work with this new change.
+
+#### A new major API/SDK version is released
+master is branched out and a new release of all contrib packages is done. If there are some contrib packages that were not updated there is not going to be a release for those.
+
+#### A new minor-patch API/SDK version is released
+No changes are needed in the contrib repo as this should not be a breaking change.
+
+#### A new package is added to the contrib repo
+There are two possibilities here:
+- Implement the package using the current release API/SDK, merge it on the latest release branch and release it. Then port this to master using the latest development API/SDK.
+- Add the new package to the master branch, i.e, it already uses the API for the next major release of API/SDK. It’ll be released once API/SDK are released.
+
+#### A new feature is added to a contrib package
+Add to master branch, if possible it could be backported to be released immediately.
+
+#### A critical bug is found on a contrib package
+Fix the bug in the latest release branch and release immediately. If the bug is also present on master fix there as well.
