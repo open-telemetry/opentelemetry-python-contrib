@@ -1,5 +1,5 @@
-# plan for opentelemetry-python-contrib
-This document captures the effort to move instrumentation and exporters out of the main repo and into the opentelemetry-python-contrib. Doing this will give us the ability to decouple changes to the core of OpenTelemetry (API/SDK) from changes to the rest of the eco-system. This pattern is utilized in other OpenTelemetry SIGs as well.
+# Plan for opentelemetry-python-contrib
+This document captures the effort to move instrumentation and exporters out of the main repo and into `opentelemetry-python-contrib`. Doing this will give us the ability to decouple changes to the core of OpenTelemetry (API/SDK) from changes to the rest of the eco-system. This pattern is utilized in [other OpenTelemetry SIGs as well](https://github.com/open-telemetry?q=contrib&type=&language=).
 
 ## What lives where?
 The `opentelemetry-api`, `opentelemetry-sdk` and `opentelemetry-auto-instrumentation` packages will continue to live in the [opentelemetry-python](https://github.com/open-telemetry/opentelemetry-python) repo.
@@ -9,14 +9,14 @@ The packages that currently exist in the [ext](https://github.com/open-telemetry
 ## How does code end up in the contrib repo?
 There are currently two efforts in progress to bring code to life in the contrib repo.
 
-### migrating instrumentation/exporter from opentelemetry-python
+### Migrating instrumentation/exporter from `opentelemetry-python`
 A lot of effort has gone into the all the code in the `ext` directory. In order not to lose that work, an effort has been started to migrate over the code to the new contrib directory.
 
 #### Steps to move the instrumentation from opentelemetry-python to opentelemetry-python-contrib repo:
 1. copy code to instrumentation directory
 2. copy integration tests to instrumentation/opentelemetry-instrumentation-docker-tests directory
 3. get a list of the original authors: `git log . | grep Author | sort | uniq`
-4. commit the initial move with the list of authors as `Co-authored by:`
+4. commit the initial move with the list of authors as [`Co-authored by:`](https://help.github.com/en/github/committing-changes-to-your-project/creating-a-commit-with-multiple-authors)
 5. add targets to tox
 
 #### Steps to move the exporter from opentelemetry-python to opentelemetry-python-contrib repo:
@@ -25,8 +25,8 @@ A lot of effort has gone into the all the code in the `ext` directory. In order 
 3. commit the initial move with the list of authors as `Co-authored by:`
 4. add targets to tox
 
-### porting instrumentation from the datadog donation
-The original donation from datadog contains a lot of code that can accelerate the adoption of OpenTelemetry by quickly ramping up the number of supported frameworks and libraries. The steps below describe suggested steps to port integrations from the reference directory containing the originally donated code to OpenTelemetry.
+### Porting instrumentation from the DataDog donation
+The original donation from DataDog contains a lot of code that can accelerate the adoption of OpenTelemetry by quickly ramping up the number of supported frameworks and libraries. The steps below describe suggested steps to port integrations from the reference directory containing the originally donated code to OpenTelemetry.
 
 1. Move the code into the instrumentation directory
 ```
