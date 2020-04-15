@@ -50,16 +50,15 @@ class TestRedisPatch(unittest.TestCase):
             span.status.canonical_code, trace.status.StatusCanonicalCode.OK
         )
 
-        self.assertEqual(span.attributes.get("out.redis_db"), 0)
-        self.assertEqual(span.attributes.get("out.host"), "localhost")
-        self.assertEqual(span.attributes.get("out.port"), self.TEST_PORT)
+        self.assertEqual(span.attributes.get("db.instance"), 0)
+        self.assertEqual(
+            span.attributes.get("db.url"), "redis://localhost:6379"
+        )
 
         self.assertTrue(
-            span.attributes.get("redis.raw_command").startswith("MGET 0 1 2 3")
+            span.attributes.get("db.statement").startswith("MGET 0 1 2 3")
         )
-        self.assertTrue(
-            span.attributes.get("redis.raw_command").endswith("...")
-        )
+        self.assertTrue(span.attributes.get("db.statement").endswith("..."))
 
     def test_basics(self):
         self.assertIsNone(self.redis_client.get("cheese"))
@@ -71,11 +70,11 @@ class TestRedisPatch(unittest.TestCase):
         self.assertIs(
             span.status.canonical_code, trace.status.StatusCanonicalCode.OK
         )
-        self.assertEqual(span.attributes.get("out.redis_db"), 0)
-        self.assertEqual(span.attributes.get("out.host"), "localhost")
+        self.assertEqual(span.attributes.get("db.instance"), 0)
         self.assertEqual(
-            span.attributes.get("redis.raw_command"), "GET cheese"
+            span.attributes.get("db.url"), "redis://localhost:6379"
         )
+        self.assertEqual(span.attributes.get("db.statement"), "GET cheese")
         self.assertEqual(span.attributes.get("redis.args_length"), 2)
 
     def test_pipeline_traced(self):
@@ -93,10 +92,12 @@ class TestRedisPatch(unittest.TestCase):
         self.assertIs(
             span.status.canonical_code, trace.status.StatusCanonicalCode.OK
         )
-        self.assertEqual(span.attributes.get("out.redis_db"), 0)
-        self.assertEqual(span.attributes.get("out.host"), "localhost")
+        self.assertEqual(span.attributes.get("db.instance"), 0)
         self.assertEqual(
-            span.attributes.get("redis.raw_command"),
+            span.attributes.get("db.url"), "redis://localhost:6379"
+        )
+        self.assertEqual(
+            span.attributes.get("db.statement"),
             "SET blah 32\nRPUSH foo éé\nHGETALL xxx",
         )
         self.assertEqual(span.attributes.get("redis.pipeline_length"), 3)
@@ -112,12 +113,14 @@ class TestRedisPatch(unittest.TestCase):
         span = spans[0]
         self.assertEqual(span.attributes["service"], self.TEST_SERVICE)
         self.assertEqual(span.name, "redis.command")
-        self.assertEqual(span.attributes.get("redis.raw_command"), "SET a 1")
+        self.assertEqual(span.attributes.get("db.statement"), "SET a 1")
         self.assertIs(
             span.status.canonical_code, trace.status.StatusCanonicalCode.OK
         )
-        self.assertEqual(span.attributes.get("out.redis_db"), 0)
-        self.assertEqual(span.attributes.get("out.host"), "localhost")
+        self.assertEqual(span.attributes.get("db.instance"), 0)
+        self.assertEqual(
+            span.attributes.get("db.url"), "redis://localhost:6379"
+        )
 
     def test_patch_unpatch(self):
         # Test patch idempotence
@@ -128,7 +131,6 @@ class TestRedisPatch(unittest.TestCase):
 
         spans = self.get_spans()
         self._span_exporter.clear()
-        self.assertIsNotNone(spans)
         self.assertEqual(len(spans), 1)
 
         # Test unpatch
@@ -147,7 +149,6 @@ class TestRedisPatch(unittest.TestCase):
 
         spans = self.get_spans()
         self._span_exporter.clear()
-        self.assertIsNotNone(spans)
         self.assertEqual(len(spans), 1)
 
     def test_opentelemetry(self):

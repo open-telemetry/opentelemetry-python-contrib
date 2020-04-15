@@ -22,7 +22,7 @@ from .util import _extract_conn_attributes, _format_command_args
 from .version import __version__
 
 _DEFAULT_SERVICE = "redis"
-_RAWCMD = "redis.raw_command"
+_RAWCMD = "db.statement"
 _CMD = "redis.command"
 
 

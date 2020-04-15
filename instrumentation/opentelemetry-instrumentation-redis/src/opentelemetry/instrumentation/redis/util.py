@@ -21,9 +21,11 @@ def _extract_conn_attributes(conn_kwargs):
     """ Transform redis conn info into dict """
     try:
         return {
-            "out.host": conn_kwargs["host"],
-            "out.port": conn_kwargs["port"],
-            "out.redis_db": conn_kwargs["db"] or 0,
+            "db.type": "redis",
+            "db.url": "redis://{}:{}".format(
+                conn_kwargs["host"], conn_kwargs["port"]
+            ),
+            "db.instance": conn_kwargs["db"] or 0,
         }
     except KeyError:
         return {}
