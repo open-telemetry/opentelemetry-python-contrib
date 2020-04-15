@@ -10,7 +10,7 @@ The packages that currently exist in the [ext](https://github.com/open-telemetry
 There are currently two efforts in progress to bring code to life in the contrib repo.
 
 ### Migrating instrumentation/exporter from `opentelemetry-python`
-A lot of effort has gone into the all the code in the `ext` directory. In order not to lose that work, an effort has been started to migrate over the code to the new contrib repository.
+A lot of effort has gone into all the code in the `ext` directory. In order not to lose that work, an effort has been started to migrate over the code to the new contrib repository.
 
 #### Steps to move the instrumentation from opentelemetry-python to opentelemetry-python-contrib repo:
 1. copy code to instrumentation directory
