@@ -12,12 +12,18 @@ There are currently two efforts in progress to bring code to life in the contrib
 ### migrating instrumentation/exporter from opentelemetry-python
 A lot of effort has gone into the all the code in the `ext` directory. In order not to lose that work, an effort has been started to migrate over the code to the new contrib directory.
 
-Steps to move the instrumentation from opentelemetry-python to opentelemetry-python-contrib repo:
+#### Steps to move the instrumentation from opentelemetry-python to opentelemetry-python-contrib repo:
 1. copy code to instrumentation directory
 2. copy integration tests to instrumentation/opentelemetry-instrumentation-docker-tests directory
 3. get a list of the original authors: `git log . | grep Author | sort | uniq`
 4. commit the initial move with the list of authors as `Co-authored by:`
 5. add targets to tox
+
+#### Steps to move the exporter from opentelemetry-python to opentelemetry-python-contrib repo:
+1. copy code to exporter directory
+2. get a list of the original authors: `git log . | grep Author | sort | uniq`
+3. commit the initial move with the list of authors as `Co-authored by:`
+4. add targets to tox
 
 ### porting instrumentation from the datadog donation
 The original donation from datadog contains a lot of code that can accelerate the adoption of OpenTelemetry by quickly ramping up the number of supported frameworks and libraries. The steps below describe suggested steps to port integrations from the reference directory containing the originally donated code to OpenTelemetry.
@@ -55,3 +61,12 @@ The current release process in opentelemetry-python releases all the `ext` packa
 
 ## Where does documentation for the contrib repo live?
 Initially the documentation for each package will live in pypi and will provide a link to the opentelemetry docs. Packages in the contrib repo should also be made available in the [opentelemetry registry](https://opentelemetry.io/registry/)
+
+## What order do things need to happen in order to ensure contributors have a good experience?
+1. ensure packages committed to contrib can be released
+2. create PRs to migrate code into opentelemetry-python-contrib repo and a matching PR to remove the code from the opentelemetry-python repo
+3. ensure issues related to instrumentation/exporters are moved to contrib repo
+4. ensure we have enough eyes on the repo (approvers/maintainers)
+
+## Will third party exporters be allowed in the contrib repo?
+Based on prior commits to the [opentelemetry-collector-contrib](https://github.com/open-telemetry/opentelemetry-collector-contrib) repo, it appears the answer is yes.
