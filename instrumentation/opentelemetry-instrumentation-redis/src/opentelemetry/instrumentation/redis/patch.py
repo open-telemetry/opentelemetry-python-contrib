@@ -43,8 +43,6 @@ def patch(tracer=None):
         wrap_function_wrapper(
             "redis", "StrictRedis.execute_command", traced_execute_command
         )
-        wrap_function_wrapper("redis", "StrictRedis.pipeline", traced_pipeline)
-        wrap_function_wrapper("redis", "Redis.pipeline", traced_pipeline)
         wrap_function_wrapper(
             "redis.client", "BasePipeline.execute", traced_execute_pipeline
         )
@@ -57,7 +55,6 @@ def patch(tracer=None):
         wrap_function_wrapper(
             "redis", "Redis.execute_command", traced_execute_command
         )
-        wrap_function_wrapper("redis", "Redis.pipeline", traced_pipeline)
         wrap_function_wrapper(
             "redis.client", "Pipeline.execute", traced_execute_pipeline
         )
@@ -114,11 +111,6 @@ def traced_execute_command(func, instance, args, kwargs):
         _set_connection_attributes(span, instance)
         span.set_attribute("redis.args_length", len(args))
         return func(*args, **kwargs)
-
-
-# pylint: disable=unused-argument
-def traced_pipeline(func, instance, args, kwargs):
-    return func(*args, **kwargs)
 
 
 def traced_execute_pipeline(func, instance, args, kwargs):
