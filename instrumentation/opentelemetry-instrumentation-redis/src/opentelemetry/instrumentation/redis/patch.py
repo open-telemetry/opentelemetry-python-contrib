@@ -26,7 +26,7 @@ _RAWCMD = "db.statement"
 _CMD = "redis.command"
 
 
-def patch():
+def patch(tracer=None):
     """Patch the instrumented methods
 
     This duplicated doesn't look nice. The nicer alternative is to use an ObjectProxy on top
@@ -35,6 +35,9 @@ def patch():
     if getattr(redis, "_opentelemetry_patch", False):
         return
     setattr(redis, "_opentelemetry_patch", True)
+
+    if tracer:
+        setattr(redis, "_opentelemetry_tracer", tracer)
 
     if redis.VERSION < (3, 0, 0):
         wrap_function_wrapper(
@@ -93,8 +96,17 @@ def unpatch():
             unwrap(redis.client.Pipeline, "immediate_execute_command")
 
 
-def traced_execute_command(func, instance, args, kwargs):
+def _get_tracer():
+    tracer = getattr(redis, "_opentelemetry_tracer", False)
+    if tracer:
+        return tracer
     tracer = trace.get_tracer(_DEFAULT_SERVICE, __version__)
+    setattr(redis, "_opentelemetry_tracer", tracer)
+    return tracer
+
+
+def traced_execute_command(func, instance, args, kwargs):
+    tracer = _get_tracer()
     query = _format_command_args(args)
     with tracer.start_as_current_span(_CMD) as span:
         span.set_attribute("service", tracer.instrumentation_info.name)
@@ -110,7 +122,7 @@ def traced_pipeline(func, instance, args, kwargs):
 
 
 def traced_execute_pipeline(func, instance, args, kwargs):
-    tracer = trace.get_tracer(_DEFAULT_SERVICE, __version__)
+    tracer = _get_tracer()
 
     cmds = [_format_command_args(c) for c, _ in instance.command_stack]
     resource = "\n".join(cmds)
