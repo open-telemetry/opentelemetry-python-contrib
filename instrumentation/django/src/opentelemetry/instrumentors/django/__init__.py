@@ -49,7 +49,10 @@ class DjangoInstrumentor(BaseInstrumentor):
 
         # FIXME this is probably a pattern that will show up in the rest of the
         # instrumentors. Find a better way of implementing this.
-        if not Configuration().django_instrument:
+        if (
+            hasattr(Configuration(), "django_instrument")
+            and not Configuration().django_instrument
+        ):
             return
 
         self._middleware_setting = (
