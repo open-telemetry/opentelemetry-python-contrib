@@ -32,34 +32,24 @@ def _extract_conn_attributes(conn_kwargs):
 
 
 def _format_command_args(args):
-    """Format a command by removing unwanted values
-
-    Restrict what we keep from the values sent (with a SET, HGET, LPUSH, ...):
-      - Skip binary content
-      - Truncate
-    """
-    value_placeholder = "?"
+    """Format command arguments and trims them as needed"""
     value_max_len = 100
     value_too_long_mark = "..."
     cmd_max_len = 1000
     length = 0
     out = []
     for arg in args:
-        try:
-            cmd = str(arg)
+        cmd = str(arg)
 
-            if len(cmd) > value_max_len:
-                cmd = cmd[:value_max_len] + value_too_long_mark
+        if len(cmd) > value_max_len:
+            cmd = cmd[:value_max_len] + value_too_long_mark
 
-            if length + len(cmd) > cmd_max_len:
-                prefix = cmd[: cmd_max_len - length]
-                out.append("%s%s" % (prefix, value_too_long_mark))
-                break
-
-            out.append(cmd)
-            length += len(cmd)
-        except Exception:  # pylint: disable=broad-except
-            out.append(value_placeholder)
+        if length + len(cmd) > cmd_max_len:
+            prefix = cmd[: cmd_max_len - length]
+            out.append("%s%s" % (prefix, value_too_long_mark))
             break
+
+        out.append(cmd)
+        length += len(cmd)
 
     return " ".join(out)

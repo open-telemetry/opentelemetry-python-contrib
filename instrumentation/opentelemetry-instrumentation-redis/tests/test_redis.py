@@ -164,9 +164,7 @@ class TestRedisPatch(unittest.TestCase):
 
         # confirm the parenting
         self.assertIsNone(parent_span.parent)
-        self.assertEqual(
-            child_span.parent.context.trace_id, parent_span.context.trace_id
-        )
+        self.assertIs(child_span.parent, parent_span)
 
         self.assertEqual(parent_span.name, "redis_get")
         self.assertEqual(parent_span.instrumentation_info.name, "redis_svc")
