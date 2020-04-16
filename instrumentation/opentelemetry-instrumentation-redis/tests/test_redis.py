@@ -105,15 +105,17 @@ class TestRedisPatch(unittest.TestCase):
     def test_pipeline_immediate(self):
         with self.redis_client.pipeline() as pipeline:
             pipeline.set("a", 1)
-            pipeline.immediate_execute_command("SET", "a", 1)
+            pipeline.immediate_execute_command("SET", "b", 2)
             pipeline.execute()
 
         spans = self.get_spans()
+        # expecting two separate spans here, rather than a
+        # single span for the whole pipeline
         self.assertEqual(len(spans), 2)
         span = spans[0]
         self.assertEqual(span.attributes["service"], self.TEST_SERVICE)
         self.assertEqual(span.name, "redis.command")
-        self.assertEqual(span.attributes.get("db.statement"), "SET a 1")
+        self.assertEqual(span.attributes.get("db.statement"), "SET b 2")
         self.assertIs(
             span.status.canonical_code, trace.status.StatusCanonicalCode.OK
         )
