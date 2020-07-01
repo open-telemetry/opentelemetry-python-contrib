@@ -32,3 +32,4 @@ mv instrumentation/opentelemetry-instrumentation-jinja2/version.py instrumentati
 
 5. Fix relative import paths to using ddtrace package instead of using relative paths
 6. Update the code and tests to use the OpenTelemetry API
+
