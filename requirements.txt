@@ -1,0 +1,4 @@
+-e git+https://github.com/open-telemetry/opentelemetry-python.git@937863f8294d6347e131eaaedbc1b877598b13d9#egg=remotetarget-opentelemetry-api&subdirectory=opentelemetry-api
+-e git+https://github.com/open-telemetry/opentelemetry-python.git@937863f8294d6347e131eaaedbc1b877598b13d9#egg=remotetarget-opentelemetry-sdk&subdirectory=opentelemetry-sdk
+-e git+https://github.com/open-telemetry/opentelemetry-python.git@937863f8294d6347e131eaaedbc1b877598b13d9#egg=remotetarget-opentelemetry-tests&subdirectory=tests/util
+-e git+https://github.com/open-telemetry/opentelemetry-python.git@937863f8294d6347e131eaaedbc1b877598b13d9#egg=remotetarget-opentelemetry-instrumentation&subdirectory=opentelemetry-instrumentation
