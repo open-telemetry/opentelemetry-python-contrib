@@ -27,6 +27,7 @@ from opentelemetry.test.test_base import TestBase
 from opentelemetry.trace import SpanKind
 from opentelemetry.util import ExcludeList
 
+# pylint: disable=import-error
 from .tornado_test_app import (
     AsyncHandler,
     DynamicHandler,

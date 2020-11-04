@@ -27,6 +27,7 @@ from opentelemetry.instrumentation.pymemcache import PymemcacheInstrumentor
 from opentelemetry.test.test_base import TestBase
 from opentelemetry.trace import get_tracer
 
+# pylint: disable=import-error
 from .utils import MockSocket, _str
 
 TEST_HOST = "localhost"
