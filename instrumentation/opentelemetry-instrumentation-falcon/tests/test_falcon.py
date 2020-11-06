@@ -21,7 +21,6 @@ from opentelemetry.test.test_base import TestBase
 from opentelemetry.trace.status import StatusCode
 from opentelemetry.util import ExcludeList
 
-# pylint: disable=import-error
 from .app import make_app
 
 

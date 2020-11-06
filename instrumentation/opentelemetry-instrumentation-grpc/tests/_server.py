@@ -16,7 +16,6 @@ from concurrent import futures
 
 import grpc
 
-# pylint: disable=import-error
 from .protobuf import test_server_pb2, test_server_pb2_grpc
 
 SERVER_ID = 1

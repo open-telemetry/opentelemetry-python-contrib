@@ -17,7 +17,7 @@ import pkg_resources
 # package that uses the `{rootdir}/*/tests/`` path and gets installed by
 # `eachdist.py` and according to `eachdist.ini`.
 
-# naming the tests module as a namespace package ensures that
-# relative imports will resolve properly for other test packages,
+# Naming the tests module as a namespace package ensures that
+# relative imports will resolve properly for subsequent test packages,
 # as it enables searching for a composite of multiple test modules.
 pkg_resources.declare_namespace(__name__)

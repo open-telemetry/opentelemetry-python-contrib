@@ -22,16 +22,15 @@ from opentelemetry.sdk.metrics.export.aggregate import (
     SumAggregator,
 )
 from opentelemetry.test.test_base import TestBase
+from tests.protobuf import test_server_pb2_grpc
 
-# pylint: disable=import-error
 from ._client import (
     bidirectional_streaming_method,
     client_streaming_method,
     server_streaming_method,
     simple_method,
 )
-from ._server import create_test_server  # pylint: disable=import-error
-from .protobuf import test_server_pb2_grpc  # pylint: disable=import-error
+from ._server import create_test_server
 
 
 class TestClientProto(TestBase):
