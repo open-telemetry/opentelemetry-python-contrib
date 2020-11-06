@@ -14,7 +14,7 @@
 import pkg_resources
 
 # IMPORTANT: Only the wsgi module needs this because it is always the first
-# package that uses the `{rootdir}/*/tests/`` path and gets installed by
+# package that uses the `{rootdir}/*/tests/` path and gets installed by
 # `eachdist.py` and according to `eachdist.ini`.
 
 # Naming the tests module as a namespace package ensures that
