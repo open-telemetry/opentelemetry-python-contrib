@@ -22,8 +22,6 @@ SERVER_ID = 1
 
 
 class TestServer(test_server_pb2_grpc.GRPCTestServerServicer):
-    # pylint: disable=no-self-use
-    # pylint: disable=invalid-name
     def SimpleMethod(self, request, context):
         if request.request_data == "error":
             context.set_code(grpc.StatusCode.INVALID_ARGUMENT)
@@ -33,8 +31,6 @@ class TestServer(test_server_pb2_grpc.GRPCTestServerServicer):
         )
         return response
 
-    # pylint: disable=no-self-use
-    # pylint: disable=invalid-name
     def ClientStreamingMethod(self, request_iterator, context):
         data = list(request_iterator)
         if data[0].request_data == "error":
@@ -45,8 +41,6 @@ class TestServer(test_server_pb2_grpc.GRPCTestServerServicer):
         )
         return response
 
-    # pylint: disable=no-self-use
-    # pylint: disable=invalid-name
     def ServerStreamingMethod(self, request, context):
         if request.request_data == "error":
 
@@ -66,8 +60,6 @@ class TestServer(test_server_pb2_grpc.GRPCTestServerServicer):
 
         return response_messages()
 
-    # pylint: disable=no-self-use
-    # pylint: disable=invalid-name
     def BidirectionalStreamingMethod(self, request_iterator, context):
         data = list(request_iterator)
         if data[0].request_data == "error":
