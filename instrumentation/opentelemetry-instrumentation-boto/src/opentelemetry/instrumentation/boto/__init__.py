@@ -235,6 +235,8 @@ def add_span_arg_tags(span, aws_service, args, args_names, args_traced):
     if not span.is_recording():
         return
 
+    # Do not trace `Key Management Service` or `Secure Token Service` API calls
+    # over concerns of security leaks.
     if aws_service not in {"kms", "sts"}:
         tags = dict(
             (name, value)
