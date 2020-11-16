@@ -55,6 +55,8 @@ from opentelemetry.trace import SpanKind, get_tracer
 
 logger = logging.getLogger(__name__)
 
+SERVICE_PARAMS_BLOCK_LIST = {"s3": ["params.Body"]}
+
 
 def _get_instance_region_name(instance):
     region = getattr(instance, "region", None)
@@ -203,7 +205,24 @@ class BotoInstrumentor(BaseInstrumentor):
         )
 
 
-def add_span_arg_tags(span, endpoint_name, args, args_names, args_traced):
+def flatten_dict(dict_, sep=".", prefix=""):
+    """
+    Returns a normalized dict of depth 1 with keys in order of embedding
+    """
+    # NOTE: This should probably be in `opentelemetry.instrumentation.utils`.
+    # adapted from https://stackoverflow.com/a/19647596
+    return (
+        {
+            prefix + sep + k if prefix else k: v
+            for kk, vv in dict_.items()
+            for k, v in flatten_dict(vv, sep, kk).items()
+        }
+        if isinstance(dict_, dict)
+        else {prefix: dict_}
+    )
+
+
+def add_span_arg_tags(span, aws_service, args, args_names, args_traced):
     def truncate_arg_value(value, max_len=1024):
         """Truncate values which are bytes and greater than `max_len`.
         Useful for parameters like "Body" in `put_object` operations.
@@ -213,34 +232,19 @@ def add_span_arg_tags(span, endpoint_name, args, args_names, args_traced):
 
         return value
 
-    def flatten_dict(dict_, sep=".", prefix=""):
-        """
-        Returns a normalized dict of depth 1 with keys in order of embedding
-        """
-        # adapted from https://stackoverflow.com/a/19647596
-        return (
-            {
-                prefix + sep + k if prefix else k: v
-                for kk, vv in dict_.items()
-                for k, v in flatten_dict(vv, sep, kk).items()
-            }
-            if isinstance(dict_, dict)
-            else {prefix: dict_}
-        )
-
     if not span.is_recording():
         return
 
-    if endpoint_name not in {"kms", "sts"}:
+    if aws_service not in {"kms", "sts"}:
         tags = dict(
             (name, value)
             for (name, value) in zip(args_names, args)
             if name in args_traced
         )
         tags = flatten_dict(tags)
-        for key, value in {
-            k: truncate_arg_value(v)
-            for k, v in tags.items()
-            if k not in {"s3": ["params.Body"]}.get(endpoint_name, [])
-        }.items():
-            span.set_attribute(key, value)
+
+        for param_key, value in tags.items():
+            if param_key in SERVICE_PARAMS_BLOCK_LIST.get(aws_service, {}):
+                continue
+
+            span.set_attribute(param_key, truncate_arg_value(value))
