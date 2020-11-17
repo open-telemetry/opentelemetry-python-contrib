@@ -141,7 +141,6 @@ def _wrap_perform_request(tracer, span_name_prefix):
                     attributes["elasticsearch.params"] = str(params)
                 for key, value in attributes.items():
                     span.set_attribute(key, value)
-            try:
                 rv = wrapped(*args, **kwargs)
                 if isinstance(rv, dict) and span.is_recording():
                     for member in _ATTRIBUTES_FROM_RESULT:
@@ -151,9 +150,5 @@ def _wrap_perform_request(tracer, span_name_prefix):
                                 str(rv[member]),
                             )
                 return rv
-            except Exception as ex:  # pylint: disable=broad-except
-                if span.is_recording():
-                    span.set_status(Status(StatusCode.ERROR, str(ex)))
-                raise ex
 
     return wrapper

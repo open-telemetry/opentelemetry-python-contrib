@@ -2,8 +2,10 @@
 
 ## Unreleased
 
-Stop capturing query parameters by default
+- Stop capturing query parameters by default
   ([#156](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/156))
+- Remove error handling
+  ([#189](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/189))
 
 ## Version 0.13b0
 

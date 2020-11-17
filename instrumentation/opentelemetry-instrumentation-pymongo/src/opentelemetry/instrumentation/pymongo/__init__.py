@@ -89,10 +89,9 @@ class CommandTracer(monitoring.CommandListener):
             # Add Span to dictionary
             self._span_dict[_get_span_dict_key(event)] = span
         except Exception as ex:  # noqa pylint: disable=broad-except
-            if span is not None and span.is_recording():
-                span.set_status(Status(StatusCode.ERROR, str(ex)))
-                span.end()
+            if span is not None:
                 self._pop_span(event)
+            raise
 
     def succeeded(self, event: monitoring.CommandSucceededEvent):
         """ Method to handle a pymongo CommandSucceededEvent """

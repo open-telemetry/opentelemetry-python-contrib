@@ -225,9 +225,6 @@ class OpenTelemetryMiddleware:
                     iterable, span, self.tracer, token
                 )
         except Exception as ex:
-            if span.is_recording():
-                span.set_status(Status(StatusCode.ERROR, str(ex)))
-            span.end()
             context.detach(token)
             raise
 

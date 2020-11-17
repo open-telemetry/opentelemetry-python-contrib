@@ -109,13 +109,11 @@ class EngineTracer:
         if self.current_span is None:
             return
 
-        try:
-            if self.current_span.is_recording():
-                self.current_span.set_status(
-                    Status(StatusCode.ERROR, str(context.original_exception),)
-                )
-        finally:
-            self.current_span.end()
+        self.current_span.__exit__(
+            type(context.original_exception),
+            context.original_exception,
+            getattr(exception, "__traceback__", None),
+        )
 
 
 def _set_attributes_from_url(span: trace.Span, url):
