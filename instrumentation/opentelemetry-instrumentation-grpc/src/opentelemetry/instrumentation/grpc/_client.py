@@ -91,10 +91,13 @@ class OpenTelemetryClientInterceptor(
         if exporter and interval:
             self._accumulator = metrics.get_meter(__name__)
             self.controller = PushController(
-                accumulator=self._accumulator, exporter=exporter, interval=interval
+                accumulator=self._accumulator,
+                exporter=exporter,
+                interval=interval,
             )
         self._metrics_recorder = TimedMetricRecorder(
-            self._accumulator, "client")
+            self._accumulator, "client",
+        )
 
     def _start_span(self, method):
         return self._tracer.start_as_current_span(
