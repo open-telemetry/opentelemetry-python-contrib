@@ -14,35 +14,77 @@
 
 import unittest
 
+from opentelemetry.exporter.prometheus_remote_write import (
+    PrometheusRemoteWriteMetricsExporter,
+)
+
 
 class TestValidation(unittest.TestCase):
     # Test cases to ensure exporter parameter validation works as intended
     def test_valid_standard_param(self):
-        pass
+        PrometheusRemoteWriteMetricsExporter(endpoint="/prom/test_endpoint")
 
     def test_valid_basic_auth_param(self):
-        pass
+        PrometheusRemoteWriteMetricsExporter(
+            endpoint="/prom/test_endpoint",
+            basic_auth={
+                "username": "test_username",
+                "password": "test_password",
+            },
+        )
 
     def test_valid_bearer_token_param(self):
-        pass
+        PrometheusRemoteWriteMetricsExporter(
+            endpoint="/prom/test_endpoint", bearer_token="test_bearer_token",
+        )
 
     def test_invalid_no_endpoint_param(self):
-        pass
+        with self.assertRaises(ValueError):
+            PrometheusRemoteWriteMetricsExporter("")
 
     def test_invalid_no_username_param(self):
-        pass
+        with self.assertRaises(ValueError):
+            PrometheusRemoteWriteMetricsExporter(
+                endpoint="/prom/test_endpoint",
+                basic_auth={"password": "test_password"},
+            )
 
     def test_invalid_no_password_param(self):
-        pass
+        with self.assertRaises(ValueError):
+            PrometheusRemoteWriteMetricsExporter(
+                endpoint="/prom/test_endpoint",
+                basic_auth={"username": "test_username"},
+            )
 
     def test_invalid_conflicting_passwords_param(self):
-        pass
+        with self.assertRaises(ValueError):
+            PrometheusRemoteWriteMetricsExporter(
+                endpoint="/prom/test_endpoint",
+                basic_auth={
+                    "username": "test_username",
+                    "password": "test_password",
+                    "password_file": "test_file",
+                },
+            )
 
     def test_invalid_conflicting_bearer_tokens_param(self):
-        pass
+        with self.assertRaises(ValueError):
+            PrometheusRemoteWriteMetricsExporter(
+                endpoint="/prom/test_endpoint",
+                bearer_token="test_bearer_token",
+                bearer_token_file="test_file",
+            )
 
     def test_invalid_conflicting_auth_param(self):
-        pass
+        with self.assertRaises(ValueError):
+            PrometheusRemoteWriteMetricsExporter(
+                endpoint="/prom/test_endpoint",
+                basic_auth={
+                    "username": "test_username",
+                    "password": "test_password",
+                },
+                bearer_token="test_bearer_token",
+            )
 
 
 class TestConversion(unittest.TestCase):
