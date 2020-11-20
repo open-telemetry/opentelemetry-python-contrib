@@ -18,6 +18,7 @@ import time
 import unittest
 from unittest import mock
 
+from flaky import flaky
 from ddtrace.internal.writer import AgentWriter
 
 from opentelemetry import trace as trace_api
@@ -483,6 +484,7 @@ class TestDatadogSpanExporter(unittest.TestCase):
 
         tracer_provider.shutdown()
 
+    @flaky(max_runs=3, min_passes=1)
     def test_batch_span_processor_reset_timeout(self):
         """Test that the scheduled timeout is reset on cycles without spans"""
         delay = 50
@@ -510,7 +512,7 @@ class TestDatadogSpanExporter(unittest.TestCase):
             for idx, wait_call in enumerate(mock_wait_calls):
                 _, args, __ = wait_call
                 if args[0] <= 0:
-                    after_calls = mock_wait_calls[idx + 1 :]
+                    after_calls = mock_wait_calls[idx + 1:]
                     break
 
             self.assertTrue(
