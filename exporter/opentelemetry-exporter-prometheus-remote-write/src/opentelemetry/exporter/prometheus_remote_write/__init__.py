@@ -11,9 +11,12 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-
+import re
 from typing import Dict, Sequence
 
+from opentelemetry.exporter.prometheus_remote_write.gen.remote_pb2 import (
+    WriteRequest,
+)
 from opentelemetry.exporter.prometheus_remote_write.gen.types_pb2 import (
     Label,
     Sample,
@@ -23,6 +26,13 @@ from opentelemetry.sdk.metrics.export import (
     ExportRecord,
     MetricsExporter,
     MetricsExportResult,
+)
+from opentelemetry.sdk.metrics.export.aggregate import (
+    HistogramAggregator,
+    LastValueAggregator,
+    MinMaxSumCountAggregator,
+    SumAggregator,
+    ValueObserverAggregator,
 )
 
 
@@ -131,31 +141,88 @@ class PrometheusRemoteWriteMetricsExporter(MetricsExporter):
     def convert_to_timeseries(
         self, export_records: Sequence[ExportRecord]
     ) -> Sequence[TimeSeries]:
-        raise NotImplementedError()
+        converter_map = {
+            MinMaxSumCountAggregator: self.convert_from_min_max_sum_count,
+            SumAggregator: self.convert_from_sum,
+            HistogramAggregator: self.convert_from_histogram,
+            LastValueAggregator: self.convert_from_last_value,
+            ValueObserverAggregator: self.convert_from_last_value,
+        }
+        timeseries = []
+        for export_record in export_records:
+            aggregator_type = type(export_record.aggregator)
+            converter = converter_map.get(aggregator_type)
+            if not converter:
+                raise ValueError(
+                    str(aggregator_type) + " conversion is not supported"
+                )
+            timeseries.extend(converter(export_record))
+        return timeseries
 
     def convert_from_sum(self, sum_record: ExportRecord) -> TimeSeries:
-        raise NotImplementedError()
+        name = sum_record.instrument.name
+        value = sum_record.aggregator.checkpoint
+        return [self.create_timeseries(sum_record, name, value)]
 
     def convert_from_min_max_sum_count(
         self, min_max_sum_count_record: ExportRecord
     ) -> TimeSeries:
-        raise NotImplementedError()
+        timeseries = []
+        agg_types = ["min", "max", "sum", "count"]
+        for agg_type in agg_types:
+            name = min_max_sum_count_record.instrument.name + "_" + agg_type
+            value = getattr(
+                min_max_sum_count_record.aggregator.checkpoint, agg_type
+            )
+            timeseries.append(
+                self.create_timeseries(min_max_sum_count_record, name, value)
+            )
+        return timeseries
 
     def convert_from_histogram(
         self, histogram_record: ExportRecord
     ) -> TimeSeries:
-        raise NotImplementedError()
+        count = 0
+        timeseries = []
+        for bound in histogram_record.aggregator.checkpoint.keys():
+            bb = "+Inf" if bound == float("inf") else str(bound)
+            name = (
+                histogram_record.instrument.name + '_bucket{le="' + bb + '"}'
+            )
+            value = histogram_record.aggregator.checkpoint[bound]
+            timeseries.append(
+                self.create_timeseries(histogram_record, name, value)
+            )
+            count += value
+        name = histogram_record.instrument.name + "_count"
+        timeseries.append(
+            self.create_timeseries(histogram_record, name, float(count))
+        )
+        return timeseries
 
     def convert_from_last_value(
         self, last_value_record: ExportRecord
     ) -> TimeSeries:
-        raise NotImplementedError()
+        name = last_value_record.instrument.name
+        value = last_value_record.aggregator.checkpoint
+        return [self.create_timeseries(last_value_record, name, value)]
 
     def convert_from_value_observer(
         self, value_observer_record: ExportRecord
     ) -> TimeSeries:
-        raise NotImplementedError()
+        timeseries = []
+        agg_types = ["min", "max", "sum", "count", "last"]
+        for agg_type in agg_types:
+            name = value_observer_record.instrument.name + "_" + agg_type
+            value = getattr(
+                value_observer_record.aggregator.checkpoint, agg_type
+            )
+            timeseries.append(
+                self.create_timeseries(value_observer_record, name, value)
+            )
+        return timeseries
 
+    # TODO: Implement convert from quantile once supported by SDK for Prometheus Summaries
     def convert_from_quantile(
         self, summary_record: ExportRecord
     ) -> TimeSeries:
@@ -165,13 +232,37 @@ class PrometheusRemoteWriteMetricsExporter(MetricsExporter):
     def create_timeseries(
         self, export_record: ExportRecord, name, value: float
     ) -> TimeSeries:
-        raise NotImplementedError()
+        timeseries = TimeSeries()
+        # Add name label, record labels and resource labels
+        timeseries.labels.append(self.create_label("__name__", name))
+        resource_attributes = export_record.resource.attributes
+        for label_name, label_value in resource_attributes.items():
+            timeseries.labels.append(
+                self.create_label(label_name, label_value)
+            )
+        for label in export_record.labels:
+            if label[0] not in resource_attributes.keys():
+                timeseries.labels.append(self.create_label(label[0], label[1]))
+        # Add sample
+        timeseries.samples.append(
+            self.create_sample(
+                export_record.aggregator.last_update_timestamp, value
+            )
+        )
+        return timeseries
 
     def create_sample(self, timestamp: int, value: float) -> Sample:
-        raise NotImplementedError()
+        sample = Sample()
+        sample.timestamp = int(timestamp / 1000000)
+        sample.value = value
+        return sample
 
     def create_label(self, name: str, value: str) -> Label:
-        raise NotImplementedError()
+        label = Label()
+        # Label name must contain only alphanumeric characters and underscores
+        label.name = re.sub("[^0-9a-zA-Z_]+", "_", name)
+        label.value = value
+        return label
 
     def build_message(self, timeseries: Sequence[TimeSeries]) -> bytes:
         raise NotImplementedError()
