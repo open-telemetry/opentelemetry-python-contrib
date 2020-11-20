@@ -11,9 +11,13 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
+import logging
 import re
 from typing import Dict, Sequence
 
+import requests
+
+import snappy
 from opentelemetry.exporter.prometheus_remote_write.gen.remote_pb2 import (
     WriteRequest,
 )
@@ -34,6 +38,8 @@ from opentelemetry.sdk.metrics.export.aggregate import (
     SumAggregator,
     ValueObserverAggregator,
 )
+
+logger = logging.getLogger(__name__)
 
 
 class PrometheusRemoteWriteMetricsExporter(MetricsExporter):
@@ -133,7 +139,10 @@ class PrometheusRemoteWriteMetricsExporter(MetricsExporter):
     def export(
         self, export_records: Sequence[ExportRecord]
     ) -> MetricsExportResult:
-        raise NotImplementedError()
+        timeseries = self.convert_to_timeseries(export_records)
+        message = self.build_message(timeseries)
+        headers = self.get_headers()
+        return self.send_message(message, headers)
 
     def shutdown(self) -> None:
         raise NotImplementedError()
@@ -265,12 +274,49 @@ class PrometheusRemoteWriteMetricsExporter(MetricsExporter):
         return label
 
     def build_message(self, timeseries: Sequence[TimeSeries]) -> bytes:
-        raise NotImplementedError()
+        write_request = WriteRequest()
+        write_request.timeseries.extend(timeseries)
+        serialized_message = write_request.SerializeToString()
+        return snappy.compress(serialized_message)
 
     def get_headers(self) -> Dict:
-        raise NotImplementedError()
+        headers = {
+            "Content-Encoding": "snappy",
+            "Content-Type": "application/x-protobuf",
+            "X-Prometheus-Remote-Write-Version": "0.1.0",
+        }
+        if hasattr(self, "headers"):
+            for header_name, header_value in self.headers.items():
+                headers[header_name] = header_value
+
+        if "Authorization" not in headers:
+            if hasattr(self, "bearer_token"):
+                headers["Authorization"] = "Bearer " + self.bearer_token
+            elif hasattr(self, "bearer_token_file"):
+                with open(self.bearer_token_file) as file:
+                    headers["Authorization"] = "Bearer " + file.readline()
+        return headers
 
     def send_message(
         self, message: bytes, headers: Dict
     ) -> MetricsExportResult:
-        raise NotImplementedError()
+        auth = None
+        if hasattr(self, "basic_auth"):
+            basic_auth = self.basic_auth
+            if "password" in basic_auth:
+                auth = (basic_auth.username, basic_auth.password)
+            else:
+                with open(basic_auth.password_file) as file:
+                    auth = (basic_auth.username, file.readline())
+        response = requests.post(
+            self.endpoint, data=message, headers=headers, auth=auth
+        )
+        if response.status_code != 200:
+            logger.warning(
+                "POST request failed with status %s with reason: %s and content: %s",
+                str(response.status_code),
+                response.reason,
+                str(response.content),
+            )
+            return MetricsExportResult.FAILURE
+        return MetricsExportResult.SUCCESS

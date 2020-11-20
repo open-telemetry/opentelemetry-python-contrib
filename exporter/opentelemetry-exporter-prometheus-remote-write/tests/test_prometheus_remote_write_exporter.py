@@ -288,25 +288,68 @@ class TestConversion(unittest.TestCase):
         self.assertEqual(timeseries, expected_timeseries)
 
 
+class ResponseStub:
+    def __init__(self, status_code):
+        self.status_code = status_code
+        self.reason = "dummy_reason"
+        self.content = "dummy_content"
+
+
 class TestExport(unittest.TestCase):
     # Initializes test data that is reused across tests
     def setUp(self):
-        pass
+        self._exporter = PrometheusRemoteWriteMetricsExporter(
+            endpoint="/prom/test_endpoint"
+        )
 
     # Ensures export is successful with valid export_records and config
-    def test_export(self):
-        pass
+    @mock.patch("requests.post", return_value=ResponseStub(200))
+    def test_export(self, mock_post):
+        test_metric = Counter("testname", "testdesc", "testunit", int, None)
+        labels = {"environment": "testing"}
+        record = ExportRecord(
+            test_metric, labels, SumAggregator(), Resource({}),
+        )
+        result = self._exporter.export([record])
+        self.assertIs(result, MetricsExportResult.SUCCESS)
+        self.assertEqual(mock_post.call_count, 1)
 
-    def test_valid_send_message(self):
-        pass
+    @mock.patch("requests.post", return_value=ResponseStub(200))
+    def test_valid_send_message(self, mock_post):
+        result = self._exporter.send_message(bytes(), {})
+        self.assertEqual(mock_post.call_count, 1)
+        self.assertEqual(result, MetricsExportResult.SUCCESS)
 
-    def test_invalid_send_message(self):
-        pass
+    @mock.patch("requests.post", return_value=ResponseStub(404))
+    def test_invalid_send_message(self, mock_post):
+        result = self._exporter.send_message(bytes(), {})
+        self.assertEqual(mock_post.call_count, 1)
+        self.assertEqual(result, MetricsExportResult.FAILURE)
 
     # Verifies that build_message calls snappy.compress and returns SerializedString
-    def test_build_message(self):
-        pass
+    @mock.patch("snappy.compress", return_value=bytes())
+    def test_build_message(self, mock_compress):
+        test_timeseries = [
+            TimeSeries(),
+            TimeSeries(),
+        ]
+        message = self._exporter.build_message(test_timeseries)
+        self.assertEqual(mock_compress.call_count, 1)
+        self.assertIsInstance(message, bytes)
 
     # Ensure correct headers are added when valid config is provided
     def test_get_headers(self):
-        pass
+        self._exporter.headers = {"Custom Header": "test_header"}
+        self._exporter.headers = {"Custom Header": "test_header"}
+        self._exporter.bearer_token = "test_token"
+
+        headers = self._exporter.get_headers()
+        self.assertEqual(headers.get("Content-Encoding", ""), "snappy")
+        self.assertEqual(
+            headers.get("Content-Type", ""), "application/x-protobuf"
+        )
+        self.assertEqual(
+            headers.get("X-Prometheus-Remote-Write-Version", ""), "0.1.0"
+        )
+        self.assertEqual(headers.get("Authorization", ""), "Bearer test_token")
+        self.assertEqual(headers.get("Custom Header", ""), "test_header")
