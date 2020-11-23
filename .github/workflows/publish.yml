@@ -1,4 +1,4 @@
-name: Publish
+name: Contrib Publish Packages
 
 on:
   release:
