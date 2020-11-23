@@ -3,6 +3,7 @@ line-length = 79
 exclude = '''
 (
   /(
+    docs/examples/opentelemetry-example-app/src/opentelemetry_example_app/grpc/gen|
     reference # original files from DataDog
   )/
 )
