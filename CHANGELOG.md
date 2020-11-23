@@ -23,7 +23,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   ([#237](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/237))
 - `opentelemetry-instrumentation-starlette` Added support for excluding some routes with env var `OTEL_PYTHON_STARLETTE_EXCLUDED_URLS`
   ([#237](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/237))
-
+- Add Prometheus Remote Write Exporter integration tests in opentelemetry-docker-tests
+  ((#216)[https://github.com/open-telemetry/opentelemetry-python-contrib/pull/216])
 
 ### Changed
 - `opentelemetry-instrumentation-asgi`, `opentelemetry-instrumentation-wsgi` Return `None` for `CarrierGetter` if key not found
@@ -92,7 +93,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   ([#1239](https://github.com/open-telemetry/opentelemetry-python/pull/1239))
 - `opentelemetry-instrumentation-django` Bugfix use request.path replace request.get_full_path(). It will get correct span name
   ([#1309](https://github.com/open-telemetry/opentelemetry-python/pull/1309#))
-- `opentelemetry-instrumentation-django` Record span status and http.status_code attribute on exception 
+- `opentelemetry-instrumentation-django` Record span status and http.status_code attribute on exception
   ([#1257](https://github.com/open-telemetry/opentelemetry-python/pull/1257))
 - `opentelemetry-instrumentation-grpc` Rewrite gRPC server interceptor
   ([#1171](https://github.com/open-telemetry/opentelemetry-python/pull/1171))
@@ -120,7 +121,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - `opentelemetry-instrumentation-pymysql` Bumped version from 0.9.3 to 0.10.1
   ([#1228](https://github.com/open-telemetry/opentelemetry-python/pull/1228))
 - `opentelemetry-instrumentation-django` Changed span name extraction from request to comply semantic convention
-  ([#992](https://github.com/open-telemetry/opentelemetry-python/pull/992)) 
+  ([#992](https://github.com/open-telemetry/opentelemetry-python/pull/992))
 
 ## [0.13b0](https://github.com/open-telemetry/opentelemetry-python/releases/tag/v0.13b0) - 2020-09-17
 
@@ -264,7 +265,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [0.8b0](https://github.com/open-telemetry/opentelemetry-python/releases/tag/v0.8.0) - 2020-05-27
 
 ### Added
-- `opentelemetry-ext-datadog` Add exporter to Datadog 
+- `opentelemetry-ext-datadog` Add exporter to Datadog
   ([#572](https://github.com/open-telemetry/opentelemetry-python/pull/572))
 - `opentelemetry-ext-sqlite3` Initial release
 - `opentelemetry-ext-psycopg2` Implement instrumentor interface, enabling auto-instrumentation
