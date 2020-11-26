@@ -58,7 +58,7 @@ from opentelemetry.instrumentation.utils import (
     http_status_to_status_code,
 )
 from opentelemetry.trace.status import Status
-from opentelemetry.util import ExcludeList, time_ns
+from opentelemetry.util import time_ns
 
 _logger = getLogger(__name__)
 
@@ -68,15 +68,8 @@ _ENVIRON_ACTIVATION_KEY = "opentelemetry-falcon.activation_key"
 _ENVIRON_TOKEN = "opentelemetry-falcon.token"
 _ENVIRON_EXC = "opentelemetry-falcon.exc"
 
-
-def get_excluded_urls():
-    urls = configuration.Configuration().FALCON_EXCLUDED_URLS or ""
-    if urls:
-        urls = str.split(urls, ",")
-    return ExcludeList(urls)
-
-
-_excluded_urls = get_excluded_urls()
+cfg = configuration.Configuration()
+_excluded_urls = cfg.excluded_urls("falcon")
 
 
 class FalconInstrumentor(BaseInstrumentor):
@@ -145,7 +138,9 @@ class _InstrumentedFalconAPI(falcon.API):
             return super().__call__(env, _start_response)
         except Exception as exc:
             activation.__exit__(
-                type(exc), exc, getattr(exc, "__traceback__", None),
+                type(exc),
+                exc,
+                getattr(exc, "__traceback__", None),
             )
             context.detach(token)
             raise
@@ -156,12 +151,7 @@ class _TraceMiddleware:
 
     def __init__(self, tracer=None, traced_request_attrs=None):
         self.tracer = tracer
-        self._traced_request_attrs = traced_request_attrs or [
-            attr.strip()
-            for attr in (
-                Configuration().FALCON_TRACED_REQUEST_ATTRS or ""
-            ).split(",")
-        ]
+        self._traced_request_attrs = cfg.traced_request_attrs("falcon")
 
     def process_request(self, req, resp):
         span = req.env.get(_ENVIRON_SPAN_KEY)

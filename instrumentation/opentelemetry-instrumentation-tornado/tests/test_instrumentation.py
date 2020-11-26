@@ -25,7 +25,7 @@ from opentelemetry.instrumentation.tornado import (
 )
 from opentelemetry.test.test_base import TestBase
 from opentelemetry.trace import SpanKind
-from opentelemetry.util import ExcludeList
+from opentelemetry.configuration import Configuration
 
 from .tornado_test_app import (
     AsyncHandler,
@@ -44,9 +44,31 @@ class TornadoTest(AsyncHTTPTestCase, TestBase):
     def setUp(self):
         TornadoInstrumentor().instrument()
         super().setUp()
+        Configuration()._reset()
+        self.env_patch = patch.dict(
+            "os.environ",
+            {
+                "OTEL_PYTHON_TORNADO_EXCLUDED_URLS": "healthz,ping",
+                "OTEL_PYTHON_TORNADO_TRACED_REQUEST_ATTRS": "uri,full_url,query",
+            },
+        )
+        self.env_patch.start()
+        self.exclude_patch = patch(
+            "opentelemetry.instrumentation.tornado._excluded_urls",
+            Configuration().excluded_urls("tornado"),
+        )
+        self.traced_patch = patch(
+            "opentelemetry.instrumentation.tornado._traced_attrs",
+            Configuration().traced_request_attrs("tornado"),
+        )
+        self.exclude_patch.start()
+        self.traced_patch.start()
 
     def tearDown(self):
         TornadoInstrumentor().uninstrument()
+        self.env_patch.stop()
+        self.exclude_patch.stop()
+        self.traced_patch.stop()
         super().tearDown()
 
 
@@ -326,10 +348,6 @@ class TestTornadoInstrumentation(TornadoTest):
             },
         )
 
-    @patch(
-        "opentelemetry.instrumentation.tornado._excluded_urls",
-        ExcludeList(["healthz", "ping"]),
-    )
     def test_exclude_lists(self):
         def test_excluded(path):
             self.fetch(path)
@@ -354,18 +372,14 @@ class TestTornadoInstrumentation(TornadoTest):
         test_excluded("/healthz")
         test_excluded("/ping")
 
-    @patch(
-        "opentelemetry.instrumentation.tornado._traced_attrs",
-        ["uri", "full_url", "query"],
-    )
     def test_traced_attrs(self):
-        self.fetch("/ping?q=abc&b=123")
+        self.fetch("/pong?q=abc&b=123")
         spans = self.sorted_spans(self.memory_exporter.get_finished_spans())
         self.assertEqual(len(spans), 2)
         server_span = spans[0]
         self.assertEqual(server_span.kind, SpanKind.SERVER)
         self.assert_span_has_attributes(
-            server_span, {"uri": "/ping?q=abc&b=123", "query": "q=abc&b=123"}
+            server_span, {"uri": "/pong?q=abc&b=123", "query": "q=abc&b=123"}
         )
         self.memory_exporter.clear()
 
