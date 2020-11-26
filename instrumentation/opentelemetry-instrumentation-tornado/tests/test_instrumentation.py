@@ -18,6 +18,7 @@ from unittest.mock import Mock, patch
 from tornado.testing import AsyncHTTPTestCase
 
 from opentelemetry import trace
+from opentelemetry.configuration import Configuration
 from opentelemetry.instrumentation.tornado import (
     TornadoInstrumentor,
     patch_handler_class,
@@ -25,7 +26,6 @@ from opentelemetry.instrumentation.tornado import (
 )
 from opentelemetry.test.test_base import TestBase
 from opentelemetry.trace import SpanKind
-from opentelemetry.configuration import Configuration
 
 from .tornado_test_app import (
     AsyncHandler,

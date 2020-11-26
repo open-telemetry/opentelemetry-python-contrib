@@ -17,10 +17,10 @@ from unittest.mock import Mock, patch
 from pyramid.config import Configurator
 
 from opentelemetry import trace
+from opentelemetry.configuration import Configuration
 from opentelemetry.instrumentation.pyramid import PyramidInstrumentor
 from opentelemetry.test.test_base import TestBase
 from opentelemetry.test.wsgitestutil import WsgiTestBase
-from opentelemetry.configuration import Configuration
 
 # pylint: disable=import-error
 from .pyramid_base_test import InstrumentationTest

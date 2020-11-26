@@ -17,10 +17,10 @@ from unittest.mock import Mock, patch
 from flask import Flask, request
 
 from opentelemetry import trace
+from opentelemetry.configuration import Configuration
 from opentelemetry.instrumentation.flask import FlaskInstrumentor
 from opentelemetry.test.test_base import TestBase
 from opentelemetry.test.wsgitestutil import WsgiTestBase
-from opentelemetry.configuration import Configuration
 
 # pylint: disable=import-error
 from .base_test import InstrumentationTest

@@ -16,10 +16,10 @@ from unittest.mock import Mock, patch
 
 from falcon import testing
 
+from opentelemetry.configuration import Configuration
 from opentelemetry.instrumentation.falcon import FalconInstrumentor
 from opentelemetry.test.test_base import TestBase
 from opentelemetry.trace.status import StatusCode
-from opentelemetry.configuration import Configuration
 
 from .app import make_app
 
