@@ -4,7 +4,7 @@ ignore =
   F401  # unused import, defer to pylint
   W503  # allow line breaks before binary ops
   W504  # allow line breaks after binary ops
-  E203  # allow whitespace before ':' (https://github.com/psf/black#slices) 
+  E203  # allow whitespace before ':' (https://github.com/psf/black#slices)
 exclude =
   .bzr
   .git
