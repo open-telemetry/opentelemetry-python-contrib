@@ -29,6 +29,7 @@ class TestFalconInstrumentation(TestBase):
         super().setUp()
         FalconInstrumentor().instrument()
         self.app = make_app()
+        # pylint: disable=protected-access
         Configuration()._reset()
         self.env_patch = patch.dict(
             "os.environ",

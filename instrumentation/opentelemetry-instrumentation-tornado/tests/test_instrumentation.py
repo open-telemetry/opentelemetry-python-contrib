@@ -44,6 +44,7 @@ class TornadoTest(AsyncHTTPTestCase, TestBase):
     def setUp(self):
         TornadoInstrumentor().instrument()
         super().setUp()
+        # pylint: disable=protected-access
         Configuration()._reset()
         self.env_patch = patch.dict(
             "os.environ",
