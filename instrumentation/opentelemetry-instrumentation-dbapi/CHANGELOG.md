@@ -2,7 +2,14 @@
 
 ## Unreleased
 
-Stop capturing query parameters by default
+## Version 0.16b0
+
+Released 2020-11-25
+
+- Update dbapi and its dependant instrumentations to follow semantic conventions
+  ([#195](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/195))
+
+- Stop capturing query parameters by default
   ([#156](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/156))
 
 ## Version 0.13b0

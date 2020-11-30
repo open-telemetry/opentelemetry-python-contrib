@@ -2,6 +2,13 @@
 
 ## Unreleased
 
+## Version 0.16b0
+
+Released 2020-11-25
+
+- Update pymongo instrumentation to follow semantic conventions
+([#203](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/203))
+
 ## Version 0.14b0
 
 Released 2020-10-13
