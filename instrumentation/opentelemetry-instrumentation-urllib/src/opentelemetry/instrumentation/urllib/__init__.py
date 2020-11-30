@@ -58,6 +58,48 @@ from opentelemetry.trace.status import Status, StatusCode
 _SUPPRESS_URLLIB_INSTRUMENTATION_KEY = "suppress_urllib_instrumentation"
 
 
+class URLLibInstrumentor(BaseInstrumentor, MetricMixin):
+    """An instrumentor for urllib
+    See `BaseInstrumentor`
+    """
+
+    def _instrument(self, **kwargs):
+        """Instruments urllib module
+
+        Args:
+            **kwargs: Optional arguments
+                ``tracer_provider``: a TracerProvider, defaults to global
+                ``span_callback``: An optional callback invoked before returning the http response.
+                 Invoked with Span and http.client.HTTPResponse
+                ``name_callback``: Callback which calculates a generic span name for an
+                    outgoing HTTP request based on the method and url.
+                    Optional: Defaults to get_default_span_name.
+        """
+
+        _instrument(
+            tracer_provider=kwargs.get("tracer_provider"),
+            span_callback=kwargs.get("span_callback"),
+            name_callback=kwargs.get("name_callback"),
+        )
+
+        self.init_metrics(
+            __name__, __version__,
+        )
+
+        # pylint: disable=W0201
+        self.metric_recorder = HTTPMetricRecorder(
+            self.meter, HTTPMetricType.CLIENT
+        )
+
+    def _uninstrument(self, **kwargs):
+        _uninstrument()
+
+    def uninstrument_opener(
+        self, opener: OpenerDirector
+    ):  # pylint: disable=no-self-use
+        _uninstrument_from(opener, restore_as_bound_func=True)
+
+
 # pylint: disable=unused-argument
 # pylint: disable=R0915
 def get_default_span_name(method):
@@ -72,7 +114,7 @@ def _instrument(tracer_provider=None, span_callback=None, name_callback=None):
     opener_open = OpenerDirector.open
 
     @functools.wraps(opener_open)
-    def instrumented_request(opener, fullurl, data=None, timeout=None):
+    def instrumented_open(opener, fullurl, data=None, timeout=None):
 
         if isinstance(fullurl, str):
             request_ = Request(fullurl, data)
@@ -85,11 +127,11 @@ def _instrument(tracer_provider=None, span_callback=None, name_callback=None):
         def call_wrapped():
             return opener_open(opener, request_, data=data, timeout=timeout)
 
-        return _instrumented_requests_call(
+        return _instrumented_open_call(
             opener, request_, call_wrapped, get_or_create_headers
         )
 
-    def _instrumented_requests_call(
+    def _instrumented_open_call(
         opener, request, call_wrapped, get_or_create_headers
     ):  # pylint: disable=too-many-locals
         if context.get_value("suppress_instrumentation") or context.get_value(
@@ -165,8 +207,8 @@ def _instrument(tracer_provider=None, span_callback=None, name_callback=None):
 
         return result
 
-    instrumented_request.opentelemetry_instrumentation_urllib_applied = True
-    OpenerDirector.open = instrumented_request
+    instrumented_open.opentelemetry_instrumentation_urllib_applied = True
+    OpenerDirector.open = instrumented_open
 
 
 def _uninstrument():
@@ -189,45 +231,3 @@ def _uninstrument_from(instr_root, restore_as_bound_func=False):
     if restore_as_bound_func:
         original = types.MethodType(original, instr_root)
     setattr(instr_root, instr_func_name, original)
-
-
-class URLLibInstrumentor(BaseInstrumentor, MetricMixin):
-    """An instrumentor for urllib
-    See `BaseInstrumentor`
-    """
-
-    def _instrument(self, **kwargs):
-        """Instruments urllib module
-
-        Args:
-            **kwargs: Optional arguments
-                ``tracer_provider``: a TracerProvider, defaults to global
-                ``span_callback``: An optional callback invoked before returning the http response.
-                 Invoked with Span and http.client.HTTPResponse
-                ``name_callback``: Callback which calculates a generic span name for an
-                    outgoing HTTP request based on the method and url.
-                    Optional: Defaults to get_default_span_name.
-        """
-
-        _instrument(
-            tracer_provider=kwargs.get("tracer_provider"),
-            span_callback=kwargs.get("span_callback"),
-            name_callback=kwargs.get("name_callback"),
-        )
-
-        self.init_metrics(
-            __name__, __version__,
-        )
-
-        # pylint: disable=W0201
-        self.metric_recorder = HTTPMetricRecorder(
-            self.meter, HTTPMetricType.CLIENT
-        )
-
-    def _uninstrument(self, **kwargs):
-        _uninstrument()
-
-    def uninstrument_opener(
-        self, opener: OpenerDirector
-    ):  # pylint: disable=no-self-use
-        _uninstrument_from(opener, restore_as_bound_func=True)
