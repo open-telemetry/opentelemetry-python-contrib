@@ -23,7 +23,7 @@ Usage
 .. code-block:: python
 
     from urllib import request
-    from libs.opentelemetry.instrumentation.urllib import URLLibInstrumentor
+    from opentelemetry.instrumentation.urllib import URLLibInstrumentor
 
     # You can optionally pass a custom TracerProvider to
     URLLibInstrumentor().instrument()
