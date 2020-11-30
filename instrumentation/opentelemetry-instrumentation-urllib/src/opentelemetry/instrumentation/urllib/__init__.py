@@ -26,7 +26,7 @@ Usage
     from opentelemetry.instrumentation.urllib import URLLibInstrumentor
 
     # You can optionally pass a custom TracerProvider to
-    URLLibInstrumentor().instrument()
+    # URLLibInstrumentor().instrument()
 URLLibInstrumentor().instrument()
     req = request.Request('https://postman-echo.com/post', method="POST")
     r = request.urlopen(req)
