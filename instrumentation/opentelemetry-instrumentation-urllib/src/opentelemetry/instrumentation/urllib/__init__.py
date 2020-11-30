@@ -27,7 +27,7 @@ Usage
 
     # You can optionally pass a custom TracerProvider to
     URLLibInstrumentor().instrument()
-
+URLLibInstrumentor().instrument()
     req = request.Request('https://postman-echo.com/post', method="POST")
     r = request.urlopen(req)
 
