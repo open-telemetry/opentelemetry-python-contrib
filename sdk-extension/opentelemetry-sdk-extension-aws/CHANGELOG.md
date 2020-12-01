@@ -2,7 +2,7 @@
 
 ## Unreleased
 
-- Add fields method
+- Add method to return fields injected by propagator
   ([#226](https://github.com/open-telemetry/opentelemetry-python/pull/226))
 
 ## Version 0.16b0
