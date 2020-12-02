@@ -60,7 +60,7 @@ class TestSystemMetrics(TestBase):
             "runtime.{}.gc_count".format(self.implementation),
         ]
 
-        for observer in meter.observers:
+        for observer in meter.observers.values():
             self.assertIn(observer.name, observer_names)
             observer_names.remove(observer.name)
 

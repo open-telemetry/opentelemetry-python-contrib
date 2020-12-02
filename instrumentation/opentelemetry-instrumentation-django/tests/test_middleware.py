@@ -125,7 +125,7 @@ class TestMiddleware(TestBase, WsgiTestBase):
 
         self.assertIsNotNone(_django_instrumentor.meter)
         self.assertEqual(len(_django_instrumentor.meter.metrics), 1)
-        recorder = _django_instrumentor.meter.metrics.pop()
+        recorder = _django_instrumentor.meter.metrics.values()[0]
         match_key = get_dict_as_key(
             {
                 "http.flavor": "1.1",
@@ -210,7 +210,7 @@ class TestMiddleware(TestBase, WsgiTestBase):
         self.assertEqual(event.attributes["exception.type"], "ValueError")
         self.assertEqual(event.attributes["exception.message"], "error")
 
-        recorder = _django_instrumentor.meter.metrics.pop()
+        recorder = _django_instrumentor.meter.metrics.values()[0]
         match_key = get_dict_as_key(
             {
                 "http.flavor": "1.1",
