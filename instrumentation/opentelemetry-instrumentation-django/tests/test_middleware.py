@@ -210,7 +210,7 @@ class TestMiddleware(TestBase, WsgiTestBase):
         self.assertEqual(event.attributes["exception.type"], "ValueError")
         self.assertEqual(event.attributes["exception.message"], "error")
 
-        recorder = _django_instrumentor.meter.instruments.values()[0]
+        recorder = list(_django_instrumentor.meter.instruments.values())[0]
         match_key = get_dict_as_key(
             {
                 "http.flavor": "1.1",
