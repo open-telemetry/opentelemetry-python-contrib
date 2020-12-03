@@ -61,9 +61,9 @@ class _DjangoMiddleware(MiddlewareMixin):
     _environ_span_key = "opentelemetry-instrumentor-django.span_key"
     _environ_exception_key = "opentelemetry-instrumentor-django.exception_key"
 
-    _excluded_urls = Configuration().excluded_urls("django")
+    _excluded_urls = Configuration()._excluded_urls("django")
 
-    _traced_request_attrs = Configuration().traced_request_attrs("django")
+    _traced_request_attrs = Configuration()._traced_request_attrs("django")
 
     @staticmethod
     def _get_span_name(request):

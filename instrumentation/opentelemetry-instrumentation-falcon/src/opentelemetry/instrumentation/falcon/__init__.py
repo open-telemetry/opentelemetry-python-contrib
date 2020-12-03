@@ -69,7 +69,7 @@ _ENVIRON_TOKEN = "opentelemetry-falcon.token"
 _ENVIRON_EXC = "opentelemetry-falcon.exc"
 
 cfg = configuration.Configuration()
-_excluded_urls = cfg.excluded_urls("falcon")
+_excluded_urls = cfg._excluded_urls("falcon")
 
 
 class FalconInstrumentor(BaseInstrumentor):
@@ -149,7 +149,7 @@ class _TraceMiddleware:
 
     def __init__(self, tracer=None, traced_request_attrs=None):
         self.tracer = tracer
-        self._traced_request_attrs = cfg.traced_request_attrs("falcon")
+        self._traced_request_attrs = cfg._traced_request_attrs("falcon")
 
     def process_request(self, req, resp):
         span = req.env.get(_ENVIRON_SPAN_KEY)

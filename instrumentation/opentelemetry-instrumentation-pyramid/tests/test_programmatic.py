@@ -63,7 +63,7 @@ class TestProgrammatic(InstrumentationTest, TestBase, WsgiTestBase):
         self.env_patch.start()
         self.exclude_patch = patch(
             "opentelemetry.instrumentation.pyramid.callbacks._excluded_urls",
-            Configuration().excluded_urls("pyramid"),
+            Configuration()._excluded_urls("pyramid"),
         )
         self.exclude_patch.start()
 

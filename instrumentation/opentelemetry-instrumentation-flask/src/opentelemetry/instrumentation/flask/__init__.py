@@ -65,7 +65,7 @@ _ENVIRON_ACTIVATION_KEY = "opentelemetry-flask.activation_key"
 _ENVIRON_TOKEN = "opentelemetry-flask.token"
 
 
-_excluded_urls = configuration.Configuration().excluded_urls("flask")
+_excluded_urls = configuration.Configuration()._excluded_urls("flask")
 
 
 def get_default_span_name():

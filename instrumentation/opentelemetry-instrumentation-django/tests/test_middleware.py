@@ -75,11 +75,11 @@ class TestMiddleware(TestBase, WsgiTestBase):
         self.env_patch.start()
         self.exclude_patch = patch(
             "opentelemetry.instrumentation.django.middleware._DjangoMiddleware._excluded_urls",
-            Configuration().excluded_urls("django"),
+            Configuration()._excluded_urls("django"),
         )
         self.traced_patch = patch(
             "opentelemetry.instrumentation.django.middleware._DjangoMiddleware._traced_request_attrs",
-            Configuration().traced_request_attrs("django"),
+            Configuration()._traced_request_attrs("django"),
         )
         self.exclude_patch.start()
         self.traced_patch.start()

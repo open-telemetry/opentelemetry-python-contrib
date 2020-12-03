@@ -66,8 +66,8 @@ _HANDLER_CONTEXT_KEY = "_otel_trace_context_key"
 _OTEL_PATCHED_KEY = "_otel_patched_key"
 
 cfg = configuration.Configuration()
-_excluded_urls = cfg.excluded_urls("tornado")
-_traced_attrs = cfg.traced_request_attrs("tornado")
+_excluded_urls = cfg._excluded_urls("tornado")
+_traced_attrs = cfg._traced_request_attrs("tornado")
 
 carrier_getter = DictGetter()
 

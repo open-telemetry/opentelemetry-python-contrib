@@ -22,7 +22,7 @@ _ENVIRON_TOKEN = "opentelemetry-pyramid.token"
 _logger = getLogger(__name__)
 
 
-_excluded_urls = configuration.Configuration().excluded_urls("pyramid")
+_excluded_urls = configuration.Configuration()._excluded_urls("pyramid")
 
 
 def includeme(config):

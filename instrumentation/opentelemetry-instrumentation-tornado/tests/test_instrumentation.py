@@ -56,11 +56,11 @@ class TornadoTest(AsyncHTTPTestCase, TestBase):
         self.env_patch.start()
         self.exclude_patch = patch(
             "opentelemetry.instrumentation.tornado._excluded_urls",
-            Configuration().excluded_urls("tornado"),
+            Configuration()._excluded_urls("tornado"),
         )
         self.traced_patch = patch(
             "opentelemetry.instrumentation.tornado._traced_attrs",
-            Configuration().traced_request_attrs("tornado"),
+            Configuration()._traced_request_attrs("tornado"),
         )
         self.exclude_patch.start()
         self.traced_patch.start()

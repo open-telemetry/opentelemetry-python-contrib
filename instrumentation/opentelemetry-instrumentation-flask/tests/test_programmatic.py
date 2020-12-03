@@ -63,7 +63,7 @@ class TestProgrammatic(InstrumentationTest, TestBase, WsgiTestBase):
         self.env_patch.start()
         self.exclude_patch = patch(
             "opentelemetry.instrumentation.flask._excluded_urls",
-            Configuration().excluded_urls("flask"),
+            Configuration()._excluded_urls("flask"),
         )
         self.exclude_patch.start()
 
