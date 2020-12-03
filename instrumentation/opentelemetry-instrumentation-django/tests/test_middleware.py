@@ -124,8 +124,8 @@ class TestMiddleware(TestBase, WsgiTestBase):
         self.assertEqual(span.attributes["http.status_text"], "OK")
 
         self.assertIsNotNone(_django_instrumentor.meter)
-        self.assertEqual(len(_django_instrumentor.meter.metrics), 1)
-        recorder = _django_instrumentor.meter.metrics.values()[0]
+        self.assertEqual(len(_django_instrumentor.meter.instruments), 1)
+        recorder = _django_instrumentor.meter.instruments.values()[0]
         match_key = get_dict_as_key(
             {
                 "http.flavor": "1.1",
@@ -202,7 +202,7 @@ class TestMiddleware(TestBase, WsgiTestBase):
         self.assertEqual(span.attributes["http.scheme"], "http")
         self.assertEqual(span.attributes["http.status_code"], 500)
         self.assertIsNotNone(_django_instrumentor.meter)
-        self.assertEqual(len(_django_instrumentor.meter.metrics), 1)
+        self.assertEqual(len(_django_instrumentor.meter.instruments), 1)
 
         self.assertEqual(len(span.events), 1)
         event = span.events[0]
@@ -210,7 +210,7 @@ class TestMiddleware(TestBase, WsgiTestBase):
         self.assertEqual(event.attributes["exception.type"], "ValueError")
         self.assertEqual(event.attributes["exception.message"], "error")
 
-        recorder = _django_instrumentor.meter.metrics.values()[0]
+        recorder = _django_instrumentor.meter.instruments.values()[0]
         match_key = get_dict_as_key(
             {
                 "http.flavor": "1.1",
