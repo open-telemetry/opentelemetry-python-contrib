@@ -164,7 +164,7 @@ class TestAsgiApplication(AsgiTestBase):
         outputs = self.get_all_output()
         self.validate_outputs(outputs)
 
-    def test_wsgi_not_recording(self):
+    def test_asgi_not_recording(self):
         mock_tracer = mock.Mock()
         mock_span = mock.Mock()
         mock_span.is_recording.return_value = False
