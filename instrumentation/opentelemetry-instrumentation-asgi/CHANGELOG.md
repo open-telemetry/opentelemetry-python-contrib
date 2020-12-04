@@ -3,7 +3,7 @@
 ## Unreleased
 
 - Return `None` for `CarrierGetter` if key not found
-  ([#1374](https://github.com/open-telemetry/opentelemetry-python/pull/1374))
+  ([#1374](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/233))
 
 ## Version 0.12b0
 
