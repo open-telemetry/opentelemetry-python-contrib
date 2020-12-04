@@ -87,7 +87,7 @@ def collect_request_attributes(scope):
     http_method = scope.get("method")
     if http_method:
         result["http.method"] = http_method
-    
+
     http_host_value_list = carrier_getter.get(scope, "host")
     if http_host_value_list:
         result["http.server_name"] = ",".join(http_host_value_list)
