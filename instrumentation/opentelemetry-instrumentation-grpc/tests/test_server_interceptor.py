@@ -67,7 +67,7 @@ class TestOpenTelemetryServerInterceptor(TestBase):
         port = server.add_insecure_port("[::]:0")
         channel = grpc.insecure_channel("localhost:{:d}".format(port))
 
-        rpc_call = "TestServicer/test"
+        rpc_call = "TestServicer/handler"
         try:
             server.start()
             channel.unary_unary(rpc_call)(b"test")
@@ -79,9 +79,20 @@ class TestOpenTelemetryServerInterceptor(TestBase):
         span = spans_list[0]
         self.assertEqual(span.name, rpc_call)
         self.assertIs(span.kind, trace.SpanKind.SERVER)
+
+        # Check version and name in span's instrumentation info
         self.check_span_instrumentation_info(
             span, opentelemetry.instrumentation.grpc
         )
+
+        # Check attributes
+        self.assert_span_has_attributes(span, {
+            'rpc.method': 'handler',
+            'rpc.service': 'TestServicer',
+            'rpc.system': 'grpc',
+            'rpc.grpc.status_code': grpc.StatusCode.OK.value[0],
+        })
+
         grpc_server_instrumentor.uninstrument()
 
     def test_uninstrument(self):
@@ -151,6 +162,14 @@ class TestOpenTelemetryServerInterceptor(TestBase):
             span, opentelemetry.instrumentation.grpc
         )
 
+        # Check attributes
+        self.assert_span_has_attributes(span, {
+            'rpc.method': 'handler',
+            'rpc.service': 'TestServicer',
+            'rpc.system': 'grpc',
+            'rpc.grpc.status_code': grpc.StatusCode.OK.value[0],
+        })
+
     def test_span_lifetime(self):
         """Check that the span is active for the duration of the call."""
 
@@ -219,12 +238,21 @@ class TestOpenTelemetryServerInterceptor(TestBase):
         self.assertEqual(len(active_spans_in_handler), 2)
         # pylint:disable=unbalanced-tuple-unpacking
         span1, span2 = active_spans_in_handler
-        # Spans should belong to separate traces, and each should be a root
-        # span
+        # Spans should belong to separate traces
         self.assertNotEqual(span1.context.span_id, span2.context.span_id)
         self.assertNotEqual(span1.context.trace_id, span2.context.trace_id)
-        self.assertIsNone(span1.parent)
-        self.assertIsNone(span1.parent)
+
+        for span in (span1, span2):
+            # each should be a root span
+            self.assertIsNone(span2.parent)
+
+            # check attributes
+            self.assert_span_has_attributes(span, {
+                'rpc.method': 'handler',
+                'rpc.service': 'TestServicer',
+                'rpc.system': 'grpc',
+                'rpc.grpc.status_code': grpc.StatusCode.OK.value[0],
+            })
 
     def test_concurrent_server_spans(self):
         """Check that concurrent RPC calls don't interfere with each other.
@@ -270,12 +298,21 @@ class TestOpenTelemetryServerInterceptor(TestBase):
         self.assertEqual(len(active_spans_in_handler), 2)
         # pylint:disable=unbalanced-tuple-unpacking
         span1, span2 = active_spans_in_handler
-        # Spans should belong to separate traces, and each should be a root
-        # span
+        # Spans should belong to separate traces
         self.assertNotEqual(span1.context.span_id, span2.context.span_id)
         self.assertNotEqual(span1.context.trace_id, span2.context.trace_id)
-        self.assertIsNone(span1.parent)
-        self.assertIsNone(span1.parent)
+
+        for span in (span1, span2):
+            # each should be a root span
+            self.assertIsNone(span2.parent)
+
+            # check attributes
+            self.assert_span_has_attributes(span, {
+                'rpc.method': 'handler',
+                'rpc.service': 'TestServicer',
+                'rpc.system': 'grpc',
+                'rpc.grpc.status_code': grpc.StatusCode.OK.value[0],
+            })
 
 
 def get_latch(num):
