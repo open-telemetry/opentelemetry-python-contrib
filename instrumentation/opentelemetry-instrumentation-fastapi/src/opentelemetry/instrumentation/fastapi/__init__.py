@@ -23,6 +23,7 @@ from opentelemetry.instrumentation.instrumentor import BaseInstrumentor
 
 _excluded_urls = Configuration()._excluded_urls("fastapi")
 
+
 class FastAPIInstrumentor(BaseInstrumentor):
     """An instrumentor for FastAPI
 
