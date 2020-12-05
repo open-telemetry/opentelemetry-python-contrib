@@ -34,8 +34,8 @@ import typing
 
 import aiopg
 import wrapt
-
 from aiopg.utils import _ContextManager, _PoolContextManager
+
 from opentelemetry.instrumentation.aiopg.aiopg_integration import (
     AiopgIntegration,
     get_traced_connection_proxy,
