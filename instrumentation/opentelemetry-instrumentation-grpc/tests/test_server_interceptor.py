@@ -67,16 +67,17 @@ class TestOpenTelemetryServerInterceptor(TestBase):
         port = server.add_insecure_port("[::]:0")
         channel = grpc.insecure_channel("localhost:{:d}".format(port))
 
+        rpc_call = "TestServicer/test"
         try:
             server.start()
-            channel.unary_unary("test")(b"test")
+            channel.unary_unary(rpc_call)(b"test")
         finally:
             server.stop(None)
 
         spans_list = self.memory_exporter.get_finished_spans()
         self.assertEqual(len(spans_list), 1)
         span = spans_list[0]
-        self.assertEqual(span.name, "test")
+        self.assertEqual(span.name, rpc_call)
         self.assertIs(span.kind, trace.SpanKind.SERVER)
         self.check_span_instrumentation_info(
             span, opentelemetry.instrumentation.grpc
@@ -100,9 +101,10 @@ class TestOpenTelemetryServerInterceptor(TestBase):
         port = server.add_insecure_port("[::]:0")
         channel = grpc.insecure_channel("localhost:{:d}".format(port))
 
+        rpc_call = "TestServicer/test"
         try:
             server.start()
-            channel.unary_unary("test")(b"test")
+            channel.unary_unary(rpc_call)(b"test")
         finally:
             server.stop(None)
 
@@ -130,9 +132,10 @@ class TestOpenTelemetryServerInterceptor(TestBase):
         port = server.add_insecure_port("[::]:0")
         channel = grpc.insecure_channel("localhost:{:d}".format(port))
 
+        rpc_call = "TestServicer/handler"
         try:
             server.start()
-            channel.unary_unary("")(b"")
+            channel.unary_unary(rpc_call)(b"")
         finally:
             server.stop(None)
 
@@ -140,7 +143,7 @@ class TestOpenTelemetryServerInterceptor(TestBase):
         self.assertEqual(len(spans_list), 1)
         span = spans_list[0]
 
-        self.assertEqual(span.name, "")
+        self.assertEqual(span.name, rpc_call)
         self.assertIs(span.kind, trace.SpanKind.SERVER)
 
         # Check version and name in span's instrumentation info
@@ -174,7 +177,7 @@ class TestOpenTelemetryServerInterceptor(TestBase):
         active_span_before_call = trace.get_current_span()
         try:
             server.start()
-            channel.unary_unary("")(b"")
+            channel.unary_unary("TestServicer/handler")(b"")
         finally:
             server.stop(None)
         active_span_after_call = trace.get_current_span()
@@ -208,8 +211,8 @@ class TestOpenTelemetryServerInterceptor(TestBase):
 
         try:
             server.start()
-            channel.unary_unary("")(b"")
-            channel.unary_unary("")(b"")
+            channel.unary_unary("TestServicer/handler")(b"")
+            channel.unary_unary("TestServicer/handler")(b"")
         finally:
             server.stop(None)
 
@@ -258,8 +261,8 @@ class TestOpenTelemetryServerInterceptor(TestBase):
             # Interleave calls so spans are active on each thread at the same
             # time
             with futures.ThreadPoolExecutor(max_workers=2) as tpe:
-                f1 = tpe.submit(channel.unary_unary(""), b"")
-                f2 = tpe.submit(channel.unary_unary(""), b"")
+                f1 = tpe.submit(channel.unary_unary("TestServicer/handler"), b"")
+                f2 = tpe.submit(channel.unary_unary("TestServicer/handler"), b"")
             futures.wait((f1, f2))
         finally:
             server.stop(None)

@@ -183,16 +183,20 @@ class OpenTelemetryServerInterceptor(grpc.ServerInterceptor):
 
     def _start_span(self, handler_call_details, context):
 
-        # split the handler method into service and method
-        service, method = handler_call_details.method.lstrip('/').split('/', 1)
-
         # standard attributes
         attributes = {
-            "rpc.method": method,
-            "rpc.service": service,
             "rpc.system": "grpc",
             "rpc.grpc.status_code": grpc.StatusCode.OK.value[0],
         }
+
+        # if we have details about the call, split into service and method
+        if handler_call_details.method:
+            service, method = handler_call_details.method.lstrip('/').split('/', 1)
+            attributes.update({
+                "rpc.method": method,
+                "rpc.service": service,
+            })
+
 
         metadata = dict(context.invocation_metadata())
         if "user-agent" in metadata:
