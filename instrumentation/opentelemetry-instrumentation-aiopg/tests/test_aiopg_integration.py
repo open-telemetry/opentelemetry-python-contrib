@@ -79,6 +79,38 @@ class TestAiopgInstrumentor(TestBase):
         spans_list = self.memory_exporter.get_finished_spans()
         self.assertEqual(len(spans_list), 1)
 
+    def test_instrumentor_connect_ctx_manager(self):
+        async def ctx_manager():
+            AiopgInstrumentor().instrument()
+
+            async with aiopg.connect(database="test") as cnx:
+
+                cursor = async_call(cnx.cursor())
+
+                query = "SELECT * FROM test"
+                async_call(cursor.execute(query))
+
+                spans_list = self.memory_exporter.get_finished_spans()
+                self.assertEqual(len(spans_list), 1)
+                span = spans_list[0]
+
+                # Check version and name in span's instrumentation info
+                self.check_span_instrumentation_info(
+                    span, opentelemetry.instrumentation.aiopg
+                )
+
+                # check that no spans are generated after uninstrument
+                AiopgInstrumentor().uninstrument()
+
+                cnx = async_call(aiopg.connect(database="test"))
+                cursor = async_call(cnx.cursor())
+                query = "SELECT * FROM test"
+                async_call(cursor.execute(query))
+
+                spans_list = self.memory_exporter.get_finished_spans()
+                self.assertEqual(len(spans_list), 1)
+        async_call(ctx_manager())
+
     def test_instrumentor_create_pool(self):
         AiopgInstrumentor().instrument()
 
