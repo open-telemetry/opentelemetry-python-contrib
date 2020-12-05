@@ -146,13 +146,13 @@ class OpenTelemetryMiddleware:
             Optional: Defaults to get_default_span_details.
     """
 
-    def __init__(self, app, exluded_urls, span_details_callback=None):
+    def __init__(self, app, exluded_urls=None, span_details_callback=None):
         self.app = guarantee_single_callable(app)
         self.tracer = trace.get_tracer(__name__, __version__)
         self.span_details_callback = (
             span_details_callback or get_default_span_details
         )
-        self._excluded_urls = exluded_urls
+        self.excluded_urls = exluded_urls
 
     async def __call__(self, scope, receive, send):
         """The ASGI application
@@ -165,7 +165,9 @@ class OpenTelemetryMiddleware:
         if scope["type"] not in ("http", "websocket"):
             return await self.app(scope, receive, send)
 
-        if self._excluded_urls.url_disabled(scope["path"]):
+        if self.excluded_urls and self.excluded_urls.url_disabled(
+            scope["path"]
+        ):
             return await self.app(scope, receive, send)
 
         token = context.attach(propagators.extract(carrier_getter, scope))
