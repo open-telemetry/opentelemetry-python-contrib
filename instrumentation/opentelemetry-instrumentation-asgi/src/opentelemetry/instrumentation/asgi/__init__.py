@@ -59,11 +59,7 @@ carrier_getter = CarrierGetter()
 def collect_request_attributes(scope):
     """Collects HTTP request attributes from the ASGI scope and returns a
     dictionary to be used as span creation attributes."""
-    server = scope.get("server") or ["0.0.0.0", 80]
-    port = server[1]
-    server_host = server[0] + (":" + str(port) if port != 80 else "")
-    full_path = scope.get("root_path", "") + scope.get("path", "")
-    http_url = scope.get("scheme", "http") + "://" + server_host + full_path
+    server_host, port, http_url = get_host_port_url_tuple(scope)
     query_string = scope.get("query_string")
     if query_string and http_url:
         if isinstance(query_string, bytes):
@@ -97,6 +93,17 @@ def collect_request_attributes(scope):
     result = {k: v for k, v in result.items() if v is not None}
 
     return result
+
+
+def get_host_port_url_tuple(scope):
+    """Returns (host, port, full_url) tuple.
+    """
+    server = scope.get("server") or ["0.0.0.0", 80]
+    port = server[1]
+    server_host = server[0] + (":" + str(port) if port != 80 else "")
+    full_path = scope.get("root_path", "") + scope.get("path", "")
+    http_url = scope.get("scheme", "http") + "://" + server_host + full_path
+    return server_host, port, http_url
 
 
 def set_status_code(span, status_code):
@@ -165,9 +172,8 @@ class OpenTelemetryMiddleware:
         if scope["type"] not in ("http", "websocket"):
             return await self.app(scope, receive, send)
 
-        if self.excluded_urls and self.excluded_urls.url_disabled(
-            scope["path"]
-        ):
+        _, _, url = get_host_port_url_tuple(scope)
+        if self.excluded_urls and self.excluded_urls.url_disabled(url):
             return await self.app(scope, receive, send)
 
         token = context.attach(propagators.extract(carrier_getter, scope))
