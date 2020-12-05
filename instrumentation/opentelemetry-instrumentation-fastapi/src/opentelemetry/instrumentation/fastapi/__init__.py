@@ -16,10 +16,12 @@ from typing import Optional
 import fastapi
 from starlette.routing import Match
 
+from opentelemetry.configuration import Configuration
 from opentelemetry.instrumentation.asgi import OpenTelemetryMiddleware
 from opentelemetry.instrumentation.fastapi.version import __version__  # noqa
 from opentelemetry.instrumentation.instrumentor import BaseInstrumentor
 
+_excluded_urls = Configuration()._excluded_urls("fastapi")
 
 class FastAPIInstrumentor(BaseInstrumentor):
     """An instrumentor for FastAPI
@@ -36,6 +38,7 @@ class FastAPIInstrumentor(BaseInstrumentor):
         if not getattr(app, "is_instrumented_by_opentelemetry", False):
             app.add_middleware(
                 OpenTelemetryMiddleware,
+                exluded_urls=_excluded_urls,
                 span_details_callback=_get_route_details,
             )
             app.is_instrumented_by_opentelemetry = True
@@ -52,7 +55,9 @@ class _InstrumentedFastAPI(fastapi.FastAPI):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
         self.add_middleware(
-            OpenTelemetryMiddleware, span_details_callback=_get_route_details
+            OpenTelemetryMiddleware,
+            exluded_urls=_excluded_urls,
+            span_details_callback=_get_route_details,
         )
 
 
