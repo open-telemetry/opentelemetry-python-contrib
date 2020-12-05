@@ -22,6 +22,7 @@ import grpc
 
 import opentelemetry.instrumentation.grpc
 from opentelemetry import trace
+from opentelemetry.trace.status import StatusCode
 from opentelemetry.instrumentation.grpc import (
     GrpcInstrumentorServer,
     server_interceptor,
@@ -87,6 +88,8 @@ class TestOpenTelemetryServerInterceptor(TestBase):
 
         # Check attributes
         self.assert_span_has_attributes(span, {
+            'net.peer.ip': '[::1]',
+            'net.peer.name': 'localhost',
             'rpc.method': 'handler',
             'rpc.service': 'TestServicer',
             'rpc.system': 'grpc',
@@ -164,6 +167,8 @@ class TestOpenTelemetryServerInterceptor(TestBase):
 
         # Check attributes
         self.assert_span_has_attributes(span, {
+            'net.peer.ip': '[::1]',
+            'net.peer.name': 'localhost',
             'rpc.method': 'handler',
             'rpc.service': 'TestServicer',
             'rpc.system': 'grpc',
@@ -248,6 +253,8 @@ class TestOpenTelemetryServerInterceptor(TestBase):
 
             # check attributes
             self.assert_span_has_attributes(span, {
+                'net.peer.ip': '[::1]',
+                'net.peer.name': 'localhost',
                 'rpc.method': 'handler',
                 'rpc.service': 'TestServicer',
                 'rpc.system': 'grpc',
@@ -308,11 +315,72 @@ class TestOpenTelemetryServerInterceptor(TestBase):
 
             # check attributes
             self.assert_span_has_attributes(span, {
+                'net.peer.ip': '[::1]',
+                'net.peer.name': 'localhost',
                 'rpc.method': 'handler',
                 'rpc.service': 'TestServicer',
                 'rpc.system': 'grpc',
                 'rpc.grpc.status_code': grpc.StatusCode.OK.value[0],
             })
+
+
+    def test_abort(self):
+        """Check that we can catch an abort properly"""
+
+        # Intercept gRPC calls...
+        interceptor = server_interceptor()
+
+        # our detailed failure message
+        failure_message = "This is a test failure"
+
+        # aborting RPC handler
+        def handler(request, context):
+            context.abort(grpc.StatusCode.FAILED_PRECONDITION, failure_message)
+
+        server = grpc.server(
+            futures.ThreadPoolExecutor(max_workers=1),
+            options=(("grpc.so_reuseport", 0),),
+            interceptors=[interceptor],
+        )
+
+        server.add_generic_rpc_handlers((UnaryUnaryRpcHandler(handler),))
+
+        port = server.add_insecure_port("[::]:0")
+        channel = grpc.insecure_channel("localhost:{:d}".format(port))
+
+        rpc_call = "TestServicer/handler"
+
+        server.start()
+        # unfortunately, these are just bare exceptions in grpc...
+        with self.assertRaises(Exception):
+            channel.unary_unary(rpc_call)(b"")
+        server.stop(None)
+
+        spans_list = self.memory_exporter.get_finished_spans()
+        self.assertEqual(len(spans_list), 1)
+        span = spans_list[0]
+
+        self.assertEqual(span.name, rpc_call)
+        self.assertIs(span.kind, trace.SpanKind.SERVER)
+
+        # Check version and name in span's instrumentation info
+        self.check_span_instrumentation_info(
+            span, opentelemetry.instrumentation.grpc
+        )
+
+        # make sure this span errored, with the right status and detail
+        self.assertEqual(span.status.status_code, StatusCode.ERROR)
+        self.assertEqual(span.status.description, failure_message)
+
+        # Check attributes
+        self.assert_span_has_attributes(span, {
+            'net.peer.ip': '[::1]',
+            'net.peer.name': 'localhost',
+            'rpc.method': 'handler',
+            'rpc.service': 'TestServicer',
+            'rpc.system': 'grpc',
+            'rpc.grpc.status_code': grpc.StatusCode.FAILED_PRECONDITION.value[0],
+        })
 
 
 def get_latch(num):

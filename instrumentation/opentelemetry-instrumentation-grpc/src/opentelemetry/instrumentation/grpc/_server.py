@@ -197,7 +197,7 @@ class OpenTelemetryServerInterceptor(grpc.ServerInterceptor):
                 "rpc.service": service,
             })
 
-
+        # add some attributes from the metadata
         metadata = dict(context.invocation_metadata())
         if "user-agent" in metadata:
             attributes["rpc.user_agent"] = metadata["user-agent"]
@@ -209,15 +209,15 @@ class OpenTelemetryServerInterceptor(grpc.ServerInterceptor):
         # * ipv4:10.2.1.1:57284,127.0.0.1:57284
         #
         try:
-            host, port = (
+            ip, port = (
                 context.peer().split(",")[0].split(":", 1)[1].rsplit(":", 1)
             )
+            attributes.update({"net.peer.ip": ip, "net.peer.port": port})
 
-            # other telemetry sources convert this, so we will too
-            if host in ("[::1]", "127.0.0.1"):
-                host = "localhost"
+            # other telemetry sources add this, so we will too
+            if ip in ("[::1]", "127.0.0.1"):
+                attributes["net.peer.name"] = "localhost"
 
-            attributes.update({"net.peer.name": host, "net.peer.port": port})
         except IndexError:
             logger.warning("Failed to parse peer address '%s'", context.peer())
 
