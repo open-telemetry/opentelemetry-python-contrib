@@ -22,13 +22,13 @@ import grpc
 
 import opentelemetry.instrumentation.grpc
 from opentelemetry import trace
-from opentelemetry.trace.status import StatusCode
 from opentelemetry.instrumentation.grpc import (
     GrpcInstrumentorServer,
     server_interceptor,
 )
 from opentelemetry.sdk import trace as trace_sdk
 from opentelemetry.test.test_base import TestBase
+from opentelemetry.trace.status import StatusCode
 
 
 class UnaryUnaryMethodHandler(grpc.RpcMethodHandler):
