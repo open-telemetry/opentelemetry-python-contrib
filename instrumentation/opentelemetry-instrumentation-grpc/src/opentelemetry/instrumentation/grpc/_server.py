@@ -191,11 +191,12 @@ class OpenTelemetryServerInterceptor(grpc.ServerInterceptor):
 
         # if we have details about the call, split into service and method
         if handler_call_details.method:
-            service, method = handler_call_details.method.lstrip('/').split('/', 1)
-            attributes.update({
-                "rpc.method": method,
-                "rpc.service": service,
-            })
+            service, method = handler_call_details.method.lstrip("/").split(
+                "/", 1
+            )
+            attributes.update(
+                {"rpc.method": method, "rpc.service": service}
+            )
 
         # add some attributes from the metadata
         metadata = dict(context.invocation_metadata())

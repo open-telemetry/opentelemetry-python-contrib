@@ -87,14 +87,17 @@ class TestOpenTelemetryServerInterceptor(TestBase):
         )
 
         # Check attributes
-        self.assert_span_has_attributes(span, {
-            'net.peer.ip': '[::1]',
-            'net.peer.name': 'localhost',
-            'rpc.method': 'handler',
-            'rpc.service': 'TestServicer',
-            'rpc.system': 'grpc',
-            'rpc.grpc.status_code': grpc.StatusCode.OK.value[0],
-        })
+        self.assert_span_has_attributes(
+            span,
+            {
+                "net.peer.ip": "[::1]",
+                "net.peer.name": "localhost",
+                "rpc.method": "handler",
+                "rpc.service": "TestServicer",
+                "rpc.system": "grpc",
+                "rpc.grpc.status_code": grpc.StatusCode.OK.value[0],
+            },
+        )
 
         grpc_server_instrumentor.uninstrument()
 
@@ -166,14 +169,17 @@ class TestOpenTelemetryServerInterceptor(TestBase):
         )
 
         # Check attributes
-        self.assert_span_has_attributes(span, {
-            'net.peer.ip': '[::1]',
-            'net.peer.name': 'localhost',
-            'rpc.method': 'handler',
-            'rpc.service': 'TestServicer',
-            'rpc.system': 'grpc',
-            'rpc.grpc.status_code': grpc.StatusCode.OK.value[0],
-        })
+        self.assert_span_has_attributes(
+            span,
+            {
+                "net.peer.ip": "[::1]",
+                "net.peer.name": "localhost",
+                "rpc.method": "handler",
+                "rpc.service": "TestServicer",
+                "rpc.system": "grpc",
+                "rpc.grpc.status_code": grpc.StatusCode.OK.value[0],
+            },
+        )
 
     def test_span_lifetime(self):
         """Check that the span is active for the duration of the call."""
@@ -252,14 +258,17 @@ class TestOpenTelemetryServerInterceptor(TestBase):
             self.assertIsNone(span2.parent)
 
             # check attributes
-            self.assert_span_has_attributes(span, {
-                'net.peer.ip': '[::1]',
-                'net.peer.name': 'localhost',
-                'rpc.method': 'handler',
-                'rpc.service': 'TestServicer',
-                'rpc.system': 'grpc',
-                'rpc.grpc.status_code': grpc.StatusCode.OK.value[0],
-            })
+            self.assert_span_has_attributes(
+                span,
+                {
+                    "net.peer.ip": "[::1]",
+                    "net.peer.name": "localhost",
+                    "rpc.method": "handler",
+                    "rpc.service": "TestServicer",
+                    "rpc.system": "grpc",
+                    "rpc.grpc.status_code": grpc.StatusCode.OK.value[0],
+                },
+            )
 
     def test_concurrent_server_spans(self):
         """Check that concurrent RPC calls don't interfere with each other.
@@ -296,8 +305,12 @@ class TestOpenTelemetryServerInterceptor(TestBase):
             # Interleave calls so spans are active on each thread at the same
             # time
             with futures.ThreadPoolExecutor(max_workers=2) as tpe:
-                f1 = tpe.submit(channel.unary_unary("TestServicer/handler"), b"")
-                f2 = tpe.submit(channel.unary_unary("TestServicer/handler"), b"")
+                f1 = tpe.submit(
+                    channel.unary_unary("TestServicer/handler"), b""
+                )
+                f2 = tpe.submit(
+                    channel.unary_unary("TestServicer/handler"), b""
+                )
             futures.wait((f1, f2))
         finally:
             server.stop(None)
@@ -314,15 +327,17 @@ class TestOpenTelemetryServerInterceptor(TestBase):
             self.assertIsNone(span2.parent)
 
             # check attributes
-            self.assert_span_has_attributes(span, {
-                'net.peer.ip': '[::1]',
-                'net.peer.name': 'localhost',
-                'rpc.method': 'handler',
-                'rpc.service': 'TestServicer',
-                'rpc.system': 'grpc',
-                'rpc.grpc.status_code': grpc.StatusCode.OK.value[0],
-            })
-
+            self.assert_span_has_attributes(
+                span,
+                {
+                    "net.peer.ip": "[::1]",
+                    "net.peer.name": "localhost",
+                    "rpc.method": "handler",
+                    "rpc.service": "TestServicer",
+                    "rpc.system": "grpc",
+                    "rpc.grpc.status_code": grpc.StatusCode.OK.value[0],
+                },
+            )
 
     def test_abort(self):
         """Check that we can catch an abort properly"""
@@ -373,14 +388,19 @@ class TestOpenTelemetryServerInterceptor(TestBase):
         self.assertEqual(span.status.description, failure_message)
 
         # Check attributes
-        self.assert_span_has_attributes(span, {
-            'net.peer.ip': '[::1]',
-            'net.peer.name': 'localhost',
-            'rpc.method': 'handler',
-            'rpc.service': 'TestServicer',
-            'rpc.system': 'grpc',
-            'rpc.grpc.status_code': grpc.StatusCode.FAILED_PRECONDITION.value[0],
-        })
+        self.assert_span_has_attributes(
+            span,
+            {
+                "net.peer.ip": "[::1]",
+                "net.peer.name": "localhost",
+                "rpc.method": "handler",
+                "rpc.service": "TestServicer",
+                "rpc.system": "grpc",
+                "rpc.grpc.status_code": grpc.StatusCode.FAILED_PRECONDITION.value[
+                    0
+                ],
+            },
+        )
 
 
 def get_latch(num):
