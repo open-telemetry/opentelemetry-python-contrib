@@ -21,7 +21,7 @@ from opentelemetry.instrumentation.asgi import OpenTelemetryMiddleware
 from opentelemetry.instrumentation.instrumentor import BaseInstrumentor
 from opentelemetry.instrumentation.starlette.version import __version__  # noqa
 
-_excluded_urls = Configuration()._excluded_urls("fastapi")
+_excluded_urls = Configuration()._excluded_urls("starlette")
 
 
 class StarletteInstrumentor(BaseInstrumentor):
