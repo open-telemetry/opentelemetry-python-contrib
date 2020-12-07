@@ -45,7 +45,7 @@ class CarrierGetter(DictGetter):
             key: header name in scope
         Returns:
             A list with a single string with the header value if it exists,
-             else None.
+                else None.
         """
         headers = carrier.get("headers")
         decoded = [
