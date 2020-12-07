@@ -11,6 +11,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   ([#226](https://github.com/open-telemetry/opentelemetry-python/pull/226))
 - `opentelemetry-sdk-extension-aws` Add method to return fields injected by propagator
   ([#226](https://github.com/open-telemetry/opentelemetry-python/pull/226))
+- `opentelemetry-exporter-prometheus-remote-write` Prometheus Remote Write Exporter Setup
+  ((#180)[https://github.com/open-telemetry/opentelemetry-python-contrib/pull/180])
+- `opentelemetry-exporter-prometheus-remote-write` Add Exporter constructor validation methods
+  ((#206)[https://github.com/open-telemetry/opentelemetry-python-contrib/pull/206])
+- `opentelemetry-exporter-prometheus-remote-write` Add conversion to TimeSeries methods
+  ((#207)[https://github.com/open-telemetry/opentelemetry-python-contrib/pull/207])
 
 ## [0.16b1](https://github.com/open-telemetry/opentelemetry-python-contrib/releases/tag/v0.16b1) - 2020-11-26
 
@@ -51,7 +57,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   ([#195](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/195))
 - `opentelemetry-instrumentation-dbapi` Stop capturing query parameters by default
   ([#156](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/156))
-
+- `opentelemetry-instrumentation-asyncpg` Update asyncpg instrumentation to follow semantic conventions
+  ([#188](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/188))
+- `opentelemetry-instrumentation-grpc` Update protobuf versions
+  ([#1356](https://github.com/open-telemetry/opentelemetry-python/pull/1356))
 
 ## [0.15b0](https://github.com/open-telemetry/opentelemetry-python-contrib/releases/tag/v0.15b0) - 2020-11-02
 
@@ -74,6 +83,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   ([#1309](https://github.com/open-telemetry/opentelemetry-python/pull/1309#))
 - `opentelemetry-instrumentation-django` Record span status and http.status_code attribute on exception 
   ([#1257](https://github.com/open-telemetry/opentelemetry-python/pull/1257))
+- `opentelemetry-instrumentation-grpc` Rewrite gRPC server interceptor
+  ([#1171](https://github.com/open-telemetry/opentelemetry-python/pull/1171))
 
 ## [0.14b0](https://github.com/open-telemetry/opentelemetry-python/releases/tag/v0.14b0) - 2020-10-13
 
@@ -171,7 +182,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   cardinality ([#972](https://github.com/open-telemetry/opentelemetry-python/pull/972))
 - `opentelemetry-ext-botocore` Change package name to opentelemetry-instrumentation-botocore
   ([#969](https://github.com/open-telemetry/opentelemetry-python/pull/969))
-- `opentelemetry-instrumentation-dbapi` Change package name to opentelemetry-instrumentation-dbapi
+- `opentelemetry-ext-dbapi` Change package name to opentelemetry-instrumentation-dbapi
   ([#966](https://github.com/open-telemetry/opentelemetry-python/pull/966))
 - `opentelemetry-ext-flask` Change package name to opentelemetry-instrumentation-flask
   ([#961](https://github.com/open-telemetry/opentelemetry-python/pull/961))
@@ -181,6 +192,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   ([#961](https://github.com/open-telemetry/opentelemetry-python/pull/961))
 - `opentelemetry-ext-django` Update environment variable names, prefix changed from `OPENTELEMETRY` to `OTEL`
   ([#904](https://github.com/open-telemetry/opentelemetry-python/pull/904))
+- `opentelemetry-ext-asyncpg` Change package name to opentelemetry-instrumentation-asyncpg
+  ([#966](https://github.com/open-telemetry/opentelemetry-python/pull/966))
+- `opentelemetry-ext-mysql` Change package name to opentelemetry-instrumentation-mysql
+  ([#966](https://github.com/open-telemetry/opentelemetry-python/pull/966))
+- `opentelemetry-ext-grpc` Change package name to opentelemetry-instrumentation-grpc
+  ([#969](https://github.com/open-telemetry/opentelemetry-python/pull/969))
 
 ## [0.11b0](https://github.com/open-telemetry/opentelemetry-python/releases/tag/v0.11.0) - 2020-07-28
 
@@ -188,6 +205,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - `opentelemetry-instrumentation-aiopg` Initial release
 - `opentelemetry-instrumentation-fastapi` Initial release
   ([#890](https://github.com/open-telemetry/opentelemetry-python/pull/890))
+- `opentelemetry-ext-grpc` Add status code to gRPC client spans
+  ([896](https://github.com/open-telemetry/opentelemetry-python/pull/896))
+- `opentelemetry-ext-grpc` Add gRPC client and server instrumentors
+  ([788](https://github.com/open-telemetry/opentelemetry-python/pull/788))
+- `opentelemetry-ext-grpc` Add metric recording (bytes in/out, errors, latency) to gRPC client
 
 ### Changed
 - `opentelemetry-ext-pyramid` Use one general exclude list instead of two
@@ -202,6 +224,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   ([#872](https://github.com/open-telemetry/opentelemetry-python/pull/872))
 - `opentelemetry-ext-django` Use one general exclude list instead of two
   ([#872](https://github.com/open-telemetry/opentelemetry-python/pull/872))
+- `opentelemetry-ext-asyncpg` Shouldn't capture query parameters by default
+  ([#854](https://github.com/open-telemetry/opentelemetry-python/pull/854))
+- `opentelemetry-ext-mysql` bugfix: Fix auto-instrumentation entry point for mysql
+  ([#858](https://github.com/open-telemetry/opentelemetry-python/pull/858))
 
 ## [0.10b0](https://github.com/open-telemetry/opentelemetry-python/releases/tag/v0.10.0) - 2020-06-23
 
@@ -212,6 +238,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   ([#780](https://github.com/open-telemetry/opentelemetry-python/pull/780))
 - `opentelemetry-instrumentation-starlette` Initial release
   ([#777](https://github.com/open-telemetry/opentelemetry-python/pull/777))
+- `opentelemetry-ext-asyncpg` Initial Release
+  ([#814](https://github.com/open-telemetry/opentelemetry-python/pull/814))
 
 ## [0.9b0](https://github.com/open-telemetry/opentelemetry-python/releases/tag/v0.9.0) - 2020-06-10
 
@@ -236,6 +264,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   ([#670](https://github.com/open-telemetry/opentelemetry-python/pull/670))
 - `opentelemetry-ext-django` Add support for django >= 1.10 (#717)
 
+### Changed
+- `opentelemetry-ext-grpc` lint: version of grpc causes lint issues
+  ([#696](https://github.com/open-telemetry/opentelemetry-python/pull/696))
+
 ## [0.7b1](https://github.com/open-telemetry/opentelemetry-python/releases/tag/v0.7.1) - 2020-05-12
 
 ### Added
@@ -253,11 +285,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   ([#573](https://github.com/open-telemetry/opentelemetry-python/pull/573))
 - `opentelemetry-ext-http-requests` Add a callback for custom attributes
   ([#656](https://github.com/open-telemetry/opentelemetry-python/pull/656))
-- `opentelemetry-instrumentation-dbapi` Implement instrument_connection and uninstrument_connection
+- `opentelemetry-ext-dbapi` Implement instrument_connection and uninstrument_connection
   ([#624](https://github.com/open-telemetry/opentelemetry-python/pull/624))
 - `opentelemetry-ext-flask` Add exclude list for paths and hosts
   ([#630](https://github.com/open-telemetry/opentelemetry-python/pull/630))
 - `opentelemetry-ext-django` Initial release
+- `opentelemetry-ext-mysql` Implement instrumentor interface
+  ([#654](https://github.com/open-telemetry/opentelemetry-python/pull/654))
 
 ### Changed
 - `opentelemetry-ext-http-requests` Rename package to opentelemetry-ext-requests
@@ -268,6 +302,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Added
 - `opentelemetry-ext-flask` Add an entry_point to be usable in auto-instrumentation
   ([#327](https://github.com/open-telemetry/opentelemetry-python/pull/327))
+- `opentelemetry-ext-grpc` Add gRPC integration
+  ([#476](https://github.com/open-telemetry/opentelemetry-python/pull/476))
 
 ## [0.5b0](https://github.com/open-telemetry/opentelemetry-python/releases/tag/v0.5.0) - 2020-03-16
 
@@ -275,7 +311,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 - `opentelemetry-ext-psycopg2` Initial release
-- `opentelemetry-instrumentation-dbapi` Initial release
+- `opentelemetry-ext-dbapi` Initial release
+- `opentelemetry-ext-mysql` Initial release
 
 ### Changed
 - `opentelemetry-ext-pymongo` Updating network connection attribute names
