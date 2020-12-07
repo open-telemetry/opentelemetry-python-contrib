@@ -385,7 +385,12 @@ class TestOpenTelemetryServerInterceptor(TestBase):
 
         # make sure this span errored, with the right status and detail
         self.assertEqual(span.status.status_code, StatusCode.ERROR)
-        self.assertEqual(span.status.description, failure_message)
+        self.assertEqual(
+            span.status.description,
+            "{}:{}".format(
+                grpc.StatusCode.FAILED_PRECONDITION, failure_message
+            ),
+        )
 
         # Check attributes
         self.assert_span_has_attributes(
