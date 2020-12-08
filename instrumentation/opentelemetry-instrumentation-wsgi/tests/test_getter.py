@@ -24,7 +24,7 @@ class TestCarrierGetter(TestCase):
 
     def test_get_(self):
         getter = CarrierGetter()
-        carrier = {"HTTP_TEST_KEY":"val"}
+        carrier = {"HTTP_TEST_KEY": "val"}
         val = getter.get(carrier, "test-key")
         self.assertEqual(val, ["val"])
 
