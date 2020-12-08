@@ -15,6 +15,7 @@
 from unittest import mock, TestCase
 from opentelemetry.instrumentation.wsgi import CarrierGetter
 
+
 class TestCarrierGetter(TestCase):
     def test_get_none(self):
         getter = CarrierGetter()
