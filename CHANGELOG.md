@@ -18,6 +18,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - `opentelemetry-exporter-prometheus-remote-write` Add conversion to TimeSeries methods
   ((#207)[https://github.com/open-telemetry/opentelemetry-python-contrib/pull/207])
 
+### Changed
+- `opentelemetry-instrumentation-asgi`, `opentelemetry-instrumentation-wsgi` Return `None` for `CarrierGetter` if key not found
+  ([#1374](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/233))
+
 ## [0.16b1](https://github.com/open-telemetry/opentelemetry-python-contrib/releases/tag/v0.16b1) - 2020-11-26
 
 ## [0.16b0](https://github.com/open-telemetry/opentelemetry-python-contrib/releases/tag/v0.16b0) - 2020-11-25
