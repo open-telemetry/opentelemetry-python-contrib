@@ -17,6 +17,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   ((#206)[https://github.com/open-telemetry/opentelemetry-python-contrib/pull/206])
 - `opentelemetry-exporter-prometheus-remote-write` Add conversion to TimeSeries methods
   ((#207)[https://github.com/open-telemetry/opentelemetry-python-contrib/pull/207])
+- `opentelemetry-exporter-prometheus-remote-write` Add request methods
+  ((#212)[https://github.com/open-telemetry/opentelemetry-python-contrib/pull/212])
+- `opentelemetry-instrumentation-fastapi` Added support for excluding some routes with env var `OTEL_PYTHON_FASTAPI_EXCLUDED_URLS`
+  ([#237](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/237))
+- `opentelemetry-instrumentation-starlette` Added support for excluding some routes with env var `OTEL_PYTHON_STARLETTE_EXCLUDED_URLS`
+  ([#237](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/237))
+
 
 ### Changed
 - `opentelemetry-instrumentation-asgi`, `opentelemetry-instrumentation-wsgi` Return `None` for `CarrierGetter` if key not found
