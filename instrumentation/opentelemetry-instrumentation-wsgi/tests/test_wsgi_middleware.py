@@ -230,7 +230,8 @@ class TestWsgiAttributes(unittest.TestCase):
         parts = urlsplit(expected_url)
         expected = {
             "http.scheme": parts.scheme,
-            "net.host.port": parts.port or (80 if parts.scheme == "http" else 443),
+            "net.host.port": parts.port
+            or (80 if parts.scheme == "http" else 443),
             "http.server_name": parts.hostname,  # Not true in the general case, but for all tests.
         }
         if raw:
