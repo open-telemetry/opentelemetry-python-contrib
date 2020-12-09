@@ -12,19 +12,19 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - `opentelemetry-sdk-extension-aws` Add method to return fields injected by propagator
   ([#226](https://github.com/open-telemetry/opentelemetry-python/pull/226))
 - `opentelemetry-exporter-prometheus-remote-write` Prometheus Remote Write Exporter Setup
-  ((#180)[https://github.com/open-telemetry/opentelemetry-python-contrib/pull/180])
-- `opentelemetry-exporter-prometheus-remote-write` Add Exporter constructor validation methods
-  ((#206)[https://github.com/open-telemetry/opentelemetry-python-contrib/pull/206])
-- `opentelemetry-exporter-prometheus-remote-write` Add conversion to TimeSeries methods
-  ((#207)[https://github.com/open-telemetry/opentelemetry-python-contrib/pull/207])
-- `opentelemetry-exporter-prometheus-remote-write` Add request methods
-  ((#212)[https://github.com/open-telemetry/opentelemetry-python-contrib/pull/212])
+  ([#180](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/180))
+- `opentelemetry-exporter-prometheus-remote-write` Add Exporter constructor validation methods in Prometheus Remote Write Exporter
+  ([#206](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/206))
+- `opentelemetry-exporter-prometheus-remote-write` Add conversion to TimeSeries methods in Prometheus Remote Write Exporter
+  ([#207](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/207))
+- `opentelemetry-exporter-prometheus-remote-write` Add request methods to Prometheus Remote Write Exporter
+  ([#212](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/212))
 - `opentelemetry-instrumentation-fastapi` Added support for excluding some routes with env var `OTEL_PYTHON_FASTAPI_EXCLUDED_URLS`
   ([#237](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/237))
 - `opentelemetry-instrumentation-starlette` Added support for excluding some routes with env var `OTEL_PYTHON_STARLETTE_EXCLUDED_URLS`
   ([#237](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/237))
 - Add Prometheus Remote Write Exporter integration tests in opentelemetry-docker-tests
-  ((#216)[https://github.com/open-telemetry/opentelemetry-python-contrib/pull/216])
+  ([#216](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/216))
 
 ### Changed
 - `opentelemetry-instrumentation-asgi`, `opentelemetry-instrumentation-wsgi` Return `None` for `CarrierGetter` if key not found
