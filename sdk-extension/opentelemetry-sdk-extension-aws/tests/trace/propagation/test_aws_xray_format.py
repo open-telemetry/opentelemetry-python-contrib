@@ -166,7 +166,7 @@ class AwsXRayPropagatorTest(unittest.TestCase):
         injected_keys = set(carrier.keys())
 
         self.assertEqual(
-            injected_keys, AwsXRayPropagatorTest.XRAY_PROPAGATOR.fields()
+            injected_keys, AwsXRayPropagatorTest.XRAY_PROPAGATOR.fields
         )
 
     # Extract Tests
