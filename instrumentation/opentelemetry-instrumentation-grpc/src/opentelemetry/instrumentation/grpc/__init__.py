@@ -185,6 +185,7 @@ class GrpcInstrumentorClient(BaseInstrumentor):
         grpc.client_instrumentor.instrument()
 
     """
+
     def _instrument(self, **kwargs):
         exporter = kwargs.get("exporter", None)
         interval = kwargs.get("interval", 30)
