@@ -309,8 +309,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Changed
 - `opentelemetry-ext-http-requests` Rename package to opentelemetry-ext-requests
   ([#619](https://github.com/open-telemetry/opentelemetry-python/pull/619))
-- - `opentelemetry-ext-http-requests` Rename package to opentelemetry-ext-requests
-    ([#619](https://github.com/open-telemetry/opentelemetry-python/pull/619))  
 
 ## [0.6b0](https://github.com/open-telemetry/opentelemetry-python/releases/tag/v0.6.0) - 2020-03-30
 
