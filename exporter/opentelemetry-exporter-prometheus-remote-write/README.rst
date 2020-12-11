@@ -1,14 +1,14 @@
-OpenTelemetry Python SDK Prometheus Remote Write Exporter
+OpenTelemetry Prometheus Remote Write Exporter
 =========================================================
 
 This package contains an exporter to send `OTLP`_ metrics from the
-Python SDK directly to a Prometheus Remote Write integrated backend
+`OpenTelemetry Python SDK`_ directly to a `Prometheus Remote Write integrated backend`_
 (such as Cortex or Thanos) without having to run an instance of the
-Prometheus server. The image below shows the two Prometheus exporters in
-the OpenTelemetry Python SDK.
+Prometheus server. The latest `types.proto`_ and `remote.proto`_
+protocol buffers are used to create the WriteRequest. The image below shows the
+two Prometheus exporters in the OpenTelemetry Python SDK.
 
-Pipeline 1 illustrates the setup required for a Prometheus "pull"
-exporter.
+Pipeline 1 illustrates the setup required for a `Prometheus "pull" exporter`_.
 
 Pipeline 2 illustrates the setup required for the Prometheus Remote
 Write exporter.
@@ -24,7 +24,7 @@ collection datapath is shown below:
 
 |controller_datapath_final|
 
-See the ``example`` folder for a demo usage of this exporter
+See the ``examples`` folder for a demo usage of this exporter
 
 Table of Contents
 =================
@@ -55,6 +55,7 @@ Prerequisite
     **DEB**: `sudo apt-get install libsnappy-dev`
     **RPM**: `sudo yum install libsnappy-devel`
     **OSX/Brew**: `brew install snappy`
+    **Windows**: `pip install python_snappy-0.5-cp36-cp36m-win_amd64.whl`
 2. Install python-snappy
     `pip install python-snappy`
 
@@ -63,9 +64,7 @@ Exporter
 
 -  To install from the latest PyPi release, run
    ``pip install opentelemetry-exporter-prometheus-remote-write``
--  To install from the local repository, run
-   ``pip install -e exporter/opentelemetry-exporter-prometheus-remote-write/``
-   in the project root
+
 
 Quickstart
 ----------
@@ -186,8 +185,8 @@ for failed requests where any error status code is logged as a warning
 instead.
 
 This is because the exporter does not implement any retry logic as it
-sends cumulative metrics data. This means that data will be preserved
-even if some exports fail.
+sends cumulative metrics data. This means that in the long-term data will be preserved
+even if failed exports are dropped in the interim.
 
 For example, consider a situation where a user increments a Counter
 instrument 5 times and an export happens between each increment. If the
@@ -198,20 +197,16 @@ exports happen like so:
    SUCCESS FAIL FAIL SUCCESS SUCCESS
    1       2    3    4       5
 
-Then the recieved data will be:
+Then the received data will be:
 
 ::
 
    1 4 5
 
-The end result is the same since the aggregations are cumulative
+The end result (metric value 5) is the same since the aggregations are cumulative
+
 Contributing
 ------------
-
-This exporter's datapath is as follows:
-
-|Exporter datapath| *Entites with ``*`` after their name are not actual
-classes but rather logical groupings of functions within the exporter.*
 
 If you would like to learn more about the exporter's structure and
 design decisions please view the design document below
@@ -224,10 +219,14 @@ Design Doc
 This document is stored elsewhere as it contains large images which will
 significantly increase the size of this repo.
 
-.. _Design Document: https://github.com/open-o11y/docs/tree/master/python-prometheus-remote-write
-.. |Exporter datapath| image:: https://user-images.githubusercontent.com/20804975/100285717-604c7280-2f3f-11eb-9b73-bdf70afce9dd.png
+.. _Design Document: https://github.com/open-o11y/docs/blob/master/python-prometheus-remote-write/design-doc.md
 .. _OTLP: https://github.com/open-telemetry/opentelemetry-specification/blob/master/specification/protocol/otlp.md
-.. _push controller: https://github.com/open-telemetry/opentelemetry-python/blob/master/opentelemetry-sdk/src/opentelemetry/sdk/metrics/export/controller.py
+.. _OpenTelemetry Python SDK: https://github.com/open-telemetry/opentelemetry-python
+.. _Prometheus "pull" exporter: https://github.com/open-telemetry/opentelemetry-python/tree/master/exporter/opentelemetry-exporter-prometheus
+.. _Prometheus Remote Write integrated backend: https://prometheus.io/docs/operating/integrations/
+.. _types.proto: https://github.com/prometheus/prometheus/blob/master/prompb/types.proto
+.. _remote.proto: https://github.com/prometheus/prometheus/blob/master/prompb/remote.proto
+.. _push controller: https://github.com/open-telemetry/opentelemetry-python/blob/master/opentelemetry-sdk/src/opentelemetry/sdk/metrics/export/controller.py#L22
 .. _`timeseries`: https://prometheus.io/docs/concepts/data_model/
 .. _Summary: #opentelemetry-python-sdk-prometheus-remote-write-exporter
 .. _Table of Contents: #table-of-contents
