@@ -117,8 +117,8 @@ class RequestsIntegrationTestBase(abc.ABC):
         )
 
         self.assertIsNotNone(URLLibInstrumentor().meter)
-        self.assertEqual(len(URLLibInstrumentor().meter.metrics), 1)
-        recorder = URLLibInstrumentor().meter.metrics.pop()
+        self.assertEqual(len(URLLibInstrumentor().meter.instruments), 1)
+        recorder = list(URLLibInstrumentor().meter.instruments.values())[0]
         match_key = get_dict_as_key(
             {
                 "http.flavor": "1.1",
@@ -327,8 +327,8 @@ class RequestsIntegrationTestBase(abc.ABC):
         )
         self.assertEqual(span.status.status_code, StatusCode.ERROR)
         self.assertIsNotNone(URLLibInstrumentor().meter)
-        self.assertEqual(len(URLLibInstrumentor().meter.metrics), 1)
-        recorder = URLLibInstrumentor().meter.metrics.pop()
+        self.assertEqual(len(URLLibInstrumentor().meter.instruments), 1)
+        recorder = list(URLLibInstrumentor().meter.instruments.values())[0]
         match_key = get_dict_as_key(
             {
                 "http.method": "GET",
