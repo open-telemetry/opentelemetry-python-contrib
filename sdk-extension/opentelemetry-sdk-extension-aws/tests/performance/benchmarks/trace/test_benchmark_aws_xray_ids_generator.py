@@ -12,4 +12,14 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-__version__ = "0.17.dev0"
+from opentelemetry.sdk.extension.aws.trace import AwsXRayIdsGenerator
+
+ids_generator = AwsXRayIdsGenerator()
+
+
+def test_generate_xray_trace_id(benchmark):
+    benchmark(ids_generator.generate_trace_id)
+
+
+def test_generate_xray_span_id(benchmark):
+    benchmark(ids_generator.generate_span_id)
