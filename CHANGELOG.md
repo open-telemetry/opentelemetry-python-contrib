@@ -21,8 +21,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   ([#212](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/212))
 - `opentelemetry-instrumentation-fastapi` Added support for excluding some routes with env var `OTEL_PYTHON_FASTAPI_EXCLUDED_URLS`
   ([#237](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/237))
-- `opentelemetry-instrumentation-flask` Do not emit a warning message for request contexts created with `app.test_request_context` or manually.
-  ([#253](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/253))
 - `opentelemetry-instrumentation-starlette` Added support for excluding some routes with env var `OTEL_PYTHON_STARLETTE_EXCLUDED_URLS`
   ([#237](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/237))
 - Add Prometheus Remote Write Exporter integration tests in opentelemetry-docker-tests
@@ -37,6 +35,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   ([#236](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/236))
 - `opentelemetry-instrumentation-asgi`, `opentelemetry-instrumentation-falcon`, `opentelemetry-instrumentation-flask`, `opentelemetry-instrumentation-pyramid`, `opentelemetry-instrumentation-wsgi` Renamed `host.port` attribute to `net.host.port`
   ([#242](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/242))  
+- `opentelemetry-instrumentation-flask` Do not emit a warning message for request contexts created with `app.test_request_context`
+  ([#253](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/253))
 
 ## [0.16b1](https://github.com/open-telemetry/opentelemetry-python-contrib/releases/tag/v0.16b1) - 2020-11-26
 
