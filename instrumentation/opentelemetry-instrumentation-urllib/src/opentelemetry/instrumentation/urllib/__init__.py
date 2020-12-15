@@ -101,7 +101,7 @@ class URLLibInstrumentor(BaseInstrumentor, MetricMixin):
         _uninstrument_from(opener, restore_as_bound_func=True)
 
 
-def get_default_span_name(method, url):
+def get_default_span_name(method):
     """Default implementation for name_callback, returns HTTP {method_name}."""
     return "HTTP {}".format(method).strip()
 
