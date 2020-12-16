@@ -30,12 +30,11 @@ from opentelemetry.sdk import trace as trace_sdk
 from opentelemetry.test.test_base import TestBase
 from opentelemetry.trace.status import StatusCode
 
-
+from .protobuf.test_server_pb2 import Request, Response
 from .protobuf.test_server_pb2_grpc import (
     GRPCTestServerServicer,
     add_GRPCTestServerServicer_to_server,
 )
-from .protobuf.test_server_pb2 import Request, Response
 
 
 class UnaryUnaryMethodHandler(grpc.RpcMethodHandler):
