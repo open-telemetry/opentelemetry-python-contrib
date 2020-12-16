@@ -22,7 +22,6 @@ then converts the data into `timeseries`_ and sends it to the Remote
 Write integrated backend through HTTP POST requests. The metrics
 collection datapath is shown below:
 
-|controller_datapath_final|
 
 See the ``examples`` folder for a demo usage of this exporter
 
@@ -34,6 +33,7 @@ Table of Contents
 
    -  `Installation`_
    -  `Quickstart`_
+   -  `Examples`_
    -  `Configuring the Exporter`_
    -  `Securing the Exporter`_
 
@@ -51,10 +51,14 @@ Installation
 Prerequisite
 ~~~~~~~~~~~~
 1. Install the snappy c-library
-    **DEB**: `sudo apt-get install libsnappy-dev`
-    **RPM**: `sudo yum install libsnappy-devel`
-    **OSX/Brew**: `brew install snappy`
-    **Windows**: `pip install python_snappy-0.5-cp36-cp36m-win_amd64.whl`
+    **DEB**: ``sudo apt-get install libsnappy-dev``
+
+    **RPM**: ``sudo yum install libsnappy-devel``
+
+    **OSX/Brew**: ``brew install snappy``
+
+    **Windows**: ``pip install python_snappy-0.5-cp36-cp36m-win_amd64.whl``
+
 2. Install python-snappy
     `pip install python-snappy`
 
@@ -85,6 +89,68 @@ Quickstart
    exporter = PrometheusRemoteWriteMetricsExporter(endpoint="endpoint_here") # add other params as needed
 
    metrics.get_meter_provider().start_pipeline(meter, exporter, 5)
+
+
+Examples
+--------
+
+This example uses `Docker Compose`_ to set up:
+
+1. A Python program that creates 5 instruments with 5 unique aggregators
+   and a randomized load generator
+2. An instance of `Cortex`_ to recieve the metrics data
+3. An instance of `Grafana`_ to visualizse the exported data
+
+Requirements
+~~~~~~~~~~~~
+
+-  Have Docker Compose `installed`_
+
+*Users do not need to install Python as the app will be run in the
+Docker Container*
+
+Instructions
+~~~~~~~~~~~~
+
+1. Run ``docker-compose up -d`` in the the ``examples/`` directory
+
+The ``-d`` flag causes all services to run in detached mode and frees up
+your terminal session. This also causes no logs to show up. Users can
+attach themselves to the service’s logs manually using
+``docker logs ${CONTAINER_ID} --follow``
+
+2. Log into the Grafana instance at http://localhost:3000
+
+   -  login credentials are ``username: admin`` and ``password: admin``
+   -  There may be an additional screen on setting a new password. This
+      can be skipped and is optional
+
+3. Navigate to the ``Data Sources`` page
+
+   -  Look for a gear icon on the left sidebar and select
+      ``Data Sources``
+
+4. Add a new Prometheus Data Source
+
+   -  Use ``http://cortex:9009/api/prom`` as the URL
+   -  Set the scrape interval to ``2s`` to make updates
+      appear quickly **(Optional)**
+   -  click ``Save & Test``
+
+5. Go to ``Metrics Explore`` to query metrics
+
+   -  Look for a compass icon on the left sidebar
+   -  click ``Metrics`` for a dropdown list of all the available metrics
+   -  Adjust time range by clicking the ``Last 6 hours``
+      button on the upper right side of the graph **(Optional)**
+   -  Set up auto-refresh by selecting an option under the
+      dropdown next to the refresh button on the upper right side of the
+      graph **(Optional)**
+   -  Click the refresh button and data should show up on hte graph
+
+6. Shutdown the services when finished
+
+   -  Run ``docker-compose down`` in the examples directory
 
 Configuring the Exporter
 ------------------------
@@ -170,16 +236,23 @@ and key files in the ``tls_config`` parameter.
 Supported Aggregators
 ---------------------
 Behaviour of these aggregators is outlined in the `OpenTelemetry Specification <https://github.com/open-telemetry/opentelemetry-specification/blob/master/specification/metrics/api.md#aggregations>`_.
-
--  Sum
--  MinMaxSumCount
--  Histogram
--  LastValue
--  ValueObserver
-
 All aggregators are converted into the `timeseries`_ data format. However, method in
 which they are converted `differs <https://github.com/open-telemetry/opentelemetry-python-contrib/blob/master/exporter/opentelemetry-exporter-prometheus-remote-write/src/opentelemetry/exporter/prometheus_remote_write/__init__.py#L196>`_ from aggregator to aggregator. A
 map of the conversion methods can be found `here <https://github.com/open-telemetry/opentelemetry-python-contrib/blob/master/exporter/opentelemetry-exporter-prometheus-remote-write/src/opentelemetry/exporter/prometheus_remote_write/__init__.py#L75>`_.
+
++------------------------------+-------------------------------------+------------------------------------------------------------------------------------------------------------+
+| **OpenTelemetry Aggregator** | **Equivalent Prometheus Data Type** | **Behaviour**                                                                                              |
++------------------------------+-------------------------------------+------------------------------------------------------------------------------------------------------------+
+| Sum                          | Counter                             | Metric value can only go up or be reset to 0                                                               |
++------------------------------+-------------------------------------+------------------------------------------------------------------------------------------------------------+
+| MinMaxSumCount               | Gauge                               | Metric value can arbitrarily increment or decrement                                                        |
++------------------------------+-------------------------------------+------------------------------------------------------------------------------------------------------------+
+| Histogram                    | Histogram                           | Unlike the Prometheus histogram, the OpenTelemetry Histogram does not provide a sum of all observed values |
++------------------------------+-------------------------------------+------------------------------------------------------------------------------------------------------------+
+| LastValue                    | N/A                                 | Metric only contains the most recently observed value                                                      |
++------------------------------+-------------------------------------+------------------------------------------------------------------------------------------------------------+
+| ValueObserver                | N/A                                 | Similar to MinMaxSumCount but also contains LastValue                                                      |
++------------------------------+-------------------------------------+------------------------------------------------------------------------------------------------------------+
 
 
 Error Handling
@@ -225,6 +298,7 @@ significantly increase the size of this repo.
 .. _Table of Contents: #table-of-contents
 .. _Installation: #installation
 .. _Quickstart: #quickstart
+.. _Examples: #examples
 .. _Configuring the Exporter: #configuring-the-exporter
 .. _Securing the Exporter: #securing-the-exporter
 .. _Authentication: #authentication
@@ -234,7 +308,6 @@ significantly increase the size of this repo.
 .. _Contributing: #contributing
 .. _Design Doc: #design-doc
 .. |Prometheus SDK pipelines| image:: https://user-images.githubusercontent.com/20804975/100285430-e320fd80-2f3e-11eb-8217-a562c559153c.png
-.. |controller_datapath_final| image:: https://user-images.githubusercontent.com/20804975/100486582-79d1f380-30d2-11eb-8d17-d3e58e5c34e9.png
 .. _RFC 7617: https://tools.ietf.org/html/rfc7617
 .. _RFC 6750: https://tools.ietf.org/html/rfc6750
 .. _Design Document: https://github.com/open-o11y/docs/blob/master/python-prometheus-remote-write/design-doc.md
@@ -246,3 +319,7 @@ significantly increase the size of this repo.
 .. _remote.proto: https://github.com/prometheus/prometheus/blob/master/prompb/remote.proto
 .. _push controller: https://github.com/open-telemetry/opentelemetry-python/blob/master/opentelemetry-sdk/src/opentelemetry/sdk/metrics/export/controller.py#L22
 .. _timeseries: https://prometheus.io/docs/concepts/data_model/
+.. _Docker Compose: https://docs.docker.com/compose/
+.. _Cortex: https://cortexmetrics.io/
+.. _Grafana: https://grafana.com/
+.. _installed: https://docs.docker.com/compose/install/
