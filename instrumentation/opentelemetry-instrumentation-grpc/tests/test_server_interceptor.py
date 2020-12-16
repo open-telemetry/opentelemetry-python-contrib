@@ -267,7 +267,9 @@ class TestOpenTelemetryServerInterceptor(TestBase):
 
         # Check the child span
         self.assertEqual(child_span.name, "child")
-        self.assertEqual(parent_span.context.trace_id, child_span.context.trace_id)
+        self.assertEqual(
+            parent_span.context.trace_id, child_span.context.trace_id
+        )
 
     def test_create_span_streaming(self):
         """Check that the interceptor wraps calls with spans server-side, on a
@@ -389,7 +391,9 @@ class TestOpenTelemetryServerInterceptor(TestBase):
 
         # Check the child span
         self.assertEqual(child_span.name, "child")
-        self.assertEqual(parent_span.context.trace_id, child_span.context.trace_id)
+        self.assertEqual(
+            parent_span.context.trace_id, child_span.context.trace_id
+        )
 
     def test_span_lifetime(self):
         """Check that the span is active for the duration of the call."""
