@@ -42,7 +42,6 @@ Table of Contents
 
    -  `Supported Aggregators`_
    -  `Error Handling`_
-   -  `Retry Logic`_
    -  `Contributing`_
 
       -  `Design Doc`_
@@ -170,12 +169,18 @@ and key files in the ``tls_config`` parameter.
 
 Supported Aggregators
 ---------------------
+Behaviour of these aggregators is outlined in the `OpenTelemetry Specification <https://github.com/open-telemetry/opentelemetry-specification/blob/master/specification/metrics/api.md#aggregations>`_.
 
 -  Sum
 -  MinMaxSumCount
 -  Histogram
 -  LastValue
 -  ValueObserver
+
+All aggregators are converted into the `timeseries`_ data format. However, method in
+which they are converted `differs <https://github.com/open-telemetry/opentelemetry-python-contrib/blob/master/exporter/opentelemetry-exporter-prometheus-remote-write/src/opentelemetry/exporter/prometheus_remote_write/__init__.py#L196>`_ from aggregator to aggregator. A
+map of the conversion methods can be found `here <https://github.com/open-telemetry/opentelemetry-python-contrib/blob/master/exporter/opentelemetry-exporter-prometheus-remote-write/src/opentelemetry/exporter/prometheus_remote_write/__init__.py#L75>`_.
+
 
 Error Handling
 --------------
@@ -184,9 +189,8 @@ In general, errors are raised by the calling function. The exception is
 for failed requests where any error status code is logged as a warning
 instead.
 
-This is because the exporter does not implement any retry logic as it
-sends cumulative metrics data. This means that in the long-term data will be preserved
-even if failed exports are dropped in the interim.
+This is because the exporter does not implement any retry logic as data that
+failed to export will be dropped.
 
 For example, consider a situation where a user increments a Counter
 instrument 5 times and an export happens between each increment. If the
@@ -203,8 +207,6 @@ Then the received data will be:
 
    1 4 5
 
-The end result (metric value 5) is the same since the aggregations are cumulative
-
 Contributing
 ------------
 
@@ -219,15 +221,6 @@ Design Doc
 This document is stored elsewhere as it contains large images which will
 significantly increase the size of this repo.
 
-.. _Design Document: https://github.com/open-o11y/docs/blob/master/python-prometheus-remote-write/design-doc.md
-.. _OTLP: https://github.com/open-telemetry/opentelemetry-specification/blob/master/specification/protocol/otlp.md
-.. _OpenTelemetry Python SDK: https://github.com/open-telemetry/opentelemetry-python
-.. _Prometheus "pull" exporter: https://github.com/open-telemetry/opentelemetry-python/tree/master/exporter/opentelemetry-exporter-prometheus
-.. _Prometheus Remote Write integrated backend: https://prometheus.io/docs/operating/integrations/
-.. _types.proto: https://github.com/prometheus/prometheus/blob/master/prompb/types.proto
-.. _remote.proto: https://github.com/prometheus/prometheus/blob/master/prompb/remote.proto
-.. _push controller: https://github.com/open-telemetry/opentelemetry-python/blob/master/opentelemetry-sdk/src/opentelemetry/sdk/metrics/export/controller.py#L22
-.. _`timeseries`: https://prometheus.io/docs/concepts/data_model/
 .. _Summary: #opentelemetry-python-sdk-prometheus-remote-write-exporter
 .. _Table of Contents: #table-of-contents
 .. _Installation: #installation
@@ -238,10 +231,18 @@ significantly increase the size of this repo.
 .. _TLS: #tls
 .. _Supported Aggregators: #supported-aggregators
 .. _Error Handling: #error-handling
-.. _Retry Logic: #retry-logic
 .. _Contributing: #contributing
 .. _Design Doc: #design-doc
 .. |Prometheus SDK pipelines| image:: https://user-images.githubusercontent.com/20804975/100285430-e320fd80-2f3e-11eb-8217-a562c559153c.png
 .. |controller_datapath_final| image:: https://user-images.githubusercontent.com/20804975/100486582-79d1f380-30d2-11eb-8d17-d3e58e5c34e9.png
 .. _RFC 7617: https://tools.ietf.org/html/rfc7617
 .. _RFC 6750: https://tools.ietf.org/html/rfc6750
+.. _Design Document: https://github.com/open-o11y/docs/blob/master/python-prometheus-remote-write/design-doc.md
+.. _OTLP: https://github.com/open-telemetry/opentelemetry-specification/blob/master/specification/protocol/otlp.md
+.. _OpenTelemetry Python SDK: https://github.com/open-telemetry/opentelemetry-python
+.. _Prometheus "pull" exporter: https://github.com/open-telemetry/opentelemetry-python/tree/master/exporter/opentelemetry-exporter-prometheus
+.. _Prometheus Remote Write integrated backend: https://prometheus.io/docs/operating/integrations/
+.. _types.proto: https://github.com/prometheus/prometheus/blob/master/prompb/types.proto
+.. _remote.proto: https://github.com/prometheus/prometheus/blob/master/prompb/remote.proto
+.. _push controller: https://github.com/open-telemetry/opentelemetry-python/blob/master/opentelemetry-sdk/src/opentelemetry/sdk/metrics/export/controller.py#L22
+.. _timeseries: https://prometheus.io/docs/concepts/data_model/
