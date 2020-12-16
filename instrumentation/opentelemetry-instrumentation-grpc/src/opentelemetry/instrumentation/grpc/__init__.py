@@ -143,9 +143,6 @@ from opentelemetry.instrumentation.utils import unwrap
 # pylint:disable=import-self
 # pylint:disable=unused-argument
 
-import logging
-log = logging.getLogger(__name__)
-
 
 class GrpcInstrumentorServer(BaseInstrumentor):
     """
@@ -186,32 +183,19 @@ class GrpcInstrumentorClient(BaseInstrumentor):
         grpc_client_instrumentor = GrpcInstrumentorClient()
         grpc.client_instrumentor.instrument()
 
-    Instrumetor arguments:
-        wrap_secure (bool): False to disable wrapping secure channels
-        wrap_insecure (bool): False to disable wrapping insecure channels
-        exporter: OpenTelemetry metrics exporter
-        interval (int): metrics export interval
-
     """
 
     def _instrument(self, **kwargs):
         exporter = kwargs.get("exporter", None)
         interval = kwargs.get("interval", 30)
-
-        # preserve the old argument
-        if "wrap_secure" not in kwargs and kwargs.get("channel_type", "") == "secure":
-            kwargs["wrap_secure"] = True
-            kwargs["wrap_insecure"] = False
-
-        if kwargs.get("wrap_secure", True):
-            log.info("wrapping secure channels")
+        if kwargs.get("channel_type") == "secure":
             _wrap(
                 "grpc",
                 "secure_channel",
                 partial(self.wrapper_fn, exporter, interval),
             )
-        if kwargs.get("wrap_insecure", True):
-            log.info("wrapping insecure channels")
+
+        else:
             _wrap(
                 "grpc",
                 "insecure_channel",
@@ -219,11 +203,10 @@ class GrpcInstrumentorClient(BaseInstrumentor):
             )
 
     def _uninstrument(self, **kwargs):
-        if kwargs.get("wrap_secure", True):
+        if kwargs.get("channel_type") == "secure":
             unwrap(grpc, "secure_channel")
 
-        #else:
-        if kwargs.get("wrap_insecure", True):
+        else:
             unwrap(grpc, "insecure_channel")
 
     def wrapper_fn(
