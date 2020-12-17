@@ -13,14 +13,19 @@
 # limitations under the License.
 
 import abc
+import socket
+import urllib
+from http.client import HTTPResponse
 from unittest import mock
+from urllib import request
+from urllib.error import HTTPError
+from urllib.request import OpenerDirector
 
 import httpretty
-import requests
 
-import opentelemetry.instrumentation.requests
+import opentelemetry.instrumentation.urllib
 from opentelemetry import context, propagators, trace
-from opentelemetry.instrumentation.requests import RequestsInstrumentor
+from opentelemetry.instrumentation.urllib import URLLibInstrumentor
 from opentelemetry.sdk import resources
 from opentelemetry.sdk.util import get_dict_as_key
 from opentelemetry.test.mock_textmap import MockTextMapPropagator
@@ -32,19 +37,42 @@ class RequestsIntegrationTestBase(abc.ABC):
     # pylint: disable=no-member
 
     URL = "http://httpbin.org/status/200"
+    URL_TIMEOUT = "http://httpbin.org/timeout/0"
+    URL_EXCEPTION = "http://httpbin.org/exception/0"
 
     # pylint: disable=invalid-name
     def setUp(self):
         super().setUp()
-        RequestsInstrumentor().instrument()
+        URLLibInstrumentor().instrument()
         httpretty.enable()
-        httpretty.register_uri(httpretty.GET, self.URL, body="Hello!")
+        httpretty.register_uri(httpretty.GET, self.URL, body=b"Hello!")
+        httpretty.register_uri(
+            httpretty.GET,
+            self.URL_TIMEOUT,
+            body=self.timeout_exception_callback,
+        )
+        httpretty.register_uri(
+            httpretty.GET,
+            self.URL_EXCEPTION,
+            body=self.base_exception_callback,
+        )
+        httpretty.register_uri(
+            httpretty.GET, "http://httpbin.org/status/500", status=500,
+        )
 
     # pylint: disable=invalid-name
     def tearDown(self):
         super().tearDown()
-        RequestsInstrumentor().uninstrument()
+        URLLibInstrumentor().uninstrument()
         httpretty.disable()
+
+    @staticmethod
+    def timeout_exception_callback(*_, **__):
+        raise socket.timeout
+
+    @staticmethod
+    def base_exception_callback(*_, **__):
+        raise Exception("test")
 
     def assert_span(self, exporter=None, num_spans=1):
         if exporter is None:
@@ -59,12 +87,13 @@ class RequestsIntegrationTestBase(abc.ABC):
 
     @staticmethod
     @abc.abstractmethod
-    def perform_request(url: str, session: requests.Session = None):
+    def perform_request(url: str, opener: OpenerDirector = None):
         pass
 
     def test_basic(self):
         result = self.perform_request(self.URL)
-        self.assertEqual(result.text, "Hello!")
+
+        self.assertEqual(result.read(), b"Hello!")
         span = self.assert_span()
 
         self.assertIs(span.kind, trace.SpanKind.CLIENT)
@@ -84,12 +113,12 @@ class RequestsIntegrationTestBase(abc.ABC):
         self.assertIs(span.status.status_code, trace.status.StatusCode.UNSET)
 
         self.check_span_instrumentation_info(
-            span, opentelemetry.instrumentation.requests
+            span, opentelemetry.instrumentation.urllib
         )
 
-        self.assertIsNotNone(RequestsInstrumentor().meter)
-        self.assertEqual(len(RequestsInstrumentor().meter.instruments), 1)
-        recorder = list(RequestsInstrumentor().meter.instruments.values())[0]
+        self.assertIsNotNone(URLLibInstrumentor().meter)
+        self.assertEqual(len(URLLibInstrumentor().meter.instruments), 1)
+        recorder = list(URLLibInstrumentor().meter.instruments.values())[0]
         match_key = get_dict_as_key(
             {
                 "http.flavor": "1.1",
@@ -111,10 +140,11 @@ class RequestsIntegrationTestBase(abc.ABC):
         def name_callback(method, url):
             return "GET" + url
 
-        RequestsInstrumentor().uninstrument()
-        RequestsInstrumentor().instrument(name_callback=name_callback)
+        URLLibInstrumentor().uninstrument()
+        URLLibInstrumentor().instrument(name_callback=name_callback)
         result = self.perform_request(self.URL)
-        self.assertEqual(result.text, "Hello!")
+
+        self.assertEqual(result.read(), b"Hello!")
         span = self.assert_span()
 
         self.assertEqual(span.name, "GET" + self.URL)
@@ -123,21 +153,26 @@ class RequestsIntegrationTestBase(abc.ABC):
         def name_callback(method, url):
             return 123
 
-        RequestsInstrumentor().uninstrument()
-        RequestsInstrumentor().instrument(name_callback=name_callback)
+        URLLibInstrumentor().uninstrument()
+        URLLibInstrumentor().instrument(name_callback=name_callback)
         result = self.perform_request(self.URL)
-        self.assertEqual(result.text, "Hello!")
+        self.assertEqual(result.read(), b"Hello!")
         span = self.assert_span()
 
         self.assertEqual(span.name, "HTTP GET")
 
     def test_not_foundbasic(self):
-        url_404 = "http://httpbin.org/status/404"
+        url_404 = "http://httpbin.org/status/404/"
         httpretty.register_uri(
             httpretty.GET, url_404, status=404,
         )
-        result = self.perform_request(url_404)
-        self.assertEqual(result.status_code, 404)
+        exception = None
+        try:
+            self.perform_request(url_404)
+        except Exception as err:  # pylint: disable=broad-except
+            exception = err
+        code = exception.code
+        self.assertEqual(code, 404)
 
         span = self.assert_span()
 
@@ -149,32 +184,32 @@ class RequestsIntegrationTestBase(abc.ABC):
         )
 
     def test_uninstrument(self):
-        RequestsInstrumentor().uninstrument()
+        URLLibInstrumentor().uninstrument()
         result = self.perform_request(self.URL)
-        self.assertEqual(result.text, "Hello!")
+        self.assertEqual(result.read(), b"Hello!")
         self.assert_span(num_spans=0)
         # instrument again to avoid annoying warning message
-        RequestsInstrumentor().instrument()
+        URLLibInstrumentor().instrument()
 
     def test_uninstrument_session(self):
-        session1 = requests.Session()
-        RequestsInstrumentor().uninstrument_session(session1)
+        clienr1 = urllib.request.build_opener()
+        URLLibInstrumentor().uninstrument_opener(clienr1)
 
-        result = self.perform_request(self.URL, session1)
-        self.assertEqual(result.text, "Hello!")
+        result = self.perform_request(self.URL, clienr1)
+        self.assertEqual(result.read(), b"Hello!")
         self.assert_span(num_spans=0)
 
         # Test that other sessions as well as global requests is still
         # instrumented
-        session2 = requests.Session()
-        result = self.perform_request(self.URL, session2)
-        self.assertEqual(result.text, "Hello!")
+        opener2 = urllib.request.build_opener()
+        result = self.perform_request(self.URL, opener2)
+        self.assertEqual(result.read(), b"Hello!")
         self.assert_span()
 
         self.memory_exporter.clear()
 
         result = self.perform_request(self.URL)
-        self.assertEqual(result.text, "Hello!")
+        self.assertEqual(result.read(), b"Hello!")
         self.assert_span()
 
     def test_suppress_instrumentation(self):
@@ -183,7 +218,7 @@ class RequestsIntegrationTestBase(abc.ABC):
         )
         try:
             result = self.perform_request(self.URL)
-            self.assertEqual(result.text, "Hello!")
+            self.assertEqual(result.read(), b"Hello!")
         finally:
             context.detach(token)
 
@@ -191,15 +226,15 @@ class RequestsIntegrationTestBase(abc.ABC):
 
     def test_not_recording(self):
         with mock.patch("opentelemetry.trace.INVALID_SPAN") as mock_span:
-            RequestsInstrumentor().uninstrument()
+            URLLibInstrumentor().uninstrument()
             # original_tracer_provider returns a default tracer provider, which
             # in turn will return an INVALID_SPAN, which is always not recording
-            RequestsInstrumentor().instrument(
+            URLLibInstrumentor().instrument(
                 tracer_provider=self.original_tracer_provider
             )
             mock_span.is_recording.return_value = False
             result = self.perform_request(self.URL)
-            self.assertEqual(result.text, "Hello!")
+            self.assertEqual(result.read(), b"Hello!")
             self.assert_span(None, 0)
             self.assertFalse(mock_span.is_recording())
             self.assertTrue(mock_span.is_recording.called)
@@ -211,11 +246,15 @@ class RequestsIntegrationTestBase(abc.ABC):
         try:
             propagators.set_global_textmap(MockTextMapPropagator())
             result = self.perform_request(self.URL)
-            self.assertEqual(result.text, "Hello!")
+            self.assertEqual(result.read(), b"Hello!")
 
             span = self.assert_span()
 
-            headers = dict(httpretty.last_request().headers)
+            headers_ = dict(httpretty.last_request().headers)
+            headers = {}
+            for k, v in headers_.items():
+                headers[k.lower()] = v
+
             self.assertIn(MockTextMapPropagator.TRACE_ID_KEY, headers)
             self.assertEqual(
                 str(span.get_span_context().trace_id),
@@ -231,19 +270,18 @@ class RequestsIntegrationTestBase(abc.ABC):
             propagators.set_global_textmap(previous_propagator)
 
     def test_span_callback(self):
-        RequestsInstrumentor().uninstrument()
+        URLLibInstrumentor().uninstrument()
 
-        def span_callback(span, result: requests.Response):
-            span.set_attribute(
-                "http.response.body", result.content.decode("utf-8")
-            )
+        def span_callback(span, result: HTTPResponse):
+            span.set_attribute("http.response.body", result.read())
 
-        RequestsInstrumentor().instrument(
+        URLLibInstrumentor().instrument(
             tracer_provider=self.tracer_provider, span_callback=span_callback,
         )
 
         result = self.perform_request(self.URL)
-        self.assertEqual(result.text, "Hello!")
+
+        self.assertEqual(result.read(), b"")
 
         span = self.assert_span()
         self.assertEqual(
@@ -262,79 +300,41 @@ class RequestsIntegrationTestBase(abc.ABC):
         resource = resources.Resource.create({})
         result = self.create_tracer_provider(resource=resource)
         tracer_provider, exporter = result
-        RequestsInstrumentor().uninstrument()
-        RequestsInstrumentor().instrument(tracer_provider=tracer_provider)
+        URLLibInstrumentor().uninstrument()
+        URLLibInstrumentor().instrument(tracer_provider=tracer_provider)
 
         result = self.perform_request(self.URL)
-        self.assertEqual(result.text, "Hello!")
+        self.assertEqual(result.read(), b"Hello!")
 
         span = self.assert_span(exporter=exporter)
         self.assertIs(span.resource, resource)
 
-    @mock.patch(
-        "requests.adapters.HTTPAdapter.send",
-        side_effect=requests.RequestException,
-    )
-    def test_requests_exception_without_response(self, *_, **__):
-        with self.assertRaises(requests.RequestException):
-            self.perform_request(self.URL)
-
-        span = self.assert_span()
-        self.assertEqual(
-            span.attributes,
-            {"component": "http", "http.method": "GET", "http.url": self.URL},
-        )
-        self.assertEqual(span.status.status_code, StatusCode.ERROR)
-
-        self.assertIsNotNone(RequestsInstrumentor().meter)
-        self.assertEqual(len(RequestsInstrumentor().meter.instruments), 1)
-        recorder = list(RequestsInstrumentor().meter.instruments.values())[0]
-        match_key = get_dict_as_key(
-            {
-                "http.method": "GET",
-                "http.url": "http://httpbin.org/status/200",
-            }
-        )
-        for key in recorder.bound_instruments.keys():
-            self.assertEqual(key, match_key)
-            # pylint: disable=protected-access
-            bound = recorder.bound_instruments.get(key)
-            for view_data in bound.view_datas:
-                self.assertEqual(view_data.labels, key)
-                self.assertEqual(view_data.aggregator.current.count, 1)
-
-    mocked_response = requests.Response()
-    mocked_response.status_code = 500
-    mocked_response.reason = "Internal Server Error"
-
-    @mock.patch(
-        "requests.adapters.HTTPAdapter.send",
-        side_effect=requests.RequestException(response=mocked_response),
-    )
     def test_requests_exception_with_response(self, *_, **__):
-        with self.assertRaises(requests.RequestException):
-            self.perform_request(self.URL)
+
+        with self.assertRaises(HTTPError):
+            self.perform_request("http://httpbin.org/status/500")
 
         span = self.assert_span()
         self.assertEqual(
-            span.attributes,
+            dict(span.attributes),
             {
                 "component": "http",
                 "http.method": "GET",
-                "http.url": self.URL,
+                "http.url": "http://httpbin.org/status/500",
                 "http.status_code": 500,
                 "http.status_text": "Internal Server Error",
             },
         )
         self.assertEqual(span.status.status_code, StatusCode.ERROR)
-        self.assertIsNotNone(RequestsInstrumentor().meter)
-        self.assertEqual(len(RequestsInstrumentor().meter.instruments), 1)
-        recorder = list(RequestsInstrumentor().meter.instruments.values())[0]
+        self.assertIsNotNone(URLLibInstrumentor().meter)
+        self.assertEqual(len(URLLibInstrumentor().meter.instruments), 1)
+        recorder = list(URLLibInstrumentor().meter.instruments.values())[0]
         match_key = get_dict_as_key(
             {
                 "http.method": "GET",
                 "http.status_code": "500",
-                "http.url": "http://httpbin.org/status/200",
+                "http.url": "http://httpbin.org/status/500",
+                "http.flavor": "1.1",
             }
         )
         for key in recorder.bound_instruments.keys():
@@ -345,20 +345,17 @@ class RequestsIntegrationTestBase(abc.ABC):
                 self.assertEqual(view_data.labels, key)
                 self.assertEqual(view_data.aggregator.current.count, 1)
 
-    @mock.patch("requests.adapters.HTTPAdapter.send", side_effect=Exception)
     def test_requests_basic_exception(self, *_, **__):
         with self.assertRaises(Exception):
-            self.perform_request(self.URL)
+            self.perform_request(self.URL_EXCEPTION)
 
         span = self.assert_span()
         self.assertEqual(span.status.status_code, StatusCode.ERROR)
 
-    @mock.patch(
-        "requests.adapters.HTTPAdapter.send", side_effect=requests.Timeout
-    )
     def test_requests_timeout_exception(self, *_, **__):
         with self.assertRaises(Exception):
-            self.perform_request(self.URL)
+            opener = urllib.request.build_opener()
+            opener.open(self.URL_TIMEOUT, timeout=0.0001)
 
         span = self.assert_span()
         self.assertEqual(span.status.status_code, StatusCode.ERROR)
@@ -366,39 +363,20 @@ class RequestsIntegrationTestBase(abc.ABC):
 
 class TestRequestsIntegration(RequestsIntegrationTestBase, TestBase):
     @staticmethod
-    def perform_request(url: str, session: requests.Session = None):
-        if session is None:
-            return requests.get(url)
-        return session.get(url)
+    def perform_request(url: str, opener: OpenerDirector = None):
+        if not opener:
+            opener = urllib.request.build_opener()
+        return opener.open(fullurl=url)
 
     def test_invalid_url(self):
         url = "http://[::1/nope"
 
         with self.assertRaises(ValueError):
-            requests.post(url)
+            request.Request(url, method="POST")
 
-        span = self.assert_span()
-
-        self.assertEqual(span.name, "HTTP POST")
-        self.assertEqual(
-            span.attributes,
-            {"component": "http", "http.method": "POST", "http.url": url},
-        )
-        self.assertEqual(span.status.status_code, StatusCode.ERROR)
+        self.assert_span(num_spans=0)
 
     def test_if_headers_equals_none(self):
-        result = requests.get(self.URL, headers=None)
-        self.assertEqual(result.text, "Hello!")
+        result = self.perform_request(self.URL)
+        self.assertEqual(result.read(), b"Hello!")
         self.assert_span()
-
-
-class TestRequestsIntegrationPreparedRequest(
-    RequestsIntegrationTestBase, TestBase
-):
-    @staticmethod
-    def perform_request(url: str, session: requests.Session = None):
-        if session is None:
-            session = requests.Session()
-        request = requests.Request("GET", url)
-        prepared_request = session.prepare_request(request)
-        return session.send(prepared_request)

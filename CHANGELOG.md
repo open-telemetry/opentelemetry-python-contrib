@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased](https://github.com/open-telemetry/opentelemetry-python-contrib/compare/v0.16b1...HEAD)
 
 ### Added
+- `opentelemetry-instrumentation-urllib` Add urllib instrumentation
+  ([#222](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/222))
 - `opentelemetry-exporter-datadog` Add fields method
   ([#226](https://github.com/open-telemetry/opentelemetry-python/pull/226))
 - `opentelemetry-sdk-extension-aws` Add method to return fields injected by propagator
@@ -35,6 +37,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   ([#236](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/236))
 - `opentelemetry-instrumentation-asgi`, `opentelemetry-instrumentation-falcon`, `opentelemetry-instrumentation-flask`, `opentelemetry-instrumentation-pyramid`, `opentelemetry-instrumentation-wsgi` Renamed `host.port` attribute to `net.host.port`
   ([#242](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/242))  
+- `opentelemetry-instrumentation-flask` Do not emit a warning message for request contexts created with `app.test_request_context`
+  ([#253](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/253))
+- `opentelemetry-instrumentation-requests`, `opentelemetry-instrumentation-urllib` Fix span name callback parameters
+- ([#259](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/259))
 
 ## [0.16b1](https://github.com/open-telemetry/opentelemetry-python-contrib/releases/tag/v0.16b1) - 2020-11-26
 
