@@ -67,7 +67,7 @@ logger = logging.getLogger(__name__)
 def _patched_endpoint_prepare_request(wrapped, instance, args, kwargs):
     request = args[0]
     headers = request.headers
-    propagators.inject(type(headers).__setitem__, headers)
+    propagators.inject(type(headers).add_header, headers)
     return wrapped(*args, **kwargs)
 
 
