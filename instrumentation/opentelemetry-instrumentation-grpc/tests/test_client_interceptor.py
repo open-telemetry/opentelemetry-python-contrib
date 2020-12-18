@@ -116,6 +116,16 @@ class TestClientProto(TestBase):
 
         self._verify_success_records(8, 8, "/GRPCTestServer/SimpleMethod")
 
+        self.assert_span_has_attributes(
+            span,
+            {
+                "rpc.method": "SimpleMethod",
+                "rpc.service": "GRPCTestServer",
+                "rpc.system": "grpc",
+                "rpc.grpc.status_code": grpc.StatusCode.OK.value[0],
+            },
+        )
+
     def test_unary_stream(self):
         server_streaming_method(self._stub)
         spans = self.memory_exporter.get_finished_spans()
@@ -132,6 +142,16 @@ class TestClientProto(TestBase):
 
         self._verify_success_records(
             8, 40, "/GRPCTestServer/ServerStreamingMethod"
+        )
+
+        self.assert_span_has_attributes(
+            span,
+            {
+                "rpc.method": "ServerStreamingMethod",
+                "rpc.service": "GRPCTestServer",
+                "rpc.system": "grpc",
+                "rpc.grpc.status_code": grpc.StatusCode.OK.value[0],
+            },
         )
 
     def test_stream_unary(self):
@@ -152,6 +172,16 @@ class TestClientProto(TestBase):
             40, 8, "/GRPCTestServer/ClientStreamingMethod"
         )
 
+        self.assert_span_has_attributes(
+            span,
+            {
+                "rpc.method": "ClientStreamingMethod",
+                "rpc.service": "GRPCTestServer",
+                "rpc.system": "grpc",
+                "rpc.grpc.status_code": grpc.StatusCode.OK.value[0],
+            },
+        )
+
     def test_stream_stream(self):
         bidirectional_streaming_method(self._stub)
         spans = self.memory_exporter.get_finished_spans()
@@ -170,6 +200,16 @@ class TestClientProto(TestBase):
 
         self._verify_success_records(
             40, 40, "/GRPCTestServer/BidirectionalStreamingMethod"
+        )
+
+        self.assert_span_has_attributes(
+            span,
+            {
+                "rpc.method": "BidirectionalStreamingMethod",
+                "rpc.service": "GRPCTestServer",
+                "rpc.system": "grpc",
+                "rpc.grpc.status_code": grpc.StatusCode.OK.value[0],
+            },
         )
 
     def _verify_error_records(self, method):
