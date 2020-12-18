@@ -27,7 +27,7 @@ def _extract_conn_attributes(conn_kwargs):
     attributes["db.redis.database_index"] = db
     try:
         attributes["net.peer.name"] = conn_kwargs["host"]
-        attributes["net.peer.ip"] = conn_kwargs["port"]
+        attributes["net.peer.port"] = conn_kwargs.get("port", 6379)
         attributes["net.transport"] = "IP.TCP"
     except KeyError:
         attributes["net.peer.name"] = conn_kwargs["path"]
