@@ -189,8 +189,7 @@ class OpenTelemetryClientInterceptor(
                         Status(StatusCode.ERROR)
                     )
                     guarded_span.generated_span.set_attribute(
-                        "rpc.grpc.status_code",
-                        e.code().value[0]
+                        "rpc.grpc.status_code", e.code().value[0]
                     )
                     raise e
 
@@ -245,7 +244,9 @@ class OpenTelemetryClientInterceptor(
                         yield response
                 except grpc.RpcError as e:
                     span.set_status(Status(StatusCode.ERROR))
-                    span.set_attribute("rpc.grpc.status_code", e.code().value[0])
+                    span.set_attribute(
+                        "rpc.grpc.status_code", e.code().value[0]
+                    )
                     raise e
 
     def intercept_stream(
@@ -287,8 +288,7 @@ class OpenTelemetryClientInterceptor(
                         Status(StatusCode.ERROR)
                     )
                     guarded_span.generated_span.set_attribute(
-                        "rpc.grpc.status_code",
-                        e.code().value[0],
+                        "rpc.grpc.status_code", e.code().value[0],
                     )
                     raise e
 
