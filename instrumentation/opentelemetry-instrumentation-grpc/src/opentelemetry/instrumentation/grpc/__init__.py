@@ -190,9 +190,9 @@ class GrpcInstrumentorClient(BaseInstrumentor):
         # handle legacy argument
         if "channel_type" in kwargs:
             if kwargs.get("channel_type") == "secure":
-                return ("secure_channel", )
+                return ("secure_channel",)
             else:
-                return ("insecure_channel", )
+                return ("insecure_channel",)
 
         # handle modern arguments
         types = []
@@ -207,9 +207,7 @@ class GrpcInstrumentorClient(BaseInstrumentor):
         interval = kwargs.get("interval", 30)
         for ctype in self._which_channel(kwargs):
             _wrap(
-                "grpc",
-                ctype,
-                partial(self.wrapper_fn, exporter, interval),
+                "grpc", ctype, partial(self.wrapper_fn, exporter, interval),
             )
 
     def _uninstrument(self, **kwargs):
