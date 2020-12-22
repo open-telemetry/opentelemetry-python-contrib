@@ -48,8 +48,8 @@ Table of Contents
 
 Installation
 ------------
-Prerequisite
-~~~~~~~~~~~~
+Prerequisites
+~~~~~~~~~~~~~
 1. Install the snappy c-library
     **DEB**: ``sudo apt-get install libsnappy-dev``
 
@@ -58,9 +58,6 @@ Prerequisite
     **OSX/Brew**: ``brew install snappy``
 
     **Windows**: ``pip install python_snappy-0.5-cp36-cp36m-win_amd64.whl``
-
-2. Install python-snappy
-    `pip install python-snappy`
 
 Exporter
 ~~~~~~~~
