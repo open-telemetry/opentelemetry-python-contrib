@@ -198,7 +198,6 @@ class TestDatadogFormat(unittest.TestCase):
 
         self.assertEqual(FORMAT.fields, inject_fields)
 
-
     @patch("opentelemetry.exporter.datadog.propagator.get_current_span")
     def test_trace_state_not_none(self, mock_get_current_span):
         """Make sure the fields attribute returns the fields used in inject"""
@@ -231,6 +230,6 @@ class TestDatadogFormat(unittest.TestCase):
 
         # verify 'x-datadog-origin' is not present, it was None
         expected_fields = FORMAT.fields.copy()
-        expected_fields.discard('x-datadog-origin')
+        expected_fields.discard("x-datadog-origin")
 
         self.assertEqual(expected_fields, inject_fields)
