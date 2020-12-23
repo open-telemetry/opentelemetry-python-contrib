@@ -197,3 +197,40 @@ class TestDatadogFormat(unittest.TestCase):
             inject_fields.add(call[1][1])
 
         self.assertEqual(FORMAT.fields, inject_fields)
+
+
+    @patch("opentelemetry.exporter.datadog.propagator.get_current_span")
+    def test_trace_state_not_none(self, mock_get_current_span):
+        """Make sure the fields attribute returns the fields used in inject"""
+
+        tracer = trace.TracerProvider().get_tracer("sdk_tracer_provider")
+
+        mock_set_in_carrier = Mock()
+
+        mock_get_current_span.configure_mock(
+            **{
+                "return_value": Mock(
+                    **{
+                        "get_span_context.return_value": None,
+                        "context.trace_flags": 0,
+                        "context.trace_id": 1,
+                        "context.trace_state": {constants.DD_ORIGIN: None},
+                    }
+                )
+            }
+        )
+
+        with tracer.start_as_current_span("parent"):
+            with tracer.start_as_current_span("child"):
+                FORMAT.inject(mock_set_in_carrier, {})
+
+        inject_fields = set()
+
+        for call in mock_set_in_carrier.mock_calls:
+            inject_fields.add(call[1][1])
+
+        # verify 'x-datadog-origin' is not present, it was None
+        expected_fields = FORMAT.fields.copy()
+        expected_fields.discard('x-datadog-origin')
+
+        self.assertEqual(expected_fields, inject_fields)
