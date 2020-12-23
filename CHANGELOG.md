@@ -161,10 +161,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   ([#246](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/246))
 - Update TraceState to adhere to specs
   ([#276](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/276))
+- `opentelemetry-exporter-datadog` Don't allow `NoneType` values in `context.trace_state` fields
+  ([#272](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/272))
 
 ### Removed
 - Remove Configuration
   ([#285](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/285))
+
 
 ## [0.16b1](https://github.com/open-telemetry/opentelemetry-python-contrib/releases/tag/v0.16b1) - 2020-11-26
 
