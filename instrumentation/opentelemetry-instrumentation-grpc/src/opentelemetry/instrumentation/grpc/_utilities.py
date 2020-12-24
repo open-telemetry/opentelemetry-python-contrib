@@ -84,16 +84,16 @@ class TimedMetricRecorder:
     def record_latency(self, method):
         start_time = time()
         labels = {
+            "rpc.method": method,
             "rpc.system": "grpc",
-            "rpc.grpc.method": method,
-            "rpc.status_code": grpc.StatusCode.OK.name,
+            "rpc.grpc.status_code": grpc.StatusCode.OK.name,
         }
         try:
             yield labels
         except grpc.RpcError as exc:  # pylint:disable=no-member
             if self._meter:
                 # pylint: disable=no-member
-                labels["rpc.status_code"] = exc.code().name
+                labels["rpc.grpc.status_code"] = exc.code().name
                 self._error_count.add(1, labels)
                 labels["error"] = "true"
             raise

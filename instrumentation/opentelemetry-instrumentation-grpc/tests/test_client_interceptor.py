@@ -73,21 +73,21 @@ class TestClientProto(TestBase):
 
         self.assertIsNotNone(bytes_out)
         self.assertEqual(bytes_out.instrument.name, "grpcio/client/bytes_out")
-        self.assertEqual(bytes_out.labels, (("method", method),))
+        self.assertEqual(bytes_out.labels, (("rpc.method", method),))
 
         self.assertIsNotNone(bytes_in)
         self.assertEqual(bytes_in.instrument.name, "grpcio/client/bytes_in")
-        self.assertEqual(bytes_in.labels, (("method", method),))
+        self.assertEqual(bytes_in.labels, (("rpc.method", method),))
 
         self.assertIsNotNone(duration)
         self.assertEqual(duration.instrument.name, "grpcio/client/duration")
-        self.assertEqual(
-            duration.labels,
-            (
-                ("error", False),
-                ("method", method),
-                ("status_code", grpc.StatusCode.OK),
-            ),
+        self.assertSequenceEqual(
+            sorted(duration.labels),
+            [
+                ("rpc.grpc.status_code", grpc.StatusCode.OK.name),
+                ("rpc.method", method),
+                ("rpc.system", "grpc"),
+            ],
         )
 
         self.assertEqual(type(bytes_out.aggregator), SumAggregator)
@@ -235,22 +235,24 @@ class TestClientProto(TestBase):
         self.assertIsNotNone(duration)
 
         self.assertEqual(errors.instrument.name, "grpcio/client/errors")
-        self.assertEqual(
-            errors.labels,
-            (
-                ("method", method),
-                ("status_code", grpc.StatusCode.INVALID_ARGUMENT),
-            ),
+        self.assertSequenceEqual(
+            sorted(errors.labels),
+            sorted((
+                ("rpc.grpc.status_code", grpc.StatusCode.INVALID_ARGUMENT.name),
+                ("rpc.method", method),
+                ("rpc.system", "grpc"),
+            )),
         )
         self.assertEqual(errors.aggregator.checkpoint, 1)
 
-        self.assertEqual(
-            duration.labels,
-            (
-                ("error", True),
-                ("method", method),
-                ("status_code", grpc.StatusCode.INVALID_ARGUMENT),
-            ),
+        self.assertSequenceEqual(
+            sorted(duration.labels),
+            sorted((
+                ("error", "true"),
+                ("rpc.method", method),
+                ("rpc.system", "grpc"),
+                ("rpc.grpc.status_code", grpc.StatusCode.INVALID_ARGUMENT.name),
+            )),
         )
 
     def test_error_simple(self):
