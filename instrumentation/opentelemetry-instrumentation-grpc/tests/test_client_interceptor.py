@@ -237,22 +237,32 @@ class TestClientProto(TestBase):
         self.assertEqual(errors.instrument.name, "grpcio/client/errors")
         self.assertSequenceEqual(
             sorted(errors.labels),
-            sorted((
-                ("rpc.grpc.status_code", grpc.StatusCode.INVALID_ARGUMENT.name),
-                ("rpc.method", method),
-                ("rpc.system", "grpc"),
-            )),
+            sorted(
+                (
+                    (
+                        "rpc.grpc.status_code",
+                        grpc.StatusCode.INVALID_ARGUMENT.name,
+                    ),
+                    ("rpc.method", method),
+                    ("rpc.system", "grpc"),
+                )
+            ),
         )
         self.assertEqual(errors.aggregator.checkpoint, 1)
 
         self.assertSequenceEqual(
             sorted(duration.labels),
-            sorted((
-                ("error", "true"),
-                ("rpc.method", method),
-                ("rpc.system", "grpc"),
-                ("rpc.grpc.status_code", grpc.StatusCode.INVALID_ARGUMENT.name),
-            )),
+            sorted(
+                (
+                    ("error", "true"),
+                    ("rpc.method", method),
+                    ("rpc.system", "grpc"),
+                    (
+                        "rpc.grpc.status_code",
+                        grpc.StatusCode.INVALID_ARGUMENT.name,
+                    ),
+                )
+            ),
         )
 
     def test_error_simple(self):
