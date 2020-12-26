@@ -155,7 +155,7 @@ class BotocoreInstrumentor(BaseInstrumentor):
 
                     if "RetryAttempts" in metadata:
                         span.set_attribute(
-                            "aws.retry_attempts", metadata["RetryAttempts"],
+                            "retry_attempts", metadata["RetryAttempts"],
                         )
 
                     if "HTTPStatusCode" in metadata:
