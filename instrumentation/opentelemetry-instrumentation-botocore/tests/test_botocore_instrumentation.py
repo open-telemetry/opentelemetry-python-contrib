@@ -69,7 +69,7 @@ class TestBotocoreInstrumentor(TestBase):
                 "aws.region": "us-west-2",
                 "aws.request_id": "fdcdcab1-ae5c-489e-9c33-4637c5dda355",
                 "aws.service": "ec2",
-                "aws.retry_attempts": 0,
+                "retry_attempts": 0,
                 "http.status_code": 200,
             },
         )
@@ -117,7 +117,7 @@ class TestBotocoreInstrumentor(TestBase):
                 "aws.operation": "ListBuckets",
                 "aws.region": "us-west-2",
                 "aws.service": "s3",
-                "aws.retry_attempts": 0,
+                "retry_attempts": 0,
                 "http.status_code": 200,
             },
         )
@@ -161,7 +161,7 @@ class TestBotocoreInstrumentor(TestBase):
                 "aws.operation": "CreateBucket",
                 "aws.region": "us-west-2",
                 "aws.service": "s3",
-                "aws.retry_attempts": 0,
+                "retry_attempts": 0,
                 "http.status_code": 200,
             },
         )
@@ -172,7 +172,7 @@ class TestBotocoreInstrumentor(TestBase):
                 "aws.operation": "PutObject",
                 "aws.region": "us-west-2",
                 "aws.service": "s3",
-                "aws.retry_attempts": 0,
+                "retry_attempts": 0,
                 "http.status_code": 200,
             },
         )
@@ -184,7 +184,7 @@ class TestBotocoreInstrumentor(TestBase):
                 "aws.operation": "GetObject",
                 "aws.region": "us-west-2",
                 "aws.service": "s3",
-                "aws.retry_attempts": 0,
+                "retry_attempts": 0,
                 "http.status_code": 200,
             },
         )
@@ -208,7 +208,7 @@ class TestBotocoreInstrumentor(TestBase):
                 "aws.operation": "ListQueues",
                 "aws.region": "us-east-1",
                 "aws.service": "sqs",
-                "aws.retry_attempts": 0,
+                "retry_attempts": 0,
                 "http.status_code": 200,
             },
         )
@@ -239,7 +239,7 @@ class TestBotocoreInstrumentor(TestBase):
                 "aws.operation": "CreateQueue",
                 "aws.region": "us-east-1",
                 "aws.service": "sqs",
-                "aws.retry_attempts": 0,
+                "retry_attempts": 0,
                 "http.status_code": 200,
             },
         )
@@ -255,7 +255,7 @@ class TestBotocoreInstrumentor(TestBase):
                 "aws.queue_url": response["QueueUrl"],
                 "aws.region": "us-east-1",
                 "aws.service": "sqs",
-                "aws.retry_attempts": 0,
+                "retry_attempts": 0,
                 "http.status_code": 200,
             },
         )
@@ -278,7 +278,7 @@ class TestBotocoreInstrumentor(TestBase):
                 "aws.operation": "ListStreams",
                 "aws.region": "us-east-1",
                 "aws.service": "kinesis",
-                "aws.retry_attempts": 0,
+                "retry_attempts": 0,
                 "http.status_code": 200,
             },
         )
@@ -324,7 +324,7 @@ class TestBotocoreInstrumentor(TestBase):
                 "aws.operation": "ListFunctions",
                 "aws.region": "us-east-1",
                 "aws.service": "lambda",
-                "aws.retry_attempts": 0,
+                "retry_attempts": 0,
                 "http.status_code": 200,
             },
         )
@@ -345,7 +345,7 @@ class TestBotocoreInstrumentor(TestBase):
                 "aws.operation": "ListKeys",
                 "aws.region": "us-east-1",
                 "aws.service": "kms",
-                "aws.retry_attempts": 0,
+                "retry_attempts": 0,
                 "http.status_code": 200,
             },
         )
@@ -370,7 +370,7 @@ class TestBotocoreInstrumentor(TestBase):
                 "aws.region": "us-east-1",
                 "aws.request_id": "c6104cbe-af31-11e0-8154-cbc7ccf896c7",
                 "aws.service": "sts",
-                "aws.retry_attempts": 0,
+                "retry_attempts": 0,
                 "http.status_code": 200,
             },
         )
@@ -407,7 +407,7 @@ class TestBotocoreInstrumentor(TestBase):
                     "aws.region": "us-west-2",
                     "aws.request_id": "fdcdcab1-ae5c-489e-9c33-4637c5dda355",
                     "aws.service": "ec2",
-                    "aws.retry_attempts": 0,
+                    "retry_attempts": 0,
                     "http.status_code": 200,
                 },
             )
@@ -476,7 +476,7 @@ class TestBotocoreInstrumentor(TestBase):
                 "aws.region": "us-west-2",
                 "aws.service": "dynamodb",
                 "aws.table_name": "test_table_name",
-                "aws.retry_attempts": 0,
+                "retry_attempts": 0,
                 "http.status_code": 200,
             },
         )
@@ -492,7 +492,7 @@ class TestBotocoreInstrumentor(TestBase):
                 "aws.region": "us-west-2",
                 "aws.service": "dynamodb",
                 "aws.table_name": "test_table_name",
-                "aws.retry_attempts": 0,
+                "retry_attempts": 0,
                 "http.status_code": 200,
             },
         )
@@ -508,7 +508,7 @@ class TestBotocoreInstrumentor(TestBase):
                 "aws.region": "us-west-2",
                 "aws.service": "dynamodb",
                 "aws.table_name": "test_table_name",
-                "aws.retry_attempts": 0,
+                "retry_attempts": 0,
                 "http.status_code": 200,
             },
         )
