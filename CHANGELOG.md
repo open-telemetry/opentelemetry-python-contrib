@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased](https://github.com/open-telemetry/opentelemetry-python-contrib/compare/v0.16b1...HEAD)
 
 ### Added
+- `opentelemetry-instrumentation-sqlalchemy` Ensure spans have kind set to "CLIENT"
+  ([#278](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/278))
 - `opentelemetry-instrumentation-celery` Add support for Celery version 5.x
   ([#266](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/266))
 - `opentelemetry-instrumentation-urllib` Add urllib instrumentation
@@ -45,6 +47,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   ([#253](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/253))
 - `opentelemetry-instrumentation-requests`, `opentelemetry-instrumentation-urllib` Fix span name callback parameters
   ([#259](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/259))
+- `opentelemetry-exporter-datadog` Fix unintentional type change of span trace flags
+  ([#261](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/261))
 - `opentelemetry-instrumentation-aiopg` Fix AttributeError `__aexit__` when `aiopg.connect` and `aio[g].create_pool` used with async context manager
   ([#235](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/235))
 
