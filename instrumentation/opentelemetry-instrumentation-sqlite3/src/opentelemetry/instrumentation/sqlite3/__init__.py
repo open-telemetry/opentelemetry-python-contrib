@@ -24,11 +24,8 @@ Usage
 .. code:: python
 
     import sqlite3
-    from opentelemetry import trace
-    from opentelemetry.trace import TracerProvider
     from opentelemetry.instrumentation.sqlite3 import SQLite3Instrumentor
 
-    trace.set_tracer_provider(TracerProvider())
 
     SQLite3Instrumentor().instrument()
 
@@ -54,7 +51,7 @@ class SQLite3Instrumentor(BaseInstrumentor):
     # No useful attributes of sqlite3 connection object
     _CONNECTION_ATTRIBUTES = {}
 
-    _DATABASE_COMPONENT = "sqlite3"
+    _DATABASE_COMPONENT = "sqlite"
     _DATABASE_TYPE = "sql"
 
     def _instrument(self, **kwargs):

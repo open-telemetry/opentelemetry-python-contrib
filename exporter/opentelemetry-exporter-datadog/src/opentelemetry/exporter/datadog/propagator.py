@@ -16,6 +16,7 @@ import typing
 
 from opentelemetry import trace
 from opentelemetry.context import Context
+from opentelemetry.exporter.datadog import constants
 from opentelemetry.trace import get_current_span, set_span_in_context
 from opentelemetry.trace.propagation.textmap import (
     Getter,
@@ -23,9 +24,6 @@ from opentelemetry.trace.propagation.textmap import (
     TextMapPropagator,
     TextMapPropagatorT,
 )
-
-# pylint:disable=relative-beyond-top-level
-from . import constants
 
 
 class DatadogFormat(TextMapPropagator):
@@ -62,7 +60,7 @@ class DatadogFormat(TextMapPropagator):
             constants.AUTO_KEEP,
             constants.USER_KEEP,
         ):
-            trace_flags |= trace.TraceFlags.SAMPLED
+            trace_flags = trace.TraceFlags(trace.TraceFlags.SAMPLED)
 
         if trace_id is None or span_id is None:
             return set_span_in_context(trace.INVALID_SPAN, context)
@@ -105,6 +103,20 @@ class DatadogFormat(TextMapPropagator):
                 self.ORIGIN_KEY,
                 span.context.trace_state[constants.DD_ORIGIN],
             )
+
+    @property
+    def fields(self):
+        """Returns a set with the fields set in `inject`.
+
+        See
+        `opentelemetry.trace.propagation.textmap.TextMapPropagator.fields`
+        """
+        return {
+            self.TRACE_ID_KEY,
+            self.PARENT_ID_KEY,
+            self.SAMPLING_PRIORITY_KEY,
+            self.ORIGIN_KEY,
+        }
 
 
 def format_trace_id(trace_id: int) -> str:

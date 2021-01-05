@@ -19,7 +19,14 @@ Please describe the tests that you ran to verify your changes. Provide instructi
 
 - [ ] Test A
 
+# Does This PR Require a Core Repo Change?
+
+- [ ] Yes. - Link to PR: 
+- [ ] No.
+
 # Checklist:
+
+See [contributing.md](https://github.com/open-telemetry/opentelemetry-python-contrib/blob/master/CONTRIBUTING.md) for styleguide, changelog guidelines, and more.
 
 - [ ] Followed the style guidelines of this project
 - [ ] Changelogs have been updated

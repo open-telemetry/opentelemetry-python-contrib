@@ -28,16 +28,12 @@ Usage
 
     from sqlalchemy import create_engine
 
-    from opentelemetry import trace
     from opentelemetry.instrumentation.sqlalchemy import SQLAlchemyInstrumentor
-    from opentelemetry.sdk.trace import TracerProvider
     import sqlalchemy
 
-    trace.set_tracer_provider(TracerProvider())
     engine = create_engine("sqlite:///:memory:")
     SQLAlchemyInstrumentor().instrument(
         engine=engine,
-        service="service-A",
     )
 
 API
@@ -69,7 +65,6 @@ class SQLAlchemyInstrumentor(BaseInstrumentor):
             **kwargs: Optional arguments
                 ``engine``: a SQLAlchemy engine instance
                 ``tracer_provider``: a TracerProvider, defaults to global
-                ``service``: the name of the service to trace.
 
         Returns:
             An instrumented engine if passed in as an argument, None otherwise.
@@ -81,7 +76,6 @@ class SQLAlchemyInstrumentor(BaseInstrumentor):
                 _get_tracer(
                     kwargs.get("engine"), kwargs.get("tracer_provider")
                 ),
-                kwargs.get("service"),
                 kwargs.get("engine"),
             )
         return None

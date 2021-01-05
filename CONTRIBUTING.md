@@ -46,8 +46,33 @@ You can run:
 - `tox -e lint` to run lint checks on all code
 
 See
-[`tox.ini`](https://github.com/open-telemetry/opentelemetry-python/blob/master/tox.ini)
+[`tox.ini`](https://github.com/open-telemetry/opentelemetry-python-contrib/blob/master/tox.ini)
 for more detail on available tox commands.
+
+### Benchmarks
+
+Performance progression of benchmarks for packages distributed by OpenTelemetry Python can be viewed as a [graph of throughput vs commit history](https://opentelemetry-python-contrib.readthedocs.io/en/latest/performance/benchmarks.html). From the linked page, you can download a JSON file with the performance results.
+
+Running the `tox` tests also runs the performance tests if any are available. Benchmarking tests are done with `pytest-benchmark` and they output a table with results to the console.
+
+To write benchmarks, simply use the [pytest benchmark fixture](https://pytest-benchmark.readthedocs.io/en/latest/usage.html#usage) like the following:
+
+```python
+def test_simple_start_span(benchmark):
+    def benchmark_start_as_current_span(span_name, attribute_num):
+        span = tracer.start_span(
+            span_name,
+            attributes={"count": attribute_num},
+        )
+        span.end()
+
+    benchmark(benchmark_start_as_current_span, "benchmarkedSpan", 42)
+```
+
+Make sure the test file is under the `tests/performance/benchmarks/` folder of
+the package it is benchmarking and further has a path that corresponds to the
+file in the package it is testing. Make sure that the file name begins with
+`test_benchmark_`. (e.g. `sdk-extension/opentelemetry-sdk-extension-aws/tests/performance/benchmarks/trace/propagation/test_benchmark_aws_xray_format.py`)
 
 ## Pull Requests
 
@@ -104,12 +129,13 @@ A PR is considered to be **ready to merge** when:
   reasonable time to review.
 * Trivial change (typo, cosmetic, doc, etc.) doesn't have to wait for one day.
 * Urgent fix can take exception as long as it has been actively communicated.
+* A changelog entry is added to the corresponding changelog for the code base, if there is any impact on behavior. e.g. doc entries are not required, but small bug entries are.
 
 Any Approver / Maintainer can merge the PR once it is **ready to merge**.
 
 ## Design Choices
 
-As with other OpenTelemetry clients, opentelemetry-python follows the 
+As with other OpenTelemetry clients, opentelemetry-python follows the
 [opentelemetry-specification](https://github.com/open-telemetry/opentelemetry-specification).
 
 It's especially valuable to read through the [library guidelines](https://github.com/open-telemetry/opentelemetry-specification/blob/master/specification/library-guidelines.md).
@@ -122,7 +148,7 @@ use cases are clear, but the method to satisfy those uses cases are not.
 As such, contributions should provide functionality and behavior that
 conforms to the specification, but the interface and structure is flexible.
 
-It is preferable to have contributions follow the idioms of the language 
+It is preferable to have contributions follow the idioms of the language
 rather than conform to specific API names or argument patterns in the spec.
 
 For a deeper discussion, see: https://github.com/open-telemetry/opentelemetry-specification/issues/165

@@ -274,3 +274,13 @@ class AwsXRayFormat(TextMapPropagator):
         set_in_carrier(
             carrier, TRACE_HEADER_KEY, trace_header,
         )
+
+    @property
+    def fields(self):
+        """Returns a set with the fields set in `inject`.
+
+        See
+        `opentelemetry.trace.propagation.textmap.TextMapPropagator.fields`
+        """
+
+        return {TRACE_HEADER_KEY}

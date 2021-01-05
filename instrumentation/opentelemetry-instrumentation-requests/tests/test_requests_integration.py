@@ -88,8 +88,8 @@ class RequestsIntegrationTestBase(abc.ABC):
         )
 
         self.assertIsNotNone(RequestsInstrumentor().meter)
-        self.assertEqual(len(RequestsInstrumentor().meter.metrics), 1)
-        recorder = RequestsInstrumentor().meter.metrics.pop()
+        self.assertEqual(len(RequestsInstrumentor().meter.instruments), 1)
+        recorder = list(RequestsInstrumentor().meter.instruments.values())[0]
         match_key = get_dict_as_key(
             {
                 "http.flavor": "1.1",
@@ -106,6 +106,30 @@ class RequestsIntegrationTestBase(abc.ABC):
                 self.assertEqual(view_data.labels, key)
                 self.assertEqual(view_data.aggregator.current.count, 1)
                 self.assertGreaterEqual(view_data.aggregator.current.sum, 0)
+
+    def test_name_callback(self):
+        def name_callback(method, url):
+            return "GET" + url
+
+        RequestsInstrumentor().uninstrument()
+        RequestsInstrumentor().instrument(name_callback=name_callback)
+        result = self.perform_request(self.URL)
+        self.assertEqual(result.text, "Hello!")
+        span = self.assert_span()
+
+        self.assertEqual(span.name, "GET" + self.URL)
+
+    def test_name_callback_default(self):
+        def name_callback(method, url):
+            return 123
+
+        RequestsInstrumentor().uninstrument()
+        RequestsInstrumentor().instrument(name_callback=name_callback)
+        result = self.perform_request(self.URL)
+        self.assertEqual(result.text, "Hello!")
+        span = self.assert_span()
+
+        self.assertEqual(span.name, "HTTP GET")
 
     def test_not_foundbasic(self):
         url_404 = "http://httpbin.org/status/404"
@@ -263,8 +287,8 @@ class RequestsIntegrationTestBase(abc.ABC):
         self.assertEqual(span.status.status_code, StatusCode.ERROR)
 
         self.assertIsNotNone(RequestsInstrumentor().meter)
-        self.assertEqual(len(RequestsInstrumentor().meter.metrics), 1)
-        recorder = RequestsInstrumentor().meter.metrics.pop()
+        self.assertEqual(len(RequestsInstrumentor().meter.instruments), 1)
+        recorder = list(RequestsInstrumentor().meter.instruments.values())[0]
         match_key = get_dict_as_key(
             {
                 "http.method": "GET",
@@ -304,8 +328,8 @@ class RequestsIntegrationTestBase(abc.ABC):
         )
         self.assertEqual(span.status.status_code, StatusCode.ERROR)
         self.assertIsNotNone(RequestsInstrumentor().meter)
-        self.assertEqual(len(RequestsInstrumentor().meter.metrics), 1)
-        recorder = RequestsInstrumentor().meter.metrics.pop()
+        self.assertEqual(len(RequestsInstrumentor().meter.instruments), 1)
+        recorder = list(RequestsInstrumentor().meter.instruments.values())[0]
         match_key = get_dict_as_key(
             {
                 "http.method": "GET",
