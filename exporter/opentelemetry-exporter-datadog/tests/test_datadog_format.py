@@ -18,6 +18,7 @@ from unittest.mock import Mock, patch
 from opentelemetry import trace as trace_api
 from opentelemetry.exporter.datadog import constants, propagator
 from opentelemetry.sdk import trace
+from opentelemetry.sdk.ids_generator import RandomIdsGenerator
 from opentelemetry.trace import get_current_span, set_span_in_context
 from opentelemetry.trace.propagation.textmap import DictGetter
 
@@ -29,7 +30,7 @@ carrier_getter = DictGetter()
 class TestDatadogFormat(unittest.TestCase):
     @classmethod
     def setUpClass(cls):
-        ids_generator = trace_api.RandomIdsGenerator()
+        ids_generator = RandomIdsGenerator()
         cls.serialized_trace_id = propagator.format_trace_id(
             ids_generator.generate_trace_id()
         )
