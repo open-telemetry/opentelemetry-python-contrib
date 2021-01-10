@@ -48,11 +48,14 @@ API
 """
 
 from logging import getLogger
+from os import environ
+from re import compile as re_compile
+from re import search
 
 import flask
 
 import opentelemetry.instrumentation.wsgi as otel_wsgi
-from opentelemetry import configuration, context, propagators, trace
+from opentelemetry import context, propagators, trace
 from opentelemetry.instrumentation.flask.version import __version__
 from opentelemetry.instrumentation.instrumentor import BaseInstrumentor
 from opentelemetry.util import time_ns
@@ -65,7 +68,30 @@ _ENVIRON_ACTIVATION_KEY = "opentelemetry-flask.activation_key"
 _ENVIRON_TOKEN = "opentelemetry-flask.token"
 
 
-_excluded_urls = configuration.Configuration()._excluded_urls("flask")
+class _ExcludeList:
+    """Class to exclude certain paths (given as a list of regexes) from tracing requests"""
+
+    def __init__(self, excluded_urls):
+        self._excluded_urls = excluded_urls
+        if self._excluded_urls:
+            self._regex = re_compile("|".join(excluded_urls))
+
+    def url_disabled(self, url: str) -> bool:
+        return bool(self._excluded_urls and search(self._regex, url))
+
+
+def _get_excluded_urls():
+    excluded_urls = environ.get("OTEL_PYTHON_FLASK_EXCLUDED_URLS", [])
+
+    if excluded_urls:
+        excluded_urls = [
+            excluded_url.strip() for excluded_url in excluded_urls.split(",")
+        ]
+
+    return _ExcludeList(excluded_urls)
+
+
+_excluded_urls = _get_excluded_urls()
 
 
 def get_default_span_name():
@@ -78,12 +104,12 @@ def get_default_span_name():
 
 
 def _rewrapped_app(wsgi_app):
-    def _wrapped_app(environ, start_response):
+    def _wrapped_app(wrapped_app_environ, start_response):
         # We want to measure the time for route matching, etc.
         # In theory, we could start the span here and use
         # update_name later but that API is "highly discouraged" so
         # we better avoid it.
-        environ[_ENVIRON_STARTTIME_KEY] = time_ns()
+        wrapped_app_environ[_ENVIRON_STARTTIME_KEY] = time_ns()
 
         def _start_response(status, response_headers, *args, **kwargs):
             if not _excluded_urls.url_disabled(flask.request.url):
@@ -102,7 +128,7 @@ def _rewrapped_app(wsgi_app):
 
             return start_response(status, response_headers, *args, **kwargs)
 
-        return wsgi_app(environ, _start_response)
+        return wsgi_app(wrapped_app_environ, _start_response)
 
     return _wrapped_app
 
@@ -112,10 +138,12 @@ def _wrapped_before_request(name_callback):
         if _excluded_urls.url_disabled(flask.request.url):
             return
 
-        environ = flask.request.environ
+        flask_request_environ = flask.request.environ
         span_name = name_callback()
         token = context.attach(
-            propagators.extract(otel_wsgi.carrier_getter, environ)
+            propagators.extract(
+                otel_wsgi.carrier_getter, flask_request_environ
+            )
         )
 
         tracer = trace.get_tracer(__name__, __version__)
@@ -123,10 +151,12 @@ def _wrapped_before_request(name_callback):
         span = tracer.start_span(
             span_name,
             kind=trace.SpanKind.SERVER,
-            start_time=environ.get(_ENVIRON_STARTTIME_KEY),
+            start_time=flask_request_environ.get(_ENVIRON_STARTTIME_KEY),
         )
         if span.is_recording():
-            attributes = otel_wsgi.collect_request_attributes(environ)
+            attributes = otel_wsgi.collect_request_attributes(
+                flask_request_environ
+            )
             if flask.request.url_rule:
                 # For 404 that result from no route found, etc, we
                 # don't have a url_rule.
@@ -136,9 +166,9 @@ def _wrapped_before_request(name_callback):
 
         activation = tracer.use_span(span, end_on_exit=True)
         activation.__enter__()
-        environ[_ENVIRON_ACTIVATION_KEY] = activation
-        environ[_ENVIRON_SPAN_KEY] = span
-        environ[_ENVIRON_TOKEN] = token
+        flask_request_environ[_ENVIRON_ACTIVATION_KEY] = activation
+        flask_request_environ[_ENVIRON_SPAN_KEY] = span
+        flask_request_environ[_ENVIRON_TOKEN] = token
 
     return _before_request
 

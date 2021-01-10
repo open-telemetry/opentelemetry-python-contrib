@@ -18,9 +18,10 @@ from unittest.mock import Mock, patch
 from tornado.testing import AsyncHTTPTestCase
 
 from opentelemetry import trace
-from opentelemetry.configuration import Configuration
 from opentelemetry.instrumentation.tornado import (
     TornadoInstrumentor,
+    _get_excluded_urls,
+    _get_traced_request_attrs,
     patch_handler_class,
     unpatch_handler_class,
 )
@@ -45,7 +46,6 @@ class TornadoTest(AsyncHTTPTestCase, TestBase):
         TornadoInstrumentor().instrument()
         super().setUp()
         # pylint: disable=protected-access
-        Configuration()._reset()
         self.env_patch = patch.dict(
             "os.environ",
             {
@@ -56,11 +56,11 @@ class TornadoTest(AsyncHTTPTestCase, TestBase):
         self.env_patch.start()
         self.exclude_patch = patch(
             "opentelemetry.instrumentation.tornado._excluded_urls",
-            Configuration()._excluded_urls("tornado"),
+            _get_excluded_urls(),
         )
         self.traced_patch = patch(
-            "opentelemetry.instrumentation.tornado._traced_attrs",
-            Configuration()._traced_request_attrs("tornado"),
+            "opentelemetry.instrumentation.tornado._traced_request_attrs",
+            _get_traced_request_attrs(),
         )
         self.exclude_patch.start()
         self.traced_patch.start()

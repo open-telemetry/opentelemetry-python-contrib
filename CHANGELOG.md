@@ -14,6 +14,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [0.17b0](https://github.com/open-telemetry/opentelemetry-python-contrib/releases/tag/v0.17b0) - 2021-01-20
 
 ### Added
+- Remove Configuration
+  ([#285](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/285))
 - `opentelemetry-instrumentation-sqlalchemy` Ensure spans have kind set to "CLIENT"
   ([#278](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/278))
 - `opentelemetry-instrumentation-celery` Add support for Celery version 5.x
@@ -48,6 +50,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   ([#273](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/273))
 
 ### Changed
+- Remove Configuration
+  ([#285](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/285))
 - `opentelemetry-instrumentation-asgi`, `opentelemetry-instrumentation-wsgi` Return `None` for `CarrierGetter` if key not found
   ([#233](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/233))
 - `opentelemetry-instrumentation-grpc` Comply with updated spec, rework tests

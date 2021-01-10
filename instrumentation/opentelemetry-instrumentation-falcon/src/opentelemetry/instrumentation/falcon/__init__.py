@@ -43,14 +43,16 @@ API
 ---
 """
 
-import sys
 from logging import getLogger
+from os import environ
+from re import compile as re_compile
+from re import search
+from sys import exc_info
 
 import falcon
 
 import opentelemetry.instrumentation.wsgi as otel_wsgi
-from opentelemetry import configuration, context, propagators, trace
-from opentelemetry.configuration import Configuration
+from opentelemetry import context, propagators, trace
 from opentelemetry.instrumentation.falcon.version import __version__
 from opentelemetry.instrumentation.instrumentor import BaseInstrumentor
 from opentelemetry.instrumentation.utils import (
@@ -68,8 +70,49 @@ _ENVIRON_ACTIVATION_KEY = "opentelemetry-falcon.activation_key"
 _ENVIRON_TOKEN = "opentelemetry-falcon.token"
 _ENVIRON_EXC = "opentelemetry-falcon.exc"
 
-cfg = configuration.Configuration()
-_excluded_urls = cfg._excluded_urls("falcon")
+
+class _ExcludeList:
+    """Class to exclude certain paths (given as a list of regexes) from tracing requests"""
+
+    def __init__(self, excluded_urls):
+        self._excluded_urls = excluded_urls
+        if self._excluded_urls:
+            self._regex = re_compile("|".join(excluded_urls))
+
+    def url_disabled(self, url: str) -> bool:
+        return bool(self._excluded_urls and search(self._regex, url))
+
+
+_root = r"OTEL_PYTHON_{}"
+
+
+def _get_traced_request_attrs():
+    traced_request_attrs = environ.get(
+        _root.format("FALCON_TRACED_REQUEST_ATTRS"), []
+    )
+
+    if traced_request_attrs:
+        traced_request_attrs = [
+            traced_request_attr.strip()
+            for traced_request_attr in traced_request_attrs.split(",")
+        ]
+
+    return traced_request_attrs
+
+
+def _get_excluded_urls():
+    excluded_urls = environ.get(_root.format("FALCON_EXCLUDED_URLS"), [])
+
+    if excluded_urls:
+        excluded_urls = [
+            excluded_url.strip() for excluded_url in excluded_urls.split(",")
+        ]
+
+    return _ExcludeList(excluded_urls)
+
+
+_excluded_urls = _get_excluded_urls()
+_traced_request_attrs = _get_traced_request_attrs()
 
 
 class FalconInstrumentor(BaseInstrumentor):
@@ -149,7 +192,7 @@ class _TraceMiddleware:
 
     def __init__(self, tracer=None, traced_request_attrs=None):
         self.tracer = tracer
-        self._traced_request_attrs = cfg._traced_request_attrs("falcon")
+        self._traced_request_attrs = _traced_request_attrs
 
     def process_request(self, req, resp):
         span = req.env.get(_ENVIRON_SPAN_KEY)
@@ -186,7 +229,7 @@ class _TraceMiddleware:
             status = "404"
             reason = "NotFound"
 
-        exc_type, exc, _ = sys.exc_info()
+        exc_type, exc, _ = exc_info()
         if exc_type and not req_succeeded:
             if "HTTPNotFound" in exc_type.__name__:
                 status = "404"

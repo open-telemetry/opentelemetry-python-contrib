@@ -12,12 +12,14 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import time
 from logging import getLogger
+from os import environ
+from re import compile as re_compile
+from re import search
+from time import time
 
 from django.conf import settings
 
-from opentelemetry.configuration import Configuration
 from opentelemetry.context import attach, detach
 from opentelemetry.instrumentation.django.version import __version__
 from opentelemetry.instrumentation.utils import extract_attributes_from_object
@@ -51,6 +53,46 @@ _attributes_by_preference = [
 ]
 
 
+class _ExcludeList:
+    """Class to exclude certain paths (given as a list of regexes) from tracing requests"""
+
+    def __init__(self, excluded_urls):
+        self._excluded_urls = excluded_urls
+        if self._excluded_urls:
+            self._regex = re_compile("|".join(excluded_urls))
+
+    def url_disabled(self, url: str) -> bool:
+        return bool(self._excluded_urls and search(self._regex, url))
+
+
+_root = r"OTEL_PYTHON_{}"
+
+
+def _get_traced_request_attrs():
+    traced_request_attrs = environ.get(
+        _root.format("DJANGO_TRACED_REQUEST_ATTRS"), []
+    )
+
+    if traced_request_attrs:
+        traced_request_attrs = [
+            traced_request_attr.strip()
+            for traced_request_attr in traced_request_attrs.split(",")
+        ]
+
+    return traced_request_attrs
+
+
+def _get_excluded_urls():
+    excluded_urls = environ.get(_root.format("DJANGO_EXCLUDED_URLS"), [])
+
+    if excluded_urls:
+        excluded_urls = [
+            excluded_url.strip() for excluded_url in excluded_urls.split(",")
+        ]
+
+    return _ExcludeList(excluded_urls)
+
+
 class _DjangoMiddleware(MiddlewareMixin):
     """Django Middleware for OpenTelemetry"""
 
@@ -61,9 +103,8 @@ class _DjangoMiddleware(MiddlewareMixin):
     _environ_span_key = "opentelemetry-instrumentor-django.span_key"
     _environ_exception_key = "opentelemetry-instrumentor-django.exception_key"
 
-    _excluded_urls = Configuration()._excluded_urls("django")
-
-    _traced_request_attrs = Configuration()._traced_request_attrs("django")
+    _traced_request_attrs = _get_traced_request_attrs()
+    _excluded_urls = _get_excluded_urls()
 
     @staticmethod
     def _get_span_name(request):
@@ -111,23 +152,23 @@ class _DjangoMiddleware(MiddlewareMixin):
             return
 
         # pylint:disable=W0212
-        request._otel_start_time = time.time()
+        request._otel_start_time = time()
 
-        environ = request.META
+        request_meta = request.META
 
-        token = attach(extract(carrier_getter, environ))
+        token = attach(extract(carrier_getter, request_meta))
 
         tracer = get_tracer(__name__, __version__)
 
         span = tracer.start_span(
             self._get_span_name(request),
             kind=SpanKind.SERVER,
-            start_time=environ.get(
+            start_time=request_meta.get(
                 "opentelemetry-instrumentor-django.starttime_key"
             ),
         )
 
-        attributes = collect_request_attributes(environ)
+        attributes = collect_request_attributes(request_meta)
         # pylint:disable=W0212
         request._otel_labels = self._get_metric_labels_from_attributes(
             attributes
@@ -215,7 +256,7 @@ class _DjangoMiddleware(MiddlewareMixin):
             if metric_recorder is not None:
                 # pylint:disable=W0212
                 metric_recorder.record_server_duration_range(
-                    request._otel_start_time, time.time(), request._otel_labels
+                    request._otel_start_time, time(), request._otel_labels
                 )
         except Exception as ex:  # pylint: disable=W0703
             _logger.warning("Error recording duration metrics: %s", ex)

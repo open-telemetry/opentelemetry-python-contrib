@@ -19,7 +19,6 @@ import fastapi
 from fastapi.testclient import TestClient
 
 import opentelemetry.instrumentation.fastapi as otel_fastapi
-from opentelemetry.configuration import Configuration
 from opentelemetry.test.test_base import TestBase
 
 
@@ -31,7 +30,6 @@ class TestFastAPIManualInstrumentation(TestBase):
 
     def setUp(self):
         super().setUp()
-        Configuration()._reset()
         self.env_patch = patch.dict(
             "os.environ",
             {"OTEL_PYTHON_FASTAPI_EXCLUDED_URLS": "/exclude/123,healthzz"},
@@ -39,7 +37,7 @@ class TestFastAPIManualInstrumentation(TestBase):
         self.env_patch.start()
         self.exclude_patch = patch(
             "opentelemetry.instrumentation.fastapi._excluded_urls",
-            Configuration()._excluded_urls("fastapi"),
+            otel_fastapi._get_excluded_urls(),
         )
         self.exclude_patch.start()
         self._instrumentor = otel_fastapi.FastAPIInstrumentor()

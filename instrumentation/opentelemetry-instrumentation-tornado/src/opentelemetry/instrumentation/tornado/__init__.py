@@ -35,18 +35,18 @@ Usage
     tornado.ioloop.IOLoop.current().start()
 """
 
-import inspect
-import typing
 from collections import namedtuple
-from functools import partial, wraps
+from functools import partial
 from logging import getLogger
+from os import environ
+from re import compile as re_compile
+from re import search
 
 import tornado.web
 import wrapt
-from tornado.routing import Rule
 from wrapt import wrap_function_wrapper
 
-from opentelemetry import configuration, context, propagators, trace
+from opentelemetry import context, propagators, trace
 from opentelemetry.instrumentation.instrumentor import BaseInstrumentor
 from opentelemetry.instrumentation.tornado.version import __version__
 from opentelemetry.instrumentation.utils import (
@@ -65,10 +65,49 @@ _TraceContext = namedtuple("TraceContext", ["activation", "span", "token"])
 _HANDLER_CONTEXT_KEY = "_otel_trace_context_key"
 _OTEL_PATCHED_KEY = "_otel_patched_key"
 
-cfg = configuration.Configuration()
-_excluded_urls = cfg._excluded_urls("tornado")
-_traced_attrs = cfg._traced_request_attrs("tornado")
 
+class _ExcludeList:
+    """Class to exclude certain paths (given as a list of regexes) from tracing requests"""
+
+    def __init__(self, excluded_urls):
+        self._excluded_urls = excluded_urls
+        if self._excluded_urls:
+            self._regex = re_compile("|".join(excluded_urls))
+
+    def url_disabled(self, url: str) -> bool:
+        return bool(self._excluded_urls and search(self._regex, url))
+
+
+_root = r"OTEL_PYTHON_{}"
+
+
+def _get_traced_request_attrs():
+    traced_request_attrs = environ.get(
+        _root.format("TORNADO_TRACED_REQUEST_ATTRS"), []
+    )
+
+    if traced_request_attrs:
+        traced_request_attrs = [
+            traced_request_attr.strip()
+            for traced_request_attr in traced_request_attrs.split(",")
+        ]
+
+    return traced_request_attrs
+
+
+def _get_excluded_urls():
+    excluded_urls = environ.get(_root.format("TORNADO_EXCLUDED_URLS"), [])
+
+    if excluded_urls:
+        excluded_urls = [
+            excluded_url.strip() for excluded_url in excluded_urls.split(",")
+        ]
+
+    return _ExcludeList(excluded_urls)
+
+
+_excluded_urls = _get_excluded_urls()
+_traced_request_attrs = _get_traced_request_attrs()
 carrier_getter = DictGetter()
 
 
@@ -186,7 +225,9 @@ def _get_attributes_from_request(request):
     if request.remote_ip:
         attrs["net.peer.ip"] = request.remote_ip
 
-    return extract_attributes_from_object(request, _traced_attrs, attrs)
+    return extract_attributes_from_object(
+        request, _traced_request_attrs, attrs
+    )
 
 
 def _get_operation_name(handler, request):

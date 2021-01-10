@@ -11,17 +11,43 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-from typing import Optional
+
+from os import environ
+from re import compile as re_compile
+from re import search
 
 import fastapi
 from starlette.routing import Match
 
-from opentelemetry.configuration import Configuration
 from opentelemetry.instrumentation.asgi import OpenTelemetryMiddleware
 from opentelemetry.instrumentation.fastapi.version import __version__  # noqa
 from opentelemetry.instrumentation.instrumentor import BaseInstrumentor
 
-_excluded_urls = Configuration()._excluded_urls("fastapi")
+
+class _ExcludeList:
+    """Class to exclude certain paths (given as a list of regexes) from tracing requests"""
+
+    def __init__(self, excluded_urls):
+        self._excluded_urls = excluded_urls
+        if self._excluded_urls:
+            self._regex = re_compile("|".join(excluded_urls))
+
+    def url_disabled(self, url: str) -> bool:
+        return bool(self._excluded_urls and search(self._regex, url))
+
+
+def _get_excluded_urls():
+    excluded_urls = environ.get("OTEL_PYTHON_FASTAPI_EXCLUDED_URLS", [])
+
+    if excluded_urls:
+        excluded_urls = [
+            excluded_url.strip() for excluded_url in excluded_urls.split(",")
+        ]
+
+    return _ExcludeList(excluded_urls)
+
+
+_excluded_urls = _get_excluded_urls()
 
 
 class FastAPIInstrumentor(BaseInstrumentor):
