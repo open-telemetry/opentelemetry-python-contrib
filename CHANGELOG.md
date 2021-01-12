@@ -37,6 +37,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   ([#227](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/227]))
 - `opentelemetry-instrumentation-botocore` Adds a field to report the number of retries it take to complete an API call
   ([#275](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/275))
+- `opentelemetry-instrumentation-requests` Use instanceof to check if responses are valid Response objects
+  ([#273](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/273))
 
 ### Changed
 - `opentelemetry-instrumentation-asgi`, `opentelemetry-instrumentation-wsgi` Return `None` for `CarrierGetter` if key not found
@@ -51,6 +53,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   ([#259](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/259))
 - `opentelemetry-exporter-datadog` Fix unintentional type change of span trace flags
   ([#261](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/261))
+- `opentelemetry-instrumentation-aiopg` Fix AttributeError `__aexit__` when `aiopg.connect` and `aio[g].create_pool` used with async context manager
+  ([#235](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/235))
+- `opentelemetry-exporter-datadog` `opentelemetry-sdk-extension-aws` Fix reference to ids_generator in sdk
+  ([#235](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/235))
 
 ## [0.16b1](https://github.com/open-telemetry/opentelemetry-python-contrib/releases/tag/v0.16b1) - 2020-11-26
 
