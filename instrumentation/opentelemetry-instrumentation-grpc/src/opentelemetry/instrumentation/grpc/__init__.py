@@ -191,8 +191,7 @@ class GrpcInstrumentorClient(BaseInstrumentor):
         if "channel_type" in kwargs:
             if kwargs.get("channel_type") == "secure":
                 return ("secure_channel",)
-            else:
-                return ("insecure_channel",)
+            return ("insecure_channel",)
 
         # handle modern arguments
         types = []

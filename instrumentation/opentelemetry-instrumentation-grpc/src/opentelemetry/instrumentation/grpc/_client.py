@@ -184,14 +184,14 @@ class OpenTelemetryClientInterceptor(
 
                 try:
                     result = invoker(request, metadata)
-                except grpc.RpcError as e:
+                except grpc.RpcError as err:
                     guarded_span.generated_span.set_status(
                         Status(StatusCode.ERROR)
                     )
                     guarded_span.generated_span.set_attribute(
-                        "rpc.grpc.status_code", e.code().value[0]
+                        "rpc.grpc.status_code", err.code().value[0]
                     )
-                    raise e
+                    raise err
 
                 return self._trace_result(
                     guarded_span, rpc_info, result, client_info
@@ -242,12 +242,12 @@ class OpenTelemetryClientInterceptor(
                                 response.ByteSize(), client_info.full_method
                             )
                         yield response
-                except grpc.RpcError as e:
+                except grpc.RpcError as err:
                     span.set_status(Status(StatusCode.ERROR))
                     span.set_attribute(
-                        "rpc.grpc.status_code", e.code().value[0]
+                        "rpc.grpc.status_code", err.code().value[0]
                     )
-                    raise e
+                    raise err
 
     def intercept_stream(
         self, request_or_iterator, metadata, client_info, invoker
@@ -283,14 +283,14 @@ class OpenTelemetryClientInterceptor(
 
                 try:
                     result = invoker(request_or_iterator, metadata)
-                except grpc.RpcError as e:
+                except grpc.RpcError as err:
                     guarded_span.generated_span.set_status(
                         Status(StatusCode.ERROR)
                     )
                     guarded_span.generated_span.set_attribute(
-                        "rpc.grpc.status_code", e.code().value[0],
+                        "rpc.grpc.status_code", err.code().value[0],
                     )
-                    raise e
+                    raise err
 
                 return self._trace_result(
                     guarded_span, rpc_info, result, client_info
