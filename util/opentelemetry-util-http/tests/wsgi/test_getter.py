@@ -14,7 +14,7 @@
 
 from unittest import TestCase
 
-from opentelemetry.instrumentation.wsgi import CarrierGetter
+from opentelemetry.util.http.wsgi import CarrierGetter
 
 
 class TestCarrierGetter(TestCase):

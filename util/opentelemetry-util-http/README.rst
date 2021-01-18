@@ -1,21 +1,22 @@
-OpenTelemetry ASGI Instrumentation
-==================================
+OpenTelemetry Util HTTP
+=======================
 
 |pypi|
 
-.. |pypi| image:: https://badge.fury.io/py/opentelemetry-instrumentation-asgi.svg
-   :target: https://pypi.org/project/opentelemetry-instrumentation-asgi/
+.. |pypi| image:: https://badge.fury.io/py/opentelemetry-util-http.svg
+   :target: https://pypi.org/project/opentelemetry-util-http/
 
 
-This library provides a ASGI middleware that can be used on any ASGI framework
-(such as Django, Starlette, FastAPI or Quart) to track requests timing through OpenTelemetry.
+This library provides ASGI, WSGI middleware and other HTTP-related
+functionality that is common to instrumented web frameworks (such as Django,
+Starlette, FastAPI, etc.) to track requests timing through OpenTelemetry.
 
 Installation
 ------------
 
 ::
 
-    pip install opentelemetry-instrumentation-asgi
+    pip install opentelemetry-util-http
 
 
 Usage (Quart)
@@ -24,7 +25,7 @@ Usage (Quart)
 .. code-block:: python
 
     from quart import Quart
-    from opentelemetry.instrumentation.asgi import OpenTelemetryMiddleware
+    from opentelemetry.util.http.asgi import OpenTelemetryMiddleware
 
     app = Quart(__name__)
     app.asgi_app = OpenTelemetryMiddleware(app.asgi_app)
@@ -46,7 +47,7 @@ Modify the application's ``asgi.py`` file as shown below.
 
     import os
     from django.core.asgi import get_asgi_application
-    from opentelemetry.instrumentation.asgi import OpenTelemetryMiddleware
+    from opentelemetry.util.http.asgi import OpenTelemetryMiddleware
 
     os.environ.setdefault('DJANGO_SETTINGS_MODULE', 'asgi_example.settings')
 
@@ -59,7 +60,7 @@ Usage (Raw ASGI)
 
 .. code-block:: python
 
-    from opentelemetry.instrumentation.asgi import OpenTelemetryMiddleware
+    from opentelemetry.util.http.asgi import OpenTelemetryMiddleware
 
     app = ...  # An ASGI application.
     app = OpenTelemetryMiddleware(app)

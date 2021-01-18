@@ -38,9 +38,6 @@ Usage
 from collections import namedtuple
 from functools import partial
 from logging import getLogger
-from os import environ
-from re import compile as re_compile
-from re import search
 
 import tornado.web
 import wrapt
@@ -57,6 +54,7 @@ from opentelemetry.instrumentation.utils import (
 from opentelemetry.trace.propagation.textmap import DictGetter
 from opentelemetry.trace.status import Status
 from opentelemetry.util import time_ns
+from opentelemetry.util.http import get_excluded_urls, get_traced_request_attrs
 
 from .client import fetch_async  # pylint: disable=E0401
 
@@ -66,48 +64,8 @@ _HANDLER_CONTEXT_KEY = "_otel_trace_context_key"
 _OTEL_PATCHED_KEY = "_otel_patched_key"
 
 
-class _ExcludeList:
-    """Class to exclude certain paths (given as a list of regexes) from tracing requests"""
-
-    def __init__(self, excluded_urls):
-        self._excluded_urls = excluded_urls
-        if self._excluded_urls:
-            self._regex = re_compile("|".join(excluded_urls))
-
-    def url_disabled(self, url: str) -> bool:
-        return bool(self._excluded_urls and search(self._regex, url))
-
-
-_root = r"OTEL_PYTHON_{}"
-
-
-def _get_traced_request_attrs():
-    traced_request_attrs = environ.get(
-        _root.format("TORNADO_TRACED_REQUEST_ATTRS"), []
-    )
-
-    if traced_request_attrs:
-        traced_request_attrs = [
-            traced_request_attr.strip()
-            for traced_request_attr in traced_request_attrs.split(",")
-        ]
-
-    return traced_request_attrs
-
-
-def _get_excluded_urls():
-    excluded_urls = environ.get(_root.format("TORNADO_EXCLUDED_URLS"), [])
-
-    if excluded_urls:
-        excluded_urls = [
-            excluded_url.strip() for excluded_url in excluded_urls.split(",")
-        ]
-
-    return _ExcludeList(excluded_urls)
-
-
-_excluded_urls = _get_excluded_urls()
-_traced_request_attrs = _get_traced_request_attrs()
+_excluded_urls = get_excluded_urls("TORNADO")
+_traced_request_attrs = get_traced_request_attrs("TORNADO")
 carrier_getter = DictGetter()
 
 

@@ -17,12 +17,10 @@ from unittest.mock import Mock, patch
 from flask import Flask, request
 
 from opentelemetry import trace
-from opentelemetry.instrumentation.flask import (
-    FlaskInstrumentor,
-    _get_excluded_urls,
-)
+from opentelemetry.instrumentation.flask import FlaskInstrumentor
 from opentelemetry.test.test_base import TestBase
 from opentelemetry.test.wsgitestutil import WsgiTestBase
+from opentelemetry.util.http import get_excluded_urls
 
 # pylint: disable=import-error
 from .base_test import InstrumentationTest
@@ -64,7 +62,7 @@ class TestProgrammatic(InstrumentationTest, TestBase, WsgiTestBase):
         self.env_patch.start()
         self.exclude_patch = patch(
             "opentelemetry.instrumentation.flask._excluded_urls",
-            _get_excluded_urls(),
+            get_excluded_urls("FLASK"),
         )
         self.exclude_patch.start()
 

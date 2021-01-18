@@ -1,17 +1,15 @@
 from logging import getLogger
-from os import environ
-from re import compile as re_compile
-from re import search
 
 from pyramid.events import BeforeTraversal
 from pyramid.httpexceptions import HTTPException
 from pyramid.settings import asbool
 from pyramid.tweens import EXCVIEW
 
-import opentelemetry.instrumentation.wsgi as otel_wsgi
+import opentelemetry.util.http.wsgi as otel_wsgi
 from opentelemetry import context, propagators, trace
 from opentelemetry.instrumentation.pyramid.version import __version__
 from opentelemetry.util import time_ns
+from opentelemetry.util.http import get_excluded_urls
 
 TWEEN_NAME = "opentelemetry.instrumentation.pyramid.trace_tween_factory"
 SETTING_TRACE_ENABLED = "opentelemetry-pyramid.trace_enabled"
@@ -25,30 +23,7 @@ _ENVIRON_TOKEN = "opentelemetry-pyramid.token"
 _logger = getLogger(__name__)
 
 
-class _ExcludeList:
-    """Class to exclude certain paths (given as a list of regexes) from tracing requests"""
-
-    def __init__(self, excluded_urls):
-        self._excluded_urls = excluded_urls
-        if self._excluded_urls:
-            self._regex = re_compile("|".join(excluded_urls))
-
-    def url_disabled(self, url: str) -> bool:
-        return bool(self._excluded_urls and search(self._regex, url))
-
-
-def _get_excluded_urls():
-    excluded_urls = environ.get("OTEL_PYTHON_PYRAMID_EXCLUDED_URLS", [])
-
-    if excluded_urls:
-        excluded_urls = [
-            excluded_url.strip() for excluded_url in excluded_urls.split(",")
-        ]
-
-    return _ExcludeList(excluded_urls)
-
-
-_excluded_urls = _get_excluded_urls()
+_excluded_urls = get_excluded_urls("PYRAMID")
 
 
 def includeme(config):

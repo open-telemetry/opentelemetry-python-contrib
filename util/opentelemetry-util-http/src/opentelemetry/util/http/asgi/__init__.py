@@ -13,12 +13,11 @@
 # limitations under the License.
 
 """
-The opentelemetry-instrumentation-asgi package provides an ASGI middleware that can be used
+The opentelemetry-util-web package provides an ASGI middleware that can be used
 on any ASGI framework (such as Django-channels / Quart) to track requests
 timing through OpenTelemetry.
 """
 
-import operator
 import typing
 import urllib
 from functools import wraps
@@ -27,10 +26,10 @@ from typing import Tuple
 from asgiref.compatibility import guarantee_single_callable
 
 from opentelemetry import context, propagators, trace
-from opentelemetry.instrumentation.asgi.version import __version__  # noqa
 from opentelemetry.instrumentation.utils import http_status_to_status_code
 from opentelemetry.trace.propagation.textmap import DictGetter
 from opentelemetry.trace.status import Status, StatusCode
+from opentelemetry.util.http.asgi.version import __version__  # noqa
 
 
 class CarrierGetter(DictGetter):

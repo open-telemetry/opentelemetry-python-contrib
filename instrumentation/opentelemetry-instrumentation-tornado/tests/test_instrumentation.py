@@ -20,13 +20,12 @@ from tornado.testing import AsyncHTTPTestCase
 from opentelemetry import trace
 from opentelemetry.instrumentation.tornado import (
     TornadoInstrumentor,
-    _get_excluded_urls,
-    _get_traced_request_attrs,
     patch_handler_class,
     unpatch_handler_class,
 )
 from opentelemetry.test.test_base import TestBase
 from opentelemetry.trace import SpanKind
+from opentelemetry.util.http import get_excluded_urls, get_traced_request_attrs
 
 from .tornado_test_app import (
     AsyncHandler,
@@ -56,11 +55,11 @@ class TornadoTest(AsyncHTTPTestCase, TestBase):
         self.env_patch.start()
         self.exclude_patch = patch(
             "opentelemetry.instrumentation.tornado._excluded_urls",
-            _get_excluded_urls(),
+            get_excluded_urls("TORNADO"),
         )
         self.traced_patch = patch(
             "opentelemetry.instrumentation.tornado._traced_request_attrs",
-            _get_traced_request_attrs(),
+            get_traced_request_attrs("TORNADO"),
         )
         self.exclude_patch.start()
         self.traced_patch.start()

@@ -22,6 +22,7 @@ from starlette.testclient import TestClient
 
 import opentelemetry.instrumentation.starlette as otel_starlette
 from opentelemetry.test.test_base import TestBase
+from opentelemetry.util.http import get_excluded_urls
 
 
 class TestStarletteManualInstrumentation(TestBase):
@@ -39,7 +40,7 @@ class TestStarletteManualInstrumentation(TestBase):
         self.env_patch.start()
         self.exclude_patch = patch(
             "opentelemetry.instrumentation.starlette._excluded_urls",
-            otel_starlette._get_excluded_urls(),
+            get_excluded_urls("STARLETTE"),
         )
         self.exclude_patch.start()
         self._instrumentor = otel_starlette.StarletteInstrumentor()

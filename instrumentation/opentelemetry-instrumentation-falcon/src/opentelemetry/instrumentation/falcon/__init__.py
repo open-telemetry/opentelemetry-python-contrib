@@ -14,7 +14,7 @@
 
 """
 This library builds on the OpenTelemetry WSGI middleware to track web requests
-in Falcon applications. In addition to opentelemetry-instrumentation-wsgi,
+in Falcon applications. In addition to opentelemetry-util-http,
 it supports falcon-specific features such as:
 
 * The Falcon resource and method name is used as the Span name.
@@ -44,14 +44,11 @@ API
 """
 
 from logging import getLogger
-from os import environ
-from re import compile as re_compile
-from re import search
 from sys import exc_info
 
 import falcon
 
-import opentelemetry.instrumentation.wsgi as otel_wsgi
+import opentelemetry.util.http.wsgi as otel_wsgi
 from opentelemetry import context, propagators, trace
 from opentelemetry.instrumentation.falcon.version import __version__
 from opentelemetry.instrumentation.instrumentor import BaseInstrumentor
@@ -61,6 +58,7 @@ from opentelemetry.instrumentation.utils import (
 )
 from opentelemetry.trace.status import Status
 from opentelemetry.util import time_ns
+from opentelemetry.util.http import get_excluded_urls, get_traced_request_attrs
 
 _logger = getLogger(__name__)
 
@@ -71,48 +69,8 @@ _ENVIRON_TOKEN = "opentelemetry-falcon.token"
 _ENVIRON_EXC = "opentelemetry-falcon.exc"
 
 
-class _ExcludeList:
-    """Class to exclude certain paths (given as a list of regexes) from tracing requests"""
-
-    def __init__(self, excluded_urls):
-        self._excluded_urls = excluded_urls
-        if self._excluded_urls:
-            self._regex = re_compile("|".join(excluded_urls))
-
-    def url_disabled(self, url: str) -> bool:
-        return bool(self._excluded_urls and search(self._regex, url))
-
-
-_root = r"OTEL_PYTHON_{}"
-
-
-def _get_traced_request_attrs():
-    traced_request_attrs = environ.get(
-        _root.format("FALCON_TRACED_REQUEST_ATTRS"), []
-    )
-
-    if traced_request_attrs:
-        traced_request_attrs = [
-            traced_request_attr.strip()
-            for traced_request_attr in traced_request_attrs.split(",")
-        ]
-
-    return traced_request_attrs
-
-
-def _get_excluded_urls():
-    excluded_urls = environ.get(_root.format("FALCON_EXCLUDED_URLS"), [])
-
-    if excluded_urls:
-        excluded_urls = [
-            excluded_url.strip() for excluded_url in excluded_urls.split(",")
-        ]
-
-    return _ExcludeList(excluded_urls)
-
-
-_excluded_urls = _get_excluded_urls()
-_traced_request_attrs = _get_traced_request_attrs()
+_excluded_urls = get_excluded_urls("FALCON")
+_traced_request_attrs = get_traced_request_attrs("FALCON")
 
 
 class FalconInstrumentor(BaseInstrumentor):
