@@ -33,26 +33,26 @@ Example
    from opentelemetry.sdk.trace.export import BatchExportSpanProcessor
 
 
-   jaeger_exporter = jaeger.JaegerSpanExporter(
-      service_name="xxx",
+   _JAEGER_EXPORTER = jaeger.JaegerSpanExporter(
+      service_name="example-xxx",
       agent_host_name="localhost",
       agent_port=6831,
    )
 
    _TRACE_PROVIDER = TracerProvider()
-   _TRACE_PROVIDER.add_span_processor(BatchExportSpanProcessor(jaeger_exporter))
+   _TRACE_PROVIDER.add_span_processor(BatchExportSpanProcessor(_JAEGER_EXPORTER))
    trace.set_tracer_provider(_TRACE_PROVIDER)
 
    AioHttpClientInstrumentor().instrument()
 
 
-   async def span_emmitter():
+   async def span_emitter():
       async with aiohttp.ClientSession() as session:
          async with session.get("https://example.com") as resp:
                print(resp.status)
 
 
-   asyncio.run(span_emmitter())
+   asyncio.run(span_emitter())
 
 
 References
