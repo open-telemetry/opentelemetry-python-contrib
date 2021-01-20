@@ -42,7 +42,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 - `opentelemetry-instrumentation-asgi`, `opentelemetry-instrumentation-wsgi` Return `None` for `CarrierGetter` if key not found
-  ([#1374](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/233))
+  ([#233](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/233))
 - `opentelemetry-instrumentation-grpc` Comply with updated spec, rework tests
   ([#236](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/236))
 - `opentelemetry-instrumentation-asgi`, `opentelemetry-instrumentation-falcon`, `opentelemetry-instrumentation-flask`, `opentelemetry-instrumentation-pyramid`, `opentelemetry-instrumentation-wsgi` Renamed `host.port` attribute to `net.host.port`
@@ -56,7 +56,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - `opentelemetry-instrumentation-aiopg` Fix AttributeError `__aexit__` when `aiopg.connect` and `aio[g].create_pool` used with async context manager
   ([#235](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/235))
 - `opentelemetry-exporter-datadog` `opentelemetry-sdk-extension-aws` Fix reference to ids_generator in sdk
-  ([#283](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/235))
+  ([#283](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/283))
+- `opentelemetry-instrumentation-sqlalchemy` Use SQL operation and DB name as span name.
+  ([#254](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/254))
 - `opentelemetry-instrumentation-dbapi`, `TracedCursor` replaced by `CursorTracer`
   ([#246](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/246))
 - `opentelemetry-instrumentation-psycopg2`, Added support for psycopg2 registered types.
