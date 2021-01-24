@@ -20,11 +20,27 @@ it can be enabled by using ``AiopgInstrumentor``.
 
 Usage
 -----
+The following example depends on `opentelemetry-sdk` as a substitute for the minimal no-op implementation provided by `opentelemetry-api` and uses `ConsoleSpanExporter`_ to emit traces to console. The `opentelemetry-python` client supports exporting telemetry data to different backends using exporter libraries, please read the `Exporters`_ section of documention for more details.
+
+.. _ConsoleSpanExporter: https://opentelemetry-python.readthedocs.io/en/stable/sdk/trace.export.html#opentelemetry.sdk.trace.export.ConsoleSpanExporter
+.. _Exporters: https://opentelemetry-python.readthedocs.io/en/stable/index.html#exporters
 
 .. code-block:: python
 
     import aiopg
     from opentelemetry.instrumentation.aiopg import AiopgInstrumentor
+    from opentelemetry import trace
+    from opentelemetry.sdk.trace import TracerProvider
+    from opentelemetry.sdk.trace.export import (
+        ConsoleSpanExporter,
+        SimpleExportSpanProcessor,
+    )
+
+    trace.set_tracer_provider(TracerProvider())
+    trace.get_tracer_provider().add_span_processor(
+        SimpleExportSpanProcessor(ConsoleSpanExporter())
+    )
+
 
     AiopgInstrumentor().instrument()
 
