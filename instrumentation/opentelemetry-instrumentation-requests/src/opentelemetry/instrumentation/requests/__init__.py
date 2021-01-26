@@ -56,7 +56,7 @@ from opentelemetry.trace.status import Status, StatusCode
 
 # A key to a context variable to avoid creating duplicate spans when instrumenting
 # both, Session.request and Session.send, since Session.request calls into Session.send
-_SUPPRESS_REQUESTS_INSTRUMENTATION_KEY = "suppress_requests_instrumentation"
+_SUPPRESS_HTTP_INSTRUMENTATION_KEY = "suppress_http_instrumentation"
 
 
 # pylint: disable=unused-argument
@@ -114,7 +114,7 @@ def _instrument(tracer_provider=None, span_callback=None, name_callback=None):
         method: str, url: str, call_wrapped, get_or_create_headers
     ):
         if context.get_value("suppress_instrumentation") or context.get_value(
-            _SUPPRESS_REQUESTS_INSTRUMENTATION_KEY
+            _SUPPRESS_HTTP_INSTRUMENTATION_KEY
         ):
             return call_wrapped()
 
@@ -147,9 +147,7 @@ def _instrument(tracer_provider=None, span_callback=None, name_callback=None):
                 propagators.inject(type(headers).__setitem__, headers)
 
                 token = context.attach(
-                    context.set_value(
-                        _SUPPRESS_REQUESTS_INSTRUMENTATION_KEY, True
-                    )
+                    context.set_value(_SUPPRESS_HTTP_INSTRUMENTATION_KEY, True)
                 )
                 try:
                     result = call_wrapped()  # *** PROCEED
