@@ -1,4 +1,4 @@
-Opentelemetry asyncpg Instrumentation
+OpenTelemetry asyncpg Instrumentation
 =====================================
 
 Module contents
