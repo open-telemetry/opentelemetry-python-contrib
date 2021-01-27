@@ -6,6 +6,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased](https://github.com/open-telemetry/opentelemetry-python-contrib/compare/v0.17b0...HEAD)
 
+### Changed
+- Remove `component` span attribute in instrumentations
+  ([#301](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/301))
+
 ## [0.17b0](https://github.com/open-telemetry/opentelemetry-python-contrib/releases/tag/v0.17b0) - 2021-01-20
 
 ### Added
