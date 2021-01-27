@@ -48,7 +48,7 @@ logger = logging.getLogger(__name__)
 
 
 def trace_integration(
-    database_component: str,
+    database_system: str,
     database_type: str = "",
     connection_attributes: typing.Dict = None,
     tracer_provider: typing.Optional[TracerProvider] = None,
@@ -57,18 +57,18 @@ def trace_integration(
     based on dbapi integration, where replaced sync wrap methods to async
 
     Args:
-        database_component: Database driver name or
-            database name "postgreSQL".
+        database_system: An identifier for the database management system (DBMS)
+            product being used.
         database_type: The Database type. For any SQL database, "sql".
         connection_attributes: Attribute names for database, port, host and
             user in Connection object.
         tracer_provider: The :class:`opentelemetry.trace.TracerProvider` to
-            use. If ommited the current configured one is used.
+            use. If omitted the current configured one is used.
     """
 
     wrap_connect(
         __name__,
-        database_component,
+        database_system,
         database_type,
         connection_attributes,
         __version__,
@@ -78,7 +78,7 @@ def trace_integration(
 
 def wrap_connect(
     name: str,
-    database_component: str,
+    database_system: str,
     database_type: str = "",
     connection_attributes: typing.Dict = None,
     version: str = "",
@@ -89,14 +89,14 @@ def wrap_connect(
 
     Args:
         name: Name of opentelemetry extension for aiopg.
-        database_component: Database driver name
-            or database name "postgreSQL".
+        database_system: An identifier for the database management system (DBMS)
+            product being used.
         database_type: The Database type. For any SQL database, "sql".
         connection_attributes: Attribute names for database, port, host and
             user in Connection object.
         version: Version of opentelemetry extension for aiopg.
         tracer_provider: The :class:`opentelemetry.trace.TracerProvider` to
-            use. If ommited the current configured one is used.
+            use. If omitted the current configured one is used.
     """
 
     # pylint: disable=unused-argument
@@ -108,7 +108,7 @@ def wrap_connect(
     ):
         db_integration = AiopgIntegration(
             name,
-            database_component,
+            database_system,
             database_type=database_type,
             connection_attributes=connection_attributes,
             version=version,
@@ -135,7 +135,7 @@ def unwrap_connect():
 def instrument_connection(
     name: str,
     connection,
-    database_component: str,
+    database_system: str,
     database_type: str = "",
     connection_attributes: typing.Dict = None,
     version: str = "",
@@ -146,20 +146,21 @@ def instrument_connection(
     Args:
         name: Name of opentelemetry extension for aiopg.
         connection: The connection to instrument.
-        database_component: Database driver name or database name "postgreSQL".
+        database_system: An identifier for the database management system (DBMS)
+            product being used.
         database_type: The Database type. For any SQL database, "sql".
         connection_attributes: Attribute names for database, port, host and
             user in a connection object.
         version: Version of opentelemetry extension for aiopg.
         tracer_provider: The :class:`opentelemetry.trace.TracerProvider` to
-            use. If ommited the current configured one is used.
+            use. If omitted the current configured one is used.
 
     Returns:
         An instrumented connection.
     """
     db_integration = AiopgIntegration(
         name,
-        database_component,
+        database_system,
         database_type,
         connection_attributes=connection_attributes,
         version=version,
@@ -187,7 +188,7 @@ def uninstrument_connection(connection):
 
 def wrap_create_pool(
     name: str,
-    database_component: str,
+    database_system: str,
     database_type: str = "",
     connection_attributes: typing.Dict = None,
     version: str = "",
@@ -202,7 +203,7 @@ def wrap_create_pool(
     ):
         db_integration = AiopgIntegration(
             name,
-            database_component,
+            database_system,
             database_type,
             connection_attributes=connection_attributes,
             version=version,

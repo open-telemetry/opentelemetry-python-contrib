@@ -53,7 +53,6 @@ class TestDBApiIntegration(TestBase):
         self.assertEqual(span.name, "Test")
         self.assertIs(span.kind, trace_api.SpanKind.CLIENT)
 
-        self.assertEqual(span.attributes["component"], "testcomponent")
         self.assertEqual(span.attributes["db.system"], "testcomponent")
         self.assertEqual(span.attributes["db.name"], "testdatabase")
         self.assertEqual(span.attributes["db.statement"], "Test query")
@@ -117,7 +116,6 @@ class TestDBApiIntegration(TestBase):
         self.assertEqual(span.name, "Test")
         self.assertIs(span.kind, trace_api.SpanKind.CLIENT)
 
-        self.assertEqual(span.attributes["component"], "testcomponent")
         self.assertEqual(span.attributes["db.system"], "testcomponent")
         self.assertEqual(span.attributes["db.name"], "testdatabase")
         self.assertEqual(span.attributes["db.statement"], "Test query")

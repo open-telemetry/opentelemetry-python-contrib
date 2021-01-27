@@ -55,7 +55,7 @@ class PyMySQLInstrumentor(BaseInstrumentor):
         "user": "user",
     }
 
-    _DATABASE_COMPONENT = "mysql"
+    _DATABASE_SYSTEM = "mysql"
     _DATABASE_TYPE = "sql"
 
     def _instrument(self, **kwargs):
@@ -68,7 +68,7 @@ class PyMySQLInstrumentor(BaseInstrumentor):
             __name__,
             pymysql,
             "connect",
-            self._DATABASE_COMPONENT,
+            self._DATABASE_SYSTEM,
             self._DATABASE_TYPE,
             self._CONNECTION_ATTRIBUTES,
             version=__version__,
@@ -93,7 +93,7 @@ class PyMySQLInstrumentor(BaseInstrumentor):
         return dbapi.instrument_connection(
             __name__,
             connection,
-            self._DATABASE_COMPONENT,
+            self._DATABASE_SYSTEM,
             self._DATABASE_TYPE,
             self._CONNECTION_ATTRIBUTES,
             version=__version__,

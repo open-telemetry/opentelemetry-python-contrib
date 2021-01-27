@@ -51,7 +51,7 @@ class SQLite3Instrumentor(BaseInstrumentor):
     # No useful attributes of sqlite3 connection object
     _CONNECTION_ATTRIBUTES = {}
 
-    _DATABASE_COMPONENT = "sqlite"
+    _DATABASE_SYSTEM = "sqlite"
     _DATABASE_TYPE = "sql"
 
     def _instrument(self, **kwargs):
@@ -64,7 +64,7 @@ class SQLite3Instrumentor(BaseInstrumentor):
             __name__,
             sqlite3,
             "connect",
-            self._DATABASE_COMPONENT,
+            self._DATABASE_SYSTEM,
             self._DATABASE_TYPE,
             self._CONNECTION_ATTRIBUTES,
             version=__version__,
@@ -90,7 +90,7 @@ class SQLite3Instrumentor(BaseInstrumentor):
         return dbapi.instrument_connection(
             tracer,
             connection,
-            self._DATABASE_COMPONENT,
+            self._DATABASE_SYSTEM,
             self._DATABASE_TYPE,
             self._CONNECTION_ATTRIBUTES,
         )
