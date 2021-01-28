@@ -13,9 +13,9 @@
 # limitations under the License.
 
 """
-The opentelemetry-util-web package provides an ASGI middleware that can be used
-on any ASGI framework (such as Django-channels / Quart) to track requests
-timing through OpenTelemetry.
+The opentelemetry.util.http.asgi package provides an ASGI middleware that can
+be used on any ASGI framework (such as Django-channels / Quart) to track
+requests timing through OpenTelemetry.
 """
 
 import typing
