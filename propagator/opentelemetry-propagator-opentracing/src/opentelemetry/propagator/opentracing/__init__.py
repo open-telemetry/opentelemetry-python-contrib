@@ -73,13 +73,6 @@ class OpenTracingPropagator(TextMapPropagator):
             and spanid != INVALID_SPAN_ID
             and _valid_spanid.match(spanid) is not None
         ):
-            # FIXME this padding is lost when trace_id is casted to int when a
-            # SpanContext is created. This causes a test case to fail. The
-            # approach coded here attempts to closely follow JS implementation:
-            # https://github.com/open-telemetry/opentelemetry-js-contrib/pull/318/files?file-filters%5B%5D=.js&file-filters%5B%5D=.json&file-filters%5B%5D=.ts&file-filters%5B%5D=dotfile#diff-824ceb4ccf0b4daec4207237a16f2ff4833d941e2a931bd45788f9620b4e8837R91
-            if len(traceid) == 16:
-                traceid = "".join(["0" * 16, traceid])
-
             context = set_span_in_context(
                 DefaultSpan(
                     SpanContext(

@@ -270,27 +270,6 @@ class TestOpenTracingPropagator(TestCase):
         self.assertTrue(span_context.is_remote)
         self.assertEqual(span_context.trace_flags, TraceFlags.DEFAULT)
 
-    def test_extract_padding_trace_id(self):
-        """Test padding of trace_id"""
-
-        span_context = get_current_span(
-            self.opentracing_propagator.extract(
-                carrier_getter,
-                {
-                    OT_TRACE_ID_HEADER: "64fe8b2a57d3eff7",
-                    OT_SPAN_ID_HEADER: "e457b5a2e4d86bd1",
-                    OT_SAMPLED_HEADER: "false",
-                },
-            )
-        ).get_span_context()
-
-        self.assertEqual(
-            hex(span_context.trace_id)[2:], "000000000000000064fe8b2a57d3eff7"
-        )
-        self.assertEqual(hex(span_context.span_id)[2:], "e457b5a2e4d86bd1")
-        self.assertTrue(span_context.is_remote)
-        self.assertEqual(span_context.trace_flags, TraceFlags.DEFAULT)
-
     def test_extract_malformed_trace_id(self):
         """Test extraction with malformed trace_id"""
 
