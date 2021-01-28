@@ -6,7 +6,7 @@ on:
     - 'release/*'
   pull_request:
 env:
-  CORE_REPO_SHA: 2b188b9a43dfaa74c1a0a4514b91d1cb07d3075d
+  CORE_REPO_SHA: f3ee81243b4266729ba5196a7883ce897549aaba
 
 jobs:
   build:
@@ -85,7 +85,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        tox-environment: [ "docker-tests", "lint" ]
+        tox-environment: [ "docker-tests", "lint", "docs" ]
     name: ${{ matrix.tox-environment }}
     runs-on: ubuntu-latest
     steps:
