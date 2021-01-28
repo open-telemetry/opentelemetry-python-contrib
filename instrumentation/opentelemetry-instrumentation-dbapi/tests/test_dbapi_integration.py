@@ -40,7 +40,7 @@ class TestDBApiIntegration(TestBase):
             "user": "user",
         }
         db_integration = dbapi.DatabaseApiIntegration(
-            self.tracer, "testcomponent", "testtype", connection_attributes
+            self.tracer, "testcomponent", connection_attributes
         )
         mock_connection = db_integration.wrapped_connection(
             mock_connect, {}, connection_props
@@ -66,7 +66,7 @@ class TestDBApiIntegration(TestBase):
 
     def test_span_name(self):
         db_integration = dbapi.DatabaseApiIntegration(
-            self.tracer, "testcomponent", "testtype", {}
+            self.tracer, "testcomponent", {}
         )
         mock_connection = db_integration.wrapped_connection(
             mock_connect, {}, {}
@@ -101,7 +101,6 @@ class TestDBApiIntegration(TestBase):
         db_integration = dbapi.DatabaseApiIntegration(
             self.tracer,
             "testcomponent",
-            "testtype",
             connection_attributes,
             capture_parameters=True,
         )
@@ -150,7 +149,7 @@ class TestDBApiIntegration(TestBase):
         mock_tracer.use_span.return_value.__enter__ = mock_span
         mock_tracer.use_span.return_value.__exit__ = True
         db_integration = dbapi.DatabaseApiIntegration(
-            mock_tracer, "testcomponent", "testtype", connection_attributes
+            mock_tracer, "testcomponent", connection_attributes
         )
         mock_connection = db_integration.wrapped_connection(
             mock_connect, {}, connection_props

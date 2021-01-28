@@ -55,7 +55,6 @@ class MySQLInstrumentor(BaseInstrumentor):
     }
 
     _DATABASE_SYSTEM = "mysql"
-    _DATABASE_TYPE = "sql"
 
     def _instrument(self, **kwargs):
         """Integrate with MySQL Connector/Python library.
@@ -68,7 +67,6 @@ class MySQLInstrumentor(BaseInstrumentor):
             mysql.connector,
             "connect",
             self._DATABASE_SYSTEM,
-            self._DATABASE_TYPE,
             self._CONNECTION_ATTRIBUTES,
             version=__version__,
             tracer_provider=tracer_provider,
@@ -94,7 +92,6 @@ class MySQLInstrumentor(BaseInstrumentor):
             tracer,
             connection,
             self._DATABASE_SYSTEM,
-            self._DATABASE_TYPE,
             self._CONNECTION_ATTRIBUTES,
         )
 

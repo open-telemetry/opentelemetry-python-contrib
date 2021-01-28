@@ -29,9 +29,9 @@ Usage
 
 
     # Ex: mysql.connector
-    trace_integration(mysql.connector, "connect", "mysql", "sql")
+    trace_integration(mysql.connector, "connect", "mysql")
     # Ex: pyodbc
-    trace_integration(pyodbc, "Connection", "odbc", "sql")
+    trace_integration(pyodbc, "Connection", "odbc")
 
 API
 ---
@@ -56,7 +56,6 @@ def trace_integration(
     connect_module: typing.Callable[..., typing.Any],
     connect_method_name: str,
     database_system: str,
-    database_type: str = "",
     connection_attributes: typing.Dict = None,
     tracer_provider: typing.Optional[TracerProvider] = None,
     capture_parameters: bool = False,
@@ -70,7 +69,6 @@ def trace_integration(
         connect_method_name: The connect method name.
         database_system: An identifier for the database management system (DBMS)
             product being used.
-        database_type: The Database type. For any SQL database, "sql".
         connection_attributes: Attribute names for database, port, host and
             user in Connection object.
         tracer_provider: The :class:`opentelemetry.trace.TracerProvider` to
@@ -82,7 +80,6 @@ def trace_integration(
         connect_module,
         connect_method_name,
         database_system,
-        database_type,
         connection_attributes,
         version=__version__,
         tracer_provider=tracer_provider,
@@ -96,7 +93,6 @@ def wrap_connect(
     connect_module: typing.Callable[..., typing.Any],
     connect_method_name: str,
     database_system: str,
-    database_type: str = "",
     connection_attributes: typing.Dict = None,
     version: str = "",
     tracer_provider: typing.Optional[TracerProvider] = None,
@@ -111,7 +107,6 @@ def wrap_connect(
         connect_method_name: The connect method name.
         database_system: An identifier for the database management system (DBMS)
             product being used.
-        database_type: The Database type. For any SQL database, "sql".
         connection_attributes: Attribute names for database, port, host and
             user in Connection object.
         tracer_provider: The :class:`opentelemetry.trace.TracerProvider` to
@@ -133,7 +128,6 @@ def wrap_connect(
         db_integration = db_api_integration_factory(
             name,
             database_system,
-            database_type=database_type,
             connection_attributes=connection_attributes,
             version=version,
             tracer_provider=tracer_provider,
@@ -166,7 +160,6 @@ def instrument_connection(
     name: str,
     connection,
     database_system: str,
-    database_type: str = "",
     connection_attributes: typing.Dict = None,
     version: str = "",
     tracer_provider: typing.Optional[TracerProvider] = None,
@@ -178,7 +171,6 @@ def instrument_connection(
         connection: The connection to instrument.
         database_system: An identifier for the database management system (DBMS)
             product being used.
-        database_type: The Database type. For any SQL database, "sql".
         connection_attributes: Attribute names for database, port, host and
             user in a connection object.
         tracer_provider: The :class:`opentelemetry.trace.TracerProvider` to
@@ -190,7 +182,6 @@ def instrument_connection(
     db_integration = DatabaseApiIntegration(
         name,
         database_system,
-        database_type,
         connection_attributes=connection_attributes,
         version=version,
         tracer_provider=tracer_provider,
@@ -221,7 +212,6 @@ class DatabaseApiIntegration:
         self,
         name: str,
         database_system: str,
-        database_type: str = "sql",
         connection_attributes=None,
         version: str = "",
         tracer_provider: typing.Optional[TracerProvider] = None,
@@ -240,7 +230,6 @@ class DatabaseApiIntegration:
         self._tracer_provider = tracer_provider
         self.capture_parameters = capture_parameters
         self.database_system = database_system
-        self.database_type = database_type
         self.connection_props = {}
         self.span_attributes = {}
         self.name = ""

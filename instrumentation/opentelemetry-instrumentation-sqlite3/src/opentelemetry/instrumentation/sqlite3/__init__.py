@@ -52,7 +52,6 @@ class SQLite3Instrumentor(BaseInstrumentor):
     _CONNECTION_ATTRIBUTES = {}
 
     _DATABASE_SYSTEM = "sqlite"
-    _DATABASE_TYPE = "sql"
 
     def _instrument(self, **kwargs):
         """Integrate with SQLite3 Python library.
@@ -65,7 +64,6 @@ class SQLite3Instrumentor(BaseInstrumentor):
             sqlite3,
             "connect",
             self._DATABASE_SYSTEM,
-            self._DATABASE_TYPE,
             self._CONNECTION_ATTRIBUTES,
             version=__version__,
             tracer_provider=tracer_provider,
@@ -91,7 +89,6 @@ class SQLite3Instrumentor(BaseInstrumentor):
             tracer,
             connection,
             self._DATABASE_SYSTEM,
-            self._DATABASE_TYPE,
             self._CONNECTION_ATTRIBUTES,
         )
 

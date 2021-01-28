@@ -24,7 +24,7 @@ Usage
     from opentelemetry import trace
     from opentelemetry.instrumentation.aiopg import trace_integration
 
-    trace_integration(aiopg.connection, "_connect", "postgresql", "sql")
+    trace_integration(aiopg.connection, "_connect", "postgresql")
 
 API
 ---
@@ -49,7 +49,6 @@ logger = logging.getLogger(__name__)
 
 def trace_integration(
     database_system: str,
-    database_type: str = "",
     connection_attributes: typing.Dict = None,
     tracer_provider: typing.Optional[TracerProvider] = None,
 ):
@@ -59,7 +58,6 @@ def trace_integration(
     Args:
         database_system: An identifier for the database management system (DBMS)
             product being used.
-        database_type: The Database type. For any SQL database, "sql".
         connection_attributes: Attribute names for database, port, host and
             user in Connection object.
         tracer_provider: The :class:`opentelemetry.trace.TracerProvider` to
@@ -69,7 +67,6 @@ def trace_integration(
     wrap_connect(
         __name__,
         database_system,
-        database_type,
         connection_attributes,
         __version__,
         tracer_provider,
@@ -79,7 +76,6 @@ def trace_integration(
 def wrap_connect(
     name: str,
     database_system: str,
-    database_type: str = "",
     connection_attributes: typing.Dict = None,
     version: str = "",
     tracer_provider: typing.Optional[TracerProvider] = None,
@@ -91,7 +87,6 @@ def wrap_connect(
         name: Name of opentelemetry extension for aiopg.
         database_system: An identifier for the database management system (DBMS)
             product being used.
-        database_type: The Database type. For any SQL database, "sql".
         connection_attributes: Attribute names for database, port, host and
             user in Connection object.
         version: Version of opentelemetry extension for aiopg.
@@ -109,7 +104,6 @@ def wrap_connect(
         db_integration = AiopgIntegration(
             name,
             database_system,
-            database_type=database_type,
             connection_attributes=connection_attributes,
             version=version,
             tracer_provider=tracer_provider,
@@ -136,7 +130,6 @@ def instrument_connection(
     name: str,
     connection,
     database_system: str,
-    database_type: str = "",
     connection_attributes: typing.Dict = None,
     version: str = "",
     tracer_provider: typing.Optional[TracerProvider] = None,
@@ -148,7 +141,6 @@ def instrument_connection(
         connection: The connection to instrument.
         database_system: An identifier for the database management system (DBMS)
             product being used.
-        database_type: The Database type. For any SQL database, "sql".
         connection_attributes: Attribute names for database, port, host and
             user in a connection object.
         version: Version of opentelemetry extension for aiopg.
@@ -161,7 +153,6 @@ def instrument_connection(
     db_integration = AiopgIntegration(
         name,
         database_system,
-        database_type,
         connection_attributes=connection_attributes,
         version=version,
         tracer_provider=tracer_provider,
@@ -189,7 +180,6 @@ def uninstrument_connection(connection):
 def wrap_create_pool(
     name: str,
     database_system: str,
-    database_type: str = "",
     connection_attributes: typing.Dict = None,
     version: str = "",
     tracer_provider: typing.Optional[TracerProvider] = None,
@@ -204,7 +194,6 @@ def wrap_create_pool(
         db_integration = AiopgIntegration(
             name,
             database_system,
-            database_type,
             connection_attributes=connection_attributes,
             version=version,
             tracer_provider=tracer_provider,
