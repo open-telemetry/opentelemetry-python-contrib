@@ -334,7 +334,7 @@ class TestDatadogSpanExporter(unittest.TestCase):
             "opentelemetry.instrumentation.redis",
             "opentelemetry.instrumentation.requests",
             "opentelemetry.instrumentation.sqlalchemy",
-            "opentelemetry.instrumentation.wsgi",
+            "opentelemetry.util.http.wsgi",
         ]
 
         for index, instrumentation in enumerate(test_instrumentations):

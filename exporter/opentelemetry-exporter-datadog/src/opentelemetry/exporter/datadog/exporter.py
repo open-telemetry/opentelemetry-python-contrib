@@ -51,7 +51,7 @@ _INSTRUMENTATION_SPAN_TYPES = {
     "opentelemetry.instrumentation.redis": DatadogSpanTypes.REDIS,
     "opentelemetry.instrumentation.requests": DatadogSpanTypes.HTTP,
     "opentelemetry.instrumentation.sqlalchemy": DatadogSpanTypes.SQL,
-    "opentelemetry.instrumentation.wsgi": DatadogSpanTypes.WEB,
+    "opentelemetry.util.http.wsgi": DatadogSpanTypes.WEB,
 }
 
 
