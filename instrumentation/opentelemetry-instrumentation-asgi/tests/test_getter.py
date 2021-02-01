@@ -28,9 +28,21 @@ class TestCarrierGetter(TestCase):
         getter = CarrierGetter()
         carrier = {"headers": [(b"test-key", b"val")]}
         expected_val = ["val"]
-        self.assertEqual(getter.get(carrier, "Test-Key"), expected_val, "Should be case insensitive")
-        self.assertEqual(getter.get(carrier, "test-key"), expected_val, "Should be case insensitive")
-        self.assertEqual(getter.get(carrier, "TEST-KEY"), expected_val, "Should be case insensitive")
+        self.assertEqual(
+            getter.get(carrier, "Test-Key"),
+            expected_val,
+            "Should be case insensitive",
+        )
+        self.assertEqual(
+            getter.get(carrier, "test-key"),
+            expected_val,
+            "Should be case insensitive",
+        )
+        self.assertEqual(
+            getter.get(carrier, "TEST-KEY"),
+            expected_val,
+            "Should be case insensitive",
+        )
 
     def test_keys(self):
         getter = CarrierGetter()
