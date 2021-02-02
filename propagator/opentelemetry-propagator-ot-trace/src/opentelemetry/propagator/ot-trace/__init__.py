@@ -44,8 +44,8 @@ _valid_traceid = re_compile(r"[0-9a-f]{32}|[0-9a-f]{16}")
 _valid_spanid = re_compile(r"[0-9a-f]{16}")
 
 
-class OpenTracingPropagator(TextMapPropagator):
-    """Propagator for the OpenTracing HTTP header format"""
+class OTTracePropagator(TextMapPropagator):
+    """Propagator for the OTTrace HTTP header format"""
 
     def extract(
         self,
