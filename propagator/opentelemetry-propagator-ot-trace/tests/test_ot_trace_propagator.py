@@ -15,12 +15,12 @@
 from unittest import TestCase
 
 from opentelemetry.baggage import get_all, set_baggage
-from opentelemetry.propagator.opentracing import (
+from opentelemetry.propagator.ot_trace import (
     OT_BAGGAGE_PREFIX,
     OT_SAMPLED_HEADER,
     OT_SPAN_ID_HEADER,
     OT_TRACE_ID_HEADER,
-    OpenTracingPropagator,
+    OTTracePropagator,
 )
 from opentelemetry.sdk.trace import _Span
 from opentelemetry.trace import (
@@ -37,15 +37,15 @@ from opentelemetry.trace.propagation.textmap import DictGetter
 carrier_getter = DictGetter()
 
 
-class TestOpenTracingPropagator(TestCase):
+class TestOTTracePropagator(TestCase):
 
-    opentracing_propagator = OpenTracingPropagator()
+    ot_trace_propagator = OTTracePropagator()
 
     def carrier_inject(self, trace_id, span_id, is_remote, trace_flags):
 
         carrier = {}
 
-        self.opentracing_propagator.inject(
+        self.ot_trace_propagator.inject(
             dict.__setitem__,
             carrier,
             set_span_in_context(
@@ -146,7 +146,7 @@ class TestOpenTracingPropagator(TestCase):
 
         carrier = {}
 
-        self.opentracing_propagator.inject(
+        self.ot_trace_propagator.inject(
             dict.__setitem__,
             carrier,
             set_baggage(
@@ -175,7 +175,7 @@ class TestOpenTracingPropagator(TestCase):
 
         carrier = {}
 
-        self.opentracing_propagator.inject(
+        self.ot_trace_propagator.inject(
             dict.__setitem__,
             carrier,
             set_baggage(
@@ -204,7 +204,7 @@ class TestOpenTracingPropagator(TestCase):
 
         carrier = {}
 
-        self.opentracing_propagator.inject(
+        self.ot_trace_propagator.inject(
             dict.__setitem__,
             carrier,
             set_baggage(
@@ -232,7 +232,7 @@ class TestOpenTracingPropagator(TestCase):
         """Test valid trace_id, span_id and sampled true"""
 
         span_context = get_current_span(
-            self.opentracing_propagator.extract(
+            self.ot_trace_propagator.extract(
                 carrier_getter,
                 {
                     OT_TRACE_ID_HEADER: "80f198ee56343ba864fe8b2a57d3eff7",
@@ -253,7 +253,7 @@ class TestOpenTracingPropagator(TestCase):
         """Test valid trace_id, span_id and sampled false"""
 
         span_context = get_current_span(
-            self.opentracing_propagator.extract(
+            self.ot_trace_propagator.extract(
                 carrier_getter,
                 {
                     OT_TRACE_ID_HEADER: "80f198ee56343ba864fe8b2a57d3eff7",
@@ -274,7 +274,7 @@ class TestOpenTracingPropagator(TestCase):
         """Test extraction with malformed trace_id"""
 
         span_context = get_current_span(
-            self.opentracing_propagator.extract(
+            self.ot_trace_propagator.extract(
                 carrier_getter,
                 {
                     OT_TRACE_ID_HEADER: "abc123",
@@ -290,7 +290,7 @@ class TestOpenTracingPropagator(TestCase):
         """Test extraction with malformed span_id"""
 
         span_context = get_current_span(
-            self.opentracing_propagator.extract(
+            self.ot_trace_propagator.extract(
                 carrier_getter,
                 {
                     OT_TRACE_ID_HEADER: "64fe8b2a57d3eff7",
@@ -306,7 +306,7 @@ class TestOpenTracingPropagator(TestCase):
         """Test extraction with invalid trace_id"""
 
         span_context = get_current_span(
-            self.opentracing_propagator.extract(
+            self.ot_trace_propagator.extract(
                 carrier_getter,
                 {
                     OT_TRACE_ID_HEADER: INVALID_TRACE_ID,
@@ -322,7 +322,7 @@ class TestOpenTracingPropagator(TestCase):
         """Test extraction with invalid span_id"""
 
         span_context = get_current_span(
-            self.opentracing_propagator.extract(
+            self.ot_trace_propagator.extract(
                 carrier_getter,
                 {
                     OT_TRACE_ID_HEADER: "64fe8b2a57d3eff7",
@@ -337,7 +337,7 @@ class TestOpenTracingPropagator(TestCase):
     def test_extract_baggage(self):
         """Test baggage extraction"""
 
-        context = self.opentracing_propagator.extract(
+        context = self.ot_trace_propagator.extract(
             carrier_getter,
             {
                 OT_TRACE_ID_HEADER: "64fe8b2a57d3eff7",

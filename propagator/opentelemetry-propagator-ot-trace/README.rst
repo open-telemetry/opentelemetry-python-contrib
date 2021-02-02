@@ -1,22 +1,22 @@
-OpenTelemetry OpenTracing Propagator
-====================================
+OpenTelemetry OTTrace Propagator
+================================
 
 |pypi|
 
-.. |pypi| image:: https://badge.fury.io/py/opentelemetry-propagator-opentracing.svg
-   :target: https://pypi.org/project/opentelemetry-propagator-opentracing/
+.. |pypi| image:: https://badge.fury.io/py/opentelemetry-propagator-ot-trace.svg
+   :target: https://pypi.org/project/opentelemetry-propagator-ot-trace/
 
 Installation
 ------------
 
 ::
 
-    pip install opentelemetry-propagator-opentracing
+    pip install opentelemetry-propagator-ot-trace
 
 .. _OpenTelemetry: https://github.com/open-telemetry/opentelemetry-python/
 
-OpenTracing Format
-------------------
+OTTrace Format
+--------------
 
 ===================== ======================================================================================================================================= =====================
 Header Name           Description                                                                                                                             Required
@@ -30,7 +30,7 @@ Header Name           Description                                               
 Interop and trace ids
 ---------------------
 
-The OpenTracing propagation format expects trace ids to be 64-bits. In order to
+The OTTrace propagation format expects trace ids to be 64-bits. In order to
 interop with OpenTelemetry, trace ids need to be truncated to 64-bits before
 sending them on the wire. When truncating, the least significant (right-most)
 bits MUST be retained. For example, a trace id of
@@ -40,5 +40,4 @@ bits MUST be retained. For example, a trace id of
 References
 ----------
 
-* `OpenTracing Project <https://opentracing.io/>`_
 * `OpenTelemetry Project <https://opentelemetry.io/>`_
