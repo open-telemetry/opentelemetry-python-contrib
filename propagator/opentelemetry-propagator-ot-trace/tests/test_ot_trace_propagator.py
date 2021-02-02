@@ -15,7 +15,7 @@
 from unittest import TestCase
 
 from opentelemetry.baggage import get_all, set_baggage
-from opentelemetry.propagators.ot_trace import (
+from opentelemetry.propagator.ot_trace import (
     OT_BAGGAGE_PREFIX,
     OT_SAMPLED_HEADER,
     OT_SPAN_ID_HEADER,
@@ -62,14 +62,6 @@ class TestOTTracePropagator(TestCase):
         )
 
         return carrier
-
-    def test_inject_short_trace_id_short_span_id(self):
-        carrier = self.carrier_inject(
-            int("1", 16), int("2", 16), True, TraceFlags.SAMPLED,
-        )
-
-        self.assertEqual(carrier[OT_TRACE_ID_HEADER], "1")
-        self.assertEqual(carrier[OT_SPAN_ID_HEADER], "2")
 
     def test_inject_trace_id_span_id_true(self):
         """Test valid trace_id, span_id and sampled true"""
@@ -285,7 +277,7 @@ class TestOTTracePropagator(TestCase):
             self.ot_trace_propagator.extract(
                 carrier_getter,
                 {
-                    OT_TRACE_ID_HEADER: "abc123!",
+                    OT_TRACE_ID_HEADER: "abc123",
                     OT_SPAN_ID_HEADER: "e457b5a2e4d86bd1",
                     OT_SAMPLED_HEADER: "false",
                 },
@@ -302,7 +294,7 @@ class TestOTTracePropagator(TestCase):
                 carrier_getter,
                 {
                     OT_TRACE_ID_HEADER: "64fe8b2a57d3eff7",
-                    OT_SPAN_ID_HEADER: "abc123!",
+                    OT_SPAN_ID_HEADER: "abc123",
                     OT_SAMPLED_HEADER: "false",
                 },
             )
