@@ -12,12 +12,11 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import time
 from logging import getLogger
+from time import time
 
 from django.conf import settings
 
-from opentelemetry.configuration import Configuration
 from opentelemetry.context import attach, detach
 from opentelemetry.instrumentation.django.version import __version__
 from opentelemetry.instrumentation.utils import extract_attributes_from_object
@@ -28,6 +27,7 @@ from opentelemetry.instrumentation.wsgi import (
 )
 from opentelemetry.propagators import extract
 from opentelemetry.trace import SpanKind, get_tracer
+from opentelemetry.util.http import get_excluded_urls, get_traced_request_attrs
 
 try:
     from django.core.urlresolvers import (  # pylint: disable=no-name-in-module
@@ -61,9 +61,8 @@ class _DjangoMiddleware(MiddlewareMixin):
     _environ_span_key = "opentelemetry-instrumentor-django.span_key"
     _environ_exception_key = "opentelemetry-instrumentor-django.exception_key"
 
-    _excluded_urls = Configuration()._excluded_urls("django")
-
-    _traced_request_attrs = Configuration()._traced_request_attrs("django")
+    _traced_request_attrs = get_traced_request_attrs("DJANGO")
+    _excluded_urls = get_excluded_urls("DJANGO")
 
     @staticmethod
     def _get_span_name(request):
@@ -95,21 +94,24 @@ class _DjangoMiddleware(MiddlewareMixin):
         if self._excluded_urls.url_disabled(request.build_absolute_uri("?")):
             return
 
-        environ = request.META
+        # pylint:disable=W0212
+        request._otel_start_time = time()
 
-        token = attach(extract(carrier_getter, environ))
+        request_meta = request.META
+
+        token = attach(extract(carrier_getter, request_meta))
 
         tracer = get_tracer(__name__, __version__)
 
         span = tracer.start_span(
             self._get_span_name(request),
             kind=SpanKind.SERVER,
-            start_time=environ.get(
+            start_time=request_meta.get(
                 "opentelemetry-instrumentor-django.starttime_key"
             ),
         )
 
-        attributes = collect_request_attributes(environ)
+        attributes = collect_request_attributes(request_meta)
 
         if span.is_recording():
             attributes = extract_attributes_from_object(
@@ -165,6 +167,7 @@ class _DjangoMiddleware(MiddlewareMixin):
                 "{} {}".format(response.status_code, response.reason_phrase),
                 response,
             )
+
             request.META.pop(self._environ_span_key)
 
             exception = request.META.pop(self._environ_exception_key, None)
