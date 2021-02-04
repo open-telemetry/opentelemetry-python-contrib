@@ -1,22 +1,21 @@
-OpenTelemetry Util HTTP
-=======================
+OpenTelemetry ASGI Instrumentation
+==================================
 
 |pypi|
 
-.. |pypi| image:: https://badge.fury.io/py/opentelemetry-util-http.svg
-   :target: https://pypi.org/project/opentelemetry-util-http/
+.. |pypi| image:: https://badge.fury.io/py/opentelemetry-instrumentation-asgi.svg
+   :target: https://pypi.org/project/opentelemetry-instrumentation-asgi/
 
 
-This library provides ASGI, WSGI middleware and other HTTP-related
-functionality that is common to instrumented web frameworks (such as Django,
-Starlette, FastAPI, etc.) to track requests timing through OpenTelemetry.
+This library provides a ASGI middleware that can be used on any ASGI framework
+(such as Django, Starlette, FastAPI or Quart) to track requests timing through OpenTelemetry.
 
 Installation
 ------------
 
 ::
 
-    pip install opentelemetry-util-http
+    pip install opentelemetry-instrumentation-asgi
 
 
 Usage (Quart)

@@ -20,14 +20,14 @@ from django.conf import settings
 from opentelemetry.context import attach, detach
 from opentelemetry.instrumentation.django.version import __version__
 from opentelemetry.instrumentation.utils import extract_attributes_from_object
-from opentelemetry.propagators import extract
-from opentelemetry.trace import SpanKind, get_tracer
-from opentelemetry.util.http import get_excluded_urls, get_traced_request_attrs
-from opentelemetry.util.http.wsgi import (
+from opentelemetry.instrumentation.wsgi import (
     add_response_attributes,
     carrier_getter,
     collect_request_attributes,
 )
+from opentelemetry.propagators import extract
+from opentelemetry.trace import SpanKind, get_tracer
+from opentelemetry.util.http import get_excluded_urls, get_traced_request_attrs
 
 try:
     from django.core.urlresolvers import (  # pylint: disable=no-name-in-module

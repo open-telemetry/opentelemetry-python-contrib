@@ -21,7 +21,7 @@ Usage (Flask)
 .. code-block:: python
 
     from flask import Flask
-    from opentelemetry.util.http.wsgi import OpenTelemetryMiddleware
+    from opentelemetry.instrumentation.wsgi import OpenTelemetryMiddleware
 
     app = Flask(__name__)
     app.wsgi_app = OpenTelemetryMiddleware(app.wsgi_app)
@@ -42,7 +42,7 @@ Modify the application's ``wsgi.py`` file as shown below.
 .. code-block:: python
 
     import os
-    from opentelemetry.util.http.wsgi import OpenTelemetryMiddleware
+    from opentelemetry.instrumentation.wsgi import OpenTelemetryMiddleware
     from django.core.wsgi import get_wsgi_application
 
     os.environ.setdefault('DJANGO_SETTINGS_MODULE', 'application.settings')
@@ -60,9 +60,9 @@ import wsgiref.util as wsgiref_util
 
 from opentelemetry import context, propagators, trace
 from opentelemetry.instrumentation.utils import http_status_to_status_code
+from opentelemetry.instrumentation.wsgi.version import __version__
 from opentelemetry.trace.propagation.textmap import DictGetter
 from opentelemetry.trace.status import Status, StatusCode
-from opentelemetry.util.http.wsgi.version import __version__
 
 _HTTP_VERSION_PREFIX = "HTTP/"
 
@@ -233,9 +233,9 @@ class OpenTelemetryMiddleware:
             raise
 
 
-# FIXME Put this in a subfunction to not delay the call to the wrapped WSGI
-# application (instrumentation should change the application behavior as little
-# as possible).
+# Put this in a subfunction to not delay the call to the wrapped
+# WSGI application (instrumentation should change the application
+# behavior as little as possible).
 def _end_span_after_iterating(iterable, span, tracer, token):
     try:
         with tracer.use_span(span):

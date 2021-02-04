@@ -5,7 +5,7 @@ from pyramid.httpexceptions import HTTPException
 from pyramid.settings import asbool
 from pyramid.tweens import EXCVIEW
 
-import opentelemetry.util.http.wsgi as otel_wsgi
+import opentelemetry.instrumentation.wsgi as otel_wsgi
 from opentelemetry import context, propagators, trace
 from opentelemetry.instrumentation.pyramid.version import __version__
 from opentelemetry.util import time_ns

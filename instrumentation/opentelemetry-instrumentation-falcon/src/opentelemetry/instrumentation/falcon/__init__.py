@@ -14,7 +14,7 @@
 
 """
 This library builds on the OpenTelemetry WSGI middleware to track web requests
-in Falcon applications. In addition to opentelemetry-util-http,
+in Falcon applications. In addition to opentelemetry-instrumentation-wsgi,
 it supports falcon-specific features such as:
 
 * The Falcon resource and method name is used as the Span name.
@@ -48,7 +48,7 @@ from sys import exc_info
 
 import falcon
 
-import opentelemetry.util.http.wsgi as otel_wsgi
+import opentelemetry.instrumentation.wsgi as otel_wsgi
 from opentelemetry import context, propagators, trace
 from opentelemetry.instrumentation.falcon.version import __version__
 from opentelemetry.instrumentation.instrumentor import BaseInstrumentor

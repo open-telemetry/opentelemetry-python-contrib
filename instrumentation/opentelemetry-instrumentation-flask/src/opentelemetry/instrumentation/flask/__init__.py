@@ -51,7 +51,7 @@ from logging import getLogger
 
 import flask
 
-import opentelemetry.util.http.wsgi as otel_wsgi
+import opentelemetry.instrumentation.wsgi as otel_wsgi
 from opentelemetry import context, propagators, trace
 from opentelemetry.instrumentation.flask.version import __version__
 from opentelemetry.instrumentation.instrumentor import BaseInstrumentor

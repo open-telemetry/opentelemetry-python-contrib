@@ -15,9 +15,9 @@
 import fastapi
 from starlette.routing import Match
 
+from opentelemetry.instrumentation.asgi import OpenTelemetryMiddleware
 from opentelemetry.instrumentation.instrumentor import BaseInstrumentor
 from opentelemetry.util.http import get_excluded_urls
-from opentelemetry.util.http.asgi import OpenTelemetryMiddleware
 
 _excluded_urls = get_excluded_urls("FASTAPI")
 

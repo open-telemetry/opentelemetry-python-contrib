@@ -20,6 +20,7 @@ coverage erase
 cov exporter/opentelemetry-exporter-datadog
 cov instrumentation/opentelemetry-instrumentation-flask
 cov instrumentation/opentelemetry-instrumentation-requests
+cov instrumentation/opentelemetry-instrumentation-wsgi
 
 # aiohttp is only supported on Python 3.5+.
 if [ ${PYTHON_VERSION_INFO[1]} -gt 4 ]; then
