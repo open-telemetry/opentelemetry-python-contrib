@@ -11,7 +11,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   `opentelemetry-instrumentation-aiopg`, `opentelemetry-instrumentation-dbapi` Remove unused `database_type` parameter from `trace_integration` function.
   ([#301](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/301))
 - Remove metrics from all instrumentations
-  ([#301](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/301))
+  ([#312](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/312))
 
 ## [0.17b0](https://github.com/open-telemetry/opentelemetry-python-contrib/releases/tag/v0.17b0) - 2021-01-20
 
