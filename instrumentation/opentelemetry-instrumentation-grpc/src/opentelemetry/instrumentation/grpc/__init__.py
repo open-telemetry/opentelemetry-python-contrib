@@ -33,6 +33,10 @@ Usage Client
         SimpleExportSpanProcessor,
     )
 
+    from opentelemetry import metrics
+    from opentelemetry.sdk.metrics import MeterProvider
+    from opentelemetry.sdk.metrics.export import ConsoleMetricsExporter
+
     try:
         from .gen import helloworld_pb2, helloworld_pb2_grpc
     except ImportError:
@@ -43,7 +47,13 @@ Usage Client
         SimpleExportSpanProcessor(ConsoleSpanExporter())
     )
 
-    instrumentor = GrpcInstrumentorClient()
+    # Set meter provider to opentelemetry-sdk's MeterProvider
+    metrics.set_meter_provider(MeterProvider())
+
+    # Optional - export GRPC specific metrics (latency, bytes in/out, errors) by passing an exporter
+    instrumentor = GrpcInstrumentorClient().instrument(
+        exporter = ConsoleMetricsExporter(),
+        interval = 10)
 
     def run():
         with grpc.insecure_channel("localhost:50051") as channel:
@@ -118,7 +128,7 @@ You can also add the instrumentor manually, rather than using
                          interceptors = [server_interceptor()])
 
 """
-from contextlib import contextmanager
+from functools import partial
 
 import grpc  # pylint:disable=import-self
 from wrapt import wrap_function_wrapper as _wrap
@@ -175,12 +185,22 @@ class GrpcInstrumentorClient(BaseInstrumentor):
 
     """
 
-    def _instrument(self, **kwargs):    
+    def _instrument(self, **kwargs):
+        exporter = kwargs.get("exporter", None)
+        interval = kwargs.get("interval", 30)
         if kwargs.get("channel_type") == "secure":
-            _wrap("grpc", "secure_channel", self.wrapper_fn)
+            _wrap(
+                "grpc",
+                "secure_channel",
+                partial(self.wrapper_fn, exporter, interval),
+            )
 
         else:
-            _wrap("grpc", "insecure_channel", self.wrapper_fn)
+            _wrap(
+                "grpc",
+                "insecure_channel",
+                partial(self.wrapper_fn, exporter, interval),
+            )
 
     def _uninstrument(self, **kwargs):
         if kwargs.get("channel_type") == "secure":
@@ -189,17 +209,28 @@ class GrpcInstrumentorClient(BaseInstrumentor):
         else:
             unwrap(grpc, "insecure_channel")
 
-    @contextmanager
-    def wrapper_fn(self, original_func, instance, args, kwargs):
-        with original_func(*args, **kwargs) as channel:
-            yield intercept_channel(channel, client_interceptor())
+    def wrapper_fn(
+        self, exporter, interval, original_func, instance, args, kwargs
+    ):
+        channel = original_func(*args, **kwargs)
+        tracer_provider = kwargs.get("tracer_provider")
+        return intercept_channel(
+            channel,
+            client_interceptor(
+                tracer_provider=tracer_provider,
+                exporter=exporter,
+                interval=interval,
+            ),
+        )
 
 
-def client_interceptor(tracer_provider=None):
+def client_interceptor(tracer_provider=None, exporter=None, interval=30):
     """Create a gRPC client channel interceptor.
 
     Args:
         tracer: The tracer to use to create client-side spans.
+        exporter: The exporter that will receive client metrics
+        interval: Time between every export call
 
     Returns:
         An invocation-side interceptor object.
@@ -208,7 +239,7 @@ def client_interceptor(tracer_provider=None):
 
     tracer = trace.get_tracer(__name__, __version__, tracer_provider)
 
-    return _client.OpenTelemetryClientInterceptor(tracer)
+    return _client.OpenTelemetryClientInterceptor(tracer, exporter, interval)
 
 
 def server_interceptor(tracer_provider=None):
