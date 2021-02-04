@@ -28,7 +28,6 @@ from moto import (  # pylint: disable=import-error
 )
 
 from opentelemetry.instrumentation.boto import BotoInstrumentor
-from opentelemetry.sdk.resources import Resource
 from opentelemetry.test.test_base import TestBase
 
 
