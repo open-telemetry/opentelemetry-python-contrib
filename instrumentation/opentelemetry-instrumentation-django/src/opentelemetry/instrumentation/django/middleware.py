@@ -186,3 +186,5 @@ class _DjangoMiddleware(MiddlewareMixin):
         if self._environ_token in request.META.keys():
             detach(request.environ.get(self._environ_token))
             request.META.pop(self._environ_token)
+
+        return response
