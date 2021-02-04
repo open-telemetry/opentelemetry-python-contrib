@@ -15,8 +15,6 @@
 from logging import getLogger
 from time import time
 
-from django.conf import settings
-
 from opentelemetry.context import attach, detach
 from opentelemetry.instrumentation.django.version import __version__
 from opentelemetry.instrumentation.utils import extract_attributes_from_object

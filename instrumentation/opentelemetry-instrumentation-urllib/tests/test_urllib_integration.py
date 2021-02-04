@@ -29,7 +29,6 @@ from opentelemetry.instrumentation.urllib import (  # pylint: disable=no-name-in
     URLLibInstrumentor,
 )
 from opentelemetry.sdk import resources
-from opentelemetry.sdk.util import get_dict_as_key
 from opentelemetry.test.mock_textmap import MockTextMapPropagator
 from opentelemetry.test.test_base import TestBase
 from opentelemetry.trace.status import StatusCode
