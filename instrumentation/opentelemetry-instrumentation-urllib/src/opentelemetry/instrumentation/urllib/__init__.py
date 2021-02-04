@@ -153,9 +153,7 @@ def _instrument(tracer_provider=None, span_callback=None, name_callback=None):
             propagators.inject(type(headers).__setitem__, headers)
 
             token = context.attach(
-                context.set_value(
-                    _SUPPRESS_URLLIB_INSTRUMENTATION_KEY, True
-                )
+                context.set_value(_SUPPRESS_URLLIB_INSTRUMENTATION_KEY, True)
             )
             try:
                 result = call_wrapped()  # *** PROCEED
@@ -173,15 +171,11 @@ def _instrument(tracer_provider=None, span_callback=None, name_callback=None):
                 if span.is_recording():
                     span.set_attribute("http.status_code", code_)
                     span.set_attribute("http.status_text", result.reason)
-                    span.set_status(
-                        Status(http_status_to_status_code(code_))
-                    )
+                    span.set_status(Status(http_status_to_status_code(code_)))
 
                 ver_ = str(getattr(result, "version", ""))
                 if ver_:
-                    labels["http.flavor"] = "{}.{}".format(
-                        ver_[:1], ver_[:-1]
-                    )
+                    labels["http.flavor"] = "{}.{}".format(ver_[:1], ver_[:-1])
 
             if span_callback is not None:
                 span_callback(span, result)

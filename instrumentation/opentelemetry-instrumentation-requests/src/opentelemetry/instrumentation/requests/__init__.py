@@ -138,9 +138,7 @@ def _instrument(tracer_provider=None, span_callback=None, name_callback=None):
             propagators.inject(type(headers).__setitem__, headers)
 
             token = context.attach(
-                context.set_value(
-                    _SUPPRESS_REQUESTS_INSTRUMENTATION_KEY, True
-                )
+                context.set_value(_SUPPRESS_REQUESTS_INSTRUMENTATION_KEY, True)
             )
             try:
                 result = call_wrapped()  # *** PROCEED
@@ -152,14 +150,10 @@ def _instrument(tracer_provider=None, span_callback=None, name_callback=None):
 
             if isinstance(result, Response):
                 if span.is_recording():
-                    span.set_attribute(
-                        "http.status_code", result.status_code
-                    )
+                    span.set_attribute("http.status_code", result.status_code)
                     span.set_attribute("http.status_text", result.reason)
                     span.set_status(
-                        Status(
-                            http_status_to_status_code(result.status_code)
-                        )
+                        Status(http_status_to_status_code(result.status_code))
                     )
                 labels["http.status_code"] = str(result.status_code)
                 if result.raw and result.raw.version:

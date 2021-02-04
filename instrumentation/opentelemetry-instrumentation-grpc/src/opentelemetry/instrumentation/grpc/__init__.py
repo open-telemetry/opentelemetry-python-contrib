@@ -190,8 +190,7 @@ class GrpcInstrumentorClient(BaseInstrumentor):
         channel = original_func(*args, **kwargs)
         tracer_provider = kwargs.get("tracer_provider")
         return intercept_channel(
-            channel,
-            client_interceptor(tracer_provider=tracer_provider),
+            channel, client_interceptor(tracer_provider=tracer_provider),
         )
 
 
