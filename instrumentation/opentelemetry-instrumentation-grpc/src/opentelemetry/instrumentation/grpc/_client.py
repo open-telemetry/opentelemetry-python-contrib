@@ -136,7 +136,7 @@ class OpenTelemetryClientInterceptor(
 
             try:
                 result = invoker(request, metadata)
-            except grpc.RpcError:
+            except grpc.RpcError as exc:
                 guarded_span.generated_span.set_status(
                     Status(StatusCode.ERROR)
                 )
@@ -172,7 +172,7 @@ class OpenTelemetryClientInterceptor(
 
                 for response in result:
                     yield response
-            except grpc.RpcError:
+            except grpc.RpcError as exc:
                 span.set_status(Status(StatusCode.ERROR))
                 raise
 
