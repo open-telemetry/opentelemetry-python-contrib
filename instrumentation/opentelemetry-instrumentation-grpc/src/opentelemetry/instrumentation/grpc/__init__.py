@@ -173,18 +173,31 @@ class GrpcInstrumentorClient(BaseInstrumentor):
 
     """
 
-    def _instrument(self, **kwargs):
-        if kwargs.get("channel_type") == "secure":
-            _wrap("grpc", "secure_channel", self.wrapper_fn)
+    # Figures out which channel type we need to wrap
+    def _which_channel(self, kwargs):
+        # handle legacy argument
+        if "channel_type" in kwargs:
+            if kwargs.get("channel_type") == "secure":
+                return ("secure_channel",)
+            return ("insecure_channel",)
 
-        else:
-            _wrap("grpc", "insecure_channel", self.wrapper_fn)
+        # handle modern arguments
+        types = []
+        for ctype in ("secure_channel", "insecure_channel"):
+            if kwargs.get(ctype, True):
+                types.append(ctype)
+
+        return tuple(types)
+
+    def _instrument(self, **kwargs):
+        for ctype in self._which_channel(kwargs):
+            _wrap(
+                "grpc", ctype, self.wrapper_fn,
+            )
 
     def _uninstrument(self, **kwargs):
-        if kwargs.get("channel_type") == "secure":
-            unwrap(grpc, "secure_channel")
-        else:
-            unwrap(grpc, "insecure_channel")
+        for ctype in self._which_channel(kwargs):
+            unwrap(grpc, ctype)
 
     def wrapper_fn(self, original_func, instance, args, kwargs):
         channel = original_func(*args, **kwargs)
