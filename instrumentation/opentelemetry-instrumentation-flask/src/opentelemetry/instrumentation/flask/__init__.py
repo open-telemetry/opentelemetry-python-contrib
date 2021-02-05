@@ -46,7 +46,6 @@ Usage
 API
 ---
 """
-
 from logging import getLogger
 
 import flask
