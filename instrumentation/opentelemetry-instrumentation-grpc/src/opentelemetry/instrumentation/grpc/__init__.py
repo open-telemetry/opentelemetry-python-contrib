@@ -199,7 +199,7 @@ class GrpcInstrumentorClient(BaseInstrumentor):
             if kwargs.get(ctype, True):
                 types.append(ctype)
 
-        return types
+        return tuple(types)
 
     def _instrument(self, **kwargs):
         exporter = kwargs.get("exporter", None)
