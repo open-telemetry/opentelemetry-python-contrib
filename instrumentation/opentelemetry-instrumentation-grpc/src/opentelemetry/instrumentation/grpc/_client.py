@@ -169,9 +169,6 @@ class OpenTelemetryClientInterceptor(
 
             if client_info.is_client_stream:
                 rpc_info.request = request_or_iterator
-                request_or_iterator = self._bytes_out_iterator_wrapper(
-                    request_or_iterator, client_info
-                )
 
             try:
                 result = invoker(request_or_iterator, metadata)
@@ -180,9 +177,7 @@ class OpenTelemetryClientInterceptor(
                     yield response
             except grpc.RpcError as err:
                 span.set_status(Status(StatusCode.ERROR))
-                span.set_attribute(
-                    "rpc.grpc.status_code", err.code().value[0]
-                )
+                span.set_attribute("rpc.grpc.status_code", err.code().value[0])
                 raise err
 
     def intercept_stream(
@@ -199,29 +194,26 @@ class OpenTelemetryClientInterceptor(
             mutable_metadata = OrderedDict(metadata)
 
         with self._start_guarded_span(client_info.full_method) as guarded_span:
-            with self._metrics_recorder.record_latency(
-                client_info.full_method
-            ):
-                _inject_span_context(mutable_metadata)
-                metadata = tuple(mutable_metadata.items())
-                rpc_info = RpcInfo(
-                    full_method=client_info.full_method,
-                    metadata=metadata,
-                    timeout=client_info.timeout,
-                    request=request_or_iterator,
+            _inject_span_context(mutable_metadata)
+            metadata = tuple(mutable_metadata.items())
+            rpc_info = RpcInfo(
+                full_method=client_info.full_method,
+                metadata=metadata,
+                timeout=client_info.timeout,
+                request=request_or_iterator,
+            )
+
+            rpc_info.request = request_or_iterator
+
+            try:
+                result = invoker(request_or_iterator, metadata)
+            except grpc.RpcError as err:
+                guarded_span.generated_span.set_status(
+                    Status(StatusCode.ERROR)
                 )
+                guarded_span.generated_span.set_attribute(
+                    "rpc.grpc.status_code", err.code().value[0],
+                )
+                raise err
 
-                rpc_info.request = request_or_iterator
-
-                try:
-                    result = invoker(request_or_iterator, metadata)
-                except grpc.RpcError as err:
-                    guarded_span.generated_span.set_status(
-                        Status(StatusCode.ERROR)
-                    )
-                    guarded_span.generated_span.set_attribute(
-                        "rpc.grpc.status_code", err.code().value[0],
-                    )
-                    raise err
-
-                return self._trace_result(guarded_span, rpc_info, result)
+            return self._trace_result(guarded_span, rpc_info, result)
