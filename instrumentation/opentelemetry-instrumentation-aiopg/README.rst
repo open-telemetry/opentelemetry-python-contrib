@@ -6,6 +6,11 @@ OpenTelemetry aiopg instrumentation
 .. |pypi| image:: https://badge.fury.io/py/opentelemetry-instrumentation-aiopg.svg
    :target: https://pypi.org/project/opentelemetry-instrumentation-aiopg/
 
+Documentation
+-------------
+
+https://opentelemetry-python-contrib.readthedocs.io/en/latest/instrumentation/aiopg/aiopg.html
+
 Installation
 ------------
 
