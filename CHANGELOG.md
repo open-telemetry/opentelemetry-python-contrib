@@ -7,7 +7,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased](https://github.com/open-telemetry/opentelemetry-python-contrib/compare/v0.17b0...HEAD)
 
 ### Added
-- `opentelemetry-propagator-opentracing` Add OpenTracing Propagator
+- `opentelemetry-propagator-ot-trace` Add OT Trace Propagator
   ([#302](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/302))
 
 ### Removed
