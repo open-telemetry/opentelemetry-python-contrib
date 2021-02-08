@@ -15,7 +15,7 @@
 from unittest import TestCase
 
 from opentelemetry.baggage import get_all, set_baggage
-from opentelemetry.propagator.ot_trace import (
+from opentelemetry.propagators.ot_trace import (
     OT_BAGGAGE_PREFIX,
     OT_SAMPLED_HEADER,
     OT_SPAN_ID_HEADER,
