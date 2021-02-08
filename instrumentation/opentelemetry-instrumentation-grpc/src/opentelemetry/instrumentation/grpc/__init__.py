@@ -33,10 +33,6 @@ Usage Client
         SimpleExportSpanProcessor,
     )
 
-    from opentelemetry import metrics
-    from opentelemetry.sdk.metrics import MeterProvider
-    from opentelemetry.sdk.metrics.export import ConsoleMetricsExporter
-
     try:
         from .gen import helloworld_pb2, helloworld_pb2_grpc
     except ImportError:
@@ -47,13 +43,7 @@ Usage Client
         SimpleExportSpanProcessor(ConsoleSpanExporter())
     )
 
-    # Set meter provider to opentelemetry-sdk's MeterProvider
-    metrics.set_meter_provider(MeterProvider())
-
-    # Optional - export GRPC specific metrics (latency, bytes in/out, errors) by passing an exporter
-    instrumentor = GrpcInstrumentorClient().instrument(
-        exporter = ConsoleMetricsExporter(),
-        interval = 10)
+    instrumentor = GrpcInstrumentorClient().instrument()
 
     def run():
         with grpc.insecure_channel("localhost:50051") as channel:
@@ -128,8 +118,6 @@ You can also add the instrumentor manually, rather than using
                          interceptors = [server_interceptor()])
 
 """
-from functools import partial
-
 import grpc  # pylint:disable=import-self
 from wrapt import wrap_function_wrapper as _wrap
 
@@ -185,52 +173,45 @@ class GrpcInstrumentorClient(BaseInstrumentor):
 
     """
 
-    def _instrument(self, **kwargs):
-        exporter = kwargs.get("exporter", None)
-        interval = kwargs.get("interval", 30)
-        if kwargs.get("channel_type") == "secure":
-            _wrap(
-                "grpc",
-                "secure_channel",
-                partial(self.wrapper_fn, exporter, interval),
-            )
+    # Figures out which channel type we need to wrap
+    def _which_channel(self, kwargs):
+        # handle legacy argument
+        if "channel_type" in kwargs:
+            if kwargs.get("channel_type") == "secure":
+                return ("secure_channel",)
+            return ("insecure_channel",)
 
-        else:
+        # handle modern arguments
+        types = []
+        for ctype in ("secure_channel", "insecure_channel"):
+            if kwargs.get(ctype, True):
+                types.append(ctype)
+
+        return tuple(types)
+
+    def _instrument(self, **kwargs):
+        for ctype in self._which_channel(kwargs):
             _wrap(
-                "grpc",
-                "insecure_channel",
-                partial(self.wrapper_fn, exporter, interval),
+                "grpc", ctype, self.wrapper_fn,
             )
 
     def _uninstrument(self, **kwargs):
-        if kwargs.get("channel_type") == "secure":
-            unwrap(grpc, "secure_channel")
+        for ctype in self._which_channel(kwargs):
+            unwrap(grpc, ctype)
 
-        else:
-            unwrap(grpc, "insecure_channel")
-
-    def wrapper_fn(
-        self, exporter, interval, original_func, instance, args, kwargs
-    ):
+    def wrapper_fn(self, original_func, instance, args, kwargs):
         channel = original_func(*args, **kwargs)
         tracer_provider = kwargs.get("tracer_provider")
         return intercept_channel(
-            channel,
-            client_interceptor(
-                tracer_provider=tracer_provider,
-                exporter=exporter,
-                interval=interval,
-            ),
+            channel, client_interceptor(tracer_provider=tracer_provider),
         )
 
 
-def client_interceptor(tracer_provider=None, exporter=None, interval=30):
+def client_interceptor(tracer_provider=None):
     """Create a gRPC client channel interceptor.
 
     Args:
         tracer: The tracer to use to create client-side spans.
-        exporter: The exporter that will receive client metrics
-        interval: Time between every export call
 
     Returns:
         An invocation-side interceptor object.
@@ -239,7 +220,7 @@ def client_interceptor(tracer_provider=None, exporter=None, interval=30):
 
     tracer = trace.get_tracer(__name__, __version__, tracer_provider)
 
-    return _client.OpenTelemetryClientInterceptor(tracer, exporter, interval)
+    return _client.OpenTelemetryClientInterceptor(tracer)
 
 
 def server_interceptor(tracer_provider=None):
