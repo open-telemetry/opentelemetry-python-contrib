@@ -18,6 +18,11 @@ Installation
 OTTrace Format
 --------------
 
+So far there is no "formal" specification of the OTTrace format. The best
+document that servers this purpose that exists now is this_ implementation.
+
+.. _this: https://github.com/opentracing/basictracer-python/blob/master/basictracer/text_propagator.py
+
 ===================== ======================================================================================================================================= =====================
 Header Name           Description                                                                                                                             Required
 ===================== ======================================================================================================================================= =====================
