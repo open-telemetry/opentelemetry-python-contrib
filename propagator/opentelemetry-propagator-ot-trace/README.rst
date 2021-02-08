@@ -1,5 +1,5 @@
-OpenTelemetry OTTrace Propagator
-================================
+OpenTelemetry OT Trace Propagator
+=================================
 
 |pypi|
 
