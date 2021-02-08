@@ -30,7 +30,7 @@ Header Name           Description                                               
 Interop and trace ids
 ---------------------
 
-The OTTrace propagation format expects trace ids to be 64-bits. In order to
+The OT Trace propagation format expects trace ids to be 64-bits. In order to
 interop with OpenTelemetry, trace ids need to be truncated to 64-bits before
 sending them on the wire. When truncating, the least significant (right-most)
 bits MUST be retained. For example, a trace id of
