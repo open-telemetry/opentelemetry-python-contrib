@@ -285,7 +285,7 @@ class TestOTTracePropagator(TestCase):
             self.ot_trace_propagator.extract(
                 carrier_getter,
                 {
-                    OT_TRACE_ID_HEADER: "abc123",
+                    OT_TRACE_ID_HEADER: "abc123!",
                     OT_SPAN_ID_HEADER: "e457b5a2e4d86bd1",
                     OT_SAMPLED_HEADER: "false",
                 },
@@ -302,7 +302,7 @@ class TestOTTracePropagator(TestCase):
                 carrier_getter,
                 {
                     OT_TRACE_ID_HEADER: "64fe8b2a57d3eff7",
-                    OT_SPAN_ID_HEADER: "abc123",
+                    OT_SPAN_ID_HEADER: "abc123!",
                     OT_SAMPLED_HEADER: "false",
                 },
             )
