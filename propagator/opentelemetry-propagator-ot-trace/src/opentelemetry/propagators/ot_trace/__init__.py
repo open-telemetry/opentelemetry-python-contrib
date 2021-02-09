@@ -42,8 +42,6 @@ _valid_header_name = re_compile(r"^[\w_^`!#$%&'*+.|~]+$")
 _valid_header_value = re_compile(r"^[\t\x20-\x7e\x80-\xff]+$")
 _valid_extract_traceid = re_compile(r"[0-9a-f]{32}|[0-9a-f]{16}")
 _valid_extract_spanid = re_compile(r"[0-9a-f]{16}")
-_valid_inject_traceid = re_compile(r"[0-9a-f]{1,32}|[0-9a-f]{1,16}")
-_valid_inject_spanid = re_compile(r"[0-9a-f]{1,16}")
 
 
 class OTTracePropagator(TextMapPropagator):
@@ -56,13 +54,13 @@ class OTTracePropagator(TextMapPropagator):
         context: Optional[Context] = None,
     ) -> Context:
 
-        traceid = extract_first_element(
+        traceid = _extract_first_element(
             getter.get(carrier, OT_TRACE_ID_HEADER)
         )
 
-        spanid = extract_first_element(getter.get(carrier, OT_SPAN_ID_HEADER))
+        spanid = _extract_first_element(getter.get(carrier, OT_SPAN_ID_HEADER))
 
-        sampled = extract_first_element(getter.get(carrier, OT_SAMPLED_HEADER))
+        sampled = _extract_first_element(getter.get(carrier, OT_SAMPLED_HEADER))
 
         if sampled == "true":
             traceflags = TraceFlags.SAMPLED
@@ -94,7 +92,7 @@ class OTTracePropagator(TextMapPropagator):
                 if not key.startswith(OT_BAGGAGE_PREFIX):
                     continue
 
-                baggage[key[len(OT_BAGGAGE_PREFIX) :]] = extract_first_element(
+                baggage[key[len(OT_BAGGAGE_PREFIX):]] = _extract_first_element(
                     getter.get(carrier, key)
                 )
 
@@ -112,14 +110,7 @@ class OTTracePropagator(TextMapPropagator):
 
         span_context = get_current_span(context).get_span_context()
 
-        if (
-            span_context.trace_id == INVALID_TRACE_ID
-            or _valid_inject_traceid.match(hex(span_context.trace_id)[2:])
-            is None
-            or span_context.span_id == INVALID_SPAN_ID
-            or _valid_inject_spanid.match(hex(span_context.span_id)[2:])
-            is None
-        ):
+        if span_context.trace_id == INVALID_TRACE_ID:
             return
 
         set_in_carrier(
@@ -169,7 +160,7 @@ class OTTracePropagator(TextMapPropagator):
         }
 
 
-def extract_first_element(
+def _extract_first_element(
     items: Iterable[TextMapPropagatorT],
 ) -> Optional[TextMapPropagatorT]:
     if items is None:
