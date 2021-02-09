@@ -40,8 +40,10 @@ OT_BAGGAGE_PREFIX = "ot-baggage-"
 
 _valid_header_name = re_compile(r"^[\w_^`!#$%&'*+.|~]+$")
 _valid_header_value = re_compile(r"^[\t\x20-\x7e\x80-\xff]+$")
-_valid_traceid = re_compile(r"[0-9a-f]{32}|[0-9a-f]{16}")
-_valid_spanid = re_compile(r"[0-9a-f]{16}")
+_valid_extract_traceid = re_compile(r"[0-9a-f]{32}|[0-9a-f]{16}")
+_valid_extract_spanid = re_compile(r"[0-9a-f]{16}")
+_valid_inject_traceid = re_compile(r"[0-9a-f]{1,32}|[0-9a-f]{1,16}")
+_valid_inject_spanid = re_compile(r"[0-9a-f]{1,16}")
 
 
 class OTTracePropagator(TextMapPropagator):
@@ -69,9 +71,9 @@ class OTTracePropagator(TextMapPropagator):
 
         if (
             traceid != INVALID_TRACE_ID
-            and _valid_traceid.match(traceid) is not None
+            and _valid_extract_traceid.match(traceid) is not None
             and spanid != INVALID_SPAN_ID
-            and _valid_spanid.match(spanid) is not None
+            and _valid_extract_spanid.match(spanid) is not None
         ):
             context = set_span_in_context(
                 NonRecordingSpan(
@@ -92,7 +94,7 @@ class OTTracePropagator(TextMapPropagator):
                 if not key.startswith(OT_BAGGAGE_PREFIX):
                     continue
 
-                baggage[key[len(OT_BAGGAGE_PREFIX) :]] = extract_first_element(
+                baggage[key[len(OT_BAGGAGE_PREFIX):]] = extract_first_element(
                     getter.get(carrier, key)
                 )
 
@@ -112,17 +114,23 @@ class OTTracePropagator(TextMapPropagator):
 
         if (
             span_context.trace_id == INVALID_TRACE_ID
-            or _valid_traceid.match(hex(span_context.trace_id)[2:]) is None
+            or _valid_inject_traceid.match(
+                hex(span_context.trace_id)[2:]
+            ) is None
             or span_context.span_id == INVALID_SPAN_ID
-            or _valid_spanid.match(hex(span_context.span_id)[2:]) is None
+            or _valid_inject_spanid.match(
+                hex(span_context.span_id)[2:]
+            ) is None
         ):
             return
 
         set_in_carrier(
-            carrier, OT_TRACE_ID_HEADER, hex(span_context.trace_id)[18:]
+            carrier,
+            OT_TRACE_ID_HEADER,
+            hex(span_context.trace_id)[2:][-16:]
         )
         set_in_carrier(
-            carrier, OT_SPAN_ID_HEADER, hex(span_context.span_id)[2:],
+            carrier, OT_SPAN_ID_HEADER, hex(span_context.span_id)[2:][-16:],
         )
 
         if span_context.trace_flags == TraceFlags.SAMPLED:

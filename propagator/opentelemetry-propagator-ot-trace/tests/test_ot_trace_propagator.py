@@ -63,6 +63,17 @@ class TestOTTracePropagator(TestCase):
 
         return carrier
 
+    def test_inject_short_trace_id_short_span_id(self):
+        carrier = self.carrier_inject(
+            int("1", 16),
+            int("2", 16),
+            True,
+            TraceFlags.SAMPLED,
+        )
+
+        self.assertEqual(carrier[OT_TRACE_ID_HEADER], "1")
+        self.assertEqual(carrier[OT_SPAN_ID_HEADER], "2")
+
     def test_inject_trace_id_span_id_true(self):
         """Test valid trace_id, span_id and sampled true"""
         carrier = self.carrier_inject(
