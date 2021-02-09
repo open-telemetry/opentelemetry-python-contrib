@@ -94,7 +94,7 @@ class OTTracePropagator(TextMapPropagator):
                 if not key.startswith(OT_BAGGAGE_PREFIX):
                     continue
 
-                baggage[key[len(OT_BAGGAGE_PREFIX):]] = extract_first_element(
+                baggage[key[len(OT_BAGGAGE_PREFIX) :]] = extract_first_element(
                     getter.get(carrier, key)
                 )
 
@@ -114,20 +114,16 @@ class OTTracePropagator(TextMapPropagator):
 
         if (
             span_context.trace_id == INVALID_TRACE_ID
-            or _valid_inject_traceid.match(
-                hex(span_context.trace_id)[2:]
-            ) is None
+            or _valid_inject_traceid.match(hex(span_context.trace_id)[2:])
+            is None
             or span_context.span_id == INVALID_SPAN_ID
-            or _valid_inject_spanid.match(
-                hex(span_context.span_id)[2:]
-            ) is None
+            or _valid_inject_spanid.match(hex(span_context.span_id)[2:])
+            is None
         ):
             return
 
         set_in_carrier(
-            carrier,
-            OT_TRACE_ID_HEADER,
-            hex(span_context.trace_id)[2:][-16:]
+            carrier, OT_TRACE_ID_HEADER, hex(span_context.trace_id)[2:][-16:]
         )
         set_in_carrier(
             carrier, OT_SPAN_ID_HEADER, hex(span_context.span_id)[2:][-16:],
