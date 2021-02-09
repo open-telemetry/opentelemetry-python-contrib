@@ -137,7 +137,7 @@ def collect_request_attributes(environ):
     setifnotnone(result, "net.peer.port", environ.get("REMOTE_PORT"))
     flavor = environ.get("SERVER_PROTOCOL", "")
     if flavor.upper().startswith(_HTTP_VERSION_PREFIX):
-        flavor = flavor[len(_HTTP_VERSION_PREFIX):]
+        flavor = flavor[len(_HTTP_VERSION_PREFIX) :]
     if flavor:
         result["http.flavor"] = flavor
 
