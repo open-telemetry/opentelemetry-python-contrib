@@ -490,7 +490,7 @@ class TestBotocoreInstrumentor(TestBase):
                 "aws.operation": "PutItem",
                 "aws.region": "us-west-2",
                 "aws.request_id": put_item_attributes["aws.request_id"],
-                "aws.service": "dynamodb",                
+                "aws.service": "dynamodb",
                 "aws.table_name": "test_table_name",
                 "retry_attempts": 0,
                 "http.status_code": 200,
