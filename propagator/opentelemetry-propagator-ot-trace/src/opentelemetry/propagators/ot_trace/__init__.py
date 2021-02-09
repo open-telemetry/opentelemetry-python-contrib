@@ -38,10 +38,10 @@ OT_SPAN_ID_HEADER = "ot-tracer-spanid"
 OT_SAMPLED_HEADER = "ot-tracer-sampled"
 OT_BAGGAGE_PREFIX = "ot-baggage-"
 
-_valid_header_name = re_compile(r"^[\w_^`!#$%&'*+.|~]+$")
-_valid_header_value = re_compile(r"^[\t\x20-\x7e\x80-\xff]+$")
-_valid_traceid = re_compile(r"[0-9a-f]{32}|[0-9a-f]{16}")
-_valid_spanid = re_compile(r"[0-9a-f]{16}")
+_valid_header_name = re_compile(r"[\w_^`!#$%&'*+.|~]+")
+_valid_header_value = re_compile(r"[\t\x20-\x7e\x80-\xff]+")
+_valid_extract_traceid = re_compile(r"[0-9a-f]{1,32}")
+_valid_extract_spanid = re_compile(r"[0-9a-f]{1,16}")
 
 
 class OTTracePropagator(TextMapPropagator):
@@ -69,9 +69,9 @@ class OTTracePropagator(TextMapPropagator):
 
         if (
             traceid != INVALID_TRACE_ID
-            and _valid_traceid.match(traceid) is not None
+            and _valid_extract_traceid.fullmatch(traceid) is not None
             and spanid != INVALID_SPAN_ID
-            and _valid_spanid.match(spanid) is not None
+            and _valid_extract_spanid.fullmatch(spanid) is not None
         ):
             context = set_span_in_context(
                 NonRecordingSpan(
@@ -140,8 +140,8 @@ class OTTracePropagator(TextMapPropagator):
         for header_name, header_value in baggage.items():
 
             if (
-                _valid_header_name.match(header_name) is None
-                or _valid_header_value.match(header_value) is None
+                _valid_header_name.fullmatch(header_name) is None
+                or _valid_header_value.fullmatch(header_value) is None
             ):
                 continue
 
