@@ -62,7 +62,6 @@ API
 ---
 """
 
-import socket
 import types
 import typing
 
@@ -70,7 +69,8 @@ import aiohttp
 import wrapt
 
 from opentelemetry import context as context_api
-from opentelemetry import propagators, trace
+from opentelemetry.propagators.util import inject
+from opentelemetry import trace
 from opentelemetry.instrumentation.aiohttp_client.version import __version__
 from opentelemetry.instrumentation.instrumentor import BaseInstrumentor
 from opentelemetry.instrumentation.utils import (
@@ -181,7 +181,7 @@ def create_trace_config(
             trace.set_span_in_context(trace_config_ctx.span)
         )
 
-        propagators.inject(type(params.headers).__setitem__, params.headers)
+        inject(type(params.headers).__setitem__, params.headers)
 
     async def on_request_end(
         unused_session: aiohttp.ClientSession,

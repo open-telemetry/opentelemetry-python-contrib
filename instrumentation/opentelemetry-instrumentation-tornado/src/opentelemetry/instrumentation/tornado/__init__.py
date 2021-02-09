@@ -43,7 +43,8 @@ import tornado.web
 import wrapt
 from wrapt import wrap_function_wrapper
 
-from opentelemetry import context, propagators, trace
+from opentelemetry import context, trace
+from opentelemetry.propagators.util import extract
 from opentelemetry.instrumentation.instrumentor import BaseInstrumentor
 from opentelemetry.instrumentation.tornado.version import __version__
 from opentelemetry.instrumentation.utils import (
@@ -196,7 +197,7 @@ def _get_operation_name(handler, request):
 
 def _start_span(tracer, handler, start_time) -> _TraceContext:
     token = context.attach(
-        propagators.extract(carrier_getter, handler.request.headers,)
+        extract(carrier_getter, handler.request.headers,)
     )
 
     span = tracer.start_span(

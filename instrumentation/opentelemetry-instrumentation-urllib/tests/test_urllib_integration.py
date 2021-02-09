@@ -24,7 +24,10 @@ from urllib.request import OpenerDirector
 import httpretty
 
 import opentelemetry.instrumentation.urllib  # pylint: disable=no-name-in-module,import-error
-from opentelemetry import context, propagators, trace
+from opentelemetry import context, trace
+from opentelemetry.propagators.util import (
+    get_global_textmap, set_global_textmap
+)
 from opentelemetry.instrumentation.urllib import (  # pylint: disable=no-name-in-module,import-error
     URLLibInstrumentor,
 )
@@ -222,9 +225,9 @@ class RequestsIntegrationTestBase(abc.ABC):
             self.assertFalse(mock_span.set_status.called)
 
     def test_distributed_context(self):
-        previous_propagator = propagators.get_global_textmap()
+        previous_propagator = get_global_textmap()
         try:
-            propagators.set_global_textmap(MockTextMapPropagator())
+            set_global_textmap(MockTextMapPropagator())
             result = self.perform_request(self.URL)
             self.assertEqual(result.read(), b"Hello!")
 
@@ -247,7 +250,7 @@ class RequestsIntegrationTestBase(abc.ABC):
             )
 
         finally:
-            propagators.set_global_textmap(previous_propagator)
+            set_global_textmap(previous_propagator)
 
     def test_span_callback(self):
         URLLibInstrumentor().uninstrument()
