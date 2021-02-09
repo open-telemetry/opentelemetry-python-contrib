@@ -69,7 +69,6 @@ import aiohttp
 import wrapt
 
 from opentelemetry import context as context_api
-from opentelemetry.propagators.util import inject
 from opentelemetry import trace
 from opentelemetry.instrumentation.aiohttp_client.version import __version__
 from opentelemetry.instrumentation.instrumentor import BaseInstrumentor
@@ -77,6 +76,7 @@ from opentelemetry.instrumentation.utils import (
     http_status_to_status_code,
     unwrap,
 )
+from opentelemetry.propagators.util import inject
 from opentelemetry.trace import SpanKind, TracerProvider, get_tracer
 from opentelemetry.trace.status import Status, StatusCode
 

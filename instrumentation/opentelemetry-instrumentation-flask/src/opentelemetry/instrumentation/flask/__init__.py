@@ -53,9 +53,9 @@ import flask
 
 import opentelemetry.instrumentation.wsgi as otel_wsgi
 from opentelemetry import context, trace
-from opentelemetry.propagators.util import extract
 from opentelemetry.instrumentation.flask.version import __version__
 from opentelemetry.instrumentation.instrumentor import BaseInstrumentor
+from opentelemetry.propagators.util import extract
 from opentelemetry.util.http import get_excluded_urls
 from opentelemetry.util.providers import time_ns
 
@@ -117,9 +117,7 @@ def _wrapped_before_request(name_callback):
         flask_request_environ = flask.request.environ
         span_name = name_callback()
         token = context.attach(
-            extract(
-                otel_wsgi.carrier_getter, flask_request_environ
-            )
+            extract(otel_wsgi.carrier_getter, flask_request_environ)
         )
 
         tracer = trace.get_tracer(__name__, __version__)

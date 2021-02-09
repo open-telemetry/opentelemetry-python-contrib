@@ -59,9 +59,9 @@ import typing
 import wsgiref.util as wsgiref_util
 
 from opentelemetry import context, trace
-from opentelemetry.propagators.util import extract
 from opentelemetry.instrumentation.utils import http_status_to_status_code
 from opentelemetry.instrumentation.wsgi.version import __version__
+from opentelemetry.propagators.util import extract
 from opentelemetry.trace.propagation.textmap import DictGetter
 from opentelemetry.trace.status import Status, StatusCode
 
@@ -137,7 +137,7 @@ def collect_request_attributes(environ):
     setifnotnone(result, "net.peer.port", environ.get("REMOTE_PORT"))
     flavor = environ.get("SERVER_PROTOCOL", "")
     if flavor.upper().startswith(_HTTP_VERSION_PREFIX):
-        flavor = flavor[len(_HTTP_VERSION_PREFIX):]
+        flavor = flavor[len(_HTTP_VERSION_PREFIX) :]
     if flavor:
         result["http.flavor"] = flavor
 

@@ -26,9 +26,9 @@ from contextlib import contextmanager
 
 import grpc
 
-from opentelemetry.propagators.util import extract
 from opentelemetry import trace
 from opentelemetry.context import attach, detach
+from opentelemetry.propagators.util import extract
 from opentelemetry.trace.propagation.textmap import DictGetter
 from opentelemetry.trace.status import Status, StatusCode
 

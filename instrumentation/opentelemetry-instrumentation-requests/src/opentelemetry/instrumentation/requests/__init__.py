@@ -40,11 +40,11 @@ from requests.models import Response
 from requests.sessions import Session
 from requests.structures import CaseInsensitiveDict
 
-from opentelemetry.propagators.util import inject
 from opentelemetry import context
 from opentelemetry.instrumentation.instrumentor import BaseInstrumentor
 from opentelemetry.instrumentation.requests.version import __version__
 from opentelemetry.instrumentation.utils import http_status_to_status_code
+from opentelemetry.propagators.util import inject
 from opentelemetry.trace import SpanKind, get_tracer
 from opentelemetry.trace.status import Status
 

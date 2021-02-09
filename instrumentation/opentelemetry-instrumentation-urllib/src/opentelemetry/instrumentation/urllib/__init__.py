@@ -44,12 +44,12 @@ from urllib.request import (  # pylint: disable=no-name-in-module,import-error
 )
 
 from opentelemetry import context
-from opentelemetry.propagators.util import inject
 from opentelemetry.instrumentation.instrumentor import BaseInstrumentor
 from opentelemetry.instrumentation.urllib.version import (  # pylint: disable=no-name-in-module,import-error
     __version__,
 )
 from opentelemetry.instrumentation.utils import http_status_to_status_code
+from opentelemetry.propagators.util import inject
 from opentelemetry.trace import SpanKind, get_tracer
 from opentelemetry.trace.status import Status
 

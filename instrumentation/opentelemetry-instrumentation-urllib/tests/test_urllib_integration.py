@@ -25,11 +25,12 @@ import httpretty
 
 import opentelemetry.instrumentation.urllib  # pylint: disable=no-name-in-module,import-error
 from opentelemetry import context, trace
-from opentelemetry.propagators.util import (
-    get_global_textmap, set_global_textmap
-)
 from opentelemetry.instrumentation.urllib import (  # pylint: disable=no-name-in-module,import-error
     URLLibInstrumentor,
+)
+from opentelemetry.propagators.util import (
+    get_global_textmap,
+    set_global_textmap,
 )
 from opentelemetry.sdk import resources
 from opentelemetry.test.mock_textmap import MockTextMapPropagator

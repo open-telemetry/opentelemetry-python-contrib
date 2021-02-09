@@ -26,9 +26,9 @@ from typing import Tuple
 from asgiref.compatibility import guarantee_single_callable
 
 from opentelemetry import context, trace
-from opentelemetry.propagators.util import extract
 from opentelemetry.instrumentation.asgi.version import __version__  # noqa
 from opentelemetry.instrumentation.utils import http_status_to_status_code
+from opentelemetry.propagators.util import extract
 from opentelemetry.trace.propagation.textmap import DictGetter
 from opentelemetry.trace.status import Status, StatusCode
 

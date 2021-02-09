@@ -28,12 +28,13 @@ from moto import (  # pylint: disable=import-error
     mock_xray,
 )
 
-from opentelemetry.propagators.util import (
-    set_global_textmap, get_global_textmap
-)
 from opentelemetry import trace as trace_api
 from opentelemetry.context import attach, detach, set_value
 from opentelemetry.instrumentation.botocore import BotocoreInstrumentor
+from opentelemetry.propagators.util import (
+    get_global_textmap,
+    set_global_textmap,
+)
 from opentelemetry.test.mock_textmap import MockTextMapPropagator
 from opentelemetry.test.test_base import TestBase
 
