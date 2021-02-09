@@ -40,8 +40,8 @@ OT_BAGGAGE_PREFIX = "ot-baggage-"
 
 _valid_header_name = re_compile(r"^[\w_^`!#$%&'*+.|~]+$")
 _valid_header_value = re_compile(r"^[\t\x20-\x7e\x80-\xff]+$")
-_valid_extract_traceid = re_compile(r"[0-9a-f]{32}|[0-9a-f]{16}")
-_valid_extract_spanid = re_compile(r"[0-9a-f]{16}")
+_valid_extract_traceid = re_compile(r"[0-9a-f]{1,32}")
+_valid_extract_spanid = re_compile(r"[0-9a-f]{1,16}")
 
 
 class OTTracePropagator(TextMapPropagator):
@@ -60,7 +60,9 @@ class OTTracePropagator(TextMapPropagator):
 
         spanid = _extract_first_element(getter.get(carrier, OT_SPAN_ID_HEADER))
 
-        sampled = _extract_first_element(getter.get(carrier, OT_SAMPLED_HEADER))
+        sampled = _extract_first_element(
+            getter.get(carrier, OT_SAMPLED_HEADER)
+        )
 
         if sampled == "true":
             traceflags = TraceFlags.SAMPLED
@@ -92,9 +94,9 @@ class OTTracePropagator(TextMapPropagator):
                 if not key.startswith(OT_BAGGAGE_PREFIX):
                     continue
 
-                baggage[key[len(OT_BAGGAGE_PREFIX):]] = _extract_first_element(
-                    getter.get(carrier, key)
-                )
+                baggage[
+                    key[len(OT_BAGGAGE_PREFIX) :]
+                ] = _extract_first_element(getter.get(carrier, key))
 
             for key, value in baggage.items():
                 context = set_baggage(key, value, context)
