@@ -1,4 +1,19 @@
+# Copyright The OpenTelemetry Authors
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
 from logging import getLogger
+from time import time_ns
 
 from pyramid.events import BeforeTraversal
 from pyramid.httpexceptions import HTTPException
@@ -10,7 +25,6 @@ from opentelemetry import context, trace
 from opentelemetry.instrumentation.pyramid.version import __version__
 from opentelemetry.propagate import extract
 from opentelemetry.util.http import get_excluded_urls
-from opentelemetry.util.time import time_ns
 
 TWEEN_NAME = "opentelemetry.instrumentation.pyramid.trace_tween_factory"
 SETTING_TRACE_ENABLED = "opentelemetry-pyramid.trace_enabled"

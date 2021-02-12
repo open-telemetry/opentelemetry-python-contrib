@@ -38,6 +38,7 @@ Usage
 from collections import namedtuple
 from functools import partial
 from logging import getLogger
+from time import time_ns
 
 import tornado.web
 import wrapt
@@ -55,7 +56,6 @@ from opentelemetry.propagate import extract
 from opentelemetry.propagators.textmap import DictGetter
 from opentelemetry.trace.status import Status
 from opentelemetry.util.http import get_excluded_urls, get_traced_request_attrs
-from opentelemetry.util.time import time_ns
 
 from .client import fetch_async  # pylint: disable=E0401
 

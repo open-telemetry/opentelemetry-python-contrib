@@ -13,6 +13,7 @@
 # limitations under the License.
 
 import functools
+from time import time_ns
 
 from tornado.httpclient import HTTPError, HTTPRequest
 
@@ -20,7 +21,6 @@ from opentelemetry import trace
 from opentelemetry.instrumentation.utils import http_status_to_status_code
 from opentelemetry.propagate import inject
 from opentelemetry.trace.status import Status
-from opentelemetry.util.time import time_ns
 
 
 def _normalize_request(args, kwargs):
