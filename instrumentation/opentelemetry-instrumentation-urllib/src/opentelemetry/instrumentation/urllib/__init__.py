@@ -49,7 +49,7 @@ from opentelemetry.instrumentation.urllib.version import (  # pylint: disable=no
     __version__,
 )
 from opentelemetry.instrumentation.utils import http_status_to_status_code
-from opentelemetry.propagators.util import inject
+from opentelemetry.propagate import inject
 from opentelemetry.trace import SpanKind, get_tracer
 from opentelemetry.trace.status import Status
 

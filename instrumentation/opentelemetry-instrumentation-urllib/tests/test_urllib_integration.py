@@ -28,7 +28,7 @@ from opentelemetry import context, trace
 from opentelemetry.instrumentation.urllib import (  # pylint: disable=no-name-in-module,import-error
     URLLibInstrumentor,
 )
-from opentelemetry.propagators.util import (
+from opentelemetry.propagate import (
     get_global_textmap,
     set_global_textmap,
 )

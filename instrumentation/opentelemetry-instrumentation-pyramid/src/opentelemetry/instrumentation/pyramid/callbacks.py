@@ -8,7 +8,7 @@ from pyramid.tweens import EXCVIEW
 import opentelemetry.instrumentation.wsgi as otel_wsgi
 from opentelemetry import context, trace
 from opentelemetry.instrumentation.pyramid.version import __version__
-from opentelemetry.propagators.util import extract
+from opentelemetry.propagate import extract
 from opentelemetry.util.http import get_excluded_urls
 from opentelemetry.util.providers import time_ns
 

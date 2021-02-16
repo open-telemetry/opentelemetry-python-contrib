@@ -21,7 +21,7 @@ import requests
 import opentelemetry.instrumentation.requests
 from opentelemetry import context, trace
 from opentelemetry.instrumentation.requests import RequestsInstrumentor
-from opentelemetry.propagators.util import (
+from opentelemetry.propagate import (
     get_global_textmap,
     set_global_textmap,
 )

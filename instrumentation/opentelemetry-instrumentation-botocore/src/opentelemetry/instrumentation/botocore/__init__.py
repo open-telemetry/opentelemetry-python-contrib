@@ -56,7 +56,7 @@ from opentelemetry import context as context_api
 from opentelemetry.instrumentation.botocore.version import __version__
 from opentelemetry.instrumentation.instrumentor import BaseInstrumentor
 from opentelemetry.instrumentation.utils import unwrap
-from opentelemetry.propagators.util import inject
+from opentelemetry.propagate import inject
 from opentelemetry.trace import SpanKind, get_tracer
 
 logger = logging.getLogger(__name__)

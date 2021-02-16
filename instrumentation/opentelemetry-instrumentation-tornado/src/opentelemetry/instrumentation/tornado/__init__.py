@@ -51,7 +51,7 @@ from opentelemetry.instrumentation.utils import (
     http_status_to_status_code,
     unwrap,
 )
-from opentelemetry.propagators.util import extract
+from opentelemetry.propagate import extract
 from opentelemetry.trace.propagation.textmap import DictGetter
 from opentelemetry.trace.status import Status
 from opentelemetry.util.http import get_excluded_urls, get_traced_request_attrs

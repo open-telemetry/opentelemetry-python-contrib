@@ -60,7 +60,7 @@ from opentelemetry import trace
 from opentelemetry.instrumentation.celery import utils
 from opentelemetry.instrumentation.celery.version import __version__
 from opentelemetry.instrumentation.instrumentor import BaseInstrumentor
-from opentelemetry.propagators.util import extract, inject
+from opentelemetry.propagate import extract, inject
 from opentelemetry.trace.propagation.textmap import DictGetter
 from opentelemetry.trace.status import Status, StatusCode
 

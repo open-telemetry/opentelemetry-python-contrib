@@ -56,7 +56,7 @@ from opentelemetry.instrumentation.utils import (
     extract_attributes_from_object,
     http_status_to_status_code,
 )
-from opentelemetry.propagators.util import extract
+from opentelemetry.propagate import extract
 from opentelemetry.trace.status import Status
 from opentelemetry.util.http import get_excluded_urls, get_traced_request_attrs
 from opentelemetry.util.providers import time_ns

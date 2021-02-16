@@ -4,7 +4,7 @@ from tornado.httpclient import HTTPError, HTTPRequest
 
 from opentelemetry import trace
 from opentelemetry.instrumentation.utils import http_status_to_status_code
-from opentelemetry.propagators.util import inject
+from opentelemetry.propagate import inject
 from opentelemetry.trace.status import Status
 from opentelemetry.util.providers import time_ns
 

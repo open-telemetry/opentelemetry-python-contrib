@@ -55,7 +55,7 @@ import opentelemetry.instrumentation.wsgi as otel_wsgi
 from opentelemetry import context, trace
 from opentelemetry.instrumentation.flask.version import __version__
 from opentelemetry.instrumentation.instrumentor import BaseInstrumentor
-from opentelemetry.propagators.util import extract
+from opentelemetry.propagate import extract
 from opentelemetry.util.http import get_excluded_urls
 from opentelemetry.util.providers import time_ns
 

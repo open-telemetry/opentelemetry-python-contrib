@@ -28,7 +28,7 @@ import grpc
 
 from opentelemetry import trace
 from opentelemetry.context import attach, detach
-from opentelemetry.propagators.util import extract
+from opentelemetry.propagate import extract
 from opentelemetry.trace.propagation.textmap import DictGetter
 from opentelemetry.trace.status import Status, StatusCode
 

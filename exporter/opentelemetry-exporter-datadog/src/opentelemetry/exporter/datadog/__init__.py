@@ -34,7 +34,7 @@ a distributed trace.
 
 .. code:: python
 
-    from opentelemetry.propagators.util import set_global_textmap
+    from opentelemetry.propagate import set_global_textmap
     from opentelemetry import trace
     from opentelemetry.exporter.datadog import DatadogExportSpanProcessor, DatadogSpanExporter
     from opentelemetry.exporter.datadog.propagator import DatadogFormat

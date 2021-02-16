@@ -27,7 +27,7 @@ import grpc
 from opentelemetry import trace
 from opentelemetry.instrumentation.grpc import grpcext
 from opentelemetry.instrumentation.grpc._utilities import RpcInfo
-from opentelemetry.propagators.util import inject
+from opentelemetry.propagate import inject
 from opentelemetry.trace.status import Status, StatusCode
 
 
