@@ -23,18 +23,6 @@ Usage
     import urllib3
     import urllib3.util
     from opentelemetry.instrumentation.urllib3 import URLLib3Instrumentor
-    from opentelemetry.sdk.trace import TracerProvider
-    from opentelemetry.sdk.trace.export import (
-        ConsoleSpanExporter,
-        SimpleExportSpanProcessor,
-    )
-    from opentelemetry.trace import set_tracer_provider
-
-    tracer_provider = TracerProvider()
-    set_tracer_provider(tracer_provider)
-    tracer_provider.add_span_processor(
-        SimpleExportSpanProcessor(ConsoleSpanExporter())
-    )
 
     def strip_query_params(url: str) -> str:
         return url.split("?")[0]
@@ -62,13 +50,14 @@ import typing
 import urllib3.connectionpool
 import wrapt
 
-from opentelemetry import context, propagators
+from opentelemetry import context
 from opentelemetry.instrumentation.instrumentor import BaseInstrumentor
 from opentelemetry.instrumentation.urllib3.version import __version__
 from opentelemetry.instrumentation.utils import (
     http_status_to_status_code,
     unwrap,
 )
+from opentelemetry.propagate import inject
 from opentelemetry.trace import Span, SpanKind, TracerProvider, get_tracer
 from opentelemetry.trace.status import Status
 
@@ -130,7 +119,7 @@ def _instrument(
         ).start_as_current_span(
             span_name, kind=SpanKind.CLIENT, attributes=span_attributes
         ) as span:
-            propagators.inject(type(headers).__setitem__, headers)
+            inject(type(headers).__setitem__, headers)
 
             with _suppress_further_instrumentation():
                 response = wrapped(*args, **kwargs)

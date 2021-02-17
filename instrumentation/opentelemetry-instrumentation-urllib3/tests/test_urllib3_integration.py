@@ -19,8 +19,9 @@ import httpretty
 import urllib3
 import urllib3.exceptions
 
-from opentelemetry import context, propagators, trace
+from opentelemetry import context, trace
 from opentelemetry.instrumentation.urllib3 import URLLib3Instrumentor
+from opentelemetry.propagate import get_global_textmap, set_global_textmap
 from opentelemetry.test.mock_textmap import MockTextMapPropagator
 from opentelemetry.test.test_base import TestBase
 
@@ -180,9 +181,9 @@ class TestURLLib3Instrumentor(TestBase):
                 self.assert_span(num_spans=0)
 
     def test_context_propagation(self):
-        previous_propagator = propagators.get_global_textmap()
+        previous_propagator = get_global_textmap()
         try:
-            propagators.set_global_textmap(MockTextMapPropagator())
+            set_global_textmap(MockTextMapPropagator())
             response = self.perform_request(self.HTTP_URL)
             self.assertEqual(b"Hello!", response.data)
 
@@ -200,7 +201,7 @@ class TestURLLib3Instrumentor(TestBase):
                 str(span.get_span_context().span_id),
             )
         finally:
-            propagators.set_global_textmap(previous_propagator)
+            set_global_textmap(previous_propagator)
 
     def test_custom_tracer_provider(self):
         tracer_provider, exporter = self.create_tracer_provider()
