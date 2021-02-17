@@ -84,8 +84,6 @@ class BotoInstrumentor(BaseInstrumentor):
         # For exemple EC2 uses AWSQueryConnection and S3 uses
         # AWSAuthConnection
 
-        # FIXME should the tracer provider be accessed via Configuration
-        # instead?
         # pylint: disable=attribute-defined-outside-init
         self._tracer = get_tracer(
             __name__, __version__, kwargs.get("tracer_provider")
@@ -122,18 +120,10 @@ class BotoInstrumentor(BaseInstrumentor):
         with self._tracer.start_as_current_span(
             "{}.command".format(endpoint_name), kind=SpanKind.CONSUMER,
         ) as span:
+            span.set_attribute("endpoint", endpoint_name)
             if args:
                 http_method = args[0]
-                span.resource = Resource(
-                    attributes={
-                        "endpoint": endpoint_name,
-                        "http_method": http_method.lower(),
-                    }
-                )
-            else:
-                span.resource = Resource(
-                    attributes={"endpoint": endpoint_name}
-                )
+                span.set_attribute("http_method", http_method.lower())
 
             # Original func returns a boto.connection.HTTPResponse object
             result = original_func(*args, **kwargs)

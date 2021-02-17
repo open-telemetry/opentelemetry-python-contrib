@@ -7,7 +7,7 @@ extension-pkg-whitelist=
 
 # Add list of files or directories to be excluded. They should be base names, not
 # paths.
-ignore=CVS,gen,Dockerfile,docker-compose.yml,README.md,requirements.txt,cortex-config.yml
+ignore=CVS,gen,Dockerfile,docker-compose.yml,README.md,requirements.txt
 
 # Add files or directories matching the regex patterns to be excluded. The
 # regex matches against base names, not paths.
@@ -79,6 +79,7 @@ disable=missing-docstring,
       super-init-not-called, # temp-pylint-upgrade
       invalid-overridden-method, # temp-pylint-upgrade 
       missing-module-docstring, # temp-pylint-upgrade
+      import-error, # needed as a workaround as reported here: https://github.com/open-telemetry/opentelemetry-python-contrib/issues/290
 
 # Enable the message, report, category or checker with the given id(s). You can
 # either give multiple identifier separated by comma (,) or put this option

@@ -21,13 +21,12 @@ from django.conf.urls import url
 from django.test import Client
 from django.test.utils import setup_test_environment, teardown_test_environment
 
-from opentelemetry.configuration import Configuration
 from opentelemetry.instrumentation.django import DjangoInstrumentor
-from opentelemetry.sdk.util import get_dict_as_key
 from opentelemetry.test.test_base import TestBase
 from opentelemetry.test.wsgitestutil import WsgiTestBase
 from opentelemetry.trace import SpanKind
 from opentelemetry.trace.status import StatusCode
+from opentelemetry.util.http import get_excluded_urls, get_traced_request_attrs
 
 # pylint: disable=import-error
 from .views import (
@@ -64,7 +63,6 @@ class TestMiddleware(TestBase, WsgiTestBase):
         super().setUp()
         setup_test_environment()
         _django_instrumentor.instrument()
-        Configuration._reset()  # pylint: disable=protected-access
         self.env_patch = patch.dict(
             "os.environ",
             {
@@ -75,11 +73,11 @@ class TestMiddleware(TestBase, WsgiTestBase):
         self.env_patch.start()
         self.exclude_patch = patch(
             "opentelemetry.instrumentation.django.middleware._DjangoMiddleware._excluded_urls",
-            Configuration()._excluded_urls("django"),
+            get_excluded_urls("DJANGO"),
         )
         self.traced_patch = patch(
             "opentelemetry.instrumentation.django.middleware._DjangoMiddleware._traced_request_attrs",
-            Configuration()._traced_request_attrs("django"),
+            get_traced_request_attrs("DJANGO"),
         )
         self.exclude_patch.start()
         self.traced_patch.start()
@@ -143,26 +141,6 @@ class TestMiddleware(TestBase, WsgiTestBase):
         self.assertEqual(span.attributes["http.status_code"], 200)
         self.assertEqual(span.attributes["http.status_text"], "OK")
 
-        self.assertIsNotNone(_django_instrumentor.meter)
-        self.assertEqual(len(_django_instrumentor.meter.instruments), 1)
-        recorder = list(_django_instrumentor.meter.instruments.values())[0]
-        match_key = get_dict_as_key(
-            {
-                "http.flavor": "1.1",
-                "http.method": "GET",
-                "http.status_code": "200",
-                "http.url": "http://testserver/traced/",
-            }
-        )
-        for key in recorder.bound_instruments.keys():
-            self.assertEqual(key, match_key)
-            # pylint: disable=protected-access
-            bound = recorder.bound_instruments.get(key)
-            for view_data in bound.view_datas:
-                self.assertEqual(view_data.labels, key)
-                self.assertEqual(view_data.aggregator.current.count, 1)
-                self.assertGreaterEqual(view_data.aggregator.current.sum, 0)
-
     def test_not_recording(self):
         mock_tracer = Mock()
         mock_span = Mock()
@@ -221,31 +199,12 @@ class TestMiddleware(TestBase, WsgiTestBase):
         self.assertEqual(span.attributes["http.route"], "^error/")
         self.assertEqual(span.attributes["http.scheme"], "http")
         self.assertEqual(span.attributes["http.status_code"], 500)
-        self.assertIsNotNone(_django_instrumentor.meter)
-        self.assertEqual(len(_django_instrumentor.meter.instruments), 1)
 
         self.assertEqual(len(span.events), 1)
         event = span.events[0]
         self.assertEqual(event.name, "exception")
         self.assertEqual(event.attributes["exception.type"], "ValueError")
         self.assertEqual(event.attributes["exception.message"], "error")
-
-        recorder = list(_django_instrumentor.meter.instruments.values())[0]
-        match_key = get_dict_as_key(
-            {
-                "http.flavor": "1.1",
-                "http.method": "GET",
-                "http.status_code": "500",
-                "http.url": "http://testserver/error/",
-            }
-        )
-        for key in recorder.bound_instruments.keys():
-            self.assertEqual(key, match_key)
-            # pylint: disable=protected-access
-            bound = recorder.bound_instruments.get(key)
-            for view_data in bound.view_datas:
-                self.assertEqual(view_data.labels, key)
-                self.assertEqual(view_data.aggregator.current.count, 1)
 
     def test_exclude_lists(self):
         client = Client()

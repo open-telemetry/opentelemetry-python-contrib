@@ -6,7 +6,7 @@ on:
     - 'release/*'
   pull_request:
 env:
-  CORE_REPO_SHA: f3ee81243b4266729ba5196a7883ce897549aaba
+  CORE_REPO_SHA: a434be5f450fdd329bcefb41e84406a001f9534c
 
 jobs:
   build:
@@ -23,7 +23,7 @@ jobs:
       fail-fast: false  # ensures the entire test matrix is run, even if one permutation fails
       matrix:
         python-version: [ py35, py36, py37, py38, pypy3 ]
-        package: ["instrumentation", "exporter", "sdkextension"]
+        package: ["instrumentation", "exporter", "sdkextension", "propagator"]
         os: [ ubuntu-latest ]
         include:
           # py35-instrumentation segfaults on 18.04 so we instead run on 20.04
@@ -78,7 +78,7 @@ jobs:
           alert-threshold: 200%
           fail-on-alert: true
           # Make a commit on `gh-pages` with benchmarks from previous step
-          auto-push: ${{ github.ref == 'refs/heads/master' }}
+          auto-push: ${{ github.ref == 'refs/heads/main' }}
           gh-pages-branch: gh-pages
           benchmark-data-dir-path: benchmarks
   misc:

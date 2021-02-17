@@ -18,7 +18,6 @@ on any ASGI framework (such as Django-channels / Quart) to track requests
 timing through OpenTelemetry.
 """
 
-import operator
 import typing
 import urllib
 from functools import wraps
@@ -26,9 +25,10 @@ from typing import Tuple
 
 from asgiref.compatibility import guarantee_single_callable
 
-from opentelemetry import context, propagators, trace
+from opentelemetry import context, trace
 from opentelemetry.instrumentation.asgi.version import __version__  # noqa
 from opentelemetry.instrumentation.utils import http_status_to_status_code
+from opentelemetry.propagate import extract
 from opentelemetry.trace.propagation.textmap import DictGetter
 from opentelemetry.trace.status import Status, StatusCode
 
@@ -48,6 +48,11 @@ class CarrierGetter(DictGetter):
                 else None.
         """
         headers = carrier.get("headers")
+        if not headers:
+            return None
+
+        # asgi header keys are in lower case
+        key = key.lower()
         decoded = [
             _value.decode("utf8")
             for (_key, _value) in headers
@@ -72,7 +77,6 @@ def collect_request_attributes(scope):
         http_url = http_url + ("?" + urllib.parse.unquote(query_string))
 
     result = {
-        "component": scope["type"],
         "http.scheme": scope.get("scheme"),
         "http.host": server_host,
         "net.host.port": port,
@@ -182,7 +186,7 @@ class OpenTelemetryMiddleware:
         if self.excluded_urls and self.excluded_urls.url_disabled(url):
             return await self.app(scope, receive, send)
 
-        token = context.attach(propagators.extract(carrier_getter, scope))
+        token = context.attach(extract(carrier_getter, scope))
         span_name, additional_attributes = self.span_details_callback(scope)
 
         try:

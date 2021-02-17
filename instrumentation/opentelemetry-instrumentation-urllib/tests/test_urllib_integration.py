@@ -24,12 +24,12 @@ from urllib.request import OpenerDirector
 import httpretty
 
 import opentelemetry.instrumentation.urllib  # pylint: disable=no-name-in-module,import-error
-from opentelemetry import context, propagators, trace
+from opentelemetry import context, trace
 from opentelemetry.instrumentation.urllib import (  # pylint: disable=no-name-in-module,import-error
     URLLibInstrumentor,
 )
+from opentelemetry.propagate import get_global_textmap, set_global_textmap
 from opentelemetry.sdk import resources
-from opentelemetry.sdk.util import get_dict_as_key
 from opentelemetry.test.mock_textmap import MockTextMapPropagator
 from opentelemetry.test.test_base import TestBase
 from opentelemetry.trace.status import StatusCode
@@ -104,7 +104,6 @@ class RequestsIntegrationTestBase(abc.ABC):
         self.assertEqual(
             span.attributes,
             {
-                "component": "http",
                 "http.method": "GET",
                 "http.url": self.URL,
                 "http.status_code": 200,
@@ -117,26 +116,6 @@ class RequestsIntegrationTestBase(abc.ABC):
         self.check_span_instrumentation_info(
             span, opentelemetry.instrumentation.urllib
         )
-
-        self.assertIsNotNone(URLLibInstrumentor().meter)
-        self.assertEqual(len(URLLibInstrumentor().meter.instruments), 1)
-        recorder = list(URLLibInstrumentor().meter.instruments.values())[0]
-        match_key = get_dict_as_key(
-            {
-                "http.flavor": "1.1",
-                "http.method": "GET",
-                "http.status_code": "200",
-                "http.url": "http://httpbin.org/status/200",
-            }
-        )
-        for key in recorder.bound_instruments.keys():
-            self.assertEqual(key, match_key)
-            # pylint: disable=protected-access
-            bound = recorder.bound_instruments.get(key)
-            for view_data in bound.view_datas:
-                self.assertEqual(view_data.labels, key)
-                self.assertEqual(view_data.aggregator.current.count, 1)
-                self.assertGreaterEqual(view_data.aggregator.current.sum, 0)
 
     def test_name_callback(self):
         def name_callback(method, url):
@@ -244,9 +223,9 @@ class RequestsIntegrationTestBase(abc.ABC):
             self.assertFalse(mock_span.set_status.called)
 
     def test_distributed_context(self):
-        previous_propagator = propagators.get_global_textmap()
+        previous_propagator = get_global_textmap()
         try:
-            propagators.set_global_textmap(MockTextMapPropagator())
+            set_global_textmap(MockTextMapPropagator())
             result = self.perform_request(self.URL)
             self.assertEqual(result.read(), b"Hello!")
 
@@ -269,7 +248,7 @@ class RequestsIntegrationTestBase(abc.ABC):
             )
 
         finally:
-            propagators.set_global_textmap(previous_propagator)
+            set_global_textmap(previous_propagator)
 
     def test_span_callback(self):
         URLLibInstrumentor().uninstrument()
@@ -289,7 +268,6 @@ class RequestsIntegrationTestBase(abc.ABC):
         self.assertEqual(
             span.attributes,
             {
-                "component": "http",
                 "http.method": "GET",
                 "http.url": self.URL,
                 "http.status_code": 200,
@@ -320,7 +298,6 @@ class RequestsIntegrationTestBase(abc.ABC):
         self.assertEqual(
             dict(span.attributes),
             {
-                "component": "http",
                 "http.method": "GET",
                 "http.url": "http://httpbin.org/status/500",
                 "http.status_code": 500,
@@ -328,24 +305,6 @@ class RequestsIntegrationTestBase(abc.ABC):
             },
         )
         self.assertEqual(span.status.status_code, StatusCode.ERROR)
-        self.assertIsNotNone(URLLibInstrumentor().meter)
-        self.assertEqual(len(URLLibInstrumentor().meter.instruments), 1)
-        recorder = list(URLLibInstrumentor().meter.instruments.values())[0]
-        match_key = get_dict_as_key(
-            {
-                "http.method": "GET",
-                "http.status_code": "500",
-                "http.url": "http://httpbin.org/status/500",
-                "http.flavor": "1.1",
-            }
-        )
-        for key in recorder.bound_instruments.keys():
-            self.assertEqual(key, match_key)
-            # pylint: disable=protected-access
-            bound = recorder.bound_instruments.get(key)
-            for view_data in bound.view_datas:
-                self.assertEqual(view_data.labels, key)
-                self.assertEqual(view_data.aggregator.current.count, 1)
 
     def test_requests_basic_exception(self, *_, **__):
         with self.assertRaises(Exception):
