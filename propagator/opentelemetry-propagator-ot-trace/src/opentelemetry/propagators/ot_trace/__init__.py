@@ -54,13 +54,15 @@ class OTTracePropagator(TextMapPropagator):
         context: Optional[Context] = None,
     ) -> Context:
 
-        traceid = extract_first_element(
+        traceid = _extract_first_element(
             getter.get(carrier, OT_TRACE_ID_HEADER)
         )
 
-        spanid = extract_first_element(getter.get(carrier, OT_SPAN_ID_HEADER))
+        spanid = _extract_first_element(getter.get(carrier, OT_SPAN_ID_HEADER))
 
-        sampled = extract_first_element(getter.get(carrier, OT_SAMPLED_HEADER))
+        sampled = _extract_first_element(
+            getter.get(carrier, OT_SAMPLED_HEADER)
+        )
 
         if sampled == "true":
             traceflags = TraceFlags.SAMPLED
@@ -92,9 +94,9 @@ class OTTracePropagator(TextMapPropagator):
                 if not key.startswith(OT_BAGGAGE_PREFIX):
                     continue
 
-                baggage[key[len(OT_BAGGAGE_PREFIX) :]] = extract_first_element(
-                    getter.get(carrier, key)
-                )
+                baggage[
+                    key[len(OT_BAGGAGE_PREFIX) :]
+                ] = _extract_first_element(getter.get(carrier, key))
 
             for key, value in baggage.items():
                 context = set_baggage(key, value, context)
@@ -110,19 +112,14 @@ class OTTracePropagator(TextMapPropagator):
 
         span_context = get_current_span(context).get_span_context()
 
-        if (
-            span_context.trace_id == INVALID_TRACE_ID
-            or _valid_traceid.match(hex(span_context.trace_id)[2:]) is None
-            or span_context.span_id == INVALID_SPAN_ID
-            or _valid_spanid.match(hex(span_context.span_id)[2:]) is None
-        ):
+        if span_context.trace_id == INVALID_TRACE_ID:
             return
 
         set_in_carrier(
-            carrier, OT_TRACE_ID_HEADER, hex(span_context.trace_id)[18:]
+            carrier, OT_TRACE_ID_HEADER, hex(span_context.trace_id)[2:][-16:]
         )
         set_in_carrier(
-            carrier, OT_SPAN_ID_HEADER, hex(span_context.span_id)[2:],
+            carrier, OT_SPAN_ID_HEADER, hex(span_context.span_id)[2:][-16:],
         )
 
         if span_context.trace_flags == TraceFlags.SAMPLED:
@@ -165,7 +162,7 @@ class OTTracePropagator(TextMapPropagator):
         }
 
 
-def extract_first_element(
+def _extract_first_element(
     items: Iterable[TextMapPropagatorT],
 ) -> Optional[TextMapPropagatorT]:
     if items is None:
