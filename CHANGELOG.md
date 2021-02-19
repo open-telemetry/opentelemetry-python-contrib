@@ -9,7 +9,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [0.18b1](https://github.com/open-telemetry/opentelemetry-python-contrib/releases/tag/v0.18b1) - 2021-02-19
 
 - Hotfix for https://github.com/open-telemetry/opentelemetry-python-contrib/issues/346
-    ([#301](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/301))
+    Bump version dependencies for `opentelemetry-instrumentation`
+    ([#347](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/347))
 
 ## [0.18b0](https://github.com/open-telemetry/opentelemetry-python-contrib/releases/tag/v0.18b0) - 2021-02-16
 
