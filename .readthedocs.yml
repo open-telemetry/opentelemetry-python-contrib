@@ -3,8 +3,7 @@
 version: 2
 
 sphinx:
-  path: docs
-  configuration: conf.py
+  configuration: docs/conf.py
 
 build:
   image: latest
