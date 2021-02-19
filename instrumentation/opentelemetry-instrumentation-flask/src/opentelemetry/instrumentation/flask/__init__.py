@@ -58,7 +58,6 @@ from opentelemetry.instrumentation.instrumentor import BaseInstrumentor
 from opentelemetry.util import time_ns
 from opentelemetry.util.http import get_excluded_urls
 
-
 _logger = getLogger(__name__)
 
 _ENVIRON_STARTTIME_KEY = "opentelemetry-flask.starttime_key"
