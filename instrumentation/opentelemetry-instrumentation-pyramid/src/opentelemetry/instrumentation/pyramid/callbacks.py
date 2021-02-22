@@ -13,7 +13,6 @@
 # limitations under the License.
 
 from logging import getLogger
-from time import time_ns
 
 from pyramid.events import BeforeTraversal
 from pyramid.httpexceptions import HTTPException
@@ -24,6 +23,7 @@ import opentelemetry.instrumentation.wsgi as otel_wsgi
 from opentelemetry import context, trace
 from opentelemetry.instrumentation.pyramid.version import __version__
 from opentelemetry.propagate import extract
+from opentelemetry.util._time import _time_ns
 from opentelemetry.util.http import get_excluded_urls
 
 TWEEN_NAME = "opentelemetry.instrumentation.pyramid.trace_tween_factory"
@@ -126,7 +126,7 @@ def trace_tween_factory(handler, registry):
             return handler(request)
 
         request.environ[_ENVIRON_ENABLED_KEY] = True
-        request.environ[_ENVIRON_STARTTIME_KEY] = time_ns()
+        request.environ[_ENVIRON_STARTTIME_KEY] = _time_ns()
 
         try:
             response = handler(request)
