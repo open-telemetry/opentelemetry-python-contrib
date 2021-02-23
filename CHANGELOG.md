@@ -4,14 +4,28 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [Unreleased](https://github.com/open-telemetry/opentelemetry-python-contrib/compare/v0.17b0...HEAD)
+## [Unreleased](https://github.com/open-telemetry/opentelemetry-python-contrib/compare/v0.18b0...HEAD)
 
-### Changed
+## [0.18b0](https://github.com/open-telemetry/opentelemetry-python-contrib/releases/tag/v0.18b0) - 2021-02-16
+
+### Added
+- `opentelemetry-propagator-ot-trace` Add OT Trace Propagator
+  ([#302](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/302))
+
+### Removed
 - Remove `component` span attribute in instrumentations. 
   `opentelemetry-instrumentation-aiopg`, `opentelemetry-instrumentation-dbapi` Remove unused `database_type` parameter from `trace_integration` function.
   ([#301](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/301))
+
+### Changed
 - `opentelemetry-instrumentation-asgi` Return header values using case insensitive keys
   ([#308](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/308))
+- `opentelemetry-instrumentation-boto` updated to set span attributes instead of overriding the resource.
+  ([#310](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/310))
+- `opentelemetry-instrumentation-grpc` Fix issue tracking child spans in streaming responses
+  ([#260](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/260))
+- `opentelemetry-instrumentation-grpc` Updated client attributes, added tests, fixed examples, docs
+  ([#269](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/269))
 
 ## [0.17b0](https://github.com/open-telemetry/opentelemetry-python-contrib/releases/tag/v0.17b0) - 2021-01-20
 
@@ -76,8 +90,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   ([#246](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/246))
 - Update TraceState to adhere to specs
   ([#276](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/276))
-- `opentelemetry-instrumentation-grpc` Updated client attributes, added tests, fixed examples, docs
-  ([#269](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/269))
 
 ### Removed
 - Remove Configuration
