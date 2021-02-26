@@ -6,7 +6,7 @@ on:
     - 'release/*'
   pull_request:
 env:
-  CORE_REPO_SHA: 62180508ead13c5c507eab704a03c2be692dc047
+  CORE_REPO_SHA: dbb1f72775a424086b7a1eefbb11cfcbf31d9534
 
 jobs:
   build:
@@ -105,7 +105,7 @@ jobs:
         run: pip install -U tox
       - name: Cache tox environment
         # Preserves .tox directory between runs for faster installs
-        uses: actions/cache@v1
+        uses: actions/cache@v2
         with:
           path: .tox
           key: tox-cache-${{ matrix.tox-environment }}-${{ hashFiles('tox.ini', 'dev-requirements.txt') }}

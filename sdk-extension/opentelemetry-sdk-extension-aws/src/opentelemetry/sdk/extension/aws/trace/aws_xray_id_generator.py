@@ -59,10 +59,7 @@ API
 import random
 import time
 
-from opentelemetry.sdk.trace.id_generator import (
-    IdGenerator,
-    RandomIdGenerator,
-)
+from opentelemetry.sdk.trace.id_generator import IdGenerator, RandomIdGenerator
 
 
 class AwsXRayIdGenerator(IdGenerator):
