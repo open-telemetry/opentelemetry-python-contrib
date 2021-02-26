@@ -5,7 +5,7 @@ Complimentary instrumentation and vendor-specific packages for use with the
 Python `OpenTelemetry <https://opentelemetry.io/>`_ client.
 
 .. image:: https://img.shields.io/badge/slack-chat-green.svg
-   :target: https://app.slack.com/client/T08PSQ7BQ/C01NP3BV26R
+   :target: https://cloud-native.slack.com/archives/C01PD4HUVBL
    :alt: Slack Chat
 
 
