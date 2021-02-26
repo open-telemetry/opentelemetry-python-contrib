@@ -18,7 +18,7 @@ and [**Maintainer**](https://github.com/open-telemetry/community/blob/main/commu
 If you are looking for someone to help you find a starting point and be a resource for your first contribution, join our
 Slack and find a buddy!
 
-1. Join [Slack](https://slack.cncf.io/) and join our [chat room](https://app.slack.com/client/T08PSQ7BQ/C01NP3BV26R).
+1. Join [Slack](https://slack.cncf.io/) and join our [chat room](https://cloud-native.slack.com/archives/C01PD4HUVBL).
 2. Post in the room with an introduction to yourself, what area you are interested in (check issues marked "Help Wanted"),
 and say you are looking for a buddy. We will match you with someone who has experience in that area.
 
