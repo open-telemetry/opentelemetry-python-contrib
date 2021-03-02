@@ -15,7 +15,6 @@
 from unittest import TestCase
 
 from opentelemetry.baggage import get_all, set_baggage
-from opentelemetry.propagators import get_current_span
 from opentelemetry.propagators.ot_trace import (
     OT_BAGGAGE_PREFIX,
     OT_SAMPLED_HEADER,
@@ -33,6 +32,7 @@ from opentelemetry.trace import (
     TraceFlags,
     set_span_in_context,
 )
+from opentelemetry.trace.propagation import get_current_span
 
 carrier_getter = DictGetter()
 
