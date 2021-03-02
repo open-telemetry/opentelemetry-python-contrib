@@ -10,7 +10,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Rename `IdsGenerator` to `IdGenerator`
   ([#350](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/350))
 - Rename `DefaultSpan` to `NonRecordingSpan`
-  ([#301](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/301))
+  ([#354](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/354))
 
 ## [0.18b0](https://github.com/open-telemetry/opentelemetry-python-contrib/releases/tag/v0.18b0) - 2021-02-16
 
