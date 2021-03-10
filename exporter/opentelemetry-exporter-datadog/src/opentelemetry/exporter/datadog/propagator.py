@@ -91,9 +91,7 @@ class DatadogFormat(TextMapPropagator):
             return
         sampled = (trace.TraceFlags.SAMPLED & span.context.trace_flags) != 0
         set_in_carrier(
-            carrier,
-            self.TRACE_ID_KEY,
-            format_trace_id(span.context.trace_id),
+            carrier, self.TRACE_ID_KEY, format_trace_id(span.context.trace_id),
         )
         set_in_carrier(
             carrier, self.PARENT_ID_KEY, format_span_id(span.context.span_id)
