@@ -38,10 +38,10 @@ Or by setting this propagator in your instrumented application:
 
 .. code-block:: python
 
-    from opentelemetry import propagators
+    from opentelemetry.propagate import set_global_textmap
     from opentelemetry.sdk.extension.aws.trace.propagation.aws_xray_format import AwsXRayFormat
 
-    propagators.set_global_textmap(AwsXRayFormat())
+    set_global_textmap(AwsXRayFormat())
 
 API
 ---
@@ -53,7 +53,7 @@ import typing
 
 import opentelemetry.trace as trace
 from opentelemetry.context import Context
-from opentelemetry.trace.propagation.textmap import (
+from opentelemetry.propagators.textmap import (
     Getter,
     Setter,
     TextMapPropagator,
@@ -151,7 +151,7 @@ class AwsXRayFormat(TextMapPropagator):
             )
 
         return trace.set_span_in_context(
-            trace.DefaultSpan(span_context), context=context
+            trace.NonRecordingSpan(span_context), context=context
         )
 
     @staticmethod
@@ -316,7 +316,7 @@ class AwsXRayFormat(TextMapPropagator):
         """Returns a set with the fields set in `inject`.
 
         See
-        `opentelemetry.trace.propagation.textmap.TextMapPropagator.fields`
+        `opentelemetry.propagators.textmap.TextMapPropagator.fields`
         """
 
         return {TRACE_HEADER_KEY}

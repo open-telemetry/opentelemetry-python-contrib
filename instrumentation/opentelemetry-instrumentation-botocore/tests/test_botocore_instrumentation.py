@@ -28,10 +28,10 @@ from moto import (  # pylint: disable=import-error
     mock_xray,
 )
 
-from opentelemetry import propagators
 from opentelemetry import trace as trace_api
 from opentelemetry.context import attach, detach, set_value
 from opentelemetry.instrumentation.botocore import BotocoreInstrumentor
+from opentelemetry.propagate import get_global_textmap, set_global_textmap
 from opentelemetry.test.mock_textmap import MockTextMapPropagator
 from opentelemetry.test.test_base import TestBase
 
@@ -81,8 +81,6 @@ class TestBotocoreInstrumentor(TestBase):
         mock_span = Mock()
         mock_span.is_recording.return_value = False
         mock_tracer.start_span.return_value = mock_span
-        mock_tracer.use_span.return_value.__enter__ = mock_span
-        mock_tracer.use_span.return_value.__exit__ = True
         with patch("opentelemetry.trace.get_tracer") as tracer:
             tracer.return_value = mock_tracer
             ec2 = self.session.create_client("ec2", region_name="us-west-2")
@@ -138,7 +136,7 @@ class TestBotocoreInstrumentor(TestBase):
             },
         )
         self.assertIs(
-            span.status.status_code, trace_api.status.StatusCode.ERROR,
+            span.status.status_code, trace_api.StatusCode.ERROR,
         )
 
     # Comment test for issue 1088
@@ -201,12 +199,12 @@ class TestBotocoreInstrumentor(TestBase):
         self.assertEqual(len(spans), 1)
         actual = span.attributes
         self.assertRegex(actual["aws.request_id"], r"[A-Z0-9]{52}")
-        del actual["aws.request_id"]
         self.assertEqual(
             actual,
             {
                 "aws.operation": "ListQueues",
                 "aws.region": "us-east-1",
+                "aws.request_id": actual["aws.request_id"],
                 "aws.service": "sqs",
                 "retry_attempts": 0,
                 "http.status_code": 200,
@@ -232,12 +230,12 @@ class TestBotocoreInstrumentor(TestBase):
         self.assertRegex(
             create_queue_attributes["aws.request_id"], r"[A-Z0-9]{52}"
         )
-        del create_queue_attributes["aws.request_id"]
         self.assertEqual(
             create_queue_attributes,
             {
                 "aws.operation": "CreateQueue",
                 "aws.region": "us-east-1",
+                "aws.request_id": create_queue_attributes["aws.request_id"],
                 "aws.service": "sqs",
                 "retry_attempts": 0,
                 "http.status_code": 200,
@@ -247,13 +245,13 @@ class TestBotocoreInstrumentor(TestBase):
         self.assertRegex(
             send_msg_attributes["aws.request_id"], r"[A-Z0-9]{52}"
         )
-        del send_msg_attributes["aws.request_id"]
         self.assertEqual(
             send_msg_attributes,
             {
                 "aws.operation": "SendMessage",
                 "aws.queue_url": response["QueueUrl"],
                 "aws.region": "us-east-1",
+                "aws.request_id": send_msg_attributes["aws.request_id"],
                 "aws.service": "sqs",
                 "retry_attempts": 0,
                 "http.status_code": 200,
@@ -381,14 +379,14 @@ class TestBotocoreInstrumentor(TestBase):
     @mock_ec2
     def test_propagator_injects_into_request(self):
         headers = {}
-        previous_propagator = propagators.get_global_textmap()
+        previous_propagator = get_global_textmap()
 
         def check_headers(**kwargs):
             nonlocal headers
             headers = kwargs["request"].headers
 
         try:
-            propagators.set_global_textmap(MockTextMapPropagator())
+            set_global_textmap(MockTextMapPropagator())
 
             ec2 = self.session.create_client("ec2", region_name="us-west-2")
             ec2.meta.events.register_first(
@@ -424,7 +422,7 @@ class TestBotocoreInstrumentor(TestBase):
             )
 
         finally:
-            propagators.set_global_textmap(previous_propagator)
+            set_global_textmap(previous_propagator)
 
     @mock_xray
     def test_suppress_instrumentation_xray_client(self):
@@ -468,13 +466,13 @@ class TestBotocoreInstrumentor(TestBase):
         self.assertRegex(
             create_table_attributes["aws.request_id"], r"[A-Z0-9]{52}"
         )
-        del create_table_attributes["aws.request_id"]
         self.assertEqual(
             create_table_attributes,
             {
                 "aws.operation": "CreateTable",
                 "aws.region": "us-west-2",
                 "aws.service": "dynamodb",
+                "aws.request_id": create_table_attributes["aws.request_id"],
                 "aws.table_name": "test_table_name",
                 "retry_attempts": 0,
                 "http.status_code": 200,
@@ -484,12 +482,12 @@ class TestBotocoreInstrumentor(TestBase):
         self.assertRegex(
             put_item_attributes["aws.request_id"], r"[A-Z0-9]{52}"
         )
-        del put_item_attributes["aws.request_id"]
         self.assertEqual(
             put_item_attributes,
             {
                 "aws.operation": "PutItem",
                 "aws.region": "us-west-2",
+                "aws.request_id": put_item_attributes["aws.request_id"],
                 "aws.service": "dynamodb",
                 "aws.table_name": "test_table_name",
                 "retry_attempts": 0,
@@ -500,12 +498,12 @@ class TestBotocoreInstrumentor(TestBase):
         self.assertRegex(
             get_item_attributes["aws.request_id"], r"[A-Z0-9]{52}"
         )
-        del get_item_attributes["aws.request_id"]
         self.assertEqual(
             get_item_attributes,
             {
                 "aws.operation": "GetItem",
                 "aws.region": "us-west-2",
+                "aws.request_id": get_item_attributes["aws.request_id"],
                 "aws.service": "dynamodb",
                 "aws.table_name": "test_table_name",
                 "retry_attempts": 0,

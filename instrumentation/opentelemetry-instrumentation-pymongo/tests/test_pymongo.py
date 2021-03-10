@@ -66,9 +66,7 @@ class TestPymongo(TestBase):
         spans_list = self.memory_exporter.get_finished_spans()
         self.assertEqual(len(spans_list), 1)
         span = spans_list[0]
-        self.assertIs(
-            span.status.status_code, trace_api.status.StatusCode.UNSET
-        )
+        self.assertIs(span.status.status_code, trace_api.StatusCode.UNSET)
         self.assertIsNotNone(span.end_time)
 
     def test_not_recording(self):
@@ -76,8 +74,6 @@ class TestPymongo(TestBase):
         mock_span = mock.Mock()
         mock_span.is_recording.return_value = False
         mock_tracer.start_span.return_value = mock_span
-        mock_tracer.use_span.return_value.__enter__ = mock_span
-        mock_tracer.use_span.return_value.__exit__ = True
         mock_event = MockEvent({})
         command_tracer = CommandTracer(mock_tracer)
         command_tracer.started(event=mock_event)
@@ -98,7 +94,7 @@ class TestPymongo(TestBase):
         span = spans_list[0]
 
         self.assertIs(
-            span.status.status_code, trace_api.status.StatusCode.ERROR,
+            span.status.status_code, trace_api.StatusCode.ERROR,
         )
         self.assertEqual(span.status.description, "failure")
         self.assertIsNotNone(span.end_time)
@@ -118,10 +114,10 @@ class TestPymongo(TestBase):
         second_span = spans_list[1]
 
         self.assertIs(
-            first_span.status.status_code, trace_api.status.StatusCode.UNSET,
+            first_span.status.status_code, trace_api.StatusCode.UNSET,
         )
         self.assertIs(
-            second_span.status.status_code, trace_api.status.StatusCode.ERROR,
+            second_span.status.status_code, trace_api.StatusCode.ERROR,
         )
 
     def test_int_command(self):

@@ -22,11 +22,9 @@ from django.test import Client
 from django.test.utils import setup_test_environment, teardown_test_environment
 
 from opentelemetry.instrumentation.django import DjangoInstrumentor
-from opentelemetry.sdk.util import get_dict_as_key
 from opentelemetry.test.test_base import TestBase
 from opentelemetry.test.wsgitestutil import WsgiTestBase
-from opentelemetry.trace import SpanKind
-from opentelemetry.trace.status import StatusCode
+from opentelemetry.trace import SpanKind, StatusCode
 from opentelemetry.util.http import get_excluded_urls, get_traced_request_attrs
 
 # pylint: disable=import-error
@@ -142,33 +140,11 @@ class TestMiddleware(TestBase, WsgiTestBase):
         self.assertEqual(span.attributes["http.status_code"], 200)
         self.assertEqual(span.attributes["http.status_text"], "OK")
 
-        self.assertIsNotNone(_django_instrumentor.meter)
-        self.assertEqual(len(_django_instrumentor.meter.instruments), 1)
-        recorder = list(_django_instrumentor.meter.instruments.values())[0]
-        match_key = get_dict_as_key(
-            {
-                "http.flavor": "1.1",
-                "http.method": "GET",
-                "http.status_code": "200",
-                "http.url": "http://testserver/traced/",
-            }
-        )
-        for key in recorder.bound_instruments.keys():
-            self.assertEqual(key, match_key)
-            # pylint: disable=protected-access
-            bound = recorder.bound_instruments.get(key)
-            for view_data in bound.view_datas:
-                self.assertEqual(view_data.labels, key)
-                self.assertEqual(view_data.aggregator.current.count, 1)
-                self.assertGreaterEqual(view_data.aggregator.current.sum, 0)
-
     def test_not_recording(self):
         mock_tracer = Mock()
         mock_span = Mock()
         mock_span.is_recording.return_value = False
         mock_tracer.start_span.return_value = mock_span
-        mock_tracer.use_span.return_value.__enter__ = mock_span
-        mock_tracer.use_span.return_value.__exit__ = True
         with patch("opentelemetry.trace.get_tracer") as tracer:
             tracer.return_value = mock_tracer
             Client().get("/traced/")
@@ -220,31 +196,12 @@ class TestMiddleware(TestBase, WsgiTestBase):
         self.assertEqual(span.attributes["http.route"], "^error/")
         self.assertEqual(span.attributes["http.scheme"], "http")
         self.assertEqual(span.attributes["http.status_code"], 500)
-        self.assertIsNotNone(_django_instrumentor.meter)
-        self.assertEqual(len(_django_instrumentor.meter.instruments), 1)
 
         self.assertEqual(len(span.events), 1)
         event = span.events[0]
         self.assertEqual(event.name, "exception")
         self.assertEqual(event.attributes["exception.type"], "ValueError")
         self.assertEqual(event.attributes["exception.message"], "error")
-
-        recorder = list(_django_instrumentor.meter.instruments.values())[0]
-        match_key = get_dict_as_key(
-            {
-                "http.flavor": "1.1",
-                "http.method": "GET",
-                "http.status_code": "500",
-                "http.url": "http://testserver/error/",
-            }
-        )
-        for key in recorder.bound_instruments.keys():
-            self.assertEqual(key, match_key)
-            # pylint: disable=protected-access
-            bound = recorder.bound_instruments.get(key)
-            for view_data in bound.view_datas:
-                self.assertEqual(view_data.labels, key)
-                self.assertEqual(view_data.aggregator.current.count, 1)
 
     def test_exclude_lists(self):
         client = Client()

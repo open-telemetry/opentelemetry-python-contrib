@@ -111,7 +111,7 @@ class EngineTracer:
             kind=trace.SpanKind.CLIENT,
         )
         self.current_thread_span = self.cursor_mapping[cursor] = span
-        with self.tracer.use_span(span, end_on_exit=False):
+        with trace.use_span(span, end_on_exit=False):
             if span.is_recording():
                 span.set_attribute(_STMT, statement)
                 span.set_attribute("db.system", self.vendor)

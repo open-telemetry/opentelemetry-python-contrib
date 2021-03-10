@@ -18,7 +18,7 @@ from falcon import testing
 
 from opentelemetry.instrumentation.falcon import FalconInstrumentor
 from opentelemetry.test.test_base import TestBase
-from opentelemetry.trace.status import StatusCode
+from opentelemetry.trace import StatusCode
 from opentelemetry.util.http import get_excluded_urls, get_traced_request_attrs
 
 from .app import make_app
@@ -199,8 +199,6 @@ class TestFalconInstrumentation(TestBase):
         mock_span = Mock()
         mock_span.is_recording.return_value = False
         mock_tracer.start_span.return_value = mock_span
-        mock_tracer.use_span.return_value.__enter__ = mock_span
-        mock_tracer.use_span.return_value.__exit__ = mock_span
         with patch("opentelemetry.trace.get_tracer") as tracer:
             tracer.return_value = mock_tracer
             self.client().simulate_get(path="/hello?q=abc")

@@ -25,10 +25,11 @@ from typing import Tuple
 
 from asgiref.compatibility import guarantee_single_callable
 
-from opentelemetry import context, propagators, trace
+from opentelemetry import context, trace
 from opentelemetry.instrumentation.asgi.version import __version__  # noqa
 from opentelemetry.instrumentation.utils import http_status_to_status_code
-from opentelemetry.trace.propagation.textmap import DictGetter
+from opentelemetry.propagate import extract
+from opentelemetry.propagators.textmap import DictGetter
 from opentelemetry.trace.status import Status, StatusCode
 
 
@@ -47,6 +48,11 @@ class CarrierGetter(DictGetter):
                 else None.
         """
         headers = carrier.get("headers")
+        if not headers:
+            return None
+
+        # asgi header keys are in lower case
+        key = key.lower()
         decoded = [
             _value.decode("utf8")
             for (_key, _value) in headers
@@ -180,7 +186,7 @@ class OpenTelemetryMiddleware:
         if self.excluded_urls and self.excluded_urls.url_disabled(url):
             return await self.app(scope, receive, send)
 
-        token = context.attach(propagators.extract(carrier_getter, scope))
+        token = context.attach(extract(carrier_getter, scope))
         span_name, additional_attributes = self.span_details_callback(scope)
 
         try:

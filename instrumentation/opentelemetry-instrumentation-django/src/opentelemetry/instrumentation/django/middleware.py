@@ -15,8 +15,6 @@
 from logging import getLogger
 from time import time
 
-from django.conf import settings
-
 from opentelemetry.context import attach, detach
 from opentelemetry.instrumentation.django.version import __version__
 from opentelemetry.instrumentation.utils import extract_attributes_from_object
@@ -25,8 +23,8 @@ from opentelemetry.instrumentation.wsgi import (
     carrier_getter,
     collect_request_attributes,
 )
-from opentelemetry.propagators import extract
-from opentelemetry.trace import SpanKind, get_tracer
+from opentelemetry.propagate import extract
+from opentelemetry.trace import SpanKind, get_tracer, use_span
 from opentelemetry.util.http import get_excluded_urls, get_traced_request_attrs
 
 try:
@@ -86,21 +84,6 @@ class _DjangoMiddleware(MiddlewareMixin):
         except Resolver404:
             return "HTTP {}".format(request.method)
 
-    @staticmethod
-    def _get_metric_labels_from_attributes(attributes):
-        labels = {}
-        labels["http.method"] = attributes.get("http.method", "")
-        for attrs in _attributes_by_preference:
-            labels_from_attributes = {
-                attr: attributes.get(attr, None) for attr in attrs
-            }
-            if set(attrs).issubset(attributes.keys()):
-                labels.update(labels_from_attributes)
-                break
-        if attributes.get("http.flavor"):
-            labels["http.flavor"] = attributes.get("http.flavor")
-        return labels
-
     def process_request(self, request):
         # request.META is a dictionary containing all available HTTP headers
         # Read more about request.META here:
@@ -127,10 +110,6 @@ class _DjangoMiddleware(MiddlewareMixin):
         )
 
         attributes = collect_request_attributes(request_meta)
-        # pylint:disable=W0212
-        request._otel_labels = self._get_metric_labels_from_attributes(
-            attributes
-        )
 
         if span.is_recording():
             attributes = extract_attributes_from_object(
@@ -139,8 +118,8 @@ class _DjangoMiddleware(MiddlewareMixin):
             for key, value in attributes.items():
                 span.set_attribute(key, value)
 
-        activation = tracer.use_span(span, end_on_exit=True)
-        activation.__enter__()
+        activation = use_span(span, end_on_exit=True)
+        activation.__enter__()  # pylint: disable=E1101
 
         request.META[self._environ_activation_key] = activation
         request.META[self._environ_span_key] = span
@@ -186,10 +165,7 @@ class _DjangoMiddleware(MiddlewareMixin):
                 "{} {}".format(response.status_code, response.reason_phrase),
                 response,
             )
-            # pylint:disable=W0212
-            request._otel_labels["http.status_code"] = str(
-                response.status_code
-            )
+
             request.META.pop(self._environ_span_key)
 
             exception = request.META.pop(self._environ_exception_key, None)
@@ -209,13 +185,4 @@ class _DjangoMiddleware(MiddlewareMixin):
             detach(request.environ.get(self._environ_token))
             request.META.pop(self._environ_token)
 
-        try:
-            metric_recorder = getattr(settings, "OTEL_METRIC_RECORDER", None)
-            if metric_recorder is not None:
-                # pylint:disable=W0212
-                metric_recorder.record_server_duration_range(
-                    request._otel_start_time, time(), request._otel_labels
-                )
-        except Exception as ex:  # pylint: disable=W0703
-            _logger.warning("Error recording duration metrics: %s", ex)
         return response

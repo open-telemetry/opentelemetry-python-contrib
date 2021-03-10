@@ -18,6 +18,7 @@ from unittest.mock import Mock, patch
 from requests.structures import CaseInsensitiveDict
 
 import opentelemetry.trace as trace_api
+from opentelemetry.propagators.textmap import DictGetter
 from opentelemetry.sdk.extension.aws.trace.propagation.aws_xray_format import (
     TRACE_HEADER_KEY,
     AwsXRayFormat,
@@ -31,7 +32,6 @@ from opentelemetry.trace import (
     TraceState,
     set_span_in_context,
 )
-from opentelemetry.trace.propagation.textmap import DictGetter
 
 TRACE_ID_BASE16 = "8a3c60f7d188f8fa79d48a391a778fa6"
 
@@ -56,7 +56,7 @@ def build_test_current_context(
     trace_state=DEFAULT_TRACE_STATE,
 ):
     return set_span_in_context(
-        trace_api.DefaultSpan(
+        trace_api.NonRecordingSpan(
             build_test_span_context(
                 trace_id, span_id, is_remote, trace_flags, trace_state
             )

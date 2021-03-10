@@ -58,10 +58,11 @@ import functools
 import typing
 import wsgiref.util as wsgiref_util
 
-from opentelemetry import context, propagators, trace
+from opentelemetry import context, trace
 from opentelemetry.instrumentation.utils import http_status_to_status_code
 from opentelemetry.instrumentation.wsgi.version import __version__
-from opentelemetry.trace.propagation.textmap import DictGetter
+from opentelemetry.propagate import extract
+from opentelemetry.propagators.textmap import DictGetter
 from opentelemetry.trace.status import Status, StatusCode
 
 _HTTP_VERSION_PREFIX = "HTTP/"
@@ -207,7 +208,7 @@ class OpenTelemetryMiddleware:
             start_response: The WSGI start_response callable.
         """
 
-        token = context.attach(propagators.extract(carrier_getter, environ))
+        token = context.attach(extract(carrier_getter, environ))
         span_name = self.name_callback(environ)
 
         span = self.tracer.start_span(
@@ -217,7 +218,7 @@ class OpenTelemetryMiddleware:
         )
 
         try:
-            with self.tracer.use_span(span):
+            with trace.use_span(span):
                 start_response = self._create_start_response(
                     span, start_response
                 )
@@ -238,7 +239,7 @@ class OpenTelemetryMiddleware:
 # behavior as little as possible).
 def _end_span_after_iterating(iterable, span, tracer, token):
     try:
-        with tracer.use_span(span):
+        with trace.use_span(span):
             for yielded in iterable:
                 yield yielded
     finally:

@@ -6,7 +6,7 @@ information on this and other language SIGs.
 
 See the [public meeting notes](https://docs.google.com/document/d/1CIMGoIOZ-c3-igzbd6_Pnxx1SjAkjwqoYSUWxPY8XIs/edit)
 for a summary description of past meetings. To request edit access, join the
-meeting or get in touch on [Gitter](https://gitter.im/open-telemetry/opentelemetry-python).
+meeting or get in touch on [Slack](https://cloud-native.slack.com/archives/C01PD4HUVBL).
 
 See to the [community membership document](https://github.com/open-telemetry/community/blob/main/community-membership.md)
 on how to become a [**Member**](https://github.com/open-telemetry/community/blob/main/community-membership.md#member),
@@ -16,9 +16,9 @@ and [**Maintainer**](https://github.com/open-telemetry/community/blob/main/commu
 ## Find a Buddy and get Started Quickly!
 
 If you are looking for someone to help you find a starting point and be a resource for your first contribution, join our
-Gitter and find a buddy!
+Slack and find a buddy!
 
-1. Join [Gitter.im](https://gitter.im) and join our [chat room](https://gitter.im/open-telemetry/opentelemetry-python).
+1. Join [Slack](https://slack.cncf.io/) and join our [chat room](https://cloud-native.slack.com/archives/C01PD4HUVBL).
 2. Post in the room with an introduction to yourself, what area you are interested in (check issues marked "Help Wanted"),
 and say you are looking for a buddy. We will match you with someone who has experience in that area.
 
@@ -160,35 +160,3 @@ For a deeper discussion, see: https://github.com/open-telemetry/opentelemetry-sp
   as specified with the [napolean
   extension](http://www.sphinx-doc.org/en/master/usage/extensions/napoleon.html#google-vs-numpy)
   extension in [Sphinx](http://www.sphinx-doc.org/en/master/index.html).
-
-## Porting reference/ddtrace/contrib to instrumentation
-
-The steps below describe suggested steps to port integrations from the reference directory containing the originally donated code to OpenTelemetry.
-
-1. Move the code into the instrumentation directory
-
-```
-mkdir -p instrumentation/opentelemetry-instrumentation-jinja2/src/opentelemetry/instrumentation/jinja2
-git mv reference/ddtrace/contrib/jinja2 instrumentation/opentelemetry-instrumentation-jinja2/src/opentelemetry/instrumentation/jinja2
-```
-
-2. Move the tests
-
-```
-git mv reference/tests/contrib/jinja2 instrumentation/opentelemetry-instrumentation-jinja2/tests
-```
-
-3. Add `README.rst`, `setup.cfg` and `setup.py` files and update them accordingly
-
-```bash
-cp _template/* instrumentation/opentelemetry-instrumentation-jinja2/
-```
-
-4. Add `version.py` file and update it accordingly
-
-```bash
-mv instrumentation/opentelemetry-instrumentation-jinja2/version.py instrumentation/opentelemetry-instrumentation-jinja2/src/opentelemetry/instrumentation/jinja2/version.py
-```
-
-5. Fix relative import paths to using ddtrace package instead of using relative paths
-6. Update the code and tests to use the OpenTelemetry API

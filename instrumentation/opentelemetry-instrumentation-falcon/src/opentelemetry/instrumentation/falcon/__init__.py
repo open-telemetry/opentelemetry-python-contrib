@@ -49,16 +49,17 @@ from sys import exc_info
 import falcon
 
 import opentelemetry.instrumentation.wsgi as otel_wsgi
-from opentelemetry import context, propagators, trace
+from opentelemetry import context, trace
 from opentelemetry.instrumentation.falcon.version import __version__
 from opentelemetry.instrumentation.instrumentor import BaseInstrumentor
 from opentelemetry.instrumentation.utils import (
     extract_attributes_from_object,
     http_status_to_status_code,
 )
+from opentelemetry.propagate import extract
 from opentelemetry.trace.status import Status
-from opentelemetry.util import time_ns
 from opentelemetry.util.http import get_excluded_urls, get_traced_request_attrs
+from opentelemetry.util.time import time_ns
 
 _logger = getLogger(__name__)
 
@@ -103,14 +104,13 @@ class _InstrumentedFalconAPI(falcon.API):
         super().__init__(*args, **kwargs)
 
     def __call__(self, env, start_response):
+        # pylint: disable=E1101
         if _excluded_urls.url_disabled(env.get("PATH_INFO", "/")):
             return super().__call__(env, start_response)
 
         start_time = time_ns()
 
-        token = context.attach(
-            propagators.extract(otel_wsgi.carrier_getter, env)
-        )
+        token = context.attach(extract(otel_wsgi.carrier_getter, env))
         span = self._tracer.start_span(
             otel_wsgi.get_default_span_name(env),
             kind=trace.SpanKind.SERVER,
@@ -121,7 +121,7 @@ class _InstrumentedFalconAPI(falcon.API):
             for key, value in attributes.items():
                 span.set_attribute(key, value)
 
-        activation = self._tracer.use_span(span, end_on_exit=True)
+        activation = trace.use_span(span, end_on_exit=True)
         activation.__enter__()
         env[_ENVIRON_SPAN_KEY] = span
         env[_ENVIRON_ACTIVATION_KEY] = activation
