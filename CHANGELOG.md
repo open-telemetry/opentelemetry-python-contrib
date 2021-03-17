@@ -5,18 +5,18 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased](https://github.com/open-telemetry/opentelemetry-python-contrib/compare/v0.18b0...HEAD)
-- Updated instrumentations to use `opentelemetry.trace.use_span` instead of `Tracer.use_span()`
-  ([#364](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/364))
+
+### Added
+- `opentelemetry-instrumentation-urllib3` Add urllib3 instrumentation
+  ([#299](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/299))
 
 ### Changed
 - Rename `IdsGenerator` to `IdGenerator`
   ([#350](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/350))
 - `opentelemetry-exporter-datadog` Fix warning when DatadogFormat encounters a request with
   no DD_ORIGIN headers ([#368](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/368)).
-
-### Added
-- `opentelemetry-instrumentation-urllib3` Add urllib3 instrumentation
-  ([#299](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/299))
+- Updated instrumentations to use `opentelemetry.trace.use_span` instead of `Tracer.use_span()`
+  ([#364](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/364))
 
 ## [0.18b0](https://github.com/open-telemetry/opentelemetry-python-contrib/releases/tag/v0.18b0) - 2021-02-16
 
