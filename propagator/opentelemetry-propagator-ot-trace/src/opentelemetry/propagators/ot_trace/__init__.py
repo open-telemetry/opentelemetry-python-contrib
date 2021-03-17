@@ -17,20 +17,20 @@ from typing import Iterable, Optional
 
 from opentelemetry.baggage import get_all, set_baggage
 from opentelemetry.context import Context
-from opentelemetry.trace import (
-    INVALID_SPAN_ID,
-    INVALID_TRACE_ID,
-    DefaultSpan,
-    SpanContext,
-    TraceFlags,
-    get_current_span,
-    set_span_in_context,
-)
-from opentelemetry.trace.propagation.textmap import (
+from opentelemetry.propagators.textmap import (
     Getter,
     Setter,
     TextMapPropagator,
     TextMapPropagatorT,
+)
+from opentelemetry.trace import (
+    INVALID_SPAN_ID,
+    INVALID_TRACE_ID,
+    NonRecordingSpan,
+    SpanContext,
+    TraceFlags,
+    get_current_span,
+    set_span_in_context,
 )
 
 OT_TRACE_ID_HEADER = "ot-tracer-traceid"
@@ -76,7 +76,7 @@ class OTTracePropagator(TextMapPropagator):
             and _valid_extract_spanid.fullmatch(spanid) is not None
         ):
             context = set_span_in_context(
-                DefaultSpan(
+                NonRecordingSpan(
                     SpanContext(
                         trace_id=int(traceid, 16),
                         span_id=int(spanid, 16),
@@ -153,7 +153,7 @@ class OTTracePropagator(TextMapPropagator):
         """Returns a set with the fields set in `inject`.
 
         See
-        `opentelemetry.trace.propagation.textmap.TextMapPropagator.fields`
+        `opentelemetry.propagators.textmap.TextMapPropagator.fields`
         """
         return {
             OT_TRACE_ID_HEADER,

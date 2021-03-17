@@ -56,8 +56,8 @@ from opentelemetry import context, trace
 from opentelemetry.instrumentation.flask.version import __version__
 from opentelemetry.instrumentation.instrumentor import BaseInstrumentor
 from opentelemetry.propagate import extract
+from opentelemetry.util._time import _time_ns
 from opentelemetry.util.http import get_excluded_urls
-from opentelemetry.util.providers import time_ns
 
 _logger = getLogger(__name__)
 
@@ -85,7 +85,7 @@ def _rewrapped_app(wsgi_app):
         # In theory, we could start the span here and use
         # update_name later but that API is "highly discouraged" so
         # we better avoid it.
-        wrapped_app_environ[_ENVIRON_STARTTIME_KEY] = time_ns()
+        wrapped_app_environ[_ENVIRON_STARTTIME_KEY] = _time_ns()
 
         def _start_response(status, response_headers, *args, **kwargs):
             if not _excluded_urls.url_disabled(flask.request.url):
@@ -138,8 +138,8 @@ def _wrapped_before_request(name_callback):
             for key, value in attributes.items():
                 span.set_attribute(key, value)
 
-        activation = tracer.use_span(span, end_on_exit=True)
-        activation.__enter__()
+        activation = trace.use_span(span, end_on_exit=True)
+        activation.__enter__()  # pylint: disable=E1101
         flask_request_environ[_ENVIRON_ACTIVATION_KEY] = activation
         flask_request_environ[_ENVIRON_SPAN_KEY] = span
         flask_request_environ[_ENVIRON_TOKEN] = token
@@ -148,6 +148,7 @@ def _wrapped_before_request(name_callback):
 
 
 def _teardown_request(exc):
+    # pylint: disable=E1101
     if _excluded_urls.url_disabled(flask.request.url):
         return
 

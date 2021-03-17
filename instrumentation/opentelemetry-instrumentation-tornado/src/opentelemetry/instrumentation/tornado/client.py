@@ -1,3 +1,17 @@
+# Copyright The OpenTelemetry Authors
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
 import functools
 
 from tornado.httpclient import HTTPError, HTTPRequest
@@ -6,7 +20,7 @@ from opentelemetry import trace
 from opentelemetry.instrumentation.utils import http_status_to_status_code
 from opentelemetry.propagate import inject
 from opentelemetry.trace.status import Status
-from opentelemetry.util.providers import time_ns
+from opentelemetry.util._time import _time_ns
 
 
 def _normalize_request(args, kwargs):
@@ -26,7 +40,7 @@ def _normalize_request(args, kwargs):
 
 
 def fetch_async(tracer, func, _, args, kwargs):
-    start_time = time_ns()
+    start_time = _time_ns()
 
     # Return immediately if no args were provided (error)
     # or original_request is set (meaning we are in a redirect step).
@@ -50,7 +64,7 @@ def fetch_async(tracer, func, _, args, kwargs):
         for key, value in attributes.items():
             span.set_attribute(key, value)
 
-    with tracer.use_span(span):
+    with trace.use_span(span):
         inject(type(request.headers).__setitem__, request.headers)
         future = func(*args, **kwargs)
         future.add_done_callback(
