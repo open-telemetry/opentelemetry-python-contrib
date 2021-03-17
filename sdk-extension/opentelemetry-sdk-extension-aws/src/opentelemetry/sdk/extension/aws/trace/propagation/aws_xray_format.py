@@ -49,16 +49,11 @@ API
 """
 
 import logging
-import typing
+from typing import Dict, Optional
 
 import opentelemetry.trace as trace
 from opentelemetry.context import Context
-from opentelemetry.propagators.textmap import (
-    Getter,
-    Setter,
-    TextMapPropagator,
-    TextMapPropagatorT,
-)
+from opentelemetry.propagators.textmap import TextMapPropagator
 
 TRACE_HEADER_KEY = "X-Amzn-Trace-Id"
 KV_PAIR_DELIMITER = ";"
@@ -99,19 +94,10 @@ class AwsXRayFormat(TextMapPropagator):
     # AWS
 
     def extract(
-        self,
-        getter: Getter[TextMapPropagatorT],
-        carrier: TextMapPropagatorT,
-        context: typing.Optional[Context] = None,
+        self, carrier: Dict[str, str], context: Optional[Context] = None,
     ) -> Context:
-        trace_header_list = getter.get(carrier, TRACE_HEADER_KEY)
 
-        if not trace_header_list or len(trace_header_list) != 1:
-            return trace.set_span_in_context(
-                trace.INVALID_SPAN, context=context
-            )
-
-        trace_header = trace_header_list[0]
+        trace_header = carrier.get(TRACE_HEADER_KEY)
 
         if not trace_header:
             return trace.set_span_in_context(
@@ -266,10 +252,7 @@ class AwsXRayFormat(TextMapPropagator):
         return sampled_flag_str[0] == IS_SAMPLED
 
     def inject(
-        self,
-        set_in_carrier: Setter[TextMapPropagatorT],
-        carrier: TextMapPropagatorT,
-        context: typing.Optional[Context] = None,
+        self, carrier: Dict[str, str], context: Optional[Context] = None,
     ) -> None:
         span = trace.get_current_span(context=context)
 
@@ -307,9 +290,7 @@ class AwsXRayFormat(TextMapPropagator):
             ]
         )
 
-        set_in_carrier(
-            carrier, TRACE_HEADER_KEY, trace_header,
-        )
+        carrier[TRACE_HEADER_KEY] = trace_header
 
     @property
     def fields(self):

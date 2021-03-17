@@ -55,28 +55,24 @@ API
 """
 
 import functools
-import typing
 import wsgiref.util as wsgiref_util
 
 from opentelemetry import context, trace
 from opentelemetry.instrumentation.utils import http_status_to_status_code
 from opentelemetry.instrumentation.wsgi.version import __version__
 from opentelemetry.propagate import extract
-from opentelemetry.propagators.textmap import DictGetter
 from opentelemetry.trace.status import Status, StatusCode
+from opentelemetry.util.http import BaseCustomGetDictionary
 
 _HTTP_VERSION_PREFIX = "HTTP/"
 _CARRIER_KEY_PREFIX = "HTTP_"
 _CARRIER_KEY_PREFIX_LEN = len(_CARRIER_KEY_PREFIX)
 
 
-class CarrierGetter(DictGetter):
-    def get(
-        self, carrier: dict, key: str
-    ) -> typing.Optional[typing.List[str]]:
-        """Getter implementation to retrieve a HTTP header value from the
-            PEP3333-conforming WSGI environ
+class _WSGICustomGetDictionary(BaseCustomGetDictionary):
+    def get(self, name, default=None):
 
+<<<<<<< HEAD
         Args:
             carrier: WSGI environ object
             key: header name in environ object
@@ -96,9 +92,14 @@ class CarrierGetter(DictGetter):
             for key in carrier
             if key.startswith(_CARRIER_KEY_PREFIX)
         ]
+=======
+        name = "HTTP_{}".format(name.upper().replace("-", "_"))
+>>>>>>> Sync with Remove setters and getters
 
+        if name not in self.keys():
+            return default
 
-carrier_getter = CarrierGetter()
+        return [self[name]]
 
 
 def setifnotnone(dic, key, value):
@@ -214,7 +215,7 @@ class OpenTelemetryMiddleware:
             start_response: The WSGI start_response callable.
         """
 
-        token = context.attach(extract(carrier_getter, environ))
+        token = context.attach(extract(_WSGICustomGetDictionary(environ)))
         span_name = self.name_callback(environ)
 
         span = self.tracer.start_span(

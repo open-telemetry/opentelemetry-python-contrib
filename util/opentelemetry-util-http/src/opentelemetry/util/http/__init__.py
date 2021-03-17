@@ -12,8 +12,9 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+from abc import ABC, abstractmethod
 from os import environ
-from re import compile as re_compile
+from re import compile as compile_
 from re import search
 
 
@@ -23,7 +24,7 @@ class ExcludeList:
     def __init__(self, excluded_urls):
         self._excluded_urls = excluded_urls
         if self._excluded_urls:
-            self._regex = re_compile("|".join(excluded_urls))
+            self._regex = compile_("|".join(excluded_urls))
 
     def url_disabled(self, url: str) -> bool:
         return bool(self._excluded_urls and search(self._regex, url))
@@ -57,3 +58,25 @@ def get_excluded_urls(instrumentation):
         ]
 
     return ExcludeList(excluded_urls)
+
+
+class BaseCustomGetDictionary(ABC):
+    def __init__(self, dictionary):
+        self._dictionary = dictionary
+
+    def __getattribute__(self, name):
+
+        if name == "get":
+            return object.__getattribute__(self, name)
+
+        return object.__getattribute__(
+            object.__getattribute__(self, "_dictionary"), name
+        )
+
+    def __getitem__(self, key):
+
+        return object.__getattribute__(self, "_dictionary")[key]
+
+    @abstractmethod
+    def get(self, name, default=None):
+        pass

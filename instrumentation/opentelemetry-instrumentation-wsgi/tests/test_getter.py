@@ -14,11 +14,12 @@
 
 from unittest import TestCase
 
-from opentelemetry.instrumentation.wsgi import CarrierGetter
+from opentelemetry.instrumentation.wsgi import _WSGICustomGetDictionary
 
 
-class TestCarrierGetter(TestCase):
+class TestWSGICustomGetDictionary(TestCase):
     def test_get_none(self):
+<<<<<<< HEAD
         getter = CarrierGetter()
         carrier = {}
         val = getter.get(carrier, "test")
@@ -49,3 +50,12 @@ class TestCarrierGetter(TestCase):
         keys = getter.keys({})
 
         self.assertEqual(keys, [])
+=======
+        self.assertIsNone(_WSGICustomGetDictionary({}).get("test"))
+
+    def test_get_val(self):
+        self.assertEqual(
+            _WSGICustomGetDictionary({"HTTP_TEST_KEY": "val"}).get("Test-key"),
+            ["val"],
+        )
+>>>>>>> Sync with Remove setters and getters

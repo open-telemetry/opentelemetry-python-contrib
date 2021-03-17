@@ -13,16 +13,15 @@
 # limitations under the License.
 
 from re import compile as re_compile
+<<<<<<< HEAD
 from typing import Any, Iterable, Optional
+=======
+from typing import Dict, Optional
+>>>>>>> Sync with Remove setters and getters
 
 from opentelemetry.baggage import get_all, set_baggage
 from opentelemetry.context import Context
-from opentelemetry.propagators.textmap import (
-    Getter,
-    Setter,
-    TextMapPropagator,
-    TextMapPropagatorT,
-)
+from opentelemetry.propagators.textmap import TextMapPropagator
 from opentelemetry.trace import (
     INVALID_SPAN_ID,
     INVALID_TRACE_ID,
@@ -48,12 +47,10 @@ class OTTracePropagator(TextMapPropagator):
     """Propagator for the OTTrace HTTP header format"""
 
     def extract(
-        self,
-        getter: Getter[TextMapPropagatorT],
-        carrier: TextMapPropagatorT,
-        context: Optional[Context] = None,
+        self, carrier: Dict[str, str], context: Optional[Context] = None,
     ) -> Context:
 
+<<<<<<< HEAD
         traceid = _extract_first_element(
             getter.get(carrier, OT_TRACE_ID_HEADER), INVALID_TRACE_ID
         )
@@ -61,10 +58,13 @@ class OTTracePropagator(TextMapPropagator):
         spanid = _extract_first_element(
             getter.get(carrier, OT_SPAN_ID_HEADER), INVALID_SPAN_ID
         )
+=======
+        traceid = carrier.get(OT_TRACE_ID_HEADER)
 
-        sampled = _extract_first_element(
-            getter.get(carrier, OT_SAMPLED_HEADER)
-        )
+        spanid = carrier.get(OT_SPAN_ID_HEADER)
+>>>>>>> Sync with Remove setters and getters
+
+        sampled = carrier.get(OT_SAMPLED_HEADER)
 
         if sampled == "true":
             traceflags = TraceFlags.SAMPLED
@@ -91,14 +91,12 @@ class OTTracePropagator(TextMapPropagator):
 
             baggage = get_all(context) or {}
 
-            for key in getter.keys(carrier):
+            for key in carrier.keys():
 
                 if not key.startswith(OT_BAGGAGE_PREFIX):
                     continue
 
-                baggage[
-                    key[len(OT_BAGGAGE_PREFIX) :]
-                ] = _extract_first_element(getter.get(carrier, key))
+                baggage[key[len(OT_BAGGAGE_PREFIX) :]] = carrier.get(key)
 
             for key, value in baggage.items():
                 context = set_baggage(key, value, context)
@@ -106,10 +104,7 @@ class OTTracePropagator(TextMapPropagator):
         return context
 
     def inject(
-        self,
-        set_in_carrier: Setter[TextMapPropagatorT],
-        carrier: TextMapPropagatorT,
-        context: Optional[Context] = None,
+        self, carrier: Dict[str, str], context: Optional[Context] = None,
     ) -> None:
 
         span_context = get_current_span(context).get_span_context()
@@ -117,19 +112,15 @@ class OTTracePropagator(TextMapPropagator):
         if span_context.trace_id == INVALID_TRACE_ID:
             return
 
-        set_in_carrier(
-            carrier, OT_TRACE_ID_HEADER, hex(span_context.trace_id)[2:][-16:]
-        )
-        set_in_carrier(
-            carrier, OT_SPAN_ID_HEADER, hex(span_context.span_id)[2:][-16:],
-        )
+        carrier[OT_TRACE_ID_HEADER] = hex(span_context.trace_id)[2:][-16:]
+        carrier[OT_SPAN_ID_HEADER] = hex(span_context.span_id)[2:][-16:]
 
         if span_context.trace_flags == TraceFlags.SAMPLED:
             traceflags = "true"
         else:
             traceflags = "false"
 
-        set_in_carrier(carrier, OT_SAMPLED_HEADER, traceflags)
+        carrier[OT_SAMPLED_HEADER] = traceflags
 
         baggage = get_all(context)
 
@@ -144,11 +135,7 @@ class OTTracePropagator(TextMapPropagator):
             ):
                 continue
 
-            set_in_carrier(
-                carrier,
-                "".join([OT_BAGGAGE_PREFIX, header_name]),
-                header_value,
-            )
+            carrier["".join([OT_BAGGAGE_PREFIX, header_name])] = header_value
 
     @property
     def fields(self):
@@ -162,6 +149,7 @@ class OTTracePropagator(TextMapPropagator):
             OT_SPAN_ID_HEADER,
             OT_SAMPLED_HEADER,
         }
+<<<<<<< HEAD
 
 
 def _extract_first_element(
@@ -170,3 +158,5 @@ def _extract_first_element(
     if items is None:
         return default
     return next(iter(items), None)
+=======
+>>>>>>> Sync with Remove setters and getters

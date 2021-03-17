@@ -20,7 +20,6 @@ from opentelemetry.instrumentation.django.version import __version__
 from opentelemetry.instrumentation.utils import extract_attributes_from_object
 from opentelemetry.instrumentation.wsgi import (
     add_response_attributes,
-    carrier_getter,
     collect_request_attributes,
 )
 from opentelemetry.propagate import extract
@@ -97,7 +96,7 @@ class _DjangoMiddleware(MiddlewareMixin):
 
         request_meta = request.META
 
-        token = attach(extract(carrier_getter, request_meta))
+        token = attach(extract(request_meta))
 
         tracer = get_tracer(__name__, __version__)
 

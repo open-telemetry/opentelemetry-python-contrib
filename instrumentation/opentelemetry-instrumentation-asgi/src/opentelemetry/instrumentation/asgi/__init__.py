@@ -13,12 +13,11 @@
 # limitations under the License.
 
 """
-The opentelemetry-instrumentation-asgi package provides an ASGI middleware that can be used
-on any ASGI framework (such as Django-channels / Quart) to track requests
-timing through OpenTelemetry.
+The opentelemetry-instrumentation-asgi package provides an ASGI middleware that
+can be used on any ASGI framework (such as Django-channels / Quart) to track
+requests timing through OpenTelemetry.
 """
 
-import typing
 import urllib
 from functools import wraps
 from typing import Tuple
@@ -29,46 +28,37 @@ from opentelemetry import context, trace
 from opentelemetry.instrumentation.asgi.version import __version__  # noqa
 from opentelemetry.instrumentation.utils import http_status_to_status_code
 from opentelemetry.propagate import extract
-from opentelemetry.propagators.textmap import DictGetter
 from opentelemetry.trace.status import Status, StatusCode
+from opentelemetry.util.http import BaseCustomGetDictionary
 
 
-class CarrierGetter(DictGetter):
-    def get(
-        self, carrier: dict, key: str
-    ) -> typing.Optional[typing.List[str]]:
-        """Getter implementation to retrieve a HTTP header value from the ASGI
-        scope.
+class _ASGICustomGetDictionary(BaseCustomGetDictionary):
+    def get(self, name, default=None):
 
-        Args:
-            carrier: ASGI scope object
-            key: header name in scope
-        Returns:
-            A list with a single string with the header value if it exists,
-                else None.
-        """
-        headers = carrier.get("headers")
-        if not headers:
-            return None
+        if "headers" not in self.keys():
+            return default
 
-        # asgi header keys are in lower case
-        key = key.lower()
+        # ASGI header keys are in lower case
+        name = name.lower()
+
         decoded = [
-            _value.decode("utf8")
-            for (_key, _value) in headers
-            if _key.decode("utf8") == key
+            value.decode("utf8")
+            for key, value in self["headers"]
+            if key.decode("utf8") == name
         ]
+
         if not decoded:
-            return None
+            return default
+
         return decoded
-
-
-carrier_getter = CarrierGetter()
 
 
 def collect_request_attributes(scope):
     """Collects HTTP request attributes from the ASGI scope and returns a
     dictionary to be used as span creation attributes."""
+
+    asgi_scope = _ASGICustomGetDictionary(scope)
+
     server_host, port, http_url = get_host_port_url_tuple(scope)
     query_string = scope.get("query_string")
     if query_string and http_url:
@@ -88,10 +78,10 @@ def collect_request_attributes(scope):
     if http_method:
         result["http.method"] = http_method
 
-    http_host_value_list = carrier_getter.get(scope, "host")
+    http_host_value_list = asgi_scope.get("host")
     if http_host_value_list:
         result["http.server_name"] = ",".join(http_host_value_list)
-    http_user_agent = carrier_getter.get(scope, "user-agent")
+    http_user_agent = asgi_scope.get("user-agent")
     if http_user_agent:
         result["http.user_agent"] = http_user_agent[0]
 
@@ -186,7 +176,7 @@ class OpenTelemetryMiddleware:
         if self.excluded_urls and self.excluded_urls.url_disabled(url):
             return await self.app(scope, receive, send)
 
-        token = context.attach(extract(carrier_getter, scope))
+        token = context.attach(extract(scope))
         span_name, additional_attributes = self.span_details_callback(scope)
 
         try:

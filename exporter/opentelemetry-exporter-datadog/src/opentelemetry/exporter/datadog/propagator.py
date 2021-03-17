@@ -12,17 +12,12 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import typing
+from typing import Dict, Optional
 
 from opentelemetry import trace
 from opentelemetry.context import Context
 from opentelemetry.exporter.datadog import constants
-from opentelemetry.propagators.textmap import (
-    Getter,
-    Setter,
-    TextMapPropagator,
-    TextMapPropagatorT,
-)
+from opentelemetry.propagators.textmap import TextMapPropagator
 from opentelemetry.trace import get_current_span, set_span_in_context
 
 
@@ -35,24 +30,15 @@ class DatadogFormat(TextMapPropagator):
     ORIGIN_KEY = "x-datadog-origin"
 
     def extract(
-        self,
-        getter: Getter[TextMapPropagatorT],
-        carrier: TextMapPropagatorT,
-        context: typing.Optional[Context] = None,
+        self, carrier: Dict[str, str], context: Optional[Context] = None,
     ) -> Context:
-        trace_id = extract_first_element(
-            getter.get(carrier, self.TRACE_ID_KEY)
-        )
+        trace_id = carrier.get(self.TRACE_ID_KEY)
 
-        span_id = extract_first_element(
-            getter.get(carrier, self.PARENT_ID_KEY)
-        )
+        span_id = carrier.get(self.PARENT_ID_KEY)
 
-        sampled = extract_first_element(
-            getter.get(carrier, self.SAMPLING_PRIORITY_KEY)
-        )
+        sampled = carrier.get(self.SAMPLING_PRIORITY_KEY)
 
-        origin = extract_first_element(getter.get(carrier, self.ORIGIN_KEY))
+        origin = carrier.get(self.ORIGIN_KEY)
 
         trace_flags = trace.TraceFlags()
         if sampled and int(sampled) in (
@@ -80,33 +66,22 @@ class DatadogFormat(TextMapPropagator):
         )
 
     def inject(
-        self,
-        set_in_carrier: Setter[TextMapPropagatorT],
-        carrier: TextMapPropagatorT,
-        context: typing.Optional[Context] = None,
+        self, carrier: Dict[str, str], context: Optional[Context] = None,
     ) -> None:
         span = get_current_span(context)
         span_context = span.get_span_context()
         if span_context == trace.INVALID_SPAN_CONTEXT:
             return
         sampled = (trace.TraceFlags.SAMPLED & span.context.trace_flags) != 0
-        set_in_carrier(
-            carrier, self.TRACE_ID_KEY, format_trace_id(span.context.trace_id),
-        )
-        set_in_carrier(
-            carrier, self.PARENT_ID_KEY, format_span_id(span.context.span_id)
-        )
-        set_in_carrier(
-            carrier,
-            self.SAMPLING_PRIORITY_KEY,
-            str(constants.AUTO_KEEP if sampled else constants.AUTO_REJECT),
+        carrier[self.TRACE_ID_KEY] = format_trace_id(span.context.trace_id)
+        carrier[self.PARENT_ID_KEY] = format_span_id(span.context.span_id)
+        carrier[self.SAMPLING_PRIORITY_KEY] = str(
+            constants.AUTO_KEEP if sampled else constants.AUTO_REJECT
         )
         if constants.DD_ORIGIN in span.context.trace_state:
-            set_in_carrier(
-                carrier,
-                self.ORIGIN_KEY,
-                span.context.trace_state[constants.DD_ORIGIN],
-            )
+            carrier[self.ORIGIN_KEY] = span.context.trace_state[
+                constants.DD_ORIGIN
+            ]
 
     @property
     def fields(self):
@@ -131,11 +106,3 @@ def format_trace_id(trace_id: int) -> str:
 def format_span_id(span_id: int) -> str:
     """Format the span id for Datadog."""
     return str(span_id)
-
-
-def extract_first_element(
-    items: typing.Iterable[TextMapPropagatorT],
-) -> typing.Optional[TextMapPropagatorT]:
-    if items is None:
-        return None
-    return next(iter(items), None)
