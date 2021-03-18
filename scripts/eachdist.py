@@ -7,7 +7,6 @@ import shlex
 import shutil
 import subprocess
 import sys
-from collections import namedtuple
 from configparser import ConfigParser
 from datetime import datetime
 from inspect import cleandoc
