@@ -35,6 +35,7 @@ Usage
     tornado.ioloop.IOLoop.current().start()
 """
 
+
 from collections import namedtuple
 from functools import partial
 from logging import getLogger
@@ -52,10 +53,10 @@ from opentelemetry.instrumentation.utils import (
     unwrap,
 )
 from opentelemetry.propagate import extract
-from opentelemetry.trace.propagation.textmap import DictGetter
+from opentelemetry.propagators.textmap import DictGetter
 from opentelemetry.trace.status import Status
+from opentelemetry.util._time import _time_ns
 from opentelemetry.util.http import get_excluded_urls, get_traced_request_attrs
-from opentelemetry.util.time import time_ns
 
 from .client import fetch_async  # pylint: disable=E0401
 
@@ -148,7 +149,7 @@ def _wrap(cls, method_name, wrapper):
 
 
 def _prepare(tracer, func, handler, args, kwargs):
-    start_time = time_ns()
+    start_time = _time_ns()
     request = handler.request
     if _excluded_urls.url_disabled(request.uri):
         return func(*args, **kwargs)
@@ -208,8 +209,8 @@ def _start_span(tracer, handler, start_time) -> _TraceContext:
         for key, value in attributes.items():
             span.set_attribute(key, value)
 
-    activation = tracer.use_span(span, end_on_exit=True)
-    activation.__enter__()
+    activation = trace.use_span(span, end_on_exit=True)
+    activation.__enter__()  # pylint: disable=E1101
     ctx = _TraceContext(activation, span, token)
     setattr(handler, _HANDLER_CONTEXT_KEY, ctx)
     return ctx
@@ -225,7 +226,7 @@ def _finish_span(tracer, handler, error=None):
         if isinstance(error, tornado.web.HTTPError):
             status_code = error.status_code
             if not ctx and status_code == 404:
-                ctx = _start_span(tracer, handler, time_ns())
+                ctx = _start_span(tracer, handler, _time_ns())
         if status_code != 404:
             finish_args = (
                 type(error),
@@ -249,6 +250,6 @@ def _finish_span(tracer, handler, error=None):
             )
         )
 
-    ctx.activation.__exit__(*finish_args)
+    ctx.activation.__exit__(*finish_args)  # pylint: disable=E1101
     context.detach(ctx.token)
     delattr(handler, _HANDLER_CONTEXT_KEY)

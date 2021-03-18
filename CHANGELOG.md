@@ -5,6 +5,8 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased](https://github.com/open-telemetry/opentelemetry-python-contrib/compare/v0.18b0...HEAD)
+- Updated instrumentations to use `opentelemetry.trace.use_span` instead of `Tracer.use_span()`
+  ([#364](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/364))
 
 - Implement context methods for `_InterceptorChannel`
   ([#363](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/363))
@@ -12,15 +14,19 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Changed
 - Rename `IdsGenerator` to `IdGenerator`
   ([#350](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/350))
+- `opentelemetry-exporter-datadog` Fix warning when DatadogFormat encounters a request with
+  no DD_ORIGIN headers ([#368](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/368)).
 
 ## [0.18b0](https://github.com/open-telemetry/opentelemetry-python-contrib/releases/tag/v0.18b0) - 2021-02-16
 
 ### Added
 - `opentelemetry-propagator-ot-trace` Add OT Trace Propagator
   ([#302](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/302))
+- `opentelemetry-instrumentation-logging` Added logging instrumentation to enable log - trace correlation.
+  ([#345](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/345))
 
 ### Removed
-- Remove `component` span attribute in instrumentations. 
+- Remove `component` span attribute in instrumentations.
   `opentelemetry-instrumentation-aiopg`, `opentelemetry-instrumentation-dbapi` Remove unused `database_type` parameter from `trace_integration` function.
   ([#301](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/301))
 - `opentelemetry-instrumentation-asgi` Return header values using case insensitive keys

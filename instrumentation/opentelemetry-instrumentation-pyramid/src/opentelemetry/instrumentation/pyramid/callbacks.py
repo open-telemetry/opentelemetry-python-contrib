@@ -1,3 +1,17 @@
+# Copyright The OpenTelemetry Authors
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
 from logging import getLogger
 
 from pyramid.events import BeforeTraversal
@@ -9,8 +23,8 @@ import opentelemetry.instrumentation.wsgi as otel_wsgi
 from opentelemetry import context, trace
 from opentelemetry.instrumentation.pyramid.version import __version__
 from opentelemetry.propagate import extract
+from opentelemetry.util._time import _time_ns
 from opentelemetry.util.http import get_excluded_urls
-from opentelemetry.util.time import time_ns
 
 TWEEN_NAME = "opentelemetry.instrumentation.pyramid.trace_tween_factory"
 SETTING_TRACE_ENABLED = "opentelemetry-pyramid.trace_enabled"
@@ -83,8 +97,8 @@ def _before_traversal(event):
         for key, value in attributes.items():
             span.set_attribute(key, value)
 
-    activation = tracer.use_span(span, end_on_exit=True)
-    activation.__enter__()
+    activation = trace.use_span(span, end_on_exit=True)
+    activation.__enter__()  # pylint: disable=E1101
     request_environ[_ENVIRON_ACTIVATION_KEY] = activation
     request_environ[_ENVIRON_SPAN_KEY] = span
     request_environ[_ENVIRON_TOKEN] = token
@@ -105,13 +119,14 @@ def trace_tween_factory(handler, registry):
 
     # make a request tracing function
     def trace_tween(request):
+        # pylint: disable=E1101
         if _excluded_urls.url_disabled(request.url):
             request.environ[_ENVIRON_ENABLED_KEY] = False
             # short-circuit when we don't want to trace anything
             return handler(request)
 
         request.environ[_ENVIRON_ENABLED_KEY] = True
-        request.environ[_ENVIRON_STARTTIME_KEY] = time_ns()
+        request.environ[_ENVIRON_STARTTIME_KEY] = _time_ns()
 
         try:
             response = handler(request)

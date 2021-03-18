@@ -24,8 +24,7 @@ from django.test.utils import setup_test_environment, teardown_test_environment
 from opentelemetry.instrumentation.django import DjangoInstrumentor
 from opentelemetry.test.test_base import TestBase
 from opentelemetry.test.wsgitestutil import WsgiTestBase
-from opentelemetry.trace import SpanKind
-from opentelemetry.trace.status import StatusCode
+from opentelemetry.trace import SpanKind, StatusCode
 from opentelemetry.util.http import get_excluded_urls, get_traced_request_attrs
 
 # pylint: disable=import-error
@@ -146,8 +145,6 @@ class TestMiddleware(TestBase, WsgiTestBase):
         mock_span = Mock()
         mock_span.is_recording.return_value = False
         mock_tracer.start_span.return_value = mock_span
-        mock_tracer.use_span.return_value.__enter__ = mock_span
-        mock_tracer.use_span.return_value.__exit__ = True
         with patch("opentelemetry.trace.get_tracer") as tracer:
             tracer.return_value = mock_tracer
             Client().get("/traced/")
