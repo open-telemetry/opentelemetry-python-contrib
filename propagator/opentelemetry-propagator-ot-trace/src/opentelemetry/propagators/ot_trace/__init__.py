@@ -121,9 +121,7 @@ class OTTracePropagator(TextMapPropagator):
             carrier, OT_TRACE_ID_HEADER, hex(span_context.trace_id)[2:][-16:]
         )
         set_in_carrier(
-            carrier,
-            OT_SPAN_ID_HEADER,
-            hex(span_context.span_id)[2:][-16:],
+            carrier, OT_SPAN_ID_HEADER, hex(span_context.span_id)[2:][-16:],
         )
 
         if span_context.trace_flags == TraceFlags.SAMPLED:
@@ -167,8 +165,7 @@ class OTTracePropagator(TextMapPropagator):
 
 
 def _extract_first_element(
-    items: Iterable[TextMapPropagatorT],
-    default: Any = None,
+    items: Iterable[TextMapPropagatorT], default: Any = None,
 ) -> Optional[TextMapPropagatorT]:
     if items is None:
         return default
