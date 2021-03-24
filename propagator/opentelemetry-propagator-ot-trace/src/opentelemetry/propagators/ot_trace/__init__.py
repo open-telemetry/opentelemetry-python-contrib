@@ -58,7 +58,9 @@ class OTTracePropagator(TextMapPropagator):
             getter.get(carrier, OT_TRACE_ID_HEADER), INVALID_TRACE_ID
         )
 
-        spanid = _extract_first_element(getter.get(carrier, OT_SPAN_ID_HEADER), INVALID_SPAN_ID)
+        spanid = _extract_first_element(
+            getter.get(carrier, OT_SPAN_ID_HEADER), INVALID_SPAN_ID
+        )
 
         sampled = _extract_first_element(
             getter.get(carrier, OT_SAMPLED_HEADER)
@@ -119,7 +121,9 @@ class OTTracePropagator(TextMapPropagator):
             carrier, OT_TRACE_ID_HEADER, hex(span_context.trace_id)[2:][-16:]
         )
         set_in_carrier(
-            carrier, OT_SPAN_ID_HEADER, hex(span_context.span_id)[2:][-16:],
+            carrier,
+            OT_SPAN_ID_HEADER,
+            hex(span_context.span_id)[2:][-16:],
         )
 
         if span_context.trace_flags == TraceFlags.SAMPLED:
