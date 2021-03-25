@@ -309,7 +309,7 @@ class AwsXRayFormat(TextMapPropagator):
             ]
         )
 
-        setter(
+        setter.set(
             carrier, TRACE_HEADER_KEY, trace_header,
         )
 

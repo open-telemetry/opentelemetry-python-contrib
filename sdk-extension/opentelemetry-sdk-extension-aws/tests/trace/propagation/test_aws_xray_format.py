@@ -84,7 +84,6 @@ def build_test_span_context(
 
 
 class AwsXRayPropagatorTest(unittest.TestCase):
-    carrier_setter = CaseInsensitiveDict.__setitem__
     XRAY_PROPAGATOR = AwsXRayFormat()
 
     # Inject Tests
@@ -93,7 +92,6 @@ class AwsXRayPropagatorTest(unittest.TestCase):
         carrier = CaseInsensitiveDict()
 
         AwsXRayPropagatorTest.XRAY_PROPAGATOR.inject(
-            AwsXRayPropagatorTest.carrier_setter,
             carrier,
             build_test_current_context(),
         )
@@ -113,7 +111,6 @@ class AwsXRayPropagatorTest(unittest.TestCase):
         carrier = CaseInsensitiveDict()
 
         AwsXRayPropagatorTest.XRAY_PROPAGATOR.inject(
-            AwsXRayPropagatorTest.carrier_setter,
             carrier,
             build_test_current_context(
                 trace_flags=TraceFlags(TraceFlags.SAMPLED)
@@ -135,7 +132,6 @@ class AwsXRayPropagatorTest(unittest.TestCase):
         carrier = CaseInsensitiveDict()
 
         AwsXRayPropagatorTest.XRAY_PROPAGATOR.inject(
-            AwsXRayPropagatorTest.carrier_setter,
             carrier,
             build_test_current_context(
                 trace_state=TraceState([("foo", "bar")])
@@ -158,7 +154,6 @@ class AwsXRayPropagatorTest(unittest.TestCase):
         carrier = CaseInsensitiveDict()
 
         AwsXRayPropagatorTest.XRAY_PROPAGATOR.inject(
-            AwsXRayPropagatorTest.carrier_setter,
             carrier,
             build_test_current_context(),
         )
@@ -382,7 +377,7 @@ class AwsXRayPropagatorTest(unittest.TestCase):
 
         mock_setter = Mock()
 
-        AwsXRayPropagatorTest.XRAY_PROPAGATOR.inject(mock_setter, {})
+        AwsXRayPropagatorTest.XRAY_PROPAGATOR.inject({}, setter=mock_setter)
 
         inject_fields = set()
 
