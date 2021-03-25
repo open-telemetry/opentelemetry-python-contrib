@@ -12,21 +12,33 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from unittest import TestCase
+from unittest import TestCase, mock
 
-from opentelemetry.instrumentation.celery import _CeleryCustomGetDictionary
+from opentelemetry.instrumentation.celery import CarrierGetter
 
 
-class TestCeleryCustomGetDictionary(TestCase):
+class TestCarrierGetter(TestCase):
     def test_get_none(self):
-        self.assertIsNone(_CeleryCustomGetDictionary({}).get("test"))
+        getter = CarrierGetter()
+        carrier = {}
+        val = getter.get(carrier, "test")
+        self.assertIsNone(val)
 
     def test_get_str(self):
-        self.assertEqual(
-            _CeleryCustomGetDictionary({"test": "val"}).get("test"), "val"
-        )
+        mock_obj = mock.Mock()
+        getter = CarrierGetter()
+        mock_obj.test = "val"
+        val = getter.get(mock_obj, "test")
+        self.assertEqual(val, ("val",))
 
     def test_get_iter(self):
-        self.assertEqual(
-            _CeleryCustomGetDictionary({"test": ["val"]}).get("test"), ["val"]
-        )
+        mock_obj = mock.Mock()
+        getter = CarrierGetter()
+        mock_obj.test = ["val"]
+        val = getter.get(mock_obj, "test")
+        self.assertEqual(val, ["val"])
+
+    def test_keys(self):
+        getter = CarrierGetter()
+        keys = getter.keys({})
+        self.assertEqual(keys, [])

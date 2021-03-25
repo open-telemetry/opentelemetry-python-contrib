@@ -14,21 +14,37 @@
 
 from unittest import TestCase
 
-from opentelemetry.instrumentation.asgi import _ASGICustomGetDictionary
+from opentelemetry.instrumentation.asgi import CarrierGetter
 
 
-class TestASGICustomGetDictionary(TestCase):
+class TestCarrierGetter(TestCase):
     def test_get_none(self):
-        self.assertIsNone(_ASGICustomGetDictionary({}).get("test"))
+        getter = CarrierGetter()
+        carrier = {}
+        val = getter.get(carrier, "test")
+        self.assertIsNone(val)
 
-    def test_case_sensitivity(self):
-
-        celery_custom_get_dictionary = _ASGICustomGetDictionary(
-            {"headers": [(b"test-key", b"val")]}
+    def test_get_(self):
+        getter = CarrierGetter()
+        carrier = {"headers": [(b"test-key", b"val")]}
+        expected_val = ["val"]
+        self.assertEqual(
+            getter.get(carrier, "Test-Key"),
+            expected_val,
+            "Should be case insensitive",
+        )
+        self.assertEqual(
+            getter.get(carrier, "test-key"),
+            expected_val,
+            "Should be case insensitive",
+        )
+        self.assertEqual(
+            getter.get(carrier, "TEST-KEY"),
+            expected_val,
+            "Should be case insensitive",
         )
 
-        self.assertEqual(celery_custom_get_dictionary.get("Test-key"), ["val"])
-
-        self.assertEqual(celery_custom_get_dictionary.get("test-key"), ["val"])
-
-        self.assertEqual(celery_custom_get_dictionary.get("TEST-KEY"), ["val"])
+    def test_keys(self):
+        getter = CarrierGetter()
+        keys = getter.keys({})
+        self.assertEqual(keys, [])

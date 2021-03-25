@@ -52,6 +52,7 @@ API
 """
 
 import logging
+from collections.abc import Iterable
 
 from celery import signals  # pylint: disable=no-name-in-module
 
@@ -60,8 +61,8 @@ from opentelemetry.instrumentation.celery import utils
 from opentelemetry.instrumentation.celery.version import __version__
 from opentelemetry.instrumentation.instrumentor import BaseInstrumentor
 from opentelemetry.propagate import extract, inject
+from opentelemetry.propagators.textmap import DictGetter
 from opentelemetry.trace.status import Status, StatusCode
-from opentelemetry.util.http import BaseCustomGetDictionary
 
 logger = logging.getLogger(__name__)
 
@@ -77,13 +78,20 @@ _TASK_NAME_KEY = "celery.task_name"
 _MESSAGE_ID_ATTRIBUTE_NAME = "messaging.message_id"
 
 
-class _CeleryCustomGetDictionary(BaseCustomGetDictionary):
-    def get(self, name, default=None):
+class CarrierGetter(DictGetter):
+    def get(self, carrier, key):
+        value = getattr(carrier, key, None)
+        if value is None:
+            return None
+        if isinstance(value, str) or not isinstance(value, Iterable):
+            value = (value,)
+        return value
 
-        if name not in self.keys():
-            return default
+    def keys(self, carrier):
+        return []
 
-        return self[name]
+
+carrier_getter = CarrierGetter()
 
 
 class CeleryInstrumentor(BaseInstrumentor):
@@ -119,9 +127,8 @@ class CeleryInstrumentor(BaseInstrumentor):
         if task is None or task_id is None:
             return
 
-        request = task.request.__dict__
-
-        tracectx = extract(_CeleryCustomGetDictionary(request)) or None
+        request = task.request
+        tracectx = extract(carrier_getter, request) or None
 
         logger.debug("prerun signal start task_id=%s", task_id)
 
@@ -186,7 +193,7 @@ class CeleryInstrumentor(BaseInstrumentor):
 
         headers = kwargs.get("headers")
         if headers:
-            inject(headers)
+            inject(type(headers).__setitem__, headers)
 
     @staticmethod
     def _trace_after_publish(*args, **kwargs):

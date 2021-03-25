@@ -116,7 +116,9 @@ def _wrapped_before_request(name_callback):
 
         flask_request_environ = flask.request.environ
         span_name = name_callback()
-        token = context.attach(extract(flask_request_environ))
+        token = context.attach(
+            extract(otel_wsgi.carrier_getter, flask_request_environ)
+        )
 
         tracer = trace.get_tracer(__name__, __version__)
 

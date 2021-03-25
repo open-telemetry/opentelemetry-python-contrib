@@ -55,24 +55,32 @@ API
 """
 
 import functools
+import typing
 import wsgiref.util as wsgiref_util
 
 from opentelemetry import context, trace
 from opentelemetry.instrumentation.utils import http_status_to_status_code
 from opentelemetry.instrumentation.wsgi.version import __version__
 from opentelemetry.propagate import extract
+from opentelemetry.propagators.textmap import DictGetter
 from opentelemetry.trace.status import Status, StatusCode
-from opentelemetry.util.http import BaseCustomGetDictionary
 
 _HTTP_VERSION_PREFIX = "HTTP/"
 _CARRIER_KEY_PREFIX = "HTTP_"
 _CARRIER_KEY_PREFIX_LEN = len(_CARRIER_KEY_PREFIX)
 
 
-class _WSGICustomGetDictionary(BaseCustomGetDictionary):
-    def get(self, name, default=None):
+class CarrierGetter(DictGetter):
+    def get(
+        self, carrier: dict, key: str
+    ) -> typing.Optional[typing.List[str]]:
+        """Getter implementation to retrieve a HTTP header value from the
+            PEP3333-conforming WSGI environ
 
 <<<<<<< HEAD
+<<<<<<< HEAD
+=======
+>>>>>>> Revert "Sync with Remove setters and getters"
         Args:
             carrier: WSGI environ object
             key: header name in environ object
@@ -87,6 +95,7 @@ class _WSGICustomGetDictionary(BaseCustomGetDictionary):
         return None
 
     def keys(self, carrier):
+<<<<<<< HEAD
         return [
             key[_CARRIER_KEY_PREFIX_LEN:].lower().replace("_", "-")
             for key in carrier
@@ -95,11 +104,12 @@ class _WSGICustomGetDictionary(BaseCustomGetDictionary):
 =======
         name = "HTTP_{}".format(name.upper().replace("-", "_"))
 >>>>>>> Sync with Remove setters and getters
+=======
+        return []
+>>>>>>> Revert "Sync with Remove setters and getters"
 
-        if name not in self.keys():
-            return default
 
-        return [self[name]]
+carrier_getter = CarrierGetter()
 
 
 def setifnotnone(dic, key, value):
@@ -215,7 +225,7 @@ class OpenTelemetryMiddleware:
             start_response: The WSGI start_response callable.
         """
 
-        token = context.attach(extract(_WSGICustomGetDictionary(environ)))
+        token = context.attach(extract(carrier_getter, environ))
         span_name = self.name_callback(environ)
 
         span = self.tracer.start_span(

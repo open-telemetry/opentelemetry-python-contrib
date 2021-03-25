@@ -14,14 +14,23 @@
 
 from re import compile as re_compile
 <<<<<<< HEAD
+<<<<<<< HEAD
 from typing import Any, Iterable, Optional
 =======
 from typing import Dict, Optional
 >>>>>>> Sync with Remove setters and getters
+=======
+from typing import Iterable, Optional
+>>>>>>> Revert "Sync with Remove setters and getters"
 
 from opentelemetry.baggage import get_all, set_baggage
 from opentelemetry.context import Context
-from opentelemetry.propagators.textmap import TextMapPropagator
+from opentelemetry.propagators.textmap import (
+    Getter,
+    Setter,
+    TextMapPropagator,
+    TextMapPropagatorT,
+)
 from opentelemetry.trace import (
     INVALID_SPAN_ID,
     INVALID_TRACE_ID,
@@ -47,9 +56,13 @@ class OTTracePropagator(TextMapPropagator):
     """Propagator for the OTTrace HTTP header format"""
 
     def extract(
-        self, carrier: Dict[str, str], context: Optional[Context] = None,
+        self,
+        getter: Getter[TextMapPropagatorT],
+        carrier: TextMapPropagatorT,
+        context: Optional[Context] = None,
     ) -> Context:
 
+<<<<<<< HEAD
 <<<<<<< HEAD
         traceid = _extract_first_element(
             getter.get(carrier, OT_TRACE_ID_HEADER), INVALID_TRACE_ID
@@ -63,8 +76,17 @@ class OTTracePropagator(TextMapPropagator):
 
         spanid = carrier.get(OT_SPAN_ID_HEADER)
 >>>>>>> Sync with Remove setters and getters
+=======
+        traceid = _extract_first_element(
+            getter.get(carrier, OT_TRACE_ID_HEADER)
+        )
 
-        sampled = carrier.get(OT_SAMPLED_HEADER)
+        spanid = _extract_first_element(getter.get(carrier, OT_SPAN_ID_HEADER))
+>>>>>>> Revert "Sync with Remove setters and getters"
+
+        sampled = _extract_first_element(
+            getter.get(carrier, OT_SAMPLED_HEADER)
+        )
 
         if sampled == "true":
             traceflags = TraceFlags.SAMPLED
@@ -91,12 +113,14 @@ class OTTracePropagator(TextMapPropagator):
 
             baggage = get_all(context) or {}
 
-            for key in carrier.keys():
+            for key in getter.keys(carrier):
 
                 if not key.startswith(OT_BAGGAGE_PREFIX):
                     continue
 
-                baggage[key[len(OT_BAGGAGE_PREFIX) :]] = carrier.get(key)
+                baggage[
+                    key[len(OT_BAGGAGE_PREFIX) :]
+                ] = _extract_first_element(getter.get(carrier, key))
 
             for key, value in baggage.items():
                 context = set_baggage(key, value, context)
@@ -104,7 +128,10 @@ class OTTracePropagator(TextMapPropagator):
         return context
 
     def inject(
-        self, carrier: Dict[str, str], context: Optional[Context] = None,
+        self,
+        set_in_carrier: Setter[TextMapPropagatorT],
+        carrier: TextMapPropagatorT,
+        context: Optional[Context] = None,
     ) -> None:
 
         span_context = get_current_span(context).get_span_context()
@@ -112,15 +139,19 @@ class OTTracePropagator(TextMapPropagator):
         if span_context.trace_id == INVALID_TRACE_ID:
             return
 
-        carrier[OT_TRACE_ID_HEADER] = hex(span_context.trace_id)[2:][-16:]
-        carrier[OT_SPAN_ID_HEADER] = hex(span_context.span_id)[2:][-16:]
+        set_in_carrier(
+            carrier, OT_TRACE_ID_HEADER, hex(span_context.trace_id)[2:][-16:]
+        )
+        set_in_carrier(
+            carrier, OT_SPAN_ID_HEADER, hex(span_context.span_id)[2:][-16:],
+        )
 
         if span_context.trace_flags == TraceFlags.SAMPLED:
             traceflags = "true"
         else:
             traceflags = "false"
 
-        carrier[OT_SAMPLED_HEADER] = traceflags
+        set_in_carrier(carrier, OT_SAMPLED_HEADER, traceflags)
 
         baggage = get_all(context)
 
@@ -135,7 +166,11 @@ class OTTracePropagator(TextMapPropagator):
             ):
                 continue
 
-            carrier["".join([OT_BAGGAGE_PREFIX, header_name])] = header_value
+            set_in_carrier(
+                carrier,
+                "".join([OT_BAGGAGE_PREFIX, header_name]),
+                header_value,
+            )
 
     @property
     def fields(self):
@@ -150,6 +185,7 @@ class OTTracePropagator(TextMapPropagator):
             OT_SAMPLED_HEADER,
         }
 <<<<<<< HEAD
+<<<<<<< HEAD
 
 
 def _extract_first_element(
@@ -160,3 +196,13 @@ def _extract_first_element(
     return next(iter(items), None)
 =======
 >>>>>>> Sync with Remove setters and getters
+=======
+
+
+def _extract_first_element(
+    items: Iterable[TextMapPropagatorT],
+) -> Optional[TextMapPropagatorT]:
+    if items is None:
+        return None
+    return next(iter(items), None)
+>>>>>>> Revert "Sync with Remove setters and getters"

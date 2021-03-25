@@ -14,6 +14,7 @@
 
 from requests.structures import CaseInsensitiveDict
 
+from opentelemetry.propagators.textmap import DictGetter
 from opentelemetry.sdk.extension.aws.trace.propagation.aws_xray_format import (
     TRACE_HEADER_KEY,
     AwsXRayFormat,
@@ -25,6 +26,7 @@ XRAY_PROPAGATOR = AwsXRayFormat()
 def test_extract_single_header(benchmark):
     benchmark(
         XRAY_PROPAGATOR.extract,
+        DictGetter(),
         {
             TRACE_HEADER_KEY: "bdb5b63237ed38aea578af665aa5aa60-00000000000000000c32d953d73ad225"
         },

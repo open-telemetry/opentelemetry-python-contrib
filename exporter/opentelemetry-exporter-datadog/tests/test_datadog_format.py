@@ -17,11 +17,14 @@ from unittest.mock import Mock, patch
 
 from opentelemetry import trace as trace_api
 from opentelemetry.exporter.datadog import constants, propagator
+from opentelemetry.propagators.textmap import DictGetter
 from opentelemetry.sdk import trace
 from opentelemetry.sdk.trace.id_generator import RandomIdGenerator
 from opentelemetry.trace import get_current_span, set_span_in_context
 
 FORMAT = propagator.DatadogFormat()
+
+carrier_getter = DictGetter()
 
 
 class TestDatadogFormat(unittest.TestCase):
@@ -42,6 +45,7 @@ class TestDatadogFormat(unittest.TestCase):
         malformed_parent_id_key = FORMAT.PARENT_ID_KEY + "-x"
         context = get_current_span(
             FORMAT.extract(
+                carrier_getter,
                 {
                     malformed_trace_id_key: self.serialized_trace_id,
                     malformed_parent_id_key: self.serialized_parent_id,
@@ -59,7 +63,7 @@ class TestDatadogFormat(unittest.TestCase):
             FORMAT.PARENT_ID_KEY: self.serialized_parent_id,
         }
 
-        ctx = FORMAT.extract(carrier)
+        ctx = FORMAT.extract(carrier_getter, carrier)
         span_context = get_current_span(ctx).get_span_context()
         self.assertEqual(span_context.trace_id, trace_api.INVALID_TRACE_ID)
 
@@ -69,7 +73,7 @@ class TestDatadogFormat(unittest.TestCase):
             FORMAT.TRACE_ID_KEY: self.serialized_trace_id,
         }
 
-        ctx = FORMAT.extract(carrier)
+        ctx = FORMAT.extract(carrier_getter, carrier)
         span_context = get_current_span(ctx).get_span_context()
         self.assertEqual(span_context.span_id, trace_api.INVALID_SPAN_ID)
 
@@ -77,6 +81,7 @@ class TestDatadogFormat(unittest.TestCase):
         """Test the propagation of Datadog headers."""
         parent_span_context = get_current_span(
             FORMAT.extract(
+                carrier_getter,
                 {
                     FORMAT.TRACE_ID_KEY: self.serialized_trace_id,
                     FORMAT.PARENT_ID_KEY: self.serialized_parent_id,
@@ -113,7 +118,7 @@ class TestDatadogFormat(unittest.TestCase):
 
         child_carrier = {}
         child_context = set_span_in_context(child)
-        FORMAT.inject(child_carrier, context=child_context)
+        FORMAT.inject(dict.__setitem__, child_carrier, context=child_context)
 
         self.assertEqual(
             child_carrier[FORMAT.TRACE_ID_KEY], self.serialized_trace_id
@@ -133,6 +138,7 @@ class TestDatadogFormat(unittest.TestCase):
         """Test sampling priority rejected."""
         parent_span_context = get_current_span(
             FORMAT.extract(
+                carrier_getter,
                 {
                     FORMAT.TRACE_ID_KEY: self.serialized_trace_id,
                     FORMAT.PARENT_ID_KEY: self.serialized_parent_id,
@@ -159,7 +165,7 @@ class TestDatadogFormat(unittest.TestCase):
 
         child_carrier = {}
         child_context = set_span_in_context(child)
-        FORMAT.inject(child_carrier, context=child_context)
+        FORMAT.inject(dict.__setitem__, child_carrier, context=child_context)
 
         self.assertEqual(
             child_carrier[FORMAT.SAMPLING_PRIORITY_KEY],
@@ -171,6 +177,8 @@ class TestDatadogFormat(unittest.TestCase):
         """Make sure the fields attribute returns the fields used in inject"""
 
         tracer = trace.TracerProvider().get_tracer("sdk_tracer_provider")
+
+        mock_set_in_carrier = Mock()
 
         mock_get_current_span.configure_mock(
             **{
@@ -185,10 +193,13 @@ class TestDatadogFormat(unittest.TestCase):
             }
         )
 
-        carrier = {}
-
         with tracer.start_as_current_span("parent"):
             with tracer.start_as_current_span("child"):
-                FORMAT.inject(carrier)
+                FORMAT.inject(mock_set_in_carrier, {})
 
-        self.assertEqual(FORMAT.fields, carrier.keys())
+        inject_fields = set()
+
+        for call in mock_set_in_carrier.mock_calls:
+            inject_fields.add(call[1][1])
+
+        self.assertEqual(FORMAT.fields, inject_fields)
