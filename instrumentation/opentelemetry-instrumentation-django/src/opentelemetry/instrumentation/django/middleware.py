@@ -20,8 +20,8 @@ from opentelemetry.instrumentation.django.version import __version__
 from opentelemetry.instrumentation.utils import extract_attributes_from_object
 from opentelemetry.instrumentation.wsgi import (
     add_response_attributes,
-    wsgi_getter,
     collect_request_attributes,
+    wsgi_getter,
 )
 from opentelemetry.propagate import extract
 from opentelemetry.trace import SpanKind, get_tracer, use_span

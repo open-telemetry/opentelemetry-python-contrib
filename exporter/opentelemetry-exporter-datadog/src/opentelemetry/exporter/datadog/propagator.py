@@ -18,10 +18,10 @@ from opentelemetry import trace
 from opentelemetry.context import Context
 from opentelemetry.exporter.datadog import constants
 from opentelemetry.propagators.textmap import (
+    CarrierT,
     Getter,
     Setter,
     TextMapPropagator,
-    CarrierT,
     default_getter,
     default_setter,
 )
