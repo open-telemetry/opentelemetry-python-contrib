@@ -86,7 +86,6 @@ def build_test_span_context(
 
 class AwsXRayPropagatorTest(unittest.TestCase):
     carrier_setter = CaseInsensitiveDict.__setitem__
-    carrier_getter = DictGetter()
     XRAY_PROPAGATOR = AwsXRayFormat()
 
     # Inject Tests
@@ -175,7 +174,7 @@ class AwsXRayPropagatorTest(unittest.TestCase):
 
     def test_extract_empty_carrier_from_invalid_context(self):
         context_with_extracted = AwsXRayPropagatorTest.XRAY_PROPAGATOR.extract(
-            AwsXRayPropagatorTest.carrier_getter, CaseInsensitiveDict()
+            CaseInsensitiveDict()
         )
 
         self.assertEqual(
@@ -185,7 +184,6 @@ class AwsXRayPropagatorTest(unittest.TestCase):
 
     def test_extract_not_sampled_context(self):
         context_with_extracted = AwsXRayPropagatorTest.XRAY_PROPAGATOR.extract(
-            AwsXRayPropagatorTest.carrier_getter,
             CaseInsensitiveDict(
                 {
                     TRACE_HEADER_KEY: "Root=1-8a3c60f7-d188f8fa79d48a391a778fa6;Parent=53995c3f42cd8ad8;Sampled=0"
@@ -200,7 +198,6 @@ class AwsXRayPropagatorTest(unittest.TestCase):
 
     def test_extract_sampled_context(self):
         context_with_extracted = AwsXRayPropagatorTest.XRAY_PROPAGATOR.extract(
-            AwsXRayPropagatorTest.carrier_getter,
             CaseInsensitiveDict(
                 {
                     TRACE_HEADER_KEY: "Root=1-8a3c60f7-d188f8fa79d48a391a778fa6;Parent=53995c3f42cd8ad8;Sampled=1"
@@ -217,7 +214,6 @@ class AwsXRayPropagatorTest(unittest.TestCase):
 
     def test_extract_different_order(self):
         context_with_extracted = AwsXRayPropagatorTest.XRAY_PROPAGATOR.extract(
-            AwsXRayPropagatorTest.carrier_getter,
             CaseInsensitiveDict(
                 {
                     TRACE_HEADER_KEY: "Sampled=0;Parent=53995c3f42cd8ad8;Root=1-8a3c60f7-d188f8fa79d48a391a778fa6"
@@ -232,7 +228,6 @@ class AwsXRayPropagatorTest(unittest.TestCase):
 
     def test_extract_with_additional_fields(self):
         context_with_extracted = AwsXRayPropagatorTest.XRAY_PROPAGATOR.extract(
-            AwsXRayPropagatorTest.carrier_getter,
             CaseInsensitiveDict(
                 {
                     TRACE_HEADER_KEY: "Root=1-8a3c60f7-d188f8fa79d48a391a778fa6;Parent=53995c3f42cd8ad8;Sampled=0;Foo=Bar"
@@ -247,7 +242,6 @@ class AwsXRayPropagatorTest(unittest.TestCase):
 
     def test_extract_with_extra_whitespace(self):
         context_with_extracted = AwsXRayPropagatorTest.XRAY_PROPAGATOR.extract(
-            AwsXRayPropagatorTest.carrier_getter,
             CaseInsensitiveDict(
                 {
                     TRACE_HEADER_KEY: "  Root  =  1-8a3c60f7-d188f8fa79d48a391a778fa6  ;  Parent  =  53995c3f42cd8ad8  ;  Sampled  =  0   "
@@ -262,7 +256,6 @@ class AwsXRayPropagatorTest(unittest.TestCase):
 
     def test_extract_invalid_xray_trace_header(self):
         context_with_extracted = AwsXRayPropagatorTest.XRAY_PROPAGATOR.extract(
-            AwsXRayPropagatorTest.carrier_getter,
             CaseInsensitiveDict({TRACE_HEADER_KEY: ""}),
         )
 
@@ -273,7 +266,6 @@ class AwsXRayPropagatorTest(unittest.TestCase):
 
     def test_extract_invalid_trace_id(self):
         context_with_extracted = AwsXRayPropagatorTest.XRAY_PROPAGATOR.extract(
-            AwsXRayPropagatorTest.carrier_getter,
             CaseInsensitiveDict(
                 {
                     TRACE_HEADER_KEY: "Root=1-12345678-abcdefghijklmnopqrstuvwx;Parent=53995c3f42cd8ad8;Sampled=0"
@@ -288,7 +280,6 @@ class AwsXRayPropagatorTest(unittest.TestCase):
 
     def test_extract_invalid_trace_id_size(self):
         context_with_extracted = AwsXRayPropagatorTest.XRAY_PROPAGATOR.extract(
-            AwsXRayPropagatorTest.carrier_getter,
             CaseInsensitiveDict(
                 {
                     TRACE_HEADER_KEY: "Root=1-8a3c60f7-d188f8fa79d48a391a778fa600;Parent=53995c3f42cd8ad8;Sampled=0="
@@ -303,7 +294,6 @@ class AwsXRayPropagatorTest(unittest.TestCase):
 
     def test_extract_invalid_span_id(self):
         context_with_extracted = AwsXRayPropagatorTest.XRAY_PROPAGATOR.extract(
-            AwsXRayPropagatorTest.carrier_getter,
             CaseInsensitiveDict(
                 {
                     TRACE_HEADER_KEY: "Root=1-8a3c60f7-d188f8fa79d48a391a778fa6;Parent=abcdefghijklmnop;Sampled=0"
@@ -318,7 +308,6 @@ class AwsXRayPropagatorTest(unittest.TestCase):
 
     def test_extract_invalid_span_id_size(self):
         context_with_extracted = AwsXRayPropagatorTest.XRAY_PROPAGATOR.extract(
-            AwsXRayPropagatorTest.carrier_getter,
             CaseInsensitiveDict(
                 {
                     TRACE_HEADER_KEY: "Root=1-8a3c60f7-d188f8fa79d48a391a778fa6;Parent=53995c3f42cd8ad800;Sampled=0"
@@ -333,7 +322,6 @@ class AwsXRayPropagatorTest(unittest.TestCase):
 
     def test_extract_invalid_empty_sampled_flag(self):
         context_with_extracted = AwsXRayPropagatorTest.XRAY_PROPAGATOR.extract(
-            AwsXRayPropagatorTest.carrier_getter,
             CaseInsensitiveDict(
                 {
                     TRACE_HEADER_KEY: "Root=1-8a3c60f7-d188f8fa79d48a391a778fa6;Parent=53995c3f42cd8ad8;Sampled="
@@ -348,7 +336,6 @@ class AwsXRayPropagatorTest(unittest.TestCase):
 
     def test_extract_invalid_sampled_flag_size(self):
         context_with_extracted = AwsXRayPropagatorTest.XRAY_PROPAGATOR.extract(
-            AwsXRayPropagatorTest.carrier_getter,
             CaseInsensitiveDict(
                 {
                     TRACE_HEADER_KEY: "Root=1-8a3c60f7-d188f8fa79d48a391a778fa6;Parent=53995c3f42cd8ad8;Sampled=011"
@@ -363,7 +350,6 @@ class AwsXRayPropagatorTest(unittest.TestCase):
 
     def test_extract_invalid_non_numeric_sampled_flag(self):
         context_with_extracted = AwsXRayPropagatorTest.XRAY_PROPAGATOR.extract(
-            AwsXRayPropagatorTest.carrier_getter,
             CaseInsensitiveDict(
                 {
                     TRACE_HEADER_KEY: "Root=1-8a3c60f7-d188f8fa79d48a391a778fa6;Parent=53995c3f42cd8ad8;Sampled=a"
