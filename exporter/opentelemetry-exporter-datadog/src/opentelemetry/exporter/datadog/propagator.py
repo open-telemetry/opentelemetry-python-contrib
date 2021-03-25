@@ -36,7 +36,7 @@ class DatadogFormat(TextMapPropagator):
 
     def extract(
         self,
-        getter: Getter[CarrierT],
+        getter: Getter,
         carrier: CarrierT,
         context: typing.Optional[Context] = None,
     ) -> Context:
@@ -81,7 +81,7 @@ class DatadogFormat(TextMapPropagator):
 
     def inject(
         self,
-        set_in_carrier: Setter[CarrierT],
+        set_in_carrier: Setter,
         carrier: CarrierT,
         context: typing.Optional[Context] = None,
     ) -> None:
