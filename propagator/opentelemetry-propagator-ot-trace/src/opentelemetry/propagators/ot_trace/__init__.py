@@ -107,7 +107,7 @@ class OTTracePropagator(TextMapPropagator):
 
     def inject(
         self,
-        set_in_carrier: Setter[TextMapPropagatorT],
+        setter: Setter[TextMapPropagatorT],
         carrier: TextMapPropagatorT,
         context: Optional[Context] = None,
     ) -> None:
@@ -117,10 +117,10 @@ class OTTracePropagator(TextMapPropagator):
         if span_context.trace_id == INVALID_TRACE_ID:
             return
 
-        set_in_carrier(
+        setter(
             carrier, OT_TRACE_ID_HEADER, hex(span_context.trace_id)[2:][-16:]
         )
-        set_in_carrier(
+        setter(
             carrier, OT_SPAN_ID_HEADER, hex(span_context.span_id)[2:][-16:],
         )
 
@@ -129,7 +129,7 @@ class OTTracePropagator(TextMapPropagator):
         else:
             traceflags = "false"
 
-        set_in_carrier(carrier, OT_SAMPLED_HEADER, traceflags)
+        setter(carrier, OT_SAMPLED_HEADER, traceflags)
 
         baggage = get_all(context)
 
@@ -144,7 +144,7 @@ class OTTracePropagator(TextMapPropagator):
             ):
                 continue
 
-            set_in_carrier(
+            setter(
                 carrier,
                 "".join([OT_BAGGAGE_PREFIX, header_name]),
                 header_value,

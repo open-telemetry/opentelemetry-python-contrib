@@ -22,6 +22,8 @@ from opentelemetry.propagators.textmap import (
     Setter,
     TextMapPropagator,
     CarrierT,
+    default_getter,
+    default_setter,
 )
 from opentelemetry.trace import get_current_span, set_span_in_context
 
@@ -36,9 +38,9 @@ class DatadogFormat(TextMapPropagator):
 
     def extract(
         self,
-        getter: Getter,
         carrier: CarrierT,
         context: typing.Optional[Context] = None,
+        getter: Getter = default_getter,
     ) -> Context:
         trace_id = extract_first_element(
             getter.get(carrier, self.TRACE_ID_KEY)
@@ -81,28 +83,28 @@ class DatadogFormat(TextMapPropagator):
 
     def inject(
         self,
-        set_in_carrier: Setter,
         carrier: CarrierT,
         context: typing.Optional[Context] = None,
+        setter: Setter = default_setter,
     ) -> None:
         span = get_current_span(context)
         span_context = span.get_span_context()
         if span_context == trace.INVALID_SPAN_CONTEXT:
             return
         sampled = (trace.TraceFlags.SAMPLED & span.context.trace_flags) != 0
-        set_in_carrier(
+        setter(
             carrier, self.TRACE_ID_KEY, format_trace_id(span.context.trace_id),
         )
-        set_in_carrier(
+        setter(
             carrier, self.PARENT_ID_KEY, format_span_id(span.context.span_id)
         )
-        set_in_carrier(
+        setter(
             carrier,
             self.SAMPLING_PRIORITY_KEY,
             str(constants.AUTO_KEEP if sampled else constants.AUTO_REJECT),
         )
         if constants.DD_ORIGIN in span.context.trace_state:
-            set_in_carrier(
+            setter(
                 carrier,
                 self.ORIGIN_KEY,
                 span.context.trace_state[constants.DD_ORIGIN],

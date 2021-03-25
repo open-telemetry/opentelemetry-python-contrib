@@ -267,7 +267,7 @@ class AwsXRayFormat(TextMapPropagator):
 
     def inject(
         self,
-        set_in_carrier: Setter[TextMapPropagatorT],
+        setter: Setter[TextMapPropagatorT],
         carrier: TextMapPropagatorT,
         context: typing.Optional[Context] = None,
     ) -> None:
@@ -307,7 +307,7 @@ class AwsXRayFormat(TextMapPropagator):
             ]
         )
 
-        set_in_carrier(
+        setter(
             carrier, TRACE_HEADER_KEY, trace_header,
         )
 
