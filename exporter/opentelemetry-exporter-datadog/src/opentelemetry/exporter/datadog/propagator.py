@@ -21,7 +21,7 @@ from opentelemetry.propagators.textmap import (
     Getter,
     Setter,
     TextMapPropagator,
-    TextMapPropagatorT,
+    CarrierT,
 )
 from opentelemetry.trace import get_current_span, set_span_in_context
 
@@ -36,8 +36,8 @@ class DatadogFormat(TextMapPropagator):
 
     def extract(
         self,
-        getter: Getter[TextMapPropagatorT],
-        carrier: TextMapPropagatorT,
+        getter: Getter[CarrierT],
+        carrier: CarrierT,
         context: typing.Optional[Context] = None,
     ) -> Context:
         trace_id = extract_first_element(
@@ -81,8 +81,8 @@ class DatadogFormat(TextMapPropagator):
 
     def inject(
         self,
-        set_in_carrier: Setter[TextMapPropagatorT],
-        carrier: TextMapPropagatorT,
+        set_in_carrier: Setter[CarrierT],
+        carrier: CarrierT,
         context: typing.Optional[Context] = None,
     ) -> None:
         span = get_current_span(context)
@@ -134,8 +134,8 @@ def format_span_id(span_id: int) -> str:
 
 
 def extract_first_element(
-    items: typing.Iterable[TextMapPropagatorT],
-) -> typing.Optional[TextMapPropagatorT]:
+    items: typing.Iterable[CarrierT],
+) -> typing.Optional[CarrierT]:
     if items is None:
         return None
     return next(iter(items), None)
