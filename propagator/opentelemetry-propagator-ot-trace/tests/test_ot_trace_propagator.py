@@ -22,7 +22,6 @@ from opentelemetry.propagators.ot_trace import (
     OT_TRACE_ID_HEADER,
     OTTracePropagator,
 )
-from opentelemetry.propagators.textmap import DictGetter
 from opentelemetry.sdk.trace import _Span
 from opentelemetry.trace import (
     INVALID_SPAN_CONTEXT,
@@ -33,8 +32,6 @@ from opentelemetry.trace import (
     set_span_in_context,
 )
 from opentelemetry.trace.propagation import get_current_span
-
-carrier_getter = DictGetter()
 
 
 class TestOTTracePropagator(TestCase):
@@ -241,7 +238,6 @@ class TestOTTracePropagator(TestCase):
 
         span_context = get_current_span(
             self.ot_trace_propagator.extract(
-                carrier_getter,
                 {
                     OT_TRACE_ID_HEADER: "80f198ee56343ba864fe8b2a57d3eff7",
                     OT_SPAN_ID_HEADER: "e457b5a2e4d86bd1",
@@ -262,7 +258,6 @@ class TestOTTracePropagator(TestCase):
 
         span_context = get_current_span(
             self.ot_trace_propagator.extract(
-                carrier_getter,
                 {
                     OT_TRACE_ID_HEADER: "80f198ee56343ba864fe8b2a57d3eff7",
                     OT_SPAN_ID_HEADER: "e457b5a2e4d86bd1",
@@ -283,7 +278,6 @@ class TestOTTracePropagator(TestCase):
 
         span_context = get_current_span(
             self.ot_trace_propagator.extract(
-                carrier_getter,
                 {
                     OT_TRACE_ID_HEADER: "abc123!",
                     OT_SPAN_ID_HEADER: "e457b5a2e4d86bd1",
@@ -299,7 +293,6 @@ class TestOTTracePropagator(TestCase):
 
         span_context = get_current_span(
             self.ot_trace_propagator.extract(
-                carrier_getter,
                 {
                     OT_TRACE_ID_HEADER: "64fe8b2a57d3eff7",
                     OT_SPAN_ID_HEADER: "abc123!",
@@ -315,7 +308,6 @@ class TestOTTracePropagator(TestCase):
 
         span_context = get_current_span(
             self.ot_trace_propagator.extract(
-                carrier_getter,
                 {
                     OT_TRACE_ID_HEADER: INVALID_TRACE_ID,
                     OT_SPAN_ID_HEADER: "e457b5a2e4d86bd1",
@@ -331,7 +323,6 @@ class TestOTTracePropagator(TestCase):
 
         span_context = get_current_span(
             self.ot_trace_propagator.extract(
-                carrier_getter,
                 {
                     OT_TRACE_ID_HEADER: "64fe8b2a57d3eff7",
                     OT_SPAN_ID_HEADER: INVALID_SPAN_ID,
@@ -346,7 +337,6 @@ class TestOTTracePropagator(TestCase):
         """Test baggage extraction"""
 
         context = self.ot_trace_propagator.extract(
-            carrier_getter,
             {
                 OT_TRACE_ID_HEADER: "64fe8b2a57d3eff7",
                 OT_SPAN_ID_HEADER: "e457b5a2e4d86bd1",
