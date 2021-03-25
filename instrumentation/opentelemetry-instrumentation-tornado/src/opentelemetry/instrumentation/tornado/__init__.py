@@ -197,7 +197,9 @@ def _get_operation_name(handler, request):
 
 
 def _start_span(tracer, handler, start_time) -> _TraceContext:
-    token = context.attach(extract(carrier_getter, handler.request.headers,))
+    token = context.attach(
+        extract(handler.request.headers, getter=carrier_getter)
+    )
 
     span = tracer.start_span(
         _get_operation_name(handler, handler.request),

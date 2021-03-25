@@ -182,7 +182,7 @@ class OpenTelemetryServerInterceptor(grpc.ServerInterceptor):
         metadata = servicer_context.invocation_metadata()
         if metadata:
             md_dict = {md.key: md.value for md in metadata}
-            ctx = extract(self._carrier_getter, md_dict)
+            ctx = extract(md_dict, getter=self._carrier_getter)
             token = attach(ctx)
             try:
                 yield

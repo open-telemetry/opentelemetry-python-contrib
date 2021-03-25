@@ -97,7 +97,7 @@ class _DjangoMiddleware(MiddlewareMixin):
 
         request_meta = request.META
 
-        token = attach(extract(carrier_getter, request_meta))
+        token = attach(extract(request_meta, getter=carrier_getter))
 
         tracer = get_tracer(__name__, __version__)
 
