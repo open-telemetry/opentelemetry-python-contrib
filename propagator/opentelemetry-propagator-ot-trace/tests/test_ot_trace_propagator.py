@@ -43,7 +43,6 @@ class TestOTTracePropagator(TestCase):
         carrier = {}
 
         self.ot_trace_propagator.inject(
-            dict.__setitem__,
             carrier,
             set_span_in_context(
                 _Span(
@@ -152,7 +151,6 @@ class TestOTTracePropagator(TestCase):
         carrier = {}
 
         self.ot_trace_propagator.inject(
-            dict.__setitem__,
             carrier,
             set_baggage(
                 "key",
@@ -361,7 +359,7 @@ class TestOTTracePropagator(TestCase):
         "Test extraction when no headers are present"
 
         span_context = get_current_span(
-            self.ot_trace_propagator.extract(carrier_getter, {})
+            self.ot_trace_propagator.extract({})
         ).get_span_context()
 
         self.assertEqual(span_context, INVALID_SPAN_CONTEXT)
