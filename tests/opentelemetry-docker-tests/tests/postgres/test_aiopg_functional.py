@@ -42,10 +42,6 @@ class TestFunctionalAiopgConnect(TestBase):
         cls._cursor = None
         cls._tracer = cls.tracer_provider.get_tracer(__name__)
         AiopgInstrumentor().instrument(tracer_provider=cls.tracer_provider)
-        cls._dsn = (
-            f"dbname='{POSTGRES_DB_NAME}' user='{POSTGRES_USER}' password='{POSTGRES_PASSWORD}'"
-            f" host='{POSTGRES_HOST}' port='{POSTGRES_PORT}'"
-        )
         cls._connection = async_call(
             aiopg.connect(
                 dbname=POSTGRES_DB_NAME,
@@ -121,6 +117,10 @@ class TestFunctionalAiopgCreatePool(TestBase):
         cls._cursor = None
         cls._tracer = cls.tracer_provider.get_tracer(__name__)
         AiopgInstrumentor().instrument(tracer_provider=cls.tracer_provider)
+        cls._dsn = (
+            f"dbname='{POSTGRES_DB_NAME}' user='{POSTGRES_USER}' password='{POSTGRES_PASSWORD}'"
+            f" host='{POSTGRES_HOST}' port='{POSTGRES_PORT}'"
+        )
         cls._pool = async_call(
             aiopg.create_pool(
                 dbname=POSTGRES_DB_NAME,
