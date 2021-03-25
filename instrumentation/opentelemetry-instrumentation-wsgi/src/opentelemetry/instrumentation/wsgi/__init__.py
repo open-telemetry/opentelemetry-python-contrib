@@ -62,7 +62,7 @@ from opentelemetry import context, trace
 from opentelemetry.instrumentation.utils import http_status_to_status_code
 from opentelemetry.instrumentation.wsgi.version import __version__
 from opentelemetry.propagate import extract
-from opentelemetry.propagators.textmap import DictGetter
+from opentelemetry.propagators.textmap import Getter
 from opentelemetry.trace.status import Status, StatusCode
 
 _HTTP_VERSION_PREFIX = "HTTP/"
@@ -70,7 +70,7 @@ _CARRIER_KEY_PREFIX = "HTTP_"
 _CARRIER_KEY_PREFIX_LEN = len(_CARRIER_KEY_PREFIX)
 
 
-class WSGIGetter(DictGetter):
+class WSGIGetter(Getter):
     def get(
         self, carrier: dict, key: str
     ) -> typing.Optional[typing.List[str]]:

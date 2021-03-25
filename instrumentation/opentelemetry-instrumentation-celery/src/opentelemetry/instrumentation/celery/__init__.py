@@ -61,7 +61,7 @@ from opentelemetry.instrumentation.celery import utils
 from opentelemetry.instrumentation.celery.version import __version__
 from opentelemetry.instrumentation.instrumentor import BaseInstrumentor
 from opentelemetry.propagate import extract, inject
-from opentelemetry.propagators.textmap import DictGetter
+from opentelemetry.propagators.textmap import Getter
 from opentelemetry.trace.status import Status, StatusCode
 
 logger = logging.getLogger(__name__)
@@ -78,7 +78,7 @@ _TASK_NAME_KEY = "celery.task_name"
 _MESSAGE_ID_ATTRIBUTE_NAME = "messaging.message_id"
 
 
-class CeleryGetter(DictGetter):
+class CeleryGetter(Getter):
     def get(self, carrier, key):
         value = getattr(carrier, key, None)
         if value is None:
