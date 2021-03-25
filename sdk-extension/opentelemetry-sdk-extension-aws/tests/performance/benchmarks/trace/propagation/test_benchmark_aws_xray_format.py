@@ -32,4 +32,8 @@ def test_extract_single_header(benchmark):
 
 
 def test_inject_empty_context(benchmark):
-    benchmark(XRAY_PROPAGATOR.inject, CaseInsensitiveDict.__setitem__, {})
+    benchmark(
+        XRAY_PROPAGATOR.inject,
+        {},
+        setter=CaseInsensitiveDict.__setitem__
+    )

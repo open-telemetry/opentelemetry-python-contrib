@@ -54,10 +54,12 @@ import typing
 import opentelemetry.trace as trace
 from opentelemetry.context import Context
 from opentelemetry.propagators.textmap import (
+    CarrierT,
     Getter,
     Setter,
     TextMapPropagator,
-    TextMapPropagatorT,
+    default_getter,
+    default_setter,
 )
 
 TRACE_HEADER_KEY = "X-Amzn-Trace-Id"
@@ -100,9 +102,9 @@ class AwsXRayFormat(TextMapPropagator):
 
     def extract(
         self,
-        getter: Getter[TextMapPropagatorT],
-        carrier: TextMapPropagatorT,
+        carrier: CarrierT,
         context: typing.Optional[Context] = None,
+        getter: Getter = default_getter,
     ) -> Context:
         trace_header_list = getter.get(carrier, TRACE_HEADER_KEY)
 
@@ -267,9 +269,9 @@ class AwsXRayFormat(TextMapPropagator):
 
     def inject(
         self,
-        setter: Setter[TextMapPropagatorT],
-        carrier: TextMapPropagatorT,
+        carrier: CarrierT,
         context: typing.Optional[Context] = None,
+        setter: Setter = default_setter,
     ) -> None:
         span = trace.get_current_span(context=context)
 

@@ -13,15 +13,15 @@
 # limitations under the License.
 
 from re import compile as re_compile
-from typing import Optional, Iterable, Any
+from typing import Any, Iterable, Optional
 
 from opentelemetry.baggage import get_all, set_baggage
 from opentelemetry.context import Context
 from opentelemetry.propagators.textmap import (
+    CarrierT,
     Getter,
     Setter,
     TextMapPropagator,
-    CarrierT,
     default_getter,
     default_setter,
 )

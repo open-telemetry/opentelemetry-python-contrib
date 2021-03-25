@@ -29,7 +29,7 @@ from opentelemetry import context, trace
 from opentelemetry.instrumentation.asgi.version import __version__  # noqa
 from opentelemetry.instrumentation.utils import http_status_to_status_code
 from opentelemetry.propagate import extract
-from opentelemetry.propagators.textmap import Getter, CarrierT
+from opentelemetry.propagators.textmap import CarrierT, Getter
 from opentelemetry.trace.status import Status, StatusCode
 
 

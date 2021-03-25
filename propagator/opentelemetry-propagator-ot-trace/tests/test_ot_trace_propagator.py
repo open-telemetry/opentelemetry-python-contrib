@@ -179,7 +179,6 @@ class TestOTTracePropagator(TestCase):
         carrier = {}
 
         self.ot_trace_propagator.inject(
-            dict.__setitem__,
             carrier,
             set_baggage(
                 "(",
@@ -208,7 +207,6 @@ class TestOTTracePropagator(TestCase):
         carrier = {}
 
         self.ot_trace_propagator.inject(
-            dict.__setitem__,
             carrier,
             set_baggage(
                 "key",
