@@ -70,18 +70,14 @@ _CARRIER_KEY_PREFIX = "HTTP_"
 _CARRIER_KEY_PREFIX_LEN = len(_CARRIER_KEY_PREFIX)
 
 
-class CarrierGetter(DictGetter):
+class WSGIGetter(DictGetter):
     def get(
         self, carrier: dict, key: str
     ) -> typing.Optional[typing.List[str]]:
         """Getter implementation to retrieve a HTTP header value from the
             PEP3333-conforming WSGI environ
 
-<<<<<<< HEAD
-<<<<<<< HEAD
-=======
->>>>>>> Revert "Sync with Remove setters and getters"
-        Args:
+       Args:
             carrier: WSGI environ object
             key: header name in environ object
         Returns:
@@ -95,21 +91,14 @@ class CarrierGetter(DictGetter):
         return None
 
     def keys(self, carrier):
-<<<<<<< HEAD
         return [
             key[_CARRIER_KEY_PREFIX_LEN:].lower().replace("_", "-")
             for key in carrier
             if key.startswith(_CARRIER_KEY_PREFIX)
         ]
-=======
-        name = "HTTP_{}".format(name.upper().replace("-", "_"))
->>>>>>> Sync with Remove setters and getters
-=======
-        return []
->>>>>>> Revert "Sync with Remove setters and getters"
 
 
-carrier_getter = CarrierGetter()
+wsgi_getter = WSGIGetter()
 
 
 def setifnotnone(dic, key, value):
@@ -225,7 +214,7 @@ class OpenTelemetryMiddleware:
             start_response: The WSGI start_response callable.
         """
 
-        token = context.attach(extract(carrier_getter, environ))
+        token = context.attach(extract(environ, getter=wsgi_getter))
         span_name = self.name_callback(environ)
 
         span = self.tracer.start_span(

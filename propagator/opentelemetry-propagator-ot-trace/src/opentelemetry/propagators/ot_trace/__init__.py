@@ -13,15 +13,7 @@
 # limitations under the License.
 
 from re import compile as re_compile
-<<<<<<< HEAD
-<<<<<<< HEAD
-from typing import Any, Iterable, Optional
-=======
-from typing import Dict, Optional
->>>>>>> Sync with Remove setters and getters
-=======
-from typing import Iterable, Optional
->>>>>>> Revert "Sync with Remove setters and getters"
+from typing import Dict, Optional, Iterable, Any
 
 from opentelemetry.baggage import get_all, set_baggage
 from opentelemetry.context import Context
@@ -62,8 +54,6 @@ class OTTracePropagator(TextMapPropagator):
         context: Optional[Context] = None,
     ) -> Context:
 
-<<<<<<< HEAD
-<<<<<<< HEAD
         traceid = _extract_first_element(
             getter.get(carrier, OT_TRACE_ID_HEADER), INVALID_TRACE_ID
         )
@@ -71,18 +61,6 @@ class OTTracePropagator(TextMapPropagator):
         spanid = _extract_first_element(
             getter.get(carrier, OT_SPAN_ID_HEADER), INVALID_SPAN_ID
         )
-=======
-        traceid = carrier.get(OT_TRACE_ID_HEADER)
-
-        spanid = carrier.get(OT_SPAN_ID_HEADER)
->>>>>>> Sync with Remove setters and getters
-=======
-        traceid = _extract_first_element(
-            getter.get(carrier, OT_TRACE_ID_HEADER)
-        )
-
-        spanid = _extract_first_element(getter.get(carrier, OT_SPAN_ID_HEADER))
->>>>>>> Revert "Sync with Remove setters and getters"
 
         sampled = _extract_first_element(
             getter.get(carrier, OT_SAMPLED_HEADER)
@@ -184,8 +162,6 @@ class OTTracePropagator(TextMapPropagator):
             OT_SPAN_ID_HEADER,
             OT_SAMPLED_HEADER,
         }
-<<<<<<< HEAD
-<<<<<<< HEAD
 
 
 def _extract_first_element(
@@ -194,15 +170,3 @@ def _extract_first_element(
     if items is None:
         return default
     return next(iter(items), None)
-=======
->>>>>>> Sync with Remove setters and getters
-=======
-
-
-def _extract_first_element(
-    items: Iterable[TextMapPropagatorT],
-) -> Optional[TextMapPropagatorT]:
-    if items is None:
-        return None
-    return next(iter(items), None)
->>>>>>> Revert "Sync with Remove setters and getters"
