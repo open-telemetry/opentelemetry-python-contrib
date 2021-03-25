@@ -13,6 +13,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   ([#350](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/350))
 - `opentelemetry-exporter-datadog` Fix warning when DatadogFormat encounters a request with
   no DD_ORIGIN headers ([#368](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/368)).
+- `opentelemetry-instrumentation-aiopg` Fix multiple nested spans when
+  `aiopg.pool` is used
+  ([#336](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/381)).
 
 ### Removed
 - Removing support for Python 3.5
