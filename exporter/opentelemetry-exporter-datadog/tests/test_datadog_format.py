@@ -113,7 +113,7 @@ class TestDatadogFormat(unittest.TestCase):
 
         child_carrier = {}
         child_context = set_span_in_context(child)
-        FORMAT.inject(dict.__setitem__, child_carrier, context=child_context)
+        FORMAT.inject(child_carrier, context=child_context)
 
         self.assertEqual(
             child_carrier[FORMAT.TRACE_ID_KEY], self.serialized_trace_id
@@ -159,7 +159,7 @@ class TestDatadogFormat(unittest.TestCase):
 
         child_carrier = {}
         child_context = set_span_in_context(child)
-        FORMAT.inject(dict.__setitem__, child_carrier, context=child_context)
+        FORMAT.inject(child_carrier, context=child_context)
 
         self.assertEqual(
             child_carrier[FORMAT.SAMPLING_PRIORITY_KEY],
@@ -189,7 +189,7 @@ class TestDatadogFormat(unittest.TestCase):
 
         with tracer.start_as_current_span("parent"):
             with tracer.start_as_current_span("child"):
-                FORMAT.inject(mock_setter, {})
+                FORMAT.inject({}, setter=mock_setter)
 
         inject_fields = set()
 

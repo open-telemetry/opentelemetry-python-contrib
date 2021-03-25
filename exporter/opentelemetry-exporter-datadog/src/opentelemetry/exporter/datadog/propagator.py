@@ -92,19 +92,19 @@ class DatadogFormat(TextMapPropagator):
         if span_context == trace.INVALID_SPAN_CONTEXT:
             return
         sampled = (trace.TraceFlags.SAMPLED & span.context.trace_flags) != 0
-        setter(
+        setter.set(
             carrier, self.TRACE_ID_KEY, format_trace_id(span.context.trace_id),
         )
-        setter(
+        setter.set(
             carrier, self.PARENT_ID_KEY, format_span_id(span.context.span_id)
         )
-        setter(
+        setter.set(
             carrier,
             self.SAMPLING_PRIORITY_KEY,
             str(constants.AUTO_KEEP if sampled else constants.AUTO_REJECT),
         )
         if constants.DD_ORIGIN in span.context.trace_state:
-            setter(
+            setter.set(
                 carrier,
                 self.ORIGIN_KEY,
                 span.context.trace_state[constants.DD_ORIGIN],
