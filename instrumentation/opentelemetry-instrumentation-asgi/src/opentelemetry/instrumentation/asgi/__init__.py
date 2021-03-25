@@ -33,7 +33,7 @@ from opentelemetry.propagators.textmap import DictGetter
 from opentelemetry.trace.status import Status, StatusCode
 
 
-class CarrierGetter(DictGetter):
+class ASGIGetter(DictGetter):
     def get(
         self, carrier: dict, key: str
     ) -> typing.Optional[typing.List[str]]:
@@ -63,7 +63,7 @@ class CarrierGetter(DictGetter):
         return decoded
 
 
-carrier_getter = CarrierGetter()
+asgi_getter = ASGIGetter()
 
 
 def collect_request_attributes(scope):
@@ -88,10 +88,10 @@ def collect_request_attributes(scope):
     if http_method:
         result["http.method"] = http_method
 
-    http_host_value_list = carrier_getter.get(scope, "host")
+    http_host_value_list = asgi_getter.get(scope, "host")
     if http_host_value_list:
         result["http.server_name"] = ",".join(http_host_value_list)
-    http_user_agent = carrier_getter.get(scope, "user-agent")
+    http_user_agent = asgi_getter.get(scope, "user-agent")
     if http_user_agent:
         result["http.user_agent"] = http_user_agent[0]
 
@@ -186,7 +186,7 @@ class OpenTelemetryMiddleware:
         if self.excluded_urls and self.excluded_urls.url_disabled(url):
             return await self.app(scope, receive, send)
 
-        token = context.attach(extract(carrier_getter, scope))
+        token = context.attach(extract(scope, getter=asgi_getter))
         span_name, additional_attributes = self.span_details_callback(scope)
 
         try:
