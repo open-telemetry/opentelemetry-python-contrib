@@ -193,7 +193,7 @@ class CeleryInstrumentor(BaseInstrumentor):
 
         headers = kwargs.get("headers")
         if headers:
-            inject(type(headers).__setitem__, headers)
+            inject(headers)
 
     @staticmethod
     def _trace_after_publish(*args, **kwargs):
