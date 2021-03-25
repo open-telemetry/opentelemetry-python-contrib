@@ -18,7 +18,6 @@ from unittest.mock import Mock, patch
 from requests.structures import CaseInsensitiveDict
 
 import opentelemetry.trace as trace_api
-from opentelemetry.propagators.textmap import DictGetter
 from opentelemetry.sdk.extension.aws.trace.propagation.aws_xray_format import (
     TRACE_HEADER_KEY,
     AwsXRayFormat,
