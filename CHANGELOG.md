@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased](https://github.com/open-telemetry/opentelemetry-python-contrib/compare/v0.18b0...HEAD)
 - Updated instrumentations to use `opentelemetry.trace.use_span` instead of `Tracer.use_span()`
   ([#364](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/364))
+- `opentelemetry-instrumentation-wsgi` Reimplement `keys` method to return actual keys from the carrier instead of an empty list.
+  ([#379](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/379))
 
 ### Changed
 - Rename `IdsGenerator` to `IdGenerator`
