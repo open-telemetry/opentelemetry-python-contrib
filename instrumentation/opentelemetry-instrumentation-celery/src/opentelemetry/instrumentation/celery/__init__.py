@@ -128,7 +128,7 @@ class CeleryInstrumentor(BaseInstrumentor):
             return
 
         request = task.request
-        tracectx = extract(celery_getter, request) or None
+        tracectx = extract(request, getter=celery_getter) or None
 
         logger.debug("prerun signal start task_id=%s", task_id)
 
