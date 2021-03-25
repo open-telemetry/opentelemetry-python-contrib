@@ -78,7 +78,7 @@ _TASK_NAME_KEY = "celery.task_name"
 _MESSAGE_ID_ATTRIBUTE_NAME = "messaging.message_id"
 
 
-class CarrierGetter(DictGetter):
+class CeleryGetter(DictGetter):
     def get(self, carrier, key):
         value = getattr(carrier, key, None)
         if value is None:
@@ -91,7 +91,7 @@ class CarrierGetter(DictGetter):
         return []
 
 
-carrier_getter = CarrierGetter()
+celery_getter = CeleryGetter()
 
 
 class CeleryInstrumentor(BaseInstrumentor):
@@ -128,7 +128,7 @@ class CeleryInstrumentor(BaseInstrumentor):
             return
 
         request = task.request
-        tracectx = extract(carrier_getter, request) or None
+        tracectx = extract(celery_getter, request) or None
 
         logger.debug("prerun signal start task_id=%s", task_id)
 
