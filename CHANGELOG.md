@@ -21,6 +21,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   ([#379](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/379))
 - `opentelemetry-instrumentation-sqlalchemy` Fix multithreading issues in recording spans from SQLAlchemy
   ([#315](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/315))
+- Make getters and setters optional
+  ([#372](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/372))
 
 ### Removed
 - Removing support for Python 3.5
