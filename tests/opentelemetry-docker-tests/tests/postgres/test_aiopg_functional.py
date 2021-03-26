@@ -191,7 +191,7 @@ class TestFunctionalAiopgCreatePool(TestBase):
             self.validate_spans("test")
 
     def test_instrumented_pool_with_multiple_acquires(self, *_, **__):
-        async def double_asquire():
+        async def double_acquire():
             pool = await aiopg.create_pool(dsn=self._dsn)
             async with pool.acquire() as conn:
                 async with conn.cursor() as cursor:
@@ -202,6 +202,6 @@ class TestFunctionalAiopgCreatePool(TestBase):
                     query = "SELECT 1"
                     await cursor.execute(query)
 
-        async_call(double_asquire())
+        async_call(double_acquire())
         spans = self.memory_exporter.get_finished_spans()
         self.assertEqual(len(spans), 2)
