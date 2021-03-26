@@ -29,13 +29,13 @@ from opentelemetry import context, trace
 from opentelemetry.instrumentation.asgi.version import __version__  # noqa
 from opentelemetry.instrumentation.utils import http_status_to_status_code
 from opentelemetry.propagate import extract
-from opentelemetry.propagators.textmap import CarrierT, Getter
+from opentelemetry.propagators.textmap import Getter
 from opentelemetry.trace.status import Status, StatusCode
 
 
 class ASGIGetter(Getter):
     def get(
-        self, carrier: CarrierT, key: str
+        self, carrier: dict, key: str
     ) -> typing.Optional[typing.List[str]]:
         """Getter implementation to retrieve a HTTP header value from the ASGI
         scope.
@@ -62,7 +62,7 @@ class ASGIGetter(Getter):
             return None
         return decoded
 
-    def keys(self, carrier: CarrierT) -> typing.List[str]:
+    def keys(self, carrier: dict) -> typing.List[str]:
         return list(carrier.keys())
 
 

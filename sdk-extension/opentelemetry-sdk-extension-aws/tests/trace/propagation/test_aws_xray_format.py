@@ -92,8 +92,7 @@ class AwsXRayPropagatorTest(unittest.TestCase):
         carrier = CaseInsensitiveDict()
 
         AwsXRayPropagatorTest.XRAY_PROPAGATOR.inject(
-            carrier,
-            build_test_current_context(),
+            carrier, build_test_current_context(),
         )
 
         injected_items = set(carrier.items())
@@ -154,8 +153,7 @@ class AwsXRayPropagatorTest(unittest.TestCase):
         carrier = CaseInsensitiveDict()
 
         AwsXRayPropagatorTest.XRAY_PROPAGATOR.inject(
-            carrier,
-            build_test_current_context(),
+            carrier, build_test_current_context(),
         )
 
         injected_keys = set(carrier.keys())
