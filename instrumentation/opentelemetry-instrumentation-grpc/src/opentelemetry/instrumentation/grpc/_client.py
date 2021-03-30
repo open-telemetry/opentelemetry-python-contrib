@@ -52,17 +52,6 @@ class _GuardedSpan:
         return self.span
 
 
-def _inject_span_context(metadata: MutableMapping[str, str]) -> None:
-    # pylint:disable=unused-argument
-    def append_metadata(
-        carrier: MutableMapping[str, str], key: str, value: str
-    ):
-        metadata[key] = value
-
-    # Inject current active span from the context
-    inject(append_metadata, metadata)
-
-
 def _make_future_done_callback(span, rpc_info):
     def callback(response_future):
         with span:
@@ -125,7 +114,7 @@ class OpenTelemetryClientInterceptor(
             mutable_metadata = OrderedDict(metadata)
 
         with self._start_guarded_span(client_info.full_method) as guarded_span:
-            _inject_span_context(mutable_metadata)
+            inject(mutable_metadata)
             metadata = tuple(mutable_metadata.items())
 
             rpc_info = RpcInfo(
@@ -160,7 +149,7 @@ class OpenTelemetryClientInterceptor(
             mutable_metadata = OrderedDict(metadata)
 
         with self._start_span(client_info.full_method) as span:
-            _inject_span_context(mutable_metadata)
+            inject(mutable_metadata)
             metadata = tuple(mutable_metadata.items())
             rpc_info = RpcInfo(
                 full_method=client_info.full_method,
@@ -195,7 +184,7 @@ class OpenTelemetryClientInterceptor(
             mutable_metadata = OrderedDict(metadata)
 
         with self._start_guarded_span(client_info.full_method) as guarded_span:
-            _inject_span_context(mutable_metadata)
+            inject(mutable_metadata)
             metadata = tuple(mutable_metadata.items())
             rpc_info = RpcInfo(
                 full_method=client_info.full_method,
