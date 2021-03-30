@@ -20,7 +20,6 @@
 """Implementation of the invocation-side open-telemetry interceptor."""
 
 from collections import OrderedDict
-from typing import MutableMapping
 
 import grpc
 
