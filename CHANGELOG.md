@@ -7,7 +7,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased](https://github.com/open-telemetry/opentelemetry-python-contrib/compare/v0.19b0...HEAD)
 
 ### Changed
-- Publish `opentelemetry-propagator-ot-trace` package as a part of the releaes process
+- Publish `opentelemetry-propagator-ot-trace` package as a part of the release process
   ([#387](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/387))
 
 ## [0.19b0](https://github.com/open-telemetry/opentelemetry-python-contrib/releases/tag/v0.19b0) - 2021-03-26
