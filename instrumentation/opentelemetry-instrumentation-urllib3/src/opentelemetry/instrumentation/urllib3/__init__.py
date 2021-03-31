@@ -119,7 +119,7 @@ def _instrument(
         ).start_as_current_span(
             span_name, kind=SpanKind.CLIENT, attributes=span_attributes
         ) as span:
-            inject(type(headers).__setitem__, headers)
+            inject(headers)
 
             with _suppress_further_instrumentation():
                 response = wrapped(*args, **kwargs)
