@@ -26,10 +26,19 @@ from opentelemetry.instrumentation.django import (
     DjangoInstrumentor,
     _DjangoMiddleware,
 )
+from opentelemetry.instrumentation.propagators import (
+    TraceResponsePropagator,
+    set_global_back_propagator,
+)
 from opentelemetry.sdk.trace import Span
 from opentelemetry.test.test_base import TestBase
 from opentelemetry.test.wsgitestutil import WsgiTestBase
-from opentelemetry.trace import SpanKind, StatusCode
+from opentelemetry.trace import (
+    SpanKind,
+    StatusCode,
+    format_span_id,
+    format_trace_id,
+)
 from opentelemetry.util.http import get_excluded_urls, get_traced_request_attrs
 
 # pylint: disable=import-error
@@ -41,6 +50,7 @@ from .views import (
     route_span_name,
     traced,
     traced_template,
+    with_response_header,
 )
 
 DJANGO_2_2 = VERSION >= (2, 2)
@@ -52,6 +62,7 @@ urlpatterns = [
     url(r"^excluded_arg/", excluded),
     url(r"^excluded_noarg/", excluded_noarg),
     url(r"^excluded_noarg2/", excluded_noarg2),
+    url(r"^response_header/", with_response_header),
     url(r"^span_name/([0-9]{4})/$", route_span_name),
 ]
 _django_instrumentor = DjangoInstrumentor()
@@ -309,3 +320,55 @@ class TestMiddleware(TestBase, WsgiTestBase):
         self.assertIsInstance(response_hook_args[1], HttpRequest)
         self.assertIsInstance(response_hook_args[2], HttpResponse)
         self.assertEqual(response_hook_args[2], response)
+
+    def test_trace_response_headers(self):
+        response = Client().get("/span_name/1234/")
+        self.assertNotIn("Server-Timing", response._headers)
+        self.memory_exporter.clear()
+
+        set_global_back_propagator(TraceResponsePropagator())
+
+        response = Client().get("/span_name/1234/")
+        span = self.memory_exporter.get_finished_spans()[0]
+
+        self.assertIn("traceresponse", response._headers)
+        self.assertEqual(
+            response._headers["access-control-expose-headers"][0],
+            "Access-Control-Expose-Headers",
+        )
+        self.assertEqual(
+            response._headers["access-control-expose-headers"][1],
+            "traceresponse",
+        )
+        self.assertEqual(
+            response._headers["traceresponse"][0], "traceresponse"
+        )
+        self.assertEqual(
+            response._headers["traceresponse"][1],
+            "00-{0}-{1}-01".format(
+                format_trace_id(span.get_span_context().trace_id),
+                format_span_id(span.get_span_context().span_id),
+            ),
+        )
+        self.memory_exporter.clear()
+
+    def test_trace_response_header_pre_existing_header(self):
+        set_global_back_propagator(TraceResponsePropagator())
+
+        response = Client().get("/response_header/")
+        span = self.memory_exporter.get_finished_spans()[0]
+        self.assertIn("traceresponse", response._headers)
+        self.assertEqual(
+            response._headers["access-control-expose-headers"][1],
+            "X-Test-Header, traceresponse",
+        )
+        self.assertEqual(
+            response._headers["traceresponse"][1],
+            "abc; val=1, "
+            + "00-{0}-{1}-01".format(
+                format_trace_id(span.get_span_context().trace_id),
+                format_span_id(span.get_span_context().span_id),
+            ),
+        )
+
+        self.memory_exporter.clear()

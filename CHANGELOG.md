@@ -21,6 +21,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   ([#299](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/299))
 - `opentelemetry-instrumenation-django` now supports request and response hooks.
   ([#407](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/407))
+- Add trace response header support for Django.
+  ([#395](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/395))
 
 ### Removed
 - Remove `http.status_text` from span attributes
