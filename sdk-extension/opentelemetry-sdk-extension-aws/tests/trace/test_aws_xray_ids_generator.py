@@ -28,7 +28,7 @@ from opentelemetry.trace.span import INVALID_TRACE_ID
 
 
 class AwsXRayIdGeneratorTest(unittest.TestCase):
-    def test_ids_are_valid(self):
+    def test_trace_ids_are_valid(self):
         id_generator = AwsXRayIdGenerator()
         for _ in range(1000):
             trace_id = id_generator.generate_trace_id()
@@ -36,7 +36,7 @@ class AwsXRayIdGeneratorTest(unittest.TestCase):
             span_id = id_generator.generate_span_id()
             self.assertTrue(span_id != INVALID_TRACE_ID)
 
-    def test_id_timestamps_are_acceptable_for_xray(self):
+    def test_trace_id_timestamps_are_acceptable_for_xray(self):
         id_generator = AwsXRayIdGenerator()
         for _ in range(1000):
             trace_id = id_generator.generate_trace_id()
@@ -47,3 +47,11 @@ class AwsXRayIdGeneratorTest(unittest.TestCase):
                 (datetime.datetime.now() - datetime.timedelta(30)).timestamp()
             )
             self.assertGreater(trace_id_time, one_month_ago_time)
+
+    def test_trace_id_length_is_correct(self):
+        trace_id = AwsXRayIdGenerator().generate_trace_id()
+        self.assertEqual(len(trace_id), 32)
+
+    def test_span_id_length_is_correct(self):
+        span_id = AwsXRayIdGenerator().generate_span_id()
+        self.assertEqual(len(span_id), 16)
