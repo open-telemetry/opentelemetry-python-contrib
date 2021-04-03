@@ -11,6 +11,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   ([#392](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/39))
 - Publish `opentelemetry-propagator-ot-trace` package as a part of the release process
   ([#387](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/387))
+- Fixed `AwsXRayIdGenerator()` class to provide correct Xray Format as Per AWS Documentations. 
+  ([#398](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/398))
 
 ### Added
 - `opentelemetry-instrumentation-urllib3` Add urllib3 instrumentation
