@@ -11,6 +11,12 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
+import os
+import sys
+
+_src_folder_path = os.path.dirname(__file__).split('/')[0:-4]
+_aws_xray_file = os.path.join('/'.join(_src_folder_path), 'src')
+sys.path.append(_aws_xray_file)
 
 from opentelemetry.sdk.extension.aws.trace import AwsXRayIdGenerator
 

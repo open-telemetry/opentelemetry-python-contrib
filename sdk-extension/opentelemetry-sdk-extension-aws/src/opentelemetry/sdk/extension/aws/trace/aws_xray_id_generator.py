@@ -56,29 +56,25 @@ API
 .. _trace ID format: https://docs.aws.amazon.com/xray/latest/devguide/xray-api-sendingdata.html#xray-api-traceids
 """
 
-import random
+import binascii
+import os
 import time
 
-from opentelemetry.sdk.trace.id_generator import IdGenerator, RandomIdGenerator
 
-
-class AwsXRayIdGenerator(IdGenerator):
-    """Generates tracing IDs compatible with the AWS X-Ray tracing service. In
-    the X-Ray system, the first 32 bits of the `TraceId` are the Unix epoch time
-    in seconds. Since spans (AWS calls them segments) with an embedded timestamp
-    more than 30 days ago are rejected, a purely random `TraceId` risks being
-    rejected by the service.
-
+class AwsXRayIdGenerator():
+    """Generates tracing IDs compatible with the AWS X-Ray tracing service.
     See: https://docs.aws.amazon.com/xray/latest/devguide/xray-api-sendingdata.html#xray-api-traceids
+    See Same implementation in Javascript: https://github.com/aws-observability/aws-otel-js/tree/main/packages/opentelemetry-id-generator-aws-xray
     """
+    TIME = time
 
-    random_id_generator = RandomIdGenerator()
-
-    def generate_span_id(self) -> int:
-        return self.random_id_generator.generate_span_id()
-
+    # Ex: 0c6d1c759808e783
     @staticmethod
-    def generate_trace_id() -> int:
-        trace_time = int(time.time())
-        trace_identifier = random.getrandbits(96)
-        return (trace_time << 96) + trace_identifier
+    def generate_span_id() -> str:
+        return binascii.b2a_hex(os.urandom(8)).decode()
+
+    # Ex: 6068d890e80ef8ae6323f667558381bd
+    def generate_trace_id(self) -> str:
+        hexa = hex(int(self.TIME.time()))[2:]
+        bina = binascii.b2a_hex(os.urandom(12)).decode()
+        return hexa + bina

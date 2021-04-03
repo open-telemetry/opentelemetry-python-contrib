@@ -15,6 +15,13 @@
 import datetime
 import time
 import unittest
+import sys
+import os
+
+# Make sure we import local file instead of /site-packages
+_src_folder_path = os.path.dirname(__file__).split('/')[0:-2]
+_aws_xray_file = os.path.join('/'.join(_src_folder_path), 'src')
+sys.path.append(_aws_xray_file)
 
 from opentelemetry.sdk.extension.aws.trace import AwsXRayIdGenerator
 from opentelemetry.trace.span import INVALID_TRACE_ID
@@ -33,7 +40,7 @@ class AwsXRayIdGeneratorTest(unittest.TestCase):
         id_generator = AwsXRayIdGenerator()
         for _ in range(1000):
             trace_id = id_generator.generate_trace_id()
-            trace_id_time = trace_id >> 96
+            trace_id_time = int(trace_id[:8], 16)
             current_time = int(time.time())
             self.assertLessEqual(trace_id_time, current_time)
             one_month_ago_time = int(
