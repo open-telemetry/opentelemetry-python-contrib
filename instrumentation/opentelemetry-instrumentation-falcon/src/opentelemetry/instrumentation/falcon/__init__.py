@@ -50,7 +50,7 @@ import falcon
 
 import opentelemetry.instrumentation.wsgi as otel_wsgi
 from opentelemetry import context, trace
-from opentelemetry.instrumentation.falcon.version import __version__
+from opentelemetry.instrumentation.falcon.package import _package_name, __version__
 from opentelemetry.instrumentation.instrumentor import BaseInstrumentor
 from opentelemetry.instrumentation.utils import (
     extract_attributes_from_object,
@@ -80,6 +80,9 @@ class FalconInstrumentor(BaseInstrumentor):
 
     See `BaseInstrumentor`
     """
+
+    def package_name(self) -> str:
+        return _package_name
 
     def _instrument(self, **kwargs):
         self._original_falcon_api = falcon.API

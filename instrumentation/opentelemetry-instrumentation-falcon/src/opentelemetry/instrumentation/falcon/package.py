@@ -13,3 +13,5 @@
 # limitations under the License.
 
 __version__ = "0.19b0"
+
+_package_name = "opentelemetry-instrumentation-falcon"
