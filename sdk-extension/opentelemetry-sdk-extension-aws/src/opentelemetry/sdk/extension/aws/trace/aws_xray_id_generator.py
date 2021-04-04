@@ -56,9 +56,8 @@ API
 .. _trace ID format: https://docs.aws.amazon.com/xray/latest/devguide/xray-api-sendingdata.html#xray-api-traceids
 """
 
-import binascii
-import os
 import time
+import random
 
 
 class AwsXRayIdGenerator():
@@ -67,14 +66,15 @@ class AwsXRayIdGenerator():
     See Same implementation in Javascript: https://github.com/aws-observability/aws-otel-js/tree/main/packages/opentelemetry-id-generator-aws-xray
     """
     TIME = time
+    TRACE_ID_LENGTH = 32
+    SPAN_ID_LENGTH = 16
 
     # Ex: 0c6d1c759808e783
-    @staticmethod
-    def generate_span_id() -> str:
-        return binascii.b2a_hex(os.urandom(8)).decode()
+    def generate_span_id(self) -> str:
+        return (hex(random.getrandbits(88))[2:])[:self.SPAN_ID_LENGTH]
 
     # Ex: 6068d890e80ef8ae6323f667558381bd
     def generate_trace_id(self) -> str:
-        hexa = hex(int(self.TIME.time()))[2:]
-        bina = binascii.b2a_hex(os.urandom(12)).decode()
-        return hexa + bina
+        stamp8 = hex(int(self.TIME.time()))[2:]
+        random24 = hex(random.getrandbits(116))[2:]
+        return (stamp8 + random24)[:self.TRACE_ID_LENGTH]

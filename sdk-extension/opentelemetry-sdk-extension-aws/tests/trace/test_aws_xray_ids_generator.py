@@ -18,13 +18,14 @@ import unittest
 import sys
 import os
 
+from opentelemetry.trace.span import INVALID_TRACE_ID
+
 # Make sure we import local file instead of /site-packages
 _src_folder_path = os.path.dirname(__file__).split('/')[0:-2]
 _aws_xray_file = os.path.join('/'.join(_src_folder_path), 'src')
 sys.path.append(_aws_xray_file)
 
 from opentelemetry.sdk.extension.aws.trace import AwsXRayIdGenerator
-from opentelemetry.trace.span import INVALID_TRACE_ID
 
 
 class AwsXRayIdGeneratorTest(unittest.TestCase):
@@ -49,9 +50,11 @@ class AwsXRayIdGeneratorTest(unittest.TestCase):
             self.assertGreater(trace_id_time, one_month_ago_time)
 
     def test_trace_id_length_is_correct(self):
-        trace_id = AwsXRayIdGenerator().generate_trace_id()
-        self.assertEqual(len(trace_id), 32)
+        for _ in range(1000000):
+            trace_id = AwsXRayIdGenerator().generate_trace_id()
+            self.assertEqual(len(trace_id), 32)
 
     def test_span_id_length_is_correct(self):
-        span_id = AwsXRayIdGenerator().generate_span_id()
-        self.assertEqual(len(span_id), 16)
+        for _ in range(1000000):
+            span_id = AwsXRayIdGenerator().generate_span_id()
+            self.assertEqual(len(span_id), 16)
