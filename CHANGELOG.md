@@ -4,15 +4,42 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [Unreleased](https://github.com/open-telemetry/opentelemetry-python-contrib/compare/v0.18b0...HEAD)
-- Updated instrumentations to use `opentelemetry.trace.use_span` instead of `Tracer.use_span()`
-  ([#364](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/364))
+## [Unreleased](https://github.com/open-telemetry/opentelemetry-python-contrib/compare/v0.19b0...HEAD)
+
+### Changed
+- GRPC instrumentation now correctly injects trace context into outgoing requests.
+  ([#392](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/39))
+- Publish `opentelemetry-propagator-ot-trace` package as a part of the release process
+  ([#387](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/387))
+
+### Added
+- `opentelemetry-instrumentation-urllib3` Add urllib3 instrumentation
+  ([#299](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/299))
+
+## [0.19b0](https://github.com/open-telemetry/opentelemetry-python-contrib/releases/tag/v0.19b0) - 2021-03-26
 
 ### Changed
 - Rename `IdsGenerator` to `IdGenerator`
   ([#350](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/350))
 - `opentelemetry-exporter-datadog` Fix warning when DatadogFormat encounters a request with
   no DD_ORIGIN headers ([#368](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/368)).
+- `opentelemetry-instrumentation-aiopg` Fix multiple nested spans when
+  `aiopg.pool` is used
+  ([#336](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/381)).
+- Updated instrumentations to use `opentelemetry.trace.use_span` instead of `Tracer.use_span()`
+  ([#364](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/364))
+- `opentelemetry-propagator-ot-trace` Do not throw an exception when headers are not present
+  ([#378](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/378))
+- `opentelemetry-instrumentation-wsgi` Reimplement `keys` method to return actual keys from the carrier instead of an empty list.
+  ([#379](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/379))
+- `opentelemetry-instrumentation-sqlalchemy` Fix multithreading issues in recording spans from SQLAlchemy
+  ([#315](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/315))
+- Make getters and setters optional
+  ([#372](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/372))
+
+### Removed
+- Removing support for Python 3.5
+  ([#374](https://github.com/open-telemetry/opentelemetry-python/pull/374))
 
 ## [0.18b0](https://github.com/open-telemetry/opentelemetry-python-contrib/releases/tag/v0.18b0) - 2021-02-16
 
@@ -139,7 +166,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - `opentelemetry-instrumentation-botocore` Make botocore instrumentation check if instrumentation has been suppressed
   ([#182](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/182))
 - `opentelemetry-instrumentation-botocore` Botocore SpanKind as CLIENT and modify existing traced attributes
-  ([#150])(https://github.com/open-telemetry/opentelemetry-python-contrib/pull/150)
+  ([#150](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/150))
 - `opentelemetry-instrumentation-dbapi` Update dbapi and its dependant instrumentations to follow semantic conventions
   ([#195](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/195))
 - `opentelemetry-instrumentation-dbapi` Stop capturing query parameters by default
