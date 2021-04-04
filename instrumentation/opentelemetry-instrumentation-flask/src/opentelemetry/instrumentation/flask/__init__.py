@@ -109,7 +109,7 @@ def _rewrapped_app(wsgi_app):
     return _wrapped_app
 
 
-def _wrapped_before_request(name_callback):
+def _wrapped_before_request(name_callback, tracer_provider=None):
     def _before_request():
         if _excluded_urls.url_disabled(flask.request.url):
             return
@@ -120,7 +120,7 @@ def _wrapped_before_request(name_callback):
             extract(otel_wsgi.carrier_getter, flask_request_environ)
         )
 
-        tracer = trace.get_tracer(__name__, __version__)
+        tracer = trace.get_tracer(__name__, __version__, tracer_provider)
 
         span = tracer.start_span(
             span_name,
@@ -171,6 +171,7 @@ def _teardown_request(exc):
 class _InstrumentedFlask(flask.Flask):
 
     name_callback = get_default_span_name
+    tracer_provider = None
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
@@ -179,7 +180,7 @@ class _InstrumentedFlask(flask.Flask):
         self.wsgi_app = _rewrapped_app(self.wsgi_app)
 
         _before_request = _wrapped_before_request(
-            _InstrumentedFlask.name_callback
+            _InstrumentedFlask.name_callback, tracer_provider=_InstrumentedFlask.tracer_provider
         )
         self._before_request = _before_request
         self.before_request(_before_request)
@@ -198,10 +199,11 @@ class FlaskInstrumentor(BaseInstrumentor):
         name_callback = kwargs.get("name_callback")
         if callable(name_callback):
             _InstrumentedFlask.name_callback = name_callback
+        _InstrumentedFlask.tracer_provider = kwargs.get("tracer_provider")
         flask.Flask = _InstrumentedFlask
 
     def instrument_app(
-        self, app, name_callback=get_default_span_name
+        self, app, name_callback=get_default_span_name, tracer_provider=None
     ):  # pylint: disable=no-self-use
         if not hasattr(app, "_is_instrumented"):
             app._is_instrumented = False
@@ -210,7 +212,7 @@ class FlaskInstrumentor(BaseInstrumentor):
             app._original_wsgi_app = app.wsgi_app
             app.wsgi_app = _rewrapped_app(app.wsgi_app)
 
-            _before_request = _wrapped_before_request(name_callback)
+            _before_request = _wrapped_before_request(name_callback, tracer_provider=tracer_provider)
             app._before_request = _before_request
             app.before_request(_before_request)
             app.teardown_request(_teardown_request)

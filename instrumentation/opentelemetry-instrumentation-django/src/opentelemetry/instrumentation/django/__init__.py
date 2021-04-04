@@ -44,6 +44,8 @@ class DjangoInstrumentor(BaseInstrumentor):
         if environ.get(OTEL_PYTHON_DJANGO_INSTRUMENT) == "False":
             return
 
+        _DjangoMiddleware._tracer_provider = kwargs.get("tracer_provider")
+
         # This can not be solved, but is an inherent problem of this approach:
         # the order of middleware entries matters, and here you have no control
         # on that:

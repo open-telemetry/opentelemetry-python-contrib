@@ -61,6 +61,7 @@ class _DjangoMiddleware(MiddlewareMixin):
 
     _traced_request_attrs = get_traced_request_attrs("DJANGO")
     _excluded_urls = get_excluded_urls("DJANGO")
+    _tracer_provider = None
 
     @staticmethod
     def _get_span_name(request):
@@ -99,7 +100,7 @@ class _DjangoMiddleware(MiddlewareMixin):
 
         token = attach(extract(carrier_getter, request_meta))
 
-        tracer = get_tracer(__name__, __version__)
+        tracer = get_tracer(__name__, __version__, tracer_provider=_DjangoMiddleware._tracer_provider)
 
         span = tracer.start_span(
             self._get_span_name(request),

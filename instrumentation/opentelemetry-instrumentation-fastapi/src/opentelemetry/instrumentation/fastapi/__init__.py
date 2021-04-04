@@ -31,7 +31,7 @@ class FastAPIInstrumentor(BaseInstrumentor):
     _original_fastapi = None
 
     @staticmethod
-    def instrument_app(app: fastapi.FastAPI):
+    def instrument_app(app: fastapi.FastAPI, tracer_provider=None):
         """Instrument an uninstrumented FastAPI application.
         """
         if not getattr(app, "is_instrumented_by_opentelemetry", False):
@@ -39,11 +39,13 @@ class FastAPIInstrumentor(BaseInstrumentor):
                 OpenTelemetryMiddleware,
                 excluded_urls=_excluded_urls,
                 span_details_callback=_get_route_details,
+                tracer_provider=tracer_provider
             )
             app.is_instrumented_by_opentelemetry = True
 
     def _instrument(self, **kwargs):
         self._original_fastapi = fastapi.FastAPI
+        _InstrumentedFastAPI.tracer_provider = kwargs.get("tracer_provider")
         fastapi.FastAPI = _InstrumentedFastAPI
 
     def _uninstrument(self, **kwargs):
@@ -51,12 +53,14 @@ class FastAPIInstrumentor(BaseInstrumentor):
 
 
 class _InstrumentedFastAPI(fastapi.FastAPI):
+    tracer_provider = None
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
         self.add_middleware(
             OpenTelemetryMiddleware,
             excluded_urls=_excluded_urls,
             span_details_callback=_get_route_details,
+            tracer_provider=_InstrumentedFastAPI.tracer_provider
         )
 
 

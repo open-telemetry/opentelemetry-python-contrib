@@ -31,7 +31,7 @@ class StarletteInstrumentor(BaseInstrumentor):
     _original_starlette = None
 
     @staticmethod
-    def instrument_app(app: applications.Starlette):
+    def instrument_app(app: applications.Starlette, tracer_provider=None):
         """Instrument an uninstrumented Starlette application.
         """
         if not getattr(app, "is_instrumented_by_opentelemetry", False):
@@ -39,11 +39,13 @@ class StarletteInstrumentor(BaseInstrumentor):
                 OpenTelemetryMiddleware,
                 excluded_urls=_excluded_urls,
                 span_details_callback=_get_route_details,
+                tracer_provider=tracer_provider,
             )
             app.is_instrumented_by_opentelemetry = True
 
     def _instrument(self, **kwargs):
         self._original_starlette = applications.Starlette
+        _InstrumentedStarlette.tracer_provider = kwargs.get("tracer_provider")
         applications.Starlette = _InstrumentedStarlette
 
     def _uninstrument(self, **kwargs):
@@ -51,12 +53,14 @@ class StarletteInstrumentor(BaseInstrumentor):
 
 
 class _InstrumentedStarlette(applications.Starlette):
+    tracer_provider = None
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
         self.add_middleware(
             OpenTelemetryMiddleware,
             excluded_urls=_excluded_urls,
             span_details_callback=_get_route_details,
+            tracer_provider=_InstrumentedStarlette.tracer_provider
         )
 
 

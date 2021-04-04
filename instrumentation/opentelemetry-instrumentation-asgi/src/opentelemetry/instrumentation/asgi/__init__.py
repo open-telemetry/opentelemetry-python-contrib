@@ -163,9 +163,9 @@ class OpenTelemetryMiddleware:
             Optional: Defaults to get_default_span_details.
     """
 
-    def __init__(self, app, excluded_urls=None, span_details_callback=None):
+    def __init__(self, app, excluded_urls=None, span_details_callback=None, tracer_provider=None):
         self.app = guarantee_single_callable(app)
-        self.tracer = trace.get_tracer(__name__, __version__)
+        self.tracer = trace.get_tracer(__name__, __version__, tracer_provider)
         self.span_details_callback = (
             span_details_callback or get_default_span_details
         )

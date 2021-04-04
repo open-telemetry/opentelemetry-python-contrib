@@ -89,13 +89,11 @@ class AsyncPGInstrumentor(BaseInstrumentor):
         self.capture_parameters = capture_parameters
 
     def _instrument(self, **kwargs):
-        tracer_provider = kwargs.get(
-            "tracer_provider", trace.get_tracer_provider()
-        )
+        tracer_provider = kwargs.get("tracer_provider")
         setattr(
             asyncpg,
             _APPLIED,
-            tracer_provider.get_tracer("asyncpg", __version__),
+            trace.get_tracer(__name__, __version__, tracer_provider),
         )
 
         for method in [
