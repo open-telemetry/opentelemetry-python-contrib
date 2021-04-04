@@ -100,7 +100,11 @@ class _DjangoMiddleware(MiddlewareMixin):
 
         token = attach(extract(carrier_getter, request_meta))
 
-        tracer = get_tracer(__name__, __version__, tracer_provider=_DjangoMiddleware._tracer_provider)
+        tracer = get_tracer(
+            __name__,
+            __version__,
+            tracer_provider=_DjangoMiddleware._tracer_provider,
+        )
 
         span = tracer.start_span(
             self._get_span_name(request),

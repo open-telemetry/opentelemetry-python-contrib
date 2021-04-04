@@ -45,7 +45,9 @@ def _normalize_vendor(vendor):
 
 def _get_tracer(engine, tracer_provider=None):
     return trace.get_tracer(
-        _normalize_vendor(engine.name), __version__, tracer_provider=tracer_provider
+        _normalize_vendor(engine.name),
+        __version__,
+        tracer_provider=tracer_provider,
     )
 
 

@@ -171,7 +171,7 @@ def _teardown_request(exc):
 class _InstrumentedFlask(flask.Flask):
 
     name_callback = get_default_span_name
-    tracer_provider = None
+    _tracer_provider = None
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
@@ -180,7 +180,8 @@ class _InstrumentedFlask(flask.Flask):
         self.wsgi_app = _rewrapped_app(self.wsgi_app)
 
         _before_request = _wrapped_before_request(
-            _InstrumentedFlask.name_callback, tracer_provider=_InstrumentedFlask.tracer_provider
+            _InstrumentedFlask.name_callback,
+            tracer_provider=_InstrumentedFlask._tracer_provider,
         )
         self._before_request = _before_request
         self.before_request(_before_request)
@@ -197,9 +198,10 @@ class FlaskInstrumentor(BaseInstrumentor):
     def _instrument(self, **kwargs):
         self._original_flask = flask.Flask
         name_callback = kwargs.get("name_callback")
+        tracer_provider = kwargs.get("tracer_provider")
         if callable(name_callback):
             _InstrumentedFlask.name_callback = name_callback
-        _InstrumentedFlask.tracer_provider = kwargs.get("tracer_provider")
+        _InstrumentedFlask._tracer_provider = tracer_provider
         flask.Flask = _InstrumentedFlask
 
     def instrument_app(
@@ -212,7 +214,9 @@ class FlaskInstrumentor(BaseInstrumentor):
             app._original_wsgi_app = app.wsgi_app
             app.wsgi_app = _rewrapped_app(app.wsgi_app)
 
-            _before_request = _wrapped_before_request(name_callback, tracer_provider=tracer_provider)
+            _before_request = _wrapped_before_request(
+                name_callback, tracer_provider=tracer_provider
+            )
             app._before_request = _before_request
             app.before_request(_before_request)
             app.teardown_request(_teardown_request)

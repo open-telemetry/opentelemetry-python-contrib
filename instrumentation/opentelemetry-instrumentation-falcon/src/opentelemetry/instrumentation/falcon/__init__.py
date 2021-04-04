@@ -83,7 +83,7 @@ class FalconInstrumentor(BaseInstrumentor):
 
     def _instrument(self, **kwargs):
         self._original_falcon_api = falcon.API
-        _InstrumentedFalconAPI.tracer_provider = kwargs.get("tracer_provider")
+        _InstrumentedFalconAPI._tracer_provider = kwargs.get("tracer_provider")
         falcon.API = _InstrumentedFalconAPI
 
     def _uninstrument(self, **kwargs):
@@ -91,14 +91,17 @@ class FalconInstrumentor(BaseInstrumentor):
 
 
 class _InstrumentedFalconAPI(falcon.API):
-    tracer_provider = None
+    _tracer_provider = None
+
     def __init__(self, *args, **kwargs):
         middlewares = kwargs.pop("middleware", [])
         if not isinstance(middlewares, (list, tuple)):
             middlewares = [middlewares]
 
         self._tracer = trace.get_tracer(
-            __name__, __version__, tracer_provider=_InstrumentedFalconAPI.tracer_provider
+            __name__,
+            __version__,
+            tracer_provider=_InstrumentedFalconAPI._tracer_provider,
         )
         trace_middleware = _TraceMiddleware(
             self._tracer, kwargs.get("traced_request_attributes")

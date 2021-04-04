@@ -186,7 +186,9 @@ class OpenTelemetryMiddleware:
                        Optional: Defaults to get_default_span_name.
     """
 
-    def __init__(self, wsgi, name_callback=get_default_span_name, tracer_provider=None):
+    def __init__(
+        self, wsgi, name_callback=get_default_span_name, tracer_provider=None
+    ):
         self.wsgi = wsgi
         self.tracer = trace.get_tracer(__name__, __version__, tracer_provider)
         self.name_callback = name_callback

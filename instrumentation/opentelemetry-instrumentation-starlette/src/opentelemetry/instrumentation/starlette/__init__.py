@@ -45,7 +45,7 @@ class StarletteInstrumentor(BaseInstrumentor):
 
     def _instrument(self, **kwargs):
         self._original_starlette = applications.Starlette
-        _InstrumentedStarlette.tracer_provider = kwargs.get("tracer_provider")
+        _InstrumentedStarlette._tracer_provider = kwargs.get("tracer_provider")
         applications.Starlette = _InstrumentedStarlette
 
     def _uninstrument(self, **kwargs):
@@ -53,14 +53,15 @@ class StarletteInstrumentor(BaseInstrumentor):
 
 
 class _InstrumentedStarlette(applications.Starlette):
-    tracer_provider = None
+    _tracer_provider = None
+
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
         self.add_middleware(
             OpenTelemetryMiddleware,
             excluded_urls=_excluded_urls,
             span_details_callback=_get_route_details,
-            tracer_provider=_InstrumentedStarlette.tracer_provider
+            tracer_provider=_InstrumentedStarlette._tracer_provider,
         )
 
 

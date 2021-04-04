@@ -113,10 +113,13 @@ class RedisInstrumentor(BaseInstrumentor):
     """
 
     def _instrument(self, **kwargs):
+        tracer_provider = kwargs.get("tracer_provider")
         setattr(
             redis,
             "_opentelemetry_tracer",
-            trace.get_tracer(__name__, __version__, tracer_provider=kwargs.get("tracer_provider")),
+            trace.get_tracer(
+                __name__, __version__, tracer_provider=tracer_provider,
+            ),
         )
 
         if redis.VERSION < (3, 0, 0):
