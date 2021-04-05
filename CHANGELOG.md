@@ -35,6 +35,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   ([#227](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/227]))
 
 ### Changed
+- Fix broken links to project ([#413](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/413))
 - `opentelemetry-instrumentation-asgi`, `opentelemetry-instrumentation-wsgi` Return `None` for `CarrierGetter` if key not found
   ([#1374](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/233))
 - `opentelemetry-instrumentation-grpc` Comply with updated spec, rework tests
