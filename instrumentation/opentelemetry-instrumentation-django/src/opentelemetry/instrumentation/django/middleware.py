@@ -22,11 +22,11 @@ from opentelemetry.instrumentation.django.version import __version__
 from opentelemetry.instrumentation.utils import extract_attributes_from_object
 from opentelemetry.instrumentation.wsgi import (
     add_response_attributes,
-    carrier_getter,
     collect_request_attributes,
+    wsgi_getter,
 )
 from opentelemetry.propagate import extract
-from opentelemetry.trace import SpanKind, get_tracer
+from opentelemetry.trace import SpanKind, get_tracer, use_span
 from opentelemetry.util.http import get_excluded_urls, get_traced_request_attrs
 
 try:
@@ -114,7 +114,7 @@ class _DjangoMiddleware(MiddlewareMixin):
 
         request_meta = request.META
 
-        token = attach(extract(carrier_getter, request_meta))
+        token = attach(extract(request_meta, getter=wsgi_getter))
 
         tracer = get_tracer(__name__, __version__)
 
@@ -139,8 +139,8 @@ class _DjangoMiddleware(MiddlewareMixin):
             for key, value in attributes.items():
                 span.set_attribute(key, value)
 
-        activation = tracer.use_span(span, end_on_exit=True)
-        activation.__enter__()
+        activation = use_span(span, end_on_exit=True)
+        activation.__enter__()  # pylint: disable=E1101
 
         request.META[self._environ_activation_key] = activation
         request.META[self._environ_span_key] = span

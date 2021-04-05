@@ -28,19 +28,19 @@ Example
 
    from opentelemetry.instrumentation.aiohttp_client import AioHttpClientInstrumentor
    from opentelemetry import trace
-   from opentelemetry.exporter import jaeger
+   from opentelemetry.exporter.jaeger.thrift import JaegerExporter
    from opentelemetry.sdk.trace import TracerProvider
-   from opentelemetry.sdk.trace.export import BatchExportSpanProcessor
+   from opentelemetry.sdk.trace.export import BatchSpanProcessor
 
 
-   _JAEGER_EXPORTER = jaeger.JaegerSpanExporter(
+   _JAEGER_EXPORTER = JaegerExporter(
       service_name="example-xxx",
       agent_host_name="localhost",
       agent_port=6831,
    )
 
    _TRACE_PROVIDER = TracerProvider()
-   _TRACE_PROVIDER.add_span_processor(BatchExportSpanProcessor(_JAEGER_EXPORTER))
+   _TRACE_PROVIDER.add_span_processor(BatchSpanProcessor(_JAEGER_EXPORTER))
    trace.set_tracer_provider(_TRACE_PROVIDER)
 
    AioHttpClientInstrumentor().instrument()

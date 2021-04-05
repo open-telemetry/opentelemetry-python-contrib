@@ -13,24 +13,26 @@
 # limitations under the License.
 
 from re import compile as re_compile
-from typing import Iterable, Optional
+from typing import Any, Iterable, Optional
 
 from opentelemetry.baggage import get_all, set_baggage
 from opentelemetry.context import Context
+from opentelemetry.propagators.textmap import (
+    CarrierT,
+    Getter,
+    Setter,
+    TextMapPropagator,
+    default_getter,
+    default_setter,
+)
 from opentelemetry.trace import (
     INVALID_SPAN_ID,
     INVALID_TRACE_ID,
-    DefaultSpan,
+    NonRecordingSpan,
     SpanContext,
     TraceFlags,
     get_current_span,
     set_span_in_context,
-)
-from opentelemetry.trace.propagation.textmap import (
-    Getter,
-    Setter,
-    TextMapPropagator,
-    TextMapPropagatorT,
 )
 
 OT_TRACE_ID_HEADER = "ot-tracer-traceid"
@@ -49,16 +51,18 @@ class OTTracePropagator(TextMapPropagator):
 
     def extract(
         self,
-        getter: Getter[TextMapPropagatorT],
-        carrier: TextMapPropagatorT,
+        carrier: CarrierT,
         context: Optional[Context] = None,
+        getter: Getter = default_getter,
     ) -> Context:
 
         traceid = _extract_first_element(
-            getter.get(carrier, OT_TRACE_ID_HEADER)
+            getter.get(carrier, OT_TRACE_ID_HEADER), INVALID_TRACE_ID
         )
 
-        spanid = _extract_first_element(getter.get(carrier, OT_SPAN_ID_HEADER))
+        spanid = _extract_first_element(
+            getter.get(carrier, OT_SPAN_ID_HEADER), INVALID_SPAN_ID
+        )
 
         sampled = _extract_first_element(
             getter.get(carrier, OT_SAMPLED_HEADER)
@@ -76,7 +80,7 @@ class OTTracePropagator(TextMapPropagator):
             and _valid_extract_spanid.fullmatch(spanid) is not None
         ):
             context = set_span_in_context(
-                DefaultSpan(
+                NonRecordingSpan(
                     SpanContext(
                         trace_id=int(traceid, 16),
                         span_id=int(spanid, 16),
@@ -105,9 +109,9 @@ class OTTracePropagator(TextMapPropagator):
 
     def inject(
         self,
-        set_in_carrier: Setter[TextMapPropagatorT],
-        carrier: TextMapPropagatorT,
+        carrier: CarrierT,
         context: Optional[Context] = None,
+        setter: Setter = default_setter,
     ) -> None:
 
         span_context = get_current_span(context).get_span_context()
@@ -115,10 +119,10 @@ class OTTracePropagator(TextMapPropagator):
         if span_context.trace_id == INVALID_TRACE_ID:
             return
 
-        set_in_carrier(
+        setter.set(
             carrier, OT_TRACE_ID_HEADER, hex(span_context.trace_id)[2:][-16:]
         )
-        set_in_carrier(
+        setter.set(
             carrier, OT_SPAN_ID_HEADER, hex(span_context.span_id)[2:][-16:],
         )
 
@@ -127,7 +131,7 @@ class OTTracePropagator(TextMapPropagator):
         else:
             traceflags = "false"
 
-        set_in_carrier(carrier, OT_SAMPLED_HEADER, traceflags)
+        setter.set(carrier, OT_SAMPLED_HEADER, traceflags)
 
         baggage = get_all(context)
 
@@ -142,7 +146,7 @@ class OTTracePropagator(TextMapPropagator):
             ):
                 continue
 
-            set_in_carrier(
+            setter.set(
                 carrier,
                 "".join([OT_BAGGAGE_PREFIX, header_name]),
                 header_value,
@@ -153,7 +157,7 @@ class OTTracePropagator(TextMapPropagator):
         """Returns a set with the fields set in `inject`.
 
         See
-        `opentelemetry.trace.propagation.textmap.TextMapPropagator.fields`
+        `opentelemetry.propagators.textmap.TextMapPropagator.fields`
         """
         return {
             OT_TRACE_ID_HEADER,
@@ -163,8 +167,8 @@ class OTTracePropagator(TextMapPropagator):
 
 
 def _extract_first_element(
-    items: Iterable[TextMapPropagatorT],
-) -> Optional[TextMapPropagatorT]:
+    items: Iterable[CarrierT], default: Any = None,
+) -> Optional[CarrierT]:
     if items is None:
-        return None
+        return default
     return next(iter(items), None)
