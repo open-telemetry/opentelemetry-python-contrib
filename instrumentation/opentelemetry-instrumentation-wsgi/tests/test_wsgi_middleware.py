@@ -336,9 +336,7 @@ class TestWsgiAttributes(unittest.TestCase):
 
     def test_response_attributes(self):
         otel_wsgi.add_response_attributes(self.span, "404 Not Found", {})
-        expected = (
-            mock.call("http.status_code", 404),
-        )
+        expected = (mock.call("http.status_code", 404),)
         self.assertEqual(self.span.set_attribute.call_count, len(expected))
         self.span.set_attribute.assert_has_calls(expected, any_order=True)
 
