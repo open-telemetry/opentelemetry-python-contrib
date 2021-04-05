@@ -342,10 +342,6 @@ class TestWsgiAttributes(unittest.TestCase):
         self.assertEqual(self.span.set_attribute.call_count, len(expected))
         self.span.set_attribute.assert_has_calls(expected, any_order=True)
 
-    def test_response_attributes_invalid_status_code(self):
-        otel_wsgi.add_response_attributes(self.span, "Invalid Status Code", {})
-        self.assertEqual(self.span.set_attribute.call_count, 1)
-
 
 if __name__ == "__main__":
     unittest.main()
