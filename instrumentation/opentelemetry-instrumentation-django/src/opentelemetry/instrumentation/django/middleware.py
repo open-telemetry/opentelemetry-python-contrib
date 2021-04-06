@@ -188,7 +188,10 @@ class _DjangoMiddleware(MiddlewareMixin):
             ),
         )
 
-        attributes = collect_request_attributes(request_meta)
+        if is_asgi_request:
+            attributes = collect_request_attributes(request.scope)
+        else:
+            attributes = collect_request_attributes(request_meta)
 
         if span.is_recording():
             attributes = extract_attributes_from_object(
