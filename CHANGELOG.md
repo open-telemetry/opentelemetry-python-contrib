@@ -7,10 +7,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased](https://github.com/open-telemetry/opentelemetry-python-contrib/compare/v0.19b0...HEAD)
 
 ### Changed
+- Restrict DataDog exporter's `ddtrace` dependency to known working versions.
+  ([#400](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/400))
 - GRPC instrumentation now correctly injects trace context into outgoing requests.
   ([#392](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/39))
 - Publish `opentelemetry-propagator-ot-trace` package as a part of the release process
   ([#387](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/387))
+- Update redis instrumentation to follow semantic conventions
+  ([#403](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/403))
 
 ### Added
 - `opentelemetry-instrumentation-urllib3` Add urllib3 instrumentation
@@ -105,6 +109,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   ([#273](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/273))
 
 ### Changed
+- Fix broken links to project ([#413](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/413))
 - `opentelemetry-instrumentation-asgi`, `opentelemetry-instrumentation-wsgi` Return `None` for `CarrierGetter` if key not found
   ([#233](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/233))
 - `opentelemetry-instrumentation-grpc` Comply with updated spec, rework tests
