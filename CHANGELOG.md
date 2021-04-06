@@ -6,6 +6,18 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased](https://github.com/open-telemetry/opentelemetry-python-contrib/compare/v0.19b0...HEAD)
 
+### Changed
+- Restrict DataDog exporter's `ddtrace` dependency to known working versions.
+  ([#400](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/400))
+- GRPC instrumentation now correctly injects trace context into outgoing requests.
+  ([#392](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/39))
+- Publish `opentelemetry-propagator-ot-trace` package as a part of the release process
+  ([#387](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/387))
+
+### Added
+- `opentelemetry-instrumentation-urllib3` Add urllib3 instrumentation
+  ([#299](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/299))
+
 ## [0.19b0](https://github.com/open-telemetry/opentelemetry-python-contrib/releases/tag/v0.19b0) - 2021-03-26
 
 ### Changed
@@ -13,6 +25,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   ([#350](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/350))
 - `opentelemetry-exporter-datadog` Fix warning when DatadogFormat encounters a request with
   no DD_ORIGIN headers ([#368](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/368)).
+- `opentelemetry-instrumentation-aiopg` Fix multiple nested spans when
+  `aiopg.pool` is used
+  ([#336](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/381)).
 - Updated instrumentations to use `opentelemetry.trace.use_span` instead of `Tracer.use_span()`
   ([#364](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/364))
 - `opentelemetry-propagator-ot-trace` Do not throw an exception when headers are not present
@@ -153,7 +168,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - `opentelemetry-instrumentation-botocore` Make botocore instrumentation check if instrumentation has been suppressed
   ([#182](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/182))
 - `opentelemetry-instrumentation-botocore` Botocore SpanKind as CLIENT and modify existing traced attributes
-  ([#150])(https://github.com/open-telemetry/opentelemetry-python-contrib/pull/150)
+  ([#150](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/150))
 - `opentelemetry-instrumentation-dbapi` Update dbapi and its dependant instrumentations to follow semantic conventions
   ([#195](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/195))
 - `opentelemetry-instrumentation-dbapi` Stop capturing query parameters by default
