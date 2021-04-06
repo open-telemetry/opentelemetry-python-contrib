@@ -12,16 +12,54 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+"""
+AWS X-Ray Propagator
+--------------------
+
+The **AWS X-Ray Propagator** provides a propagator that when used, adds a `trace
+header`_ to outgoing traces that is compatible with the AWS X-Ray backend service.
+This allows the trace context to be propagated when a trace span multiple AWS
+services.
+
+Usage
+-----
+
+Use the provided AWS X-Ray Propagator to inject the necessary context into
+traces sent to external systems.
+
+This can be done by either setting this environment variable:
+
+::
+
+    export OTEL_PROPAGATORS = aws_xray
+
+
+Or by setting this propagator in your instrumented application:
+
+.. code-block:: python
+
+    from opentelemetry.propagate import set_global_textmap
+    from opentelemetry.sdk.extension.aws.trace.propagation.aws_xray_format import AwsXRayFormat
+
+    set_global_textmap(AwsXRayFormat())
+
+API
+---
+.. _trace header: https://docs.aws.amazon.com/xray/latest/devguide/xray-concepts.html#xray-concepts-tracingheader
+"""
+
 import logging
 import typing
 
 import opentelemetry.trace as trace
 from opentelemetry.context import Context
-from opentelemetry.trace.propagation.textmap import (
+from opentelemetry.propagators.textmap import (
+    CarrierT,
     Getter,
     Setter,
     TextMapPropagator,
-    TextMapPropagatorT,
+    default_getter,
+    default_setter,
 )
 
 TRACE_HEADER_KEY = "X-Amzn-Trace-Id"
@@ -64,9 +102,9 @@ class AwsXRayFormat(TextMapPropagator):
 
     def extract(
         self,
-        getter: Getter[TextMapPropagatorT],
-        carrier: TextMapPropagatorT,
+        carrier: CarrierT,
         context: typing.Optional[Context] = None,
+        getter: Getter = default_getter,
     ) -> Context:
         trace_header_list = getter.get(carrier, TRACE_HEADER_KEY)
 
@@ -115,7 +153,7 @@ class AwsXRayFormat(TextMapPropagator):
             )
 
         return trace.set_span_in_context(
-            trace.DefaultSpan(span_context), context=context
+            trace.NonRecordingSpan(span_context), context=context
         )
 
     @staticmethod
@@ -231,9 +269,9 @@ class AwsXRayFormat(TextMapPropagator):
 
     def inject(
         self,
-        set_in_carrier: Setter[TextMapPropagatorT],
-        carrier: TextMapPropagatorT,
+        carrier: CarrierT,
         context: typing.Optional[Context] = None,
+        setter: Setter = default_setter,
     ) -> None:
         span = trace.get_current_span(context=context)
 
@@ -271,16 +309,12 @@ class AwsXRayFormat(TextMapPropagator):
             ]
         )
 
-        set_in_carrier(
+        setter.set(
             carrier, TRACE_HEADER_KEY, trace_header,
         )
 
     @property
     def fields(self):
-        """Returns a set with the fields set in `inject`.
-
-        See
-        `opentelemetry.trace.propagation.textmap.TextMapPropagator.fields`
-        """
+        """Returns a set with the fields set in `inject`."""
 
         return {TRACE_HEADER_KEY}

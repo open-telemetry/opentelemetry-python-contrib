@@ -79,6 +79,26 @@ class TestAiopgInstrumentor(TestBase):
         spans_list = self.memory_exporter.get_finished_spans()
         self.assertEqual(len(spans_list), 1)
 
+    def test_instrumentor_connect_ctx_manager(self):
+        async def _ctx_manager_connect():
+            AiopgInstrumentor().instrument()
+
+            async with aiopg.connect(database="test") as cnx:
+                async with cnx.cursor() as cursor:
+                    query = "SELECT * FROM test"
+                    await cursor.execute(query)
+
+                    spans_list = self.memory_exporter.get_finished_spans()
+                    self.assertEqual(len(spans_list), 1)
+                    span = spans_list[0]
+
+                    # Check version and name in span's instrumentation info
+                    self.check_span_instrumentation_info(
+                        span, opentelemetry.instrumentation.aiopg
+                    )
+
+        async_call(_ctx_manager_connect())
+
     def test_instrumentor_create_pool(self):
         AiopgInstrumentor().instrument()
 
@@ -109,6 +129,27 @@ class TestAiopgInstrumentor(TestBase):
 
         spans_list = self.memory_exporter.get_finished_spans()
         self.assertEqual(len(spans_list), 1)
+
+    def test_instrumentor_create_pool_ctx_manager(self):
+        async def _ctx_manager_pool():
+            AiopgInstrumentor().instrument()
+
+            async with aiopg.create_pool(database="test") as pool:
+                async with pool.acquire() as cnx:
+                    async with cnx.cursor() as cursor:
+                        query = "SELECT * FROM test"
+                        await cursor.execute(query)
+
+                        spans_list = self.memory_exporter.get_finished_spans()
+                        self.assertEqual(len(spans_list), 1)
+                        span = spans_list[0]
+
+                        # Check version and name in span's instrumentation info
+                        self.check_span_instrumentation_info(
+                            span, opentelemetry.instrumentation.aiopg
+                        )
+
+        async_call(_ctx_manager_pool())
 
     def test_custom_tracer_provider_connect(self):
         resource = resources.Resource.create({})
@@ -201,7 +242,6 @@ class TestAiopgIntegration(TestBase):
         db_integration = AiopgIntegration(
             self.tracer,
             "testcomponent",
-            "testtype",
             connection_attributes,
             capture_parameters=True,
         )
@@ -215,10 +255,9 @@ class TestAiopgIntegration(TestBase):
         spans_list = self.memory_exporter.get_finished_spans()
         self.assertEqual(len(spans_list), 1)
         span = spans_list[0]
-        self.assertEqual(span.name, "Test query")
+        self.assertEqual(span.name, "Test")
         self.assertIs(span.kind, trace_api.SpanKind.CLIENT)
 
-        self.assertEqual(span.attributes["component"], "testcomponent")
         self.assertEqual(span.attributes["db.system"], "testcomponent")
         self.assertEqual(span.attributes["db.name"], "testdatabase")
         self.assertEqual(span.attributes["db.statement"], "Test query")
@@ -229,9 +268,7 @@ class TestAiopgIntegration(TestBase):
         self.assertEqual(span.attributes["db.user"], "testuser")
         self.assertEqual(span.attributes["net.peer.name"], "testhost")
         self.assertEqual(span.attributes["net.peer.port"], 123)
-        self.assertIs(
-            span.status.status_code, trace_api.status.StatusCode.UNSET
-        )
+        self.assertIs(span.status.status_code, trace_api.StatusCode.UNSET)
 
     def test_span_not_recording(self):
         connection_props = {
@@ -250,10 +287,8 @@ class TestAiopgIntegration(TestBase):
         mock_span = mock.Mock()
         mock_span.is_recording.return_value = False
         mock_tracer.start_span.return_value = mock_span
-        mock_tracer.use_span.return_value.__enter__ = mock_span
-        mock_tracer.use_span.return_value.__exit__ = True
         db_integration = AiopgIntegration(
-            mock_tracer, "testcomponent", "testtype", connection_attributes
+            mock_tracer, "testcomponent", connection_attributes
         )
         mock_connection = async_call(
             db_integration.wrapped_connection(
@@ -280,10 +315,8 @@ class TestAiopgIntegration(TestBase):
         self.assertEqual(len(spans_list), 1)
         span = spans_list[0]
         self.assertEqual(span.attributes["db.statement"], "Test query")
-        self.assertIs(
-            span.status.status_code, trace_api.status.StatusCode.ERROR
-        )
-        self.assertEqual(span.status.description, "Test Exception")
+        self.assertIs(span.status.status_code, trace_api.StatusCode.ERROR)
+        self.assertEqual(span.status.description, "Exception: Test Exception")
 
     def test_executemany(self):
         db_integration = AiopgIntegration(self.tracer, "testcomponent")
@@ -428,6 +461,12 @@ class MockPool:
         )
         return connect
 
+    def close(self):
+        pass
+
+    async def wait_closed(self):
+        pass
+
 
 class MockPsycopg2Connection:
     def __init__(self, database, server_port, server_host, user):
@@ -470,6 +509,9 @@ class MockCursor:
     async def callproc(self, query, params=None, throw_exception=False):
         if throw_exception:
             raise Exception("Test Exception")
+
+    def close(self):
+        pass
 
 
 class AiopgConnectionMock:

@@ -24,7 +24,7 @@ Usage
     from opentelemetry import trace
     from opentelemetry.instrumentation.aiopg import trace_integration
 
-    trace_integration(aiopg.connection, "_connect", "postgresql", "sql")
+    trace_integration(aiopg.connection, "_connect", "postgresql")
 
 API
 ---
@@ -34,6 +34,7 @@ import typing
 
 import aiopg
 import wrapt
+from aiopg.utils import _ContextManager, _PoolContextManager
 
 from opentelemetry.instrumentation.aiopg.aiopg_integration import (
     AiopgIntegration,
@@ -47,8 +48,7 @@ logger = logging.getLogger(__name__)
 
 
 def trace_integration(
-    database_component: str,
-    database_type: str = "",
+    database_system: str,
     connection_attributes: typing.Dict = None,
     tracer_provider: typing.Optional[TracerProvider] = None,
 ):
@@ -56,19 +56,17 @@ def trace_integration(
     based on dbapi integration, where replaced sync wrap methods to async
 
     Args:
-        database_component: Database driver name or
-            database name "postgreSQL".
-        database_type: The Database type. For any SQL database, "sql".
+        database_system: An identifier for the database management system (DBMS)
+            product being used.
         connection_attributes: Attribute names for database, port, host and
             user in Connection object.
         tracer_provider: The :class:`opentelemetry.trace.TracerProvider` to
-            use. If ommited the current configured one is used.
+            use. If omitted the current configured one is used.
     """
 
     wrap_connect(
         __name__,
-        database_component,
-        database_type,
+        database_system,
         connection_attributes,
         __version__,
         tracer_provider,
@@ -77,8 +75,7 @@ def trace_integration(
 
 def wrap_connect(
     name: str,
-    database_component: str,
-    database_type: str = "",
+    database_system: str,
     connection_attributes: typing.Dict = None,
     version: str = "",
     tracer_provider: typing.Optional[TracerProvider] = None,
@@ -88,18 +85,17 @@ def wrap_connect(
 
     Args:
         name: Name of opentelemetry extension for aiopg.
-        database_component: Database driver name
-            or database name "postgreSQL".
-        database_type: The Database type. For any SQL database, "sql".
+        database_system: An identifier for the database management system (DBMS)
+            product being used.
         connection_attributes: Attribute names for database, port, host and
             user in Connection object.
         version: Version of opentelemetry extension for aiopg.
         tracer_provider: The :class:`opentelemetry.trace.TracerProvider` to
-            use. If ommited the current configured one is used.
+            use. If omitted the current configured one is used.
     """
 
     # pylint: disable=unused-argument
-    async def wrap_connect_(
+    def wrap_connect_(
         wrapped: typing.Callable[..., typing.Any],
         instance: typing.Any,
         args: typing.Tuple[typing.Any, typing.Any],
@@ -107,13 +103,14 @@ def wrap_connect(
     ):
         db_integration = AiopgIntegration(
             name,
-            database_component,
-            database_type=database_type,
+            database_system,
             connection_attributes=connection_attributes,
             version=version,
             tracer_provider=tracer_provider,
         )
-        return await db_integration.wrapped_connection(wrapped, args, kwargs)
+        return _ContextManager(
+            db_integration.wrapped_connection(wrapped, args, kwargs)
+        )
 
     try:
         wrapt.wrap_function_wrapper(aiopg, "connect", wrap_connect_)
@@ -132,8 +129,7 @@ def unwrap_connect():
 def instrument_connection(
     name: str,
     connection,
-    database_component: str,
-    database_type: str = "",
+    database_system: str,
     connection_attributes: typing.Dict = None,
     version: str = "",
     tracer_provider: typing.Optional[TracerProvider] = None,
@@ -143,21 +139,20 @@ def instrument_connection(
     Args:
         name: Name of opentelemetry extension for aiopg.
         connection: The connection to instrument.
-        database_component: Database driver name or database name "postgreSQL".
-        database_type: The Database type. For any SQL database, "sql".
+        database_system: An identifier for the database management system (DBMS)
+            product being used.
         connection_attributes: Attribute names for database, port, host and
             user in a connection object.
         version: Version of opentelemetry extension for aiopg.
         tracer_provider: The :class:`opentelemetry.trace.TracerProvider` to
-            use. If ommited the current configured one is used.
+            use. If omitted the current configured one is used.
 
     Returns:
         An instrumented connection.
     """
     db_integration = AiopgIntegration(
         name,
-        database_component,
-        database_type,
+        database_system,
         connection_attributes=connection_attributes,
         version=version,
         tracer_provider=tracer_provider,
@@ -184,14 +179,13 @@ def uninstrument_connection(connection):
 
 def wrap_create_pool(
     name: str,
-    database_component: str,
-    database_type: str = "",
+    database_system: str,
     connection_attributes: typing.Dict = None,
     version: str = "",
     tracer_provider: typing.Optional[TracerProvider] = None,
 ):
     # pylint: disable=unused-argument
-    async def wrap_create_pool_(
+    def wrap_create_pool_(
         wrapped: typing.Callable[..., typing.Any],
         instance: typing.Any,
         args: typing.Tuple[typing.Any, typing.Any],
@@ -199,13 +193,14 @@ def wrap_create_pool(
     ):
         db_integration = AiopgIntegration(
             name,
-            database_component,
-            database_type,
+            database_system,
             connection_attributes=connection_attributes,
             version=version,
             tracer_provider=tracer_provider,
         )
-        return await db_integration.wrapped_pool(wrapped, args, kwargs)
+        return _PoolContextManager(
+            db_integration.wrapped_pool(wrapped, args, kwargs)
+        )
 
     try:
         wrapt.wrap_function_wrapper(aiopg, "create_pool", wrap_create_pool_)

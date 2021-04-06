@@ -17,10 +17,10 @@ from unittest.mock import Mock, patch
 from flask import Flask, request
 
 from opentelemetry import trace
-from opentelemetry.configuration import Configuration
 from opentelemetry.instrumentation.flask import FlaskInstrumentor
 from opentelemetry.test.test_base import TestBase
 from opentelemetry.test.wsgitestutil import WsgiTestBase
+from opentelemetry.util.http import get_excluded_urls
 
 # pylint: disable=import-error
 from .base_test import InstrumentationTest
@@ -28,7 +28,6 @@ from .base_test import InstrumentationTest
 
 def expected_attributes(override_attributes):
     default_attributes = {
-        "component": "http",
         "http.method": "GET",
         "http.server_name": "localhost",
         "http.scheme": "http",
@@ -63,7 +62,7 @@ class TestProgrammatic(InstrumentationTest, TestBase, WsgiTestBase):
         self.env_patch.start()
         self.exclude_patch = patch(
             "opentelemetry.instrumentation.flask._excluded_urls",
-            Configuration()._excluded_urls("flask"),
+            get_excluded_urls("FLASK"),
         )
         self.exclude_patch.start()
 
@@ -126,8 +125,6 @@ class TestProgrammatic(InstrumentationTest, TestBase, WsgiTestBase):
         mock_span = Mock()
         mock_span.is_recording.return_value = False
         mock_tracer.start_span.return_value = mock_span
-        mock_tracer.use_span.return_value.__enter__ = mock_span
-        mock_tracer.use_span.return_value.__exit__ = mock_span
         with patch("opentelemetry.trace.get_tracer") as tracer:
             tracer.return_value = mock_tracer
             self.client.get("/hello/123")

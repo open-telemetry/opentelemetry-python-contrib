@@ -18,7 +18,6 @@ on any ASGI framework (such as Django-channels / Quart) to track requests
 timing through OpenTelemetry.
 """
 
-import operator
 import typing
 import urllib
 from functools import wraps
@@ -26,14 +25,15 @@ from typing import Tuple
 
 from asgiref.compatibility import guarantee_single_callable
 
-from opentelemetry import context, propagators, trace
+from opentelemetry import context, trace
 from opentelemetry.instrumentation.asgi.version import __version__  # noqa
 from opentelemetry.instrumentation.utils import http_status_to_status_code
-from opentelemetry.trace.propagation.textmap import DictGetter
+from opentelemetry.propagate import extract
+from opentelemetry.propagators.textmap import Getter
 from opentelemetry.trace.status import Status, StatusCode
 
 
-class CarrierGetter(DictGetter):
+class ASGIGetter(Getter):
     def get(
         self, carrier: dict, key: str
     ) -> typing.Optional[typing.List[str]]:
@@ -48,6 +48,11 @@ class CarrierGetter(DictGetter):
                 else None.
         """
         headers = carrier.get("headers")
+        if not headers:
+            return None
+
+        # asgi header keys are in lower case
+        key = key.lower()
         decoded = [
             _value.decode("utf8")
             for (_key, _value) in headers
@@ -57,8 +62,11 @@ class CarrierGetter(DictGetter):
             return None
         return decoded
 
+    def keys(self, carrier: dict) -> typing.List[str]:
+        return list(carrier.keys())
 
-carrier_getter = CarrierGetter()
+
+asgi_getter = ASGIGetter()
 
 
 def collect_request_attributes(scope):
@@ -72,7 +80,6 @@ def collect_request_attributes(scope):
         http_url = http_url + ("?" + urllib.parse.unquote(query_string))
 
     result = {
-        "component": scope["type"],
         "http.scheme": scope.get("scheme"),
         "http.host": server_host,
         "net.host.port": port,
@@ -84,10 +91,10 @@ def collect_request_attributes(scope):
     if http_method:
         result["http.method"] = http_method
 
-    http_host_value_list = carrier_getter.get(scope, "host")
+    http_host_value_list = asgi_getter.get(scope, "host")
     if http_host_value_list:
         result["http.server_name"] = ",".join(http_host_value_list)
-    http_user_agent = carrier_getter.get(scope, "user-agent")
+    http_user_agent = asgi_getter.get(scope, "user-agent")
     if http_user_agent:
         result["http.user_agent"] = http_user_agent[0]
 
@@ -182,7 +189,7 @@ class OpenTelemetryMiddleware:
         if self.excluded_urls and self.excluded_urls.url_disabled(url):
             return await self.app(scope, receive, send)
 
-        token = context.attach(propagators.extract(carrier_getter, scope))
+        token = context.attach(extract(scope, getter=asgi_getter))
         span_name, additional_attributes = self.span_details_callback(scope)
 
         try:

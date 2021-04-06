@@ -6,13 +6,12 @@ on:
     - 'release/*'
   pull_request:
 env:
-  CORE_REPO_SHA: master
+  CORE_REPO_SHA: 1a12fa0d681e37c1fda9cb8d46212ff3bbf6b76a
 
 jobs:
   build:
     env:
       # We use these variables to convert between tox and GHA version literals
-      py35: 3.5
       py36: 3.6
       py37: 3.7
       py38: 3.8
@@ -22,18 +21,9 @@ jobs:
     strategy:
       fail-fast: false  # ensures the entire test matrix is run, even if one permutation fails
       matrix:
-        python-version: [ py35, py36, py37, py38, pypy3 ]
-        package: ["instrumentation", "exporter", "sdkextension"]
+        python-version: [ py36, py37, py38, pypy3 ]
+        package: ["instrumentation", "exporter", "sdkextension", "propagator"]
         os: [ ubuntu-latest ]
-        include:
-          # py35-instrumentation segfaults on 18.04 so we instead run on 20.04
-          - python-version: py35
-            package: instrumentation
-            os: ubuntu-20.04
-        exclude:
-          - os: ubuntu-latest
-            python-version: py35
-            package: instrumentation
     steps:
       - name: Checkout Contrib Repo @ SHA - ${{ github.sha }}
         uses: actions/checkout@v2
@@ -78,14 +68,14 @@ jobs:
           alert-threshold: 200%
           fail-on-alert: true
           # Make a commit on `gh-pages` with benchmarks from previous step
-          auto-push: ${{ github.ref == 'refs/heads/master' }}
+          auto-push: ${{ github.ref == 'refs/heads/main' }}
           gh-pages-branch: gh-pages
           benchmark-data-dir-path: benchmarks
   misc:
     strategy:
       fail-fast: false
       matrix:
-        tox-environment: [ "docker-tests", "lint" ]
+        tox-environment: [ "docker-tests", "lint", "docs" ]
     name: ${{ matrix.tox-environment }}
     runs-on: ubuntu-latest
     steps:

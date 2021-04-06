@@ -62,7 +62,6 @@ API
 ---
 """
 
-import socket
 import types
 import typing
 
@@ -70,13 +69,14 @@ import aiohttp
 import wrapt
 
 from opentelemetry import context as context_api
-from opentelemetry import propagators, trace
+from opentelemetry import trace
 from opentelemetry.instrumentation.aiohttp_client.version import __version__
 from opentelemetry.instrumentation.instrumentor import BaseInstrumentor
 from opentelemetry.instrumentation.utils import (
     http_status_to_status_code,
     unwrap,
 )
+from opentelemetry.propagate import inject
 from opentelemetry.trace import SpanKind, TracerProvider, get_tracer
 from opentelemetry.trace.status import Status, StatusCode
 
@@ -169,7 +169,6 @@ def create_trace_config(
 
         if trace_config_ctx.span.is_recording():
             attributes = {
-                "component": "http",
                 "http.method": http_method,
                 "http.url": trace_config_ctx.url_filter(params.url)
                 if callable(trace_config_ctx.url_filter)
@@ -182,7 +181,7 @@ def create_trace_config(
             trace.set_span_in_context(trace_config_ctx.span)
         )
 
-        propagators.inject(type(params.headers).__setitem__, params.headers)
+        inject(params.headers)
 
     async def on_request_end(
         unused_session: aiohttp.ClientSession,

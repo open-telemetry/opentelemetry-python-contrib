@@ -15,6 +15,7 @@ from unittest import mock
 
 from sqlalchemy import create_engine
 
+from opentelemetry import trace
 from opentelemetry.instrumentation.sqlalchemy import SQLAlchemyInstrumentor
 from opentelemetry.test.test_base import TestBase
 
@@ -34,15 +35,14 @@ class TestSqlalchemyInstrumentation(TestBase):
         spans = self.memory_exporter.get_finished_spans()
 
         self.assertEqual(len(spans), 1)
-        self.assertEqual(spans[0].name, "SELECT	1 + 1;")
+        self.assertEqual(spans[0].name, "SELECT :memory:")
+        self.assertEqual(spans[0].kind, trace.SpanKind.CLIENT)
 
     def test_not_recording(self):
         mock_tracer = mock.Mock()
         mock_span = mock.Mock()
         mock_span.is_recording.return_value = False
         mock_tracer.start_span.return_value = mock_span
-        mock_tracer.use_span.return_value.__enter__ = mock_span
-        mock_tracer.use_span.return_value.__exit__ = True
         with mock.patch("opentelemetry.trace.get_tracer") as tracer:
             tracer.return_value = mock_tracer
             engine = create_engine("sqlite:///:memory:")
@@ -66,4 +66,5 @@ class TestSqlalchemyInstrumentation(TestBase):
         spans = self.memory_exporter.get_finished_spans()
 
         self.assertEqual(len(spans), 1)
-        self.assertEqual(spans[0].name, "SELECT	1 + 1;")
+        self.assertEqual(spans[0].name, "SELECT :memory:")
+        self.assertEqual(spans[0].kind, trace.SpanKind.CLIENT)

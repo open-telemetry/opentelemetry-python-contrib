@@ -30,16 +30,16 @@ Install the OpenTelemetry SDK package.
 
     pip install opentelemetry-sdk
 
-Next, use the provided `AwsXRayIdsGenerator` to initialize the `TracerProvider`.
+Next, use the provided `AwsXRayIdGenerator` to initialize the `TracerProvider`.
 
 .. code-block:: python
 
     import opentelemetry.trace as trace
-    from opentelemetry.sdk.extension.aws.trace import AwsXRayIdsGenerator
+    from opentelemetry.sdk.extension.aws.trace import AwsXRayIdGenerator
     from opentelemetry.sdk.trace import TracerProvider
 
     trace.set_tracer_provider(
-        TracerProvider(ids_generator=AwsXRayIdsGenerator())
+        TracerProvider(id_generator=AwsXRayIdGenerator())
     )
 
 
@@ -60,10 +60,10 @@ Or by setting this propagator in your instrumented application:
 
 .. code-block:: python
 
-    from opentelemetry import propagators
+    from opentelemetry.propagate import set_global_textmap
     from opentelemetry.sdk.extension.aws.trace.propagation.aws_xray_format import AwsXRayFormat
 
-    propagators.set_global_textmap(AwsXRayFormat())
+    set_global_textmap(AwsXRayFormat())
 
 References
 ----------

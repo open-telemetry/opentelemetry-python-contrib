@@ -26,9 +26,9 @@ from contextlib import contextmanager
 
 import grpc
 
-from opentelemetry import propagators, trace
+from opentelemetry import trace
 from opentelemetry.context import attach, detach
-from opentelemetry.trace.propagation.textmap import DictGetter
+from opentelemetry.propagate import extract
 from opentelemetry.trace.status import Status, StatusCode
 
 logger = logging.getLogger(__name__)
@@ -174,14 +174,13 @@ class OpenTelemetryServerInterceptor(grpc.ServerInterceptor):
 
     def __init__(self, tracer):
         self._tracer = tracer
-        self._carrier_getter = DictGetter()
 
     @contextmanager
     def _set_remote_context(self, servicer_context):
         metadata = servicer_context.invocation_metadata()
         if metadata:
             md_dict = {md.key: md.value for md in metadata}
-            ctx = propagators.extract(self._carrier_getter, md_dict)
+            ctx = extract(md_dict)
             token = attach(ctx)
             try:
                 yield
@@ -190,7 +189,9 @@ class OpenTelemetryServerInterceptor(grpc.ServerInterceptor):
         else:
             yield
 
-    def _start_span(self, handler_call_details, context):
+    def _start_span(
+        self, handler_call_details, context, set_status_on_exception=False
+    ):
 
         # standard attributes
         attributes = {
@@ -233,15 +234,27 @@ class OpenTelemetryServerInterceptor(grpc.ServerInterceptor):
             name=handler_call_details.method,
             kind=trace.SpanKind.SERVER,
             attributes=attributes,
+            set_status_on_exception=set_status_on_exception,
         )
 
     def intercept_service(self, continuation, handler_call_details):
         def telemetry_wrapper(behavior, request_streaming, response_streaming):
             def telemetry_interceptor(request_or_iterator, context):
 
+                # handle streaming responses specially
+                if response_streaming:
+                    return self._intercept_server_stream(
+                        behavior,
+                        handler_call_details,
+                        request_or_iterator,
+                        context,
+                    )
+
                 with self._set_remote_context(context):
                     with self._start_span(
-                        handler_call_details, context
+                        handler_call_details,
+                        context,
+                        set_status_on_exception=False,
                     ) as span:
                         # wrap the context
                         context = _OpenTelemetryServicerContext(context, span)
@@ -249,6 +262,7 @@ class OpenTelemetryServerInterceptor(grpc.ServerInterceptor):
                         # And now we run the actual RPC.
                         try:
                             return behavior(request_or_iterator, context)
+
                         except Exception as error:
                             # Bare exceptions are likely to be gRPC aborts, which
                             # we handle in our context wrapper.
@@ -263,3 +277,25 @@ class OpenTelemetryServerInterceptor(grpc.ServerInterceptor):
         return _wrap_rpc_behavior(
             continuation(handler_call_details), telemetry_wrapper
         )
+
+    # Handle streaming responses separately - we have to do this
+    # to return a *new* generator or various upstream things
+    # get confused, or we'll lose the consistent trace
+    def _intercept_server_stream(
+        self, behavior, handler_call_details, request_or_iterator, context
+    ):
+
+        with self._set_remote_context(context):
+            with self._start_span(
+                handler_call_details, context, set_status_on_exception=False
+            ) as span:
+                context = _OpenTelemetryServicerContext(context, span)
+
+                try:
+                    yield from behavior(request_or_iterator, context)
+
+                except Exception as error:
+                    # pylint:disable=unidiomatic-typecheck
+                    if type(error) != Exception:
+                        span.record_exception(error)
+                    raise error

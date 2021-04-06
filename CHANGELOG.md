@@ -4,9 +4,75 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [Unreleased](https://github.com/open-telemetry/opentelemetry-python-contrib/compare/v0.16b1...HEAD)
+## [Unreleased](https://github.com/open-telemetry/opentelemetry-python-contrib/compare/v0.19b0...HEAD)
+
+### Changed
+- Restrict DataDog exporter's `ddtrace` dependency to known working versions.
+  ([#400](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/400))
+- GRPC instrumentation now correctly injects trace context into outgoing requests.
+  ([#392](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/39))
+- Publish `opentelemetry-propagator-ot-trace` package as a part of the release process
+  ([#387](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/387))
+- Update redis instrumentation to follow semantic conventions
+  ([#403](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/403))
 
 ### Added
+- `opentelemetry-instrumentation-urllib3` Add urllib3 instrumentation
+  ([#299](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/299))
+
+## [0.19b0](https://github.com/open-telemetry/opentelemetry-python-contrib/releases/tag/v0.19b0) - 2021-03-26
+
+### Changed
+- Rename `IdsGenerator` to `IdGenerator`
+  ([#350](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/350))
+- `opentelemetry-exporter-datadog` Fix warning when DatadogFormat encounters a request with
+  no DD_ORIGIN headers ([#368](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/368)).
+- `opentelemetry-instrumentation-aiopg` Fix multiple nested spans when
+  `aiopg.pool` is used
+  ([#336](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/381)).
+- Updated instrumentations to use `opentelemetry.trace.use_span` instead of `Tracer.use_span()`
+  ([#364](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/364))
+- `opentelemetry-propagator-ot-trace` Do not throw an exception when headers are not present
+  ([#378](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/378))
+- `opentelemetry-instrumentation-wsgi` Reimplement `keys` method to return actual keys from the carrier instead of an empty list.
+  ([#379](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/379))
+- `opentelemetry-instrumentation-sqlalchemy` Fix multithreading issues in recording spans from SQLAlchemy
+  ([#315](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/315))
+- Make getters and setters optional
+  ([#372](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/372))
+
+### Removed
+- Removing support for Python 3.5
+  ([#374](https://github.com/open-telemetry/opentelemetry-python/pull/374))
+
+## [0.18b0](https://github.com/open-telemetry/opentelemetry-python-contrib/releases/tag/v0.18b0) - 2021-02-16
+
+### Added
+- `opentelemetry-propagator-ot-trace` Add OT Trace Propagator
+  ([#302](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/302))
+- `opentelemetry-instrumentation-logging` Added logging instrumentation to enable log - trace correlation.
+  ([#345](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/345))
+
+### Removed
+- Remove `component` span attribute in instrumentations.
+  `opentelemetry-instrumentation-aiopg`, `opentelemetry-instrumentation-dbapi` Remove unused `database_type` parameter from `trace_integration` function.
+  ([#301](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/301))
+- `opentelemetry-instrumentation-asgi` Return header values using case insensitive keys
+  ([#308](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/308))
+- Remove metrics from all instrumentations
+  ([#312](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/312))
+- `opentelemetry-instrumentation-boto` updated to set span attributes instead of overriding the resource.
+  ([#310](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/310))
+- `opentelemetry-instrumentation-grpc` Fix issue tracking child spans in streaming responses
+  ([#260](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/260))
+- `opentelemetry-instrumentation-grpc` Updated client attributes, added tests, fixed examples, docs
+  ([#269](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/269))
+
+## [0.17b0](https://github.com/open-telemetry/opentelemetry-python-contrib/releases/tag/v0.17b0) - 2021-01-20
+
+### Added
+- `opentelemetry-instrumentation-sqlalchemy` Ensure spans have kind set to "CLIENT"
+  ([#278](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/278))
 - `opentelemetry-instrumentation-celery` Add support for Celery version 5.x
   ([#266](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/266))
 - `opentelemetry-instrumentation-urllib` Add urllib instrumentation
@@ -33,11 +99,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   ([#236](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/236))
 - Add README and example app for Prometheus Remote Write Exporter
   ([#227](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/227]))
+- `opentelemetry-instrumentation-botocore` Adds a field to report the number of retries it take to complete an API call
+  ([#275](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/275))
+- `opentelemetry-instrumentation-requests` Use instanceof to check if responses are valid Response objects
+  ([#273](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/273))
 
 ### Changed
 - Fix broken links to project ([#413](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/413))
 - `opentelemetry-instrumentation-asgi`, `opentelemetry-instrumentation-wsgi` Return `None` for `CarrierGetter` if key not found
-  ([#1374](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/233))
+  ([#233](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/233))
 - `opentelemetry-instrumentation-grpc` Comply with updated spec, rework tests
   ([#236](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/236))
 - `opentelemetry-instrumentation-asgi`, `opentelemetry-instrumentation-falcon`, `opentelemetry-instrumentation-flask`, `opentelemetry-instrumentation-pyramid`, `opentelemetry-instrumentation-wsgi` Renamed `host.port` attribute to `net.host.port`
@@ -45,7 +115,27 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - `opentelemetry-instrumentation-flask` Do not emit a warning message for request contexts created with `app.test_request_context`
   ([#253](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/253))
 - `opentelemetry-instrumentation-requests`, `opentelemetry-instrumentation-urllib` Fix span name callback parameters
-- ([#259](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/259))
+  ([#259](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/259))
+- `opentelemetry-exporter-datadog` Fix unintentional type change of span trace flags
+  ([#261](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/261))
+- `opentelemetry-instrumentation-aiopg` Fix AttributeError `__aexit__` when `aiopg.connect` and `aio[g].create_pool` used with async context manager
+  ([#235](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/235))
+- `opentelemetry-exporter-datadog` `opentelemetry-sdk-extension-aws` Fix reference to ids_generator in sdk
+  ([#283](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/283))
+- `opentelemetry-instrumentation-sqlalchemy` Use SQL operation and DB name as span name.
+  ([#254](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/254))
+- `opentelemetry-instrumentation-dbapi`, `TracedCursor` replaced by `CursorTracer`
+  ([#246](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/246))
+- `opentelemetry-instrumentation-psycopg2`, Added support for psycopg2 registered types.
+  ([#246](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/246))
+- `opentelemetry-instrumentation-dbapi`, `opentelemetry-instrumentation-psycopg2`, `opentelemetry-instrumentation-mysql`, `opentelemetry-instrumentation-pymysql`, `opentelemetry-instrumentation-aiopg` Use SQL command name as the span operation name instead of the entire query.
+  ([#246](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/246))
+- Update TraceState to adhere to specs
+  ([#276](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/276))
+
+### Removed
+- Remove Configuration
+  ([#285](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/285))
 
 ## [0.16b1](https://github.com/open-telemetry/opentelemetry-python-contrib/releases/tag/v0.16b1) - 2020-11-26
 
@@ -81,7 +171,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - `opentelemetry-instrumentation-botocore` Make botocore instrumentation check if instrumentation has been suppressed
   ([#182](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/182))
 - `opentelemetry-instrumentation-botocore` Botocore SpanKind as CLIENT and modify existing traced attributes
-  ([#150])(https://github.com/open-telemetry/opentelemetry-python-contrib/pull/150)
+  ([#150](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/150))
 - `opentelemetry-instrumentation-dbapi` Update dbapi and its dependant instrumentations to follow semantic conventions
   ([#195](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/195))
 - `opentelemetry-instrumentation-dbapi` Stop capturing query parameters by default
