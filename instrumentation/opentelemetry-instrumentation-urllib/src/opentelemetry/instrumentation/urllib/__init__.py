@@ -186,31 +186,6 @@ def _instrument(tracer_provider=None, span_callback=None, name_callback=None):
                     code_ = result.getcode()
                     labels["http.status_code"] = str(code_)
 
-                if span.is_recording():
-                    span.set_attribute("http.method", method)
-                    span.set_attribute("http.url", url)
-
-                headers = get_or_create_headers()
-                propagators.inject(type(headers).__setitem__, headers)
-
-                token = context.attach(
-                    context.set_value(
-                        _SUPPRESS_URLLIB_INSTRUMENTATION_KEY, True
-                    )
-                )
-                try:
-                    result = call_wrapped()  # *** PROCEED
-                except Exception as exc:  # pylint: disable=W0703
-                    exception = exc
-                    result = getattr(exc, "file", None)
-                finally:
-                    context.detach(token)
-
-                if result is not None:
-
-                    code_ = result.getcode()
-                    labels["http.status_code"] = str(code_)
-
                     if span.is_recording():
                         span.set_attribute("http.status_code", code_)
                         span.set_attribute("http.status_text", result.reason)
