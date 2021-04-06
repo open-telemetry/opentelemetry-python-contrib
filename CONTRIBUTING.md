@@ -153,6 +153,18 @@ rather than conform to specific API names or argument patterns in the spec.
 
 For a deeper discussion, see: https://github.com/open-telemetry/opentelemetry-specification/issues/165
 
+## Running Tests Locally
+
+1. Go to your Contrib repo directory. `cd ~/git/opentelemetry-python-contrib`.
+2. Create a virtual env in your Contrib repo directory. `python3 -m venv my_test_venv`.
+3. Activate your virtual env. `source my_test_venv/bin/activate`.
+4. Clone the [OpenTelemetry Python](https://github.com/open-telemetry/opentelemetry-python) Python Core repo to a folder named `opentelemetry-python-core`. `git clone https://github.com/open-telemetry/opentelemetry-python.git opentelemetry-python-core`.
+5. Change directory to the repo that was just cloned. `cd opentelemetry-python-core`.
+6. Move the head of this repo to the hash you want your tests to use. This is currently the SHA `1a12fa0d681e37c1fda9cb8d46212ff3bbf6b76a` as seen in `.github/workflows/test.yml`. Use `git fetch && git checkout 1a12fa0d681e37c1fda9cb8d46212ff3bbf6b76a`.
+7. Go back to the root directory. `cd ../`.
+8. Make sure you have `tox` installed. `pip install tox`.
+9. Run tests for a package. (e.g. `tox -e test-instrumentation-flask`.)
+
 ## Style Guide
 
 * docstrings should adhere to the [Google Python Style
