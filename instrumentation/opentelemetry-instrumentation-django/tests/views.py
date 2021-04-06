@@ -35,7 +35,9 @@ async def async_traced(request):  # pylint: disable=unused-argument
     return HttpResponse()
 
 
-async def async_traced_template(request, year):  # pylint: disable=unused-argument
+async def async_traced_template(
+    request, year
+):  # pylint: disable=unused-argument
     return HttpResponse()
 
 

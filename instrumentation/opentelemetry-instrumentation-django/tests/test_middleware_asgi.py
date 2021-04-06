@@ -56,9 +56,10 @@ urlpatterns = [
 _django_instrumentor = DjangoInstrumentor()
 
 
-@pytest.mark.skipif(not DJANGO_3_1, reason="AsyncClient implemented since Django 3.1")
+@pytest.mark.skipif(
+    not DJANGO_3_1, reason="AsyncClient implemented since Django 3.1"
+)
 class TestMiddlewareAsgi(SimpleTestCase, TestBase):
-
     @classmethod
     def setUpClass(cls):
         super().setUpClass()
@@ -110,7 +111,6 @@ class TestMiddlewareAsgi(SimpleTestCase, TestBase):
         # Disable databases.
         pass
 
-    @pytest.mark.skip(reason="TODO")
     async def test_templated_route_get(self):
         await self.async_client.get("/route/2020/template/")
 
@@ -125,7 +125,7 @@ class TestMiddlewareAsgi(SimpleTestCase, TestBase):
         self.assertEqual(span.attributes["http.method"], "GET")
         self.assertEqual(
             span.attributes["http.url"],
-            "http://testserver/route/2020/template/",
+            "http://127.0.0.1/route/2020/template/",
         )
         self.assertEqual(
             span.attributes["http.route"],
@@ -133,9 +133,9 @@ class TestMiddlewareAsgi(SimpleTestCase, TestBase):
         )
         self.assertEqual(span.attributes["http.scheme"], "http")
         self.assertEqual(span.attributes["http.status_code"], 200)
-        self.assertEqual(span.attributes["http.status_text"], "OK")
+        # TODO: Add http.status_text to ASGI instrumentation.
+        # self.assertEqual(span.attributes["http.status_text"], "OK")
 
-    @pytest.mark.skip(reason="TODO")
     async def test_traced_get(self):
         await self.async_client.get("/traced/")
 
@@ -149,12 +149,13 @@ class TestMiddlewareAsgi(SimpleTestCase, TestBase):
         self.assertEqual(span.status.status_code, StatusCode.UNSET)
         self.assertEqual(span.attributes["http.method"], "GET")
         self.assertEqual(
-            span.attributes["http.url"], "http://testserver/traced/"
+            span.attributes["http.url"], "http://127.0.0.1/traced/"
         )
         self.assertEqual(span.attributes["http.route"], "^traced/")
         self.assertEqual(span.attributes["http.scheme"], "http")
         self.assertEqual(span.attributes["http.status_code"], 200)
-        self.assertEqual(span.attributes["http.status_text"], "OK")
+        # TODO: Add http.status_text to ASGI instrumentation.
+        # self.assertEqual(span.attributes["http.status_text"], "OK")
 
     async def test_not_recording(self):
         mock_tracer = Mock()
@@ -169,7 +170,6 @@ class TestMiddlewareAsgi(SimpleTestCase, TestBase):
             self.assertFalse(mock_span.set_attribute.called)
             self.assertFalse(mock_span.set_status.called)
 
-    @pytest.mark.skip(reason="TODO")
     async def test_traced_post(self):
         await self.async_client.post("/traced/")
 
@@ -183,14 +183,14 @@ class TestMiddlewareAsgi(SimpleTestCase, TestBase):
         self.assertEqual(span.status.status_code, StatusCode.UNSET)
         self.assertEqual(span.attributes["http.method"], "POST")
         self.assertEqual(
-            span.attributes["http.url"], "http://testserver/traced/"
+            span.attributes["http.url"], "http://127.0.0.1/traced/"
         )
         self.assertEqual(span.attributes["http.route"], "^traced/")
         self.assertEqual(span.attributes["http.scheme"], "http")
         self.assertEqual(span.attributes["http.status_code"], 200)
-        self.assertEqual(span.attributes["http.status_text"], "OK")
+        # TODO: Add http.status_text to ASGI instrumentation.
+        # self.assertEqual(span.attributes["http.status_text"], "OK")
 
-    @pytest.mark.skip(reason="TODO")
     async def test_error(self):
         with self.assertRaises(ValueError):
             await self.async_client.get("/error/")
@@ -205,7 +205,7 @@ class TestMiddlewareAsgi(SimpleTestCase, TestBase):
         self.assertEqual(span.status.status_code, StatusCode.ERROR)
         self.assertEqual(span.attributes["http.method"], "GET")
         self.assertEqual(
-            span.attributes["http.url"], "http://testserver/error/"
+            span.attributes["http.url"], "http://127.0.0.1/error/"
         )
         self.assertEqual(span.attributes["http.route"], "^error/")
         self.assertEqual(span.attributes["http.scheme"], "http")
@@ -262,7 +262,9 @@ class TestMiddlewareAsgi(SimpleTestCase, TestBase):
         span = span_list[0]
         self.assertEqual(span.name, "HTTP GET")
 
-    @pytest.mark.skip(reason="TODO")
+    @pytest.mark.skip(
+        reason="TODO: Traced request attributes not supported yet"
+    )
     async def test_traced_request_attrs(self):
         await self.async_client.get("/span_name/1234/", CONTENT_TYPE="test/ct")
         span_list = self.memory_exporter.get_finished_spans()

@@ -126,6 +126,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Added
 - `opentelemetry-instrumentation-httpx` Add `httpx` instrumentation
   ([#461](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/461))
+- `opentelemetry-instrumentation-django` Add ASGI support
+  ([#391](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/391))
 
 ## [0.22b0](https://github.com/open-telemetry/opentelemetry-python/releases/tag/v1.3.0-0.22b0) - 2021-06-01
 
