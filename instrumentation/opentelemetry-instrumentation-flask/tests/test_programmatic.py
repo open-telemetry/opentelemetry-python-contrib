@@ -196,11 +196,23 @@ class TestProgrammaticCustomSpanName(
 
         def custom_span_name():
             return "flask-custom-span-name"
+        
+        # request_hook_args = ()
+        # response_hook_args = ()
+
+        # def request_hook(span, request):
+        #     nonlocal request_hook_args
+        #     request_hook_args = (span, request)
+        
+        # def response_hook(span, request, response):
+        #     nonlocal response_hook_args
+        #     response_hook_args = (span, request, response)
+        #     response["hook-header"] = "set by hook"
 
         self.app = Flask(__name__)
 
         FlaskInstrumentor().instrument_app(
-            self.app, name_callback=custom_span_name
+            self.app, name_callback=custom_span_name, otel_request_hook=request_hook
         )
 
         self._common_initialization()
@@ -217,6 +229,9 @@ class TestProgrammaticCustomSpanName(
         self.assertEqual(len(span_list), 1)
         self.assertEqual(span_list[0].name, "flask-custom-span-name")
 
+    def test_hooks(self):
+        self.client.get("/hello/123")
+
 
 class TestProgrammaticCustomSpanNameCallbackWithoutApp(
     InstrumentationTest, TestBase, WsgiTestBase
@@ -227,7 +242,7 @@ class TestProgrammaticCustomSpanNameCallbackWithoutApp(
         def custom_span_name():
             return "instrument-without-app"
 
-        FlaskInstrumentor().instrument(name_callback=custom_span_name)
+        FlaskInstrumentor().instrument(name_callback=custom_span_name, otel_request_hook=custom_span_name)
         # pylint: disable=import-outside-toplevel,reimported,redefined-outer-name
         from flask import Flask
 
