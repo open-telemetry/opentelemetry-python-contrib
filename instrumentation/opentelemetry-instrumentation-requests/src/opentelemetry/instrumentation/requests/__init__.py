@@ -147,25 +147,6 @@ def _instrument(tracer_provider=None, span_callback=None, name_callback=None):
                 token = context.attach(
                     context.set_value(_SUPPRESS_HTTP_INSTRUMENTATION_KEY, True)
                 )
-                try:
-                    result = call_wrapped()  # *** PROCEED
-                except Exception as exc:  # pylint: disable=W0703
-                    exception = exc
-                    result = getattr(exc, "response", None)
-                finally:
-                    context.detach(token)
-
-                if isinstance(result, Response):
-                    if span.is_recording():
-                        span.set_attribute(
-                            "http.status_code", result.status_code
-                        )
-                        span.set_attribute("http.status_text", result.reason)
-                        span.set_status(
-                            Status(
-                                http_status_to_status_code(result.status_code)
-                            )
-                        )
 
                 try:
                     result = call_wrapped()  # *** PROCEED
