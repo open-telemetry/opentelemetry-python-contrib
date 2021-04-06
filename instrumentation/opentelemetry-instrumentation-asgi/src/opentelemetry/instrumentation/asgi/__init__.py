@@ -147,12 +147,12 @@ def get_default_span_details(scope: dict) -> Tuple[str, dict]:
         scope: the asgi scope dictionary
 
     Returns:
-        a tuple of the span, and any attributes to attach to the
-        span.
+        a tuple of the span name, and any attributes to attach to the span.
     """
     method_or_path = scope.get("method") or scope.get("path")
+    span_name = "HTTP {}".format(method_or_path.strip())
 
-    return method_or_path, {}
+    return span_name, {}
 
 
 class OpenTelemetryMiddleware:
@@ -205,7 +205,7 @@ class OpenTelemetryMiddleware:
 
         try:
             with self.tracer.start_as_current_span(
-                span_name + " asgi", kind=trace.SpanKind.SERVER,
+                span_name, kind=trace.SpanKind.SERVER,
             ) as span:
                 if span.is_recording():
                     attributes = collect_request_attributes(scope)
