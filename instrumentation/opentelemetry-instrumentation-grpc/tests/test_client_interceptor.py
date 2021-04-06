@@ -326,6 +326,7 @@ class TestClientProto(TestBase):
         self.assertIs(
             span.status.status_code, trace.StatusCode.ERROR,
         )
+
     def test_client_interceptor_trace_context_propagation(
         self,
     ):  # pylint: disable=no-self-use
@@ -334,7 +335,7 @@ class TestClientProto(TestBase):
         try:
             set_global_textmap(MockTextMapPropagator())
             interceptor = OpenTelemetryClientInterceptor(
-                trace._DefaultTracer()
+                trace._DefaultTracer(), None, None
             )
 
             carrier = tuple()
@@ -362,6 +363,7 @@ class TestClientProto(TestBase):
 
         finally:
             set_global_textmap(previous_propagator)
+
 
 class TestClientNoMetrics(TestBase):
     def setUp(self):
