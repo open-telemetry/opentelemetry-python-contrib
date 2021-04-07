@@ -159,11 +159,16 @@ For a deeper discussion, see: https://github.com/open-telemetry/opentelemetry-sp
 2. Create a virtual env in your Contrib repo directory. `python3 -m venv my_test_venv`.
 3. Activate your virtual env. `source my_test_venv/bin/activate`.
 4. Clone the [OpenTelemetry Python](https://github.com/open-telemetry/opentelemetry-python) Python Core repo to a folder named `opentelemetry-python-core`. `git clone https://github.com/open-telemetry/opentelemetry-python.git opentelemetry-python-core`.
-5. Change directory to the repo that was just cloned. `cd opentelemetry-python-core`.
-6. Move the head of this repo to the hash you want your tests to use. This is currently the SHA `1a12fa0d681e37c1fda9cb8d46212ff3bbf6b76a` as seen in `.github/workflows/test.yml`. Use `git fetch && git checkout 1a12fa0d681e37c1fda9cb8d46212ff3bbf6b76a`.
-7. Go back to the root directory. `cd ../`.
-8. Make sure you have `tox` installed. `pip install tox`.
-9. Run tests for a package. (e.g. `tox -e test-instrumentation-flask`.)
+5. Make sure you have `tox` installed. `pip install tox`.
+6. To sdist-package, install and test your project, just type `tox`
+
+### Run tests for a specific package
+
+1. Change directory to the repo that was cloned above. `cd opentelemetry-python-core`.
+2. Move the head of this repo to the SHA hash you want your tests to use. The current SHA hash can be found in `.github/workflows/test.yml`. For example, currently it is `1a12fa0d681e37c1fda9cb8d46212ff3bbf6b76a`. So use `git fetch && git checkout <current SHA hash>`.
+3. Go back to the root directory. `cd ../`.
+4. With `tox` installed, run tests for a package. (e.g. `tox -e test-instrumentation-flask`.)
+
 
 ## Style Guide
 
