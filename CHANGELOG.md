@@ -16,7 +16,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Update redis instrumentation to follow semantic conventions
   ([#403](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/403))
 - Update gRPC instrumentation to better wrap server context
-  ([xxx]((https://github.com/open-telemetry/opentelemetry-python-contrib/pull/xxx))
+  ([#420](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/420))
 
 ### Added
 - `opentelemetry-instrumentation-urllib3` Add urllib3 instrumentation
