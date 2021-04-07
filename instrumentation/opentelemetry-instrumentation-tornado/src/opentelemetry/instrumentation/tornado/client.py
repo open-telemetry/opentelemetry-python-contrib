@@ -39,7 +39,7 @@ def _normalize_request(args, kwargs):
     return (new_args, new_kwargs)
 
 
-def fetch_async(tracer, func, _, args, kwargs):
+def fetch_async(tracer, request_hook, response_hook, func, _, args, kwargs):
     start_time = _time_ns()
 
     # Return immediately if no args were provided (error)
@@ -65,15 +65,21 @@ def fetch_async(tracer, func, _, args, kwargs):
             span.set_attribute(key, value)
 
     with trace.use_span(span):
+        if request_hook:
+            request_hook(span, request)
         inject(request.headers)
         future = func(*args, **kwargs)
         future.add_done_callback(
-            functools.partial(_finish_tracing_callback, span=span)
+            functools.partial(
+                _finish_tracing_callback,
+                span=span,
+                response_hook=response_hook,
+            )
         )
         return future
 
 
-def _finish_tracing_callback(future, span):
+def _finish_tracing_callback(future, span, response_hook):
     status_code = None
     description = None
     exc = future.exception()
@@ -92,4 +98,6 @@ def _finish_tracing_callback(future, span):
                 description=description,
             )
         )
+    if response_hook:
+        response_hook(span, future)
     span.end()
