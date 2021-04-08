@@ -197,22 +197,10 @@ class TestProgrammaticCustomSpanName(
         def custom_span_name():
             return "flask-custom-span-name"
         
-        # request_hook_args = ()
-        # response_hook_args = ()
-
-        # def request_hook(span, request):
-        #     nonlocal request_hook_args
-        #     request_hook_args = (span, request)
-        
-        # def response_hook(span, request, response):
-        #     nonlocal response_hook_args
-        #     response_hook_args = (span, request, response)
-        #     response["hook-header"] = "set by hook"
-
         self.app = Flask(__name__)
 
         FlaskInstrumentor().instrument_app(
-            self.app, name_callback=custom_span_name, otel_request_hook=request_hook
+            self.app, name_callback=custom_span_name
         )
 
         self._common_initialization()
@@ -229,8 +217,6 @@ class TestProgrammaticCustomSpanName(
         self.assertEqual(len(span_list), 1)
         self.assertEqual(span_list[0].name, "flask-custom-span-name")
 
-    def test_hooks(self):
-        self.client.get("/hello/123")
 
 
 class TestProgrammaticCustomSpanNameCallbackWithoutApp(
@@ -242,7 +228,7 @@ class TestProgrammaticCustomSpanNameCallbackWithoutApp(
         def custom_span_name():
             return "instrument-without-app"
 
-        FlaskInstrumentor().instrument(name_callback=custom_span_name, otel_request_hook=custom_span_name)
+        FlaskInstrumentor().instrument(name_callback=custom_span_name, otel_request_hook=None)
         # pylint: disable=import-outside-toplevel,reimported,redefined-outer-name
         from flask import Flask
 
@@ -261,3 +247,87 @@ class TestProgrammaticCustomSpanNameCallbackWithoutApp(
         span_list = self.memory_exporter.get_finished_spans()
         self.assertEqual(len(span_list), 1)
         self.assertEqual(span_list[0].name, "instrument-without-app")
+
+class TestProgrammaticHooks(
+    InstrumentationTest, TestBase, WsgiTestBase
+):
+    def setUp(self):
+        super().setUp()
+
+        hook_headers = (
+            "hook_attr",
+            "hello otel",
+        )
+
+        def request_hook(span, environ):
+            span.update_name("name from hook")
+
+        def response_hook(span, environ, response_headers):
+            span.set_attribute("hook_attr", "hello world")
+            response_headers.append(hook_headers)
+        
+        self.app = Flask(__name__)
+
+        FlaskInstrumentor().instrument_app(
+            self.app, otel_request_hook=request_hook, otel_response_hook=response_hook
+        )
+
+        self._common_initialization()
+    
+    def tearDown(self):
+        super().tearDown()
+        with self.disable_logging():
+            FlaskInstrumentor().uninstrument_app(self.app)
+    
+    def test_hooks(self):
+        expected_attrs = expected_attributes(
+            {"http.target": "/hello/123", "http.route": "/hello/<int:helloid>", "hook_attr":"hello world"}
+        )
+
+        self.client.get("/hello/123")
+        span_list = self.memory_exporter.get_finished_spans()
+        self.assertEqual(len(span_list), 1)
+        self.assertEqual(span_list[0].name, "name from hook")
+        self.assertEqual(span_list[0].attributes, expected_attrs)
+
+class TestProgrammaticHooksWithoutApp(
+    InstrumentationTest, TestBase, WsgiTestBase
+):
+    def setUp(self):
+        super().setUp()
+
+        hook_headers = (
+            "hook_attr",
+            "hello otel without app",
+        )
+
+        def request_hook(span, environ):
+            span.update_name("without app")
+
+        def response_hook(span, environ, response_headers):
+            span.set_attribute("hook_attr", "hello world without app")
+            response_headers.append(hook_headers)
+
+        FlaskInstrumentor().instrument(otel_request_hook=request_hook, otel_response_hook=response_hook)
+        # pylint: disable=import-outside-toplevel,reimported,redefined-outer-name
+        from flask import Flask
+
+        self.app = Flask(__name__)
+
+        self._common_initialization()
+
+    def tearDown(self):
+        super().tearDown()
+        with self.disable_logging():
+            FlaskInstrumentor().uninstrument()
+
+    def test_no_app_hooks(self):
+        expected_attrs = expected_attributes(
+            {"http.target": "/hello/123", "http.route": "/hello/<int:helloid>", "hook_attr":"hello world without app"}
+        )
+        self.client.get("/hello/123")
+
+        span_list = self.memory_exporter.get_finished_spans()
+        self.assertEqual(len(span_list), 1)
+        self.assertEqual(span_list[0].name, "without app")
+        self.assertEqual(span_list[0].attributes, expected_attrs)
