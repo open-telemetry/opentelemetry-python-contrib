@@ -71,29 +71,8 @@ class _OpenTelemetryServicerContext(grpc.ServicerContext):
         self.details = None
         super().__init__()
 
-    @property
-    def _state(self):
-        return self._servicer_context._state
-
-    @_state.setter
-    def _state(self, value):
-        self._servicer_context._state = value
-
-    @property
-    def _rpc_event(self):
-        return self._servicer_context._rpc_event
-
-    @_rpc_event.setter
-    def _rpc_event(self, value):
-        self._servicer_context._rpc_event = value
-
-    @property
-    def _request_deserializer(self):
-        return self._servicer_context._request_deserializer
-
-    @_request_deserializer.setter
-    def _request_deserializer(self, value):
-        self._servicer_context._request_deserializer = value
+    def __getattr__(self, attr):
+        return getattr(self._servicer_context, attr)
 
     def is_active(self, *args, **kwargs):
         return self._servicer_context.is_active(*args, **kwargs)
