@@ -55,7 +55,7 @@ _SUPPRESS_HTTP_INSTRUMENTATION_KEY = "suppress_http_instrumentation"
 
 # pylint: disable=unused-argument
 # pylint: disable=R0915
-def _instrument(tracer_provider=None, span_callback=None, name_callback=None):
+def _instrument(tracer, span_callback=None, name_callback=None):
     """Enables tracing of all requests calls that go through
     :code:`requests.session.Session.request` (this includes
     :code:`requests.get`, etc.)."""
@@ -125,9 +125,9 @@ def _instrument(tracer_provider=None, span_callback=None, name_callback=None):
         labels["http.method"] = method
         labels["http.url"] = url
 
-        with get_tracer(
-            __name__, __version__, tracer_provider
-        ).start_as_current_span(span_name, kind=SpanKind.CLIENT) as span:
+        with tracer.start_as_current_span(
+            span_name, kind=SpanKind.CLIENT
+        ) as span:
             exception = None
             if span.is_recording():
                 span.set_attribute("http.method", method)
@@ -220,8 +220,10 @@ class RequestsInstrumentor(BaseInstrumentor):
                     outgoing HTTP request based on the method and url.
                     Optional: Defaults to get_default_span_name.
         """
+        tracer_provider = kwargs.get("tracer_provider")
+        tracer = get_tracer(__name__, __version__, tracer_provider)
         _instrument(
-            tracer_provider=kwargs.get("tracer_provider"),
+            tracer,
             span_callback=kwargs.get("span_callback"),
             name_callback=kwargs.get("name_callback"),
         )

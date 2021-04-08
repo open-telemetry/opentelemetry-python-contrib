@@ -109,7 +109,7 @@ def _rewrapped_app(wsgi_app):
     return _wrapped_app
 
 
-def _wrapped_before_request(name_callback, tracer_provider=None):
+def _wrapped_before_request(name_callback, tracer):
     def _before_request():
         if _excluded_urls.url_disabled(flask.request.url):
             return
@@ -119,8 +119,6 @@ def _wrapped_before_request(name_callback, tracer_provider=None):
         token = context.attach(
             extract(flask_request_environ, getter=otel_wsgi.wsgi_getter)
         )
-
-        tracer = trace.get_tracer(__name__, __version__, tracer_provider)
 
         span = tracer.start_span(
             span_name,
@@ -179,9 +177,12 @@ class _InstrumentedFlask(flask.Flask):
         self._original_wsgi_ = self.wsgi_app
         self.wsgi_app = _rewrapped_app(self.wsgi_app)
 
+        tracer = trace.get_tracer(
+            __name__, __version__, _InstrumentedFlask._tracer_provider
+        )
+
         _before_request = _wrapped_before_request(
-            _InstrumentedFlask.name_callback,
-            tracer_provider=_InstrumentedFlask._tracer_provider,
+            _InstrumentedFlask.name_callback, tracer,
         )
         self._before_request = _before_request
         self.before_request(_before_request)
@@ -214,9 +215,9 @@ class FlaskInstrumentor(BaseInstrumentor):
             app._original_wsgi_app = app.wsgi_app
             app.wsgi_app = _rewrapped_app(app.wsgi_app)
 
-            _before_request = _wrapped_before_request(
-                name_callback, tracer_provider=tracer_provider
-            )
+            tracer = trace.get_tracer(__name__, __version__, tracer_provider)
+
+            _before_request = _wrapped_before_request(name_callback, tracer)
             app._before_request = _before_request
             app.before_request(_before_request)
             app.teardown_request(_teardown_request)

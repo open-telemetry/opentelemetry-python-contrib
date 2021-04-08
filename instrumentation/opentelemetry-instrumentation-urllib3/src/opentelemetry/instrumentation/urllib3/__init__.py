@@ -85,8 +85,10 @@ class URLLib3Instrumentor(BaseInstrumentor):
                 ``url_filter``: A callback to process the requested URL prior
                     to adding it as a span attribute.
         """
+        tracer_provider = kwargs.get("tracer_provider")
+        tracer = get_tracer(__name__, __version__, tracer_provider)
         _instrument(
-            tracer_provider=kwargs.get("tracer_provider"),
+            tracer,
             span_name_or_callback=kwargs.get("span_name"),
             url_filter=kwargs.get("url_filter"),
         )
@@ -96,7 +98,7 @@ class URLLib3Instrumentor(BaseInstrumentor):
 
 
 def _instrument(
-    tracer_provider: TracerProvider = None,
+    tracer,
     span_name_or_callback: _SpanNameT = None,
     url_filter: _UrlFilterT = None,
 ):
@@ -114,9 +116,7 @@ def _instrument(
             "http.url": url,
         }
 
-        with get_tracer(
-            __name__, __version__, tracer_provider
-        ).start_as_current_span(
+        with tracer.start_as_current_span(
             span_name, kind=SpanKind.CLIENT, attributes=span_attributes
         ) as span:
             inject(headers)

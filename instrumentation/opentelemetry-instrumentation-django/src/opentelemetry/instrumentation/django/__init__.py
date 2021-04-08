@@ -17,6 +17,7 @@ from os import environ
 
 from django.conf import settings
 
+from opentelemetry.trace import get_tracer
 from opentelemetry.instrumentation.django.environment_variables import (
     OTEL_PYTHON_DJANGO_INSTRUMENT,
 )
@@ -44,7 +45,12 @@ class DjangoInstrumentor(BaseInstrumentor):
         if environ.get(OTEL_PYTHON_DJANGO_INSTRUMENT) == "False":
             return
 
-        _DjangoMiddleware._tracer_provider = kwargs.get("tracer_provider")
+        tracer_provider = kwargs.get("tracer_provider")
+        tracer = get_tracer(
+            __name__, __version__, tracer_provider=tracer_provider,
+        )
+
+        _DjangoMiddleware._tracer = tracer
 
         # This can not be solved, but is an inherent problem of this approach:
         # the order of middleware entries matters, and here you have no control

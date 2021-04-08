@@ -74,7 +74,7 @@ class SQLite3Instrumentor(BaseInstrumentor):
         dbapi.unwrap_connect(sqlite3, "connect")
 
     # pylint:disable=no-self-use
-    def instrument_connection(self, connection):
+    def instrument_connection(self, connection, tracer_provider=None):
         """Enable instrumentation in a SQLite connection.
 
         Args:
@@ -83,7 +83,7 @@ class SQLite3Instrumentor(BaseInstrumentor):
         Returns:
             An instrumented connection.
         """
-        tracer = get_tracer(__name__, __version__)
+        tracer = get_tracer(__name__, __version__, tracer_provider)
 
         return dbapi.instrument_connection(
             tracer,
