@@ -311,6 +311,7 @@ class TestMiddleware(TestBase, WsgiTestBase):
         self.assertIsInstance(response_hook_args[2], HttpResponse)
         self.assertEqual(response_hook_args[2], response)
 
+
 class TestMiddlewareWithTracerProvider(TestBase, WsgiTestBase):
     @classmethod
     def setUpClass(cls):
@@ -319,7 +320,9 @@ class TestMiddlewareWithTracerProvider(TestBase, WsgiTestBase):
     def setUp(self):
         super().setUp()
         setup_test_environment()
-        resource = resources.Resource.create({"resource-key": "resource-value"})
+        resource = resources.Resource.create(
+            {"resource-key": "resource-value"}
+        )
         result = self.create_tracer_provider(resource=resource)
         tracer_provider, exporter = result
         self.exporter = exporter

@@ -18,6 +18,7 @@ from flask import Flask, request
 
 from opentelemetry import trace
 from opentelemetry.instrumentation.flask import FlaskInstrumentor
+from opentelemetry.sdk.resources import Resource
 from opentelemetry.test.test_base import TestBase
 from opentelemetry.test.wsgitestutil import WsgiTestBase
 from opentelemetry.util.http import get_excluded_urls
@@ -243,3 +244,69 @@ class TestProgrammaticCustomSpanNameCallbackWithoutApp(
         span_list = self.memory_exporter.get_finished_spans()
         self.assertEqual(len(span_list), 1)
         self.assertEqual(span_list[0].name, "instrument-without-app")
+
+
+class TestProgrammaticCustomTracerProvider(
+    InstrumentationTest, TestBase, WsgiTestBase
+):
+    def setUp(self):
+        super().setUp()
+        resource = Resource.create({"service.name": "flask-api"})
+        result = self.create_tracer_provider(resource=resource)
+        tracer_provider, exporter = result
+        self.memory_exporter = exporter
+
+        self.app = Flask(__name__)
+
+        FlaskInstrumentor().instrument_app(
+            self.app, tracer_provider=tracer_provider
+        )
+        self._common_initialization()
+
+    def tearDown(self):
+        super().tearDown()
+        with self.disable_logging():
+            FlaskInstrumentor().uninstrument_app(self.app)
+
+    def test_custom_span_name(self):
+        self.client.get("/hello/123")
+
+        span_list = self.memory_exporter.get_finished_spans()
+        self.assertEqual(len(span_list), 1)
+        self.assertEqual(
+            span_list[0].resource.attributes["service.name"], "flask-api"
+        )
+
+
+class TestProgrammaticCustomTracerProviderWithoutApp(
+    InstrumentationTest, TestBase, WsgiTestBase
+):
+    def setUp(self):
+        super().setUp()
+        resource = Resource.create({"service.name": "flask-api-no-app"})
+        result = self.create_tracer_provider(resource=resource)
+        tracer_provider, exporter = result
+        self.memory_exporter = exporter
+
+        FlaskInstrumentor().instrument(tracer_provider=tracer_provider)
+        # pylint: disable=import-outside-toplevel,reimported,redefined-outer-name
+        from flask import Flask
+
+        self.app = Flask(__name__)
+
+        self._common_initialization()
+
+    def tearDown(self):
+        super().tearDown()
+        with self.disable_logging():
+            FlaskInstrumentor().uninstrument()
+
+    def test_custom_span_name(self):
+        self.client.get("/hello/123")
+
+        span_list = self.memory_exporter.get_finished_spans()
+        self.assertEqual(len(span_list), 1)
+        self.assertEqual(
+            span_list[0].resource.attributes["service.name"],
+            "flask-api-no-app",
+        )
