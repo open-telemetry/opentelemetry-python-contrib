@@ -18,6 +18,7 @@ from unittest import mock
 
 from opentelemetry import trace as trace_api
 from opentelemetry.instrumentation import dbapi
+from opentelemetry.sdk import resources
 from opentelemetry.test.test_base import TestBase
 
 
@@ -40,7 +41,7 @@ class TestDBApiIntegration(TestBase):
             "user": "user",
         }
         db_integration = dbapi.DatabaseApiIntegration(
-            self.tracer, "testcomponent", connection_attributes
+            "testname", "testcomponent", connection_attributes
         )
         mock_connection = db_integration.wrapped_connection(
             mock_connect, {}, connection_props
@@ -64,7 +65,7 @@ class TestDBApiIntegration(TestBase):
 
     def test_span_name(self):
         db_integration = dbapi.DatabaseApiIntegration(
-            self.tracer, "testcomponent", {}
+            "testname", "testcomponent", {}
         )
         mock_connection = db_integration.wrapped_connection(
             mock_connect, {}, {}
@@ -97,7 +98,7 @@ class TestDBApiIntegration(TestBase):
             "user": "user",
         }
         db_integration = dbapi.DatabaseApiIntegration(
-            self.tracer,
+            "testname",
             "testcomponent",
             connection_attributes,
             capture_parameters=True,
@@ -138,12 +139,10 @@ class TestDBApiIntegration(TestBase):
             "host": "server_host",
             "user": "user",
         }
-        mock_tracer = mock.Mock()
         mock_span = mock.Mock()
         mock_span.is_recording.return_value = False
-        mock_tracer.start_span.return_value = mock_span
         db_integration = dbapi.DatabaseApiIntegration(
-            mock_tracer, "testcomponent", connection_attributes
+            "testname", "testcomponent", connection_attributes
         )
         mock_connection = db_integration.wrapped_connection(
             mock_connect, {}, connection_props
@@ -173,9 +172,30 @@ class TestDBApiIntegration(TestBase):
         self.assertIs(span.status.status_code, trace_api.StatusCode.ERROR)
         self.assertEqual(span.status.description, "Exception: Test Exception")
 
+    def test_custom_tracer_provider_dbapi(self):
+        resource = resources.Resource.create({"db-resource-key": "value"})
+        result = self.create_tracer_provider(resource=resource)
+        tracer_provider, exporter = result
+
+        db_integration = dbapi.DatabaseApiIntegration(
+            self.tracer, "testcomponent", tracer_provider=tracer_provider
+        )
+        mock_connection = db_integration.wrapped_connection(
+            mock_connect, {}, {}
+        )
+        cursor = mock_connection.cursor()
+        with self.assertRaises(Exception):
+            cursor.execute("Test query", throw_exception=True)
+
+        spans_list = exporter.get_finished_spans()
+        self.assertEqual(len(spans_list), 1)
+        span = spans_list[0]
+        self.assertEqual(span.resource.attributes["db-resource-key"], "value")
+        self.assertIs(span.status.status_code, trace_api.StatusCode.ERROR)
+
     def test_executemany(self):
         db_integration = dbapi.DatabaseApiIntegration(
-            self.tracer, "testcomponent"
+            "testname", "testcomponent"
         )
         mock_connection = db_integration.wrapped_connection(
             mock_connect, {}, {}
@@ -189,7 +209,7 @@ class TestDBApiIntegration(TestBase):
 
     def test_callproc(self):
         db_integration = dbapi.DatabaseApiIntegration(
-            self.tracer, "testcomponent"
+            "testname", "testcomponent"
         )
         mock_connection = db_integration.wrapped_connection(
             mock_connect, {}, {}
