@@ -45,8 +45,6 @@ from opentelemetry.instrumentation.utils import unwrap
 from opentelemetry.trace import SpanKind
 from opentelemetry.trace.status import Status, StatusCode
 
-_APPLIED = "_opentelemetry_tracer"
-
 
 def _hydrate_span_from_args(connection, query, parameters) -> dict:
     """Get network and database attributes from connection."""

@@ -1,4 +1,3 @@
-import asyncpg
 from asyncpg import Connection
 
 from opentelemetry.instrumentation.asyncpg import AsyncPGInstrumentor
