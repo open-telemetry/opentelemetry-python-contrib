@@ -17,13 +17,13 @@ from os import environ
 
 from django.conf import settings
 
-from opentelemetry.trace import get_tracer
 from opentelemetry.instrumentation.django.environment_variables import (
     OTEL_PYTHON_DJANGO_INSTRUMENT,
 )
 from opentelemetry.instrumentation.django.middleware import _DjangoMiddleware
 from opentelemetry.instrumentation.django.version import __version__
 from opentelemetry.instrumentation.instrumentor import BaseInstrumentor
+from opentelemetry.trace import get_tracer
 
 _logger = getLogger(__name__)
 
