@@ -204,13 +204,17 @@ class TestAiopgInstrumentor(TestBase):
         self.assertEqual(len(spans_list), 1)
 
     def test_custom_tracer_provider_instrument_connection(self):
-        resource = resources.Resource.create({"service.name": "db-test-service"})
+        resource = resources.Resource.create(
+            {"service.name": "db-test-service"}
+        )
         result = self.create_tracer_provider(resource=resource)
         tracer_provider, exporter = result
 
         cnx = async_call(aiopg.connect(database="test"))
 
-        cnx = AiopgInstrumentor().instrument_connection(cnx, tracer_provider=tracer_provider)
+        cnx = AiopgInstrumentor().instrument_connection(
+            cnx, tracer_provider=tracer_provider
+        )
 
         cursor = async_call(cnx.cursor())
         query = "SELECT * FROM test"
@@ -220,7 +224,9 @@ class TestAiopgInstrumentor(TestBase):
         self.assertEqual(len(spans_list), 1)
         span = spans_list[0]
 
-        self.assertEqual(span.resource.attributes["service.name"], "db-test-service")
+        self.assertEqual(
+            span.resource.attributes["service.name"], "db-test-service"
+        )
         self.assertIs(span.resource, resource)
 
     def test_uninstrument_connection(self):
