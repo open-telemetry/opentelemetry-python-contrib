@@ -26,6 +26,7 @@ from opentelemetry.instrumentation.django import (
     DjangoInstrumentor,
     _DjangoMiddleware,
 )
+from opentelemetry.sdk import resources
 from opentelemetry.sdk.trace import Span
 from opentelemetry.test.test_base import TestBase
 from opentelemetry.test.wsgitestutil import WsgiTestBase
@@ -309,3 +310,34 @@ class TestMiddleware(TestBase, WsgiTestBase):
         self.assertIsInstance(response_hook_args[1], HttpRequest)
         self.assertIsInstance(response_hook_args[2], HttpResponse)
         self.assertEqual(response_hook_args[2], response)
+
+class TestMiddlewareWithTracerProvider(TestBase, WsgiTestBase):
+    @classmethod
+    def setUpClass(cls):
+        super().setUpClass()
+
+    def setUp(self):
+        super().setUp()
+        setup_test_environment()
+        resource = resources.Resource.create({"resource-key": "resource-value"})
+        result = self.create_tracer_provider(resource=resource)
+        tracer_provider, exporter = result
+        self.exporter = exporter
+        _django_instrumentor.instrument(tracer_provider=tracer_provider)
+
+    def tearDown(self):
+        super().tearDown()
+        teardown_test_environment()
+        _django_instrumentor.uninstrument()
+
+    def test_tracer_provider_traced(self):
+        Client().post("/traced/")
+
+        spans = self.exporter.get_finished_spans()
+        self.assertEqual(len(spans), 1)
+
+        span = spans[0]
+
+        self.assertEqual(
+            span.resource.attributes["resource-key"], "resource-value"
+        )
