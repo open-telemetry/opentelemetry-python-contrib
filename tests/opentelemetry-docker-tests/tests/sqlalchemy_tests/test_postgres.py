@@ -48,7 +48,7 @@ class PostgresTestCase(SQLAlchemyTestMixin):
     def check_meta(self, span):
         # check database connection tags
         self.assertEqual(
-            span.attributes.get(SpanAttributes.NET_PERT_NAME),
+            span.attributes.get(SpanAttributes.NET_PEER_NAME),
             POSTGRES_CONFIG["host"],
         )
         self.assertEqual(

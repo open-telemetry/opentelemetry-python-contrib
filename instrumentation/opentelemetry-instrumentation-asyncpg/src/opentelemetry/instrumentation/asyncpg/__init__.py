@@ -74,7 +74,7 @@ def _hydrate_span_from_args(connection, query, parameters) -> dict:
         span_attributes[SpanAttributes.NET_PEER_IP] = addr[1]
         span_attributes[SpanAttributes.NET_TRANSPORT] = "IP.TCP"
     elif isinstance(addr, str):
-        span_attributes[SpanAttributes.NET_PERT_NAME] = addr
+        span_attributes[SpanAttributes.NET_PEER_NAME] = addr
         span_attributes[SpanAttributes.NET_TRANSPORT] = "Unix"
 
     if query is not None:
