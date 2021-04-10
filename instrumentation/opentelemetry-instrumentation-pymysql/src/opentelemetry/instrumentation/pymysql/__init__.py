@@ -83,8 +83,8 @@ class PyMySQLInstrumentor(BaseInstrumentor):
 
         Args:
             connection: The connection to instrument.
-            tracer_provider: The optional :class:`opentelemetry.trace.TracerProvider` to
-            use. If omitted the current globally configured one is used.
+            tracer_provider: The optional TracerProvider to use. If omitted
+            the current globally configured one is used.
 
         Returns:
             An instrumented connection.
