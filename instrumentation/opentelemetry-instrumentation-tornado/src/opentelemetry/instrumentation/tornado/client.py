@@ -19,6 +19,7 @@ from tornado.httpclient import HTTPError, HTTPRequest
 from opentelemetry import trace
 from opentelemetry.instrumentation.utils import http_status_to_status_code
 from opentelemetry.propagate import inject
+from opentelemetry.trace.attributes import SpanAttributes
 from opentelemetry.trace.status import Status
 from opentelemetry.util._time import _time_ns
 
@@ -58,8 +59,8 @@ def fetch_async(tracer, func, _, args, kwargs):
 
     if span.is_recording():
         attributes = {
-            "http.url": request.url,
-            "http.method": request.method,
+            SpanAttributes.HTTP_URL: request.url,
+            SpanAttributes.HTTP_METHOD: request.method,
         }
         for key, value in attributes.items():
             span.set_attribute(key, value)
@@ -85,7 +86,7 @@ def _finish_tracing_callback(future, span):
         status_code = future.result().code
 
     if status_code is not None:
-        span.set_attribute("http.status_code", status_code)
+        span.set_attribute(SpanAttributes.HTTP_STATUS_CODE, status_code)
         span.set_status(
             Status(
                 status_code=http_status_to_status_code(status_code),

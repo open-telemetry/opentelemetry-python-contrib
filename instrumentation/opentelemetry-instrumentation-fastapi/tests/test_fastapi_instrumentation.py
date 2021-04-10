@@ -20,6 +20,7 @@ from fastapi.testclient import TestClient
 
 import opentelemetry.instrumentation.fastapi as otel_fastapi
 from opentelemetry.test.test_base import TestBase
+from opentelemetry.trace.attributes import SpanAttributes
 from opentelemetry.util.http import get_excluded_urls
 
 
@@ -65,11 +66,13 @@ class TestFastAPIManualInstrumentation(TestBase):
         for span in spans:
             self.assertIn("/user/{username}", span.name)
         self.assertEqual(
-            spans[-1].attributes["http.route"], "/user/{username}"
+            spans[-1].attributes[SpanAttributes.HTTP_ROUTE], "/user/{username}"
         )
         # ensure that at least one attribute that is populated by
         # the asgi instrumentation is successfully feeding though.
-        self.assertEqual(spans[-1].attributes["http.flavor"], "1.1")
+        self.assertEqual(
+            spans[-1].attributes[SpanAttributes.HTTP_FLAVOR], "1.1"
+        )
 
     def test_fastapi_excluded_urls(self):
         """Ensure that given fastapi routes are excluded."""

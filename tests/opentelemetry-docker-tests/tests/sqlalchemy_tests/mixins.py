@@ -127,7 +127,7 @@ class SQLAlchemyTestMixin(TestBase):
         self.assertEqual(len(spans), 1)
         span = spans[0]
         stmt = "INSERT INTO players (id, name) VALUES "
-        if span.attributes.get("db.system") == "sqlite":
+        if span.attributes.get(SpanAttributes.DB_SYSTEM) == "sqlite":
             stmt += "(?, ?)"
         else:
             stmt += "(%(id)s, %(name)s)"
@@ -144,7 +144,7 @@ class SQLAlchemyTestMixin(TestBase):
         self.assertEqual(len(spans), 1)
         span = spans[0]
         stmt = "SELECT players.id AS players_id, players.name AS players_name \nFROM players \nWHERE players.name = "
-        if span.attributes.get("db.system") == "sqlite":
+        if span.attributes.get(SpanAttributes.DB_SYSTEM) == "sqlite":
             stmt += "?"
         else:
             stmt += "%(name_1)s"

@@ -302,8 +302,14 @@ class TestDatadogSpanExporter(unittest.TestCase):
     def test_resources(self):
         test_attributes = [
             {},
-            {"http.method": "GET", "http.route": "/foo/<int:id>"},
-            {"http.method": "GET", "http.target": "/foo/200"},
+            {
+                SpanAttributes.HTTP_METHOD: "GET",
+                SpanAttributes.HTTP_ROUTE: "/foo/<int:id>",
+            },
+            {
+                SpanAttributes.HTTP_METHOD: "GET",
+                SpanAttributes.HTTP_TARGET: "/foo/200",
+            },
         ]
 
         for index, test in enumerate(test_attributes):

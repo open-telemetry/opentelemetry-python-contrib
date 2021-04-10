@@ -57,6 +57,7 @@ from opentelemetry.instrumentation.elasticsearch.version import __version__
 from opentelemetry.instrumentation.instrumentor import BaseInstrumentor
 from opentelemetry.instrumentation.utils import unwrap
 from opentelemetry.trace import SpanKind, get_tracer
+from opentelemetry.trace.attributes import SpanAttributes
 from opentelemetry.trace.status import Status, StatusCode
 
 logger = getLogger(__name__)
@@ -124,14 +125,14 @@ def _wrap_perform_request(tracer, span_name_prefix):
         ) as span:
             if span.is_recording():
                 attributes = {
-                    "db.system": "elasticsearch",
+                    SpanAttributes.DB_SYSTEM: "elasticsearch",
                 }
                 if url:
                     attributes["elasticsearch.url"] = url
                 if method:
                     attributes["elasticsearch.method"] = method
                 if body:
-                    attributes["db.statement"] = str(body)
+                    attributes[SpanAttributes.DB_STATEMENT] = str(body)
                 if params:
                     attributes["elasticsearch.params"] = str(params)
                 for key, value in attributes.items():

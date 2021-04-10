@@ -43,6 +43,7 @@ from opentelemetry.instrumentation.asyncpg.version import __version__
 from opentelemetry.instrumentation.instrumentor import BaseInstrumentor
 from opentelemetry.instrumentation.utils import unwrap
 from opentelemetry.trace import SpanKind
+from opentelemetry.trace.attributes import DbSystemValues, SpanAttributes
 from opentelemetry.trace.status import Status, StatusCode
 
 _APPLIED = "_opentelemetry_tracer"
@@ -50,7 +51,9 @@ _APPLIED = "_opentelemetry_tracer"
 
 def _hydrate_span_from_args(connection, query, parameters) -> dict:
     """Get network and database attributes from connection."""
-    span_attributes = {"db.system": "postgresql"}
+    span_attributes = {
+        SpanAttributes.DB_SYSTEM: DbSystemValues.POSTGRESQL.value
+    }
 
     # connection contains _params attribute which is a namedtuple ConnectionParameters.
     # https://github.com/MagicStack/asyncpg/blob/master/asyncpg/connection.py#L68
@@ -58,24 +61,24 @@ def _hydrate_span_from_args(connection, query, parameters) -> dict:
     params = getattr(connection, "_params", None)
     dbname = getattr(params, "database", None)
     if dbname:
-        span_attributes["db.name"] = dbname
+        span_attributes[SpanAttributes.DB_NAME] = dbname
     user = getattr(params, "user", None)
     if user:
-        span_attributes["db.user"] = user
+        span_attributes[SpanAttributes.DB_USER] = user
 
     # connection contains _addr attribute which is either a host/port tuple, or unix socket string
     # https://magicstack.github.io/asyncpg/current/_modules/asyncpg/connection.html
     addr = getattr(connection, "_addr", None)
     if isinstance(addr, tuple):
-        span_attributes["net.peer.name"] = addr[0]
-        span_attributes["net.peer.ip"] = addr[1]
-        span_attributes["net.transport"] = "IP.TCP"
+        span_attributes[SpanAttributes.NER_PEER_NAME] = addr[0]
+        span_attributes[SpanAttributes.NET_PEER_IP] = addr[1]
+        span_attributes[SpanAttributes.NET_TRANSPORT] = "IP.TCP"
     elif isinstance(addr, str):
-        span_attributes["net.peer.name"] = addr
-        span_attributes["net.transport"] = "Unix"
+        span_attributes[SpanAttributes.NET_PERT_NAME] = addr
+        span_attributes[SpanAttributes.NET_TRANSPORT] = "Unix"
 
     if query is not None:
-        span_attributes["db.statement"] = query
+        span_attributes[SpanAttributes.DB_STATEMENT] = query
 
     if parameters is not None and len(parameters) > 0:
         span_attributes["db.statement.parameters"] = str(parameters)
