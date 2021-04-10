@@ -18,11 +18,11 @@ import unittest.mock as mock
 
 import opentelemetry.instrumentation.asgi as otel_asgi
 from opentelemetry import trace as trace_api
-from opentelemetry.trace.attributes import SpanAttributes
 from opentelemetry.test.asgitestutil import (
     AsgiTestBase,
     setup_testing_defaults,
 )
+from opentelemetry.trace.attributes import SpanAttributes
 
 
 async def http_app(scope, receive, send):
