@@ -160,14 +160,12 @@ class OpenTelemetryMiddleware:
 
     Args:
         app: The ASGI application callable to forward requests to.
-        excluded_urls: The optional :class:`opentelemetry.util.http.ExcludeList` to use.
-            Set to None to disable excluding urls.
         span_details_callback: Callback which should return a string
             and a tuple, representing the desired span name and a
             dictionary with any additional span attributes to set.
             Optional: Defaults to get_default_span_details.
-            tracer_provider: The optional TracerProvider to use. If omitted
-            the current globally configured one is used.
+        tracer_provider: The optional TracerProvider to use. If omitted
+        the current globally configured one is used.
     """
 
     def __init__(
