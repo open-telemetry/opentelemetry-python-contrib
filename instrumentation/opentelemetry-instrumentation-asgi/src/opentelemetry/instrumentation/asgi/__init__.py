@@ -166,8 +166,8 @@ class OpenTelemetryMiddleware:
             and a tuple, representing the desired span name and a
             dictionary with any additional span attributes to set.
             Optional: Defaults to get_default_span_details.
-        tracer_provider: The optional :class:`opentelemetry.trace.TracerProvider` to
-            use. If omitted the current globally configured one is used.
+            tracer_provider: The optional TracerProvider to use. If omitted
+            the current globally configured one is used.
     """
 
     def __init__(
