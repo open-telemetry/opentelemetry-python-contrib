@@ -17,7 +17,7 @@ import os
 import aiopg
 import psycopg2
 import pytest
-from OpenTelemetry.trace.attributes import SpanAttributes
+from opentelemetry.trace.attributes import SpanAttributes
 
 from opentelemetry import trace as trace_api
 from opentelemetry.instrumentation.aiopg import AiopgInstrumentor
