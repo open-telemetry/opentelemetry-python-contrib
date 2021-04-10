@@ -70,7 +70,7 @@ def _hydrate_span_from_args(connection, query, parameters) -> dict:
     # https://magicstack.github.io/asyncpg/current/_modules/asyncpg/connection.html
     addr = getattr(connection, "_addr", None)
     if isinstance(addr, tuple):
-        span_attributes[SpanAttributes.NER_PEER_NAME] = addr[0]
+        span_attributes[SpanAttributes.NET_PEER_NAME] = addr[0]
         span_attributes[SpanAttributes.NET_PEER_IP] = addr[1]
         span_attributes[SpanAttributes.NET_TRANSPORT] = "IP.TCP"
     elif isinstance(addr, str):

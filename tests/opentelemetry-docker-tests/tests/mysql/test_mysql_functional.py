@@ -19,6 +19,7 @@ import mysql.connector
 from opentelemetry import trace as trace_api
 from opentelemetry.instrumentation.mysql import MySQLInstrumentor
 from opentelemetry.test.test_base import TestBase
+from opentelemetry.trace.attributes import SpanAttributes
 
 MYSQL_USER = os.getenv("MYSQL_USER", "testuser")
 MYSQL_PASSWORD = os.getenv("MYSQL_PASSWORD", "testpassword")

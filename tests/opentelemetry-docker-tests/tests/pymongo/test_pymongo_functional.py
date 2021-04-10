@@ -19,6 +19,7 @@ from pymongo import MongoClient
 from opentelemetry import trace as trace_api
 from opentelemetry.instrumentation.pymongo import PymongoInstrumentor
 from opentelemetry.test.test_base import TestBase
+from opentelemetry.trace.attributes import SpanAttributes
 
 MONGODB_HOST = os.getenv("MONGODB_HOST", "localhost")
 MONGODB_PORT = int(os.getenv("MONGODB_PORT", "27017"))

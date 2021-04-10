@@ -17,6 +17,7 @@ import redis
 from opentelemetry import trace
 from opentelemetry.instrumentation.redis import RedisInstrumentor
 from opentelemetry.test.test_base import TestBase
+from opentelemetry.trace.attributes import SpanAttributes
 
 
 class TestRedisInstrument(TestBase):

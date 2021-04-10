@@ -20,6 +20,7 @@ from psycopg2 import sql
 from opentelemetry import trace as trace_api
 from opentelemetry.instrumentation.psycopg2 import Psycopg2Instrumentor
 from opentelemetry.test.test_base import TestBase
+from opentelemetry.trace.attributes import SpanAttributes
 
 POSTGRES_HOST = os.getenv("POSTGRESQL_HOST", "localhost")
 POSTGRES_PORT = int(os.getenv("POSTGRESQL_PORT", "5432"))
