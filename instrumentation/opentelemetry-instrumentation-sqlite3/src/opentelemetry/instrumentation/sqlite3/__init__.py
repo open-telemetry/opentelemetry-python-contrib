@@ -79,17 +79,20 @@ class SQLite3Instrumentor(BaseInstrumentor):
 
         Args:
             connection: The connection to instrument.
+        tracer_provider: The optional :class:`opentelemetry.trace.TracerProvider` to
+            use. If omitted the current globally configured one is used.
 
         Returns:
             An instrumented connection.
         """
-        tracer = get_tracer(__name__, __version__, tracer_provider)
 
         return dbapi.instrument_connection(
-            tracer,
+            __name__,
             connection,
             self._DATABASE_SYSTEM,
             self._CONNECTION_ATTRIBUTES,
+            version=__version__,
+            tracer_provider=tracer_provider,
         )
 
     def uninstrument_connection(self, connection):
