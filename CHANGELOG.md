@@ -21,7 +21,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   ([#299](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/299))
 
 - `opentelemetry-instrumentation-flask` Added `request_hook` and `response_hook` callbacks.
-  ([#410](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/410))
+  ([#416](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/416))
 
 - `opentelemetry-instrumenation-django` now supports request and response hooks.
   ([#407](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/407))
