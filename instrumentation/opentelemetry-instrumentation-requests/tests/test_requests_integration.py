@@ -82,7 +82,6 @@ class RequestsIntegrationTestBase(abc.ABC):
                 "http.method": "GET",
                 "http.url": self.URL,
                 "http.status_code": 200,
-                "http.status_text": "OK",
             },
         )
 
@@ -127,7 +126,6 @@ class RequestsIntegrationTestBase(abc.ABC):
         span = self.assert_span()
 
         self.assertEqual(span.attributes.get("http.status_code"), 404)
-        self.assertEqual(span.attributes.get("http.status_text"), "Not Found")
 
         self.assertIs(
             span.status.status_code, trace.StatusCode.ERROR,
@@ -177,10 +175,8 @@ class RequestsIntegrationTestBase(abc.ABC):
     def test_not_recording(self):
         with mock.patch("opentelemetry.trace.INVALID_SPAN") as mock_span:
             RequestsInstrumentor().uninstrument()
-            # original_tracer_provider returns a default tracer provider, which
-            # in turn will return an INVALID_SPAN, which is always not recording
             RequestsInstrumentor().instrument(
-                tracer_provider=self.original_tracer_provider
+                tracer_provider=trace._DefaultTracerProvider()
             )
             mock_span.is_recording.return_value = False
             result = self.perform_request(self.URL)
@@ -237,7 +233,6 @@ class RequestsIntegrationTestBase(abc.ABC):
                 "http.method": "GET",
                 "http.url": self.URL,
                 "http.status_code": 200,
-                "http.status_text": "OK",
                 "http.response.body": "Hello!",
             },
         )
@@ -306,7 +301,6 @@ class RequestsIntegrationTestBase(abc.ABC):
                 "http.method": "GET",
                 "http.url": self.URL,
                 "http.status_code": 500,
-                "http.status_text": "Internal Server Error",
             },
         )
         self.assertEqual(span.status.status_code, StatusCode.ERROR)
