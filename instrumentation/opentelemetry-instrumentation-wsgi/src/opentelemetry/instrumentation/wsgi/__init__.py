@@ -253,3 +253,11 @@ def _end_span_after_iterating(iterable, span, tracer, token):
             close()
         span.end()
         context.detach(token)
+
+
+class BackPropagationSetter:
+    def set(self, carrier, key, value):  # pylint: disable=no-self-use
+        carrier.append((key, value))
+
+
+default_back_propagation_setter = BackPropagationSetter()
