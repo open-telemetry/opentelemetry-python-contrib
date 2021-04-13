@@ -58,8 +58,6 @@ from opentelemetry.instrumentation.instrumentor import BaseInstrumentor
 from opentelemetry.propagate import extract
 from opentelemetry.util._time import _time_ns
 from opentelemetry.util.http import get_excluded_urls
-from opentelemetry.sdk.trace import Span
-
 
 
 _logger = getLogger(__name__)
@@ -81,7 +79,7 @@ def get_default_span_name():
         span_name = otel_wsgi.get_default_span_name(flask.request.environ)
     return span_name
 
-def _rewrapped_app(wsgi_app, otel_response_hook=None):
+def _rewrapped_app(wsgi_app, response_hook=None):
     def _wrapped_app(wrapped_app_environ, start_response):
         # We want to measure the time for route matching, etc.
         # In theory, we could start the span here and use
@@ -103,8 +101,8 @@ def _rewrapped_app(wsgi_app, otel_response_hook=None):
                         "missing at _start_response(%s)",
                         status,
                     )
-                if otel_response_hook:
-                    otel_response_hook(span, status, response_headers) 
+                if response_hook:
+                    response_hook(span, status, response_headers) 
             
             return start_response(status, response_headers, *args, **kwargs)
 
@@ -113,13 +111,13 @@ def _rewrapped_app(wsgi_app, otel_response_hook=None):
     return _wrapped_app
 
 
-def _wrapped_before_request(name_callback, otel_request_hook=None):
+def _wrapped_before_request(request_hook=None):
     def _before_request():
         if _excluded_urls.url_disabled(flask.request.url):
             return
 
         flask_request_environ = flask.request.environ
-        span_name = name_callback()
+        span_name = get_default_span_name()
         token = context.attach(
             extract(flask_request_environ, getter=otel_wsgi.wsgi_getter)
         )
@@ -131,6 +129,9 @@ def _wrapped_before_request(name_callback, otel_request_hook=None):
             kind=trace.SpanKind.SERVER,
             start_time=flask_request_environ.get(_ENVIRON_STARTTIME_KEY),
         )
+        if request_hook:
+            request_hook(span, flask_request_environ)
+
         if span.is_recording():
             attributes = otel_wsgi.collect_request_attributes(
                 flask_request_environ
@@ -148,9 +149,7 @@ def _wrapped_before_request(name_callback, otel_request_hook=None):
         flask_request_environ[_ENVIRON_SPAN_KEY] = span
         flask_request_environ[_ENVIRON_TOKEN] = token
         
-        if otel_request_hook:
-            otel_request_hook(span, flask_request_environ)
-
+        
     return _before_request
 
 
@@ -177,16 +176,15 @@ def _teardown_request(exc):
 
 class _InstrumentedFlask(flask.Flask):
 
-    name_callback = get_default_span_name
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
 
         self._original_wsgi_ = self.wsgi_app
-        self.wsgi_app = _rewrapped_app(self.wsgi_app, _InstrumentedFlask.otel_response_hook)
+        self.wsgi_app = _rewrapped_app(self.wsgi_app, _InstrumentedFlask.response_hook)
 
         _before_request = _wrapped_before_request(
-            _InstrumentedFlask.name_callback, _InstrumentedFlask.otel_request_hook
+            _InstrumentedFlask.request_hook
         )
         self._before_request = _before_request
         self.before_request(_before_request)
@@ -201,26 +199,23 @@ class FlaskInstrumentor(BaseInstrumentor):
     """
     def _instrument(self, **kwargs):
         self._original_flask = flask.Flask
-        otel_request_hook = kwargs.get("otel_request_hook")
-        otel_response_hook = kwargs.get("otel_response_hook")
-        name_callback = kwargs.get("name_callback")
-        if callable(name_callback):
-            _InstrumentedFlask.name_callback = name_callback
-        _InstrumentedFlask.otel_request_hook = otel_request_hook
-        _InstrumentedFlask.otel_response_hook = otel_response_hook
+        request_hook = kwargs.get("request_hook")
+        response_hook = kwargs.get("response_hook")
+        _InstrumentedFlask.request_hook = request_hook
+        _InstrumentedFlask.response_hook = response_hook
         flask.Flask = _InstrumentedFlask
 
     def instrument_app(
-        self, app, name_callback=get_default_span_name, otel_request_hook=None, otel_response_hook=None
+        self, app, request_hook=None, response_hook=None
     ):  # pylint: disable=no-self-use
         if not hasattr(app, "_is_instrumented"):
             app._is_instrumented = False
 
         if not app._is_instrumented:
             app._original_wsgi_app = app.wsgi_app
-            app.wsgi_app = _rewrapped_app(app.wsgi_app, otel_response_hook)
+            app.wsgi_app = _rewrapped_app(app.wsgi_app, response_hook)
 
-            _before_request = _wrapped_before_request(name_callback, otel_request_hook)
+            _before_request = _wrapped_before_request(request_hook)
             app._before_request = _before_request
             app.before_request(_before_request)
             app.teardown_request(_teardown_request)
