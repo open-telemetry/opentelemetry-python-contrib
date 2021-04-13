@@ -82,7 +82,7 @@ class MySQLInstrumentor(BaseInstrumentor):
 
         Args:
             connection: The connection to instrument.
-            tracer_provider: The optional TracerProvider to use. If omitted
+            tracer_provider: The optional tracer provider to use. If omitted
             the current globally configured one is used.
 
         Returns:
