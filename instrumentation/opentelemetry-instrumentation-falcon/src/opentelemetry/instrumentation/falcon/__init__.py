@@ -52,6 +52,10 @@ import opentelemetry.instrumentation.wsgi as otel_wsgi
 from opentelemetry import context, trace
 from opentelemetry.instrumentation.falcon.version import __version__
 from opentelemetry.instrumentation.instrumentor import BaseInstrumentor
+from opentelemetry.instrumentation.propagators import (
+    FuncSetter,
+    get_global_back_propagator,
+)
 from opentelemetry.instrumentation.utils import (
     extract_attributes_from_object,
     http_status_to_status_code,
@@ -148,6 +152,8 @@ class _InstrumentedFalconAPI(falcon.API):
 class _TraceMiddleware:
     # pylint:disable=R0201,W0613
 
+    back_propagation_setter = FuncSetter(falcon.api.Response.append_header)
+
     def __init__(self, tracer=None, traced_request_attrs=None):
         self.tracer = tracer
         self._traced_request_attrs = _traced_request_attrs
@@ -209,3 +215,7 @@ class _TraceMiddleware:
                     description=reason,
                 )
             )
+
+        propagator = get_global_back_propagator()
+        if propagator:
+            propagator.inject(resp, setter=self.back_propagation_setter)
