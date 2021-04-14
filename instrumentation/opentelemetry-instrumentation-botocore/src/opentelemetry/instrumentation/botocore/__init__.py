@@ -49,15 +49,14 @@ API
 import logging
 
 from botocore.client import BaseClient
-from botocore.exceptions import ClientError, ParamValidationError
-from wrapt import ObjectProxy, wrap_function_wrapper
+from botocore.exceptions import ClientError
+from wrapt import wrap_function_wrapper
 
 from opentelemetry import context as context_api
-from opentelemetry import propagators
 from opentelemetry.instrumentation.botocore.version import __version__
 from opentelemetry.instrumentation.instrumentor import BaseInstrumentor
 from opentelemetry.instrumentation.utils import unwrap
-from opentelemetry.sdk.trace import Resource
+from opentelemetry.propagate import inject
 from opentelemetry.trace import SpanKind, get_tracer
 
 logger = logging.getLogger(__name__)
@@ -67,7 +66,7 @@ logger = logging.getLogger(__name__)
 def _patched_endpoint_prepare_request(wrapped, instance, args, kwargs):
     request = args[0]
     headers = request.headers
-    propagators.inject(type(headers).__setitem__, headers)
+    inject(headers)
     return wrapped(*args, **kwargs)
 
 
@@ -151,6 +150,11 @@ class BotocoreInstrumentor(BaseInstrumentor):
                     if req_id:
                         span.set_attribute(
                             "aws.request_id", req_id,
+                        )
+
+                    if "RetryAttempts" in metadata:
+                        span.set_attribute(
+                            "retry_attempts", metadata["RetryAttempts"],
                         )
 
                     if "HTTPStatusCode" in metadata:

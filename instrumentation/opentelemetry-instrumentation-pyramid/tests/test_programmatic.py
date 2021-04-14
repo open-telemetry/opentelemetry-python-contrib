@@ -17,10 +17,10 @@ from unittest.mock import Mock, patch
 from pyramid.config import Configurator
 
 from opentelemetry import trace
-from opentelemetry.configuration import Configuration
 from opentelemetry.instrumentation.pyramid import PyramidInstrumentor
 from opentelemetry.test.test_base import TestBase
 from opentelemetry.test.wsgitestutil import WsgiTestBase
+from opentelemetry.util.http import get_excluded_urls
 
 # pylint: disable=import-error
 from .pyramid_base_test import InstrumentationTest
@@ -28,7 +28,6 @@ from .pyramid_base_test import InstrumentationTest
 
 def expected_attributes(override_attributes):
     default_attributes = {
-        "component": "http",
         "http.method": "GET",
         "http.server_name": "localhost",
         "http.scheme": "http",
@@ -36,7 +35,6 @@ def expected_attributes(override_attributes):
         "http.host": "localhost",
         "http.target": "/",
         "http.flavor": "1.1",
-        "http.status_text": "OK",
         "http.status_code": 200,
     }
     for key, val in override_attributes.items():
@@ -63,7 +61,7 @@ class TestProgrammatic(InstrumentationTest, TestBase, WsgiTestBase):
         self.env_patch.start()
         self.exclude_patch = patch(
             "opentelemetry.instrumentation.pyramid.callbacks._excluded_urls",
-            Configuration()._excluded_urls("pyramid"),
+            get_excluded_urls("PYRAMID"),
         )
         self.exclude_patch.start()
 
@@ -105,8 +103,6 @@ class TestProgrammatic(InstrumentationTest, TestBase, WsgiTestBase):
         mock_span = Mock()
         mock_span.is_recording.return_value = False
         mock_tracer.start_span.return_value = mock_span
-        mock_tracer.use_span.return_value.__enter__ = mock_span
-        mock_tracer.use_span.return_value.__exit__ = True
         with patch("opentelemetry.trace.get_tracer"):
             self.client.get("/hello/123")
             span_list = self.memory_exporter.get_finished_spans()
@@ -121,7 +117,6 @@ class TestProgrammatic(InstrumentationTest, TestBase, WsgiTestBase):
             {
                 "http.method": "POST",
                 "http.target": "/bye",
-                "http.status_text": "Not Found",
                 "http.status_code": 404,
             }
         )
@@ -140,7 +135,6 @@ class TestProgrammatic(InstrumentationTest, TestBase, WsgiTestBase):
             {
                 "http.target": "/hello/500",
                 "http.route": "/hello/{helloid}",
-                "http.status_text": "Internal Server Error",
                 "http.status_code": 500,
             }
         )

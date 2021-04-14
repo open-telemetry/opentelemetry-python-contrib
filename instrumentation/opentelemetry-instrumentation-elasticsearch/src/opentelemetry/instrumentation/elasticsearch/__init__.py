@@ -46,17 +46,13 @@ environment variable or by passing the prefix as an argument to the instrumentor
     ElasticsearchInstrumentor("my-custom-prefix").instrument()
 """
 
-import functools
-import types
 from logging import getLogger
 from os import environ
 
 import elasticsearch
 import elasticsearch.exceptions
-from wrapt import ObjectProxy
 from wrapt import wrap_function_wrapper as _wrap
 
-from opentelemetry import context, propagators, trace
 from opentelemetry.instrumentation.elasticsearch.version import __version__
 from opentelemetry.instrumentation.instrumentor import BaseInstrumentor
 from opentelemetry.instrumentation.utils import unwrap
@@ -128,8 +124,7 @@ def _wrap_perform_request(tracer, span_name_prefix):
         ) as span:
             if span.is_recording():
                 attributes = {
-                    "component": "elasticsearch-py",
-                    "db.type": "elasticsearch",
+                    "db.system": "elasticsearch",
                 }
                 if url:
                     attributes["elasticsearch.url"] = url
@@ -141,19 +136,15 @@ def _wrap_perform_request(tracer, span_name_prefix):
                     attributes["elasticsearch.params"] = str(params)
                 for key, value in attributes.items():
                     span.set_attribute(key, value)
-            try:
-                rv = wrapped(*args, **kwargs)
-                if isinstance(rv, dict) and span.is_recording():
-                    for member in _ATTRIBUTES_FROM_RESULT:
-                        if member in rv:
-                            span.set_attribute(
-                                "elasticsearch.{0}".format(member),
-                                str(rv[member]),
-                            )
-                return rv
-            except Exception as ex:  # pylint: disable=broad-except
-                if span.is_recording():
-                    span.set_status(Status(StatusCode.ERROR, str(ex)))
-                raise ex
+
+            rv = wrapped(*args, **kwargs)
+            if isinstance(rv, dict) and span.is_recording():
+                for member in _ATTRIBUTES_FROM_RESULT:
+                    if member in rv:
+                        span.set_attribute(
+                            "elasticsearch.{0}".format(member),
+                            str(rv[member]),
+                        )
+            return rv
 
     return wrapper

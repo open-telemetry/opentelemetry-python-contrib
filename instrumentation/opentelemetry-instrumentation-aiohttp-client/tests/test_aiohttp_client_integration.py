@@ -31,7 +31,7 @@ from opentelemetry.instrumentation.aiohttp_client import (
     AioHttpClientInstrumentor,
 )
 from opentelemetry.test.test_base import TestBase
-from opentelemetry.trace.status import StatusCode
+from opentelemetry.trace import StatusCode
 
 
 def run_with_test_server(
@@ -129,13 +129,11 @@ class TestAioHttpIntegration(TestBase):
                             "HTTP GET",
                             (span_status, None),
                             {
-                                "component": "http",
                                 "http.method": "GET",
                                 "http.url": "http://{}:{}/test-path?query=param#foobar".format(
                                     host, port
                                 ),
                                 "http.status_code": int(status_code),
-                                "http.status_text": status_code.phrase,
                             },
                         )
                     ]
@@ -187,13 +185,11 @@ class TestAioHttpIntegration(TestBase):
                             expected,
                             (StatusCode.UNSET, None),
                             {
-                                "component": "http",
                                 "http.method": method,
                                 "http.url": "http://{}:{}{}".format(
                                     host, port, path
                                 ),
                                 "http.status_code": int(HTTPStatus.OK),
-                                "http.status_text": HTTPStatus.OK.phrase,
                             },
                         )
                     ]
@@ -219,13 +215,11 @@ class TestAioHttpIntegration(TestBase):
                     "HTTP GET",
                     (StatusCode.UNSET, None),
                     {
-                        "component": "http",
                         "http.method": "GET",
                         "http.url": "http://{}:{}/some/path".format(
                             host, port
                         ),
                         "http.status_code": int(HTTPStatus.OK),
-                        "http.status_text": HTTPStatus.OK.phrase,
                     },
                 )
             ]
@@ -256,11 +250,7 @@ class TestAioHttpIntegration(TestBase):
                     (
                         "HTTP GET",
                         (expected_status, None),
-                        {
-                            "component": "http",
-                            "http.method": "GET",
-                            "http.url": url,
-                        },
+                        {"http.method": "GET", "http.url": url},
                     )
                 ]
             )
@@ -285,7 +275,6 @@ class TestAioHttpIntegration(TestBase):
                     "HTTP GET",
                     (StatusCode.ERROR, None),
                     {
-                        "component": "http",
                         "http.method": "GET",
                         "http.url": "http://{}:{}/test_timeout".format(
                             host, port
@@ -315,7 +304,6 @@ class TestAioHttpIntegration(TestBase):
                     "HTTP GET",
                     (StatusCode.ERROR, None),
                     {
-                        "component": "http",
                         "http.method": "GET",
                         "http.url": "http://{}:{}/test_too_many_redirects".format(
                             host, port
@@ -364,14 +352,12 @@ class TestAioHttpClientInstrumentor(TestBase):
             self.get_default_request(), self.URL, self.default_handler
         )
         span = self.assert_spans(1)
-        self.assertEqual("http", span.attributes["component"])
         self.assertEqual("GET", span.attributes["http.method"])
         self.assertEqual(
             "http://{}:{}/test-path".format(host, port),
             span.attributes["http.url"],
         )
         self.assertEqual(200, span.attributes["http.status_code"])
-        self.assertEqual("OK", span.attributes["http.status_text"])
 
     def test_instrument_with_existing_trace_config(self):
         trace_config = aiohttp.TraceConfig()

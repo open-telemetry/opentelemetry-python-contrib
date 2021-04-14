@@ -16,21 +16,20 @@ import typing
 
 from opentelemetry import trace
 from opentelemetry.context import Context
-from opentelemetry.trace import get_current_span, set_span_in_context
-from opentelemetry.trace.propagation.textmap import (
+from opentelemetry.exporter.datadog import constants
+from opentelemetry.propagators.textmap import (
+    CarrierT,
     Getter,
     Setter,
     TextMapPropagator,
-    TextMapPropagatorT,
+    default_getter,
+    default_setter,
 )
-
-# pylint:disable=relative-beyond-top-level
-from . import constants
+from opentelemetry.trace import get_current_span, set_span_in_context
 
 
 class DatadogFormat(TextMapPropagator):
-    """Propagator for the Datadog HTTP header format.
-    """
+    """Propagator for the Datadog HTTP header format."""
 
     TRACE_ID_KEY = "x-datadog-trace-id"
     PARENT_ID_KEY = "x-datadog-parent-id"
@@ -39,9 +38,9 @@ class DatadogFormat(TextMapPropagator):
 
     def extract(
         self,
-        getter: Getter[TextMapPropagatorT],
-        carrier: TextMapPropagatorT,
+        carrier: CarrierT,
         context: typing.Optional[Context] = None,
+        getter: Getter = default_getter,
     ) -> Context:
         trace_id = extract_first_element(
             getter.get(carrier, self.TRACE_ID_KEY)
@@ -62,45 +61,50 @@ class DatadogFormat(TextMapPropagator):
             constants.AUTO_KEEP,
             constants.USER_KEEP,
         ):
-            trace_flags |= trace.TraceFlags.SAMPLED
+            trace_flags = trace.TraceFlags(trace.TraceFlags.SAMPLED)
 
         if trace_id is None or span_id is None:
             return set_span_in_context(trace.INVALID_SPAN, context)
 
+        trace_state = []
+        if origin is not None:
+            trace_state.append((constants.DD_ORIGIN, origin))
         span_context = trace.SpanContext(
             trace_id=int(trace_id),
             span_id=int(span_id),
             is_remote=True,
             trace_flags=trace_flags,
-            trace_state=trace.TraceState({constants.DD_ORIGIN: origin}),
+            trace_state=trace.TraceState(trace_state),
         )
 
-        return set_span_in_context(trace.DefaultSpan(span_context), context)
+        return set_span_in_context(
+            trace.NonRecordingSpan(span_context), context
+        )
 
     def inject(
         self,
-        set_in_carrier: Setter[TextMapPropagatorT],
-        carrier: TextMapPropagatorT,
+        carrier: CarrierT,
         context: typing.Optional[Context] = None,
+        setter: Setter = default_setter,
     ) -> None:
         span = get_current_span(context)
         span_context = span.get_span_context()
         if span_context == trace.INVALID_SPAN_CONTEXT:
             return
         sampled = (trace.TraceFlags.SAMPLED & span.context.trace_flags) != 0
-        set_in_carrier(
+        setter.set(
             carrier, self.TRACE_ID_KEY, format_trace_id(span.context.trace_id),
         )
-        set_in_carrier(
+        setter.set(
             carrier, self.PARENT_ID_KEY, format_span_id(span.context.span_id)
         )
-        set_in_carrier(
+        setter.set(
             carrier,
             self.SAMPLING_PRIORITY_KEY,
             str(constants.AUTO_KEEP if sampled else constants.AUTO_REJECT),
         )
         if constants.DD_ORIGIN in span.context.trace_state:
-            set_in_carrier(
+            setter.set(
                 carrier,
                 self.ORIGIN_KEY,
                 span.context.trace_state[constants.DD_ORIGIN],
@@ -111,7 +115,7 @@ class DatadogFormat(TextMapPropagator):
         """Returns a set with the fields set in `inject`.
 
         See
-        `opentelemetry.trace.propagation.textmap.TextMapPropagator.fields`
+        `opentelemetry.propagators.textmap.TextMapPropagator.fields`
         """
         return {
             self.TRACE_ID_KEY,
@@ -132,8 +136,8 @@ def format_span_id(span_id: int) -> str:
 
 
 def extract_first_element(
-    items: typing.Iterable[TextMapPropagatorT],
-) -> typing.Optional[TextMapPropagatorT]:
+    items: typing.Iterable[CarrierT],
+) -> typing.Optional[CarrierT]:
     if items is None:
         return None
     return next(iter(items), None)

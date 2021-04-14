@@ -21,17 +21,15 @@ from ddtrace.internal.writer import AgentWriter
 from ddtrace.span import Span as DatadogSpan
 
 import opentelemetry.trace as trace_api
-from opentelemetry.sdk.trace import sampling
-from opentelemetry.sdk.trace.export import SpanExporter, SpanExportResult
-
-# pylint:disable=relative-beyond-top-level
-from .constants import (
+from opentelemetry.exporter.datadog.constants import (
     DD_ORIGIN,
     ENV_KEY,
     SAMPLE_RATE_METRIC_KEY,
     SERVICE_NAME_TAG,
     VERSION_KEY,
 )
+from opentelemetry.sdk.trace import sampling
+from opentelemetry.sdk.trace.export import SpanExporter, SpanExportResult
 
 logger = logging.getLogger(__name__)
 
@@ -65,7 +63,7 @@ class DatadogSpanExporter(SpanExporter):
         service: The service name to be used for the application or use ``DD_SERVICE`` environment variable
         env: Set the application’s environment or use ``DD_ENV`` environment variable
         version: Set the application’s version or use ``DD_VERSION`` environment variable
-        tags: A list of default tags to be added to every span or use ``DD_TAGS`` environment variable
+        tags: A list (formatted as a comma-separated string) of default tags to be added to every span or use ``DD_TAGS`` environment variable
     """
 
     def __init__(
@@ -261,10 +259,14 @@ def _get_origin(span):
 
 def _get_sampling_rate(span):
     ctx = span.get_span_context()
+    tracer_provider = trace_api.get_tracer_provider()
+    if not hasattr(tracer_provider, "sampler"):
+        return None
+    sampler = tracer_provider.sampler
     return (
-        span.sampler.rate
+        sampler.rate
         if ctx.trace_flags.sampled
-        and isinstance(span.sampler, sampling.TraceIdRatioBased)
+        and isinstance(sampler, sampling.TraceIdRatioBased)
         else None
     )
 

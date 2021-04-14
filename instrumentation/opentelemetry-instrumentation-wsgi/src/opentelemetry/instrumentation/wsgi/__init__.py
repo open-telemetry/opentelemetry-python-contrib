@@ -58,23 +58,26 @@ import functools
 import typing
 import wsgiref.util as wsgiref_util
 
-from opentelemetry import context, propagators, trace
+from opentelemetry import context, trace
 from opentelemetry.instrumentation.utils import http_status_to_status_code
 from opentelemetry.instrumentation.wsgi.version import __version__
-from opentelemetry.trace.propagation.textmap import DictGetter
+from opentelemetry.propagate import extract
+from opentelemetry.propagators.textmap import Getter
 from opentelemetry.trace.status import Status, StatusCode
 
 _HTTP_VERSION_PREFIX = "HTTP/"
+_CARRIER_KEY_PREFIX = "HTTP_"
+_CARRIER_KEY_PREFIX_LEN = len(_CARRIER_KEY_PREFIX)
 
 
-class CarrierGetter(DictGetter):
+class WSGIGetter(Getter):
     def get(
         self, carrier: dict, key: str
     ) -> typing.Optional[typing.List[str]]:
         """Getter implementation to retrieve a HTTP header value from the
             PEP3333-conforming WSGI environ
 
-        Args:
+       Args:
             carrier: WSGI environ object
             key: header name in environ object
         Returns:
@@ -88,10 +91,14 @@ class CarrierGetter(DictGetter):
         return None
 
     def keys(self, carrier):
-        return []
+        return [
+            key[_CARRIER_KEY_PREFIX_LEN:].lower().replace("_", "-")
+            for key in carrier
+            if key.startswith(_CARRIER_KEY_PREFIX)
+        ]
 
 
-carrier_getter = CarrierGetter()
+wsgi_getter = WSGIGetter()
 
 
 def setifnotnone(dic, key, value):
@@ -104,7 +111,6 @@ def collect_request_attributes(environ):
     WSGI environ and returns a dictionary to be used as span creation attributes."""
 
     result = {
-        "component": "http",
         "http.method": environ.get("REQUEST_METHOD"),
         "http.server_name": environ.get("SERVER_NAME"),
         "http.scheme": environ.get("wsgi.url_scheme"),
@@ -151,8 +157,7 @@ def add_response_attributes(
     passed to a PEP3333-conforming start_response callable."""
     if not span.is_recording():
         return
-    status_code, status_text = start_response_status.split(" ", 1)
-    span.set_attribute("http.status_text", status_text)
+    status_code, _ = start_response_status.split(" ", 1)
 
     try:
         status_code = int(status_code)
@@ -181,21 +186,26 @@ class OpenTelemetryMiddleware:
 
     Args:
         wsgi: The WSGI application callable to forward requests to.
-        name_callback: Callback which calculates a generic span name for an
-                       incoming HTTP request based on the PEP3333 WSGI environ.
-                       Optional: Defaults to get_default_span_name.
+        request_hook: Optional callback which is called with the server span and WSGI
+                      environ object for every incoming request.
+        response_hook: Optional callback which is called with the server span,
+                       WSGI environ, status_code and response_headers for every
+                       incoming request.
     """
 
-    def __init__(self, wsgi, name_callback=get_default_span_name):
+    def __init__(self, wsgi, request_hook=None, response_hook=None):
         self.wsgi = wsgi
         self.tracer = trace.get_tracer(__name__, __version__)
-        self.name_callback = name_callback
+        self.request_hook = request_hook
+        self.response_hook = response_hook
 
     @staticmethod
-    def _create_start_response(span, start_response):
+    def _create_start_response(span, start_response, response_hook):
         @functools.wraps(start_response)
         def _start_response(status, response_headers, *args, **kwargs):
             add_response_attributes(span, status, response_headers)
+            if response_hook:
+                response_hook(status, response_headers)
             return start_response(status, response_headers, *args, **kwargs)
 
         return _start_response
@@ -208,19 +218,25 @@ class OpenTelemetryMiddleware:
             start_response: The WSGI start_response callable.
         """
 
-        token = context.attach(propagators.extract(carrier_getter, environ))
-        span_name = self.name_callback(environ)
+        token = context.attach(extract(environ, getter=wsgi_getter))
 
         span = self.tracer.start_span(
-            span_name,
+            get_default_span_name(environ),
             kind=trace.SpanKind.SERVER,
             attributes=collect_request_attributes(environ),
         )
 
+        if self.request_hook:
+            self.request_hook(span, environ)
+
+        response_hook = self.response_hook
+        if response_hook:
+            response_hook = functools.partial(response_hook, span, environ)
+
         try:
-            with self.tracer.use_span(span):
+            with trace.use_span(span):
                 start_response = self._create_start_response(
-                    span, start_response
+                    span, start_response, response_hook
                 )
                 iterable = self.wsgi(environ, start_response)
                 return _end_span_after_iterating(
@@ -239,7 +255,7 @@ class OpenTelemetryMiddleware:
 # behavior as little as possible).
 def _end_span_after_iterating(iterable, span, tracer, token):
     try:
-        with tracer.use_span(span):
+        with trace.use_span(span):
             for yielded in iterable:
                 yield yielded
     finally:

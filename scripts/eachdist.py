@@ -7,7 +7,6 @@ import shlex
 import shutil
 import subprocess
 import sys
-from collections import namedtuple
 from configparser import ConfigParser
 from datetime import datetime
 from inspect import cleandoc
@@ -26,17 +25,7 @@ def unique(elems):
             seen.add(elem)
 
 
-try:
-    subprocess_run = subprocess.run
-except AttributeError:  # Py < 3.5 compat
-    CompletedProcess = namedtuple("CompletedProcess", "returncode")
-
-    def subprocess_run(*args, **kwargs):
-        check = kwargs.pop("check", False)
-        if check:
-            subprocess.check_call(*args, **kwargs)
-            return CompletedProcess(returncode=0)
-        return CompletedProcess(returncode=subprocess.call(*args, **kwargs))
+subprocess_run = subprocess.run
 
 
 def extraargs_help(calledcmd):
@@ -509,7 +498,7 @@ def lint_args(args):
     )
     runsubprocess(
         args.dry_run,
-        ("isort", "--recursive", ".")
+        ("isort", ".")
         + (("--diff", "--check-only") if args.check_only else ()),
         cwd=rootdir,
         check=True,

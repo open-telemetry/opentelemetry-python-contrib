@@ -12,18 +12,21 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from sqlalchemy.event import listen
+from threading import local
+from weakref import WeakKeyDictionary
+
+from sqlalchemy.event import listen  # pylint: disable=no-name-in-module
 
 from opentelemetry import trace
 from opentelemetry.instrumentation.sqlalchemy.version import __version__
 from opentelemetry.trace.status import Status, StatusCode
 
 # Network attribute semantic convention here:
-# https://github.com/open-telemetry/opentelemetry-specification/blob/master/specification/trace/semantic_conventions/span-general.md#general-network-connection-attributes
+# https://github.com/open-telemetry/opentelemetry-specification/blob/main/specification/trace/semantic_conventions/span-general.md#general-network-connection-attributes
 _HOST = "net.peer.name"
 _PORT = "net.peer.port"
 # Database semantic conventions here:
-# https://github.com/open-telemetry/opentelemetry-specification/blob/master/specification/trace/semantic_conventions/database.md
+# https://github.com/open-telemetry/opentelemetry-specification/blob/main/specification/trace/semantic_conventions/database.md
 _STMT = "db.statement"
 _DB = "db.name"
 _USER = "db.user"
@@ -66,65 +69,93 @@ class EngineTracer:
         self.tracer = tracer
         self.engine = engine
         self.vendor = _normalize_vendor(engine.name)
-        self.current_span = None
+        self.cursor_mapping = WeakKeyDictionary()
+        self.local = local()
 
         listen(engine, "before_cursor_execute", self._before_cur_exec)
         listen(engine, "after_cursor_execute", self._after_cur_exec)
         listen(engine, "handle_error", self._handle_error)
 
+    @property
+    def current_thread_span(self):
+        return getattr(self.local, "current_span", None)
+
+    @current_thread_span.setter
+    def current_thread_span(self, span):
+        setattr(self.local, "current_span", span)
+
+    def _operation_name(self, db_name, statement):
+        parts = []
+        if isinstance(statement, str):
+            # otel spec recommends against parsing SQL queries. We are not trying to parse SQL
+            # but simply truncating the statement to the first word. This covers probably >95%
+            # use cases and uses the SQL statement in span name correctly as per the spec.
+            # For some very special cases it might not record the correct statement if the SQL
+            # dialect is too weird but in any case it shouldn't break anything.
+            parts.append(statement.split()[0])
+        if db_name:
+            parts.append(db_name)
+        if not parts:
+            return self.vendor
+        return " ".join(parts)
+
     # pylint: disable=unused-argument
     def _before_cur_exec(self, conn, cursor, statement, *args):
-        self.current_span = self.tracer.start_span(statement)
-        with self.tracer.use_span(self.current_span, end_on_exit=False):
-            if self.current_span.is_recording():
-                self.current_span.set_attribute(_STMT, statement)
-                self.current_span.set_attribute("db.system", self.vendor)
+        attrs, found = _get_attributes_from_url(conn.engine.url)
+        if not found:
+            attrs = _get_attributes_from_cursor(self.vendor, cursor, attrs)
 
-                if not _set_attributes_from_url(
-                    self.current_span, conn.engine.url
-                ):
-                    _set_attributes_from_cursor(
-                        self.current_span, self.vendor, cursor
-                    )
+        db_name = attrs.get(_DB, "")
+        span = self.tracer.start_span(
+            self._operation_name(db_name, statement),
+            kind=trace.SpanKind.CLIENT,
+        )
+        self.current_thread_span = self.cursor_mapping[cursor] = span
+        with trace.use_span(span, end_on_exit=False):
+            if span.is_recording():
+                span.set_attribute(_STMT, statement)
+                span.set_attribute("db.system", self.vendor)
+                for key, value in attrs.items():
+                    span.set_attribute(key, value)
 
     # pylint: disable=unused-argument
     def _after_cur_exec(self, conn, cursor, statement, *args):
-        if self.current_span is None:
+        span = self.cursor_mapping.get(cursor, None)
+        if span is None:
             return
-        self.current_span.end()
+
+        span.end()
 
     def _handle_error(self, context):
-        if self.current_span is None:
+        span = self.current_thread_span
+        if span is None:
             return
 
         try:
-            if self.current_span.is_recording():
-                self.current_span.set_status(
+            if span.is_recording():
+                span.set_status(
                     Status(StatusCode.ERROR, str(context.original_exception),)
                 )
         finally:
-            self.current_span.end()
+            span.end()
 
 
-def _set_attributes_from_url(span: trace.Span, url):
+def _get_attributes_from_url(url):
     """Set connection tags from the url. return true if successful."""
-    if span.is_recording():
-        if url.host:
-            span.set_attribute(_HOST, url.host)
-        if url.port:
-            span.set_attribute(_PORT, url.port)
-        if url.database:
-            span.set_attribute(_DB, url.database)
-        if url.username:
-            span.set_attribute(_USER, url.username)
+    attrs = {}
+    if url.host:
+        attrs[_HOST] = url.host
+    if url.port:
+        attrs[_PORT] = url.port
+    if url.database:
+        attrs[_DB] = url.database
+    if url.username:
+        attrs[_USER] = url.username
+    return attrs, bool(url.host)
 
-    return bool(url.host)
 
-
-def _set_attributes_from_cursor(span: trace.Span, vendor, cursor):
+def _get_attributes_from_cursor(vendor, cursor, attrs):
     """Attempt to set db connection attributes by introspecting the cursor."""
-    if not span.is_recording():
-        return
     if vendor == "postgresql":
         # pylint: disable=import-outside-toplevel
         from psycopg2.extensions import parse_dsn
@@ -133,6 +164,7 @@ def _set_attributes_from_cursor(span: trace.Span, vendor, cursor):
             dsn = getattr(cursor.connection, "dsn", None)
             if dsn:
                 data = parse_dsn(dsn)
-                span.set_attribute(_DB, data.get("dbname"))
-                span.set_attribute(_HOST, data.get("host"))
-                span.set_attribute(_PORT, int(data.get("port")))
+                attrs[_DB] = data.get("dbname")
+                attrs[_HOST] = data.get("host")
+                attrs[_PORT] = int(data.get("port"))
+    return attrs

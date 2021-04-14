@@ -35,18 +35,16 @@ Usage
     tornado.ioloop.IOLoop.current().start()
 """
 
-import inspect
-import typing
+
 from collections import namedtuple
-from functools import partial, wraps
+from functools import partial
 from logging import getLogger
 
 import tornado.web
 import wrapt
-from tornado.routing import Rule
 from wrapt import wrap_function_wrapper
 
-from opentelemetry import configuration, context, propagators, trace
+from opentelemetry import context, trace
 from opentelemetry.instrumentation.instrumentor import BaseInstrumentor
 from opentelemetry.instrumentation.tornado.version import __version__
 from opentelemetry.instrumentation.utils import (
@@ -54,9 +52,10 @@ from opentelemetry.instrumentation.utils import (
     http_status_to_status_code,
     unwrap,
 )
-from opentelemetry.trace.propagation.textmap import DictGetter
+from opentelemetry.propagate import extract
 from opentelemetry.trace.status import Status
-from opentelemetry.util import time_ns
+from opentelemetry.util._time import _time_ns
+from opentelemetry.util.http import get_excluded_urls, get_traced_request_attrs
 
 from .client import fetch_async  # pylint: disable=E0401
 
@@ -65,11 +64,9 @@ _TraceContext = namedtuple("TraceContext", ["activation", "span", "token"])
 _HANDLER_CONTEXT_KEY = "_otel_trace_context_key"
 _OTEL_PATCHED_KEY = "_otel_patched_key"
 
-cfg = configuration.Configuration()
-_excluded_urls = cfg._excluded_urls("tornado")
-_traced_attrs = cfg._traced_request_attrs("tornado")
 
-carrier_getter = DictGetter()
+_excluded_urls = get_excluded_urls("TORNADO")
+_traced_request_attrs = get_traced_request_attrs("TORNADO")
 
 
 class TornadoInstrumentor(BaseInstrumentor):
@@ -150,7 +147,7 @@ def _wrap(cls, method_name, wrapper):
 
 
 def _prepare(tracer, func, handler, args, kwargs):
-    start_time = time_ns()
+    start_time = _time_ns()
     request = handler.request
     if _excluded_urls.url_disabled(request.uri):
         return func(*args, **kwargs)
@@ -174,7 +171,6 @@ def _log_exception(tracer, func, handler, args, kwargs):
 
 def _get_attributes_from_request(request):
     attrs = {
-        "component": "tornado",
         "http.method": request.method,
         "http.scheme": request.protocol,
         "http.host": request.host,
@@ -187,7 +183,9 @@ def _get_attributes_from_request(request):
     if request.remote_ip:
         attrs["net.peer.ip"] = request.remote_ip
 
-    return extract_attributes_from_object(request, _traced_attrs, attrs)
+    return extract_attributes_from_object(
+        request, _traced_request_attrs, attrs
+    )
 
 
 def _get_operation_name(handler, request):
@@ -197,9 +195,7 @@ def _get_operation_name(handler, request):
 
 
 def _start_span(tracer, handler, start_time) -> _TraceContext:
-    token = context.attach(
-        propagators.extract(carrier_getter, handler.request.headers,)
-    )
+    token = context.attach(extract(handler.request.headers))
 
     span = tracer.start_span(
         _get_operation_name(handler, handler.request),
@@ -211,8 +207,8 @@ def _start_span(tracer, handler, start_time) -> _TraceContext:
         for key, value in attributes.items():
             span.set_attribute(key, value)
 
-    activation = tracer.use_span(span, end_on_exit=True)
-    activation.__enter__()
+    activation = trace.use_span(span, end_on_exit=True)
+    activation.__enter__()  # pylint: disable=E1101
     ctx = _TraceContext(activation, span, token)
     setattr(handler, _HANDLER_CONTEXT_KEY, ctx)
     return ctx
@@ -228,7 +224,7 @@ def _finish_span(tracer, handler, error=None):
         if isinstance(error, tornado.web.HTTPError):
             status_code = error.status_code
             if not ctx and status_code == 404:
-                ctx = _start_span(tracer, handler, time_ns())
+                ctx = _start_span(tracer, handler, _time_ns())
         if status_code != 404:
             finish_args = (
                 type(error),
@@ -242,8 +238,6 @@ def _finish_span(tracer, handler, error=None):
         return
 
     if ctx.span.is_recording():
-        if reason:
-            ctx.span.set_attribute("http.status_text", reason)
         ctx.span.set_attribute("http.status_code", status_code)
         ctx.span.set_status(
             Status(
@@ -252,6 +246,6 @@ def _finish_span(tracer, handler, error=None):
             )
         )
 
-    ctx.activation.__exit__(*finish_args)
+    ctx.activation.__exit__(*finish_args)  # pylint: disable=E1101
     context.detach(ctx.token)
     delattr(handler, _HANDLER_CONTEXT_KEY)

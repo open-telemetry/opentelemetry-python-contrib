@@ -29,9 +29,9 @@ Usage
 
 
     # Ex: mysql.connector
-    trace_integration(mysql.connector, "connect", "mysql", "sql")
+    trace_integration(mysql.connector, "connect", "mysql")
     # Ex: pyodbc
-    trace_integration(pyodbc, "Connection", "odbc", "sql")
+    trace_integration(pyodbc, "Connection", "odbc")
 
 API
 ---
@@ -55,11 +55,11 @@ logger = logging.getLogger(__name__)
 def trace_integration(
     connect_module: typing.Callable[..., typing.Any],
     connect_method_name: str,
-    database_component: str,
-    database_type: str = "",
+    database_system: str,
     connection_attributes: typing.Dict = None,
     tracer_provider: typing.Optional[TracerProvider] = None,
     capture_parameters: bool = False,
+    db_api_integration_factory=None,
 ):
     """Integrate with DB API library.
     https://www.python.org/dev/peps/pep-0249/
@@ -67,25 +67,24 @@ def trace_integration(
     Args:
         connect_module: Module name where connect method is available.
         connect_method_name: The connect method name.
-        database_component: Database driver name or database name "JDBI",
-            "jdbc", "odbc", "postgreSQL".
-        database_type: The Database type. For any SQL database, "sql".
+        database_system: An identifier for the database management system (DBMS)
+            product being used.
         connection_attributes: Attribute names for database, port, host and
             user in Connection object.
         tracer_provider: The :class:`opentelemetry.trace.TracerProvider` to
-            use. If ommited the current configured one is used.
+            use. If omitted the current configured one is used.
         capture_parameters: Configure if db.statement.parameters should be captured.
     """
     wrap_connect(
         __name__,
         connect_module,
         connect_method_name,
-        database_component,
-        database_type,
+        database_system,
         connection_attributes,
         version=__version__,
         tracer_provider=tracer_provider,
         capture_parameters=capture_parameters,
+        db_api_integration_factory=db_api_integration_factory,
     )
 
 
@@ -93,28 +92,31 @@ def wrap_connect(
     name: str,
     connect_module: typing.Callable[..., typing.Any],
     connect_method_name: str,
-    database_component: str,
-    database_type: str = "",
+    database_system: str,
     connection_attributes: typing.Dict = None,
     version: str = "",
     tracer_provider: typing.Optional[TracerProvider] = None,
     capture_parameters: bool = False,
+    db_api_integration_factory=None,
 ):
     """Integrate with DB API library.
     https://www.python.org/dev/peps/pep-0249/
 
     Args:
-        tracer: The :class:`opentelemetry.trace.Tracer` to use.
         connect_module: Module name where connect method is available.
         connect_method_name: The connect method name.
-        database_component: Database driver name or database name "JDBI",
-            "jdbc", "odbc", "postgreSQL".
-        database_type: The Database type. For any SQL database, "sql".
+        database_system: An identifier for the database management system (DBMS)
+            product being used.
         connection_attributes: Attribute names for database, port, host and
             user in Connection object.
+        tracer_provider: The :class:`opentelemetry.trace.TracerProvider` to
+            use. If omitted the current configured one is used.
         capture_parameters: Configure if db.statement.parameters should be captured.
 
     """
+    db_api_integration_factory = (
+        db_api_integration_factory or DatabaseApiIntegration
+    )
 
     # pylint: disable=unused-argument
     def wrap_connect_(
@@ -123,10 +125,9 @@ def wrap_connect(
         args: typing.Tuple[typing.Any, typing.Any],
         kwargs: typing.Dict[typing.Any, typing.Any],
     ):
-        db_integration = DatabaseApiIntegration(
+        db_integration = db_api_integration_factory(
             name,
-            database_component,
-            database_type=database_type,
+            database_system,
             connection_attributes=connection_attributes,
             version=version,
             tracer_provider=tracer_provider,
@@ -158,8 +159,7 @@ def unwrap_connect(
 def instrument_connection(
     name: str,
     connection,
-    database_component: str,
-    database_type: str = "",
+    database_system: str,
     connection_attributes: typing.Dict = None,
     version: str = "",
     tracer_provider: typing.Optional[TracerProvider] = None,
@@ -168,21 +168,20 @@ def instrument_connection(
     """Enable instrumentation in a database connection.
 
     Args:
-        tracer: The :class:`opentelemetry.trace.Tracer` to use.
         connection: The connection to instrument.
-        database_component: Database driver name or database name "JDBI",
-            "jdbc", "odbc", "postgreSQL".
-        database_type: The Database type. For any SQL database, "sql".
+        database_system: An identifier for the database management system (DBMS)
+            product being used.
         connection_attributes: Attribute names for database, port, host and
             user in a connection object.
+        tracer_provider: The :class:`opentelemetry.trace.TracerProvider` to
+            use. If omitted the current configured one is used.
         capture_parameters: Configure if db.statement.parameters should be captured.
     Returns:
         An instrumented connection.
     """
     db_integration = DatabaseApiIntegration(
         name,
-        database_component,
-        database_type,
+        database_system,
         connection_attributes=connection_attributes,
         version=version,
         tracer_provider=tracer_provider,
@@ -212,8 +211,7 @@ class DatabaseApiIntegration:
     def __init__(
         self,
         name: str,
-        database_component: str,
-        database_type: str = "sql",
+        database_system: str,
         connection_attributes=None,
         version: str = "",
         tracer_provider: typing.Optional[TracerProvider] = None,
@@ -231,8 +229,7 @@ class DatabaseApiIntegration:
         self._version = version
         self._tracer_provider = tracer_provider
         self.capture_parameters = capture_parameters
-        self.database_component = database_component
-        self.database_type = database_type
+        self.database_system = database_system
         self.connection_props = {}
         self.span_attributes = {}
         self.name = ""
@@ -269,7 +266,7 @@ class DatabaseApiIntegration:
             )
             if attribute:
                 self.connection_props[key] = attribute
-        self.name = self.database_component
+        self.name = self.database_system
         self.database = self.connection_props.get("database", "")
         if self.database:
             # PyMySQL encodes names with utf-8
@@ -314,21 +311,21 @@ def get_traced_connection_proxy(
     return TracedConnectionProxy(connection, *args, **kwargs)
 
 
-class TracedCursor:
+class CursorTracer:
     def __init__(self, db_api_integration: DatabaseApiIntegration):
         self._db_api_integration = db_api_integration
 
     def _populate_span(
-        self, span: trace_api.Span, *args: typing.Tuple[typing.Any, typing.Any]
+        self,
+        span: trace_api.Span,
+        cursor,
+        *args: typing.Tuple[typing.Any, typing.Any]
     ):
         if not span.is_recording():
             return
-        statement = args[0] if args else ""
+        statement = self.get_statement(cursor, args)
         span.set_attribute(
-            "component", self._db_api_integration.database_component
-        )
-        span.set_attribute(
-            "db.system", self._db_api_integration.database_component
+            "db.system", self._db_api_integration.database_system
         )
         span.set_attribute("db.name", self._db_api_integration.database)
         span.set_attribute("db.statement", statement)
@@ -342,35 +339,43 @@ class TracedCursor:
         if self._db_api_integration.capture_parameters and len(args) > 1:
             span.set_attribute("db.statement.parameters", str(args[1]))
 
+    def get_operation_name(self, cursor, args):  # pylint: disable=no-self-use
+        if args and isinstance(args[0], str):
+            return args[0].split()[0]
+        return ""
+
+    def get_statement(self, cursor, args):  # pylint: disable=no-self-use
+        if not args:
+            return ""
+        statement = args[0]
+        if isinstance(statement, bytes):
+            return statement.decode("utf8", "replace")
+        return statement
+
     def traced_execution(
         self,
+        cursor,
         query_method: typing.Callable[..., typing.Any],
         *args: typing.Tuple[typing.Any, typing.Any],
         **kwargs: typing.Dict[typing.Any, typing.Any]
     ):
-        name = ""
-        if args:
-            name = args[0]
-        elif self._db_api_integration.database:
-            name = self._db_api_integration.database
-        else:
-            name = self._db_api_integration.name
+        name = self.get_operation_name(cursor, args)
+        if not name:
+            name = (
+                self._db_api_integration.database
+                if self._db_api_integration.database
+                else self._db_api_integration.name
+            )
 
         with self._db_api_integration.get_tracer().start_as_current_span(
             name, kind=SpanKind.CLIENT
         ) as span:
-            self._populate_span(span, *args)
-            try:
-                result = query_method(*args, **kwargs)
-                return result
-            except Exception as ex:  # pylint: disable=broad-except
-                if span.is_recording():
-                    span.set_status(Status(StatusCode.ERROR, str(ex)))
-                raise ex
+            self._populate_span(span, cursor, *args)
+            return query_method(*args, **kwargs)
 
 
 def get_traced_cursor_proxy(cursor, db_api_integration, *args, **kwargs):
-    _traced_cursor = TracedCursor(db_api_integration)
+    _cursor_tracer = CursorTracer(db_api_integration)
 
     # pylint: disable=abstract-method
     class TracedCursorProxy(wrapt.ObjectProxy):
@@ -380,18 +385,18 @@ def get_traced_cursor_proxy(cursor, db_api_integration, *args, **kwargs):
             wrapt.ObjectProxy.__init__(self, cursor)
 
         def execute(self, *args, **kwargs):
-            return _traced_cursor.traced_execution(
-                self.__wrapped__.execute, *args, **kwargs
+            return _cursor_tracer.traced_execution(
+                self.__wrapped__, self.__wrapped__.execute, *args, **kwargs
             )
 
         def executemany(self, *args, **kwargs):
-            return _traced_cursor.traced_execution(
-                self.__wrapped__.executemany, *args, **kwargs
+            return _cursor_tracer.traced_execution(
+                self.__wrapped__, self.__wrapped__.executemany, *args, **kwargs
             )
 
         def callproc(self, *args, **kwargs):
-            return _traced_cursor.traced_execution(
-                self.__wrapped__.callproc, *args, **kwargs
+            return _cursor_tracer.traced_execution(
+                self.__wrapped__, self.__wrapped__.callproc, *args, **kwargs
             )
 
         def __enter__(self):

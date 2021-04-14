@@ -24,12 +24,12 @@ from typing import MutableMapping
 
 import grpc
 
-from opentelemetry import metrics, propagators, trace
-from opentelemetry.sdk.metrics.export.controller import PushController
+from opentelemetry import trace
+from opentelemetry.instrumentation.grpc import grpcext
+from opentelemetry.instrumentation.grpc._utilities import RpcInfo
+from opentelemetry.propagate import inject
+from opentelemetry.propagators.textmap import Setter
 from opentelemetry.trace.status import Status, StatusCode
-
-from . import grpcext
-from ._utilities import RpcInfo, TimedMetricRecorder
 
 
 class _GuardedSpan:
@@ -53,18 +53,19 @@ class _GuardedSpan:
         return self.span
 
 
-def _inject_span_context(metadata: MutableMapping[str, str]) -> None:
-    # pylint:disable=unused-argument
-    def append_metadata(
-        carrier: MutableMapping[str, str], key: str, value: str
-    ):
-        metadata[key] = value
+class _CarrierSetter(Setter):
+    """We use a custom setter in order to be able to lower case
+    keys as is required by grpc.
+    """
 
-    # Inject current active span from the context
-    propagators.inject(append_metadata, metadata)
+    def set(self, carrier: MutableMapping[str, str], key: str, value: str):
+        carrier[key.lower()] = value
 
 
-def _make_future_done_callback(span, rpc_info, client_info, metrics_recorder):
+_carrier_setter = _CarrierSetter()
+
+
+def _make_future_done_callback(span, rpc_info):
     def callback(response_future):
         with span:
             code = response_future.code()
@@ -73,10 +74,6 @@ def _make_future_done_callback(span, rpc_info, client_info, metrics_recorder):
                 return
             response = response_future.result()
             rpc_info.response = response
-            if "ByteSize" in dir(response):
-                metrics_recorder.record_bytes_in(
-                    response.ByteSize(), client_info.full_method
-                )
 
     return callback
 
@@ -84,38 +81,29 @@ def _make_future_done_callback(span, rpc_info, client_info, metrics_recorder):
 class OpenTelemetryClientInterceptor(
     grpcext.UnaryClientInterceptor, grpcext.StreamClientInterceptor
 ):
-    def __init__(self, tracer, exporter, interval):
+    def __init__(self, tracer):
         self._tracer = tracer
 
-        self._accumulator = None
-        if exporter and interval:
-            self._accumulator = metrics.get_meter(__name__)
-            self.controller = PushController(
-                accumulator=self._accumulator,
-                exporter=exporter,
-                interval=interval,
-            )
-        self._metrics_recorder = TimedMetricRecorder(
-            self._accumulator, "client",
-        )
-
     def _start_span(self, method):
+        service, meth = method.lstrip("/").split("/", 1)
+        attributes = {
+            "rpc.system": "grpc",
+            "rpc.grpc.status_code": grpc.StatusCode.OK.value[0],
+            "rpc.method": meth,
+            "rpc.service": service,
+        }
+
         return self._tracer.start_as_current_span(
-            name=method, kind=trace.SpanKind.CLIENT
+            name=method, kind=trace.SpanKind.CLIENT, attributes=attributes
         )
 
     # pylint:disable=no-self-use
-    def _trace_result(self, guarded_span, rpc_info, result, client_info):
+    def _trace_result(self, guarded_span, rpc_info, result):
         # If the RPC is called asynchronously, release the guard and add a
         # callback so that the span can be finished once the future is done.
         if isinstance(result, grpc.Future):
             result.add_done_callback(
-                _make_future_done_callback(
-                    guarded_span.release(),
-                    rpc_info,
-                    client_info,
-                    self._metrics_recorder,
-                )
+                _make_future_done_callback(guarded_span.release(), rpc_info)
             )
             return result
         response = result
@@ -127,22 +115,10 @@ class OpenTelemetryClientInterceptor(
             response = result[0]
         rpc_info.response = response
 
-        if "ByteSize" in dir(response):
-            self._metrics_recorder.record_bytes_in(
-                response.ByteSize(), client_info.full_method
-            )
         return result
 
     def _start_guarded_span(self, *args, **kwargs):
         return _GuardedSpan(self._start_span(*args, **kwargs))
-
-    def _bytes_out_iterator_wrapper(self, iterator, client_info):
-        for request in iterator:
-            if "ByteSize" in dir(request):
-                self._metrics_recorder.record_bytes_out(
-                    request.ByteSize(), client_info.full_method
-                )
-            yield request
 
     def intercept_unary(self, request, metadata, client_info, invoker):
         if not metadata:
@@ -151,37 +127,28 @@ class OpenTelemetryClientInterceptor(
             mutable_metadata = OrderedDict(metadata)
 
         with self._start_guarded_span(client_info.full_method) as guarded_span:
-            with self._metrics_recorder.record_latency(
-                client_info.full_method
-            ):
-                _inject_span_context(mutable_metadata)
-                metadata = tuple(mutable_metadata.items())
+            inject(mutable_metadata, setter=_carrier_setter)
+            metadata = tuple(mutable_metadata.items())
 
-                # If protobuf is used, we can record the bytes in/out. Otherwise, we have no way
-                # to get the size of the request/response properly, so don't record anything
-                if "ByteSize" in dir(request):
-                    self._metrics_recorder.record_bytes_out(
-                        request.ByteSize(), client_info.full_method
-                    )
+            rpc_info = RpcInfo(
+                full_method=client_info.full_method,
+                metadata=metadata,
+                timeout=client_info.timeout,
+                request=request,
+            )
 
-                rpc_info = RpcInfo(
-                    full_method=client_info.full_method,
-                    metadata=metadata,
-                    timeout=client_info.timeout,
-                    request=request,
+            try:
+                result = invoker(request, metadata)
+            except grpc.RpcError as err:
+                guarded_span.generated_span.set_status(
+                    Status(StatusCode.ERROR)
                 )
-
-                try:
-                    result = invoker(request, metadata)
-                except grpc.RpcError:
-                    guarded_span.generated_span.set_status(
-                        Status(StatusCode.ERROR)
-                    )
-                    raise
-
-                return self._trace_result(
-                    guarded_span, rpc_info, result, client_info
+                guarded_span.generated_span.set_attribute(
+                    "rpc.grpc.status_code", err.code().value[0]
                 )
+                raise err
+
+            return self._trace_result(guarded_span, rpc_info, result)
 
     # For RPCs that stream responses, the result can be a generator. To record
     # the span across the generated responses and detect any errors, we wrap
@@ -195,42 +162,26 @@ class OpenTelemetryClientInterceptor(
             mutable_metadata = OrderedDict(metadata)
 
         with self._start_span(client_info.full_method) as span:
-            with self._metrics_recorder.record_latency(
-                client_info.full_method
-            ):
-                _inject_span_context(mutable_metadata)
-                metadata = tuple(mutable_metadata.items())
-                rpc_info = RpcInfo(
-                    full_method=client_info.full_method,
-                    metadata=metadata,
-                    timeout=client_info.timeout,
-                )
+            inject(mutable_metadata, setter=_carrier_setter)
+            metadata = tuple(mutable_metadata.items())
+            rpc_info = RpcInfo(
+                full_method=client_info.full_method,
+                metadata=metadata,
+                timeout=client_info.timeout,
+            )
 
-                if client_info.is_client_stream:
-                    rpc_info.request = request_or_iterator
-                    request_or_iterator = self._bytes_out_iterator_wrapper(
-                        request_or_iterator, client_info
-                    )
-                else:
-                    if "ByteSize" in dir(request_or_iterator):
-                        self._metrics_recorder.record_bytes_out(
-                            request_or_iterator.ByteSize(),
-                            client_info.full_method,
-                        )
+            if client_info.is_client_stream:
+                rpc_info.request = request_or_iterator
 
-                try:
-                    result = invoker(request_or_iterator, metadata)
+            try:
+                result = invoker(request_or_iterator, metadata)
 
-                    # Rewrap the result stream into a generator, and record the bytes received
-                    for response in result:
-                        if "ByteSize" in dir(response):
-                            self._metrics_recorder.record_bytes_in(
-                                response.ByteSize(), client_info.full_method
-                            )
-                        yield response
-                except grpc.RpcError:
-                    span.set_status(Status(StatusCode.ERROR))
-                    raise
+                for response in result:
+                    yield response
+            except grpc.RpcError as err:
+                span.set_status(Status(StatusCode.ERROR))
+                span.set_attribute("rpc.grpc.status_code", err.code().value[0])
+                raise err
 
     def intercept_stream(
         self, request_or_iterator, metadata, client_info, invoker
@@ -246,32 +197,26 @@ class OpenTelemetryClientInterceptor(
             mutable_metadata = OrderedDict(metadata)
 
         with self._start_guarded_span(client_info.full_method) as guarded_span:
-            with self._metrics_recorder.record_latency(
-                client_info.full_method
-            ):
-                _inject_span_context(mutable_metadata)
-                metadata = tuple(mutable_metadata.items())
-                rpc_info = RpcInfo(
-                    full_method=client_info.full_method,
-                    metadata=metadata,
-                    timeout=client_info.timeout,
-                    request=request_or_iterator,
+            inject(mutable_metadata, setter=_carrier_setter)
+            metadata = tuple(mutable_metadata.items())
+            rpc_info = RpcInfo(
+                full_method=client_info.full_method,
+                metadata=metadata,
+                timeout=client_info.timeout,
+                request=request_or_iterator,
+            )
+
+            rpc_info.request = request_or_iterator
+
+            try:
+                result = invoker(request_or_iterator, metadata)
+            except grpc.RpcError as err:
+                guarded_span.generated_span.set_status(
+                    Status(StatusCode.ERROR)
                 )
-
-                rpc_info.request = request_or_iterator
-
-                request_or_iterator = self._bytes_out_iterator_wrapper(
-                    request_or_iterator, client_info
+                guarded_span.generated_span.set_attribute(
+                    "rpc.grpc.status_code", err.code().value[0],
                 )
+                raise err
 
-                try:
-                    result = invoker(request_or_iterator, metadata)
-                except grpc.RpcError:
-                    guarded_span.generated_span.set_status(
-                        Status(StatusCode.ERROR)
-                    )
-                    raise
-
-                return self._trace_result(
-                    guarded_span, rpc_info, result, client_info
-                )
+            return self._trace_result(guarded_span, rpc_info, result)
