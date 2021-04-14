@@ -18,12 +18,24 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - `opentelemetry-instrumentation-wsgi` Replaced `name_callback` with `request_hook`
    and `response_hook` callbacks.
   ([#424](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/424))
+- Update gRPC instrumentation to better wrap server context
+  ([#420](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/420))
 
 ### Added
 - `opentelemetry-instrumentation-urllib3` Add urllib3 instrumentation
   ([#299](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/299))
 - `opentelemetry-instrumenation-django` now supports request and response hooks.
   ([#407](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/407))
+- `opentelemetry-instrumentation-falcon` FalconInstrumentor now supports request/response hooks.
+  ([#415](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/415))
+
+### Removed
+- Remove `http.status_text` from span attributes
+  ([#406](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/406))
+
+### Removed
+- Remove `http.status_text` from span attributes
+  ([#406](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/406))
 
 ### Removed
 - Remove `http.status_text` from span attributes
