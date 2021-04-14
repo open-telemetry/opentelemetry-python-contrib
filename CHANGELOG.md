@@ -43,6 +43,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - ([#259](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/259))
 - `opentelemetry-instrumentation-redis` Fix default port KeyError and Wrong Attribute name (net.peer.ip -> net.peer.port)
   ([#265](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/265))
+- `opentelemetry-instrumentation-asyncpg` Fix default port KeyError and Wrong Attribute name (net.peer.ip -> net.peer.port)
+  ([#265](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/265))
 
 ## [0.16b1](https://github.com/open-telemetry/opentelemetry-python-contrib/releases/tag/v0.16b1) - 2020-11-26
 
