@@ -191,7 +191,7 @@ class OpenTelemetryMiddleware:
         response_hook: Optional callback which is called with the server span,
                        WSGI environ, status_code and response_headers for every
                        incoming request.
-        tracer_provider: Optional tracer provider to use. If omitted the current 
+        tracer_provider: Optional tracer provider to use. If omitted the current
                          globally configured one is used.
     """
 
