@@ -82,7 +82,13 @@ def error_wsgi_unhandled(environ, start_response):
 
 class TestWsgiApplication(WsgiTestBase):
     def validate_response(
-        self, response, error=None, span_name="HTTP GET", http_method="GET"
+        self,
+        response,
+        error=None,
+        span_name="HTTP GET",
+        http_method="GET",
+        span_attributes=None,
+        response_headers=None,
     ):
         while True:
             try:
@@ -91,10 +97,12 @@ class TestWsgiApplication(WsgiTestBase):
             except StopIteration:
                 break
 
+        expected_headers = [("Content-Type", "text/plain")]
+        if response_headers:
+            expected_headers.extend(response_headers)
+
         self.assertEqual(self.status, "200 OK")
-        self.assertEqual(
-            self.response_headers, [("Content-Type", "text/plain")]
-        )
+        self.assertEqual(self.response_headers, expected_headers)
         if error:
             self.assertIs(self.exc_info[0], error)
             self.assertIsInstance(self.exc_info[1], error)
@@ -115,6 +123,7 @@ class TestWsgiApplication(WsgiTestBase):
             SpanAttributes.HTTP_URL: "http://127.0.0.1/",
             SpanAttributes.HTTP_STATUS_CODE: 200,
         }
+        expected_attributes.update(span_attributes or {})
         if http_method is not None:
             expected_attributes[SpanAttributes.HTTP_METHOD] = http_method
         self.assertEqual(span_list[0].attributes, expected_attributes)
@@ -123,6 +132,30 @@ class TestWsgiApplication(WsgiTestBase):
         app = otel_wsgi.OpenTelemetryMiddleware(simple_wsgi)
         response = app(self.environ, self.start_response)
         self.validate_response(response)
+
+    def test_hooks(self):
+        hook_headers = (
+            "hook_attr",
+            "hello otel",
+        )
+
+        def request_hook(span, environ):
+            span.update_name("name from hook")
+
+        def response_hook(span, environ, status_code, response_headers):
+            span.set_attribute("hook_attr", "hello world")
+            response_headers.append(hook_headers)
+
+        app = otel_wsgi.OpenTelemetryMiddleware(
+            simple_wsgi, request_hook, response_hook
+        )
+        response = app(self.environ, self.start_response)
+        self.validate_response(
+            response,
+            span_name="name from hook",
+            span_attributes={"hook_attr": "hello world"},
+            response_headers=(hook_headers,),
+        )
 
     def test_wsgi_not_recording(self):
         mock_tracer = mock.Mock()
@@ -176,20 +209,6 @@ class TestWsgiApplication(WsgiTestBase):
         self.assertEqual(
             span_list[0].status.status_code, StatusCode.ERROR,
         )
-
-    def test_override_span_name(self):
-        """Test that span_names can be overwritten by our callback function."""
-        span_name = "Dymaxion"
-
-        def get_predefined_span_name(scope):
-            # pylint: disable=unused-argument
-            return span_name
-
-        app = otel_wsgi.OpenTelemetryMiddleware(
-            simple_wsgi, name_callback=get_predefined_span_name
-        )
-        response = app(self.environ, self.start_response)
-        self.validate_response(response, span_name=span_name)
 
     def test_default_span_name_missing_request_method(self):
         """Test that default span_names with missing request method."""

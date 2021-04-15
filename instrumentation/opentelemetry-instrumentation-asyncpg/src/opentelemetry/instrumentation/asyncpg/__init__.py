@@ -43,7 +43,11 @@ from opentelemetry.instrumentation.asyncpg.version import __version__
 from opentelemetry.instrumentation.instrumentor import BaseInstrumentor
 from opentelemetry.instrumentation.utils import unwrap
 from opentelemetry.trace import SpanKind
-from opentelemetry.trace.attributes import DbSystemValues, SpanAttributes
+from opentelemetry.trace.attributes import (
+    DbSystemValues,
+    SpanAttributes,
+    NetTransportValues,
+)
 from opentelemetry.trace.status import Status, StatusCode
 
 _APPLIED = "_opentelemetry_tracer"
@@ -71,11 +75,15 @@ def _hydrate_span_from_args(connection, query, parameters) -> dict:
     addr = getattr(connection, "_addr", None)
     if isinstance(addr, tuple):
         span_attributes[SpanAttributes.NET_PEER_NAME] = addr[0]
-        span_attributes[SpanAttributes.NET_PEER_IP] = addr[1]
-        span_attributes[SpanAttributes.NET_TRANSPORT] = "IP.TCP"
+        span_attributes[SpanAttributes.NET_PEER_PORT] = addr[1]
+        span_attributes[
+            SpanAttributes.NET_TRANSPORT
+        ] = NetTransportValues.IP_TCP.value
     elif isinstance(addr, str):
         span_attributes[SpanAttributes.NET_PEER_NAME] = addr
-        span_attributes[SpanAttributes.NET_TRANSPORT] = "Unix"
+        span_attributes[
+            SpanAttributes.NET_TRANSPORT
+        ] = NetTransportValues.UNIX.value
 
     if query is not None:
         span_attributes[SpanAttributes.DB_STATEMENT] = query

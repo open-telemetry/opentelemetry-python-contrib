@@ -56,7 +56,7 @@ class TestFunctionalAsyncPG(TestBase):
             span.attributes[SpanAttributes.NET_PEER_NAME], POSTGRES_HOST
         )
         self.assertEqual(
-            span.attributes[SpanAttributes.NET_PEER_IP], POSTGRES_PORT
+            span.attributes[SpanAttributes.NET_PEER_PORT], POSTGRES_PORT
         )
 
     def test_instrumented_execute_method_without_arguments(self, *_, **__):
@@ -185,7 +185,7 @@ class TestFunctionalAsyncPG_CaptureParameters(TestBase):
             span.attributes[SpanAttributes.NET_PEER_NAME], POSTGRES_HOST
         )
         self.assertEqual(
-            span.attributes[SpanAttributes.NET_PEER_IP], POSTGRES_PORT
+            span.attributes[SpanAttributes.NET_PEER_PORT], POSTGRES_PORT
         )
 
     def test_instrumented_execute_method_with_arguments(self, *_, **__):

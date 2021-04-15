@@ -38,7 +38,7 @@ class TestRedisInstrument(TestBase):
         self.assertEqual(
             span.attributes[SpanAttributes.NET_PEER_NAME], "localhost"
         )
-        self.assertEqual(span.attributes[SpanAttributes.NET_PEER_IP], 6379)
+        self.assertEqual(span.attributes[SpanAttributes.NET_PEER_PORT], 6379)
 
     def test_long_command(self):
         self.redis_client.mget(*range(1000))
@@ -138,7 +138,7 @@ class TestRedisDBIndexInstrument(TestBase):
         self.assertEqual(
             span.attributes[SpanAttributes.NET_PEER_NAME], "localhost"
         )
-        self.assertEqual(span.attributes[SpanAttributes.NET_PEER_IP], 6379)
+        self.assertEqual(span.attributes[SpanAttributes.NET_PEER_PORT], 6379)
         self.assertEqual(
             span.attributes[SpanAttributes.DB_REDIS_DATABASE_INDEX], 10
         )
