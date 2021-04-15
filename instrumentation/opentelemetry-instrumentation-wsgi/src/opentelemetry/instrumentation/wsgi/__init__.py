@@ -195,7 +195,9 @@ class OpenTelemetryMiddleware:
                          globally configured one is used.
     """
 
-    def __init__(self, wsgi, request_hook=None, response_hook=None, tracer_provider=None):
+    def __init__(
+        self, wsgi, request_hook=None, response_hook=None, tracer_provider=None
+    ):
         self.wsgi = wsgi
         self.tracer = trace.get_tracer(__name__, __version__, tracer_provider)
         self.request_hook = request_hook
