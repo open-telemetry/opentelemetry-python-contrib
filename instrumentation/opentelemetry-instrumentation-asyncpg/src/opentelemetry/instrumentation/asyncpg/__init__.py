@@ -45,8 +45,8 @@ from opentelemetry.instrumentation.utils import unwrap
 from opentelemetry.trace import SpanKind
 from opentelemetry.trace.attributes import (
     DbSystemValues,
-    SpanAttributes,
     NetTransportValues,
+    SpanAttributes,
 )
 from opentelemetry.trace.status import Status, StatusCode
 
