@@ -165,7 +165,7 @@ class OpenTelemetryMiddleware:
             dictionary with any additional span attributes to set.
             Optional: Defaults to get_default_span_details.
         tracer_provider: The optional tracer provider to use. If omitted
-        the current globally configured one is used.
+            the current globally configured one is used.
     """
 
     def __init__(

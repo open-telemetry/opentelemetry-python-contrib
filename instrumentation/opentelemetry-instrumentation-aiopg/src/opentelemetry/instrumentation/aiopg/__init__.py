@@ -95,6 +95,8 @@ class AiopgInstrumentor(BaseInstrumentor):
 
         Args:
             connection: The connection to instrument.
+            tracer_provider: The optional tracer provider to use. If omitted
+                the current globally configured one is used.
 
         Returns:
             An instrumented connection.
