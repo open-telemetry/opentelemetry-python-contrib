@@ -30,7 +30,7 @@ from opentelemetry.exporter.datadog.constants import (
 )
 from opentelemetry.sdk.trace import sampling
 from opentelemetry.sdk.trace.export import SpanExporter, SpanExportResult
-from opentelemetry.trace.attributes import SpanAttributes
+from opentelemetry.semconv.trace import SpanAttributes
 
 logger = logging.getLogger(__name__)
 

@@ -23,9 +23,9 @@ from opentelemetry.instrumentation.tornado import (
     patch_handler_class,
     unpatch_handler_class,
 )
+from opentelemetry.semconv.trace import SpanAttributes
 from opentelemetry.test.test_base import TestBase
 from opentelemetry.trace import SpanKind
-from opentelemetry.trace.attributes import SpanAttributes
 from opentelemetry.util.http import get_excluded_urls, get_traced_request_attrs
 
 from .tornado_test_app import (

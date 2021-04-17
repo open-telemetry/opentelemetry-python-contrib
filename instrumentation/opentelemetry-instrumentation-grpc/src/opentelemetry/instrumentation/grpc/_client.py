@@ -29,7 +29,7 @@ from opentelemetry.instrumentation.grpc import grpcext
 from opentelemetry.instrumentation.grpc._utilities import RpcInfo
 from opentelemetry.propagate import inject
 from opentelemetry.propagators.textmap import Setter
-from opentelemetry.trace.attributes import SpanAttributes
+from opentelemetry.semconv.trace import SpanAttributes
 from opentelemetry.trace.status import Status, StatusCode
 
 

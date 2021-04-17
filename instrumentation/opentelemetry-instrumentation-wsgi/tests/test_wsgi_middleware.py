@@ -20,9 +20,9 @@ from urllib.parse import urlsplit
 
 import opentelemetry.instrumentation.wsgi as otel_wsgi
 from opentelemetry import trace as trace_api
+from opentelemetry.semconv.trace import SpanAttributes
 from opentelemetry.test.wsgitestutil import WsgiTestBase
 from opentelemetry.trace import StatusCode
-from opentelemetry.trace.attributes import SpanAttributes
 
 
 class Response:

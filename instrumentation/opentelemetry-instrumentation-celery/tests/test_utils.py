@@ -20,7 +20,7 @@ from celery import Celery
 from opentelemetry import trace as trace_api
 from opentelemetry.instrumentation.celery import utils
 from opentelemetry.sdk import trace
-from opentelemetry.trace.attributes import SpanAttributes
+from opentelemetry.semconv.trace import SpanAttributes
 
 
 class TestUtils(unittest.TestCase):

@@ -20,8 +20,8 @@ import pytest
 
 from opentelemetry import trace as trace_api
 from opentelemetry.instrumentation.aiopg import AiopgInstrumentor
+from opentelemetry.semconv.trace import SpanAttributes
 from opentelemetry.test.test_base import TestBase
-from opentelemetry.trace.attributes import SpanAttributes
 
 POSTGRES_HOST = os.getenv("POSTGRESQL_HOST", "127.0.0.1")
 POSTGRES_PORT = int(os.getenv("POSTGRESQL_PORT", "5432"))

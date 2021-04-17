@@ -15,7 +15,7 @@
 """
 Some utils used by the redis integration
 """
-from opentelemetry.trace.attributes import (
+from opentelemetry.semconv.trace import (
     DbSystemValues,
     NetTransportValues,
     SpanAttributes,

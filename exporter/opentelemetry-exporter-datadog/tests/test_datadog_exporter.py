@@ -27,7 +27,7 @@ from opentelemetry.exporter import datadog
 from opentelemetry.sdk import trace
 from opentelemetry.sdk.trace import Resource, sampling
 from opentelemetry.sdk.util.instrumentation import InstrumentationInfo
-from opentelemetry.trace.attributes import SpanAttributes
+from opentelemetry.semconv.trace import SpanAttributes
 
 
 class MockDatadogSpanExporter(datadog.DatadogSpanExporter):

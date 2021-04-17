@@ -46,12 +46,12 @@ from wrapt import wrap_function_wrapper as _wrap
 from opentelemetry.instrumentation.instrumentor import BaseInstrumentor
 from opentelemetry.instrumentation.pymemcache.version import __version__
 from opentelemetry.instrumentation.utils import unwrap
-from opentelemetry.trace import SpanKind, get_tracer
-from opentelemetry.trace.attributes import (
+from opentelemetry.semconv.trace import (
     DbSystemValues,
     NetTransportValues,
     SpanAttributes,
 )
+from opentelemetry.trace import SpanKind, get_tracer
 
 logger = logging.getLogger(__name__)
 

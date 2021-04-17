@@ -21,8 +21,8 @@ from starlette.routing import Route
 from starlette.testclient import TestClient
 
 import opentelemetry.instrumentation.starlette as otel_starlette
+from opentelemetry.semconv.trace import SpanAttributes
 from opentelemetry.test.test_base import TestBase
-from opentelemetry.trace.attributes import SpanAttributes
 from opentelemetry.util.http import get_excluded_urls
 
 

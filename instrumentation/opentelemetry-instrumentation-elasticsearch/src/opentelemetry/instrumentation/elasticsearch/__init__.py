@@ -56,8 +56,8 @@ from wrapt import wrap_function_wrapper as _wrap
 from opentelemetry.instrumentation.elasticsearch.version import __version__
 from opentelemetry.instrumentation.instrumentor import BaseInstrumentor
 from opentelemetry.instrumentation.utils import unwrap
+from opentelemetry.semconv.trace import SpanAttributes
 from opentelemetry.trace import SpanKind, get_tracer
-from opentelemetry.trace.attributes import SpanAttributes
 from opentelemetry.trace.status import Status, StatusCode
 
 logger = getLogger(__name__)

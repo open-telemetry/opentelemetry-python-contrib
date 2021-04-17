@@ -18,8 +18,8 @@ from unittest import mock
 
 from opentelemetry import trace as trace_api
 from opentelemetry.instrumentation import dbapi
+from opentelemetry.semconv.trace import SpanAttributes
 from opentelemetry.test.test_base import TestBase
-from opentelemetry.trace.attributes import SpanAttributes
 
 
 class TestDBApiIntegration(TestBase):

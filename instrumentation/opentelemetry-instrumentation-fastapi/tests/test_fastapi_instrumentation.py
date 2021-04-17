@@ -19,8 +19,8 @@ import fastapi
 from fastapi.testclient import TestClient
 
 import opentelemetry.instrumentation.fastapi as otel_fastapi
+from opentelemetry.semconv.trace import SpanAttributes
 from opentelemetry.test.test_base import TestBase
-from opentelemetry.trace.attributes import SpanAttributes
 from opentelemetry.util.http import get_excluded_urls
 
 

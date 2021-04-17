@@ -18,7 +18,7 @@ import pytest
 from sqlalchemy.exc import OperationalError
 
 from opentelemetry import trace
-from opentelemetry.trace.attributes import SpanAttributes
+from opentelemetry.semconv.trace import SpanAttributes
 
 from .mixins import SQLAlchemyTestMixin
 

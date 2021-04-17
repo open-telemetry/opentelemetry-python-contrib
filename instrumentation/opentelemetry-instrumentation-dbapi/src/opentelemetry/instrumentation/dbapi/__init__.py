@@ -46,8 +46,8 @@ import wrapt
 from opentelemetry import trace as trace_api
 from opentelemetry.instrumentation.dbapi.version import __version__
 from opentelemetry.instrumentation.utils import unwrap
+from opentelemetry.semconv.trace import SpanAttributes
 from opentelemetry.trace import SpanKind, TracerProvider, get_tracer
-from opentelemetry.trace.attributes import SpanAttributes
 from opentelemetry.trace.status import Status, StatusCode
 
 logger = logging.getLogger(__name__)

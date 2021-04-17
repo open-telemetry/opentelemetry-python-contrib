@@ -26,8 +26,8 @@ from opentelemetry.instrumentation.aiopg.aiopg_integration import (
     AiopgIntegration,
 )
 from opentelemetry.sdk import resources
+from opentelemetry.semconv.trace import SpanAttributes
 from opentelemetry.test.test_base import TestBase
-from opentelemetry.trace.attributes import SpanAttributes
 
 
 def async_call(coro):

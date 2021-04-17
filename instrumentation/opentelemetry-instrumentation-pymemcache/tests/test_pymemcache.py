@@ -24,9 +24,9 @@ from pymemcache.exceptions import (
 
 from opentelemetry import trace as trace_api
 from opentelemetry.instrumentation.pymemcache import PymemcacheInstrumentor
+from opentelemetry.semconv.trace import SpanAttributes
 from opentelemetry.test.test_base import TestBase
 from opentelemetry.trace import get_tracer
-from opentelemetry.trace.attributes import SpanAttributes
 
 from .utils import MockSocket, _str
 

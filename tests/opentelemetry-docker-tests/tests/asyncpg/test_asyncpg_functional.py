@@ -4,9 +4,9 @@ import os
 import asyncpg
 
 from opentelemetry.instrumentation.asyncpg import AsyncPGInstrumentor
+from opentelemetry.semconv.trace import SpanAttributes
 from opentelemetry.test.test_base import TestBase
 from opentelemetry.trace import StatusCode
-from opentelemetry.trace.attributes import SpanAttributes
 
 POSTGRES_HOST = os.getenv("POSTGRESQL_HOST", "localhost")
 POSTGRES_PORT = int(os.getenv("POSTGRESQL_PORT", "5432"))

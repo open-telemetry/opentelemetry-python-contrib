@@ -53,7 +53,7 @@ from opentelemetry.instrumentation.utils import (
     unwrap,
 )
 from opentelemetry.propagate import extract
-from opentelemetry.trace.attributes import SpanAttributes
+from opentelemetry.semconv.trace import SpanAttributes
 from opentelemetry.trace.status import Status
 from opentelemetry.util._time import _time_ns
 from opentelemetry.util.http import get_excluded_urls, get_traced_request_attrs

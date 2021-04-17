@@ -27,8 +27,8 @@ from opentelemetry.instrumentation.wsgi import (
     wsgi_getter,
 )
 from opentelemetry.propagate import extract
+from opentelemetry.semconv.trace import SpanAttributes
 from opentelemetry.trace import Span, SpanKind, get_tracer, use_span
-from opentelemetry.trace.attributes import SpanAttributes
 from opentelemetry.util.http import get_excluded_urls, get_traced_request_attrs
 
 try:

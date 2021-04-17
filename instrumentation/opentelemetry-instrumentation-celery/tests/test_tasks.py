@@ -16,9 +16,9 @@ import threading
 import time
 
 from opentelemetry.instrumentation.celery import CeleryInstrumentor
+from opentelemetry.semconv.trace import SpanAttributes
 from opentelemetry.test.test_base import TestBase
 from opentelemetry.trace import SpanKind
-from opentelemetry.trace.attributes import SpanAttributes
 
 from .celery_test_tasks import app, task_add
 

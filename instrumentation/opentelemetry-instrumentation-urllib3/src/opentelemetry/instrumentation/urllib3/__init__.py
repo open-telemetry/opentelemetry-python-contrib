@@ -58,8 +58,8 @@ from opentelemetry.instrumentation.utils import (
     unwrap,
 )
 from opentelemetry.propagate import inject
+from opentelemetry.semconv.trace import SpanAttributes
 from opentelemetry.trace import Span, SpanKind, TracerProvider, get_tracer
-from opentelemetry.trace.attributes import SpanAttributes
 from opentelemetry.trace.status import Status
 
 _SUPPRESS_HTTP_INSTRUMENTATION_KEY = "suppress_http_instrumentation"

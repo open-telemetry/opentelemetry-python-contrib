@@ -42,8 +42,8 @@ from pymongo import monitoring
 from opentelemetry import trace
 from opentelemetry.instrumentation.instrumentor import BaseInstrumentor
 from opentelemetry.instrumentation.pymongo.version import __version__
+from opentelemetry.semconv.trace import DbSystemValues, SpanAttributes
 from opentelemetry.trace import SpanKind, get_tracer
-from opentelemetry.trace.attributes import DbSystemValues, SpanAttributes
 from opentelemetry.trace.status import Status, StatusCode
 
 

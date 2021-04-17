@@ -27,9 +27,9 @@ from opentelemetry import trace
 from opentelemetry.instrumentation.elasticsearch import (
     ElasticsearchInstrumentor,
 )
+from opentelemetry.semconv.trace import SpanAttributes
 from opentelemetry.test.test_base import TestBase
 from opentelemetry.trace import StatusCode
-from opentelemetry.trace.attributes import SpanAttributes
 
 major_version = elasticsearch.VERSION[0]
 

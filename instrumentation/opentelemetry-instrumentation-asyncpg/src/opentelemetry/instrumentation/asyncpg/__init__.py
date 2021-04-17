@@ -42,12 +42,12 @@ from opentelemetry import trace
 from opentelemetry.instrumentation.asyncpg.version import __version__
 from opentelemetry.instrumentation.instrumentor import BaseInstrumentor
 from opentelemetry.instrumentation.utils import unwrap
-from opentelemetry.trace import SpanKind
-from opentelemetry.trace.attributes import (
+from opentelemetry.semconv.trace import (
     DbSystemValues,
     NetTransportValues,
     SpanAttributes,
 )
+from opentelemetry.trace import SpanKind
 from opentelemetry.trace.status import Status, StatusCode
 
 _APPLIED = "_opentelemetry_tracer"

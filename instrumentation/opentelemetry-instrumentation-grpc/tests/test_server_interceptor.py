@@ -27,9 +27,9 @@ from opentelemetry.instrumentation.grpc import (
     server_interceptor,
 )
 from opentelemetry.sdk import trace as trace_sdk
+from opentelemetry.semconv.trace import SpanAttributes
 from opentelemetry.test.test_base import TestBase
 from opentelemetry.trace import StatusCode
-from opentelemetry.trace.attributes import SpanAttributes
 
 from .protobuf.test_server_pb2 import Request, Response
 from .protobuf.test_server_pb2_grpc import (

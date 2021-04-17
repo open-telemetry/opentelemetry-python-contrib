@@ -53,7 +53,7 @@ from opentelemetry.instrumentation.redis.util import (
 )
 from opentelemetry.instrumentation.redis.version import __version__
 from opentelemetry.instrumentation.utils import unwrap
-from opentelemetry.trace.attributes import SpanAttributes
+from opentelemetry.semconv.trace import SpanAttributes
 
 _DEFAULT_SERVICE = "redis"
 

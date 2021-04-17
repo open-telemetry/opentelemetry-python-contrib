@@ -29,7 +29,7 @@ import grpc
 from opentelemetry import trace
 from opentelemetry.context import attach, detach
 from opentelemetry.propagate import extract
-from opentelemetry.trace.attributes import SpanAttributes
+from opentelemetry.semconv.trace import SpanAttributes
 from opentelemetry.trace.status import Status, StatusCode
 
 logger = logging.getLogger(__name__)

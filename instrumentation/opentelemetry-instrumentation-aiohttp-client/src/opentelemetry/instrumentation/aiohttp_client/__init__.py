@@ -77,8 +77,8 @@ from opentelemetry.instrumentation.utils import (
     unwrap,
 )
 from opentelemetry.propagate import inject
+from opentelemetry.semconv.trace import SpanAttributes
 from opentelemetry.trace import SpanKind, TracerProvider, get_tracer
-from opentelemetry.trace.attributes import SpanAttributes
 from opentelemetry.trace.status import Status, StatusCode
 
 _UrlFilterT = typing.Optional[typing.Callable[[str], str]]

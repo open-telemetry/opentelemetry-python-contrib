@@ -17,7 +17,7 @@ from starlette.routing import Match
 
 from opentelemetry.instrumentation.asgi import OpenTelemetryMiddleware
 from opentelemetry.instrumentation.instrumentor import BaseInstrumentor
-from opentelemetry.trace.attributes import SpanAttributes
+from opentelemetry.semconv.trace import SpanAttributes
 from opentelemetry.util.http import get_excluded_urls
 
 _excluded_urls = get_excluded_urls("STARLETTE")

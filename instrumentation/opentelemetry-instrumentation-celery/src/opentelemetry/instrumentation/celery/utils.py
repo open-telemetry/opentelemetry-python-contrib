@@ -16,7 +16,7 @@ import logging
 
 from celery import registry  # pylint: disable=no-name-in-module
 
-from opentelemetry.trace.attributes import SpanAttributes
+from opentelemetry.semconv.trace import SpanAttributes
 
 logger = logging.getLogger(__name__)
 

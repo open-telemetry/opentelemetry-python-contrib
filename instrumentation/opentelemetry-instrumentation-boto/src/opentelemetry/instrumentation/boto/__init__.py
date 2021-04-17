@@ -51,8 +51,8 @@ from opentelemetry.instrumentation.boto.version import __version__
 from opentelemetry.instrumentation.instrumentor import BaseInstrumentor
 from opentelemetry.instrumentation.utils import unwrap
 from opentelemetry.sdk.trace import Resource
+from opentelemetry.semconv.trace import SpanAttributes
 from opentelemetry.trace import SpanKind, get_tracer
-from opentelemetry.trace.attributes import SpanAttributes
 
 logger = logging.getLogger(__name__)
 

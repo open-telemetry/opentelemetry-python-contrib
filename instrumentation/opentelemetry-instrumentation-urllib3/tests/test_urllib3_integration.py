@@ -22,9 +22,9 @@ import urllib3.exceptions
 from opentelemetry import context, trace
 from opentelemetry.instrumentation.urllib3 import URLLib3Instrumentor
 from opentelemetry.propagate import get_global_textmap, set_global_textmap
+from opentelemetry.semconv.trace import SpanAttributes
 from opentelemetry.test.mock_textmap import MockTextMapPropagator
 from opentelemetry.test.test_base import TestBase
-from opentelemetry.trace.attributes import SpanAttributes
 
 # pylint: disable=too-many-public-methods
 

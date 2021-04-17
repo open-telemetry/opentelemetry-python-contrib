@@ -28,8 +28,8 @@ from moto import (  # pylint: disable=import-error
 )
 
 from opentelemetry.instrumentation.boto import BotoInstrumentor
+from opentelemetry.semconv.trace import SpanAttributes
 from opentelemetry.test.test_base import TestBase
-from opentelemetry.trace.attributes import SpanAttributes
 
 
 def assert_span_http_status_code(span, code):

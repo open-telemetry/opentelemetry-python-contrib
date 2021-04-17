@@ -18,9 +18,9 @@ from pyramid.config import Configurator
 
 from opentelemetry import trace
 from opentelemetry.instrumentation.pyramid import PyramidInstrumentor
+from opentelemetry.semconv.trace import SpanAttributes
 from opentelemetry.test.test_base import TestBase
 from opentelemetry.test.wsgitestutil import WsgiTestBase
-from opentelemetry.trace.attributes import SpanAttributes
 from opentelemetry.util.http import get_excluded_urls
 
 # pylint: disable=import-error

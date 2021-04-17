@@ -50,8 +50,8 @@ from opentelemetry.instrumentation.urllib.version import (  # pylint: disable=no
 )
 from opentelemetry.instrumentation.utils import http_status_to_status_code
 from opentelemetry.propagate import inject
+from opentelemetry.semconv.trace import SpanAttributes
 from opentelemetry.trace import SpanKind, get_tracer
-from opentelemetry.trace.attributes import SpanAttributes
 from opentelemetry.trace.status import Status
 
 # A key to a context variable to avoid creating duplicate spans when instrumenting

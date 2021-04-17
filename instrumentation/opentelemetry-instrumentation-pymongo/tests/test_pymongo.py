@@ -19,8 +19,8 @@ from opentelemetry.instrumentation.pymongo import (
     CommandTracer,
     PymongoInstrumentor,
 )
+from opentelemetry.semconv.trace import SpanAttributes
 from opentelemetry.test.test_base import TestBase
-from opentelemetry.trace.attributes import SpanAttributes
 
 
 class TestPymongo(TestBase):
