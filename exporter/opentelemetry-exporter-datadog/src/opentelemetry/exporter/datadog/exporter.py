@@ -155,14 +155,23 @@ class DatadogSpanExporter(SpanExporter):
                 # https://github.com/open-telemetry/opentelemetry-python/blob/71e3a7a192c0fc8a7503fac967ada36a74b79e58/opentelemetry-sdk/src/opentelemetry/sdk/trace/__init__.py#L810-L819
                 if span.events:
                     for event in span.events:
-                        if event.name is not None and event.name == EVENT_NAME_EXCEPTION:
+                        if (
+                            event.name is not None
+                            and event.name == EVENT_NAME_EXCEPTION
+                        ):
                             for key, value in event.attributes.items():
                                 if key == EXCEPTION_TYPE_ATTR_KEY:
-                                    datadog_span.set_tag(DD_ERROR_TYPE_TAG_KEY, value)
+                                    datadog_span.set_tag(
+                                        DD_ERROR_TYPE_TAG_KEY, value
+                                    )
                                 elif key == EXCEPTION_MSG_ATTR_KEY:
-                                    datadog_span.set_tag(DD_ERROR_MSG_TAG_KEY, value)
+                                    datadog_span.set_tag(
+                                        DD_ERROR_MSG_TAG_KEY, value
+                                    )
                                 elif key == EXCEPTION_STACK_ATTR_KEY:
-                                    datadog_span.set_tag(DD_ERROR_STACK_TAG_KEY, value)
+                                    datadog_span.set_tag(
+                                        DD_ERROR_STACK_TAG_KEY, value
+                                    )
                 # fallback to description but only if no exception events.
                 elif span.status.description:
                     exc_type, exc_val = _get_exc_info(span)
