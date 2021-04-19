@@ -34,6 +34,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   ([#415](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/415))
 - `opentelemetry-instrumentation-tornado` Add request/response hooks.
   ([#426](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/426))
+- `opentelemetry-exporter-datadog` Add parsing exception events for error tags([#459](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/459))
 
 ### Removed
 - Remove `http.status_text` from span attributes
