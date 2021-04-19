@@ -163,8 +163,8 @@ class DatadogSpanExporter(SpanExporter):
                                     datadog_span.set_tag(DD_ERROR_MSG_TAG_KEY, value)
                                 elif key == EXCEPTION_STACK_ATTR_KEY:
                                     datadog_span.set_tag(DD_ERROR_STACK_TAG_KEY, value)
-                # fallback to description but only if no exception events
-               elif span.status.description:
+                # fallback to description but only if no exception events.
+                elif span.status.description:
                     exc_type, exc_val = _get_exc_info(span)
                     # no mapping for error.stack since traceback not recorded
                     datadog_span.set_tag(DD_ERROR_MSG_TAG_KEY, exc_val)
