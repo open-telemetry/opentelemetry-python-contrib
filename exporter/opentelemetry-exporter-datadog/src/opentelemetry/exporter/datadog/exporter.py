@@ -22,8 +22,15 @@ from ddtrace.span import Span as DatadogSpan
 
 import opentelemetry.trace as trace_api
 from opentelemetry.exporter.datadog.constants import (
+    DD_ERROR_MSG_TAG_KEY,
+    DD_ERROR_STACK_TAG_KEY,
+    DD_ERROR_TYPE_TAG_KEY,
     DD_ORIGIN,
     ENV_KEY,
+    EVENT_NAME_EXCEPTION,
+    EXCEPTION_MSG_ATTR_KEY,
+    EXCEPTION_STACK_ATTR_KEY,
+    EXCEPTION_TYPE_ATTR_KEY,
     SAMPLE_RATE_METRIC_KEY,
     SERVICE_NAME_TAG,
     VERSION_KEY,
@@ -144,11 +151,24 @@ class DatadogSpanExporter(SpanExporter):
 
             if not span.status.is_ok:
                 datadog_span.error = 1
-                if span.status.description:
+                # loop over events and look for exception events, extract info.
+                # https://github.com/open-telemetry/opentelemetry-python/blob/71e3a7a192c0fc8a7503fac967ada36a74b79e58/opentelemetry-sdk/src/opentelemetry/sdk/trace/__init__.py#L810-L819
+                if span.events:
+                    for event in span.events:
+                        if event.name is not None and event.name == EVENT_NAME_EXCEPTION:
+                            for key, value in event.attributes.items():
+                                if key == EXCEPTION_TYPE_ATTR_KEY:
+                                    datadog_span.set_tag(DD_ERROR_TYPE_TAG_KEY, value)
+                                elif key == EXCEPTION_MSG_ATTR_KEY:
+                                    datadog_span.set_tag(DD_ERROR_MSG_TAG_KEY, value)
+                                elif key == EXCEPTION_STACK_ATTR_KEY:
+                                    datadog_span.set_tag(DD_ERROR_STACK_TAG_KEY, value)
+                # fallback to description but only if no exception events
+               elif span.status.description:
                     exc_type, exc_val = _get_exc_info(span)
                     # no mapping for error.stack since traceback not recorded
-                    datadog_span.set_tag("error.msg", exc_val)
-                    datadog_span.set_tag("error.type", exc_type)
+                    datadog_span.set_tag(DD_ERROR_MSG_TAG_KEY, exc_val)
+                    datadog_span.set_tag(DD_ERROR_TYPE_TAG_KEY, exc_type)
 
             # combine resource attributes and span attributes, don't modify existing span attributes
             combined_span_tags = {}
@@ -177,7 +197,7 @@ class DatadogSpanExporter(SpanExporter):
             if sampling_rate is not None:
                 datadog_span.set_metric(SAMPLE_RATE_METRIC_KEY, sampling_rate)
 
-            # span events and span links are not supported
+            # span events and span links are not supported except for extracting exception event context
 
             datadog_spans.append(datadog_span)
 
