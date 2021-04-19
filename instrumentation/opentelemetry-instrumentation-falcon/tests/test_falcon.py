@@ -17,12 +17,12 @@ from unittest.mock import Mock, patch
 from falcon import testing
 
 from opentelemetry.instrumentation.falcon import FalconInstrumentor
-from opentelemetry.semconv.trace import SpanAttributes
 from opentelemetry.instrumentation.propagators import (
     TraceResponsePropagator,
     get_global_response_propagator,
     set_global_response_propagator,
 )
+from opentelemetry.semconv.trace import SpanAttributes
 from opentelemetry.test.test_base import TestBase
 from opentelemetry.trace import StatusCode, format_span_id, format_trace_id
 from opentelemetry.util.http import get_excluded_urls, get_traced_request_attrs
