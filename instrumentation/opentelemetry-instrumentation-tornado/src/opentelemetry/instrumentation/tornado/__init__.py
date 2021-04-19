@@ -33,6 +33,43 @@ Usage
     app = tornado.web.Application([(r"/", Handler)])
     app.listen(8080)
     tornado.ioloop.IOLoop.current().start()
+
+Hooks
+*******
+
+Tornado instrumentation supports extending tracing behaviour with the help of hooks.
+It's ``instrument()`` method accepts three optional functions that get called back with the
+created span and some other contextual information. Example:
+
+.. code-block:: python
+
+    # will be called for each incoming request to Tornado
+    # web server. `handler` is an instance of
+    # `tornado.web.RequestHandler`.
+    def server_request_hook(span, handler):
+        pass
+
+    # will be called just before sending out a request with
+    # `tornado.httpclient.AsyncHTTPClient.fetch`.
+    # `request` is an instance of ``tornado.httpclient.HTTPRequest`.
+    def client_request_hook(span, request):
+        pass
+
+    # will be called after a outgoing request made with
+    # `tornado.httpclient.AsyncHTTPClient.fetch` finishes.
+    # `response`` is an instance of ``Future[tornado.httpclient.HTTPResponse]`.
+    def client_resposne_hook(span, future):
+        pass
+
+    # apply tornado instrumentation with hooks
+    TornadoInstrumentor().instrument(
+        server_request_hook=server_request_hook,
+        client_request_hook=client_request_hook,
+        client_response_hook=client_resposne_hook
+    )
+
+API
+---
 """
 
 
@@ -46,6 +83,10 @@ from wrapt import wrap_function_wrapper
 
 from opentelemetry import context, trace
 from opentelemetry.instrumentation.instrumentor import BaseInstrumentor
+from opentelemetry.instrumentation.propagators import (
+    FuncSetter,
+    get_global_response_propagator,
+)
 from opentelemetry.instrumentation.tornado.version import __version__
 from opentelemetry.instrumentation.utils import (
     extract_attributes_from_object,
@@ -67,6 +108,8 @@ _OTEL_PATCHED_KEY = "_otel_patched_key"
 
 _excluded_urls = get_excluded_urls("TORNADO")
 _traced_request_attrs = get_traced_request_attrs("TORNADO")
+
+response_propagation_setter = FuncSetter(tornado.web.RequestHandler.add_header)
 
 
 class TornadoInstrumentor(BaseInstrumentor):
@@ -96,9 +139,13 @@ class TornadoInstrumentor(BaseInstrumentor):
         tracer_provider = kwargs.get("tracer_provider")
         tracer = trace.get_tracer(__name__, __version__, tracer_provider)
 
+        client_request_hook = kwargs.get("client_request_hook", None)
+        client_response_hook = kwargs.get("client_response_hook", None)
+        server_request_hook = kwargs.get("server_request_hook", None)
+
         def handler_init(init, handler, args, kwargs):
             cls = handler.__class__
-            if patch_handler_class(tracer, cls):
+            if patch_handler_class(tracer, cls, server_request_hook):
                 self.patched_handlers.append(cls)
             return init(*args, **kwargs)
 
@@ -108,7 +155,9 @@ class TornadoInstrumentor(BaseInstrumentor):
         wrap_function_wrapper(
             "tornado.httpclient",
             "AsyncHTTPClient.fetch",
-            partial(fetch_async, tracer),
+            partial(
+                fetch_async, tracer, client_request_hook, client_response_hook
+            ),
         )
 
     def _uninstrument(self, **kwargs):
@@ -119,12 +168,12 @@ class TornadoInstrumentor(BaseInstrumentor):
         self.patched_handlers = []
 
 
-def patch_handler_class(tracer, cls):
+def patch_handler_class(tracer, cls, request_hook=None):
     if getattr(cls, _OTEL_PATCHED_KEY, False):
         return False
 
     setattr(cls, _OTEL_PATCHED_KEY, True)
-    _wrap(cls, "prepare", partial(_prepare, tracer))
+    _wrap(cls, "prepare", partial(_prepare, tracer, request_hook))
     _wrap(cls, "on_finish", partial(_on_finish, tracer))
     _wrap(cls, "log_exception", partial(_log_exception, tracer))
     return True
@@ -146,12 +195,14 @@ def _wrap(cls, method_name, wrapper):
     wrapt.apply_patch(cls, method_name, wrapper)
 
 
-def _prepare(tracer, func, handler, args, kwargs):
+def _prepare(tracer, request_hook, func, handler, args, kwargs):
     start_time = _time_ns()
     request = handler.request
     if _excluded_urls.url_disabled(request.uri):
         return func(*args, **kwargs)
-    _start_span(tracer, handler, start_time)
+    ctx = _start_span(tracer, handler, start_time)
+    if request_hook:
+        request_hook(ctx.span, handler)
     return func(*args, **kwargs)
 
 
@@ -211,6 +262,14 @@ def _start_span(tracer, handler, start_time) -> _TraceContext:
     activation.__enter__()  # pylint: disable=E1101
     ctx = _TraceContext(activation, span, token)
     setattr(handler, _HANDLER_CONTEXT_KEY, ctx)
+
+    # finish handler is called after the response is sent back to
+    # the client so it is too late to inject trace response headers
+    # there.
+    propagator = get_global_response_propagator()
+    if propagator:
+        propagator.inject(handler, setter=response_propagation_setter)
+
     return ctx
 
 
