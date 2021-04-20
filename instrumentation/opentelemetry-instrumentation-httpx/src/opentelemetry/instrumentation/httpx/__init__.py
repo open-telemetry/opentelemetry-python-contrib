@@ -39,16 +39,6 @@ URL = typing.Tuple[bytes, bytes, typing.Optional[int], bytes]
 Headers = typing.List[typing.Tuple[bytes, bytes]]
 
 
-def _get_tracer(
-    *, tracer_provider: typing.Optional[TracerProvider] = None
-) -> Tracer:
-    return get_tracer(
-        __name__,
-        instrumenting_library_version=__version__,
-        tracer_provider=tracer_provider,
-    )
-
-
 def _get_span_name(
     method: str,
     url: str,
@@ -105,7 +95,7 @@ class SyncOpenTelemetryTransport(httpcore.SyncHTTPTransport):
         name_callback: typing.Optional[NameCallback] = None,
     ):
         self._transport = transport
-        self._tracer_provider = tracer_provider
+        self._tracer = get_tracer(__name__, instrumenting_library_version=__version__, tracer_provider=tracer_provider)
         self._span_callback = span_callback
         self._name_callback = name_callback
 
@@ -131,9 +121,7 @@ class SyncOpenTelemetryTransport(httpcore.SyncHTTPTransport):
             name_callback=self._name_callback,
         )
 
-        with _get_tracer(
-            tracer_provider=self._tracer_provider
-        ).start_as_current_span(
+        with self._tracer.start_as_current_span(
             span_name, kind=SpanKind.CLIENT, attributes=span_attributes
         ) as span:
             inject(_headers)
@@ -172,7 +160,7 @@ class AsyncOpenTelemetryTransport(httpcore.AsyncHTTPTransport):
         name_callback: typing.Optional[NameCallback] = None,
     ):
         self._transport = transport
-        self._tracer_provider = tracer_provider
+        self._tracer = get_tracer(__name__, instrumenting_library_version=__version__, tracer_provider=tracer_provider)
         self._span_callback = span_callback
         self._name_callback = name_callback
 
@@ -198,9 +186,7 @@ class AsyncOpenTelemetryTransport(httpcore.AsyncHTTPTransport):
             name_callback=self._name_callback,
         )
 
-        with _get_tracer(
-            tracer_provider=self._tracer_provider
-        ).start_as_current_span(
+        with self._tracer.start_as_current_span(
             span_name, kind=SpanKind.CLIENT, attributes=span_attributes
         ) as span:
             inject(_headers)
