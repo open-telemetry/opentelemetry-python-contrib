@@ -274,6 +274,35 @@ def _instrument(
     )
 
 
+def _instrument_client(
+    client: typing.Union[httpx.Client, httpx.AsyncClient],
+    tracer_provider: TracerProvider = None,
+    span_callback: typing.Optional[SpanCallback] = None,
+    name_callback: typing.Optional[NameCallback] = None,
+) -> None:
+    """Enables instrumentation for the given Client or AsyncClient"""
+    # pylint: disable=protected-access
+    if isinstance(client, httpx.Client):
+        transport = client._transport or httpcore.SyncHTTPTransport()
+        telemetry_transport = SyncOpenTelemetryTransport(
+            transport,
+            tracer_provider=tracer_provider,
+            span_callback=span_callback,
+            name_callback=name_callback,
+        )
+    elif isinstance(client, httpx.AsyncClient):
+        transport = client._transport or httpcore.aSyncHTTPTransport()
+        telemetry_transport = AsyncOpenTelemetryTransport(
+            transport,
+            tracer_provider=tracer_provider,
+            span_callback=span_callback,
+            name_callback=name_callback,
+        )
+    else:
+        raise TypeError("Invalid client provided")
+    client._transport = telemetry_transport
+
+
 def _uninstrument() -> None:
     """Disables instrumenting for all newly created Client and AsyncClient instances"""
     unwrap(httpx.Client, "__init__")
@@ -316,6 +345,18 @@ class HTTPXClientInstrumentor(BaseInstrumentor):
 
     def _uninstrument(self, **kwargs):
         _uninstrument()
+
+    @staticmethod
+    def instrument_client(
+        client: typing.Union[httpx.Client, httpx.AsyncClient],
+        **kwargs
+    ) -> None:
+        _instrument_client(
+            client,
+            tracer_provider=kwargs.get("tracer_provider"),
+            span_callback=kwargs.get("span_callback"),
+            name_callback=kwargs.get("name_callback"),
+        )
 
     @staticmethod
     def uninstrument_client(
