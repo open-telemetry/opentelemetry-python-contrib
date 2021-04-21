@@ -227,11 +227,11 @@ def _instrument(
     in to the instance.
     """
     # pylint:disable=unused-argument
-    def instrumented_sync_init(wrapped, instance, args, kwargs):
+    def instrumented_sync_send(wrapped, instance, args, kwargs):
         if context.get_value("suppress_instrumentation"):
             return wrapped(*args, **kwargs)
 
-        transport = kwargs.get("transport") or httpx.HTTPTransport()
+        transport = instance._transport or httpx.HTTPTransport()
         telemetry_transport = SyncOpenTelemetryTransport(
             transport,
             tracer_provider=tracer_provider,
@@ -239,14 +239,14 @@ def _instrument(
             response_hook=response_hook,
         )
 
-        kwargs["transport"] = telemetry_transport
+        instance._transport = telemetry_transport
         return wrapped(*args, **kwargs)
 
-    def instrumented_async_init(wrapped, instance, args, kwargs):
+    async def instrumented_async_send(wrapped, instance, args, kwargs):
         if context.get_value("suppress_instrumentation"):
-            return wrapped(*args, **kwargs)
+            return await wrapped(*args, **kwargs)
 
-        transport = kwargs.get("transport") or httpx.AsyncHTTPTransport()
+        transport = instance._transport or httpx.AsyncHTTPTransport()
         telemetry_transport = AsyncOpenTelemetryTransport(
             transport,
             tracer_provider=tracer_provider,
@@ -254,15 +254,15 @@ def _instrument(
             response_hook=response_hook,
         )
 
-        kwargs["transport"] = telemetry_transport
-        return wrapped(*args, **kwargs)
+        instance._transport = telemetry_transport
+        return await wrapped(*args, **kwargs)
 
     wrapt.wrap_function_wrapper(
-        httpx.Client, "__init__", instrumented_sync_init
+        httpx.Client, "send", instrumented_sync_send
     )
 
     wrapt.wrap_function_wrapper(
-        httpx.AsyncClient, "__init__", instrumented_async_init
+        httpx.AsyncClient, "send", instrumented_async_send
     )
 
 
@@ -297,8 +297,8 @@ def _instrument_client(
 
 def _uninstrument() -> None:
     """Disables instrumenting for all newly created Client and AsyncClient instances"""
-    unwrap(httpx.Client, "__init__")
-    unwrap(httpx.AsyncClient, "__init__")
+    unwrap(httpx.Client, "send")
+    unwrap(httpx.AsyncClient, "send")
 
 
 def _uninstrument_client(
@@ -306,10 +306,7 @@ def _uninstrument_client(
 ) -> None:
     """Disables instrumentation for the given Client or AsyncClient"""
     # pylint: disable=protected-access
-    telemetry_transport: typing.Union[
-        SyncOpenTelemetryTransport, AsyncOpenTelemetryTransport
-    ] = client._transport
-    client._transport = telemetry_transport._transport
+    unwrap(client, "send")
 
 
 class HTTPXClientInstrumentor(BaseInstrumentor):

@@ -23,8 +23,7 @@ Usage
 Instrumenting all clients
 *************************
 
-When using the instrumentor, all newly created clients will automatically trace
-requests.
+When using the instrumentor, all clients will automatically trace requests.
 
 .. code-block:: python
 
@@ -79,7 +78,7 @@ If you need to uninstrument clients, there are two options available.
      # Uninstrument a specific client
      HTTPXClientInstrumentor.uninstrument_client(client)
      
-     # Uninstrument all new clients
+     # Uninstrument all clients
      HTTPXClientInstrumentor().uninstrument()
 
 
