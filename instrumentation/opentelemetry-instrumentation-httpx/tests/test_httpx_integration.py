@@ -36,9 +36,7 @@ from opentelemetry.trace import StatusCode
 if typing.TYPE_CHECKING:
     from opentelemetry.instrumentation.httpx import (
         RequestHook,
-        RequestInfo,
         ResponseHook,
-        ResponseInfo,
     )
     from opentelemetry.sdk.trace.export import SpanExporter
     from opentelemetry.trace import TracerProvider
@@ -263,11 +261,11 @@ class BaseTestCases:
 
         def test_response_hook(self):
             def response_hook(
-                span: "Span", request: "RequestInfo", response: "ResponseInfo"
+                span: "Span", request: httpx.Request, response: httpx.Response
             ):
                 span.set_attribute(
                     "http.response.body",
-                    b"".join(part for part in response[2]).decode("utf-8"),
+                    response.content.decode("utf-8")
                 )
 
             transport = self.create_transport(
@@ -290,9 +288,8 @@ class BaseTestCases:
             )
 
         def test_request_hook(self):
-            def request_hook(span: "Span", request: "RequestInfo"):
-                url = request[1]
-                span.update_name("GET" + url)
+            def request_hook(span: "Span", request: httpx.Request):
+                span.update_name("GET" + str(request.url))
 
             transport = self.create_transport(request_hook=request_hook)
             client = self.create_client(transport)
@@ -303,7 +300,7 @@ class BaseTestCases:
             self.assertEqual(span.name, "GET" + self.URL)
 
         def test_request_hook_no_span_change(self):
-            def request_hook(span: "Span", request: "RequestInfo"):
+            def request_hook(span: "Span", request: httpx.Request):
                 return 123
 
             transport = self.create_transport(request_hook=request_hook)
@@ -367,11 +364,11 @@ class BaseTestCases:
 
         def test_response_hook(self):
             def response_hook(
-                span, request: "RequestInfo", response: "ResponseInfo"
+                span, request: httpx.Request, response: httpx.Response
             ):
                 span.set_attribute(
                     "http.response.body",
-                    b"".join(part for part in response[2]).decode("utf-8"),
+                    response.content.decode("utf-8")
                 )
 
             HTTPXClientInstrumentor().uninstrument()
@@ -395,9 +392,8 @@ class BaseTestCases:
             )
 
         def test_request_hook(self):
-            def request_hook(span: "Span", request: "RequestInfo"):
-                url = request[1]
-                span.update_name("GET" + url)
+            def request_hook(span: "Span", request: httpx.Request):
+                span.update_name("GET" + str(request.url))
 
             HTTPXClientInstrumentor().uninstrument()
             HTTPXClientInstrumentor().instrument(
@@ -412,7 +408,7 @@ class BaseTestCases:
             self.assertEqual(span.name, "GET" + self.URL)
 
         def test_request_hook_no_span_update(self):
-            def request_hook(span: "Span", request: "RequestInfo"):
+            def request_hook(span: "Span", request: httpx.Request):
                 return 123
 
             HTTPXClientInstrumentor().uninstrument()

@@ -32,20 +32,8 @@ from opentelemetry.trace.status import Status
 
 URL = typing.Tuple[bytes, bytes, typing.Optional[int], bytes]
 Headers = typing.List[typing.Tuple[bytes, bytes]]
-RequestInfo = typing.Tuple[
-    bytes,
-    URL,
-    typing.Optional[Headers],
-    typing.Optional[
-        typing.Union[httpcore.SyncByteStream, httpcore.AsyncByteStream]
-    ],
-    typing.Optional[dict],
-]
-ResponseInfo = typing.Tuple[
-    int, typing.List[typing.Tuple[bytes, bytes]], typing.Iterable[bytes], dict,
-]
-RequestHook = typing.Callable[[Span, RequestInfo], None]
-ResponseHook = typing.Callable[[Span, RequestInfo, ResponseInfo], None]
+RequestHook = typing.Callable[[Span, httpx.Request], None]
+ResponseHook = typing.Callable[[Span, httpx.Request, httpx.Response], None]
 
 
 def _get_default_span_name(method: str) -> str:
@@ -119,12 +107,11 @@ class SyncOpenTelemetryTransport(httpcore.SyncHTTPTransport):
         span_attributes = _prepare_attributes(method, url)
         _headers = _prepare_headers(headers)
         span_name = _get_default_span_name(span_attributes["http.method"])
-        request = (
-            span_attributes["http.method"],
-            span_attributes["http.url"],
-            headers,
-            stream,
-            ext,
+        request = httpx.Request(
+            method,
+            url,
+            headers=headers,
+            stream=stream,
         )
 
         with self._tracer.start_as_current_span(
@@ -142,9 +129,9 @@ class SyncOpenTelemetryTransport(httpcore.SyncHTTPTransport):
             _apply_status_code(span, status_code)
 
             if self._response_hook is not None:
-                self._response_hook(
-                    span, request, (status_code, headers, stream, extensions)
-                )
+                response = httpx.Response(status_code=status_code, headers=headers, stream=stream, ext=extensions, request=request)
+                response.read()
+                self._response_hook(span, request, response)
 
         return status_code, headers, stream, extensions
 
@@ -194,12 +181,11 @@ class AsyncOpenTelemetryTransport(httpcore.AsyncHTTPTransport):
         span_attributes = _prepare_attributes(method, url)
         _headers = _prepare_headers(headers)
         span_name = _get_default_span_name(span_attributes["http.method"])
-        request = (
-            span_attributes["http.method"],
-            span_attributes["http.url"],
-            headers,
-            stream,
-            ext,
+        request = httpx.Request(
+            method,
+            url,
+            headers=headers,
+            stream=stream,
         )
 
         with self._tracer.start_as_current_span(
@@ -222,9 +208,9 @@ class AsyncOpenTelemetryTransport(httpcore.AsyncHTTPTransport):
             _apply_status_code(span, status_code)
 
             if self._response_hook is not None:
-                self._response_hook(
-                    span, request, (status_code, headers, stream, extensions)
-                )
+                response = httpx.Response(status_code=status_code, headers=headers, stream=stream, ext=extensions, request=request)
+                response.read()
+                self._response_hook(span, request, response)
 
         return status_code, headers, stream, extensions
 
