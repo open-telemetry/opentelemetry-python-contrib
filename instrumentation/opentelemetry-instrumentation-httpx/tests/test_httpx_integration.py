@@ -29,6 +29,7 @@ from opentelemetry.instrumentation.httpx import (
 )
 from opentelemetry.propagate import get_global_textmap, set_global_textmap
 from opentelemetry.sdk import resources
+from opentelemetry.semconv.trace import SpanAttributes
 from opentelemetry.test.mock_textmap import MockTextMapPropagator
 from opentelemetry.test.test_base import TestBase
 from opentelemetry.trace import StatusCode
@@ -41,6 +42,9 @@ if typing.TYPE_CHECKING:
     from opentelemetry.sdk.trace.export import SpanExporter
     from opentelemetry.trace import TracerProvider
     from opentelemetry.trace.span import Span
+
+
+HTTP_RESPONSE_BODY = "http.response.body"
 
 
 def async_call(coro: typing.Coroutine) -> asyncio.Task:
@@ -102,9 +106,9 @@ class BaseTestCases:
             self.assertEqual(
                 span.attributes,
                 {
-                    "http.method": "GET",
-                    "http.url": self.URL,
-                    "http.status_code": 200,
+                    SpanAttributes.HTTP_METHOD: "GET",
+                    SpanAttributes.HTTP_URL: self.URL,
+                    SpanAttributes.HTTP_STATUS_CODE: 200,
                 },
             )
 
@@ -123,7 +127,7 @@ class BaseTestCases:
 
             self.assertEqual(result.status_code, 404)
             span = self.assert_span()
-            self.assertEqual(span.attributes.get("http.status_code"), 404)
+            self.assertEqual(span.attributes.get(SpanAttributes.HTTP_STATUS_CODE), 404)
             self.assertIs(
                 span.status.status_code, trace.StatusCode.ERROR,
             )
@@ -173,9 +177,9 @@ class BaseTestCases:
             self.assertEqual(
                 span.attributes,
                 {
-                    "http.method": "GET",
-                    "http.url": self.URL,
-                    "http.status_code": 500,
+                    SpanAttributes.HTTP_METHOD: "GET",
+                    SpanAttributes.HTTP_URL: self.URL,
+                    SpanAttributes.HTTP_STATUS_CODE: 500,
                 },
             )
             self.assertEqual(span.status.status_code, StatusCode.ERROR)
@@ -208,7 +212,7 @@ class BaseTestCases:
             self.assertEqual(span.name, "HTTP POST")
             self.assertEqual(
                 span.attributes,
-                {"http.method": "POST", "http.url": "http://nope"},
+                {SpanAttributes.HTTP_METHOD: "POST", SpanAttributes.HTTP_URL: "http://nope"},
             )
             self.assertEqual(span.status.status_code, StatusCode.ERROR)
 
@@ -264,7 +268,7 @@ class BaseTestCases:
                 span: "Span", request: httpx.Request, response: httpx.Response
             ):
                 span.set_attribute(
-                    "http.response.body",
+                    HTTP_RESPONSE_BODY,
                     response.content.decode("utf-8")
                 )
 
@@ -280,10 +284,10 @@ class BaseTestCases:
             self.assertEqual(
                 span.attributes,
                 {
-                    "http.method": "GET",
-                    "http.url": self.URL,
-                    "http.status_code": 200,
-                    "http.response.body": "Hello!",
+                    SpanAttributes.HTTP_METHOD: "GET",
+                    SpanAttributes.HTTP_URL: self.URL,
+                    SpanAttributes.HTTP_STATUS_CODE: 200,
+                    HTTP_RESPONSE_BODY: "Hello!",
                 },
             )
 
@@ -367,7 +371,7 @@ class BaseTestCases:
                 span, request: httpx.Request, response: httpx.Response
             ):
                 span.set_attribute(
-                    "http.response.body",
+                    HTTP_RESPONSE_BODY,
                     response.content.decode("utf-8")
                 )
 
@@ -384,10 +388,10 @@ class BaseTestCases:
             self.assertEqual(
                 span.attributes,
                 {
-                    "http.method": "GET",
-                    "http.url": self.URL,
-                    "http.status_code": 200,
-                    "http.response.body": "Hello!",
+                    SpanAttributes.HTTP_METHOD: "GET",
+                    SpanAttributes.HTTP_URL: self.URL,
+                    SpanAttributes.HTTP_STATUS_CODE: 200,
+                    HTTP_RESPONSE_BODY: "Hello!",
                 },
             )
 

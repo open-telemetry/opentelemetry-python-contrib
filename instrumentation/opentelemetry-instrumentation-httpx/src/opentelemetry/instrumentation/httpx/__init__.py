@@ -26,6 +26,7 @@ from opentelemetry.instrumentation.utils import (
     unwrap,
 )
 from opentelemetry.propagate import inject
+from opentelemetry.semconv.trace import SpanAttributes
 from opentelemetry.trace import SpanKind, Tracer, TracerProvider, get_tracer
 from opentelemetry.trace.span import Span
 from opentelemetry.trace.status import Status
@@ -44,7 +45,7 @@ def _apply_status_code(span: Span, status_code: int) -> None:
     if not span.is_recording():
         return
 
-    span.set_attribute("http.status_code", status_code)
+    span.set_attribute(SpanAttributes.HTTP_STATUS_CODE, status_code)
     span.set_status(Status(http_status_to_status_code(status_code)))
 
 
@@ -52,8 +53,8 @@ def _prepare_attributes(method: bytes, url: URL) -> typing.Dict[str, str]:
     _method = method.decode().upper()
     _url = str(httpx.URL(url))
     span_attributes = {
-        "http.method": _method,
-        "http.url": _url,
+        SpanAttributes.HTTP_METHOD: _method,
+        SpanAttributes.HTTP_URL: _url,
     }
     return span_attributes
 
@@ -106,7 +107,7 @@ class SyncOpenTelemetryTransport(httpcore.SyncHTTPTransport):
 
         span_attributes = _prepare_attributes(method, url)
         _headers = _prepare_headers(headers)
-        span_name = _get_default_span_name(span_attributes["http.method"])
+        span_name = _get_default_span_name(span_attributes[SpanAttributes.HTTP_METHOD])
         request = httpx.Request(
             method,
             url,
@@ -180,7 +181,7 @@ class AsyncOpenTelemetryTransport(httpcore.AsyncHTTPTransport):
 
         span_attributes = _prepare_attributes(method, url)
         _headers = _prepare_headers(headers)
-        span_name = _get_default_span_name(span_attributes["http.method"])
+        span_name = _get_default_span_name(span_attributes[SpanAttributes.HTTP_METHOD])
         request = httpx.Request(
             method,
             url,
