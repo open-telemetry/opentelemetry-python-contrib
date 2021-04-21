@@ -40,8 +40,31 @@ requests.
      async with httpx.AsyncClient() as client:
           response = await client.get(url)
 
+Instrumenting single clients
+****************************
+
+If you only want to instrument requests for specific client instances, you can
+use the `instrument_client` method.
+
+
+.. code-block:: python
+
+    import httpx
+    from opentelemetry.instrumentation.httpx import HTTPXClientInstrumentor
+
+    url = "https://httpbin.org/get"
+
+    with httpx.Client(transport=telemetry_transport) as client:
+        HTTPXClientInstrumentor.instrument_client(client)
+        response = client.get(url)
+
+    async with httpx.AsyncClient(transport=telemetry_transport) as client:
+        HTTPXClientInstrumentor.instrument_client(client)
+        response = await client.get(url)
+
+
 Uninstrument
-^^^^^^^^^^^^
+************
 
 If you need to uninstrument clients, there are two options available.
 
@@ -60,11 +83,10 @@ If you need to uninstrument clients, there are two options available.
      HTTPXClientInstrumentor().uninstrument()
 
 
-Instrumenting single clients
-****************************
+Using transports directly
+*************************
 
-If you only want to instrument requests for specific client instances, you can
-create the transport instance manually and pass it in when creating the client.
+If you don't want to use the instrumentor class, you can use the transport classes directly.
 
 
 .. code-block:: python
@@ -87,6 +109,26 @@ create the transport instance manually and pass it in when creating the client.
 
     async with httpx.AsyncClient(transport=telemetry_transport) as client:
         response = await client.get(url)
+
+
+Request and response hooks
+***************************
+
+The instrumentation supports specifying request and response hooks. These are functions that get called back by the instrumentation right after a Span is created for a request
+and right before the span is finished while processing a response. The hooks can be configured as follows:
+
+
+.. code-block:: python
+
+    from opentelemetry.instrumentation.httpx import HTTPXClientInstrumentor
+
+    def request_hook(span, request):
+        pass
+
+    def response_hook(span, request, response):
+        pass
+
+    HTTPXClientInstrumentor().instrument(request_hook=request_hook, response_hook=response_hook)
 
 
 References

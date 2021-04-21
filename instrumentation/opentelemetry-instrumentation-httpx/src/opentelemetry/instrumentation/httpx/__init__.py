@@ -340,24 +340,26 @@ class HTTPXClientInstrumentor(BaseInstrumentor):
 
     @staticmethod
     def instrument_client(
-        client: typing.Union[httpx.Client, httpx.AsyncClient], **kwargs
+        client: typing.Union[httpx.Client, httpx.AsyncClient],
+        tracer_provider: TracerProvider = None,
+        request_hook: typing.Optional[RequestHook] = None,
+        response_hook: typing.Optional[ResponseHook] = None,
     ) -> None:
-        """Instruments httpx Client and AsyncClient
+        """Instrument httpx Client or AsyncClient
 
         Args:
             client: The httpx Client or AsyncClient instance
-            **kwargs: Optional arguments
-                ``tracer_provider``: a TracerProvider, defaults to global
-                ``request_hook``: A hook that receives the span and request that is called
-                    right after the span is created
-                ``response_hook``: A hook that receives the span, request, and response
-                    that is called right before the span ends
+            tracer_provider: A TracerProvider, defaults to global
+            request_hook: A hook that receives the span and request that is called
+                right after the span is created
+            response_hook: A hook that receives the span, request, and response
+                that is called right before the span ends
         """
         _instrument_client(
             client,
-            tracer_provider=kwargs.get("tracer_provider"),
-            request_hook=kwargs.get("request_hook"),
-            response_hook=kwargs.get("response_hook"),
+            tracer_provider=tracer_provider,
+            request_hook=request_hook,
+            response_hook=response_hook,
         )
 
     @staticmethod
