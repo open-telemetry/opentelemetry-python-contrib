@@ -97,7 +97,7 @@ intersphinx_mapping = {
         "https://opentelemetry-python.readthedocs.io/en/latest/",
         None,
     ),
-    "https": ("https://www.encode.io/httpcore/", None),
+    "httpcore": ("https://www.encode.io/httpcore/", None),
 }
 
 # http://www.sphinx-doc.org/en/master/config.html#confval-nitpicky
