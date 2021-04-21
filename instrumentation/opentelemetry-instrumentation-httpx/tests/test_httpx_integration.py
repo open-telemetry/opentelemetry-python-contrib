@@ -34,9 +34,15 @@ from opentelemetry.test.test_base import TestBase
 from opentelemetry.trace import StatusCode
 
 if typing.TYPE_CHECKING:
-    from opentelemetry.instrumentation.httpx import NameCallback, SpanCallback
+    from opentelemetry.instrumentation.httpx import (
+        RequestHook,
+        RequestInfo,
+        ResponseHook,
+        ResponseInfo,
+    )
     from opentelemetry.sdk.trace.export import SpanExporter
     from opentelemetry.trace import TracerProvider
+    from opentelemetry.trace.span import Span
 
 
 def async_call(coro: typing.Coroutine) -> asyncio.Task:
@@ -218,8 +224,8 @@ class BaseTestCases:
         def create_transport(
             self,
             tracer_provider: typing.Optional["TracerProvider"] = None,
-            span_callback: typing.Optional["SpanCallback"] = None,
-            name_callback: typing.Optional["NameCallback"] = None,
+            request_hook: typing.Optional["RequestHook"] = None,
+            response_hook: typing.Optional["ResponseHook"] = None,
         ):
             pass
 
@@ -255,16 +261,18 @@ class BaseTestCases:
             span = self.assert_span(exporter=exporter)
             self.assertIs(span.resource, resource)
 
-        def test_span_callback(self):
-            def span_callback(span, result: typing.Tuple):
+        def test_response_hook(self):
+            def response_hook(
+                span: "Span", request: "RequestInfo", response: "ResponseInfo"
+            ):
                 span.set_attribute(
                     "http.response.body",
-                    b"".join(part for part in result[2]).decode("utf-8"),
+                    b"".join(part for part in response[2]).decode("utf-8"),
                 )
 
             transport = self.create_transport(
                 tracer_provider=self.tracer_provider,
-                span_callback=span_callback,
+                response_hook=response_hook,
             )
             client = self.create_client(transport)
             result = self.perform_request(self.URL, client=client)
@@ -281,11 +289,12 @@ class BaseTestCases:
                 },
             )
 
-        def test_name_callback(self):
-            def name_callback(method, url):
-                return "GET" + url
+        def test_request_hook(self):
+            def request_hook(span: "Span", request: "RequestInfo"):
+                url = request[1]
+                span.update_name("GET" + url)
 
-            transport = self.create_transport(name_callback=name_callback)
+            transport = self.create_transport(request_hook=request_hook)
             client = self.create_client(transport)
             result = self.perform_request(self.URL, client=client)
 
@@ -293,11 +302,11 @@ class BaseTestCases:
             span = self.assert_span()
             self.assertEqual(span.name, "GET" + self.URL)
 
-        def test_name_callback_default(self):
-            def name_callback(method, url):
+        def test_request_hook_no_span_change(self):
+            def request_hook(span: "Span", request: "RequestInfo"):
                 return 123
 
-            transport = self.create_transport(name_callback=name_callback)
+            transport = self.create_transport(request_hook=request_hook)
             client = self.create_client(transport)
             result = self.perform_request(self.URL, client=client)
 
@@ -356,17 +365,19 @@ class BaseTestCases:
             span = self.assert_span(exporter=exporter)
             self.assertIs(span.resource, resource)
 
-        def test_span_callback(self):
-            def span_callback(span, result: typing.Tuple):
+        def test_response_hook(self):
+            def response_hook(
+                span, request: "RequestInfo", response: "ResponseInfo"
+            ):
                 span.set_attribute(
                     "http.response.body",
-                    b"".join(part for part in result[2]).decode("utf-8"),
+                    b"".join(part for part in response[2]).decode("utf-8"),
                 )
 
             HTTPXClientInstrumentor().uninstrument()
             HTTPXClientInstrumentor().instrument(
                 tracer_provider=self.tracer_provider,
-                span_callback=span_callback,
+                response_hook=response_hook,
             )
             client = self.create_client()
             result = self.perform_request(self.URL, client=client)
@@ -383,14 +394,15 @@ class BaseTestCases:
                 },
             )
 
-        def test_name_callback(self):
-            def name_callback(method, url):
-                return "GET" + url
+        def test_request_hook(self):
+            def request_hook(span: "Span", request: "RequestInfo"):
+                url = request[1]
+                span.update_name("GET" + url)
 
             HTTPXClientInstrumentor().uninstrument()
             HTTPXClientInstrumentor().instrument(
                 tracer_provider=self.tracer_provider,
-                name_callback=name_callback,
+                request_hook=request_hook,
             )
             client = self.create_client()
             result = self.perform_request(self.URL, client=client)
@@ -399,14 +411,14 @@ class BaseTestCases:
             span = self.assert_span()
             self.assertEqual(span.name, "GET" + self.URL)
 
-        def test_name_callback_default(self):
-            def name_callback(method, url):
+        def test_request_hook_no_span_update(self):
+            def request_hook(span: "Span", request: "RequestInfo"):
                 return 123
 
             HTTPXClientInstrumentor().uninstrument()
             HTTPXClientInstrumentor().instrument(
                 tracer_provider=self.tracer_provider,
-                name_callback=name_callback,
+                request_hook=request_hook,
             )
             client = self.create_client()
             result = self.perform_request(self.URL, client=client)
@@ -500,15 +512,15 @@ class TestSyncIntegration(BaseTestCases.BaseManualTest):
     def create_transport(
         self,
         tracer_provider: typing.Optional["TracerProvider"] = None,
-        span_callback: typing.Optional["SpanCallback"] = None,
-        name_callback: typing.Optional["NameCallback"] = None,
+        request_hook: typing.Optional["RequestHook"] = None,
+        response_hook: typing.Optional["ResponseHook"] = None,
     ):
         transport = httpx.HTTPTransport()
         telemetry_transport = SyncOpenTelemetryTransport(
             transport,
             tracer_provider=tracer_provider,
-            span_callback=span_callback,
-            name_callback=name_callback,
+            request_hook=request_hook,
+            response_hook=response_hook,
         )
         return telemetry_transport
 
@@ -538,15 +550,15 @@ class TestAsyncIntegration(BaseTestCases.BaseManualTest):
     def create_transport(
         self,
         tracer_provider: typing.Optional["TracerProvider"] = None,
-        span_callback: typing.Optional["SpanCallback"] = None,
-        name_callback: typing.Optional["NameCallback"] = None,
+        request_hook: typing.Optional["RequestHook"] = None,
+        response_hook: typing.Optional["ResponseHook"] = None,
     ):
         transport = httpx.AsyncHTTPTransport()
         telemetry_transport = AsyncOpenTelemetryTransport(
             transport,
             tracer_provider=tracer_provider,
-            span_callback=span_callback,
-            name_callback=name_callback,
+            request_hook=request_hook,
+            response_hook=response_hook,
         )
         return telemetry_transport
 

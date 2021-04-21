@@ -30,27 +30,26 @@ from opentelemetry.trace import SpanKind, Tracer, TracerProvider, get_tracer
 from opentelemetry.trace.span import Span
 from opentelemetry.trace.status import Status
 
+URL = typing.Tuple[bytes, bytes, typing.Optional[int], bytes]
+Headers = typing.List[typing.Tuple[bytes, bytes]]
+RequestInfo = typing.Tuple[
+    bytes,
+    URL,
+    typing.Optional[Headers],
+    typing.Optional[
+        typing.Union[httpcore.SyncByteStream, httpcore.AsyncByteStream]
+    ],
+    typing.Optional[dict],
+]
 ResponseInfo = typing.Tuple[
     int, typing.List[typing.Tuple[bytes, bytes]], typing.Iterable[bytes], dict,
 ]
-NameCallback = typing.Callable[[str, str], str]
-SpanCallback = typing.Callable[[Span, ResponseInfo], None]
-URL = typing.Tuple[bytes, bytes, typing.Optional[int], bytes]
-Headers = typing.List[typing.Tuple[bytes, bytes]]
+RequestHook = typing.Callable[[Span, RequestInfo], None]
+ResponseHook = typing.Callable[[Span, RequestInfo, ResponseInfo], None]
 
 
-def _get_span_name(
-    method: str,
-    url: str,
-    *,
-    name_callback: typing.Optional[NameCallback] = None
-) -> str:
-    span_name = ""
-    if name_callback is not None:
-        span_name = name_callback(method, url)
-    if not span_name or not isinstance(span_name, str):
-        span_name = "HTTP {}".format(method).strip()
-    return span_name
+def _get_default_span_name(method: str) -> str:
+    return "HTTP {}".format(method).strip()
 
 
 def _apply_status_code(span: Span, status_code: int) -> None:
@@ -81,23 +80,27 @@ class SyncOpenTelemetryTransport(httpcore.SyncHTTPTransport):
     Args:
         transport: SyncHTTPTransport instance to wrap
         tracer_provider: Tracer provider to use
-        span_callback: A callback provided with the response info to modify
-            the span
-        name_callback: A callback provided with the method and url to process
-            the span name
+        request_hook: A hook that receives the span and request that is called
+            right after the span is created
+        response_hook: A hook that receives the span, request, and response
+            that is called right before the span ends
     """
 
     def __init__(
         self,
         transport: httpcore.SyncHTTPTransport,
         tracer_provider: typing.Optional[TracerProvider] = None,
-        span_callback: typing.Optional[SpanCallback] = None,
-        name_callback: typing.Optional[NameCallback] = None,
+        request_hook: typing.Optional[RequestHook] = None,
+        response_hook: typing.Optional[ResponseHook] = None,
     ):
         self._transport = transport
-        self._tracer = get_tracer(__name__, instrumenting_library_version=__version__, tracer_provider=tracer_provider)
-        self._span_callback = span_callback
-        self._name_callback = name_callback
+        self._tracer = get_tracer(
+            __name__,
+            instrumenting_library_version=__version__,
+            tracer_provider=tracer_provider,
+        )
+        self._request_hook = request_hook
+        self._response_hook = response_hook
 
     def request(
         self,
@@ -115,15 +118,21 @@ class SyncOpenTelemetryTransport(httpcore.SyncHTTPTransport):
 
         span_attributes = _prepare_attributes(method, url)
         _headers = _prepare_headers(headers)
-        span_name = _get_span_name(
+        span_name = _get_default_span_name(span_attributes["http.method"])
+        request = (
             span_attributes["http.method"],
             span_attributes["http.url"],
-            name_callback=self._name_callback,
+            headers,
+            stream,
+            ext,
         )
 
         with self._tracer.start_as_current_span(
             span_name, kind=SpanKind.CLIENT, attributes=span_attributes
         ) as span:
+            if self._request_hook is not None:
+                self._request_hook(span, request)
+
             inject(_headers)
 
             status_code, headers, stream, extensions = self._transport.request(
@@ -132,9 +141,9 @@ class SyncOpenTelemetryTransport(httpcore.SyncHTTPTransport):
 
             _apply_status_code(span, status_code)
 
-            if self._span_callback is not None:
-                self._span_callback(
-                    span, (status_code, headers, stream, extensions)
+            if self._response_hook is not None:
+                self._response_hook(
+                    span, request, (status_code, headers, stream, extensions)
                 )
 
         return status_code, headers, stream, extensions
@@ -146,23 +155,27 @@ class AsyncOpenTelemetryTransport(httpcore.AsyncHTTPTransport):
     Args:
         transport: AsyncHTTPTransport instance to wrap
         tracer_provider: Tracer provider to use
-        span_callback: A callback provided with the response info to modify
-          the span
-        name_callback: A callback provided with the method and url to process
-          the span name
+        request_hook: A hook that receives the span and request that is called
+            right after the span is created
+        response_hook: A hook that receives the span, request, and response
+            that is called right before the span ends
     """
 
     def __init__(
         self,
         transport: httpcore.AsyncHTTPTransport,
         tracer_provider: typing.Optional[TracerProvider] = None,
-        span_callback: typing.Optional[SpanCallback] = None,
-        name_callback: typing.Optional[NameCallback] = None,
+        request_hook: typing.Optional[RequestHook] = None,
+        response_hook: typing.Optional[ResponseHook] = None,
     ):
         self._transport = transport
-        self._tracer = get_tracer(__name__, instrumenting_library_version=__version__, tracer_provider=tracer_provider)
-        self._span_callback = span_callback
-        self._name_callback = name_callback
+        self._tracer = get_tracer(
+            __name__,
+            instrumenting_library_version=__version__,
+            tracer_provider=tracer_provider,
+        )
+        self._request_hook = request_hook
+        self._response_hook = response_hook
 
     async def arequest(
         self,
@@ -180,15 +193,21 @@ class AsyncOpenTelemetryTransport(httpcore.AsyncHTTPTransport):
 
         span_attributes = _prepare_attributes(method, url)
         _headers = _prepare_headers(headers)
-        span_name = _get_span_name(
+        span_name = _get_default_span_name(span_attributes["http.method"])
+        request = (
             span_attributes["http.method"],
             span_attributes["http.url"],
-            name_callback=self._name_callback,
+            headers,
+            stream,
+            ext,
         )
 
         with self._tracer.start_as_current_span(
             span_name, kind=SpanKind.CLIENT, attributes=span_attributes
         ) as span:
+            if self._request_hook is not None:
+                self._request_hook(span, request)
+
             inject(_headers)
 
             (
@@ -202,9 +221,9 @@ class AsyncOpenTelemetryTransport(httpcore.AsyncHTTPTransport):
 
             _apply_status_code(span, status_code)
 
-            if self._span_callback is not None:
-                self._span_callback(
-                    span, (status_code, headers, stream, extensions)
+            if self._response_hook is not None:
+                self._response_hook(
+                    span, request, (status_code, headers, stream, extensions)
                 )
 
         return status_code, headers, stream, extensions
@@ -212,8 +231,8 @@ class AsyncOpenTelemetryTransport(httpcore.AsyncHTTPTransport):
 
 def _instrument(
     tracer_provider: TracerProvider = None,
-    span_callback: typing.Optional[SpanCallback] = None,
-    name_callback: typing.Optional[NameCallback] = None,
+    request_hook: typing.Optional[RequestHook] = None,
+    response_hook: typing.Optional[ResponseHook] = None,
 ) -> None:
     """Enables tracing of all Client and AsyncClient instances
 
@@ -229,8 +248,8 @@ def _instrument(
         telemetry_transport = SyncOpenTelemetryTransport(
             transport,
             tracer_provider=tracer_provider,
-            span_callback=span_callback,
-            name_callback=name_callback,
+            request_hook=request_hook,
+            response_hook=response_hook,
         )
 
         kwargs["transport"] = telemetry_transport
@@ -244,8 +263,8 @@ def _instrument(
         telemetry_transport = AsyncOpenTelemetryTransport(
             transport,
             tracer_provider=tracer_provider,
-            span_callback=span_callback,
-            name_callback=name_callback,
+            request_hook=request_hook,
+            response_hook=response_hook,
         )
 
         kwargs["transport"] = telemetry_transport
@@ -263,8 +282,8 @@ def _instrument(
 def _instrument_client(
     client: typing.Union[httpx.Client, httpx.AsyncClient],
     tracer_provider: TracerProvider = None,
-    span_callback: typing.Optional[SpanCallback] = None,
-    name_callback: typing.Optional[NameCallback] = None,
+    request_hook: typing.Optional[RequestHook] = None,
+    response_hook: typing.Optional[ResponseHook] = None,
 ) -> None:
     """Enables instrumentation for the given Client or AsyncClient"""
     # pylint: disable=protected-access
@@ -273,16 +292,16 @@ def _instrument_client(
         telemetry_transport = SyncOpenTelemetryTransport(
             transport,
             tracer_provider=tracer_provider,
-            span_callback=span_callback,
-            name_callback=name_callback,
+            request_hook=request_hook,
+            response_hook=response_hook,
         )
     elif isinstance(client, httpx.AsyncClient):
-        transport = client._transport or httpcore.aSyncHTTPTransport()
+        transport = client._transport or httpcore.AsyncHTTPTransport()
         telemetry_transport = AsyncOpenTelemetryTransport(
             transport,
             tracer_provider=tracer_provider,
-            span_callback=span_callback,
-            name_callback=name_callback,
+            request_hook=request_hook,
+            response_hook=response_hook,
         )
     else:
         raise TypeError("Invalid client provided")
@@ -318,15 +337,15 @@ class HTTPXClientInstrumentor(BaseInstrumentor):
         Args:
             **kwargs: Optional arguments
                 ``tracer_provider``: a TracerProvider, defaults to global
-                ``span_callback``: A callback provided with the response info
-                    to modify the span
-                ``name_callback``: A callback provided with the method and url
-                    to process the span name
+                ``request_hook``: A hook that receives the span and request that is called
+                    right after the span is created
+                ``response_hook``: A hook that receives the span, request, and response
+                    that is called right before the span ends
         """
         _instrument(
             tracer_provider=kwargs.get("tracer_provider"),
-            span_callback=kwargs.get("span_callback"),
-            name_callback=kwargs.get("name_callback"),
+            request_hook=kwargs.get("request_hook"),
+            response_hook=kwargs.get("response_hook"),
         )
 
     def _uninstrument(self, **kwargs):
@@ -334,19 +353,33 @@ class HTTPXClientInstrumentor(BaseInstrumentor):
 
     @staticmethod
     def instrument_client(
-        client: typing.Union[httpx.Client, httpx.AsyncClient],
-        **kwargs
+        client: typing.Union[httpx.Client, httpx.AsyncClient], **kwargs
     ) -> None:
+        """Instruments httpx Client and AsyncClient
+
+        Args:
+            client: The httpx Client or AsyncClient instance
+            **kwargs: Optional arguments
+                ``tracer_provider``: a TracerProvider, defaults to global
+                ``request_hook``: A hook that receives the span and request that is called
+                    right after the span is created
+                ``response_hook``: A hook that receives the span, request, and response
+                    that is called right before the span ends
+        """
         _instrument_client(
             client,
             tracer_provider=kwargs.get("tracer_provider"),
-            span_callback=kwargs.get("span_callback"),
-            name_callback=kwargs.get("name_callback"),
+            request_hook=kwargs.get("request_hook"),
+            response_hook=kwargs.get("response_hook"),
         )
 
     @staticmethod
     def uninstrument_client(
         client: typing.Union[httpx.Client, httpx.AsyncClient]
     ):
-        """Disables instrumentation for the given client instance"""
+        """Disables instrumentation for the given client instance
+
+        Args:
+            client: The httpx Client or AsyncClient instance
+        """
         _uninstrument_client(client)
