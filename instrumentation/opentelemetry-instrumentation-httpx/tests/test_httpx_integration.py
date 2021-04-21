@@ -35,10 +35,7 @@ from opentelemetry.test.test_base import TestBase
 from opentelemetry.trace import StatusCode
 
 if typing.TYPE_CHECKING:
-    from opentelemetry.instrumentation.httpx import (
-        RequestHook,
-        ResponseHook,
-    )
+    from opentelemetry.instrumentation.httpx import RequestHook, ResponseHook
     from opentelemetry.sdk.trace.export import SpanExporter
     from opentelemetry.trace import TracerProvider
     from opentelemetry.trace.span import Span
@@ -127,7 +124,9 @@ class BaseTestCases:
 
             self.assertEqual(result.status_code, 404)
             span = self.assert_span()
-            self.assertEqual(span.attributes.get(SpanAttributes.HTTP_STATUS_CODE), 404)
+            self.assertEqual(
+                span.attributes.get(SpanAttributes.HTTP_STATUS_CODE), 404
+            )
             self.assertIs(
                 span.status.status_code, trace.StatusCode.ERROR,
             )
@@ -212,7 +211,10 @@ class BaseTestCases:
             self.assertEqual(span.name, "HTTP POST")
             self.assertEqual(
                 span.attributes,
-                {SpanAttributes.HTTP_METHOD: "POST", SpanAttributes.HTTP_URL: "http://nope"},
+                {
+                    SpanAttributes.HTTP_METHOD: "POST",
+                    SpanAttributes.HTTP_URL: "http://nope",
+                },
             )
             self.assertEqual(span.status.status_code, StatusCode.ERROR)
 
@@ -268,8 +270,7 @@ class BaseTestCases:
                 span: "Span", request: httpx.Request, response: httpx.Response
             ):
                 span.set_attribute(
-                    HTTP_RESPONSE_BODY,
-                    response.content.decode("utf-8")
+                    HTTP_RESPONSE_BODY, response.content.decode("utf-8")
                 )
 
             transport = self.create_transport(
@@ -371,8 +372,7 @@ class BaseTestCases:
                 span, request: httpx.Request, response: httpx.Response
             ):
                 span.set_attribute(
-                    HTTP_RESPONSE_BODY,
-                    response.content.decode("utf-8")
+                    HTTP_RESPONSE_BODY, response.content.decode("utf-8")
                 )
 
             HTTPXClientInstrumentor().uninstrument()
