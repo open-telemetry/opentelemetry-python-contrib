@@ -157,12 +157,6 @@ class DatadogSpanExporter(SpanExporter):
                     _extract_tags_from_exception_events(
                         span.events, datadog_span
                     )
-                # fallback to description but only if no exception events.
-                elif span.status.description:
-                    exc_type, exc_val = _get_exc_info(span)
-                    # no mapping for error.stack since traceback not recorded
-                    datadog_span.set_tag(DD_ERROR_MSG_TAG_KEY, exc_val)
-                    datadog_span.set_tag(DD_ERROR_TYPE_TAG_KEY, exc_type)
 
             # combine resource attributes and span attributes, don't modify existing span attributes
             combined_span_tags = {}
