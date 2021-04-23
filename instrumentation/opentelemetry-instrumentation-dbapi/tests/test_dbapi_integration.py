@@ -19,6 +19,7 @@ from unittest import mock
 from opentelemetry import trace as trace_api
 from opentelemetry.instrumentation import dbapi
 from opentelemetry.sdk import resources
+from opentelemetry.semconv.trace import SpanAttributes
 from opentelemetry.test.test_base import TestBase
 
 
@@ -54,13 +55,21 @@ class TestDBApiIntegration(TestBase):
         self.assertEqual(span.name, "Test")
         self.assertIs(span.kind, trace_api.SpanKind.CLIENT)
 
-        self.assertEqual(span.attributes["db.system"], "testcomponent")
-        self.assertEqual(span.attributes["db.name"], "testdatabase")
-        self.assertEqual(span.attributes["db.statement"], "Test query")
+        self.assertEqual(
+            span.attributes[SpanAttributes.DB_SYSTEM], "testcomponent"
+        )
+        self.assertEqual(
+            span.attributes[SpanAttributes.DB_NAME], "testdatabase"
+        )
+        self.assertEqual(
+            span.attributes[SpanAttributes.DB_STATEMENT], "Test query"
+        )
         self.assertFalse("db.statement.parameters" in span.attributes)
-        self.assertEqual(span.attributes["db.user"], "testuser")
-        self.assertEqual(span.attributes["net.peer.name"], "testhost")
-        self.assertEqual(span.attributes["net.peer.port"], 123)
+        self.assertEqual(span.attributes[SpanAttributes.DB_USER], "testuser")
+        self.assertEqual(
+            span.attributes[SpanAttributes.NET_PEER_NAME], "testhost"
+        )
+        self.assertEqual(span.attributes[SpanAttributes.NET_PEER_PORT], 123)
         self.assertIs(span.status.status_code, trace_api.StatusCode.UNSET)
 
     def test_span_name(self):
@@ -114,16 +123,24 @@ class TestDBApiIntegration(TestBase):
         self.assertEqual(span.name, "Test")
         self.assertIs(span.kind, trace_api.SpanKind.CLIENT)
 
-        self.assertEqual(span.attributes["db.system"], "testcomponent")
-        self.assertEqual(span.attributes["db.name"], "testdatabase")
-        self.assertEqual(span.attributes["db.statement"], "Test query")
+        self.assertEqual(
+            span.attributes[SpanAttributes.DB_SYSTEM], "testcomponent"
+        )
+        self.assertEqual(
+            span.attributes[SpanAttributes.DB_NAME], "testdatabase"
+        )
+        self.assertEqual(
+            span.attributes[SpanAttributes.DB_STATEMENT], "Test query"
+        )
         self.assertEqual(
             span.attributes["db.statement.parameters"],
             "('param1Value', False)",
         )
-        self.assertEqual(span.attributes["db.user"], "testuser")
-        self.assertEqual(span.attributes["net.peer.name"], "testhost")
-        self.assertEqual(span.attributes["net.peer.port"], 123)
+        self.assertEqual(span.attributes[SpanAttributes.DB_USER], "testuser")
+        self.assertEqual(
+            span.attributes[SpanAttributes.NET_PEER_NAME], "testhost"
+        )
+        self.assertEqual(span.attributes[SpanAttributes.NET_PEER_PORT], 123)
         self.assertIs(span.status.status_code, trace_api.StatusCode.UNSET)
 
     def test_span_not_recording(self):
@@ -168,7 +185,9 @@ class TestDBApiIntegration(TestBase):
         spans_list = self.memory_exporter.get_finished_spans()
         self.assertEqual(len(spans_list), 1)
         span = spans_list[0]
-        self.assertEqual(span.attributes["db.statement"], "Test query")
+        self.assertEqual(
+            span.attributes[SpanAttributes.DB_STATEMENT], "Test query"
+        )
         self.assertIs(span.status.status_code, trace_api.StatusCode.ERROR)
         self.assertEqual(span.status.description, "Exception: Test Exception")
 
@@ -205,7 +224,9 @@ class TestDBApiIntegration(TestBase):
         spans_list = self.memory_exporter.get_finished_spans()
         self.assertEqual(len(spans_list), 1)
         span = spans_list[0]
-        self.assertEqual(span.attributes["db.statement"], "Test query")
+        self.assertEqual(
+            span.attributes[SpanAttributes.DB_STATEMENT], "Test query"
+        )
 
     def test_callproc(self):
         db_integration = dbapi.DatabaseApiIntegration(
@@ -220,7 +241,8 @@ class TestDBApiIntegration(TestBase):
         self.assertEqual(len(spans_list), 1)
         span = spans_list[0]
         self.assertEqual(
-            span.attributes["db.statement"], "Test stored procedure"
+            span.attributes[SpanAttributes.DB_STATEMENT],
+            "Test stored procedure",
         )
 
     @mock.patch("opentelemetry.instrumentation.dbapi")
