@@ -343,9 +343,9 @@ class BaseTestCases:
             pass
 
         def setUp(self):
+            self.client = self.create_client()
             HTTPXClientInstrumentor().instrument()
             super().setUp()
-            self.client = self.create_client()
 
         def tearDown(self):
             super().tearDown()
@@ -485,6 +485,14 @@ class BaseTestCases:
             HTTPXClientInstrumentor().instrument()
 
         def test_uninstrument_client(self):
+            HTTPXClientInstrumentor().uninstrument_client(self.client)
+
+            result = self.perform_request(self.URL)
+
+            self.assertEqual(result.text, "Hello!")
+            self.assert_span(num_spans=0)
+
+        def test_uninstrument_new_client(self):
             client1 = self.create_client()
             HTTPXClientInstrumentor().uninstrument_client(client1)
 
