@@ -113,8 +113,14 @@ If you don't want to use the instrumentor class, you can use the transport class
 Request and response hooks
 ***************************
 
-The instrumentation supports specifying request and response hooks. These are functions that get called back by the instrumentation right after a Span is created for a request
-and right before the span is finished while processing a response. The hooks can be configured as follows:
+The instrumentation supports specifying request and response hooks. These are functions that get called back by the instrumentation right after a span is created for a request
+and right before the span is finished while processing a response.
+
+.. note::
+
+    The request hook receives the raw arguments provided to the transport layer. The response hook receives the raw return values from the transport layer.
+
+The hooks can be configured as follows:
 
 
 .. code-block:: python
@@ -122,12 +128,39 @@ and right before the span is finished while processing a response. The hooks can
     from opentelemetry.instrumentation.httpx import HTTPXClientInstrumentor
 
     def request_hook(span, request):
+        # method, url, headers, stream, extensions = request
         pass
 
     def response_hook(span, request, response):
+        # method, url, headers, stream, extensions = request
+        # status_code, headers, stream, extensions = response
         pass
 
     HTTPXClientInstrumentor().instrument(request_hook=request_hook, response_hook=response_hook)
+
+
+Or if you are using the transport classes directly:
+
+
+.. code-block:: python
+
+    from opentelemetry.instrumentation.httpx import SyncOpenTelemetryTransport
+
+    def request_hook(span, request):
+        # method, url, headers, stream, extensions = request
+        pass
+
+    def response_hook(span, request, response):
+        # method, url, headers, stream, extensions = request
+        # status_code, headers, stream, extensions = response
+        pass
+
+    transport = httpx.HTTPTransport()
+    telemetry_transport = SyncOpenTelemetryTransport(
+        transport,
+        request_hook=request_hook,
+        response_hook=response_hook
+    )
 
 
 References
