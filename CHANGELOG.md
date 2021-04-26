@@ -21,6 +21,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Propagators use the root context as default for `extract` and do not modify
   the context if extracting from carrier does not work.
   ([#488](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/488))
+- Fix weak reference error for pyodbc cursor in SQLAlchemy instrumentation.
+  ([#469](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/469))
 
 ### Added
 - `opentelemetry-instrumentation-botocore` now supports
