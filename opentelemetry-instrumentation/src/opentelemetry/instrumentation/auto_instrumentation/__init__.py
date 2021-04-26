@@ -61,15 +61,6 @@ def parse_args():
         """,
     )
 
-    parser.add_argument(
-        "-s",
-        "--service-name",
-        required=False,
-        help="""
-        The service name that should be passed to a trace exporter.
-        """,
-    )
-
     parser.add_argument("command", help="Your Python application.")
     parser.add_argument(
         "command_args",
