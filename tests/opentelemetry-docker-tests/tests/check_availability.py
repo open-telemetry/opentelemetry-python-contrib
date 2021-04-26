@@ -113,11 +113,9 @@ def check_redis_connection():
 @retryable
 def check_mssql_connection():
     connection = pyodbc.connect(
-        dbname=MSSQL_DB_NAME,
-        user=MSSQL_USER,
-        password=MSSQL_PASSWORD,
-        host=MSSQL_HOST,
-        port=MSSQL_PORT,
+        f"DRIVER={{ODBC Driver 17 for SQL Server}};SERVER={MSSQL_HOST},"
+        f"{MSSQL_PORT};DATABASE={MSSQL_DB_NAME};UID={MSSQL_USER};"
+        f"PWD={MSSQL_PASSWORD}"
     )
     connection.close()
 
@@ -128,6 +126,7 @@ def check_docker_services_availability():
     check_mysql_connection()
     check_postgres_connection()
     check_redis_connection()
+    check_mssql_connection()
 
 
 check_docker_services_availability()
