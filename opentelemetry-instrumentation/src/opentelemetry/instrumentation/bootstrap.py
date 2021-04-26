@@ -189,6 +189,7 @@ def _pip_check():
     'opentelemetry-instrumentation-flask 1.0.1 has requirement opentelemetry-sdk<2.0,>=1.0, but you have opentelemetry-sdk 0.5.'
     To not be too restrictive, we'll only check for relevant packages.
     """
+    # pylint: disable=consider-using-with
     check_pipe = subprocess.Popen(
         [sys.executable, "-m", "pip", "check"], stdout=subprocess.PIPE
     )
