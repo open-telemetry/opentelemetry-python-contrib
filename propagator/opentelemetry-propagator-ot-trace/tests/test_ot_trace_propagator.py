@@ -249,8 +249,7 @@ class TestOTTracePropagator(TestCase):
         self.assertTrue(span_context.is_remote)
         self.assertEqual(span_context.trace_flags, TraceFlags.SAMPLED)
         self.assertIsInstance(
-            get_current_span().get_span_context().trace_flags,
-            TraceFlags
+            get_current_span().get_span_context().trace_flags, TraceFlags
         )
 
     def test_extract_trace_id_span_id_sampled_false(self):
@@ -273,8 +272,7 @@ class TestOTTracePropagator(TestCase):
         self.assertTrue(span_context.is_remote)
         self.assertEqual(span_context.trace_flags, TraceFlags.DEFAULT)
         self.assertIsInstance(
-            get_current_span().get_span_context().trace_flags,
-            TraceFlags
+            get_current_span().get_span_context().trace_flags, TraceFlags
         )
 
     def test_extract_malformed_trace_id(self):
