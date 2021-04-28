@@ -9,6 +9,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Changed
 - `opentelemetry-propagator-ot-trace` Use `TraceFlags` object in `extract`
   ([#472](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/472))
+- `opentelemetry-instrumentation-asgi` Set the response status code on the server span
+  ([#478](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/478))
 
 ### Added
 - Move `opentelemetry-instrumentation` from core repository
