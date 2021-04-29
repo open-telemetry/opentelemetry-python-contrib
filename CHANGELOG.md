@@ -7,6 +7,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased](https://github.com/open-telemetry/opentelemetry-python-contrib/compare/v0.200...HEAD)
 
 ### Changed
+
+- `opentelemetry-propagator-ot-trace` Use `TraceFlags` object in `extract`
+  ([#472](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/472))
 - Set the traced_request_attrs of FalconInstrumentor by an argument correctly.
   ([#473](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/473))
 
@@ -25,6 +28,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   ([#387](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/387))
 - Update redis instrumentation to follow semantic conventions
   ([#403](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/403))
+- Update instrumentations to use tracer_provider for creating tracer if given, otherwise use global tracer provider
+  ([#402](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/402))
 - `opentelemetry-instrumentation-wsgi` Replaced `name_callback` with `request_hook`
    and `response_hook` callbacks.
   ([#424](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/424))
@@ -44,6 +49,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   ([#415](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/415))
 - `opentelemetry-instrumentation-tornado` Add request/response hooks.
   ([#426](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/426))
+- `opentelemetry-exporter-datadog` Add parsing exception events for error tags.
+  ([#459](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/459))
 - `opentelemetry-instrumenation-django` now supports trace response headers.
   ([#436](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/436))
 - `opentelemetry-instrumenation-tornado` now supports trace response headers.
