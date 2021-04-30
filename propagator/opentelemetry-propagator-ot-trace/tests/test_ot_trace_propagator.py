@@ -369,10 +369,10 @@ class TestOTTracePropagator(TestCase):
                         "".join(
                             [
                                 OT_BAGGAGE_PREFIX[:3].lower(),
-                                OT_BAGGAGE_PREFIX[3:].upper()
+                                OT_BAGGAGE_PREFIX[3:].upper(),
                             ]
                         ),
-                        "abc"
+                        "abc",
                     ]
                 ): "abc",
                 "".join([OT_BAGGAGE_PREFIX, "def"]): "def",
