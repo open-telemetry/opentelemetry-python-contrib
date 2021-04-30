@@ -1,0 +1,14 @@
+  
+# This action adds a comment on every new contributor's first PR to refer to the CONTRIBUTING.md section
+# about new insrumentations and expectations from contributors regarding them.
+
+name: contributing-message
+
+jobs:
+  stale:
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/first-interaction@v1
+      with:
+        repo-token: ${{ secrets.GITHUB_TOKEN }}
+        pr-message: 'Message that will be displayed on users' first pr. Look, a `code block` for markdown.'
