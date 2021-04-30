@@ -95,7 +95,7 @@ class OTTracePropagator(TextMapPropagator):
 
             for key in getter.keys(carrier):
 
-                if not key.startswith(OT_BAGGAGE_PREFIX):
+                if not key.lower().startswith(OT_BAGGAGE_PREFIX.lower()):
                     continue
 
                 baggage[

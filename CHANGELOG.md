@@ -18,6 +18,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   ([#480](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/480))
 - Fix entrypoint for ottrace propagator
   ([#492](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/492))
+- `opentelemetry-propagator-ot-trace` Fix case sensitivity when handling baggage
+  ([#484](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/484))
 
 ### Added
 - Move `opentelemetry-instrumentation` from core repository

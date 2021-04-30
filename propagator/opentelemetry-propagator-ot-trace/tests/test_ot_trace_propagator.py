@@ -359,6 +359,37 @@ class TestOTTracePropagator(TestCase):
         self.assertEqual(baggage["abc"], "abc")
         self.assertEqual(baggage["def"], "def")
 
+        context = self.ot_trace_propagator.extract(
+            {
+                OT_TRACE_ID_HEADER: "64fe8b2a57d3eff7",
+                OT_SPAN_ID_HEADER: "e457b5a2e4d86bd1",
+                OT_SAMPLED_HEADER: "false",
+                "".join(
+                    [
+                        "".join(
+                            [
+                                OT_BAGGAGE_PREFIX[:3].lower(),
+                                OT_BAGGAGE_PREFIX[3:].upper()
+                            ]
+                        ),
+                        "abc"
+                    ]
+                ): "abc",
+                "".join([OT_BAGGAGE_PREFIX, "def"]): "def",
+            },
+        )
+        span_context = get_current_span(context).get_span_context()
+
+        self.assertEqual(hex(span_context.trace_id)[2:], "64fe8b2a57d3eff7")
+        self.assertEqual(hex(span_context.span_id)[2:], "e457b5a2e4d86bd1")
+        self.assertTrue(span_context.is_remote)
+        self.assertEqual(span_context.trace_flags, TraceFlags.DEFAULT)
+
+        baggage = get_all(context)
+
+        self.assertEqual(baggage["abc"], "abc")
+        self.assertEqual(baggage["def"], "def")
+
     def test_extract_empty(self):
         "Test extraction when no headers are present"
 
