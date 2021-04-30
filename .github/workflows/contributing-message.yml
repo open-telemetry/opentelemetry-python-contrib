@@ -5,7 +5,7 @@
 name: contributing-message
 
 jobs:
-  stale:
+  contributing-message:
     runs-on: ubuntu-latest
     steps:
     - uses: actions/first-interaction@v1
