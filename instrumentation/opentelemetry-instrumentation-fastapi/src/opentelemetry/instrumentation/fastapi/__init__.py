@@ -53,7 +53,12 @@ class FastAPIInstrumentor(BaseInstrumentor):
     def _instrument(self, **kwargs):
         self._original_fastapi = fastapi.FastAPI
         _InstrumentedFastAPI._tracer_provider = kwargs.get("tracer_provider")
-        _InstrumentedFastAPI._excluded_urls = kwargs.get("excluded_urls")
+        _excluded_urls = kwargs.get("excluded_urls")
+        _InstrumentedFastAPI._excluded_urls = (
+            _excluded_urls_from_env
+            if _excluded_urls is None
+            else _excluded_urls
+        )
         fastapi.FastAPI = _InstrumentedFastAPI
 
     def _uninstrument(self, **kwargs):
@@ -66,14 +71,9 @@ class _InstrumentedFastAPI(fastapi.FastAPI):
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
-        excluded_urls = (
-            _InstrumentedFastAPI._excluded_urls
-            if _InstrumentedFastAPI._excluded_urls is not None
-            else _excluded_urls_from_env
-        )
         self.add_middleware(
             OpenTelemetryMiddleware,
-            excluded_urls=excluded_urls,
+            excluded_urls=_InstrumentedFastAPI._excluded_urls,
             span_details_callback=_get_route_details,
             tracer_provider=_InstrumentedFastAPI._tracer_provider,
         )
