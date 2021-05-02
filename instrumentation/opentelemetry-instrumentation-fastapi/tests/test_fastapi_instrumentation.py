@@ -50,7 +50,7 @@ class TestFastAPIManualInstrumentation(TestBase):
         )
         self.env_patch.start()
         self.exclude_patch = patch(
-            "opentelemetry.instrumentation.fastapi._excluded_urls",
+            "opentelemetry.instrumentation.fastapi._excluded_urls_from_env",
             get_excluded_urls("FASTAPI"),
         )
         self.exclude_patch.start()
