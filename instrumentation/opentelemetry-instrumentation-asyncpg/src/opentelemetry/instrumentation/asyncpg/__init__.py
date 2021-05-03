@@ -42,15 +42,20 @@ from opentelemetry import trace
 from opentelemetry.instrumentation.asyncpg.version import __version__
 from opentelemetry.instrumentation.instrumentor import BaseInstrumentor
 from opentelemetry.instrumentation.utils import unwrap
+from opentelemetry.semconv.trace import (
+    DbSystemValues,
+    NetTransportValues,
+    SpanAttributes,
+)
 from opentelemetry.trace import SpanKind
 from opentelemetry.trace.status import Status, StatusCode
-
-_APPLIED = "_opentelemetry_tracer"
 
 
 def _hydrate_span_from_args(connection, query, parameters) -> dict:
     """Get network and database attributes from connection."""
-    span_attributes = {"db.system": "postgresql"}
+    span_attributes = {
+        SpanAttributes.DB_SYSTEM: DbSystemValues.POSTGRESQL.value
+    }
 
     # connection contains _params attribute which is a namedtuple ConnectionParameters.
     # https://github.com/MagicStack/asyncpg/blob/master/asyncpg/connection.py#L68
@@ -58,24 +63,28 @@ def _hydrate_span_from_args(connection, query, parameters) -> dict:
     params = getattr(connection, "_params", None)
     dbname = getattr(params, "database", None)
     if dbname:
-        span_attributes["db.name"] = dbname
+        span_attributes[SpanAttributes.DB_NAME] = dbname
     user = getattr(params, "user", None)
     if user:
-        span_attributes["db.user"] = user
+        span_attributes[SpanAttributes.DB_USER] = user
 
     # connection contains _addr attribute which is either a host/port tuple, or unix socket string
     # https://magicstack.github.io/asyncpg/current/_modules/asyncpg/connection.html
     addr = getattr(connection, "_addr", None)
     if isinstance(addr, tuple):
-        span_attributes["net.peer.name"] = addr[0]
-        span_attributes["net.peer.ip"] = addr[1]
-        span_attributes["net.transport"] = "IP.TCP"
+        span_attributes[SpanAttributes.NET_PEER_NAME] = addr[0]
+        span_attributes[SpanAttributes.NET_PEER_PORT] = addr[1]
+        span_attributes[
+            SpanAttributes.NET_TRANSPORT
+        ] = NetTransportValues.IP_TCP.value
     elif isinstance(addr, str):
-        span_attributes["net.peer.name"] = addr
-        span_attributes["net.transport"] = "Unix"
+        span_attributes[SpanAttributes.NET_PEER_NAME] = addr
+        span_attributes[
+            SpanAttributes.NET_TRANSPORT
+        ] = NetTransportValues.UNIX.value
 
     if query is not None:
-        span_attributes["db.statement"] = query
+        span_attributes[SpanAttributes.DB_STATEMENT] = query
 
     if parameters is not None and len(parameters) > 0:
         span_attributes["db.statement.parameters"] = str(parameters)
@@ -87,16 +96,11 @@ class AsyncPGInstrumentor(BaseInstrumentor):
     def __init__(self, capture_parameters=False):
         super().__init__()
         self.capture_parameters = capture_parameters
+        self._tracer = None
 
     def _instrument(self, **kwargs):
-        tracer_provider = kwargs.get(
-            "tracer_provider", trace.get_tracer_provider()
-        )
-        setattr(
-            asyncpg,
-            _APPLIED,
-            tracer_provider.get_tracer("asyncpg", __version__),
-        )
+        tracer_provider = kwargs.get("tracer_provider")
+        self._tracer = trace.get_tracer(__name__, __version__, tracer_provider)
 
         for method in [
             "Connection.execute",
@@ -110,7 +114,6 @@ class AsyncPGInstrumentor(BaseInstrumentor):
             )
 
     def _uninstrument(self, **__):
-        delattr(asyncpg, _APPLIED)
         for method in [
             "execute",
             "executemany",
@@ -121,13 +124,14 @@ class AsyncPGInstrumentor(BaseInstrumentor):
             unwrap(asyncpg.Connection, method)
 
     async def _do_execute(self, func, instance, args, kwargs):
-        tracer = getattr(asyncpg, _APPLIED)
 
         exception = None
         params = getattr(instance, "_params", {})
         name = args[0] if args[0] else params.get("database", "postgresql")
 
-        with tracer.start_as_current_span(name, kind=SpanKind.CLIENT) as span:
+        with self._tracer.start_as_current_span(
+            name, kind=SpanKind.CLIENT
+        ) as span:
             if span.is_recording():
                 span_attributes = _hydrate_span_from_args(
                     instance,

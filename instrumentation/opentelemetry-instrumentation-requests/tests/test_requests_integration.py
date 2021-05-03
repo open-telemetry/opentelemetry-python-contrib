@@ -23,6 +23,7 @@ from opentelemetry import context, trace
 from opentelemetry.instrumentation.requests import RequestsInstrumentor
 from opentelemetry.propagate import get_global_textmap, set_global_textmap
 from opentelemetry.sdk import resources
+from opentelemetry.semconv.trace import SpanAttributes
 from opentelemetry.test.mock_textmap import MockTextMapPropagator
 from opentelemetry.test.test_base import TestBase
 from opentelemetry.trace import StatusCode
@@ -79,10 +80,9 @@ class RequestsIntegrationTestBase(abc.ABC):
         self.assertEqual(
             span.attributes,
             {
-                "http.method": "GET",
-                "http.url": self.URL,
-                "http.status_code": 200,
-                "http.status_text": "OK",
+                SpanAttributes.HTTP_METHOD: "GET",
+                SpanAttributes.HTTP_URL: self.URL,
+                SpanAttributes.HTTP_STATUS_CODE: 200,
             },
         )
 
@@ -126,8 +126,9 @@ class RequestsIntegrationTestBase(abc.ABC):
 
         span = self.assert_span()
 
-        self.assertEqual(span.attributes.get("http.status_code"), 404)
-        self.assertEqual(span.attributes.get("http.status_text"), "Not Found")
+        self.assertEqual(
+            span.attributes.get(SpanAttributes.HTTP_STATUS_CODE), 404
+        )
 
         self.assertIs(
             span.status.status_code, trace.StatusCode.ERROR,
@@ -177,10 +178,8 @@ class RequestsIntegrationTestBase(abc.ABC):
     def test_not_recording(self):
         with mock.patch("opentelemetry.trace.INVALID_SPAN") as mock_span:
             RequestsInstrumentor().uninstrument()
-            # original_tracer_provider returns a default tracer provider, which
-            # in turn will return an INVALID_SPAN, which is always not recording
             RequestsInstrumentor().instrument(
-                tracer_provider=self.original_tracer_provider
+                tracer_provider=trace._DefaultTracerProvider()
             )
             mock_span.is_recording.return_value = False
             result = self.perform_request(self.URL)
@@ -234,10 +233,9 @@ class RequestsIntegrationTestBase(abc.ABC):
         self.assertEqual(
             span.attributes,
             {
-                "http.method": "GET",
-                "http.url": self.URL,
-                "http.status_code": 200,
-                "http.status_text": "OK",
+                SpanAttributes.HTTP_METHOD: "GET",
+                SpanAttributes.HTTP_URL: self.URL,
+                SpanAttributes.HTTP_STATUS_CODE: 200,
                 "http.response.body": "Hello!",
             },
         )
@@ -265,7 +263,11 @@ class RequestsIntegrationTestBase(abc.ABC):
 
         span = self.assert_span()
         self.assertEqual(
-            span.attributes, {"http.method": "GET", "http.url": self.URL}
+            span.attributes,
+            {
+                SpanAttributes.HTTP_METHOD: "GET",
+                SpanAttributes.HTTP_URL: self.URL,
+            },
         )
         self.assertEqual(span.status.status_code, StatusCode.ERROR)
 
@@ -283,7 +285,11 @@ class RequestsIntegrationTestBase(abc.ABC):
 
         span = self.assert_span()
         self.assertEqual(
-            span.attributes, {"http.method": "GET", "http.url": self.URL}
+            span.attributes,
+            {
+                SpanAttributes.HTTP_METHOD: "GET",
+                SpanAttributes.HTTP_URL: self.URL,
+            },
         )
         self.assertEqual(span.status.status_code, StatusCode.ERROR)
 
@@ -303,10 +309,9 @@ class RequestsIntegrationTestBase(abc.ABC):
         self.assertEqual(
             span.attributes,
             {
-                "http.method": "GET",
-                "http.url": self.URL,
-                "http.status_code": 500,
-                "http.status_text": "Internal Server Error",
+                SpanAttributes.HTTP_METHOD: "GET",
+                SpanAttributes.HTTP_URL: self.URL,
+                SpanAttributes.HTTP_STATUS_CODE: 500,
             },
         )
         self.assertEqual(span.status.status_code, StatusCode.ERROR)
@@ -347,7 +352,8 @@ class TestRequestsIntegration(RequestsIntegrationTestBase, TestBase):
 
         self.assertEqual(span.name, "HTTP POST")
         self.assertEqual(
-            span.attributes, {"http.method": "POST", "http.url": url}
+            span.attributes,
+            {SpanAttributes.HTTP_METHOD: "POST", SpanAttributes.HTTP_URL: url},
         )
         self.assertEqual(span.status.status_code, StatusCode.ERROR)
 

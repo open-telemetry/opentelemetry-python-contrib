@@ -4,7 +4,20 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [Unreleased](https://github.com/open-telemetry/opentelemetry-python-contrib/compare/v0.19b0...HEAD)
+## [Unreleased](https://github.com/open-telemetry/opentelemetry-python-contrib/compare/v0.200...HEAD)
+
+### Changed
+
+- `opentelemetry-propagator-ot-trace` Use `TraceFlags` object in `extract`
+  ([#472](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/472))
+- Set the `traced_request_attrs` of FalconInstrumentor by an argument correctly.
+  ([#473](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/473))
+
+### Added
+- Move `opentelemetry-instrumentation` from core repository
+  ([#465](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/465))
+
+## [0.20b0](https://github.com/open-telemetry/opentelemetry-python-contrib/releases/tag/v0.20b0) - 2021-04-20
 
 ### Changed
 - Restrict DataDog exporter's `ddtrace` dependency to known working versions.
@@ -15,12 +28,49 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   ([#387](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/387))
 - Update redis instrumentation to follow semantic conventions
   ([#403](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/403))
+- Update instrumentations to use tracer_provider for creating tracer if given, otherwise use global tracer provider
+  ([#402](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/402))
+- `opentelemetry-instrumentation-wsgi` Replaced `name_callback` with `request_hook`
+   and `response_hook` callbacks.
+  ([#424](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/424))
+- Update gRPC instrumentation to better wrap server context
+  ([#420](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/420))
+- `opentelemetry-instrumentation-redis` Fix default port KeyError and Wrong Attribute name (net.peer.ip -> net.peer.port)
+  ([#265](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/265))
+- `opentelemetry-instrumentation-asyncpg` Fix default port KeyError and Wrong Attribute name (net.peer.ip -> net.peer.port)
+  ([#265](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/265))
 
 ### Added
 - `opentelemetry-instrumentation-urllib3` Add urllib3 instrumentation
   ([#299](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/299))
+- `opentelemetry-instrumenation-django` now supports request and response hooks.
+  ([#407](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/407))
+- `opentelemetry-instrumentation-falcon` FalconInstrumentor now supports request/response hooks.
+  ([#415](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/415))
+- `opentelemetry-instrumentation-tornado` Add request/response hooks.
+  ([#426](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/426))
+- `opentelemetry-exporter-datadog` Add parsing exception events for error tags.
+  ([#459](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/459))
+- `opentelemetry-instrumenation-django` now supports trace response headers.
+  ([#436](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/436))
+- `opentelemetry-instrumenation-tornado` now supports trace response headers.
+  ([#436](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/436))
+- `opentelemetry-instrumenation-pyramid` now supports trace response headers.
+  ([#436](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/436))
+- `opentelemetry-instrumenation-falcon` now supports trace response headers.
+  ([#436](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/436))
+- `opentelemetry-instrumenation-flask` now supports trace response headers.
+  ([#436](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/436))
+
+### Removed
+- Remove `http.status_text` from span attributes
+  ([#406](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/406))
+
 
 ## [0.19b0](https://github.com/open-telemetry/opentelemetry-python-contrib/releases/tag/v0.19b0) - 2021-03-26
+
+- Implement context methods for `_InterceptorChannel`
+  ([#363](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/363))
 
 ### Changed
 - Rename `IdsGenerator` to `IdGenerator`
@@ -105,6 +155,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   ([#273](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/273))
 
 ### Changed
+- Fix broken links to project ([#413](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/413))
 - `opentelemetry-instrumentation-asgi`, `opentelemetry-instrumentation-wsgi` Return `None` for `CarrierGetter` if key not found
   ([#233](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/233))
 - `opentelemetry-instrumentation-grpc` Comply with updated spec, rework tests

@@ -58,6 +58,7 @@ from opentelemetry.instrumentation.utils import (
     unwrap,
 )
 from opentelemetry.propagate import inject
+from opentelemetry.semconv.trace import SpanAttributes
 from opentelemetry.trace import Span, SpanKind, TracerProvider, get_tracer
 from opentelemetry.trace.status import Status
 
@@ -85,8 +86,10 @@ class URLLib3Instrumentor(BaseInstrumentor):
                 ``url_filter``: A callback to process the requested URL prior
                     to adding it as a span attribute.
         """
+        tracer_provider = kwargs.get("tracer_provider")
+        tracer = get_tracer(__name__, __version__, tracer_provider)
         _instrument(
-            tracer_provider=kwargs.get("tracer_provider"),
+            tracer,
             span_name_or_callback=kwargs.get("span_name"),
             url_filter=kwargs.get("url_filter"),
         )
@@ -96,7 +99,7 @@ class URLLib3Instrumentor(BaseInstrumentor):
 
 
 def _instrument(
-    tracer_provider: TracerProvider = None,
+    tracer,
     span_name_or_callback: _SpanNameT = None,
     url_filter: _UrlFilterT = None,
 ):
@@ -110,13 +113,11 @@ def _instrument(
 
         span_name = _get_span_name(span_name_or_callback, method, url, headers)
         span_attributes = {
-            "http.method": method,
-            "http.url": url,
+            SpanAttributes.HTTP_METHOD: method,
+            SpanAttributes.HTTP_URL: url,
         }
 
-        with get_tracer(
-            __name__, __version__, tracer_provider
-        ).start_as_current_span(
+        with tracer.start_as_current_span(
             span_name, kind=SpanKind.CLIENT, attributes=span_attributes
         ) as span:
             inject(headers)
@@ -202,8 +203,7 @@ def _apply_response(span: Span, response: urllib3.response.HTTPResponse):
     if not span.is_recording():
         return
 
-    span.set_attribute("http.status_code", response.status)
-    span.set_attribute("http.status_text", response.reason)
+    span.set_attribute(SpanAttributes.HTTP_STATUS_CODE, response.status)
     span.set_status(Status(http_status_to_status_code(response.status)))
 
 

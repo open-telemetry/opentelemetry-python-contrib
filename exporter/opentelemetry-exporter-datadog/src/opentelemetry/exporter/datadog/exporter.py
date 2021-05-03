@@ -22,14 +22,22 @@ from ddtrace.span import Span as DatadogSpan
 
 import opentelemetry.trace as trace_api
 from opentelemetry.exporter.datadog.constants import (
+    DD_ERROR_MSG_TAG_KEY,
+    DD_ERROR_STACK_TAG_KEY,
+    DD_ERROR_TYPE_TAG_KEY,
     DD_ORIGIN,
     ENV_KEY,
+    EVENT_NAME_EXCEPTION,
+    EXCEPTION_MSG_ATTR_KEY,
+    EXCEPTION_STACK_ATTR_KEY,
+    EXCEPTION_TYPE_ATTR_KEY,
     SAMPLE_RATE_METRIC_KEY,
     SERVICE_NAME_TAG,
     VERSION_KEY,
 )
 from opentelemetry.sdk.trace import sampling
 from opentelemetry.sdk.trace.export import SpanExporter, SpanExportResult
+from opentelemetry.semconv.trace import SpanAttributes
 
 logger = logging.getLogger(__name__)
 
@@ -63,7 +71,7 @@ class DatadogSpanExporter(SpanExporter):
         service: The service name to be used for the application or use ``DD_SERVICE`` environment variable
         env: Set the application’s environment or use ``DD_ENV`` environment variable
         version: Set the application’s version or use ``DD_VERSION`` environment variable
-        tags: A list of default tags to be added to every span or use ``DD_TAGS`` environment variable
+        tags: A list (formatted as a comma-separated string) of default tags to be added to every span or use ``DD_TAGS`` environment variable
     """
 
     def __init__(
@@ -144,11 +152,12 @@ class DatadogSpanExporter(SpanExporter):
 
             if not span.status.is_ok:
                 datadog_span.error = 1
-                if span.status.description:
-                    exc_type, exc_val = _get_exc_info(span)
-                    # no mapping for error.stack since traceback not recorded
-                    datadog_span.set_tag("error.msg", exc_val)
-                    datadog_span.set_tag("error.type", exc_type)
+                # loop over events and look for exception events, extract info.
+                # https://github.com/open-telemetry/opentelemetry-python/blob/71e3a7a192c0fc8a7503fac967ada36a74b79e58/opentelemetry-sdk/src/opentelemetry/sdk/trace/__init__.py#L810-L819
+                if span.events:
+                    _extract_tags_from_exception_events(
+                        span.events, datadog_span
+                    )
 
             # combine resource attributes and span attributes, don't modify existing span attributes
             combined_span_tags = {}
@@ -177,7 +186,7 @@ class DatadogSpanExporter(SpanExporter):
             if sampling_rate is not None:
                 datadog_span.set_metric(SAMPLE_RATE_METRIC_KEY, sampling_rate)
 
-            # span events and span links are not supported
+            # span events and span links are not supported except for extracting exception event context
 
             datadog_spans.append(datadog_span)
 
@@ -225,12 +234,12 @@ def _get_span_name(span):
 
 def _get_resource(span):
     """Get resource name for span"""
-    if "http.method" in span.attributes:
-        route = span.attributes.get("http.route")
+    if SpanAttributes.HTTP_METHOD in span.attributes:
+        route = span.attributes.get(SpanAttributes.HTTP_ROUTE)
         return (
-            span.attributes["http.method"] + " " + route
+            span.attributes[SpanAttributes.HTTP_METHOD] + " " + route
             if route
-            else span.attributes["http.method"]
+            else span.attributes[SpanAttributes.HTTP_METHOD]
         )
 
     return span.name
@@ -317,3 +326,17 @@ def _extract_tags_from_resource(resource):
         else:
             tags[attribute_key] = attribute_value
     return [tags, service_name]
+
+
+def _extract_tags_from_exception_events(events, datadog_span):
+    """Parse error tags from exception events, error.msg error.type
+    and error.stack have special significance within datadog"""
+    for event in events:
+        if event.name is not None and event.name == EVENT_NAME_EXCEPTION:
+            for key, value in event.attributes.items():
+                if key == EXCEPTION_TYPE_ATTR_KEY:
+                    datadog_span.set_tag(DD_ERROR_TYPE_TAG_KEY, value)
+                elif key == EXCEPTION_MSG_ATTR_KEY:
+                    datadog_span.set_tag(DD_ERROR_MSG_TAG_KEY, value)
+                elif key == EXCEPTION_STACK_ATTR_KEY:
+                    datadog_span.set_tag(DD_ERROR_STACK_TAG_KEY, value)
