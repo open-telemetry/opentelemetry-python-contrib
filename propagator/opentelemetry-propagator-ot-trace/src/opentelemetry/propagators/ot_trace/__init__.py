@@ -12,7 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import re
+from re import compile as re_compile
 from typing import Any, Iterable, Optional
 
 from opentelemetry.baggage import get_all, set_baggage
@@ -40,10 +40,10 @@ OT_SPAN_ID_HEADER = "ot-tracer-spanid"
 OT_SAMPLED_HEADER = "ot-tracer-sampled"
 OT_BAGGAGE_PREFIX = "ot-baggage-"
 
-_valid_header_name = re.compile(r"[\w_^`!#$%&'*+.|~]+")
-_valid_header_value = re.compile(r"[\t\x20-\x7e\x80-\xff]+")
-_valid_extract_traceid = re.compile(r"[0-9a-f]{1,32}")
-_valid_extract_spanid = re.compile(r"[0-9a-f]{1,16}")
+_valid_header_name = re_compile(r"[\w_^`!#$%&'*+.|~]+")
+_valid_header_value = re_compile(r"[\t\x20-\x7e\x80-\xff]+")
+_valid_extract_traceid = re_compile(r"[0-9a-f]{1,32}")
+_valid_extract_spanid = re_compile(r"[0-9a-f]{1,16}")
 
 
 class OTTracePropagator(TextMapPropagator):
@@ -176,10 +176,10 @@ def _extract_first_element(
 
 
 def _extract_identifier(
-    items: Iterable[CarrierT], validator: re.Pattern, default: int
+    items: Iterable[CarrierT], validator_pattern, default: int
 ) -> int:
     header = _extract_first_element(items)
-    if header is None or validator.fullmatch(header) is None:
+    if header is None or validator_pattern.fullmatch(header) is None:
         return default
 
     try:
