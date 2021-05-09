@@ -54,8 +54,7 @@ Usage
 You can also pass the list of urls to exclude explicitly to the instrumentation call:
 
 .. code-block:: python
-    from opentelemetry.util.http import ExcludeList
-    FastAPIInstrumentor.instrument_app(app, ExcludeList("client/.*/info,healthcheck"))
+    FastAPIInstrumentor.instrument_app(app, "client/.*/info,healthcheck")
 
 References
 ----------

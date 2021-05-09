@@ -22,7 +22,7 @@ import opentelemetry.instrumentation.fastapi as otel_fastapi
 from opentelemetry.sdk.resources import Resource
 from opentelemetry.semconv.trace import SpanAttributes
 from opentelemetry.test.test_base import TestBase
-from opentelemetry.util.http import get_excluded_urls, ExcludeList
+from opentelemetry.util.http import get_excluded_urls
 
 
 class TestFastAPIManualInstrumentation(TestBase):
@@ -34,12 +34,7 @@ class TestFastAPIManualInstrumentation(TestBase):
     def _create_app_explicit_excluded_urls(self):
         app = self._create_fastapi_app()
         to_exclude = "/user/123,/foobar"
-        excluded_urls = [
-            excluded_url.strip() for excluded_url in to_exclude.split(",")
-        ]
-        self._instrumentor.instrument_app(
-            app, excluded_urls=ExcludeList(excluded_urls)
-        )
+        self._instrumentor.instrument_app(app, excluded_urls=to_exclude)
         return app
 
     def setUp(self):
@@ -160,7 +155,7 @@ class TestAutoInstrumentation(TestFastAPIManualInstrumentation):
         self._instrumentor.uninstrument()  # Disable previous instrumentation (setUp)
         self._instrumentor.instrument(
             tracer_provider=tracer_provider,
-            excluded_urls=ExcludeList(excluded_urls),
+            excluded_urls=to_exclude,
         )
         return self._create_fastapi_app()
 
