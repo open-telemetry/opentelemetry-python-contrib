@@ -15,6 +15,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   ([#473](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/473))
 - Enable passing explicit urls to exclude in instrumentation in FastAPI
   ([#486](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/486))
+- Distros can now implement `load_instrumentor(EntryPoint)` method to customize instrumentor
+  loading behaviour.
+  ([#480](https://github.com/open-telemetry/opentelemetry-python/pull/480))
 
 ### Added
 
@@ -67,7 +70,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   ([#436](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/436))
 - `opentelemetry-instrumenation-flask` now supports trace response headers.
   ([#436](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/436))
-
+- `opentelemetry-instrumentation-grpc` Keep client interceptor in sync with grpc client interceptors.
+  ([#442](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/442))
+  
 ### Removed
 
 - Remove `http.status_text` from span attributes
