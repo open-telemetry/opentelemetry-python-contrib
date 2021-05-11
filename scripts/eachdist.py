@@ -610,7 +610,7 @@ def filter_packages(targets, packages):
     filtered_packages = []
     for target in targets:
         for pkg in packages:
-            if pkg in str(target):
+            if str(pkg) in str(target):
                 filtered_packages.append(target)
                 break
     return filtered_packages
@@ -629,10 +629,13 @@ def update_version_files(targets, version, packages):
 
 def update_dependencies(targets, version, packages):
     print("updating dependencies")
-    if packages is None:
-        packages = targets
+    if "all" in packages:
+        packages.extend(targets)
     for pkg in packages:
+        print(pkg)
         package_name = str(pkg).split("/")[-1]
+        print(package_name)
+
         update_files(
             targets,
             "setup.cfg",
