@@ -239,8 +239,7 @@ def parse_args(args=None):
     )
 
     fmtparser = subparsers.add_parser(
-        "format",
-        help="Formats all source code with black and isort.",
+        "format", help="Formats all source code with black and isort.",
     )
     fmtparser.set_defaults(func=format_args)
     fmtparser.add_argument(
@@ -250,8 +249,7 @@ def parse_args(args=None):
     )
 
     versionparser = subparsers.add_parser(
-        "version",
-        help="Get the version for a release",
+        "version", help="Get the version for a release",
     )
     versionparser.set_defaults(func=version_args)
     versionparser.add_argument(
@@ -539,11 +537,7 @@ def lint_args(args):
     execute_args(
         parse_subargs(
             args,
-            (
-                "exec",
-                "python scripts/check_for_valid_readme.py {}",
-                "--all",
-            ),
+            ("exec", "python scripts/check_for_valid_readme.py {}", "--all",),
         )
     )
 
@@ -710,10 +704,7 @@ def format_args(args):
         format_dir = os.path.join(format_dir, args.path)
 
     runsubprocess(
-        args.dry_run,
-        ("black", "."),
-        cwd=format_dir,
-        check=True,
+        args.dry_run, ("black", "."), cwd=format_dir, check=True,
     )
     runsubprocess(
         args.dry_run,
