@@ -20,7 +20,10 @@ import requests
 
 import opentelemetry.instrumentation.requests
 from opentelemetry import context, trace
-from opentelemetry.instrumentation.requests import RequestsInstrumentor
+from opentelemetry.instrumentation.requests import (
+    _SUPPRESS_INSTRUMENTATION_KEY,
+    RequestsInstrumentor,
+)
 from opentelemetry.propagate import get_global_textmap, set_global_textmap
 from opentelemetry.sdk import resources
 from opentelemetry.semconv.trace import SpanAttributes
@@ -165,7 +168,7 @@ class RequestsIntegrationTestBase(abc.ABC):
 
     def test_suppress_instrumentation(self):
         token = context.attach(
-            context.set_value("suppress_instrumentation", True)
+            context.set_value(_SUPPRESS_INSTRUMENTATION_KEY, True)
         )
         try:
             result = self.perform_request(self.URL)

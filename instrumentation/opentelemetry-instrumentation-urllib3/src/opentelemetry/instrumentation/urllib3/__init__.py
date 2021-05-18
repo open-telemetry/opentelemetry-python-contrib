@@ -64,7 +64,10 @@ from opentelemetry.semconv.trace import SpanAttributes
 from opentelemetry.trace import Span, SpanKind, get_tracer
 from opentelemetry.trace.status import Status
 
-_SUPPRESS_HTTP_INSTRUMENTATION_KEY = "suppress_http_instrumentation"
+_SUPPRESS_HTTP_INSTRUMENTATION_KEY = context.create_key(
+    "suppress_http_instrumentation"
+)
+_SUPPRESS_INSTRUMENTATION_KEY = context.create_key("suppress_instrumentation")
 
 _UrlFilterT = typing.Optional[typing.Callable[[str], str]]
 _SpanNameT = typing.Optional[
@@ -214,7 +217,7 @@ def _apply_response(span: Span, response: urllib3.response.HTTPResponse):
 
 def _is_instrumentation_suppressed() -> bool:
     return bool(
-        context.get_value("suppress_instrumentation")
+        context.get_value(_SUPPRESS_INSTRUMENTATION_KEY)
         or context.get_value(_SUPPRESS_HTTP_INSTRUMENTATION_KEY)
     )
 

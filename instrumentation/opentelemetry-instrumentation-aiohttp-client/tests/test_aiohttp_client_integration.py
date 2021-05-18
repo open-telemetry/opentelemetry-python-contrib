@@ -28,6 +28,7 @@ from pkg_resources import iter_entry_points
 from opentelemetry import context
 from opentelemetry.instrumentation import aiohttp_client
 from opentelemetry.instrumentation.aiohttp_client import (
+    _SUPPRESS_INSTRUMENTATION_KEY,
     AioHttpClientInstrumentor,
 )
 from opentelemetry.semconv.trace import SpanAttributes
@@ -417,7 +418,7 @@ class TestAioHttpClientInstrumentor(TestBase):
 
     def test_suppress_instrumentation(self):
         token = context.attach(
-            context.set_value("suppress_instrumentation", True)
+            context.set_value(_SUPPRESS_INSTRUMENTATION_KEY, True)
         )
         try:
             run_with_test_server(
@@ -431,7 +432,7 @@ class TestAioHttpClientInstrumentor(TestBase):
     async def suppressed_request(server: aiohttp.test_utils.TestServer):
         async with aiohttp.test_utils.TestClient(server) as client:
             token = context.attach(
-                context.set_value("suppress_instrumentation", True)
+                context.set_value(_SUPPRESS_INSTRUMENTATION_KEY, True)
             )
             await client.get(TestAioHttpClientInstrumentor.URL)
             context.detach(token)

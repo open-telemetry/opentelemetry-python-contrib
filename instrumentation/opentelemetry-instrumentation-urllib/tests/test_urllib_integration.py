@@ -26,6 +26,7 @@ import httpretty
 import opentelemetry.instrumentation.urllib  # pylint: disable=no-name-in-module,import-error
 from opentelemetry import context, trace
 from opentelemetry.instrumentation.urllib import (  # pylint: disable=no-name-in-module,import-error
+    _SUPPRESS_INSTRUMENTATION_KEY,
     URLLibInstrumentor,
 )
 from opentelemetry.propagate import get_global_textmap, set_global_textmap
@@ -196,7 +197,7 @@ class RequestsIntegrationTestBase(abc.ABC):
 
     def test_suppress_instrumentation(self):
         token = context.attach(
-            context.set_value("suppress_instrumentation", True)
+            context.set_value(_SUPPRESS_INSTRUMENTATION_KEY, True)
         )
         try:
             result = self.perform_request(self.URL)
