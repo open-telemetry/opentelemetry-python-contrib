@@ -68,6 +68,7 @@ _SUPPRESS_INSTRUMENTATION_KEY = context_api.create_key(
     "suppress_instrumentation"
 )
 
+
 # pylint: disable=unused-argument
 def _patched_endpoint_prepare_request(wrapped, instance, args, kwargs):
     request = args[0]
