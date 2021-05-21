@@ -6,10 +6,21 @@ on:
     - 'release/*'
   pull_request:
 env:
-  CORE_REPO_SHA: 25b6746af2eac3a3ca72ab91d332cf8d317f9540
+  CORE_REPO_SHA: 32baf0672d3631e6c99e69502a5d5ffa81f610d3
 
 jobs:
+  setup:
+    runs-on: ubuntu-latest
+    outputs:
+      package_matrix: ${{ steps.splittests.outputs.matrix }}
+    steps:
+      - name: Checkout Contrib Repo @ SHA - ${{ github.sha }}
+        uses: actions/checkout@v2
+      - name: Prepare test matrices
+        id: splittests
+        run: ./.github/workflows/scripts/setup_tests.sh
   build:
+    needs: [setup]
     env:
       # We use these variables to convert between tox and GHA version literals
       py36: 3.6
@@ -23,7 +34,9 @@ jobs:
       fail-fast: false  # ensures the entire test matrix is run, even if one permutation fails
       matrix:
         python-version: [ py36, py37, py38, py39, pypy3 ]
-        package: ["instrumentation", "exporter", "sdkextension", "propagator"]
+        # package: ["instrumentation", "exporter", "sdkextension", "propagator"]
+        package: ${{ fromJson(needs.setup.outputs.package_matrix) }}
+        # package: ${{ steps.splittests.outputs.matrix }}
         os: [ ubuntu-latest ]
     steps:
       - name: Checkout Contrib Repo @ SHA - ${{ github.sha }}

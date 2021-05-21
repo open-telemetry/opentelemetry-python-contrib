@@ -7,6 +7,7 @@ import shlex
 import shutil
 import subprocess
 import sys
+import json
 from configparser import ConfigParser
 from datetime import datetime
 from inspect import cleandoc
@@ -247,6 +248,11 @@ def parse_args(args=None):
         required=False,
         help="Format only this path instead of entire repository",
     )
+
+    listparser = subparsers.add_parser(
+        "github_actions_matrix", help="Generate build matrix for Github Actions build",
+    )
+    listparser.set_defaults(func=github_actions_matrix)
 
     versionparser = subparsers.add_parser(
         "version", help="Get the version for a release",
@@ -713,6 +719,31 @@ def format_args(args):
         check=True,
     )
 
+
+def github_actions_matrix(args):
+    python_versions = [ "py36", "py37", "py38", "py39", "pypy3" ]
+
+    targets = []
+    root_path = find_projectroot()
+    instrumentation_prefix = os.path.join(root_path, "instrumentation", "opentelemetry-instrumentation-")
+    for pkg in find_targets("stable", root_path):
+        target = ""
+        pkg = str(pkg)
+        if pkg.startswith(instrumentation_prefix):
+            for pyversion in python_versions:
+                target += ' {0}-test-instrumentation-{1}'.format(pyversion, pkg.split(instrumentation_prefix)[1])
+        if target:
+            targets.append({"test": target})
+
+    for pkg in ["exporter", "sdkextension", "propagator"]:
+        target = ""
+        for pyversion in python_versions:
+            target += " {0}-test-{1}".format(pyversion, pkg)
+            # targets.append({"test": "{0}-test-{1}".format(pyversion, pkg)})
+        targets.append({"test": target})
+
+    matrix = {"include": targets}
+    print("::set-output name=matrix::{0}".format(json.dumps(matrix)))
 
 def version_args(args):
     cfg = ConfigParser()
