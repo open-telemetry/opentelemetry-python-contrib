@@ -169,8 +169,8 @@ class TestURLLib3Instrumentor(TestBase):
 
     def test_suppress_instrumntation(self):
         suppression_keys = (
-            _SUPPRESS_INSTRUMENTATION_KEY,
             _SUPPRESS_HTTP_INSTRUMENTATION_KEY,
+            _SUPPRESS_INSTRUMENTATION_KEY,
         )
         for key in suppression_keys:
             self.memory_exporter.clear()
