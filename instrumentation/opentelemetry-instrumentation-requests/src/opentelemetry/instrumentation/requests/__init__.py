@@ -51,14 +51,12 @@ from opentelemetry.semconv.trace import SpanAttributes
 from opentelemetry.trace import SpanKind, get_tracer
 from opentelemetry.trace.status import Status
 
-_SUPPRESS_INSTRUMENTATION_KEY = context.create_key("suppress_instrumentation")
-
 # A key to a context variable to avoid creating duplicate spans when instrumenting
 # both, Session.request and Session.send, since Session.request calls into Session.send
 _SUPPRESS_HTTP_INSTRUMENTATION_KEY = context.create_key(
     "suppress_http_instrumentation"
 )
-
+_SUPPRESS_INSTRUMENTATION_KEY = context.create_key("suppress_instrumentation")
 
 # pylint: disable=unused-argument
 # pylint: disable=R0915
