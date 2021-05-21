@@ -5,6 +5,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased](https://github.com/open-telemetry/opentelemetry-python/compare/v1.2.0-0.21b0...HEAD)
+<<<<<<< HEAD
 
 ### Changed
 - `opentelemetry-instrumentation-asgi` Set the response status code on the server span
@@ -15,6 +16,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - `opentelemetry-instrumentation-asgi` Fix instrumentation default span name.
   ([#418](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/418))
 
+=======
+- Added support for CreateKey functionality.
+  ([#502](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/502))
+>>>>>>> a6caae01 (Update changelog link)
 ### Added
 - `opentelemetry-instrumentation-botocore` now supports
   context propagation for lambda invoke via Payload embedded headers.

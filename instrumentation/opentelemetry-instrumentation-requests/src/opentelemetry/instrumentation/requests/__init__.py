@@ -58,6 +58,7 @@ _SUPPRESS_HTTP_INSTRUMENTATION_KEY = context.create_key(
 )
 _SUPPRESS_INSTRUMENTATION_KEY = context.create_key("suppress_instrumentation")
 
+
 # pylint: disable=unused-argument
 # pylint: disable=R0915
 def _instrument(tracer, span_callback=None, name_callback=None):
