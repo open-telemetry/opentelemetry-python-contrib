@@ -55,6 +55,7 @@ from opentelemetry.trace import SpanKind, get_tracer
 from opentelemetry.trace.status import Status
 
 # A key to a context variable to avoid creating duplicate spans when instrumenting
+# both, Session.request and Session.send, since Session.request calls into Session.send
 _SUPPRESS_HTTP_INSTRUMENTATION_KEY = context.create_key(
     "suppress_http_instrumentation"
 )
