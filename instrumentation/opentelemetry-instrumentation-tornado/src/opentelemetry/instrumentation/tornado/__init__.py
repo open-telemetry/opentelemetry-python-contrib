@@ -301,7 +301,7 @@ def _finish_span(tracer, handler, error=None):
         ctx.span.set_attribute(SpanAttributes.HTTP_STATUS_CODE, status_code)
         otel_status_code = http_status_to_status_code(status_code)
         otel_status_description = None
-        if otel_status_code == StatusCode.ERROR:
+        if otel_status_code is StatusCode.ERROR:
             otel_status_description = reason
         ctx.span.set_status(
             Status(
