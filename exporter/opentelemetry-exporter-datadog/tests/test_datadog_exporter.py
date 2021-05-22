@@ -76,7 +76,8 @@ class TestDatadogSpanExporter(unittest.TestCase):
         """Test the constructor passing all the options."""
         agent_url = "http://localhost:8126"
         exporter = datadog.DatadogSpanExporter(
-            agent_url=agent_url, service="explicit",
+            agent_url=agent_url,
+            service="explicit",
         )
 
         self.assertEqual(exporter.agent_url, agent_url)
@@ -151,11 +152,12 @@ class TestDatadogSpanExporter(unittest.TestCase):
             attributes={
                 "key_resource": "some_resource",
                 "service.name": "resource_service_name",
-            }
+            },
+            schema_url="",
         )
 
         resource_without_service = Resource(
-            attributes={"conflicting_key": "conflicting_value"}
+            attributes={"conflicting_key": "conflicting_value"}, schema_url=""
         )
 
         span_names = ("test1", "test2", "test3")
@@ -197,7 +199,7 @@ class TestDatadogSpanExporter(unittest.TestCase):
                 parent=parent_span_context,
                 kind=trace_api.SpanKind.CLIENT,
                 instrumentation_info=instrumentation_info,
-                resource=Resource({}),
+                resource=Resource({}, ""),
             ),
             trace._Span(
                 name=span_names[1],
