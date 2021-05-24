@@ -6,9 +6,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased](https://github.com/open-telemetry/opentelemetry-python/compare/v1.2.0-0.21b0...HEAD)
 
-### Changed
+- Fixed cases where description was used with non-error status code when creating Status objects.
+  ([#504](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/504))
+  ### Changed
 - Added optional `schema_url` field to `Resource` class
   ([opentelemetry-python #1862](https://github.com/open-telemetry/opentelemetry-python/issues/1862))
+
 ### Added
 - `opentelemetry-instrumentation-botocore` now supports
   context propagation for lambda invoke via Payload embedded headers. 
