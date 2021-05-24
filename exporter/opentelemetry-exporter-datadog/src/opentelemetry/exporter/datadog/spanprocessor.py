@@ -30,7 +30,7 @@ from opentelemetry.trace import INVALID_TRACE_ID
 from opentelemetry.util._time import _time_ns
 
 logger = logging.getLogger(__name__)
-EXPORT_KEY = create_key("suppress_instrumentation")
+_SUPPRESS_INSTRUMENTATION_KEY = create_key("suppress_instrumentation")
 
 
 class DatadogExportSpanProcessor(SpanProcessor):
@@ -170,7 +170,7 @@ class DatadogExportSpanProcessor(SpanProcessor):
                         del self.traces_spans_ended_count[trace_id]
 
         if len(export_trace_ids) > 0:
-            token = attach(set_value(EXPORT_KEY, True))
+            token = attach(set_value(_SUPPRESS_INSTRUMENTATION_KEY, True))
 
             for trace_id in export_trace_ids:
                 with self.traces_lock:
