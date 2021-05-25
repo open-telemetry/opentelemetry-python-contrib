@@ -13,7 +13,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   ([#504](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/504))
   ### Changed
 - Added optional `schema_url` field to `Resource` class
-  ([opentelemetry-python #1862](https://github.com/open-telemetry/opentelemetry-python/issues/1862))
+  ([#511](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/511))
 
 ### Added
 - `opentelemetry-instrumentation-botocore` now supports
