@@ -156,7 +156,8 @@ class TestDatadogSpanExporter(unittest.TestCase):
         )
 
         resource_without_service = Resource(
-            attributes={"conflicting_key": "conflicting_value"}, schema_url=""
+            attributes={"conflicting_key": "conflicting_value"}, 
+            schema_url="",
         )
 
         span_names = ("test1", "test2", "test3")
