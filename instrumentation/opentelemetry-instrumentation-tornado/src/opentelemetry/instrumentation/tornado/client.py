@@ -19,6 +19,7 @@ from tornado.httpclient import HTTPError, HTTPRequest
 from opentelemetry import trace
 from opentelemetry.instrumentation.utils import http_status_to_status_code
 from opentelemetry.propagate import inject
+from opentelemetry.semconv.trace import SpanAttributes
 from opentelemetry.trace.status import Status
 from opentelemetry.util._time import _time_ns
 
@@ -39,7 +40,7 @@ def _normalize_request(args, kwargs):
     return (new_args, new_kwargs)
 
 
-def fetch_async(tracer, func, _, args, kwargs):
+def fetch_async(tracer, request_hook, response_hook, func, _, args, kwargs):
     start_time = _time_ns()
 
     # Return immediately if no args were provided (error)
@@ -55,11 +56,13 @@ def fetch_async(tracer, func, _, args, kwargs):
     span = tracer.start_span(
         request.method, kind=trace.SpanKind.CLIENT, start_time=start_time,
     )
+    if request_hook:
+        request_hook(span, request)
 
     if span.is_recording():
         attributes = {
-            "http.url": request.url,
-            "http.method": request.method,
+            SpanAttributes.HTTP_URL: request.url,
+            SpanAttributes.HTTP_METHOD: request.method,
         }
         for key, value in attributes.items():
             span.set_attribute(key, value)
@@ -68,12 +71,16 @@ def fetch_async(tracer, func, _, args, kwargs):
         inject(request.headers)
         future = func(*args, **kwargs)
         future.add_done_callback(
-            functools.partial(_finish_tracing_callback, span=span)
+            functools.partial(
+                _finish_tracing_callback,
+                span=span,
+                response_hook=response_hook,
+            )
         )
         return future
 
 
-def _finish_tracing_callback(future, span):
+def _finish_tracing_callback(future, span, response_hook):
     status_code = None
     description = None
     exc = future.exception()
@@ -85,11 +92,13 @@ def _finish_tracing_callback(future, span):
         status_code = future.result().code
 
     if status_code is not None:
-        span.set_attribute("http.status_code", status_code)
+        span.set_attribute(SpanAttributes.HTTP_STATUS_CODE, status_code)
         span.set_status(
             Status(
                 status_code=http_status_to_status_code(status_code),
                 description=description,
             )
         )
+    if response_hook:
+        response_hook(span, future)
     span.end()

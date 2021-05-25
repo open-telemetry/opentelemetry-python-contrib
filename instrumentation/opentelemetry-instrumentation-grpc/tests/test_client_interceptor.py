@@ -27,6 +27,7 @@ from opentelemetry.instrumentation.grpc.grpcext._interceptor import (
     _UnaryClientInfo,
 )
 from opentelemetry.propagate import get_global_textmap, set_global_textmap
+from opentelemetry.semconv.trace import SpanAttributes
 from opentelemetry.test.mock_textmap import MockTextMapPropagator
 from opentelemetry.test.test_base import TestBase
 
@@ -40,13 +41,57 @@ from ._server import create_test_server
 from .protobuf.test_server_pb2 import Request
 
 
+# User defined interceptor. Is used in the tests along with the opentelemetry client interceptor.
+class Interceptor(
+    grpc.UnaryUnaryClientInterceptor,
+    grpc.UnaryStreamClientInterceptor,
+    grpc.StreamUnaryClientInterceptor,
+    grpc.StreamStreamClientInterceptor,
+):
+    def __init__(self):
+        pass
+
+    def intercept_unary_unary(
+        self, continuation, client_call_details, request
+    ):
+        return self._intercept_call(continuation, client_call_details, request)
+
+    def intercept_unary_stream(
+        self, continuation, client_call_details, request
+    ):
+        return self._intercept_call(continuation, client_call_details, request)
+
+    def intercept_stream_unary(
+        self, continuation, client_call_details, request_iterator
+    ):
+        return self._intercept_call(
+            continuation, client_call_details, request_iterator
+        )
+
+    def intercept_stream_stream(
+        self, continuation, client_call_details, request_iterator
+    ):
+        return self._intercept_call(
+            continuation, client_call_details, request_iterator
+        )
+
+    @staticmethod
+    def _intercept_call(
+        continuation, client_call_details, request_or_iterator
+    ):
+        return continuation(client_call_details, request_or_iterator)
+
+
 class TestClientProto(TestBase):
     def setUp(self):
         super().setUp()
         GrpcInstrumentorClient().instrument()
         self.server = create_test_server(25565)
         self.server.start()
+        # use a user defined interceptor along with the opentelemetry client interceptor
+        interceptors = [Interceptor()]
         self.channel = grpc.insecure_channel("localhost:25565")
+        self.channel = grpc.intercept_channel(self.channel, *interceptors)
         self._stub = test_server_pb2_grpc.GRPCTestServerStub(self.channel)
 
     def tearDown(self):
@@ -72,10 +117,12 @@ class TestClientProto(TestBase):
         self.assert_span_has_attributes(
             span,
             {
-                "rpc.method": "SimpleMethod",
-                "rpc.service": "GRPCTestServer",
-                "rpc.system": "grpc",
-                "rpc.grpc.status_code": grpc.StatusCode.OK.value[0],
+                SpanAttributes.RPC_METHOD: "SimpleMethod",
+                SpanAttributes.RPC_SERVICE: "GRPCTestServer",
+                SpanAttributes.RPC_SYSTEM: "grpc",
+                SpanAttributes.RPC_GRPC_STATUS_CODE: grpc.StatusCode.OK.value[
+                    0
+                ],
             },
         )
 
@@ -96,10 +143,12 @@ class TestClientProto(TestBase):
         self.assert_span_has_attributes(
             span,
             {
-                "rpc.method": "ServerStreamingMethod",
-                "rpc.service": "GRPCTestServer",
-                "rpc.system": "grpc",
-                "rpc.grpc.status_code": grpc.StatusCode.OK.value[0],
+                SpanAttributes.RPC_METHOD: "ServerStreamingMethod",
+                SpanAttributes.RPC_SERVICE: "GRPCTestServer",
+                SpanAttributes.RPC_SYSTEM: "grpc",
+                SpanAttributes.RPC_GRPC_STATUS_CODE: grpc.StatusCode.OK.value[
+                    0
+                ],
             },
         )
 
@@ -120,10 +169,12 @@ class TestClientProto(TestBase):
         self.assert_span_has_attributes(
             span,
             {
-                "rpc.method": "ClientStreamingMethod",
-                "rpc.service": "GRPCTestServer",
-                "rpc.system": "grpc",
-                "rpc.grpc.status_code": grpc.StatusCode.OK.value[0],
+                SpanAttributes.RPC_METHOD: "ClientStreamingMethod",
+                SpanAttributes.RPC_SERVICE: "GRPCTestServer",
+                SpanAttributes.RPC_SYSTEM: "grpc",
+                SpanAttributes.RPC_GRPC_STATUS_CODE: grpc.StatusCode.OK.value[
+                    0
+                ],
             },
         )
 
@@ -146,10 +197,12 @@ class TestClientProto(TestBase):
         self.assert_span_has_attributes(
             span,
             {
-                "rpc.method": "BidirectionalStreamingMethod",
-                "rpc.service": "GRPCTestServer",
-                "rpc.system": "grpc",
-                "rpc.grpc.status_code": grpc.StatusCode.OK.value[0],
+                SpanAttributes.RPC_METHOD: "BidirectionalStreamingMethod",
+                SpanAttributes.RPC_SERVICE: "GRPCTestServer",
+                SpanAttributes.RPC_SYSTEM: "grpc",
+                SpanAttributes.RPC_GRPC_STATUS_CODE: grpc.StatusCode.OK.value[
+                    0
+                ],
             },
         )
 
