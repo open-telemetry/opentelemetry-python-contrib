@@ -13,4 +13,4 @@
 # limitations under the License.
 
 
-_instruments = tuple()
+_instruments = ("wsgiref ~= 0.1.2",)

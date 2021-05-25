@@ -81,7 +81,7 @@ class JSONMetadataCommand(distutils.cmd.Command):
 
 
 setuptools.setup(
-    cmdclass={'meta':  JSONMetadataCommand},
+    cmdclass={'meta': JSONMetadataCommand},
     version=PACKAGE_INFO["__version__"],
     extras_require=extras_require
 )

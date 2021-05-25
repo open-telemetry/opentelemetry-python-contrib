@@ -17,8 +17,6 @@
 # RUN `python scripts/generate_setup.py` TO REGENERATE.
 
 
-import distutils.cmd
-import json
 import os
 import distutils.cmd
 import json

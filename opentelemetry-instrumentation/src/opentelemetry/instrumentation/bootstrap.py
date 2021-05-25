@@ -105,6 +105,17 @@ def _is_installed(req):
         return False
     return True
 
+    try:
+        pkg_resources.get_distribution(req)
+    except pkg_resources.DistributionNotFound:
+        return False
+    except pkg_resources.VersionConflict as exc:
+        logger.warning(
+            "instrumentation for package %s is available but version %s is installed. Skipping."
+            % (exc.req, exc.dist.as_requirement())
+        )
+        return False
+    return True
 
 def _find_installed_libraries():
     libs = default_instrumentations[:]
