@@ -1,0 +1,88 @@
+Metadata-Version: 2.1
+Name: opentelemetry-instrumentation-falcon
+Version: 0.22.dev0
+Summary: Falcon instrumentation for OpenTelemetry
+Home-page: https://github.com/open-telemetry/opentelemetry-python-contrib/tree/main/instrumentation/opentelemetry-instrumentation-falcon
+Author: OpenTelemetry Authors
+Author-email: cncf-opentelemetry-contributors@lists.cncf.io
+License: Apache-2.0
+Platform: any
+Classifier: Development Status :: 4 - Beta
+Classifier: Intended Audience :: Developers
+Classifier: License :: OSI Approved :: Apache Software License
+Classifier: Programming Language :: Python
+Classifier: Programming Language :: Python :: 3
+Classifier: Programming Language :: Python :: 3.4
+Classifier: Programming Language :: Python :: 3.6
+Classifier: Programming Language :: Python :: 3.7
+Classifier: Programming Language :: Python :: 3.8
+Requires-Python: >=3.4
+Description-Content-Type: text/x-rst
+Requires-Dist: opentelemetry-instrumentation-wsgi (==0.22.dev0)
+Requires-Dist: opentelemetry-util-http (==0.22.dev0)
+Requires-Dist: opentelemetry-instrumentation (==0.22.dev0)
+Requires-Dist: opentelemetry-api (==1.3.0.dev0)
+Requires-Dist: opentelemetry-semantic-conventions (==0.22.dev0)
+Provides-Extra: instruments
+Requires-Dist: falcon (~=2.0) ; extra == 'instruments'
+Provides-Extra: test
+Requires-Dist: opentelemetry-test (==0.22.dev0) ; extra == 'test'
+Requires-Dist: parameterized (==0.7.4) ; extra == 'test'
+Requires-Dist: falcon (~=2.0) ; extra == 'test'
+
+OpenTelemetry Falcon Tracing
+============================
+
+|pypi|
+
+.. |pypi| image:: https://badge.fury.io/py/opentelemetry-instrumentation-falcon.svg
+   :target: https://pypi.org/project/opentelemetry-instrumentation-falcon/
+
+This library builds on the OpenTelemetry WSGI middleware to track web requests
+in Falcon applications.
+
+Installation
+------------
+
+::
+
+    pip install opentelemetry-instrumentation-falcon
+
+Configuration
+-------------
+
+Exclude lists
+*************
+To exclude certain URLs from being tracked, set the environment variable ``OTEL_PYTHON_FALCON_EXCLUDED_URLS`` with comma delimited regexes representing which URLs to exclude.
+
+For example,
+
+::
+
+    export OTEL_PYTHON_FALCON_EXCLUDED_URLS="client/.*/info,healthcheck"
+
+will exclude requests such as ``https://site/client/123/info`` and ``https://site/xyz/healthcheck``.
+
+Request attributes
+********************
+To extract certain attributes from Falcon's request object and use them as span attributes, set the environment variable ``OTEL_PYTHON_FALCON_TRACED_REQUEST_ATTRS`` to a comma
+delimited list of request attribute names. 
+
+For example,
+
+::
+
+    export OTEL_PYTHON_FALCON_TRACED_REQUEST_ATTRS='query_string,uri_template'
+
+will extract path_info and content_type attributes from every traced request and add them as span attritbues.
+
+Falcon Request object reference: https://falcon.readthedocs.io/en/stable/api/request_and_response.html#id1
+
+References
+----------
+
+* `OpenTelemetry Falcon Instrumentation <https://opentelemetry-python-contrib.readthedocs.io/en/latest/instrumentation/falcon/falcon.html>`_
+* `OpenTelemetry Project <https://opentelemetry.io/>`_
+* `OpenTelemetry Python Examples <https://github.com/open-telemetry/opentelemetry-python/tree/main/docs/examples>`_
+
+
