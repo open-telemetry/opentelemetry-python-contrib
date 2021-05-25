@@ -1,3 +1,4 @@
+astor~=0.8.1
 pylint~=2.6
 flake8~=3.7
 isort~=5.6
