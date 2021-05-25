@@ -17,6 +17,7 @@ from starlette.routing import Match
 
 from opentelemetry.instrumentation.asgi import OpenTelemetryMiddleware
 from opentelemetry.instrumentation.instrumentor import BaseInstrumentor
+from opentelemetry.semconv.trace import SpanAttributes
 from opentelemetry.util.http import get_excluded_urls
 
 _excluded_urls = get_excluded_urls("STARLETTE")
@@ -31,7 +32,7 @@ class StarletteInstrumentor(BaseInstrumentor):
     _original_starlette = None
 
     @staticmethod
-    def instrument_app(app: applications.Starlette):
+    def instrument_app(app: applications.Starlette, tracer_provider=None):
         """Instrument an uninstrumented Starlette application.
         """
         if not getattr(app, "is_instrumented_by_opentelemetry", False):
@@ -39,11 +40,13 @@ class StarletteInstrumentor(BaseInstrumentor):
                 OpenTelemetryMiddleware,
                 excluded_urls=_excluded_urls,
                 span_details_callback=_get_route_details,
+                tracer_provider=tracer_provider,
             )
             app.is_instrumented_by_opentelemetry = True
 
     def _instrument(self, **kwargs):
         self._original_starlette = applications.Starlette
+        _InstrumentedStarlette._tracer_provider = kwargs.get("tracer_provider")
         applications.Starlette = _InstrumentedStarlette
 
     def _uninstrument(self, **kwargs):
@@ -51,12 +54,15 @@ class StarletteInstrumentor(BaseInstrumentor):
 
 
 class _InstrumentedStarlette(applications.Starlette):
+    _tracer_provider = None
+
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
         self.add_middleware(
             OpenTelemetryMiddleware,
             excluded_urls=_excluded_urls,
             span_details_callback=_get_route_details,
+            tracer_provider=_InstrumentedStarlette._tracer_provider,
         )
 
 
@@ -82,5 +88,5 @@ def _get_route_details(scope):
     span_name = route or scope.get("method", "")
     attributes = {}
     if route:
-        attributes["http.route"] = route
+        attributes[SpanAttributes.HTTP_ROUTE] = route
     return span_name, attributes

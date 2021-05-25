@@ -17,8 +17,15 @@ from unittest.mock import Mock, patch
 from falcon import testing
 
 from opentelemetry.instrumentation.falcon import FalconInstrumentor
+from opentelemetry.instrumentation.propagators import (
+    TraceResponsePropagator,
+    get_global_response_propagator,
+    set_global_response_propagator,
+)
+from opentelemetry.sdk.resources import Resource
+from opentelemetry.semconv.trace import SpanAttributes
 from opentelemetry.test.test_base import TestBase
-from opentelemetry.trace import StatusCode
+from opentelemetry.trace import StatusCode, format_span_id, format_trace_id
 from opentelemetry.util.http import get_excluded_urls, get_traced_request_attrs
 
 from .app import make_app
@@ -99,17 +106,17 @@ class TestFalconInstrumentation(TestFalconBase):
         self.assert_span_has_attributes(
             span,
             {
-                "http.method": method,
-                "http.server_name": "falconframework.org",
-                "http.scheme": "http",
-                "net.host.port": 80,
-                "http.host": "falconframework.org",
-                "http.target": "/",
-                "net.peer.ip": "127.0.0.1",
-                "net.peer.port": "65133",
-                "http.flavor": "1.1",
+                SpanAttributes.HTTP_METHOD: method,
+                SpanAttributes.HTTP_SERVER_NAME: "falconframework.org",
+                SpanAttributes.HTTP_SCHEME: "http",
+                SpanAttributes.NET_HOST_PORT: 80,
+                SpanAttributes.HTTP_HOST: "falconframework.org",
+                SpanAttributes.HTTP_TARGET: "/",
+                SpanAttributes.NET_PEER_IP: "127.0.0.1",
+                SpanAttributes.NET_PEER_PORT: "65133",
+                SpanAttributes.HTTP_FLAVOR: "1.1",
                 "falcon.resource": "HelloWorldResource",
-                "http.status_code": 201,
+                SpanAttributes.HTTP_STATUS_CODE: 201,
             },
         )
         self.memory_exporter.clear()
@@ -124,16 +131,16 @@ class TestFalconInstrumentation(TestFalconBase):
         self.assert_span_has_attributes(
             span,
             {
-                "http.method": "GET",
-                "http.server_name": "falconframework.org",
-                "http.scheme": "http",
-                "net.host.port": 80,
-                "http.host": "falconframework.org",
-                "http.target": "/",
-                "net.peer.ip": "127.0.0.1",
-                "net.peer.port": "65133",
-                "http.flavor": "1.1",
-                "http.status_code": 404,
+                SpanAttributes.HTTP_METHOD: "GET",
+                SpanAttributes.HTTP_SERVER_NAME: "falconframework.org",
+                SpanAttributes.HTTP_SCHEME: "http",
+                SpanAttributes.NET_HOST_PORT: 80,
+                SpanAttributes.HTTP_HOST: "falconframework.org",
+                SpanAttributes.HTTP_TARGET: "/",
+                SpanAttributes.NET_PEER_IP: "127.0.0.1",
+                SpanAttributes.NET_PEER_PORT: "65133",
+                SpanAttributes.HTTP_FLAVOR: "1.1",
+                SpanAttributes.HTTP_STATUS_CODE: 404,
             },
         )
 
@@ -155,16 +162,16 @@ class TestFalconInstrumentation(TestFalconBase):
         self.assert_span_has_attributes(
             span,
             {
-                "http.method": "GET",
-                "http.server_name": "falconframework.org",
-                "http.scheme": "http",
-                "net.host.port": 80,
-                "http.host": "falconframework.org",
-                "http.target": "/",
-                "net.peer.ip": "127.0.0.1",
-                "net.peer.port": "65133",
-                "http.flavor": "1.1",
-                "http.status_code": 500,
+                SpanAttributes.HTTP_METHOD: "GET",
+                SpanAttributes.HTTP_SERVER_NAME: "falconframework.org",
+                SpanAttributes.HTTP_SCHEME: "http",
+                SpanAttributes.NET_HOST_PORT: 80,
+                SpanAttributes.HTTP_HOST: "falconframework.org",
+                SpanAttributes.HTTP_TARGET: "/",
+                SpanAttributes.NET_PEER_IP: "127.0.0.1",
+                SpanAttributes.NET_PEER_PORT: "65133",
+                SpanAttributes.HTTP_FLAVOR: "1.1",
+                SpanAttributes.HTTP_STATUS_CODE: 500,
             },
         )
 
@@ -197,6 +204,28 @@ class TestFalconInstrumentation(TestFalconBase):
         self.assertEqual(span.attributes["query_string"], "q=abc")
         self.assertNotIn("not_available_attr", span.attributes)
 
+    def test_trace_response(self):
+        orig = get_global_response_propagator()
+        set_global_response_propagator(TraceResponsePropagator())
+
+        response = self.client().simulate_get(path="/hello?q=abc")
+        headers = response.headers
+        span = self.memory_exporter.get_finished_spans()[0]
+
+        self.assertIn("traceresponse", headers)
+        self.assertEqual(
+            headers["access-control-expose-headers"], "traceresponse",
+        )
+        self.assertEqual(
+            headers["traceresponse"],
+            "00-{0}-{1}-01".format(
+                format_trace_id(span.get_span_context().trace_id),
+                format_span_id(span.get_span_context().span_id),
+            ),
+        )
+
+        set_global_response_propagator(orig)
+
     def test_traced_not_recording(self):
         mock_tracer = Mock()
         mock_span = Mock()
@@ -209,6 +238,36 @@ class TestFalconInstrumentation(TestFalconBase):
             self.assertTrue(mock_span.is_recording.called)
             self.assertFalse(mock_span.set_attribute.called)
             self.assertFalse(mock_span.set_status.called)
+
+
+class TestFalconInstrumentationWithTracerProvider(TestBase):
+    def setUp(self):
+        super().setUp()
+        resource = Resource.create({"resource-key": "resource-value"})
+        result = self.create_tracer_provider(resource=resource)
+        tracer_provider, exporter = result
+        self.exporter = exporter
+
+        FalconInstrumentor().instrument(tracer_provider=tracer_provider)
+        self.app = make_app()
+
+    def client(self):
+        return testing.TestClient(self.app)
+
+    def tearDown(self):
+        super().tearDown()
+        with self.disable_logging():
+            FalconInstrumentor().uninstrument()
+
+    def test_traced_request(self):
+        self.client().simulate_request(method="GET", path="/hello")
+        spans = self.exporter.get_finished_spans()
+        self.assertEqual(len(spans), 1)
+        span = spans[0]
+        self.assertEqual(
+            span.resource.attributes["resource-key"], "resource-value"
+        )
+        self.exporter.clear()
 
 
 class TestFalconInstrumentationHooks(TestFalconBase):

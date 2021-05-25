@@ -83,6 +83,10 @@ from wrapt import wrap_function_wrapper
 
 from opentelemetry import context, trace
 from opentelemetry.instrumentation.instrumentor import BaseInstrumentor
+from opentelemetry.instrumentation.propagators import (
+    FuncSetter,
+    get_global_response_propagator,
+)
 from opentelemetry.instrumentation.tornado.version import __version__
 from opentelemetry.instrumentation.utils import (
     extract_attributes_from_object,
@@ -90,7 +94,8 @@ from opentelemetry.instrumentation.utils import (
     unwrap,
 )
 from opentelemetry.propagate import extract
-from opentelemetry.trace.status import Status
+from opentelemetry.semconv.trace import SpanAttributes
+from opentelemetry.trace.status import Status, StatusCode
 from opentelemetry.util._time import _time_ns
 from opentelemetry.util.http import get_excluded_urls, get_traced_request_attrs
 
@@ -104,6 +109,8 @@ _OTEL_PATCHED_KEY = "_otel_patched_key"
 
 _excluded_urls = get_excluded_urls("TORNADO")
 _traced_request_attrs = get_traced_request_attrs("TORNADO")
+
+response_propagation_setter = FuncSetter(tornado.web.RequestHandler.add_header)
 
 
 class TornadoInstrumentor(BaseInstrumentor):
@@ -216,17 +223,17 @@ def _log_exception(tracer, func, handler, args, kwargs):
 
 def _get_attributes_from_request(request):
     attrs = {
-        "http.method": request.method,
-        "http.scheme": request.protocol,
-        "http.host": request.host,
-        "http.target": request.path,
+        SpanAttributes.HTTP_METHOD: request.method,
+        SpanAttributes.HTTP_SCHEME: request.protocol,
+        SpanAttributes.HTTP_HOST: request.host,
+        SpanAttributes.HTTP_TARGET: request.path,
     }
 
     if request.host:
-        attrs["http.host"] = request.host
+        attrs[SpanAttributes.HTTP_HOST] = request.host
 
     if request.remote_ip:
-        attrs["net.peer.ip"] = request.remote_ip
+        attrs[SpanAttributes.NET_PEER_IP] = request.remote_ip
 
     return extract_attributes_from_object(
         request, _traced_request_attrs, attrs
@@ -256,6 +263,14 @@ def _start_span(tracer, handler, start_time) -> _TraceContext:
     activation.__enter__()  # pylint: disable=E1101
     ctx = _TraceContext(activation, span, token)
     setattr(handler, _HANDLER_CONTEXT_KEY, ctx)
+
+    # finish handler is called after the response is sent back to
+    # the client so it is too late to inject trace response headers
+    # there.
+    propagator = get_global_response_propagator()
+    if propagator:
+        propagator.inject(handler, setter=response_propagation_setter)
+
     return ctx
 
 
@@ -283,11 +298,15 @@ def _finish_span(tracer, handler, error=None):
         return
 
     if ctx.span.is_recording():
-        ctx.span.set_attribute("http.status_code", status_code)
+        ctx.span.set_attribute(SpanAttributes.HTTP_STATUS_CODE, status_code)
+        otel_status_code = http_status_to_status_code(status_code)
+        otel_status_description = None
+        if otel_status_code is StatusCode.ERROR:
+            otel_status_description = reason
         ctx.span.set_status(
             Status(
-                status_code=http_status_to_status_code(status_code),
-                description=reason,
+                status_code=otel_status_code,
+                description=otel_status_description,
             )
         )
 

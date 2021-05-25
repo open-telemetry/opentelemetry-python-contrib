@@ -99,11 +99,16 @@ import opentelemetry.instrumentation.wsgi as otel_wsgi
 from opentelemetry import context, trace
 from opentelemetry.instrumentation.falcon.version import __version__
 from opentelemetry.instrumentation.instrumentor import BaseInstrumentor
+from opentelemetry.instrumentation.propagators import (
+    FuncSetter,
+    get_global_response_propagator,
+)
 from opentelemetry.instrumentation.utils import (
     extract_attributes_from_object,
     http_status_to_status_code,
 )
 from opentelemetry.propagate import extract
+from opentelemetry.semconv.trace import SpanAttributes
 from opentelemetry.trace.status import Status
 from opentelemetry.util._time import _time_ns
 from opentelemetry.util.http import get_excluded_urls, get_traced_request_attrs
@@ -119,6 +124,7 @@ _ENVIRON_EXC = "opentelemetry-falcon.exc"
 
 _excluded_urls = get_excluded_urls("FALCON")
 _traced_request_attrs = get_traced_request_attrs("FALCON")
+_response_propagation_setter = FuncSetter(falcon.api.Response.append_header)
 
 
 class FalconInstrumentor(BaseInstrumentor):
@@ -140,13 +146,15 @@ class _InstrumentedFalconAPI(falcon.API):
     def __init__(self, *args, **kwargs):
         # inject trace middleware
         middlewares = kwargs.pop("middleware", [])
+        tracer_provider = kwargs.pop("tracer_provider", None)
         if not isinstance(middlewares, (list, tuple)):
             middlewares = [middlewares]
 
-        self._tracer = trace.get_tracer(__name__, __version__)
+        self._tracer = trace.get_tracer(__name__, __version__, tracer_provider)
+
         trace_middleware = _TraceMiddleware(
             self._tracer,
-            kwargs.pop("traced_request_attributes", None),
+            kwargs.pop("traced_request_attributes", _traced_request_attrs),
             kwargs.pop("request_hook", None),
             kwargs.pop("response_hook", None),
         )
@@ -207,7 +215,7 @@ class _TraceMiddleware:
         response_hook=None,
     ):
         self.tracer = tracer
-        self._traced_request_attrs = _traced_request_attrs
+        self._traced_request_attrs = traced_request_attrs
         self._request_hook = request_hook
         self._response_hook = response_hook
 
@@ -265,13 +273,17 @@ class _TraceMiddleware:
         except ValueError:
             pass
         finally:
-            span.set_attribute("http.status_code", status_code)
+            span.set_attribute(SpanAttributes.HTTP_STATUS_CODE, status_code)
             span.set_status(
                 Status(
                     status_code=http_status_to_status_code(status_code),
                     description=reason,
                 )
             )
+
+        propagator = get_global_response_propagator()
+        if propagator:
+            propagator.inject(resp, setter=_response_propagation_setter)
 
         if self._response_hook:
             self._response_hook(span, req, resp)

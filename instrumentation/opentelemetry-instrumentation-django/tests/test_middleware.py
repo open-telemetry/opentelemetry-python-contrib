@@ -26,10 +26,21 @@ from opentelemetry.instrumentation.django import (
     DjangoInstrumentor,
     _DjangoMiddleware,
 )
+from opentelemetry.instrumentation.propagators import (
+    TraceResponsePropagator,
+    set_global_response_propagator,
+)
+from opentelemetry.sdk import resources
 from opentelemetry.sdk.trace import Span
+from opentelemetry.semconv.trace import SpanAttributes
 from opentelemetry.test.test_base import TestBase
 from opentelemetry.test.wsgitestutil import WsgiTestBase
-from opentelemetry.trace import SpanKind, StatusCode
+from opentelemetry.trace import (
+    SpanKind,
+    StatusCode,
+    format_span_id,
+    format_trace_id,
+)
 from opentelemetry.util.http import get_excluded_urls, get_traced_request_attrs
 
 # pylint: disable=import-error
@@ -110,17 +121,17 @@ class TestMiddleware(TestBase, WsgiTestBase):
         )
         self.assertEqual(span.kind, SpanKind.SERVER)
         self.assertEqual(span.status.status_code, StatusCode.UNSET)
-        self.assertEqual(span.attributes["http.method"], "GET")
+        self.assertEqual(span.attributes[SpanAttributes.HTTP_METHOD], "GET")
         self.assertEqual(
-            span.attributes["http.url"],
+            span.attributes[SpanAttributes.HTTP_URL],
             "http://testserver/route/2020/template/",
         )
         self.assertEqual(
-            span.attributes["http.route"],
+            span.attributes[SpanAttributes.HTTP_ROUTE],
             "^route/(?P<year>[0-9]{4})/template/$",
         )
-        self.assertEqual(span.attributes["http.scheme"], "http")
-        self.assertEqual(span.attributes["http.status_code"], 200)
+        self.assertEqual(span.attributes[SpanAttributes.HTTP_SCHEME], "http")
+        self.assertEqual(span.attributes[SpanAttributes.HTTP_STATUS_CODE], 200)
 
     def test_traced_get(self):
         Client().get("/traced/")
@@ -135,13 +146,16 @@ class TestMiddleware(TestBase, WsgiTestBase):
         )
         self.assertEqual(span.kind, SpanKind.SERVER)
         self.assertEqual(span.status.status_code, StatusCode.UNSET)
-        self.assertEqual(span.attributes["http.method"], "GET")
+        self.assertEqual(span.attributes[SpanAttributes.HTTP_METHOD], "GET")
         self.assertEqual(
-            span.attributes["http.url"], "http://testserver/traced/"
+            span.attributes[SpanAttributes.HTTP_URL],
+            "http://testserver/traced/",
         )
-        self.assertEqual(span.attributes["http.route"], "^traced/")
-        self.assertEqual(span.attributes["http.scheme"], "http")
-        self.assertEqual(span.attributes["http.status_code"], 200)
+        self.assertEqual(
+            span.attributes[SpanAttributes.HTTP_ROUTE], "^traced/"
+        )
+        self.assertEqual(span.attributes[SpanAttributes.HTTP_SCHEME], "http")
+        self.assertEqual(span.attributes[SpanAttributes.HTTP_STATUS_CODE], 200)
 
     def test_not_recording(self):
         mock_tracer = Mock()
@@ -169,13 +183,16 @@ class TestMiddleware(TestBase, WsgiTestBase):
         )
         self.assertEqual(span.kind, SpanKind.SERVER)
         self.assertEqual(span.status.status_code, StatusCode.UNSET)
-        self.assertEqual(span.attributes["http.method"], "POST")
+        self.assertEqual(span.attributes[SpanAttributes.HTTP_METHOD], "POST")
         self.assertEqual(
-            span.attributes["http.url"], "http://testserver/traced/"
+            span.attributes[SpanAttributes.HTTP_URL],
+            "http://testserver/traced/",
         )
-        self.assertEqual(span.attributes["http.route"], "^traced/")
-        self.assertEqual(span.attributes["http.scheme"], "http")
-        self.assertEqual(span.attributes["http.status_code"], 200)
+        self.assertEqual(
+            span.attributes[SpanAttributes.HTTP_ROUTE], "^traced/"
+        )
+        self.assertEqual(span.attributes[SpanAttributes.HTTP_SCHEME], "http")
+        self.assertEqual(span.attributes[SpanAttributes.HTTP_STATUS_CODE], 200)
 
     def test_error(self):
         with self.assertRaises(ValueError):
@@ -191,19 +208,24 @@ class TestMiddleware(TestBase, WsgiTestBase):
         )
         self.assertEqual(span.kind, SpanKind.SERVER)
         self.assertEqual(span.status.status_code, StatusCode.ERROR)
-        self.assertEqual(span.attributes["http.method"], "GET")
+        self.assertEqual(span.attributes[SpanAttributes.HTTP_METHOD], "GET")
         self.assertEqual(
-            span.attributes["http.url"], "http://testserver/error/"
+            span.attributes[SpanAttributes.HTTP_URL],
+            "http://testserver/error/",
         )
-        self.assertEqual(span.attributes["http.route"], "^error/")
-        self.assertEqual(span.attributes["http.scheme"], "http")
-        self.assertEqual(span.attributes["http.status_code"], 500)
+        self.assertEqual(span.attributes[SpanAttributes.HTTP_ROUTE], "^error/")
+        self.assertEqual(span.attributes[SpanAttributes.HTTP_SCHEME], "http")
+        self.assertEqual(span.attributes[SpanAttributes.HTTP_STATUS_CODE], 500)
 
         self.assertEqual(len(span.events), 1)
         event = span.events[0]
         self.assertEqual(event.name, "exception")
-        self.assertEqual(event.attributes["exception.type"], "ValueError")
-        self.assertEqual(event.attributes["exception.message"], "error")
+        self.assertEqual(
+            event.attributes[SpanAttributes.EXCEPTION_TYPE], "ValueError"
+        )
+        self.assertEqual(
+            event.attributes[SpanAttributes.EXCEPTION_MESSAGE], "error"
+        )
 
     def test_exclude_lists(self):
         client = Client()
@@ -309,3 +331,61 @@ class TestMiddleware(TestBase, WsgiTestBase):
         self.assertIsInstance(response_hook_args[1], HttpRequest)
         self.assertIsInstance(response_hook_args[2], HttpResponse)
         self.assertEqual(response_hook_args[2], response)
+
+    def test_trace_response_headers(self):
+        response = Client().get("/span_name/1234/")
+
+        self.assertNotIn("Server-Timing", response.headers)
+        self.memory_exporter.clear()
+
+        set_global_response_propagator(TraceResponsePropagator())
+
+        response = Client().get("/span_name/1234/")
+        span = self.memory_exporter.get_finished_spans()[0]
+
+        self.assertIn("traceresponse", response.headers)
+        self.assertEqual(
+            response.headers["Access-Control-Expose-Headers"], "traceresponse",
+        )
+        self.assertEqual(
+            response.headers["traceresponse"],
+            "00-{0}-{1}-01".format(
+                format_trace_id(span.get_span_context().trace_id),
+                format_span_id(span.get_span_context().span_id),
+            ),
+        )
+        self.memory_exporter.clear()
+
+
+class TestMiddlewareWithTracerProvider(TestBase, WsgiTestBase):
+    @classmethod
+    def setUpClass(cls):
+        super().setUpClass()
+
+    def setUp(self):
+        super().setUp()
+        setup_test_environment()
+        resource = resources.Resource.create(
+            {"resource-key": "resource-value"}
+        )
+        result = self.create_tracer_provider(resource=resource)
+        tracer_provider, exporter = result
+        self.exporter = exporter
+        _django_instrumentor.instrument(tracer_provider=tracer_provider)
+
+    def tearDown(self):
+        super().tearDown()
+        teardown_test_environment()
+        _django_instrumentor.uninstrument()
+
+    def test_tracer_provider_traced(self):
+        Client().post("/traced/")
+
+        spans = self.exporter.get_finished_spans()
+        self.assertEqual(len(spans), 1)
+
+        span = spans[0]
+
+        self.assertEqual(
+            span.resource.attributes["resource-key"], "resource-value"
+        )

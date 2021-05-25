@@ -30,6 +30,7 @@ from opentelemetry.instrumentation.asgi.version import __version__  # noqa
 from opentelemetry.instrumentation.utils import http_status_to_status_code
 from opentelemetry.propagate import extract
 from opentelemetry.propagators.textmap import Getter
+from opentelemetry.semconv.trace import SpanAttributes
 from opentelemetry.trace.status import Status, StatusCode
 
 
@@ -80,27 +81,29 @@ def collect_request_attributes(scope):
         http_url = http_url + ("?" + urllib.parse.unquote(query_string))
 
     result = {
-        "http.scheme": scope.get("scheme"),
-        "http.host": server_host,
-        "net.host.port": port,
-        "http.flavor": scope.get("http_version"),
-        "http.target": scope.get("path"),
-        "http.url": http_url,
+        SpanAttributes.HTTP_SCHEME: scope.get("scheme"),
+        SpanAttributes.HTTP_HOST: server_host,
+        SpanAttributes.NET_HOST_PORT: port,
+        SpanAttributes.HTTP_FLAVOR: scope.get("http_version"),
+        SpanAttributes.HTTP_TARGET: scope.get("path"),
+        SpanAttributes.HTTP_URL: http_url,
     }
     http_method = scope.get("method")
     if http_method:
-        result["http.method"] = http_method
+        result[SpanAttributes.HTTP_METHOD] = http_method
 
     http_host_value_list = asgi_getter.get(scope, "host")
     if http_host_value_list:
-        result["http.server_name"] = ",".join(http_host_value_list)
+        result[SpanAttributes.HTTP_SERVER_NAME] = ",".join(
+            http_host_value_list
+        )
     http_user_agent = asgi_getter.get(scope, "user-agent")
     if http_user_agent:
-        result["http.user_agent"] = http_user_agent[0]
+        result[SpanAttributes.HTTP_USER_AGENT] = http_user_agent[0]
 
     if "client" in scope and scope["client"] is not None:
-        result["net.peer.ip"] = scope.get("client")[0]
-        result["net.peer.port"] = scope.get("client")[1]
+        result[SpanAttributes.NET_PEER_IP] = scope.get("client")[0]
+        result[SpanAttributes.NET_PEER_PORT] = scope.get("client")[1]
 
     # remove None values
     result = {k: v for k, v in result.items() if v is not None}
@@ -133,7 +136,7 @@ def set_status_code(span, status_code):
             )
         )
     else:
-        span.set_attribute("http.status_code", status_code)
+        span.set_attribute(SpanAttributes.HTTP_STATUS_CODE, status_code)
         span.set_status(Status(http_status_to_status_code(status_code)))
 
 
@@ -164,11 +167,19 @@ class OpenTelemetryMiddleware:
             and a tuple, representing the desired span name and a
             dictionary with any additional span attributes to set.
             Optional: Defaults to get_default_span_details.
+        tracer_provider: The optional tracer provider to use. If omitted
+            the current globally configured one is used.
     """
 
-    def __init__(self, app, excluded_urls=None, span_details_callback=None):
+    def __init__(
+        self,
+        app,
+        excluded_urls=None,
+        span_details_callback=None,
+        tracer_provider=None,
+    ):
         self.app = guarantee_single_callable(app)
-        self.tracer = trace.get_tracer(__name__, __version__)
+        self.tracer = trace.get_tracer(__name__, __version__, tracer_provider)
         self.span_details_callback = (
             span_details_callback or get_default_span_details
         )

@@ -18,6 +18,13 @@ from flask import Flask, request
 
 from opentelemetry import trace
 from opentelemetry.instrumentation.flask import FlaskInstrumentor
+from opentelemetry.instrumentation.propagators import (
+    TraceResponsePropagator,
+    get_global_response_propagator,
+    set_global_response_propagator,
+)
+from opentelemetry.sdk.resources import Resource
+from opentelemetry.semconv.trace import SpanAttributes
 from opentelemetry.test.test_base import TestBase
 from opentelemetry.test.wsgitestutil import WsgiTestBase
 from opentelemetry.util.http import get_excluded_urls
@@ -28,14 +35,14 @@ from .base_test import InstrumentationTest
 
 def expected_attributes(override_attributes):
     default_attributes = {
-        "http.method": "GET",
-        "http.server_name": "localhost",
-        "http.scheme": "http",
-        "net.host.port": 80,
-        "http.host": "localhost",
-        "http.target": "/",
-        "http.flavor": "1.1",
-        "http.status_code": 200,
+        SpanAttributes.HTTP_METHOD: "GET",
+        SpanAttributes.HTTP_SERVER_NAME: "localhost",
+        SpanAttributes.HTTP_SCHEME: "http",
+        SpanAttributes.NET_HOST_PORT: 80,
+        SpanAttributes.HTTP_HOST: "localhost",
+        SpanAttributes.HTTP_TARGET: "/",
+        SpanAttributes.HTTP_FLAVOR: "1.1",
+        SpanAttributes.HTTP_STATUS_CODE: 200,
     }
     for key, val in override_attributes.items():
         default_attributes[key] = val
@@ -109,7 +116,10 @@ class TestProgrammatic(InstrumentationTest, TestBase, WsgiTestBase):
 
     def test_simple(self):
         expected_attrs = expected_attributes(
-            {"http.target": "/hello/123", "http.route": "/hello/<int:helloid>"}
+            {
+                SpanAttributes.HTTP_TARGET: "/hello/123",
+                SpanAttributes.HTTP_ROUTE: "/hello/<int:helloid>",
+            }
         )
         self.client.get("/hello/123")
 
@@ -118,6 +128,31 @@ class TestProgrammatic(InstrumentationTest, TestBase, WsgiTestBase):
         self.assertEqual(span_list[0].name, "/hello/<int:helloid>")
         self.assertEqual(span_list[0].kind, trace.SpanKind.SERVER)
         self.assertEqual(span_list[0].attributes, expected_attrs)
+
+    def test_trace_response(self):
+        orig = get_global_response_propagator()
+
+        set_global_response_propagator(TraceResponsePropagator())
+        response = self.client.get("/hello/123")
+        headers = response.headers
+
+        span_list = self.memory_exporter.get_finished_spans()
+        self.assertEqual(len(span_list), 1)
+        span = span_list[0]
+
+        self.assertIn("traceresponse", headers)
+        self.assertEqual(
+            headers["access-control-expose-headers"], "traceresponse",
+        )
+        self.assertEqual(
+            headers["traceresponse"],
+            "00-{0}-{1}-01".format(
+                trace.format_trace_id(span.get_span_context().trace_id),
+                trace.format_span_id(span.get_span_context().span_id),
+            ),
+        )
+
+        set_global_response_propagator(orig)
 
     def test_not_recording(self):
         mock_tracer = Mock()
@@ -135,9 +170,9 @@ class TestProgrammatic(InstrumentationTest, TestBase, WsgiTestBase):
     def test_404(self):
         expected_attrs = expected_attributes(
             {
-                "http.method": "POST",
-                "http.target": "/bye",
-                "http.status_code": 404,
+                SpanAttributes.HTTP_METHOD: "POST",
+                SpanAttributes.HTTP_TARGET: "/bye",
+                SpanAttributes.HTTP_STATUS_CODE: 404,
             }
         )
 
@@ -153,9 +188,9 @@ class TestProgrammatic(InstrumentationTest, TestBase, WsgiTestBase):
     def test_internal_error(self):
         expected_attrs = expected_attributes(
             {
-                "http.target": "/hello/500",
-                "http.route": "/hello/<int:helloid>",
-                "http.status_code": 500,
+                SpanAttributes.HTTP_TARGET: "/hello/500",
+                SpanAttributes.HTTP_ROUTE: "/hello/<int:helloid>",
+                SpanAttributes.HTTP_STATUS_CODE: 500,
             }
         )
         resp = self.client.get("/hello/500")
@@ -326,5 +361,74 @@ class TestProgrammaticHooksWithoutApp(
 
         span_list = self.memory_exporter.get_finished_spans()
         self.assertEqual(len(span_list), 1)
+
         self.assertEqual(span_list[0].name, "without app")
         self.assertEqual(span_list[0].attributes, expected_attrs)
+        self.assertEqual(span_list[0].name, "instrument-without-app")
+
+
+class TestProgrammaticCustomTracerProvider(
+    InstrumentationTest, TestBase, WsgiTestBase
+):
+    def setUp(self):
+        super().setUp()
+        resource = Resource.create({"service.name": "flask-api"})
+        result = self.create_tracer_provider(resource=resource)
+        tracer_provider, exporter = result
+        self.memory_exporter = exporter
+
+        self.app = Flask(__name__)
+
+        FlaskInstrumentor().instrument_app(
+            self.app, tracer_provider=tracer_provider
+        )
+        self._common_initialization()
+
+    def tearDown(self):
+        super().tearDown()
+        with self.disable_logging():
+            FlaskInstrumentor().uninstrument_app(self.app)
+
+    def test_custom_span_name(self):
+        self.client.get("/hello/123")
+
+        span_list = self.memory_exporter.get_finished_spans()
+        self.assertEqual(len(span_list), 1)
+        self.assertEqual(
+            span_list[0].resource.attributes["service.name"], "flask-api"
+        )
+
+
+class TestProgrammaticCustomTracerProviderWithoutApp(
+    InstrumentationTest, TestBase, WsgiTestBase
+):
+    def setUp(self):
+        super().setUp()
+        resource = Resource.create({"service.name": "flask-api-no-app"})
+        result = self.create_tracer_provider(resource=resource)
+        tracer_provider, exporter = result
+        self.memory_exporter = exporter
+
+        FlaskInstrumentor().instrument(tracer_provider=tracer_provider)
+        # pylint: disable=import-outside-toplevel,reimported,redefined-outer-name
+        from flask import Flask
+
+        self.app = Flask(__name__)
+
+        self._common_initialization()
+
+    def tearDown(self):
+        super().tearDown()
+        with self.disable_logging():
+            FlaskInstrumentor().uninstrument()
+
+    def test_custom_span_name(self):
+        self.client.get("/hello/123")
+
+        span_list = self.memory_exporter.get_finished_spans()
+        self.assertEqual(len(span_list), 1)
+        self.assertEqual(
+            span_list[0].resource.attributes["service.name"],
+            "flask-api-no-app",
+        )
+

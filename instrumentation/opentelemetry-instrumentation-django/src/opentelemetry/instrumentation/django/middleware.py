@@ -20,6 +20,9 @@ from django.http import HttpRequest, HttpResponse
 
 from opentelemetry.context import attach, detach
 from opentelemetry.instrumentation.django.version import __version__
+from opentelemetry.instrumentation.propagators import (
+    get_global_response_propagator,
+)
 from opentelemetry.instrumentation.utils import extract_attributes_from_object
 from opentelemetry.instrumentation.wsgi import (
     add_response_attributes,
@@ -27,7 +30,8 @@ from opentelemetry.instrumentation.wsgi import (
     wsgi_getter,
 )
 from opentelemetry.propagate import extract
-from opentelemetry.trace import Span, SpanKind, get_tracer, use_span
+from opentelemetry.semconv.trace import SpanAttributes
+from opentelemetry.trace import Span, SpanKind, use_span
 from opentelemetry.util.http import get_excluded_urls, get_traced_request_attrs
 
 try:
@@ -45,10 +49,24 @@ except ImportError:
 
 _logger = getLogger(__name__)
 _attributes_by_preference = [
-    ["http.scheme", "http.host", "http.target"],
-    ["http.scheme", "http.server_name", "net.host.port", "http.target"],
-    ["http.scheme", "net.host.name", "net.host.port", "http.target"],
-    ["http.url"],
+    [
+        SpanAttributes.HTTP_SCHEME,
+        SpanAttributes.HTTP_HOST,
+        SpanAttributes.HTTP_TARGET,
+    ],
+    [
+        SpanAttributes.HTTP_SCHEME,
+        SpanAttributes.HTTP_SERVER_NAME,
+        SpanAttributes.NET_HOST_PORT,
+        SpanAttributes.HTTP_TARGET,
+    ],
+    [
+        SpanAttributes.HTTP_SCHEME,
+        SpanAttributes.NET_HOST_NAME,
+        SpanAttributes.NET_HOST_PORT,
+        SpanAttributes.HTTP_TARGET,
+    ],
+    [SpanAttributes.HTTP_URL],
 ]
 
 
@@ -64,6 +82,7 @@ class _DjangoMiddleware(MiddlewareMixin):
 
     _traced_request_attrs = get_traced_request_attrs("DJANGO")
     _excluded_urls = get_excluded_urls("DJANGO")
+    _tracer = None
 
     _otel_request_hook: Callable[[Span, HttpRequest], None] = None
     _otel_response_hook: Callable[
@@ -107,9 +126,7 @@ class _DjangoMiddleware(MiddlewareMixin):
 
         token = attach(extract(request_meta, getter=wsgi_getter))
 
-        tracer = get_tracer(__name__, __version__)
-
-        span = tracer.start_span(
+        span = self._tracer.start_span(
             self._get_span_name(request),
             kind=SpanKind.SERVER,
             start_time=request_meta.get(
@@ -156,7 +173,7 @@ class _DjangoMiddleware(MiddlewareMixin):
                 if match:
                     route = getattr(match, "route")
                     if route:
-                        span.set_attribute("http.route", route)
+                        span.set_attribute(SpanAttributes.HTTP_ROUTE, route)
 
     def process_exception(self, request, exception):
         if self._excluded_urls.url_disabled(request.build_absolute_uri("?")):
@@ -179,6 +196,11 @@ class _DjangoMiddleware(MiddlewareMixin):
                 response,
             )
 
+            propagator = get_global_response_propagator()
+            if propagator:
+                propagator.inject(response)
+
+            # record any exceptions raised while processing the request
             exception = request.META.pop(self._environ_exception_key, None)
             if _DjangoMiddleware._otel_response_hook:
                 _DjangoMiddleware._otel_response_hook(  # pylint: disable=not-callable

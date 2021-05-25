@@ -21,6 +21,8 @@ from starlette.routing import Route
 from starlette.testclient import TestClient
 
 import opentelemetry.instrumentation.starlette as otel_starlette
+from opentelemetry.sdk.resources import Resource
+from opentelemetry.semconv.trace import SpanAttributes
 from opentelemetry.test.test_base import TestBase
 from opentelemetry.util.http import get_excluded_urls
 
@@ -67,11 +69,13 @@ class TestStarletteManualInstrumentation(TestBase):
         for span in spans:
             self.assertIn("/user/{username}", span.name)
         self.assertEqual(
-            spans[-1].attributes["http.route"], "/user/{username}"
+            spans[-1].attributes[SpanAttributes.HTTP_ROUTE], "/user/{username}"
         )
         # ensure that at least one attribute that is populated by
         # the asgi instrumentation is successfully feeding though.
-        self.assertEqual(spans[-1].attributes["http.flavor"], "1.1")
+        self.assertEqual(
+            spans[-1].attributes[SpanAttributes.HTTP_FLAVOR], "1.1"
+        )
 
     def test_starlette_excluded_urls(self):
         """Ensure that givem starlette routes are excluded."""
@@ -106,12 +110,26 @@ class TestAutoInstrumentation(TestStarletteManualInstrumentation):
 
     def _create_app(self):
         # instrumentation is handled by the instrument call
-        self._instrumentor.instrument()
+        resource = Resource.create({"key1": "value1", "key2": "value2"})
+        result = self.create_tracer_provider(resource=resource)
+        tracer_provider, exporter = result
+        self.memory_exporter = exporter
+
+        self._instrumentor.instrument(tracer_provider=tracer_provider)
+
         return self._create_starlette_app()
 
     def tearDown(self):
         self._instrumentor.uninstrument()
         super().tearDown()
+
+    def test_request(self):
+        self._client.get("/foobar")
+        spans = self.memory_exporter.get_finished_spans()
+        self.assertEqual(len(spans), 3)
+        for span in spans:
+            self.assertEqual(span.resource.attributes["key1"], "value1")
+            self.assertEqual(span.resource.attributes["key2"], "value2")
 
 
 class TestAutoInstrumentationLogic(unittest.TestCase):

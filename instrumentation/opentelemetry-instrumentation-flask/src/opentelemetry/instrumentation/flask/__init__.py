@@ -55,7 +55,11 @@ import opentelemetry.instrumentation.wsgi as otel_wsgi
 from opentelemetry import context, trace
 from opentelemetry.instrumentation.flask.version import __version__
 from opentelemetry.instrumentation.instrumentor import BaseInstrumentor
+from opentelemetry.instrumentation.propagators import (
+    get_global_response_propagator,
+)
 from opentelemetry.propagate import extract
+from opentelemetry.semconv.trace import SpanAttributes
 from opentelemetry.util._time import _time_ns
 from opentelemetry.util.http import get_excluded_urls
 
@@ -91,6 +95,13 @@ def _rewrapped_app(wsgi_app, response_hook=None):
             if not _excluded_urls.url_disabled(flask.request.url):
                 span = flask.request.environ.get(_ENVIRON_SPAN_KEY)
 
+                propagator = get_global_response_propagator()
+                if propagator:
+                    propagator.inject(
+                        response_headers,
+                        setter=otel_wsgi.default_response_propagation_setter,
+                    )
+
                 if span:
                     otel_wsgi.add_response_attributes(
                         span, status, response_headers
@@ -110,8 +121,7 @@ def _rewrapped_app(wsgi_app, response_hook=None):
 
     return _wrapped_app
 
-
-def _wrapped_before_request(request_hook=None):
+def _wrapped_before_request(request_hook=None, tracer):
     def _before_request():
         if _excluded_urls.url_disabled(flask.request.url):
             return
@@ -121,8 +131,6 @@ def _wrapped_before_request(request_hook=None):
         token = context.attach(
             extract(flask_request_environ, getter=otel_wsgi.wsgi_getter)
         )
-
-        tracer = trace.get_tracer(__name__, __version__)
 
         span = tracer.start_span(
             span_name,
@@ -139,7 +147,9 @@ def _wrapped_before_request(request_hook=None):
             if flask.request.url_rule:
                 # For 404 that result from no route found, etc, we
                 # don't have a url_rule.
-                attributes["http.route"] = flask.request.url_rule.rule
+                attributes[
+                    SpanAttributes.HTTP_ROUTE
+                ] = flask.request.url_rule.rule
             for key, value in attributes.items():
                 span.set_attribute(key, value)
 
@@ -176,6 +186,8 @@ def _teardown_request(exc):
 
 class _InstrumentedFlask(flask.Flask):
 
+    name_callback = get_default_span_name
+    _tracer_provider = None
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
@@ -183,8 +195,12 @@ class _InstrumentedFlask(flask.Flask):
         self._original_wsgi_ = self.wsgi_app
         self.wsgi_app = _rewrapped_app(self.wsgi_app, _InstrumentedFlask.response_hook)
 
+        tracer = trace.get_tracer(
+            __name__, __version__, _InstrumentedFlask._tracer_provider
+        )
+
         _before_request = _wrapped_before_request(
-            _InstrumentedFlask.request_hook
+            _InstrumentedFlask.request_hook, tracer,
         )
         self._before_request = _before_request
         self.before_request(_before_request)
@@ -204,9 +220,14 @@ class FlaskInstrumentor(BaseInstrumentor):
         _InstrumentedFlask.request_hook = request_hook
         _InstrumentedFlask.response_hook = response_hook
         flask.Flask = _InstrumentedFlask
+        
 
     def instrument_app(
-        self, app, request_hook=None, response_hook=None
+        self, app, tracer_provider=None, request_hook=None, response_hook=None
+
+        tracer_provider = kwargs.get("tracer_provider")
+        _InstrumentedFlask._tracer_provider = tracer_provider
+        flask.Flask = _InstrumentedFlask
     ):  # pylint: disable=no-self-use
         if not hasattr(app, "_is_instrumented"):
             app._is_instrumented = False
@@ -215,7 +236,9 @@ class FlaskInstrumentor(BaseInstrumentor):
             app._original_wsgi_app = app.wsgi_app
             app.wsgi_app = _rewrapped_app(app.wsgi_app, response_hook)
 
-            _before_request = _wrapped_before_request(request_hook)
+
+            _before_request = _wrapped_before_request(request_hook, tracer)
+            tracer = trace.get_tracer(__name__, __version__, tracer_provider)
             app._before_request = _before_request
             app.before_request(_before_request)
             app.teardown_request(_teardown_request)

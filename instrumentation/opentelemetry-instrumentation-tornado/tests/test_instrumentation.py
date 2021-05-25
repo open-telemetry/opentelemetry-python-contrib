@@ -18,11 +18,17 @@ from unittest.mock import Mock, patch
 from tornado.testing import AsyncHTTPTestCase
 
 from opentelemetry import trace
+from opentelemetry.instrumentation.propagators import (
+    TraceResponsePropagator,
+    get_global_response_propagator,
+    set_global_response_propagator,
+)
 from opentelemetry.instrumentation.tornado import (
     TornadoInstrumentor,
     patch_handler_class,
     unpatch_handler_class,
 )
+from opentelemetry.semconv.trace import SpanAttributes
 from opentelemetry.test.test_base import TestBase
 from opentelemetry.trace import SpanKind
 from opentelemetry.util.http import get_excluded_urls, get_traced_request_attrs
@@ -131,12 +137,13 @@ class TestTornadoInstrumentation(TornadoTest):
         self.assert_span_has_attributes(
             server,
             {
-                "http.method": method,
-                "http.scheme": "http",
-                "http.host": "127.0.0.1:" + str(self.get_http_port()),
-                "http.target": "/",
-                "net.peer.ip": "127.0.0.1",
-                "http.status_code": 201,
+                SpanAttributes.HTTP_METHOD: method,
+                SpanAttributes.HTTP_SCHEME: "http",
+                SpanAttributes.HTTP_HOST: "127.0.0.1:"
+                + str(self.get_http_port()),
+                SpanAttributes.HTTP_TARGET: "/",
+                SpanAttributes.NET_PEER_IP: "127.0.0.1",
+                SpanAttributes.HTTP_STATUS_CODE: 201,
             },
         )
 
@@ -147,9 +154,9 @@ class TestTornadoInstrumentation(TornadoTest):
         self.assert_span_has_attributes(
             client,
             {
-                "http.url": self.get_url("/"),
-                "http.method": method,
-                "http.status_code": 201,
+                SpanAttributes.HTTP_URL: self.get_url("/"),
+                SpanAttributes.HTTP_METHOD: method,
+                SpanAttributes.HTTP_STATUS_CODE: 201,
             },
         )
 
@@ -203,12 +210,13 @@ class TestTornadoInstrumentation(TornadoTest):
         self.assert_span_has_attributes(
             server,
             {
-                "http.method": "GET",
-                "http.scheme": "http",
-                "http.host": "127.0.0.1:" + str(self.get_http_port()),
-                "http.target": url,
-                "net.peer.ip": "127.0.0.1",
-                "http.status_code": 201,
+                SpanAttributes.HTTP_METHOD: "GET",
+                SpanAttributes.HTTP_SCHEME: "http",
+                SpanAttributes.HTTP_HOST: "127.0.0.1:"
+                + str(self.get_http_port()),
+                SpanAttributes.HTTP_TARGET: url,
+                SpanAttributes.NET_PEER_IP: "127.0.0.1",
+                SpanAttributes.HTTP_STATUS_CODE: 201,
             },
         )
 
@@ -219,9 +227,9 @@ class TestTornadoInstrumentation(TornadoTest):
         self.assert_span_has_attributes(
             client,
             {
-                "http.url": self.get_url(url),
-                "http.method": "GET",
-                "http.status_code": 201,
+                SpanAttributes.HTTP_URL: self.get_url(url),
+                SpanAttributes.HTTP_METHOD: "GET",
+                SpanAttributes.HTTP_STATUS_CODE: 201,
             },
         )
 
@@ -238,12 +246,13 @@ class TestTornadoInstrumentation(TornadoTest):
         self.assert_span_has_attributes(
             server,
             {
-                "http.method": "GET",
-                "http.scheme": "http",
-                "http.host": "127.0.0.1:" + str(self.get_http_port()),
-                "http.target": "/error",
-                "net.peer.ip": "127.0.0.1",
-                "http.status_code": 500,
+                SpanAttributes.HTTP_METHOD: "GET",
+                SpanAttributes.HTTP_SCHEME: "http",
+                SpanAttributes.HTTP_HOST: "127.0.0.1:"
+                + str(self.get_http_port()),
+                SpanAttributes.HTTP_TARGET: "/error",
+                SpanAttributes.NET_PEER_IP: "127.0.0.1",
+                SpanAttributes.HTTP_STATUS_CODE: 500,
             },
         )
 
@@ -252,9 +261,9 @@ class TestTornadoInstrumentation(TornadoTest):
         self.assert_span_has_attributes(
             client,
             {
-                "http.url": self.get_url("/error"),
-                "http.method": "GET",
-                "http.status_code": 500,
+                SpanAttributes.HTTP_URL: self.get_url("/error"),
+                SpanAttributes.HTTP_METHOD: "GET",
+                SpanAttributes.HTTP_STATUS_CODE: 500,
             },
         )
 
@@ -271,12 +280,13 @@ class TestTornadoInstrumentation(TornadoTest):
         self.assert_span_has_attributes(
             server,
             {
-                "http.method": "GET",
-                "http.scheme": "http",
-                "http.host": "127.0.0.1:" + str(self.get_http_port()),
-                "http.target": "/missing-url",
-                "net.peer.ip": "127.0.0.1",
-                "http.status_code": 404,
+                SpanAttributes.HTTP_METHOD: "GET",
+                SpanAttributes.HTTP_SCHEME: "http",
+                SpanAttributes.HTTP_HOST: "127.0.0.1:"
+                + str(self.get_http_port()),
+                SpanAttributes.HTTP_TARGET: "/missing-url",
+                SpanAttributes.NET_PEER_IP: "127.0.0.1",
+                SpanAttributes.HTTP_STATUS_CODE: 404,
             },
         )
 
@@ -285,9 +295,9 @@ class TestTornadoInstrumentation(TornadoTest):
         self.assert_span_has_attributes(
             client,
             {
-                "http.url": self.get_url("/missing-url"),
-                "http.method": "GET",
-                "http.status_code": 404,
+                SpanAttributes.HTTP_URL: self.get_url("/missing-url"),
+                SpanAttributes.HTTP_METHOD: "GET",
+                SpanAttributes.HTTP_STATUS_CODE: 404,
             },
         )
 
@@ -314,12 +324,13 @@ class TestTornadoInstrumentation(TornadoTest):
         self.assert_span_has_attributes(
             server,
             {
-                "http.method": "GET",
-                "http.scheme": "http",
-                "http.host": "127.0.0.1:" + str(self.get_http_port()),
-                "http.target": "/dyna",
-                "net.peer.ip": "127.0.0.1",
-                "http.status_code": 202,
+                SpanAttributes.HTTP_METHOD: "GET",
+                SpanAttributes.HTTP_SCHEME: "http",
+                SpanAttributes.HTTP_HOST: "127.0.0.1:"
+                + str(self.get_http_port()),
+                SpanAttributes.HTTP_TARGET: "/dyna",
+                SpanAttributes.NET_PEER_IP: "127.0.0.1",
+                SpanAttributes.HTTP_STATUS_CODE: 202,
             },
         )
 
@@ -330,9 +341,9 @@ class TestTornadoInstrumentation(TornadoTest):
         self.assert_span_has_attributes(
             client,
             {
-                "http.url": self.get_url("/dyna"),
-                "http.method": "GET",
-                "http.status_code": 202,
+                SpanAttributes.HTTP_URL: self.get_url("/dyna"),
+                SpanAttributes.HTTP_METHOD: "GET",
+                SpanAttributes.HTTP_STATUS_CODE: 202,
             },
         )
 
@@ -349,9 +360,9 @@ class TestTornadoInstrumentation(TornadoTest):
             self.assert_span_has_attributes(
                 client,
                 {
-                    "http.url": self.get_url(path),
-                    "http.method": "GET",
-                    "http.status_code": 200,
+                    SpanAttributes.HTTP_URL: self.get_url(path),
+                    SpanAttributes.HTTP_METHOD: "GET",
+                    SpanAttributes.HTTP_STATUS_CODE: 200,
                 },
             )
             self.memory_exporter.clear()
@@ -369,6 +380,32 @@ class TestTornadoInstrumentation(TornadoTest):
             server_span, {"uri": "/pong?q=abc&b=123", "query": "q=abc&b=123"}
         )
         self.memory_exporter.clear()
+
+    def test_response_headers(self):
+        orig = get_global_response_propagator()
+        set_global_response_propagator(TraceResponsePropagator())
+
+        response = self.fetch("/")
+        headers = response.headers
+
+        spans = self.sorted_spans(self.memory_exporter.get_finished_spans())
+        self.assertEqual(len(spans), 3)
+        server_span = spans[1]
+
+        self.assertIn("traceresponse", headers)
+        self.assertEqual(
+            headers["access-control-expose-headers"], "traceresponse",
+        )
+        self.assertEqual(
+            headers["traceresponse"],
+            "00-{0}-{1}-01".format(
+                trace.format_trace_id(server_span.get_span_context().trace_id),
+                trace.format_span_id(server_span.get_span_context().span_id),
+            ),
+        )
+
+        self.memory_exporter.clear()
+        set_global_response_propagator(orig)
 
 
 class TornadoHookTest(TornadoTest):
