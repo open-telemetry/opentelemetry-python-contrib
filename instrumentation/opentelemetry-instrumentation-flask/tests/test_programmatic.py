@@ -142,7 +142,8 @@ class TestProgrammatic(InstrumentationTest, TestBase, WsgiTestBase):
 
         self.assertIn("traceresponse", headers)
         self.assertEqual(
-            headers["access-control-expose-headers"], "traceresponse",
+            headers["access-control-expose-headers"],
+            "traceresponse",
         )
         self.assertEqual(
             headers["traceresponse"],
@@ -184,7 +185,7 @@ class TestProgrammatic(InstrumentationTest, TestBase, WsgiTestBase):
         self.assertEqual(span_list[0].name, "HTTP POST")
         self.assertEqual(span_list[0].kind, trace.SpanKind.SERVER)
         self.assertEqual(span_list[0].attributes, expected_attrs)
-
+        
     def test_internal_error(self):
         expected_attrs = expected_attributes(
             {
@@ -219,9 +220,8 @@ class TestProgrammatic(InstrumentationTest, TestBase, WsgiTestBase):
         span_list = self.memory_exporter.get_finished_spans()
         self.assertEqual(len(span_list), 1)
 
-class TestProgrammaticHooks(
-    InstrumentationTest, TestBase, WsgiTestBase
-):
+
+class TestProgrammaticHooks(InstrumentationTest, TestBase, WsgiTestBase):
     def setUp(self):
         super().setUp()
 
@@ -236,25 +236,29 @@ class TestProgrammaticHooks(
         def response_hook_test(span, environ, response_headers):
             span.set_attribute("hook_attr", "hello world")
             response_headers.append(hook_headers)
-        
+
         self.app = Flask(__name__)
 
         FlaskInstrumentor().instrument_app(
-            self.app, request_hook=request_hook_test, response_hook=response_hook_test
+            self.app,
+            request_hook=request_hook_test,
+            response_hook=response_hook_test,
         )
 
         self._common_initialization()
-    
+
     def tearDown(self):
         super().tearDown()
         with self.disable_logging():
             FlaskInstrumentor().uninstrument_app(self.app)
-    
+
     def test_hooks(self):
         expected_attrs = expected_attributes(
-            {"http.target": "/hello/123", 
-            "http.route": "/hello/<int:helloid>", 
-            "hook_attr":"hello world"}
+            {
+                "http.target": "/hello/123",
+                "http.route": "/hello/<int:helloid>",
+                "hook_attr": "hello world",
+            }
         )
 
         resp = self.client.get("/hello/123")
@@ -263,6 +267,7 @@ class TestProgrammaticHooks(
         self.assertEqual(span_list[0].name, "name from hook")
         self.assertEqual(span_list[0].attributes, expected_attrs)
         self.assertEqual(resp.headers["hook_attr"], "hello otel")
+
 
 class TestProgrammaticHooksWithoutApp(
     InstrumentationTest, TestBase, WsgiTestBase
@@ -283,7 +288,9 @@ class TestProgrammaticHooksWithoutApp(
             # environ.headers.set("apple", "cat")
             response_headers.append(hook_headers)
 
-        FlaskInstrumentor().instrument(request_hook=request_hook_test, response_hook=response_hook_test)
+        FlaskInstrumentor().instrument(
+            request_hook=request_hook_test, response_hook=response_hook_test
+        )
         # pylint: disable=import-outside-toplevel,reimported,redefined-outer-name
         from flask import Flask
 
@@ -298,9 +305,11 @@ class TestProgrammaticHooksWithoutApp(
 
     def test_no_app_hooks(self):
         expected_attrs = expected_attributes(
-            {"http.target": "/hello/123", 
-            "http.route": "/hello/<int:helloid>", 
-            "hook_attr":"hello world without app"}
+            {
+                "http.target": "/hello/123",
+                "http.route": "/hello/<int:helloid>",
+                "hook_attr": "hello world without app",
+            }
         )
         resp = self.client.get("/hello/123")
 

@@ -233,8 +233,10 @@ class FlaskInstrumentor(BaseInstrumentor):
         if not app._is_instrumented:
             app._original_wsgi_app = app.wsgi_app
             app.wsgi_app = _rewrapped_app(app.wsgi_app, response_hook)
-            _before_request = _wrapped_before_request(request_hook, tracer_provider)
+
             tracer = trace.get_tracer(__name__, __version__, tracer_provider)
+
+            _before_request = _wrapped_before_request(request_hook, tracer)
             app._before_request = _before_request
             app.before_request(_before_request)
             app.teardown_request(_teardown_request)
