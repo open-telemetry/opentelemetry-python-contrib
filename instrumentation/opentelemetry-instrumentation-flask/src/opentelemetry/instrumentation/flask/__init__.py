@@ -215,7 +215,6 @@ class FlaskInstrumentor(BaseInstrumentor):
     """
     def _instrument(self, **kwargs):
         self._original_flask = flask.Flask
-        
         request_hook = kwargs.get("request_hook")
         response_hook = kwargs.get("response_hook")
         _InstrumentedFlask.request_hook = request_hook
@@ -235,6 +234,7 @@ class FlaskInstrumentor(BaseInstrumentor):
             app._original_wsgi_app = app.wsgi_app
             app.wsgi_app = _rewrapped_app(app.wsgi_app, response_hook)
             _before_request = _wrapped_before_request(request_hook, tracer_provider)
+            tracer = trace.get_tracer(__name__, __version__, tracer_provider)
             app._before_request = _before_request
             app.before_request(_before_request)
             app.teardown_request(_teardown_request)
