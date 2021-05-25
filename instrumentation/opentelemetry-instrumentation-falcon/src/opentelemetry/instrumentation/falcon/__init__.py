@@ -146,13 +146,15 @@ class _InstrumentedFalconAPI(falcon.API):
     def __init__(self, *args, **kwargs):
         # inject trace middleware
         middlewares = kwargs.pop("middleware", [])
+        tracer_provider = kwargs.pop("tracer_provider", None)
         if not isinstance(middlewares, (list, tuple)):
             middlewares = [middlewares]
 
-        self._tracer = trace.get_tracer(__name__, __version__)
+        self._tracer = trace.get_tracer(__name__, __version__, tracer_provider)
+
         trace_middleware = _TraceMiddleware(
             self._tracer,
-            kwargs.pop("traced_request_attributes", None),
+            kwargs.pop("traced_request_attributes", _traced_request_attrs),
             kwargs.pop("request_hook", None),
             kwargs.pop("response_hook", None),
         )
@@ -213,7 +215,7 @@ class _TraceMiddleware:
         response_hook=None,
     ):
         self.tracer = tracer
-        self._traced_request_attrs = _traced_request_attrs
+        self._traced_request_attrs = traced_request_attrs
         self._request_hook = request_hook
         self._response_hook = response_hook
 
