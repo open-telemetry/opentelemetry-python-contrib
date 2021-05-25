@@ -12,7 +12,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - `opentelemetry-instrumentation-tornado` Fixed cases where description was used with non-
   error status code when creating Status objects.
   ([#504](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/504))
-- Fix ASGI instrumentation default span name.
+- `opentelemetry-instrumentation-asgi` Fix instrumentation default span name.
   ([#418](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/418))
 
 ### Added

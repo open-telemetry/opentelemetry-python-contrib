@@ -217,7 +217,7 @@ class OpenTelemetryMiddleware:
                 @wraps(receive)
                 async def wrapped_receive():
                     with self.tracer.start_as_current_span(
-                        span_name + " " + scope["type"] + ".receive"
+                        " ".join((span_name, scope["type"], "receive"))
                     ) as receive_span:
                         message = await receive()
                         if receive_span.is_recording():
@@ -229,7 +229,7 @@ class OpenTelemetryMiddleware:
                 @wraps(send)
                 async def wrapped_send(message):
                     with self.tracer.start_as_current_span(
-                        span_name + " " + scope["type"] + ".send"
+                        " ".join((span_name, scope["type"], "send"))
                     ) as send_span:
                         if send_span.is_recording():
                             if message["type"] == "http.response.start":
