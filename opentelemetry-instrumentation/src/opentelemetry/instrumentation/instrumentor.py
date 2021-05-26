@@ -19,9 +19,12 @@ OpenTelemetry Base Instrumentor
 
 from abc import ABC, abstractmethod
 from logging import getLogger
-from typing import Collection
+from typing import Collection, Optional
 
-from opentelemetry.instrumentation.dependencies import get_dependency_conflicts
+from opentelemetry.instrumentation.dependencies import (
+    DependencyConflict,
+    get_dependency_conflicts,
+)
 
 _LOG = getLogger(__name__)
 
@@ -72,7 +75,7 @@ class BaseInstrumentor(ABC):
     def _uninstrument(self, **kwargs):
         """Uninstrument the library"""
 
-    def _check_dependency_conflicts(self) -> bool:
+    def _check_dependency_conflicts(self) -> Optional[DependencyConflict]:
         dependencies = self.instrumentation_dependencies()
         return get_dependency_conflicts(dependencies)
 
