@@ -60,13 +60,11 @@ from opentelemetry.instrumentation.botocore.version import __version__
 from opentelemetry.instrumentation.instrumentor import BaseInstrumentor
 from opentelemetry.instrumentation.utils import unwrap
 from opentelemetry.propagate import inject
+from opentelemetry.sdk.trace.export import _SUPPRESS_INSTRUMENTATION_KEY
 from opentelemetry.semconv.trace import SpanAttributes
 from opentelemetry.trace import SpanKind, get_tracer
 
 logger = logging.getLogger(__name__)
-_SUPPRESS_INSTRUMENTATION_KEY = context_api.create_key(
-    "suppress_instrumentation"
-)
 
 
 # pylint: disable=unused-argument

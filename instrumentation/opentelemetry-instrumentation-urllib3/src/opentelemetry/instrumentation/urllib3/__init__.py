@@ -60,6 +60,7 @@ from opentelemetry.instrumentation.utils import (
     unwrap,
 )
 from opentelemetry.propagate import inject
+from opentelemetry.sdk.trace.export import _SUPPRESS_INSTRUMENTATION_KEY
 from opentelemetry.semconv.trace import SpanAttributes
 from opentelemetry.trace import Span, SpanKind, get_tracer
 from opentelemetry.trace.status import Status
@@ -69,7 +70,6 @@ from opentelemetry.trace.status import Status
 _SUPPRESS_HTTP_INSTRUMENTATION_KEY = context.create_key(
     "suppress_http_instrumentation"
 )
-_SUPPRESS_INSTRUMENTATION_KEY = context.create_key("suppress_instrumentation")
 
 _UrlFilterT = typing.Optional[typing.Callable[[str], str]]
 _SpanNameT = typing.Optional[

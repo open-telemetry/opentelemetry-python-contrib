@@ -79,6 +79,7 @@ from opentelemetry.instrumentation.utils import (
     unwrap,
 )
 from opentelemetry.propagate import inject
+from opentelemetry.sdk.trace.export import _SUPPRESS_INSTRUMENTATION_KEY
 from opentelemetry.semconv.trace import SpanAttributes
 from opentelemetry.trace import SpanKind, TracerProvider, get_tracer
 from opentelemetry.trace.status import Status, StatusCode
@@ -87,9 +88,6 @@ _UrlFilterT = typing.Optional[typing.Callable[[str], str]]
 _SpanNameT = typing.Optional[
     typing.Union[typing.Callable[[aiohttp.TraceRequestStartParams], str], str]
 ]
-_SUPPRESS_INSTRUMENTATION_KEY = context_api.create_key(
-    "suppress_instrumentation"
-)
 
 
 def url_path_span_name(params: aiohttp.TraceRequestStartParams) -> str:

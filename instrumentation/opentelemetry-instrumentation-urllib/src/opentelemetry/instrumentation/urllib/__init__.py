@@ -50,6 +50,7 @@ from opentelemetry.instrumentation.urllib.package import _instruments
 from opentelemetry.instrumentation.urllib.version import __version__
 from opentelemetry.instrumentation.utils import http_status_to_status_code
 from opentelemetry.propagate import inject
+from opentelemetry.sdk.trace.export import _SUPPRESS_INSTRUMENTATION_KEY
 from opentelemetry.semconv.trace import SpanAttributes
 from opentelemetry.trace import SpanKind, get_tracer
 from opentelemetry.trace.status import Status
@@ -59,7 +60,6 @@ from opentelemetry.trace.status import Status
 _SUPPRESS_HTTP_INSTRUMENTATION_KEY = context.create_key(
     "suppress_http_instrumentation"
 )
-_SUPPRESS_INSTRUMENTATION_KEY = context.create_key("suppress_instrumentation")
 
 
 class URLLibInstrumentor(BaseInstrumentor):
