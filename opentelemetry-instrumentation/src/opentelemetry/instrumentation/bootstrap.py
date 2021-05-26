@@ -117,6 +117,7 @@ def _is_installed(req):
         return False
     return True
 
+
 def _find_installed_libraries():
     libs = default_instrumentations[:]
     libs.extend(

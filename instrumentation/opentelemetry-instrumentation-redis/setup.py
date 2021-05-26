@@ -17,9 +17,9 @@
 # RUN `python scripts/generate_setup.py` TO REGENERATE.
 
 
-import os
 import distutils.cmd
 import json
+import os
 from configparser import ConfigParser
 
 import setuptools
