@@ -188,19 +188,22 @@ def _teardown_request(exc):
 class _InstrumentedFlask(flask.Flask):
 
     _tracer_provider = None
-
+    _request_hook = None
+    _response_hook = None
+    
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
 
         self._original_wsgi_ = self.wsgi_app
-        self.wsgi_app = _rewrapped_app(self.wsgi_app, _InstrumentedFlask.response_hook)
+        
+        self.wsgi_app = _rewrapped_app(self.wsgi_app, _InstrumentedFlask._response_hook)
 
         tracer = trace.get_tracer(
             __name__, __version__, _InstrumentedFlask._tracer_provider
         )
 
         _before_request = _wrapped_before_request(
-            _InstrumentedFlask.request_hook, tracer,
+            _InstrumentedFlask._request_hook, tracer,
         )
         self._before_request = _before_request
         self.before_request(_before_request)
@@ -217,8 +220,10 @@ class FlaskInstrumentor(BaseInstrumentor):
         self._original_flask = flask.Flask
         request_hook = kwargs.get("request_hook")
         response_hook = kwargs.get("response_hook")
-        _InstrumentedFlask.request_hook = request_hook
-        _InstrumentedFlask.response_hook = response_hook
+        if callable(request_hook):
+            _InstrumentedFlask._request_hook = request_hook
+        if callable(response_hook):
+            _InstrumentedFlask._response_hook = response_hook
         flask.Flask = _InstrumentedFlask
         tracer_provider = kwargs.get("tracer_provider")
         _InstrumentedFlask._tracer_provider = tracer_provider
