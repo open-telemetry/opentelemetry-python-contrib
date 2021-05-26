@@ -20,7 +20,6 @@ import typing
 from opentelemetry.context import (
     Context,
     attach,
-    create_key,
     detach,
     set_value,
 )
