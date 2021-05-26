@@ -171,7 +171,7 @@ class _DjangoMiddleware(MiddlewareMixin):
             if span.is_recording():
                 match = getattr(request, "resolver_match")
                 if match:
-                    route = getattr(match, "route")
+                    route = getattr(match, "route", None)
                     if route:
                         span.set_attribute(SpanAttributes.HTTP_ROUTE, route)
 
