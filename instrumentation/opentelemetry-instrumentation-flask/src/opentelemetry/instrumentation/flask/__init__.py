@@ -112,7 +112,7 @@ def _rewrapped_app(wsgi_app, response_hook=None):
                         "missing at _start_response(%s)",
                         status,
                     )
-                if response_hook:
+                if response_hook is not None:
                     response_hook(span, status, response_headers)         
             return start_response(status, response_headers, *args, **kwargs)
 
