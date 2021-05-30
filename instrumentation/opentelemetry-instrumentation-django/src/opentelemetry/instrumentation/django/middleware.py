@@ -14,6 +14,7 @@
 
 from logging import getLogger
 from time import time
+import types
 from typing import Callable
 
 from django import VERSION as django_version
@@ -195,9 +196,26 @@ class _DjangoMiddleware(MiddlewareMixin):
             attributes = collect_request_attributes(request_meta)
 
         if span.is_recording():
-            attributes = extract_attributes_from_object(
-                request, self._traced_request_attrs, attributes
-            )
+            if is_asgi_request:
+                # ASGI requests include extra attributes in request.scope.headers. For this reason,
+                # we need to build an object with the union of `request` and `request.scope.headers`
+                # contents, for the extract_attributes_from_object function to be able to retrieve
+                # attributes from it.
+                attributes = extract_attributes_from_object(
+                    types.SimpleNamespace(**{
+                        **request.__dict__,
+                        **{
+                            name.decode('latin1'): value.decode('latin1')
+                            for name, value in request.scope.get('headers', [])
+                        },
+                    }),
+                    self._traced_request_attrs,
+                    attributes,
+                )
+            else:
+                attributes = extract_attributes_from_object(
+                    request, self._traced_request_attrs, attributes
+                )
             for key, value in attributes.items():
                 span.set_attribute(key, value)
 

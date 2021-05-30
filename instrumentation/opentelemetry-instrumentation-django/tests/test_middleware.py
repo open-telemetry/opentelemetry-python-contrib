@@ -71,8 +71,8 @@ _django_instrumentor = DjangoInstrumentor()
 class TestMiddleware(TestBase, WsgiTestBase):
     @classmethod
     def setUpClass(cls):
-        super().setUpClass()
         conf.settings.configure(ROOT_URLCONF=modules[__name__])
+        super().setUpClass()
 
     def setUp(self):
         super().setUp()
