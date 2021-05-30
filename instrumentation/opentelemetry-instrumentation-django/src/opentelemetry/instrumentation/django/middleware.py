@@ -12,9 +12,9 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import types
 from logging import getLogger
 from time import time
-import types
 from typing import Callable
 
 from django import VERSION as django_version
@@ -25,11 +25,11 @@ from opentelemetry.instrumentation.propagators import (
     get_global_response_propagator,
 )
 from opentelemetry.instrumentation.utils import extract_attributes_from_object
+from opentelemetry.instrumentation.wsgi import add_response_attributes
 from opentelemetry.instrumentation.wsgi import (
-    add_response_attributes,
     collect_request_attributes as wsgi_collect_request_attributes,
-    wsgi_getter,
 )
+from opentelemetry.instrumentation.wsgi import wsgi_getter
 from opentelemetry.propagate import extract
 from opentelemetry.semconv.trace import SpanAttributes
 from opentelemetry.trace import Span, SpanKind, use_span
@@ -75,11 +75,11 @@ except ImportError:
     ASGIRequest = None
 
 try:
+    from opentelemetry.instrumentation.asgi import asgi_getter
     from opentelemetry.instrumentation.asgi import (
-        asgi_getter,
         collect_request_attributes as asgi_collect_request_attributes,
-        set_status_code,
     )
+    from opentelemetry.instrumentation.asgi import set_status_code
 
     _is_asgi_supported = True
 except ImportError:
@@ -110,6 +110,10 @@ _attributes_by_preference = [
     ],
     [SpanAttributes.HTTP_URL],
 ]
+
+
+def _is_asgi_request(request: HttpRequest) -> bool:
+    return bool(ASGIRequest and isinstance(request, ASGIRequest))
 
 
 class _DjangoMiddleware(MiddlewareMixin):
@@ -153,9 +157,6 @@ class _DjangoMiddleware(MiddlewareMixin):
         except Resolver404:
             return f"HTTP {request.method}"
 
-    def _is_asgi_request(self, request):
-        return ASGIRequest and isinstance(request, ASGIRequest)
-
     def process_request(self, request):
         # request.META is a dictionary containing all available HTTP headers
         # Read more about request.META here:
@@ -164,7 +165,7 @@ class _DjangoMiddleware(MiddlewareMixin):
         if self._excluded_urls.url_disabled(request.build_absolute_uri("?")):
             return
 
-        is_asgi_request = self._is_asgi_request(request)
+        is_asgi_request = _is_asgi_request(request)
         if is_asgi_request and not _is_asgi_supported:
             return
 
@@ -202,13 +203,17 @@ class _DjangoMiddleware(MiddlewareMixin):
                 # contents, for the extract_attributes_from_object function to be able to retrieve
                 # attributes from it.
                 attributes = extract_attributes_from_object(
-                    types.SimpleNamespace(**{
-                        **request.__dict__,
+                    types.SimpleNamespace(
                         **{
-                            name.decode('latin1'): value.decode('latin1')
-                            for name, value in request.scope.get('headers', [])
-                        },
-                    }),
+                            **request.__dict__,
+                            **{
+                                name.decode("latin1"): value.decode("latin1")
+                                for name, value in request.scope.get(
+                                    "headers", []
+                                )
+                            },
+                        }
+                    ),
                     self._traced_request_attrs,
                     attributes,
                 )
@@ -262,9 +267,9 @@ class _DjangoMiddleware(MiddlewareMixin):
         if self._excluded_urls.url_disabled(request.build_absolute_uri("?")):
             return response
 
-        is_asgi_request = self._is_asgi_request(request)
+        is_asgi_request = _is_asgi_request(request)
         if is_asgi_request and not _is_asgi_supported:
-            return
+            return response
 
         activation = request.META.pop(self._environ_activation_key, None)
         span = request.META.pop(self._environ_span_key, None)

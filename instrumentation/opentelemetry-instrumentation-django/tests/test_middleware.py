@@ -16,7 +16,6 @@ from sys import modules
 from unittest.mock import Mock, patch
 
 from django import VERSION, conf
-from django.conf.urls import url
 from django.http import HttpRequest, HttpResponse
 from django.test.client import Client
 from django.test.utils import setup_test_environment, teardown_test_environment
@@ -362,6 +361,7 @@ class TestMiddleware(TestBase, WsgiTestBase):
 class TestMiddlewareWithTracerProvider(TestBase, WsgiTestBase):
     @classmethod
     def setUpClass(cls):
+        conf.settings.configure(ROOT_URLCONF=modules[__name__])
         super().setUpClass()
 
     def setUp(self):
@@ -379,6 +379,11 @@ class TestMiddlewareWithTracerProvider(TestBase, WsgiTestBase):
         super().tearDown()
         teardown_test_environment()
         _django_instrumentor.uninstrument()
+
+    @classmethod
+    def tearDownClass(cls):
+        super().tearDownClass()
+        conf.settings = conf.LazySettings()
 
     def test_tracer_provider_traced(self):
         Client().post("/traced/")

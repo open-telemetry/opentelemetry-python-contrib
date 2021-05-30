@@ -15,13 +15,12 @@
 from sys import modules
 from unittest.mock import Mock, patch
 
+import pytest
 from django import VERSION, conf
-from django.conf.urls import url
 from django.http import HttpRequest, HttpResponse
 from django.test import SimpleTestCase
 from django.test.utils import setup_test_environment, teardown_test_environment
 from django.urls import re_path
-import pytest
 
 from opentelemetry.instrumentation.django import (
     DjangoInstrumentor,
@@ -55,11 +54,6 @@ from .views import (
 )
 
 DJANGO_3_1 = VERSION >= (3, 1)
-
-if DJANGO_3_1:
-    from django.test.client import AsyncClient
-else:
-    AsyncClient = None
 
 urlpatterns = [
     re_path(r"^traced/", async_traced),
@@ -351,6 +345,7 @@ class TestMiddlewareAsgi(SimpleTestCase, TestBase):
 class TestMiddlewareAsgiWithTracerProvider(SimpleTestCase, TestBase):
     @classmethod
     def setUpClass(cls):
+        conf.settings.configure(ROOT_URLCONF=modules[__name__])
         super().setUpClass()
 
     def setUp(self):
@@ -368,6 +363,11 @@ class TestMiddlewareAsgiWithTracerProvider(SimpleTestCase, TestBase):
         super().tearDown()
         teardown_test_environment()
         _django_instrumentor.uninstrument()
+
+    @classmethod
+    def tearDownClass(cls):
+        super().tearDownClass()
+        conf.settings = conf.LazySettings()
 
     async def test_tracer_provider_traced(self):
         await self.async_client.post("/traced/")
