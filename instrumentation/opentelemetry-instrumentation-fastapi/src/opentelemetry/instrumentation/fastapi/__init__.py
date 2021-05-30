@@ -18,16 +18,9 @@ from starlette.routing import Match
 from opentelemetry.instrumentation.asgi import OpenTelemetryMiddleware
 from opentelemetry.instrumentation.instrumentor import BaseInstrumentor
 from opentelemetry.semconv.trace import SpanAttributes
-from opentelemetry.util.http import get_excluded_urls, ExcludeList
+from opentelemetry.util.http import get_excluded_urls, parse_excluded_urls
 
 _excluded_urls_from_env = get_excluded_urls("FASTAPI")
-
-
-def parse_urls(urls_str):
-    """
-    Small helper to put the urls inside of ExcludeList
-    """
-    return ExcludeList(url.strip() for url in urls_str.split(","))
 
 
 class FastAPIInstrumentor(BaseInstrumentor):
@@ -47,7 +40,7 @@ class FastAPIInstrumentor(BaseInstrumentor):
             if excluded_urls is None:
                 excluded_urls = _excluded_urls_from_env
             else:
-                excluded_urls = parse_urls(excluded_urls)
+                excluded_urls = parse_excluded_urls(excluded_urls)
 
             app.add_middleware(
                 OpenTelemetryMiddleware,
