@@ -149,13 +149,9 @@ class TestAutoInstrumentation(TestFastAPIManualInstrumentation):
         self.memory_exporter = exporter
 
         to_exclude = "/user/123,/foobar"
-        excluded_urls = [
-            excluded_url.strip() for excluded_url in to_exclude.split(",")
-        ]
         self._instrumentor.uninstrument()  # Disable previous instrumentation (setUp)
         self._instrumentor.instrument(
-            tracer_provider=tracer_provider,
-            excluded_urls=to_exclude,
+            tracer_provider=tracer_provider, excluded_urls=to_exclude,
         )
         return self._create_fastapi_app()
 
