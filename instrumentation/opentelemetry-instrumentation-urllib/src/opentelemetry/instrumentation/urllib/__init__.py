@@ -46,9 +46,8 @@ from urllib.request import (  # pylint: disable=no-name-in-module,import-error
 
 from opentelemetry import context
 from opentelemetry.instrumentation.instrumentor import BaseInstrumentor
-from opentelemetry.instrumentation.urllib.version import (  # pylint: disable=no-name-in-module,import-error
-    __version__,
-)
+from opentelemetry.instrumentation.urllib.package import _instruments
+from opentelemetry.instrumentation.urllib.version import __version__
 from opentelemetry.instrumentation.utils import (
     _SUPPRESS_INSTRUMENTATION_KEY,
     http_status_to_status_code,
