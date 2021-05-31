@@ -13,7 +13,7 @@
 # limitations under the License.
 
 from os import environ
-from re import I, compile as re_compile
+from re import compile as re_compile
 from re import search
 
 
