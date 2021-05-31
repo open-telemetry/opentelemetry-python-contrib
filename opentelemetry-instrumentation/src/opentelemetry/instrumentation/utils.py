@@ -16,7 +16,10 @@ from typing import Dict, Sequence
 
 from wrapt import ObjectProxy
 
+from opentelemetry.context import create_key
 from opentelemetry.trace import StatusCode
+
+_SUPPRESS_INSTRUMENTATION_KEY = create_key("suppress_instrumentation")
 
 
 def extract_attributes_from_object(
