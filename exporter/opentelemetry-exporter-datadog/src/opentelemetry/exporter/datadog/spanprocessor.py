@@ -17,15 +17,10 @@ import logging
 import threading
 import typing
 
-from opentelemetry.context import (
-    Context,
-    attach,
-    detach,
-    set_value,
-)
+from opentelemetry.context import Context, attach, detach, set_value
 from opentelemetry.instrumentation.utils import _SUPPRESS_INSTRUMENTATION_KEY
 from opentelemetry.sdk.trace import Span, SpanProcessor
-from opentelemetry.sdk.trace.export import SpanExporter 
+from opentelemetry.sdk.trace.export import SpanExporter
 from opentelemetry.trace import INVALID_TRACE_ID
 from opentelemetry.util._time import _time_ns
 

@@ -46,11 +46,6 @@ from urllib.request import (  # pylint: disable=no-name-in-module,import-error
 
 from opentelemetry import context
 from opentelemetry.instrumentation.instrumentor import BaseInstrumentor
-<<<<<<< HEAD
-from opentelemetry.instrumentation.urllib.package import _instruments
-from opentelemetry.instrumentation.urllib.version import __version__
-from opentelemetry.instrumentation.utils import http_status_to_status_code
-=======
 from opentelemetry.instrumentation.urllib.version import (  # pylint: disable=no-name-in-module,import-error
     __version__,
 )
@@ -58,7 +53,6 @@ from opentelemetry.instrumentation.utils import (
     _SUPPRESS_INSTRUMENTATION_KEY,
     http_status_to_status_code,
 )
->>>>>>> b864f5eb (Move suppress key to instrumentation package)
 from opentelemetry.propagate import inject
 from opentelemetry.semconv.trace import SpanAttributes
 from opentelemetry.trace import SpanKind, get_tracer
