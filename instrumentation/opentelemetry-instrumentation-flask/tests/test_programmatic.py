@@ -285,7 +285,6 @@ class TestProgrammaticHooksWithoutApp(
 
         def response_hook_test(span, environ, response_headers):
             span.set_attribute("hook_attr", "hello world without app")
-            # environ.headers.set("apple", "cat")
             response_headers.append(hook_headers)
 
         FlaskInstrumentor().instrument(
