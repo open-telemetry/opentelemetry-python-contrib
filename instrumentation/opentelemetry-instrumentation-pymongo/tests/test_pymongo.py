@@ -101,7 +101,8 @@ class TestPymongo(TestBase):
         span = spans_list[0]
 
         self.assertIs(
-            span.status.status_code, trace_api.StatusCode.ERROR,
+            span.status.status_code,
+            trace_api.StatusCode.ERROR,
         )
         self.assertEqual(span.status.description, "failure")
         self.assertIsNotNone(span.end_time)
@@ -121,10 +122,12 @@ class TestPymongo(TestBase):
         second_span = spans_list[1]
 
         self.assertIs(
-            first_span.status.status_code, trace_api.StatusCode.UNSET,
+            first_span.status.status_code,
+            trace_api.StatusCode.UNSET,
         )
         self.assertIs(
-            second_span.status.status_code, trace_api.StatusCode.ERROR,
+            second_span.status.status_code,
+            trace_api.StatusCode.ERROR,
         )
 
     def test_int_command(self):

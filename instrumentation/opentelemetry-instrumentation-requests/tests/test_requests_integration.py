@@ -119,7 +119,9 @@ class RequestsIntegrationTestBase(abc.ABC):
     def test_not_foundbasic(self):
         url_404 = "http://httpbin.org/status/404"
         httpretty.register_uri(
-            httpretty.GET, url_404, status=404,
+            httpretty.GET,
+            url_404,
+            status=404,
         )
         result = self.perform_request(url_404)
         self.assertEqual(result.status_code, 404)
@@ -131,7 +133,8 @@ class RequestsIntegrationTestBase(abc.ABC):
         )
 
         self.assertIs(
-            span.status.status_code, trace.StatusCode.ERROR,
+            span.status.status_code,
+            trace.StatusCode.ERROR,
         )
 
     def test_uninstrument(self):
@@ -223,7 +226,8 @@ class RequestsIntegrationTestBase(abc.ABC):
             )
 
         RequestsInstrumentor().instrument(
-            tracer_provider=self.tracer_provider, span_callback=span_callback,
+            tracer_provider=self.tracer_provider,
+            span_callback=span_callback,
         )
 
         result = self.perform_request(self.URL)

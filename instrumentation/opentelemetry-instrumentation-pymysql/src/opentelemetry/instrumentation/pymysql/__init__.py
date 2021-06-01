@@ -80,7 +80,7 @@ class PyMySQLInstrumentor(BaseInstrumentor):
         )
 
     def _uninstrument(self, **kwargs):
-        """"Disable PyMySQL instrumentation"""
+        """ "Disable PyMySQL instrumentation"""
         dbapi.unwrap_connect(pymysql, "connect")
 
     # pylint:disable=no-self-use

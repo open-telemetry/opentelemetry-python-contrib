@@ -64,14 +64,16 @@ class Servicer(GRPCTestServerServicer):
     # pylint:disable=C0103
     def SimpleMethod(self, request, context):
         return Response(
-            server_id=request.client_id, response_data=request.request_data,
+            server_id=request.client_id,
+            response_data=request.request_data,
         )
 
     # pylint:disable=C0103
     def ServerStreamingMethod(self, request, context):
         for data in ("one", "two", "three"):
             yield Response(
-                server_id=request.client_id, response_data=data,
+                server_id=request.client_id,
+                response_data=data,
             )
 
 
@@ -349,7 +351,8 @@ class TestOpenTelemetryServerInterceptor(TestBase):
 
                 for data in ("one", "two", "three"):
                     yield Response(
-                        server_id=request.client_id, response_data=data,
+                        server_id=request.client_id,
+                        response_data=data,
                     )
 
         # Intercept gRPC calls...

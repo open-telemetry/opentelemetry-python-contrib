@@ -122,5 +122,7 @@ class TraceResponsePropagator(ResponsePropagator):
             ),
         )
         setter.set(
-            carrier, _HTTP_HEADER_ACCESS_CONTROL_EXPOSE_HEADERS, header_name,
+            carrier,
+            _HTTP_HEADER_ACCESS_CONTROL_EXPOSE_HEADERS,
+            header_name,
         )

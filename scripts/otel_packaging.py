@@ -34,7 +34,10 @@ def get_instrumentation_packages():
         )
         instrumentation = json.loads(out.split("\\n")[1])
         instrumentation["requirement"] = "==".join(
-            (instrumentation["name"], instrumentation["version"],)
+            (
+                instrumentation["name"],
+                instrumentation["version"],
+            )
         )
         yield instrumentation
 

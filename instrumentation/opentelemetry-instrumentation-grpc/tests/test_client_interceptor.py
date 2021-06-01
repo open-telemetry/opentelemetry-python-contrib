@@ -214,7 +214,8 @@ class TestClientProto(TestBase):
         self.assertEqual(len(spans), 1)
         span = spans[0]
         self.assertIs(
-            span.status.status_code, trace.StatusCode.ERROR,
+            span.status.status_code,
+            trace.StatusCode.ERROR,
         )
 
     def test_error_stream_unary(self):
@@ -225,7 +226,8 @@ class TestClientProto(TestBase):
         self.assertEqual(len(spans), 1)
         span = spans[0]
         self.assertIs(
-            span.status.status_code, trace.StatusCode.ERROR,
+            span.status.status_code,
+            trace.StatusCode.ERROR,
         )
 
     def test_error_unary_stream(self):
@@ -236,7 +238,8 @@ class TestClientProto(TestBase):
         self.assertEqual(len(spans), 1)
         span = spans[0]
         self.assertIs(
-            span.status.status_code, trace.StatusCode.ERROR,
+            span.status.status_code,
+            trace.StatusCode.ERROR,
         )
 
     def test_error_stream_stream(self):
@@ -247,7 +250,8 @@ class TestClientProto(TestBase):
         self.assertEqual(len(spans), 1)
         span = spans[0]
         self.assertIs(
-            span.status.status_code, trace.StatusCode.ERROR,
+            span.status.status_code,
+            trace.StatusCode.ERROR,
         )
 
     def test_client_interceptor_trace_context_propagation(
