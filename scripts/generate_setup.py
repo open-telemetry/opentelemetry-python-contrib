@@ -17,7 +17,6 @@
 import logging
 import os
 import subprocess
-import sys
 
 from jinja2 import Template
 
@@ -73,17 +72,7 @@ def main():
         with open(generated_file, "w") as fh:
             fh.write(generated)
             fh.flush()
-
-    subprocess.run(
-        [
-            sys.executable,
-            "scripts/eachdist.py",
-            "format",
-            "--path",
-            "instrumentation",
-        ],
-        check=True,
-    )
+        subprocess.run(["black", "-q", generated_file], check=True)
 
 
 if __name__ == "__main__":

@@ -137,7 +137,7 @@ class PyramidInstrumentor(BaseInstrumentor):
         _wrap("pyramid.config", "Configurator.__init__", _traced_init)
 
     def _uninstrument(self, **kwargs):
-        """ "Disable Pyramid instrumentation"""
+        """"Disable Pyramid instrumentation"""
         unwrap(Configurator, "__init__")
 
     # pylint:disable=no-self-use

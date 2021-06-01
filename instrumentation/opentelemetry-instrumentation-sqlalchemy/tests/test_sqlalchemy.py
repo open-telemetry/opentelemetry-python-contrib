@@ -28,8 +28,7 @@ class TestSqlalchemyInstrumentation(TestBase):
     def test_trace_integration(self):
         engine = create_engine("sqlite:///:memory:")
         SQLAlchemyInstrumentor().instrument(
-            engine=engine,
-            tracer_provider=self.tracer_provider,
+            engine=engine, tracer_provider=self.tracer_provider,
         )
         cnx = engine.connect()
         cnx.execute("SELECT	1 + 1;").fetchall()
@@ -48,8 +47,7 @@ class TestSqlalchemyInstrumentation(TestBase):
             tracer.return_value = mock_tracer
             engine = create_engine("sqlite:///:memory:")
             SQLAlchemyInstrumentor().instrument(
-                engine=engine,
-                tracer_provider=self.tracer_provider,
+                engine=engine, tracer_provider=self.tracer_provider,
             )
             cnx = engine.connect()
             cnx.execute("SELECT	1 + 1;").fetchall()

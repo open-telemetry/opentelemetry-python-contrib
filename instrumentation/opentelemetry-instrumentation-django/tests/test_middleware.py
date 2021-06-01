@@ -345,8 +345,7 @@ class TestMiddleware(TestBase, WsgiTestBase):
 
         self.assertIn("traceresponse", response.headers)
         self.assertEqual(
-            response.headers["Access-Control-Expose-Headers"],
-            "traceresponse",
+            response.headers["Access-Control-Expose-Headers"], "traceresponse",
         )
         self.assertEqual(
             response.headers["traceresponse"],

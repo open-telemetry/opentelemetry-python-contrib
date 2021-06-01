@@ -214,8 +214,7 @@ class TestFalconInstrumentation(TestFalconBase):
 
         self.assertIn("traceresponse", headers)
         self.assertEqual(
-            headers["access-control-expose-headers"],
-            "traceresponse",
+            headers["access-control-expose-headers"], "traceresponse",
         )
         self.assertEqual(
             headers["traceresponse"],

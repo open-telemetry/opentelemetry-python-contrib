@@ -57,7 +57,7 @@ class CommandTracer(monitoring.CommandListener):
         self.is_enabled = True
 
     def started(self, event: monitoring.CommandStartedEvent):
-        """Method to handle a pymongo CommandStartedEvent"""
+        """ Method to handle a pymongo CommandStartedEvent """
         if not self.is_enabled:
             return
         command = event.command.get(event.command_name, "")
@@ -92,7 +92,7 @@ class CommandTracer(monitoring.CommandListener):
                 self._pop_span(event)
 
     def succeeded(self, event: monitoring.CommandSucceededEvent):
-        """Method to handle a pymongo CommandSucceededEvent"""
+        """ Method to handle a pymongo CommandSucceededEvent """
         if not self.is_enabled:
             return
         span = self._pop_span(event)
@@ -101,7 +101,7 @@ class CommandTracer(monitoring.CommandListener):
         span.end()
 
     def failed(self, event: monitoring.CommandFailedEvent):
-        """Method to handle a pymongo CommandFailedEvent"""
+        """ Method to handle a pymongo CommandFailedEvent """
         if not self.is_enabled:
             return
         span = self._pop_span(event)

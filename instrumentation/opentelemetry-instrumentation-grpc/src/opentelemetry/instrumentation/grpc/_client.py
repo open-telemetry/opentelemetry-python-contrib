@@ -218,8 +218,7 @@ class OpenTelemetryClientInterceptor(
                     Status(StatusCode.ERROR)
                 )
                 guarded_span.generated_span.set_attribute(
-                    SpanAttributes.RPC_GRPC_STATUS_CODE,
-                    err.code().value[0],
+                    SpanAttributes.RPC_GRPC_STATUS_CODE, err.code().value[0],
                 )
                 raise err
 

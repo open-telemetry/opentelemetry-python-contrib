@@ -145,8 +145,7 @@ class BotocoreInstrumentor(BaseInstrumentor):
             BotocoreInstrumentor._patch_lambda_invoke(api_params)
 
         with self._tracer.start_as_current_span(
-            "{}".format(service_name),
-            kind=SpanKind.CLIENT,
+            "{}".format(service_name), kind=SpanKind.CLIENT,
         ) as span:
             if span.is_recording():
                 span.set_attribute("aws.operation", operation_name)
@@ -184,14 +183,12 @@ class BotocoreInstrumentor(BaseInstrumentor):
 
                     if req_id:
                         span.set_attribute(
-                            "aws.request_id",
-                            req_id,
+                            "aws.request_id", req_id,
                         )
 
                     if "RetryAttempts" in metadata:
                         span.set_attribute(
-                            "retry_attempts",
-                            metadata["RetryAttempts"],
+                            "retry_attempts", metadata["RetryAttempts"],
                         )
 
                     if "HTTPStatusCode" in metadata:

@@ -65,6 +65,7 @@ from opentelemetry.semconv.trace import SpanAttributes
 from opentelemetry.util._time import _time_ns
 from opentelemetry.util.http import get_excluded_urls
 
+
 _logger = getLogger(__name__)
 
 _ENVIRON_STARTTIME_KEY = "opentelemetry-flask.starttime_key"
@@ -114,7 +115,7 @@ def _rewrapped_app(wsgi_app, response_hook=None):
                         status,
                     )
                 if response_hook is not None:
-                    response_hook(span, status, response_headers)
+                    response_hook(span, status, response_headers)         
             return start_response(status, response_headers, *args, **kwargs)
 
         return wsgi_app(wrapped_app_environ, _start_response)

@@ -122,9 +122,7 @@ class RedisInstrumentor(BaseInstrumentor):
             redis,
             "_opentelemetry_tracer",
             trace.get_tracer(
-                __name__,
-                __version__,
-                tracer_provider=tracer_provider,
+                __name__, __version__, tracer_provider=tracer_provider,
             ),
         )
 
