@@ -185,7 +185,7 @@ class TestProgrammatic(InstrumentationTest, TestBase, WsgiTestBase):
         self.assertEqual(span_list[0].name, "HTTP POST")
         self.assertEqual(span_list[0].kind, trace.SpanKind.SERVER)
         self.assertEqual(span_list[0].attributes, expected_attrs)
-        
+
     def test_internal_error(self):
         expected_attrs = expected_attributes(
             {
