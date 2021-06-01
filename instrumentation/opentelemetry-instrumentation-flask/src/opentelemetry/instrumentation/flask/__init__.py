@@ -218,10 +218,6 @@ class FlaskInstrumentor(BaseInstrumentor):
 
     See `BaseInstrumentor`
     """
-
-    def instrumentation_dependencies(self) -> Collection[str]:
-        return _instruments
-
     def _instrument(self, **kwargs):
         self._original_flask = flask.Flask
         request_hook = kwargs.get("request_hook")
