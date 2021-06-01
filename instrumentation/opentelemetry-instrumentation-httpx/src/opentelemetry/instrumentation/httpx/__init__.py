@@ -14,7 +14,6 @@
 
 import typing
 
-import httpcore
 import httpx
 import wrapt
 
@@ -37,9 +36,7 @@ RequestInfo = typing.Tuple[
     bytes,
     URL,
     typing.Optional[Headers],
-    typing.Optional[
-        typing.Union[httpcore.SyncByteStream, httpcore.AsyncByteStream]
-    ],
+    typing.Optional[typing.Union[httpx.SyncByteStream, httpx.AsyncByteStream]],
     typing.Optional[dict],
 ]
 ResponseInfo = typing.Tuple[
@@ -47,6 +44,12 @@ ResponseInfo = typing.Tuple[
 ]
 RequestHook = typing.Callable[[Span, RequestInfo], None]
 ResponseHook = typing.Callable[[Span, RequestInfo, ResponseInfo], None]
+AsyncRequestHook = typing.Callable[
+    [Span, RequestInfo], typing.Awaitable[typing.Any]
+]
+AsyncResponseHook = typing.Callable[
+    [Span, RequestInfo, ResponseInfo], typing.Awaitable[typing.Any]
+]
 
 
 def _get_default_span_name(method: str) -> str:
@@ -75,7 +78,7 @@ def _prepare_headers(headers: typing.Optional[Headers]) -> httpx.Headers:
     return httpx.Headers(headers)
 
 
-class SyncOpenTelemetryTransport(httpcore.SyncHTTPTransport):
+class SyncOpenTelemetryTransport(httpx.BaseTransport):
     """Sync transport class that will trace all requests made with a client.
 
     Args:
@@ -89,7 +92,7 @@ class SyncOpenTelemetryTransport(httpcore.SyncHTTPTransport):
 
     def __init__(
         self,
-        transport: httpcore.SyncHTTPTransport,
+        transport: httpx.BaseTransport,
         tracer_provider: typing.Optional[TracerProvider] = None,
         request_hook: typing.Optional[RequestHook] = None,
         response_hook: typing.Optional[ResponseHook] = None,
@@ -103,18 +106,22 @@ class SyncOpenTelemetryTransport(httpcore.SyncHTTPTransport):
         self._request_hook = request_hook
         self._response_hook = response_hook
 
-    def request(
+    def handle_request(
         self,
         method: bytes,
         url: URL,
         headers: typing.Optional[Headers] = None,
-        stream: typing.Optional[httpcore.SyncByteStream] = None,
-        ext: typing.Optional[dict] = None,
-    ) -> typing.Tuple[int, "Headers", httpcore.SyncByteStream, dict]:
+        stream: typing.Optional[httpx.SyncByteStream] = None,
+        extensions: typing.Optional[dict] = None,
+    ) -> typing.Tuple[int, "Headers", httpx.SyncByteStream, dict]:
         """Add request info to span."""
         if context.get_value("suppress_instrumentation"):
-            return self._transport.request(
-                method, url, headers=headers, stream=stream, ext=ext
+            return self._transport.handle_request(
+                method,
+                url,
+                headers=headers,
+                stream=stream,
+                extensions=extensions,
             )
 
         span_attributes = _prepare_attributes(method, url)
@@ -127,84 +134,7 @@ class SyncOpenTelemetryTransport(httpcore.SyncHTTPTransport):
             url,
             headers,
             stream,
-            ext,
-        )
-
-        with self._tracer.start_as_current_span(
-            span_name, kind=SpanKind.CLIENT, attributes=span_attributes
-        ) as span:
-            if self._request_hook is not None:
-                self._request_hook(span, request)
-
-            inject(_headers)
-
-            status_code, headers, stream, extensions = self._transport.request(
-                method, url, headers=_headers.raw, stream=stream, ext=ext
-            )
-
-            _apply_status_code(span, status_code)
-
-            if self._response_hook is not None:
-                self._response_hook(
-                    span, request, (status_code, headers, stream, extensions)
-                )
-
-        return status_code, headers, stream, extensions
-
-
-class AsyncOpenTelemetryTransport(httpcore.AsyncHTTPTransport):
-    """Async transport class that will trace all requests made with a client.
-
-    Args:
-        transport: AsyncHTTPTransport instance to wrap
-        tracer_provider: Tracer provider to use
-        request_hook: A hook that receives the span and request that is called
-            right after the span is created
-        response_hook: A hook that receives the span, request, and response
-            that is called right before the span ends
-    """
-
-    def __init__(
-        self,
-        transport: httpcore.AsyncHTTPTransport,
-        tracer_provider: typing.Optional[TracerProvider] = None,
-        request_hook: typing.Optional[RequestHook] = None,
-        response_hook: typing.Optional[ResponseHook] = None,
-    ):
-        self._transport = transport
-        self._tracer = get_tracer(
-            __name__,
-            instrumenting_library_version=__version__,
-            tracer_provider=tracer_provider,
-        )
-        self._request_hook = request_hook
-        self._response_hook = response_hook
-
-    async def arequest(
-        self,
-        method: bytes,
-        url: URL,
-        headers: typing.Optional[Headers] = None,
-        stream: typing.Optional[httpcore.AsyncByteStream] = None,
-        ext: typing.Optional[dict] = None,
-    ) -> typing.Tuple[int, "Headers", httpcore.AsyncByteStream, dict]:
-        """Add request info to span."""
-        if context.get_value("suppress_instrumentation"):
-            return await self._transport.arequest(
-                method, url, headers=headers, stream=stream, ext=ext
-            )
-
-        span_attributes = _prepare_attributes(method, url)
-        _headers = _prepare_headers(headers)
-        span_name = _get_default_span_name(
-            span_attributes[SpanAttributes.HTTP_METHOD]
-        )
-        request = (
-            method,
-            url,
-            headers,
-            stream,
-            ext,
+            extensions,
         )
 
         with self._tracer.start_as_current_span(
@@ -220,14 +150,108 @@ class AsyncOpenTelemetryTransport(httpcore.AsyncHTTPTransport):
                 headers,
                 stream,
                 extensions,
-            ) = await self._transport.arequest(
-                method, url, headers=_headers.raw, stream=stream, ext=ext
+            ) = self._transport.handle_request(
+                method,
+                url,
+                headers=_headers.raw,
+                stream=stream,
+                extensions=extensions,
             )
 
             _apply_status_code(span, status_code)
 
             if self._response_hook is not None:
                 self._response_hook(
+                    span, request, (status_code, headers, stream, extensions)
+                )
+
+        return status_code, headers, stream, extensions
+
+
+class AsyncOpenTelemetryTransport(httpx.AsyncBaseTransport):
+    """Async transport class that will trace all requests made with a client.
+
+    Args:
+        transport: AsyncHTTPTransport instance to wrap
+        tracer_provider: Tracer provider to use
+        request_hook: A hook that receives the span and request that is called
+            right after the span is created
+        response_hook: A hook that receives the span, request, and response
+            that is called right before the span ends
+    """
+
+    def __init__(
+        self,
+        transport: httpx.AsyncBaseTransport,
+        tracer_provider: typing.Optional[TracerProvider] = None,
+        request_hook: typing.Optional[RequestHook] = None,
+        response_hook: typing.Optional[ResponseHook] = None,
+    ):
+        self._transport = transport
+        self._tracer = get_tracer(
+            __name__,
+            instrumenting_library_version=__version__,
+            tracer_provider=tracer_provider,
+        )
+        self._request_hook = request_hook
+        self._response_hook = response_hook
+
+    async def handle_async_request(
+        self,
+        method: bytes,
+        url: URL,
+        headers: typing.Optional[Headers] = None,
+        stream: typing.Optional[httpx.AsyncByteStream] = None,
+        extensions: typing.Optional[dict] = None,
+    ) -> typing.Tuple[int, "Headers", httpx.AsyncByteStream, dict]:
+        """Add request info to span."""
+        if context.get_value("suppress_instrumentation"):
+            return await self._transport.handle_async_request(
+                method,
+                url,
+                headers=headers,
+                stream=stream,
+                extensions=extensions,
+            )
+
+        span_attributes = _prepare_attributes(method, url)
+        _headers = _prepare_headers(headers)
+        span_name = _get_default_span_name(
+            span_attributes[SpanAttributes.HTTP_METHOD]
+        )
+        request = (
+            method,
+            url,
+            headers,
+            stream,
+            extensions,
+        )
+
+        with self._tracer.start_as_current_span(
+            span_name, kind=SpanKind.CLIENT, attributes=span_attributes
+        ) as span:
+            if self._request_hook is not None:
+                await self._request_hook(span, request)
+
+            inject(_headers)
+
+            (
+                status_code,
+                headers,
+                stream,
+                extensions,
+            ) = await self._transport.handle_async_request(
+                method,
+                url,
+                headers=_headers.raw,
+                stream=stream,
+                extensions=extensions,
+            )
+
+            _apply_status_code(span, status_code)
+
+            if self._response_hook is not None:
+                await self._response_hook(
                     span, request, (status_code, headers, stream, extensions)
                 )
 
@@ -291,7 +315,7 @@ def _instrument_client(
     """Enables instrumentation for the given Client or AsyncClient"""
     # pylint: disable=protected-access
     if isinstance(client, httpx.Client):
-        transport = client._transport or httpcore.SyncHTTPTransport()
+        transport = client._transport or httpx.HTTPTransport()
         telemetry_transport = SyncOpenTelemetryTransport(
             transport,
             tracer_provider=tracer_provider,
@@ -299,7 +323,7 @@ def _instrument_client(
             response_hook=response_hook,
         )
     elif isinstance(client, httpx.AsyncClient):
-        transport = client._transport or httpcore.AsyncHTTPTransport()
+        transport = client._transport or httpx.AsyncHTTPTransport()
         telemetry_transport = AsyncOpenTelemetryTransport(
             transport,
             tracer_provider=tracer_provider,

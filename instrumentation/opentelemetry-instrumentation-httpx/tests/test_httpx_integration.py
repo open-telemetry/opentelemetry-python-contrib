@@ -36,6 +36,8 @@ from opentelemetry.trace import StatusCode
 
 if typing.TYPE_CHECKING:
     from opentelemetry.instrumentation.httpx import (
+        AsyncRequestHook,
+        AsyncResponseHook,
         RequestHook,
         RequestInfo,
         ResponseHook,
@@ -49,9 +51,41 @@ if typing.TYPE_CHECKING:
 HTTP_RESPONSE_BODY = "http.response.body"
 
 
-def async_call(coro: typing.Coroutine) -> asyncio.Task:
+def _async_call(coro: typing.Coroutine) -> asyncio.Task:
     loop = asyncio.get_event_loop()
     return loop.run_until_complete(coro)
+
+
+def _response_hook(span, request: "RequestInfo", response: "ResponseInfo"):
+    span.set_attribute(
+        HTTP_RESPONSE_BODY, response[2].read(),
+    )
+
+
+async def _async_response_hook(
+    span: "Span", request: "RequestInfo", response: "ResponseInfo"
+):
+    span.set_attribute(
+        HTTP_RESPONSE_BODY, await response[2].aread(),
+    )
+
+
+def _request_hook(span: "Span", request: "RequestInfo"):
+    url = httpx.URL(request[1])
+    span.update_name("GET" + str(url))
+
+
+async def _async_request_hook(span: "Span", request: "RequestInfo"):
+    url = httpx.URL(request[1])
+    span.update_name("GET" + str(url))
+
+
+def _no_update_request_hook(span: "Span", request: "RequestInfo"):
+    return 123
+
+
+async def _async_no_update_request_hook(span: "Span", request: "RequestInfo"):
+    return 123
 
 
 # Using this wrapper class to have a base class for the tests while also not
@@ -62,6 +96,9 @@ class BaseTestCases:
         # pylint: disable=no-member
 
         URL = "http://httpbin.org/status/200"
+        response_hook = staticmethod(_response_hook)
+        request_hook = staticmethod(_request_hook)
+        no_update_request_hook = staticmethod(_no_update_request_hook)
 
         # pylint: disable=invalid-name
         def setUp(self):
@@ -205,20 +242,21 @@ class BaseTestCases:
             self.assertEqual(span.status.status_code, StatusCode.ERROR)
 
         def test_invalid_url(self):
-            url = "http://[::1/nope"
+            url = "invalid://nope"
 
-            with respx.mock, self.assertRaises(httpx.LocalProtocolError):
-                respx.post("http://nope").pass_through()
+            with respx.mock, self.assertRaises(httpx.UnsupportedProtocol):
+                respx.post("invalid://nope").pass_through()
                 self.perform_request(url, method="POST")
 
             span = self.assert_span()
 
             self.assertEqual(span.name, "HTTP POST")
+            print(span.attributes)
             self.assertEqual(
                 span.attributes,
                 {
                     SpanAttributes.HTTP_METHOD: "POST",
-                    SpanAttributes.HTTP_URL: "http://nope",
+                    SpanAttributes.HTTP_URL: "invalid://nope/",
                 },
             )
             self.assertEqual(span.status.status_code, StatusCode.ERROR)
@@ -271,17 +309,9 @@ class BaseTestCases:
             self.assertIs(span.resource, resource)
 
         def test_response_hook(self):
-            def response_hook(
-                span: "Span", request: "RequestInfo", response: "ResponseInfo"
-            ):
-                span.set_attribute(
-                    HTTP_RESPONSE_BODY,
-                    b"".join(part for part in response[2]).decode("utf-8"),
-                )
-
             transport = self.create_transport(
                 tracer_provider=self.tracer_provider,
-                response_hook=response_hook,
+                response_hook=self.response_hook,
             )
             client = self.create_client(transport)
             result = self.perform_request(self.URL, client=client)
@@ -299,11 +329,7 @@ class BaseTestCases:
             )
 
         def test_request_hook(self):
-            def request_hook(span: "Span", request: "RequestInfo"):
-                url = httpx.URL(request[1])
-                span.update_name("GET" + str(url))
-
-            transport = self.create_transport(request_hook=request_hook)
+            transport = self.create_transport(request_hook=self.request_hook)
             client = self.create_client(transport)
             result = self.perform_request(self.URL, client=client)
 
@@ -312,10 +338,9 @@ class BaseTestCases:
             self.assertEqual(span.name, "GET" + self.URL)
 
         def test_request_hook_no_span_change(self):
-            def request_hook(span: "Span", request: "RequestInfo"):
-                return 123
-
-            transport = self.create_transport(request_hook=request_hook)
+            transport = self.create_transport(
+                request_hook=self.no_update_request_hook
+            )
             client = self.create_client(transport)
             result = self.perform_request(self.URL, client=client)
 
@@ -375,18 +400,10 @@ class BaseTestCases:
             self.assertIs(span.resource, resource)
 
         def test_response_hook(self):
-            def response_hook(
-                span, request: "RequestInfo", response: "ResponseInfo"
-            ):
-                span.set_attribute(
-                    HTTP_RESPONSE_BODY,
-                    b"".join(part for part in response[2]).decode("utf-8"),
-                )
-
             HTTPXClientInstrumentor().uninstrument()
             HTTPXClientInstrumentor().instrument(
                 tracer_provider=self.tracer_provider,
-                response_hook=response_hook,
+                response_hook=self.response_hook,
             )
             client = self.create_client()
             result = self.perform_request(self.URL, client=client)
@@ -404,14 +421,10 @@ class BaseTestCases:
             )
 
         def test_request_hook(self):
-            def request_hook(span: "Span", request: "RequestInfo"):
-                url = httpx.URL(request[1])
-                span.update_name("GET" + str(url))
-
             HTTPXClientInstrumentor().uninstrument()
             HTTPXClientInstrumentor().instrument(
                 tracer_provider=self.tracer_provider,
-                request_hook=request_hook,
+                request_hook=self.request_hook,
             )
             client = self.create_client()
             result = self.perform_request(self.URL, client=client)
@@ -421,13 +434,10 @@ class BaseTestCases:
             self.assertEqual(span.name, "GET" + self.URL)
 
         def test_request_hook_no_span_update(self):
-            def request_hook(span: "Span", request: httpx.Request):
-                return 123
-
             HTTPXClientInstrumentor().uninstrument()
             HTTPXClientInstrumentor().instrument(
                 tracer_provider=self.tracer_provider,
-                request_hook=request_hook,
+                request_hook=self.no_update_request_hook,
             )
             client = self.create_client()
             result = self.perform_request(self.URL, client=client)
@@ -566,6 +576,10 @@ class TestSyncIntegration(BaseTestCases.BaseManualTest):
 
 
 class TestAsyncIntegration(BaseTestCases.BaseManualTest):
+    response_hook = staticmethod(_async_response_hook)
+    request_hook = staticmethod(_async_request_hook)
+    no_update_request_hook = staticmethod(_async_no_update_request_hook)
+
     def setUp(self):
         super().setUp()
         self.transport = self.create_transport()
@@ -574,8 +588,8 @@ class TestAsyncIntegration(BaseTestCases.BaseManualTest):
     def create_transport(
         self,
         tracer_provider: typing.Optional["TracerProvider"] = None,
-        request_hook: typing.Optional["RequestHook"] = None,
-        response_hook: typing.Optional["ResponseHook"] = None,
+        request_hook: typing.Optional["AsyncRequestHook"] = None,
+        response_hook: typing.Optional["AsyncResponseHook"] = None,
     ):
         transport = httpx.AsyncHTTPTransport()
         telemetry_transport = AsyncOpenTelemetryTransport(
@@ -606,7 +620,7 @@ class TestAsyncIntegration(BaseTestCases.BaseManualTest):
             async with client as _client:
                 return await _client.request(method, url, headers=headers)
 
-        return async_call(_perform_request())
+        return _async_call(_perform_request())
 
 
 class TestSyncInstrumentationIntegration(BaseTestCases.BaseInstrumentorTest):
@@ -628,6 +642,10 @@ class TestSyncInstrumentationIntegration(BaseTestCases.BaseInstrumentorTest):
 
 
 class TestAsyncInstrumentationIntegration(BaseTestCases.BaseInstrumentorTest):
+    response_hook = staticmethod(_async_response_hook)
+    request_hook = staticmethod(_async_request_hook)
+    no_update_request_hook = staticmethod(_async_no_update_request_hook)
+
     def create_client(
         self, transport: typing.Optional[AsyncOpenTelemetryTransport] = None,
     ):
@@ -648,4 +666,4 @@ class TestAsyncInstrumentationIntegration(BaseTestCases.BaseInstrumentorTest):
             async with client as _client:
                 return await _client.request(method, url, headers=headers)
 
-        return async_call(_perform_request())
+        return _async_call(_perform_request())
