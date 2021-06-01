@@ -96,7 +96,7 @@ class MssqlConnectorTestCase(SQLAlchemyTestMixin):
         self.session.commit()
 
         spans = self.memory_exporter.get_finished_spans()
-        # identity insert on before the insert, insert, and identity insert of after the insert
+        # identity insert on before the insert, insert, and identity insert off after the insert
         self.assertEqual(len(spans), 3)
         span = spans[1]
         self._check_span(span, "INSERT")
