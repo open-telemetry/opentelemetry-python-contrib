@@ -48,11 +48,13 @@ API
 """
 
 from logging import getLogger
+from typing import Collection
 
 import flask
 
 import opentelemetry.instrumentation.wsgi as otel_wsgi
 from opentelemetry import context, trace
+from opentelemetry.instrumentation.flask.package import _instruments
 from opentelemetry.instrumentation.flask.version import __version__
 from opentelemetry.instrumentation.instrumentor import BaseInstrumentor
 from opentelemetry.instrumentation.propagators import (
@@ -216,6 +218,10 @@ class FlaskInstrumentor(BaseInstrumentor):
 
     See `BaseInstrumentor`
     """
+
+    def instrumentation_dependencies(self) -> Collection[str]:
+        return _instruments
+
     def _instrument(self, **kwargs):
         self._original_flask = flask.Flask
         request_hook = kwargs.get("request_hook")

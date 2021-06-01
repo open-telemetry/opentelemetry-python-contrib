@@ -12,15 +12,23 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - `opentelemetry-instrumentation-tornado` Fixed cases where description was used with non-
   error status code when creating Status objects.
   ([#504](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/504))
+- `opentelemetry-instrumentation-asgi` Fix instrumentation default span name.
+  ([#418](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/418))
+- Propagators use the root context as default for `extract` and do not modify
+  the context if extracting from carrier does not work.
+  ([#488](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/488))
 
 ### Added
 - `opentelemetry-instrumentation-botocore` now supports
-  context propagation for lambda invoke via Payload embedded headers. 
+  context propagation for lambda invoke via Payload embedded headers.
   ([#458](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/458))
-  
+
 ## [0.21b0](https://github.com/open-telemetry/opentelemetry-python/releases/tag/v1.2.0-0.21b0) - 2021-05-11
 
 ### Changed
+- Instrumentation packages don't specify the libraries they instrument as dependencies
+  anymore. Instead, they verify the correct version of libraries are installed at runtime.
+  ([#475](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/475))
 - `opentelemetry-propagator-ot-trace` Use `TraceFlags` object in `extract`
   ([#472](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/472))
 - Set the `traced_request_attrs` of FalconInstrumentor by an argument correctly.
@@ -85,7 +93,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   ([#436](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/436))
 - `opentelemetry-instrumentation-grpc` Keep client interceptor in sync with grpc client interceptors.
   ([#442](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/442))
-  
+
 ### Removed
 - Remove `http.status_text` from span attributes
   ([#406](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/406))
