@@ -85,6 +85,7 @@ def get_default_span_name():
         span_name = otel_wsgi.get_default_span_name(flask.request.environ)
     return span_name
 
+
 def _rewrapped_app(wsgi_app, response_hook=None):
     def _wrapped_app(wrapped_app_environ, start_response):
         # We want to measure the time for route matching, etc.
@@ -115,7 +116,7 @@ def _rewrapped_app(wsgi_app, response_hook=None):
                         status,
                     )
                 if response_hook is not None:
-                    response_hook(span, status, response_headers)         
+                    response_hook(span, status, response_headers)
             return start_response(status, response_headers, *args, **kwargs)
 
         return wsgi_app(wrapped_app_environ, _start_response)
@@ -124,11 +125,9 @@ def _rewrapped_app(wsgi_app, response_hook=None):
 
 
 def _wrapped_before_request(request_hook=None, tracer=None):
-
     def _before_request():
         if _excluded_urls.url_disabled(flask.request.url):
             return
-
         flask_request_environ = flask.request.environ
         span_name = get_default_span_name()
         token = context.attach(
@@ -161,8 +160,7 @@ def _wrapped_before_request(request_hook=None, tracer=None):
         flask_request_environ[_ENVIRON_ACTIVATION_KEY] = activation
         flask_request_environ[_ENVIRON_SPAN_KEY] = span
         flask_request_environ[_ENVIRON_TOKEN] = token
-        
-        
+
     return _before_request
 
 
@@ -192,20 +190,23 @@ class _InstrumentedFlask(flask.Flask):
     _tracer_provider = None
     _request_hook = None
     _response_hook = None
-    
+
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
 
         self._original_wsgi_ = self.wsgi_app
-        
-        self.wsgi_app = _rewrapped_app(self.wsgi_app, _InstrumentedFlask._response_hook)
+
+        self.wsgi_app = _rewrapped_app(
+            self.wsgi_app, _InstrumentedFlask._response_hook
+        )
 
         tracer = trace.get_tracer(
             __name__, __version__, _InstrumentedFlask._tracer_provider
         )
 
         _before_request = _wrapped_before_request(
-            _InstrumentedFlask._request_hook, tracer,
+            _InstrumentedFlask._request_hook,
+            tracer,
         )
         self._before_request = _before_request
         self.before_request(_before_request)
@@ -218,6 +219,10 @@ class FlaskInstrumentor(BaseInstrumentor):
 
     See `BaseInstrumentor`
     """
+
+    def instrumentation_dependencies(self) -> Collection[str]:
+        return _instruments
+
     def _instrument(self, **kwargs):
         self._original_flask = flask.Flask
         request_hook = kwargs.get("request_hook")
