@@ -116,7 +116,7 @@ def _rewrapped_app(wsgi_app, response_hook=None):
                         status,
                     )
                 if response_hook is not None:
-                    response_hook(span, status, response_headers)         
+                    response_hook(span, status, response_headers)
             return start_response(status, response_headers, *args, **kwargs)
 
         return wsgi_app(wrapped_app_environ, _start_response)
