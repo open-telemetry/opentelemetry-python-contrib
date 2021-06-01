@@ -60,6 +60,3 @@ _build/
 # mypy
 .mypy_cache/
 target
-
-# my test venv
-my_test_venv/
