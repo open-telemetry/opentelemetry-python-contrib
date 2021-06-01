@@ -18,6 +18,7 @@ import httpx
 import wrapt
 
 from opentelemetry import context
+from opentelemetry.instrumentation.httpx.package import _instruments
 from opentelemetry.instrumentation.httpx.version import __version__
 from opentelemetry.instrumentation.instrumentor import BaseInstrumentor
 from opentelemetry.instrumentation.utils import (
@@ -354,6 +355,9 @@ class HTTPXClientInstrumentor(BaseInstrumentor):
 
     See `BaseInstrumentor`
     """
+
+    def instrumentation_dependencies(self) -> typing.Collection[str]:
+        return _instruments
 
     def _instrument(self, **kwargs):
         """Instruments httpx Client and AsyncClient

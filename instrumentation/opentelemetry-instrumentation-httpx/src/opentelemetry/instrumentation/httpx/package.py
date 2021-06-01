@@ -12,4 +12,5 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-__version__ = "0.22.dev0"
+
+_instruments = ("httpx >= 0.18.0, < 0.19.0",)
