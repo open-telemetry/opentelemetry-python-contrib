@@ -113,8 +113,8 @@ def _rewrapped_app(wsgi_app, response_hook=None):
                         "missing at _start_response(%s)",
                         status,
                     )
-                if response_hook is not None:
-                    response_hook(span, status, response_headers)
+                if response_hook:
+                    response_hook(span, status, response_headers)         
             return start_response(status, response_headers, *args, **kwargs)
 
         return wsgi_app(wrapped_app_environ, _start_response)
@@ -217,10 +217,6 @@ class FlaskInstrumentor(BaseInstrumentor):
 
     See `BaseInstrumentor`
     """
-
-    def instrumentation_dependencies(self) -> Collection[str]:
-        return _instruments
-
     def _instrument(self, **kwargs):
         self._original_flask = flask.Flask
         request_hook = kwargs.get("request_hook")
