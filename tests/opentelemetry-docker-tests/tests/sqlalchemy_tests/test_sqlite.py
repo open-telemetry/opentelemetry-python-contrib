@@ -59,7 +59,3 @@ class SQLiteTestCase(SQLAlchemyTestMixin):
         self.assertEqual(
             span.status.description, "no such table: a_wrong_table"
         )
-
-    def test_multithreading(self):
-        # Overriding instead of skipping based on DB name in mixin
-        pass

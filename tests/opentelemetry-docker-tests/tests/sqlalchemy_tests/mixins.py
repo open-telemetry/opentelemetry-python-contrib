@@ -208,6 +208,9 @@ class SQLAlchemyTestMixin(TestBase):
         We also expect no logged warnings about calling end() on an ended span.
         """
 
+        if self.VENDOR == "sqlite":
+            return
+
         def insert_player(session):
             _session = session()
             player = Player(name="Player")
@@ -230,18 +233,13 @@ class SQLAlchemyTestMixin(TestBase):
         thread_two = threading.Thread(target=insert_players, args=(Session,))
 
         logger = logging.getLogger("opentelemetry.sdk.trace")
-        with self.assertLogs(logger, level="WARNING") as cm:
-            # Dummy warning so test doesn't fail on no logs
-            logger.warning("Dummy warning")
-            thread_one.start()
-            thread_two.start()
-            thread_one.join()
-            thread_two.join()
-            close_all_sessions()
-
-            self.assertEqual(
-                cm.output, ["WARNING:opentelemetry.sdk.trace:Dummy warning"]
-            )
+        with self.assertRaises(AssertionError):
+            with self.assertLogs(logger, level="WARNING"):
+                thread_one.start()
+                thread_two.start()
+                thread_one.join()
+                thread_two.join()
+                close_all_sessions()
 
         spans = self.memory_exporter.get_finished_spans()
         self.assertEqual(len(spans), 5)
