@@ -70,7 +70,7 @@ libraries = {
     },
     "httpx": {
         "library": "httpx >= 0.18.0, < 0.19.0",
-        "instrumentation": "opentelemetry-instrumentation-httpx==0.22.dev0",
+        "instrumentation": "opentelemetry-instrumentation-httpx==0.23.dev0",
     },
     "jinja2": {
         "library": "jinja2~=2.7",
