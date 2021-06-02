@@ -318,6 +318,15 @@ class RequestsIntegrationTestBase(abc.ABC):
         span = self.assert_span()
         self.assertEqual(span.status.status_code, StatusCode.ERROR)
 
+    def test_credentials_url(self):
+        url = "http://username:password@httpbin.org/status/200"
+
+        with self.assertRaises(Exception):
+            self.perform_request(url)
+
+        span = self.assert_span()
+        print(span.attributes)
+        self.assertEqual(span.attributes[SpanAttributes.HTTP_URL], self.URL)
 
 class TestRequestsIntegration(RequestsIntegrationTestBase, TestBase):
     @staticmethod
