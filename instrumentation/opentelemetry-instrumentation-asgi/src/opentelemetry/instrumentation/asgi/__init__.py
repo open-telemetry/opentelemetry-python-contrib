@@ -112,8 +112,7 @@ def collect_request_attributes(scope):
 
 
 def get_host_port_url_tuple(scope):
-    """Returns (host, port, full_url) tuple.
-    """
+    """Returns (host, port, full_url) tuple."""
     server = scope.get("server") or ["0.0.0.0", 80]
     port = server[1]
     server_host = server[0] + (":" + str(port) if port != 80 else "")
@@ -147,12 +146,13 @@ def get_default_span_details(scope: dict) -> Tuple[str, dict]:
         scope: the asgi scope dictionary
 
     Returns:
-        a tuple of the span, and any attributes to attach to the
-        span.
+        a tuple of the span name, and any attributes to attach to the span.
     """
-    method_or_path = scope.get("method") or scope.get("path")
+    span_name = scope.get("path", "").strip() or "HTTP {}".format(
+        scope.get("method", "").strip()
+    )
 
-    return method_or_path, {}
+    return span_name, {}
 
 
 class OpenTelemetryMiddleware:
@@ -205,7 +205,7 @@ class OpenTelemetryMiddleware:
 
         try:
             with self.tracer.start_as_current_span(
-                span_name + " asgi", kind=trace.SpanKind.SERVER,
+                span_name, kind=trace.SpanKind.SERVER,
             ) as span:
                 if span.is_recording():
                     attributes = collect_request_attributes(scope)
@@ -216,7 +216,7 @@ class OpenTelemetryMiddleware:
                 @wraps(receive)
                 async def wrapped_receive():
                     with self.tracer.start_as_current_span(
-                        span_name + " asgi." + scope["type"] + ".receive"
+                        " ".join((span_name, scope["type"], "receive"))
                     ) as receive_span:
                         message = await receive()
                         if receive_span.is_recording():
@@ -228,13 +228,15 @@ class OpenTelemetryMiddleware:
                 @wraps(send)
                 async def wrapped_send(message):
                     with self.tracer.start_as_current_span(
-                        span_name + " asgi." + scope["type"] + ".send"
+                        " ".join((span_name, scope["type"], "send"))
                     ) as send_span:
                         if send_span.is_recording():
                             if message["type"] == "http.response.start":
                                 status_code = message["status"]
+                                set_status_code(span, status_code)
                                 set_status_code(send_span, status_code)
                             elif message["type"] == "websocket.send":
+                                set_status_code(span, 200)
                                 set_status_code(send_span, 200)
                             send_span.set_attribute("type", message["type"])
                         await send(message)
