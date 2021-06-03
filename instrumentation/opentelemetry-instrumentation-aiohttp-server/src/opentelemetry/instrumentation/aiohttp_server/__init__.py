@@ -63,7 +63,7 @@ def _set_span_status(span: trace.Span, response: StreamResponse):
         http_status = response.status
         reason = f"Unable to parse status code: {http_status!r}"
     except AttributeError:
-        reason = f"Response without a status code"
+        reason = "Response without a status code"
 
     if reason:
         span.set_status(trace.Status(trace.StatusCode.ERROR), reason=reason)

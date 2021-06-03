@@ -49,7 +49,7 @@ class TestAioHttpServerInstrumentor(TestCase):
 
     @unittest_run_loop
     async def test_status_code_attribute(self):
-        await self.client.request("GET", f"/status/405")
+        await self.client.request("GET", "/status/405")
 
         self.assert_span_has_attributes(
             self.first_span, {SpanAttributes.HTTP_STATUS_CODE: 405}
