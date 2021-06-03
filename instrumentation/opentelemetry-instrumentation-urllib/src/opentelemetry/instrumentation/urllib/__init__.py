@@ -143,9 +143,14 @@ def _instrument(tracer, span_callback=None, name_callback=None):
         if not span_name or not isinstance(span_name, str):
             span_name = get_default_span_name(method)
 
+        try:
+            url = str(yarl.URL(url).with_user(None))
+        except ValueError: # invalid url was passed
+            pass
+
         labels = {
             SpanAttributes.HTTP_METHOD: method,
-            SpanAttributes.HTTP_URL: str(yarl.URL(url).with_user(None)),
+            SpanAttributes.HTTP_URL: url
         }
 
         with tracer.start_as_current_span(
@@ -154,7 +159,7 @@ def _instrument(tracer, span_callback=None, name_callback=None):
             exception = None
             if span.is_recording():
                 span.set_attribute(SpanAttributes.HTTP_METHOD, method)
-                span.set_attribute(SpanAttributes.HTTP_URL, str(yarl.URL(url).with_user(None)))
+                span.set_attribute(SpanAttributes.HTTP_URL, url)
 
             headers = get_or_create_headers()
             inject(headers)

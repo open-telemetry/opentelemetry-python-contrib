@@ -325,7 +325,6 @@ class RequestsIntegrationTestBase(abc.ABC):
             self.perform_request(url)
 
         span = self.assert_span()
-        print(span.attributes)
         self.assertEqual(span.attributes[SpanAttributes.HTTP_URL], self.URL)
 
 class TestRequestsIntegration(RequestsIntegrationTestBase, TestBase):

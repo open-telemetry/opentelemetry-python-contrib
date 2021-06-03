@@ -36,6 +36,7 @@ API
 import functools
 import types
 from typing import Collection
+import yarl
 
 from requests.models import Response
 from requests.sessions import Session
@@ -123,6 +124,11 @@ def _instrument(tracer, span_callback=None, name_callback=None):
             span_name = name_callback(method, url)
         if not span_name or not isinstance(span_name, str):
             span_name = get_default_span_name(method)
+
+        try:
+            url = str(yarl.URL(url).with_user(None))
+        except ValueError: # invalid url was passed
+            pass
 
         labels = {}
         labels[SpanAttributes.HTTP_METHOD] = method

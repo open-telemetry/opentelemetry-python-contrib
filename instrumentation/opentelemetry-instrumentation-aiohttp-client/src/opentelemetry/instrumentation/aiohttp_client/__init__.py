@@ -65,6 +65,7 @@ API
 import types
 import typing
 from typing import Collection
+import yarl
 
 import aiohttp
 import wrapt
@@ -171,13 +172,16 @@ def create_trace_config(
         )
 
         if trace_config_ctx.span.is_recording():
+            try:
+                url = yarl.URL(params.url).with_user(None)
+            except ValueError: # invalid url was passed
+                pass
+
             attributes = {
                 SpanAttributes.HTTP_METHOD: http_method,
-                SpanAttributes.HTTP_URL: trace_config_ctx.url_filter(
-                    params.url
-                )
+                SpanAttributes.HTTP_URL: trace_config_ctx.url_filter(url)
                 if callable(trace_config_ctx.url_filter)
-                else str(params.url),
+                else str(url),
             }
             for key, value in attributes.items():
                 trace_config_ctx.span.set_attribute(key, value)
