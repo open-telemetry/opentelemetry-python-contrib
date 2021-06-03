@@ -4,9 +4,15 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [Unreleased](https://github.com/open-telemetry/opentelemetry-python/compare/v1.2.0-0.21b0...HEAD)
+## [Unreleased](https://github.com/open-telemetry/opentelemetry-python/compare/v1.3.0-0.22b0...HEAD)
+
+## [0.22b0](https://github.com/open-telemetry/opentelemetry-python/releases/tag/v1.3.0-0.22b0) - 2021-06-01
 
 ### Changed
+- `opentelemetry-bootstrap` not longer forcibly removes and re-installs libraries and their instrumentations.
+  This means running bootstrap will not auto-upgrade existing dependencies and as a result not cause dependency
+  conflicts.
+  ([#514](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/514))
 - `opentelemetry-instrumentation-asgi` Set the response status code on the server span
   ([#478](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/478))
 - `opentelemetry-instrumentation-tornado` Fixed cases where description was used with non-
@@ -71,6 +77,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Added
 - `opentelemetry-instrumentation-urllib3` Add urllib3 instrumentation
   ([#299](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/299))
+
+- `opentelemetry-instrumentation-flask` Added `request_hook` and `response_hook` callbacks.
+  ([#416](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/416))
+
 - `opentelemetry-instrumenation-django` now supports request and response hooks.
   ([#407](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/407))
 - `opentelemetry-instrumentation-falcon` FalconInstrumentor now supports request/response hooks.
