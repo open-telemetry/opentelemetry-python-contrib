@@ -19,6 +19,9 @@ from wrapt import ObjectProxy
 from opentelemetry.context import create_key
 from opentelemetry.trace import StatusCode
 
+# This is a temporary location for the suppress instrumentation key.
+# Once the decision around how to suppress instrumentation is made in the
+# spec, this key should be moved accordingly.
 _SUPPRESS_INSTRUMENTATION_KEY = create_key("suppress_instrumentation")
 
 
