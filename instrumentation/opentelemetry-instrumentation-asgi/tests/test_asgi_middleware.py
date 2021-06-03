@@ -116,12 +116,12 @@ class TestAsgiApplication(AsgiTestBase):
         self.assertEqual(len(span_list), 4)
         expected = [
             {
-                "name": "GET asgi.http.receive",
+                "name": "/ http receive",
                 "kind": trace_api.SpanKind.INTERNAL,
                 "attributes": {"type": "http.request"},
             },
             {
-                "name": "GET asgi.http.send",
+                "name": "/ http send",
                 "kind": trace_api.SpanKind.INTERNAL,
                 "attributes": {
                     SpanAttributes.HTTP_STATUS_CODE: 200,
@@ -129,12 +129,12 @@ class TestAsgiApplication(AsgiTestBase):
                 },
             },
             {
-                "name": "GET asgi.http.send",
+                "name": "/ http send",
                 "kind": trace_api.SpanKind.INTERNAL,
                 "attributes": {"type": "http.response.body"},
             },
             {
-                "name": "GET asgi",
+                "name": "/",
                 "kind": trace_api.SpanKind.SERVER,
                 "attributes": {
                     SpanAttributes.HTTP_METHOD: "GET",
@@ -146,6 +146,7 @@ class TestAsgiApplication(AsgiTestBase):
                     SpanAttributes.HTTP_URL: "http://127.0.0.1/",
                     SpanAttributes.NET_PEER_IP: "127.0.0.1",
                     SpanAttributes.NET_PEER_PORT: 32767,
+                    SpanAttributes.HTTP_STATUS_CODE: 200,
                 },
             },
         ]
@@ -200,9 +201,12 @@ class TestAsgiApplication(AsgiTestBase):
 
         def update_expected_span_name(expected):
             for entry in expected:
-                entry["name"] = " ".join(
-                    [span_name] + entry["name"].split(" ")[-1:]
-                )
+                if entry["kind"] == trace_api.SpanKind.SERVER:
+                    entry["name"] = span_name
+                else:
+                    entry["name"] = " ".join(
+                        [span_name] + entry["name"].split(" ")[1:]
+                    )
             return expected
 
         app = otel_asgi.OpenTelemetryMiddleware(
@@ -303,15 +307,57 @@ class TestAsgiApplication(AsgiTestBase):
         span_list = self.memory_exporter.get_finished_spans()
         self.assertEqual(len(span_list), 6)
         expected = [
-            "/ asgi.websocket.receive",
-            "/ asgi.websocket.send",
-            "/ asgi.websocket.receive",
-            "/ asgi.websocket.send",
-            "/ asgi.websocket.receive",
-            "/ asgi",
+            {
+                "name": "/ websocket receive",
+                "kind": trace_api.SpanKind.INTERNAL,
+                "attributes": {"type": "websocket.connect"},
+            },
+            {
+                "name": "/ websocket send",
+                "kind": trace_api.SpanKind.INTERNAL,
+                "attributes": {"type": "websocket.accept"},
+            },
+            {
+                "name": "/ websocket receive",
+                "kind": trace_api.SpanKind.INTERNAL,
+                "attributes": {
+                    "type": "websocket.receive",
+                    SpanAttributes.HTTP_STATUS_CODE: 200,
+                },
+            },
+            {
+                "name": "/ websocket send",
+                "kind": trace_api.SpanKind.INTERNAL,
+                "attributes": {
+                    "type": "websocket.send",
+                    SpanAttributes.HTTP_STATUS_CODE: 200,
+                },
+            },
+            {
+                "name": "/ websocket receive",
+                "kind": trace_api.SpanKind.INTERNAL,
+                "attributes": {"type": "websocket.disconnect"},
+            },
+            {
+                "name": "/",
+                "kind": trace_api.SpanKind.SERVER,
+                "attributes": {
+                    SpanAttributes.HTTP_SCHEME: self.scope["scheme"],
+                    SpanAttributes.NET_HOST_PORT: self.scope["server"][1],
+                    SpanAttributes.HTTP_HOST: self.scope["server"][0],
+                    SpanAttributes.HTTP_FLAVOR: self.scope["http_version"],
+                    SpanAttributes.HTTP_TARGET: self.scope["path"],
+                    SpanAttributes.HTTP_URL: f'{self.scope["scheme"]}://{self.scope["server"][0]}{self.scope["path"]}',
+                    SpanAttributes.NET_PEER_IP: self.scope["client"][0],
+                    SpanAttributes.NET_PEER_PORT: self.scope["client"][1],
+                    SpanAttributes.HTTP_STATUS_CODE: 200,
+                },
+            },
         ]
-        actual = [span.name for span in span_list]
-        self.assertListEqual(actual, expected)
+        for span, expected in zip(span_list, expected):
+            self.assertEqual(span.name, expected["name"])
+            self.assertEqual(span.kind, expected["kind"])
+            self.assertDictEqual(dict(span.attributes), expected["attributes"])
 
     def test_lifespan(self):
         self.scope["type"] = "lifespan"
