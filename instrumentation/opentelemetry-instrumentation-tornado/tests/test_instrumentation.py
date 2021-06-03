@@ -455,6 +455,9 @@ class TestTornadoInstrumentation(TornadoTest):
         self.memory_exporter.clear()
         set_global_response_propagator(orig)
 
+    def test_credential_removal(self):
+        pass
+
 
 class TornadoHookTest(TornadoTest):
     _client_request_hook = None

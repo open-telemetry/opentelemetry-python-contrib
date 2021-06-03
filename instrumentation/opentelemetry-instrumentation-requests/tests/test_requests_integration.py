@@ -357,7 +357,7 @@ class TestRequestsIntegration(RequestsIntegrationTestBase, TestBase):
         )
         self.assertEqual(span.status.status_code, StatusCode.ERROR)
 
-    def test_url_credentials(self):
+    def test_credential_removal(self):
         new_url = "http://username:password@httpbin.org/status/200"
         self.perform_request(new_url)
         span = self.assert_span()

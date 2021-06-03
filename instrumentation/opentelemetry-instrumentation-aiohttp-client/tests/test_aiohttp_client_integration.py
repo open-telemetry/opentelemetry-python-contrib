@@ -264,7 +264,7 @@ class TestAioHttpIntegration(TestBase):
             )
             self.memory_exporter.clear()
      
-    def test_credentials(self):
+    def test_credential_removal(self):
         trace_configs = [aiohttp_client.create_trace_config()]
 
         url = "http://username:password@httpbin.org/"

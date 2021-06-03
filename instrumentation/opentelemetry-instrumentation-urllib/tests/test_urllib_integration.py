@@ -318,7 +318,7 @@ class RequestsIntegrationTestBase(abc.ABC):
         span = self.assert_span()
         self.assertEqual(span.status.status_code, StatusCode.ERROR)
 
-    def test_credentials_url(self):
+    def test_credential_removal(self):
         url = "http://username:password@httpbin.org/status/200"
 
         with self.assertRaises(Exception):
