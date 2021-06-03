@@ -1,7 +1,9 @@
 from aiohttp.test_utils import AioHTTPTestCase, unittest_run_loop
 from opentelemetry.test.test_base import TestBase
 from aiohttp import web
-from opentelemetry.instrumentation.aiohttp_server import AioHttpServerInstrumentor
+from opentelemetry.instrumentation.aiohttp_server import (
+    AioHttpServerInstrumentor,
+)
 from opentelemetry.semconv.trace import SpanAttributes
 
 
@@ -48,7 +50,9 @@ class TestAioHttpServerInstrumentor(TestCase):
     async def test_status_code_attribute(self):
         await self.client.request("GET", f"/status/405")
 
-        self.assert_span_has_attributes(self.first_span, {SpanAttributes.HTTP_STATUS_CODE: 405})
+        self.assert_span_has_attributes(
+            self.first_span, {SpanAttributes.HTTP_STATUS_CODE: 405}
+        )
 
     @unittest_run_loop
     async def test_default_span_name_GET(self):

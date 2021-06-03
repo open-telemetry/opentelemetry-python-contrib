@@ -8,7 +8,10 @@ from aiohttp.web import (
 )
 from opentelemetry import context, propagate, trace
 from opentelemetry.instrumentation.instrumentor import BaseInstrumentor
-from opentelemetry.instrumentation.utils import http_status_to_status_code, extract_attributes_from_object
+from opentelemetry.instrumentation.utils import (
+    http_status_to_status_code,
+    extract_attributes_from_object,
+)
 from opentelemetry.semconv.trace import SpanAttributes
 from opentelemetry.util.http import (
     ExcludeList,
@@ -33,10 +36,14 @@ def _span_name(request: BaseRequest) -> str:
 
 
 def _is_suppressed(excluded_urls: ExcludeList, request: BaseRequest) -> bool:
-    return context.get_value("suppress_instrumentation") or excluded_urls.url_disabled(str(request.url))
+    return context.get_value(
+        "suppress_instrumentation"
+    ) or excluded_urls.url_disabled(str(request.url))
 
 
-def _collect_request_attributes(request: BaseRequest, url_filter: t.Callable[[str], str]) -> t.Dict[str, str]:
+def _collect_request_attributes(
+    request: BaseRequest, url_filter: t.Callable[[str], str]
+) -> t.Dict[str, str]:
     url = str(request.url)
     if url_filter:
         url = url_filter(url)
@@ -105,7 +112,9 @@ def _instrument(
 
         if span.is_recording():
             attributes = _collect_request_attributes(request, url_filter)
-            attributes = extract_attributes_from_object(request, traced_request_attrs, attributes)
+            attributes = extract_attributes_from_object(
+                request, traced_request_attrs, attributes
+            )
             span.set_attributes(attributes)
 
         try:
@@ -162,5 +171,7 @@ class AioHttpServerInstrumentor(BaseInstrumentor):
         _instrument(**kwargs)
 
     def _uninstrument(self, **kwargs):
-        RequestHandler._handle_request = RequestHandler._handle_request.__wrapped__
+        RequestHandler._handle_request = (
+            RequestHandler._handle_request.__wrapped__
+        )
         RequestHandler.handle_error = RequestHandler.handle_error.__wrapped__
