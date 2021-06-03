@@ -20,6 +20,10 @@ libraries = {
         "library": "aiohttp ~= 3.0",
         "instrumentation": "opentelemetry-instrumentation-aiohttp-client==0.23.dev0",
     },
+    "aiohttp": {
+        "library": "aiohttp ~= 3.0",
+        "instrumentation": "opentelemetry-instrumentation-aiohttp-server==0.22.dev0",
+    },
     "aiopg": {
         "library": "aiopg >= 0.13.0",
         "instrumentation": "opentelemetry-instrumentation-aiopg==0.23.dev0",
