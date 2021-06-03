@@ -1,16 +1,13 @@
 import functools
 import typing as t
 
-from aiohttp.web import (
-    RequestHandler,
-    StreamResponse,
-    BaseRequest,
-)
+from aiohttp.web import BaseRequest, RequestHandler, StreamResponse
+
 from opentelemetry import context, propagate, trace
 from opentelemetry.instrumentation.instrumentor import BaseInstrumentor
 from opentelemetry.instrumentation.utils import (
-    http_status_to_status_code,
     extract_attributes_from_object,
+    http_status_to_status_code,
 )
 from opentelemetry.semconv.trace import SpanAttributes
 from opentelemetry.util.http import (

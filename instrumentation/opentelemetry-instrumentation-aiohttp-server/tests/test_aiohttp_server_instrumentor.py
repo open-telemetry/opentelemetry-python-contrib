@@ -1,10 +1,11 @@
-from aiohttp.test_utils import AioHTTPTestCase, unittest_run_loop
-from opentelemetry.test.test_base import TestBase
 from aiohttp import web
+from aiohttp.test_utils import AioHTTPTestCase, unittest_run_loop
+
 from opentelemetry.instrumentation.aiohttp_server import (
     AioHttpServerInstrumentor,
 )
 from opentelemetry.semconv.trace import SpanAttributes
+from opentelemetry.test.test_base import TestBase
 
 
 class TestCase(AioHTTPTestCase, TestBase):
