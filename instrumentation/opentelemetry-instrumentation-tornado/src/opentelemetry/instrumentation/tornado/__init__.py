@@ -76,6 +76,7 @@ API
 from collections import namedtuple
 from functools import partial
 from logging import getLogger
+from typing import Collection
 
 import tornado.web
 import wrapt
@@ -87,6 +88,7 @@ from opentelemetry.instrumentation.propagators import (
     FuncSetter,
     get_global_response_propagator,
 )
+from opentelemetry.instrumentation.tornado.package import _instruments
 from opentelemetry.instrumentation.tornado.version import __version__
 from opentelemetry.instrumentation.utils import (
     extract_attributes_from_object,
@@ -95,7 +97,7 @@ from opentelemetry.instrumentation.utils import (
 )
 from opentelemetry.propagate import extract
 from opentelemetry.semconv.trace import SpanAttributes
-from opentelemetry.trace.status import Status
+from opentelemetry.trace.status import Status, StatusCode
 from opentelemetry.util._time import _time_ns
 from opentelemetry.util.http import get_excluded_urls, get_traced_request_attrs
 
@@ -116,6 +118,9 @@ response_propagation_setter = FuncSetter(tornado.web.RequestHandler.add_header)
 class TornadoInstrumentor(BaseInstrumentor):
     patched_handlers = []
     original_handler_new = None
+
+    def instrumentation_dependencies(self) -> Collection[str]:
+        return _instruments
 
     def _instrument(self, **kwargs):
         """
@@ -299,10 +304,14 @@ def _finish_span(tracer, handler, error=None):
 
     if ctx.span.is_recording():
         ctx.span.set_attribute(SpanAttributes.HTTP_STATUS_CODE, status_code)
+        otel_status_code = http_status_to_status_code(status_code)
+        otel_status_description = None
+        if otel_status_code is StatusCode.ERROR:
+            otel_status_description = reason
         ctx.span.set_status(
             Status(
-                status_code=http_status_to_status_code(status_code),
-                description=reason,
+                status_code=otel_status_code,
+                description=otel_status_description,
             )
         )
 
