@@ -42,11 +42,6 @@ try:
 except ImportError:
     from django.urls import Resolver404, resolve
 
-try:
-    from django.utils.deprecation import MiddlewareMixin
-except ImportError:
-    MiddlewareMixin = object
-
 _logger = getLogger(__name__)
 _attributes_by_preference = [
     [
@@ -70,7 +65,7 @@ _attributes_by_preference = [
 ]
 
 
-class _DjangoMiddleware(MiddlewareMixin):
+class _DjangoMiddleware:
     """Django Middleware for OpenTelemetry"""
 
     _environ_activation_key = (
@@ -88,6 +83,9 @@ class _DjangoMiddleware(MiddlewareMixin):
     _otel_response_hook: Callable[
         [Span, HttpRequest, HttpResponse], None
     ] = None
+
+    def __init__(self, get_response):
+        self.get_response = get_response
 
     @staticmethod
     def _get_span_name(request):
@@ -110,6 +108,11 @@ class _DjangoMiddleware(MiddlewareMixin):
 
         except Resolver404:
             return "HTTP {}".format(request.method)
+
+    def __call__(self, request):
+        self.process_request(request)
+        response = self.get_response(request)
+        return self.process_response(request, response)
 
     def process_request(self, request):
         # request.META is a dictionary containing all available HTTP headers

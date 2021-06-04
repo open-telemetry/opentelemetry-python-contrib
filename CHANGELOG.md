@@ -9,6 +9,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - `opentelemetry-instrumentation` Fixed cases where trying to use an instrumentation package without the
   target library was crashing auto instrumentation agent.
   ([#530](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/530))
+- `opentelemetry-instrumentation-django` Migrated Django middleware to new-style.
+  ([#533](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/533))
 
 ## [0.22b0](https://github.com/open-telemetry/opentelemetry-python/releases/tag/v1.3.0-0.22b0) - 2021-06-01
 
