@@ -263,37 +263,34 @@ class TestAioHttpIntegration(TestBase):
                 ]
             )
             self.memory_exporter.clear()
-     
-    def test_credential_removal(self):
-        trace_configs = [aiohttp_client.create_trace_config()]
 
-        url = "http://username:password@httpbin.org/"
-        with self.subTest(url=url):
+    def test_timeout(self):
+        async def request_handler(request):
+            await asyncio.sleep(1)
+            assert "traceparent" in request.headers
+            return aiohttp.web.Response()
 
-            async def do_request(url):
-                async with aiohttp.ClientSession(
-                    trace_configs=trace_configs,
-                ) as session:
-                    async with session.get(url):
-                        pass
-
-            loop = asyncio.get_event_loop()
-            loop.run_until_complete(do_request(url))
+        host, port = self._http_request(
+            trace_config=aiohttp_client.create_trace_config(),
+            url="/test_timeout",
+            request_handler=request_handler,
+            timeout=aiohttp.ClientTimeout(sock_read=0.01),
+        )
 
         self.assert_spans(
             [
                 (
                     "HTTP GET",
-                    (StatusCode.UNSET, None),
+                    (StatusCode.ERROR, None),
                     {
                         SpanAttributes.HTTP_METHOD: "GET",
-                        SpanAttributes.HTTP_URL: "http://httpbin.org/",
-                        SpanAttributes.HTTP_STATUS_CODE: int(HTTPStatus.OK),
+                        SpanAttributes.HTTP_URL: "http://{}:{}/test_timeout".format(
+                            host, port
+                        ),
                     },
                 )
             ]
         )
-        self.memory_exporter.clear()
 
     def test_too_many_redirects(self):
         async def request_handler(request):
@@ -323,6 +320,37 @@ class TestAioHttpIntegration(TestBase):
                 )
             ]
         )
+
+    def test_credential_removal(self):
+        trace_configs = [aiohttp_client.create_trace_config()]
+
+        url = "http://username:password@httpbin.org/status/200"
+        with self.subTest(url=url):
+
+            async def do_request(url):
+                async with aiohttp.ClientSession(
+                    trace_configs=trace_configs,
+                ) as session:
+                    async with session.get(url):
+                        pass
+
+            loop = asyncio.get_event_loop()
+            loop.run_until_complete(do_request(url))
+
+        self.assert_spans(
+            [
+                (
+                    "HTTP GET",
+                    (StatusCode.UNSET, None),
+                    {
+                        SpanAttributes.HTTP_METHOD: "GET",
+                        SpanAttributes.HTTP_URL: "http://httpbin.org/status/200",
+                        SpanAttributes.HTTP_STATUS_CODE: int(HTTPStatus.OK),
+                    },
+                )
+            ]
+        )
+        self.memory_exporter.clear()
 
 
 class TestAioHttpClientInstrumentor(TestBase):

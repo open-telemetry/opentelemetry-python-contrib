@@ -20,6 +20,7 @@ timing through OpenTelemetry.
 
 import typing
 import urllib
+import yarl
 from functools import wraps
 from typing import Tuple
 
@@ -79,6 +80,11 @@ def collect_request_attributes(scope):
         if isinstance(query_string, bytes):
             query_string = query_string.decode("utf8")
         http_url = http_url + ("?" + urllib.parse.unquote(query_string))
+
+    try:
+        http_url = str(yarl.URL(http_url).with_user(None))
+    except ValueError: # invalid url was passed
+        pass
 
     result = {
         SpanAttributes.HTTP_SCHEME: scope.get("scheme"),
