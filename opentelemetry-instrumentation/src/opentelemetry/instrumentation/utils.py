@@ -15,7 +15,6 @@
 from typing import Dict, Sequence
 
 from wrapt import ObjectProxy
-
 from yarl import URL
 
 from opentelemetry.trace import StatusCode
