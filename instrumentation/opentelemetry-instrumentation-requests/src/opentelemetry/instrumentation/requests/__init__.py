@@ -36,7 +36,6 @@ API
 import functools
 import types
 from typing import Collection
-import yarl
 
 from requests.models import Response
 from requests.sessions import Session
@@ -46,7 +45,10 @@ from opentelemetry import context
 from opentelemetry.instrumentation.instrumentor import BaseInstrumentor
 from opentelemetry.instrumentation.requests.package import _instruments
 from opentelemetry.instrumentation.requests.version import __version__
-from opentelemetry.instrumentation.utils import http_status_to_status_code
+from opentelemetry.instrumentation.utils import (
+    http_status_to_status_code,
+    remove_url_credentials,
+)
 from opentelemetry.propagate import inject
 from opentelemetry.semconv.trace import SpanAttributes
 from opentelemetry.trace import SpanKind, get_tracer
@@ -125,10 +127,7 @@ def _instrument(tracer, span_callback=None, name_callback=None):
         if not span_name or not isinstance(span_name, str):
             span_name = get_default_span_name(method)
 
-        try:
-            url = str(yarl.URL(url).with_user(None))
-        except ValueError: # invalid url was passed
-            pass
+        url = str(remove_url_credentials(url))
 
         labels = {}
         labels[SpanAttributes.HTTP_METHOD] = method

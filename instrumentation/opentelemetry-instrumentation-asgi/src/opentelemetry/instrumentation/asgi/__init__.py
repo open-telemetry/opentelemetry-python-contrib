@@ -20,7 +20,6 @@ timing through OpenTelemetry.
 
 import typing
 import urllib
-import yarl
 from functools import wraps
 from typing import Tuple
 
@@ -28,7 +27,10 @@ from asgiref.compatibility import guarantee_single_callable
 
 from opentelemetry import context, trace
 from opentelemetry.instrumentation.asgi.version import __version__  # noqa
-from opentelemetry.instrumentation.utils import http_status_to_status_code
+from opentelemetry.instrumentation.utils import (
+    http_status_to_status_code,
+    remove_url_credentials,
+)
 from opentelemetry.propagate import extract
 from opentelemetry.propagators.textmap import Getter
 from opentelemetry.semconv.trace import SpanAttributes
@@ -81,18 +83,13 @@ def collect_request_attributes(scope):
             query_string = query_string.decode("utf8")
         http_url = http_url + ("?" + urllib.parse.unquote(query_string))
 
-    try:
-        http_url = str(yarl.URL(http_url).with_user(None))
-    except ValueError: # invalid url was passed
-        pass
-
     result = {
         SpanAttributes.HTTP_SCHEME: scope.get("scheme"),
         SpanAttributes.HTTP_HOST: server_host,
         SpanAttributes.NET_HOST_PORT: port,
         SpanAttributes.HTTP_FLAVOR: scope.get("http_version"),
         SpanAttributes.HTTP_TARGET: scope.get("path"),
-        SpanAttributes.HTTP_URL: http_url,
+        SpanAttributes.HTTP_URL: str(remove_url_credentials(http_url)),
     }
     http_method = scope.get("method")
     if http_method:

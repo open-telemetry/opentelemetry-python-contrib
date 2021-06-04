@@ -16,6 +16,8 @@ from typing import Dict, Sequence
 
 from wrapt import ObjectProxy
 
+from yarl import URL
+
 from opentelemetry.trace import StatusCode
 
 
@@ -60,3 +62,12 @@ def unwrap(obj, attr: str):
     func = getattr(obj, attr, None)
     if func and isinstance(func, ObjectProxy) and hasattr(func, "__wrapped__"):
         setattr(obj, attr, func.__wrapped__)
+
+
+def remove_url_credentials(url: str) -> URL:
+    """Given a string url, attempt to remove the username and password"""
+    try:
+        url = URL(url).with_user(None)
+    except ValueError:  # invalid url was passed
+        pass
+    return url

@@ -429,7 +429,7 @@ class TestAsgiAttributes(unittest.TestCase):
     def test_response_attributes_invalid_status_code(self):
         otel_asgi.set_status_code(self.span, "Invalid Status Code")
         self.assertEqual(self.span.set_status.call_count, 1)
-    
+
     def test_credential_removal(self):
         self.scope["server"] = ("username:password@httpbin.org", 80)
         self.scope["path"] = "/status/200"

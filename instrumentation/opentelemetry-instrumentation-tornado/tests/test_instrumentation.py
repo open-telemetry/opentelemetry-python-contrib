@@ -456,7 +456,9 @@ class TestTornadoInstrumentation(TornadoTest):
         set_global_response_propagator(orig)
 
     def test_credential_removal(self):
-        response = self.fetch("http://username:password@httpbin.org/status/200")
+        response = self.fetch(
+            "http://username:password@httpbin.org/status/200"
+        )
         self.assertEqual(response.code, 200)
 
         spans = self.sorted_spans(self.memory_exporter.get_finished_spans())

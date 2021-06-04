@@ -14,12 +14,13 @@
 
 import functools
 
-import yarl
-
 from tornado.httpclient import HTTPError, HTTPRequest
 
 from opentelemetry import trace
-from opentelemetry.instrumentation.utils import http_status_to_status_code
+from opentelemetry.instrumentation.utils import (
+    http_status_to_status_code,
+    remove_url_credentials,
+)
 from opentelemetry.propagate import inject
 from opentelemetry.semconv.trace import SpanAttributes
 from opentelemetry.trace.status import Status
@@ -62,13 +63,8 @@ def fetch_async(tracer, request_hook, response_hook, func, _, args, kwargs):
         request_hook(span, request)
 
     if span.is_recording():
-        try:
-            url = str(yarl.URL(request.url).with_user(None))
-        except ValueError: # invalid url was passed
-            pass
-
         attributes = {
-            SpanAttributes.HTTP_URL: url,
+            SpanAttributes.HTTP_URL: str(remove_url_credentials(request.url)),
             SpanAttributes.HTTP_METHOD: request.method,
         }
         for key, value in attributes.items():

@@ -65,7 +65,6 @@ API
 import types
 import typing
 from typing import Collection
-import yarl
 
 import aiohttp
 import wrapt
@@ -77,6 +76,7 @@ from opentelemetry.instrumentation.aiohttp_client.version import __version__
 from opentelemetry.instrumentation.instrumentor import BaseInstrumentor
 from opentelemetry.instrumentation.utils import (
     http_status_to_status_code,
+    remove_url_credentials,
     unwrap,
 )
 from opentelemetry.propagate import inject
@@ -172,10 +172,7 @@ def create_trace_config(
         )
 
         if trace_config_ctx.span.is_recording():
-            try:
-                url = yarl.URL(params.url).with_user(None)
-            except ValueError: # invalid url was passed
-                pass
+            url = remove_url_credentials(params.url)
 
             attributes = {
                 SpanAttributes.HTTP_METHOD: http_method,

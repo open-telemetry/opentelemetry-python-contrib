@@ -57,10 +57,12 @@ API
 import functools
 import typing
 import wsgiref.util as wsgiref_util
-import yarl
 
 from opentelemetry import context, trace
-from opentelemetry.instrumentation.utils import http_status_to_status_code
+from opentelemetry.instrumentation.utils import (
+    http_status_to_status_code,
+    remove_url_credentials,
+)
 from opentelemetry.instrumentation.wsgi.version import __version__
 from opentelemetry.propagate import extract
 from opentelemetry.propagators.textmap import Getter
@@ -129,12 +131,9 @@ def collect_request_attributes(environ):
     if target is not None:
         result[SpanAttributes.HTTP_TARGET] = target
     else:
-        try:
-            url = str(yarl.URL(wsgiref_util.request_uri(environ)).with_user(None))
-        except ValueError: # invalid url was passed
-            pass
-
-        result[SpanAttributes.HTTP_URL] = url
+        result[SpanAttributes.HTTP_URL] = str(
+            remove_url_credentials(wsgiref_util.request_uri(environ))
+        )
 
     remote_addr = environ.get("REMOTE_ADDR")
     if remote_addr:
