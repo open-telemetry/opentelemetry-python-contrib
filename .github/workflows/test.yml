@@ -6,7 +6,7 @@ on:
     - 'release/*'
   pull_request:
 env:
-  CORE_REPO_SHA: 3e1c89bcae77c34b9750a1f00608a04a97921c51
+  CORE_REPO_SHA: 951a1a5da500dc91d918598ac2dae5a82bb413dd
 
 jobs:
   build:
@@ -18,13 +18,16 @@ jobs:
       py39: 3.9
       pypy3: pypy3
       RUN_MATRIX_COMBINATION: ${{ matrix.python-version }}-${{ matrix.package }}-${{ matrix.os }}
+      # TODO: replace set-env windows command and get rid of this
+      # ACTIONS_ALLOW_UNSECURE_COMMANDS: true
+      # CRYPTOGRAPHY_DONT_BUILD_RUST: 1
     runs-on: ${{ matrix.os }}
     strategy:
       fail-fast: false  # ensures the entire test matrix is run, even if one permutation fails
       matrix:
         python-version: [ py36, py37, py38, py39, pypy3 ]
         package: ["instrumentation", "exporter", "sdkextension", "propagator"]
-        os: [ ubuntu-latest ]
+        os: [ ubuntu-20.04, windows-2019 ]
     steps:
       - name: Checkout Contrib Repo @ SHA - ${{ github.sha }}
         uses: actions/checkout@v2
@@ -38,28 +41,66 @@ jobs:
         uses: actions/setup-python@v2
         with:
           python-version: ${{ env[matrix.python-version] }}
-      - name: Install tox
-        run: pip install -U tox-factor
-      - name: Cache tox environment
-        # Preserves .tox directory between runs for faster installs
+
+      - name: Cache python/tox
         uses: actions/cache@v2
         with:
           path: |
             .tox
             ~/.cache/pip
-          key: v4-build-tox-cache-${{ env.RUN_MATRIX_COMBINATION }}-${{ hashFiles('tox.ini', 'gen-requirements.txt', 'dev-requirements.txt') }}
+            c:\users\runneradmin\appdata\local\pip\cache
+          key: v6-build-tox-cache-${{ env.RUN_MATRIX_COMBINATION }}-${{ hashFiles('tox.ini', 'gen-requirements.txt', 'dev-requirements.txt') }}
+
+      # <-- pypy+windows fixes 
+      # cryptography does not publish pre-built wheels for pypy+windows so pip will try to build the wheel
+      # itself.
+      # TODO: run cryptography tests on pypy+windows+instrumentation and clean up IF conditions
+      - name: Win+PyPy - Setup Environment
+        if: ${{ matrix.os == 'windows-2019' && matrix.python-version == 'pypy3' }}
+        run: |
+          echo "INCLUDE=C:\Program Files (x86)\OpenSSL-win32\include" | Out-File -FilePath $env:GITHUB_ENV -Encoding utf8 -Append
+          echo "LIB=C:\Program Files (x86)\OpenSSL-win32\lib" | Out-File -FilePath $env:GITHUB_ENV -Encoding utf8 -Append
+        #echo "::set-env name=INCLUDE::C:\Program Files (x86)\OpenSSL-win32\include"
+        #echo "::set-env name=LIB::C:\Program Files (x86)\OpenSSL-win32\lib"
+      - name: Win+PyPy + Cache Windows OpenSSL
+        uses: actions/cache@v2
+        if: ${{ matrix.os == 'windows-2019' && matrix.python-version == 'pypy3' }}
+        with:
+          path: |
+            C:\Program Files (x86)\OpenSSL-win32
+          key: v2-win-openssl-cache-${{ matrix.os }}
+      - name: Win+PyPy - Install OpenSSL
+        # TODO: fix check for exising openssl installation
+        if: ${{ matrix.os == 'windows-2019' && matrix.python-version == 'pypy3' && hashFiles('C:\Program Files (x86)\OpenSSL-win32\start.bat') == '' }}
+        run: choco install openssl --forcex86
+      # building cryptography inside tox is a bit unreliable. Pre-building it outside of tox improves chances
+      # of tox installing the module successfully probably because of some rust build caching.
+      - name: Win+PyPy - Pre-build cryptography
+        if: ${{ matrix.os == 'windows-2019' && matrix.python-version == 'pypy3' }}
+        run: pip install cryptography
+      #  pypy+windows fixes ->
+
+      - name: Install tox and pip
+        run: pip install -U tox-factor pip
+      # tox fails on windows and Python3.6 when tox dir is reused between builds so we remove it
+      - name: fix for windows + py3.6
+        if: ${{ matrix.os == 'windows-2019' && matrix.python-version == 'py36' }} 
+        shell: pwsh
+        run: Remove-Item .\.tox\ -Force -Recurse -ErrorAction Ignore
       - name: run tox
         run: tox -f ${{ matrix.python-version }}-${{ matrix.package }} -- --benchmark-json=${{ env.RUN_MATRIX_COMBINATION }}-benchmark.json
       - name: Find and merge benchmarks
+        # TODO: fix and enable on windows
         # TODO: Add at least one benchmark to every package type to remove this (#249)
-        if: matrix.package == 'sdkextension'
+        if: ${{ matrix.package == 'sdkextension' && matrix.os != 'windows-2019' }}
         run: >-
           jq -s '.[0].benchmarks = ([.[].benchmarks] | add)
           | if .[0].benchmarks == null then null else .[0] end'
           **/**/tests/*${{ matrix.package }}*-benchmark.json > output.json
       - name: Report on benchmark results
+        # TODO: fix and enable on windows
         # TODO: Add at least one benchmark to every package type to remove this (#249)
-        if: matrix.package == 'sdkextension'
+        if: ${{ matrix.package == 'sdkextension' && matrix.os != 'windows-2019' }}
         uses: rhysd/github-action-benchmark@v1
         with:
           name: OpenTelemetry Python Benchmarks - Python ${{ env[matrix.python-version ]}} - ${{ matrix.package }}
@@ -80,7 +121,7 @@ jobs:
       matrix:
         tox-environment: [ "docker-tests", "lint", "docs", "generate" ]
     name: ${{ matrix.tox-environment }}
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-20.04
     steps:
       - name: Checkout Contrib Repo @ SHA - ${{ github.sha }}
         uses: actions/checkout@v2
@@ -106,7 +147,7 @@ jobs:
           path: |
             .tox
             ~/.cache/pip
-          key: v4-misc-tox-cache-${{ matrix.tox-environment }}-${{ hashFiles('tox.ini', 'dev-requirements.txt', 'gen-requirements.txt', 'docs-requirements.txt') }}
+          key: v5-misc-tox-cache-${{ matrix.tox-environment }}-${{ hashFiles('tox.ini', 'dev-requirements.txt', 'gen-requirements.txt', 'docs-requirements.txt') }}
       - name: run tox
         run: tox -e ${{ matrix.tox-environment }}
       - name: Ensure generated code is up to date
