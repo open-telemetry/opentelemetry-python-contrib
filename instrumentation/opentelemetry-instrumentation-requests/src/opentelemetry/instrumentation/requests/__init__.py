@@ -127,7 +127,7 @@ def _instrument(tracer, span_callback=None, name_callback=None):
         if not span_name or not isinstance(span_name, str):
             span_name = get_default_span_name(method)
 
-        url = str(remove_url_credentials(url))
+        url = remove_url_credentials(url)
 
         labels = {}
         labels[SpanAttributes.HTTP_METHOD] = method

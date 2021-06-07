@@ -36,6 +36,8 @@ from opentelemetry.test.test_base import TestBase
 from opentelemetry.trace import StatusCode
 
 # pylint: disable=too-many-public-methods
+
+
 class RequestsIntegrationTestBase(abc.ABC):
     # pylint: disable=no-member
 

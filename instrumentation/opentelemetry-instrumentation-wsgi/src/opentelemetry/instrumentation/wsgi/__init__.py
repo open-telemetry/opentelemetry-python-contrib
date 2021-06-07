@@ -131,8 +131,8 @@ def collect_request_attributes(environ):
     if target is not None:
         result[SpanAttributes.HTTP_TARGET] = target
     else:
-        result[SpanAttributes.HTTP_URL] = str(
-            remove_url_credentials(wsgiref_util.request_uri(environ))
+        result[SpanAttributes.HTTP_URL] = remove_url_credentials(
+            wsgiref_util.request_uri(environ)
         )
 
     remote_addr = environ.get("REMOTE_ADDR")

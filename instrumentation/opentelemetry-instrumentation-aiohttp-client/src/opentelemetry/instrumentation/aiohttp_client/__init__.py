@@ -172,13 +172,13 @@ def create_trace_config(
         )
 
         if trace_config_ctx.span.is_recording():
-            url = remove_url_credentials(params.url)
-
             attributes = {
                 SpanAttributes.HTTP_METHOD: http_method,
-                SpanAttributes.HTTP_URL: trace_config_ctx.url_filter(url)
+                SpanAttributes.HTTP_URL: remove_url_credentials(
+                    trace_config_ctx.url_filter(params.url)
+                )
                 if callable(trace_config_ctx.url_filter)
-                else str(url),
+                else remove_url_credentials(str(params.url)),
             }
             for key, value in attributes.items():
                 trace_config_ctx.span.set_attribute(key, value)

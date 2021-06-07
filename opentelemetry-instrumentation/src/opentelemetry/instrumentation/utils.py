@@ -63,10 +63,10 @@ def unwrap(obj, attr: str):
         setattr(obj, attr, func.__wrapped__)
 
 
-def remove_url_credentials(url: str) -> URL:
+def remove_url_credentials(url: str) -> str:
     """Given a string url, attempt to remove the username and password"""
     try:
-        url = URL(url).with_user(None)
+        url = str(URL(url).with_user(None))
     except ValueError:  # invalid url was passed
         pass
     return url

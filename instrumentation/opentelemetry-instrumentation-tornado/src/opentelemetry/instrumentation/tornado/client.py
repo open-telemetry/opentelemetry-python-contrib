@@ -64,7 +64,7 @@ def fetch_async(tracer, request_hook, response_hook, func, _, args, kwargs):
 
     if span.is_recording():
         attributes = {
-            SpanAttributes.HTTP_URL: str(remove_url_credentials(request.url)),
+            SpanAttributes.HTTP_URL: remove_url_credentials(request.url),
             SpanAttributes.HTTP_METHOD: request.method,
         }
         for key, value in attributes.items():
