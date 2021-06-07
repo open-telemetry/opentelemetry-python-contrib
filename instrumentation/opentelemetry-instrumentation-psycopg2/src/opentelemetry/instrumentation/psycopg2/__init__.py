@@ -152,6 +152,9 @@ class CursorTracer(dbapi.CursorTracer):
         statement = args[0]
         if isinstance(statement, Composed):
             statement = statement.as_string(cursor)
+        # Fix sql parameter placeholder(%s) to format sql parameters
+        if len(args) >= 2 and len(args[1]) > 0:
+            statement = statement % args[1]
         return statement
 
 
