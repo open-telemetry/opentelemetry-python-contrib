@@ -81,7 +81,6 @@ class DynamicHandler(tornado.web.RequestHandler):
 
 
 class FinishedHandler(tornado.web.RequestHandler):
-
     def on_finish(self):
         with self.application.tracer.start_as_current_span("audit_task"):
             time.sleep(0.05)
