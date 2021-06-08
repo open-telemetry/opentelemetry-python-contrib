@@ -15,6 +15,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Fix weak reference error for pyodbc cursor in SQLAlchemy instrumentation.
   ([#469](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/469))
 
+### Added
+- `opentelemetry-instrumentation-httpx` Add `httpx` instrumentation
+  ([#461](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/461))
+
 ## [0.22b0](https://github.com/open-telemetry/opentelemetry-python/releases/tag/v1.3.0-0.22b0) - 2021-06-01
 
 ### Changed
@@ -37,8 +41,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - `opentelemetry-instrumentation-botocore` now supports
   context propagation for lambda invoke via Payload embedded headers.
   ([#458](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/458))
-- `opentelemetry-instrumentation-httpx` Add `httpx` instrumentation
-  ([#461](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/461))
 
 ## [0.21b0](https://github.com/open-telemetry/opentelemetry-python/releases/tag/v1.2.0-0.21b0) - 2021-05-11
 
