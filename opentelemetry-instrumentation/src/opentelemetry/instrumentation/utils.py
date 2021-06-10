@@ -13,7 +13,6 @@
 # limitations under the License.
 
 from typing import Dict, Sequence
-from urllib.parse import urlparse, urlunparse
 
 from wrapt import ObjectProxy
 
@@ -61,33 +60,3 @@ def unwrap(obj, attr: str):
     func = getattr(obj, attr, None)
     if func and isinstance(func, ObjectProxy) and hasattr(func, "__wrapped__"):
         setattr(obj, attr, func.__wrapped__)
-
-
-def remove_url_credentials(url: str) -> str:
-    """Given a string url, remove the username and password only if it is a valid url"""
-
-    def validate_url(url):
-        try:
-            parsed = urlparse(url)
-            return all([parsed.scheme, parsed.netloc])
-        except ValueError:  # invalid url was passed
-            return False
-
-    if validate_url(url):
-        parsed_url = urlparse(url)
-        netloc = (
-            (":".join(((parsed_url.hostname or ""), str(parsed_url.port))))
-            if parsed_url.port
-            else (parsed_url.hostname or "")
-        )
-        return urlunparse(
-            (
-                parsed_url.scheme,
-                netloc,
-                parsed_url.path,
-                parsed_url.params,
-                parsed_url.query,
-                parsed_url.fragment,
-            )
-        )
-    return url

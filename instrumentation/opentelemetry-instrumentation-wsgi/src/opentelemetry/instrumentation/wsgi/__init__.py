@@ -59,15 +59,13 @@ import typing
 import wsgiref.util as wsgiref_util
 
 from opentelemetry import context, trace
-from opentelemetry.instrumentation.utils import (
-    http_status_to_status_code,
-    remove_url_credentials,
-)
+from opentelemetry.instrumentation.utils import http_status_to_status_code
 from opentelemetry.instrumentation.wsgi.version import __version__
 from opentelemetry.propagate import extract
 from opentelemetry.propagators.textmap import Getter
 from opentelemetry.semconv.trace import SpanAttributes
 from opentelemetry.trace.status import Status, StatusCode
+from opentelemetry.util.http import remove_url_credentials
 
 _HTTP_VERSION_PREFIX = "HTTP/"
 _CARRIER_KEY_PREFIX = "HTTP_"

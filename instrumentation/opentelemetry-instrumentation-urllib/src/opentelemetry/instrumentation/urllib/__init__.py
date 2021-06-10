@@ -48,14 +48,12 @@ from opentelemetry import context
 from opentelemetry.instrumentation.instrumentor import BaseInstrumentor
 from opentelemetry.instrumentation.urllib.package import _instruments
 from opentelemetry.instrumentation.urllib.version import __version__
-from opentelemetry.instrumentation.utils import (
-    http_status_to_status_code,
-    remove_url_credentials,
-)
+from opentelemetry.instrumentation.utils import http_status_to_status_code
 from opentelemetry.propagate import inject
 from opentelemetry.semconv.trace import SpanAttributes
 from opentelemetry.trace import SpanKind, get_tracer
 from opentelemetry.trace.status import Status
+from opentelemetry.util.http import remove_url_credentials
 
 # A key to a context variable to avoid creating duplicate spans when instrumenting
 _SUPPRESS_HTTP_INSTRUMENTATION_KEY = "suppress_http_instrumentation"
