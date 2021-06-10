@@ -59,21 +59,25 @@ Usage (Web.py)
     from opentelemetry.instrumentation.wsgi import OpenTelemetryMiddleware
     from cheroot import wsgi
 
-    urls = (
-        '/', 'index'
-    )
+    urls = ('/', 'index')
+
+
     class index:
+
         def GET(self):
             return "Hello, world!"
 
+
     if __name__ == "__main__":
-	    app = web.application(urls, globals())
-	    func = app.wsgifunc()
+        app = web.application(urls, globals())
+        func = app.wsgifunc()
 
-	    func = OpenTelemetryMiddleware(func)
+        func = OpenTelemetryMiddleware(func)
 
-	    server = wsgi.WSGIServer(("localhost", 5100),func, server_name="localhost")
-	    server.start()
+        server = wsgi.WSGIServer(
+            ("localhost", 5100), func, server_name="localhost"
+        )
+        server.start()
 
 API
 ---
