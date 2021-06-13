@@ -63,7 +63,7 @@ class FastAPIInstrumentor(BaseInstrumentor):
         _InstrumentedFastAPI._excluded_urls = (
             _excluded_urls_from_env
             if _excluded_urls is None
-            else parse_urls(_excluded_urls)
+            else parse_excluded_urls(_excluded_urls)
         )
         fastapi.FastAPI = _InstrumentedFastAPI
 
