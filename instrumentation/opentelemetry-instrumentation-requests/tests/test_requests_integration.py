@@ -21,6 +21,7 @@ import requests
 import opentelemetry.instrumentation.requests
 from opentelemetry import context, trace
 from opentelemetry.instrumentation.requests import RequestsInstrumentor
+from opentelemetry.instrumentation.utils import _SUPPRESS_INSTRUMENTATION_KEY
 from opentelemetry.propagate import get_global_textmap, set_global_textmap
 from opentelemetry.sdk import resources
 from opentelemetry.semconv.trace import SpanAttributes
@@ -165,7 +166,7 @@ class RequestsIntegrationTestBase(abc.ABC):
 
     def test_suppress_instrumentation(self):
         token = context.attach(
-            context.set_value("suppress_instrumentation", True)
+            context.set_value(_SUPPRESS_INSTRUMENTATION_KEY, True)
         )
         try:
             result = self.perform_request(self.URL)
@@ -356,6 +357,13 @@ class TestRequestsIntegration(RequestsIntegrationTestBase, TestBase):
             {SpanAttributes.HTTP_METHOD: "POST", SpanAttributes.HTTP_URL: url},
         )
         self.assertEqual(span.status.status_code, StatusCode.ERROR)
+
+    def test_credential_removal(self):
+        new_url = "http://username:password@httpbin.org/status/200"
+        self.perform_request(new_url)
+        span = self.assert_span()
+
+        self.assertEqual(span.attributes[SpanAttributes.HTTP_URL], self.URL)
 
     def test_if_headers_equals_none(self):
         result = requests.get(self.URL, headers=None)

@@ -48,14 +48,21 @@ from opentelemetry import context
 from opentelemetry.instrumentation.instrumentor import BaseInstrumentor
 from opentelemetry.instrumentation.urllib.package import _instruments
 from opentelemetry.instrumentation.urllib.version import __version__
-from opentelemetry.instrumentation.utils import http_status_to_status_code
+from opentelemetry.instrumentation.utils import (
+    _SUPPRESS_INSTRUMENTATION_KEY,
+    http_status_to_status_code,
+)
 from opentelemetry.propagate import inject
 from opentelemetry.semconv.trace import SpanAttributes
 from opentelemetry.trace import SpanKind, get_tracer
 from opentelemetry.trace.status import Status
+from opentelemetry.util.http import remove_url_credentials
 
 # A key to a context variable to avoid creating duplicate spans when instrumenting
-_SUPPRESS_HTTP_INSTRUMENTATION_KEY = "suppress_http_instrumentation"
+# both, Session.request and Session.send, since Session.request calls into Session.send
+_SUPPRESS_HTTP_INSTRUMENTATION_KEY = context.create_key(
+    "suppress_http_instrumentation"
+)
 
 
 class URLLibInstrumentor(BaseInstrumentor):
@@ -128,9 +135,9 @@ def _instrument(tracer, span_callback=None, name_callback=None):
     def _instrumented_open_call(
         _, request, call_wrapped, get_or_create_headers
     ):  # pylint: disable=too-many-locals
-        if context.get_value("suppress_instrumentation") or context.get_value(
-            _SUPPRESS_HTTP_INSTRUMENTATION_KEY
-        ):
+        if context.get_value(
+            _SUPPRESS_INSTRUMENTATION_KEY
+        ) or context.get_value(_SUPPRESS_HTTP_INSTRUMENTATION_KEY):
             return call_wrapped()
 
         method = request.get_method().upper()
@@ -141,6 +148,8 @@ def _instrument(tracer, span_callback=None, name_callback=None):
             span_name = name_callback(method, url)
         if not span_name or not isinstance(span_name, str):
             span_name = get_default_span_name(method)
+
+        url = remove_url_credentials(url)
 
         labels = {
             SpanAttributes.HTTP_METHOD: method,

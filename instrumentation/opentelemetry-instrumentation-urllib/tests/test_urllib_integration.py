@@ -28,12 +28,15 @@ from opentelemetry import context, trace
 from opentelemetry.instrumentation.urllib import (  # pylint: disable=no-name-in-module,import-error
     URLLibInstrumentor,
 )
+from opentelemetry.instrumentation.utils import _SUPPRESS_INSTRUMENTATION_KEY
 from opentelemetry.propagate import get_global_textmap, set_global_textmap
 from opentelemetry.sdk import resources
 from opentelemetry.semconv.trace import SpanAttributes
 from opentelemetry.test.mock_textmap import MockTextMapPropagator
 from opentelemetry.test.test_base import TestBase
 from opentelemetry.trace import StatusCode
+
+# pylint: disable=too-many-public-methods
 
 
 class RequestsIntegrationTestBase(abc.ABC):
@@ -196,7 +199,7 @@ class RequestsIntegrationTestBase(abc.ABC):
 
     def test_suppress_instrumentation(self):
         token = context.attach(
-            context.set_value("suppress_instrumentation", True)
+            context.set_value(_SUPPRESS_INSTRUMENTATION_KEY, True)
         )
         try:
             result = self.perform_request(self.URL)
@@ -317,6 +320,15 @@ class RequestsIntegrationTestBase(abc.ABC):
 
         span = self.assert_span()
         self.assertEqual(span.status.status_code, StatusCode.ERROR)
+
+    def test_credential_removal(self):
+        url = "http://username:password@httpbin.org/status/200"
+
+        with self.assertRaises(Exception):
+            self.perform_request(url)
+
+        span = self.assert_span()
+        self.assertEqual(span.attributes[SpanAttributes.HTTP_URL], self.URL)
 
 
 class TestRequestsIntegration(RequestsIntegrationTestBase, TestBase):
