@@ -14,6 +14,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   ([#530](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/530))
 - Fix weak reference error for pyodbc cursor in SQLAlchemy instrumentation.
   ([#469](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/469))
+- Implemented specification that HTTP span attributes must not contain username and password.
+  ([#538](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/538))
 
 ### Added
 - `opentelemetry-instrumentation-httpx` Add `httpx` instrumentation
@@ -41,6 +43,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - `opentelemetry-instrumentation-botocore` now supports
   context propagation for lambda invoke via Payload embedded headers.
   ([#458](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/458))
+- Added support for CreateKey functionality.
+  ([#502](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/502))
 
 ## [0.21b0](https://github.com/open-telemetry/opentelemetry-python/releases/tag/v1.2.0-0.21b0) - 2021-05-11
 
