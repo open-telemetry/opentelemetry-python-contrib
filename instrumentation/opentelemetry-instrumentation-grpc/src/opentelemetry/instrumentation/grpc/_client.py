@@ -103,7 +103,9 @@ class OpenTelemetryClientInterceptor(
         else:
             mutable_metadata = OrderedDict(metadata)
         span = self._start_span(client_info.full_method)
-        with trace.use_span(span, record_exception=False, set_status_on_exception=False):
+        with trace.use_span(
+            span, record_exception=False, set_status_on_exception=False
+        ):
             try:
                 inject(mutable_metadata, setter=_carrier_setter)
                 metadata = tuple(mutable_metadata.items())
@@ -119,7 +121,8 @@ class OpenTelemetryClientInterceptor(
             except Exception as exc:
                 if isinstance(exc, grpc.RpcError):
                     span.set_attribute(
-                        SpanAttributes.RPC_GRPC_STATUS_CODE, exc.code().value[0]
+                        SpanAttributes.RPC_GRPC_STATUS_CODE,
+                        exc.code().value[0],
                     )
                 span.set_status(
                     Status(
@@ -182,7 +185,9 @@ class OpenTelemetryClientInterceptor(
             mutable_metadata = OrderedDict(metadata)
 
         span = self._start_span(client_info.full_method)
-        with trace.use_span(span, record_exception=False, set_status_on_exception=False):
+        with trace.use_span(
+            span, record_exception=False, set_status_on_exception=False
+        ):
             try:
                 inject(mutable_metadata, setter=_carrier_setter)
                 metadata = tuple(mutable_metadata.items())
@@ -199,7 +204,8 @@ class OpenTelemetryClientInterceptor(
             except Exception as exc:
                 if isinstance(exc, grpc.RpcError):
                     span.set_attribute(
-                        SpanAttributes.RPC_GRPC_STATUS_CODE, exc.code().value[0]
+                        SpanAttributes.RPC_GRPC_STATUS_CODE,
+                        exc.code().value[0],
                     )
                 span.set_status(
                     Status(
