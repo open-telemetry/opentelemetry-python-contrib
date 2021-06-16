@@ -64,7 +64,7 @@ class OpenTelemetryClientInterceptor(
     def __init__(self, tracer):
         self._tracer = tracer
 
-    def _start_span(self, method):
+    def _start_span(self, method, **kwargs):
         service, meth = method.lstrip("/").split("/", 1)
         attributes = {
             SpanAttributes.RPC_SYSTEM: "grpc",
@@ -73,14 +73,17 @@ class OpenTelemetryClientInterceptor(
             SpanAttributes.RPC_SERVICE: service,
         }
 
-        return self._tracer.start_span(
-            name=method, kind=trace.SpanKind.CLIENT, attributes=attributes,
+        return self._tracer.start_as_current_span(
+            name=method,
+            kind=trace.SpanKind.CLIENT,
+            attributes=attributes,
+            **kwargs,
         )
 
     # pylint:disable=no-self-use
     def _trace_result(self, span, rpc_info, result):
-        # If the RPC is called asynchronously, release the guard and add a
-        # callback so that the span can be finished once the future is done.
+        # If the RPC is called asynchronously, add a callback to end the span
+        # when the future is done, else end the span immediately
         if isinstance(result, grpc.Future):
             result.add_done_callback(
                 _make_future_done_callback(span, rpc_info)
@@ -102,10 +105,13 @@ class OpenTelemetryClientInterceptor(
             mutable_metadata = OrderedDict()
         else:
             mutable_metadata = OrderedDict(metadata)
-        span = self._start_span(client_info.full_method)
-        with trace.use_span(
-            span, record_exception=False, set_status_on_exception=False
-        ):
+        with self._start_span(
+            client_info.full_method,
+            end_on_exit=False,
+            record_exception=False,
+            set_status_on_exception=False,
+        ) as span:
+            result = None
             try:
                 inject(mutable_metadata, setter=_carrier_setter)
                 metadata = tuple(mutable_metadata.items())
@@ -131,8 +137,10 @@ class OpenTelemetryClientInterceptor(
                     )
                 )
                 span.record_exception(exc)
-                span.end()
                 raise exc
+            finally:
+                if not result:
+                    span.end()
         return self._trace_result(span, rpc_info, result)
 
     # For RPCs that stream responses, the result can be a generator. To record
@@ -146,8 +154,7 @@ class OpenTelemetryClientInterceptor(
         else:
             mutable_metadata = OrderedDict(metadata)
 
-        span = self._start_span(client_info.full_method)
-        with trace.use_span(span, end_on_exit=True):
+        with self._start_span(client_info.full_method) as span:
             inject(mutable_metadata, setter=_carrier_setter)
             metadata = tuple(mutable_metadata.items())
             rpc_info = RpcInfo(
@@ -184,10 +191,13 @@ class OpenTelemetryClientInterceptor(
         else:
             mutable_metadata = OrderedDict(metadata)
 
-        span = self._start_span(client_info.full_method)
-        with trace.use_span(
-            span, record_exception=False, set_status_on_exception=False
-        ):
+        with self._start_span(
+            client_info.full_method,
+            end_on_exit=False,
+            record_exception=False,
+            set_status_on_exception=False,
+        ) as span:
+            result = None
             try:
                 inject(mutable_metadata, setter=_carrier_setter)
                 metadata = tuple(mutable_metadata.items())
@@ -214,7 +224,9 @@ class OpenTelemetryClientInterceptor(
                     )
                 )
                 span.record_exception(exc)
-                span.end()
                 raise exc
+            finally:
+                if not result:
+                    span.end()
 
         return self._trace_result(span, rpc_info, result)
