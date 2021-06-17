@@ -45,15 +45,21 @@ from opentelemetry import context
 from opentelemetry.instrumentation.instrumentor import BaseInstrumentor
 from opentelemetry.instrumentation.requests.package import _instruments
 from opentelemetry.instrumentation.requests.version import __version__
-from opentelemetry.instrumentation.utils import http_status_to_status_code
+from opentelemetry.instrumentation.utils import (
+    _SUPPRESS_INSTRUMENTATION_KEY,
+    http_status_to_status_code,
+)
 from opentelemetry.propagate import inject
 from opentelemetry.semconv.trace import SpanAttributes
 from opentelemetry.trace import SpanKind, get_tracer
 from opentelemetry.trace.status import Status
+from opentelemetry.util.http import remove_url_credentials
 
 # A key to a context variable to avoid creating duplicate spans when instrumenting
 # both, Session.request and Session.send, since Session.request calls into Session.send
-_SUPPRESS_HTTP_INSTRUMENTATION_KEY = "suppress_http_instrumentation"
+_SUPPRESS_HTTP_INSTRUMENTATION_KEY = context.create_key(
+    "suppress_http_instrumentation"
+)
 
 
 # pylint: disable=unused-argument
@@ -110,9 +116,9 @@ def _instrument(tracer, span_callback=None, name_callback=None):
     def _instrumented_requests_call(
         method: str, url: str, call_wrapped, get_or_create_headers
     ):
-        if context.get_value("suppress_instrumentation") or context.get_value(
-            _SUPPRESS_HTTP_INSTRUMENTATION_KEY
-        ):
+        if context.get_value(
+            _SUPPRESS_INSTRUMENTATION_KEY
+        ) or context.get_value(_SUPPRESS_HTTP_INSTRUMENTATION_KEY):
             return call_wrapped()
 
         # See
@@ -123,6 +129,8 @@ def _instrument(tracer, span_callback=None, name_callback=None):
             span_name = name_callback(method, url)
         if not span_name or not isinstance(span_name, str):
             span_name = get_default_span_name(method)
+
+        url = remove_url_credentials(url)
 
         labels = {}
         labels[SpanAttributes.HTTP_METHOD] = method

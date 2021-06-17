@@ -15,6 +15,7 @@
 from os import environ
 from re import compile as re_compile
 from re import search
+from urllib.parse import urlparse, urlunparse
 
 
 class ExcludeList:
@@ -51,9 +52,43 @@ def get_excluded_urls(instrumentation):
         _root.format("{}_EXCLUDED_URLS".format(instrumentation)), []
     )
 
+    return parse_excluded_urls(excluded_urls)
+
+
+def parse_excluded_urls(excluded_urls):
+    """
+    Small helper to put an arbitrary url list inside of ExcludeList
+    """
     if excluded_urls:
         excluded_urls = [
             excluded_url.strip() for excluded_url in excluded_urls.split(",")
         ]
 
     return ExcludeList(excluded_urls)
+
+
+def remove_url_credentials(url: str) -> str:
+    """Given a string url, remove the username and password only if it is a valid url"""
+
+    try:
+        parsed = urlparse(url)
+        if all([parsed.scheme, parsed.netloc]):  # checks for valid url
+            parsed_url = urlparse(url)
+            netloc = (
+                (":".join(((parsed_url.hostname or ""), str(parsed_url.port))))
+                if parsed_url.port
+                else (parsed_url.hostname or "")
+            )
+            return urlunparse(
+                (
+                    parsed_url.scheme,
+                    netloc,
+                    parsed_url.path,
+                    parsed_url.params,
+                    parsed_url.query,
+                    parsed_url.fragment,
+                )
+            )
+    except ValueError:  # an unparseable url was passed
+        pass
+    return url
