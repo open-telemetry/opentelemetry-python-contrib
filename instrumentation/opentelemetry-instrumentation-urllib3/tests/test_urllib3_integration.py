@@ -20,7 +20,11 @@ import urllib3
 import urllib3.exceptions
 
 from opentelemetry import context, trace
-from opentelemetry.instrumentation.urllib3 import URLLib3Instrumentor
+from opentelemetry.instrumentation.urllib3 import (
+    _SUPPRESS_HTTP_INSTRUMENTATION_KEY,
+    URLLib3Instrumentor,
+)
+from opentelemetry.instrumentation.utils import _SUPPRESS_INSTRUMENTATION_KEY
 from opentelemetry.propagate import get_global_textmap, set_global_textmap
 from opentelemetry.semconv.trace import SpanAttributes
 from opentelemetry.test.mock_textmap import MockTextMapPropagator
@@ -165,8 +169,8 @@ class TestURLLib3Instrumentor(TestBase):
 
     def test_suppress_instrumntation(self):
         suppression_keys = (
-            "suppress_instrumentation",
-            "suppress_http_instrumentation",
+            _SUPPRESS_HTTP_INSTRUMENTATION_KEY,
+            _SUPPRESS_INSTRUMENTATION_KEY,
         )
         for key in suppression_keys:
             self.memory_exporter.clear()
@@ -286,4 +290,10 @@ class TestURLLib3Instrumentor(TestBase):
         URLLib3Instrumentor().instrument(url_filter=url_filter)
 
         response = self.perform_request(self.HTTP_URL + "?e=mcc")
+        self.assert_success_span(response, self.HTTP_URL)
+
+    def test_credential_removal(self):
+        url = "http://username:password@httpbin.org/status/200"
+
+        response = self.perform_request(url)
         self.assert_success_span(response, self.HTTP_URL)

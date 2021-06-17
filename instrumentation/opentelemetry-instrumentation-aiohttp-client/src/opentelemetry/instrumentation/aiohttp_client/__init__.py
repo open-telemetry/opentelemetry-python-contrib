@@ -75,6 +75,7 @@ from opentelemetry.instrumentation.aiohttp_client.package import _instruments
 from opentelemetry.instrumentation.aiohttp_client.version import __version__
 from opentelemetry.instrumentation.instrumentor import BaseInstrumentor
 from opentelemetry.instrumentation.utils import (
+    _SUPPRESS_INSTRUMENTATION_KEY,
     http_status_to_status_code,
     unwrap,
 )
@@ -82,6 +83,7 @@ from opentelemetry.propagate import inject
 from opentelemetry.semconv.trace import SpanAttributes
 from opentelemetry.trace import SpanKind, TracerProvider, get_tracer
 from opentelemetry.trace.status import Status, StatusCode
+from opentelemetry.util.http import remove_url_credentials
 
 _UrlFilterT = typing.Optional[typing.Callable[[str], str]]
 _SpanNameT = typing.Optional[
@@ -154,7 +156,7 @@ def create_trace_config(
         trace_config_ctx: types.SimpleNamespace,
         params: aiohttp.TraceRequestStartParams,
     ):
-        if context_api.get_value("suppress_instrumentation"):
+        if context_api.get_value(_SUPPRESS_INSTRUMENTATION_KEY):
             trace_config_ctx.span = None
             return
 
@@ -173,11 +175,11 @@ def create_trace_config(
         if trace_config_ctx.span.is_recording():
             attributes = {
                 SpanAttributes.HTTP_METHOD: http_method,
-                SpanAttributes.HTTP_URL: trace_config_ctx.url_filter(
-                    params.url
+                SpanAttributes.HTTP_URL: remove_url_credentials(
+                    trace_config_ctx.url_filter(params.url)
                 )
                 if callable(trace_config_ctx.url_filter)
-                else str(params.url),
+                else remove_url_credentials(str(params.url)),
             }
             for key, value in attributes.items():
                 trace_config_ctx.span.set_attribute(key, value)
@@ -247,7 +249,7 @@ def _instrument(
     """
     # pylint:disable=unused-argument
     def instrumented_init(wrapped, instance, args, kwargs):
-        if context_api.get_value("suppress_instrumentation"):
+        if context_api.get_value(_SUPPRESS_INSTRUMENTATION_KEY):
             return wrapped(*args, **kwargs)
 
         trace_configs = list(kwargs.get("trace_configs") or ())

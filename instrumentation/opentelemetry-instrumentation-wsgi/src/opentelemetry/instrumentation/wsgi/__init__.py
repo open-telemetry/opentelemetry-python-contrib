@@ -13,7 +13,7 @@
 # limitations under the License.
 """
 This library provides a WSGI middleware that can be used on any WSGI framework
-(such as Django / Flask) to track requests timing through OpenTelemetry.
+(such as Django / Flask / Web.py) to track requests timing through OpenTelemetry.
 
 Usage (Flask)
 -------------
@@ -50,6 +50,35 @@ Modify the application's ``wsgi.py`` file as shown below.
     application = get_wsgi_application()
     application = OpenTelemetryMiddleware(application)
 
+Usage (Web.py)
+--------------
+
+.. code-block:: python
+
+    import web
+    from opentelemetry.instrumentation.wsgi import OpenTelemetryMiddleware
+    from cheroot import wsgi
+
+    urls = ('/', 'index')
+
+
+    class index:
+
+        def GET(self):
+            return "Hello, world!"
+
+
+    if __name__ == "__main__":
+        app = web.application(urls, globals())
+        func = app.wsgifunc()
+
+        func = OpenTelemetryMiddleware(func)
+
+        server = wsgi.WSGIServer(
+            ("localhost", 5100), func, server_name="localhost"
+        )
+        server.start()
+
 API
 ---
 """
@@ -65,6 +94,7 @@ from opentelemetry.propagate import extract
 from opentelemetry.propagators.textmap import Getter
 from opentelemetry.semconv.trace import SpanAttributes
 from opentelemetry.trace.status import Status, StatusCode
+from opentelemetry.util.http import remove_url_credentials
 
 _HTTP_VERSION_PREFIX = "HTTP/"
 _CARRIER_KEY_PREFIX = "HTTP_"
@@ -118,7 +148,7 @@ def collect_request_attributes(environ):
     }
 
     host_port = environ.get("SERVER_PORT")
-    if host_port is not None:
+    if host_port is not None and not host_port == "":
         result.update({SpanAttributes.NET_HOST_PORT: int(host_port)})
 
     setifnotnone(result, SpanAttributes.HTTP_HOST, environ.get("HTTP_HOST"))
@@ -128,7 +158,9 @@ def collect_request_attributes(environ):
     if target is not None:
         result[SpanAttributes.HTTP_TARGET] = target
     else:
-        result[SpanAttributes.HTTP_URL] = wsgiref_util.request_uri(environ)
+        result[SpanAttributes.HTTP_URL] = remove_url_credentials(
+            wsgiref_util.request_uri(environ)
+        )
 
     remote_addr = environ.get("REMOTE_ADDR")
     if remote_addr:
