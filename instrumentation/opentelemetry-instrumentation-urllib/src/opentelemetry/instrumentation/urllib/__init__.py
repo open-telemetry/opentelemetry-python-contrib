@@ -39,6 +39,7 @@ API
 import functools
 import types
 from typing import Collection
+from urllib import response
 from urllib.request import (  # pylint: disable=no-name-in-module,import-error
     OpenerDirector,
     Request,
@@ -79,18 +80,15 @@ class URLLibInstrumentor(BaseInstrumentor):
         Args:
             **kwargs: Optional arguments
                 ``tracer_provider``: a TracerProvider, defaults to global
-                ``span_callback``: An optional callback invoked before returning the http response.
-                 Invoked with Span and http.client.HTTPResponse
-                ``name_callback``: Callback which calculates a generic span name for an
-                    outgoing HTTP request based on the method and url.
-                    Optional: Defaults to get_default_span_name.
+                ``request_hook``: An optional callback invoked that is invoked right after a span is created.
+                ``response_hook``: An optional callback which is invoked right before the span is finished processing a response
         """
         tracer_provider = kwargs.get("tracer_provider")
         tracer = get_tracer(__name__, __version__, tracer_provider)
         _instrument(
             tracer,
-            span_callback=kwargs.get("span_callback"),
-            name_callback=kwargs.get("name_callback"),
+            request_hook=kwargs.get("request_hook"),
+            response_hook=kwargs.get("response_hook"),
         )
 
     def _uninstrument(self, **kwargs):
@@ -103,12 +101,7 @@ class URLLibInstrumentor(BaseInstrumentor):
         _uninstrument_from(opener, restore_as_bound_func=True)
 
 
-def get_default_span_name(method):
-    """Default implementation for name_callback, returns HTTP {method_name}."""
-    return "HTTP {}".format(method).strip()
-
-
-def _instrument(tracer, span_callback=None, name_callback=None):
+def _instrument(tracer, request_hook=None, response_hook=None):
     """Enables tracing of all requests calls that go through
     :code:`urllib.Client._make_request`"""
 
@@ -143,11 +136,7 @@ def _instrument(tracer, span_callback=None, name_callback=None):
         method = request.get_method().upper()
         url = request.full_url
 
-        span_name = ""
-        if name_callback is not None:
-            span_name = name_callback(method, url)
-        if not span_name or not isinstance(span_name, str):
-            span_name = get_default_span_name(method)
+        span_name = "HTTP {}".format(method).strip()
 
         url = remove_url_credentials(url)
 
@@ -160,6 +149,8 @@ def _instrument(tracer, span_callback=None, name_callback=None):
             span_name, kind=SpanKind.CLIENT
         ) as span:
             exception = None
+            if request_hook is not None:
+                request_hook(span, request)
             if span.is_recording():
                 span.set_attribute(SpanAttributes.HTTP_METHOD, method)
                 span.set_attribute(SpanAttributes.HTTP_URL, url)
@@ -193,8 +184,8 @@ def _instrument(tracer, span_callback=None, name_callback=None):
                         ver_[:1], ver_[:-1]
                     )
 
-            if span_callback is not None:
-                span_callback(span, result)
+            if response_hook is not None:
+                response_hook(span, request, result)
 
             if exception is not None:
                 raise exception.with_traceback(exception.__traceback__)
