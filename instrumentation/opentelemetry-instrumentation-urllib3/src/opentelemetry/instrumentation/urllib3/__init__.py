@@ -40,6 +40,28 @@ Usage
     http = urllib3.PoolManager()
     response = http.request("GET", "https://www.example.org/")
 
+Hooks
+*******
+
+The urllib3 instrumentation supports extending tracing behavior with the help of
+request and response hooks. These are functions that are called back by the instrumentation
+right after a Span is created for a request and right before the span is finished processing a response respectively.
+The hooks can be configured as follows:
+
+..code:: python
+
+    # `request` is an instance of urllib3.connectionpool.HTTPConnectionPool
+    def request_hook(span, request):
+        pass
+
+    # `request` is an instance of urllib3.connectionpool.HTTPConnectionPool
+    # `response` is an instance of urllib3.response.HTTPResponse
+    def response_hook(span, request, response)
+        pass
+
+    URLLib3Instrumentor.instrument(
+        request_hook=request_hook, response_hook=response_hook)
+    )
 API
 ---
 """
@@ -72,8 +94,18 @@ _SUPPRESS_HTTP_INSTRUMENTATION_KEY = context.create_key(
 )
 
 _UrlFilterT = typing.Optional[typing.Callable[[str], str]]
-_SpanNameT = typing.Optional[
-    typing.Union[typing.Callable[[str, str, typing.Mapping], str], str]
+_RequestHookT = typing.Optional[
+    typing.Callable[[Span, urllib3.connectionpool.HTTPConnectionPool], None]
+]
+_ResponseHookT = typing.Optional[
+    typing.Callable[
+        [
+            Span,
+            urllib3.connectionpool.HTTPConnectionPool,
+            urllib3.response.HTTPResponse,
+        ],
+        None,
+    ]
 ]
 
 _URL_OPEN_ARG_TO_INDEX_MAPPING = {
@@ -92,7 +124,8 @@ class URLLib3Instrumentor(BaseInstrumentor):
         Args:
             **kwargs: Optional arguments
                 ``tracer_provider``: a TracerProvider, defaults to global.
-                ``span_name_or_callback``: Override the default span name.
+                ``request_hook``: An optional callback invoked that is invoked right after a span is created.
+                ``response_hook``: An optional callback which is invoked right before the span is finished processing a response
                 ``url_filter``: A callback to process the requested URL prior
                     to adding it as a span attribute.
         """
@@ -100,7 +133,8 @@ class URLLib3Instrumentor(BaseInstrumentor):
         tracer = get_tracer(__name__, __version__, tracer_provider)
         _instrument(
             tracer,
-            span_name_or_callback=kwargs.get("span_name"),
+            request_hook=kwargs.get("request_hook"),
+            response_hook=kwargs.get("response_hook"),
             url_filter=kwargs.get("url_filter"),
         )
 
@@ -110,7 +144,8 @@ class URLLib3Instrumentor(BaseInstrumentor):
 
 def _instrument(
     tracer,
-    span_name_or_callback: _SpanNameT = None,
+    request_hook: _RequestHookT = None,
+    response_hook: _ResponseHookT = None,
     url_filter: _UrlFilterT = None,
 ):
     def instrumented_urlopen(wrapped, instance, args, kwargs):
@@ -121,7 +156,7 @@ def _instrument(
         url = _get_url(instance, args, kwargs, url_filter)
         headers = _prepare_headers(kwargs)
 
-        span_name = _get_span_name(span_name_or_callback, method, url, headers)
+        span_name = "HTTP {}".format(method.strip())
         span_attributes = {
             SpanAttributes.HTTP_METHOD: method,
             SpanAttributes.HTTP_URL: url,
@@ -130,12 +165,16 @@ def _instrument(
         with tracer.start_as_current_span(
             span_name, kind=SpanKind.CLIENT, attributes=span_attributes
         ) as span:
+            if callable(request_hook):
+                request_hook(span, instance)
             inject(headers)
 
             with _suppress_further_instrumentation():
                 response = wrapped(*args, **kwargs)
 
             _apply_response(span, response)
+            if callable(response_hook):
+                response_hook(span, instance, response)
             return response
 
     wrapt.wrap_function_wrapper(
@@ -193,20 +232,6 @@ def _prepare_headers(urlopen_kwargs: typing.Dict) -> typing.Dict:
     urlopen_kwargs["headers"] = headers
 
     return headers
-
-
-def _get_span_name(
-    span_name_or_callback, method: str, url: str, headers: typing.Mapping
-):
-    span_name = None
-    if callable(span_name_or_callback):
-        span_name = span_name_or_callback(method, url, headers)
-    elif isinstance(span_name_or_callback, str):
-        span_name = span_name_or_callback
-
-    if not span_name or not isinstance(span_name, str):
-        span_name = "HTTP {}".format(method.strip())
-    return span_name
 
 
 def _apply_response(span: Span, response: urllib3.response.HTTPResponse):

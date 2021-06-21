@@ -32,6 +32,29 @@ Usage
     req = request.Request('https://postman-echo.com/post', method="POST")
     r = request.urlopen(req)
 
+Hooks
+*******
+
+The urllib instrumentation supports extending tracing behavior with the help of
+request and response hooks. These are functions that are called back by the instrumentation
+right after a Span is created for a request and right before the span is finished processing a response respectively.
+The hooks can be configured as follows:
+
+..code:: python
+
+    # `request` is an instance of urllib.request.Request
+    def request_hook(span, request):
+        pass
+
+    # `request` is an instance of urllib.request.Requests
+    # `response` is an instance of http.client.HTTPResponse
+    def response_hook(span, request, response)
+        pass
+
+    URLLibInstrumentor.instrument(
+        request_hook=request_hook, response_hook=response_hook)
+    )
+
 API
 ---
 """
@@ -149,7 +172,7 @@ def _instrument(tracer, request_hook=None, response_hook=None):
             span_name, kind=SpanKind.CLIENT
         ) as span:
             exception = None
-            if request_hook is not None:
+            if callable(request_hook):
                 request_hook(span, request)
             if span.is_recording():
                 span.set_attribute(SpanAttributes.HTTP_METHOD, method)
@@ -184,7 +207,7 @@ def _instrument(tracer, request_hook=None, response_hook=None):
                         ver_[:1], ver_[:-1]
                     )
 
-            if response_hook is not None:
+            if callable(response_hook):
                 response_hook(span, request, result)
 
             if exception is not None:
