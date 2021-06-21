@@ -30,6 +30,7 @@ from opentelemetry.instrumentation import aiohttp_client
 from opentelemetry.instrumentation.aiohttp_client import (
     AioHttpClientInstrumentor,
 )
+from opentelemetry.instrumentation.utils import _SUPPRESS_INSTRUMENTATION_KEY
 from opentelemetry.semconv.trace import SpanAttributes
 from opentelemetry.test.test_base import TestBase
 from opentelemetry.trace import StatusCode
@@ -321,6 +322,37 @@ class TestAioHttpIntegration(TestBase):
             ]
         )
 
+    def test_credential_removal(self):
+        trace_configs = [aiohttp_client.create_trace_config()]
+
+        url = "http://username:password@httpbin.org/status/200"
+        with self.subTest(url=url):
+
+            async def do_request(url):
+                async with aiohttp.ClientSession(
+                    trace_configs=trace_configs,
+                ) as session:
+                    async with session.get(url):
+                        pass
+
+            loop = asyncio.get_event_loop()
+            loop.run_until_complete(do_request(url))
+
+        self.assert_spans(
+            [
+                (
+                    "HTTP GET",
+                    (StatusCode.UNSET, None),
+                    {
+                        SpanAttributes.HTTP_METHOD: "GET",
+                        SpanAttributes.HTTP_URL: "http://httpbin.org/status/200",
+                        SpanAttributes.HTTP_STATUS_CODE: int(HTTPStatus.OK),
+                    },
+                )
+            ]
+        )
+        self.memory_exporter.clear()
+
 
 class TestAioHttpClientInstrumentor(TestBase):
     URL = "/test-path"
@@ -417,7 +449,7 @@ class TestAioHttpClientInstrumentor(TestBase):
 
     def test_suppress_instrumentation(self):
         token = context.attach(
-            context.set_value("suppress_instrumentation", True)
+            context.set_value(_SUPPRESS_INSTRUMENTATION_KEY, True)
         )
         try:
             run_with_test_server(
@@ -431,7 +463,7 @@ class TestAioHttpClientInstrumentor(TestBase):
     async def suppressed_request(server: aiohttp.test_utils.TestServer):
         async with aiohttp.test_utils.TestClient(server) as client:
             token = context.attach(
-                context.set_value("suppress_instrumentation", True)
+                context.set_value(_SUPPRESS_INSTRUMENTATION_KEY, True)
             )
             await client.get(TestAioHttpClientInstrumentor.URL)
             context.detach(token)
