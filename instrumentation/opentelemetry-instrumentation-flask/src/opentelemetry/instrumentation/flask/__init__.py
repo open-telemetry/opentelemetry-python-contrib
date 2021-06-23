@@ -253,7 +253,7 @@ class FlaskInstrumentor(BaseInstrumentor):
             app._before_request = _before_request
             app.before_request(_before_request)
             app.teardown_request(_teardown_request)
-            app._is_instrumented = True
+            app._is_instrumented_by_opentelemetry = True
         else:
             _logger.warning(
                 "Attempting to instrument Flask app while already instrumented"
