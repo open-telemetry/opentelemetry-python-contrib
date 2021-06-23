@@ -163,9 +163,7 @@ def instrument_connection(
         tracer_provider=tracer_provider,
     )
     db_integration.get_connection_attributes(connection)
-    proxy = get_traced_connection_proxy(connection, db_integration)
-    proxy._is_instrumented_by_opentelemetry = True
-    return proxy
+    return get_traced_connection_proxy(connection, db_integration)
 
 
 def uninstrument_connection(connection):
