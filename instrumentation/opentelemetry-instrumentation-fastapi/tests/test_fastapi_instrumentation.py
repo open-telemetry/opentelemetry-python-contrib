@@ -57,6 +57,23 @@ class TestFastAPIManualInstrumentation(TestBase):
         super().tearDown()
         self.env_patch.stop()
         self.exclude_patch.stop()
+        with self.disable_logging():
+            self._instrumentor.uninstrument_app(self._app)
+
+    def test_uninstrument_app(self):
+        # uninstrument_app only called for manual instrumentation
+        if not isinstance(self, TestAutoInstrumentation):
+            self._client.get("/foobar")
+            spans = self.memory_exporter.get_finished_spans()
+            self.assertEqual(len(spans), 3)
+            from fastapi.middleware.httpsredirect import HTTPSRedirectMiddleware
+            self._app.add_middleware(HTTPSRedirectMiddleware)
+            self._instrumentor.uninstrument_app(self._app)
+            self._client = TestClient(self._app)
+            resp = self._client.get("/foobar")
+            self.assertEqual(200, resp.status_code)
+            span_list = self.memory_exporter.get_finished_spans()
+            self.assertEqual(len(span_list), 3)
 
     def test_basic_fastapi_call(self):
         self._client.get("/foobar")

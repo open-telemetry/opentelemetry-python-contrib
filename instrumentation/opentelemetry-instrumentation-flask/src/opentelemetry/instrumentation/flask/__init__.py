@@ -229,18 +229,21 @@ class FlaskInstrumentor(BaseInstrumentor):
             _InstrumentedFlask._request_hook = request_hook
         if callable(response_hook):
             _InstrumentedFlask._response_hook = response_hook
-        flask.Flask = _InstrumentedFlask
         tracer_provider = kwargs.get("tracer_provider")
         _InstrumentedFlask._tracer_provider = tracer_provider
         flask.Flask = _InstrumentedFlask
 
-    def instrument_app(
-        self, app, request_hook=None, response_hook=None, tracer_provider=None
-    ):  # pylint: disable=no-self-use
-        if not hasattr(app, "_is_instrumented"):
-            app._is_instrumented = False
+    def _uninstrument(self, **kwargs):
+        flask.Flask = self._original_flask
 
-        if not app._is_instrumented:
+    @staticmethod
+    def instrument_app(
+        app, request_hook=None, response_hook=None, tracer_provider=None
+    ):
+        if not hasattr(app, "_is_instrumented_by_opentelemetry"):
+            app._is_instrumented_by_opentelemetry = False
+
+        if not app._is_instrumented_by_opentelemetry:
             app._original_wsgi_app = app.wsgi_app
             app.wsgi_app = _rewrapped_app(app.wsgi_app, response_hook)
 
@@ -256,14 +259,12 @@ class FlaskInstrumentor(BaseInstrumentor):
                 "Attempting to instrument Flask app while already instrumented"
             )
 
-    def _uninstrument(self, **kwargs):
-        flask.Flask = self._original_flask
+    @staticmethod
+    def uninstrument_app(app):
+        if not hasattr(app, "_is_instrumented_by_opentelemetry"):
+            app._is_instrumented_by_opentelemetry = False
 
-    def uninstrument_app(self, app):  # pylint: disable=no-self-use
-        if not hasattr(app, "_is_instrumented"):
-            app._is_instrumented = False
-
-        if app._is_instrumented:
+        if app._is_instrumented_by_opentelemetry:
             app.wsgi_app = app._original_wsgi_app
 
             # FIXME add support for other Flask blueprints that are not None
@@ -271,7 +272,7 @@ class FlaskInstrumentor(BaseInstrumentor):
             app.teardown_request_funcs[None].remove(_teardown_request)
             del app._original_wsgi_app
 
-            app._is_instrumented = False
+            app._is_instrumented_by_opentelemetry = False
         else:
             _logger.warning(
                 "Attempting to uninstrument Flask "
