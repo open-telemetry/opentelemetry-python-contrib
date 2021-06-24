@@ -39,6 +39,7 @@ API
 ---
 """
 
+import logging
 import typing
 from typing import Collection
 
@@ -53,7 +54,7 @@ from opentelemetry.instrumentation.instrumentor import BaseInstrumentor
 from opentelemetry.instrumentation.psycopg2.package import _instruments
 from opentelemetry.instrumentation.psycopg2.version import __version__
 
-_logger = getLogger(__name__)
+_logger = logging.getLogger(__name__)
 _OTEL_CURSOR_FACTORY_KEY = "_otel_orig_cursor_factory"
 
 
@@ -106,6 +107,7 @@ class Psycopg2Instrumentor(BaseInstrumentor):
             connection.cursor_factory = _new_cursor_factory(
                 tracer_provider=tracer_provider
             )
+            connection._is_instrumented_by_opentelemetry = True
         else:
             _logger.warning(
                 "Attempting to instrument Psycopg connection while already instrumented"
@@ -115,19 +117,9 @@ class Psycopg2Instrumentor(BaseInstrumentor):
     # TODO(owais): check if core dbapi can do this for all dbapi implementations e.g, pymysql and mysql
     @staticmethod
     def uninstrument_connection(connection):
-        if not hasattr(connection, "_is_instrumented_by_opentelemetry"):
-            connection._is_instrumented_by_opentelemetry = False
-
-        if connection._is_instrumented_by_opentelemetry:
-            connection.cursor_factory = getattr(
-                connection, _OTEL_CURSOR_FACTORY_KEY, None
-            )
-            connection._is_instrumented_by_opentelemetry = False
-        else:
-            _logger.warning(
-                "Attempting to uninstrument Psycopg "
-                "connection while already uninstrumented"
-            )
+        connection.cursor_factory = getattr(
+            connection, _OTEL_CURSOR_FACTORY_KEY, None
+        )
 
         return connection
 
