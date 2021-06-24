@@ -375,9 +375,9 @@ class BaseTestCases:
             pass
 
         def setUp(self):
+            super().setUp()
             self.client = self.create_client()
             HTTPXClientInstrumentor().instrument()
-            super().setUp()
 
         def tearDown(self):
             super().tearDown()
@@ -504,33 +504,21 @@ class BaseTestCases:
             HTTPXClientInstrumentor().instrument()
 
         def test_uninstrument_client(self):
+            HTTPXClientInstrumentor().uninstrument()
+            HTTPXClientInstrumentor().instrument_client(self.client)
+
+            result = self.perform_request(url=self.URL)
+
+            self.assertEqual(result.text, "Hello!")
+            self.assert_span(num_spans=1)
+
             HTTPXClientInstrumentor().uninstrument_client(self.client)
 
-            result = self.perform_request(self.URL)
+            result = self.perform_request(url=self.URL)
 
             self.assertEqual(result.text, "Hello!")
-            self.assert_span(num_spans=0)
-
-        def test_uninstrument_new_client(self):
-            client1 = self.create_client()
-            HTTPXClientInstrumentor().uninstrument_client(client1)
-
-            result = self.perform_request(self.URL, client=client1)
-            self.assertEqual(result.text, "Hello!")
-            self.assert_span(num_spans=0)
-
-            # Test that other clients as well as instance client is still
-            # instrumented
-            client2 = self.create_client()
-            result = self.perform_request(self.URL, client=client2)
-            self.assertEqual(result.text, "Hello!")
-            self.assert_span()
-
-            self.memory_exporter.clear()
-
-            result = self.perform_request(self.URL)
-            self.assertEqual(result.text, "Hello!")
-            self.assert_span()
+            self.assert_span(num_spans=1)
+            HTTPXClientInstrumentor().instrument()
 
 
 class TestSyncIntegration(BaseTestCases.BaseManualTest):
