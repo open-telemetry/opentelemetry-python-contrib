@@ -38,7 +38,6 @@ from aiopg.utils import _ContextManager, _PoolContextManager
 
 from opentelemetry.instrumentation.aiopg.aiopg_integration import (
     AiopgIntegration,
-    AsyncProxyObject,
     get_traced_connection_proxy,
 )
 from opentelemetry.instrumentation.aiopg.version import __version__
@@ -151,7 +150,7 @@ def instrument_connection(
     Returns:
         An instrumented connection.
     """
-    if isinstance(connection, AsyncProxyObject):
+    if isinstance(connection, wrapt.ObjectProxy):
         logger.warning("Connection already instrumented")
         return connection
 
@@ -175,7 +174,7 @@ def uninstrument_connection(connection):
     Returns:
         An uninstrumented connection.
     """
-    if isinstance(connection, AsyncProxyObject):
+    if isinstance(connection, wrapt.ObjectProxy):
         return connection.__wrapped__
 
     logger.warning("Connection is not instrumented")
