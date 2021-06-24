@@ -19,7 +19,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   ([#538](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/538))
 - Changed the psycopg2-binary to psycopg2 as dependency in production
   ([#543](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/543))
-
+- Updating dependency for opentelemetry api/sdk packages to support major version instead
+  of pinning to specific versions.
+  ([#543](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/543))
 ### Added
 - `opentelemetry-instrumentation-httpx` Add `httpx` instrumentation
   ([#461](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/461))
