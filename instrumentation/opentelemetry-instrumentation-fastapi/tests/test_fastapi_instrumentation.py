@@ -17,6 +17,7 @@ from unittest.mock import patch
 
 import fastapi
 from fastapi.testclient import TestClient
+from opentelemetry.instrumentation.asgi import OpenTelemetryMiddleware
 
 import opentelemetry.instrumentation.fastapi as otel_fastapi
 from opentelemetry.sdk.resources import Resource
@@ -58,22 +59,40 @@ class TestFastAPIManualInstrumentation(TestBase):
         self.env_patch.stop()
         self.exclude_patch.stop()
         with self.disable_logging():
+            self._instrumentor.uninstrument()
             self._instrumentor.uninstrument_app(self._app)
 
-    def test_uninstrument_app(self):
-        # uninstrument_app only called for manual instrumentation
+    def test_instrument_app_with_instrument(self):
         if not isinstance(self, TestAutoInstrumentation):
-            self._client.get("/foobar")
-            spans = self.memory_exporter.get_finished_spans()
-            self.assertEqual(len(spans), 3)
-            from fastapi.middleware.httpsredirect import HTTPSRedirectMiddleware
-            self._app.add_middleware(HTTPSRedirectMiddleware)
-            self._instrumentor.uninstrument_app(self._app)
-            self._client = TestClient(self._app)
-            resp = self._client.get("/foobar")
-            self.assertEqual(200, resp.status_code)
-            span_list = self.memory_exporter.get_finished_spans()
-            self.assertEqual(len(span_list), 3)
+            self._instrumentor.instrument()
+        self._client.get("/foobar")
+        spans = self.memory_exporter.get_finished_spans()
+        self.assertEqual(len(spans), 3)
+        for span in spans:
+            self.assertIn("/foobar", span.name)
+
+    def test_uninstrument_app(self):
+        self._client.get("/foobar")
+        spans = self.memory_exporter.get_finished_spans()
+        self.assertEqual(len(spans), 3)
+        from fastapi.middleware.httpsredirect import HTTPSRedirectMiddleware
+        self._app.add_middleware(HTTPSRedirectMiddleware)
+        self._instrumentor.uninstrument_app(self._app)
+        print(self._app.user_middleware[0].cls)
+        self.assertFalse(isinstance(self._app.user_middleware[0].cls, OpenTelemetryMiddleware))
+        self._client = TestClient(self._app)
+        resp = self._client.get("/foobar")
+        self.assertEqual(200, resp.status_code)
+        span_list = self.memory_exporter.get_finished_spans()
+        self.assertEqual(len(span_list), 3)
+
+    def test_uninstrument_app_after_instrument(self):
+        if not isinstance(self, TestAutoInstrumentation):
+            self._instrumentor.instrument()
+        self._instrumentor.uninstrument_app(self._app)
+        self._client.get("/foobar")
+        spans = self.memory_exporter.get_finished_spans()
+        self.assertEqual(len(spans), 0)
 
     def test_basic_fastapi_call(self):
         self._client.get("/foobar")
