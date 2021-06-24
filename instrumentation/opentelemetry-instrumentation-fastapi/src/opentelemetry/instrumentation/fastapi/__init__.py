@@ -42,6 +42,9 @@ class FastAPIInstrumentor(BaseInstrumentor):
         app: fastapi.FastAPI, tracer_provider=None, excluded_urls=None,
     ):
         """Instrument an uninstrumented FastAPI application."""
+        if not hasattr(app, "_is_instrumented_by_opentelemetry"):
+            app._is_instrumented_by_opentelemetry = False
+
         if not getattr(app, "_is_instrumented_by_opentelemetry", False):
             if excluded_urls is None:
                 excluded_urls = _excluded_urls_from_env
@@ -55,21 +58,15 @@ class FastAPIInstrumentor(BaseInstrumentor):
                 tracer_provider=tracer_provider,
             )
             app._is_instrumented_by_opentelemetry = True
+        else:
+            _logger.warning(
+                "Attempting to instrument FastAPI app while already instrumented"
+            )
 
     @staticmethod
     def uninstrument_app(app: fastapi.FastAPI):
-        if not hasattr(app, "_is_instrumented_by_opentelemetry"):
-            app._is_instrumented_by_opentelemetry = False
-
-        if app._is_instrumented_by_opentelemetry:
-            app.user_middleware = [x for x in app.user_middleware if x.cls is not OpenTelemetryMiddleware]
-            app.middleware_stack = app.build_middleware_stack()
-            app._is_instrumented_by_opentelemetry = False
-        else:
-            _logger.warning(
-                "Attempting to uninstrument FastAPI "
-                "app while already uninstrumented"
-            )
+        app.user_middleware = [x for x in app.user_middleware if x.cls is not OpenTelemetryMiddleware]
+        app.middleware_stack = app.build_middleware_stack()
 
     def instrumentation_dependencies(self) -> Collection[str]:
         return _instruments
