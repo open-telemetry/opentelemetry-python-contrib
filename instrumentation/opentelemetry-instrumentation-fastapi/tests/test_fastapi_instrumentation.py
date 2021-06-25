@@ -79,7 +79,11 @@ class TestFastAPIManualInstrumentation(TestBase):
         self._app.add_middleware(HTTPSRedirectMiddleware)
         self._instrumentor.uninstrument_app(self._app)
         print(self._app.user_middleware[0].cls)
-        self.assertFalse(isinstance(self._app.user_middleware[0].cls, OpenTelemetryMiddleware))
+        self.assertFalse(
+            isinstance(
+                self._app.user_middleware[0].cls, OpenTelemetryMiddleware
+            )
+        )
         self._client = TestClient(self._app)
         resp = self._client.get("/foobar")
         self.assertEqual(200, resp.status_code)

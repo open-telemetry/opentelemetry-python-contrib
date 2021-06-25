@@ -94,9 +94,7 @@ class Psycopg2Instrumentor(BaseInstrumentor):
 
     # TODO(owais): check if core dbapi can do this for all dbapi implementations e.g, pymysql and mysql
     @staticmethod
-    def instrument_connection(
-        connection, tracer_provider=None
-    ):
+    def instrument_connection(connection, tracer_provider=None):
         if not hasattr(connection, "_is_instrumented_by_opentelemetry"):
             connection._is_instrumented_by_opentelemetry = False
 
