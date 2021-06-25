@@ -268,6 +268,7 @@ class FlaskInstrumentor(BaseInstrumentor):
             app.before_request_funcs[None].remove(app._before_request)
             app.teardown_request_funcs[None].remove(_teardown_request)
             del app._original_wsgi_app
+            app._is_instrumented_by_opentelemetry = False
         else:
             _logger.warning(
                 "Attempting to uninstrument Flask "

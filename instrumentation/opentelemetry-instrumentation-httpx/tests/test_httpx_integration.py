@@ -495,6 +495,15 @@ class BaseTestCases:
             # instrument again to avoid annoying warning message
             HTTPXClientInstrumentor().instrument()
 
+        def test_instrument_client_after_instrument(self):
+            print(HTTPXClientInstrumentor()._is_instrumented_by_opentelemetry)
+            client = self.create_client()
+            print(client._transport)
+            HTTPXClientInstrumentor().instrument_client(client)
+            result = self.perform_request(self.URL, client=client)
+            self.assertEqual(result.text, "Hello!")
+            self.assert_span(num_spans=1)
+
         def test_uninstrument(self):
             HTTPXClientInstrumentor().uninstrument()
             result = self.perform_request(self.URL)

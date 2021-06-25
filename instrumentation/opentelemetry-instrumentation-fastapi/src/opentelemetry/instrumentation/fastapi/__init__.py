@@ -67,6 +67,7 @@ class FastAPIInstrumentor(BaseInstrumentor):
     def uninstrument_app(app: fastapi.FastAPI):
         app.user_middleware = [x for x in app.user_middleware if x.cls is not OpenTelemetryMiddleware]
         app.middleware_stack = app.build_middleware_stack()
+        app._is_instrumented_by_opentelemetry = False
 
     def instrumentation_dependencies(self) -> Collection[str]:
         return _instruments
