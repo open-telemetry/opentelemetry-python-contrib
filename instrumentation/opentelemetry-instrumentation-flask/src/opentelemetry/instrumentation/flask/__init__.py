@@ -193,7 +193,7 @@ class _InstrumentedFlask(flask.Flask):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
 
-        self._original_wsgi_ = self.wsgi_app
+        self._original_wsgi_app = self.wsgi_app
 
         self.wsgi_app = _rewrapped_app(
             self.wsgi_app, _InstrumentedFlask._response_hook
@@ -261,18 +261,13 @@ class FlaskInstrumentor(BaseInstrumentor):
 
     @staticmethod
     def uninstrument_app(app):
-        if not hasattr(app, "_is_instrumented_by_opentelemetry"):
-            app._is_instrumented_by_opentelemetry = False
-
-        if app._is_instrumented_by_opentelemetry:
+        if hasattr(app, "_original_wsgi_app"):
             app.wsgi_app = app._original_wsgi_app
 
             # FIXME add support for other Flask blueprints that are not None
             app.before_request_funcs[None].remove(app._before_request)
             app.teardown_request_funcs[None].remove(_teardown_request)
             del app._original_wsgi_app
-
-            app._is_instrumented_by_opentelemetry = False
         else:
             _logger.warning(
                 "Attempting to uninstrument Flask "

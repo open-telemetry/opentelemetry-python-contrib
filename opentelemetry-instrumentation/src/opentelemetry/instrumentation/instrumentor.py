@@ -103,7 +103,7 @@ class BaseInstrumentor(ABC):
         if not skip_dep_check:
             conflict = self._check_dependency_conflicts()
             if conflict:
-                _LOG.warning(conflict)
+                _LOG.error(conflict)
                 return None
 
         result = self._instrument(  # pylint: disable=assignment-from-no-return
