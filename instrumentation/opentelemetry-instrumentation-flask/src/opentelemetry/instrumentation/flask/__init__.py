@@ -194,6 +194,7 @@ class _InstrumentedFlask(flask.Flask):
         super().__init__(*args, **kwargs)
 
         self._original_wsgi_app = self.wsgi_app
+        self._is_instrumented_by_opentelemetry = True
 
         self.wsgi_app = _rewrapped_app(
             self.wsgi_app, _InstrumentedFlask._response_hook
