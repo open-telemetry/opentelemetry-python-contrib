@@ -12,7 +12,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import logging
 import typing
 
 import httpx
@@ -31,8 +30,6 @@ from opentelemetry.semconv.trace import SpanAttributes
 from opentelemetry.trace import SpanKind, Tracer, TracerProvider, get_tracer
 from opentelemetry.trace.span import Span
 from opentelemetry.trace.status import Status
-
-_logger = logging.getLogger(__name__)
 
 URL = typing.Tuple[bytes, bytes, typing.Optional[int], bytes]
 Headers = typing.List[typing.Tuple[bytes, bytes]]
@@ -335,7 +332,6 @@ def _instrument_client(
         )
     else:
         raise TypeError("Invalid client provided")
-    client._original_transport = transport
     client._transport = telemetry_transport
 
 
@@ -350,8 +346,7 @@ def _uninstrument_client(
 ) -> None:
     """Disables instrumentation for the given Client or AsyncClient"""
     # pylint: disable=protected-access
-    client._transport = client._original_transport
-    del client._original_transport
+    unwrap(client, "send")
 
 
 class HTTPXClientInstrumentor(BaseInstrumentor):
@@ -400,21 +395,12 @@ class HTTPXClientInstrumentor(BaseInstrumentor):
             response_hook: A hook that receives the span, request, and response
                 that is called right before the span ends
         """
-        if not hasattr(client, "_is_instrumented_by_opentelemetry"):
-            client._is_instrumented_by_opentelemetry = False
-
-        if not client._is_instrumented_by_opentelemetry:
-            _instrument_client(
-                client,
-                tracer_provider=tracer_provider,
-                request_hook=request_hook,
-                response_hook=response_hook,
-            )
-            client._is_instrumented_by_opentelemetry = True
-        else:
-            _logger.warning(
-                "Attempting to instrument Httpx client while already instrumented"
-            )
+        _instrument_client(
+            client,
+            tracer_provider=tracer_provider,
+            request_hook=request_hook,
+            response_hook=response_hook,
+        )
 
     @staticmethod
     def uninstrument_client(
@@ -425,14 +411,4 @@ class HTTPXClientInstrumentor(BaseInstrumentor):
         Args:
             client: The httpx Client or AsyncClient instance
         """
-        if not hasattr(client, "_is_instrumented_by_opentelemetry"):
-            client._is_instrumented_by_opentelemetry = False
-
-        if client._is_instrumented_by_opentelemetry:
-            _uninstrument_client(client)
-            client._is_instrumented_by_opentelemetry = False
-        else:
-            _logger.warning(
-                "Attempting to uninstrument Httpx "
-                "client while already uninstrumented"
-            )
+        _uninstrument_client(client)
