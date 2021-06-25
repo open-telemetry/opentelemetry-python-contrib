@@ -100,7 +100,7 @@ class OpenTelemetryClientInterceptor(
         span.end()
         return result
 
-    def intercept_unary(self, request, metadata, client_info, invoker):
+    def _intercept(self, request, metadata, client_info, invoker):
         if not metadata:
             mutable_metadata = OrderedDict()
         else:
@@ -186,47 +186,4 @@ class OpenTelemetryClientInterceptor(
                 request_or_iterator, metadata, client_info, invoker
             )
 
-        if not metadata:
-            mutable_metadata = OrderedDict()
-        else:
-            mutable_metadata = OrderedDict(metadata)
-
-        with self._start_span(
-            client_info.full_method,
-            end_on_exit=False,
-            record_exception=False,
-            set_status_on_exception=False,
-        ) as span:
-            result = None
-            try:
-                inject(mutable_metadata, setter=_carrier_setter)
-                metadata = tuple(mutable_metadata.items())
-                rpc_info = RpcInfo(
-                    full_method=client_info.full_method,
-                    metadata=metadata,
-                    timeout=client_info.timeout,
-                    request=request_or_iterator,
-                )
-
-                rpc_info.request = request_or_iterator
-
-                result = invoker(request_or_iterator, metadata)
-            except Exception as exc:
-                if isinstance(exc, grpc.RpcError):
-                    span.set_attribute(
-                        SpanAttributes.RPC_GRPC_STATUS_CODE,
-                        exc.code().value[0],
-                    )
-                span.set_status(
-                    Status(
-                        status_code=StatusCode.ERROR,
-                        description="{}: {}".format(type(exc).__name__, exc),
-                    )
-                )
-                span.record_exception(exc)
-                raise exc
-            finally:
-                if not result:
-                    span.end()
-
-        return self._trace_result(span, rpc_info, result)
+        return self._intercept(request_or_iterator, metadata, client_info, invoker)
