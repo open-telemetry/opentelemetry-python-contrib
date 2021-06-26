@@ -49,7 +49,6 @@ from opentelemetry.instrumentation.instrumentor import BaseInstrumentor
 from opentelemetry.instrumentation.pymysql.package import _instruments
 from opentelemetry.instrumentation.pymysql.version import __version__
 
-
 _CONNECTION_ATTRIBUTES = {
     "database": "db",
     "port": "port",
@@ -60,7 +59,6 @@ _DATABASE_SYSTEM = "mysql"
 
 
 class PyMySQLInstrumentor(BaseInstrumentor):
-
     def instrumentation_dependencies(self) -> Collection[str]:
         return _instruments
 

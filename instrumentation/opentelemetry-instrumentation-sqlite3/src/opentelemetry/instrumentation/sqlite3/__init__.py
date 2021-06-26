@@ -55,7 +55,6 @@ _DATABASE_SYSTEM = "sqlite"
 
 
 class SQLite3Instrumentor(BaseInstrumentor):
-
     def instrumentation_dependencies(self) -> Collection[str]:
         return _instruments
 
