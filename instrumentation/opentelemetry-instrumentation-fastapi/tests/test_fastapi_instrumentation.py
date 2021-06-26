@@ -17,9 +17,9 @@ from unittest.mock import patch
 
 import fastapi
 from fastapi.testclient import TestClient
-from opentelemetry.instrumentation.asgi import OpenTelemetryMiddleware
 
 import opentelemetry.instrumentation.fastapi as otel_fastapi
+from opentelemetry.instrumentation.asgi import OpenTelemetryMiddleware
 from opentelemetry.sdk.resources import Resource
 from opentelemetry.semconv.trace import SpanAttributes
 from opentelemetry.test.test_base import TestBase
