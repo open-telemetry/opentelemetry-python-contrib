@@ -76,6 +76,7 @@ class TestFastAPIManualInstrumentation(TestBase):
         spans = self.memory_exporter.get_finished_spans()
         self.assertEqual(len(spans), 3)
         from fastapi.middleware.httpsredirect import HTTPSRedirectMiddleware
+
         self._app.add_middleware(HTTPSRedirectMiddleware)
         self._instrumentor.uninstrument_app(self._app)
         print(self._app.user_middleware[0].cls)
