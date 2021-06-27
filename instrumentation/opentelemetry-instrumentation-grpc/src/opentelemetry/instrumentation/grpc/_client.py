@@ -143,6 +143,9 @@ class OpenTelemetryClientInterceptor(
                     span.end()
         return self._trace_result(span, rpc_info, result)
 
+    def intercept_unary(self, request, metadata, client_info, invoker):
+        return self._intercept(request, metadata, client_info, invoker)
+
     # For RPCs that stream responses, the result can be a generator. To record
     # the span across the generated responses and detect any errors, we wrap
     # the result in a new generator that yields the response values.
