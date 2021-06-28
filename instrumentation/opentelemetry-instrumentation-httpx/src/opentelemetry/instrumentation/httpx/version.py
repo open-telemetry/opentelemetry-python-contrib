@@ -12,5 +12,4 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-
-_instruments = ("psycopg2 >= 2.7.3.1",)
+__version__ = "0.23.dev0"

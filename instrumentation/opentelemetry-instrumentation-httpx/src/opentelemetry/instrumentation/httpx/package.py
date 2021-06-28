@@ -13,4 +13,4 @@
 # limitations under the License.
 
 
-_instruments = ("psycopg2 >= 2.7.3.1",)
+_instruments = ("httpx >= 0.18.0, < 0.19.0",)

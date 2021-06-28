@@ -61,12 +61,16 @@ libraries = {
         "instrumentation": "opentelemetry-instrumentation-fastapi==0.23.dev0",
     },
     "flask": {
-        "library": "flask ~= 1.0",
+        "library": "flask >= 1.0, < 3.0",
         "instrumentation": "opentelemetry-instrumentation-flask==0.23.dev0",
     },
     "grpcio": {
         "library": "grpcio ~= 1.27",
         "instrumentation": "opentelemetry-instrumentation-grpc==0.23.dev0",
+    },
+    "httpx": {
+        "library": "httpx >= 0.18.0, < 0.19.0",
+        "instrumentation": "opentelemetry-instrumentation-httpx==0.23.dev0",
     },
     "jinja2": {
         "library": "jinja2~=2.7",
@@ -76,8 +80,8 @@ libraries = {
         "library": "mysql-connector-python ~= 8.0",
         "instrumentation": "opentelemetry-instrumentation-mysql==0.23.dev0",
     },
-    "psycopg2-binary": {
-        "library": "psycopg2-binary >= 2.7.3.1",
+    "psycopg2": {
+        "library": "psycopg2 >= 2.7.3.1",
         "instrumentation": "opentelemetry-instrumentation-psycopg2==0.23.dev0",
     },
     "pymemcache": {
