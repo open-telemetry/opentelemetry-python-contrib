@@ -75,6 +75,7 @@ class TestFastAPIManualInstrumentation(TestBase):
         self._client.get("/foobar")
         spans = self.memory_exporter.get_finished_spans()
         self.assertEqual(len(spans), 3)
+        # pylint: disable=import-outside-toplevel
         from fastapi.middleware.httpsredirect import HTTPSRedirectMiddleware
 
         self._app.add_middleware(HTTPSRedirectMiddleware)
