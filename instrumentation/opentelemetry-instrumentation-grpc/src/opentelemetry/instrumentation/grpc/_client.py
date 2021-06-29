@@ -189,4 +189,6 @@ class OpenTelemetryClientInterceptor(
                 request_or_iterator, metadata, client_info, invoker
             )
 
-        return self._intercept(request_or_iterator, metadata, client_info, invoker)
+        return self._intercept(
+            request_or_iterator, metadata, client_info, invoker
+        )
