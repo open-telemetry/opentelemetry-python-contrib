@@ -528,7 +528,7 @@ class MockConnection:
     # pylint: disable=no-self-use
     def cursor(self):
         coro = self._cursor()
-        return _ContextManager(coro) # pylint: disable=no-value-for-parameter
+        return _ContextManager(coro)  # pylint: disable=no-value-for-parameter
 
     async def _cursor(self):
         return MockCursor()

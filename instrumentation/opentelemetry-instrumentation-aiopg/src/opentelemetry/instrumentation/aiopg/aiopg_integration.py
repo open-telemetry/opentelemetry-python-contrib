@@ -64,7 +64,9 @@ def get_traced_connection_proxy(
 
         def cursor(self, *args, **kwargs):
             coro = self._cursor(*args, **kwargs)
-            return _ContextManager(coro)  # pylint: disable=no-value-for-parameter
+            return _ContextManager(  # pylint: disable=no-value-for-parameter
+                coro
+            )
 
         async def _cursor(self, *args, **kwargs):
             # pylint: disable=protected-access
