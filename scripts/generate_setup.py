@@ -37,8 +37,8 @@ def main():
     root_path = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
     with open(
         os.path.join(root_path, _template_dir, _template_name), "r"
-    ).read() as contents:
-        setuppy_tmpl = Template(contents)
+    ) as template:
+        setuppy_tmpl = Template(template.read())
     base_instrumentation_path = os.path.join(root_path, "instrumentation")
 
     for instrumentation in os.listdir(base_instrumentation_path):
