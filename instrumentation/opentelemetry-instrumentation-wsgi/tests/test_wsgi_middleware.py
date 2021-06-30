@@ -14,7 +14,7 @@
 
 import sys
 import unittest
-import unittest.mock as mock
+from unittest import mock
 import wsgiref.util as wsgiref_util
 from urllib.parse import urlsplit
 
