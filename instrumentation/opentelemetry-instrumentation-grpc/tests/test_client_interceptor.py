@@ -179,7 +179,6 @@ class TestClientProto(TestBase):
             },
         )
 
-
     def test_stream_stream(self):
         bidirectional_streaming_method(self._stub)
         spans = self.memory_exporter.get_finished_spans()

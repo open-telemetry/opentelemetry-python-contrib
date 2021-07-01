@@ -123,7 +123,7 @@ class OpenTelemetryClientInterceptor(
         return _GuardedSpan(self._start_span(*args, **kwargs))
 
     def intercept_unary(self, request, metadata, client_info, invoker):
-        if context.get_value( _SUPPRESS_INSTRUMENTATION_KEY):
+        if context.get_value(_SUPPRESS_INSTRUMENTATION_KEY):
             return invoker(request, metadata)
 
         if not metadata:
@@ -193,7 +193,7 @@ class OpenTelemetryClientInterceptor(
     def intercept_stream(
         self, request_or_iterator, metadata, client_info, invoker
     ):
-        if context.get_value( _SUPPRESS_INSTRUMENTATION_KEY):
+        if context.get_value(_SUPPRESS_INSTRUMENTATION_KEY):
             return invoker(request_or_iterator, metadata)
 
         if client_info.is_server_stream:
