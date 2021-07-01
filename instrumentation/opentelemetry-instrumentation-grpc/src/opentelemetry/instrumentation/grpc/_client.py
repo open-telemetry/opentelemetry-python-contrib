@@ -24,9 +24,10 @@ from typing import MutableMapping
 
 import grpc
 
-from opentelemetry import trace
+from opentelemetry import context, trace
 from opentelemetry.instrumentation.grpc import grpcext
 from opentelemetry.instrumentation.grpc._utilities import RpcInfo
+from opentelemetry.instrumentation.utils import _SUPPRESS_INSTRUMENTATION_KEY
 from opentelemetry.propagate import inject
 from opentelemetry.propagators.textmap import Setter
 from opentelemetry.semconv.trace import SpanAttributes
@@ -122,6 +123,9 @@ class OpenTelemetryClientInterceptor(
         return _GuardedSpan(self._start_span(*args, **kwargs))
 
     def intercept_unary(self, request, metadata, client_info, invoker):
+        if context.get_value( _SUPPRESS_INSTRUMENTATION_KEY):
+            return invoker(request, metadata)
+
         if not metadata:
             mutable_metadata = OrderedDict()
         else:
@@ -189,6 +193,9 @@ class OpenTelemetryClientInterceptor(
     def intercept_stream(
         self, request_or_iterator, metadata, client_info, invoker
     ):
+        if context.get_value( _SUPPRESS_INSTRUMENTATION_KEY):
+            return invoker(request_or_iterator, metadata)
+
         if client_info.is_server_stream:
             return self._intercept_server_stream(
                 request_or_iterator, metadata, client_info, invoker
