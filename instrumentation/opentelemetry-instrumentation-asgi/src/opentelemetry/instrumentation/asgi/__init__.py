@@ -140,22 +140,6 @@ def set_status_code(span, status_code):
         span.set_status(Status(http_status_to_status_code(status_code)))
 
 
-def get_default_span_details(scope: dict) -> Tuple[str, dict]:
-    """Default implementation for span_details_callback
-
-    Args:
-        scope: the asgi scope dictionary
-
-    Returns:
-        a tuple of the span name, and any attributes to attach to the span.
-    """
-    span_name = scope.get("path", "").strip() or "HTTP {}".format(
-        scope.get("method", "").strip()
-    )
-
-    return span_name, {}
-
-
 class OpenTelemetryMiddleware:
     """The ASGI application middleware.
 
@@ -164,10 +148,12 @@ class OpenTelemetryMiddleware:
 
     Args:
         app: The ASGI application callable to forward requests to.
-        span_details_callback: Callback which should return a string
-            and a tuple, representing the desired span name and a
-            dictionary with any additional span attributes to set.
-            Optional: Defaults to get_default_span_details.
+        server_request_hook: Optional callback which is called with the server span and ASGI
+                      scope object for every incoming request.
+        client_request_hook: Optional callback which is called with the internal span and an ASGI
+                      event which is sent as a dictionary for when the method recieve is called.
+        client_response_hook: Optional callback which is called with the internal span and an ASGI
+                      event which is sent as a dictionary for when the method send is called.
         tracer_provider: The optional tracer provider to use. If omitted
             the current globally configured one is used.
     """
@@ -176,15 +162,17 @@ class OpenTelemetryMiddleware:
         self,
         app,
         excluded_urls=None,
-        span_details_callback=None,
+        server_request_hook=None,
+        client_request_hook=None,
+        client_response_hook=None,
         tracer_provider=None,
     ):
         self.app = guarantee_single_callable(app)
         self.tracer = trace.get_tracer(__name__, __version__, tracer_provider)
-        self.span_details_callback = (
-            span_details_callback or get_default_span_details
-        )
         self.excluded_urls = excluded_urls
+        self.server_request_hook = server_request_hook
+        self.client_request_hook = client_request_hook
+        self.client_response_hook = client_response_hook
 
     async def __call__(self, scope, receive, send):
         """The ASGI application
@@ -202,15 +190,16 @@ class OpenTelemetryMiddleware:
             return await self.app(scope, receive, send)
 
         token = context.attach(extract(scope, getter=asgi_getter))
-        span_name, additional_attributes = self.span_details_callback(scope)
+        span_name = scope.get("path", "").strip() or "HTTP {}".format(scope.get("method", "").strip())
 
         try:
             with self.tracer.start_as_current_span(
                 span_name, kind=trace.SpanKind.SERVER,
             ) as span:
+                if callable(self.server_request_hook):
+                    self.server_request_hook(span, scope)
                 if span.is_recording():
                     attributes = collect_request_attributes(scope)
-                    attributes.update(additional_attributes)
                     for key, value in attributes.items():
                         span.set_attribute(key, value)
 
@@ -220,6 +209,8 @@ class OpenTelemetryMiddleware:
                         " ".join((span_name, scope["type"], "receive"))
                     ) as receive_span:
                         message = await receive()
+                        if callable(self.client_request_hook):
+                            self.client_request_hook(receive_span, message)
                         if receive_span.is_recording():
                             if message["type"] == "websocket.receive":
                                 set_status_code(receive_span, 200)
@@ -231,6 +222,8 @@ class OpenTelemetryMiddleware:
                     with self.tracer.start_as_current_span(
                         " ".join((span_name, scope["type"], "send"))
                     ) as send_span:
+                        if callable(self.client_response_hook):
+                            self.client_response_hook(send_span, message)
                         if send_span.is_recording():
                             if message["type"] == "http.response.start":
                                 status_code = message["status"]
