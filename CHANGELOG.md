@@ -23,6 +23,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   ([#543](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/543))
 - Require aiopg to be less than 1.3.0
   ([#560](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/560))
+- `opentelemetry-instrumentation-requests` Fix potential `AttributeError` when `requests`
+  is used with a custom transport adapter.
+  ([#562](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/562))
 
 ### Added
 - `opentelemetry-instrumentation-httpx` Add `httpx` instrumentation
