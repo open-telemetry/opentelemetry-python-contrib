@@ -31,7 +31,7 @@ from opentelemetry.trace import SpanKind, Tracer, TracerProvider, get_tracer
 from opentelemetry.trace.span import Span
 from opentelemetry.trace.status import Status
 
-URL = typing.Tuple[bytes, bytes, typing.Optional[int], bytes]
+RawURL = typing.Tuple[bytes, bytes, typing.Optional[int], bytes]
 Headers = typing.List[typing.Tuple[bytes, bytes]]
 RequestHook = typing.Callable[[Span, "RequestInfo"], None]
 ResponseHook = typing.Callable[[Span, "RequestInfo", "ResponseInfo"], None]
@@ -45,7 +45,7 @@ AsyncResponseHook = typing.Callable[
 
 class RequestInfo(typing.NamedTuple):
     method: bytes
-    url: URL
+    url: RawURL
     headers: typing.Optional[Headers]
     stream: typing.Optional[
         typing.Union[httpx.SyncByteStream, httpx.AsyncByteStream]
@@ -72,7 +72,7 @@ def _apply_status_code(span: Span, status_code: int) -> None:
     span.set_status(Status(http_status_to_status_code(status_code)))
 
 
-def _prepare_attributes(method: bytes, url: URL) -> typing.Dict[str, str]:
+def _prepare_attributes(method: bytes, url: RawURL) -> typing.Dict[str, str]:
     _method = method.decode().upper()
     _url = str(httpx.URL(url))
     span_attributes = {
@@ -117,7 +117,7 @@ class SyncOpenTelemetryTransport(httpx.BaseTransport):
     def handle_request(
         self,
         method: bytes,
-        url: URL,
+        url: RawURL,
         headers: typing.Optional[Headers] = None,
         stream: typing.Optional[httpx.SyncByteStream] = None,
         extensions: typing.Optional[dict] = None,
@@ -203,7 +203,7 @@ class AsyncOpenTelemetryTransport(httpx.AsyncBaseTransport):
     async def handle_async_request(
         self,
         method: bytes,
-        url: URL,
+        url: RawURL,
         headers: typing.Optional[Headers] = None,
         stream: typing.Optional[httpx.AsyncByteStream] = None,
         extensions: typing.Optional[dict] = None,

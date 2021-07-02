@@ -266,6 +266,22 @@ class BaseTestCases:
             self.assertEqual(result.text, "Hello!")
             self.assert_span()
 
+        def test_credential_removal(self):
+            url_auth = "http://username:password@httpbin.org/status/200"
+
+            with respx.mock:
+                respx.get(url_auth).mock(httpx.Response(200))
+                self.perform_request(url_auth)
+
+            span = self.assert_span()
+
+            self.assertIn('httpbin.org', span.attributes[SpanAttributes.HTTP_URL])
+            # The RawURL passed to transports only contains (scheme,
+            # host, port, target) and no userinfo
+            self.assertNotIn('username', span.attributes[SpanAttributes.HTTP_URL])
+            self.assertNotIn('password', span.attributes[SpanAttributes.HTTP_URL])
+
+
     class BaseManualTest(BaseTest, metaclass=abc.ABCMeta):
         @abc.abstractmethod
         def create_transport(
