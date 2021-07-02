@@ -192,6 +192,31 @@ class TestAsgiApplication(AsgiTestBase):
         outputs = self.get_all_output()
         self.validate_outputs(outputs, error=ValueError)
 
+    def test_override_span_name(self):
+        """Test that default span_names can be overwritten by our callback function."""
+        span_name = "Dymaxion"
+
+        def get_predefined_span_details(_):
+            return span_name, {}
+
+        def update_expected_span_name(expected):
+            for entry in expected:
+                if entry["kind"] == trace_api.SpanKind.SERVER:
+                    entry["name"] = span_name
+                else:
+                    entry["name"] = " ".join(
+                        [span_name] + entry["name"].split(" ")[1:]
+                    )
+            return expected
+
+        app = otel_asgi.OpenTelemetryMiddleware(
+            simple_asgi, default_span_details=get_predefined_span_details
+        )
+        self.seed_app(app)
+        self.send_default_request()
+        outputs = self.get_all_output()
+        self.validate_outputs(outputs, modifiers=[update_expected_span_name])
+
     def test_custom_tracer_provider_otel_asgi(self):
         resource = resources.Resource.create({"service-test-key": "value"})
         result = TestBase.create_tracer_provider(resource=resource)
@@ -358,18 +383,24 @@ class TestAsgiApplication(AsgiTestBase):
                     entry["name"] = "name from server hook"
                 elif entry["name"] == "/ http receive":
                     entry["name"] = "name from client request hook"
-                else:
-                    entry["attributes"].update({"attr-from-hook" : "value"})
+                elif entry["name"] == "/ http send":
+                    entry["attributes"].update({"attr-from-hook": "value"})
             return expected
 
         app = otel_asgi.OpenTelemetryMiddleware(
-            simple_asgi, server_request_hook=server_request_hook, client_request_hook=client_request_hook, client_response_hook=client_response_hook
+            simple_asgi,
+            server_request_hook=server_request_hook,
+            client_request_hook=client_request_hook,
+            client_response_hook=client_response_hook,
         )
         self.seed_app(app)
         self.send_default_request()
         outputs = self.get_all_output()
-        self.validate_outputs(outputs, modifiers=[update_expected_hook_results])
-        
+        self.validate_outputs(
+            outputs, modifiers=[update_expected_hook_results]
+        )
+
+
 class TestAsgiAttributes(unittest.TestCase):
     def setUp(self):
         self.scope = {}

@@ -35,13 +35,22 @@ class StarletteInstrumentor(BaseInstrumentor):
     _original_starlette = None
 
     @staticmethod
-    def instrument_app(app: applications.Starlette, tracer_provider=None):
+    def instrument_app(
+        app: applications.Starlette,
+        server_request_hook=None,
+        client_request_hook=None,
+        client_response_hook=None,
+        tracer_provider=None,
+    ):
         """Instrument an uninstrumented Starlette application."""
         if not getattr(app, "is_instrumented_by_opentelemetry", False):
             app.add_middleware(
                 OpenTelemetryMiddleware,
                 excluded_urls=_excluded_urls,
-                span_details_callback=_get_route_details,
+                default_span_details=_get_route_details,
+                server_request_hook=server_request_hook,
+                client_request_hook=client_request_hook,
+                client_response_hook=client_response_hook,
                 tracer_provider=tracer_provider,
             )
             app.is_instrumented_by_opentelemetry = True
@@ -52,6 +61,15 @@ class StarletteInstrumentor(BaseInstrumentor):
     def _instrument(self, **kwargs):
         self._original_starlette = applications.Starlette
         _InstrumentedStarlette._tracer_provider = kwargs.get("tracer_provider")
+        _InstrumentedStarlette._server_request_hook = kwargs.get(
+            "server_request_hook"
+        )
+        _InstrumentedStarlette._client_request_hook = kwargs.get(
+            "client_request_hook"
+        )
+        _InstrumentedStarlette._client_response_hook = kwargs.get(
+            "client_response_hook"
+        )
         applications.Starlette = _InstrumentedStarlette
 
     def _uninstrument(self, **kwargs):
@@ -60,13 +78,19 @@ class StarletteInstrumentor(BaseInstrumentor):
 
 class _InstrumentedStarlette(applications.Starlette):
     _tracer_provider = None
+    _server_request_hook = None
+    _client_request_hook = None
+    _client_response_hook = None
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
         self.add_middleware(
             OpenTelemetryMiddleware,
             excluded_urls=_excluded_urls,
-            span_details_callback=_get_route_details,
+            default_span_details=_get_route_details,
+            server_request_hook=_InstrumentedStarlette._server_request_hook,
+            client_request_hook=_InstrumentedStarlette._client_request_hook,
+            client_response_hook=_InstrumentedStarlette._client_response_hook,
             tracer_provider=_InstrumentedStarlette._tracer_provider,
         )
 
@@ -76,7 +100,7 @@ def _get_route_details(scope):
 
     TODO: there is currently no way to retrieve http.route from
     a starlette application from scope.
-
+    
     See: https://github.com/encode/starlette/pull/804
     """
     app = scope["app"]

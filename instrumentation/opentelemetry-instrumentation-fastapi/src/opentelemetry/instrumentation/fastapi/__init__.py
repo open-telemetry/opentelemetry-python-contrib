@@ -39,7 +39,12 @@ class FastAPIInstrumentor(BaseInstrumentor):
 
     @staticmethod
     def instrument_app(
-        app: fastapi.FastAPI, tracer_provider=None, excluded_urls=None,
+        app: fastapi.FastAPI,
+        server_request_hook=None,
+        client_request_hook=None,
+        client_response_hook=None,
+        tracer_provider=None,
+        excluded_urls=None,
     ):
         """Instrument an uninstrumented FastAPI application."""
         if not hasattr(app, "_is_instrumented_by_opentelemetry"):
@@ -54,7 +59,10 @@ class FastAPIInstrumentor(BaseInstrumentor):
             app.add_middleware(
                 OpenTelemetryMiddleware,
                 excluded_urls=excluded_urls,
-                span_details_callback=_get_route_details,
+                default_span_details=_get_route_details,
+                server_request_hook=server_request_hook,
+                client_request_hook=client_request_hook,
+                client_response_hook=client_response_hook,
                 tracer_provider=tracer_provider,
             )
             app._is_instrumented_by_opentelemetry = True
@@ -79,6 +87,15 @@ class FastAPIInstrumentor(BaseInstrumentor):
     def _instrument(self, **kwargs):
         self._original_fastapi = fastapi.FastAPI
         _InstrumentedFastAPI._tracer_provider = kwargs.get("tracer_provider")
+        _InstrumentedFastAPI._server_request_hook = kwargs.get(
+            "server_request_hook"
+        )
+        _InstrumentedFastAPI._client_request_hook = kwargs.get(
+            "client_request_hook"
+        )
+        _InstrumentedFastAPI._client_response_hook = kwargs.get(
+            "client_response_hook"
+        )
         _excluded_urls = kwargs.get("excluded_urls")
         _InstrumentedFastAPI._excluded_urls = (
             _excluded_urls_from_env
@@ -100,7 +117,10 @@ class _InstrumentedFastAPI(fastapi.FastAPI):
         self.add_middleware(
             OpenTelemetryMiddleware,
             excluded_urls=_InstrumentedFastAPI._excluded_urls,
-            span_details_callback=_get_route_details,
+            default_span_details=_get_route_details,
+            server_request_hook=_InstrumentedFastAPI._server_request_hook,
+            client_request_hook=_InstrumentedFastAPI._client_request_hook,
+            client_response_hook=_InstrumentedFastAPI._client_response_hook,
             tracer_provider=_InstrumentedFastAPI._tracer_provider,
         )
 
