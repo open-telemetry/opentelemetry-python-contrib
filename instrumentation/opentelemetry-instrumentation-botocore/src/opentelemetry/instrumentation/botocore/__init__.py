@@ -161,10 +161,16 @@ class BotocoreInstrumentor(BaseInstrumentor):
                         "aws.table_name", api_params["TableName"]
                     )
 
+            token = context_api.attach(
+                context_api.set_value(_SUPPRESS_INSTRUMENTATION_KEY, True)
+            )
+
             try:
                 result = original_func(*args, **kwargs)
             except ClientError as ex:
                 error = ex
+            finally:
+                context_api.detach(token)
 
             if error:
                 result = error.response
