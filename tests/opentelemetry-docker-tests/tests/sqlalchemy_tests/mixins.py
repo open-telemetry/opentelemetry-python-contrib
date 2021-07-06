@@ -15,6 +15,7 @@
 import contextlib
 import logging
 import threading
+import unittest
 
 from sqlalchemy import Column, Integer, String, create_engine, insert
 from sqlalchemy.ext.declarative import declarative_base
@@ -242,4 +243,5 @@ class SQLAlchemyTestMixin(TestBase):
                 close_all_sessions()
 
         spans = self.memory_exporter.get_finished_spans()
+        breakpoint()
         self.assertEqual(len(spans), 5)
