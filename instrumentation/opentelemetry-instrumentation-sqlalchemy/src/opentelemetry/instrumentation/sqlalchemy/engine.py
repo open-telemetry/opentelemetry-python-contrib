@@ -12,7 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from threading import local
+# from threading import local
 
 from sqlalchemy.event import listen  # pylint: disable=no-name-in-module
 
@@ -60,19 +60,19 @@ class EngineTracer:
         self.engine = engine
         self.vendor = _normalize_vendor(engine.name)
         self.cursor_mapping = {}
-        self.local = local()
+        # self.local = local()
 
         listen(engine, "before_cursor_execute", self._before_cur_exec)
         listen(engine, "after_cursor_execute", self._after_cur_exec)
         listen(engine, "handle_error", self._handle_error)
 
-    @property
-    def current_thread_span(self):
-        return getattr(self.local, "current_span", None)
+    # @property
+    # def current_thread_span(self):
+    #     return getattr(self.local, "current_span", None)
 
-    @current_thread_span.setter
-    def current_thread_span(self, span):
-        setattr(self.local, "current_span", span)
+    # @current_thread_span.setter
+    # def current_thread_span(self, span):
+    #     setattr(self.local, "current_span", span)
 
     def _operation_name(self, db_name, statement):
         parts = []
@@ -100,7 +100,8 @@ class EngineTracer:
             self._operation_name(db_name, statement),
             kind=trace.SpanKind.CLIENT,
         )
-        self.current_thread_span = self.cursor_mapping[cursor] = span
+        # self.current_thread_span =
+        self.cursor_mapping[cursor] = span
         with trace.use_span(span, end_on_exit=False):
             if span.is_recording():
                 span.set_attribute(SpanAttributes.DB_STATEMENT, statement)
@@ -118,7 +119,8 @@ class EngineTracer:
         self._cleanup(cursor)
 
     def _handle_error(self, context):
-        span = self.current_thread_span
+        span = self.cursor_mapping[context.cursor]
+        # span = self.current_thread_span
         if span is None:
             return
 
