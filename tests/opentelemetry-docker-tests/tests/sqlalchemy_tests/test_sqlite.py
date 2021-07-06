@@ -35,7 +35,7 @@ class SQLiteTestCase(SQLAlchemyTestMixin):
     def test_engine_execute_errors(self):
         # ensures that SQL errors are reported
         stmt = "SELECT * FROM a_wrong_table"
-        with pytest.raises(Exception):
+        with pytest.raises(OperationalError):
             with self.connection() as conn:
                 conn.execute(stmt).fetchall()
 

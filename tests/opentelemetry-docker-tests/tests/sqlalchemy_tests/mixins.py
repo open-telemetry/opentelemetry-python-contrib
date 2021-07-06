@@ -243,5 +243,4 @@ class SQLAlchemyTestMixin(TestBase):
                 close_all_sessions()
 
         spans = self.memory_exporter.get_finished_spans()
-        breakpoint()
         self.assertEqual(len(spans), 5)
