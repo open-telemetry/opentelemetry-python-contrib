@@ -36,6 +36,18 @@ Usage
         engine=engine,
     )
 
+    # of the async variant of SQLAlchemy
+
+    from sqlalchemy.ext.asyncio import create_async_engine
+
+    from opentelemetry.instrumentation.sqlalchemy import SQLAlchemyInstrumentor
+    import sqlalchemy
+
+    engine = create_async_engine("sqlite:///:memory:")
+    SQLAlchemyInstrumentor().instrument(
+        engine=engine.sync_engine
+    )
+
 API
 ---
 """
