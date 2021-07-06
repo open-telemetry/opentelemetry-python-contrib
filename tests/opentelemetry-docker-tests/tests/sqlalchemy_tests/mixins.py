@@ -243,4 +243,4 @@ class SQLAlchemyTestMixin(TestBase):
                 close_all_sessions()
 
         spans = self.memory_exporter.get_finished_spans()
-        self.assertEqual(len(spans), 5)
+        self.assertEqual(len(spans), 5 if self.VENDOR not in ["postgresql"] else 3)
