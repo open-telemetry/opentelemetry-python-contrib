@@ -231,7 +231,6 @@ class OpenTelemetryMiddleware:
                     with self.tracer.start_as_current_span(
                         " ".join((span_name, scope["type"], "receive"))
                     ) as receive_span:
-                        print("here")
                         if callable(self.client_request_hook):
                             self.client_request_hook(receive_span, scope)
                         message = await receive()
@@ -246,7 +245,6 @@ class OpenTelemetryMiddleware:
                     with self.tracer.start_as_current_span(
                         " ".join((span_name, scope["type"], "send"))
                     ) as send_span:
-                        print("here2")
                         if callable(self.client_response_hook):
                             self.client_response_hook(send_span, message)
                         if send_span.is_recording():

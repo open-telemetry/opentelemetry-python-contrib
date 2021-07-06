@@ -21,20 +21,14 @@ Usage
 .. code-block:: python
 
     import urllib3
-    import urllib3.util
     from opentelemetry.instrumentation.urllib3 import URLLib3Instrumentor
 
     def strip_query_params(url: str) -> str:
         return url.split("?")[0]
 
-    def span_name_callback(method: str, url: str, headers):
-        return urllib3.util.Url(url).path
-
     URLLib3Instrumentor().instrument(
         # Remove all query params from the URL attribute on the span.
         url_filter=strip_query_params,
-        # Use the URL's path as the span name.
-        span_name_or_callback=span_name_callback
     )
 
     http = urllib3.PoolManager()
@@ -124,8 +118,8 @@ class URLLib3Instrumentor(BaseInstrumentor):
         Args:
             **kwargs: Optional arguments
                 ``tracer_provider``: a TracerProvider, defaults to global.
-                ``request_hook``: An optional callback invoked that is invoked right after a span is created.
-                ``response_hook``: An optional callback which is invoked right before the span is finished processing a response
+                ``request_hook``: An optional callback that is invoked right after a span is created.
+                ``response_hook``: An optional callback which is invoked right before the span is finished processing a response.
                 ``url_filter``: A callback to process the requested URL prior
                     to adding it as a span attribute.
         """
