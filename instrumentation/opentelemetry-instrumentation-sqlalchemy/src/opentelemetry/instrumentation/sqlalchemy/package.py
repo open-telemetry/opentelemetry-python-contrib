@@ -13,4 +13,4 @@
 # limitations under the License.
 
 
-_instruments = ("sqlalchemy >= 1.3",)
+_instruments = ("sqlalchemy",)

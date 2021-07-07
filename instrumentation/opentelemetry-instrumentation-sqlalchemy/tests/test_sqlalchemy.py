@@ -11,19 +11,13 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-from typing import Coroutine
 from unittest import mock
 
 from sqlalchemy import create_engine
-import sqlalchemy
+
 from opentelemetry import trace
 from opentelemetry.instrumentation.sqlalchemy import SQLAlchemyInstrumentor
 from opentelemetry.test.test_base import TestBase
-import asyncio
-
-
-def _call_async(coro: Coroutine):
-    return asyncio.get_event_loop().run_until_complete(coro)
 
 
 class TestSqlalchemyInstrumentation(TestBase):
@@ -34,32 +28,12 @@ class TestSqlalchemyInstrumentation(TestBase):
     def test_trace_integration(self):
         engine = create_engine("sqlite:///:memory:")
         SQLAlchemyInstrumentor().instrument(
-            engine=engine,
-            tracer_provider=self.tracer_provider,
+            engine=engine, tracer_provider=self.tracer_provider,
         )
         cnx = engine.connect()
         cnx.execute("SELECT	1 + 1;").fetchall()
         spans = self.memory_exporter.get_finished_spans()
 
-        self.assertEqual(len(spans), 1)
-        self.assertEqual(spans[0].name, "SELECT :memory:")
-        self.assertEqual(spans[0].kind, trace.SpanKind.CLIENT)
-
-    def test_async_trace_integration(self):
-        if sqlalchemy.__version__.startswith("1.3"):
-            return
-        from sqlalchemy.ext.asyncio import (
-            create_async_engine,
-        )  # pylint: disable-all
-
-        engine = create_async_engine("sqlite+aiosqlite:///:memory:")
-        SQLAlchemyInstrumentor().instrument(
-            engine=engine.sync_engine, tracer_provider=self.tracer_provider
-        )
-        cnx = _call_async(engine.connect())
-        _call_async(cnx.execute(sqlalchemy.text("SELECT	1 + 1;"))).fetchall()
-        _call_async(cnx.close())
-        spans = self.memory_exporter.get_finished_spans()
         self.assertEqual(len(spans), 1)
         self.assertEqual(spans[0].name, "SELECT :memory:")
         self.assertEqual(spans[0].kind, trace.SpanKind.CLIENT)
@@ -73,8 +47,7 @@ class TestSqlalchemyInstrumentation(TestBase):
             tracer.return_value = mock_tracer
             engine = create_engine("sqlite:///:memory:")
             SQLAlchemyInstrumentor().instrument(
-                engine=engine,
-                tracer_provider=self.tracer_provider,
+                engine=engine, tracer_provider=self.tracer_provider,
             )
             cnx = engine.connect()
             cnx.execute("SELECT	1 + 1;").fetchall()
