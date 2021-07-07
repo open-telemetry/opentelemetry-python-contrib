@@ -43,6 +43,16 @@ def _get_tracer(engine, tracer_provider=None):
 
 
 # pylint: disable=unused-argument
+def _wrap_create_async_engine(func, module, args, kwargs):
+    """Trace the SQLAlchemy engine, creating an `EngineTracer`
+    object that will listen to SQLAlchemy events.
+    """
+    engine = func(*args, **kwargs)
+    EngineTracer(_get_tracer(engine), engine.sync_engine)
+    return engine
+
+
+# pylint: disable=unused-argument
 def _wrap_create_engine(func, module, args, kwargs):
     """Trace the SQLAlchemy engine, creating an `EngineTracer`
     object that will listen to SQLAlchemy events.
@@ -78,7 +88,9 @@ class EngineTracer:
         return " ".join(parts)
 
     # pylint: disable=unused-argument
-    def _before_cur_exec(self, conn, cursor, statement, params, context, executemany):
+    def _before_cur_exec(
+        self, conn, cursor, statement, params, context, executemany
+    ):
         attrs, found = _get_attributes_from_url(conn.engine.url)
         if not found:
             attrs = _get_attributes_from_cursor(self.vendor, cursor, attrs)
@@ -98,15 +110,17 @@ class EngineTracer:
         context._span = span
 
     # pylint: disable=unused-argument
-    def _after_cur_exec(self, conn, cursor, statement, params, context, executemany):
-        span = getattr(context, '_span', None)
+    def _after_cur_exec(
+        self, conn, cursor, statement, params, context, executemany
+    ):
+        span = getattr(context, "_span", None)
         if span is None:
             return
 
         span.end()
 
     def _handle_error(self, context):
-        span = getattr(context.execution_context, '_span', None)
+        span = getattr(context.execution_context, "_span", None)
         if span is None:
             return
 
@@ -120,7 +134,6 @@ class EngineTracer:
                 )
         finally:
             span.end()
-
 
 
 def _get_attributes_from_url(url):
