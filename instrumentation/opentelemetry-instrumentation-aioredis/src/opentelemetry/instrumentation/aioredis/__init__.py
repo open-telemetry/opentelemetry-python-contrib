@@ -48,16 +48,19 @@ import aioredis
 from wrapt import wrap_function_wrapper
 
 from opentelemetry import trace
-from opentelemetry.instrumentation.instrumentor import BaseInstrumentor
 from opentelemetry.instrumentation.aioredis.package import _instruments
-from opentelemetry.instrumentation.aioredis.util import (
-    _format_command_args,
-)
+from opentelemetry.instrumentation.aioredis.util import _format_command_args
 from opentelemetry.instrumentation.aioredis.version import __version__
+from opentelemetry.instrumentation.instrumentor import BaseInstrumentor
 from opentelemetry.instrumentation.utils import unwrap
-from opentelemetry.semconv.trace import SpanAttributes, NetTransportValues, DbSystemValues
+from opentelemetry.semconv.trace import (
+    DbSystemValues,
+    NetTransportValues,
+    SpanAttributes,
+)
 
 _DEFAULT_SERVICE = "redis"
+
 
 async def traced_execute(func, instance: aioredis.Redis, args, kwargs):
     tracer = getattr(aioredis, "_opentelemetry_tracer")
@@ -67,7 +70,9 @@ async def traced_execute(func, instance: aioredis.Redis, args, kwargs):
         name = args[0].decode("utf-8")
     else:
         name = str(instance.db)
-    with tracer.start_as_current_span(name, kind=trace.SpanKind.CLIENT) as span:
+    with tracer.start_as_current_span(
+        name, kind=trace.SpanKind.CLIENT
+    ) as span:
         if span.is_recording():
             span.set_attributes(
                 {
