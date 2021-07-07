@@ -125,7 +125,7 @@ class TestStarletteManualInstrumentationHooks(
         if self._client_response_hook is not None:
             self._client_response_hook(send_span, response)
 
-    def testHooks(self):
+    def test_hooks(self):
         def server_request_hook(span, scope):
             span.update_name("name from server hook")
 

@@ -50,7 +50,7 @@ The hooks can be configured as follows:
 
     # `request` is an instance of urllib3.connectionpool.HTTPConnectionPool
     # `response` is an instance of urllib3.response.HTTPResponse
-    def response_hook(span, request, response)
+    def response_hook(span, request, response):
         pass
 
     URLLib3Instrumentor.instrument(
