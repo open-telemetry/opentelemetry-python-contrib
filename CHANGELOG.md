@@ -6,6 +6,8 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased](https://github.com/open-telemetry/opentelemetry-python/compare/v1.3.0-0.22b0...HEAD)
+- `opentelemetry-sdk-extension-aws` Update AWS entry points to match spec
+  ([#566](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/566))
 - Include Flask 2.0 as compatible with existing flask instrumentation
   ([#545](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/545))
 - `openelemetry-sdk-extension-aws` Take a dependency on `opentelemetry-sdk`
@@ -22,6 +24,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   ([#538](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/538))
 - Changed the psycopg2-binary to psycopg2 as dependency in production
   ([#543](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/543))
+- Require aiopg to be less than 1.3.0
+  ([#560](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/560))
+- `opentelemetry-instrumentation-django` Migrated Django middleware to new-style.
+  ([#533](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/533))
 
 ### Added
 - `opentelemetry-instrumentation-httpx` Add `httpx` instrumentation
