@@ -27,12 +27,10 @@ else:
     from unittest.mock import MagicMock
 
     class AsyncMock(MagicMock):
+
+        # pylint: disable=useless-super-delegation
         async def __call__(self, *args, **kwargs):
-            return super(
-                AsyncMock, self
-            ).__call__(  # pylint: disable=useless-super-delegation
-                *args, **kwargs
-            )
+            return super(AsyncMock, self).__call__(*args, **kwargs)
 
 
 class TestRedis(TestBase):
