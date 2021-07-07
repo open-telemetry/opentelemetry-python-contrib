@@ -11,7 +11,8 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-from unittest import IsolatedAsyncioTestCase, mock
+import asyncio
+from unittest import mock
 
 import pytest
 import sqlalchemy
@@ -22,7 +23,7 @@ from opentelemetry.instrumentation.sqlalchemy import SQLAlchemyInstrumentor
 from opentelemetry.test.test_base import TestBase
 
 
-class TestSqlalchemyInstrumentation(TestBase, IsolatedAsyncioTestCase):
+class TestSqlalchemyInstrumentation(TestBase):
     def tearDown(self):
         super().tearDown()
         SQLAlchemyInstrumentor().uninstrument()
@@ -44,21 +45,24 @@ class TestSqlalchemyInstrumentation(TestBase, IsolatedAsyncioTestCase):
         sqlalchemy.__version__.startswith("1.3"),
         reason="skipping async tests for 1.3",
     )
-    async def test_async_trace_integration(self):
-        from sqlalchemy.ext.asyncio import (  # pylint: disable-all
-            create_async_engine,
-        )
+    def test_async_trace_integration(self):
+        async def run():
+            from sqlalchemy.ext.asyncio import (  # pylint: disable-all
+                create_async_engine,
+            )
 
-        engine = create_async_engine("sqlite+aiosqlite:///:memory:")
-        SQLAlchemyInstrumentor().instrument(
-            engine=engine.sync_engine, tracer_provider=self.tracer_provider
-        )
-        async with engine.connect() as cnx:
-            await cnx.execute(sqlalchemy.text("SELECT	1 + 1;"))
-        spans = self.memory_exporter.get_finished_spans()
-        self.assertEqual(len(spans), 1)
-        self.assertEqual(spans[0].name, "SELECT :memory:")
-        self.assertEqual(spans[0].kind, trace.SpanKind.CLIENT)
+            engine = create_async_engine("sqlite+aiosqlite:///:memory:")
+            SQLAlchemyInstrumentor().instrument(
+                engine=engine.sync_engine, tracer_provider=self.tracer_provider
+            )
+            async with engine.connect() as cnx:
+                await cnx.execute(sqlalchemy.text("SELECT	1 + 1;"))
+            spans = self.memory_exporter.get_finished_spans()
+            self.assertEqual(len(spans), 1)
+            self.assertEqual(spans[0].name, "SELECT :memory:")
+            self.assertEqual(spans[0].kind, trace.SpanKind.CLIENT)
+
+        asyncio.get_event_loop().run_until_complete(run())
 
     def test_not_recording(self):
         mock_tracer = mock.Mock()
@@ -95,16 +99,19 @@ class TestSqlalchemyInstrumentation(TestBase, IsolatedAsyncioTestCase):
         sqlalchemy.__version__.startswith("1.3"),
         reason="skipping async tests for 1.3",
     )
-    async def test_create_async_engine_wrapper(self):
-        SQLAlchemyInstrumentor().instrument()
-        from sqlalchemy.ext.asyncio import (  # pylint: disable-all
-            create_async_engine,
-        )
+    def test_create_async_engine_wrapper(self):
+        async def run():
+            SQLAlchemyInstrumentor().instrument()
+            from sqlalchemy.ext.asyncio import (  # pylint: disable-all
+                create_async_engine,
+            )
 
-        engine = create_async_engine("sqlite+aiosqlite:///:memory:")
-        async with engine.connect() as cnx:
-            await cnx.execute(sqlalchemy.text("SELECT	1 + 1;"))
-        spans = self.memory_exporter.get_finished_spans()
-        self.assertEqual(len(spans), 1)
-        self.assertEqual(spans[0].name, "SELECT :memory:")
-        self.assertEqual(spans[0].kind, trace.SpanKind.CLIENT)
+            engine = create_async_engine("sqlite+aiosqlite:///:memory:")
+            async with engine.connect() as cnx:
+                await cnx.execute(sqlalchemy.text("SELECT	1 + 1;"))
+            spans = self.memory_exporter.get_finished_spans()
+            self.assertEqual(len(spans), 1)
+            self.assertEqual(spans[0].name, "SELECT :memory:")
+            self.assertEqual(spans[0].kind, trace.SpanKind.CLIENT)
+
+        asyncio.get_event_loop().run_until_complete(run())
