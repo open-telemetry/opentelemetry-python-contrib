@@ -127,10 +127,7 @@ class EngineTracer:
         try:
             if span.is_recording():
                 span.set_status(
-                    Status(
-                        StatusCode.ERROR,
-                        str(context.original_exception),
-                    )
+                    Status(StatusCode.ERROR, str(context.original_exception),)
                 )
         finally:
             span.end()
