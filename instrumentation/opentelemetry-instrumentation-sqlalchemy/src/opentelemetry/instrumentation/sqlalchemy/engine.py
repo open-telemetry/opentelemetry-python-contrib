@@ -109,15 +109,15 @@ class EngineTracer:
 
         context._span = span
 
+
 # pylint: disable=unused-argument
-def _after_cur_exec(
-    conn, cursor, statement, params, context, executemany
-):
+def _after_cur_exec(conn, cursor, statement, params, context, executemany):
     span = getattr(context, "_span", None)
     if span is None:
         return
 
     span.end()
+
 
 def _handle_error(context):
     span = getattr(context.execution_context, "_span", None)
