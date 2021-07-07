@@ -12,6 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 import asyncio
+import sys
 from unittest import mock
 
 import aioredis
@@ -19,6 +20,15 @@ import aioredis
 from opentelemetry.instrumentation.aioredis import AioRedisInstrumentor
 from opentelemetry.test.test_base import TestBase
 from opentelemetry.trace import SpanKind
+
+if sys.version_info > (3, 7, 0):
+    from unittest.mock import AsyncMock
+else:
+    from unittest.mock import MagicMock
+
+    class AsyncMock(MagicMock):
+        async def __call__(self, *args, **kwargs):
+            return super(AsyncMock, self).__call__(*args, **kwargs)
 
 
 class TestRedis(TestBase):
