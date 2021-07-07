@@ -42,7 +42,7 @@ request and response hooks. These are functions that are called back by the inst
 right after a Span is created for a request and right before the span is finished processing a response respectively.
 The hooks can be configured as follows:
 
-..code:: python
+.. code:: python
 
     # `request` is an instance of urllib3.connectionpool.HTTPConnectionPool
     def request_hook(span, request):
@@ -56,6 +56,7 @@ The hooks can be configured as follows:
     URLLib3Instrumentor.instrument(
         request_hook=request_hook, response_hook=response_hook)
     )
+
 API
 ---
 """

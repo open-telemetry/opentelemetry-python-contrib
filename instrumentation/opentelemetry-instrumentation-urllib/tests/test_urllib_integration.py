@@ -15,7 +15,6 @@
 import abc
 import socket
 import urllib
-from http.client import HTTPResponse
 from unittest import mock
 from urllib import request
 from urllib.error import HTTPError
@@ -63,9 +62,7 @@ class RequestsIntegrationTestBase(abc.ABC):
             body=self.base_exception_callback,
         )
         httpretty.register_uri(
-            httpretty.GET,
-            "http://httpbin.org/status/500",
-            status=500,
+            httpretty.GET, "http://httpbin.org/status/500", status=500,
         )
 
     # pylint: disable=invalid-name
@@ -125,9 +122,7 @@ class RequestsIntegrationTestBase(abc.ABC):
     def test_not_foundbasic(self):
         url_404 = "http://httpbin.org/status/404/"
         httpretty.register_uri(
-            httpretty.GET,
-            url_404,
-            status=404,
+            httpretty.GET, url_404, status=404,
         )
         exception = None
         try:
@@ -144,8 +139,7 @@ class RequestsIntegrationTestBase(abc.ABC):
         )
 
         self.assertIs(
-            span.status.status_code,
-            trace.StatusCode.ERROR,
+            span.status.status_code, trace.StatusCode.ERROR,
         )
 
     def test_uninstrument(self):

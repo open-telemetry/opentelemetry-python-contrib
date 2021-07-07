@@ -177,8 +177,7 @@ def create_trace_config(
         request_span_name = "HTTP {}".format(http_method)
 
         trace_config_ctx.span = trace_config_ctx.tracer.start_span(
-            request_span_name,
-            kind=SpanKind.CLIENT,
+            request_span_name, kind=SpanKind.CLIENT,
         )
 
         if callable(request_hook):

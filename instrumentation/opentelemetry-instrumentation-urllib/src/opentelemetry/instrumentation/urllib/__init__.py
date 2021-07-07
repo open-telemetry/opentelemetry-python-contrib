@@ -42,13 +42,13 @@ The hooks can be configured as follows:
 
 ..code:: python
 
-    # `request` is an instance of urllib.request.Request
-    def request_hook(span, request):
+    # `request_obj` is an instance of urllib.request.Request
+    def request_hook(span, request_obj):
         pass
 
-    # `request` is an instance of urllib.request.Requests
+    # `request_obj` is an instance of urllib.request.Requests
     # `response` is an instance of http.client.HTTPResponse
-    def response_hook(span, request, response)
+    def response_hook(span, request_obj, response)
         pass
 
     URLLibInstrumentor.instrument(
@@ -231,9 +231,7 @@ def _uninstrument_from(instr_root, restore_as_bound_func=False):
     instr_func_name = "open"
     instr_func = getattr(instr_root, instr_func_name)
     if not getattr(
-        instr_func,
-        "opentelemetry_instrumentation_urllib_applied",
-        False,
+        instr_func, "opentelemetry_instrumentation_urllib_applied", False,
     ):
         return
 
