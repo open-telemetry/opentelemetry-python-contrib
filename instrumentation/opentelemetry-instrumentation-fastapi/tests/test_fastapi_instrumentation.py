@@ -40,7 +40,13 @@ class TestFastAPIManualInstrumentation(TestBase):
     def _create_app_explicit_excluded_urls(self):
         app = self._create_fastapi_app()
         to_exclude = "/user/123,/foobar"
-        self._instrumentor.instrument_app(app, excluded_urls=to_exclude)
+        self._instrumentor.instrument_app(
+            app,
+            excluded_urls=to_exclude,
+            server_request_hook=getattr(self, "server_request_hook", None),
+            client_request_hook=getattr(self, "client_request_hook", None),
+            client_response_hook=getattr(self, "client_response_hook", None),
+        )
         return app
 
     def setUp(self):
@@ -188,7 +194,7 @@ class TestFastAPIManualInstrumentationHooks(TestFastAPIManualInstrumentation):
         if self._client_response_hook is not None:
             self._client_response_hook(send_span, response)
 
-    def testHooks(self):
+    def test_hooks(self):
         def server_request_hook(span, scope):
             span.update_name("name from server hook")
 
@@ -268,6 +274,9 @@ class TestAutoInstrumentation(TestFastAPIManualInstrumentation):
 class TestAutoInstrumentationHooks(TestFastAPIManualInstrumentationHooks):
     """
     Test the auto-instrumented variant for request and response hooks
+
+    Extending the manual instrumentation to inherit defined hooks and since most test cases apply
+    to both.
     """
 
     def _create_app(self):
@@ -278,6 +287,24 @@ class TestAutoInstrumentationHooks(TestFastAPIManualInstrumentationHooks):
             client_response_hook=getattr(self, "client_response_hook", None),
         )
 
+        return self._create_fastapi_app()
+
+    def _create_app_explicit_excluded_urls(self):
+        resource = Resource.create({"key1": "value1", "key2": "value2"})
+        tracer_provider, exporter = self.create_tracer_provider(
+            resource=resource
+        )
+        self.memory_exporter = exporter
+
+        to_exclude = "/user/123,/foobar"
+        self._instrumentor.uninstrument()  # Disable previous instrumentation (setUp)
+        self._instrumentor.instrument(
+            tracer_provider=tracer_provider,
+            excluded_urls=to_exclude,
+            server_request_hook=getattr(self, "server_request_hook", None),
+            client_request_hook=getattr(self, "client_request_hook", None),
+            client_response_hook=getattr(self, "client_response_hook", None),
+        )
         return self._create_fastapi_app()
 
     def tearDown(self):
