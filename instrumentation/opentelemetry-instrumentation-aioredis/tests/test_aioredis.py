@@ -28,7 +28,11 @@ else:
 
     class AsyncMock(MagicMock):
         async def __call__(self, *args, **kwargs):
-            return super(AsyncMock, self).__call__(*args, **kwargs)
+            return super(
+                AsyncMock, self
+            ).__call__(  # pylint: disable=useless-super-delegation
+                *args, **kwargs
+            )
 
 
 class TestRedis(TestBase):
