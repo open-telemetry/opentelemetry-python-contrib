@@ -28,7 +28,7 @@ class MockPool:
         return self.return_value
 
     @property
-    def db(self):
+    def db(self):  # pylint: disable=invalid-name
         return 0
 
     @property
