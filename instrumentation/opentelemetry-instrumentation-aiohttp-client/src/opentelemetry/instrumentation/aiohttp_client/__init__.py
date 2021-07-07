@@ -147,7 +147,7 @@ def create_trace_config(
         it as a span attribute. This can be useful to remove sensitive data
         such as API keys or user personal information.
 
-    :param request_hook: Optiona; callback that can modify span name and request params.
+    :param request_hook: Optional callback that can modify span name and request params.
     :param response_hook: Optional callback that can modify span name and response params.
 
     :return: An object suitable for use with :py:class:`aiohttp.ClientSession`.
