@@ -1,24 +1,24 @@
-OpenTelemetry Redis Instrumentation
+OpenTelemetry AioRedis Instrumentation
 ===================================
 
 |pypi|
 
-.. |pypi| image:: https://badge.fury.io/py/opentelemetry-instrumentation-redis.svg
-   :target: https://pypi.org/project/opentelemetry-instrumentation-redis/
+.. |pypi| image:: https://badge.fury.io/py/opentelemetry-instrumentation-aioredis.svg
+   :target: https://pypi.org/project/opentelemetry-instrumentation-aioredis/
 
-This library allows tracing requests made by the Redis library.
+This library allows tracing requests made by the aioredis library.
 
 Installation
 ------------
 
 ::
 
-    pip install opentelemetry-instrumentation-redis
+    pip install opentelemetry-instrumentation-aioredis
 
 
 References
 ----------
 
-* `OpenTelemetry Redis Instrumentation <https://opentelemetry-python-contrib.readthedocs.io/en/latest/instrumentation/opentelemetry-instrumentation-redis/opentelemetry-instrumentation-redis.html>`_
+* `OpenTelemetry aioredis Instrumentation <https://opentelemetry-python-contrib.readthedocs.io/en/latest/instrumentation/opentelemetry-instrumentation-aioredis/opentelemetry-instrumentation-aioredis.html>`_
 * `OpenTelemetry Project <https://opentelemetry.io/>`_
 * `OpenTelemetry Python Examples <https://github.com/open-telemetry/opentelemetry-python/tree/main/docs/examples>`_
