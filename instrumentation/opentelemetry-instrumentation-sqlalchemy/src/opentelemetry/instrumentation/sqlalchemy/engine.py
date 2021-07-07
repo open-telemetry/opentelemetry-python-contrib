@@ -69,8 +69,8 @@ class EngineTracer:
         self.vendor = _normalize_vendor(engine.name)
 
         listen(engine, "before_cursor_execute", self._before_cur_exec)
-        listen(engine, "after_cursor_execute", self._after_cur_exec)
-        listen(engine, "handle_error", self._handle_error)
+        listen(engine, "after_cursor_execute", _after_cur_exec)
+        listen(engine, "handle_error", _handle_error)
 
     def _operation_name(self, db_name, statement):
         parts = []
@@ -109,28 +109,28 @@ class EngineTracer:
 
         context._span = span
 
-    # pylint: disable=unused-argument
-    def _after_cur_exec(
-        self, conn, cursor, statement, params, context, executemany
-    ):
-        span = getattr(context, "_span", None)
-        if span is None:
-            return
+# pylint: disable=unused-argument
+def _after_cur_exec(
+    conn, cursor, statement, params, context, executemany
+):
+    span = getattr(context, "_span", None)
+    if span is None:
+        return
 
+    span.end()
+
+def _handle_error(context):
+    span = getattr(context.execution_context, "_span", None)
+    if span is None:
+        return
+
+    try:
+        if span.is_recording():
+            span.set_status(
+                Status(StatusCode.ERROR, str(context.original_exception),)
+            )
+    finally:
         span.end()
-
-    def _handle_error(self, context):
-        span = getattr(context.execution_context, "_span", None)
-        if span is None:
-            return
-
-        try:
-            if span.is_recording():
-                span.set_status(
-                    Status(StatusCode.ERROR, str(context.original_exception),)
-                )
-        finally:
-            span.end()
 
 
 def _get_attributes_from_url(url):
