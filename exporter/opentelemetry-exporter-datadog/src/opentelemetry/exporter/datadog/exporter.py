@@ -33,6 +33,7 @@ from opentelemetry.exporter.datadog.constants import (
     EXCEPTION_TYPE_ATTR_KEY,
     SAMPLE_RATE_METRIC_KEY,
     SERVICE_NAME_TAG,
+    UNKNOWN_SERVICE_NAME,
     VERSION_KEY,
 )
 from opentelemetry.sdk.trace import sampling
@@ -135,12 +136,12 @@ class DatadogSpanExporter(SpanExporter):
             [
                 resource_tags,
                 resource_service_name,
-            ] = _extract_tags_from_resource(span.resource)
+            ] = _extract_tags_from_resource(span.resource, self.service)
 
             datadog_span = DatadogSpan(
                 tracer,
                 _get_span_name(span),
-                service=resource_service_name or self.service,
+                service=resource_service_name,
                 resource=_get_resource(span),
                 span_type=_get_span_type(span),
                 trace_id=trace_id,
@@ -312,7 +313,7 @@ def _parse_tags_str(tags_str):
     return parsed_tags
 
 
-def _extract_tags_from_resource(resource):
+def _extract_tags_from_resource(resource, fallback_service_name):
     """Parse tags from resource.attributes, except service.name which
     has special significance within datadog"""
     tags = {}
@@ -325,6 +326,10 @@ def _extract_tags_from_resource(resource):
             service_name = attribute_value
         else:
             tags[attribute_key] = attribute_value
+
+    if service_name == UNKNOWN_SERVICE_NAME:
+        service_name = fallback_service_name
+
     return [tags, service_name]
 
 
