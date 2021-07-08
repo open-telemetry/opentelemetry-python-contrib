@@ -113,7 +113,7 @@ libraries = {
         "instrumentation": "opentelemetry-instrumentation-sklearn==0.23.dev0",
     },
     "sqlalchemy": {
-        "library": "sqlalchemy >= 1.3",
+        "library": "sqlalchemy",
         "instrumentation": "opentelemetry-instrumentation-sqlalchemy==0.23.dev0",
     },
     "starlette": {

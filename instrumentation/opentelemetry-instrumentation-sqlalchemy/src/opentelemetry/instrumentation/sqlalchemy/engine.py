@@ -107,12 +107,12 @@ class EngineTracer:
                 for key, value in attrs.items():
                     span.set_attribute(key, value)
 
-        context._span = span
+        context._otel_span = span
 
 
 # pylint: disable=unused-argument
 def _after_cur_exec(conn, cursor, statement, params, context, executemany):
-    span = getattr(context, "_span", None)
+    span = getattr(context, "_otel_span", None)
     if span is None:
         return
 
@@ -120,17 +120,15 @@ def _after_cur_exec(conn, cursor, statement, params, context, executemany):
 
 
 def _handle_error(context):
-    span = getattr(context.execution_context, "_span", None)
+    span = getattr(context.execution_context, "_otel_span", None)
     if span is None:
         return
 
-    try:
-        if span.is_recording():
-            span.set_status(
-                Status(StatusCode.ERROR, str(context.original_exception),)
-            )
-    finally:
-        span.end()
+    if span.is_recording():
+        span.set_status(
+            Status(StatusCode.ERROR, str(context.original_exception),)
+        )
+    span.end()
 
 
 def _get_attributes_from_url(url):

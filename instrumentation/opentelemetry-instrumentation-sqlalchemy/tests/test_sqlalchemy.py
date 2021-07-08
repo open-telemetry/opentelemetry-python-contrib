@@ -42,8 +42,8 @@ class TestSqlalchemyInstrumentation(TestBase):
         self.assertEqual(spans[0].kind, trace.SpanKind.CLIENT)
 
     @pytest.mark.skipif(
-        sqlalchemy.__version__.startswith("1.3"),
-        reason="skipping async tests for 1.3",
+        not sqlalchemy.__version__.startswith("1.4"),
+        reason="on run async tests for 1.4",
     )
     def test_async_trace_integration(self):
         async def run():
@@ -96,8 +96,8 @@ class TestSqlalchemyInstrumentation(TestBase):
         self.assertEqual(spans[0].kind, trace.SpanKind.CLIENT)
 
     @pytest.mark.skipif(
-        sqlalchemy.__version__.startswith("1.3"),
-        reason="skipping async tests for 1.3",
+        not sqlalchemy.__version__.startswith("1.4"),
+        reason="on run async tests for 1.4",
     )
     def test_create_async_engine_wrapper(self):
         async def run():
