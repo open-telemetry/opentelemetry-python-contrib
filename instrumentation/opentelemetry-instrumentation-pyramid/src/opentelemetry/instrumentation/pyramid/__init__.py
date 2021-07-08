@@ -79,7 +79,6 @@ API
 """
 
 import typing
-from os import stat
 from typing import Collection
 
 from pyramid.config import Configurator
