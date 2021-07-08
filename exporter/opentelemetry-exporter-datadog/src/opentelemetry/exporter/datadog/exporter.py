@@ -327,7 +327,7 @@ def _extract_tags_from_resource(resource, fallback_service_name):
         else:
             tags[attribute_key] = attribute_value
 
-    if service_name == UNKNOWN_SERVICE_NAME:
+    if service_name == None or service_name == UNKNOWN_SERVICE_NAME:
         service_name = fallback_service_name
 
     return [tags, service_name]
