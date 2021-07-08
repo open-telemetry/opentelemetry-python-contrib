@@ -319,7 +319,7 @@ def _extract_tags_from_resource(resource, fallback_service_name):
     tags = {}
     service_name = None
     if not (resource and getattr(resource, "attributes", None)):
-        return [tags, service_name]
+        return [tags, fallback_service_name]
 
     for attribute_key, attribute_value in resource.attributes.items():
         if attribute_key == SERVICE_NAME_TAG:
