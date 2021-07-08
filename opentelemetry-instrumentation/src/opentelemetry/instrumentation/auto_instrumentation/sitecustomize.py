@@ -23,6 +23,7 @@ from pkg_resources import iter_entry_points
 from opentelemetry.environment_variables import (
     OTEL_PYTHON_DISABLED_INSTRUMENTATIONS,
 )
+from opentelemetry.instrumentation.configurator import BaseConfigurator
 from opentelemetry.instrumentation.dependencies import (
     get_dist_dependency_conflicts,
 )
@@ -32,24 +33,40 @@ logger = getLogger(__file__)
 
 
 def _load_distros() -> BaseDistro:
-    for entry_point in iter_entry_points("opentelemetry_distro"):
+    entry_points = iter_entry_points("opentelemetry_distro")
+    loaded_distro = None
+    loaded_distro_name = None
+    for entry_point in entry_points:
+        if loaded_distro_name is not None:
+            logger.error(
+                "Multiple distros were found: (%s). Only one should be installed.",
+                ",".join([loaded_distro_name, entry_point.module_name] + [ep.module_name for ep in entry_points]),
+            )
+            raise RuntimeError("Cannot Auto Instrument with multiple distros installed.")
+
+        loaded_distro_name = entry_point.module_name
+
         try:
-            distro = entry_point.load()()
-            if not isinstance(distro, BaseDistro):
+            loaded_distro = entry_point.load()()
+            if not isinstance(loaded_distro, BaseDistro):
                 logger.debug(
                     "%s is not an OpenTelemetry Distro. Skipping",
-                    entry_point.name,
+                    entry_point.module_name,
                 )
                 continue
             logger.debug(
-                "Distribution %s will be configured", entry_point.name
+                "Distribution %s will be configured", loaded_distro_name
             )
-            return distro
         except Exception as exc:  # pylint: disable=broad-except
             logger.exception(
-                "Distribution %s configuration failed", entry_point.name
+                "Distribution %s configuration failed", loaded_distro_name
             )
             raise exc
+
+    if loaded_distro is not None:
+        return loaded_distro
+
+    logger.warning("Initializing Auto Instrumentation without using a distro.")
     return DefaultDistro()
 
 
@@ -96,7 +113,14 @@ def _load_configurators():
             )
             continue
         try:
-            entry_point.load()().configure()  # type: ignore
+            configurator: BaseConfigurator = entry_point.load()()
+            if not isinstance(configurator, BaseConfigurator):
+                logger.debug(
+                    "%s is not an OpenTelemetry Configurator. Skipping",
+                    entry_point.name,
+                )
+                continue
+            configurator.configure()
             configured = entry_point.name
         except Exception as exc:  # pylint: disable=broad-except
             logger.exception("Configuration of %s failed", entry_point.name)
