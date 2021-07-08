@@ -30,7 +30,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   ([#533](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/533))
 - `opentelemetry-exporter-datadog` Fix service name resolution.
   ([#540](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/570))
-  
 
 ### Added
 - `opentelemetry-instrumentation-httpx` Add `httpx` instrumentation
