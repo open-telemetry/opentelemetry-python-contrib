@@ -356,7 +356,6 @@ class RequestsIntegrationTestBase(abc.ABC):
         self.assertEqual(span.status.status_code, StatusCode.ERROR)
 
     def test_adapter_with_custom_response(self):
-        # See ONE-56722
         response = Response()
         response.status_code = 210
         response.reason = "hello adapter"
