@@ -44,6 +44,7 @@ except ImportError:
     from django.urls import Resolver404, resolve
 
 DJANGO_2_0 = django_version >= (2, 0)
+DJANGO_3_0 = django_version >= (3, 0)
 
 if DJANGO_2_0:
     # Since Django 2.0, only `settings.MIDDLEWARE` is supported, so new-style
@@ -68,10 +69,9 @@ else:
     except ImportError:
         MiddlewareMixin = object
 
-
-try:
+if DJANGO_3_0:
     from django.core.handlers.asgi import ASGIRequest
-except ImportError:
+else:
     ASGIRequest = None
 
 try:
@@ -113,7 +113,7 @@ _attributes_by_preference = [
 
 
 def _is_asgi_request(request: HttpRequest) -> bool:
-    return bool(ASGIRequest and isinstance(request, ASGIRequest))
+    return ASGIRequest is not None and isinstance(request, ASGIRequest)
 
 
 class _DjangoMiddleware(MiddlewareMixin):
