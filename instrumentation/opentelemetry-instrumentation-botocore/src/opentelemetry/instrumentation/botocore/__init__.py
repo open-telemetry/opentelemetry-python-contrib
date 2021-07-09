@@ -59,7 +59,6 @@ from opentelemetry.instrumentation.botocore.package import _instruments
 from opentelemetry.instrumentation.botocore.version import __version__
 from opentelemetry.instrumentation.instrumentor import BaseInstrumentor
 from opentelemetry.instrumentation.utils import (
-    _SUPPRESS_INSTRUMENTATION_KEY,
     unwrap,
 )
 from opentelemetry.propagate import inject
@@ -67,6 +66,10 @@ from opentelemetry.semconv.trace import SpanAttributes
 from opentelemetry.trace import SpanKind, get_tracer
 
 logger = logging.getLogger(__name__)
+
+_SUPPRESS_HTTP_INSTRUMENTATION_KEY = context_api.create_key(
+    "suppress_http_instrumentation"
+)
 
 
 # pylint: disable=unused-argument
@@ -162,7 +165,7 @@ class BotocoreInstrumentor(BaseInstrumentor):
                     )
 
             token = context_api.attach(
-                context_api.set_value(_SUPPRESS_INSTRUMENTATION_KEY, True)
+                context_api.set_value(_SUPPRESS_HTTP_INSTRUMENTATION_KEY, True)
             )
 
             try:
