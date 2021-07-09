@@ -23,7 +23,6 @@ from pkg_resources import iter_entry_points
 from opentelemetry.environment_variables import (
     OTEL_PYTHON_DISABLED_INSTRUMENTATIONS,
 )
-from opentelemetry.instrumentation.configurator import BaseConfigurator
 from opentelemetry.instrumentation.dependencies import (
     get_dist_dependency_conflicts,
 )
