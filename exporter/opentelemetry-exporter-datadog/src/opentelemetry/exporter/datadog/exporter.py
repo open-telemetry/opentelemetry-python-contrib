@@ -33,7 +33,6 @@ from opentelemetry.exporter.datadog.constants import (
     EXCEPTION_TYPE_ATTR_KEY,
     SAMPLE_RATE_METRIC_KEY,
     SERVICE_NAME_TAG,
-    UNKNOWN_SERVICE_NAME,
     VERSION_KEY,
 )
 from opentelemetry.sdk.trace import sampling
@@ -317,17 +316,17 @@ def _extract_tags_from_resource(resource, fallback_service_name):
     """Parse tags from resource.attributes, except service.name which
     has special significance within datadog"""
     tags = {}
-    service_name = None
     if not (resource and getattr(resource, "attributes", None)):
         return [tags, fallback_service_name]
 
+    service_name = None
     for attribute_key, attribute_value in resource.attributes.items():
         if attribute_key == SERVICE_NAME_TAG:
             service_name = attribute_value
         else:
             tags[attribute_key] = attribute_value
 
-    if service_name is None or service_name == UNKNOWN_SERVICE_NAME:
+    if service_name is None or service_name == "unknown_service":
         service_name = fallback_service_name
 
     return [tags, service_name]

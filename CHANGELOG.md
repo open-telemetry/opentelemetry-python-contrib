@@ -28,8 +28,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   ([#560](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/560))
 - `opentelemetry-instrumentation-django` Migrated Django middleware to new-style.
   ([#533](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/533))
-- `opentelemetry-exporter-datadog` Fix service name resolution.
-  ([#540](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/570))
+- `opentelemetry-exporter-datadog` Datadog exporter should not use `unknown_service` as fallback resource service name.
+  ([#570](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/570))
 
 ### Added
 - `opentelemetry-instrumentation-httpx` Add `httpx` instrumentation
