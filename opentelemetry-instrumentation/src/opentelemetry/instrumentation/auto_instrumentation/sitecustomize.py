@@ -40,21 +40,24 @@ def _load_distros() -> BaseDistro:
 
         if more_distros:
             logger.error(
-                    "Multiple distros were found: (%s). Only one should be installed.",
-                    ",".join([first_distro.module_name] + more_distros),
-                )
-            raise RuntimeError("Cannot Auto Instrument with multiple distros installed.")
+                "Multiple distros were found: (%s). Only one should be installed.",
+                ",".join([first_distro.module_name] + more_distros),
+            )
+            raise RuntimeError(
+                "Cannot Auto Instrument with multiple distros installed."
+            )
 
         return first_distro.load()()
     except StopIteration:
-        logger.warning("Initializing Auto Instrumentation without using a distro.")
+        logger.warning(
+            "Initializing Auto Instrumentation without using a distro."
+        )
+        return DefaultDistro()
     except Exception as exc:  # pylint: disable=broad-except
         logger.exception(
             "Distribution %s configuration failed", first_distro.module_name
         )
         raise exc
-    logger.warning("Initializing Auto Instrumentation without using a distro.")
-    return DefaultDistro()
 
 
 def _load_instrumentors(distro):
