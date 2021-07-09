@@ -46,7 +46,7 @@ def _load_distros() -> BaseDistro:
             raise RuntimeError("Cannot Auto Instrument with multiple distros installed.")
 
         return first_distro.load()()
-    except IndexError:
+    except StopIteration:
         logger.warning("Initializing Auto Instrumentation without using a distro.")
     except Exception as exc:  # pylint: disable=broad-except
         logger.exception(
