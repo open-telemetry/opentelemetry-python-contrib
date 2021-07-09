@@ -67,6 +67,9 @@ from opentelemetry.trace import SpanKind, get_tracer
 
 logger = logging.getLogger(__name__)
 
+# A key to a context variable to avoid creating duplicate spans when instrumenting
+# both botocore.client and urllib3.connectionpool.HTTPConnectionPool.urlopen since
+# botocore calls urlopen
 _SUPPRESS_HTTP_INSTRUMENTATION_KEY = context_api.create_key(
     "suppress_http_instrumentation"
 )
