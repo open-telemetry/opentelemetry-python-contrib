@@ -45,12 +45,7 @@ def _load_distros() -> BaseDistro:
                 )
             raise RuntimeError("Cannot Auto Instrument with multiple distros installed.")
 
-        loaded_distro = first_distro.load()()
-        if isinstance(loaded_distro, BaseDistro):
-            logger.debug(
-                "Distribution %s will be configured", first_distro.module_name
-            )
-            return loaded_distro
+        return first_distro.load()()
     except IndexError:
         logger.warning("Initializing Auto Instrumentation without using a distro.")
     except Exception as exc:  # pylint: disable=broad-except
