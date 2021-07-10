@@ -24,10 +24,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   ([#538](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/538))
 - Changed the psycopg2-binary to psycopg2 as dependency in production
   ([#543](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/543))
+- Implement consistent way of checking if instrumentation is already active
+  ([#549](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/549))
 - Require aiopg to be less than 1.3.0
   ([#560](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/560))
 - `opentelemetry-instrumentation-django` Migrated Django middleware to new-style.
   ([#533](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/533))
+- Updating dependency for opentelemetry api/sdk packages to support major version instead
+  of pinning to specific versions.
+  ([#567](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/567))
 
 ### Added
 - `opentelemetry-instrumentation-httpx` Add `httpx` instrumentation
