@@ -31,11 +31,17 @@ from opentelemetry.instrumentation.distro import BaseDistro, DefaultDistro
 logger = getLogger(__file__)
 
 
-def _load_distros() -> BaseDistro:
+def _load_distro() -> BaseDistro:
     entry_points = iter_entry_points("opentelemetry_distro")
     try:
         first_distro = next(entry_points)
+    except StopIteration:
+        logger.warning(
+            "Failed to find even one installed distro. Initializing Auto Instrumentation without using a distro."
+        )
+        return DefaultDistro()
 
+    try:
         more_distros = [ep.module_name for ep in entry_points]
 
         if more_distros:
@@ -48,11 +54,6 @@ def _load_distros() -> BaseDistro:
             )
 
         return first_distro.load()()
-    except StopIteration:
-        logger.warning(
-            "Initializing Auto Instrumentation without using a distro."
-        )
-        return DefaultDistro()
     except Exception as exc:  # pylint: disable=broad-except
         logger.exception(
             "Distribution %s configuration failed", first_distro.module_name
@@ -112,7 +113,7 @@ def _load_configurators():
 
 def initialize():
     try:
-        distro = _load_distros()
+        distro = _load_distro()
         distro.configure()
         _load_configurators()
         _load_instrumentors(distro)

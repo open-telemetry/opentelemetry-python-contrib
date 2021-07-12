@@ -39,9 +39,11 @@ opentelemetry-instrument
     opentelemetry-instrument python program.py
 
 **NOTE:** `opentelemetry-instrument` will check for compatible "distros" (like `opentelemetry-distro`)
-when automatically instrumenting. If multiple distros are found, instrumentation will fail. Check out
+when automatically instrumenting. A "distro" is defined as a class that successfully inherits from the
+[BaseDistro](https://github.com/open-telemetry/opentelemetry-python-contrib/blob/main/opentelemetry-instrumentation/src/opentelemetry/instrumentation/distro.py#L30).
+If multiple distros are found, auto-instrumentation will fail. Check out
 `Github Issue #551 <https://github.com/open-telemetry/opentelemetry-python-contrib/issues/551>`_ for
-more.
+more details.
 
 The instrument command will try to automatically detect packages used by your python program
 and when possible, apply automatic tracing instrumentation on them. This means your program
