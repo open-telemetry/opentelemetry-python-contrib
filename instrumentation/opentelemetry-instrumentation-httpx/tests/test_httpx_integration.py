@@ -635,29 +635,29 @@ class TestSyncInstrumentationIntegration(BaseTestCases.BaseInstrumentorTest):
         return client.request(method, url, headers=headers)
 
 
-# class TestAsyncInstrumentationIntegration(BaseTestCases.BaseInstrumentorTest):
-#     response_hook = staticmethod(_async_response_hook)
-#     request_hook = staticmethod(_async_request_hook)
-#     no_update_request_hook = staticmethod(_async_no_update_request_hook)
+class TestAsyncInstrumentationIntegration(BaseTestCases.BaseInstrumentorTest):
+    response_hook = staticmethod(_async_response_hook)
+    request_hook = staticmethod(_async_request_hook)
+    no_update_request_hook = staticmethod(_async_no_update_request_hook)
 
-#     def create_client(
-#         self, transport: typing.Optional[AsyncOpenTelemetryTransport] = None,
-#     ):
-#         return httpx.AsyncClient()
+    def create_client(
+        self, transport: typing.Optional[AsyncOpenTelemetryTransport] = None,
+    ):
+        return httpx.AsyncClient()
 
-#     def perform_request(
-#         self,
-#         url: str,
-#         method: str = "GET",
-#         headers: typing.Dict[str, str] = None,
-#         client: typing.Union[httpx.Client, httpx.AsyncClient, None] = None,
-#     ):
-#         async def _perform_request():
-#             nonlocal client
-#             nonlocal method
-#             if client is None:
-#                 client = self.client
-#             async with client as _client:
-#                 return await _client.request(method, url, headers=headers)
+    def perform_request(
+        self,
+        url: str,
+        method: str = "GET",
+        headers: typing.Dict[str, str] = None,
+        client: typing.Union[httpx.Client, httpx.AsyncClient, None] = None,
+    ):
+        async def _perform_request():
+            nonlocal client
+            nonlocal method
+            if client is None:
+                client = self.client
+            async with client as _client:
+                return await _client.request(method, url, headers=headers)
 
-#         return _async_call(_perform_request())
+        return _async_call(_perform_request())

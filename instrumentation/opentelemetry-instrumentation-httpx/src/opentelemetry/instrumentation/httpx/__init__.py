@@ -330,7 +330,7 @@ class HTTPXClientInstrumentor(BaseInstrumentor):
             _InstrumentedAsyncClient._request_hook = request_hook
         if callable(response_hook):
             _InstrumentedClient._response_hook = response_hook
-            _InstrumentedAsyncClient._request_hook = request_hook
+            _InstrumentedAsyncClient._response_hook = response_hook
         tracer_provider = kwargs.get("tracer_provider")
         _InstrumentedClient._tracer_provider = tracer_provider
         _InstrumentedAsyncClient._tracer_provider = tracer_provider
@@ -340,6 +340,12 @@ class HTTPXClientInstrumentor(BaseInstrumentor):
     def _uninstrument(self, **kwargs):
         httpx.Client = self._original_client
         httpx.AsyncClient = self._original_async_client
+        _InstrumentedClient._tracer_provider = None
+        _InstrumentedClient._request_hook = None
+        _InstrumentedClient._response_hook = None
+        _InstrumentedAsyncClient._tracer_provider = None
+        _InstrumentedAsyncClient._request_hook = None
+        _InstrumentedAsyncClient._response_hook = None
 
     @staticmethod
     def instrument_client(
