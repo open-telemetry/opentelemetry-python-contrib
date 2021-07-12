@@ -157,6 +157,11 @@ class BaseTestCases:
                 span, opentelemetry.instrumentation.httpx
             )
 
+        def test_basic_multiple(self):
+            self.perform_request(self.URL)
+            self.perform_request(self.URL)
+            self.assert_span(num_spans=2)
+
         def test_not_foundbasic(self):
             url_404 = "http://httpbin.org/status/404"
 
@@ -376,8 +381,9 @@ class BaseTestCases:
 
         def setUp(self):
             super().setUp()
+            HTTPXClientInstrumentor().instrument()
             self.client = self.create_client()
-            HTTPXClientInstrumentor().instrument_client(self.client)
+            HTTPXClientInstrumentor().uninstrument()
 
         def test_custom_tracer_provider(self):
             resource = resources.Resource.create({})
