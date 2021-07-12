@@ -20,7 +20,7 @@ from opentelemetry.sdk.resources import (
     ResourceDetector,
 )
 from opentelemetry.semconv.resource import (
-    CloudInfrastructureServiceValues,
+    CloudPlatformValues,
     CloudProviderValues,
     ResourceAttributes,
 )
@@ -38,25 +38,28 @@ class AwsBeanstalkDetector(ResourceDetector):
         try:
             with open(CONF_FILE_PATH) as f:
                 parsed_data = json.load(f)
+
             # NOTE: (NathanielRN) Should ResourceDetectors use Resource.detect() to pull in the environment variable?
             # `OTELResourceDetector` doesn't do this...
+            return Resource(
+                {
+                    ResourceAttributes.CLOUD_PROVIDER: CloudProviderValues.AWS,
+                    ResourceAttributes.CLOUD_PLATFORM: CloudPlatformValues.AWS_ELASTIC_BEANSTALK,
+                    ResourceAttributes.SERVICE_NAME: CloudPlatformValues.AWS_ELASTIC_BEANSTALK,
+                    ResourceAttributes.SERVICE_NAMESPACE: parsed_data[
+                        "environment_name"
+                    ]
+                    or "",
+                    ResourceAttributes.SERVICE_VERSION: parsed_data[
+                        "version_label"
+                    ]
+                    or "",
+                    ResourceAttributes.SERVICE_INSTANCE_ID: parsed_data[
+                        "deployment_id"
+                    ]
+                    or "",
+                }
+            )
         except Exception as e:
             logger.debug(f"AwsBeanstalkDetector failed: {e}")
             return Resource.get_empty()
-        return Resource(
-            {
-                ResourceAttributes.CLOUD_PROVIDER: CloudProviderValues.AWS,
-                ResourceAttributes.CLOUD_PLATFORM: CloudInfrastructureServiceValues.AWS_ELASTICBEANSTALK,
-                ResourceAttributes.SERVICE_NAME: CloudInfrastructureServiceValues.AWS_ELASTICBEANSTALK,
-                ResourceAttributes.SERVICE_NAMESPACE: parsed_data[
-                    "environment_name"
-                ]
-                or "",
-                ResourceAttributes.SERVICE_VERSION: parsed_data["version_label"]
-                or "",
-                ResourceAttributes.SERVICE_INSTANCE_ID: parsed_data[
-                    "deployment_id"
-                ]
-                or "",
-            }
-        )

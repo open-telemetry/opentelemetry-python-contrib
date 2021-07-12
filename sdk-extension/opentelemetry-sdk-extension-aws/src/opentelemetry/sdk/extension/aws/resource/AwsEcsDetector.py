@@ -19,7 +19,7 @@ from opentelemetry.sdk.resources import (
     ResourceDetector,
 )
 from opentelemetry.semconv.resource import (
-    CloudInfrastructureServiceValues,
+    CloudPlatformValues,
     CloudProviderValues,
     ResourceAttributes,
 )
@@ -46,7 +46,7 @@ class AwsEcsDetector(ResourceDetector):
             return Resource(
                 {
                     ResourceAttributes.CLOUD_PROVIDER: CloudProviderValues.AWS,
-                    ResourceAttributes.CLOUD_PLATFORM: CloudInfrastructureServiceValues.AWS_ECS,
+                    ResourceAttributes.CLOUD_PLATFORM: CloudPlatformValues.AWS_ECS,
                     ResourceAttributes.CONTAINER_NAME: socket.gethostname()
                     or "",
                     ResourceAttributes.CONTAINER_ID: container_id,

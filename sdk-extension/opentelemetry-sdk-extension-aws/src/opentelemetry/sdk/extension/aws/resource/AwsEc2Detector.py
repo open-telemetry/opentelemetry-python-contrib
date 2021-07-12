@@ -20,7 +20,7 @@ from opentelemetry.sdk.resources import (
     ResourceDetector,
 )
 from opentelemetry.semconv.resource import (
-    CloudInfrastructureServiceValues,
+    CloudPlatformValues,
     CloudProviderValues,
     ResourceAttributes,
 )
@@ -71,12 +71,13 @@ class AwsEc2Detector(ResourceDetector):
             token = _get_token()
             identity_dict = json.loads(_get_identity(token))
             hostname = _get_host(token)
+
             # NOTE: (NathanielRN) Should ResourceDetectors use Resource.detect() to pull in the environment variable?
             # `OTELResourceDetector` doesn't do this...
             return Resource(
                 {
                     ResourceAttributes.CLOUD_PROVIDER: CloudProviderValues.AWS,
-                    ResourceAttributes.CLOUD_PLATFORM: CloudInfrastructureServiceValues.AWS_EC2,
+                    ResourceAttributes.CLOUD_PLATFORM: CloudPlatformValues.AWS_EC2,
                     ResourceAttributes.CLOUD_ACCOUNT_ID: identity_dict[
                         "accountId"
                     ],

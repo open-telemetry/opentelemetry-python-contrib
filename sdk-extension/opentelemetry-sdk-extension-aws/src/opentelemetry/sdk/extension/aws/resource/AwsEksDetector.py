@@ -20,7 +20,7 @@ from opentelemetry.sdk.resources import (
     ResourceDetector,
 )
 from opentelemetry.semconv.resource import (
-    CloudInfrastructureServiceValues,
+    CloudPlatformValues,
     CloudProviderValues,
     ResourceAttributes,
 )
@@ -98,9 +98,9 @@ class AwsEksDetector(ResourceDetector):
             return Resource(
                 {
                     ResourceAttributes.CLOUD_PROVIDER: CloudProviderValues.AWS,
-                    ResourceAttributes.CLOUD_PLATFORM: CloudInfrastructureServiceValues.AWS_EKS,
+                    ResourceAttributes.CLOUD_PLATFORM: CloudPlatformValues.AWS_EKS,
                     ResourceAttributes.K8S_CLUSTER_NAME: cluster_info["data"][
-                        "cluter.name"
+                        "cluster.name"
                     ],
                     ResourceAttributes.CONTAINER_ID: container_id,
                 }

@@ -20,7 +20,7 @@ from opentelemetry.sdk.resources import (
     ResourceDetector,
 )
 from opentelemetry.semconv.resource import (
-    CloudInfrastructureServiceValues,
+    CloudPlatformValues,
     CloudProviderValues,
     ResourceAttributes,
 )
@@ -36,7 +36,7 @@ class AwsLambdaResourceDetector(ResourceDetector):
             return Resource(
                 {
                     ResourceAttributes.CLOUD_PROVIDER: CloudProviderValues.AWS,
-                    ResourceAttributes.CLOUD_PLATFORM: CloudInfrastructureServiceValues.AWS_LAMBDA,
+                    ResourceAttributes.CLOUD_PLATFORM: CloudPlatformValues.AWS_LAMBDA,
                     ResourceAttributes.CLOUD_REGION: environ.get("AWS_REGION"),
                     ResourceAttributes.FAAS_NAME: environ.get(
                         "AWS_LAMBDA_FUNCTION_NAME"
