@@ -28,7 +28,7 @@ from opentelemetry.semconv.resource import (
 logger = logging.getLogger(__name__)
 
 
-class AwsBeanstalkDetector(ResourceDetector):
+class AwsBeanstalkResourceDetector(ResourceDetector):
     def detect(self) -> "Resource":
         if os.name == "nt":
             CONF_FILE_PATH = "C:\\Program Files\\Amazon\\XRay\\environment.conf"
@@ -39,13 +39,13 @@ class AwsBeanstalkDetector(ResourceDetector):
             with open(CONF_FILE_PATH) as f:
                 parsed_data = json.load(f)
 
-            # NOTE: (NathanielRN) Should ResourceDetectors use Resource.detect() to pull in the environment variable?
+            # NOTE: (NathanielRN) Should ResourceDetectors use Resource.create() to pull in the environment variable?
             # `OTELResourceDetector` doesn't do this...
             return Resource(
                 {
-                    ResourceAttributes.CLOUD_PROVIDER: CloudProviderValues.AWS,
-                    ResourceAttributes.CLOUD_PLATFORM: CloudPlatformValues.AWS_ELASTIC_BEANSTALK,
-                    ResourceAttributes.SERVICE_NAME: CloudPlatformValues.AWS_ELASTIC_BEANSTALK,
+                    ResourceAttributes.CLOUD_PROVIDER: CloudProviderValues.AWS.value,
+                    ResourceAttributes.CLOUD_PLATFORM: CloudPlatformValues.AWS_ELASTIC_BEANSTALK.value,
+                    ResourceAttributes.SERVICE_NAME: CloudPlatformValues.AWS_ELASTIC_BEANSTALK.value,
                     ResourceAttributes.SERVICE_NAMESPACE: parsed_data[
                         "environment_name"
                     ]
@@ -61,5 +61,5 @@ class AwsBeanstalkDetector(ResourceDetector):
                 }
             )
         except Exception as e:
-            logger.debug(f"AwsBeanstalkDetector failed: {e}")
+            logger.debug(f"{self.__class__.__name__} failed: {e}")
             return Resource.get_empty()

@@ -29,7 +29,7 @@ logger = logging.getLogger(__name__)
 _CONTAINER_ID_LENGTH = 64
 
 
-class AwsEcsDetector(ResourceDetector):
+class AwsEcsResourceDetector(ResourceDetector):
     def detect(self) -> "Resource":
         container_id = None
         try:
@@ -41,17 +41,17 @@ class AwsEcsDetector(ResourceDetector):
             logger.debug(f"AwsEcsDetector failed to get container Id: {e}")
 
         try:
-            # NOTE: (NathanielRN) Should ResourceDetectors use Resource.detect() to pull in the environment variable?
+            # NOTE: (NathanielRN) Should ResourceDetectors use Resource.create() to pull in the environment variable?
             # `OTELResourceDetector` doesn't do this...
             return Resource(
                 {
-                    ResourceAttributes.CLOUD_PROVIDER: CloudProviderValues.AWS,
-                    ResourceAttributes.CLOUD_PLATFORM: CloudPlatformValues.AWS_ECS,
+                    ResourceAttributes.CLOUD_PROVIDER: CloudProviderValues.AWS.value,
+                    ResourceAttributes.CLOUD_PLATFORM: CloudPlatformValues.AWS_ECS.value,
                     ResourceAttributes.CONTAINER_NAME: socket.gethostname()
                     or "",
                     ResourceAttributes.CONTAINER_ID: container_id,
                 }
             )
         except Exception as e:
-            logger.debug(f"AwsEcsDetector failed: {e}")
+            logger.debug(f"{self.__class__.__name__} failed: {e}")
             return Resource.get_empty()

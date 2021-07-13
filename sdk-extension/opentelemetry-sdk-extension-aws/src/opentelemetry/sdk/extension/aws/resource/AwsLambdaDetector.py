@@ -31,12 +31,12 @@ logger = logging.getLogger(__name__)
 class AwsLambdaResourceDetector(ResourceDetector):
     def detect(self) -> "Resource":
         try:
-            # NOTE: (NathanielRN) Should ResourceDetectors use Resource.detect() to pull in the environment variable?
+            # NOTE: (NathanielRN) Should ResourceDetectors use Resource.create() to pull in the environment variable?
             # `OTELResourceDetector` doesn't do this...
             return Resource(
                 {
-                    ResourceAttributes.CLOUD_PROVIDER: CloudProviderValues.AWS,
-                    ResourceAttributes.CLOUD_PLATFORM: CloudPlatformValues.AWS_LAMBDA,
+                    ResourceAttributes.CLOUD_PROVIDER: CloudProviderValues.AWS.value,
+                    ResourceAttributes.CLOUD_PLATFORM: CloudPlatformValues.AWS_LAMBDA.value,
                     ResourceAttributes.CLOUD_REGION: environ.get("AWS_REGION"),
                     ResourceAttributes.FAAS_NAME: environ.get(
                         "AWS_LAMBDA_FUNCTION_NAME"
@@ -47,5 +47,5 @@ class AwsLambdaResourceDetector(ResourceDetector):
                 }
             )
         except Exception as e:
-            logger.debug(f"AwsLambdaDetector failed: {e}")
+            logger.debug(f"{self.__class__.__name__} failed: {e}")
             return Resource.get_empty()
