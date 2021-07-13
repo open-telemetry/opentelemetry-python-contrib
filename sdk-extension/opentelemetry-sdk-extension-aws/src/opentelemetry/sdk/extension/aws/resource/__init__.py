@@ -16,12 +16,12 @@ from opentelemetry.sdk.extension.aws.resource.beanstalk import AwsBeanstalkResou
 from opentelemetry.sdk.extension.aws.resource.ec2 import AwsEc2ResourceDetector
 from opentelemetry.sdk.extension.aws.resource.ecs import AwsEcsResourceDetector
 from opentelemetry.sdk.extension.aws.resource.eks import AwsEksResourceDetector
-from opentelemetry.sdk.extension.aws.resource.lambda import AwsLambdaResourceDetector
+from opentelemetry.sdk.extension.aws.resource._lambda import AwsLambdaResourceDetector
 
 __all__ = [
     AwsBeanstalkResourceDetector,
     AwsEc2ResourceDetector,
-    AwsEc2ResourceDetector,
+    AwsEcsResourceDetector,
     AwsEksResourceDetector,
     AwsLambdaResourceDetector,
 ]
