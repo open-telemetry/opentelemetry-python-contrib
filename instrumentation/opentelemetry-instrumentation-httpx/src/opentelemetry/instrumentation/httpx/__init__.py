@@ -302,6 +302,7 @@ class _InstrumentedAsyncClient(httpx.AsyncClient):
 
 
 class HTTPXClientInstrumentor(BaseInstrumentor):
+    # pylint: disable=protected-access,attribute-defined-outside-init
     """An instrumentor for httpx Client and AsyncClient
 
     See `BaseInstrumentor`

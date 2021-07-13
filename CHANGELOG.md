@@ -36,9 +36,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   ([#545](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/545))
 - `openelemetry-sdk-extension-aws` Take a dependency on `opentelemetry-sdk`
   ([#558](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/558))
-
-- Change `opentelemetry-instrumentation-httpx` to not use wrapping mechanism for patching
-  ([#558](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/558))
+- Change `opentelemetry-instrumentation-httpx` to replace `client` classes with instrumented versions.
+  ([#577](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/577))
 
 ### Added
 - `opentelemetry-instrumentation-httpx` Add `httpx` instrumentation
