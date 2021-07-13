@@ -159,7 +159,8 @@ class TestBotocoreInstrumentor(TestBase):
             },
         )
         self.assertIs(
-            span.status.status_code, trace_api.StatusCode.ERROR,
+            span.status.status_code,
+            trace_api.StatusCode.ERROR,
         )
 
     # Comment test for issue 1088
@@ -399,11 +400,13 @@ class TestBotocoreInstrumentor(TestBase):
 
             self.assertIn(MockTextMapPropagator.TRACE_ID_KEY, headers)
             self.assertEqual(
-                "0", headers[MockTextMapPropagator.TRACE_ID_KEY],
+                "0",
+                headers[MockTextMapPropagator.TRACE_ID_KEY],
             )
             self.assertIn(MockTextMapPropagator.SPAN_ID_KEY, headers)
             self.assertEqual(
-                "0", headers[MockTextMapPropagator.SPAN_ID_KEY],
+                "0",
+                headers[MockTextMapPropagator.SPAN_ID_KEY],
             )
         finally:
             set_global_textmap(previous_propagator)

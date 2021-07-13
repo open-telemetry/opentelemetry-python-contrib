@@ -39,7 +39,9 @@ class FastAPIInstrumentor(BaseInstrumentor):
 
     @staticmethod
     def instrument_app(
-        app: fastapi.FastAPI, tracer_provider=None, excluded_urls=None,
+        app: fastapi.FastAPI,
+        tracer_provider=None,
+        excluded_urls=None,
     ):
         """Instrument an uninstrumented FastAPI application."""
         if not hasattr(app, "_is_instrumented_by_opentelemetry"):

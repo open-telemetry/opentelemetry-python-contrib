@@ -205,7 +205,8 @@ class _InstrumentedFlask(flask.Flask):
         )
 
         _before_request = _wrapped_before_request(
-            _InstrumentedFlask._request_hook, tracer,
+            _InstrumentedFlask._request_hook,
+            tracer,
         )
         self._before_request = _before_request
         self.before_request(_before_request)
