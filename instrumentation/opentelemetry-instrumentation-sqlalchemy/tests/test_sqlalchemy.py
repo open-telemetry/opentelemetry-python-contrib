@@ -43,7 +43,7 @@ class TestSqlalchemyInstrumentation(TestBase):
 
     @pytest.mark.skipif(
         not sqlalchemy.__version__.startswith("1.4"),
-        reason="on run async tests for 1.4",
+        reason="only run async tests for 1.4",
     )
     def test_async_trace_integration(self):
         async def run():
@@ -97,7 +97,7 @@ class TestSqlalchemyInstrumentation(TestBase):
 
     @pytest.mark.skipif(
         not sqlalchemy.__version__.startswith("1.4"),
-        reason="on run async tests for 1.4",
+        reason="only run async tests for 1.4",
     )
     def test_create_async_engine_wrapper(self):
         async def run():
