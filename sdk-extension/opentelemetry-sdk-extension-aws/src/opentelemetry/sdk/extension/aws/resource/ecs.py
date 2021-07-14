@@ -13,6 +13,7 @@
 # limitations under the License.
 
 import logging
+import os
 import socket
 from opentelemetry.sdk.resources import (
     Resource,
@@ -31,6 +32,14 @@ _CONTAINER_ID_LENGTH = 64
 
 class AwsEcsResourceDetector(ResourceDetector):
     def detect(self) -> "Resource":
+        if not os.environ.get(
+            "ECS_CONTAINER_METADATA_URI"
+        ) and not os.environ.get("ECS_CONTAINER_METADATA_URI_V4"):
+            logger.debug(
+                f"{self.__class__.__name__} failed: Missing ECS_CONTAINER_METADATA_URI therefore process is not on ECS."
+            )
+            return Resource.get_empty()
+
         container_id = None
         try:
             with open("proc/self/cgroup", encoding="utf8") as f:

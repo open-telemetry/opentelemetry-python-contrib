@@ -49,7 +49,7 @@ def _get_k8s_cred_value():
             "/var/run/secrets/kubernetes.io/serviceaccount/token",
             encoding="utf8",
         ) as f:
-            return "Bearer" + f.read()
+            return "Bearer " + f.read()
     except:
         return ""
 
@@ -89,7 +89,7 @@ class AwsEksResourceDetector(ResourceDetector):
                     if len(line) > _CONTAINER_ID_LENGTH:
                         container_id = line[-_CONTAINER_ID_LENGTH:]
 
-            cluster_info = json.load(_get_cluster_info())
+            cluster_info = json.load(_get_cluster_info(k8_cert, cred_value))
 
             if not container_id or not cluster_info:
                 return Resource.get_empty()
