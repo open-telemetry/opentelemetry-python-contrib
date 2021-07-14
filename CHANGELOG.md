@@ -12,6 +12,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   ([#545](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/545))
 - `openelemetry-sdk-extension-aws` Take a dependency on `opentelemetry-sdk`
   ([#558](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/558))
+
 ### Changed
 - `opentelemetry-instrumentation-tornado` properly instrument work done in tornado on_finish method.
   ([#499](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/499))
@@ -35,6 +36,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   ([#567](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/567))
 - `opentelemetry-instrumentation-grpc` Respect the suppress instrumentation in gRPC client instrumentor
   ([#559](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/559))
+- `opentelemetry-instrumentation-grpc` Fixed asynchonous unary call traces
+  ([#536](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/536))
 
 ### Added
 - `opentelemetry-instrumentation-httpx` Add `httpx` instrumentation
