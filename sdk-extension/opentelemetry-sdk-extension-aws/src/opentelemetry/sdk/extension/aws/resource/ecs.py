@@ -47,8 +47,7 @@ class AwsEcsResourceDetector(ResourceDetector):
                 {
                     ResourceAttributes.CLOUD_PROVIDER: CloudProviderValues.AWS.value,
                     ResourceAttributes.CLOUD_PLATFORM: CloudPlatformValues.AWS_ECS.value,
-                    ResourceAttributes.CONTAINER_NAME: socket.gethostname()
-                    or "",
+                    ResourceAttributes.CONTAINER_NAME: socket.gethostname(),
                     ResourceAttributes.CONTAINER_ID: container_id,
                 }
             )

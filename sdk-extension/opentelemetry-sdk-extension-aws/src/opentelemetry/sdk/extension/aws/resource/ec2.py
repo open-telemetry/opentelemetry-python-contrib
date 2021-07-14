@@ -66,6 +66,9 @@ def _get_host(token):
 
 
 class AwsEc2ResourceDetector(ResourceDetector):
+    """Detects attribute values only available when the app is running on AWS
+    Elastic Compute Cloud (EC2) and returns them in a Resource.
+    """
     def detect(self) -> "Resource":
         # raise Exception("GOT EM")
         try:

@@ -29,6 +29,14 @@ logger = logging.getLogger(__name__)
 
 
 class AwsLambdaResourceDetector(ResourceDetector):
+    """Detects attribute values only available when the app is running on AWS
+    Lambda and returns them in a Resource.
+    """
+
+    def __init__(self, _lambda_arn, raise_on_error=False):
+        self._lambda_arn = _lambda_arn
+        super().__init__(raise_on_error=raise_on_error)
+
     def detect(self) -> "Resource":
         try:
             # NOTE: (NathanielRN) Should ResourceDetectors use Resource.create() to pull in the environment variable?
@@ -37,13 +45,20 @@ class AwsLambdaResourceDetector(ResourceDetector):
                 {
                     ResourceAttributes.CLOUD_PROVIDER: CloudProviderValues.AWS.value,
                     ResourceAttributes.CLOUD_PLATFORM: CloudPlatformValues.AWS_LAMBDA.value,
-                    ResourceAttributes.CLOUD_REGION: environ.get("AWS_REGION"),
-                    ResourceAttributes.FAAS_NAME: environ.get(
+                    ResourceAttributes.CLOUD_REGION: environ["AWS_REGION"],
+                    ResourceAttributes.FAAS_NAME: environ[
                         "AWS_LAMBDA_FUNCTION_NAME"
-                    ),
-                    ResourceAttributes.FAAS_VERSION: environ.get(
+                    ],
+                    ResourceAttributes.FAAS_VERSION: environ[
                         "AWS_LAMBDA_FUNCTION_VERSION"
-                    ),
+                    ],
+                    ResourceAttributes.FAAS_INSTANCE: environ[
+                        "AWS_LAMBDA_LOG_STREAM_NAME"
+                    ],
+                    ResourceAttributes.FAAS_MAX_MEMORY: environ[
+                        "AWS_LAMBDA_FUNCTION_MEMORY_SIZE"
+                    ],
+                    ResourceAttributes.FAAS_ID: self._lambda_arn,
                 }
             )
         except Exception as e:

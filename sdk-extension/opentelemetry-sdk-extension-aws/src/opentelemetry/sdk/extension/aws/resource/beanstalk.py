@@ -29,6 +29,11 @@ logger = logging.getLogger(__name__)
 
 
 class AwsBeanstalkResourceDetector(ResourceDetector):
+    """Detects attribute values only available when the app is running on AWS
+    Elastic Beanstalk and returns them in a Resource.
+
+    NOTE: Requires enabling X-Ray on Beanstalk Environment. See more here: https://docs.aws.amazon.com/xray/latest/devguide/xray-services-beanstalk.html
+    """
     def detect(self) -> "Resource":
         if os.name == "nt":
             CONF_FILE_PATH = "C:\\Program Files\\Amazon\\XRay\\environment.conf"
