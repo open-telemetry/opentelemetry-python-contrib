@@ -36,6 +36,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   ([#567](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/567))
 - `opentelemetry-instrumentation-grpc` Fixed asynchonous unary call traces
   ([#536](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/536))
+- `opentelemetry-instrumentation-django` Fix AttributeError: ResolverMatch object has no attribute route
+  ([#581](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/581))
 
 ### Added
 - `opentelemetry-instrumentation-httpx` Add `httpx` instrumentation
