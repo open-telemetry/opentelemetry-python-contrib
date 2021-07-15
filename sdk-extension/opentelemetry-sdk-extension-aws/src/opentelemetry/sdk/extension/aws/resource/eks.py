@@ -85,7 +85,7 @@ def _get_cluster_name():
     try:
         cluster_name = cluster_info["data"]["cluster.name"]
     except Exception as e:
-        logger.warn(f"Cannot get cluster name on EKS: {e}")
+        logger.debug(f"Cannot get cluster name on EKS: {e}")
 
     return cluster_name
 
@@ -124,5 +124,10 @@ class AwsEksResourceDetector(ResourceDetector):
                 }
             )
         except Exception as e:
-            logger.debug(f"{self.__class__.__name__} failed: {e}")
-            return Resource.get_empty()
+            e_msg = f"{self.__class__.__name__} failed: {e}"
+            if self.raise_on_error:
+                logger.exception(e_msg)
+                raise e
+            else:
+                logger.debug(e_msg)
+                return Resource.get_empty()

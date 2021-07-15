@@ -32,9 +32,6 @@ class AwsLambdaResourceDetector(ResourceDetector):
     Uses Lambda defined runtime enivronment variables. See more: https://docs.aws.amazon.com/lambda/latest/dg/configuration-envvars.html#configuration-envvars-runtime
     """
 
-    def __init__(self, raise_on_error=False):
-        super().__init__(raise_on_error=raise_on_error)
-
     def detect(self) -> "Resource":
         try:
             # NOTE: (NathanielRN) Should ResourceDetectors use Resource.create() to pull in the environment variable?
@@ -59,5 +56,10 @@ class AwsLambdaResourceDetector(ResourceDetector):
                 }
             )
         except Exception as e:
-            logger.debug(f"{self.__class__.__name__} failed: {e}")
-            return Resource.get_empty()
+            e_msg = f"{self.__class__.__name__} failed: {e}"
+            if self.raise_on_error:
+                logger.exception(e_msg)
+                raise e
+            else:
+                logger.debug(e_msg)
+                return Resource.get_empty()

@@ -23,9 +23,9 @@ from opentelemetry.sdk.extension.aws.resource.ecs import AwsEcsResourceDetector
 from opentelemetry.sdk.extension.aws.resource.eks import AwsEksResourceDetector
 
 __all__ = [
-    AwsBeanstalkResourceDetector,
-    AwsEc2ResourceDetector,
-    AwsEcsResourceDetector,
-    AwsEksResourceDetector,
-    AwsLambdaResourceDetector,
+    "AwsBeanstalkResourceDetector",
+    "AwsEc2ResourceDetector",
+    "AwsEcsResourceDetector",
+    "AwsEksResourceDetector",
+    "AwsLambdaResourceDetector",
 ]

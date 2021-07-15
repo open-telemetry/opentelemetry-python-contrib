@@ -64,5 +64,10 @@ class AwsBeanstalkResourceDetector(ResourceDetector):
                 }
             )
         except Exception as e:
-            logger.debug(f"{self.__class__.__name__} failed: {e}")
-            return Resource.get_empty()
+            e_msg = f"{self.__class__.__name__} failed: {e}"
+            if self.raise_on_error:
+                logger.exception(e_msg)
+                raise e
+            else:
+                logger.debug(e_msg)
+                return Resource.get_empty()

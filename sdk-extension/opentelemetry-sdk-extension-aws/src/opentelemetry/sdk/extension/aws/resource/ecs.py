@@ -34,25 +34,28 @@ class AwsEcsResourceDetector(ResourceDetector):
     """
 
     def detect(self) -> "Resource":
-        if not os.environ.get(
-            "ECS_CONTAINER_METADATA_URI"
-        ) and not os.environ.get("ECS_CONTAINER_METADATA_URI_V4"):
-            logger.debug(
-                f"{self.__class__.__name__} failed: Missing ECS_CONTAINER_METADATA_URI therefore process is not on ECS."
-            )
-            return Resource.get_empty()
-
-        container_id = None
         try:
-            with open("proc/self/cgroup", encoding="utf8") as container_info_file:
-                for raw_line in container_info_file.readlines():
-                    line = raw_line.strip()
-                    if len(line) > _CONTAINER_ID_LENGTH:
-                        container_id = line[-_CONTAINER_ID_LENGTH:]
-        except Exception as e:
-            logger.debug(f"AwsEcsDetector failed to get container Id: {e}")
+            if not os.environ.get(
+                "ECS_CONTAINER_METADATA_URI"
+            ) and not os.environ.get("ECS_CONTAINER_METADATA_URI_V4"):
+                is_on_ecs_e_msg = "Missing ECS_CONTAINER_METADATA_URI therefore process is not on ECS."
+                logger.debug(
+                    f"{self.__class__.__name__} failed: {is_on_ecs_e_msg}"
+                )
+                raise RuntimeError(is_on_ecs_e_msg)
 
-        try:
+            container_id = ""
+            try:
+                with open(
+                    "proc/self/cgroup", encoding="utf8"
+                ) as container_info_file:
+                    for raw_line in container_info_file.readlines():
+                        line = raw_line.strip()
+                        if len(line) > _CONTAINER_ID_LENGTH:
+                            container_id = line[-_CONTAINER_ID_LENGTH:]
+            except Exception as e:
+                logger.debug(f"AwsEcsDetector failed to get container Id: {e}. Creating resource without it.")
+
             # NOTE: (NathanielRN) Should ResourceDetectors use Resource.create() to pull in the environment variable?
             # `OTELResourceDetector` doesn't do this...
             return Resource(
@@ -64,5 +67,10 @@ class AwsEcsResourceDetector(ResourceDetector):
                 }
             )
         except Exception as e:
-            logger.debug(f"{self.__class__.__name__} failed: {e}")
-            return Resource.get_empty()
+            e_msg = f"{self.__class__.__name__} failed: {e}"
+            if self.raise_on_error:
+                logger.exception(e_msg)
+                raise e
+            else:
+                logger.debug(e_msg)
+                return Resource.get_empty()
