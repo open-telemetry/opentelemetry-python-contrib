@@ -75,9 +75,7 @@ def _get_cluster_info(cred_value, cert_data):
 
 def _get_cluster_name():
     cred_value = _get_k8s_cred_value()
-    print("ABOUT TO READ CERT FILE")
     with open("/var/run/secrets/kubernetes.io/serviceaccount/ca.crt") as cert_file:
-        print("FINISHED CERT FILE")
         k8_cert_data = cert_file.read()
         if not _is_Eks(cred_value, k8_cert_data):
             return Resource.get_empty()
@@ -94,9 +92,7 @@ def _get_cluster_name():
 
 def _get_container_id():
     container_id = ""
-    print("ABOUT TO READ PROCCCCC FILE")
     with open("proc/self/cgroup", encoding="utf8") as container_info_file:
-        print("FINISHED PROCCCCC FILE")
         for raw_line in container_info_file.readlines():
             line = raw_line.strip()
             if len(line) > _CONTAINER_ID_LENGTH:
