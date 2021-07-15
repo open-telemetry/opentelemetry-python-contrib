@@ -39,7 +39,7 @@ class AwsEcsResourceDetector(ResourceDetector):
                 "ECS_CONTAINER_METADATA_URI"
             ) and not os.environ.get("ECS_CONTAINER_METADATA_URI_V4"):
                 is_on_ecs_e_msg = "Missing ECS_CONTAINER_METADATA_URI therefore process is not on ECS."
-                logger.debug(
+                logger.warn(
                     f"{self.__class__.__name__} failed: {is_on_ecs_e_msg}"
                 )
                 raise RuntimeError(is_on_ecs_e_msg)
@@ -54,7 +54,7 @@ class AwsEcsResourceDetector(ResourceDetector):
                         if len(line) > _CONTAINER_ID_LENGTH:
                             container_id = line[-_CONTAINER_ID_LENGTH:]
             except Exception as e:
-                logger.debug(f"AwsEcsDetector failed to get container Id: {e}. Creating resource without it.")
+                logger.warn(f"AwsEcsDetector failed to get container Id: {e}. Creating resource without it.")
 
             # NOTE: (NathanielRN) Should ResourceDetectors use Resource.create() to pull in the environment variable?
             # `OTELResourceDetector` doesn't do this...
@@ -72,5 +72,5 @@ class AwsEcsResourceDetector(ResourceDetector):
                 logger.exception(e_msg)
                 raise e
             else:
-                logger.debug(e_msg)
+                logger.warn(e_msg)
                 return Resource.get_empty()

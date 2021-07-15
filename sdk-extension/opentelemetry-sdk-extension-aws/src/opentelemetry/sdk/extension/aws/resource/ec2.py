@@ -102,5 +102,5 @@ class AwsEc2ResourceDetector(ResourceDetector):
                 logger.exception(e_msg)
                 raise e
             else:
-                logger.debug(e_msg)
+                logger.warn(e_msg)
                 return Resource.get_empty()

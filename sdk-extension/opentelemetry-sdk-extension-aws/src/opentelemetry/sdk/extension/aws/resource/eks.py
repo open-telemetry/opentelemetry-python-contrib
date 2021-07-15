@@ -51,7 +51,7 @@ def _get_k8s_cred_value():
         ) as token_file:
             return "Bearer " + token_file.read()
     except Exception as e:
-        logger.debug(f"Failed to get k8s token: {e}")
+        logger.warn(f"Failed to get k8s token: {e}")
         return ""
 
 
@@ -85,7 +85,7 @@ def _get_cluster_name():
     try:
         cluster_name = cluster_info["data"]["cluster.name"]
     except Exception as e:
-        logger.debug(f"Cannot get cluster name on EKS: {e}")
+        logger.warn(f"Cannot get cluster name on EKS: {e}")
 
     return cluster_name
 
@@ -129,5 +129,5 @@ class AwsEksResourceDetector(ResourceDetector):
                 logger.exception(e_msg)
                 raise e
             else:
-                logger.debug(e_msg)
+                logger.warn(e_msg)
                 return Resource.get_empty()
