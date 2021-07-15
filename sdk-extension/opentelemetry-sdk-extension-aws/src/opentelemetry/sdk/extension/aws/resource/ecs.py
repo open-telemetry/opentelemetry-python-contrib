@@ -44,8 +44,8 @@ class AwsEcsResourceDetector(ResourceDetector):
 
         container_id = None
         try:
-            with open("proc/self/cgroup", encoding="utf8") as f:
-                for raw_line in f.readlines():
+            with open("proc/self/cgroup", encoding="utf8") as container_info_file:
+                for raw_line in container_info_file.readlines():
                     line = raw_line.strip()
                     if len(line) > _CONTAINER_ID_LENGTH:
                         container_id = line[-_CONTAINER_ID_LENGTH:]

@@ -42,8 +42,8 @@ class AwsBeanstalkResourceDetector(ResourceDetector):
             CONF_FILE_PATH = "/var/elasticbeanstalk/xray/environment.conf"
 
         try:
-            with open(CONF_FILE_PATH) as f:
-                parsed_data = json.load(f)
+            with open(CONF_FILE_PATH) as conf_file:
+                parsed_data = json.load(conf_file)
 
             # NOTE: (NathanielRN) Should ResourceDetectors use Resource.create() to pull in the environment variable?
             # `OTELResourceDetector` doesn't do this...
