@@ -16,9 +16,7 @@ from collections import OrderedDict
 import unittest
 from unittest.mock import patch, mock_open
 
-from opentelemetry.sdk.extension.aws.resource.ecs import (
-    AwsEcsResourceDetector,
-)
+from opentelemetry.sdk.extension.aws.resource.ecs import AwsEcsResourceDetector
 from opentelemetry.semconv.resource import (
     CloudPlatformValues,
     CloudProviderValues,
@@ -35,11 +33,7 @@ MockEcsResourceAttributes = {
 
 class AwsEcsResourceDetectorTest(unittest.TestCase):
     @patch.dict(
-        "os.environ",
-        {
-            "ECS_CONTAINER_METADATA_URI": "mock-uri",
-        },
-        clear=True,
+        "os.environ", {"ECS_CONTAINER_METADATA_URI": "mock-uri",}, clear=True,
     )
     @patch(
         "socket.gethostname",
