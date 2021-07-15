@@ -66,6 +66,8 @@ def _get_host(token):
 class AwsEc2ResourceDetector(ResourceDetector):
     """Detects attribute values only available when the app is running on AWS
     Elastic Compute Cloud (EC2) and returns them in a Resource.
+
+    Uses a special URI to get instance meta-data. See more: https://docs.aws.amazon.com/AWSEC2/latest/UserGuide/instancedata-data-retrieval.html
     """
 
     def detect(self) -> "Resource":
