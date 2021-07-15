@@ -58,4 +58,6 @@ class AwsLambdaResourceDetectorTest(unittest.TestCase):
     )
     def test_simple_create(self):
         actual = AwsLambdaResourceDetector().detect()
-        self.assertDictEqual(actual.attributes.copy(), OrderedDict(MockLambdaResourceAttributes))
+        self.assertDictEqual(
+            actual.attributes.copy(), OrderedDict(MockLambdaResourceAttributes)
+        )

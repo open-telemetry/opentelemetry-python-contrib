@@ -35,18 +35,18 @@ MockEcsResourceAttributes = {
 
 class AwsEcsResourceDetectorTest(unittest.TestCase):
     @patch.dict(
-        'os.environ',
+        "os.environ",
         {
             "ECS_CONTAINER_METADATA_URI": "mock-uri",
         },
         clear=True,
     )
     @patch(
-        'socket.gethostname',
+        "socket.gethostname",
         return_value=f"{MockEcsResourceAttributes[ResourceAttributes.CONTAINER_NAME]}",
     )
     @patch(
-        'builtins.open',
+        "builtins.open",
         new_callable=mock_open,
         read_data=f"""12:perf_event:/
 11:cpuset:/
@@ -64,4 +64,6 @@ class AwsEcsResourceDetectorTest(unittest.TestCase):
     )
     def test_simple_create(self, mock_open_function, mock_socket_gethostname):
         actual = AwsEcsResourceDetector().detect()
-        self.assertDictEqual(actual.attributes.copy(), OrderedDict(MockEcsResourceAttributes))
+        self.assertDictEqual(
+            actual.attributes.copy(), OrderedDict(MockEcsResourceAttributes)
+        )

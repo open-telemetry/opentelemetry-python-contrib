@@ -38,11 +38,11 @@ MockEc2ResourceAttributes = {
 
 class AwsEc2ResourceDetectorTest(unittest.TestCase):
     @patch(
-        'opentelemetry.sdk.extension.aws.resource.ec2._get_host',
+        "opentelemetry.sdk.extension.aws.resource.ec2._get_host",
         return_value=MockEc2ResourceAttributes[ResourceAttributes.HOST_NAME],
     )
     @patch(
-        'opentelemetry.sdk.extension.aws.resource.ec2._get_identity',
+        "opentelemetry.sdk.extension.aws.resource.ec2._get_identity",
         return_value=f"""{{
   "accountId" : "{MockEc2ResourceAttributes[ResourceAttributes.CLOUD_ACCOUNT_ID]}",
   "architecture" : "x86_64",
@@ -62,11 +62,13 @@ class AwsEc2ResourceDetectorTest(unittest.TestCase):
 }}""",
     )
     @patch(
-        'opentelemetry.sdk.extension.aws.resource.ec2._get_token',
+        "opentelemetry.sdk.extension.aws.resource.ec2._get_token",
         return_value="mock-token",
     )
     def test_simple_create(
         self, mock_get_token, mock_get_identity, mock_get_host
     ):
         actual = AwsEc2ResourceDetector().detect()
-        self.assertDictEqual(actual.attributes.copy(), OrderedDict(MockEc2ResourceAttributes))
+        self.assertDictEqual(
+            actual.attributes.copy(), OrderedDict(MockEc2ResourceAttributes)
+        )

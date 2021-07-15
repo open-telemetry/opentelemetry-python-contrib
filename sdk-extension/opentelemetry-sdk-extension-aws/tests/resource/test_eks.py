@@ -89,7 +89,9 @@ class AwsEksResourceDetectorTest(unittest.TestCase):
     )
     @patch(
         "builtins.open",
-        new_callable=lambda: mock_open(read_data=files_for_stack_of_mock_open_calls.pop(0)),
+        new_callable=lambda: mock_open(
+            read_data=files_for_stack_of_mock_open_calls.pop(0)
+        ),
     )
     def test_simple_create(
         self,
@@ -99,4 +101,6 @@ class AwsEksResourceDetectorTest(unittest.TestCase):
         mock_get_cluster_info,
     ):
         actual = AwsEksResourceDetector().detect()
-        self.assertDictEqual(actual.attributes.copy(), OrderedDict(MockEksResourceAttributes))
+        self.assertDictEqual(
+            actual.attributes.copy(), OrderedDict(MockEksResourceAttributes)
+        )
