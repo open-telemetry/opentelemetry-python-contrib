@@ -15,10 +15,8 @@
 import logging
 import os
 import socket
-from opentelemetry.sdk.resources import (
-    Resource,
-    ResourceDetector,
-)
+
+from opentelemetry.sdk.resources import Resource, ResourceDetector
 from opentelemetry.semconv.resource import (
     CloudPlatformValues,
     CloudProviderValues,
@@ -43,7 +41,8 @@ class AwsEcsResourceDetector(ResourceDetector):
         container_id = None
         try:
             with open("proc/self/cgroup", encoding="utf8") as f:
-                for line in f.readlines():
+                for l in f.readlines():
+                    line = l.strip()
                     if len(line) > _CONTAINER_ID_LENGTH:
                         container_id = line[-_CONTAINER_ID_LENGTH:]
         except Exception as e:

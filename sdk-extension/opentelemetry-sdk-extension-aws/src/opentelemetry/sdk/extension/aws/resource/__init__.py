@@ -12,11 +12,15 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from opentelemetry.sdk.extension.aws.resource.beanstalk import AwsBeanstalkResourceDetector
+from opentelemetry.sdk.extension.aws.resource._lambda import (
+    AwsLambdaResourceDetector,
+)
+from opentelemetry.sdk.extension.aws.resource.beanstalk import (
+    AwsBeanstalkResourceDetector,
+)
 from opentelemetry.sdk.extension.aws.resource.ec2 import AwsEc2ResourceDetector
 from opentelemetry.sdk.extension.aws.resource.ecs import AwsEcsResourceDetector
 from opentelemetry.sdk.extension.aws.resource.eks import AwsEksResourceDetector
-from opentelemetry.sdk.extension.aws.resource._lambda import AwsLambdaResourceDetector
 
 __all__ = [
     AwsBeanstalkResourceDetector,

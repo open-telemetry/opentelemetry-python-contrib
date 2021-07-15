@@ -13,12 +13,9 @@
 # limitations under the License.
 
 import logging
-
 from os import environ
-from opentelemetry.sdk.resources import (
-    Resource,
-    ResourceDetector,
-)
+
+from opentelemetry.sdk.resources import Resource, ResourceDetector
 from opentelemetry.semconv.resource import (
     CloudPlatformValues,
     CloudProviderValues,
@@ -33,8 +30,7 @@ class AwsLambdaResourceDetector(ResourceDetector):
     Lambda and returns them in a Resource.
     """
 
-    def __init__(self, _lambda_arn, raise_on_error=False):
-        self._lambda_arn = _lambda_arn
+    def __init__(self, raise_on_error=False):
         super().__init__(raise_on_error=raise_on_error)
 
     def detect(self) -> "Resource":
@@ -55,10 +51,9 @@ class AwsLambdaResourceDetector(ResourceDetector):
                     ResourceAttributes.FAAS_INSTANCE: environ[
                         "AWS_LAMBDA_LOG_STREAM_NAME"
                     ],
-                    ResourceAttributes.FAAS_MAX_MEMORY: environ[
-                        "AWS_LAMBDA_FUNCTION_MEMORY_SIZE"
-                    ],
-                    ResourceAttributes.FAAS_ID: self._lambda_arn,
+                    ResourceAttributes.FAAS_MAX_MEMORY: int(
+                        environ["AWS_LAMBDA_FUNCTION_MEMORY_SIZE"]
+                    ),
                 }
             )
         except Exception as e:

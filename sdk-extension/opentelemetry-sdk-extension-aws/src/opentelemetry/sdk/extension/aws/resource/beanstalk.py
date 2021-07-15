@@ -15,10 +15,8 @@
 import json
 import logging
 import os
-from opentelemetry.sdk.resources import (
-    Resource,
-    ResourceDetector,
-)
+
+from opentelemetry.sdk.resources import Resource, ResourceDetector
 from opentelemetry.semconv.resource import (
     CloudPlatformValues,
     CloudProviderValues,
@@ -34,9 +32,12 @@ class AwsBeanstalkResourceDetector(ResourceDetector):
 
     NOTE: Requires enabling X-Ray on Beanstalk Environment. See more here: https://docs.aws.amazon.com/xray/latest/devguide/xray-services-beanstalk.html
     """
+
     def detect(self) -> "Resource":
         if os.name == "nt":
-            CONF_FILE_PATH = "C:\\Program Files\\Amazon\\XRay\\environment.conf"
+            CONF_FILE_PATH = (
+                "C:\\Program Files\\Amazon\\XRay\\environment.conf"
+            )
         else:
             CONF_FILE_PATH = "/var/elasticbeanstalk/xray/environment.conf"
 
@@ -51,18 +52,15 @@ class AwsBeanstalkResourceDetector(ResourceDetector):
                     ResourceAttributes.CLOUD_PROVIDER: CloudProviderValues.AWS.value,
                     ResourceAttributes.CLOUD_PLATFORM: CloudPlatformValues.AWS_ELASTIC_BEANSTALK.value,
                     ResourceAttributes.SERVICE_NAME: CloudPlatformValues.AWS_ELASTIC_BEANSTALK.value,
-                    ResourceAttributes.SERVICE_NAMESPACE: parsed_data[
-                        "environment_name"
-                    ]
-                    or "",
-                    ResourceAttributes.SERVICE_VERSION: parsed_data[
-                        "version_label"
-                    ]
-                    or "",
                     ResourceAttributes.SERVICE_INSTANCE_ID: parsed_data[
                         "deployment_id"
-                    ]
-                    or "",
+                    ],
+                    ResourceAttributes.SERVICE_NAMESPACE: parsed_data[
+                        "environment_name"
+                    ],
+                    ResourceAttributes.SERVICE_VERSION: parsed_data[
+                        "version_label"
+                    ],
                 }
             )
         except Exception as e:

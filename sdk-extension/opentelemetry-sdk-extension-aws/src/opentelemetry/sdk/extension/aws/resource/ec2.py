@@ -15,10 +15,8 @@
 import json
 import logging
 from urllib.request import Request, urlopen
-from opentelemetry.sdk.resources import (
-    Resource,
-    ResourceDetector,
-)
+
+from opentelemetry.sdk.resources import Resource, ResourceDetector
 from opentelemetry.semconv.resource import (
     CloudPlatformValues,
     CloudProviderValues,
@@ -38,7 +36,7 @@ def _aws_http_request(method, path, headers):
         ),
         timeout=1000,
     )
-    return response.read().decode('utf-8')
+    return response.read().decode("utf-8")
 
 
 def _get_token():
@@ -69,8 +67,8 @@ class AwsEc2ResourceDetector(ResourceDetector):
     """Detects attribute values only available when the app is running on AWS
     Elastic Compute Cloud (EC2) and returns them in a Resource.
     """
+
     def detect(self) -> "Resource":
-        # raise Exception("GOT EM")
         try:
             token = _get_token()
             identity_dict = json.loads(_get_identity(token))
@@ -90,7 +88,9 @@ class AwsEc2ResourceDetector(ResourceDetector):
                         "availabilityZone"
                     ],
                     ResourceAttributes.HOST_ID: identity_dict["instanceId"],
-                    ResourceAttributes.HOST_TYPE: identity_dict["instanceType"],
+                    ResourceAttributes.HOST_TYPE: identity_dict[
+                        "instanceType"
+                    ],
                     ResourceAttributes.HOST_NAME: hostname,
                 }
             )

@@ -16,10 +16,8 @@ import json
 import logging
 import ssl
 from urllib.request import Request, urlopen
-from opentelemetry.sdk.resources import (
-    Resource,
-    ResourceDetector,
-)
+
+from opentelemetry.sdk.resources import Resource, ResourceDetector
 from opentelemetry.semconv.resource import (
     CloudPlatformValues,
     CloudProviderValues,
@@ -74,30 +72,42 @@ def _get_cluster_info(cred_value, cert_data):
     )
 
 
+def _get_cluster_name():
+    cred_value = _get_k8s_cred_value()
+    print("ABOUT TO READ CERT FILE")
+    with open("/var/run/secrets/kubernetes.io/serviceaccount/ca.crt") as f:
+        print("FINISHED CERT FILE")
+        k8_cert_data = f.read()
+        if not _is_Eks(cred_value, k8_cert_data):
+            return Resource.get_empty()
+
+    cluster_info = json.loads(_get_cluster_info(cred_value, k8_cert_data))
+    cluster_name = ""
+    try:
+        cluster_name = cluster_info["data"]["cluster.name"]
+    except Exception as e:
+        logger.warn(f"Cannot get cluster name on EKS: {e}")
+
+    return cluster_name
+
+
+def _get_container_id():
+    container_id = ""
+    print("ABOUT TO READ PROCCCCC FILE")
+    with open("proc/self/cgroup", encoding="utf8") as f:
+        print("FINISHED PROCCCCC FILE")
+        for l in f.readlines():
+            line = l.strip()
+            if len(line) > _CONTAINER_ID_LENGTH:
+                container_id = line[-_CONTAINER_ID_LENGTH:]
+    return container_id
+
+
 class AwsEksResourceDetector(ResourceDetector):
     def detect(self) -> "Resource":
         try:
-            with open(
-                "/var/run/secrets/kubernetes.io/serviceaccount/ca.crt"
-            ) as f:
-                k8_cert_data = f.read()
-                if not _is_Eks(_get_k8s_cred_value(), k8_cert_data):
-                    return Resource.get_empty()
-
-            container_id = ""
-            with open("proc/self/cgroup", encoding="utf8") as f:
-                for line in f.readlines():
-                    if len(line) > _CONTAINER_ID_LENGTH:
-                        container_id = line[-_CONTAINER_ID_LENGTH:]
-
-            cluster_info = json.loads(
-                _get_cluster_info(_get_k8s_cred_value(), k8_cert_data)
-            )
-            cluster_name = ""
-            try:
-                cluster_name = cluster_info["data"]["cluster.name"]
-            except Exception as e:
-                logger.warn(f"Cannot get cluster name on EKS: {e}")
+            cluster_name = _get_cluster_name()
+            container_id = _get_container_id()
 
             if not container_id or not cluster_name:
                 return Resource.get_empty()
