@@ -54,7 +54,9 @@ class AwsEcsResourceDetector(ResourceDetector):
                         if len(line) > _CONTAINER_ID_LENGTH:
                             container_id = line[-_CONTAINER_ID_LENGTH:]
             except Exception as e:
-                logger.warn(f"AwsEcsDetector failed to get container Id: {e}. Creating resource without it.")
+                logger.warn(
+                    f"AwsEcsDetector failed to get container Id: {e}. Creating resource without it."
+                )
 
             # NOTE: (NathanielRN) Should ResourceDetectors use Resource.create() to pull in the environment variable?
             # `OTELResourceDetector` doesn't do this...
