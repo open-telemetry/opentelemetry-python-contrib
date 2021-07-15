@@ -50,7 +50,8 @@ def _get_k8s_cred_value():
             encoding="utf8",
         ) as f:
             return "Bearer " + f.read()
-    except:
+    except Exception as e:
+        logger.debug(f"Failed to get k8s token: {e}")
         return ""
 
 
@@ -96,8 +97,8 @@ def _get_container_id():
     print("ABOUT TO READ PROCCCCC FILE")
     with open("proc/self/cgroup", encoding="utf8") as f:
         print("FINISHED PROCCCCC FILE")
-        for l in f.readlines():
-            line = l.strip()
+        for raw_line in f.readlines():
+            line = raw_line.strip()
             if len(line) > _CONTAINER_ID_LENGTH:
                 container_id = line[-_CONTAINER_ID_LENGTH:]
     return container_id
