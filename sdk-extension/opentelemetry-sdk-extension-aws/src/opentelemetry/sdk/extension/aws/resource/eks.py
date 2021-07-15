@@ -104,6 +104,10 @@ def _get_container_id():
 
 
 class AwsEksResourceDetector(ResourceDetector):
+    """Detects attribute values only available when the app is running on AWS
+    Elastic Kubernetes Service (EKS) and returns them in a Resource.
+    """
+
     def detect(self) -> "Resource":
         try:
             cluster_name = _get_cluster_name()

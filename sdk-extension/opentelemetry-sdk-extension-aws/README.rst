@@ -65,6 +65,37 @@ Or by setting this propagator in your instrumented application:
 
     set_global_textmap(AwsXRayFormat())
 
+Usage (AWS Resource Detectors)
+----------------------------
+
+Use the provided `Resource Detectors` to automatically populate attributes under the `resource`
+namespace of each generated span.
+
+For example, if tracing with OpenTelemetry on an AWS EC2 instance, you can automatically
+populate `resource` attributes by creating a `TraceProvider` using the `AwsEc2ResourceDetector`:
+
+.. code-block:: python
+
+    from opentelemetry.sdk.trace import TracerProvider
+    from opentelemetry.sdk.extension.aws.resource.ec2 import (
+        AwsEc2ResourceDetector,
+    )
+    from opentelemetry.sdk.resources import OTELResourceDetector
+
+    trace.set_tracer_provider(
+        TracerProvider(
+            resource=get_aggregated_resources(
+                [
+                    AwsEc2ResourceDetector(),
+                    OTELResourceDetector(),
+                ]
+            ),
+        )
+    )
+
+Refer to each detectors' docstring to determine any possible requirements for that
+detector.
+
 References
 ----------
 

@@ -29,6 +29,10 @@ _CONTAINER_ID_LENGTH = 64
 
 
 class AwsEcsResourceDetector(ResourceDetector):
+    """Detects attribute values only available when the app is running on AWS
+    Elastic Container Service (ECS) and returns them in a Resource.
+    """
+
     def detect(self) -> "Resource":
         if not os.environ.get(
             "ECS_CONTAINER_METADATA_URI"
