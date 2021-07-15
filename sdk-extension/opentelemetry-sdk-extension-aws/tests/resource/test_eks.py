@@ -12,9 +12,9 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from collections import OrderedDict
 import unittest
-from unittest.mock import MagicMock, patch, mock_open
+from collections import OrderedDict
+from unittest.mock import MagicMock, mock_open, patch
 
 from opentelemetry.sdk.extension.aws.resource.eks import AwsEksResourceDetector
 from opentelemetry.semconv.resource import (

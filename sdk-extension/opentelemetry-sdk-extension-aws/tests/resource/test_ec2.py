@@ -12,12 +12,11 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from collections import OrderedDict
 import unittest
+from collections import OrderedDict
 from unittest.mock import patch
 
 from opentelemetry.sdk.extension.aws.resource.ec2 import AwsEc2ResourceDetector
-
 from opentelemetry.semconv.resource import (
     CloudPlatformValues,
     CloudProviderValues,
