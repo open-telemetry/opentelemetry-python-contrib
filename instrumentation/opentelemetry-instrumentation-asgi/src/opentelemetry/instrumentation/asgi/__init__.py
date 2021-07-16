@@ -31,9 +31,14 @@ from opentelemetry.instrumentation.utils import http_status_to_status_code
 from opentelemetry.propagate import extract
 from opentelemetry.propagators.textmap import Getter
 from opentelemetry.semconv.trace import SpanAttributes
+from opentelemetry.trace import Span
 from opentelemetry.trace.status import Status, StatusCode
 from opentelemetry.util.http import remove_url_credentials
 
+
+_ServerRequestHookT = typing.Optional[typing.Callable[[Span, dict], None]]
+_ClientRequestHookT = typing.Optional[typing.Callable[[Span, dict], None]]
+_ClientResponseHookT = typing.Optional[typing.Callable[[Span, dict], None]]
 
 class ASGIGetter(Getter):
     def get(
@@ -180,9 +185,9 @@ class OpenTelemetryMiddleware:
         app,
         excluded_urls=None,
         default_span_details=None,
-        server_request_hook=None,
-        client_request_hook=None,
-        client_response_hook=None,
+        server_request_hook: _ServerRequestHookT=None,
+        client_request_hook: _ClientRequestHookT=None,
+        client_response_hook: _ClientResponseHookT=None,
         tracer_provider=None,
     ):
         self.app = guarantee_single_callable(app)

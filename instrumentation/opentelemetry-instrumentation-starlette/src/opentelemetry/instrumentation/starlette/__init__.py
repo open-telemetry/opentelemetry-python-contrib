@@ -12,6 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import typing
 from typing import Collection
 
 from starlette import applications
@@ -21,10 +22,14 @@ from opentelemetry.instrumentation.asgi import OpenTelemetryMiddleware
 from opentelemetry.instrumentation.asgi.package import _instruments
 from opentelemetry.instrumentation.instrumentor import BaseInstrumentor
 from opentelemetry.semconv.trace import SpanAttributes
+from opentelemetry.trace import Span
 from opentelemetry.util.http import get_excluded_urls
 
 _excluded_urls = get_excluded_urls("STARLETTE")
 
+_ServerRequestHookT = typing.Optional[typing.Callable[[Span, dict], None]]
+_ClientRequestHookT = typing.Optional[typing.Callable[[Span, dict], None]]
+_ClientResponseHookT = typing.Optional[typing.Callable[[Span, dict], None]]
 
 class StarletteInstrumentor(BaseInstrumentor):
     """An instrumentor for starlette

@@ -46,7 +46,7 @@ The hooks can be configured as follows:
     def request_hook(span, request_obj):
         pass
 
-    # `request_obj` is an instance of urllib.request.Requests
+    # `request_obj` is an instance of urllib.request.Request
     # `response` is an instance of http.client.HTTPResponse
     def response_hook(span, request_obj, response)
         pass
@@ -61,8 +61,10 @@ API
 
 import functools
 import types
+import typing
 from typing import Collection
-from urllib import response
+# from urllib import response
+from http import client
 from urllib.request import (  # pylint: disable=no-name-in-module,import-error
     OpenerDirector,
     Request,
@@ -78,7 +80,7 @@ from opentelemetry.instrumentation.utils import (
 )
 from opentelemetry.propagate import inject
 from opentelemetry.semconv.trace import SpanAttributes
-from opentelemetry.trace import SpanKind, get_tracer
+from opentelemetry.trace import Span, SpanKind, get_tracer
 from opentelemetry.trace.status import Status
 from opentelemetry.util.http import remove_url_credentials
 
@@ -88,6 +90,8 @@ _SUPPRESS_HTTP_INSTRUMENTATION_KEY = context.create_key(
     "suppress_http_instrumentation"
 )
 
+_RequestHookT = typing.Optional[typing.Callable[[Span, Request], None]]
+_ResponseHookT = typing.Optional[typing.Callable[[Span, Request, client.HTTPResponse], None]]
 
 class URLLibInstrumentor(BaseInstrumentor):
     """An instrumentor for urllib
@@ -124,7 +128,7 @@ class URLLibInstrumentor(BaseInstrumentor):
         _uninstrument_from(opener, restore_as_bound_func=True)
 
 
-def _instrument(tracer, request_hook=None, response_hook=None):
+def _instrument(tracer, request_hook: _RequestHookT=None, response_hook: _ResponseHookT=None):
     """Enables tracing of all requests calls that go through
     :code:`urllib.Client._make_request`"""
 
