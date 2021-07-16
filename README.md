@@ -66,6 +66,23 @@ install](https://pip.pypa.io/en/stable/reference/pip_install/#editable-installs)
 pip install -e ./instrumentation/opentelemetry-instrumentation-{integration}
 ```
 
+## Releasing
+
+Maintainers aim to periodically release new versions of the packages in `opentelemetry-python-contrib`.
+
+Contributions that enhance OTel for Python are welcome to be hosted upstream for the benefit of group collaboration. However, as a general rule, releases for packages in `opentelemetry-python-contrib` will be in a perpetual `~=0.X.0` (pre-1.0) version state. This is because maintainers and approvers cannot feasibly provide the stability guarantees that are implied with a 1.0 release for so many packages.
+
+To resolve this, members of the community are encouraged to commit to becoming a CODEOWNER for packages in `-contrib` that they feel experienced enough to maintain. CODEOWNERS can then follow the checklist below to release `-contrib` packages as 1.0 stable:
+
+### Releasing a package as `1.0` stable
+
+To release a package as `1.0` stable, the package MUST...:
+- [ ] Have a CODEOWNER. Submit an issue to become a CODEOWNER of a package and explain why you meet the responsibilities found in [CODEOWNERS](.github/CODEOWNERS)
+- [ ] Have unit tests that cover difference between versions the package claims to support
+  - e.g. Instrumentation packages might use different techniques to instrument different major versions of python packages
+- [ ] Have clear documentation for non-obvious usages of the package
+  - e.g. If an instrumentation package uses flags, a token as context, or parameters that are not typical of the `BaseInstrumentor` class, these are documented
+
 ## Contributing
 
 See [CONTRIBUTING.md](CONTRIBUTING.md)

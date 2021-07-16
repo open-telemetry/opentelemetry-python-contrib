@@ -1,5 +1,27 @@
 # Code owners file.
 # This file controls who is tagged for review for any given pull request.
+#
+# What is a "CODEOWNER"?
+#
+# A CODEOWNER MUST ____ for packages they own:
+# - introduce themselves at a Python SIG meeting
+# - demonstrate advanced knowledge of the dependencies
+# - respond to issues when they are notified
+# - fix failing unit tests or any other blockers to the CI/CD workflow
+# - update usage of `opentelemetry-python-core` APIs upon the introduction of breaking changes
+# - respond within 2~3 business days for any of the above asks
+#
+# A CODEOWNER SHOULD:
+# - be a member of the OpenTelemetry community
+#
+
 
 # For anything not explicitly taken by someone else:
 * @open-telemetry/opentelemetry-python-contrib-approvers
+
+# Learn about CODEOWNERS file format:
+# https://help.github.com/en/articles/about-code-owners
+#
+# Learn about membership in OpenTelemetry community:
+# https://github.com/open-telemetry/community/blob/main/community-membership.md
+#
