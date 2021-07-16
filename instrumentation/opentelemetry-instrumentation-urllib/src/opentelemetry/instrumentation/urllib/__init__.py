@@ -62,9 +62,10 @@ API
 import functools
 import types
 import typing
-from typing import Collection
+
 # from urllib import response
 from http import client
+from typing import Collection
 from urllib.request import (  # pylint: disable=no-name-in-module,import-error
     OpenerDirector,
     Request,
@@ -91,7 +92,10 @@ _SUPPRESS_HTTP_INSTRUMENTATION_KEY = context.create_key(
 )
 
 _RequestHookT = typing.Optional[typing.Callable[[Span, Request], None]]
-_ResponseHookT = typing.Optional[typing.Callable[[Span, Request, client.HTTPResponse], None]]
+_ResponseHookT = typing.Optional[
+    typing.Callable[[Span, Request, client.HTTPResponse], None]
+]
+
 
 class URLLibInstrumentor(BaseInstrumentor):
     """An instrumentor for urllib
@@ -128,7 +132,11 @@ class URLLibInstrumentor(BaseInstrumentor):
         _uninstrument_from(opener, restore_as_bound_func=True)
 
 
-def _instrument(tracer, request_hook: _RequestHookT=None, response_hook: _ResponseHookT=None):
+def _instrument(
+    tracer,
+    request_hook: _RequestHookT = None,
+    response_hook: _ResponseHookT = None,
+):
     """Enables tracing of all requests calls that go through
     :code:`urllib.Client._make_request`"""
 

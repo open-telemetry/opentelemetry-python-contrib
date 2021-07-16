@@ -34,6 +34,7 @@ _ServerRequestHookT = typing.Optional[typing.Callable[[Span, dict], None]]
 _ClientRequestHookT = typing.Optional[typing.Callable[[Span, dict], None]]
 _ClientResponseHookT = typing.Optional[typing.Callable[[Span, dict], None]]
 
+
 class FastAPIInstrumentor(BaseInstrumentor):
     """An instrumentor for FastAPI
 
