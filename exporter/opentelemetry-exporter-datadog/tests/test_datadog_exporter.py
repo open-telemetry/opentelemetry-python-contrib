@@ -631,7 +631,12 @@ class TestDatadogSpanExporter(unittest.TestCase):
             }
         )
 
-        span = trace._Span(name="sampled", context=context, parent=None)
+        span = trace._Span(
+            name="sampled",
+            context=context,
+            parent=None,
+            resource=resource_with_default_name
+        )
         span.start()
         span.end()
 
