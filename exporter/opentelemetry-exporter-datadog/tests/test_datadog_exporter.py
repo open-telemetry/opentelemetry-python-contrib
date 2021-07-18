@@ -635,7 +635,7 @@ class TestDatadogSpanExporter(unittest.TestCase):
             name="sampled",
             context=context,
             parent=None,
-            resource=resource_with_default_name
+            resource=resource_with_default_name,
         )
         span.start()
         span.end()
