@@ -66,7 +66,7 @@ Or by setting this propagator in your instrumented application:
     set_global_textmap(AwsXRayFormat())
 
 Usage (AWS Resource Detectors)
-----------------------------
+------------------------------
 
 Use the provided `Resource Detectors` to automatically populate attributes under the `resource`
 namespace of each generated span.
