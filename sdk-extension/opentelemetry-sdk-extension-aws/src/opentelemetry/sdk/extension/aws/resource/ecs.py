@@ -56,7 +56,8 @@ class AwsEcsResourceDetector(ResourceDetector):
             # pylint: disable=broad-except
             except Exception as exception:
                 logger.warning(
-                    "AwsEcsDetector failed to get container Id: %s. Creating resource without it.", exception
+                    "AwsEcsDetector failed to get container Id: %s. Creating resource without it.",
+                    exception,
                 )
 
             # NOTE: (NathanielRN) Should ResourceDetectors use Resource.create() to pull in the environment variable?

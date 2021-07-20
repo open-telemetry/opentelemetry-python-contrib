@@ -14,7 +14,7 @@
 
 import unittest
 from collections import OrderedDict
-from unittest.mock import MagicMock, mock_open, patch
+from unittest.mock import mock_open, patch
 
 from opentelemetry.sdk.extension.aws.resource.eks import AwsEksResourceDetector
 from opentelemetry.semconv.resource import (
@@ -80,7 +80,7 @@ class AwsEksResourceDetectorTest(unittest.TestCase):
 """,
     )
     @patch(
-        "opentelemetry.sdk.extension.aws.resource.eks._is_Eks",
+        "opentelemetry.sdk.extension.aws.resource.eks._is_eks",
         return_value=True,
     )
     @patch(
@@ -97,7 +97,7 @@ class AwsEksResourceDetectorTest(unittest.TestCase):
         self,
         mock_open_function,
         mock_get_k8_cred_value,
-        mock_is_Eks,
+        mock_is_eks,
         mock_get_cluster_info,
     ):
         actual = AwsEksResourceDetector().detect()
