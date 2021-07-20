@@ -50,9 +50,10 @@ def _get_k8s_cred_value():
             encoding="utf8",
         ) as token_file:
             return "Bearer " + token_file.read()
+    # pylint: disable=broad-except
     except Exception as exception:
-        logger.warning("Failed to get k8s token: %s", exception)
-        return ""
+        logger.error("Failed to get k8s token: %s", exception)
+        raise exception
 
 
 def _is_eks(cred_value, cert_data):
