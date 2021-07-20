@@ -30,13 +30,13 @@ _GET_METHOD = "GET"
 
 
 def _aws_http_request(method, path, headers):
-    response = urlopen(
+    with urlopen(
         Request(
             "http://169.254.169.254" + path, headers=headers, method=method
         ),
         timeout=1000,
-    )
-    return response.read().decode("utf-8")
+    ) as response:
+        return response.read().decode("utf-8")
 
 
 def _get_token():
@@ -96,11 +96,12 @@ class AwsEc2ResourceDetector(ResourceDetector):
                     ResourceAttributes.HOST_NAME: hostname,
                 }
             )
-        except Exception as e:
-            e_msg = f"{self.__class__.__name__} failed: {e}"
+        # pylint: disable=broad-except
+        except Exception as exception:
+            e_msg = f"{self.__class__.__name__} failed: {exception}"
             if self.raise_on_error:
                 logger.exception(e_msg)
-                raise e
-            else:
-                logger.warn(e_msg)
-                return Resource.get_empty()
+                raise exception
+
+            logger.warning(e_msg)
+            return Resource.get_empty()

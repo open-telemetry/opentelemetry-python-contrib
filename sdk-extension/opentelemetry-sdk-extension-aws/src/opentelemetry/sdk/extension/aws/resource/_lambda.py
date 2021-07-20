@@ -55,11 +55,12 @@ class AwsLambdaResourceDetector(ResourceDetector):
                     ),
                 }
             )
-        except Exception as e:
-            e_msg = f"{self.__class__.__name__} failed: {e}"
+        # pylint: disable=broad-except
+        except Exception as exception:
+            e_msg = f"{self.__class__.__name__} failed: {exception}"
             if self.raise_on_error:
                 logger.exception(e_msg)
-                raise e
-            else:
-                logger.warn(e_msg)
-                return Resource.get_empty()
+                raise exception
+
+            logger.warning(e_msg)
+            return Resource.get_empty()

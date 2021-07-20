@@ -35,14 +35,14 @@ class AwsBeanstalkResourceDetector(ResourceDetector):
 
     def detect(self) -> "Resource":
         if os.name == "nt":
-            CONF_FILE_PATH = (
+            conf_file_path = (
                 "C:\\Program Files\\Amazon\\XRay\\environment.conf"
             )
         else:
-            CONF_FILE_PATH = "/var/elasticbeanstalk/xray/environment.conf"
+            conf_file_path = "/var/elasticbeanstalk/xray/environment.conf"
 
         try:
-            with open(CONF_FILE_PATH) as conf_file:
+            with open(conf_file_path) as conf_file:
                 parsed_data = json.load(conf_file)
 
             # NOTE: (NathanielRN) Should ResourceDetectors use Resource.create() to pull in the environment variable?
@@ -63,11 +63,12 @@ class AwsBeanstalkResourceDetector(ResourceDetector):
                     ],
                 }
             )
-        except Exception as e:
-            e_msg = f"{self.__class__.__name__} failed: {e}"
+        # pylint: disable=broad-except
+        except Exception as exception:
+            e_msg = f"{self.__class__.__name__} failed: {exception}"
             if self.raise_on_error:
                 logger.exception(e_msg)
-                raise e
-            else:
-                logger.warn(e_msg)
-                return Resource.get_empty()
+                raise exception
+
+            logger.warning(e_msg)
+            return Resource.get_empty()

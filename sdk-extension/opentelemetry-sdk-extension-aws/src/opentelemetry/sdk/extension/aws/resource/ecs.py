@@ -39,8 +39,8 @@ class AwsEcsResourceDetector(ResourceDetector):
                 "ECS_CONTAINER_METADATA_URI"
             ) and not os.environ.get("ECS_CONTAINER_METADATA_URI_V4"):
                 is_on_ecs_e_msg = "Missing ECS_CONTAINER_METADATA_URI therefore process is not on ECS."
-                logger.warn(
-                    f"{self.__class__.__name__} failed: {is_on_ecs_e_msg}"
+                logger.warning(
+                    "%s failed: %s", self.__class__.__name__, is_on_ecs_e_msg
                 )
                 raise RuntimeError(is_on_ecs_e_msg)
 
@@ -53,9 +53,10 @@ class AwsEcsResourceDetector(ResourceDetector):
                         line = raw_line.strip()
                         if len(line) > _CONTAINER_ID_LENGTH:
                             container_id = line[-_CONTAINER_ID_LENGTH:]
-            except Exception as e:
-                logger.warn(
-                    f"AwsEcsDetector failed to get container Id: {e}. Creating resource without it."
+            # pylint: disable=broad-except
+            except Exception as exception:
+                logger.warning(
+                    "AwsEcsDetector failed to get container Id: %s. Creating resource without it.", exception
                 )
 
             # NOTE: (NathanielRN) Should ResourceDetectors use Resource.create() to pull in the environment variable?
@@ -68,11 +69,12 @@ class AwsEcsResourceDetector(ResourceDetector):
                     ResourceAttributes.CONTAINER_ID: container_id,
                 }
             )
-        except Exception as e:
-            e_msg = f"{self.__class__.__name__} failed: {e}"
+        # pylint: disable=broad-except
+        except Exception as exception:
+            e_msg = f"{self.__class__.__name__} failed: {exception}"
             if self.raise_on_error:
                 logger.exception(e_msg)
-                raise e
-            else:
-                logger.warn(e_msg)
-                return Resource.get_empty()
+                raise exception
+
+            logger.warning(e_msg)
+            return Resource.get_empty()

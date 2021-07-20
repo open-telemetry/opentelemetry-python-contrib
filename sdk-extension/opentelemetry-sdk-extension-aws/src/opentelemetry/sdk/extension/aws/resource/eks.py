@@ -31,7 +31,7 @@ _GET_METHOD = "GET"
 
 
 def _aws_http_request(method, path, cred_value, cert_data):
-    response = urlopen(
+    with urlopen(
         Request(
             "https://kubernetes.default.svc" + path,
             headers={"Authorization": cred_value},
@@ -39,8 +39,8 @@ def _aws_http_request(method, path, cred_value, cert_data):
         ),
         timeout=2000,
         context=ssl.create_default_context(cadata=cert_data),
-    )
-    return response.read().decode("utf-8")
+    ) as response:
+        return response.read().decode("utf-8")
 
 
 def _get_k8s_cred_value():
@@ -50,12 +50,12 @@ def _get_k8s_cred_value():
             encoding="utf8",
         ) as token_file:
             return "Bearer " + token_file.read()
-    except Exception as e:
-        logger.warn(f"Failed to get k8s token: {e}")
+    except Exception as exception:
+        logger.warning("Failed to get k8s token: %s", exception)
         return ""
 
 
-def _is_Eks(cred_value, cert_data):
+def _is_eks(cred_value, cert_data):
     return _aws_http_request(
         _GET_METHOD,
         "/api/v1/namespaces/kube-system/configmaps/aws-auth",
@@ -79,15 +79,15 @@ def _get_cluster_name():
         "/var/run/secrets/kubernetes.io/serviceaccount/ca.crt"
     ) as cert_file:
         k8_cert_data = cert_file.read()
-        if not _is_Eks(cred_value, k8_cert_data):
+        if not _is_eks(cred_value, k8_cert_data):
             return Resource.get_empty()
 
     cluster_info = json.loads(_get_cluster_info(cred_value, k8_cert_data))
     cluster_name = ""
     try:
         cluster_name = cluster_info["data"]["cluster.name"]
-    except Exception as e:
-        logger.warn(f"Cannot get cluster name on EKS: {e}")
+    except KeyError as exception:
+        logger.warning("Cannot get cluster name on EKS: %s", exception)
 
     return cluster_name
 
@@ -125,11 +125,12 @@ class AwsEksResourceDetector(ResourceDetector):
                     ResourceAttributes.CONTAINER_ID: container_id,
                 }
             )
-        except Exception as e:
-            e_msg = f"{self.__class__.__name__} failed: {e}"
+        # pylint: disable=broad-except
+        except Exception as exception:
+            e_msg = f"{self.__class__.__name__} failed: {exception}"
             if self.raise_on_error:
                 logger.exception(e_msg)
-                raise e
-            else:
-                logger.warn(e_msg)
-                return Resource.get_empty()
+                raise exception
+
+            logger.warning(e_msg)
+            return Resource.get_empty()
