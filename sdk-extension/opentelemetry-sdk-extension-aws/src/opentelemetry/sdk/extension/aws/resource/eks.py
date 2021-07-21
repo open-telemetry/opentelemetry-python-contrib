@@ -114,10 +114,8 @@ class AwsEksResourceDetector(ResourceDetector):
             container_id = _get_container_id()
 
             if not container_id or not cluster_name:
-                return Resource.get_empty()
+                raise RuntimeError("Neither cluster name nor container ID found on EKS process.")
 
-            # NOTE: (NathanielRN) Should ResourceDetectors use Resource.create() to pull in the environment variable?
-            # `OTELResourceDetector` doesn't do this...
             return Resource(
                 {
                     ResourceAttributes.CLOUD_PROVIDER: CloudProviderValues.AWS.value,

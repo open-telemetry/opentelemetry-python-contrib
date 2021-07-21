@@ -34,8 +34,6 @@ class AwsLambdaResourceDetector(ResourceDetector):
 
     def detect(self) -> "Resource":
         try:
-            # NOTE: (NathanielRN) Should ResourceDetectors use Resource.create() to pull in the environment variable?
-            # `OTELResourceDetector` doesn't do this...
             return Resource(
                 {
                     ResourceAttributes.CLOUD_PROVIDER: CloudProviderValues.AWS.value,

@@ -45,8 +45,6 @@ class AwsBeanstalkResourceDetector(ResourceDetector):
             with open(conf_file_path) as conf_file:
                 parsed_data = json.load(conf_file)
 
-            # NOTE: (NathanielRN) Should ResourceDetectors use Resource.create() to pull in the environment variable?
-            # `OTELResourceDetector` doesn't do this...
             return Resource(
                 {
                     ResourceAttributes.CLOUD_PROVIDER: CloudProviderValues.AWS.value,

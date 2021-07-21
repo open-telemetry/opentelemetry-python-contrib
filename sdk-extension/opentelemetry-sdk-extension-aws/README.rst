@@ -76,18 +76,18 @@ populate `resource` attributes by creating a `TraceProvider` using the `AwsEc2Re
 
 .. code-block:: python
 
+    import opentelemetry.trace as trace
     from opentelemetry.sdk.trace import TracerProvider
     from opentelemetry.sdk.extension.aws.resource.ec2 import (
         AwsEc2ResourceDetector,
     )
-    from opentelemetry.sdk.resources import OTELResourceDetector
+    from opentelemetry.sdk.resources import get_aggregated_resources
 
     trace.set_tracer_provider(
         TracerProvider(
             resource=get_aggregated_resources(
                 [
                     AwsEc2ResourceDetector(),
-                    OTELResourceDetector(),
                 ]
             ),
         )
@@ -101,3 +101,4 @@ References
 
 * `OpenTelemetry Project <https://opentelemetry.io/>`_
 * `AWS X-Ray Trace IDs Format <https://docs.aws.amazon.com/xray/latest/devguide/xray-api-sendingdata.html#xray-api-traceids>`_
+* `OpenTelemetry Specification for Resource Attributes <https://github.com/open-telemetry/opentelemetry-specification/tree/main/specification/resource/semantic_conventions>`_

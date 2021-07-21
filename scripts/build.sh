@@ -8,8 +8,7 @@ set -ev
 # Get the latest versions of packaging tools
 python3 -m pip install --upgrade pip setuptools wheel
 
-echo $(dirname $0)
-BASEDIR=/Users/enowell/git/opentelemetry-python-contrib
+BASEDIR=$(dirname $(readlink -f $(dirname $0)))
 DISTDIR=dist
 
 (

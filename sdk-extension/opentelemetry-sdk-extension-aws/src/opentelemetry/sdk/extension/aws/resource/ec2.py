@@ -76,8 +76,6 @@ class AwsEc2ResourceDetector(ResourceDetector):
             identity_dict = json.loads(_get_identity(token))
             hostname = _get_host(token)
 
-            # NOTE: (NathanielRN) Should ResourceDetectors use Resource.create() to pull in the environment variable?
-            # `OTELResourceDetector` doesn't do this...
             return Resource(
                 {
                     ResourceAttributes.CLOUD_PROVIDER: CloudProviderValues.AWS.value,
