@@ -4,7 +4,7 @@ about: Suggest an idea for this project
 labels: feature-request
 ---
 
-Before opening a feature request against this repo, consider whether the feature should/could be implemented in the [other OpenTelemetry client libraries](https://github.com/open-telemetry/). If so, please [open an issue on opentelemetry-specification](https://github.com/open-telemetry/opentelemetry-specification/issues/new) first.
+Before opening a feature request against this repo, consider whether the feature should/could be implemented in the [other oxeye_opentelemetry client libraries](https://github.com/ox-eye/). If so, please [open an issue on oxeye_opentelemetry-specification](https://github.com/ox-eye/oxeye_opentelemetry-specification/issues/new) first.
 
 **Is your feature request related to a problem?**
 If so, provide a concise description of the problem.

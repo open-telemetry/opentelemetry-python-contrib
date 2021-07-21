@@ -16,10 +16,10 @@ exclude =
   venv*/
   target
   __pycache__
-  exporter/opentelemetry-exporter-jaeger/src/opentelemetry/exporter/jaeger/gen/
-  exporter/opentelemetry-exporter-jaeger/build/*
-  docs/examples/opentelemetry-example-app/src/opentelemetry_example_app/grpc/gen/
-  docs/examples/opentelemetry-example-app/build/*
-  opentelemetry-python-core/
-  opentelemetry-proto/build/*
-  opentelemetry-proto/src/opentelemetry/proto/
+  exporter/oxeye_opentelemetry-exporter-jaeger/src/oxeye_opentelemetry/exporter/jaeger/gen/
+  exporter/oxeye_opentelemetry-exporter-jaeger/build/*
+  docs/examples/oxeye_opentelemetry-example-app/src/oxeye_opentelemetry_example_app/grpc/gen/
+  docs/examples/oxeye_opentelemetry-example-app/build/*
+  oxeye_opentelemetry-python-core/
+  oxeye_opentelemetry-proto/build/*
+  oxeye_opentelemetry-proto/src/oxeye_opentelemetry/proto/

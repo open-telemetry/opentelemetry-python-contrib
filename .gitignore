@@ -23,8 +23,8 @@ lib64
 __pycache__
 venv*/
 .venv*/
-opentelemetry-python-core*/
-/opentelemetry-python-core
+oxeye_opentelemetry-python-core*/
+/oxeye_opentelemetry-python-core
 
 # Installer logs
 pip-log.txt

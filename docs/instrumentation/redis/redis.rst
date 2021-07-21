@@ -1,7 +1,7 @@
-OpenTelemetry Redis Instrumentation
+oxeye_opentelemetry Redis Instrumentation
 ===================================
 
-.. automodule:: opentelemetry.instrumentation.redis
+.. automodule:: oxeye_opentelemetry.instrumentation.redis
     :members:
     :undoc-members:
     :show-inheritance:

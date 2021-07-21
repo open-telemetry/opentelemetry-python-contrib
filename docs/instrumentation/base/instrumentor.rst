@@ -1,7 +1,7 @@
-opentelemetry.instrumentation.instrumentor package
+oxeye_opentelemetry.instrumentation.instrumentor package
 ==================================================
 
-.. automodule:: opentelemetry.instrumentation.instrumentor
+.. automodule:: oxeye_opentelemetry.instrumentation.instrumentor
     :members:
     :undoc-members:
     :show-inheritance:

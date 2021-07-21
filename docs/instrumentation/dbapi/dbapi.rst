@@ -1,7 +1,7 @@
-OpenTelemetry Database API Instrumentation
+oxeye_opentelemetry Database API Instrumentation
 ==========================================
 
-.. automodule:: opentelemetry.instrumentation.dbapi
+.. automodule:: oxeye_opentelemetry.instrumentation.dbapi
     :members:
     :undoc-members:
     :show-inheritance:

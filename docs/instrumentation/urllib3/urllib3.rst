@@ -1,7 +1,7 @@
-OpenTelemetry urllib3 Instrumentation
+oxeye_opentelemetry urllib3 Instrumentation
 ============================================
 
-.. automodule:: opentelemetry.instrumentation.urllib3
+.. automodule:: oxeye_opentelemetry.instrumentation.urllib3
     :members:
     :undoc-members:
     :show-inheritance:

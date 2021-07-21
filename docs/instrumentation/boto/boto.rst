@@ -1,7 +1,7 @@
-OpenTelemetry Boto Instrumentation
+oxeye_opentelemetry Boto Instrumentation
 ==================================
 
-.. automodule:: opentelemetry.instrumentation.boto
+.. automodule:: oxeye_opentelemetry.instrumentation.boto
     :members:
     :undoc-members:
     :show-inheritance:

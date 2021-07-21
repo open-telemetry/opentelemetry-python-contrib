@@ -1,7 +1,7 @@
-OpenTelemetry pymongo Instrumentation
+oxeye_opentelemetry pymongo Instrumentation
 =====================================
 
-.. automodule:: opentelemetry.instrumentation.pymongo
+.. automodule:: oxeye_opentelemetry.instrumentation.pymongo
     :members:
     :undoc-members:
     :show-inheritance:

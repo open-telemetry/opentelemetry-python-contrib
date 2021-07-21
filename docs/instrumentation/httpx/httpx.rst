@@ -1,10 +1,10 @@
-.. include:: ../../../instrumentation/opentelemetry-instrumentation-httpx/README.rst
+.. include:: ../../../instrumentation/oxeye_opentelemetry-instrumentation-httpx/README.rst
     :end-before: References
 
 API
 ---
 
-.. automodule:: opentelemetry.instrumentation.httpx
+.. automodule:: oxeye_opentelemetry.instrumentation.httpx
     :members:
     :undoc-members:
     :show-inheritance:

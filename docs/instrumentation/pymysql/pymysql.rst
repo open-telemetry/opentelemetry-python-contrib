@@ -1,7 +1,7 @@
-OpenTelemetry PyMySQL Instrumentation
+oxeye_opentelemetry PyMySQL Instrumentation
 =====================================
 
-.. automodule:: opentelemetry.instrumentation.pymysql
+.. automodule:: oxeye_opentelemetry.instrumentation.pymysql
     :members:
     :undoc-members:
     :show-inheritance:

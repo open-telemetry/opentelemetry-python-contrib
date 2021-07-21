@@ -1,7 +1,7 @@
-OpenTelemetry Flask Instrumentation
+oxeye_opentelemetry Flask Instrumentation
 ===================================
 
-.. automodule:: opentelemetry.instrumentation.flask
+.. automodule:: oxeye_opentelemetry.instrumentation.flask
     :members:
     :undoc-members:
     :show-inheritance:

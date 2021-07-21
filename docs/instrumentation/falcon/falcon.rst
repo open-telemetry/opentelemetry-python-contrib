@@ -1,7 +1,7 @@
-OpenTelemetry Falcon Instrumentation
+oxeye_opentelemetry Falcon Instrumentation
 ====================================
 
-.. automodule:: opentelemetry.instrumentation.falcon
+.. automodule:: oxeye_opentelemetry.instrumentation.falcon
     :members:
     :undoc-members:
     :show-inheritance:

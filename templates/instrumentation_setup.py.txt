@@ -1,6 +1,6 @@
 
 
-# Copyright The OpenTelemetry Authors
+# Copyright The oxeye_opentelemetry Authors
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -38,13 +38,13 @@ BASE_DIR = os.path.dirname(__file__)
 PACKAGE_INFO = {}
 
 VERSION_FILENAME = os.path.join(
-    BASE_DIR, "src", "opentelemetry", "instrumentation", "{{ name }}", "version.py"
+    BASE_DIR, "src", "oxeye_opentelemetry", "instrumentation", "{{ name }}", "version.py"
 )
 with open(VERSION_FILENAME) as f:
     exec(f.read(), PACKAGE_INFO)
 
 PACKAGE_FILENAME = os.path.join(
-    BASE_DIR, "src", "opentelemetry", "instrumentation", "{{ name }}", "package.py"
+    BASE_DIR, "src", "oxeye_opentelemetry", "instrumentation", "{{ name }}", "package.py"
 )
 with open(PACKAGE_FILENAME) as f:
     exec(f.read(), PACKAGE_INFO)
@@ -60,7 +60,7 @@ extras_require["test"] = test_deps
 class JSONMetadataCommand(distutils.cmd.Command):
 
     description = (
-        "print out package metadata as JSON. This is used by OpenTelemetry dev scripts to ",
+        "print out package metadata as JSON. This is used by oxeye_opentelemetry dev scripts to ",
         "auto-generate code in other places"
     )
     user_options = []

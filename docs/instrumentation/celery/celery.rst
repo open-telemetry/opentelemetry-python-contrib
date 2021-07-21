@@ -1,7 +1,7 @@
-OpenTelemetry Celery Instrumentation
+oxeye_opentelemetry Celery Instrumentation
 ====================================
 
-.. automodule:: opentelemetry.instrumentation.celery
+.. automodule:: oxeye_opentelemetry.instrumentation.celery
     :members:
     :undoc-members:
     :show-inheritance:

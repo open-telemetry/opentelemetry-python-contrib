@@ -8,7 +8,7 @@ set -ev
 # Get the latest versions of packaging tools
 python3 -m pip install --upgrade pip setuptools wheel
 
-BASEDIR=$(dirname $(readlink -f $(dirname $0)))
+BASEDIR=$(dirname $(dirname $0))
 DISTDIR=dist
 
 (
@@ -30,7 +30,7 @@ DISTDIR=dist
  # Build a wheel for each source distribution
  (
    cd $DISTDIR
-   for x in *.tar.gz ; do
+   for x in $(find .. -iname "*.tar.gz") ; do
      pip wheel --no-deps $x
    done
  )

@@ -1,9 +1,9 @@
-.. include:: ../../../instrumentation/opentelemetry-instrumentation-starlette/README.rst
+.. include:: ../../../instrumentation/oxeye_opentelemetry-instrumentation-starlette/README.rst
 
 API
 ---
 
-.. automodule:: opentelemetry.instrumentation.starlette
+.. automodule:: oxeye_opentelemetry.instrumentation.starlette
     :members:
     :undoc-members:
     :show-inheritance:

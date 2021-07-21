@@ -1,7 +1,7 @@
-OpenTelemetry aiohttp client Instrumentation
+oxeye_opentelemetry aiohttp client Instrumentation
 ============================================
 
-.. automodule:: opentelemetry.instrumentation.aiohttp_client
+.. automodule:: oxeye_opentelemetry.instrumentation.aiohttp_client
     :members:
     :undoc-members:
     :show-inheritance:

@@ -1,7 +1,7 @@
-OpenTelemetry Psycopg Instrumentation
+oxeye_opentelemetry Psycopg Instrumentation
 =====================================
 
-.. automodule:: opentelemetry.instrumentation.psycopg2
+.. automodule:: oxeye_opentelemetry.instrumentation.psycopg2
     :members:
     :undoc-members:
     :show-inheritance:

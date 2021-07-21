@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 
-# Copyright The OpenTelemetry Authors
+# Copyright The oxeye_opentelemetry Authors
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -30,7 +30,7 @@ _auto_generation_msg = """
 """
 _template_dir = "templates"
 _template_name = "instrumentation_setup.py.txt"
-_prefix = "opentelemetry-instrumentation-"
+_prefix = "oxeye_opentelemetry-instrumentation-"
 
 
 def main():
@@ -51,7 +51,7 @@ def main():
             continue
 
         src_dir = os.path.join(
-            instrumentation_path, "src", "opentelemetry", "instrumentation"
+            instrumentation_path, "src", "oxeye_opentelemetry", "instrumentation"
         )
         src_pkgs = [
             f

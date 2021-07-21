@@ -1,7 +1,7 @@
-OpenTelemetry SQLAlchemy Instrumentation
+oxeye_opentelemetry SQLAlchemy Instrumentation
 ========================================
 
-.. automodule:: opentelemetry.instrumentation.sqlalchemy
+.. automodule:: oxeye_opentelemetry.instrumentation.sqlalchemy
     :members:
     :undoc-members:
     :show-inheritance:

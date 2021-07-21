@@ -1,4 +1,4 @@
-# Copyright The OpenTelemetry Authors
+# Copyright The oxeye_opentelemetry Authors
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -18,10 +18,10 @@ import setuptools
 BASE_DIR = os.path.dirname(__file__)
 VERSION_FILENAME = os.path.join(
     # REPLACE ME: the path to the version file e.g
-    # BASE_DIR, "src", "opentelemetry", "instrumentation", "sqlalchemy", "version.py"
+    # BASE_DIR, "src", "oxeye_opentelemetry", "instrumentation", "sqlalchemy", "version.py"
     BASE_DIR,
     "src",
-    "opentelemetry",
+    "oxeye_opentelemetry",
     "instrumentation",
     "<REPLACE ME>",
     "version.py",
@@ -33,10 +33,10 @@ with open(VERSION_FILENAME) as f:
 setuptools.setup(
     version=PACKAGE_INFO["__version__"],
     entry_points={
-        "opentelemetry_instrumentor": [
+        "oxeye_opentelemetry_instrumentor": [
             # REPLACE ME: the entrypoint for the instrumentor e.g
-            # "sqlalchemy = opentelemetry.instrumentation.sqlalchemy:SQLAlchemyInstrumentor"
-            "<REPLACE ME> = opentelemetry.instrumentation.<REPLACE>"
+            # "sqlalchemy = oxeye_opentelemetry.instrumentation.sqlalchemy:SQLAlchemyInstrumentor"
+            "<REPLACE ME> = oxeye_opentelemetry.instrumentation.<REPLACE>"
         ]
     },
 )

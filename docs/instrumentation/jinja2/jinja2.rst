@@ -1,7 +1,7 @@
-OpenTelemetry Jinja2 Instrumentation
+oxeye_opentelemetry Jinja2 Instrumentation
 ====================================
 
-.. automodule:: opentelemetry.instrumentation.jinja2
+.. automodule:: oxeye_opentelemetry.instrumentation.jinja2
     :members:
     :undoc-members:
     :show-inheritance:

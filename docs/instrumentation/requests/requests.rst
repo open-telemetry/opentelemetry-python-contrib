@@ -1,7 +1,7 @@
-OpenTelemetry requests Instrumentation
+oxeye_opentelemetry requests Instrumentation
 ======================================
 
-.. automodule:: opentelemetry.instrumentation.requests
+.. automodule:: oxeye_opentelemetry.instrumentation.requests
     :members:
     :undoc-members:
     :show-inheritance:

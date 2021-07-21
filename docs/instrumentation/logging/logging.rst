@@ -1,7 +1,7 @@
-OpenTelemetry Logging Instrumentation
+oxeye_opentelemetry Logging Instrumentation
 =====================================
 
-.. automodule:: opentelemetry.instrumentation.logging
+.. automodule:: oxeye_opentelemetry.instrumentation.logging
     :members:
     :undoc-members:
     :show-inheritance:

@@ -1,7 +1,7 @@
-OpenTelemetry Tornado Instrumentation
+oxeye_opentelemetry Tornado Instrumentation
 ======================================
 
-.. automodule:: opentelemetry.instrumentation.tornado
+.. automodule:: oxeye_opentelemetry.instrumentation.tornado
     :members:
     :undoc-members:
     :show-inheritance:

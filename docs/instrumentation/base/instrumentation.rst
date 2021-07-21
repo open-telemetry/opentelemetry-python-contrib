@@ -1,7 +1,7 @@
-OpenTelemetry Python Instrumentor
+oxeye_opentelemetry Python Instrumentor
 =================================
 
-.. automodule:: opentelemetry.instrumentation
+.. automodule:: oxeye_opentelemetry.instrumentation
     :members:
     :undoc-members:
     :show-inheritance:

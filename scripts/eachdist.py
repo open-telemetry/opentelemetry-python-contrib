@@ -574,9 +574,9 @@ def update_changelog(path, version, new_entry):
 
 def update_changelogs(version):
     today = datetime.now().strftime("%Y-%m-%d")
-    new_entry = """## [Unreleased](https://github.com/open-telemetry/opentelemetry-python/compare/v{version}...HEAD)
+    new_entry = """## [Unreleased](https://github.com/ox-eye/oxeye_opentelemetry-python/compare/v{version}...HEAD)
 
-## [{version}](https://github.com/open-telemetry/opentelemetry-python/releases/tag/v{version}) - {today}
+## [{version}](https://github.com/ox-eye/oxeye_opentelemetry-python/releases/tag/v{version}) - {today}
 
 """.format(
         version=version, today=today

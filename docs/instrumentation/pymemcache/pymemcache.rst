@@ -1,7 +1,7 @@
-OpenTelemetry pymemcache Instrumentation
+oxeye_opentelemetry pymemcache Instrumentation
 ========================================
 
-.. automodule:: opentelemetry.instrumentation.pymemcache
+.. automodule:: oxeye_opentelemetry.instrumentation.pymemcache
     :members:
     :undoc-members:
     :show-inheritance:

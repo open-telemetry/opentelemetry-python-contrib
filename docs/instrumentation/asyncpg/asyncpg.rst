@@ -1,10 +1,10 @@
-OpenTelemetry asyncpg Instrumentation
+oxeye_opentelemetry asyncpg Instrumentation
 =====================================
 
 Module contents
 ---------------
 
-.. automodule:: opentelemetry.instrumentation.asyncpg
+.. automodule:: oxeye_opentelemetry.instrumentation.asyncpg
     :members:
     :undoc-members:
     :show-inheritance:

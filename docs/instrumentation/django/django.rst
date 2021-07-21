@@ -1,7 +1,7 @@
-OpenTelemetry Django Instrumentation
+oxeye_opentelemetry Django Instrumentation
 ====================================
 
-.. automodule:: opentelemetry.instrumentation.django
+.. automodule:: oxeye_opentelemetry.instrumentation.django
     :members:
     :undoc-members:
     :show-inheritance:

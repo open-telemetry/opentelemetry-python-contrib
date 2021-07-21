@@ -1,8 +1,8 @@
-OpenTelemetry-Python-Contrib
+oxeye_opentelemetry-Python-Contrib
 ============================
 
 Complimentary instrumentation and vendor-specific packages for use with the
-Python `OpenTelemetry <https://opentelemetry.io/>`_ client.
+Python `oxeye_opentelemetry <https://oxeye_opentelemetry.io/>`_ client.
 
 .. image:: https://img.shields.io/badge/slack-chat-green.svg
    :target: https://cloud-native.slack.com/archives/C01PD4HUVBL
@@ -20,18 +20,18 @@ installed separately via pip:
 
 .. code-block:: sh
 
-    pip install opentelemetry-exporter-{exporter}
-    pip install opentelemetry-instrumentation-{instrumentation}
-    pip install opentelemetry-sdk-extension-{sdkextension}
+    pip install oxeye_opentelemetry-exporter-{exporter}
+    pip install oxeye_opentelemetry-instrumentation-{instrumentation}
+    pip install oxeye_opentelemetry-sdk-extension-{sdkextension}
 
 A complete list of packages can be found at the 
-`Contrib repo instrumentation <https://github.com/open-telemetry/opentelemetry-python-contrib/tree/main/instrumentation>`_
-and `Contrib repo exporter <https://github.com/open-telemetry/opentelemetry-python-contrib/tree/main/exporter>`_ directories.
+`Contrib repo instrumentation <https://github.com/ox-eye/oxeye_opentelemetry-python-contrib/tree/main/instrumentation>`_
+and `Contrib repo exporter <https://github.com/ox-eye/oxeye_opentelemetry-python-contrib/tree/main/exporter>`_ directories.
 
 Extensions
 ----------
 
-Visit `OpenTelemetry Registry <https://opentelemetry.io/registry/?s=python>`_ to
+Visit `oxeye_opentelemetry Registry <https://oxeye_opentelemetry.io/registry/?s=python>`_ to
 find a lot of related projects like exporters, instrumentation libraries, tracer
 implementations, etc.
 
@@ -46,16 +46,16 @@ install <https://pip.pypa.io/en/stable/reference/pip_install/#editable-installs>
 
 .. code-block:: sh
 
-    git clone https://github.com/open-telemetry/opentelemetry-python-contrib.git
-    cd opentelemetry-python-contrib
-    pip install -e ./instrumentation/opentelemetry-instrumentation-flask
-    pip install -e ./instrumentation/opentelemetry-instrumentation-botocore
-    pip install -e ./sdk-extension/opentelemetry-sdk-extension-aws
+    git clone https://github.com/ox-eye/oxeye_opentelemetry-python-contrib.git
+    cd oxeye_opentelemetry-python-contrib
+    pip install -e ./instrumentation/oxeye_opentelemetry-instrumentation-flask
+    pip install -e ./instrumentation/oxeye_opentelemetry-instrumentation-botocore
+    pip install -e ./sdk-extension/oxeye_opentelemetry-sdk-extension-aws
 
 
 .. toctree::
     :maxdepth: 2
-    :caption: OpenTelemetry Exporters
+    :caption: oxeye_opentelemetry Exporters
     :name: exporters
     :glob:
 
@@ -63,7 +63,7 @@ install <https://pip.pypa.io/en/stable/reference/pip_install/#editable-installs>
 
 .. toctree::
     :maxdepth: 2
-    :caption: OpenTelemetry Instrumentations
+    :caption: oxeye_opentelemetry Instrumentations
     :name: Instrumentations
     :glob:
 
@@ -71,7 +71,7 @@ install <https://pip.pypa.io/en/stable/reference/pip_install/#editable-installs>
 
 .. toctree::
     :maxdepth: 2
-    :caption: OpenTelemetry Performance
+    :caption: oxeye_opentelemetry Performance
     :name: Performance
     :glob:
 
@@ -79,7 +79,7 @@ install <https://pip.pypa.io/en/stable/reference/pip_install/#editable-installs>
 
 .. toctree::
     :maxdepth: 2
-    :caption: OpenTelemetry SDK Extensions
+    :caption: oxeye_opentelemetry SDK Extensions
     :name: SDK Extensions
     :glob:
 

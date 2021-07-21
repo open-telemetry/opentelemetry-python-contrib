@@ -17,12 +17,12 @@ PYTHON_VERSION_INFO=(${PYTHON_VERSION//./ })
 
 coverage erase
 
-cov exporter/opentelemetry-exporter-datadog
-cov instrumentation/opentelemetry-instrumentation-flask
-cov instrumentation/opentelemetry-instrumentation-requests
-cov instrumentation/opentelemetry-instrumentation-wsgi
-cov instrumentation/opentelemetry-instrumentation-aiohttp-client
-cov instrumentation/opentelemetry-instrumentation-asgi
+cov exporter/oxeye_opentelemetry-exporter-datadog
+cov instrumentation/oxeye_opentelemetry-instrumentation-flask
+cov instrumentation/oxeye_opentelemetry-instrumentation-requests
+cov instrumentation/oxeye_opentelemetry-instrumentation-wsgi
+cov instrumentation/oxeye_opentelemetry-instrumentation-aiohttp-client
+cov instrumentation/oxeye_opentelemetry-instrumentation-asgi
 
 
 coverage report --show-missing

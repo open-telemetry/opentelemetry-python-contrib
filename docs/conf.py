@@ -26,7 +26,7 @@ settings.configure()
 
 source_dirs = [
     os.path.abspath(
-        "../opentelemetry-python-core/opentelemetry-instrumentation/src/"
+        "../oxeye_opentelemetry-python-core/oxeye_opentelemetry-instrumentation/src/"
     ),
 ]
 
@@ -55,9 +55,9 @@ sys.path[:0] = source_dirs + exp_dirs + instr_dirs + sdk_ext_dirs
 
 # -- Project information -----------------------------------------------------
 
-project = "OpenTelemetry Python Contrib"
-copyright = "OpenTelemetry Authors"  # pylint: disable=redefined-builtin
-author = "OpenTelemetry Authors"
+project = "oxeye_opentelemetry Python Contrib"
+copyright = "oxeye_opentelemetry Authors"  # pylint: disable=redefined-builtin
+author = "oxeye_opentelemetry Authors"
 
 
 # -- General configuration ---------------------------------------------------
@@ -95,8 +95,8 @@ intersphinx_mapping = {
     "aiohttp": ("https://aiohttp.readthedocs.io/en/stable/", None),
     "wrapt": ("https://wrapt.readthedocs.io/en/latest/", None),
     "pymongo": ("https://pymongo.readthedocs.io/en/stable/", None),
-    "opentelemetry": (
-        "https://opentelemetry-python.readthedocs.io/en/latest/",
+    "oxeye_opentelemetry": (
+        "https://oxeye_opentelemetry-python.readthedocs.io/en/latest/",
         None,
     ),
 }
@@ -165,7 +165,7 @@ branch = os.environ.get("READTHEDOCS_VERSION")
 if branch is None or branch == "latest":
     branch = "main"
 
-REPO = "open-telemetry/opentelemetry-python-contrib/"
+REPO = "ox-eye/oxeye_opentelemetry-python-contrib/"
 scm_raw_web = "https://raw.githubusercontent.com/" + REPO + branch
 scm_web = "https://github.com/" + REPO + "blob/" + branch
 

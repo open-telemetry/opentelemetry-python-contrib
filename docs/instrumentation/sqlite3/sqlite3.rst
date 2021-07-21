@@ -1,7 +1,7 @@
-OpenTelemetry SQLite3 Instrumentation
+oxeye_opentelemetry SQLite3 Instrumentation
 =====================================
 
-.. automodule:: opentelemetry.instrumentation.sqlite3
+.. automodule:: oxeye_opentelemetry.instrumentation.sqlite3
     :members:
     :undoc-members:
     :show-inheritance:

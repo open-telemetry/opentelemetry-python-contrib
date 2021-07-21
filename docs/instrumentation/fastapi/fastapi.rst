@@ -1,9 +1,9 @@
-.. include:: ../../../instrumentation/opentelemetry-instrumentation-fastapi/README.rst
+.. include:: ../../../instrumentation/oxeye_opentelemetry-instrumentation-fastapi/README.rst
 
 API
 ---
 
-.. automodule:: opentelemetry.instrumentation.fastapi
+.. automodule:: oxeye_opentelemetry.instrumentation.fastapi
     :members:
     :undoc-members:
     :show-inheritance:

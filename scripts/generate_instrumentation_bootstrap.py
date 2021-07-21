@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 
-# Copyright The OpenTelemetry Authors
+# Copyright The oxeye_opentelemetry Authors
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -53,10 +53,10 @@ default_instrumentations = []
 
 gen_path = os.path.join(
     root_path,
-    "opentelemetry-python-core",
-    "opentelemetry-instrumentation",
+    "oxeye_opentelemetry-python-core",
+    "oxeye_opentelemetry-instrumentation",
     "src",
-    "opentelemetry",
+    "oxeye_opentelemetry",
     "instrumentation",
     "bootstrap_gen.py",
 )
@@ -99,7 +99,7 @@ def main():
             "scripts/eachdist.py",
             "format",
             "--path",
-            "opentelemetry-python-core/opentelemetry-instrumentation",
+            "oxeye_opentelemetry-python-core/oxeye_opentelemetry-instrumentation",
         ],
         check=True,
     )

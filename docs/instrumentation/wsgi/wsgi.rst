@@ -1,7 +1,7 @@
-OpenTelemetry WSGI Instrumentation
+oxeye_opentelemetry WSGI Instrumentation
 ==================================
 
-.. automodule:: opentelemetry.instrumentation.wsgi
+.. automodule:: oxeye_opentelemetry.instrumentation.wsgi
     :members:
     :undoc-members:
     :show-inheritance:

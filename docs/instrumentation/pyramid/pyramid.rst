@@ -1,7 +1,7 @@
-OpenTelemetry Pyramid Instrumentation
+oxeye_opentelemetry Pyramid Instrumentation
 =====================================
 
-.. automodule:: opentelemetry.instrumentation.pyramid
+.. automodule:: oxeye_opentelemetry.instrumentation.pyramid
     :members:
     :undoc-members:
     :show-inheritance:

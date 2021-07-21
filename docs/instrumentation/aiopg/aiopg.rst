@@ -1,7 +1,7 @@
-OpenTelemetry aiopg Instrumentation
+oxeye_opentelemetry aiopg Instrumentation
 ===================================
 
-.. automodule:: opentelemetry.instrumentation.aiopg
+.. automodule:: oxeye_opentelemetry.instrumentation.aiopg
     :members:
     :undoc-members:
     :show-inheritance:

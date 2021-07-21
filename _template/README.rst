@@ -1,10 +1,10 @@
-OpenTelemetry <REPLACE ME> Instrumentation
+oxeye_opentelemetry <REPLACE ME> Instrumentation
 ===========================
 
 |pypi|
 
-.. |pypi| image:: https://badge.fury.io/py/opentelemetry-instrumentation-<REPLACE ME>.svg
-   :target: https://pypi.org/project/opentelemetry-instrumentation-<REPLACE ME>/
+.. |pypi| image:: https://badge.fury.io/py/oxeye_opentelemetry-instrumentation-<REPLACE ME>.svg
+   :target: https://pypi.org/project/oxeye_opentelemetry-instrumentation-<REPLACE ME>/
 
 This library allows tracing requests made by the <REPLACE ME> library.
 
@@ -13,11 +13,11 @@ Installation
 
 ::
 
-    pip install opentelemetry-instrumentation-<REPLACE ME>
+    pip install oxeye_opentelemetry-instrumentation-<REPLACE ME>
 
 
 References
 ----------
 
-* `OpenTelemetry <REPLACE ME>/ Tracing <https://opentelemetry-python-contrib.readthedocs.io/en/latest/instrumentation/<REPLACE ME>/<REPLACE ME>.html>`_
-* `OpenTelemetry Project <https://opentelemetry.io/>`_
+* `oxeye_opentelemetry <REPLACE ME>/ Tracing <https://oxeye_opentelemetry-python-contrib.readthedocs.io/en/latest/instrumentation/<REPLACE ME>/<REPLACE ME>.html>`_
+* `oxeye_opentelemetry Project <https://oxeye_opentelemetry.io/>`_
