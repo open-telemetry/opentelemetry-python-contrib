@@ -5,13 +5,15 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [Unreleased](https://github.com/open-telemetry/opentelemetry-python/compare/v1.3.0-0.22b0...HEAD)
-- `opentelemetry-sdk-extension-aws` Update AWS entry points to match spec
-  ([#566](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/566))
-- Include Flask 2.0 as compatible with existing flask instrumentation
-  ([#545](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/545))
-- `openelemetry-sdk-extension-aws` Take a dependency on `opentelemetry-sdk`
-  ([#558](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/558))
+## [Unreleased](https://github.com/open-telemetry/opentelemetry-python/compare/v1.4.0-0.23b0...HEAD)
+
+## [1.4.0-0.23b0](https://github.com/open-telemetry/opentelemetry-python/releases/tag/v1.4.0-0.23b0) - 2021-07-19
+
+
+
+### Removed
+- Move `opentelemetry-instrumentation` to the core repo.
+  ([#595](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/595))
 
 ### Changed
 - `opentelemetry-instrumentation-tornado` properly instrument work done in tornado on_finish method.
@@ -34,8 +36,27 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Updating dependency for opentelemetry api/sdk packages to support major version instead
   of pinning to specific versions.
   ([#567](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/567))
+- `opentelemetry-instrumentation-grpc` Respect the suppress instrumentation in gRPC client instrumentor
+  ([#559](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/559))
 - `opentelemetry-instrumentation-grpc` Fixed asynchonous unary call traces
   ([#536](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/536))
+- `opentelemetry-sdk-extension-aws` Update AWS entry points to match spec
+  ([#566](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/566))
+- Include Flask 2.0 as compatible with existing flask instrumentation
+  ([#545](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/545))
+- `openelemetry-sdk-extension-aws` Take a dependency on `opentelemetry-sdk`
+  ([#558](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/558))
+- Change `opentelemetry-instrumentation-httpx` to replace `client` classes with instrumented versions.
+  ([#577](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/577))
+- `opentelemetry-instrumentation-requests` Fix potential `AttributeError` when `requests`
+  is used with a custom transport adapter.
+  ([#562](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/562))
+- `opentelemetry-instrumentation-django` Fix AttributeError: ResolverMatch object has no attribute route
+  ([#581](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/581))
+- `opentelemetry-instrumentation-botocore` Suppress botocore downstream instrumentation like urllib3
+  ([#563](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/563))
+- `opentelemetry-exporter-datadog` Datadog exporter should not use `unknown_service` as fallback resource service name.
+  ([#570](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/570))
 
 ### Added
 - `opentelemetry-instrumentation-httpx` Add `httpx` instrumentation
