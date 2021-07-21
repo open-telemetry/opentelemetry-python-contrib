@@ -3,18 +3,20 @@ name: Publish a Package from Tag
 on:
   push:
     tags:
-      - 'opentelemetry-+==1.+'
+      - 'opentelemetry-*==1.*'
 
 jobs:
-  publish:
-    name: Publish package from tag ${{ env.GITHUB_REF }}
+  publish-a-package:
+    name: Publish package from tag
     runs-on: ubuntu-latest
     steps:
     - uses: actions/checkout@v1
     - uses: actions/setup-python@v1
       with:
-        python-version: '3.7'
-    - name: Build wheel for tag ${{ env.GITHUB_REF }}
+        python-version: '3.9'
+    - name: Log tag that triggered publish workflow
+      run:  echo "Attempting to publish package from tag $GITHUB_REF"
+    - name: Build wheel for tag
       run: ./scripts/build_a_package.sh
     - name: Install twine
       run: |

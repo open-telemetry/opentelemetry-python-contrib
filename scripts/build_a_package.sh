@@ -20,51 +20,34 @@
 
 set -ev
 
-if [[ -z $GITHUB_REF ]]; then
+if [ -z $GITHUB_REF ]; then
   echo 'Failed to run script, missing workflow env variable GITHUB_REF'
   exit -1
 fi
 
-# Follows PEP 440 versioning conventions: https://www.python.org/dev/peps/pep-0440/#pre-releases
-# Only allow publishing packages that are 1.0+ using this method
-if ! [[ $GITHUB_REF =~ ^refs/tags/(opentelemetry-.*)==([1-9]([0-9]+)?\.[0-9]+((a|b|rc)[0-9]+)?(\.(post)?[0-9]+)?)$ ]]; then
-  echo 'Failed to parse package name and package version from tag.'
-  exit -1
-fi
-
-# From the capture groups in the regex above
-PKG_NAME=${BASH_REMATCH[1]}
-PKG_VERSION=${BASH_REMATCH[2]}
+PKG_NAME_AND_VERSION=${GITHUB_REF#refs/tags/*}
+PKG_NAME=${PKG_NAME_AND_VERSION%==*}
+PKG_VERSION=${PKG_NAME_AND_VERSION#opentelemetry-*==}
 
 # Get the latest versions of packaging tools
-python3 -m pip install --upgrade pip setuptools wheel
+python3 -m pip install --upgrade pip setuptools wheel packaging
 
-# If testing locally, change `BASEDIR` to your own repo directory
-BASEDIR=$(dirname $(readlink -f $(dirname $0)))
+# Validate vesrion against PEP 440 conventions: https://packaging.pypa.io/en/latest/version.html
+python3 -c "from packaging.version import Version; Version('${PKG_VERSION}')"
+
+BASEDIR=$(git rev-parse --show-toplevel)
 cd $BASEDIR
 
 DISTDIR=${BASEDIR}/dist
 mkdir -p $DISTDIR
 rm -rf $DISTDIR/*
 
-for DIRECTORY_WITH_PACKAGE in exporter/*/ instrumentation/*/ propagator/*/ sdk-extension/*/ util/*/; do
-  echo "Searching for $PKG_NAME in $DIRECTORY_WITH_PACKAGE"
+SETUP_PY_FILE_PATTERN=$(ls -U **/$PKG_NAME/setup.py)
+DIRECTORY_WITH_PACKAGE=$(dirname $SETUP_PY_FILE_PATTERN)
 
-  if [[ $DIRECTORY_WITH_PACKAGE =~ ^.*/$PKG_NAME/$ ]]; then
-    echo "Found $PKG_NAME in $DIRECTORY_WITH_PACKAGE"
+cd $DIRECTORY_WITH_PACKAGE
 
-    cd $DIRECTORY_WITH_PACKAGE
-
-    if ! [[ -f setup.py ]]; then
-      echo "Error! setup.py not found in $DIRECTORY_WITH_PACKAGE, can't build."
-      exit -1
-    fi
-
-    python3 setup.py sdist --dist-dir ${DISTDIR} clean --all
-
-    break
-  fi
-done
+python3 setup.py sdist --dist-dir ${DISTDIR} clean --all
 
 cd $DISTDIR
 
