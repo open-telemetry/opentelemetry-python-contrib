@@ -43,9 +43,9 @@ class StarletteInstrumentor(BaseInstrumentor):
     @staticmethod
     def instrument_app(
         app: applications.Starlette,
-        server_request_hook=None,
-        client_request_hook=None,
-        client_response_hook=None,
+        server_request_hook: _ServerRequestHookT = None,
+        client_request_hook: _ClientRequestHookT = None,
+        client_response_hook: _ClientResponseHookT = None,
         tracer_provider=None,
     ):
         """Instrument an uninstrumented Starlette application."""
@@ -84,9 +84,9 @@ class StarletteInstrumentor(BaseInstrumentor):
 
 class _InstrumentedStarlette(applications.Starlette):
     _tracer_provider = None
-    _server_request_hook = None
-    _client_request_hook = None
-    _client_response_hook = None
+    _server_request_hook: _ServerRequestHookT = None
+    _client_request_hook: _ClientRequestHookT = None
+    _client_response_hook: _ClientResponseHookT = None
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)

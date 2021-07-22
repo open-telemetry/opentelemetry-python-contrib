@@ -149,6 +149,7 @@ def create_trace_config(
 
     :param request_hook: Optional callback that can modify span name and request params.
     :param response_hook: Optional callback that can modify span name and response params.
+    :param tracer_provider: optional TracerProvider from which to get a Tracer
 
     :return: An object suitable for use with :py:class:`aiohttp.ClientSession`.
     :rtype: :py:class:`aiohttp.TraceConfig`

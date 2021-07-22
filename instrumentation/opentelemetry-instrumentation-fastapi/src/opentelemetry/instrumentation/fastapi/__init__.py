@@ -46,9 +46,9 @@ class FastAPIInstrumentor(BaseInstrumentor):
     @staticmethod
     def instrument_app(
         app: fastapi.FastAPI,
-        server_request_hook=None,
-        client_request_hook=None,
-        client_response_hook=None,
+        server_request_hook: _ServerRequestHookT = None,
+        client_request_hook: _ClientRequestHookT = None,
+        client_response_hook: _ClientResponseHookT = None,
         tracer_provider=None,
         excluded_urls=None,
     ):
@@ -117,6 +117,9 @@ class FastAPIInstrumentor(BaseInstrumentor):
 class _InstrumentedFastAPI(fastapi.FastAPI):
     _tracer_provider = None
     _excluded_urls = None
+    _server_request_hook: _ServerRequestHookT = None
+    _client_request_hook: _ClientRequestHookT = None
+    _client_response_hook: _ClientResponseHookT = None
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
