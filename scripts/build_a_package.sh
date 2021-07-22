@@ -43,6 +43,12 @@ mkdir -p $DISTDIR
 rm -rf $DISTDIR/*
 
 SETUP_PY_FILE_PATH=$(ls **/$PKG_NAME/setup.py)
+
+if [ -z $SETUP_PY_FILE_PATH ]; then
+  echo "Error! setup.py not found for $PKG_NAME, can't build."
+  exit -1
+fi
+
 DIRECTORY_WITH_PACKAGE=$(dirname $SETUP_PY_FILE_PATH)
 
 cd $DIRECTORY_WITH_PACKAGE
