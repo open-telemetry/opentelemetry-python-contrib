@@ -5,7 +5,15 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [Unreleased](https://github.com/open-telemetry/opentelemetry-python/compare/v1.3.0-0.22b0...HEAD)
+## [Unreleased](https://github.com/open-telemetry/opentelemetry-python/compare/v1.4.0-0.23b0...HEAD)
+
+### Changed
+- `opentelemetry-instrumentation-asgi`, `opentelemetry-instrumentation-aiohttp-client`, `openetelemetry-instrumentation-fastapi`, `opentelemetry-instrumentation-starlette`, `opentelemetry-instrumentation-urllib`, `opentelemetry-instrumentation-urllib3` Added `request_hook` and `response_hook` callbacks ([#576](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/576))
+## [1.4.0-0.23b0](https://github.com/open-telemetry/opentelemetry-python/releases/tag/v1.4.0-0.23b0) - 2021-07-21
+
+### Removed
+- Move `opentelemetry-instrumentation` to the core repo.
+  ([#595](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/595))
 
 ### Changed
 - `opentelemetry-instrumentation-tornado` properly instrument work done in tornado on_finish method.
@@ -47,7 +55,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   ([#581](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/581))
 - `opentelemetry-instrumentation-botocore` Suppress botocore downstream instrumentation like urllib3
   ([#563](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/563))
-- `opentelemetry-instrumentation-asgi`, `opentelemetry-instrumentation-aiohttp-client`, `openetelemetry-instrumentation-fastapi`, `opentelemetry-instrumentation-starlette`, `opentelemetry-instrumentation-urllib`, `opentelemetry-instrumentation-urllib3` Added `request_hook` and `response_hook` callbacks ([#576](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/576))
+- `opentelemetry-exporter-datadog` Datadog exporter should not use `unknown_service` as fallback resource service name.
+  ([#570](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/570))
 
 ### Added
 - `opentelemetry-instrumentation-httpx` Add `httpx` instrumentation
