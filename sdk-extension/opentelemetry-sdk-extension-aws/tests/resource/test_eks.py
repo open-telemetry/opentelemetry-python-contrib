@@ -30,51 +30,27 @@ MockEksResourceAttributes = {
     ResourceAttributes.CONTAINER_ID: "a4d00c9dd675d67f866c786181419e1b44832d4696780152e61afd44a3e02856",
 }
 
-files_for_stack_of_mock_open_calls = [
-    f"""12:perf_event:/
-11:cpuset:/
-10:devices:/
-9:freezer:/
-8:cpu,cpuacct:/
-7:blkio:/
-6:pids:/
-5:hugetlb:/
-4:net_cls,net_prio:/
-3:memory:/
-2:cpu:/docker/{MockEksResourceAttributes[ResourceAttributes.CONTAINER_ID]}
-1:name=systemd:/user.slice/user-1000.slice/session-34.scope
-""",
-    """-----BEGIN CERTIFICATE-----
-MOCKCeRTIf1ICATe+ERthElKtzANBgkqhkiG9w0BAQsFADBdMQswCQYDVQQGEwJB
-MOCKCeRTIf1ICATeQXVzdHJhbGlhMQ8wDQYDVQQHDAZTeWRuZXkxEjAQBgNVBAoM
-MOCKCeRTIf1ICATeMBMGA1UEAwwMTXlDb21tb25OYW1lMB4XDTIwMDkyMjA1MjIx
-MOCKCeRTIf1ICATeMjIxMFowXTELMAkGA1UEBhMCQVUxEjAQBgNVBAgMCUF1c3Ry
-MOCKCeRTIf1ICATeBwwGU3lkbmV5MRIwEAYDVQQKDAlNeU9yZ05hbWUxFTATBgNV
-MOCKCeRTIf1ICATeTmFtZTCCASIwDQYJKoZIhvcNAQEBBQADggEPADCCAQoCggEB
-MOCKCeRTIf1ICATeWq9mZzqLREoLTfNG8pRCPFvD+UEbl7ldLrzz5T92s4VX7HjA
-MOCKCeRTIf1ICATeXV1fBlbFcAmkISiYWYCmIxD1BfEN+Sh/9OVfKXZJVSInvs/I
-MOCKCeRTIf1ICATe/hlcZW9VA2IUkbTUb/qd7SK0pVpOK0KMdpVq5t1HqAP+ssB/
-MOCKCeRTIf1ICATei+s7LfMeiPya9hY/CRk6ei3oSrxLqQCXUeJAtS/iMzUDyq7u
-MOCKCeRTIf1ICATeF9AkUXRqp8DVsIJKGk4hN/aKvkJaJfHe66kirKeJWQXYp5Hh
-MOCKCeRTIf1ICATew50YnbsCAwEAATANBgkqhkiG9w0BAQsFAAOCAQEAwEEc13Oi
-MOCKCeRTIf1ICATeuNn9qTdXBjNwgQV9z0QZrw9puGAAc1oRs8cmPx+TMROSPzXM
-MOCKCeRTIf1ICATej4iRVm0rYm796q8IaicerkpN5XzFSeyzwnwMauyOA9cXsMfB
-MOCKCeRTIf1ICATeTuBD03Ic0kfz39bz0gPod6/CWo7ONRV6AoEwVi1vsULLUbA0
-MOCKCeRTIf1ICATex1DB5lKrATyFPCxR+kq6Q+EdfDq3r+B7rg+gyv6mCzaf5LZY
-MOCKCeRTIf1ICATeRebvp00i0RfeqSu3Uwr51oEidkLeBQftQm9Xvkt4Z3O+LJjw
-bf40dGXtFmgflw==
------END CERTIFICATE-----
-""",
-]
-
 
 class AwsEksResourceDetectorTest(unittest.TestCase):
     @patch(
         "opentelemetry.sdk.extension.aws.resource.eks._get_cluster_info",
         return_value=f"""{{
+  "kind": "ConfigMap",
+  "apiVersion": "v1",
+  "metadata": {{
+    "name": "cluster-info",
+    "namespace": "amazon-cloudwatch",
+    "selfLink": "/api/v1/namespaces/amazon-cloudwatch/configmaps/cluster-info",
+    "uid": "0734438c-48f4-45c3-b06d-b6f16f7f0e1e",
+    "resourceVersion": "25911",
+    "creationTimestamp": "2021-07-23T18:41:56Z",
+    "annotations": {{
+      "kubectl.kubernetes.io/last-applied-configuration": "{{\"apiVersion\":\"v1\",\"data\":{{\"cluster.name\":\"{MockEksResourceAttributes[ResourceAttributes.K8S_CLUSTER_NAME]}\",\"logs.region\":\"us-west-2\"}},\"kind\":\"ConfigMap\",\"metadata\":{{\"annotations\":{{}},\"name\":\"cluster-info\",\"namespace\":\"amazon-cloudwatch\"}}\n"
+    }}
+  }},
   "data": {{
     "cluster.name": "{MockEksResourceAttributes[ResourceAttributes.K8S_CLUSTER_NAME]}",
-    "force_flush_interval": 5
+    "logs.region": "us-west-2"
   }}
 }}
 """,
@@ -89,9 +65,22 @@ class AwsEksResourceDetectorTest(unittest.TestCase):
     )
     @patch(
         "builtins.open",
-        new_callable=lambda: mock_open(
-            read_data=files_for_stack_of_mock_open_calls.pop(0)
-        ),
+        new_callable=mock_open,
+        read_data=f"""14:name=systemd:/docker/{MockEksResourceAttributes[ResourceAttributes.CONTAINER_ID]}
+13:rdma:/
+12:pids:/docker/{MockEksResourceAttributes[ResourceAttributes.CONTAINER_ID]}
+11:hugetlb:/docker/{MockEksResourceAttributes[ResourceAttributes.CONTAINER_ID]}
+10:net_prio:/docker/{MockEksResourceAttributes[ResourceAttributes.CONTAINER_ID]}
+9:perf_event:/docker/{MockEksResourceAttributes[ResourceAttributes.CONTAINER_ID]}
+8:net_cls:/docker/{MockEksResourceAttributes[ResourceAttributes.CONTAINER_ID]}
+7:freezer:/docker/{MockEksResourceAttributes[ResourceAttributes.CONTAINER_ID]}
+6:devices:/docker/{MockEksResourceAttributes[ResourceAttributes.CONTAINER_ID]}
+5:memory:/docker/{MockEksResourceAttributes[ResourceAttributes.CONTAINER_ID]}
+4:blkio:/docker/{MockEksResourceAttributes[ResourceAttributes.CONTAINER_ID]}
+3:cpuacct:/docker/{MockEksResourceAttributes[ResourceAttributes.CONTAINER_ID]}
+2:cpu:/docker/{MockEksResourceAttributes[ResourceAttributes.CONTAINER_ID]}
+1:cpuset:/docker/{MockEksResourceAttributes[ResourceAttributes.CONTAINER_ID]}
+""",
     )
     def test_simple_create(
         self,
