@@ -95,7 +95,7 @@ def _get_cluster_name():
 
 def _get_container_id():
     container_id = ""
-    with open("proc/self/cgroup", encoding="utf8") as container_info_file:
+    with open("/proc/self/cgroup", encoding="utf8") as container_info_file:
         for raw_line in container_info_file.readlines():
             line = raw_line.strip()
             if len(line) > _CONTAINER_ID_LENGTH:
