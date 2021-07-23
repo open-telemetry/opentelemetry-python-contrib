@@ -21,48 +21,48 @@
 set -ev
 
 if [ -z $GITHUB_REF ]; then
-  echo 'Failed to run script, missing workflow env variable GITHUB_REF'
+  echo 'Failed to run script, missing workflow env variable GITHUB_REF.'
   exit -1
 fi
 
-PKG_NAME_AND_VERSION=${GITHUB_REF#refs/tags/*}
-PKG_NAME=${PKG_NAME_AND_VERSION%==*}
-PKG_VERSION=${PKG_NAME_AND_VERSION#opentelemetry-*==}
+pkg_name_and_version=${GITHUB_REF#refs/tags/*}
+pkg_name=${pkg_name_and_version%==*}
+pkg_version=${pkg_name_and_version#opentelemetry-*==}
 
 # Get the latest versions of packaging tools
 python3 -m pip install --upgrade pip setuptools wheel packaging
 
 # Validate vesrion against PEP 440 conventions: https://packaging.pypa.io/en/latest/version.html
-python3 -c "from packaging.version import Version; Version('${PKG_VERSION}')"
+python3 -c "from packaging.version import Version; Version('${pkg_version}')"
 
-BASEDIR=$(git rev-parse --show-toplevel)
-cd $BASEDIR
+basedir=$(git rev-parse --show-toplevel)
+cd $basedir
 
-DISTDIR=${BASEDIR}/dist
-mkdir -p $DISTDIR
-rm -rf $DISTDIR/*
+distdir=${basedir}/dist
+mkdir -p $distdir
+rm -rf $distdir/*
 
-SETUP_PY_FILE_PATH=$(ls **/$PKG_NAME/setup.py)
+setup_py_file_path=$(ls **/$pkg_name/setup.py)
 
-if [ -z $SETUP_PY_FILE_PATH ]; then
-  echo "Error! setup.py not found for $PKG_NAME, can't build."
+if [ -z $setup_py_file_path ]; then
+  echo "Error! setup.py not found for $pkg_name, can't build."
   exit -1
 fi
 
-DIRECTORY_WITH_PACKAGE=$(dirname $SETUP_PY_FILE_PATH)
+directory_with_package=$(dirname $setup_py_file_path)
 
-cd $DIRECTORY_WITH_PACKAGE
+cd $directory_with_package
 
-python3 setup.py sdist --dist-dir ${DISTDIR} clean --all
+python3 setup.py sdist --dist-dir ${distdir} clean --all
 
-cd $DISTDIR
+cd $distdir
 
-PKG_TAR_GZ_FILE=${PKG_NAME}-${PKG_VERSION}.tar.gz
+pkg_tar_gz_file=${pkg_name}-${pkg_version}.tar.gz
 
-if ! [ -f $PKG_TAR_GZ_FILE ]; then
+if ! [ -f $pkg_tar_gz_file ]; then
   echo 'Error! Tag version does not match version built using latest package files.'
   exit -1
 fi
 
 # Build a wheel for the source distribution
-pip wheel --no-deps $PKG_TAR_GZ_FILE
+pip wheel --no-deps $pkg_tar_gz_file
