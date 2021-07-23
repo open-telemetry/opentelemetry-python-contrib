@@ -58,5 +58,5 @@ class AwsLambdaResourceDetector(ResourceDetector):
             if self.raise_on_error:
                 raise exception
 
-            logger.warning(f"{self.__class__.__name__} failed: {exception}")
+            logger.warning("%s failed: %s", self.__class__.__name__, exception)
             return Resource.get_empty()

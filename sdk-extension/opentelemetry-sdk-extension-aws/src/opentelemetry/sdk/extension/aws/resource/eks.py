@@ -38,7 +38,9 @@ def _aws_http_request(method, path, cred_value):
             method=method,
         ),
         timeout=2000,
-        context=ssl.create_default_context(cafile="/var/run/secrets/kubernetes.io/serviceaccount/ca.crt"),
+        context=ssl.create_default_context(
+            cafile="/var/run/secrets/kubernetes.io/serviceaccount/ca.crt"
+        ),
     ) as response:
         return response.read().decode("utf-8")
 
@@ -127,5 +129,5 @@ class AwsEksResourceDetector(ResourceDetector):
             if self.raise_on_error:
                 raise exception
 
-            logger.warning(f"{self.__class__.__name__} failed: {exception}")
+            logger.warning("%s failed: %s", self.__class__.__name__, exception)
             return Resource.get_empty()

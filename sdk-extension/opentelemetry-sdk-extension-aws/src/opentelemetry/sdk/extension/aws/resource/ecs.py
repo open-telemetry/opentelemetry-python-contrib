@@ -53,8 +53,7 @@ class AwsEcsResourceDetector(ResourceDetector):
                             container_id = line[-_CONTAINER_ID_LENGTH:]
             except FileNotFoundError as exception:
                 logger.warning(
-                    "Failed to get container ID on ECS: %s.",
-                    exception,
+                    "Failed to get container ID on ECS: %s.", exception
                 )
 
             return Resource(
@@ -70,5 +69,5 @@ class AwsEcsResourceDetector(ResourceDetector):
             if self.raise_on_error:
                 raise exception
 
-            logger.warning(f"{self.__class__.__name__} failed: {exception}")
+            logger.warning("%s failed: %s", self.__class__.__name__, exception)
             return Resource.get_empty()
