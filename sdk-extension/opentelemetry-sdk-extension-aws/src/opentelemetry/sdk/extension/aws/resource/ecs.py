@@ -51,10 +51,9 @@ class AwsEcsResourceDetector(ResourceDetector):
                         line = raw_line.strip()
                         if len(line) > _CONTAINER_ID_LENGTH:
                             container_id = line[-_CONTAINER_ID_LENGTH:]
-            # pylint: disable=broad-except
-            except Exception as exception:
+            except FileNotFoundError as exception:
                 logger.warning(
-                    "AwsEcsDetector failed to get container Id: %s. Creating resource without it.",
+                    "Failed to get container ID on ECS: %s.",
                     exception,
                 )
 
