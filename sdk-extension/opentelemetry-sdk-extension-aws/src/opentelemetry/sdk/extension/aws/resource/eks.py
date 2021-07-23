@@ -30,7 +30,7 @@ _CONTAINER_ID_LENGTH = 64
 _GET_METHOD = "GET"
 
 
-def _aws_http_request(method, path, cred_value, cert_data):
+def _aws_http_request(method, path, cred_value):
     with urlopen(
         Request(
             "https://kubernetes.default.svc" + path,
@@ -38,7 +38,7 @@ def _aws_http_request(method, path, cred_value, cert_data):
             method=method,
         ),
         timeout=2000,
-        context=ssl.create_default_context(cadata=cert_data),
+        context=ssl.create_default_context(cafile="/var/run/secrets/kubernetes.io/serviceaccount/ca.crt"),
     ) as response:
         return response.read().decode("utf-8")
 
@@ -56,34 +56,28 @@ def _get_k8s_cred_value():
         raise exception
 
 
-def _is_eks(cred_value, cert_data):
+def _is_eks(cred_value):
     return _aws_http_request(
         _GET_METHOD,
         "/api/v1/namespaces/kube-system/configmaps/aws-auth",
         cred_value,
-        cert_data,
     )
 
 
-def _get_cluster_info(cred_value, cert_data):
+def _get_cluster_info(cred_value):
     return _aws_http_request(
         _GET_METHOD,
         "/api/v1/namespaces/amazon-cloudwatch/configmaps/cluster-info",
         cred_value,
-        cert_data,
     )
 
 
 def _get_cluster_name():
     cred_value = _get_k8s_cred_value()
-    with open(
-        "/var/run/secrets/kubernetes.io/serviceaccount/ca.crt"
-    ) as cert_file:
-        k8_cert_data = cert_file.read()
-        if not _is_eks(cred_value, k8_cert_data):
-            return Resource.get_empty()
+    if not _is_eks(cred_value):
+        return Resource.get_empty()
 
-    cluster_info = json.loads(_get_cluster_info(cred_value, k8_cert_data))
+    cluster_info = json.loads(_get_cluster_info(cred_value))
     cluster_name = ""
     try:
         cluster_name = cluster_info["data"]["cluster.name"]
@@ -106,6 +100,8 @@ def _get_container_id():
 class AwsEksResourceDetector(ResourceDetector):
     """Detects attribute values only available when the app is running on AWS
     Elastic Kubernetes Service (EKS) and returns them in a Resource.
+
+    NOTE: Uses a `cluster-info` configmap in the `amazon-cloudwatch` namespace. See more here: https://docs.aws.amazon.com/AmazonCloudWatch/latest/monitoring/Container-Insights-setup-EKS-quickstart.html#Container-Insights-setup-EKS-quickstart-Fluentd
     """
 
     def detect(self) -> "Resource":
