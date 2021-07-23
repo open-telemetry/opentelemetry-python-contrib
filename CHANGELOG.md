@@ -8,7 +8,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased](https://github.com/open-telemetry/opentelemetry-python/compare/v1.4.0-0.23b0...HEAD)
 
 ### Changed
-- Enable explicit excluded\_urls argument in `opentelemetry-instrumentation-flask`
+- Enable explicit `excluded_urls` argument in `opentelemetry-instrumentation-flask`
   ([#604](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/604))
 
 ## [1.4.0-0.23b0](https://github.com/open-telemetry/opentelemetry-python/releases/tag/v1.4.0-0.23b0) - 2021-07-21
