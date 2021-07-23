@@ -45,7 +45,7 @@ class AwsEksResourceDetectorTest(unittest.TestCase):
     "resourceVersion": "25911",
     "creationTimestamp": "2021-07-23T18:41:56Z",
     "annotations": {{
-      "kubectl.kubernetes.io/last-applied-configuration": "{{\"apiVersion\":\"v1\",\"data\":{{\"cluster.name\":\"{MockEksResourceAttributes[ResourceAttributes.K8S_CLUSTER_NAME]}\",\"logs.region\":\"us-west-2\"}},\"kind\":\"ConfigMap\",\"metadata\":{{\"annotations\":{{}},\"name\":\"cluster-info\",\"namespace\":\"amazon-cloudwatch\"}}\n"
+      "kubectl.kubernetes.io/last-applied-configuration": "{{\\"apiVersion\\":\\"v1\\",\\"data\\":{{\\"cluster.name\\":\\"{MockEksResourceAttributes[ResourceAttributes.K8S_CLUSTER_NAME]}\\",\\"logs.region\\":\\"us-west-2\\"}},\\"kind\\":\\"ConfigMap\\",\\"metadata\\":{{\\"annotations\\":{{}},\\"name\\":\\"cluster-info\\",\\"namespace\\":\\"amazon-cloudwatch\\"}}}}\\n"
     }}
   }},
   "data": {{
