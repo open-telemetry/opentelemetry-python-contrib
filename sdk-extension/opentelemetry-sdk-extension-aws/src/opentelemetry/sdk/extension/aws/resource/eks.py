@@ -114,7 +114,9 @@ class AwsEksResourceDetector(ResourceDetector):
             container_id = _get_container_id()
 
             if not container_id or not cluster_name:
-                raise RuntimeError("Neither cluster name nor container ID found on EKS process.")
+                raise RuntimeError(
+                    "Neither cluster name nor container ID found on EKS process."
+                )
 
             return Resource(
                 {
