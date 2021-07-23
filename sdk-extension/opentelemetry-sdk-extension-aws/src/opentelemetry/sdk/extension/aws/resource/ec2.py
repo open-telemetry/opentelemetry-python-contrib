@@ -96,10 +96,8 @@ class AwsEc2ResourceDetector(ResourceDetector):
             )
         # pylint: disable=broad-except
         except Exception as exception:
-            e_msg = f"{self.__class__.__name__} failed: {exception}"
             if self.raise_on_error:
-                logger.exception(e_msg)
                 raise exception
 
-            logger.warning(e_msg)
+            logger.warning(f"{self.__class__.__name__} failed: {exception}")
             return Resource.get_empty()
