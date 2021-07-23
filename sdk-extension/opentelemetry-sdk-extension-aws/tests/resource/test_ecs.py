@@ -42,18 +42,20 @@ class AwsEcsResourceDetectorTest(unittest.TestCase):
     @patch(
         "builtins.open",
         new_callable=mock_open,
-        read_data=f"""12:perf_event:/
-11:cpuset:/
-10:devices:/
-9:freezer:/
-8:cpu,cpuacct:/
-7:blkio:/
-6:pids:/
-5:hugetlb:/
-4:net_cls,net_prio:/
-3:memory:/
+        read_data=f"""14:name=systemd:/docker/{MockEcsResourceAttributes[ResourceAttributes.CONTAINER_ID]}
+13:rdma:/
+12:pids:/docker/{MockEcsResourceAttributes[ResourceAttributes.CONTAINER_ID]}
+11:hugetlb:/docker/{MockEcsResourceAttributes[ResourceAttributes.CONTAINER_ID]}
+10:net_prio:/docker/{MockEcsResourceAttributes[ResourceAttributes.CONTAINER_ID]}
+9:perf_event:/docker/{MockEcsResourceAttributes[ResourceAttributes.CONTAINER_ID]}
+8:net_cls:/docker/{MockEcsResourceAttributes[ResourceAttributes.CONTAINER_ID]}
+7:freezer:/docker/{MockEcsResourceAttributes[ResourceAttributes.CONTAINER_ID]}
+6:devices:/docker/{MockEcsResourceAttributes[ResourceAttributes.CONTAINER_ID]}
+5:memory:/docker/{MockEcsResourceAttributes[ResourceAttributes.CONTAINER_ID]}
+4:blkio:/docker/{MockEcsResourceAttributes[ResourceAttributes.CONTAINER_ID]}
+3:cpuacct:/docker/{MockEcsResourceAttributes[ResourceAttributes.CONTAINER_ID]}
 2:cpu:/docker/{MockEcsResourceAttributes[ResourceAttributes.CONTAINER_ID]}
-1:name=systemd:/user.slice/user-1000.slice/session-34.scope
+1:cpuset:/docker/{MockEcsResourceAttributes[ResourceAttributes.CONTAINER_ID]}
 """,
     )
     def test_simple_create(self, mock_open_function, mock_socket_gethostname):

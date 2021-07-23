@@ -43,7 +43,7 @@ class AwsEcsResourceDetector(ResourceDetector):
             container_id = ""
             try:
                 with open(
-                    "proc/self/cgroup", encoding="utf8"
+                    "/proc/self/cgroup", encoding="utf8"
                 ) as container_info_file:
                     for raw_line in container_info_file.readlines():
                         line = raw_line.strip()
