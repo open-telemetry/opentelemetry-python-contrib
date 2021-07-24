@@ -54,6 +54,7 @@ API
 from typing import Collection
 
 import sqlalchemy
+from packaging.version import parse as parse_version
 from wrapt import wrap_function_wrapper as _w
 
 from opentelemetry.instrumentation.instrumentor import BaseInstrumentor
@@ -89,7 +90,7 @@ class SQLAlchemyInstrumentor(BaseInstrumentor):
         """
         _w("sqlalchemy", "create_engine", _wrap_create_engine)
         _w("sqlalchemy.engine", "create_engine", _wrap_create_engine)
-        if sqlalchemy.__version__.startswith("1.4"):
+        if parse_version(sqlalchemy.__version__).release >= (1, 4):
             _w(
                 "sqlalchemy.ext.asyncio",
                 "create_async_engine",
@@ -108,5 +109,5 @@ class SQLAlchemyInstrumentor(BaseInstrumentor):
     def _uninstrument(self, **kwargs):
         unwrap(sqlalchemy, "create_engine")
         unwrap(sqlalchemy.engine, "create_engine")
-        if sqlalchemy.__version__.startswith("1.4"):
+        if parse_version(sqlalchemy.__version__).release >= (1, 4):
             unwrap(sqlalchemy.ext.asyncio, "create_async_engine")
