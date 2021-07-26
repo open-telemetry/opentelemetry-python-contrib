@@ -205,7 +205,9 @@ class _InstrumentedFlask(flask.Flask):
         self._is_instrumented_by_opentelemetry = True
 
         self.wsgi_app = _rewrapped_app(
-            self.wsgi_app, _InstrumentedFlask._response_hook
+            self.wsgi_app,
+            _InstrumentedFlask._response_hook,
+            excluded_urls=_InstrumentedFlask._excluded_urls,
         )
 
         tracer = trace.get_tracer(
@@ -213,7 +215,9 @@ class _InstrumentedFlask(flask.Flask):
         )
 
         _before_request = _wrapped_before_request(
-            _InstrumentedFlask._request_hook, tracer,
+            _InstrumentedFlask._request_hook,
+            tracer,
+            excluded_urls=_InstrumentedFlask._excluded_urls,
         )
         self._before_request = _before_request
         self.before_request(_before_request)
@@ -273,7 +277,9 @@ class FlaskInstrumentor(BaseInstrumentor):
                 else _excluded_urls_from_env
             )
             app._original_wsgi_app = app.wsgi_app
-            app.wsgi_app = _rewrapped_app(app.wsgi_app, response_hook)
+            app.wsgi_app = _rewrapped_app(
+                app.wsgi_app, response_hook, excluded_urls=excluded_urls
+            )
 
             tracer = trace.get_tracer(__name__, __version__, tracer_provider)
 
