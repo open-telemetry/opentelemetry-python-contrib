@@ -147,16 +147,16 @@ def create_trace_config(
         it as a span attribute. This can be useful to remove sensitive data
         such as API keys or user personal information.
 
-    :param request_hook: Optional callback that can modify span name and request params.
-    :param response_hook: Optional callback that can modify span name and response params.
+    :param Callable request_hook: Optional callback that can modify span name and request params.
+    :param Callable response_hook: Optional callback that can modify span name and response params.
     :param tracer_provider: optional TracerProvider from which to get a Tracer
 
     :return: An object suitable for use with :py:class:`aiohttp.ClientSession`.
     :rtype: :py:class:`aiohttp.TraceConfig`
     """
     # `aiohttp.TraceRequestStartParams` resolves to `aiohttp.tracing.TraceRequestStartParams`
-    # which doesn't exist in the aiottp intersphinx inventory.
-    # Explicitly specify the type for the `span_name` param and rtype to work
+    # which doesn't exist in the aiohttp intersphinx inventory.
+    # Explicitly specify the type for the `request_hook` and `response_hook` param and rtype to work
     # around this issue.
 
     tracer = get_tracer(__name__, __version__, tracer_provider)
