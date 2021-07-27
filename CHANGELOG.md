@@ -14,6 +14,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   `opentelemetry-instrumentation-starlette`, `opentelemetry-instrumentation-urllib`, `opentelemetry-instrumentation-urllib3` Added `request_hook` and `response_hook` callbacks 
   ([#576](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/576))
 
+### Changed
+- Server instrumentations now look for parent spans in current context before extracting context from carriers. ([#544](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/544))
+
 ## [1.4.0-0.23b0](https://github.com/open-telemetry/opentelemetry-python/releases/tag/v1.4.0-0.23b0) - 2021-07-21
 
 ### Removed

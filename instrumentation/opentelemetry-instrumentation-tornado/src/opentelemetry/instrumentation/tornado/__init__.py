@@ -253,13 +253,20 @@ def _get_operation_name(handler, request):
 
 
 def _start_span(tracer, handler, start_time) -> _TraceContext:
-    token = context.attach(extract(handler.request.headers))
+    token = ctx = span_kind = None
+
+    if trace.get_current_span() is trace.INVALID_SPAN:
+        ctx = extract(handler.request.headers)
+        token = context.attach(ctx)
+        span_kind = trace.SpanKind.SERVER
 
     span = tracer.start_span(
         _get_operation_name(handler, handler.request),
-        kind=trace.SpanKind.SERVER,
+        ctx,
+        kind=span_kind,
         start_time=start_time,
     )
+
     if span.is_recording():
         attributes = _get_attributes_from_request(handler.request)
         for key, value in attributes.items():
@@ -317,5 +324,6 @@ def _finish_span(tracer, handler, error=None):
         )
 
     ctx.activation.__exit__(*finish_args)  # pylint: disable=E1101
-    context.detach(ctx.token)
+    if ctx.token is not None:
+        context.detach(ctx.token)
     delattr(handler, _HANDLER_CONTEXT_KEY)

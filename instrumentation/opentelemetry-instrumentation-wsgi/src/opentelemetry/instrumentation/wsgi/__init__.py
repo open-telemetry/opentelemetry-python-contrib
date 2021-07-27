@@ -257,11 +257,17 @@ class OpenTelemetryMiddleware:
             start_response: The WSGI start_response callable.
         """
 
-        token = context.attach(extract(environ, getter=wsgi_getter))
+        token = ctx = span_kind = None
+
+        if trace.get_current_span() is trace.INVALID_SPAN:
+            ctx = extract(environ, getter=wsgi_getter)
+            token = context.attach(ctx)
+            span_kind = trace.SpanKind.SERVER
 
         span = self.tracer.start_span(
             get_default_span_name(environ),
-            kind=trace.SpanKind.SERVER,
+            ctx,
+            kind=span_kind,
             attributes=collect_request_attributes(environ),
         )
 
@@ -285,7 +291,8 @@ class OpenTelemetryMiddleware:
             if span.is_recording():
                 span.set_status(Status(StatusCode.ERROR, str(ex)))
             span.end()
-            context.detach(token)
+            if token is not None:
+                context.detach(token)
             raise
 
 
@@ -302,7 +309,8 @@ def _end_span_after_iterating(iterable, span, tracer, token):
         if close:
             close()
         span.end()
-        context.detach(token)
+        if token is not None:
+            context.detach(token)
 
 
 # TODO: inherit from opentelemetry.instrumentation.propagators.Setter

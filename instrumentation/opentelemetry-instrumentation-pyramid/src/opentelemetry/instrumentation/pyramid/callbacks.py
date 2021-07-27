@@ -92,8 +92,15 @@ def _before_traversal(event):
     else:
         span_name = otel_wsgi.get_default_span_name(request_environ)
 
+    token = ctx = span_kind = None
+
+    if trace.get_current_span() is trace.INVALID_SPAN:
+        ctx = extract(request_environ, getter=otel_wsgi.wsgi_getter)
+        token = context.attach(ctx)
+        span_kind = trace.SpanKind.SERVER
+
     span = tracer.start_span(
-        span_name, kind=trace.SpanKind.SERVER, start_time=start_time,
+        span_name, ctx, kind=span_kind, start_time=start_time,
     )
 
     if span.is_recording():
@@ -109,7 +116,8 @@ def _before_traversal(event):
     activation.__enter__()  # pylint: disable=E1101
     request_environ[_ENVIRON_ACTIVATION_KEY] = activation
     request_environ[_ENVIRON_SPAN_KEY] = span
-    request_environ[_ENVIRON_TOKEN] = token
+    if token is not None:
+        request_environ[_ENVIRON_TOKEN] = token
 
 
 def trace_tween_factory(handler, registry):
@@ -177,8 +185,8 @@ def trace_tween_factory(handler, registry):
                     )
                 else:
                     activation.__exit__(None, None, None)
-
-                context.detach(request.environ.get(_ENVIRON_TOKEN))
+                if request.environ.get(_ENVIRON_TOKEN, None) is not None:
+                    context.detach(request.environ.get(_ENVIRON_TOKEN))
 
         return response
 

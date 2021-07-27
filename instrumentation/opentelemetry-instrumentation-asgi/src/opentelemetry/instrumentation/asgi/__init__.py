@@ -219,8 +219,14 @@ class OpenTelemetryMiddleware:
         span_name, additional_attributes = self.default_span_details(scope)
 
         try:
+            token = ctx = span_kind = None
+            if trace.get_current_span() is trace.INVALID_SPAN:
+                ctx = extract(scope, getter=asgi_getter)
+                token = context.attach(ctx)
+                span_kind = trace.SpanKind.SERVER
+
             with self.tracer.start_as_current_span(
-                span_name, kind=trace.SpanKind.SERVER,
+                span_name, ctx, kind=span_kind
             ) as span:
                 if span.is_recording():
                     attributes = collect_request_attributes(scope)
@@ -265,4 +271,5 @@ class OpenTelemetryMiddleware:
 
                 await self.app(scope, wrapped_receive, wrapped_send)
         finally:
-            context.detach(token)
+            if token is not None:
+                context.detach(token)

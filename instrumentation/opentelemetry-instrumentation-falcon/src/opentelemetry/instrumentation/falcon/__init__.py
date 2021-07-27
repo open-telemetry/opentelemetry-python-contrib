@@ -174,12 +174,20 @@ class _InstrumentedFalconAPI(falcon.API):
 
         start_time = _time_ns()
 
-        token = context.attach(extract(env, getter=otel_wsgi.wsgi_getter))
+        token = ctx = span_kind = None
+
+        if trace.get_current_span() is trace.INVALID_SPAN:
+            ctx = extract(env, getter=otel_wsgi.wsgi_getter)
+            token = context.attach(ctx)
+            span_kind = trace.SpanKind.SERVER
+
         span = self._tracer.start_span(
             otel_wsgi.get_default_span_name(env),
-            kind=trace.SpanKind.SERVER,
+            ctx,
+            kind=span_kind,
             start_time=start_time,
         )
+
         if span.is_recording():
             attributes = otel_wsgi.collect_request_attributes(env)
             for key, value in attributes.items():
@@ -196,7 +204,8 @@ class _InstrumentedFalconAPI(falcon.API):
                 status, response_headers, *args, **kwargs
             )
             activation.__exit__(None, None, None)
-            context.detach(token)
+            if token is not None:
+                context.detach(token)
             return response
 
         try:
@@ -205,7 +214,8 @@ class _InstrumentedFalconAPI(falcon.API):
             activation.__exit__(
                 type(exc), exc, getattr(exc, "__traceback__", None),
             )
-            context.detach(token)
+            if token is not None:
+                context.detach(token)
             raise
 
 
