@@ -9,7 +9,7 @@ OpenTelemetry Falcon Tracing
 This library builds on the OpenTelemetry WSGI middleware to track web requests
 in Falcon applications.
 
-Currently only Falcon v2 is supported.
+Currently, only Falcon v2 is supported.
 
 Installation
 ------------
