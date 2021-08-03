@@ -13,4 +13,4 @@
 # limitations under the License.
 
 
-_instruments = ("falcon ~= 2.0", "falcon ~= 3.0")
+_instruments = ("falcon ~= 2.0",)
