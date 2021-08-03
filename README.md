@@ -78,7 +78,7 @@ To resolve this, members of the community are encouraged to commit to becoming a
 
 To release a package as `1.0` stable, the package MUST...:
 - [ ] Have a CODEOWNER. Submit an issue to become a CODEOWNER of a package and explain why you meet the responsibilities found in [CODEOWNERS](.github/CODEOWNERS)
-- [ ] Have unit tests that cover difference between versions the package claims to support
+- [ ] Have unit tests that cover all supported versions of the instrumented library
   - e.g. Instrumentation packages might use different techniques to instrument different major versions of python packages
 - [ ] Have clear documentation for non-obvious usages of the package
   - e.g. If an instrumentation package uses flags, a token as context, or parameters that are not typical of the `BaseInstrumentor` class, these are documented

@@ -3,10 +3,10 @@
 #
 # What is a "CODEOWNER"?
 #
-# A CODEOWNER MUST ____ for packages they own:
+# A CODEOWNER MUST:
 # - introduce themselves at a Python SIG meeting
-# - demonstrate advanced knowledge of the dependencies
-# - respond to issues when they are notified
+# - have enough knowledge of the corresponding instrumented library
+# - respond to issues
 # - fix failing unit tests or any other blockers to the CI/CD workflow
 # - update usage of `opentelemetry-python-core` APIs upon the introduction of breaking changes
 #
