@@ -96,6 +96,7 @@ def _get_container_id():
             line = raw_line.strip()
             if len(line) > _CONTAINER_ID_LENGTH:
                 container_id = line[-_CONTAINER_ID_LENGTH:]
+                break
     return container_id
 
 
