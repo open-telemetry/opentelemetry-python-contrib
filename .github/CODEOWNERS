@@ -4,7 +4,7 @@
 # What is a "CODEOWNER"?
 #
 # A CODEOWNER MUST:
-# - introduce themselves at a Python SIG meeting
+# - introduce themselves on the CNCF OTel Python channel: https://cloud-native.slack.com/archives/C01PD4HUVBL
 # - have enough knowledge of the corresponding instrumented library
 # - respond to issues
 # - fix failing unit tests or any other blockers to the CI/CD workflow
