@@ -80,6 +80,7 @@ Approvers ([@open-telemetry/python-approvers](https://github.com/orgs/open-telem
 
 - [Aaron Abbott](https://github.com/aabmass), Google
 - [Alex Boten](https://github.com/codeboten), Lightstep
+- [Nathaniel Ruiz Nowell](https://github.com/NathanielRN), AWS
 - [Srikanth Chekuri](https://github.com/lonewolf3739)
 
 *Find more about the approver role in [community repository](https://github.com/open-telemetry/community/blob/main/community-membership.md#approver).*
