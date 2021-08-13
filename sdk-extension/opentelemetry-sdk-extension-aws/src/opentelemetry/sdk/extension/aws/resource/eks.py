@@ -74,7 +74,7 @@ def _get_cluster_info(cred_value):
     )
 
 
-def _get_cluster_name(cred_value):
+def _get_cluster_name(cred_value) -> str:
     cluster_info = json.loads(_get_cluster_info(cred_value))
     cluster_name = ""
     try:
