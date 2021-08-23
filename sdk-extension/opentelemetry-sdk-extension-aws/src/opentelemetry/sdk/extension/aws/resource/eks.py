@@ -74,11 +74,7 @@ def _get_cluster_info(cred_value):
     )
 
 
-def _get_cluster_name():
-    cred_value = _get_k8s_cred_value()
-    if not _is_eks(cred_value):
-        return Resource.get_empty()
-
+def _get_cluster_name(cred_value) -> str:
     cluster_info = json.loads(_get_cluster_info(cred_value))
     cluster_name = ""
     try:
@@ -94,8 +90,10 @@ def _get_container_id():
     with open("/proc/self/cgroup", encoding="utf8") as container_info_file:
         for raw_line in container_info_file.readlines():
             line = raw_line.strip()
+            # Subsequent IDs should be the same, exit if found one
             if len(line) > _CONTAINER_ID_LENGTH:
                 container_id = line[-_CONTAINER_ID_LENGTH:]
+                break
     return container_id
 
 
@@ -108,7 +106,14 @@ class AwsEksResourceDetector(ResourceDetector):
 
     def detect(self) -> "Resource":
         try:
-            cluster_name = _get_cluster_name()
+            cred_value = _get_k8s_cred_value()
+
+            if not _is_eks(cred_value):
+                raise RuntimeError(
+                    "Could not confirm process is running on EKS."
+                )
+
+            cluster_name = _get_cluster_name(cred_value)
             container_id = _get_container_id()
 
             if not container_id and not cluster_name:

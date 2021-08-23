@@ -19,6 +19,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - `opentelemetry-instrumentation-fastapi` Allow instrumentation of newer FastAPI versions.
   ([#602](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/602))
 
+### Changed
+- Enable explicit `excluded_urls` argument in `opentelemetry-instrumentation-flask`
+  ([#604](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/604))
+
 ## [1.4.0-0.23b0](https://github.com/open-telemetry/opentelemetry-python/releases/tag/v1.4.0-0.23b0) - 2021-07-21
 
 ### Removed
@@ -67,6 +71,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   ([#563](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/563))
 - `opentelemetry-exporter-datadog` Datadog exporter should not use `unknown_service` as fallback resource service name.
   ([#570](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/570))
+- Add support for the async extension of SQLAlchemy (>= 1.4)
+  ([#568](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/568))
 
 ### Added
 - `opentelemetry-instrumentation-httpx` Add `httpx` instrumentation
