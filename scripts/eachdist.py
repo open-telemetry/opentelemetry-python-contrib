@@ -2,7 +2,6 @@
 
 import argparse
 import multiprocessing
-from multiprocessing.spawn import freeze_support
 import os
 import re
 import shlex
@@ -14,12 +13,14 @@ from datetime import datetime
 from functools import partial
 from inspect import cleandoc
 from itertools import chain
+from multiprocessing.spawn import freeze_support
 from os.path import basename
 from pathlib import Path, PurePath
 
 DEFAULT_ALLSEP = " "
 DEFAULT_ALLFMT = "{rel}"
-PROCESSES = multiprocessing.cpu_count() - 1
+# PROCESSES = multiprocessing.cpu_count() - 1
+PROCESSES = 1
 
 
 def unique(elems):
@@ -429,7 +430,12 @@ def execute_args(args):
             rawrel=path.relative_to(rootpath),
         )
 
-    _run = partial(_run_cmd, dry_run=args.dry_run, allowexitcode=args.allowexitcode, rootpath=rootpath) 
+    _run = partial(
+        _run_cmd,
+        dry_run=args.dry_run,
+        allowexitcode=args.allowexitcode,
+        rootpath=rootpath,
+    )
     if args.all:
         allstr = args.allsep.join(
             fmt_for_path(args.all, path) for path in targets
@@ -437,10 +443,7 @@ def execute_args(args):
         cmd = args.format.format(allstr)
         _run(cmd)
     else:
-        tasks = [
-            fmt_for_path(args.format, target)
-            for target in targets
-        ]
+        tasks = [fmt_for_path(args.format, target) for target in targets]
         with multiprocessing.Pool(PROCESSES) as pool:
             jobs = pool.map_async(_run, tasks)
             jobs.get()
@@ -529,11 +532,8 @@ def lint_args(args):
     rootdir = str(find_projectroot())
 
     execute_args(
-        parse_subargs(
-            args, ("exec", "pylint {}", "--mode", "lintroots")
-        )
+        parse_subargs(args, ("exec", "pylint {}", "--mode", "lintroots"))
     )
-
     return
 
     runsubprocess(
@@ -552,10 +552,7 @@ def lint_args(args):
     runsubprocess(args.dry_run, ("flake8", rootdir), check=True)
 
     execute_args(
-        parse_subargs(
-            # args, ("exec", "pylint {}", "--all", "--mode", "lintroots")
-            args, ("exec", "pylint {}", "--mode", "lintroots")
-        )
+        parse_subargs(args, ("exec", "pylint {}", "--mode", "lintroots"))
     )
     execute_args(
         parse_subargs(
@@ -568,13 +565,13 @@ def lint_args(args):
 def update_changelog(path, version, new_entry):
     unreleased_changes = False
     try:
-        with open(path) as changelog:
+        with open(path, encoding="utf-8") as changelog:
             text = changelog.read()
             if "## [{}]".format(version) in text:
                 raise AttributeError(
                     "{} already contans version {}".format(path, version)
                 )
-        with open(path) as changelog:
+        with open(path, encoding="utf-8") as changelog:
             for line in changelog:
                 if line.startswith("## [Unreleased]"):
                     unreleased_changes = False
@@ -590,7 +587,7 @@ def update_changelog(path, version, new_entry):
     if unreleased_changes:
         print("updating: {}".format(path))
         text = re.sub(r"## \[Unreleased\].*", new_entry, text)
-        with open(path, "w") as changelog:
+        with open(path, "w", encoding="utf-8") as changelog:
             changelog.write(text)
 
 
@@ -673,14 +670,14 @@ def update_files(targets, filename, search, replace):
             print("file missing: {}/{}".format(target, filename))
             continue
 
-        with open(curr_file) as _file:
+        with open(curr_file, encoding="utf-8") as _file:
             text = _file.read()
 
         if replace in text:
             print("{} already contains {}".format(curr_file, replace))
             continue
 
-        with open(curr_file, "w") as _file:
+        with open(curr_file, "w", encoding="utf-8") as _file:
             _file.write(re.sub(search, replace, text))
 
     if errors:
