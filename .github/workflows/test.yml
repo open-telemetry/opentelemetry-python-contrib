@@ -22,8 +22,10 @@ jobs:
     strategy:
       fail-fast: false  # ensures the entire test matrix is run, even if one permutation fails
       matrix:
-        python-version: [ py36, py37, py38, py39, pypy3 ]
-        package: ["instrumentation", "exporter", "sdkextension", "propagator"]
+        # python-version: [ py36, py37, py38, py39, pypy3 ]
+        # package: ["instrumentation", "exporter", "sdkextension", "propagator"]
+        python-version: [ py39 ]
+        package: ["propagator"]
         os: [ ubuntu-latest ]
     steps:
       - name: Checkout Contrib Repo @ SHA - ${{ github.sha }}
@@ -76,7 +78,8 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        tox-environment: [ "docker-tests", "lint", "docs", "generate" ]
+        # tox-environment: [ "docker-tests", "lint", "docs", "generate" ]
+        tox-environment: [ "lint" ]
     name: ${{ matrix.tox-environment }}
     runs-on: ubuntu-latest
     steps:

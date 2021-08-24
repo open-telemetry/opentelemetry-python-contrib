@@ -1,6 +1,8 @@
 #!/usr/bin/env python3
 
 import argparse
+import multiprocessing
+from multiprocessing.spawn import freeze_support
 import os
 import re
 import shlex
@@ -9,6 +11,7 @@ import subprocess
 import sys
 from configparser import ConfigParser
 from datetime import datetime
+from functools import partial
 from inspect import cleandoc
 from itertools import chain
 from os.path import basename
@@ -16,6 +19,7 @@ from pathlib import Path, PurePath
 
 DEFAULT_ALLSEP = " "
 DEFAULT_ALLFMT = "{rel}"
+PROCESSES = multiprocessing.cpu_count() - 1
 
 
 def unique(elems):
@@ -393,6 +397,18 @@ def runsubprocess(dry_run, params, *args, **kwargs):
         ) from exc
 
 
+def _run_cmd(cmd, dry_run, allowexitcode, rootpath):
+    result = runsubprocess(
+        dry_run, shlex.split(cmd), cwd=rootpath, check=False
+    )
+    if result is not None and result.returncode not in allowexitcode:
+        print(
+            "'{}' failed with code {}".format(cmd, result.returncode),
+            file=sys.stderr,
+        )
+        sys.exit(result.returncode)
+
+
 def execute_args(args):
     if args.allsep and not args.all:
         args.parser.error("--allsep specified but not --all.")
@@ -413,27 +429,23 @@ def execute_args(args):
             rawrel=path.relative_to(rootpath),
         )
 
-    def _runcmd(cmd):
-        result = runsubprocess(
-            args.dry_run, shlex.split(cmd), cwd=rootpath, check=False
-        )
-        if result is not None and result.returncode not in args.allowexitcode:
-            print(
-                "'{}' failed with code {}".format(cmd, result.returncode),
-                file=sys.stderr,
-            )
-            sys.exit(result.returncode)
-
+    _run = partial(_run_cmd, dry_run=args.dry_run, allowexitcode=args.allowexitcode, rootpath=rootpath) 
     if args.all:
         allstr = args.allsep.join(
             fmt_for_path(args.all, path) for path in targets
         )
         cmd = args.format.format(allstr)
-        _runcmd(cmd)
+        _run(cmd)
     else:
-        for target in targets:
-            cmd = fmt_for_path(args.format, target)
-            _runcmd(cmd)
+        tasks = [
+            fmt_for_path(args.format, target)
+            for target in targets
+        ]
+        with multiprocessing.Pool(PROCESSES) as pool:
+            jobs = pool.map_async(_run, tasks)
+            jobs.get()
+            pool.close()
+            pool.join()
 
 
 def clean_remainder_args(remainder_args):
@@ -516,6 +528,14 @@ def parse_subargs(parentargs, args):
 def lint_args(args):
     rootdir = str(find_projectroot())
 
+    execute_args(
+        parse_subargs(
+            args, ("exec", "pylint {}", "--mode", "lintroots")
+        )
+    )
+
+    return
+
     runsubprocess(
         args.dry_run,
         ("black", ".") + (("--diff", "--check") if args.check_only else ()),
@@ -530,9 +550,11 @@ def lint_args(args):
         check=True,
     )
     runsubprocess(args.dry_run, ("flake8", rootdir), check=True)
+
     execute_args(
         parse_subargs(
-            args, ("exec", "pylint {}", "--all", "--mode", "lintroots")
+            # args, ("exec", "pylint {}", "--all", "--mode", "lintroots")
+            args, ("exec", "pylint {}", "--mode", "lintroots")
         )
     )
     execute_args(
