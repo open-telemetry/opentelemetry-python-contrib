@@ -5,7 +5,11 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [Unreleased](https://github.com/open-telemetry/opentelemetry-python/compare/v1.4.0-0.23b0...HEAD)
+## [Unreleased](https://github.com/open-telemetry/opentelemetry-python/compare/v1.4.0-0.24.dev0...HEAD)
+
+## [1.4.0-0.24.dev0](https://github.com/open-telemetry/opentelemetry-python/releases/tag/v1.4.0-0.24.dev0) - 2021-08-25
+
+
 
 ### Added
 - `opentelemetry-sdk-extension-aws` Add AWS resource detectors to extension package
