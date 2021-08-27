@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased](https://github.com/open-telemetry/opentelemetry-python/compare/v1.5.0-0.24b0...HEAD)
 
+### Changed
+- `opentelemetry-instrumentation-botocore` Make botocore instrumentation (mostly) compliant with semantic conventions
+  ([#634](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/634))
+
 ## [1.5.0-0.24b0](https://github.com/open-telemetry/opentelemetry-python/releases/tag/v1.5.0-0.24b0) - 2021-08-26
 
 ### Added
