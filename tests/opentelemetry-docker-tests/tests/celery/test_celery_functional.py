@@ -12,10 +12,10 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-
-import celery
-from pytest import mark
+from celery import shared_task
 from celery.exceptions import Retry
+from celery.task import Task
+from pytest import mark
 
 import opentelemetry.instrumentation.celery
 from opentelemetry import trace as trace_api
@@ -451,7 +451,7 @@ def test_class_task_exception_excepted(celery_app, memory_exporter):
 def test_shared_task(celery_app, memory_exporter):
     """Ensure Django Shared Task are supported"""
 
-    @celery.shared_task
+    @shared_task
     def add(x, y):
         return x + y
 
@@ -484,7 +484,7 @@ def test_apply_async_previous_style_tasks(
     used even in newer versions. This should extend support to previous versions
     of Celery."""
 
-    class CelerySuperClass(celery.task.Task):
+    class CelerySuperClass(Task):
         abstract = True
 
         @classmethod
