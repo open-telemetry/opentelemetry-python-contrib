@@ -15,6 +15,7 @@
 
 import celery
 from celery.exceptions import Retry
+from flaky import flaky
 from pytest import mark
 
 import opentelemetry.instrumentation.celery
@@ -559,7 +560,7 @@ def test_apply_async_previous_style_tasks(
 
 
 # FIXME find a permanent solution for the flakiness of this test
-@mark.flaky
+@flaky
 def test_custom_tracer_provider(celery_app, memory_exporter):
     @celery_app.task
     def fn_task():
