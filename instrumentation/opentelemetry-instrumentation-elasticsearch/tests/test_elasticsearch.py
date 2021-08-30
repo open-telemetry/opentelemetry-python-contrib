@@ -71,8 +71,8 @@ class TestElasticsearchIntegration(TestBase):
         span = spans_list[0]
 
         # Check version and name in span's instrumentation info
-        # self.assertSpanInstrumentationInfo(span, opentelemetry.instrumentation.elasticsearch)
-        self.assertSpanInstrumentationInfo(
+        # self.assertEqualSpanInstrumentationInfo(span, opentelemetry.instrumentation.elasticsearch)
+        self.assertEqualSpanInstrumentationInfo(
             span, opentelemetry.instrumentation.elasticsearch
         )
 
