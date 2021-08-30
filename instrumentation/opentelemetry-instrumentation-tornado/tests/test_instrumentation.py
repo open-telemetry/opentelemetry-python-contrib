@@ -532,9 +532,7 @@ class TornadoHookTest(TornadoTest):
         client_span = spans[2]
         self.assertEqual(client_span.kind, SpanKind.CLIENT)
         self.assertEqual(client_span.name, "name from client hook")
-        self.assertSpanHasAttributes(
-            client_span, {"attr-from-hook": "value"}
-        )
+        self.assertSpanHasAttributes(client_span, {"attr-from-hook": "value"})
 
         self.memory_exporter.clear()
 
