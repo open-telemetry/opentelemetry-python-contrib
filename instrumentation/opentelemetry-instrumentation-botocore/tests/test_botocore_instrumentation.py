@@ -179,6 +179,7 @@ class TestBotocoreInstrumentor(TestBase):
         assert spans
         self.assertEqual(len(spans), 3)
 
+
         create_span = spans.by_attr("aws.operation", "CreateBucket")
         self.assertSpanHasAttributes(
             create_span,
@@ -205,6 +206,7 @@ class TestBotocoreInstrumentor(TestBase):
         self.assertTrue("params.Body" not in put_span.attributes.keys())
 
         get_span = spans.by_attr("aws.operation", "GetObject")
+
         self.assertSpanHasAttributes(
             get_span,
             {
