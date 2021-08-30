@@ -18,9 +18,6 @@ jobs:
       py39: 3.9
       pypy3: pypy3
       RUN_MATRIX_COMBINATION: ${{ matrix.python-version }}-${{ matrix.package }}-${{ matrix.os }}
-      # TODO: replace set-env windows command and get rid of this
-      # ACTIONS_ALLOW_UNSECURE_COMMANDS: true
-      # CRYPTOGRAPHY_DONT_BUILD_RUST: 1
     runs-on: ${{ matrix.os }}
     strategy:
       fail-fast: false  # ensures the entire test matrix is run, even if one permutation fails
@@ -51,32 +48,34 @@ jobs:
             c:\users\runneradmin\appdata\local\pip\cache
           key: v6-build-tox-cache-${{ env.RUN_MATRIX_COMBINATION }}-${{ hashFiles('tox.ini', 'gen-requirements.txt', 'dev-requirements.txt') }}
 
-      # <-- pypy+windows fixes 
+      # <-- pypy+windows fixes for instrumentation deps 
       # cryptography does not publish pre-built wheels for pypy+windows so pip will try to build the wheel
       # itself.
-      # TODO: run cryptography tests on pypy+windows+instrumentation and clean up IF conditions
+      - name: Detect Win+PyPy+Instrumentation
+        id: windows-pypy-check
+        if: ${{ matrix.os == 'windows-2019' && matrix.python-version == 'pypy3' && matrix.package == 'instrumentation' }}
+        run: echo "::set-output name=hit::true"
+
       - name: Win+PyPy - Setup Environment
-        if: ${{ matrix.os == 'windows-2019' && matrix.python-version == 'pypy3' }}
+        if: steps.windows-pypy-check.outputs.hit
         run: |
           echo "INCLUDE=C:\Program Files (x86)\OpenSSL-win32\include" | Out-File -FilePath $env:GITHUB_ENV -Encoding utf8 -Append
           echo "LIB=C:\Program Files (x86)\OpenSSL-win32\lib" | Out-File -FilePath $env:GITHUB_ENV -Encoding utf8 -Append
-        #echo "::set-env name=INCLUDE::C:\Program Files (x86)\OpenSSL-win32\include"
-        #echo "::set-env name=LIB::C:\Program Files (x86)\OpenSSL-win32\lib"
       - name: Win+PyPy + Cache Windows OpenSSL
+        id: openssl-cache
         uses: actions/cache@v2
-        if: ${{ matrix.os == 'windows-2019' && matrix.python-version == 'pypy3' }}
+        if: steps.windows-pypy-check.outputs.hit
         with:
           path: |
             C:\Program Files (x86)\OpenSSL-win32
           key: v2-win-openssl-cache-${{ matrix.os }}
       - name: Win+PyPy - Install OpenSSL
-        # TODO: fix check for exising openssl installation
-        if: ${{ matrix.os == 'windows-2019' && matrix.python-version == 'pypy3' && hashFiles('C:\Program Files (x86)\OpenSSL-win32\start.bat') == '' }}
+        if: steps.windows-pypy-check.outputs.hit && steps.openssl-cache.outputs.cache-hit != 'true'
         run: choco install openssl --forcex86
       # building cryptography inside tox is a bit unreliable. Pre-building it outside of tox improves chances
       # of tox installing the module successfully probably because of some rust build caching.
       - name: Win+PyPy - Pre-build cryptography
-        if: ${{ matrix.os == 'windows-2019' && matrix.python-version == 'pypy3' }}
+        if: steps.windows-pypy-check.outputs.hit
         run: pip install cryptography
       #  pypy+windows fixes ->
 

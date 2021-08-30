@@ -366,7 +366,7 @@ class TestBotocoreInstrumentor(TestBase):
         )["Role"]["Arn"]
 
     @mark.skipif(
-        sys.platform.startswith("win"),
+        sys.platform == "win32",
         reason="requires docker and Github CI Windows does not have docker installed by default",
     )
     @mock_lambda

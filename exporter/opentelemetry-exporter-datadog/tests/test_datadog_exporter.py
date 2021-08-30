@@ -472,7 +472,7 @@ class TestDatadogSpanExporter(unittest.TestCase):
         tracer_provider.shutdown()
 
     @mark.skipif(
-        sys.platform.startswith("win"), reason="unreliable test on windows",
+        sys.platform == "win32", reason="unreliable test on windows",
     )
     def test_span_processor_scheduled_delay(self):
         """Test that spans are exported each schedule_delay_millis"""
