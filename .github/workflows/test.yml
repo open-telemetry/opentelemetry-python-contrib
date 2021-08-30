@@ -16,7 +16,7 @@ jobs:
       py37: 3.7
       py38: 3.8
       py39: 3.9
-      pypy3: pypy3
+      pypy3: pypy-3.7
       RUN_MATRIX_COMBINATION: ${{ matrix.python-version }}-${{ matrix.package }}-${{ matrix.os }}
     runs-on: ${{ matrix.os }}
     strategy:
@@ -38,7 +38,7 @@ jobs:
         uses: actions/setup-python@v2
         with:
           python-version: ${{ env[matrix.python-version] }}
-
+          architecture: 'x64'  # some packages such as cryptography do not publish pre-built wheels for x86
       - name: Cache python/tox
         uses: actions/cache@v2
         with:
@@ -46,41 +46,7 @@ jobs:
             .tox
             ~/.cache/pip
             c:\users\runneradmin\appdata\local\pip\cache
-          key: v6-build-tox-cache-${{ env.RUN_MATRIX_COMBINATION }}-${{ hashFiles('tox.ini', 'gen-requirements.txt', 'dev-requirements.txt') }}
-
-      # <-- pypy+windows fixes for instrumentation deps 
-      # cryptography does not publish pre-built wheels for pypy+windows so pip will try to build the wheel
-      # itself.
-      - name: Detect Win+PyPy+Instrumentation
-        id: windows-pypy-check
-        if: ${{ matrix.os == 'windows-2019' && matrix.python-version == 'pypy3' && matrix.package == 'instrumentation' }}
-        run: echo "::set-output name=found::true"
-      - name: Win+PyPy - Setup Rust Crates 
-        if: steps.windows-pypy-check.outputs.found
-        run: rustup target add i686-pc-windows-msvc
-      - name: Win+PyPy - Setup Environment
-        if: steps.windows-pypy-check.outputs.found
-        run: |
-          echo "INCLUDE=C:\Program Files (x86)\OpenSSL-win32\include" | Out-File -FilePath $env:GITHUB_ENV -Encoding utf8 -Append
-          echo "LIB=C:\Program Files (x86)\OpenSSL-win32\lib" | Out-File -FilePath $env:GITHUB_ENV -Encoding utf8 -Append
-      - name: Win+PyPy + Cache Windows OpenSSL
-        id: openssl-cache
-        uses: actions/cache@v2
-        if: steps.windows-pypy-check.outputs.found
-        with:
-          path: |
-            C:\Program Files (x86)\OpenSSL-win32
-          key: v2-win-openssl-cache-${{ matrix.os }}
-      - name: Win+PyPy - Install OpenSSL
-        if: steps.windows-pypy-check.outputs.found && steps.openssl-cache.outputs.cache-hit != 'true'
-        run: choco install openssl --forcex86
-      # building cryptography inside tox is a bit unreliable. Pre-building it outside of tox improves chances
-      # of tox installing the module successfully probably because of some rust build caching.
-      - name: Win+PyPy - Pre-build cryptography
-        if: steps.windows-pypy-check.outputs.found
-        run: pip install cryptography
-      #  pypy+windows fixes ->
-
+          key: v7-build-tox-cache-${{ env.RUN_MATRIX_COMBINATION }}-${{ hashFiles('tox.ini', 'gen-requirements.txt', 'dev-requirements.txt') }}
       - name: Install tox and pip
         run: pip install -U tox-factor pip
       # tox fails on windows and Python3.6 when tox dir is reused between builds so we remove it
@@ -148,7 +114,7 @@ jobs:
           path: |
             .tox
             ~/.cache/pip
-          key: v5-misc-tox-cache-${{ matrix.tox-environment }}-${{ hashFiles('tox.ini', 'dev-requirements.txt', 'gen-requirements.txt', 'docs-requirements.txt') }}
+          key: v6-misc-tox-cache-${{ matrix.tox-environment }}-${{ hashFiles('tox.ini', 'dev-requirements.txt', 'gen-requirements.txt', 'docs-requirements.txt') }}
       - name: run tox
         run: tox -e ${{ matrix.tox-environment }}
       - name: Ensure generated code is up to date
