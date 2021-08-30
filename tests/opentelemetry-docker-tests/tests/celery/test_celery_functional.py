@@ -14,8 +14,8 @@
 
 
 import celery
-from pytest import mark
 from celery.exceptions import Retry
+from pytest import mark
 
 import opentelemetry.instrumentation.celery
 from opentelemetry import trace as trace_api
