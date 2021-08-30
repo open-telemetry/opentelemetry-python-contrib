@@ -66,7 +66,7 @@ class TestElasticsearchIntegration(TestBase):
         es = Elasticsearch()
         es.index(index="sw", doc_type="people", id=1, body={"name": "adam"})
 
-        spans_list = self.memory_exporter.get_finished_spans()
+        spans_list = self.get_finished_spans()
         self.assertEqual(len(spans_list), 1)
         span = spans_list[0]
 
@@ -81,7 +81,7 @@ class TestElasticsearchIntegration(TestBase):
 
         es.index(index="sw", doc_type="people", id=1, body={"name": "adam"})
 
-        spans_list = self.memory_exporter.get_finished_spans()
+        spans_list = self.get_finished_spans()
         self.assertEqual(len(spans_list), 1)
 
     def test_span_not_recording(self, request_mock):
@@ -121,7 +121,7 @@ class TestElasticsearchIntegration(TestBase):
         es = Elasticsearch()
         es.index(index="sw", doc_type="people", id=1, body={"name": "adam"})
 
-        spans_list = self.memory_exporter.get_finished_spans()
+        spans_list = self.get_finished_spans()
         self.assertEqual(len(spans_list), 1)
         span = spans_list[0]
         self.assertTrue(span.name.startswith(prefix))
@@ -135,7 +135,7 @@ class TestElasticsearchIntegration(TestBase):
         es = Elasticsearch()
         es.get(index="test-index", doc_type="tweet", id=1)
 
-        spans = self.memory_exporter.get_finished_spans()
+        spans = self.get_finished_spans()
 
         self.assertEqual(1, len(spans))
         self.assertEqual("False", spans[0].attributes["elasticsearch.found"])
@@ -163,7 +163,7 @@ class TestElasticsearchIntegration(TestBase):
         except Exception:  # pylint: disable=broad-except
             pass
 
-        spans = self.memory_exporter.get_finished_spans()
+        spans = self.get_finished_spans()
         self.assertEqual(1, len(spans))
         span = spans[0]
         self.assertFalse(span.status.is_ok)
@@ -235,7 +235,7 @@ class TestElasticsearchIntegration(TestBase):
             "term", author="testing"
         )
         search.execute()
-        spans = self.memory_exporter.get_finished_spans()
+        spans = self.get_finished_spans()
         span = spans[0]
         self.assertEqual(1, len(spans))
         self.assertEqual(span.name, "Elasticsearch/test-index/_search")
@@ -299,7 +299,7 @@ class TestElasticsearchIntegration(TestBase):
         )
         res = article.save(using=client)
         self.assertTrue(res)
-        spans = self.memory_exporter.get_finished_spans()
+        spans = self.get_finished_spans()
         self.assertEqual(1, len(spans))
         span = spans[0]
         self.assertEqual(span.name, helpers.dsl_index_span_name)

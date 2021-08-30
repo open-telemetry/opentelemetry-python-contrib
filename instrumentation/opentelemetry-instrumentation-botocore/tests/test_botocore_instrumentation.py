@@ -147,7 +147,6 @@ class TestBotocoreInstrumentor(TestBase):
         )
 
         # testing for span error
-        self.memory_exporter.get_finished_spans()
         with self.assertRaises(ParamValidationError):
             s3.list_objects(bucket="mybucket")
         spans = self.get_finished_spans()
@@ -178,7 +177,6 @@ class TestBotocoreInstrumentor(TestBase):
         spans = self.get_finished_spans()
         assert spans
         self.assertEqual(len(spans), 3)
-
 
         create_span = spans.by_attr("aws.operation", "CreateBucket")
         self.assertSpanHasAttributes(
