@@ -5,7 +5,9 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [Unreleased](https://github.com/open-telemetry/opentelemetry-python/compare/v1.4.0-0.23b0...HEAD)
+## [Unreleased](https://github.com/open-telemetry/opentelemetry-python/compare/v1.5.0-0.24b0...HEAD)
+
+## [1.5.0-0.24b0](https://github.com/open-telemetry/opentelemetry-python/releases/tag/v1.5.0-0.24b0) - 2021-08-26
 
 ### Added
 - `opentelemetry-sdk-extension-aws` Add AWS resource detectors to extension package
@@ -13,6 +15,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - `opentelemetry-instrumentation-asgi`, `opentelemetry-instrumentation-aiohttp-client`, `openetelemetry-instrumentation-fastapi`,        
   `opentelemetry-instrumentation-starlette`, `opentelemetry-instrumentation-urllib`, `opentelemetry-instrumentation-urllib3` Added `request_hook` and `response_hook` callbacks 
   ([#576](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/576))
+  
+### Changed
+
+- `opentelemetry-instrumentation-fastapi` Allow instrumentation of newer FastAPI versions.
+  ([#602](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/602))
 
 ### Changed
 - Enable explicit `excluded_urls` argument in `opentelemetry-instrumentation-flask`
@@ -25,6 +32,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   ([#595](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/595))
 
 ### Changed
+- `opentelemetry-instrumentation-falcon` added support for Falcon 3.
+  ([#607](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/607))
 - `opentelemetry-instrumentation-tornado` properly instrument work done in tornado on_finish method.
   ([#499](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/499))
 - `opentelemetry-instrumentation` Fixed cases where trying to use an instrumentation package without the
