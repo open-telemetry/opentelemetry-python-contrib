@@ -50,10 +50,10 @@ jobs:
       - name: Install tox and pip
         run: pip install -U tox-factor pip
       # tox fails on windows and Python3.6 when tox dir is reused between builds so we remove it
-      - name: fix for windows + py3.6
-        if: ${{ matrix.os == 'windows-2019' && matrix.python-version == 'py36' }} 
-        shell: pwsh
-        run: Remove-Item .\.tox\ -Force -Recurse -ErrorAction Ignore
+      #- name: fix for windows + py3.6
+      #  if: ${{ matrix.os == 'windows-2019' && matrix.python-version == 'py36' }} 
+      #  shell: pwsh
+      #  run: Remove-Item .\.tox\ -Force -Recurse -ErrorAction Ignore
       - name: run tox
         run: tox -f ${{ matrix.python-version }}-${{ matrix.package }} -- --benchmark-json=${{ env.RUN_MATRIX_COMBINATION }}-benchmark.json
       - name: Find and merge benchmarks
@@ -102,6 +102,7 @@ jobs:
         uses: actions/setup-python@v2
         with:
           python-version: 3.9
+          architecture: 'x64'
       - name: Install tox
         run: pip install -U tox
       - name: Install libsnappy-dev
