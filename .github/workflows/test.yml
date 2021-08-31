@@ -6,7 +6,7 @@ on:
     - 'release/*'
   pull_request:
 env:
-  CORE_REPO_SHA: 8d436dac6e6ea4643b342be80a7b5d188623a5dc
+  CORE_REPO_SHA: c49ad57bfe35cfc69bfa863d74058ca9bec55fc3
 
 jobs:
   build:
@@ -16,7 +16,7 @@ jobs:
       py37: 3.7
       py38: 3.8
       py39: 3.9
-      pypy3: pypy-3.7
+      pypy3: pypy3
       RUN_MATRIX_COMBINATION: ${{ matrix.python-version }}-${{ matrix.package }}-${{ matrix.os }}
     runs-on: ${{ matrix.os }}
     strategy:
@@ -24,7 +24,7 @@ jobs:
       matrix:
         python-version: [ py36, py37, py38, py39, pypy3 ]
         package: ["instrumentation", "exporter", "sdkextension", "propagator"]
-        os: [ ubuntu-20.04, windows-2019 ]
+        os: [ ubuntu-latest ]
     steps:
       - name: Checkout Contrib Repo @ SHA - ${{ github.sha }}
         uses: actions/checkout@v2
@@ -38,36 +38,28 @@ jobs:
         uses: actions/setup-python@v2
         with:
           python-version: ${{ env[matrix.python-version] }}
-          architecture: 'x64'  # some packages such as cryptography do not publish pre-built wheels for x86
-      - name: Cache python/tox
+      - name: Install tox
+        run: pip install -U tox-factor
+      - name: Cache tox environment
+        # Preserves .tox directory between runs for faster installs
         uses: actions/cache@v2
         with:
           path: |
             .tox
             ~/.cache/pip
-            c:\users\runneradmin\appdata\local\pip\cache
-          key: v7-build-tox-cache-${{ env.RUN_MATRIX_COMBINATION }}-${{ hashFiles('tox.ini', 'gen-requirements.txt', 'dev-requirements.txt') }}
-      - name: Install tox and pip
-        run: pip install -U tox-factor pip
-      # tox fails on windows and Python3.6 when tox dir is reused between builds so we remove it
-      - name: fix for windows + py3.6
-        if: ${{ matrix.os == 'windows-2019' && matrix.python-version == 'py36' }} 
-        shell: pwsh
-        run: Remove-Item .\.tox\ -Force -Recurse -ErrorAction Ignore
+          key: v4-build-tox-cache-${{ env.RUN_MATRIX_COMBINATION }}-${{ hashFiles('tox.ini', 'gen-requirements.txt', 'dev-requirements.txt') }}
       - name: run tox
         run: tox -f ${{ matrix.python-version }}-${{ matrix.package }} -- --benchmark-json=${{ env.RUN_MATRIX_COMBINATION }}-benchmark.json
       - name: Find and merge benchmarks
-        # TODO: fix and enable on windows
         # TODO: Add at least one benchmark to every package type to remove this (#249)
-        if: ${{ matrix.package == 'sdkextension' && matrix.os != 'windows-2019' }}
+        if: matrix.package == 'sdkextension'
         run: >-
           jq -s '.[0].benchmarks = ([.[].benchmarks] | add)
           | if .[0].benchmarks == null then null else .[0] end'
           **/**/tests/*${{ matrix.package }}*-benchmark.json > output.json
       - name: Report on benchmark results
-        # TODO: fix and enable on windows
         # TODO: Add at least one benchmark to every package type to remove this (#249)
-        if: ${{ matrix.package == 'sdkextension' && matrix.os != 'windows-2019' }}
+        if: matrix.package == 'sdkextension'
         uses: rhysd/github-action-benchmark@v1
         with:
           name: OpenTelemetry Python Benchmarks - Python ${{ env[matrix.python-version ]}} - ${{ matrix.package }}
@@ -88,7 +80,7 @@ jobs:
       matrix:
         tox-environment: [ "docker-tests", "lint", "docs", "generate" ]
     name: ${{ matrix.tox-environment }}
-    runs-on: ubuntu-20.04
+    runs-on: ubuntu-latest
     steps:
       - name: Checkout Contrib Repo @ SHA - ${{ github.sha }}
         uses: actions/checkout@v2
@@ -102,7 +94,6 @@ jobs:
         uses: actions/setup-python@v2
         with:
           python-version: 3.9
-          architecture: 'x64'
       - name: Install tox
         run: pip install -U tox
       - name: Install libsnappy-dev
@@ -115,7 +106,7 @@ jobs:
           path: |
             .tox
             ~/.cache/pip
-          key: v6-misc-tox-cache-${{ matrix.tox-environment }}-${{ hashFiles('tox.ini', 'dev-requirements.txt', 'gen-requirements.txt', 'docs-requirements.txt') }}
+          key: v4-misc-tox-cache-${{ matrix.tox-environment }}-${{ hashFiles('tox.ini', 'dev-requirements.txt', 'gen-requirements.txt', 'docs-requirements.txt') }}
       - name: run tox
         run: tox -e ${{ matrix.tox-environment }}
       - name: Ensure generated code is up to date
