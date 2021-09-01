@@ -86,10 +86,12 @@ from pyramid.settings import aslist
 from wrapt import wrap_function_wrapper as _wrap
 
 from opentelemetry.instrumentation.instrumentor import BaseInstrumentor
+from opentelemetry.instrumentation.pyramid.callbacks import (  # noqa
+    trace_tween_factory,
+)
 from opentelemetry.instrumentation.pyramid.callbacks import (
     SETTING_TRACE_ENABLED,
     TWEEN_NAME,
-    trace_tween_factory,  # noqa
 )
 from opentelemetry.instrumentation.pyramid.package import _instruments
 from opentelemetry.instrumentation.utils import unwrap
