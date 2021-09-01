@@ -141,22 +141,24 @@ class FalconInstrumentor(BaseInstrumentor):
 
     def _instrument(self, **kwargs):
         self._original_falcon_api = None
-        self._original_falcon_app = None
         if hasattr(falcon, "App"):
             # Falcon 3
             falcon.App = partial(
                 _InstrumentedFalconAPI, **kwargs
             )
             self._original_falcon_api = falcon.API
-            return
-        # Falcon 2
-        self._original_falcon_api = falcon.API
-        falcon.API = partial(_InstrumentedFalconAPI, **kwargs)
+        else:
+            # Falcon 2
+            self._original_falcon_api = falcon.API
+            falcon.API = partial(_InstrumentedFalconAPI, **kwargs)
 
     def _uninstrument(self, **kwargs):
-        falcon.API = self._original_falcon_api
-        falcon.App = self._original_falcon_app
-
+        if hasattr(falcon, "App"):
+            # Falcon 3
+            falcon.App = self._original_falcon_api
+        else:
+            # Falcon 2
+            falcon.API = self._original_falcon_api
 
 class _InstrumentedFalconAPI(falcon.API):
     def __init__(self, *args, **kwargs):
