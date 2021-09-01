@@ -89,9 +89,16 @@ from opentelemetry.instrumentation.instrumentor import BaseInstrumentor
 from opentelemetry.instrumentation.pyramid.callbacks import (
     SETTING_TRACE_ENABLED,
     TWEEN_NAME,
+    trace_tween_factory
 )
 from opentelemetry.instrumentation.pyramid.package import _instruments
 from opentelemetry.instrumentation.utils import unwrap
+
+
+# test_automatic.TestAutomatic.test_tween_list needs trace_tween_factory to be
+# imported in this module. The next line is necessary to avoid a lint error
+# from importing an unused symbol.
+trace_tween_factory
 
 
 def _traced_init(wrapped, instance, args, kwargs):
