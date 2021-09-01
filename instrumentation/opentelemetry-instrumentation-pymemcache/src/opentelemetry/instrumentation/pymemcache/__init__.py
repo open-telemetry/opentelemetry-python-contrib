@@ -41,7 +41,6 @@ import logging
 from typing import Collection
 
 import pymemcache
-from wrapt import ObjectProxy
 from wrapt import wrap_function_wrapper as _wrap
 
 from opentelemetry.instrumentation.instrumentor import BaseInstrumentor
@@ -49,7 +48,6 @@ from opentelemetry.instrumentation.pymemcache.package import _instruments
 from opentelemetry.instrumentation.pymemcache.version import __version__
 from opentelemetry.instrumentation.utils import unwrap
 from opentelemetry.semconv.trace import (
-    DbSystemValues,
     NetTransportValues,
     SpanAttributes,
 )
