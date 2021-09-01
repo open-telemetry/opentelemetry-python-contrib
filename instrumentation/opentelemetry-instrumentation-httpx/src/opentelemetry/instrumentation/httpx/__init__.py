@@ -16,7 +16,6 @@ import logging
 import typing
 
 import httpx
-import wrapt
 
 from opentelemetry import context
 from opentelemetry.instrumentation.httpx.package import _instruments
