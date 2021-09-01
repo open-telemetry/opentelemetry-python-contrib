@@ -11,7 +11,7 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-
+import json
 import typing
 from unittest import mock
 
@@ -279,3 +279,28 @@ class TestURLLib3Instrumentor(TestBase):
         self.assertEqual(span.name, "name set from hook")
         self.assertIn("response_hook_attr", span.attributes)
         self.assertEqual(span.attributes["response_hook_attr"], "value")
+
+    def test_extended_request_hook(self):
+        def extended_request_hook(span, request, headers, body):
+            span.set_attribute("request_hook_headers", json.dumps(headers))
+            span.set_attribute("request_hook_body", body)
+
+        URLLib3Instrumentor().uninstrument()
+        URLLib3Instrumentor().instrument(
+            request_hook=extended_request_hook,
+        )
+
+        headers = {"header1": "value1", "header2": "value2"}
+        body = "param1=1&param2=2"
+
+        pool = urllib3.HTTPConnectionPool("httpbin.org")
+        response = pool.request("GET", "/status/200", body=body, headers=headers)
+
+        self.assertEqual(b"Hello!", response.data)
+
+        span = self.assert_span()
+
+        self.assertIn("request_hook_headers", span.attributes)
+        self.assertEqual(span.attributes["request_hook_headers"], json.dumps(headers))
+        self.assertIn("request_hook_body", span.attributes)
+        self.assertEqual(span.attributes["request_hook_body"], body)
