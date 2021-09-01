@@ -89,7 +89,7 @@ from opentelemetry.instrumentation.instrumentor import BaseInstrumentor
 from opentelemetry.instrumentation.pyramid.callbacks import (
     SETTING_TRACE_ENABLED,
     TWEEN_NAME,
-    trace_tween_factory
+    trace_tween_factory,
 )
 from opentelemetry.instrumentation.pyramid.package import _instruments
 from opentelemetry.instrumentation.utils import unwrap
