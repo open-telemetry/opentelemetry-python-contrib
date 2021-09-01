@@ -97,7 +97,7 @@ from opentelemetry.instrumentation.utils import unwrap
 # test_automatic.TestAutomatic.test_tween_list needs trace_tween_factory to be
 # imported in this module. The next line is necessary to avoid a lint error
 # from importing an unused symbol.
-trace_tween_factory
+trace_tween_factory  # pylint: disable=pointless-statement
 
 
 def _traced_init(wrapped, instance, args, kwargs):
