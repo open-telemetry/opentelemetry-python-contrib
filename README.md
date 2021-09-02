@@ -72,22 +72,24 @@ See [CONTRIBUTING.md](CONTRIBUTING.md)
 
 We meet weekly on Thursday, and the time of the meeting alternates between 9AM PT and 4PM PT. The meeting is subject to change depending on contributors' availability. Check the [OpenTelemetry community calendar](https://calendar.google.com/calendar/embed?src=google.com_b79e3e90j7bbsa2n2p5an5lf60%40group.calendar.google.com) for specific dates.
 
-Meetings take place via [Zoom video conference](https://zoom.us/j/6729396170). The passcode is _77777_.
+Meetings take place via [Zoom video conference](https://zoom.us/j/8287234601?pwd=YjN2MURycXc4cEZlYTRtYjJaM0grZz09). The passcode is _77777_.
 
 Meeting notes are available as a public [Google doc](https://docs.google.com/document/d/1CIMGoIOZ-c3-igzbd6_Pnxx1SjAkjwqoYSUWxPY8XIs/edit). For edit access, get in touch on [GitHub Discussions](https://github.com/open-telemetry/opentelemetry-python/discussions).
 
 Approvers ([@open-telemetry/python-approvers](https://github.com/orgs/open-telemetry/teams/python-approvers)):
 
 - [Aaron Abbott](https://github.com/aabmass), Google
-- [Diego Hurtado](https://github.com/ocelotl), Lightstep
-- [Owais Lone](https://github.com/owais), Splunk
+- [Alex Boten](https://github.com/codeboten), Lightstep
+- [Nathaniel Ruiz Nowell](https://github.com/NathanielRN), AWS
+- [Srikanth Chekuri](https://github.com/lonewolf3739)
 
 *Find more about the approver role in [community repository](https://github.com/open-telemetry/community/blob/main/community-membership.md#approver).*
 
 Maintainers ([@open-telemetry/python-maintainers](https://github.com/orgs/open-telemetry/teams/python-maintainers)):
 
-- [Alex Boten](https://github.com/codeboten), Lightstep
+- [Diego Hurtado](https://github.com/ocelotl), Lightstep
 - [Leighton Chen](https://github.com/lzchen), Microsoft
+- [Owais Lone](https://github.com/owais), Splunk
 
 *Find more about the maintainer role in [community repository](https://github.com/open-telemetry/community/blob/main/community-membership.md#maintainer).*
 

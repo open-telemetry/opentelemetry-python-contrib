@@ -16,7 +16,7 @@ import contextlib
 import logging
 import threading
 
-from sqlalchemy import Column, Integer, String, create_engine, insert
+from sqlalchemy import Column, Integer, String, create_engine
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.orm import close_all_sessions, scoped_session, sessionmaker
 
@@ -242,4 +242,10 @@ class SQLAlchemyTestMixin(TestBase):
                 close_all_sessions()
 
         spans = self.memory_exporter.get_finished_spans()
-        self.assertEqual(len(spans), 5)
+
+        # SQLAlchemy 1.4 uses the `execute_values` extension of the psycopg2 dialect to
+        # batch inserts together which means `insert_players` only generates one span.
+        # See https://docs.sqlalchemy.org/en/14/changelog/migration_14.html#orm-batch-inserts-with-psycopg2-now-batch-statements-with-returning-in-most-cases
+        self.assertEqual(
+            len(spans), 5 if self.VENDOR not in ["postgresql"] else 3
+        )
