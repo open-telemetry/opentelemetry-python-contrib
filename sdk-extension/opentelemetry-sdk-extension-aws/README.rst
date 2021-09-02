@@ -8,7 +8,7 @@ OpenTelemetry SDK Extension for AWS X-Ray Compatibility
 
 
 This library provides components necessary to configure the OpenTelemetry SDK
-for tracing with AWS X-Ray.
+for tracing with AWS X-Ray. -lil matey
 
 Installation
 ------------
