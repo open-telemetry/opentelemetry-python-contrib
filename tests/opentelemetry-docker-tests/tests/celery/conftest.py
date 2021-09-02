@@ -60,10 +60,9 @@ def patch_celery_app(celery_app, celery_worker):
     celery_app.task = wrap_task(celery_app.task)
 
 
-@pytest.fixture(autouse=True)
-def instrument(tracer_provider, memory_exporter):
+@pytest.fixture(autouse=True, scope="function")
+def instrument(tracer_provider):
     CeleryInstrumentor().instrument(tracer_provider=tracer_provider)
-    memory_exporter.clear()
 
     yield
 
@@ -89,4 +88,5 @@ def tracer_provider(memory_exporter):
 @pytest.fixture(scope="function")
 def memory_exporter():
     memory_exporter = InMemorySpanExporter()
-    return memory_exporter
+    yield memory_exporter
+    memory_exporter.clear()

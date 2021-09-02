@@ -13,9 +13,10 @@
 # limitations under the License.
 
 
+import logging
+
 import celery
 from celery.exceptions import Retry
-from flaky import flaky
 from pytest import mark
 
 import opentelemetry.instrumentation.celery
@@ -25,6 +26,9 @@ from opentelemetry.sdk import resources
 from opentelemetry.sdk.trace import TracerProvider, export
 from opentelemetry.semconv.trace import SpanAttributes
 from opentelemetry.trace import StatusCode
+
+logger = logging.getLogger(__name__)
+
 
 # set a high timeout for async executions due to issues in CI
 ASYNC_GET_TIMEOUT = 120
@@ -37,10 +41,10 @@ class MyException(Exception):
 @mark.skip(reason="inconsistent test results")
 def test_instrumentation_info(celery_app, memory_exporter):
     @celery_app.task
-    def fn_task():
+    def fn_task_instrumentation_info():
         return 42
 
-    result = fn_task.apply_async()
+    result = fn_task_instrumentation_info.apply_async()
     assert result.get(timeout=ASYNC_GET_TIMEOUT) == 42
 
     spans = memory_exporter.get_finished_spans()
@@ -68,10 +72,10 @@ def test_instrumentation_info(celery_app, memory_exporter):
 
 def test_fn_task_run(celery_app, memory_exporter):
     @celery_app.task
-    def fn_task():
+    def fn_task_run():
         return 42
 
-    t = fn_task.run()
+    t = fn_task_run.run()
     assert t == 42
 
     spans = memory_exporter.get_finished_spans()
@@ -80,10 +84,10 @@ def test_fn_task_run(celery_app, memory_exporter):
 
 def test_fn_task_call(celery_app, memory_exporter):
     @celery_app.task
-    def fn_task():
+    def fn_task_call():
         return 42
 
-    t = fn_task()
+    t = fn_task_call()
     assert t == 42
 
     spans = memory_exporter.get_finished_spans()
@@ -92,10 +96,10 @@ def test_fn_task_call(celery_app, memory_exporter):
 
 def test_fn_task_apply(celery_app, memory_exporter):
     @celery_app.task
-    def fn_task():
+    def fn_task_apply():
         return 42
 
-    t = fn_task.apply()
+    t = fn_task_apply.apply()
     assert t.successful() is True
     assert t.result == 42
 
@@ -105,13 +109,13 @@ def test_fn_task_apply(celery_app, memory_exporter):
     span = spans[0]
 
     assert span.status.is_ok is True
-    assert span.name == "run/test_celery_functional.fn_task"
+    assert span.name == "run/test_celery_functional.fn_task_apply"
     assert (
         span.attributes.get(SpanAttributes.MESSAGING_MESSAGE_ID) == t.task_id
     )
     assert (
         span.attributes.get("celery.task_name")
-        == "test_celery_functional.fn_task"
+        == "test_celery_functional.fn_task_apply"
     )
     assert span.attributes.get("celery.action") == "run"
     assert span.attributes.get("celery.state") == "SUCCESS"
@@ -119,10 +123,10 @@ def test_fn_task_apply(celery_app, memory_exporter):
 
 def test_fn_task_apply_bind(celery_app, memory_exporter):
     @celery_app.task(bind=True)
-    def fn_task(self):
+    def fn_task_apply_bind(self):
         return self
 
-    t = fn_task.apply()
+    t = fn_task_apply_bind.apply()
     assert t.successful() is True
     assert "fn_task" in t.result.name
 
@@ -132,13 +136,13 @@ def test_fn_task_apply_bind(celery_app, memory_exporter):
     span = spans[0]
 
     assert span.status.is_ok is True
-    assert span.name == "run/test_celery_functional.fn_task"
+    assert span.name == "run/test_celery_functional.fn_task_apply_bind"
     assert (
         span.attributes.get(SpanAttributes.MESSAGING_MESSAGE_ID) == t.task_id
     )
     assert (
         span.attributes.get("celery.task_name")
-        == "test_celery_functional.fn_task"
+        == "test_celery_functional.fn_task_apply_bind"
     )
     assert span.attributes.get("celery.action") == "run"
     assert span.attributes.get("celery.state") == "SUCCESS"
@@ -194,10 +198,10 @@ def test_fn_task_apply_async(celery_app, memory_exporter):
 @mark.skip(reason="inconsistent test results")
 def test_concurrent_delays(celery_app, memory_exporter):
     @celery_app.task
-    def fn_task():
+    def fn_task_delayed():
         return 42
 
-    results = [fn_task.delay() for _ in range(100)]
+    results = [fn_task_delayed.delay() for _ in range(100)]
 
     for result in results:
         assert result.get(timeout=ASYNC_GET_TIMEOUT) == 42
@@ -210,10 +214,10 @@ def test_concurrent_delays(celery_app, memory_exporter):
 @mark.skip(reason="inconsistent test results")
 def test_fn_task_delay(celery_app, memory_exporter):
     @celery_app.task
-    def fn_task_parameters(user, force_logout=False):
+    def fn_task_delayed_parameters(user, force_logout=False):
         return (user, force_logout)
 
-    result = fn_task_parameters.delay("user", force_logout=True)
+    result = fn_task_delayed_parameters.delay("user", force_logout=True)
     assert result.get(timeout=ASYNC_GET_TIMEOUT) == ["user", True]
 
     spans = memory_exporter.get_finished_spans()
@@ -285,10 +289,10 @@ def test_fn_exception(celery_app, memory_exporter):
 
 def test_fn_exception_expected(celery_app, memory_exporter):
     @celery_app.task(throws=(MyException,))
-    def fn_exception():
+    def fn_exception_expected():
         raise MyException("Task class is failing")
 
-    result = fn_exception.apply()
+    result = fn_exception_expected.apply()
 
     assert result.failed() is True
     assert "Task class is failing" in result.traceback
@@ -300,12 +304,12 @@ def test_fn_exception_expected(celery_app, memory_exporter):
 
     assert span.status.is_ok is True
     assert span.status.status_code == StatusCode.UNSET
-    assert span.name == "run/test_celery_functional.fn_exception"
+    assert span.name == "run/test_celery_functional.fn_exception_expected"
     assert span.attributes.get("celery.action") == "run"
     assert span.attributes.get("celery.state") == "FAILURE"
     assert (
         span.attributes.get("celery.task_name")
-        == "test_celery_functional.fn_exception"
+        == "test_celery_functional.fn_exception_expected"
     )
     assert (
         span.attributes.get(SpanAttributes.MESSAGING_MESSAGE_ID)
@@ -315,10 +319,10 @@ def test_fn_exception_expected(celery_app, memory_exporter):
 
 def test_fn_retry_exception(celery_app, memory_exporter):
     @celery_app.task
-    def fn_exception():
+    def fn_exception_retry():
         raise Retry("Task class is being retried")
 
-    result = fn_exception.apply()
+    result = fn_exception_retry.apply()
 
     assert result.failed() is False
     assert "Task class is being retried" in result.traceback
@@ -330,12 +334,12 @@ def test_fn_retry_exception(celery_app, memory_exporter):
 
     assert span.status.is_ok is True
     assert span.status.status_code == StatusCode.UNSET
-    assert span.name == "run/test_celery_functional.fn_exception"
+    assert span.name == "run/test_celery_functional.fn_exception_retry"
     assert span.attributes.get("celery.action") == "run"
     assert span.attributes.get("celery.state") == "RETRY"
     assert (
         span.attributes.get("celery.task_name")
-        == "test_celery_functional.fn_exception"
+        == "test_celery_functional.fn_exception_retry"
     )
     assert (
         span.attributes.get(SpanAttributes.MESSAGING_MESSAGE_ID)
@@ -379,11 +383,11 @@ def test_class_task(celery_app, memory_exporter):
 
 
 def test_class_task_exception(celery_app, memory_exporter):
-    class BaseTask(celery_app.Task):
+    class BaseTaskException(celery_app.Task):
         def run(self):
             raise Exception("Task class is failing")
 
-    task = BaseTask()
+    task = BaseTaskException()
     # register the Task class if it's available (required in Celery 4.0+)
     register_task = getattr(celery_app, "register_task", None)
     if register_task is not None:
@@ -400,10 +404,10 @@ def test_class_task_exception(celery_app, memory_exporter):
     span = spans[0]
 
     assert span.status.is_ok is False
-    assert span.name == "run/test_celery_functional.BaseTask"
+    assert span.name == "run/test_celery_functional.BaseTaskException"
     assert (
         span.attributes.get("celery.task_name")
-        == "test_celery_functional.BaseTask"
+        == "test_celery_functional.BaseTaskException"
     )
     assert span.attributes.get("celery.action") == "run"
     assert span.attributes.get("celery.state") == "FAILURE"
@@ -416,13 +420,13 @@ def test_class_task_exception(celery_app, memory_exporter):
 
 
 def test_class_task_exception_excepted(celery_app, memory_exporter):
-    class BaseTask(celery_app.Task):
+    class BaseTaskExceptionExpected(celery_app.Task):
         throws = (MyException,)
 
         def run(self):
             raise MyException("Task class is failing")
 
-    task = BaseTask()
+    task = BaseTaskExceptionExpected()
     # register the Task class if it's available (required in Celery 4.0+)
     register_task = getattr(celery_app, "register_task", None)
     if register_task is not None:
@@ -440,7 +444,7 @@ def test_class_task_exception_excepted(celery_app, memory_exporter):
 
     assert span.status.is_ok is True
     assert span.status.status_code == StatusCode.UNSET
-    assert span.name == "run/test_celery_functional.BaseTask"
+    assert span.name == "run/test_celery_functional.BaseTaskExceptionExpected"
     assert span.attributes.get("celery.action") == "run"
     assert span.attributes.get("celery.state") == "FAILURE"
     assert (
@@ -453,10 +457,10 @@ def test_shared_task(celery_app, memory_exporter):
     """Ensure Django Shared Task are supported"""
 
     @celery.shared_task
-    def add(x, y):
+    def add_shared(x, y):
         return x + y
 
-    result = add.apply([2, 2])
+    result = add_shared.apply([2, 2])
     assert result.result == 4
 
     spans = memory_exporter.get_finished_spans()
@@ -465,9 +469,10 @@ def test_shared_task(celery_app, memory_exporter):
     span = spans[0]
 
     assert span.status.is_ok is True
-    assert span.name == "run/test_celery_functional.add"
+    assert span.name == "run/test_celery_functional.add_shared"
     assert (
-        span.attributes.get("celery.task_name") == "test_celery_functional.add"
+        span.attributes.get("celery.task_name")
+        == "test_celery_functional.add_shared"
     )
     assert span.attributes.get("celery.action") == "run"
     assert span.attributes.get("celery.state") == "SUCCESS"
@@ -559,11 +564,9 @@ def test_apply_async_previous_style_tasks(
     ) == async_run_span.attributes.get(SpanAttributes.MESSAGING_MESSAGE_ID)
 
 
-# FIXME find a permanent solution for the flakiness of this test
-@flaky
 def test_custom_tracer_provider(celery_app, memory_exporter):
     @celery_app.task
-    def fn_task():
+    def fn_task_custom_provider():
         return 42
 
     resource = resources.Resource.create({})
@@ -576,9 +579,17 @@ def test_custom_tracer_provider(celery_app, memory_exporter):
     CeleryInstrumentor().uninstrument()
     CeleryInstrumentor().instrument(tracer_provider=tracer_provider)
 
-    fn_task.delay()
+    fn_task_custom_provider.delay()
 
     spans_list = memory_exporter.get_finished_spans()
+    # log extra information to help debug flaky test
+    if len(spans_list) != 1:
+        logger.error("unexpected spans received")
+        for i, span in enumerate(spans_list):
+            logger.error("span #" + str(i))
+            logger.error(span._instrumentation_info)
+            logger.error(span.to_json())
+
     assert len(spans_list) == 1
 
     span = spans_list[0]
