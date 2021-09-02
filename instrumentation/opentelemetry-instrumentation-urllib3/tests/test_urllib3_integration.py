@@ -45,6 +45,8 @@ class TestURLLib3Instrumentor(TestBase):
         httpretty.enable(allow_net_connect=False)
         httpretty.register_uri(httpretty.GET, self.HTTP_URL, body="Hello!")
         httpretty.register_uri(httpretty.GET, self.HTTPS_URL, body="Hello!")
+        httpretty.register_uri(httpretty.POST, self.HTTP_URL, body="Hello!")
+
 
     def tearDown(self):
         super().tearDown()
@@ -294,7 +296,7 @@ class TestURLLib3Instrumentor(TestBase):
         body = "param1=1&param2=2"
 
         pool = urllib3.HTTPConnectionPool("httpbin.org")
-        response = pool.request("GET", "/status/200", body=body, headers=headers)
+        response = pool.request("POST", "/status/200", body=body, headers=headers)
 
         self.assertEqual(b"Hello!", response.data)
 
