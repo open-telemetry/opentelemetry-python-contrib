@@ -97,12 +97,11 @@ _ExtendedRequestHookT = typing.Optional[
         [
             Span,
             urllib3.connectionpool.HTTPConnectionPool,
-            # Request headers dict
             typing.Dict,
-            # Request Body
-            str,
+            typing.Optional[str],
         ],
-        None]
+        None,
+    ]
 ]
 _ResponseHookT = typing.Optional[
     typing.Callable[
