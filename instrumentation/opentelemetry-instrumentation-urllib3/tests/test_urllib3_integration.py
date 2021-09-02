@@ -47,7 +47,6 @@ class TestURLLib3Instrumentor(TestBase):
         httpretty.register_uri(httpretty.GET, self.HTTPS_URL, body="Hello!")
         httpretty.register_uri(httpretty.POST, self.HTTP_URL, body="Hello!")
 
-
     def tearDown(self):
         super().tearDown()
         URLLib3Instrumentor().uninstrument()
@@ -288,21 +287,23 @@ class TestURLLib3Instrumentor(TestBase):
             span.set_attribute("request_hook_body", body)
 
         URLLib3Instrumentor().uninstrument()
-        URLLib3Instrumentor().instrument(
-            request_hook=extended_request_hook,
-        )
+        URLLib3Instrumentor().instrument(request_hook=extended_request_hook,)
 
         headers = {"header1": "value1", "header2": "value2"}
         body = "param1=1&param2=2"
 
         pool = urllib3.HTTPConnectionPool("httpbin.org")
-        response = pool.request("POST", "/status/200", body=body, headers=headers)
+        response = pool.request(
+            "POST", "/status/200", body=body, headers=headers
+        )
 
         self.assertEqual(b"Hello!", response.data)
 
         span = self.assert_span()
 
         self.assertIn("request_hook_headers", span.attributes)
-        self.assertEqual(span.attributes["request_hook_headers"], json.dumps(headers))
+        self.assertEqual(
+            span.attributes["request_hook_headers"], json.dumps(headers)
+        )
         self.assertIn("request_hook_body", span.attributes)
         self.assertEqual(span.attributes["request_hook_body"], body)

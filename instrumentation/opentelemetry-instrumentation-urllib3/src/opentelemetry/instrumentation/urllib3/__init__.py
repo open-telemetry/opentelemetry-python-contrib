@@ -191,11 +191,13 @@ def _instrument(
     )
 
 
-def _call_request_hook(request_hook: typing.Union[_RequestHookT, _ExtendedRequestHookT],
-                       span: Span,
-                       connection_pool: urllib3.connectionpool.HTTPConnectionPool,
-                       headers: typing.Dict,
-                       body: str):
+def _call_request_hook(
+    request_hook: typing.Union[_RequestHookT, _ExtendedRequestHookT],
+    span: Span,
+    connection_pool: urllib3.connectionpool.HTTPConnectionPool,
+    headers: typing.Dict,
+    body: str,
+):
     try:
         # First assume request_hook is a function of type _ExtendedRequestHookT
         request_hook(span, connection_pool, headers, body)
