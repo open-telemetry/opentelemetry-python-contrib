@@ -3,6 +3,8 @@
 #
 # What is a "CODEOWNER"?
 #
+# A CODEOWNER lends their expertise to a specific package hosted by an OpenTelemetry repository.
+#
 # A CODEOWNER MUST:
 # - introduce themselves on the CNCF OTel Python channel: https://cloud-native.slack.com/archives/C01PD4HUVBL
 # - have enough knowledge of the corresponding instrumented library
