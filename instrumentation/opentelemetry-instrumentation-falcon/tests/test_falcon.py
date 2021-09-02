@@ -105,7 +105,7 @@ class TestFalconInstrumentation(TestFalconBase):
         self.memory_exporter.clear()
 
     def test_404(self):
-        self.client().simulate_get("/does-not-exist")
+        self.client().simulate_get("/does-not-exist", remote_addr="127.0.0.1")
         spans = self.memory_exporter.get_finished_spans()
         self.assertEqual(len(spans), 1)
         span = spans[0]
@@ -129,7 +129,7 @@ class TestFalconInstrumentation(TestFalconBase):
 
     def test_500(self):
         try:
-            self.client().simulate_get("/error")
+            self.client().simulate_get("/error", remote_addr="127.0.0.1")
         except NameError:
             pass
         spans = self.memory_exporter.get_finished_spans()
