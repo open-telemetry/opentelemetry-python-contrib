@@ -78,7 +78,7 @@ class TestFalconInstrumentation(TestFalconBase):
         self._test_method("HEAD")
 
     def _test_method(self, method):
-        self.client().simulate_request(method=method, path="/hello")
+        self.client().simulate_request(method=method, path="/hello", remote_addr="127.0.0.1")
         spans = self.memory_exporter.get_finished_spans()
         self.assertEqual(len(spans), 1)
         span = spans[0]
