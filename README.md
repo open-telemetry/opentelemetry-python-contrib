@@ -70,7 +70,7 @@ pip install -e ./instrumentation/opentelemetry-instrumentation-{integration}
 
 Maintainers aim to periodically release new versions of the packages in `opentelemetry-python-contrib`.
 
-Contributions that enhance OTel for Python are welcome to be hosted upstream for the benefit of group collaboration. However, as a general rule, releases for packages in `opentelemetry-python-contrib` will be in a perpetual `~=0.X.0` (pre-1.0) version state. This is because maintainers and approvers cannot feasibly provide the stability guarantees that are implied with a 1.0 release for so many packages.
+Contributions that enhance OTel for Python are welcome to be hosted upstream for the benefit of group collaboration. Maintainers will look for things like good documentation, good unit tests, and in general their own confidence when deciding to release a package with the stability guarantees that are implied with a `1.0` release.
 
 To resolve this, members of the community are encouraged to commit to becoming a CODEOWNER for packages in `-contrib` that they feel experienced enough to maintain. CODEOWNERS can then follow the checklist below to release `-contrib` packages as 1.0 stable:
 
