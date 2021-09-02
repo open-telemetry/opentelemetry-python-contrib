@@ -43,6 +43,11 @@ Or by setting this propagator in your instrumented application:
 
     set_global_textmap(AwsXRayFormat())
 
+**NOTE**: Because the parent context parsed from the `X-Amzn-Trace-Id` header
+assumes the context is _not_ sampled by default, users should make sure to add
+`Sampled=1` to their `X-Amzn-Trace-Id` headers so that the child spans are
+sampled.
+
 API
 ---
 .. _trace header: https://docs.aws.amazon.com/xray/latest/devguide/xray-concepts.html#xray-concepts-tracingheader
