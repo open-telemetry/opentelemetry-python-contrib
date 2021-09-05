@@ -262,7 +262,7 @@ class TestURLLib3Instrumentor(TestBase):
         self.assert_success_span(response, self.HTTP_URL)
 
     def test_hooks(self):
-        def request_hook(span, request):
+        def request_hook(span, request, body, headers):
             span.update_name("name set from hook")
 
         def response_hook(span, request, response):
@@ -281,13 +281,13 @@ class TestURLLib3Instrumentor(TestBase):
         self.assertIn("response_hook_attr", span.attributes)
         self.assertEqual(span.attributes["response_hook_attr"], "value")
 
-    def test_extended_request_hook(self):
-        def extended_request_hook(span, request, headers, body):
+    def test_request_hook_params(self):
+        def request_hook(span, request, headers, body):
             span.set_attribute("request_hook_headers", json.dumps(headers))
             span.set_attribute("request_hook_body", body)
 
         URLLib3Instrumentor().uninstrument()
-        URLLib3Instrumentor().instrument(request_hook=extended_request_hook,)
+        URLLib3Instrumentor().instrument(request_hook=request_hook,)
 
         headers = {"header1": "value1", "header2": "value2"}
         body = "param1=1&param2=2"

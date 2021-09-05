@@ -90,9 +90,6 @@ _SUPPRESS_HTTP_INSTRUMENTATION_KEY = context.create_key(
 
 _UrlFilterT = typing.Optional[typing.Callable[[str], str]]
 _RequestHookT = typing.Optional[
-    typing.Callable[[Span, urllib3.connectionpool.HTTPConnectionPool], None]
-]
-_ExtendedRequestHookT = typing.Optional[
     typing.Callable[
         [
             Span,
@@ -150,7 +147,7 @@ class URLLib3Instrumentor(BaseInstrumentor):
 
 def _instrument(
     tracer,
-    request_hook: typing.Union[_RequestHookT, _ExtendedRequestHookT] = None,
+    request_hook: _RequestHookT = None,
     response_hook: _ResponseHookT = None,
     url_filter: _UrlFilterT = None,
 ):
@@ -173,7 +170,7 @@ def _instrument(
             span_name, kind=SpanKind.CLIENT, attributes=span_attributes
         ) as span:
             if callable(request_hook):
-                _call_request_hook(request_hook, span, instance, headers, body)
+                request_hook(span, instance, headers, body)
             inject(headers)
 
             with _suppress_further_instrumentation():
@@ -189,21 +186,6 @@ def _instrument(
         "urlopen",
         instrumented_urlopen,
     )
-
-
-def _call_request_hook(
-    request_hook: typing.Union[_RequestHookT, _ExtendedRequestHookT],
-    span: Span,
-    connection_pool: urllib3.connectionpool.HTTPConnectionPool,
-    headers: typing.Dict,
-    body: str,
-):
-    try:
-        # First assume request_hook is a function of type _ExtendedRequestHookT
-        request_hook(span, connection_pool, headers, body)
-    except TypeError:
-        # Fallback to call request_hook as a function of type _RequestHookT
-        request_hook(span, connection_pool)
 
 
 def _get_url_open_arg(name: str, args: typing.List, kwargs: typing.Mapping):
