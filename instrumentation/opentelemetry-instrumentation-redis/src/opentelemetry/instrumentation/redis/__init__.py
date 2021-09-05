@@ -41,8 +41,8 @@ Usage
 API
 ---
 """
-
-from typing import Collection
+import typing
+from typing import Any, Collection
 
 import redis
 from wrapt import wrap_function_wrapper
@@ -57,8 +57,13 @@ from opentelemetry.instrumentation.redis.util import (
 from opentelemetry.instrumentation.redis.version import __version__
 from opentelemetry.instrumentation.utils import unwrap
 from opentelemetry.semconv.trace import SpanAttributes
+from opentelemetry.trace import Span
 
 _DEFAULT_SERVICE = "redis"
+
+_ResponseHookT = typing.Optional[
+    typing.Callable[[Span, redis.connection.Connection, Any], None]
+]
 
 
 def _set_connection_attributes(span, conn):
@@ -70,42 +75,64 @@ def _set_connection_attributes(span, conn):
         span.set_attribute(key, value)
 
 
-def _traced_execute_command(func, instance, args, kwargs):
-    tracer = getattr(redis, "_opentelemetry_tracer")
-    query = _format_command_args(args)
-    name = ""
-    if len(args) > 0 and args[0]:
-        name = args[0]
-    else:
-        name = instance.connection_pool.connection_kwargs.get("db", 0)
-    with tracer.start_as_current_span(
-        name, kind=trace.SpanKind.CLIENT
-    ) as span:
-        if span.is_recording():
-            span.set_attribute(SpanAttributes.DB_STATEMENT, query)
-            _set_connection_attributes(span, instance)
-            span.set_attribute("db.redis.args_length", len(args))
-        return func(*args, **kwargs)
+def _instrument(
+    tracer, response_hook: _ResponseHookT = None,
+):
+    def _traced_execute_command(func, instance, args, kwargs):
+        query = _format_command_args(args)
+        name = ""
+        if len(args) > 0 and args[0]:
+            name = args[0]
+        else:
+            name = instance.connection_pool.connection_kwargs.get("db", 0)
+        with tracer.start_as_current_span(
+            name, kind=trace.SpanKind.CLIENT
+        ) as span:
+            if span.is_recording():
+                span.set_attribute(SpanAttributes.DB_STATEMENT, query)
+                _set_connection_attributes(span, instance)
+                span.set_attribute("db.redis.args_length", len(args))
+            response = func(*args, **kwargs)
+            if callable(response_hook):
+                response_hook(span, instance, response)
+            return response
 
+    def _traced_execute_pipeline(func, instance, args, kwargs):
+        cmds = [_format_command_args(c) for c, _ in instance.command_stack]
+        resource = "\n".join(cmds)
 
-def _traced_execute_pipeline(func, instance, args, kwargs):
-    tracer = getattr(redis, "_opentelemetry_tracer")
+        span_name = " ".join([args[0] for args, _ in instance.command_stack])
 
-    cmds = [_format_command_args(c) for c, _ in instance.command_stack]
-    resource = "\n".join(cmds)
+        with tracer.start_as_current_span(
+            span_name, kind=trace.SpanKind.CLIENT
+        ) as span:
+            if span.is_recording():
+                span.set_attribute(SpanAttributes.DB_STATEMENT, resource)
+                _set_connection_attributes(span, instance)
+                span.set_attribute(
+                    "db.redis.pipeline_length", len(instance.command_stack)
+                )
+            response = func(*args, **kwargs)
+            if callable(response_hook):
+                response_hook(span, instance, response)
+            return response
 
-    span_name = " ".join([args[0] for args, _ in instance.command_stack])
+    pipeline_class = (
+        "BasePipeline" if redis.VERSION < (3, 0, 0) else "Pipeline"
+    )
+    redis_class = "StrictRedis" if redis.VERSION < (3, 0, 0) else "Redis"
 
-    with tracer.start_as_current_span(
-        span_name, kind=trace.SpanKind.CLIENT
-    ) as span:
-        if span.is_recording():
-            span.set_attribute(SpanAttributes.DB_STATEMENT, resource)
-            _set_connection_attributes(span, instance)
-            span.set_attribute(
-                "db.redis.pipeline_length", len(instance.command_stack)
-            )
-        return func(*args, **kwargs)
+    wrap_function_wrapper(
+        "redis", f"{redis_class}.execute_command", _traced_execute_command
+    )
+    wrap_function_wrapper(
+        "redis.client", f"{pipeline_class}.execute", _traced_execute_pipeline,
+    )
+    wrap_function_wrapper(
+        "redis.client",
+        f"{pipeline_class}.immediate_execute_command",
+        _traced_execute_command,
+    )
 
 
 class RedisInstrumentor(BaseInstrumentor):
@@ -117,41 +144,18 @@ class RedisInstrumentor(BaseInstrumentor):
         return _instruments
 
     def _instrument(self, **kwargs):
-        tracer_provider = kwargs.get("tracer_provider")
-        setattr(
-            redis,
-            "_opentelemetry_tracer",
-            trace.get_tracer(
-                __name__, __version__, tracer_provider=tracer_provider,
-            ),
-        )
+        """Instruments the redis module
 
-        if redis.VERSION < (3, 0, 0):
-            wrap_function_wrapper(
-                "redis", "StrictRedis.execute_command", _traced_execute_command
-            )
-            wrap_function_wrapper(
-                "redis.client",
-                "BasePipeline.execute",
-                _traced_execute_pipeline,
-            )
-            wrap_function_wrapper(
-                "redis.client",
-                "BasePipeline.immediate_execute_command",
-                _traced_execute_command,
-            )
-        else:
-            wrap_function_wrapper(
-                "redis", "Redis.execute_command", _traced_execute_command
-            )
-            wrap_function_wrapper(
-                "redis.client", "Pipeline.execute", _traced_execute_pipeline
-            )
-            wrap_function_wrapper(
-                "redis.client",
-                "Pipeline.immediate_execute_command",
-                _traced_execute_command,
-            )
+        Args:
+            **kwargs: Optional arguments
+                ``tracer_provider``: a TracerProvider, defaults to global.
+                ``response_hook``: An optional callback which is invoked right before the span is finished processing a response.
+        """
+        tracer_provider = kwargs.get("tracer_provider")
+        tracer = trace.get_tracer(
+            __name__, __version__, tracer_provider=tracer_provider
+        )
+        _instrument(tracer, response_hook=kwargs.get("response_hook"))
 
     def _uninstrument(self, **kwargs):
         if redis.VERSION < (3, 0, 0):

@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased](https://github.com/open-telemetry/opentelemetry-python/compare/v1.5.0-0.24b0...HEAD)
 
+### Added
+- `opentelemetry-instrumentation-redis` added response_hook callback passed as an argument to the instrument method.
+  ([#669](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/669))
+
 ### Changed
 - `opentelemetry-instrumentation-botocore` Unpatch botocore Endpoint.prepare_request on uninstrument
   ([#664](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/664))
