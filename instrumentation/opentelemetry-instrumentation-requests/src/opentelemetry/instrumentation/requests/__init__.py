@@ -41,6 +41,9 @@ from requests.sessions import Session
 from requests.structures import CaseInsensitiveDict
 
 from opentelemetry import context
+from opentelemetry.instrumentation.http_base import (
+    set_ip_on_next_http_connection,
+)
 from opentelemetry.instrumentation.instrumentor import BaseInstrumentor
 from opentelemetry.instrumentation.requests.package import _instruments
 from opentelemetry.instrumentation.requests.version import __version__
@@ -133,7 +136,7 @@ def _instrument(tracer, span_callback=None, name_callback=None):
 
         with tracer.start_as_current_span(
             span_name, kind=SpanKind.CLIENT
-        ) as span:
+        ) as span, set_ip_on_next_http_connection(span):
             exception = None
             if span.is_recording():
                 span.set_attribute(SpanAttributes.HTTP_METHOD, method)

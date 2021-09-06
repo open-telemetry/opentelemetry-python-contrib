@@ -69,6 +69,9 @@ import urllib3.connectionpool
 import wrapt
 
 from opentelemetry import context
+from opentelemetry.instrumentation.http_base import (
+    set_ip_on_next_http_connection,
+)
 from opentelemetry.instrumentation.instrumentor import BaseInstrumentor
 from opentelemetry.instrumentation.urllib3.package import _instruments
 from opentelemetry.instrumentation.urllib3.version import __version__
@@ -168,7 +171,7 @@ def _instrument(
 
         with tracer.start_as_current_span(
             span_name, kind=SpanKind.CLIENT, attributes=span_attributes
-        ) as span:
+        ) as span, set_ip_on_next_http_connection(span):
             if callable(request_hook):
                 request_hook(span, instance, headers, body)
             inject(headers)
