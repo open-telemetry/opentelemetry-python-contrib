@@ -6,7 +6,7 @@ on:
     - 'release/*'
   pull_request:
 env:
-  CORE_REPO_SHA: d31823d8c2b3ec0db55b181ea1f97aef3e89d37f # TODO: Update to main
+  CORE_REPO_SHA: 62bb05935a165dc38e28ceaed10b39d79553d00e # TODO: Update to main
 
 jobs:
   build:
