@@ -16,7 +16,6 @@
 import celery
 from celery.exceptions import Retry
 from pytest import mark
-from time import sleep
 
 import opentelemetry.instrumentation.celery
 from opentelemetry import trace as trace_api
@@ -40,7 +39,6 @@ def test_instrumentation_info(celery_app, memory_exporter):
         return 42
 
     result = fn_task.apply_async()
-    sleep
     assert result.get(timeout=ASYNC_GET_TIMEOUT) == 42
 
     spans = memory_exporter.get_finished_spans()
