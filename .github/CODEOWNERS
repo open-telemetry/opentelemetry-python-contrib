@@ -11,9 +11,7 @@
 # - respond to issues
 # - fix failing unit tests or any other blockers to the CI/CD workflow
 # - update usage of `opentelemetry-python-core` APIs upon the introduction of breaking changes
-#
-# A CODEOWNER SHOULD:
-# - be a member of the OpenTelemetry community
+# - be a member of the OpenTelemetry community so that the `component-owners.yml` action to automatically assign CODEOWNERS to PRs works correctly.
 #
 
 
