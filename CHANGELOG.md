@@ -8,6 +8,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased](https://github.com/open-telemetry/opentelemetry-python/compare/v1.5.0-0.24b0...HEAD)
 
 ### Changed
+- `opentelemetry-instrumentation-botocore` Unpatch botocore Endpoint.prepare_request on uninstrument
+  ([#664](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/664))
 - `opentelemetry-instrumentation-botocore` Fix span injection for lambda invoke
   ([#663](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/663))
 
