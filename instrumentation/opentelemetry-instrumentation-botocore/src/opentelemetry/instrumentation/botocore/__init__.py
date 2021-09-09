@@ -51,6 +51,7 @@ import logging
 from typing import Collection
 
 from botocore.client import BaseClient
+from botocore.endpoint import Endpoint
 from botocore.exceptions import ClientError
 from wrapt import wrap_function_wrapper
 
@@ -67,6 +68,13 @@ from opentelemetry.semconv.trace import SpanAttributes
 from opentelemetry.trace import SpanKind, get_tracer
 
 logger = logging.getLogger(__name__)
+
+# A key to a context variable to avoid creating duplicate spans when instrumenting
+# both botocore.client and urllib3.connectionpool.HTTPConnectionPool.urlopen since
+# botocore calls urlopen
+_SUPPRESS_HTTP_INSTRUMENTATION_KEY = context_api.create_key(
+    "suppress_http_instrumentation"
+)
 
 
 # pylint: disable=unused-argument
@@ -107,6 +115,7 @@ class BotocoreInstrumentor(BaseInstrumentor):
 
     def _uninstrument(self, **kwargs):
         unwrap(BaseClient, "_make_api_call")
+        unwrap(Endpoint, "prepare_request")
 
     @staticmethod
     def _is_lambda_invoke(service_name, operation_name, api_params):
@@ -141,15 +150,15 @@ class BotocoreInstrumentor(BaseInstrumentor):
         error = None
         result = None
 
-        # inject trace context into payload headers for lambda Invoke
-        if BotocoreInstrumentor._is_lambda_invoke(
-            service_name, operation_name, api_params
-        ):
-            BotocoreInstrumentor._patch_lambda_invoke(api_params)
-
         with self._tracer.start_as_current_span(
             "{}".format(service_name), kind=SpanKind.CLIENT,
         ) as span:
+            # inject trace context into payload headers for lambda Invoke
+            if BotocoreInstrumentor._is_lambda_invoke(
+                service_name, operation_name, api_params
+            ):
+                BotocoreInstrumentor._patch_lambda_invoke(api_params)
+
             if span.is_recording():
                 span.set_attribute("aws.operation", operation_name)
                 span.set_attribute("aws.region", instance.meta.region_name)
@@ -161,10 +170,16 @@ class BotocoreInstrumentor(BaseInstrumentor):
                         "aws.table_name", api_params["TableName"]
                     )
 
+            token = context_api.attach(
+                context_api.set_value(_SUPPRESS_HTTP_INSTRUMENTATION_KEY, True)
+            )
+
             try:
                 result = original_func(*args, **kwargs)
             except ClientError as ex:
                 error = ex
+            finally:
+                context_api.detach(token)
 
             if error:
                 result = error.response

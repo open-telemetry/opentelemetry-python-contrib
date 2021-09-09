@@ -20,7 +20,6 @@ from django import VERSION as django_version
 from django.http import HttpRequest, HttpResponse
 
 from opentelemetry.context import attach, detach
-from opentelemetry.instrumentation.django.version import __version__
 from opentelemetry.instrumentation.propagators import (
     get_global_response_propagator,
 )
@@ -191,9 +190,9 @@ class _DjangoMiddleware(MiddlewareMixin):
             span = request.META[self._environ_span_key]
 
             if span.is_recording():
-                match = getattr(request, "resolver_match")
+                match = getattr(request, "resolver_match", None)
                 if match:
-                    route = getattr(match, "route")
+                    route = getattr(match, "route", None)
                     if route:
                         span.set_attribute(SpanAttributes.HTTP_ROUTE, route)
 

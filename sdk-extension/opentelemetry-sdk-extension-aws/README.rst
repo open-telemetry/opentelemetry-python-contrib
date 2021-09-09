@@ -46,6 +46,11 @@ Next, use the provided `AwsXRayIdGenerator` to initialize the `TracerProvider`.
 Usage (AWS X-Ray Propagator)
 ----------------------------
 
+**NOTE**: Because the parent context extracted from the `X-Amzn-Trace-Id` header
+assumes the context is _not_ sampled by default, users should make sure to add
+`Sampled=1` to their `X-Amzn-Trace-Id` headers so that the child spans are
+sampled.
+
 Use the provided AWS X-Ray Propagator to inject the necessary context into
 traces sent to external systems.
 
@@ -65,8 +70,40 @@ Or by setting this propagator in your instrumented application:
 
     set_global_textmap(AwsXRayFormat())
 
+Usage (AWS Resource Detectors)
+------------------------------
+
+Use the provided `Resource Detectors` to automatically populate attributes under the `resource`
+namespace of each generated span.
+
+For example, if tracing with OpenTelemetry on an AWS EC2 instance, you can automatically
+populate `resource` attributes by creating a `TraceProvider` using the `AwsEc2ResourceDetector`:
+
+.. code-block:: python
+
+    import opentelemetry.trace as trace
+    from opentelemetry.sdk.trace import TracerProvider
+    from opentelemetry.sdk.extension.aws.resource.ec2 import (
+        AwsEc2ResourceDetector,
+    )
+    from opentelemetry.sdk.resources import get_aggregated_resources
+
+    trace.set_tracer_provider(
+        TracerProvider(
+            resource=get_aggregated_resources(
+                [
+                    AwsEc2ResourceDetector(),
+                ]
+            ),
+        )
+    )
+
+Refer to each detectors' docstring to determine any possible requirements for that
+detector.
+
 References
 ----------
 
 * `OpenTelemetry Project <https://opentelemetry.io/>`_
 * `AWS X-Ray Trace IDs Format <https://docs.aws.amazon.com/xray/latest/devguide/xray-api-sendingdata.html#xray-api-traceids>`_
+* `OpenTelemetry Specification for Resource Attributes <https://github.com/open-telemetry/opentelemetry-specification/tree/main/specification/resource/semantic_conventions>`_
