@@ -11,6 +11,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 - `opentelemetry-instrumentation-elasticsearch` Added `response_hook` callback
+  ([#670](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/670))
 
 ### Changed
 - `opentelemetry-instrumentation-botocore` Unpatch botocore Endpoint.prepare_request on uninstrument
