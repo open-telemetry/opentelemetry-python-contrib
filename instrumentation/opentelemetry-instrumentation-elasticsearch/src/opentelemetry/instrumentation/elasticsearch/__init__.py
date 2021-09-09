@@ -97,17 +97,20 @@ class ElasticsearchInstrumentor(BaseInstrumentor):
         """
         tracer_provider = kwargs.get("tracer_provider")
         tracer = get_tracer(__name__, __version__, tracer_provider)
+        response_hook = kwargs.get("response_hook", _default_response_hook)
         _wrap(
             elasticsearch,
             "Transport.perform_request",
-            _wrap_perform_request(tracer, self._span_name_prefix),
+            _wrap_perform_request(
+                tracer, self._span_name_prefix, response_hook
+            ),
         )
 
     def _uninstrument(self, **kwargs):
         unwrap(elasticsearch.Transport, "perform_request")
 
 
-def _wrap_perform_request(tracer, span_name_prefix):
+def _wrap_perform_request(tracer, span_name_prefix, response_hook):
     # pylint: disable=R0912
     def wrapper(wrapped, _, args, kwargs):
         method = url = None
@@ -143,13 +146,16 @@ def _wrap_perform_request(tracer, span_name_prefix):
                     span.set_attribute(key, value)
 
             rv = wrapped(*args, **kwargs)
-            if isinstance(rv, dict) and span.is_recording():
-                for member in _ATTRIBUTES_FROM_RESULT:
-                    if member in rv:
-                        span.set_attribute(
-                            "elasticsearch.{0}".format(member),
-                            str(rv[member]),
-                        )
+            response_hook(span, rv)
             return rv
 
     return wrapper
+
+
+def _default_response_hook(span, response):
+    if isinstance(response, dict) and span.is_recording():
+        for member in _ATTRIBUTES_FROM_RESULT:
+            if member in response:
+                span.set_attribute(
+                    "elasticsearch.{0}".format(member), str(response[member]),
+                )

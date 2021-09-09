@@ -9,6 +9,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - `opentelemetry-sdk-extension-aws` Release AWS Python SDK Extension as 1.0.0
   ([#667](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/667))
 
+### Added
+- `opentelemetry-instrumentation-elasticsearch` Added `response_hook` callback
+
 ### Changed
 - `opentelemetry-instrumentation-botocore` Unpatch botocore Endpoint.prepare_request on uninstrument
   ([#664](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/664))
