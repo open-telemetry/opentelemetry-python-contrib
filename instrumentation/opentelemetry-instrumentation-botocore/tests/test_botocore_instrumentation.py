@@ -115,7 +115,7 @@ class TestBotocoreInstrumentor(TestBase):
         elif request_id is not None:
             expected[span_attributes_request_id] = request_id
 
-        self.assertDictEqual(expected, dict(span.attributes))
+        self.assertSpanHasAttributes(span, expected)
         self.assertEqual("{}.{}".format(service, operation), span.name)
         return span
 
