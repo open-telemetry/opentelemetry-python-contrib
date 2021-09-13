@@ -97,12 +97,13 @@ class ElasticsearchInstrumentor(BaseInstrumentor):
         """
         tracer_provider = kwargs.get("tracer_provider")
         tracer = get_tracer(__name__, __version__, tracer_provider)
+        request_hook = kwargs.get("request_hook")
         response_hook = kwargs.get("response_hook")
         _wrap(
             elasticsearch,
             "Transport.perform_request",
             _wrap_perform_request(
-                tracer, self._span_name_prefix, response_hook
+                tracer, self._span_name_prefix, request_hook, response_hook
             ),
         )
 
@@ -110,7 +111,9 @@ class ElasticsearchInstrumentor(BaseInstrumentor):
         unwrap(elasticsearch.Transport, "perform_request")
 
 
-def _wrap_perform_request(tracer, span_name_prefix, response_hook=None):
+def _wrap_perform_request(
+    tracer, span_name_prefix, request_hook=None, response_hook=None
+):
     # pylint: disable=R0912
     def wrapper(wrapped, _, args, kwargs):
         method = url = None
@@ -130,6 +133,10 @@ def _wrap_perform_request(tracer, span_name_prefix, response_hook=None):
         with tracer.start_as_current_span(
             op_name, kind=SpanKind.CLIENT,
         ) as span:
+
+            if callable(request_hook):
+                request_hook(span, method, url, kwargs)
+
             if span.is_recording():
                 attributes = {
                     SpanAttributes.DB_SYSTEM: "elasticsearch",

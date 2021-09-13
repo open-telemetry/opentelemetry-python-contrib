@@ -317,6 +317,52 @@ class TestElasticsearchIntegration(TestBase):
             },
         )
 
+    def test_request_hook(self, request_mock):
+        request_hook_method_attribute = "request_hook.method"
+        request_hook_url_attribute = "request_hook.url"
+        request_hook_kwargs_attribute = "request_hook.kwargs"
+
+        def request_hook(span, method, url, kwargs):
+
+            attributes = {
+                request_hook_method_attribute: method,
+                request_hook_url_attribute: url,
+                request_hook_kwargs_attribute: json.dumps(kwargs),
+            }
+
+            if span and span.is_recording():
+                span.set_attributes(attributes)
+
+        ElasticsearchInstrumentor().uninstrument()
+        ElasticsearchInstrumentor().instrument(request_hook=request_hook)
+
+        request_mock.return_value = (
+            1,
+            {},
+            '{"found": false, "timed_out": true, "took": 7}',
+        )
+        es = Elasticsearch()
+        index = "test-index"
+        doc_type = "tweet"
+        doc_id = 1
+        kwargs = {"params": {"test": True}}
+        es.get(index=index, doc_type=doc_type, id=doc_id, **kwargs)
+
+        spans = self.get_finished_spans()
+
+        self.assertEqual(1, len(spans))
+        self.assertEqual(
+            "GET", spans[0].attributes[request_hook_method_attribute]
+        )
+        self.assertEqual(
+            f"/{index}/{doc_type}/{doc_id}",
+            spans[0].attributes[request_hook_url_attribute],
+        )
+        self.assertEqual(
+            json.dumps(kwargs),
+            spans[0].attributes[request_hook_kwargs_attribute],
+        )
+
     def test_response_hook(self, request_mock):
         response_attribute_name = "db.query_result"
 
