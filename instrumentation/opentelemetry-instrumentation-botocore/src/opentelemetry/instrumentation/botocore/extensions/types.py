@@ -2,12 +2,12 @@ from typing import Any, Dict
 
 from opentelemetry.trace import SpanKind
 
-BotoClientT = "botocore.client.BaseClient"
+_BotoClientT = "botocore.client.BaseClient"
 
-OperationParamsT = Dict[str, Any]
+_OperationParamsT = Dict[str, Any]
 
 
-class AwsSdkCallContext:
+class _AwsSdkCallContext:
     """An context object providing information about the invoked AWS service
     call.
 
@@ -25,7 +25,7 @@ class AwsSdkCallContext:
     """
 
     def __init__(
-        self, client: BotoClientT, operation: str, params: OperationParamsT
+        self, client: _BotoClientT, operation: str, params: _OperationParamsT
     ):
         boto_meta = client.meta
         service_model = boto_meta.service_model

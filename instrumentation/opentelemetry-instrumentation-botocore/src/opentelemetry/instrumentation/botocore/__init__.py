@@ -57,7 +57,7 @@ from wrapt import wrap_function_wrapper
 
 from opentelemetry import context as context_api
 from opentelemetry.instrumentation.botocore.extensions.types import (
-    AwsSdkCallContext,
+    _AwsSdkCallContext,
 )
 from opentelemetry.instrumentation.botocore.package import _instruments
 from opentelemetry.instrumentation.botocore.version import __version__
@@ -122,7 +122,7 @@ class BotocoreInstrumentor(BaseInstrumentor):
         unwrap(Endpoint, "prepare_request")
 
     @staticmethod
-    def _is_lambda_invoke(call_context: AwsSdkCallContext):
+    def _is_lambda_invoke(call_context: _AwsSdkCallContext):
         return (
             call_context.service == "lambda"
             and call_context.operation == "Invoke"
@@ -228,11 +228,11 @@ def _apply_response_attributes(span: Span, result):
 
 def _determine_call_context(
     client: BaseClient, args
-) -> Optional[AwsSdkCallContext]:
+) -> Optional[_AwsSdkCallContext]:
     try:
         operation = args[0]
         params = args[1]
-        call_context = AwsSdkCallContext(client, operation, params)
+        call_context = _AwsSdkCallContext(client, operation, params)
 
         logger.debug(
             "AWS SDK invocation: %s %s",
