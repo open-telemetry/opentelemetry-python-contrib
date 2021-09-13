@@ -28,12 +28,6 @@ jobs:
     steps:
       - name: Checkout Contrib Repo @ SHA - ${{ github.sha }}
         uses: actions/checkout@v2
-      - name: Checkout Core Repo @ SHA - ${{ env.CORE_REPO_SHA }}
-        uses: actions/checkout@v2
-        with:
-          repository: open-telemetry/opentelemetry-python
-          ref: ${{ env.CORE_REPO_SHA }}
-          path: opentelemetry-python-core
       - name: Set up Python ${{ env[matrix.python-version] }}
         uses: actions/setup-python@v2
         with:
@@ -84,12 +78,6 @@ jobs:
     steps:
       - name: Checkout Contrib Repo @ SHA - ${{ github.sha }}
         uses: actions/checkout@v2
-      - name: Checkout Core Repo @ SHA ${{ env.CORE_REPO_SHA }}
-        uses: actions/checkout@v2
-        with:
-          repository: open-telemetry/opentelemetry-python
-          ref: ${{ env.CORE_REPO_SHA }}
-          path: opentelemetry-python-core
       - name: Set up Python 3.9
         uses: actions/setup-python@v2
         with:
