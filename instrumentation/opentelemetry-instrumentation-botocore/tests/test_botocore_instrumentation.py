@@ -629,3 +629,86 @@ class TestBotocoreInstrumentor(TestBase):
                 SpanAttributes.HTTP_STATUS_CODE: 200,
             },
         )
+
+    @mock_dynamodb2
+    def test_hooks(self):
+        request_hook_operation_attribute_name = "request_hook.operation_name"
+        request_hook_api_params_attribute_name = "request_hook.api_params"
+        response_hook_operation_attribute_name = "response_hook.operation_name"
+        response_hook_result_attribute_name = "response_hook.result"
+
+        def request_hook(span, operation_name, api_params):
+            hook_attributes = {
+                request_hook_operation_attribute_name: operation_name,
+                request_hook_api_params_attribute_name: json.dumps(api_params),
+            }
+            if span and span.is_recording():
+                span.set_attributes(hook_attributes)
+
+        def response_hook(span, operation_name, result):
+            if span and span.is_recording():
+                span.set_attribute(
+                    response_hook_operation_attribute_name, operation_name,
+                )
+                span.set_attribute(
+                    response_hook_result_attribute_name, list(result.keys()),
+                )
+
+        BotocoreInstrumentor().uninstrument()
+        BotocoreInstrumentor().instrument(
+            request_hooks={"dynamodb": request_hook},
+            response_hooks={"dynamodb": response_hook},
+        )
+
+        self.session = botocore.session.get_session()
+        self.session.set_credentials(
+            access_key="access-key", secret_key="secret-key"
+        )
+
+        ddb = self.session.create_client("dynamodb", region_name="us-west-2")
+
+        test_table_name = "test_table_name"
+
+        ddb.create_table(
+            AttributeDefinitions=[
+                {"AttributeName": "id", "AttributeType": "S"},
+            ],
+            KeySchema=[{"AttributeName": "id", "KeyType": "HASH"}],
+            ProvisionedThroughput={
+                "ReadCapacityUnits": 5,
+                "WriteCapacityUnits": 5,
+            },
+            TableName=test_table_name,
+        )
+
+        item = {"id": {"S": "test_key"}}
+
+        ddb.put_item(TableName=test_table_name, Item=item)
+
+        spans = self.memory_exporter.get_finished_spans()
+        assert spans
+        self.assertEqual(len(spans), 2)
+        get_item_attributes = spans[1].attributes
+
+        expected_api_params = json.dumps(
+            {"TableName": test_table_name, "Item": item}
+        )
+
+        expected_result_keys = ("ConsumedCapacity", "ResponseMetadata")
+
+        self.assertEqual(
+            "PutItem",
+            get_item_attributes.get(request_hook_operation_attribute_name),
+        )
+        self.assertEqual(
+            expected_api_params,
+            get_item_attributes.get(request_hook_api_params_attribute_name),
+        )
+        self.assertEqual(
+            "PutItem",
+            get_item_attributes.get(response_hook_operation_attribute_name),
+        )
+        self.assertEqual(
+            expected_result_keys,
+            get_item_attributes.get(response_hook_result_attribute_name),
+        )
