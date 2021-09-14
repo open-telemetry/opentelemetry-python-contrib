@@ -15,10 +15,10 @@
 import requests
 
 from opentelemetry import trace
-from opentelemetry.instrumentation.http_base import HttpClientInstrumentor
 from opentelemetry.instrumentation.requests import RequestsInstrumentor
 from opentelemetry.test.httptest import HttpTestBase
 from opentelemetry.test.test_base import TestBase
+from opentelemetry.util.http.httplib import HttpClientInstrumentor
 
 
 class TestURLLib3InstrumentorWithRealSocket(HttpTestBase, TestBase):

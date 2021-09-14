@@ -27,7 +27,6 @@ from typing import Collection
 import wrapt
 
 from opentelemetry import context
-from opentelemetry.instrumentation.http_base.package import _instruments
 from opentelemetry.instrumentation.instrumentor import BaseInstrumentor
 from opentelemetry.instrumentation.utils import unwrap
 from opentelemetry.semconv.trace import SpanAttributes
@@ -40,7 +39,7 @@ logger = logging.getLogger(__name__)
 
 class HttpClientInstrumentor(BaseInstrumentor):
     def instrumentation_dependencies(self) -> Collection[str]:
-        return _instruments
+        return ()
 
     def _instrument(self, **kwargs):
         """Instruments the http.client module (not creating spans on its own)"""

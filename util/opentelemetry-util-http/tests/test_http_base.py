@@ -15,13 +15,13 @@
 from http.client import HTTPConnection, HTTPResponse, HTTPSConnection
 
 from opentelemetry import trace
-from opentelemetry.instrumentation.http_base import (
-    HttpClientInstrumentor,
-    set_ip_on_next_http_connection,
-)
 from opentelemetry.test.httptest import HttpTestBase
 from opentelemetry.test.test_base import TestBase
 from opentelemetry.trace.span import INVALID_SPAN
+from opentelemetry.util.http.httplib import (
+    HttpClientInstrumentor,
+    set_ip_on_next_http_connection,
+)
 
 # pylint: disable=too-many-public-methods
 

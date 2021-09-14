@@ -16,10 +16,10 @@ import urllib3
 import urllib3.exceptions
 
 from opentelemetry import trace
-from opentelemetry.instrumentation.http_base import HttpClientInstrumentor
 from opentelemetry.instrumentation.urllib3 import URLLib3Instrumentor
 from opentelemetry.test.httptest import HttpTestBase
 from opentelemetry.test.test_base import TestBase
+from opentelemetry.util.http.httplib import HttpClientInstrumentor
 
 
 class TestURLLib3InstrumentorWithRealSocket(HttpTestBase, TestBase):
