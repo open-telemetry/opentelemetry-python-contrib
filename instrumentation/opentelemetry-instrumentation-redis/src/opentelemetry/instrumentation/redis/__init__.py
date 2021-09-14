@@ -38,6 +38,38 @@ Usage
     client = redis.StrictRedis(host="localhost", port=6379)
     client.get("my-key")
 
+The `instrument` method accepts the following keyword args:
+
+tracer_provider (TracerProvider) - an optional tracer provider
+
+request_hook (Callable) - a function with extra user-defined logic to be performed before performing the request
+this function signature is:  def request_hook(span: Span, instance: redis.connection.Connection, args, kwargs) -> None
+
+response_hook (Callable) - a function with extra user-defined logic to be performed after performing the request
+this function signature is: def response_hook(span: Span, instance: redis.connection.Connection, response) -> None
+
+for example:
+
+.. code: python
+
+    from opentelemetry.instrumentation.redis import RedisInstrumentor
+    import redis
+
+    def request_hook(span, instance, args, kwargs):
+        if span and span.is_recording():
+            span.set_attribute("custom_user_attribute_from_request_hook", "some-value")
+
+    def response_hook(span, instance, response):
+        if span and span.is_recording():
+            span.set_attribute("custom_user_attribute_from_response_hook", "some-value")
+
+    # Instrument redis with hooks
+    RedisInstrumentor().instrument(request_hook=request_hook, response_hook=response_hook)
+
+    # This will report a span with the default settings and the custom attributes added from the hooks
+    client = redis.StrictRedis(host="localhost", port=6379)
+    client.get("my-key")
+
 API
 ---
 """
@@ -61,6 +93,11 @@ from opentelemetry.trace import Span
 
 _DEFAULT_SERVICE = "redis"
 
+_RequestHookT = typing.Optional[
+    typing.Callable[
+        [Span, redis.connection.Connection, typing.List, typing.Dict], None
+    ]
+]
 _ResponseHookT = typing.Optional[
     typing.Callable[[Span, redis.connection.Connection, Any], None]
 ]
@@ -76,7 +113,9 @@ def _set_connection_attributes(span, conn):
 
 
 def _instrument(
-    tracer, response_hook: _ResponseHookT = None,
+    tracer,
+    request_hook: _RequestHookT = None,
+    response_hook: _ResponseHookT = None,
 ):
     def _traced_execute_command(func, instance, args, kwargs):
         query = _format_command_args(args)
@@ -92,6 +131,8 @@ def _instrument(
                 span.set_attribute(SpanAttributes.DB_STATEMENT, query)
                 _set_connection_attributes(span, instance)
                 span.set_attribute("db.redis.args_length", len(args))
+            if callable(request_hook):
+                request_hook(span, instance, args, kwargs)
             response = func(*args, **kwargs)
             if callable(response_hook):
                 response_hook(span, instance, response)
@@ -155,7 +196,11 @@ class RedisInstrumentor(BaseInstrumentor):
         tracer = trace.get_tracer(
             __name__, __version__, tracer_provider=tracer_provider
         )
-        _instrument(tracer, response_hook=kwargs.get("response_hook"))
+        _instrument(
+            tracer,
+            request_hook=kwargs.get("request_hook"),
+            response_hook=kwargs.get("response_hook"),
+        )
 
     def _uninstrument(self, **kwargs):
         if redis.VERSION < (3, 0, 0):
