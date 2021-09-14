@@ -44,6 +44,41 @@ environment variable or by passing the prefix as an argument to the instrumentor
 .. code-block:: python
 
     ElasticsearchInstrumentor("my-custom-prefix").instrument()
+
+
+The `instrument` method accepts the following keyword args:
+
+tracer_provider (TracerProvider) - an optional tracer provider
+request_hook (Callable) - a function with extra user-defined logic to be performed before performing the request
+                          this function signature is:
+                          def request_hook(span: Span, method: str, url: str, kwargs)
+response_hook (Callable) - a function with extra user-defined logic to be performed after performing the request
+                          this function signature is:
+                          def response_hook(span: Span, response: dict)
+
+for example:
+
+.. code: python
+
+    from opentelemetry.instrumentation.elasticsearch import ElasticsearchInstrumentor
+    import elasticsearch
+
+    def request_hook(span, method, url, kwargs):
+        if span and span.is_recording():
+            span.set_attribute("custom_user_attribute_from_request_hook", "some-value")
+
+    def response_hook(span, response):
+        if span and span.is_recording():
+            span.set_attribute("custom_user_attribute_from_response_hook", "some-value")
+
+    # instrument elasticsearch with request and response hooks
+    ElasticsearchInstrumentor().instrument(request_hook=request_hook, response_hook=response_hook)
+
+    # Using elasticsearch as normal now will automatically generate spans,
+    # including user custom attributes added from the hooks
+    es = elasticsearch.Elasticsearch()
+    es.index(index='my-index', doc_type='my-type', id=1, body={'my': 'data', 'timestamp': datetime.now()})
+    es.get(index='my-index', doc_type='my-type', id=1)
 """
 
 from logging import getLogger
