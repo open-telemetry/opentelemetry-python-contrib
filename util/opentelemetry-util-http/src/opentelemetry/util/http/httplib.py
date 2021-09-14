@@ -20,7 +20,7 @@ not create spans on its own.
 import contextlib
 import http.client
 import logging
-import socket
+import socket  # pylint:disable=unused-import # Used for typing
 import typing
 from typing import Collection
 
