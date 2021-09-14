@@ -1,14 +1,16 @@
+from typing import Any, Callable, List, Optional
+
 from pika.channel import Channel
-from typing import Optional, List
-from pika.spec import BasicProperties
+from pika.spec import Basic, BasicProperties
+
+from opentelemetry import propagate, trace
+from opentelemetry.propagators.textmap import CarrierT, Getter
+from opentelemetry.semconv.trace import (
+    MessagingOperationValues,
+    SpanAttributes,
+)
 from opentelemetry.trace import Tracer
 from opentelemetry.trace.span import Span
-from opentelemetry.propagate import extract
-from opentelemetry.propagators.textmap import Getter, CarrierT
-from opentelemetry.semconv.trace import (
-    SpanAttributes,
-    MessagingOperationValues,
-)
 
 
 class PikaGetter(Getter):  # type: ignore
@@ -25,16 +27,75 @@ class PikaGetter(Getter):  # type: ignore
 pika_getter = PikaGetter()
 
 
+def decorate_callback(
+    callback: Callable[[Channel, Basic.Deliver, BasicProperties, bytes], Any],
+    tracer: Tracer,
+    task_name: str,
+):
+    def decorated_callback(
+        channel: Channel,
+        method: Basic.Deliver,
+        properties: BasicProperties,
+        body: bytes,
+    ) -> Any:
+        if not properties:
+            properties = BasicProperties()
+        span = get_span(
+            tracer,
+            channel,
+            properties,
+            task_name=task_name,
+            operation=MessagingOperationValues.RECEIVE,
+        )
+        with trace.use_span(span, end_on_exit=True):
+            propagate.inject(properties.headers)
+            retval = callback(channel, method, properties, body)
+        return retval
+
+    return decorated_callback
+
+
+def decorate_basic_publish(
+    original_function: Callable[[str, str, bytes, BasicProperties, bool], Any],
+    channel: Channel,
+    tracer: Tracer,
+):
+    def decorated_function(
+        exchange: str,
+        routing_key: str,
+        body: bytes,
+        properties: BasicProperties = None,
+        mandatory: bool = False,
+    ) -> Any:
+        if not properties:
+            properties = BasicProperties()
+        span = get_span(
+            tracer,
+            channel,
+            properties,
+            task_name="(temporary)",
+            operation=None,
+        )
+        with trace.use_span(span, end_on_exit=True):
+            propagate.inject(properties.headers)
+            retval = original_function(
+                exchange, routing_key, body, properties, mandatory
+            )
+        return retval
+
+    return decorated_function
+
+
 def get_span(
     tracer: Tracer,
     channel: Channel,
     properties: BasicProperties,
     task_name: str,
-    operation: Optional[MessagingOperationValues],
+    operation: Optional[MessagingOperationValues] = None,
 ) -> Span:
     if properties.headers is None:
         properties.headers = {}
-    ctx = extract(properties.headers, getter=pika_getter)
+    ctx = propagate.extract(properties.headers, getter=pika_getter)
     task_name = properties.type if properties.type else task_name
     span = tracer.start_span(
         context=ctx, name=generate_span_name(task_name, operation)
@@ -44,7 +105,7 @@ def get_span(
 
 
 def generate_span_name(
-    task_name: str, operation: MessagingOperationValues
+    task_name: str, operation: Optional[MessagingOperationValues]
 ) -> str:
     if not operation:
         return f"{task_name} send"
@@ -56,7 +117,7 @@ def enrich_span(
     channel: Channel,
     properties: BasicProperties,
     task_destination: str,
-    operation: Optional[MessagingOperationValues],
+    operation: Optional[MessagingOperationValues] = None,
 ) -> None:
     span.set_attribute(SpanAttributes.MESSAGING_SYSTEM, "rabbitmq")
     if operation:

@@ -13,5 +13,4 @@
 # limitations under the License.
 from typing import Collection
 
-
 _instruments: Collection[str] = ("pika >= 1.1.0",)

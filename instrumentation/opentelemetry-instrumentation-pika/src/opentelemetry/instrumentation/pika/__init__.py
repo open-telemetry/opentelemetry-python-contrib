@@ -26,7 +26,8 @@ Usage
 
 * Run instrumented task
 
-.. code:: python
+.. code-block:: python
+
     import pika
     from opentelemetry.instrumentation.pika import PikaInstrumentation
 
@@ -43,9 +44,10 @@ Usage
     pika_instrumentation.uninstrument(channel=channel)
 
 
-PikaInstrumentation also supports instrumentation without creating an object, and receiving a tracer_provider
+* PikaInstrumentation also supports instrumentation without creating an object, and receiving a tracer_provider
 
-.. code:: Python
+.. code-block:: python
+
     PikaInstrumentation.instrument_channel(channel, tracer_provider=tracer_provider)
 
 API
@@ -53,5 +55,5 @@ API
 """
 
 
-from .version import __version__
 from .pika_instrumentor import PikaInstrumentation
+from .version import __version__
