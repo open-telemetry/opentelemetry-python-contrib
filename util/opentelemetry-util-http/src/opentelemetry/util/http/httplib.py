@@ -39,7 +39,7 @@ logger = logging.getLogger(__name__)
 
 class HttpClientInstrumentor(BaseInstrumentor):
     def instrumentation_dependencies(self) -> Collection[str]:
-        return ()
+        return ()  # This instruments http.client from stdlib; no extra deps.
 
     def _instrument(self, **kwargs):
         """Instruments the http.client module (not creating spans on its own)"""
