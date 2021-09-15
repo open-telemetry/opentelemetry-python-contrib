@@ -53,20 +53,16 @@ default_instrumentations = []
 """
 
 tmpdir = tempfile.TemporaryDirectory()
-gen_path = os.path.join(
-    tmpdir.name,
-    "new.py",
-)
+gen_path = os.path.join(tmpdir.name, "new.py",)
 
-current_path = os.path.join(
-    tmpdir.name,
-    "current.py",
-)
+current_path = os.path.join(tmpdir.name, "current.py",)
 
 core_repo = os.getenv("CORE_REPO_SHA", "main")
-url = "https://raw.githubusercontent.com/open-telemetry/opentelemetry-python/{}/opentelemetry-instrumentation/src/opentelemetry/instrumentation/bootstrap_gen.py".format(core_repo)
+url = "https://raw.githubusercontent.com/open-telemetry/opentelemetry-python/{}/opentelemetry-instrumentation/src/opentelemetry/instrumentation/bootstrap_gen.py".format(
+    core_repo
+)
 r = requests.get(url, allow_redirects=True)
-open(current_path, 'wb').write(r.content)
+open(current_path, "wb").write(r.content)
 
 
 def main():
@@ -113,11 +109,15 @@ def main():
 
     logger.info("generated %s", gen_path)
 
+
 def compare():
     if not filecmp.cmp(current_path, gen_path):
-        logger.info("Generated code is out of date, please run \"tox -e generate\" and commit bootstrap_gen.py to core repo.")
+        logger.info(
+            'Generated code is out of date, please run "tox -e generate" and commit bootstrap_gen.py to core repo.'
+        )
         os.replace(gen_path, "bootstrap_gen.py")
         sys.exit(1)
+
 
 if __name__ == "__main__":
     main()
