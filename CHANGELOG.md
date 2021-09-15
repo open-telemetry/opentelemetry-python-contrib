@@ -28,7 +28,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - `opentelemetry-instrumentation-urllib3`, `opentelemetry-instrumentation-requests`
   The `net.peer.ip` attribute is set to the IP of the connected HTTP server or proxy
-  using the new `opententelemetry-instrumentation-http-base` package
+  using a new instrumentor in `opententelemetry-util-http`
   ([#661](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/661))
 
 ## [1.5.0-0.24b0](https://github.com/open-telemetry/opentelemetry-python/releases/tag/v1.5.0-0.24b0) - 2021-08-26
