@@ -88,6 +88,10 @@ class TestFalconInstrumentation(TestFalconBase):
             span.name, "HelloWorldResource.on_{0}".format(method.lower())
         )
         self.assertEqual(span.status.status_code, StatusCode.UNSET)
+        self.assertEqual(
+            span.status.description,
+            None,
+        )
         self.assertSpanHasAttributes(
             span,
             {
@@ -113,6 +117,10 @@ class TestFalconInstrumentation(TestFalconBase):
         span = spans[0]
         self.assertEqual(span.name, "HTTP GET")
         self.assertEqual(span.status.status_code, StatusCode.ERROR)
+        self.assertEqual(
+            span.status.description,
+            "NotFound",
+        )
         self.assertSpanHasAttributes(
             span,
             {
