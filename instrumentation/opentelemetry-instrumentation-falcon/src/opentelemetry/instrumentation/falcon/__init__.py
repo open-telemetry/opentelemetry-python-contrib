@@ -178,7 +178,9 @@ class _InstrumentedFalconAPI(getattr(falcon, _instrument_app)):
         self._excluded_urls = get_excluded_urls("FALCON")
         super().__init__(*args, **kwargs)
 
-    def _handle_exception(self, req, resp, ex, params):  # pylint: disable=C0103
+    def _handle_exception(
+        self, req, resp, ex, params
+    ):  # pylint: disable=C0103
         # Falcon 3 does not execute middleware within the context of the exception
         # so we capture the exception here and save it into the env dict
         _, exc, _ = exc_info()
