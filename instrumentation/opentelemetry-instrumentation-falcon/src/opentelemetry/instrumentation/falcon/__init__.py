@@ -146,15 +146,12 @@ class FalconInstrumentor(BaseInstrumentor):
 
     def _instrument(self, **kwargs):
         self._original_falcon_api = getattr(falcon, _instrument_app)
-        setattr(falcon, _instrument_app, partial(_InstrumentedFalconAPI, **kwargs))
+        setattr(
+            falcon, _instrument_app, partial(_InstrumentedFalconAPI, **kwargs)
+        )
 
     def _uninstrument(self, **kwargs):
-        if hasattr(falcon, "App"):
-            # Falcon 3
-            falcon.App = self._original_falcon_api
-        else:
-            # Falcon 2
-            falcon.API = self._original_falcon_api
+        setattr(falcon, _instrument_app, self._original_falcon_api)
 
 
 class _InstrumentedFalconAPI(getattr(falcon, _instrument_app)):
@@ -185,7 +182,6 @@ class _InstrumentedFalconAPI(getattr(falcon, _instrument_app)):
         _, exc, _ = exc_info()
         req.env[_ENVIRON_EXC] = exc
         return super()._handle_exception(req, resp, ex, params)
-
 
     def __call__(self, env, start_response):
         # pylint: disable=E1101
