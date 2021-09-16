@@ -209,7 +209,6 @@ class _InstrumentedFalconAPI(getattr(falcon, _instrument_app)):
         env[_ENVIRON_ACTIVATION_KEY] = activation
 
         def _start_response(status, response_headers, *args, **kwargs):
-            otel_wsgi.add_response_attributes(span, status, response_headers)
             response = start_response(
                 status, response_headers, *args, **kwargs
             )
@@ -280,19 +279,19 @@ class _TraceMiddleware:
         if resource is None:
             status = "404"
             reason = "NotFound"
-
-        if _ENVIRON_EXC in req.env:
-            exc = req.env[_ENVIRON_EXC]
-            exc_type = type(exc)
         else:
-            exc_type, exc = None, None
-        if exc_type and not req_succeeded:
-            if "HTTPNotFound" in exc_type.__name__:
-                status = "404"
-                reason = "NotFound"
+            if _ENVIRON_EXC in req.env:
+                exc = req.env[_ENVIRON_EXC]
+                exc_type = type(exc)
             else:
-                status = "500"
-                reason = "{}: {}".format(exc_type.__name__, exc)
+                exc_type, exc = None, None
+            if exc_type and not req_succeeded:
+                if "HTTPNotFound" in exc_type.__name__:
+                    status = "404"
+                    reason = "NotFound"
+                else:
+                    status = "500"
+                    reason = "{}: {}".format(exc_type.__name__, exc)
 
         status = status.split(" ")[0]
         try:
