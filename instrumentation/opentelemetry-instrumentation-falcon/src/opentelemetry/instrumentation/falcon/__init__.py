@@ -178,7 +178,7 @@ class _InstrumentedFalconAPI(getattr(falcon, _instrument_app)):
         self._excluded_urls = get_excluded_urls("FALCON")
         super().__init__(*args, **kwargs)
 
-    def _handle_exception(self, req, resp, ex, params):
+    def _handle_exception(self, req, resp, ex, params):  # pylint: disable=C0103
         _, exc, _ = exc_info()
         req.env[_ENVIRON_EXC] = exc
         return super()._handle_exception(req, resp, ex, params)
