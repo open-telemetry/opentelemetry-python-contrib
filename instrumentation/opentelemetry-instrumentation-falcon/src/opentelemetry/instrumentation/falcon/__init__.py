@@ -179,6 +179,8 @@ class _InstrumentedFalconAPI(getattr(falcon, _instrument_app)):
         super().__init__(*args, **kwargs)
 
     def _handle_exception(self, req, resp, ex, params):  # pylint: disable=C0103
+        # Falcon 3 does not execute middleware within the context of the exception
+        # so we capture the exception here and save it into the env dict
         _, exc, _ = exc_info()
         req.env[_ENVIRON_EXC] = exc
         return super()._handle_exception(req, resp, ex, params)
@@ -279,11 +281,8 @@ class _TraceMiddleware:
             status = "404"
             reason = "NotFound"
 
-        if _ENVIRON_EXC in req.env:
-            exc = req.env[_ENVIRON_EXC]
-            exc_type = type(exc)
-        else:
-            exc_type, exc, _ = exc_info()
+        exc = req.env[_ENVIRON_EXC]
+        exc_type = type(exc)
         if exc_type and not req_succeeded:
             if "HTTPNotFound" in exc_type.__name__:
                 status = "404"
