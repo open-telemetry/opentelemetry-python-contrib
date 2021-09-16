@@ -89,8 +89,7 @@ class TestFalconInstrumentation(TestFalconBase):
         )
         self.assertEqual(span.status.status_code, StatusCode.UNSET)
         self.assertEqual(
-            span.status.description,
-            None,
+            span.status.description, None,
         )
         self.assertSpanHasAttributes(
             span,
@@ -118,8 +117,7 @@ class TestFalconInstrumentation(TestFalconBase):
         self.assertEqual(span.name, "HTTP GET")
         self.assertEqual(span.status.status_code, StatusCode.ERROR)
         self.assertEqual(
-            span.status.description,
-            "NotFound",
+            span.status.description, "NotFound",
         )
         self.assertSpanHasAttributes(
             span,
