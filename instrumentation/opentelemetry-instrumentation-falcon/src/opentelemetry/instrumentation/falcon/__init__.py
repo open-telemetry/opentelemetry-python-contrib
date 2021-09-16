@@ -281,8 +281,11 @@ class _TraceMiddleware:
             status = "404"
             reason = "NotFound"
 
-        exc = req.env[_ENVIRON_EXC]
-        exc_type = type(exc)
+        if _ENVIRON_EXC in req.env:
+            exc = req.env[_ENVIRON_EXC]
+            exc_type = type(exc)
+        else:
+            exc_type, exc = None, None
         if exc_type and not req_succeeded:
             if "HTTPNotFound" in exc_type.__name__:
                 status = "404"
