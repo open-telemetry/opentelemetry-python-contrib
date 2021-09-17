@@ -48,10 +48,10 @@ API
 The `instrument` method accepts the following keyword args:
 
 tracer_provider (TracerProvider) - an optional tracer provider
-request_hooks (dict) - a mapping between service names their respective callable request hooks
-* a request hook signature is: def request_hook(span: Span, operation_name: str, api_params: dict) -> None
-response_hooks (dict) - a mapping between service names their respective callable response hooks
-* a response hook signature is: def response_hook(span: Span, operation_name: str, result: dict) -> None
+request_hook (Callable) - a function with extra user-defined logic to be performed before performing the request
+this function signature is:  def request_hook(span: Span, service_name: str, operation_name: str, api_params: dict) -> None
+response_hook (Callable) - a function with extra user-defined logic to be performed after performing the request
+this function signature is:  def request_hook(span: Span, service_name: str, operation_name: str, result: dict) -> None
 
 for example:
 
@@ -60,16 +60,14 @@ for example:
     from opentelemetry.instrumentation.botocore import BotocoreInstrumentor
     import botocore
 
-    def ec2_request_hook(span, operation_name, api_params):
+    def request_hook(span, service_name, operation_name, api_params):
         # request hook logic
 
-    def ec2_response_hook(span, operation_name, result):
+    def response_hook(span, service_name, operation_name, result):
         # response hook logic
 
     # Instrument Botocore with hooks
-    BotocoreInstrumentor().instrument(
-        request_hooks={"ec2": ec2_request_hook}, response_hooks={"ec2": ec2_response_hook}
-    )
+    BotocoreInstrumentor().instrument(request_hook=request_hook, response_hooks=response_hook)
 
     # This will create a span with Botocore-specific attributes, including custom attributes added from the hooks
     session = botocore.session.get_session()
@@ -127,8 +125,8 @@ class BotocoreInstrumentor(BaseInstrumentor):
 
     def __init__(self):
         super().__init__()
-        self.request_hooks = dict()
-        self.response_hooks = dict()
+        self.request_hook = None
+        self.response_hook = None
 
     def instrumentation_dependencies(self) -> Collection[str]:
         return _instruments
@@ -139,14 +137,8 @@ class BotocoreInstrumentor(BaseInstrumentor):
             __name__, __version__, kwargs.get("tracer_provider")
         )
 
-        request_hooks = kwargs.get("request_hooks")
-        response_hooks = kwargs.get("response_hooks")
-
-        if isinstance(request_hooks, dict):
-            self.request_hooks = request_hooks
-
-        if isinstance(response_hooks, dict):
-            self.response_hooks = response_hooks
+        self.request_hook = kwargs.get("request_hook")
+        self.response_hook = kwargs.get("response_hook")
 
         wrap_function_wrapper(
             "botocore.client",
@@ -214,9 +206,10 @@ class BotocoreInstrumentor(BaseInstrumentor):
                 context_api.set_value(_SUPPRESS_HTTP_INSTRUMENTATION_KEY, True)
             )
 
-            self.apply_request_hook(
-                span, service_name, operation_name, api_params
-            )
+            if callable(self.request_hook):
+                self.request_hook(
+                    span, service_name, operation_name, api_params
+                )
 
             try:
                 result = original_func(*args, **kwargs)
@@ -228,9 +221,8 @@ class BotocoreInstrumentor(BaseInstrumentor):
             if error:
                 result = error.response
 
-            self.apply_response_hook(
-                span, service_name, operation_name, result
-            )
+            if callable(self.response_hook):
+                self.response_hook(span, service_name, operation_name, result)
 
             self._set_api_call_result_attributes(span, result)
 
@@ -284,17 +276,3 @@ class BotocoreInstrumentor(BaseInstrumentor):
                         SpanAttributes.HTTP_STATUS_CODE,
                         metadata["HTTPStatusCode"],
                     )
-
-    def apply_request_hook(
-        self, span, service_name, operation_name, api_params
-    ):
-        if service_name in self.request_hooks:
-            request_hook = self.request_hooks.get(service_name)
-            if callable(request_hook):
-                request_hook(span, operation_name, api_params)
-
-    def apply_response_hook(self, span, service_name, operation_name, result):
-        if service_name in self.response_hooks:
-            response_hook = self.response_hooks.get(service_name)
-            if callable(response_hook):
-                response_hook(span, operation_name, result)
