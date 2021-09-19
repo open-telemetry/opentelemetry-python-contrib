@@ -29,13 +29,13 @@ Usage
 .. code-block:: python
 
     import pika
-    from opentelemetry.instrumentation.pika import PikaInstrumentation
+    from opentelemetry.instrumentation.pika import PikaInstrumentor
 
     connection = pika.BlockingConnection(pika.URLParameters('amqp://localhost'))
     channel = connection.channel()
     channel.queue_declare(queue='hello')
 
-    pika_instrumentation = PikaInstrumentation()
+    pika_instrumentation = PikaInstrumentor()
     pika_instrumentation.instrument(channel=channel)
 
 
@@ -44,16 +44,16 @@ Usage
     pika_instrumentation.uninstrument(channel=channel)
 
 
-* PikaInstrumentation also supports instrumentation without creating an object, and receiving a tracer_provider
+* PikaInstrumentor also supports instrumentation without creating an object, and receiving a tracer_provider
 
 .. code-block:: python
 
-    PikaInstrumentation.instrument_channel(channel, tracer_provider=tracer_provider)
+    PikaInstrumentor.instrument_channel(channel, tracer_provider=tracer_provider)
 
 API
 ---
 """
 
 
-from .pika_instrumentor import PikaInstrumentation
+from .pika_instrumentor import PikaInstrumentor
 from .version import __version__

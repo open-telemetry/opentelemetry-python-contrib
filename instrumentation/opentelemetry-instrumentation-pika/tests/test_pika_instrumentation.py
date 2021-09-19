@@ -16,7 +16,7 @@ from unittest import TestCase, mock
 from pika.adapters import BaseConnection
 from pika.channel import Channel
 
-from opentelemetry.instrumentation.pika import PikaInstrumentation
+from opentelemetry.instrumentation.pika import PikaInstrumentor
 from opentelemetry.trace import Tracer
 
 
@@ -38,7 +38,7 @@ class TestPika(TestCase):
         uninstrument_channel_functions: mock.MagicMock,
         instrument_channel: mock.MagicMock,
     ) -> None:
-        instrumentation = PikaInstrumentation()
+        instrumentation = PikaInstrumentor()
         instrumentation.instrument(channel=self.channel)
         instrument_channel.assert_called_once_with(
             self.channel, tracer_provider=None
@@ -64,7 +64,7 @@ class TestPika(TestCase):
         instrument_consumers: mock.MagicMock,
         instrument_channel_functions: mock.MagicMock,
     ):
-        PikaInstrumentation.instrument_channel(channel=self.channel)
+        PikaInstrumentor.instrument_channel(channel=self.channel)
         assert hasattr(
             self.channel, "__opentelemetry_tracer"
         ), "Tracer not set for the channel!"
@@ -80,7 +80,7 @@ class TestPika(TestCase):
             mock.call(value, tracer, key)
             for key, value in self.channel._impl._consumers.items()
         ]
-        PikaInstrumentation._instrument_consumers(
+        PikaInstrumentor._instrument_consumers(
             self.channel._impl._consumers, tracer
         )
         decorate_callback.assert_has_calls(
@@ -99,7 +99,7 @@ class TestPika(TestCase):
     ) -> None:
         tracer = mock.MagicMock(spec=Tracer)
         original_function = self.channel.basic_publish
-        PikaInstrumentation._instrument_basic_publish(self.channel, tracer)
+        PikaInstrumentor._instrument_basic_publish(self.channel, tracer)
         decorate_basic_publish.assert_called_once_with(
             original_function, self.channel, tracer
         )
@@ -114,5 +114,5 @@ class TestPika(TestCase):
         original_function = self.channel.basic_publish
         self.channel.basic_publish = mock.MagicMock()
         self.channel.basic_publish._original_function = original_function
-        PikaInstrumentation._uninstrument_channel_functions(self.channel)
+        PikaInstrumentor._uninstrument_channel_functions(self.channel)
         self.assertEqual(self.channel.basic_publish, original_function)

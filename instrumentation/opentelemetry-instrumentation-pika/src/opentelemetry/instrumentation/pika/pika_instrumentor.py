@@ -29,7 +29,7 @@ CTX_KEY = "__otel_task_span"
 FUNCTIONS_TO_UNINSTRUMENT = ["basic_publish"]
 
 
-class PikaInstrumentation(BaseInstrumentor):  # type: ignore
+class PikaInstrumentor(BaseInstrumentor):  # type: ignore
     @staticmethod
     def _instrument_consumers(
         consumers_dict: Dict[str, Callable[..., Any]], tracer: Tracer
@@ -54,7 +54,7 @@ class PikaInstrumentation(BaseInstrumentor):  # type: ignore
         channel: Channel, tracer: Tracer
     ) -> None:
         if hasattr(channel, "basic_publish"):
-            PikaInstrumentation._instrument_basic_publish(channel, tracer)
+            PikaInstrumentor._instrument_basic_publish(channel, tracer)
 
     @staticmethod
     def _uninstrument_channel_functions(channel: Channel) -> None:
@@ -75,17 +75,17 @@ class PikaInstrumentation(BaseInstrumentor):  # type: ignore
         tracer = trace.get_tracer(__name__, __version__, tracer_provider)
         channel.__setattr__("__opentelemetry_tracer", tracer)
         if channel._impl._consumers:
-            PikaInstrumentation._instrument_consumers(
+            PikaInstrumentor._instrument_consumers(
                 channel._impl._consumers, tracer
             )
-        PikaInstrumentation._instrument_channel_functions(channel, tracer)
+        PikaInstrumentor._instrument_channel_functions(channel, tracer)
 
     def _instrument(self, **kwargs: Dict[str, Any]) -> None:
         channel: Channel = kwargs.get("channel", None)
         if not channel or not isinstance(channel, Channel):
             return
         tracer_provider: TracerProvider = kwargs.get("tracer_provider", None)
-        PikaInstrumentation.instrument_channel(
+        PikaInstrumentor.instrument_channel(
             channel, tracer_provider=tracer_provider
         )
 
@@ -99,7 +99,7 @@ class PikaInstrumentation(BaseInstrumentor):  # type: ignore
         for key, callback in channel._impl._consumers.items():
             if hasattr(callback, "_original_callback"):
                 channel._impl._consumers[key] = callback._original_callback
-        PikaInstrumentation._uninstrument_channel_functions(channel)
+        PikaInstrumentor._uninstrument_channel_functions(channel)
 
     def instrumentation_dependencies(self) -> Collection[str]:
         return _instruments
