@@ -32,6 +32,9 @@ class TestUtils(TestCase):
         channel = mock.MagicMock()
         properties = mock.MagicMock()
         task_name = "test.test"
+        context = mock.MagicMock()
+        context.get_value.return_value = None
+        extract.return_value = context
         span = utils.get_span(tracer, channel, properties, task_name)
         extract.assert_called_once()
         generate_span_name.assert_called_once()
@@ -43,6 +46,24 @@ class TestUtils(TestCase):
             span in call.args or span in call.kwargs.values()
             for call in enrich_span.call_args_list
         ), "The returned span was not enriched using enrich_span!"
+
+    @mock.patch("opentelemetry.instrumentation.pika.utils.generate_span_name")
+    @mock.patch("opentelemetry.instrumentation.pika.utils.enrich_span")
+    @mock.patch("opentelemetry.propagate.extract")
+    def test_get_span_suppressed(
+        self,
+        extract: mock.MagicMock,
+        enrich_span: mock.MagicMock,
+        generate_span_name: mock.MagicMock,
+    ) -> None:
+        tracer = mock.MagicMock(spec=Tracer)
+        channel = mock.MagicMock()
+        properties = mock.MagicMock()
+        task_name = "test.test"
+        span = utils.get_span(tracer, channel, properties, task_name)
+        self.assertEqual(span, None)
+        extract.assert_called_once()
+        generate_span_name.assert_not_called()
 
     def test_generate_span_name_no_operation(self) -> None:
         task_name = "test.test"

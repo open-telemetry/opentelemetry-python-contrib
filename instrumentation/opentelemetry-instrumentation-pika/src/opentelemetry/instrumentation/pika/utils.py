@@ -4,6 +4,7 @@ from pika.channel import Channel
 from pika.spec import Basic, BasicProperties
 
 from opentelemetry import propagate, trace
+from opentelemetry.instrumentation.utils import _SUPPRESS_INSTRUMENTATION_KEY
 from opentelemetry.propagators.textmap import CarrierT, Getter
 from opentelemetry.semconv.trace import (
     MessagingOperationValues,
@@ -76,8 +77,13 @@ def decorate_basic_publish(
             task_name="(temporary)",
             operation=None,
         )
+        if not span:
+            return original_function(
+                exchange, routing_key, body, properties, mandatory
+            )
         with trace.use_span(span, end_on_exit=True):
-            propagate.inject(properties.headers)
+            if span.is_recording():
+                propagate.inject(properties.headers)
             retval = original_function(
                 exchange, routing_key, body, properties, mandatory
             )
@@ -92,10 +98,14 @@ def get_span(
     properties: BasicProperties,
     task_name: str,
     operation: Optional[MessagingOperationValues] = None,
-) -> Span:
+) -> Optional[Span]:
     if properties.headers is None:
         properties.headers = {}
     ctx = propagate.extract(properties.headers, getter=pika_getter)
+    if ctx.get_value("suppress_instrumentation") or ctx.get_value(
+        _SUPPRESS_INSTRUMENTATION_KEY
+    ):
+        return None
     task_name = properties.type if properties.type else task_name
     span = tracer.start_span(
         context=ctx, name=generate_span_name(task_name, operation)

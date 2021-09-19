@@ -28,10 +28,10 @@ class TestPika(TestCase):
         self.channel._impl._consumers = {"mock_key": self.mock_callback}
 
     @mock.patch(
-        "opentelemetry.instrumentation.pika.PikaInstrumentation.instrument_channel"
+        "opentelemetry.instrumentation.pika.PikaInstrumentor.instrument_channel"
     )
     @mock.patch(
-        "opentelemetry.instrumentation.pika.PikaInstrumentation._uninstrument_channel_functions"
+        "opentelemetry.instrumentation.pika.PikaInstrumentor._uninstrument_channel_functions"
     )
     def test_instrument_api(
         self,
@@ -54,10 +54,10 @@ class TestPika(TestCase):
         )
 
     @mock.patch(
-        "opentelemetry.instrumentation.pika.PikaInstrumentation._instrument_channel_functions"
+        "opentelemetry.instrumentation.pika.PikaInstrumentor._instrument_channel_functions"
     )
     @mock.patch(
-        "opentelemetry.instrumentation.pika.PikaInstrumentation._instrument_consumers"
+        "opentelemetry.instrumentation.pika.PikaInstrumentor._instrument_consumers"
     )
     def test_instrument(
         self,
