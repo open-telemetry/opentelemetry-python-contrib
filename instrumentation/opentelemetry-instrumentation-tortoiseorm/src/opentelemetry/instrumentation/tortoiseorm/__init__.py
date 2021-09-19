@@ -20,6 +20,8 @@ Usage
     from opentelemetry.instrumentation.tortoiseorm import TortoiseORMInstrumentor
     from tortoise.contrib.fastapi import register_tortoise
 
+    TortoiseORMInstrumentor().instrument(tracer_provider=tracer)
+
     register_tortoise(
         app,
         db_url=settings.db_url,
@@ -28,11 +30,22 @@ Usage
         add_exception_handlers=True,
     )
 
-    TortoiseORMInstrumentor().instrument(tracer_provider=tracer)
 API
 ---
 """
 from typing import Collection
+
+import wrapt
+
+from opentelemetry import trace
+from opentelemetry.instrumentation.instrumentor import BaseInstrumentor
+from opentelemetry.instrumentation.tortoiseorm.package import _instruments
+from opentelemetry.instrumentation.tortoiseorm.version import __version__
+from opentelemetry.instrumentation.utils import unwrap
+from opentelemetry.semconv.trace import DbSystemValues, SpanAttributes
+from opentelemetry.trace import SpanKind
+from opentelemetry.trace.status import Status, StatusCode
+
 
 try:
     import tortoise.backends.asyncpg.client
@@ -55,52 +68,6 @@ try:
 except ModuleNotFoundError:
     TORTOISE_SQLITE_SUPPORT = False
 
-import wrapt
-
-from opentelemetry import trace
-from opentelemetry.instrumentation.instrumentor import BaseInstrumentor
-from opentelemetry.instrumentation.tortoiseorm.package import _instruments
-from opentelemetry.instrumentation.tortoiseorm.version import __version__
-from opentelemetry.instrumentation.utils import unwrap
-from opentelemetry.semconv.trace import DbSystemValues, SpanAttributes
-from opentelemetry.trace import SpanKind
-from opentelemetry.trace.status import Status, StatusCode
-
-
-def _hydrate_span_from_args(connection, query, parameters) -> dict:
-    """Get network and database attributes from connection."""
-    span_attributes = {}
-    capabilities = getattr(connection, "capabilities", None)
-    if capabilities:
-        if capabilities.dialect == "sqlite":
-            span_attributes[SpanAttributes.DB_SYSTEM] = DbSystemValues.SQLITE.value
-        elif capabilities.dialect == "postgres":
-            span_attributes[SpanAttributes.DB_SYSTEM] = DbSystemValues.POSTGRESQL.value
-        elif capabilities.dialect == "mysql":
-            span_attributes[SpanAttributes.DB_SYSTEM] = DbSystemValues.MYSQL.value
-    dbname = getattr(connection, "filename", None)
-    if dbname:
-        span_attributes[SpanAttributes.DB_NAME] = dbname
-    dbname = getattr(connection, "database", None)
-    if dbname:
-        span_attributes[SpanAttributes.DB_NAME] = dbname
-    if query is not None:
-        span_attributes[SpanAttributes.DB_STATEMENT] = query
-    user = getattr(connection, "user", None)
-    if user:
-        span_attributes[SpanAttributes.DB_USER] = user
-    host = getattr(connection, "host", None)
-    if host:
-        span_attributes[SpanAttributes.NET_PEER_NAME] = host
-    port = getattr(connection, "port", None)
-    if port:
-        span_attributes[SpanAttributes.NET_PEER_PORT] = port
-
-    if parameters is not None and len(parameters) > 0:
-        span_attributes["db.statement.parameters"] = str(parameters)
-
-    return span_attributes
-
 
 class TortoiseORMInstrumentor(BaseInstrumentor):
     """An instrumentor for Tortoise-ORM
@@ -115,11 +82,13 @@ class TortoiseORMInstrumentor(BaseInstrumentor):
         Args:
             **kwargs: Optional arguments
                 ``tracer_provider``: a TracerProvider, defaults to global
+                ``capture_parameters``: set to True to capture SQL query parameters
         Returns:
             None
         """
         tracer_provider = kwargs.get("tracer_provider")
         self._tracer = trace.get_tracer(__name__, __version__, tracer_provider)
+        self.capture_parameters = kwargs.get("capture_parameters", False)
         if TORTOISE_SQLITE_SUPPORT:
             funcs = [
                 "SqliteClient.execute_many",
@@ -187,6 +156,41 @@ class TortoiseORMInstrumentor(BaseInstrumentor):
             )
             unwrap(tortoise.backends.asyncpg.client.AsyncpgDBClient, "execute_script")
 
+    def _hydrate_span_from_args(self, connection, query, parameters) -> dict:
+        """Get network and database attributes from connection."""
+        span_attributes = {}
+        capabilities = getattr(connection, "capabilities", None)
+        if capabilities:
+            if capabilities.dialect == "sqlite":
+                span_attributes[SpanAttributes.DB_SYSTEM] = DbSystemValues.SQLITE.value
+            elif capabilities.dialect == "postgres":
+                span_attributes[SpanAttributes.DB_SYSTEM] = DbSystemValues.POSTGRESQL.value
+            elif capabilities.dialect == "mysql":
+                span_attributes[SpanAttributes.DB_SYSTEM] = DbSystemValues.MYSQL.value
+        dbname = getattr(connection, "filename", None)
+        if dbname:
+            span_attributes[SpanAttributes.DB_NAME] = dbname
+        dbname = getattr(connection, "database", None)
+        if dbname:
+            span_attributes[SpanAttributes.DB_NAME] = dbname
+        if query is not None:
+            span_attributes[SpanAttributes.DB_STATEMENT] = query
+        user = getattr(connection, "user", None)
+        if user:
+            span_attributes[SpanAttributes.DB_USER] = user
+        host = getattr(connection, "host", None)
+        if host:
+            span_attributes[SpanAttributes.NET_PEER_NAME] = host
+        port = getattr(connection, "port", None)
+        if port:
+            span_attributes[SpanAttributes.NET_PEER_PORT] = port
+
+        if self.capture_parameters:
+            if parameters is not None and len(parameters) > 0:
+                span_attributes["db.statement.parameters"] = str(parameters)
+
+        return span_attributes
+
     async def _do_execute(self, func, instance, args, kwargs):
 
         exception = None
@@ -194,7 +198,7 @@ class TortoiseORMInstrumentor(BaseInstrumentor):
 
         with self._tracer.start_as_current_span(name, kind=SpanKind.CLIENT) as span:
             if span.is_recording():
-                span_attributes = _hydrate_span_from_args(
+                span_attributes = self._hydrate_span_from_args(
                     instance,
                     args[0],
                     args[1:],
