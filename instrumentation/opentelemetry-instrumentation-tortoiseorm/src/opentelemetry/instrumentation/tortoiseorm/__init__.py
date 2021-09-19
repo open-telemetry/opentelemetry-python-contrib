@@ -46,7 +46,6 @@ from opentelemetry.semconv.trace import DbSystemValues, SpanAttributes
 from opentelemetry.trace import SpanKind
 from opentelemetry.trace.status import Status, StatusCode
 
-
 try:
     import tortoise.backends.asyncpg.client
 
@@ -99,9 +98,7 @@ class TortoiseORMInstrumentor(BaseInstrumentor):
             ]
             for f in funcs:
                 wrapt.wrap_function_wrapper(
-                    "tortoise.backends.sqlite.client",
-                    f,
-                    self._do_execute,
+                    "tortoise.backends.sqlite.client", f, self._do_execute,
                 )
 
         if TORTOISE_POSTGRES_SUPPORT:
@@ -114,9 +111,7 @@ class TortoiseORMInstrumentor(BaseInstrumentor):
             ]
             for f in funcs:
                 wrapt.wrap_function_wrapper(
-                    "tortoise.backends.asyncpg.client",
-                    f,
-                    self._do_execute,
+                    "tortoise.backends.asyncpg.client", f, self._do_execute,
                 )
 
         if TORTOISE_MYSQL_SUPPORT:
@@ -129,32 +124,61 @@ class TortoiseORMInstrumentor(BaseInstrumentor):
             ]
             for f in funcs:
                 wrapt.wrap_function_wrapper(
-                    "tortoise.backends.mysql.client",
-                    f,
-                    self._do_execute,
+                    "tortoise.backends.mysql.client", f, self._do_execute,
                 )
 
     def _uninstrument(self, **kwargs):
         if TORTOISE_SQLITE_SUPPORT:
-            unwrap(tortoise.backends.sqlite.client.SqliteClient, "execute_query")
-            unwrap(tortoise.backends.sqlite.client.SqliteClient, "execute_many")
-            unwrap(tortoise.backends.sqlite.client.SqliteClient, "execute_insert")
-            unwrap(tortoise.backends.sqlite.client.SqliteClient, "execute_query_dict")
-            unwrap(tortoise.backends.sqlite.client.SqliteClient, "execute_script")
+            unwrap(
+                tortoise.backends.sqlite.client.SqliteClient, "execute_query"
+            )
+            unwrap(
+                tortoise.backends.sqlite.client.SqliteClient, "execute_many"
+            )
+            unwrap(
+                tortoise.backends.sqlite.client.SqliteClient, "execute_insert"
+            )
+            unwrap(
+                tortoise.backends.sqlite.client.SqliteClient,
+                "execute_query_dict",
+            )
+            unwrap(
+                tortoise.backends.sqlite.client.SqliteClient, "execute_script"
+            )
         if TORTOISE_MYSQL_SUPPORT:
             unwrap(tortoise.backends.mysql.client.MySQLClient, "execute_query")
             unwrap(tortoise.backends.mysql.client.MySQLClient, "execute_many")
-            unwrap(tortoise.backends.mysql.client.MySQLClient, "execute_insert")
-            unwrap(tortoise.backends.mysql.client.MySQLClient, "execute_query_dict")
-            unwrap(tortoise.backends.mysql.client.MySQLClient, "execute_script")
-        if self.TORTOISE_POSTGRES_SUPPORT:
-            unwrap(tortoise.backends.asyncpg.client.AsyncpgDBClient, "execute_query")
-            unwrap(tortoise.backends.asyncpg.client.AsyncpgDBClient, "execute_many")
-            unwrap(tortoise.backends.asyncpg.client.AsyncpgDBClient, "execute_insert")
             unwrap(
-                tortoise.backends.asyncpg.client.AsyncpgDBClient, "execute_query_dict"
+                tortoise.backends.mysql.client.MySQLClient, "execute_insert"
             )
-            unwrap(tortoise.backends.asyncpg.client.AsyncpgDBClient, "execute_script")
+            unwrap(
+                tortoise.backends.mysql.client.MySQLClient,
+                "execute_query_dict",
+            )
+            unwrap(
+                tortoise.backends.mysql.client.MySQLClient, "execute_script"
+            )
+        if self.TORTOISE_POSTGRES_SUPPORT:
+            unwrap(
+                tortoise.backends.asyncpg.client.AsyncpgDBClient,
+                "execute_query",
+            )
+            unwrap(
+                tortoise.backends.asyncpg.client.AsyncpgDBClient,
+                "execute_many",
+            )
+            unwrap(
+                tortoise.backends.asyncpg.client.AsyncpgDBClient,
+                "execute_insert",
+            )
+            unwrap(
+                tortoise.backends.asyncpg.client.AsyncpgDBClient,
+                "execute_query_dict",
+            )
+            unwrap(
+                tortoise.backends.asyncpg.client.AsyncpgDBClient,
+                "execute_script",
+            )
 
     def _hydrate_span_from_args(self, connection, query, parameters) -> dict:
         """Get network and database attributes from connection."""
@@ -162,11 +186,17 @@ class TortoiseORMInstrumentor(BaseInstrumentor):
         capabilities = getattr(connection, "capabilities", None)
         if capabilities:
             if capabilities.dialect == "sqlite":
-                span_attributes[SpanAttributes.DB_SYSTEM] = DbSystemValues.SQLITE.value
+                span_attributes[
+                    SpanAttributes.DB_SYSTEM
+                ] = DbSystemValues.SQLITE.value
             elif capabilities.dialect == "postgres":
-                span_attributes[SpanAttributes.DB_SYSTEM] = DbSystemValues.POSTGRESQL.value
+                span_attributes[
+                    SpanAttributes.DB_SYSTEM
+                ] = DbSystemValues.POSTGRESQL.value
             elif capabilities.dialect == "mysql":
-                span_attributes[SpanAttributes.DB_SYSTEM] = DbSystemValues.MYSQL.value
+                span_attributes[
+                    SpanAttributes.DB_SYSTEM
+                ] = DbSystemValues.MYSQL.value
         dbname = getattr(connection, "filename", None)
         if dbname:
             span_attributes[SpanAttributes.DB_NAME] = dbname
@@ -194,14 +224,14 @@ class TortoiseORMInstrumentor(BaseInstrumentor):
     async def _do_execute(self, func, instance, args, kwargs):
 
         exception = None
-        name = args[0]
+        name = args[0].split()[0]
 
-        with self._tracer.start_as_current_span(name, kind=SpanKind.CLIENT) as span:
+        with self._tracer.start_as_current_span(
+            name, kind=SpanKind.CLIENT
+        ) as span:
             if span.is_recording():
                 span_attributes = self._hydrate_span_from_args(
-                    instance,
-                    args[0],
-                    args[1:],
+                    instance, args[0], args[1:],
                 )
                 for attribute, value in span_attributes.items():
                     span.set_attribute(attribute, value)
