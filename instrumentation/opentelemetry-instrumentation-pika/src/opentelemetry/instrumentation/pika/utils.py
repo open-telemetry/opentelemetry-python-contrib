@@ -3,7 +3,7 @@ from typing import Any, Callable, List, Optional
 from pika.channel import Channel
 from pika.spec import Basic, BasicProperties
 
-from opentelemetry import propagate, trace
+from opentelemetry import context, propagate, trace
 from opentelemetry.instrumentation.utils import _SUPPRESS_INSTRUMENTATION_KEY
 from opentelemetry.propagators.textmap import CarrierT, Getter
 from opentelemetry.semconv.trace import (
@@ -102,9 +102,10 @@ def get_span(
     if properties.headers is None:
         properties.headers = {}
     ctx = propagate.extract(properties.headers, getter=pika_getter)
-    if ctx.get_value("suppress_instrumentation") or ctx.get_value(
+    if context.get_value("suppress_instrumentation") or context.get_value(
         _SUPPRESS_INSTRUMENTATION_KEY
     ):
+        print("Suppressing instrumentation!")
         return None
     task_name = properties.type if properties.type else task_name
     span = tracer.start_span(
