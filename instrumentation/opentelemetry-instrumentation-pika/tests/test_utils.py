@@ -21,8 +21,8 @@ from opentelemetry.trace import Span, Tracer
 class TestUtils(TestCase):
     @staticmethod
     @mock.patch("opentelemetry.context.get_value")
-    @mock.patch("opentelemetry.instrumentation.pika.utils.generate_span_name")
-    @mock.patch("opentelemetry.instrumentation.pika.utils.enrich_span")
+    @mock.patch("opentelemetry.instrumentation.pika.utils._generate_span_name")
+    @mock.patch("opentelemetry.instrumentation.pika.utils._enrich_span")
     @mock.patch("opentelemetry.propagate.extract")
     def test_get_span(
         extract: mock.MagicMock,
@@ -35,7 +35,7 @@ class TestUtils(TestCase):
         properties = mock.MagicMock()
         task_name = "test.test"
         get_value.return_value = None
-        span = utils.get_span(tracer, channel, properties, task_name)
+        span = utils._get_span(tracer, channel, properties, task_name)
         extract.assert_called_once()
         generate_span_name.assert_called_once()
         tracer.start_span.assert_called_once_with(
@@ -48,8 +48,8 @@ class TestUtils(TestCase):
         ), "The returned span was not enriched using enrich_span!"
 
     @mock.patch("opentelemetry.context.get_value")
-    @mock.patch("opentelemetry.instrumentation.pika.utils.generate_span_name")
-    @mock.patch("opentelemetry.instrumentation.pika.utils.enrich_span")
+    @mock.patch("opentelemetry.instrumentation.pika.utils._generate_span_name")
+    @mock.patch("opentelemetry.instrumentation.pika.utils._enrich_span")
     @mock.patch("opentelemetry.propagate.extract")
     def test_get_span_suppressed(
         self,
@@ -63,7 +63,7 @@ class TestUtils(TestCase):
         properties = mock.MagicMock()
         task_name = "test.test"
         get_value.return_value = True
-        span = utils.get_span(tracer, channel, properties, task_name)
+        span = utils._get_span(tracer, channel, properties, task_name)
         self.assertEqual(span, None)
         extract.assert_called_once()
         generate_span_name.assert_not_called()
@@ -71,14 +71,14 @@ class TestUtils(TestCase):
     def test_generate_span_name_no_operation(self) -> None:
         task_name = "test.test"
         operation = None
-        span_name = utils.generate_span_name(task_name, operation)
+        span_name = utils._generate_span_name(task_name, operation)
         self.assertEqual(span_name, f"{task_name} send")
 
     def test_generate_span_name_with_operation(self) -> None:
         task_name = "test.test"
         operation = mock.MagicMock()
         operation.value = "process"
-        span_name = utils.generate_span_name(task_name, operation)
+        span_name = utils._generate_span_name(task_name, operation)
         self.assertEqual(span_name, f"{task_name} {operation.value}")
 
     @staticmethod
@@ -87,7 +87,7 @@ class TestUtils(TestCase):
         properties = mock.MagicMock()
         task_destination = "test.test"
         span = mock.MagicMock(spec=Span)
-        utils.enrich_span(span, channel, properties, task_destination)
+        utils._enrich_span(span, channel, properties, task_destination)
         span.set_attribute.assert_has_calls(
             any_order=True,
             calls=[
@@ -121,7 +121,7 @@ class TestUtils(TestCase):
         task_destination = "test.test"
         operation = mock.MagicMock()
         span = mock.MagicMock(spec=Span)
-        utils.enrich_span(
+        utils._enrich_span(
             span, channel, properties, task_destination, operation
         )
         span.set_attribute.assert_has_calls(
@@ -137,7 +137,7 @@ class TestUtils(TestCase):
         properties = mock.MagicMock()
         task_destination = "test.test"
         span = mock.MagicMock(spec=Span)
-        utils.enrich_span(span, channel, properties, task_destination)
+        utils._enrich_span(span, channel, properties, task_destination)
         span.set_attribute.assert_has_calls(
             any_order=True,
             calls=[mock.call(SpanAttributes.MESSAGING_TEMP_DESTINATION, True)],
@@ -151,7 +151,7 @@ class TestUtils(TestCase):
         span = mock.MagicMock(spec=Span)
         # We do this to create the behaviour of hasattr(channel.connection, "params") == False
         del channel.connection.params
-        utils.enrich_span(span, channel, properties, task_destination)
+        utils._enrich_span(span, channel, properties, task_destination)
         span.set_attribute.assert_has_calls(
             any_order=True,
             calls=[

@@ -14,7 +14,7 @@ from opentelemetry.trace import Tracer
 from opentelemetry.trace.span import Span
 
 
-class PikaGetter(Getter):  # type: ignore
+class _PikaGetter(Getter):  # type: ignore
     def get(self, carrier: CarrierT, key: str) -> Optional[List[str]]:
         value = carrier.get(key, None)
         if value is None:
@@ -25,10 +25,10 @@ class PikaGetter(Getter):  # type: ignore
         return []
 
 
-pika_getter = PikaGetter()
+_pika_getter = _PikaGetter()
 
 
-def decorate_callback(
+def _decorate_callback(
     callback: Callable[[Channel, Basic.Deliver, BasicProperties, bytes], Any],
     tracer: Tracer,
     task_name: str,
@@ -41,7 +41,7 @@ def decorate_callback(
     ) -> Any:
         if not properties:
             properties = BasicProperties()
-        span = get_span(
+        span = _get_span(
             tracer,
             channel,
             properties,
@@ -56,7 +56,7 @@ def decorate_callback(
     return decorated_callback
 
 
-def decorate_basic_publish(
+def _decorate_basic_publish(
     original_function: Callable[[str, str, bytes, BasicProperties, bool], Any],
     channel: Channel,
     tracer: Tracer,
@@ -70,7 +70,7 @@ def decorate_basic_publish(
     ) -> Any:
         if not properties:
             properties = BasicProperties()
-        span = get_span(
+        span = _get_span(
             tracer,
             channel,
             properties,
@@ -92,7 +92,7 @@ def decorate_basic_publish(
     return decorated_function
 
 
-def get_span(
+def _get_span(
     tracer: Tracer,
     channel: Channel,
     properties: BasicProperties,
@@ -101,7 +101,7 @@ def get_span(
 ) -> Optional[Span]:
     if properties.headers is None:
         properties.headers = {}
-    ctx = propagate.extract(properties.headers, getter=pika_getter)
+    ctx = propagate.extract(properties.headers, getter=_pika_getter)
     if context.get_value("suppress_instrumentation") or context.get_value(
         _SUPPRESS_INSTRUMENTATION_KEY
     ):
@@ -109,13 +109,13 @@ def get_span(
         return None
     task_name = properties.type if properties.type else task_name
     span = tracer.start_span(
-        context=ctx, name=generate_span_name(task_name, operation)
+        context=ctx, name=_generate_span_name(task_name, operation)
     )
-    enrich_span(span, channel, properties, task_name, operation)
+    _enrich_span(span, channel, properties, task_name, operation)
     return span
 
 
-def generate_span_name(
+def _generate_span_name(
     task_name: str, operation: Optional[MessagingOperationValues]
 ) -> str:
     if not operation:
@@ -123,7 +123,7 @@ def generate_span_name(
     return f"{task_name} {operation.value}"
 
 
-def enrich_span(
+def _enrich_span(
     span: Span,
     channel: Channel,
     properties: BasicProperties,

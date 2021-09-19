@@ -13,12 +13,12 @@
 # limitations under the License.
 from unittest import TestCase
 
-from opentelemetry.instrumentation.pika.utils import PikaGetter
+from opentelemetry.instrumentation.pika.utils import _PikaGetter
 
 
 class TestPikaGetter(TestCase):
     def setUp(self) -> None:
-        self.getter = PikaGetter()
+        self.getter = _PikaGetter()
 
     def test_get_none(self) -> None:
         carrier = {}

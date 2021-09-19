@@ -13,7 +13,7 @@
 # limitations under the License.
 from unittest import TestCase, mock
 
-from pika.adapters import BaseConnection
+from pika.adapters import BaseConnection, BlockingConnection
 from pika.channel import Channel
 
 from opentelemetry.instrumentation.pika import PikaInstrumentor
@@ -27,31 +27,16 @@ class TestPika(TestCase):
         self.mock_callback = mock.MagicMock()
         self.channel._impl._consumers = {"mock_key": self.mock_callback}
 
-    @mock.patch(
-        "opentelemetry.instrumentation.pika.PikaInstrumentor.instrument_channel"
-    )
-    @mock.patch(
-        "opentelemetry.instrumentation.pika.PikaInstrumentor._uninstrument_channel_functions"
-    )
-    def test_instrument_api(
-        self,
-        uninstrument_channel_functions: mock.MagicMock,
-        instrument_channel: mock.MagicMock,
-    ) -> None:
+    def test_instrument_api(self) -> None:
+        original_channel = BlockingConnection.channel
         instrumentation = PikaInstrumentor()
-        instrumentation.instrument(channel=self.channel)
-        instrument_channel.assert_called_once_with(
-            self.channel, tracer_provider=None
-        )
-        self.channel._impl._consumers = {"mock_key": mock.MagicMock()}
-        self.channel._impl._consumers[
-            "mock_key"
-        ]._original_callback = self.mock_callback
-        instrumentation.uninstrument(channel=self.channel)
-        uninstrument_channel_functions.assert_called_once()
+        instrumentation.instrument()
+        self.assertTrue(hasattr(instrumentation, "original_channel_func"))
         self.assertEqual(
-            self.channel._impl._consumers["mock_key"], self.mock_callback
+            original_channel, instrumentation.original_channel_func
         )
+        instrumentation.uninstrument(channel=self.channel)
+        self.assertEqual(original_channel, BlockingConnection.channel)
 
     @mock.patch(
         "opentelemetry.instrumentation.pika.PikaInstrumentor._instrument_channel_functions"
@@ -71,7 +56,7 @@ class TestPika(TestCase):
         instrument_consumers.assert_called_once()
         instrument_channel_functions.assert_called_once()
 
-    @mock.patch("opentelemetry.instrumentation.pika.utils.decorate_callback")
+    @mock.patch("opentelemetry.instrumentation.pika.utils._decorate_callback")
     def test_instrument_consumers(
         self, decorate_callback: mock.MagicMock
     ) -> None:
@@ -92,7 +77,7 @@ class TestPika(TestCase):
         )
 
     @mock.patch(
-        "opentelemetry.instrumentation.pika.utils.decorate_basic_publish"
+        "opentelemetry.instrumentation.pika.utils._decorate_basic_publish"
     )
     def test_instrument_basic_publish(
         self, decorate_basic_publish: mock.MagicMock
