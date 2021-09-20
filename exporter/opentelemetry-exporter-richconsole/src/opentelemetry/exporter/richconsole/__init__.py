@@ -153,14 +153,17 @@ class RichConsoleExporter(SpanExporter):
         child_spans = [span for span in spans if span.parent]
         for span in child_spans:
             if span.parent.span_id not in parents:
-                raise ValueError(
-                    "This exporter needs to be used from a BatchSpanProcessor"
+                child = tree.add(
+                    label=Text.from_markup(
+                        f"[blue][{ns_to_time(span.start_time)}][/blue] [bold]{span.name}[/bold], span {opentelemetry.trace.format_span_id(span.context.span_id)}"
+                    )
                 )
-            child = parents[span.parent.span_id].add(
-                label=Text.from_markup(
-                    f"[blue][{ns_to_time(span.start_time)}][/blue] [bold]{span.name}[/bold], span {opentelemetry.trace.format_span_id(span.context.span_id)}"
+            else:
+                child = parents[span.parent.span_id].add(
+                    label=Text.from_markup(
+                        f"[blue][{ns_to_time(span.start_time)}][/blue] [bold]{span.name}[/bold], span {opentelemetry.trace.format_span_id(span.context.span_id)}"
+                    )
                 )
-            )
             parents[span.context.span_id] = child
             self._child_to_tree(child, span)
 
