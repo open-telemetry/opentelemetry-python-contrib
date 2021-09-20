@@ -15,6 +15,7 @@ from unittest import TestCase, mock
 
 from pika.adapters import BaseConnection, BlockingConnection
 from pika.channel import Channel
+from wrapt import BoundFunctionWrapper
 
 from opentelemetry.instrumentation.pika import PikaInstrumentor
 from opentelemetry.trace import Tracer
@@ -28,15 +29,15 @@ class TestPika(TestCase):
         self.channel._impl._consumers = {"mock_key": self.mock_callback}
 
     def test_instrument_api(self) -> None:
-        original_channel = BlockingConnection.channel
         instrumentation = PikaInstrumentor()
         instrumentation.instrument()
-        self.assertTrue(hasattr(instrumentation, "original_channel_func"))
-        self.assertEqual(
-            original_channel, instrumentation.original_channel_func
+        self.assertTrue(
+            isinstance(BlockingConnection.channel, BoundFunctionWrapper)
         )
         instrumentation.uninstrument(channel=self.channel)
-        self.assertEqual(original_channel, BlockingConnection.channel)
+        self.assertFalse(
+            isinstance(BlockingConnection.channel, BoundFunctionWrapper)
+        )
 
     @mock.patch(
         "opentelemetry.instrumentation.pika.PikaInstrumentor._instrument_channel_functions"
@@ -90,9 +91,6 @@ class TestPika(TestCase):
         )
         self.assertEqual(
             self.channel.basic_publish, decorate_basic_publish.return_value
-        )
-        self.assertEqual(
-            self.channel.basic_publish._original_function, original_function
         )
 
     def test_uninstrument_channel_functions(self) -> None:

@@ -14,6 +14,7 @@
 from logging import getLogger
 from typing import Any, Callable, Collection, Dict, Optional
 
+import wrapt
 from pika.adapters import BlockingConnection
 from pika.channel import Channel
 
@@ -22,6 +23,7 @@ from opentelemetry.instrumentation.instrumentor import BaseInstrumentor
 from opentelemetry.instrumentation.pika import utils
 from opentelemetry.instrumentation.pika.package import _instruments
 from opentelemetry.instrumentation.pika.version import __version__
+from opentelemetry.instrumentation.utils import unwrap
 from opentelemetry.trace import Tracer, TracerProvider
 
 _LOG = getLogger(__name__)
@@ -93,25 +95,25 @@ class PikaInstrumentor(BaseInstrumentor):  # type: ignore
             if hasattr(callback, "_original_callback"):
                 channel._impl._consumers[key] = callback._original_callback
         PikaInstrumentor._uninstrument_channel_functions(channel)
+        if hasattr(channel, "__opentelemetry_tracer"):
+            delattr(channel, "__opentelemetry_tracer")
 
     def _decorate_channel_function(
         self, tracer_provider: Optional[TracerProvider]
     ) -> None:
-        self.original_channel_func = BlockingConnection.channel
-
-        def _wrapper(*args, **kwargs):
-            channel = self.original_channel_func(*args, **kwargs)
+        def wrapper(wrapped, instance, args, kwargs):
+            channel = wrapped(*args, **kwargs)
             self.instrument_channel(channel, tracer_provider=tracer_provider)
             return channel
 
-        BlockingConnection.channel = _wrapper
+        wrapt.wrap_function_wrapper(BlockingConnection, "channel", wrapper)
 
     def _instrument(self, **kwargs: Dict[str, Any]) -> None:
         tracer_provider: TracerProvider = kwargs.get("tracer_provider", None)
         self._decorate_channel_function(tracer_provider)
 
     def _uninstrument(self, **kwargs: Dict[str, Any]) -> None:
-        BlockingConnection.channel = self.original_channel_func
+        unwrap(BlockingConnection, "channel")
 
     def instrumentation_dependencies(self) -> Collection[str]:
         return _instruments

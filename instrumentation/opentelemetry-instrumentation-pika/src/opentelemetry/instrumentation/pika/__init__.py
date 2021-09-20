@@ -23,8 +23,21 @@ Usage
 
     docker run -p 5672:5672 rabbitmq
 
-
 * Run instrumented task
+
+.. code-block:: python
+
+    import pika
+    from opentelemetry.instrumentation.pika import PikaInstrumentor
+
+    PikaInstrumentor().instrument()
+
+    connection = pika.BlockingConnection(pika.URLParameters('amqp://localhost'))
+    channel = connection.channel()
+    channel.queue_declare(queue='hello')
+    channel.basic_publish(exchange='', routing_key='hello', body=b'Hello World!')
+
+* PikaInstrumentor also supports instrumentation of a single channel
 
 .. code-block:: python
 
@@ -36,13 +49,12 @@ Usage
     channel.queue_declare(queue='hello')
 
     pika_instrumentation = PikaInstrumentor()
-    pika_instrumentation.instrument(channel=channel)
+    pika_instrumentation.instrument_channel(channel=channel)
 
 
     channel.basic_publish(exchange='', routing_key='hello', body=b'Hello World!')
 
-    pika_instrumentation.uninstrument(channel=channel)
-
+    pika_instrumentation.uninstrument_channel(channel=channel)
 
 * PikaInstrumentor also supports instrumentation without creating an object, and receiving a tracer_provider
 
