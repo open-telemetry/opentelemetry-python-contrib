@@ -70,6 +70,9 @@ except ModuleNotFoundError:
 import tortoise.contrib.pydantic.base
 
 
+TORTOISE_PYDANTIC_MODEL_ATTRIBUTE = "pydantic.model"
+
+
 class TortoiseORMInstrumentor(BaseInstrumentor):
     """An instrumentor for Tortoise-ORM
     See `BaseInstrumentor`
@@ -100,7 +103,9 @@ class TortoiseORMInstrumentor(BaseInstrumentor):
             ]
             for f in funcs:
                 wrapt.wrap_function_wrapper(
-                    "tortoise.backends.sqlite.client", f, self._do_execute,
+                    "tortoise.backends.sqlite.client",
+                    f,
+                    self._do_execute,
                 )
 
         if TORTOISE_POSTGRES_SUPPORT:
@@ -113,7 +118,9 @@ class TortoiseORMInstrumentor(BaseInstrumentor):
             ]
             for f in funcs:
                 wrapt.wrap_function_wrapper(
-                    "tortoise.backends.asyncpg.client", f, self._do_execute,
+                    "tortoise.backends.asyncpg.client",
+                    f,
+                    self._do_execute,
                 )
 
         if TORTOISE_MYSQL_SUPPORT:
@@ -126,16 +133,24 @@ class TortoiseORMInstrumentor(BaseInstrumentor):
             ]
             for f in funcs:
                 wrapt.wrap_function_wrapper(
-                    "tortoise.backends.mysql.client", f, self._do_execute,
+                    "tortoise.backends.mysql.client",
+                    f,
+                    self._do_execute,
                 )
         wrapt.wrap_function_wrapper(
-            "tortoise.contrib.pydantic.base", "PydanticModel.from_queryset", self._from_queryset,
+            "tortoise.contrib.pydantic.base",
+            "PydanticModel.from_queryset",
+            self._from_queryset,
         )
         wrapt.wrap_function_wrapper(
-            "tortoise.contrib.pydantic.base", "PydanticModel.from_queryset_single", self._from_queryset,
+            "tortoise.contrib.pydantic.base",
+            "PydanticModel.from_queryset_single",
+            self._from_queryset,
         )
         wrapt.wrap_function_wrapper(
-            "tortoise.contrib.pydantic.base", "PydanticListModel.from_queryset", self._from_queryset,
+            "tortoise.contrib.pydantic.base",
+            "PydanticListModel.from_queryset",
+            self._from_queryset,
         )
 
     def _uninstrument(self, **kwargs):
@@ -191,8 +206,13 @@ class TortoiseORMInstrumentor(BaseInstrumentor):
                 "execute_script",
             )
         unwrap(tortoise.contrib.pydantic.base.PydanticModel, "from_queryset")
-        unwrap(tortoise.contrib.pydantic.base.PydanticModel, "from_queryset_single")
-        unwrap(tortoise.contrib.pydantic.base.PydanticListModel, "from_queryset")
+        unwrap(
+            tortoise.contrib.pydantic.base.PydanticModel,
+            "from_queryset_single",
+        )
+        unwrap(
+            tortoise.contrib.pydantic.base.PydanticListModel, "from_queryset"
+        )
 
     def _hydrate_span_from_args(self, connection, query, parameters) -> dict:
         """Get network and database attributes from connection."""
@@ -245,7 +265,9 @@ class TortoiseORMInstrumentor(BaseInstrumentor):
         ) as span:
             if span.is_recording():
                 span_attributes = self._hydrate_span_from_args(
-                    instance, args[0], args[1:],
+                    instance,
+                    args[0],
+                    args[1:],
                 )
                 for attribute, value in span_attributes.items():
                     span.set_attribute(attribute, value)
@@ -261,16 +283,22 @@ class TortoiseORMInstrumentor(BaseInstrumentor):
 
         return result
 
-    async def _from_queryset(self, func, instance, args, kwargs):
+    async def _from_queryset(self, func, modelcls, args, kwargs):
 
         exception = None
-        name = "PydanticModel.from_queryset"
+        name = "pydantic.{0}".format(func.__name__)
 
         with self._tracer.start_as_current_span(
             name, kind=SpanKind.INTERNAL
         ) as span:
             if span.is_recording():
                 span_attributes = {}
+
+                model_config = getattr(modelcls, "Config", None)
+                if model_config:
+                    model_title = getattr(modelcls.Config, "title")
+                    if model_title:
+                        span_attributes[TORTOISE_PYDANTIC_MODEL_ATTRIBUTE] = model_title
 
                 for attribute, value in span_attributes.items():
                     span.set_attribute(attribute, value)
