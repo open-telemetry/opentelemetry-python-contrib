@@ -67,6 +67,8 @@ try:
 except ModuleNotFoundError:
     TORTOISE_SQLITE_SUPPORT = False
 
+import tortoise.contrib.pydantic.base
+
 
 class TortoiseORMInstrumentor(BaseInstrumentor):
     """An instrumentor for Tortoise-ORM
@@ -126,6 +128,15 @@ class TortoiseORMInstrumentor(BaseInstrumentor):
                 wrapt.wrap_function_wrapper(
                     "tortoise.backends.mysql.client", f, self._do_execute,
                 )
+        wrapt.wrap_function_wrapper(
+            "tortoise.contrib.pydantic.base", "PydanticModel.from_queryset", self._from_queryset,
+        )
+        wrapt.wrap_function_wrapper(
+            "tortoise.contrib.pydantic.base", "PydanticModel.from_queryset_single", self._from_queryset,
+        )
+        wrapt.wrap_function_wrapper(
+            "tortoise.contrib.pydantic.base", "PydanticListModel.from_queryset", self._from_queryset,
+        )
 
     def _uninstrument(self, **kwargs):
         if TORTOISE_SQLITE_SUPPORT:
@@ -179,6 +190,9 @@ class TortoiseORMInstrumentor(BaseInstrumentor):
                 tortoise.backends.asyncpg.client.AsyncpgDBClient,
                 "execute_script",
             )
+        unwrap(tortoise.contrib.pydantic.base.PydanticModel, "from_queryset")
+        unwrap(tortoise.contrib.pydantic.base.PydanticModel, "from_queryset_single")
+        unwrap(tortoise.contrib.pydantic.base.PydanticListModel, "from_queryset")
 
     def _hydrate_span_from_args(self, connection, query, parameters) -> dict:
         """Get network and database attributes from connection."""
@@ -233,6 +247,31 @@ class TortoiseORMInstrumentor(BaseInstrumentor):
                 span_attributes = self._hydrate_span_from_args(
                     instance, args[0], args[1:],
                 )
+                for attribute, value in span_attributes.items():
+                    span.set_attribute(attribute, value)
+
+            try:
+                result = await func(*args, **kwargs)
+            except Exception as exc:  # pylint: disable=W0703
+                exception = exc
+                raise
+            finally:
+                if span.is_recording() and exception is not None:
+                    span.set_status(Status(StatusCode.ERROR))
+
+        return result
+
+    async def _from_queryset(self, func, instance, args, kwargs):
+
+        exception = None
+        name = "PydanticModel.from_queryset"
+
+        with self._tracer.start_as_current_span(
+            name, kind=SpanKind.INTERNAL
+        ) as span:
+            if span.is_recording():
+                span_attributes = {}
+
                 for attribute, value in span_attributes.items():
                     span.set_attribute(attribute, value)
 
