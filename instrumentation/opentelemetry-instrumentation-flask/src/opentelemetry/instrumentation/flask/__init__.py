@@ -15,6 +15,8 @@
 # Note: This package is not named "flask" because of
 # https://github.com/PyCQA/pylint/issues/2648
 
+# pylint: skip-file
+
 """
 This library builds on the OpenTelemetry WSGI middleware to track web requests
 in Flask applications. In addition to opentelemetry-util-http, it
