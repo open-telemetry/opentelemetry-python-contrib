@@ -25,6 +25,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   ([#706](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/706))
 - `opentelemetry-instrumentation-requests` added exclude urls functionality
   ([#714](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/714))
+- `opentelemetry-instrumentation-django` Add ASGI support
+  ([#391](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/391))
 
 ### Changed
 - `opentelemetry-instrumentation-botocore` Make common span attributes compliant with semantic conventions
@@ -57,12 +59,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Added
 - `opentelemetry-sdk-extension-aws` Add AWS resource detectors to extension package
   ([#586](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/586))
-- `opentelemetry-instrumentation-asgi`, `opentelemetry-instrumentation-aiohttp-client`, `openetelemetry-instrumentation-fastapi`,        
-  `opentelemetry-instrumentation-starlette`, `opentelemetry-instrumentation-urllib`, `opentelemetry-instrumentation-urllib3` Added `request_hook` and `response_hook` callbacks 
+- `opentelemetry-instrumentation-asgi`, `opentelemetry-instrumentation-aiohttp-client`, `openetelemetry-instrumentation-fastapi`,
+  `opentelemetry-instrumentation-starlette`, `opentelemetry-instrumentation-urllib`, `opentelemetry-instrumentation-urllib3` Added `request_hook` and `response_hook` callbacks
   ([#576](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/576))
 - `opentelemetry-instrumentation-pika` added RabbitMQ's pika module instrumentation.
   ([#680](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/680))
-  
+
 ### Changed
 
 - `opentelemetry-instrumentation-fastapi` Allow instrumentation of newer FastAPI versions.
@@ -126,8 +128,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Added
 - `opentelemetry-instrumentation-httpx` Add `httpx` instrumentation
   ([#461](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/461))
-- `opentelemetry-instrumentation-django` Add ASGI support
-  ([#391](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/391))
 
 ## [0.22b0](https://github.com/open-telemetry/opentelemetry-python/releases/tag/v1.3.0-0.22b0) - 2021-06-01
 

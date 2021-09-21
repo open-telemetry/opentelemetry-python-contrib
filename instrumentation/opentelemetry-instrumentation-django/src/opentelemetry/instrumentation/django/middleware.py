@@ -74,6 +74,7 @@ if DJANGO_3_0:
 else:
     ASGIRequest = None
 
+# try/except block exclusive for optional ASGI imports.
 try:
     from opentelemetry.instrumentation.asgi import asgi_getter
     from opentelemetry.instrumentation.asgi import (
@@ -166,7 +167,7 @@ class _DjangoMiddleware(MiddlewareMixin):
             return
 
         is_asgi_request = _is_asgi_request(request)
-        if is_asgi_request and not _is_asgi_supported:
+        if not _is_asgi_supported and is_asgi_request:
             return
 
         # pylint:disable=W0212
@@ -175,9 +176,11 @@ class _DjangoMiddleware(MiddlewareMixin):
         request_meta = request.META
 
         if is_asgi_request:
+            carrier = request.scope
             carrier_getter = asgi_getter
             collect_request_attributes = asgi_collect_request_attributes
         else:
+            carrier = request_meta
             carrier_getter = wsgi_getter
             collect_request_attributes = wsgi_collect_request_attributes
 
@@ -191,36 +194,25 @@ class _DjangoMiddleware(MiddlewareMixin):
             ),
         )
 
-        if is_asgi_request:
-            attributes = collect_request_attributes(request.scope)
-        else:
-            attributes = collect_request_attributes(request_meta)
+        attributes = collect_request_attributes(carrier)
 
         if span.is_recording():
+            attributes = extract_attributes_from_object(
+                request, self._traced_request_attrs, attributes
+            )
             if is_asgi_request:
-                # ASGI requests include extra attributes in request.scope.headers. For this reason,
-                # we need to build an object with the union of `request` and `request.scope.headers`
-                # contents, for the extract_attributes_from_object function to be able to retrieve
-                # attributes from it.
+                # ASGI requests include extra attributes in request.scope.headers.
                 attributes = extract_attributes_from_object(
                     types.SimpleNamespace(
                         **{
-                            **request.__dict__,
-                            **{
-                                name.decode("latin1"): value.decode("latin1")
-                                for name, value in request.scope.get(
-                                    "headers", []
-                                )
-                            },
+                            name.decode("latin1"): value.decode("latin1")
+                            for name, value in request.scope.get("headers", [])
                         }
                     ),
                     self._traced_request_attrs,
                     attributes,
                 )
-            else:
-                attributes = extract_attributes_from_object(
-                    request, self._traced_request_attrs, attributes
-                )
+
             for key, value in attributes.items():
                 span.set_attribute(key, value)
 
@@ -268,7 +260,7 @@ class _DjangoMiddleware(MiddlewareMixin):
             return response
 
         is_asgi_request = _is_asgi_request(request)
-        if is_asgi_request and not _is_asgi_supported:
+        if not _is_asgi_supported and is_asgi_request:
             return response
 
         activation = request.META.pop(self._environ_activation_key, None)
