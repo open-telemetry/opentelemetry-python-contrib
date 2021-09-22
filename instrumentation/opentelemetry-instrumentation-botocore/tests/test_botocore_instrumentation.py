@@ -743,7 +743,7 @@ class TestBotocoreInstrumentor(TestBase):
         self.assertEqual(len(spans), 2)
         get_item_attributes = spans[1].attributes
 
-        expected_result_keys = ("ConsumedCapacity", "ResponseMetadata")
+        expected_result_keys = ("ResponseMetadata",)
 
         self.assertEqual(
             "dynamodb",
