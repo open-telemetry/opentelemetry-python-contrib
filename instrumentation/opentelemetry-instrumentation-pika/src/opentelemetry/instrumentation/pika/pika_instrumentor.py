@@ -83,7 +83,6 @@ class PikaInstrumentor(BaseInstrumentor):  # type: ignore
             )
             return
         tracer = trace.get_tracer(__name__, __version__, tracer_provider)
-        channel.__setattr__("__opentelemetry_tracer", tracer)
         if not hasattr(channel, "_impl"):
             _LOG.error("Could not find implementation for provided channel!")
             return
@@ -110,8 +109,6 @@ class PikaInstrumentor(BaseInstrumentor):  # type: ignore
             if hasattr(callback, "_original_callback"):
                 channel._impl._consumers[key] = callback._original_callback
         PikaInstrumentor._uninstrument_channel_functions(channel)
-        if hasattr(channel, "__opentelemetry_tracer"):
-            delattr(channel, "__opentelemetry_tracer")
 
     def _decorate_channel_function(
         self, tracer_provider: Optional[TracerProvider]
@@ -125,9 +122,12 @@ class PikaInstrumentor(BaseInstrumentor):  # type: ignore
 
     def _instrument(self, **kwargs: Dict[str, Any]) -> None:
         tracer_provider: TracerProvider = kwargs.get("tracer_provider", None)
+        channel.__setattr__("__opentelemetry_tracer", tracer)
         self._decorate_channel_function(tracer_provider)
 
     def _uninstrument(self, **kwargs: Dict[str, Any]) -> None:
+        if hasattr(channel, "__opentelemetry_tracer"):
+            delattr(channel, "__opentelemetry_tracer")
         unwrap(BlockingConnection, "channel")
 
     def instrumentation_dependencies(self) -> Collection[str]:
