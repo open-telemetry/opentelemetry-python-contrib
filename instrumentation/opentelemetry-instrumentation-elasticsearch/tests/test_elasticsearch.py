@@ -11,7 +11,7 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-
+import json
 import os
 import threading
 from ast import literal_eval
@@ -60,19 +60,13 @@ class TestElasticsearchIntegration(TestBase):
         with self.disable_logging():
             ElasticsearchInstrumentor().uninstrument()
 
-    def get_ordered_finished_spans(self):
-        return sorted(
-            self.memory_exporter.get_finished_spans(),
-            key=lambda s: s.start_time,
-        )
-
     def test_instrumentor(self, request_mock):
         request_mock.return_value = (1, {}, {})
 
         es = Elasticsearch()
         es.index(index="sw", doc_type="people", id=1, body={"name": "adam"})
 
-        spans_list = self.get_ordered_finished_spans()
+        spans_list = self.get_finished_spans()
         self.assertEqual(len(spans_list), 1)
         span = spans_list[0]
 
@@ -87,7 +81,7 @@ class TestElasticsearchIntegration(TestBase):
 
         es.index(index="sw", doc_type="people", id=1, body={"name": "adam"})
 
-        spans_list = self.get_ordered_finished_spans()
+        spans_list = self.get_finished_spans()
         self.assertEqual(len(spans_list), 1)
 
     def test_span_not_recording(self, request_mock):
@@ -127,7 +121,7 @@ class TestElasticsearchIntegration(TestBase):
         es = Elasticsearch()
         es.index(index="sw", doc_type="people", id=1, body={"name": "adam"})
 
-        spans_list = self.get_ordered_finished_spans()
+        spans_list = self.get_finished_spans()
         self.assertEqual(len(spans_list), 1)
         span = spans_list[0]
         self.assertTrue(span.name.startswith(prefix))
@@ -141,7 +135,7 @@ class TestElasticsearchIntegration(TestBase):
         es = Elasticsearch()
         es.get(index="test-index", doc_type="tweet", id=1)
 
-        spans = self.get_ordered_finished_spans()
+        spans = self.get_finished_spans()
 
         self.assertEqual(1, len(spans))
         self.assertEqual("False", spans[0].attributes["elasticsearch.found"])
@@ -169,7 +163,7 @@ class TestElasticsearchIntegration(TestBase):
         except Exception:  # pylint: disable=broad-except
             pass
 
-        spans = self.get_ordered_finished_spans()
+        spans = self.get_finished_spans()
         self.assertEqual(1, len(spans))
         span = spans[0]
         self.assertFalse(span.status.is_ok)
@@ -186,13 +180,13 @@ class TestElasticsearchIntegration(TestBase):
                 index="sw", doc_type="people", id=1, body={"name": "adam"}
             )
 
-        spans = self.get_ordered_finished_spans()
+        spans = self.get_finished_spans()
         self.assertEqual(len(spans), 2)
 
-        self.assertEqual(spans[0].name, "parent")
-        self.assertEqual(spans[1].name, "Elasticsearch/sw/people/1")
-        self.assertIsNotNone(spans[1].parent)
-        self.assertEqual(spans[1].parent.span_id, spans[0].context.span_id)
+        parent = spans.by_name("parent")
+        child = spans.by_name("Elasticsearch/sw/people/1")
+        self.assertIsNotNone(child.parent)
+        self.assertEqual(child.parent.span_id, parent.context.span_id)
 
     def test_multithread(self, request_mock):
         request_mock.return_value = (1, {}, {})
@@ -222,16 +216,15 @@ class TestElasticsearchIntegration(TestBase):
         t1.join()
         t2.join()
 
-        spans = self.get_ordered_finished_spans()
+        spans = self.get_finished_spans()
         self.assertEqual(3, len(spans))
-        s1, s2, s3 = spans
 
-        self.assertEqual(s1.name, "parent")
+        s1 = spans.by_name("parent")
+        s2 = spans.by_name("Elasticsearch/test-index/tweet/1")
+        s3 = spans.by_name("Elasticsearch/test-index/tweet/2")
 
-        self.assertEqual(s2.name, "Elasticsearch/test-index/tweet/1")
         self.assertIsNotNone(s2.parent)
         self.assertEqual(s2.parent.span_id, s1.context.span_id)
-        self.assertEqual(s3.name, "Elasticsearch/test-index/tweet/2")
         self.assertIsNone(s3.parent)
 
     def test_dsl_search(self, request_mock):
@@ -242,7 +235,7 @@ class TestElasticsearchIntegration(TestBase):
             "term", author="testing"
         )
         search.execute()
-        spans = self.get_ordered_finished_spans()
+        spans = self.get_finished_spans()
         span = spans[0]
         self.assertEqual(1, len(spans))
         self.assertEqual(span.name, "Elasticsearch/test-index/_search")
@@ -270,10 +263,11 @@ class TestElasticsearchIntegration(TestBase):
         client = Elasticsearch()
         Article.init(using=client)
 
-        spans = self.get_ordered_finished_spans()
+        spans = self.get_finished_spans()
         self.assertEqual(2, len(spans))
-        span1, span2 = spans
-        self.assertEqual(span1.name, "Elasticsearch/test-index")
+        span1 = spans.by_attr(key="elasticsearch.method", value="HEAD")
+        span2 = spans.by_attr(key="elasticsearch.method", value="PUT")
+
         self.assertEqual(
             span1.attributes,
             {
@@ -283,7 +277,6 @@ class TestElasticsearchIntegration(TestBase):
             },
         )
 
-        self.assertEqual(span2.name, "Elasticsearch/test-index")
         attributes = {
             SpanAttributes.DB_SYSTEM: "elasticsearch",
             "elasticsearch.url": "/test-index",
@@ -306,7 +299,7 @@ class TestElasticsearchIntegration(TestBase):
         )
         res = article.save(using=client)
         self.assertTrue(res)
-        spans = self.get_ordered_finished_spans()
+        spans = self.get_finished_spans()
         self.assertEqual(1, len(spans))
         span = spans[0]
         self.assertEqual(span.name, helpers.dsl_index_span_name)
@@ -322,4 +315,102 @@ class TestElasticsearchIntegration(TestBase):
                 "body": "A few words here, a few words there",
                 "title": "About searching",
             },
+        )
+
+    def test_request_hook(self, request_mock):
+        request_hook_method_attribute = "request_hook.method"
+        request_hook_url_attribute = "request_hook.url"
+        request_hook_kwargs_attribute = "request_hook.kwargs"
+
+        def request_hook(span, method, url, kwargs):
+
+            attributes = {
+                request_hook_method_attribute: method,
+                request_hook_url_attribute: url,
+                request_hook_kwargs_attribute: json.dumps(kwargs),
+            }
+
+            if span and span.is_recording():
+                span.set_attributes(attributes)
+
+        ElasticsearchInstrumentor().uninstrument()
+        ElasticsearchInstrumentor().instrument(request_hook=request_hook)
+
+        request_mock.return_value = (
+            1,
+            {},
+            '{"found": false, "timed_out": true, "took": 7}',
+        )
+        es = Elasticsearch()
+        index = "test-index"
+        doc_type = "tweet"
+        doc_id = 1
+        kwargs = {"params": {"test": True}}
+        es.get(index=index, doc_type=doc_type, id=doc_id, **kwargs)
+
+        spans = self.get_finished_spans()
+
+        self.assertEqual(1, len(spans))
+        self.assertEqual(
+            "GET", spans[0].attributes[request_hook_method_attribute]
+        )
+        self.assertEqual(
+            f"/{index}/{doc_type}/{doc_id}",
+            spans[0].attributes[request_hook_url_attribute],
+        )
+        self.assertEqual(
+            json.dumps(kwargs),
+            spans[0].attributes[request_hook_kwargs_attribute],
+        )
+
+    def test_response_hook(self, request_mock):
+        response_attribute_name = "db.query_result"
+
+        def response_hook(span, response):
+            if span and span.is_recording():
+                span.set_attribute(
+                    response_attribute_name, json.dumps(response)
+                )
+
+        ElasticsearchInstrumentor().uninstrument()
+        ElasticsearchInstrumentor().instrument(response_hook=response_hook)
+
+        response_payload = {
+            "took": 9,
+            "timed_out": False,
+            "_shards": {
+                "total": 1,
+                "successful": 1,
+                "skipped": 0,
+                "failed": 0,
+            },
+            "hits": {
+                "total": {"value": 1, "relation": "eq"},
+                "max_score": 0.18232156,
+                "hits": [
+                    {
+                        "_index": "test-index",
+                        "_type": "tweet",
+                        "_id": "1",
+                        "_score": 0.18232156,
+                        "_source": {"name": "tester"},
+                    }
+                ],
+            },
+        }
+
+        request_mock.return_value = (
+            1,
+            {},
+            json.dumps(response_payload),
+        )
+        es = Elasticsearch()
+        es.get(index="test-index", doc_type="tweet", id=1)
+
+        spans = self.get_finished_spans()
+
+        self.assertEqual(1, len(spans))
+        self.assertEqual(
+            json.dumps(response_payload),
+            spans[0].attributes[response_attribute_name],
         )
