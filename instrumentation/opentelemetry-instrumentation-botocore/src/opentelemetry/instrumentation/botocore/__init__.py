@@ -48,7 +48,7 @@ API
 
 import json
 import logging
-from typing import Collection, Optional
+from typing import Any, Collection, Dict, Optional, Tuple
 
 from botocore.client import BaseClient
 from botocore.endpoint import Endpoint
@@ -227,12 +227,10 @@ def _apply_response_attributes(span: Span, result):
 
 
 def _determine_call_context(
-    client: BaseClient, args
+    client: BaseClient, args: Tuple[str, Dict[str, Any]]
 ) -> Optional[_AwsSdkCallContext]:
     try:
-        operation = args[0]
-        params = args[1]
-        call_context = _AwsSdkCallContext(client, operation, params)
+        call_context = _AwsSdkCallContext(client, args)
 
         logger.debug(
             "AWS SDK invocation: %s %s",
@@ -242,5 +240,7 @@ def _determine_call_context(
 
         return call_context
     except Exception as ex:  # pylint:disable=broad-except
-        logger.warning("Error when initializing call context", exc_info=ex)
+        # this shouldn't happen actually unless internals of botocore changed and
+        # extracting essential attributes ('service' and 'operation') failed.
+        logger.error("Error when initializing call context", exc_info=ex)
         return None
