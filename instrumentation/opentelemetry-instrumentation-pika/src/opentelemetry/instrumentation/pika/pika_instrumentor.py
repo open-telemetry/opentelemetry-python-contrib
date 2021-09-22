@@ -75,6 +75,13 @@ class PikaInstrumentor(BaseInstrumentor):  # type: ignore
     def instrument_channel(
         channel: Channel, tracer_provider: Optional[TracerProvider] = None,
     ) -> None:
+        if not hasattr(channel, "_is_instrumented_by_opentelemetry"):
+            channel._is_instrumented_by_opentelemetry = False
+        if channel._is_instrumented_by_opentelemetry:
+            _LOG.warning(
+                "Attempting to instrument Pika channel while already instrumented!"
+            )
+            return
         tracer = trace.get_tracer(__name__, __version__, tracer_provider)
         channel.__setattr__("__opentelemetry_tracer", tracer)
         if not hasattr(channel, "_impl"):
@@ -88,6 +95,14 @@ class PikaInstrumentor(BaseInstrumentor):  # type: ignore
 
     @staticmethod
     def uninstrument_channel(channel: Channel) -> None:
+        if (
+            not hasattr(channel, "_is_instrumented_by_opentelemetry")
+            or not channel._is_instrumented_by_opentelemetry
+        ):
+            _LOG.error(
+                "Attempting to uninstrument Pika channel while already uninstrumented!"
+            )
+            return
         if not hasattr(channel, "_impl"):
             _LOG.error("Could not find implementation for provided channel!")
             return

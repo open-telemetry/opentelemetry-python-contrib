@@ -105,13 +105,13 @@ def _get_span(
     if context.get_value("suppress_instrumentation") or context.get_value(
         _SUPPRESS_INSTRUMENTATION_KEY
     ):
-        print("Suppressing instrumentation!")
         return None
     task_name = properties.type if properties.type else task_name
     span = tracer.start_span(
         context=ctx, name=_generate_span_name(task_name, operation)
     )
-    _enrich_span(span, channel, properties, task_name, operation)
+    if span.is_recording():
+        _enrich_span(span, channel, properties, task_name, operation)
     return span
 
 

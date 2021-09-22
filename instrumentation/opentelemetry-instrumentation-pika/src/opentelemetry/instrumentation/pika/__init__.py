@@ -66,6 +66,7 @@ API
 ---
 """
 
-# pylint: disable=unused-argument
-from .pika_instrumentor import PikaInstrumentor
-from .version import __version__
+from .pika_instrumentor import (  # pylint: disable=unused-argument
+    PikaInstrumentor,
+)
+from .version import __version__  # pylint: disable=unused-argument
