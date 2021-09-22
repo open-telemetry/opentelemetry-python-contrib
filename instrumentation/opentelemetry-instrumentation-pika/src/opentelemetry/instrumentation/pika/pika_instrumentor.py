@@ -122,12 +122,12 @@ class PikaInstrumentor(BaseInstrumentor):  # type: ignore
 
     def _instrument(self, **kwargs: Dict[str, Any]) -> None:
         tracer_provider: TracerProvider = kwargs.get("tracer_provider", None)
-        channel.__setattr__("__opentelemetry_tracer", tracer)
+        self.__setattr__("__opentelemetry_tracer", tracer_provider)
         self._decorate_channel_function(tracer_provider)
 
     def _uninstrument(self, **kwargs: Dict[str, Any]) -> None:
-        if hasattr(channel, "__opentelemetry_tracer"):
-            delattr(channel, "__opentelemetry_tracer")
+        if hasattr(self, "__opentelemetry_tracer"):
+            delattr(self, "__opentelemetry_tracer")
         unwrap(BlockingConnection, "channel")
 
     def instrumentation_dependencies(self) -> Collection[str]:

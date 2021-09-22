@@ -34,6 +34,9 @@ class TestPika(TestCase):
         self.assertTrue(
             isinstance(BlockingConnection.channel, BoundFunctionWrapper)
         )
+        assert hasattr(
+            instrumentation, "__opentelemetry_tracer"
+        ), "Tracer not stored for the object!"
         instrumentation.uninstrument(channel=self.channel)
         self.assertFalse(
             isinstance(BlockingConnection.channel, BoundFunctionWrapper)
@@ -52,8 +55,8 @@ class TestPika(TestCase):
     ):
         PikaInstrumentor.instrument_channel(channel=self.channel)
         assert hasattr(
-            self.channel, "__opentelemetry_tracer"
-        ), "Tracer not set for the channel!"
+            self.channel, "_is_instrumented_by_opentelemetry"
+        ), "channel is not marked as instrumented!"
         instrument_consumers.assert_called_once()
         instrument_channel_functions.assert_called_once()
 
