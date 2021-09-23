@@ -6,6 +6,27 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased](https://github.com/open-telemetry/opentelemetry-python/compare/v1.5.0-0.24b0...HEAD)
+- `opentelemetry-sdk-extension-aws` Release AWS Python SDK Extension as 1.0.0
+  ([#667](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/667))
+
+### Added
+- `opentelemetry-instrumentation-elasticsearch` Added `response_hook` and `request_hook` callbacks
+  ([#670](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/670))
+
+### Added
+- `opentelemetry-instrumentation-redis` added request_hook and response_hook callbacks passed as arguments to the instrument method.
+  ([#669](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/669))
+
+### Changed
+- `opentelemetry-instrumentation-botocore` Unpatch botocore Endpoint.prepare_request on uninstrument
+  ([#664](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/664))
+- `opentelemetry-instrumentation-botocore` Fix span injection for lambda invoke
+  ([#663](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/663))
+
+### Changed
+
+- `opentelemetry-instrumentation-urllib3` Updated `_RequestHookT` with two additional fields - the request body and the request headers
+([#660](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/660))
 
 ## [1.5.0-0.24b0](https://github.com/open-telemetry/opentelemetry-python/releases/tag/v1.5.0-0.24b0) - 2021-08-26
 
@@ -22,8 +43,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - `opentelemetry-instrumentation-fastapi` Allow instrumentation of newer FastAPI versions.
   ([#602](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/602))
-
-### Changed
 - Enable explicit `excluded_urls` argument in `opentelemetry-instrumentation-flask`
   ([#604](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/604))
 
