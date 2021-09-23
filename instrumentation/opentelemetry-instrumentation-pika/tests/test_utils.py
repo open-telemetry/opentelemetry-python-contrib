@@ -35,17 +35,13 @@ class TestUtils(TestCase):
         properties = mock.MagicMock()
         task_name = "test.test"
         get_value.return_value = None
-        span = utils._get_span(tracer, channel, properties, task_name)
+        _ = utils._get_span(tracer, channel, properties, task_name)
         extract.assert_called_once()
         generate_span_name.assert_called_once()
         tracer.start_span.assert_called_once_with(
             context=extract.return_value, name=generate_span_name.return_value
         )
         enrich_span.assert_called_once()
-        assert any(
-            span in call.args or span in call.kwargs.values()
-            for call in enrich_span.call_args_list
-        ), "The returned span was not enriched using enrich_span!"
 
     @mock.patch("opentelemetry.context.get_value")
     @mock.patch("opentelemetry.instrumentation.pika.utils._generate_span_name")
