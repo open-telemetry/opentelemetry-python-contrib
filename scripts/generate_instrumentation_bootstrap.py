@@ -49,17 +49,16 @@ libraries = {}
 default_instrumentations = []
 """
 
-tmpdir = tempfile.TemporaryDirectory()
+tmpdir = tempfile.TemporaryDirectory()  # pylint: disable=R1732
 gen_path = os.path.join(tmpdir.name, "new.py",)
 
 current_path = os.path.join(tmpdir.name, "current.py",)
 
 core_repo = os.getenv("CORE_REPO_SHA", "main")
-url = "https://raw.githubusercontent.com/open-telemetry/opentelemetry-python/{}/opentelemetry-instrumentation/src/opentelemetry/instrumentation/bootstrap_gen.py".format(
-    core_repo
-)
+url = f"https://raw.githubusercontent.com/open-telemetry/opentelemetry-python/{core_repo}/opentelemetry-instrumentation/src/opentelemetry/instrumentation/bootstrap_gen.py"
 r = requests.get(url, allow_redirects=True)
-open(current_path, "wb").write(r.content)
+with open(current_path, "wb") as output:
+    output.write(r.content)
 
 
 def main():
