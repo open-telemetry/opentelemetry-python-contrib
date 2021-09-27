@@ -102,9 +102,7 @@ class TortoiseORMInstrumentor(BaseInstrumentor):
             ]
             for f in funcs:
                 wrapt.wrap_function_wrapper(
-                    "tortoise.backends.sqlite.client",
-                    f,
-                    self._do_execute,
+                    "tortoise.backends.sqlite.client", f, self._do_execute,
                 )
 
         if TORTOISE_POSTGRES_SUPPORT:
@@ -117,9 +115,7 @@ class TortoiseORMInstrumentor(BaseInstrumentor):
             ]
             for f in funcs:
                 wrapt.wrap_function_wrapper(
-                    "tortoise.backends.asyncpg.client",
-                    f,
-                    self._do_execute,
+                    "tortoise.backends.asyncpg.client", f, self._do_execute,
                 )
 
         if TORTOISE_MYSQL_SUPPORT:
@@ -132,9 +128,7 @@ class TortoiseORMInstrumentor(BaseInstrumentor):
             ]
             for f in funcs:
                 wrapt.wrap_function_wrapper(
-                    "tortoise.backends.mysql.client",
-                    f,
-                    self._do_execute,
+                    "tortoise.backends.mysql.client", f, self._do_execute,
                 )
         wrapt.wrap_function_wrapper(
             "tortoise.contrib.pydantic.base",
@@ -264,9 +258,7 @@ class TortoiseORMInstrumentor(BaseInstrumentor):
         ) as span:
             if span.is_recording():
                 span_attributes = self._hydrate_span_from_args(
-                    instance,
-                    args[0],
-                    args[1:],
+                    instance, args[0], args[1:],
                 )
                 for attribute, value in span_attributes.items():
                     span.set_attribute(attribute, value)
