@@ -69,8 +69,6 @@ except ModuleNotFoundError:
 
 import tortoise.contrib.pydantic.base
 
-TORTOISE_PYDANTIC_MODEL_ATTRIBUTE = "pydantic.model"
-
 
 class TortoiseORMInstrumentor(BaseInstrumentor):
     """An instrumentor for Tortoise-ORM
@@ -289,9 +287,7 @@ class TortoiseORMInstrumentor(BaseInstrumentor):
                 if model_config:
                     model_title = getattr(modelcls.Config, "title")
                     if model_title:
-                        span_attributes[
-                            TORTOISE_PYDANTIC_MODEL_ATTRIBUTE
-                        ] = model_title
+                        span_attributes["pydantic.model"] = model_title
 
                 for attribute, value in span_attributes.items():
                     span.set_attribute(attribute, value)
