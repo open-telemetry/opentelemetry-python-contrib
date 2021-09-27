@@ -25,10 +25,7 @@ import tempfile
 import astor
 import pkg_resources
 import requests
-from otel_packaging import (
-    get_instrumentation_packages,
-    scripts_path,
-)
+from otel_packaging import get_instrumentation_packages, scripts_path
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger("instrumentation_list_generator")
