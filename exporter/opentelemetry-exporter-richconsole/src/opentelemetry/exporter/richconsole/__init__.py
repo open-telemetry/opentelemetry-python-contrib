@@ -55,14 +55,15 @@ import datetime
 import typing
 from typing import Optional
 
-import opentelemetry.trace
-from opentelemetry.sdk.trace import ReadableSpan
-from opentelemetry.sdk.trace.export import SpanExporter, SpanExportResult
-from opentelemetry.semconv.trace import SpanAttributes
 from rich.console import Console
 from rich.syntax import Syntax
 from rich.text import Text
 from rich.tree import Tree
+
+import opentelemetry.trace
+from opentelemetry.sdk.trace import ReadableSpan
+from opentelemetry.sdk.trace.export import SpanExporter, SpanExportResult
+from opentelemetry.semconv.trace import SpanAttributes
 
 
 def ns_to_time(nanoseconds):
@@ -85,7 +86,9 @@ class RichConsoleSpanExporter(SpanExporter):
         self.console = Console()
 
     def _child_to_tree(self, child: Tree, span: ReadableSpan):
-        child.add(Text.from_markup(f"[bold cyan]Kind :[/bold cyan] {span.kind.name}"))
+        child.add(
+            Text.from_markup(f"[bold cyan]Kind :[/bold cyan] {span.kind.name}")
+        )
         if not span.status.is_unset:
             if not span.status.is_ok:
                 child.add(
@@ -123,7 +126,9 @@ class RichConsoleSpanExporter(SpanExporter):
             for attribute in span.attributes:
                 if attribute == SpanAttributes.DB_STATEMENT:
                     attributes.add(
-                        Text.from_markup(f"[bold cyan]{attribute} :[/bold cyan] ")
+                        Text.from_markup(
+                            f"[bold cyan]{attribute} :[/bold cyan] "
+                        )
                     )
                     attributes.add(Syntax(span.attributes[attribute], "sql"))
                 else:
