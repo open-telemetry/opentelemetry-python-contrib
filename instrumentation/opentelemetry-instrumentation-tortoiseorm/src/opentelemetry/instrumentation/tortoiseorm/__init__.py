@@ -14,20 +14,26 @@
 
 """
 Instrument `tortoise-orm`_ to report SQL queries.
+
 Usage
 -----
-.. code:: python
-    from opentelemetry.instrumentation.tortoiseorm import TortoiseORMInstrumentor
-    from tortoise.contrib.fastapi import register_tortoise
 
+.. code:: python
+
+    from fastapi import FastAPI
+    from tortoise.contrib.fastapi import register_tortoise
+    from opentelemetry.sdk.resources import SERVICE_NAME, Resource
+    from opentelemetry.sdk.trace import TracerProvider
+    from opentelemetry.instrumentation.tortoiseorm import TortoiseORMInstrumentor
+
+    app = FastAPI()
+    tracer = TracerProvider(resource=Resource({SERVICE_NAME: "FastAPI"}))
     TortoiseORMInstrumentor().instrument(tracer_provider=tracer)
 
     register_tortoise(
         app,
-        db_url=settings.db_url,
-        modules={"models": ["example_app.db_models"]},
-        generate_schemas=True,
-        add_exception_handlers=True,
+        db_url="sqlite://sample.db",
+        modules={"models": ["example_app.db_models"]}
     )
 
 API
