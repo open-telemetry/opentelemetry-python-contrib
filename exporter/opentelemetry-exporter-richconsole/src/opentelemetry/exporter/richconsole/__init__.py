@@ -70,7 +70,7 @@ def ns_to_time(nanoseconds):
     return ts.strftime("%H:%M:%S.%f")
 
 
-class RichConsoleExporter(SpanExporter):
+class RichConsoleSpanExporter(SpanExporter):
     """Implementation of :class:`SpanExporter` that prints spans to the
     console.
 
@@ -140,8 +140,9 @@ class RichConsoleExporter(SpanExporter):
             label=f"Trace {opentelemetry.trace.format_trace_id(spans[0].context.trace_id)}"
         )
         parents = {}
-        root_spans = [span for span in spans if not span.parent]
-        for span in root_spans:
+        for span in spans:
+            if not span.parent:
+                ...
             child = tree.add(
                 label=Text.from_markup(
                     f"[blue][{ns_to_time(span.start_time)}][/blue] [bold]{span.name}[/bold], span {opentelemetry.trace.format_span_id(span.context.span_id)}"
@@ -150,9 +151,8 @@ class RichConsoleExporter(SpanExporter):
             parents[span.context.span_id] = child
             self._child_to_tree(child, span)
 
-        child_spans = [span for span in spans if span.parent]
-        for span in child_spans:
-            if span.parent.span_id not in parents:
+        for span in spans:
+            if span.parent and span.parent.span_id not in parents:
                 child = tree.add(
                     label=Text.from_markup(
                         f"[blue][{ns_to_time(span.start_time)}][/blue] [bold]{span.name}[/bold], span {opentelemetry.trace.format_span_id(span.context.span_id)}"
