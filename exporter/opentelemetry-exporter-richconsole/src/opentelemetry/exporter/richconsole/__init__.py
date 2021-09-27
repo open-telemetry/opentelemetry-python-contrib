@@ -145,8 +145,6 @@ class RichConsoleSpanExporter(SpanExporter):
         )
         parents = {}
         for span in spans:
-            if not span.parent:
-                ...
             child = tree.add(
                 label=Text.from_markup(
                     f"[blue][{ns_to_time(span.start_time)}][/blue] [bold]{span.name}[/bold], span {opentelemetry.trace.format_span_id(span.context.span_id)}"
