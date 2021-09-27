@@ -111,7 +111,7 @@ class RichConsoleSpanExporter(SpanExporter):
 
         if span.events:
             events = child.add(
-                label=Text.from_markup(f"[bold cyan]Events :[/bold cyan] ")
+                label=Text.from_markup("[bold cyan]Events :[/bold cyan] ")
             )
             for event in span.events:
                 event_node = events.add(Text(event.name))
@@ -121,7 +121,7 @@ class RichConsoleSpanExporter(SpanExporter):
                     )
         if span.attributes:
             attributes = child.add(
-                label=Text.from_markup(f"[bold cyan]Attributes :[/bold cyan] ")
+                label=Text.from_markup("[bold cyan]Attributes :[/bold cyan] ")
             )
             for attribute in span.attributes:
                 if attribute == SpanAttributes.DB_STATEMENT:
