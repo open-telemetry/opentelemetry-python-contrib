@@ -209,7 +209,7 @@ class TortoiseORMInstrumentor(BaseInstrumentor):
         """Get network and database attributes from connection."""
         span_attributes = {}
         capabilities = getattr(connection, "capabilities", None)
-        if capabilities:
+        if capabilities is not None:
             if capabilities.dialect == "sqlite":
                 span_attributes[
                     SpanAttributes.DB_SYSTEM
