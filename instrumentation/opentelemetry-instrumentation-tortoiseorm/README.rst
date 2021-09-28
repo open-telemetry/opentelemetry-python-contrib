@@ -19,4 +19,5 @@ References
 ----------
 
 * `OpenTelemetry Project <https://opentelemetry.io/>`_
+* `Tortoise ORM <https://tortoise-orm.readthedocs.io/en/latest/>`_
 * `OpenTelemetry Python Examples <https://github.com/open-telemetry/opentelemetry-python/tree/main/docs/examples>`_
