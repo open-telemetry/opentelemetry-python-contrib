@@ -297,10 +297,7 @@ class _DjangoMiddleware(MiddlewareMixin):
                 activation.__exit__(None, None, None)
 
         if self._environ_token in request.META.keys():
-            if is_asgi_request:
-                detach(request.META.get(self._environ_token))
-            else:
-                detach(request.environ.get(self._environ_token))
+            detach(request.META.get(self._environ_token))
             request.META.pop(self._environ_token)
 
         return response
