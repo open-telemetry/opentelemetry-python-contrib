@@ -67,9 +67,61 @@ from opentelemetry.sdk.trace.export import SpanExporter, SpanExportResult
 from opentelemetry.semconv.trace import SpanAttributes
 
 
-def ns_to_time(nanoseconds):
+def _ns_to_time(nanoseconds):
     ts = datetime.datetime.utcfromtimestamp(nanoseconds / 1e9)
     return ts.strftime("%H:%M:%S.%f")
+
+
+def _child_to_tree(child: Tree, span: ReadableSpan):
+    child.add(
+        Text.from_markup(f"[bold cyan]Kind :[/bold cyan] {span.kind.name}")
+    )
+    if not span.status.is_unset:
+        if not span.status.is_ok:
+            child.add(
+                Text.from_markup(
+                    f"[bold cyan]Status :[/bold cyan] [red]{span.status.status_code}[/red]"
+                )
+            )
+        else:
+            child.add(
+                Text.from_markup(
+                    f"[bold cyan]Status :[/bold cyan] {span.status.status_code}"
+                )
+            )
+    if span.status.description:
+        child.add(
+            Text.from_markup(
+                f"[bold cyan]Description :[/bold cyan] {span.status.description}"
+            )
+        )
+
+    if span.events:
+        events = child.add(
+            label=Text.from_markup("[bold cyan]Events :[/bold cyan] ")
+        )
+        for event in span.events:
+            event_node = events.add(Text(event.name))
+            for key, val in event.attributes.items():
+                event_node.add(
+                    Text.from_markup(f"[bold cyan]{key} :[/bold cyan] {val}")
+                )
+    if span.attributes:
+        attributes = child.add(
+            label=Text.from_markup("[bold cyan]Attributes :[/bold cyan] ")
+        )
+        for attribute in span.attributes:
+            if attribute == SpanAttributes.DB_STATEMENT:
+                attributes.add(
+                    Text.from_markup(f"[bold cyan]{attribute} :[/bold cyan] ")
+                )
+                attributes.add(Syntax(span.attributes[attribute], "sql"))
+            else:
+                attributes.add(
+                    Text.from_markup(
+                        f"[bold cyan]{attribute} :[/bold cyan] {span.attributes[attribute]}"
+                    )
+                )
 
 
 class RichConsoleSpanExporter(SpanExporter):
@@ -85,59 +137,6 @@ class RichConsoleSpanExporter(SpanExporter):
         self.service_name = service_name
         self.console = Console()
 
-    def _child_to_tree(self, child: Tree, span: ReadableSpan):
-        child.add(
-            Text.from_markup(f"[bold cyan]Kind :[/bold cyan] {span.kind.name}")
-        )
-        if not span.status.is_unset:
-            if not span.status.is_ok:
-                child.add(
-                    Text.from_markup(
-                        f"[bold cyan]Status :[/bold cyan] [red]{span.status.status_code}[/red]"
-                    )
-                )
-            else:
-                child.add(
-                    Text.from_markup(
-                        f"[bold cyan]Status :[/bold cyan] {span.status.status_code}"
-                    )
-                )
-        if span.status.description:
-            child.add(
-                Text.from_markup(
-                    f"[bold cyan]Description :[/bold cyan] {span.status.description}"
-                )
-            )
-
-        if span.events:
-            events = child.add(
-                label=Text.from_markup("[bold cyan]Events :[/bold cyan] ")
-            )
-            for event in span.events:
-                event_node = events.add(Text(event.name))
-                for k, v in event.attributes.items():
-                    event_node.add(
-                        Text.from_markup(f"[bold cyan]{k} :[/bold cyan] {v}")
-                    )
-        if span.attributes:
-            attributes = child.add(
-                label=Text.from_markup("[bold cyan]Attributes :[/bold cyan] ")
-            )
-            for attribute in span.attributes:
-                if attribute == SpanAttributes.DB_STATEMENT:
-                    attributes.add(
-                        Text.from_markup(
-                            f"[bold cyan]{attribute} :[/bold cyan] "
-                        )
-                    )
-                    attributes.add(Syntax(span.attributes[attribute], "sql"))
-                else:
-                    attributes.add(
-                        Text.from_markup(
-                            f"[bold cyan]{attribute} :[/bold cyan] {span.attributes[attribute]}"
-                        )
-                    )
-
     def export(self, spans: typing.Sequence[ReadableSpan]) -> SpanExportResult:
         if not spans:
             return SpanExportResult.SUCCESS
@@ -148,27 +147,27 @@ class RichConsoleSpanExporter(SpanExporter):
         for span in spans:
             child = tree.add(
                 label=Text.from_markup(
-                    f"[blue][{ns_to_time(span.start_time)}][/blue] [bold]{span.name}[/bold], span {opentelemetry.trace.format_span_id(span.context.span_id)}"
+                    f"[blue][{_ns_to_time(span.start_time)}][/blue] [bold]{span.name}[/bold], span {opentelemetry.trace.format_span_id(span.context.span_id)}"
                 )
             )
             parents[span.context.span_id] = child
-            self._child_to_tree(child, span)
+            _child_to_tree(child, span)
 
         for span in spans:
             if span.parent and span.parent.span_id not in parents:
                 child = tree.add(
                     label=Text.from_markup(
-                        f"[blue][{ns_to_time(span.start_time)}][/blue] [bold]{span.name}[/bold], span {opentelemetry.trace.format_span_id(span.context.span_id)}"
+                        f"[blue][{_ns_to_time(span.start_time)}][/blue] [bold]{span.name}[/bold], span {opentelemetry.trace.format_span_id(span.context.span_id)}"
                     )
                 )
             else:
                 child = parents[span.parent.span_id].add(
                     label=Text.from_markup(
-                        f"[blue][{ns_to_time(span.start_time)}][/blue] [bold]{span.name}[/bold], span {opentelemetry.trace.format_span_id(span.context.span_id)}"
+                        f"[blue][{_ns_to_time(span.start_time)}][/blue] [bold]{span.name}[/bold], span {opentelemetry.trace.format_span_id(span.context.span_id)}"
                     )
                 )
             parents[span.context.span_id] = child
-            self._child_to_tree(child, span)
+            _child_to_tree(child, span)
 
         self.console.print(tree)
         return SpanExportResult.SUCCESS
