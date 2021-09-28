@@ -29,7 +29,7 @@ Usage
 
 The Rich Console Exporter is a console exporter that prints a tree view onto stdout of the traces
 with the related spans and properties as children of that tree. For the tree view, the Rich
-Console Exporter must be used with a BatchSpanProcessor. If used within a SimpleSpanProcessor,
+Console Exporter should be used with a BatchSpanProcessor. If used within a SimpleSpanProcessor,
 all spans will be printed in a list.
 
 .. code:: python
