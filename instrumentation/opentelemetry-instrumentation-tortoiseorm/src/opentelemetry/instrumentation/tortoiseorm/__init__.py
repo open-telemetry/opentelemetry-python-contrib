@@ -104,9 +104,9 @@ class TortoiseORMInstrumentor(BaseInstrumentor):
                 "SqliteClient.execute_query_dict",
                 "SqliteClient.execute_script",
             ]
-            for f in funcs:
+            for func in funcs:
                 wrapt.wrap_function_wrapper(
-                    "tortoise.backends.sqlite.client", f, self._do_execute,
+                    "tortoise.backends.sqlite.client", func, self._do_execute,
                 )
 
         if TORTOISE_POSTGRES_SUPPORT:
@@ -117,9 +117,9 @@ class TortoiseORMInstrumentor(BaseInstrumentor):
                 "AsyncpgDBClient.execute_query_dict",
                 "AsyncpgDBClient.execute_script",
             ]
-            for f in funcs:
+            for func in funcs:
                 wrapt.wrap_function_wrapper(
-                    "tortoise.backends.asyncpg.client", f, self._do_execute,
+                    "tortoise.backends.asyncpg.client", func, self._do_execute,
                 )
 
         if TORTOISE_MYSQL_SUPPORT:
@@ -130,9 +130,9 @@ class TortoiseORMInstrumentor(BaseInstrumentor):
                 "MySQLClient.execute_query_dict",
                 "MySQLClient.execute_script",
             ]
-            for f in funcs:
+            for func in funcs:
                 wrapt.wrap_function_wrapper(
-                    "tortoise.backends.mysql.client", f, self._do_execute,
+                    "tortoise.backends.mysql.client", func, self._do_execute,
                 )
         wrapt.wrap_function_wrapper(
             "tortoise.contrib.pydantic.base",
