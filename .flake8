@@ -1,7 +1,6 @@
 [flake8]
 ignore =
   E501  # line too long, defer to black
-  F401  # unused import, defer to pylint
   W503  # allow line breaks before binary ops
   W504  # allow line breaks after binary ops
   E203  # allow whitespace before ':' (https://github.com/psf/black#slices) 
@@ -20,6 +19,5 @@ exclude =
   exporter/opentelemetry-exporter-jaeger/build/*
   docs/examples/opentelemetry-example-app/src/opentelemetry_example_app/grpc/gen/
   docs/examples/opentelemetry-example-app/build/*
-  opentelemetry-python-core/
   opentelemetry-proto/build/*
   opentelemetry-proto/src/opentelemetry/proto/

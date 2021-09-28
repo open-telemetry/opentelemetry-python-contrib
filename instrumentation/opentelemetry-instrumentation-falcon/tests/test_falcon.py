@@ -26,7 +26,6 @@ from opentelemetry.sdk.resources import Resource
 from opentelemetry.semconv.trace import SpanAttributes
 from opentelemetry.test.test_base import TestBase
 from opentelemetry.trace import StatusCode, format_span_id, format_trace_id
-from opentelemetry.util.http import get_excluded_urls, get_traced_request_attrs
 
 from .app import make_app
 
@@ -34,12 +33,6 @@ from .app import make_app
 class TestFalconBase(TestBase):
     def setUp(self):
         super().setUp()
-        FalconInstrumentor().instrument(
-            request_hook=getattr(self, "request_hook", None),
-            response_hook=getattr(self, "response_hook", None),
-        )
-        self.app = make_app()
-        # pylint: disable=protected-access
         self.env_patch = patch.dict(
             "os.environ",
             {
@@ -48,20 +41,12 @@ class TestFalconBase(TestBase):
             },
         )
         self.env_patch.start()
-        self.exclude_patch = patch(
-            "opentelemetry.instrumentation.falcon._excluded_urls",
-            get_excluded_urls("FALCON"),
+
+        FalconInstrumentor().instrument(
+            request_hook=getattr(self, "request_hook", None),
+            response_hook=getattr(self, "response_hook", None),
         )
-        middleware = self.app._middleware[0][  # pylint:disable=W0212
-            0
-        ].__self__
-        self.traced_patch = patch.object(
-            middleware,
-            "_traced_request_attrs",
-            get_traced_request_attrs("FALCON"),
-        )
-        self.exclude_patch.start()
-        self.traced_patch.start()
+        self.app = make_app()
 
     def client(self):
         return testing.TestClient(self.app)
@@ -71,8 +56,6 @@ class TestFalconBase(TestBase):
         with self.disable_logging():
             FalconInstrumentor().uninstrument()
         self.env_patch.stop()
-        self.exclude_patch.stop()
-        self.traced_patch.stop()
 
 
 class TestFalconInstrumentation(TestFalconBase):
@@ -95,7 +78,9 @@ class TestFalconInstrumentation(TestFalconBase):
         self._test_method("HEAD")
 
     def _test_method(self, method):
-        self.client().simulate_request(method=method, path="/hello")
+        self.client().simulate_request(
+            method=method, path="/hello", remote_addr="127.0.0.1"
+        )
         spans = self.memory_exporter.get_finished_spans()
         self.assertEqual(len(spans), 1)
         span = spans[0]
@@ -103,6 +88,9 @@ class TestFalconInstrumentation(TestFalconBase):
             span.name, "HelloWorldResource.on_{0}".format(method.lower())
         )
         self.assertEqual(span.status.status_code, StatusCode.UNSET)
+        self.assertEqual(
+            span.status.description, None,
+        )
         self.assertSpanHasAttributes(
             span,
             {
@@ -122,12 +110,15 @@ class TestFalconInstrumentation(TestFalconBase):
         self.memory_exporter.clear()
 
     def test_404(self):
-        self.client().simulate_get("/does-not-exist")
+        self.client().simulate_get("/does-not-exist", remote_addr="127.0.0.1")
         spans = self.memory_exporter.get_finished_spans()
         self.assertEqual(len(spans), 1)
         span = spans[0]
         self.assertEqual(span.name, "HTTP GET")
         self.assertEqual(span.status.status_code, StatusCode.ERROR)
+        self.assertEqual(
+            span.status.description, "NotFound",
+        )
         self.assertSpanHasAttributes(
             span,
             {
@@ -146,7 +137,7 @@ class TestFalconInstrumentation(TestFalconBase):
 
     def test_500(self):
         try:
-            self.client().simulate_get("/error")
+            self.client().simulate_get("/error", remote_addr="127.0.0.1")
         except NameError:
             pass
         spans = self.memory_exporter.get_finished_spans()

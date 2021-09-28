@@ -81,6 +81,7 @@ from opentelemetry.propagate import inject
 from opentelemetry.semconv.trace import SpanAttributes
 from opentelemetry.trace import Span, SpanKind, get_tracer
 from opentelemetry.trace.status import Status
+from opentelemetry.util.http.httplib import set_ip_on_next_http_connection
 
 # A key to a context variable to avoid creating duplicate spans when instrumenting
 # both, Session.request and Session.send, since Session.request calls into Session.send
@@ -90,7 +91,15 @@ _SUPPRESS_HTTP_INSTRUMENTATION_KEY = context.create_key(
 
 _UrlFilterT = typing.Optional[typing.Callable[[str], str]]
 _RequestHookT = typing.Optional[
-    typing.Callable[[Span, urllib3.connectionpool.HTTPConnectionPool], None]
+    typing.Callable[
+        [
+            Span,
+            urllib3.connectionpool.HTTPConnectionPool,
+            typing.Dict,
+            typing.Optional[str],
+        ],
+        None,
+    ]
 ]
 _ResponseHookT = typing.Optional[
     typing.Callable[
@@ -150,6 +159,7 @@ def _instrument(
         method = _get_url_open_arg("method", args, kwargs).upper()
         url = _get_url(instance, args, kwargs, url_filter)
         headers = _prepare_headers(kwargs)
+        body = _get_url_open_arg("body", args, kwargs)
 
         span_name = "HTTP {}".format(method.strip())
         span_attributes = {
@@ -159,9 +169,9 @@ def _instrument(
 
         with tracer.start_as_current_span(
             span_name, kind=SpanKind.CLIENT, attributes=span_attributes
-        ) as span:
+        ) as span, set_ip_on_next_http_connection(span):
             if callable(request_hook):
-                request_hook(span, instance)
+                request_hook(span, instance, headers, body)
             inject(headers)
 
             with _suppress_further_instrumentation():

@@ -14,12 +14,14 @@
 
 import itertools
 import logging
+import sys
 import time
 import unittest
 from unittest import mock
 
 from ddtrace.internal.writer import AgentWriter
 from flaky import flaky
+from pytest import mark
 
 from opentelemetry import trace as trace_api
 from opentelemetry.context import Context
@@ -469,6 +471,9 @@ class TestDatadogSpanExporter(unittest.TestCase):
         self.assertEqual(len(datadog_spans), 128)
         tracer_provider.shutdown()
 
+    @mark.skipif(
+        sys.platform == "win32", reason="unreliable test on windows",
+    )
     def test_span_processor_scheduled_delay(self):
         """Test that spans are exported each schedule_delay_millis"""
         delay = 300
@@ -545,18 +550,28 @@ class TestDatadogSpanExporter(unittest.TestCase):
         )
 
     def test_origin(self):
-        context = trace_api.SpanContext(
-            trace_id=0x000000000000000000000000DEADBEEF,
-            span_id=trace_api.INVALID_SPAN,
-            is_remote=True,
-            trace_state=trace_api.TraceState(
-                [(datadog.constants.DD_ORIGIN, "origin-service")]
-            ),
+        trace_id = 0x000000000000000000000000DEADBEEF
+        trace_state = trace_api.TraceState(
+            [(datadog.constants.DD_ORIGIN, "origin-service")]
+        )
+        parent_span_ctx = trace_api.SpanContext(
+            trace_id=trace_id,
+            span_id=0x1,
+            is_remote=False,
+            trace_state=trace_state,
+        )
+        child_span_ctx = trace_api.SpanContext(
+            trace_id=trace_id,
+            span_id=0x2,
+            is_remote=False,
+            trace_state=trace_state,
         )
 
-        root_span = trace._Span(name="root", context=context, parent=None)
+        root_span = trace._Span(
+            name="root", context=parent_span_ctx, parent=None
+        )
         child_span = trace._Span(
-            name="child", context=context, parent=root_span
+            name="child", context=child_span_ctx, parent=parent_span_ctx
         )
         root_span.start()
         child_span.start()
