@@ -16,6 +16,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   ([#669](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/669))
 - `opentelemetry-instrumentation-botocore` add `request_hook` and `response_hook` callbacks
   ([679](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/679))
+- `opentelemetry-exporter-richconsole` Initial release
+  ([#686](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/686))
 
 ### Changed
 - `opentelemetry-instrumentation-botocore` Unpatch botocore Endpoint.prepare_request on uninstrument
@@ -27,6 +29,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - `opentelemetry-instrumentation-urllib3` Updated `_RequestHookT` with two additional fields - the request body and the request headers
 ([#660](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/660))
+
+### Changed
+- Tests for Falcon 3 support
+  ([#644](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/644))
+
+### Added
+
+- `opentelemetry-instrumentation-urllib3`, `opentelemetry-instrumentation-requests`
+  The `net.peer.ip` attribute is set to the IP of the connected HTTP server or proxy
+  using a new instrumentor in `opententelemetry-util-http`
+  ([#661](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/661))
 
 ## [1.5.0-0.24b0](https://github.com/open-telemetry/opentelemetry-python/releases/tag/v1.5.0-0.24b0) - 2021-08-26
 
