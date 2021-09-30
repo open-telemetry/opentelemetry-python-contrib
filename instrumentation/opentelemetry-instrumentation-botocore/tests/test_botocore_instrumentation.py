@@ -757,4 +757,3 @@ class TestBotocoreInstrumentor(TestBase):
             expected_result_keys,
             put_item_attributes.get(response_hook_result_attribute_name),
         )
-
