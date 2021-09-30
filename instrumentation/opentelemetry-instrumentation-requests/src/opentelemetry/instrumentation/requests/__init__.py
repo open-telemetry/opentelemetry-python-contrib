@@ -53,6 +53,7 @@ from opentelemetry.semconv.trace import SpanAttributes
 from opentelemetry.trace import SpanKind, get_tracer
 from opentelemetry.trace.status import Status
 from opentelemetry.util.http import remove_url_credentials
+from opentelemetry.util.http.httplib import set_ip_on_next_http_connection
 
 # A key to a context variable to avoid creating duplicate spans when instrumenting
 # both, Session.request and Session.send, since Session.request calls into Session.send
@@ -133,7 +134,7 @@ def _instrument(tracer, span_callback=None, name_callback=None):
 
         with tracer.start_as_current_span(
             span_name, kind=SpanKind.CLIENT
-        ) as span:
+        ) as span, set_ip_on_next_http_connection(span):
             exception = None
             if span.is_recording():
                 span.set_attribute(SpanAttributes.HTTP_METHOD, method)
@@ -201,7 +202,7 @@ def _uninstrument_from(instr_root, restore_as_bound_func=False):
 
 def get_default_span_name(method):
     """Default implementation for name_callback, returns HTTP {method_name}."""
-    return "HTTP {}".format(method).strip()
+    return f"HTTP {method.strip()}"
 
 
 class RequestsInstrumentor(BaseInstrumentor):
