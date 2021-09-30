@@ -631,7 +631,7 @@ class TestBotocoreInstrumentor(TestBase):
         )
 
     @mock_dynamodb2
-    def test__request_hook(self):
+    def test_request_hook(self):
         request_hook_service_attribute_name = "request_hook.service_name"
         request_hook_operation_attribute_name = "request_hook.operation_name"
         request_hook_api_params_attribute_name = "request_hook.api_params"
@@ -696,7 +696,7 @@ class TestBotocoreInstrumentor(TestBase):
         )
 
     @mock_dynamodb2
-    def test__response_hook(self):
+    def test_response_hook(self):
         response_hook_service_attribute_name = "request_hook.service_name"
         response_hook_operation_attribute_name = "response_hook.operation_name"
         response_hook_result_attribute_name = "response_hook.result"
@@ -757,3 +757,4 @@ class TestBotocoreInstrumentor(TestBase):
             expected_result_keys,
             put_item_attributes.get(response_hook_result_attribute_name),
         )
+
