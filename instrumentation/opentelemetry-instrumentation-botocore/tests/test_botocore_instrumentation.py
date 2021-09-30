@@ -676,7 +676,7 @@ class TestBotocoreInstrumentor(TestBase):
         spans = self.memory_exporter.get_finished_spans()
         assert spans
         self.assertEqual(len(spans), 2)
-        get_item_attributes = spans[1].attributes
+        put_item_attributes = spans[1].attributes
 
         expected_api_params = json.dumps(
             {"TableName": test_table_name, "Item": item}
@@ -684,15 +684,15 @@ class TestBotocoreInstrumentor(TestBase):
 
         self.assertEqual(
             "dynamodb",
-            get_item_attributes.get(request_hook_service_attribute_name),
+            put_item_attributes.get(request_hook_service_attribute_name),
         )
         self.assertEqual(
             "PutItem",
-            get_item_attributes.get(request_hook_operation_attribute_name),
+            put_item_attributes.get(request_hook_operation_attribute_name),
         )
         self.assertEqual(
             expected_api_params,
-            get_item_attributes.get(request_hook_api_params_attribute_name),
+            put_item_attributes.get(request_hook_api_params_attribute_name),
         )
 
     @mock_dynamodb2
@@ -741,19 +741,19 @@ class TestBotocoreInstrumentor(TestBase):
         spans = self.memory_exporter.get_finished_spans()
         assert spans
         self.assertEqual(len(spans), 2)
-        get_item_attributes = spans[1].attributes
+        put_item_attributes = spans[1].attributes
 
         expected_result_keys = ("ResponseMetadata",)
 
         self.assertEqual(
             "dynamodb",
-            get_item_attributes.get(response_hook_service_attribute_name),
+            put_item_attributes.get(response_hook_service_attribute_name),
         )
         self.assertEqual(
             "PutItem",
-            get_item_attributes.get(response_hook_operation_attribute_name),
+            put_item_attributes.get(response_hook_operation_attribute_name),
         )
         self.assertEqual(
             expected_result_keys,
-            get_item_attributes.get(response_hook_result_attribute_name),
+            put_item_attributes.get(response_hook_result_attribute_name),
         )
