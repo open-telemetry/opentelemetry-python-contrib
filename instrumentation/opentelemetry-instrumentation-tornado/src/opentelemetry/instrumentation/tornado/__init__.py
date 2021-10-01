@@ -236,7 +236,7 @@ def _get_attributes_from_request(request):
     }
 
     if request.remote_ip:
-        attrs[SpanAttributes.NET_PEER_IP] = request.remote_ip
+        attrs[SpanAttributes.HTTP_CLIENT_IP] = request.remote_ip
 
     return extract_attributes_from_object(
         request, _traced_request_attrs, attrs

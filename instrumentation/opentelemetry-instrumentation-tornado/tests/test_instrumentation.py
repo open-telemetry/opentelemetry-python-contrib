@@ -143,7 +143,7 @@ class TestTornadoInstrumentation(TornadoTest):
                 SpanAttributes.HTTP_HOST: "127.0.0.1:"
                 + str(self.get_http_port()),
                 SpanAttributes.HTTP_TARGET: "/",
-                SpanAttributes.NET_PEER_IP: "127.0.0.1",
+                SpanAttributes.HTTP_CLIENT_IP: "127.0.0.1",
                 SpanAttributes.HTTP_STATUS_CODE: 201,
             },
         )
@@ -220,7 +220,7 @@ class TestTornadoInstrumentation(TornadoTest):
                 SpanAttributes.HTTP_HOST: "127.0.0.1:"
                 + str(self.get_http_port()),
                 SpanAttributes.HTTP_TARGET: url,
-                SpanAttributes.NET_PEER_IP: "127.0.0.1",
+                SpanAttributes.HTTP_CLIENT_IP: "127.0.0.1",
                 SpanAttributes.HTTP_STATUS_CODE: 201,
             },
         )
@@ -258,7 +258,7 @@ class TestTornadoInstrumentation(TornadoTest):
                 SpanAttributes.HTTP_HOST: "127.0.0.1:"
                 + str(self.get_http_port()),
                 SpanAttributes.HTTP_TARGET: "/error",
-                SpanAttributes.NET_PEER_IP: "127.0.0.1",
+                SpanAttributes.HTTP_CLIENT_IP: "127.0.0.1",
                 SpanAttributes.HTTP_STATUS_CODE: 500,
             },
         )
@@ -292,7 +292,7 @@ class TestTornadoInstrumentation(TornadoTest):
                 SpanAttributes.HTTP_HOST: "127.0.0.1:"
                 + str(self.get_http_port()),
                 SpanAttributes.HTTP_TARGET: "/missing-url",
-                SpanAttributes.NET_PEER_IP: "127.0.0.1",
+                SpanAttributes.HTTP_CLIENT_IP: "127.0.0.1",
                 SpanAttributes.HTTP_STATUS_CODE: 404,
             },
         )
@@ -336,7 +336,7 @@ class TestTornadoInstrumentation(TornadoTest):
                 SpanAttributes.HTTP_HOST: "127.0.0.1:"
                 + str(self.get_http_port()),
                 SpanAttributes.HTTP_TARGET: "/dyna",
-                SpanAttributes.NET_PEER_IP: "127.0.0.1",
+                SpanAttributes.HTTP_CLIENT_IP: "127.0.0.1",
                 SpanAttributes.HTTP_STATUS_CODE: 202,
             },
         )
@@ -377,7 +377,7 @@ class TestTornadoInstrumentation(TornadoTest):
                 SpanAttributes.HTTP_HOST: "127.0.0.1:"
                 + str(self.get_http_port()),
                 SpanAttributes.HTTP_TARGET: "/on_finish",
-                SpanAttributes.NET_PEER_IP: "127.0.0.1",
+                SpanAttributes.HTTP_CLIENT_IP: "127.0.0.1",
                 SpanAttributes.HTTP_STATUS_CODE: 200,
             },
         )
