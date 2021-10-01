@@ -235,9 +235,6 @@ def _get_attributes_from_request(request):
         SpanAttributes.HTTP_TARGET: request.path,
     }
 
-    if request.host:
-        attrs[SpanAttributes.HTTP_HOST] = request.host
-
     if request.remote_ip:
         attrs[SpanAttributes.NET_PEER_IP] = request.remote_ip
 
