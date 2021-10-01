@@ -107,7 +107,7 @@ _ATTRIBUTES_FROM_RESULT = [
     "took",
 ]
 
-_DEFALT_OP_NAME = "request"
+_DEFAULT_OP_NAME = "request"
 
 
 class ElasticsearchInstrumentor(BaseInstrumentor):
@@ -161,7 +161,7 @@ def _wrap_perform_request(
                 len(args),
             )
 
-        op_name = span_name_prefix + (url or method or _DEFALT_OP_NAME)
+        op_name = span_name_prefix + (url or method or _DEFAULT_OP_NAME)
         params = kwargs.get("params", {})
         body = kwargs.get("body", None)
 
