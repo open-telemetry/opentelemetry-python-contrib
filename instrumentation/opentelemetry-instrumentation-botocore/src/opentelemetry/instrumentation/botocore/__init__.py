@@ -246,7 +246,7 @@ class BotocoreInstrumentor(BaseInstrumentor):
         if not callable(self.response_hook):
             return
         self.response_hook(
-            span, call_context.service, call_context.operation,  result
+            span, call_context.service, call_context.operation, result
         )
 
 
