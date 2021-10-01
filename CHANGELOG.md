@@ -7,6 +7,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased](https://github.com/open-telemetry/opentelemetry-python/compare/v1.5.0-0.24b0...HEAD)
 
+### Added
+- `opentelemetry-instrumentation-elasticsearch` Added `response_hook` and `request_hook` callbacks
+  ([#670](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/670))
+- `opentelemetry-instrumentation-redis` added request_hook and response_hook callbacks passed as arguments to the instrument method.
+  ([#669](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/669))
+- `opentelemetry-instrumentation-botocore` add `request_hook` and `response_hook` callbacks
+  ([679](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/679))
+- `opentelemetry-exporter-richconsole` Initial release
+  ([#686](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/686))
+
 ### Changed
 - `opentelemetry-instrumentation-botocore` Make common span attributes compliant with semantic conventions
   ([#674](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/674))
@@ -16,6 +26,22 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   ([#664](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/664))
 - `opentelemetry-instrumentation-botocore` Fix span injection for lambda invoke
   ([#663](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/663))
+
+### Changed
+
+- `opentelemetry-instrumentation-urllib3` Updated `_RequestHookT` with two additional fields - the request body and the request headers
+([#660](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/660))
+
+### Changed
+- Tests for Falcon 3 support
+  ([#644](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/644))
+
+### Added
+
+- `opentelemetry-instrumentation-urllib3`, `opentelemetry-instrumentation-requests`
+  The `net.peer.ip` attribute is set to the IP of the connected HTTP server or proxy
+  using a new instrumentor in `opententelemetry-util-http`
+  ([#661](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/661))
 
 ## [1.5.0-0.24b0](https://github.com/open-telemetry/opentelemetry-python/releases/tag/v1.5.0-0.24b0) - 2021-08-26
 

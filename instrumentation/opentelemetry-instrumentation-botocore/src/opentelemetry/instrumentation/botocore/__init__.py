@@ -44,6 +44,38 @@ Usage
 
 API
 ---
+
+The `instrument` method accepts the following keyword args:
+
+tracer_provider (TracerProvider) - an optional tracer provider
+request_hook (Callable) - a function with extra user-defined logic to be performed before performing the request
+this function signature is:  def request_hook(span: Span, service_name: str, operation_name: str, api_params: dict) -> None
+response_hook (Callable) - a function with extra user-defined logic to be performed after performing the request
+this function signature is:  def request_hook(span: Span, service_name: str, operation_name: str, result: dict) -> None
+
+for example:
+
+.. code: python
+
+    from opentelemetry.instrumentation.botocore import BotocoreInstrumentor
+    import botocore
+
+    def request_hook(span, service_name, operation_name, api_params):
+        # request hook logic
+
+    def response_hook(span, service_name, operation_name, result):
+        # response hook logic
+
+    # Instrument Botocore with hooks
+    BotocoreInstrumentor().instrument(request_hook=request_hook, response_hooks=response_hook)
+
+    # This will create a span with Botocore-specific attributes, including custom attributes added from the hooks
+    session = botocore.session.get_session()
+    session.set_credentials(
+        access_key="access-key", secret_key="secret-key"
+    )
+    ec2 = self.session.create_client("ec2", region_name="us-west-2")
+    ec2.describe_instances()
 """
 
 import json
@@ -95,15 +127,22 @@ class BotocoreInstrumentor(BaseInstrumentor):
     See `BaseInstrumentor`
     """
 
+    def __init__(self):
+        super().__init__()
+        self.request_hook = None
+        self.response_hook = None
+
     def instrumentation_dependencies(self) -> Collection[str]:
         return _instruments
 
     def _instrument(self, **kwargs):
-
         # pylint: disable=attribute-defined-outside-init
         self._tracer = get_tracer(
             __name__, __version__, kwargs.get("tracer_provider")
         )
+
+        self.request_hook = kwargs.get("request_hook")
+        self.response_hook = kwargs.get("response_hook")
 
         wrap_function_wrapper(
             "botocore.client",
@@ -168,31 +207,57 @@ class BotocoreInstrumentor(BaseInstrumentor):
             if BotocoreInstrumentor._is_lambda_invoke(call_context):
                 BotocoreInstrumentor._patch_lambda_invoke(call_context.params)
 
-            if span.is_recording():
-                if "QueueUrl" in call_context.params:
-                    span.set_attribute(
-                        "aws.queue_url", call_context.params["QueueUrl"]
-                    )
-                if "TableName" in call_context.params:
-                    span.set_attribute(
-                        "aws.table_name", call_context.params["TableName"]
-                    )
+            _set_api_call_attributes(span, call_context)
+            self._call_request_hook(span, call_context)
 
             token = context_api.attach(
                 context_api.set_value(_SUPPRESS_HTTP_INSTRUMENTATION_KEY, True)
             )
 
+            result = None
             try:
                 result = original_func(*args, **kwargs)
             except ClientError as error:
-                error_result = getattr(error, "response", None)
-                _apply_response_attributes(span, error_result)
+                result = getattr(error, "response", None)
+                _apply_response_attributes(span, result)
                 raise
             else:
                 _apply_response_attributes(span, result)
             finally:
                 context_api.detach(token)
+
+                self._call_response_hook(span, call_context, result)
+
             return result
+
+    def _call_request_hook(self, span: Span, call_context: _AwsSdkCallContext):
+        if not callable(self.request_hook):
+            return
+        self.request_hook(
+            span,
+            call_context.service,
+            call_context.operation,
+            call_context.params,
+        )
+
+    def _call_response_hook(
+        self, span: Span, call_context: _AwsSdkCallContext, result
+    ):
+        if not callable(self.response_hook):
+            return
+        self.response_hook(
+            span, call_context.service, call_context.operation,  result
+        )
+
+
+def _set_api_call_attributes(span, call_context: _AwsSdkCallContext):
+    if not span.is_recording():
+        return
+
+    if "QueueUrl" in call_context.params:
+        span.set_attribute("aws.queue_url", call_context.params["QueueUrl"])
+    if "TableName" in call_context.params:
+        span.set_attribute("aws.table_name", call_context.params["TableName"])
 
 
 def _apply_response_attributes(span: Span, result):
