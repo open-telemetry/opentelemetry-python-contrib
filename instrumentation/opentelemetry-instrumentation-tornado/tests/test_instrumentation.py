@@ -145,7 +145,6 @@ class TestTornadoInstrumentation(TornadoTest):
                 SpanAttributes.HTTP_TARGET: "/",
                 SpanAttributes.HTTP_CLIENT_IP: "127.0.0.1",
                 SpanAttributes.HTTP_STATUS_CODE: 201,
-                SpanAttributes.NET_PEER_IP: "127.0.0.1",
                 "handler": "tests.tornado_test_app.MainHandler",
             },
         )
@@ -223,7 +222,6 @@ class TestTornadoInstrumentation(TornadoTest):
                 + str(self.get_http_port()),
                 SpanAttributes.HTTP_TARGET: url,
                 SpanAttributes.HTTP_CLIENT_IP: "127.0.0.1",
-                SpanAttributes.NET_PEER_IP: "127.0.0.1",
                 SpanAttributes.HTTP_STATUS_CODE: 201,
             },
         )
@@ -263,7 +261,6 @@ class TestTornadoInstrumentation(TornadoTest):
                 SpanAttributes.HTTP_TARGET: "/error",
                 SpanAttributes.HTTP_CLIENT_IP: "127.0.0.1",
                 SpanAttributes.HTTP_STATUS_CODE: 500,
-                SpanAttributes.NET_PEER_IP: "127.0.0.1",
                 "handler": "tests.tornado_test_app.BadHandler",
             },
         )
@@ -299,7 +296,6 @@ class TestTornadoInstrumentation(TornadoTest):
                 SpanAttributes.HTTP_TARGET: "/missing-url",
                 SpanAttributes.HTTP_CLIENT_IP: "127.0.0.1",
                 SpanAttributes.HTTP_STATUS_CODE: 404,
-                SpanAttributes.NET_PEER_IP: "127.0.0.1",
                 "handler": "tornado.web.ErrorHandler",
             },
         )
@@ -345,7 +341,6 @@ class TestTornadoInstrumentation(TornadoTest):
                 SpanAttributes.HTTP_TARGET: "/dyna",
                 SpanAttributes.HTTP_CLIENT_IP: "127.0.0.1",
                 SpanAttributes.HTTP_STATUS_CODE: 202,
-                SpanAttributes.NET_PEER_IP: "127.0.0.1",
                 "handler": "tests.tornado_test_app.DynamicHandler",
             },
         )
@@ -388,7 +383,6 @@ class TestTornadoInstrumentation(TornadoTest):
                 SpanAttributes.HTTP_TARGET: "/on_finish",
                 SpanAttributes.HTTP_CLIENT_IP: "127.0.0.1",
                 SpanAttributes.HTTP_STATUS_CODE: 200,
-                SpanAttributes.NET_PEER_IP: "127.0.0.1",
                 "handler": "tests.tornado_test_app.FinishedHandler",
             },
         )

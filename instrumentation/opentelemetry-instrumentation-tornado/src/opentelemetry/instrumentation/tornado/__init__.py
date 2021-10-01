@@ -236,6 +236,9 @@ def _get_attributes_from_request(request):
     }
 
     if request.remote_ip:
+        # NET_PEER_IP is the address of the network peer
+        # HTTP_CLIENT_IP is the address of the client, which might be different
+        # if Tornado is set to trust X-Forwarded-For headers (xheaders=True)
         attrs[SpanAttributes.HTTP_CLIENT_IP] = request.remote_ip
         if hasattr(request.connection, "context") and getattr(
             request.connection.context, "_orig_remote_ip", None
@@ -243,8 +246,6 @@ def _get_attributes_from_request(request):
             attrs[
                 SpanAttributes.NET_PEER_IP
             ] = request.connection.context._orig_remote_ip
-        else:
-            attrs[SpanAttributes.NET_PEER_IP] = request.remote_ip
 
     return extract_attributes_from_object(
         request, _traced_request_attrs, attrs
