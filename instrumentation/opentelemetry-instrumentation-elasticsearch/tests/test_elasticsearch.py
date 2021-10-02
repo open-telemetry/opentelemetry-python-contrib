@@ -138,6 +138,7 @@ class TestElasticsearchIntegration(TestBase):
         spans = self.get_finished_spans()
 
         self.assertEqual(1, len(spans))
+        self.assertEqual(spans[0].name, "Elasticsearch/test-index/_doc/:id")
         self.assertEqual("False", spans[0].attributes["elasticsearch.found"])
         self.assertEqual(
             "True", spans[0].attributes["elasticsearch.timed_out"]
@@ -182,7 +183,7 @@ class TestElasticsearchIntegration(TestBase):
         self.assertEqual(len(spans), 2)
 
         parent = spans.by_name("parent")
-        child = spans.by_name("Elasticsearch/sw/_doc/1")
+        child = spans.by_name("Elasticsearch/sw/_doc/:id")
         self.assertIsNotNone(child.parent)
         self.assertEqual(child.parent.span_id, parent.context.span_id)
 
@@ -218,8 +219,8 @@ class TestElasticsearchIntegration(TestBase):
         self.assertEqual(3, len(spans))
 
         s1 = spans.by_name("parent")
-        s2 = spans.by_name("Elasticsearch/test-index/_doc/1")
-        s3 = spans.by_name("Elasticsearch/test-index/_doc/2")
+        s2 = spans.by_attr("elasticsearch.id", "1")
+        s3 = spans.by_attr("elasticsearch.id", "2")
 
         self.assertIsNotNone(s2.parent)
         self.assertEqual(s2.parent.span_id, s1.context.span_id)
