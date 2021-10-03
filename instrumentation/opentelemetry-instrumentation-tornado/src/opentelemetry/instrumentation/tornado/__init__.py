@@ -275,7 +275,7 @@ def _start_span(tracer, handler, start_time) -> _TraceContext:
         attributes = _get_attributes_from_request(handler.request)
         for key, value in attributes.items():
             span.set_attribute(key, value)
-        span.set_attribute("handler", _get_full_handler_name(handler))
+        span.set_attribute("tornado.handler", _get_full_handler_name(handler))
 
     activation = trace.use_span(span, end_on_exit=True)
     activation.__enter__()  # pylint: disable=E1101
