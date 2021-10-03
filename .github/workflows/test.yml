@@ -6,7 +6,7 @@ on:
     - 'release/*'
   pull_request:
 env:
-  CORE_REPO_SHA: 10208c1be1e720925a80a66f711b8afbe67537f4
+  CORE_REPO_SHA: 18b5cb046bebab0c70841c662268bb7980c2fd5e
 
 jobs:
   build:
@@ -23,7 +23,7 @@ jobs:
       fail-fast: false  # ensures the entire test matrix is run, even if one permutation fails
       matrix:
         python-version: [ py36, py37, py38, py39, pypy3 ]
-        package: ["instrumentation", "exporter", "sdkextension", "propagator"]
+        package: ["opentelemetry", "instrumentation", "exporter", "sdkextension", "propagator"]
         os: [ ubuntu-latest ]
     steps:
       - name: Checkout Contrib Repo @ SHA - ${{ github.sha }}
@@ -41,7 +41,7 @@ jobs:
           path: |
             .tox
             ~/.cache/pip
-          key: v4-build-tox-cache-${{ env.RUN_MATRIX_COMBINATION }}-${{ hashFiles('tox.ini', 'gen-requirements.txt', 'dev-requirements.txt') }}
+          key: v5-build-tox-cache-${{ env.RUN_MATRIX_COMBINATION }}-${{ hashFiles('tox.ini', 'gen-requirements.txt', 'dev-requirements.txt') }}
       - name: run tox
         run: tox -f ${{ matrix.python-version }}-${{ matrix.package }} -- --benchmark-json=${{ env.RUN_MATRIX_COMBINATION }}-benchmark.json
       - name: Find and merge benchmarks

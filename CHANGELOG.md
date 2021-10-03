@@ -18,6 +18,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   ([679](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/679))
 - `opentelemetry-exporter-richconsole` Initial release
   ([#686](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/686))
+- `opentelemetry` Added new package
+  ([#709](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/709))
 
 ### Changed
 - `opentelemetry-instrumentation-botocore` Unpatch botocore Endpoint.prepare_request on uninstrument
