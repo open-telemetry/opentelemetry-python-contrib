@@ -20,6 +20,10 @@ from re import sub
 
 from pkg_resources import iter_entry_points
 
+from opentelemetry.conf import (
+    _is_global_tracing_pipeline_set,
+    configure_tracing,
+)
 from opentelemetry.instrumentation.dependencies import (
     get_dist_dependency_conflicts,
 )
@@ -115,6 +119,10 @@ def initialize():
         distro.configure()
         _load_configurators()
         _load_instrumentors(distro)
+
+        if not _is_global_tracing_pipeline_set():
+            configure_tracing()
+
     except Exception:  # pylint: disable=broad-except
         logger.exception("Failed to auto initialize opentelemetry")
     finally:

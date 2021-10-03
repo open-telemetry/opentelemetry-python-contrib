@@ -20,6 +20,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   ([#686](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/686))
 - `opentelemetry` Added new package
   ([#709](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/709))
+- `opentelemetry` Added `conf.configure_tracing` function.
+  ([#711](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/711))
 
 ### Changed
 - `opentelemetry-instrumentation-botocore` Unpatch botocore Endpoint.prepare_request on uninstrument

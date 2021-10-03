@@ -100,8 +100,6 @@ def run() -> None:
         python_path.insert(0, cwd_path)
 
     filedir_path = path.join(path.dirname(path.abspath(__file__)), "site")
-    print(filedir_path)
-
     python_path = [pth for pth in python_path if pth != filedir_path]
 
     python_path.insert(0, filedir_path)
