@@ -9,6 +9,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - `opentelemetry-sdk-extension-aws` Release AWS Python SDK Extension as 1.0.0
   ([#667](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/667))
 
+### Changed
+- `opentelemetry-instrumentation-jinja2` Allow instrumentation of newer Jinja2 versions.
+
 ### Added
 - `opentelemetry-instrumentation-elasticsearch` Added `response_hook` and `request_hook` callbacks
   ([#670](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/670))
