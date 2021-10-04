@@ -488,6 +488,30 @@ class TestTornadoInstrumentation(TornadoTest):
         self.memory_exporter.clear()
 
 
+class TestTornadoInstrumentationWithXHeaders(TornadoTest):
+    def get_httpserver_options(self):
+        return {"xheaders": True}
+
+    def test_xheaders(self):
+        response = self.fetch("/", headers={"X-Forwarded-For": "12.34.56.78"})
+        self.assertEqual(response.code, 201)
+        spans = self.get_finished_spans()
+        self.assertSpanHasAttributes(
+            spans.by_name("MainHandler.get"),
+            {
+                SpanAttributes.HTTP_METHOD: "GET",
+                SpanAttributes.HTTP_SCHEME: "http",
+                SpanAttributes.HTTP_HOST: "127.0.0.1:"
+                + str(self.get_http_port()),
+                SpanAttributes.HTTP_TARGET: "/",
+                SpanAttributes.HTTP_CLIENT_IP: "12.34.56.78",
+                SpanAttributes.HTTP_STATUS_CODE: 201,
+                SpanAttributes.NET_PEER_IP: "127.0.0.1",
+                "tornado.handler": "tests.tornado_test_app.MainHandler",
+            },
+        )
+
+
 class TornadoHookTest(TornadoTest):
     _client_request_hook = None
     _client_response_hook = None
