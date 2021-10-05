@@ -12,6 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+from packaging import version
 import os
 from unittest import mock
 
@@ -30,8 +31,14 @@ class TestJinja2Instrumentor(TestBase):
     def setUp(self):
         super().setUp()
         Jinja2Instrumentor().instrument()
-        # prevent cache effects when using Template('code...') by clearing functools.lru_cache
-        jinja2.environment.get_spontaneous_environment.clear()
+        # prevent cache effects when using Template('code...')
+        if version.parse(jinja2.__version__) >= version.parse('3.0.0'):
+            # by clearing functools.lru_cache
+            jinja2.environment.get_spontaneous_environment.clear()
+        else:
+            # by clearing jinja2.utils.LRUCache
+            jinja2.environment._spontaneous_environments.clear()
+
         self.tracer = get_tracer(__name__)
 
     def tearDown(self):
