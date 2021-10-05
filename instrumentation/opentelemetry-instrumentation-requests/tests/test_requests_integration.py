@@ -125,6 +125,21 @@ class RequestsIntegrationTestBase(abc.ABC):
 
         self.assertEqual(span.name, "GET" + self.URL)
 
+    def test_tracked_url_callback(self):
+        url_404 = "http://httpbin.org/status/404"
+        httpretty.register_uri(
+            httpretty.GET, url_404, status=404,
+        )
+        def tracked_url_callback(method, url):
+            return "404" not in url
+
+        RequestsInstrumentor().uninstrument()
+        RequestsInstrumentor().instrument(tracked_url_callback=tracked_url_callback)
+        self.perform_request(self.URL)
+        self.perform_request(url_404)
+
+        self.assert_span(num_spans=1)
+
     def test_name_callback_default(self):
         def name_callback(method, url):
             return 123
@@ -256,7 +271,7 @@ class RequestsIntegrationTestBase(abc.ABC):
             {
                 SpanAttributes.HTTP_METHOD: "GET",
                 SpanAttributes.HTTP_URL: self.URL,
-                SpanAttributes.HTTP_STATUS_CODE: 200,
+                SpanAttributes.HTTP_STATUS_CODE: 200, 
                 "http.response.body": "Hello!",
             },
         )

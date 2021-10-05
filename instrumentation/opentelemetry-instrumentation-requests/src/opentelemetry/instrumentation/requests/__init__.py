@@ -64,7 +64,12 @@ _SUPPRESS_HTTP_INSTRUMENTATION_KEY = context.create_key(
 
 # pylint: disable=unused-argument
 # pylint: disable=R0915
-def _instrument(tracer, span_callback=None, name_callback=None):
+def _instrument(
+    tracer, 
+    span_callback=None, 
+    name_callback=None, 
+    tracked_url_callback=None,
+):
     """Enables tracing of all requests calls that go through
     :code:`requests.session.Session.request` (this includes
     :code:`requests.get`, etc.)."""
@@ -81,6 +86,10 @@ def _instrument(tracer, span_callback=None, name_callback=None):
 
     @functools.wraps(wrapped_request)
     def instrumented_request(self, method, url, *args, **kwargs):
+        if tracked_url_callback is not None:
+            if not tracked_url_callback(method, url):
+                return wrapped_request(self, method, url, *args, **kwargs)
+
         def get_or_create_headers():
             headers = kwargs.get("headers")
             if headers is None:
@@ -98,6 +107,10 @@ def _instrument(tracer, span_callback=None, name_callback=None):
 
     @functools.wraps(wrapped_send)
     def instrumented_send(self, request, **kwargs):
+        if tracked_url_callback is not None:
+            if not tracked_url_callback(request.method, request.url):
+                return wrapped_send(self, request, **kwargs)
+
         def get_or_create_headers():
             request.headers = (
                 request.headers
@@ -223,6 +236,9 @@ class RequestsInstrumentor(BaseInstrumentor):
                 ``name_callback``: Callback which calculates a generic span name for an
                     outgoing HTTP request based on the method and url.
                     Optional: Defaults to get_default_span_name.
+                ``tracked_url_callback``: An optional callback which determines whether
+                    a span is created, invoked with method and url. This allows supression
+                    of unwanted spans.
         """
         tracer_provider = kwargs.get("tracer_provider")
         tracer = get_tracer(__name__, __version__, tracer_provider)
@@ -230,6 +246,7 @@ class RequestsInstrumentor(BaseInstrumentor):
             tracer,
             span_callback=kwargs.get("span_callback"),
             name_callback=kwargs.get("name_callback"),
+            tracked_url_callback=kwargs.get("tracked_url_callback"),
         )
 
     def _uninstrument(self, **kwargs):
