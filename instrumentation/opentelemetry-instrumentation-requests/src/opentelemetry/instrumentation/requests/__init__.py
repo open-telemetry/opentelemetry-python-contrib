@@ -243,8 +243,8 @@ class RequestsInstrumentor(BaseInstrumentor):
             span_callback=kwargs.get("span_callback"),
             name_callback=kwargs.get("name_callback"),
             excluded_urls=_excluded_urls_from_env
-                          if excluded_urls is None
-                          else parse_excluded_urls(excluded_urls)
+            if excluded_urls is None
+            else parse_excluded_urls(excluded_urls),
         )
 
     def _uninstrument(self, **kwargs):
