@@ -52,7 +52,11 @@ from opentelemetry.propagate import inject
 from opentelemetry.semconv.trace import SpanAttributes
 from opentelemetry.trace import SpanKind, get_tracer
 from opentelemetry.trace.status import Status
-from opentelemetry.util.http import remove_url_credentials, get_excluded_urls, parse_excluded_urls
+from opentelemetry.util.http import (
+    remove_url_credentials,
+    get_excluded_urls,
+    parse_excluded_urls,
+)
 from opentelemetry.util.http.httplib import set_ip_on_next_http_connection
 
 # A key to a context variable to avoid creating duplicate spans when instrumenting
