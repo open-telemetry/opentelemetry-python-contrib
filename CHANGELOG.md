@@ -18,7 +18,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   ([#686](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/686))
 - `opentelemetry-instrumentation-tornado` now sets `http.client_ip` and `tornado.handler` attributes
   ([#706](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/706))
-- `opentelemetry-instrumentation-requests` added `tracked_url_callback`
+- `opentelemetry-instrumentation-requests` added exclude urls functionality
   ([#714](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/714))
 
 ### Changed
