@@ -35,7 +35,7 @@ class TestPika(TestCase):
             isinstance(BlockingConnection.channel, BoundFunctionWrapper)
         )
         assert hasattr(
-            instrumentation, "__opentelemetry_tracer"
+            instrumentation, "__opentelemetry_tracer_provider"
         ), "Tracer not stored for the object!"
         instrumentation.uninstrument(channel=self.channel)
         self.assertFalse(
