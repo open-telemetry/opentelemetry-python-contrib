@@ -12,11 +12,11 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from packaging import version
 import os
 from unittest import mock
 
 import jinja2
+from packaging import version
 
 from opentelemetry import trace as trace_api
 from opentelemetry.instrumentation.jinja2 import Jinja2Instrumentor
@@ -32,7 +32,7 @@ class TestJinja2Instrumentor(TestBase):
         super().setUp()
         Jinja2Instrumentor().instrument()
         # prevent cache effects when using Template('code...')
-        if version.parse(jinja2.__version__) >= version.parse('3.0.0'):
+        if version.parse(jinja2.__version__) >= version.parse("3.0.0"):
             # by clearing functools.lru_cache
             jinja2.environment.get_spontaneous_environment.clear()
         else:
