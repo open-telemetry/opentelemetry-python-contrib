@@ -37,7 +37,7 @@ class TestJinja2Instrumentor(TestBase):
             jinja2.environment.get_spontaneous_environment.clear()
         else:
             # by clearing jinja2.utils.LRUCache
-            jinja2.environment._spontaneous_environments.clear()
+            jinja2.environment._spontaneous_environments.clear() # pylint: disable=no-member
 
         self.tracer = get_tracer(__name__)
 
