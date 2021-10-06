@@ -87,6 +87,7 @@ class RequestsIntegrationTestBase(abc.ABC):
     # pylint: disable=invalid-name
     def tearDown(self):
         super().tearDown()
+        self.env_patch.stop()
         RequestsInstrumentor().uninstrument()
         httpretty.disable()
 
