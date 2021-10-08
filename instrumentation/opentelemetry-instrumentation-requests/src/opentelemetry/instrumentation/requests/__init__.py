@@ -67,6 +67,7 @@ _SUPPRESS_HTTP_INSTRUMENTATION_KEY = context.create_key(
 
 _excluded_urls_from_env = get_excluded_urls("REQUESTS")
 
+
 # pylint: disable=unused-argument
 # pylint: disable=R0915
 def _instrument(
