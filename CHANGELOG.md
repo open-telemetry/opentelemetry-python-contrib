@@ -8,6 +8,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased](https://github.com/open-telemetry/opentelemetry-python/compare/v1.5.0-0.24b0...HEAD)
 - `opentelemetry-sdk-extension-aws` Release AWS Python SDK Extension as 1.0.0
   ([#667](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/667))
+- `opentelemetry-instrumentation-sqlalchemy` Added `packaging` dependency
+  ([#713](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/713))
+
 
 ### Added
 - `opentelemetry-instrumentation-elasticsearch` Added `response_hook` and `request_hook` callbacks
@@ -18,8 +21,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   ([679](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/679))
 - `opentelemetry-exporter-richconsole` Initial release
   ([#686](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/686))
+- `opentelemetry-instrumentation-tornado` now sets `http.client_ip` and `tornado.handler` attributes
+  ([#706](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/706))
+- `opentelemetry-instrumentation-requests` added exclude urls functionality
+  ([#714](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/714))
 
 ### Changed
+- `opentelemetry-instrumentation-botocore` Make common span attributes compliant with semantic conventions
+  ([#674](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/674))
+- `opentelemetry-sdk-extension-aws` Release AWS Python SDK Extension as 1.0.0
+  ([#667](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/667))
 - `opentelemetry-instrumentation-botocore` Unpatch botocore Endpoint.prepare_request on uninstrument
   ([#664](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/664))
 - `opentelemetry-instrumentation-botocore` Fix span injection for lambda invoke
@@ -49,6 +60,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - `opentelemetry-instrumentation-asgi`, `opentelemetry-instrumentation-aiohttp-client`, `openetelemetry-instrumentation-fastapi`,        
   `opentelemetry-instrumentation-starlette`, `opentelemetry-instrumentation-urllib`, `opentelemetry-instrumentation-urllib3` Added `request_hook` and `response_hook` callbacks 
   ([#576](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/576))
+- `opentelemetry-instrumentation-pika` added RabbitMQ's pika module instrumentation.
+  ([#680](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/680))
   
 ### Changed
 
