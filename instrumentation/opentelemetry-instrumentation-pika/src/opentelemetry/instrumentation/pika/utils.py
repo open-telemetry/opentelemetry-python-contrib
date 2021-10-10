@@ -101,7 +101,8 @@ def _get_span(
 ) -> Optional[Span]:
     if properties.headers is None:
         properties.headers = {}
-    if not (ctx := propagate.extract(properties.headers, getter=_pika_getter)):
+    ctx = propagate.extract(properties.headers, getter=_pika_getter)
+    if not ctx:
         ctx = context.get_current()
     if context.get_value("suppress_instrumentation") or context.get_value(
         _SUPPRESS_INSTRUMENTATION_KEY
