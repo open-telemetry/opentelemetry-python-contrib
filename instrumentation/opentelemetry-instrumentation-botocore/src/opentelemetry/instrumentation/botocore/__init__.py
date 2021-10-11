@@ -44,11 +44,43 @@ Usage
 
 API
 ---
+
+The `instrument` method accepts the following keyword args:
+
+tracer_provider (TracerProvider) - an optional tracer provider
+request_hook (Callable) - a function with extra user-defined logic to be performed before performing the request
+this function signature is:  def request_hook(span: Span, service_name: str, operation_name: str, api_params: dict) -> None
+response_hook (Callable) - a function with extra user-defined logic to be performed after performing the request
+this function signature is:  def request_hook(span: Span, service_name: str, operation_name: str, result: dict) -> None
+
+for example:
+
+.. code: python
+
+    from opentelemetry.instrumentation.botocore import BotocoreInstrumentor
+    import botocore
+
+    def request_hook(span, service_name, operation_name, api_params):
+        # request hook logic
+
+    def response_hook(span, service_name, operation_name, result):
+        # response hook logic
+
+    # Instrument Botocore with hooks
+    BotocoreInstrumentor().instrument(request_hook=request_hook, response_hooks=response_hook)
+
+    # This will create a span with Botocore-specific attributes, including custom attributes added from the hooks
+    session = botocore.session.get_session()
+    session.set_credentials(
+        access_key="access-key", secret_key="secret-key"
+    )
+    ec2 = self.session.create_client("ec2", region_name="us-west-2")
+    ec2.describe_instances()
 """
 
 import json
 import logging
-from typing import Collection
+from typing import Any, Collection, Dict, Optional, Tuple
 
 from botocore.client import BaseClient
 from botocore.endpoint import Endpoint
@@ -56,6 +88,9 @@ from botocore.exceptions import ClientError
 from wrapt import wrap_function_wrapper
 
 from opentelemetry import context as context_api
+from opentelemetry.instrumentation.botocore.extensions.types import (
+    _AwsSdkCallContext,
+)
 from opentelemetry.instrumentation.botocore.package import _instruments
 from opentelemetry.instrumentation.botocore.version import __version__
 from opentelemetry.instrumentation.instrumentor import BaseInstrumentor
@@ -65,7 +100,8 @@ from opentelemetry.instrumentation.utils import (
 )
 from opentelemetry.propagate import inject
 from opentelemetry.semconv.trace import SpanAttributes
-from opentelemetry.trace import SpanKind, get_tracer
+from opentelemetry.trace import get_tracer
+from opentelemetry.trace.span import Span
 
 logger = logging.getLogger(__name__)
 
@@ -91,15 +127,22 @@ class BotocoreInstrumentor(BaseInstrumentor):
     See `BaseInstrumentor`
     """
 
+    def __init__(self):
+        super().__init__()
+        self.request_hook = None
+        self.response_hook = None
+
     def instrumentation_dependencies(self) -> Collection[str]:
         return _instruments
 
     def _instrument(self, **kwargs):
-
         # pylint: disable=attribute-defined-outside-init
         self._tracer = get_tracer(
             __name__, __version__, kwargs.get("tracer_provider")
         )
+
+        self.request_hook = kwargs.get("request_hook")
+        self.response_hook = kwargs.get("response_hook")
 
         wrap_function_wrapper(
             "botocore.client",
@@ -118,12 +161,12 @@ class BotocoreInstrumentor(BaseInstrumentor):
         unwrap(Endpoint, "prepare_request")
 
     @staticmethod
-    def _is_lambda_invoke(service_name, operation_name, api_params):
+    def _is_lambda_invoke(call_context: _AwsSdkCallContext):
         return (
-            service_name == "lambda"
-            and operation_name == "Invoke"
-            and isinstance(api_params, dict)
-            and "Payload" in api_params
+            call_context.service == "lambda"
+            and call_context.operation == "Invoke"
+            and isinstance(call_context.params, dict)
+            and "Payload" in call_context.params
         )
 
     @staticmethod
@@ -143,79 +186,126 @@ class BotocoreInstrumentor(BaseInstrumentor):
         if context_api.get_value(_SUPPRESS_INSTRUMENTATION_KEY):
             return original_func(*args, **kwargs)
 
-        # pylint: disable=protected-access
-        service_name = instance._service_model.service_name
-        operation_name, api_params = args
+        call_context = _determine_call_context(instance, args)
+        if call_context is None:
+            return original_func(*args, **kwargs)
 
-        error = None
-        result = None
+        attributes = {
+            SpanAttributes.RPC_SYSTEM: "aws-api",
+            SpanAttributes.RPC_SERVICE: call_context.service_id,
+            SpanAttributes.RPC_METHOD: call_context.operation,
+            # TODO: update when semantic conventions exist
+            "aws.region": call_context.region,
+        }
 
         with self._tracer.start_as_current_span(
-            "{}".format(service_name), kind=SpanKind.CLIENT,
+            call_context.span_name,
+            kind=call_context.span_kind,
+            attributes=attributes,
         ) as span:
             # inject trace context into payload headers for lambda Invoke
-            if BotocoreInstrumentor._is_lambda_invoke(
-                service_name, operation_name, api_params
-            ):
-                BotocoreInstrumentor._patch_lambda_invoke(api_params)
+            if BotocoreInstrumentor._is_lambda_invoke(call_context):
+                BotocoreInstrumentor._patch_lambda_invoke(call_context.params)
 
-            if span.is_recording():
-                span.set_attribute("aws.operation", operation_name)
-                span.set_attribute("aws.region", instance.meta.region_name)
-                span.set_attribute("aws.service", service_name)
-                if "QueueUrl" in api_params:
-                    span.set_attribute("aws.queue_url", api_params["QueueUrl"])
-                if "TableName" in api_params:
-                    span.set_attribute(
-                        "aws.table_name", api_params["TableName"]
-                    )
+            _set_api_call_attributes(span, call_context)
+            self._call_request_hook(span, call_context)
 
             token = context_api.attach(
                 context_api.set_value(_SUPPRESS_HTTP_INSTRUMENTATION_KEY, True)
             )
 
+            result = None
             try:
                 result = original_func(*args, **kwargs)
-            except ClientError as ex:
-                error = ex
+            except ClientError as error:
+                result = getattr(error, "response", None)
+                _apply_response_attributes(span, result)
+                raise
+            else:
+                _apply_response_attributes(span, result)
             finally:
                 context_api.detach(token)
 
-            if error:
-                result = error.response
-
-            if span.is_recording():
-                if "ResponseMetadata" in result:
-                    metadata = result["ResponseMetadata"]
-                    req_id = None
-                    if "RequestId" in metadata:
-                        req_id = metadata["RequestId"]
-                    elif "HTTPHeaders" in metadata:
-                        headers = metadata["HTTPHeaders"]
-                        if "x-amzn-RequestId" in headers:
-                            req_id = headers["x-amzn-RequestId"]
-                        elif "x-amz-request-id" in headers:
-                            req_id = headers["x-amz-request-id"]
-                        elif "x-amz-id-2" in headers:
-                            req_id = headers["x-amz-id-2"]
-
-                    if req_id:
-                        span.set_attribute(
-                            "aws.request_id", req_id,
-                        )
-
-                    if "RetryAttempts" in metadata:
-                        span.set_attribute(
-                            "retry_attempts", metadata["RetryAttempts"],
-                        )
-
-                    if "HTTPStatusCode" in metadata:
-                        span.set_attribute(
-                            SpanAttributes.HTTP_STATUS_CODE,
-                            metadata["HTTPStatusCode"],
-                        )
-
-            if error:
-                raise error
+                self._call_response_hook(span, call_context, result)
 
             return result
+
+    def _call_request_hook(self, span: Span, call_context: _AwsSdkCallContext):
+        if not callable(self.request_hook):
+            return
+        self.request_hook(
+            span,
+            call_context.service,
+            call_context.operation,
+            call_context.params,
+        )
+
+    def _call_response_hook(
+        self, span: Span, call_context: _AwsSdkCallContext, result
+    ):
+        if not callable(self.response_hook):
+            return
+        self.response_hook(
+            span, call_context.service, call_context.operation, result
+        )
+
+
+def _set_api_call_attributes(span, call_context: _AwsSdkCallContext):
+    if not span.is_recording():
+        return
+
+    if "QueueUrl" in call_context.params:
+        span.set_attribute("aws.queue_url", call_context.params["QueueUrl"])
+    if "TableName" in call_context.params:
+        span.set_attribute("aws.table_name", call_context.params["TableName"])
+
+
+def _apply_response_attributes(span: Span, result):
+    if result is None or not span.is_recording():
+        return
+
+    metadata = result.get("ResponseMetadata")
+    if metadata is None:
+        return
+
+    request_id = metadata.get("RequestId")
+    if request_id is None:
+        headers = metadata.get("HTTPHeaders")
+        if headers is not None:
+            request_id = (
+                headers.get("x-amzn-RequestId")
+                or headers.get("x-amz-request-id")
+                or headers.get("x-amz-id-2")
+            )
+    if request_id:
+        # TODO: update when semantic conventions exist
+        span.set_attribute("aws.request_id", request_id)
+
+    retry_attempts = metadata.get("RetryAttempts")
+    if retry_attempts is not None:
+        # TODO: update when semantic conventinos exists
+        span.set_attribute("retry_attempts", retry_attempts)
+
+    status_code = metadata.get("HTTPStatusCode")
+    if status_code is not None:
+        span.set_attribute(SpanAttributes.HTTP_STATUS_CODE, status_code)
+
+
+def _determine_call_context(
+    client: BaseClient, args: Tuple[str, Dict[str, Any]]
+) -> Optional[_AwsSdkCallContext]:
+    try:
+        call_context = _AwsSdkCallContext(client, args)
+
+        logger.debug(
+            "AWS SDK invocation: %s %s",
+            call_context.service,
+            call_context.operation,
+        )
+
+        return call_context
+    except Exception as ex:  # pylint:disable=broad-except
+        # this shouldn't happen actually unless internals of botocore changed and
+        # extracting essential attributes ('service' and 'operation') failed.
+        logger.error("Error when initializing call context", exc_info=ex)
+        return None
