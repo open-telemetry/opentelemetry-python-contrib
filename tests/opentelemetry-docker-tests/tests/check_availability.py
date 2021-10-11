@@ -112,6 +112,7 @@ def check_redis_connection():
 
 @retryable
 def check_mssql_connection():
+    import time; time.sleep(30)
     connection = pyodbc.connect(
         f"DRIVER={{ODBC Driver 17 for SQL Server}};SERVER={MSSQL_HOST},"
         f"{MSSQL_PORT};DATABASE={MSSQL_DB_NAME};UID={MSSQL_USER};"
