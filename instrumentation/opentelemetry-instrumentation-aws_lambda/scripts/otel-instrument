@@ -1,0 +1,166 @@
+#!/usr/bin/env python3
+
+# Copyright The OpenTelemetry Authors
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
+"""
+`otel-instrument`
+
+This script configures and sets up OpenTelemetry Python with the values we
+expect will be used by the common user. It does this by setting the environment
+variables OpenTelemetry uses, and then initializing OpenTelemetry using the
+`opentelemetry-instrument` auto instrumentation script from the
+`opentelemetry-instrumentation` package.
+
+Additionally, this configuration assumes the user is using packages conforming
+to the `opentelemetry-instrumentation` and `opentelemetry-sdk` specifications.
+
+DO NOT use this script for anything else besides SETTING ENVIRONMENT VARIABLES.
+
+Usage
+-----
+We expect this file to be at the root of a Lambda Layer. Having it anywhere else
+seems to mean AWS Lambda cannot find it.
+
+In the configuration of an AWS Lambda function with this file at the
+root level of a Lambda Layer:
+
+.. code::
+
+    AWS_LAMBDA_EXEC_WRAPPER = /opt/otel-instrument
+
+"""
+
+import os
+import sys
+from os import environ, system
+
+# Use constants to access the environment variables we want to use in this
+# script.
+
+# See more:
+# https://docs.aws.amazon.com/lambda/latest/dg/configuration-envvars.html#configuration-envvars-runtime
+
+# - Reserved environment variables
+
+AWS_LAMBDA_FUNCTION_NAME = "AWS_LAMBDA_FUNCTION_NAME"
+LAMBDA_RUNTIME_DIR = "LAMBDA_RUNTIME_DIR"
+
+# - Unreserved environment variables
+
+PYTHONPATH = "PYTHONPATH"
+
+# Update the python paths for packages with `sys.path` and `PYTHONPATH`
+
+# - We know that the path to the Lambda Layer OpenTelemetry Python packages are
+#   well defined, so we can add them to the PYTHONPATH.
+#
+#   See more:
+#   https://docs.aws.amazon.com/lambda/latest/dg/configuration-layers.html#configuration-layers-path
+
+LAMBDA_LAYER_PKGS_DIR = os.path.abspath(os.path.join(os.sep, "opt", "python"))
+
+# - Set Lambda Layer python packages in PYTHONPATH so `opentelemetry-instrument`
+#   script can find them (it needs to find `opentelemetry` to find the auto
+#   instrumentation `run()` method later)
+
+if PYTHONPATH not in environ:
+    environ[PYTHONPATH] = LAMBDA_LAYER_PKGS_DIR
+elif LAMBDA_LAYER_PKGS_DIR not in environ[PYTHONPATH]:
+    environ[PYTHONPATH] += os.pathsep + LAMBDA_LAYER_PKGS_DIR
+
+# - Set Lambda runtime python packages in PYTHONPATH so
+#   `opentelemetry-instrument` script can find them during auto instrumentation
+#   and instrument them.
+
+if PYTHONPATH not in environ:
+    environ[PYTHONPATH] = os.environ[LAMBDA_RUNTIME_DIR]
+if os.environ[LAMBDA_RUNTIME_DIR] not in environ[PYTHONPATH]:
+    environ[PYTHONPATH] += os.pathsep + os.environ[LAMBDA_RUNTIME_DIR]
+
+# - Set Lambda Layer python packages in current python path so we can find them
+#   right away in this script
+
+if LAMBDA_LAYER_PKGS_DIR not in sys.path:
+    sys.path.append(LAMBDA_LAYER_PKGS_DIR)
+
+# Configure OpenTelemetry Python with environment variables
+
+from opentelemetry.environment_variables import (
+    OTEL_PROPAGATORS,
+    OTEL_TRACES_EXPORTER,
+)
+from opentelemetry.sdk.environment_variables import (
+    OTEL_RESOURCE_ATTRIBUTES,
+    OTEL_SERVICE_NAME,
+)
+
+# - Set the default Trace Exporter
+
+environ.setdefault(OTEL_TRACES_EXPORTER, "otlp_proto_grpc_span")
+
+# - Set the service name
+
+environ.setdefault(OTEL_SERVICE_NAME, environ.get(AWS_LAMBDA_FUNCTION_NAME))
+
+# - Set the Resource Detectors (Resource Attributes)
+#
+#   TODO: waiting on OTel Python support for configuring Resource Detectors from
+#   an environment variable. Replace the bottom code with the following when
+#   this is possible.
+#
+#   environ["OTEL_RESOURCE_DETECTORS"] = "aws_lambda"
+#
+lambda_resource_attributes = (
+    "cloud.region=%s,cloud.provider=aws,faas.name=%s,faas.version=%s"
+    % (
+        environ.get("AWS_REGION"),
+        environ.get(AWS_LAMBDA_FUNCTION_NAME),
+        environ.get("AWS_LAMBDA_FUNCTION_VERSION"),
+    )
+)
+
+if OTEL_RESOURCE_ATTRIBUTES not in environ:
+    environ[OTEL_RESOURCE_ATTRIBUTES] = lambda_resource_attributes
+else:
+    environ[OTEL_RESOURCE_ATTRIBUTES] = "%s,%s" % (
+        lambda_resource_attributes,
+        environ.get(OTEL_RESOURCE_ATTRIBUTES),
+    )
+
+# - Set the default propagators
+
+environ.setdefault(OTEL_PROPAGATORS, "tracecontext,b3,xray")
+
+# - Use a wrapper because AWS Lambda's `python3 /var/runtime/bootstrap.py` will
+#   use `imp.load_module` to load the function from the `_HANDLER` environment
+#   variable. This RELOADS the module and REMOVES any instrumentation patching
+#   done earlier. So we delay instrumentation until `boostrap.py` imports
+#   `otel_wrapper.py` at which we know the patching will be picked up.
+#
+#   See more:
+#   https://docs.python.org/3/library/imp.html#imp.load_module
+
+environ["ORIG_HANDLER"] = environ.get("_HANDLER")
+environ["_HANDLER"] = "otel_wrapper.lambda_handler"
+
+# - Call the upstream auto instrumentation script
+
+system(
+    sys.argv[1] +
+    " " +
+    os.path.join(LAMBDA_LAYER_PKGS_DIR, "bin", "opentelemetry-instrument",) +
+    " " +
+    " ".join(sys.argv[1:])
+)
