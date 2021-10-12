@@ -10,7 +10,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   ([#667](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/667))
 - `opentelemetry-instrumentation-sqlalchemy` Added `packaging` dependency
   ([#713](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/713))
+- `opentelemetry-sdk-extension-aws` Move AWS X-Ray Propagator into its own `opentelemetry-propagators-aws` package
+  ([#720](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/720))
+- `opentelemetry-instrumentation-sqlalchemy` Respect provided tracer provider when instrumenting SQLAlchemy
+  ([#728](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/728))
+- `opentelemetry-propagators-aws-xray` Rename `AwsXRayFormat` to `AwsXRayPropagator`
+  ([#729](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/729))
 
+
+### Changed
+- `opentelemetry-instrumentation-jinja2` Allow instrumentation of newer Jinja2 versions.
 
 ### Added
 - `opentelemetry-instrumentation-elasticsearch` Added `response_hook` and `request_hook` callbacks
@@ -21,10 +30,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   ([679](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/679))
 - `opentelemetry-exporter-richconsole` Initial release
   ([#686](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/686))
+- `opentelemetry-instrumentation-elasticsearch` no longer creates unique span names by including document IDs, replaces them with `:id` and puts the value in attribute `elasticsearch.id`
+  ([#705](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/705))
 - `opentelemetry-instrumentation-tornado` now sets `http.client_ip` and `tornado.handler` attributes
   ([#706](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/706))
 - `opentelemetry-instrumentation-requests` added exclude urls functionality
   ([#714](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/714))
+- `opentelemetry-instrumentation-django` Add ASGI support
+  ([#391](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/391))
 
 ### Changed
 - `opentelemetry-instrumentation-botocore` Make common span attributes compliant with semantic conventions
@@ -35,6 +48,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   ([#664](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/664))
 - `opentelemetry-instrumentation-botocore` Fix span injection for lambda invoke
   ([#663](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/663))
+- `opentelemetry-instrumentation-botocore` Introduce instrumentation extensions
+  ([#718](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/718))
 
 ### Changed
 
@@ -57,12 +72,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Added
 - `opentelemetry-sdk-extension-aws` Add AWS resource detectors to extension package
   ([#586](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/586))
-- `opentelemetry-instrumentation-asgi`, `opentelemetry-instrumentation-aiohttp-client`, `openetelemetry-instrumentation-fastapi`,        
-  `opentelemetry-instrumentation-starlette`, `opentelemetry-instrumentation-urllib`, `opentelemetry-instrumentation-urllib3` Added `request_hook` and `response_hook` callbacks 
+- `opentelemetry-instrumentation-asgi`, `opentelemetry-instrumentation-aiohttp-client`, `openetelemetry-instrumentation-fastapi`,
+  `opentelemetry-instrumentation-starlette`, `opentelemetry-instrumentation-urllib`, `opentelemetry-instrumentation-urllib3` Added `request_hook` and `response_hook` callbacks
   ([#576](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/576))
 - `opentelemetry-instrumentation-pika` added RabbitMQ's pika module instrumentation.
   ([#680](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/680))
-  
+
 ### Changed
 
 - `opentelemetry-instrumentation-fastapi` Allow instrumentation of newer FastAPI versions.

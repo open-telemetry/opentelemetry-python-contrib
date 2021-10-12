@@ -12,5 +12,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+from opentelemetry.propagators.aws.aws_xray_propagator import AwsXRayPropagator
 
-_instruments = ("jinja2 >= 2.7, < 4.0",)
+__all__ = ["AwsXRayPropagator"]

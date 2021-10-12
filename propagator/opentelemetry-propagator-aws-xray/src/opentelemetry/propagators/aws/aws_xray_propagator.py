@@ -47,9 +47,9 @@ Or by setting this propagator in your instrumented application:
 .. code-block:: python
 
     from opentelemetry.propagate import set_global_textmap
-    from opentelemetry.sdk.extension.aws.trace.propagation.aws_xray_format import AwsXRayFormat
+    from opentelemetry.propagators.aws import AwsXRayPropagator
 
-    set_global_textmap(AwsXRayFormat())
+    set_global_textmap(AwsXRayPropagator())
 
 API
 ---
@@ -100,7 +100,7 @@ class AwsParseTraceHeaderError(Exception):
         self.message = message
 
 
-class AwsXRayFormat(TextMapPropagator):
+class AwsXRayPropagator(TextMapPropagator):
     """Propagator for the AWS X-Ray Trace Header propagation protocol.
 
     See: https://docs.aws.amazon.com/xray/latest/devguide/xray-concepts.html#xray-concepts-tracingheader
@@ -132,7 +132,7 @@ class AwsXRayFormat(TextMapPropagator):
                 trace_id,
                 span_id,
                 sampled,
-            ) = AwsXRayFormat._extract_span_properties(trace_header)
+            ) = AwsXRayPropagator._extract_span_properties(trace_header)
         except AwsParseTraceHeaderError as err:
             _logger.debug(err.message)
             return context
@@ -177,7 +177,7 @@ class AwsXRayFormat(TextMapPropagator):
                     )
                 ) from ex
             if key == TRACE_ID_KEY:
-                if not AwsXRayFormat._validate_trace_id(value):
+                if not AwsXRayPropagator._validate_trace_id(value):
                     raise AwsParseTraceHeaderError(
                         (
                             "Invalid TraceId in X-Ray trace header: '%s' with value '%s'. Returning INVALID span context.",
@@ -187,7 +187,7 @@ class AwsXRayFormat(TextMapPropagator):
                     )
 
                 try:
-                    trace_id = AwsXRayFormat._parse_trace_id(value)
+                    trace_id = AwsXRayPropagator._parse_trace_id(value)
                 except ValueError as ex:
                     raise AwsParseTraceHeaderError(
                         (
@@ -197,7 +197,7 @@ class AwsXRayFormat(TextMapPropagator):
                         )
                     ) from ex
             elif key == PARENT_ID_KEY:
-                if not AwsXRayFormat._validate_span_id(value):
+                if not AwsXRayPropagator._validate_span_id(value):
                     raise AwsParseTraceHeaderError(
                         (
                             "Invalid ParentId in X-Ray trace header: '%s' with value '%s'. Returning INVALID span context.",
@@ -207,7 +207,7 @@ class AwsXRayFormat(TextMapPropagator):
                     )
 
                 try:
-                    span_id = AwsXRayFormat._parse_span_id(value)
+                    span_id = AwsXRayPropagator._parse_span_id(value)
                 except ValueError as ex:
                     raise AwsParseTraceHeaderError(
                         (
@@ -217,7 +217,7 @@ class AwsXRayFormat(TextMapPropagator):
                         )
                     ) from ex
             elif key == SAMPLED_FLAG_KEY:
-                if not AwsXRayFormat._validate_sampled_flag(value):
+                if not AwsXRayPropagator._validate_sampled_flag(value):
                     raise AwsParseTraceHeaderError(
                         (
                             "Invalid Sampling flag in X-Ray trace header: '%s' with value '%s'. Returning INVALID span context.",
@@ -226,7 +226,7 @@ class AwsXRayFormat(TextMapPropagator):
                         )
                     )
 
-                sampled = AwsXRayFormat._parse_sampled_flag(value)
+                sampled = AwsXRayPropagator._parse_sampled_flag(value)
 
         return trace_id, span_id, sampled
 
