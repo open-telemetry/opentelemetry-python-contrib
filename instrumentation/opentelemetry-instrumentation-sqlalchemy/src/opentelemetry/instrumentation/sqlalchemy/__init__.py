@@ -88,13 +88,13 @@ class SQLAlchemyInstrumentor(BaseInstrumentor):
         Returns:
             An instrumented engine if passed in as an argument, None otherwise.
         """
-        _w("sqlalchemy", "create_engine", _wrap_create_engine)
-        _w("sqlalchemy.engine", "create_engine", _wrap_create_engine)
+        _w("sqlalchemy", "create_engine", _wrap_create_engine(kwargs))
+        _w("sqlalchemy.engine", "create_engine", _wrap_create_engine(kwargs))
         if parse_version(sqlalchemy.__version__).release >= (1, 4):
             _w(
                 "sqlalchemy.ext.asyncio",
                 "create_async_engine",
-                _wrap_create_async_engine,
+                _wrap_create_async_engine(kwargs),
             )
 
         if kwargs.get("engine") is not None:
