@@ -6,7 +6,7 @@ on:
     - 'release/*'
   pull_request:
 env:
-  CORE_REPO_SHA: adad94bfa69520cb4cbabca714827fd14503baf0
+  CORE_REPO_SHA: 65528f7534f1f5f2e8adc7520b6e696a84569c7d
 
 jobs:
   build:
@@ -24,7 +24,7 @@ jobs:
       matrix:
         python-version: [ py36, py37, py38, py39, pypy3 ]
         package: ["instrumentation", "exporter", "sdkextension", "propagator"]
-        os: [ ubuntu-latest ]
+        os: [ ubuntu-20.04 ]
     steps:
       - name: Checkout Contrib Repo @ SHA - ${{ github.sha }}
         uses: actions/checkout@v2
@@ -74,7 +74,7 @@ jobs:
       matrix:
         tox-environment: [ "docker-tests", "lint", "docs", "generate" ]
     name: ${{ matrix.tox-environment }}
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-20.04
     steps:
       - name: Checkout Contrib Repo @ SHA - ${{ github.sha }}
         uses: actions/checkout@v2

@@ -10,7 +10,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   ([#667](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/667))
 - `opentelemetry-instrumentation-sqlalchemy` Added `packaging` dependency
   ([#713](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/713))
+- `opentelemetry-sdk-extension-aws` Move AWS X-Ray Propagator into its own `opentelemetry-propagators-aws` package
+  ([#720](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/720))
 
+
+### Changed
+- `opentelemetry-instrumentation-jinja2` Allow instrumentation of newer Jinja2 versions.
 
 ### Added
 - `opentelemetry-instrumentation-elasticsearch` Added `response_hook` and `request_hook` callbacks
@@ -37,6 +42,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   ([#664](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/664))
 - `opentelemetry-instrumentation-botocore` Fix span injection for lambda invoke
   ([#663](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/663))
+- `opentelemetry-instrumentation-botocore` Introduce instrumentation extensions
+  ([#718](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/718))
 
 ### Changed
 
