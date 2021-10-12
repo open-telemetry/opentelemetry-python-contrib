@@ -43,9 +43,7 @@ def _get_tracer(engine, tracer_provider=None):
 
 
 # pylint: disable=unused-argument
-def _wrap_create_async_engine(kwargs):
-    tracer_provider = kwargs.get("tracer_provider")
-
+def _wrap_create_async_engine(tracer_provider=None):
     def _wrap_create_async_engine_internal(func, module, args, kwargs):
         """Trace the SQLAlchemy engine, creating an `EngineTracer`
         object that will listen to SQLAlchemy events.
@@ -58,9 +56,7 @@ def _wrap_create_async_engine(kwargs):
 
 
 # pylint: disable=unused-argument
-def _wrap_create_engine(kwargs):
-    tracer_provider = kwargs.get("tracer_provider")
-
+def _wrap_create_engine(tracer_provider=None):
     def _wrap_create_engine_internal(func, module, args, kwargs):
         """Trace the SQLAlchemy engine, creating an `EngineTracer`
         object that will listen to SQLAlchemy events.
