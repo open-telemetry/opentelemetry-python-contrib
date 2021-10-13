@@ -15,12 +15,11 @@
 from sys import modules
 from unittest.mock import Mock, patch
 
-from django import VERSION
-from django.conf import settings
-from django.conf.urls import url
+from django import VERSION, conf
 from django.http import HttpRequest, HttpResponse
-from django.test import Client
+from django.test.client import Client
 from django.test.utils import setup_test_environment, teardown_test_environment
+from django.urls import re_path
 
 from opentelemetry.instrumentation.django import (
     DjangoInstrumentor,
@@ -57,13 +56,13 @@ from .views import (
 DJANGO_2_2 = VERSION >= (2, 2)
 
 urlpatterns = [
-    url(r"^traced/", traced),
-    url(r"^route/(?P<year>[0-9]{4})/template/$", traced_template),
-    url(r"^error/", error),
-    url(r"^excluded_arg/", excluded),
-    url(r"^excluded_noarg/", excluded_noarg),
-    url(r"^excluded_noarg2/", excluded_noarg2),
-    url(r"^span_name/([0-9]{4})/$", route_span_name),
+    re_path(r"^traced/", traced),
+    re_path(r"^route/(?P<year>[0-9]{4})/template/$", traced_template),
+    re_path(r"^error/", error),
+    re_path(r"^excluded_arg/", excluded),
+    re_path(r"^excluded_noarg/", excluded_noarg),
+    re_path(r"^excluded_noarg2/", excluded_noarg2),
+    re_path(r"^span_name/([0-9]{4})/$", route_span_name),
 ]
 _django_instrumentor = DjangoInstrumentor()
 
@@ -71,8 +70,8 @@ _django_instrumentor = DjangoInstrumentor()
 class TestMiddleware(TestBase, WsgiTestBase):
     @classmethod
     def setUpClass(cls):
+        conf.settings.configure(ROOT_URLCONF=modules[__name__])
         super().setUpClass()
-        settings.configure(ROOT_URLCONF=modules[__name__])
 
     def setUp(self):
         super().setUp()
@@ -104,6 +103,11 @@ class TestMiddleware(TestBase, WsgiTestBase):
         self.traced_patch.stop()
         teardown_test_environment()
         _django_instrumentor.uninstrument()
+
+    @classmethod
+    def tearDownClass(cls):
+        super().tearDownClass()
+        conf.settings = conf.LazySettings()
 
     def test_templated_route_get(self):
         Client().get("/route/2020/template/")
@@ -349,10 +353,7 @@ class TestMiddleware(TestBase, WsgiTestBase):
         )
         self.assertEqual(
             response.headers["traceresponse"],
-            "00-{0}-{1}-01".format(
-                format_trace_id(span.get_span_context().trace_id),
-                format_span_id(span.get_span_context().span_id),
-            ),
+            f"00-{format_trace_id(span.get_span_context().trace_id)}-{format_span_id(span.get_span_context().span_id)}-01",
         )
         self.memory_exporter.clear()
 
@@ -360,6 +361,7 @@ class TestMiddleware(TestBase, WsgiTestBase):
 class TestMiddlewareWithTracerProvider(TestBase, WsgiTestBase):
     @classmethod
     def setUpClass(cls):
+        conf.settings.configure(ROOT_URLCONF=modules[__name__])
         super().setUpClass()
 
     def setUp(self):
@@ -377,6 +379,11 @@ class TestMiddlewareWithTracerProvider(TestBase, WsgiTestBase):
         super().tearDown()
         teardown_test_environment()
         _django_instrumentor.uninstrument()
+
+    @classmethod
+    def tearDownClass(cls):
+        super().tearDownClass()
+        conf.settings = conf.LazySettings()
 
     def test_tracer_provider_traced(self):
         Client().post("/traced/")

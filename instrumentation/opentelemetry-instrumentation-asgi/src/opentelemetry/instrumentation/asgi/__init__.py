@@ -121,7 +121,7 @@ def get_host_port_url_tuple(scope):
     """Returns (host, port, full_url) tuple."""
     server = scope.get("server") or ["0.0.0.0", 80]
     port = server[1]
-    server_host = server[0] + (":" + str(port) if port != 80 else "")
+    server_host = server[0] + (":" + str(port) if str(port) != "80" else "")
     full_path = scope.get("root_path", "") + scope.get("path", "")
     http_url = scope.get("scheme", "http") + "://" + server_host + full_path
     return server_host, port, http_url
@@ -152,8 +152,9 @@ def get_default_span_details(scope: dict) -> Tuple[str, dict]:
     Returns:
         a tuple of the span name, and any attributes to attach to the span.
     """
-    span_name = scope.get("path", "").strip() or "HTTP {}".format(
-        scope.get("method", "").strip()
+    span_name = (
+        scope.get("path", "").strip()
+        or f"HTTP {scope.get('method', '').strip()}"
     )
 
     return span_name, {}
