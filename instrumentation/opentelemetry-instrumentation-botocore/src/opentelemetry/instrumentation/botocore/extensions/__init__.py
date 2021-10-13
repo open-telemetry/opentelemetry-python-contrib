@@ -18,6 +18,7 @@ def _lazy_load(module, cls):
 
 
 _KNOWN_EXTENSIONS = {
+    "dynamodb": _lazy_load(".dynamodb", "_DynamoDbExtension"),
     "sqs": _lazy_load(".sqs", "_SqsExtension"),
 }
 
