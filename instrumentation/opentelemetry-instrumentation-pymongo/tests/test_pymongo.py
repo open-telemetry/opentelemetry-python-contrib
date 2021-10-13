@@ -113,7 +113,7 @@ class TestPymongo(TestBase):
             context.detach(token)
 
         # if suppression key is set, CommandTracer methods return immediately, so command.get is not invoked.
-        self.assertFalse(mock_event.command.get.called)
+        self.assertFalse(mock_event.command.get.called)  # pylint: disable=no-member
 
     def test_failed(self):
         mock_event = MockEvent({})
