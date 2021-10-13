@@ -50,6 +50,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   ([#663](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/663))
 - `opentelemetry-instrumentation-botocore` Introduce instrumentation extensions
   ([#718](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/718))
+- `opentelemetry-instrumentation-botocore` Add extension for DynamoDB
+  ([#735](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/735))
 
 ### Changed
 
