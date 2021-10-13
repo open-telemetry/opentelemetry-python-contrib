@@ -42,16 +42,13 @@ from typing import Collection
 from pymongo import monitoring
 
 from opentelemetry import context
-
 from opentelemetry.instrumentation.instrumentor import BaseInstrumentor
 from opentelemetry.instrumentation.pymongo.package import _instruments
 from opentelemetry.instrumentation.pymongo.version import __version__
 from opentelemetry.instrumentation.utils import _SUPPRESS_INSTRUMENTATION_KEY
-
 from opentelemetry.semconv.trace import DbSystemValues, SpanAttributes
 from opentelemetry.trace import SpanKind, get_tracer
 from opentelemetry.trace.status import Status, StatusCode
-
 
 
 class CommandTracer(monitoring.CommandListener):
@@ -62,7 +59,9 @@ class CommandTracer(monitoring.CommandListener):
 
     def started(self, event: monitoring.CommandStartedEvent):
         """ Method to handle a pymongo CommandStartedEvent """
-        if not self.is_enabled or context.get_value(_SUPPRESS_INSTRUMENTATION_KEY):
+        if not self.is_enabled or context.get_value(
+            _SUPPRESS_INSTRUMENTATION_KEY
+        ):
             return
         command = event.command.get(event.command_name, "")
         name = event.command_name
@@ -97,7 +96,9 @@ class CommandTracer(monitoring.CommandListener):
 
     def succeeded(self, event: monitoring.CommandSucceededEvent):
         """ Method to handle a pymongo CommandSucceededEvent """
-        if not self.is_enabled or context.get_value(_SUPPRESS_INSTRUMENTATION_KEY):
+        if not self.is_enabled or context.get_value(
+            _SUPPRESS_INSTRUMENTATION_KEY
+        ):
             return
         span = self._pop_span(event)
         if span is None:
@@ -106,7 +107,9 @@ class CommandTracer(monitoring.CommandListener):
 
     def failed(self, event: monitoring.CommandFailedEvent):
         """ Method to handle a pymongo CommandFailedEvent """
-        if not self.is_enabled or context.get_value(_SUPPRESS_INSTRUMENTATION_KEY):
+        if not self.is_enabled or context.get_value(
+            _SUPPRESS_INSTRUMENTATION_KEY
+        ):
             return
         span = self._pop_span(event)
         if span is None:
