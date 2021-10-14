@@ -14,7 +14,7 @@
 from unittest import TestCase, mock
 
 from pika.channel import Channel
-from pika.spec import Basic
+from pika.spec import Basic, BasicProperties
 
 from opentelemetry.instrumentation.pika import utils
 from opentelemetry.semconv.trace import (
@@ -258,8 +258,10 @@ class TestUtils(TestCase):
     @mock.patch("opentelemetry.propagate.inject")
     @mock.patch("opentelemetry.context.get_current")
     @mock.patch("opentelemetry.trace.use_span")
+    @mock.patch("pika.spec.BasicProperties.__new__")
     def test_decorate_basic_publish_no_properties(
         self,
+        basic_properties: mock.MagicMock,
         use_span: mock.MagicMock,
         get_current: mock.MagicMock,
         inject: mock.MagicMock,
@@ -274,10 +276,11 @@ class TestUtils(TestCase):
             callback, channel, tracer
         )
         retval = decorated_basic_publish(channel, method, body=mock_body)
+        basic_properties.assert_called_once_with(BasicProperties, headers={})
         get_current.assert_called_once()
         use_span.assert_called_once_with(
             get_span.return_value, end_on_exit=True
         )
         get_span.return_value.is_recording.assert_called_once()
-        inject.assert_called_once_with({})
+        inject.assert_called_once_with(basic_properties.return_value.headers)
         self.assertEqual(retval, callback.return_value)
