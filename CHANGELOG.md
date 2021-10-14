@@ -7,6 +7,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased](https://github.com/open-telemetry/opentelemetry-python/compare/v1.6.0-0.25b0...HEAD)
 
+- Add support for Python 3.10
+  ([#742](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/742))
+
 ## [1.6.0-0.25b0](https://github.com/open-telemetry/opentelemetry-python/releases/tag/v1.6.0-0.25b0) - 2021-10-13
 
 
