@@ -27,6 +27,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 - `opentelemetry-instrumentation-pymongo` Add check for suppression key in PyMongo.
+- ([#736](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/736))
 
 ### Added
 - `opentelemetry-instrumentation-elasticsearch` Added `response_hook` and `request_hook` callbacks
