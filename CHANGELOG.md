@@ -9,8 +9,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [1.6.1-0.25b1](https://github.com/open-telemetry/opentelemetry-python/releases/tag/v1.6.1-0.25b1) - 2021-10-18
 
-
-
 ### Changed
 - `opentelemetry-util-http` no longer contains an instrumentation entrypoint and will not be loaded
 automatically by the auto instrumentor.
@@ -19,6 +17,8 @@ automatically by the auto instrumentor.
   ([#740](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/740))
 - `opentelemetry-instrumentation-botocore` Add extension for DynamoDB
   ([#735](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/735))
+- `opentelemetry-sdk-extension-aws` & `opentelemetry-propagator-aws` Remove unnecessary dependencies on `opentelemetry-test`
+  ([#752](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/752))
 
 ## [1.6.0-0.25b0](https://github.com/open-telemetry/opentelemetry-python/releases/tag/v1.6.0-0.25b0) - 2021-10-13
 ### Added
