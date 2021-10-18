@@ -34,6 +34,24 @@ For example,
 
 will exclude requests such as ``https://site/client/123/info`` and ``https://site/xyz/healthcheck``.
 
+Request/Response hooks
+**********************
+
+Utilize request/reponse hooks to execute custom logic to be performed before/after performing a request. The server request hook takes in a server span and ASGI
+scope object for every incoming request. The client request hook is called with the internal span and an ASGI scope which is sent as a dictionary for when the method recieve is called.
+The client response hook is called with the internal span and an ASGI event which is sent as a dictionary for when the method send is called.
+
+.. code-block:: python
+    def server_request_hook(span: Span, scope: dict):
+        if span and span.is_recording():
+            span.set_attribute("custom_user_attribute_from_request_hook", "some-value")
+    def client_request_hook(span: Span, scope: dict):
+        if span and span.is_recording():
+            span.set_attribute("custom_user_attribute_from_client_request_hook", "some-value")
+    def client_response_hook(span: Span, message: dict):
+        if span and span.is_recording():
+            span.set_attribute("custom_user_attribute_from_response_hook", "some-value")
+   StarletteInstrumentor().instrument(server_request_hook=server_request_hook, client_request_hook=client_request_hook, client_response_hook=client_response_hook)
 
 Usage
 -----
