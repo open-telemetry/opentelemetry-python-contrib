@@ -19,9 +19,9 @@ from requests.structures import CaseInsensitiveDict
 
 import opentelemetry.trace as trace_api
 from opentelemetry.context import Context
-from opentelemetry.sdk.extension.aws.trace.propagation.aws_xray_format import (
+from opentelemetry.propagators.aws.aws_xray_propagator import (
     TRACE_HEADER_KEY,
-    AwsXRayFormat,
+    AwsXRayPropagator,
 )
 from opentelemetry.trace import (
     DEFAULT_TRACE_OPTIONS,
@@ -85,7 +85,7 @@ def build_test_span_context(
 
 
 class AwsXRayPropagatorTest(unittest.TestCase):
-    XRAY_PROPAGATOR = AwsXRayFormat()
+    XRAY_PROPAGATOR = AwsXRayPropagator()
 
     # Inject Tests
 
@@ -299,10 +299,7 @@ class AwsXRayPropagatorTest(unittest.TestCase):
 
                 self.assertDictEqual(Context(), ctx)
 
-    @patch(
-        "opentelemetry.sdk.extension.aws.trace."
-        "propagation.aws_xray_format.trace"
-    )
+    @patch("opentelemetry.propagators.aws.aws_xray_propagator.trace")
     def test_fields(self, mock_trace):
         """Make sure the fields attribute returns the fields used in inject"""
 

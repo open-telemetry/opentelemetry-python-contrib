@@ -1,13 +1,32 @@
+# Copyright The OpenTelemetry Authors
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
 import logging
 from typing import Any, Dict, Optional, Tuple
 
 from opentelemetry.trace import SpanKind
+from opentelemetry.trace.span import Span
+from opentelemetry.util.types import AttributeValue
 
 _logger = logging.getLogger(__name__)
 
 _BotoClientT = "botocore.client.BaseClient"
+_BotoResultT = Dict[str, Any]
+_BotoClientErrorT = "botocore.exceptions.ClientError"
 
 _OperationParamsT = Dict[str, Any]
+_AttributeMapT = Dict[str, AttributeValue]
 
 
 class _AwsSdkCallContext:
@@ -70,3 +89,49 @@ class _AwsSdkCallContext:
         except AttributeError:
             _logger.warning("Could not get attribute '%s'", name)
             return default
+
+
+class _AwsSdkExtension:
+    def __init__(self, call_context: _AwsSdkCallContext):
+        self._call_context = call_context
+
+    def should_trace_service_call(self) -> bool:  # pylint:disable=no-self-use
+        """Returns if the AWS SDK service call should be traced or not
+
+        Extensions might override this function to disable tracing for certain
+        operations.
+        """
+        return True
+
+    def extract_attributes(self, attributes: _AttributeMapT):
+        """Callback which gets invoked before the span is created.
+
+        Extensions might override this function to extract additional attributes.
+        """
+
+    def before_service_call(self, span: Span):
+        """Callback which gets invoked after the span is created but before the
+        AWS SDK service is called.
+
+        Extensions might override this function e.g. for injecting the span into
+        a carrier.
+        """
+
+    def on_success(self, span: Span, result: _BotoResultT):
+        """Callback that gets invoked when the AWS SDK call returns
+        successfully.
+
+        Extensions might override this function e.g. to extract and set response
+        attributes on the span.
+        """
+
+    def on_error(self, span: Span, exception: _BotoClientErrorT):
+        """Callback that gets invoked when the AWS SDK service call raises a
+        ClientError.
+        """
+
+    def after_service_call(self):
+        """Callback that gets invoked after the AWS SDK service was called.
+
+        Extensions might override this function to do some cleanup tasks.
+        """

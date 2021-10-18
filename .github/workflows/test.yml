@@ -6,7 +6,7 @@ on:
     - 'release/*'
   pull_request:
 env:
-  CORE_REPO_SHA: adad94bfa69520cb4cbabca714827fd14503baf0
+  CORE_REPO_SHA: 0e12b8f9157a51ead168b63a4cb3b41bfc022540
 
 jobs:
   build:
@@ -23,8 +23,8 @@ jobs:
       fail-fast: false  # ensures the entire test matrix is run, even if one permutation fails
       matrix:
         python-version: [ py36, py37, py38, py39, pypy3 ]
-        package: ["instrumentation", "exporter", "sdkextension", "propagator"]
-        os: [ ubuntu-latest ]
+        package: ["instrumentation", "distro", "exporter", "sdkextension", "propagator"]
+        os: [ ubuntu-20.04 ]
     steps:
       - name: Checkout Contrib Repo @ SHA - ${{ github.sha }}
         uses: actions/checkout@v2
@@ -74,7 +74,7 @@ jobs:
       matrix:
         tox-environment: [ "docker-tests", "lint", "docs", "generate" ]
     name: ${{ matrix.tox-environment }}
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-20.04
     steps:
       - name: Checkout Contrib Repo @ SHA - ${{ github.sha }}
         uses: actions/checkout@v2
