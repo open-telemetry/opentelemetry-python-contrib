@@ -16,7 +16,7 @@ from sqlalchemy.event import listen  # pylint: disable=no-name-in-module
 
 from opentelemetry import trace
 from opentelemetry.instrumentation.sqlalchemy.version import __version__
-from opentelemetry.semconv.trace import SpanAttributes
+from opentelemetry.semconv.trace import NetTransportValues, SpanAttributes
 from opentelemetry.trace.status import Status, StatusCode
 
 
@@ -163,7 +163,9 @@ def _get_attributes_from_cursor(vendor, cursor, attrs):
                 data = parse_dsn(dsn)
                 attrs[SpanAttributes.DB_NAME] = data.get("dbname")
                 attrs[SpanAttributes.NET_PEER_NAME] = data.get("host")
-                # parse_dsn may omit port when connecting via unix socket
                 if data.get("port"):
                     attrs[SpanAttributes.NET_PEER_PORT] = int(data["port"])
+                    attrs[SpanAttributes.NET_TRANSPORT] = NetTransportValues.IP_TCP
+                else:
+                    attrs[SpanAttributes.NET_TRANSPORT] = NetTransportValues.UNIX
     return attrs
