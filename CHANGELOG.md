@@ -8,6 +8,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased](https://github.com/open-telemetry/opentelemetry-python/compare/v1.6.1-0.25b1...HEAD)
 - `opentelemetry-sdk-extension-aws` & `opentelemetry-propagator-aws` Release AWS Python SDK Extension as 2.0.1 and AWS Propagator as 1.0.1
   ([#753](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/753))
+- `opentelemetry-instrumentation-pika` Add `_decorate_basic_consume` to ensure post instrumentation `basic_consume` calls are also instrumented.
+  ([#759](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/759))
 
 ## [1.6.1-0.25b1](https://github.com/open-telemetry/opentelemetry-python/releases/tag/v1.6.1-0.25b1) - 2021-10-18
 
@@ -16,7 +18,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 automatically by the auto instrumentor.
 ([#745](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/745))
 - `opentelemetry-instrumentation-pika` Bugfix use properties.headers. It will prevent the header injection from raising.
-   Also add `_decorate_basic_consume` to ensure post instrumentation `basic_consume` calls are also instrumented.
   ([#740](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/740))
 - `opentelemetry-instrumentation-botocore` Add extension for DynamoDB
   ([#735](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/735))
