@@ -12,6 +12,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 automatically by the auto instrumentor.
 ([#745](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/745))
 - `opentelemetry-instrumentation-pika` Bugfix use properties.headers. It will prevent the header injection from raising.
+   Also add `_decorate_basic_consume` to ensure post instrumentation `basic_consume` calls are also instrumented.
   ([#740](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/740))
 - `opentelemetry-instrumentation-botocore` Add extension for DynamoDB
   ([#735](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/735))
