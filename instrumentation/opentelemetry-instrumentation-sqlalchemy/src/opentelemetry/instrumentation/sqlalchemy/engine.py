@@ -165,7 +165,11 @@ def _get_attributes_from_cursor(vendor, cursor, attrs):
                 attrs[SpanAttributes.NET_PEER_NAME] = data.get("host")
                 if data.get("port"):
                     attrs[SpanAttributes.NET_PEER_PORT] = int(data["port"])
-                    attrs[SpanAttributes.NET_TRANSPORT] = NetTransportValues.IP_TCP
+                    attrs[
+                        SpanAttributes.NET_TRANSPORT
+                    ] = NetTransportValues.IP_TCP.value
                 else:
-                    attrs[SpanAttributes.NET_TRANSPORT] = NetTransportValues.UNIX
+                    attrs[
+                        SpanAttributes.NET_TRANSPORT
+                    ] = NetTransportValues.UNIX.value
     return attrs
