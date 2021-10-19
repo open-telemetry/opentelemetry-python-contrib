@@ -163,5 +163,7 @@ def _get_attributes_from_cursor(vendor, cursor, attrs):
                 data = parse_dsn(dsn)
                 attrs[SpanAttributes.DB_NAME] = data.get("dbname")
                 attrs[SpanAttributes.NET_PEER_NAME] = data.get("host")
-                attrs[SpanAttributes.NET_PEER_PORT] = int(data.get("port"))
+                # parse_dsn may omit port when connecting via unix socket
+                if data.get("port"):
+                    attrs[SpanAttributes.NET_PEER_PORT] = int(data["port"])
     return attrs
