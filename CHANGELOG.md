@@ -8,6 +8,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased](https://github.com/open-telemetry/opentelemetry-python/compare/v1.6.1-0.25b1...HEAD)
 - `opentelemetry-sdk-extension-aws` & `opentelemetry-propagator-aws` Release AWS Python SDK Extension as 2.0.1 and AWS Propagator as 1.0.1
   ([#753](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/753))
+  
+### Added
+- `opentelemetry-instrumentation-pika` add publish_hook and consume_hook callbacks passed as arguments to the instrument method
+  ([#TODO](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/TODO))
 
 ## [1.6.1-0.25b1](https://github.com/open-telemetry/opentelemetry-python/releases/tag/v1.6.1-0.25b1) - 2021-10-18
 

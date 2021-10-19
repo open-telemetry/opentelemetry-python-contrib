@@ -66,11 +66,11 @@ class TestPika(TestCase):
     ) -> None:
         tracer = mock.MagicMock(spec=Tracer)
         expected_decoration_calls = [
-            mock.call(value, tracer, key)
+            mock.call(value, tracer, key, None)
             for key, value in self.channel._impl._consumers.items()
         ]
         PikaInstrumentor._instrument_consumers(
-            self.channel._impl._consumers, tracer
+            self.channel._impl._consumers, tracer, None
         )
         decorate_callback.assert_has_calls(
             calls=expected_decoration_calls, any_order=True
@@ -90,7 +90,7 @@ class TestPika(TestCase):
         original_function = self.channel.basic_publish
         PikaInstrumentor._instrument_basic_publish(self.channel, tracer)
         decorate_basic_publish.assert_called_once_with(
-            original_function, self.channel, tracer
+            original_function, self.channel, tracer, None
         )
         self.assertEqual(
             self.channel.basic_publish, decorate_basic_publish.return_value

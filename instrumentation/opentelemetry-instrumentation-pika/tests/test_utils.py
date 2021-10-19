@@ -212,6 +212,50 @@ class TestUtils(TestCase):
         self.assertEqual(retval, callback.return_value)
 
     @mock.patch("opentelemetry.instrumentation.pika.utils._get_span")
+    @mock.patch("opentelemetry.propagate.extract")
+    @mock.patch("opentelemetry.trace.use_span")
+    def test_decorate_callback_with_hook(
+        self,
+        use_span: mock.MagicMock,
+        extract: mock.MagicMock,
+        get_span: mock.MagicMock,
+    ) -> None:
+        callback = mock.MagicMock()
+        mock_task_name = "mock_task_name"
+        tracer = mock.MagicMock()
+        channel = mock.MagicMock(spec=Channel)
+        method = mock.MagicMock(spec=Basic.Deliver)
+        properties = mock.MagicMock()
+        mock_body = b"mock_body"
+        consume_hook = mock.MagicMock()
+        decorated_callback = utils._decorate_callback(
+            callback, tracer, mock_task_name, consume_hook
+        )
+        retval = decorated_callback(channel, method, properties, mock_body)
+        extract.assert_called_once_with(
+            properties.headers, getter=utils._pika_getter
+        )
+        get_span.assert_called_once_with(
+            tracer,
+            channel,
+            properties,
+            span_kind=SpanKind.CONSUMER,
+            task_name=mock_task_name,
+            ctx=extract.return_value,
+            operation=MessagingOperationValues.RECEIVE,
+        )
+        use_span.assert_called_once_with(
+            get_span.return_value, end_on_exit=True
+        )
+        consume_hook.assert_called_once_with(
+            get_span.return_value, mock_body, properties
+        )
+        callback.assert_called_once_with(
+            channel, method, properties, mock_body
+        )
+        self.assertEqual(retval, callback.return_value)
+
+    @mock.patch("opentelemetry.instrumentation.pika.utils._get_span")
     @mock.patch("opentelemetry.propagate.inject")
     @mock.patch("opentelemetry.context.get_current")
     @mock.patch("opentelemetry.trace.use_span")
@@ -283,4 +327,52 @@ class TestUtils(TestCase):
         )
         get_span.return_value.is_recording.assert_called_once()
         inject.assert_called_once_with(basic_properties.return_value.headers)
+        self.assertEqual(retval, callback.return_value)
+
+    @mock.patch("opentelemetry.instrumentation.pika.utils._get_span")
+    @mock.patch("opentelemetry.propagate.inject")
+    @mock.patch("opentelemetry.context.get_current")
+    @mock.patch("opentelemetry.trace.use_span")
+    def test_decorate_basic_publish_with_hook(
+        self,
+        use_span: mock.MagicMock,
+        get_current: mock.MagicMock,
+        inject: mock.MagicMock,
+        get_span: mock.MagicMock,
+    ) -> None:
+        callback = mock.MagicMock()
+        tracer = mock.MagicMock()
+        channel = mock.MagicMock(spec=Channel)
+        method = mock.MagicMock(spec=Basic.Deliver)
+        properties = mock.MagicMock()
+        mock_body = b"mock_body"
+        publish_hook = mock.MagicMock()
+
+        decorated_basic_publish = utils._decorate_basic_publish(
+            callback, channel, tracer, publish_hook
+        )
+        retval = decorated_basic_publish(
+            channel, method, mock_body, properties
+        )
+        get_current.assert_called_once()
+        get_span.assert_called_once_with(
+            tracer,
+            channel,
+            properties,
+            span_kind=SpanKind.PRODUCER,
+            task_name="(temporary)",
+            ctx=get_current.return_value,
+            operation=None,
+        )
+        use_span.assert_called_once_with(
+            get_span.return_value, end_on_exit=True
+        )
+        get_span.return_value.is_recording.assert_called_once()
+        inject.assert_called_once_with(properties.headers)
+        callback.assert_called_once_with(
+            channel, method, mock_body, properties, False
+        )
+        publish_hook.assert_called_once_with(
+            get_span.return_value, mock_body, properties
+        )
         self.assertEqual(retval, callback.return_value)

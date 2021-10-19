@@ -36,20 +36,24 @@ class PikaInstrumentor(BaseInstrumentor):  # type: ignore
     # pylint: disable=attribute-defined-outside-init
     @staticmethod
     def _instrument_consumers(
-        consumers_dict: Dict[str, Callable[..., Any]], tracer: Tracer
+        consumers_dict: Dict[str, Callable[..., Any]],
+        tracer: Tracer,
+        consume_hook: utils.HookT = None,
     ) -> Any:
         for key, callback in consumers_dict.items():
             decorated_callback = utils._decorate_callback(
-                callback, tracer, key
+                callback, tracer, key, consume_hook
             )
             setattr(decorated_callback, "_original_callback", callback)
             consumers_dict[key] = decorated_callback
 
     @staticmethod
-    def _instrument_basic_publish(channel: Channel, tracer: Tracer) -> None:
+    def _instrument_basic_publish(
+        channel: Channel, tracer: Tracer, publish_hook: utils.HookT = None
+    ) -> None:
         original_function = getattr(channel, "basic_publish")
         decorated_function = utils._decorate_basic_publish(
-            original_function, channel, tracer
+            original_function, channel, tracer, publish_hook
         )
         setattr(decorated_function, "_original_function", original_function)
         channel.__setattr__("basic_publish", decorated_function)
@@ -57,10 +61,12 @@ class PikaInstrumentor(BaseInstrumentor):  # type: ignore
 
     @staticmethod
     def _instrument_channel_functions(
-        channel: Channel, tracer: Tracer
+        channel: Channel, tracer: Tracer, publish_hook: utils.HookT = None
     ) -> None:
         if hasattr(channel, "basic_publish"):
-            PikaInstrumentor._instrument_basic_publish(channel, tracer)
+            PikaInstrumentor._instrument_basic_publish(
+                channel, tracer, publish_hook
+            )
 
     @staticmethod
     def _uninstrument_channel_functions(channel: Channel) -> None:
@@ -73,7 +79,10 @@ class PikaInstrumentor(BaseInstrumentor):  # type: ignore
 
     @staticmethod
     def instrument_channel(
-        channel: Channel, tracer_provider: Optional[TracerProvider] = None,
+        channel: Channel,
+        tracer_provider: Optional[TracerProvider] = None,
+        publish_hook: utils.HookT = None,
+        consume_hook: utils.HookT = None,
     ) -> None:
         if not hasattr(channel, "_is_instrumented_by_opentelemetry"):
             channel._is_instrumented_by_opentelemetry = False
@@ -88,9 +97,11 @@ class PikaInstrumentor(BaseInstrumentor):  # type: ignore
             return
         if channel._impl._consumers:
             PikaInstrumentor._instrument_consumers(
-                channel._impl._consumers, tracer
+                channel._impl._consumers, tracer, consume_hook
             )
-        PikaInstrumentor._instrument_channel_functions(channel, tracer)
+        PikaInstrumentor._instrument_channel_functions(
+            channel, tracer, publish_hook
+        )
 
     @staticmethod
     def uninstrument_channel(channel: Channel) -> None:
@@ -111,19 +122,34 @@ class PikaInstrumentor(BaseInstrumentor):  # type: ignore
         PikaInstrumentor._uninstrument_channel_functions(channel)
 
     def _decorate_channel_function(
-        self, tracer_provider: Optional[TracerProvider]
+        self,
+        tracer_provider: Optional[TracerProvider],
+        publish_hook: utils.HookT = None,
+        consume_hook: utils.HookT = None,
     ) -> None:
         def wrapper(wrapped, instance, args, kwargs):
             channel = wrapped(*args, **kwargs)
-            self.instrument_channel(channel, tracer_provider=tracer_provider)
+            self.instrument_channel(
+                channel,
+                tracer_provider=tracer_provider,
+                publish_hook=publish_hook,
+                consume_hook=consume_hook,
+            )
             return channel
 
         wrapt.wrap_function_wrapper(BlockingConnection, "channel", wrapper)
 
     def _instrument(self, **kwargs: Dict[str, Any]) -> None:
         tracer_provider: TracerProvider = kwargs.get("tracer_provider", None)
+        publish_hook: utils.HookT = kwargs.get("publish_hook", None)
+        consume_hook: utils.HookT = kwargs.get("consume_hook", None)
+
         self.__setattr__("__opentelemetry_tracer_provider", tracer_provider)
-        self._decorate_channel_function(tracer_provider)
+        self._decorate_channel_function(
+            tracer_provider,
+            publish_hook=publish_hook,
+            consume_hook=consume_hook,
+        )
 
     def _uninstrument(self, **kwargs: Dict[str, Any]) -> None:
         if hasattr(self, "__opentelemetry_tracer_provider"):
