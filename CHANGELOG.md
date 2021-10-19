@@ -5,7 +5,11 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [Unreleased](https://github.com/open-telemetry/opentelemetry-python/compare/v1.6.0-0.25b0...HEAD)
+## [Unreleased](https://github.com/open-telemetry/opentelemetry-python/compare/v1.6.1-0.25b1...HEAD)
+- `opentelemetry-sdk-extension-aws` & `opentelemetry-propagator-aws` Release AWS Python SDK Extension as 2.0.1 and AWS Propagator as 1.0.1
+  ([#753](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/753))
+
+## [1.6.1-0.25b1](https://github.com/open-telemetry/opentelemetry-python/releases/tag/v1.6.1-0.25b1) - 2021-10-18
 
 ### Changed
 - `opentelemetry-util-http` no longer contains an instrumentation entrypoint and will not be loaded
@@ -16,6 +20,8 @@ automatically by the auto instrumentor.
   ([#740](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/740))
 - `opentelemetry-instrumentation-botocore` Add extension for DynamoDB
   ([#735](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/735))
+- `opentelemetry-sdk-extension-aws` & `opentelemetry-propagator-aws` Remove unnecessary dependencies on `opentelemetry-test`
+  ([#752](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/752))
 
 ## [1.6.0-0.25b0](https://github.com/open-telemetry/opentelemetry-python/releases/tag/v1.6.0-0.25b0) - 2021-10-13
 ### Added
