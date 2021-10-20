@@ -155,7 +155,7 @@ def _get_attributes_from_url(url):
 def _get_attributes_from_cursor(vendor, cursor, attrs):
     """Attempt to set db connection attributes by introspecting the cursor."""
     if vendor == "postgresql":
-        info = getattr(getattr(cursor, 'connection', None), 'info', None)
+        info = getattr(getattr(cursor, "connection", None), "info", None)
         if not info:
             return attrs
 
@@ -166,9 +166,9 @@ def _get_attributes_from_cursor(vendor, cursor, attrs):
             attrs[SpanAttributes.NET_TRANSPORT] = NetTransportValues.UNIX.value
             if info.port:
                 # postgresql enforces this pattern on all socket names
-                attrs[
-                    SpanAttributes.NET_PEER_NAME
-                ] = os.path.join(info.host, f'.s.PGSQL.{info.port}')
+                attrs[SpanAttributes.NET_PEER_NAME] = os.path.join(
+                    info.host, f".s.PGSQL.{info.port}"
+                )
         else:
             attrs[
                 SpanAttributes.NET_TRANSPORT
