@@ -95,6 +95,7 @@ created span and some other contextual information. Example:
         client_request_hook=client_request_hook,
         client_response_hook=client_resposne_hook
     )
+
 API
 ---
 """
