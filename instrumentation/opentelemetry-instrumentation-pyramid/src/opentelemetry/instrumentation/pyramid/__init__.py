@@ -81,7 +81,7 @@ Exclude lists
 *************
 To exclude certain URLs from being tracked, set the environment variable ``OTEL_PYTHON_PYRAMID_EXCLUDED_URLS`` with comma delimited regexes representing which URLs to exclude.
 
-For example, 
+For example,
 
 ::
 

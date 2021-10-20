@@ -79,7 +79,7 @@ Utilize request/reponse hooks to execute custom logic to be performed before/aft
         if span and span.is_recording():
             span.set_attribute("custom_user_attribute_from_response_hook", "some-value")
 
-   AioHttpClientInstrumentor().instrument(request_hook=request_hook, response_hook=response_hook) 
+   AioHttpClientInstrumentor().instrument(request_hook=request_hook, response_hook=response_hook)
 
 API
 ---

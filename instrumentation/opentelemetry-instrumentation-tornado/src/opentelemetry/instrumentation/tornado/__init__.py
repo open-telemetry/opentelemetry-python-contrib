@@ -39,9 +39,9 @@ Configuration
 
 The following environment variables are supported as configuration options:
 
-- OTEL_PYTHON_TORNADO_EXCLUDED_URLS 
+- OTEL_PYTHON_TORNADO_EXCLUDED_URLS
 
-A comma separated list of paths that should not be automatically traced. For example, if this is set to 
+A comma separated list of paths that should not be automatically traced. For example, if this is set to
 
 ::
 
@@ -52,7 +52,7 @@ Then any requests made to ``/healthz`` and ``/ping`` will not be automatically t
 Request attributes
 ********************
 To extract certain attributes from Tornado's request object and use them as span attributes, set the environment variable ``OTEL_PYTHON_TORNADO_TRACED_REQUEST_ATTRS`` to a comma
-delimited list of request attribute names. 
+delimited list of request attribute names.
 
 For example,
 

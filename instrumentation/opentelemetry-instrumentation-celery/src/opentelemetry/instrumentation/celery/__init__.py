@@ -47,8 +47,8 @@ Usage
 
     add.delay(42, 50)
 
-Setting up tracing 
---------------------
+Setting up tracing
+------------------
 
 When tracing a celery worker process, tracing and instrumention both must be initialized after the celery worker
 process is initialized. This is required for any tracing components that might use threading to work correctly

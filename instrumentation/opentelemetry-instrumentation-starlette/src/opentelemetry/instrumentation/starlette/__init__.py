@@ -63,6 +63,7 @@ The client response hook is called with the internal span and an ASGI event whic
     def client_response_hook(span: Span, message: dict):
         if span and span.is_recording():
             span.set_attribute("custom_user_attribute_from_response_hook", "some-value")
+
    StarletteInstrumentor().instrument(server_request_hook=server_request_hook, client_request_hook=client_request_hook, client_response_hook=client_response_hook)
 
 API
