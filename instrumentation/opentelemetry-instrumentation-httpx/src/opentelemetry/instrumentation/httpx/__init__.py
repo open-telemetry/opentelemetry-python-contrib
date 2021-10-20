@@ -72,7 +72,7 @@ If you need to uninstrument clients, there are two options available.
 
      # Uninstrument a specific client
      HTTPXClientInstrumentor.uninstrument_client(client)
-     
+
      # Uninstrument all clients
      HTTPXClientInstrumentor().uninstrument()
 

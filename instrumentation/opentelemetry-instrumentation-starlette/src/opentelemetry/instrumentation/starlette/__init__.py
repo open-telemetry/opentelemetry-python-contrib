@@ -54,6 +54,7 @@ scope object for every incoming request. The client request hook is called with 
 The client response hook is called with the internal span and an ASGI event which is sent as a dictionary for when the method send is called.
 
 .. code-block:: python
+
     def server_request_hook(span: Span, scope: dict):
         if span and span.is_recording():
             span.set_attribute("custom_user_attribute_from_request_hook", "some-value")
