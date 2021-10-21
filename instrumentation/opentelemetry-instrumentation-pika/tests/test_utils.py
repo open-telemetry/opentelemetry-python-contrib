@@ -40,13 +40,10 @@ class TestUtils(TestCase):
         task_name = "test.test"
         span_kind = mock.MagicMock(spec=SpanKind)
         get_value.return_value = None
-        ctx = mock.MagicMock()
-        _ = utils._get_span(
-            tracer, channel, properties, task_name, span_kind, ctx
-        )
+        _ = utils._get_span(tracer, channel, properties, task_name, span_kind)
         generate_span_name.assert_called_once()
         tracer.start_span.assert_called_once_with(
-            context=ctx, name=generate_span_name.return_value, kind=span_kind
+            name=generate_span_name.return_value, kind=span_kind
         )
         enrich_span.assert_called_once()
 
@@ -200,7 +197,6 @@ class TestUtils(TestCase):
             properties,
             span_kind=SpanKind.CONSUMER,
             task_name=mock_task_name,
-            ctx=extract.return_value,
             operation=MessagingOperationValues.RECEIVE,
         )
         use_span.assert_called_once_with(
@@ -213,12 +209,10 @@ class TestUtils(TestCase):
 
     @mock.patch("opentelemetry.instrumentation.pika.utils._get_span")
     @mock.patch("opentelemetry.propagate.inject")
-    @mock.patch("opentelemetry.context.get_current")
     @mock.patch("opentelemetry.trace.use_span")
     def test_decorate_basic_publish(
         self,
         use_span: mock.MagicMock,
-        get_current: mock.MagicMock,
         inject: mock.MagicMock,
         get_span: mock.MagicMock,
     ) -> None:
@@ -234,14 +228,12 @@ class TestUtils(TestCase):
         retval = decorated_basic_publish(
             channel, method, mock_body, properties
         )
-        get_current.assert_called_once()
         get_span.assert_called_once_with(
             tracer,
             channel,
             properties,
             span_kind=SpanKind.PRODUCER,
             task_name="(temporary)",
-            ctx=get_current.return_value,
             operation=None,
         )
         use_span.assert_called_once_with(
@@ -256,14 +248,12 @@ class TestUtils(TestCase):
 
     @mock.patch("opentelemetry.instrumentation.pika.utils._get_span")
     @mock.patch("opentelemetry.propagate.inject")
-    @mock.patch("opentelemetry.context.get_current")
     @mock.patch("opentelemetry.trace.use_span")
     @mock.patch("pika.spec.BasicProperties.__new__")
     def test_decorate_basic_publish_no_properties(
         self,
         basic_properties: mock.MagicMock,
         use_span: mock.MagicMock,
-        get_current: mock.MagicMock,
         inject: mock.MagicMock,
         get_span: mock.MagicMock,
     ) -> None:
@@ -277,7 +267,6 @@ class TestUtils(TestCase):
         )
         retval = decorated_basic_publish(channel, method, body=mock_body)
         basic_properties.assert_called_once_with(BasicProperties, headers={})
-        get_current.assert_called_once()
         use_span.assert_called_once_with(
             get_span.return_value, end_on_exit=True
         )
