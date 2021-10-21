@@ -281,9 +281,10 @@ class TestUtils(TestCase):
         inject.assert_called_once_with(basic_properties.return_value.headers)
         self.assertEqual(retval, callback.return_value)
 
+    @staticmethod
     @mock.patch("opentelemetry.instrumentation.pika.utils._get_span")
     def test_decorate_basic_publish_published_message_to_queue(
-        self, get_span: mock.MagicMock,
+        get_span: mock.MagicMock,
     ) -> None:
         callback = mock.MagicMock()
         tracer = mock.MagicMock()
