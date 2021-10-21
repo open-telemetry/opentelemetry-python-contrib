@@ -293,6 +293,7 @@ class TestUtils(TestCase):
         routing_key = "test-routing-key"
         properties = mock.MagicMock()
         mock_body = b"mock_body"
+
         decorated_basic_publish = utils._decorate_basic_publish(
             callback, channel, tracer
         )
