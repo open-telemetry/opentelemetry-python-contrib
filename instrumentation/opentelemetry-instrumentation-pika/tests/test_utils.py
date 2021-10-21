@@ -11,6 +11,7 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
+import typing
 from unittest import TestCase, mock
 
 from pika.channel import Channel
@@ -38,9 +39,10 @@ class TestUtils(TestCase):
         channel = mock.MagicMock()
         properties = mock.MagicMock()
         task_name = "test.test"
+        destination = "myqueue"
         span_kind = mock.MagicMock(spec=SpanKind)
         get_value.return_value = None
-        _ = utils._get_span(tracer, channel, properties, task_name, span_kind)
+        _ = utils._get_span(tracer, channel, properties, task_name, destination, span_kind)
         generate_span_name.assert_called_once()
         tracer.start_span.assert_called_once_with(
             name=generate_span_name.return_value, kind=span_kind
@@ -182,6 +184,7 @@ class TestUtils(TestCase):
         tracer = mock.MagicMock()
         channel = mock.MagicMock(spec=Channel)
         method = mock.MagicMock(spec=Basic.Deliver)
+        method.exchange = "test_exchange"
         properties = mock.MagicMock()
         mock_body = b"mock_body"
         decorated_callback = utils._decorate_callback(
@@ -195,6 +198,7 @@ class TestUtils(TestCase):
             tracer,
             channel,
             properties,
+            destination=method.exchange,
             span_kind=SpanKind.CONSUMER,
             task_name=mock_task_name,
             operation=MessagingOperationValues.RECEIVE,
@@ -219,19 +223,21 @@ class TestUtils(TestCase):
         callback = mock.MagicMock()
         tracer = mock.MagicMock()
         channel = mock.MagicMock(spec=Channel)
-        method = mock.MagicMock(spec=Basic.Deliver)
+        exchange_name = "test-exchange"
+        routing_key = "test-routing-key"
         properties = mock.MagicMock()
         mock_body = b"mock_body"
         decorated_basic_publish = utils._decorate_basic_publish(
             callback, channel, tracer
         )
         retval = decorated_basic_publish(
-            channel, method, mock_body, properties
+            exchange_name, routing_key, mock_body, properties
         )
         get_span.assert_called_once_with(
             tracer,
             channel,
             properties,
+            destination=exchange_name,
             span_kind=SpanKind.PRODUCER,
             task_name="(temporary)",
             operation=None,
@@ -242,7 +248,7 @@ class TestUtils(TestCase):
         get_span.return_value.is_recording.assert_called_once()
         inject.assert_called_once_with(properties.headers)
         callback.assert_called_once_with(
-            channel, method, mock_body, properties, False
+            exchange_name, routing_key, mock_body, properties, False
         )
         self.assertEqual(retval, callback.return_value)
 
@@ -273,3 +279,28 @@ class TestUtils(TestCase):
         get_span.return_value.is_recording.assert_called_once()
         inject.assert_called_once_with(basic_properties.return_value.headers)
         self.assertEqual(retval, callback.return_value)
+
+    @mock.patch("opentelemetry.instrumentation.pika.utils._get_span")
+    def test_decorate_basic_publish_published_message_to_queue(
+        self,
+        get_span: mock.MagicMock,
+    ) -> None:
+        callback = mock.MagicMock()
+        tracer = mock.MagicMock()
+        channel = mock.MagicMock(spec=Channel)
+        exchange_name = ""
+        routing_key = "test-routing-key"
+        properties = mock.MagicMock()
+        mock_body = b"mock_body"
+        decorated_basic_publish = utils._decorate_basic_publish(callback, channel, tracer)
+        decorated_basic_publish(exchange_name, routing_key, mock_body, properties)
+
+        get_span.assert_called_once_with(
+            tracer,
+            channel,
+            properties,
+            destination=routing_key,
+            span_kind=SpanKind.PRODUCER,
+            task_name="(temporary)",
+            operation=None,
+        )

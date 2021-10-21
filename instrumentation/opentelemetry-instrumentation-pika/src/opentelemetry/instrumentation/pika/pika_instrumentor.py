@@ -12,7 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 from logging import getLogger
-from typing import Any, Callable, Collection, Dict, Optional
+from typing import Any, Collection, Dict, Optional
 
 import wrapt
 from pika.adapters import BlockingConnection

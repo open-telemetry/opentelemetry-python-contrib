@@ -51,13 +51,16 @@ def _decorate_callback(
             tracer,
             channel,
             properties,
+            destination=method.exchange if method.exchange else method.routing_key,
             span_kind=SpanKind.CONSUMER,
             task_name=task_name,
             operation=MessagingOperationValues.RECEIVE,
         )
-        with trace.use_span(span, end_on_exit=True):
-            retval = callback(channel, method, properties, body)
-        context.detach(token)
+        try:
+            with trace.use_span(span, end_on_exit=True):
+                retval = callback(channel, method, properties, body)
+        finally:
+            context.detach(token)
         return retval
 
     return decorated_callback
@@ -83,6 +86,7 @@ def _decorate_basic_publish(
             tracer,
             channel,
             properties,
+            destination=exchange if exchange else routing_key,
             span_kind=SpanKind.PRODUCER,
             task_name="(temporary)",
             operation=None,
@@ -107,6 +111,7 @@ def _get_span(
     channel: Channel,
     properties: BasicProperties,
     task_name: str,
+    destination: str,
     span_kind: SpanKind,
     operation: Optional[MessagingOperationValues] = None,
 ) -> Optional[Span]:
@@ -116,7 +121,7 @@ def _get_span(
         return None
     task_name = properties.type if properties.type else task_name
     span = tracer.start_span(
-        name=_generate_span_name("pika", operation), kind=span_kind,
+        name=_generate_span_name(destination, operation), kind=span_kind,
     )
     if span.is_recording():
         _enrich_span(span, channel, properties, task_name, operation)

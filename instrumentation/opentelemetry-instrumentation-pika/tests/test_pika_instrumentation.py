@@ -13,7 +13,7 @@
 # limitations under the License.
 from unittest import TestCase, mock
 
-from pika.adapters import BaseConnection, BlockingConnection
+from pika.adapters import BlockingConnection
 from pika.channel import Channel
 from wrapt import BoundFunctionWrapper
 
