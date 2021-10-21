@@ -51,7 +51,9 @@ def _decorate_callback(
             tracer,
             channel,
             properties,
-            destination=method.exchange if method.exchange else method.routing_key,
+            destination=method.exchange
+            if method.exchange
+            else method.routing_key,
             span_kind=SpanKind.CONSUMER,
             task_name=task_name,
             operation=MessagingOperationValues.RECEIVE,

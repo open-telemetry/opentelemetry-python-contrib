@@ -11,7 +11,6 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-import typing
 from unittest import TestCase, mock
 
 from pika.channel import Channel
@@ -42,7 +41,9 @@ class TestUtils(TestCase):
         destination = "myqueue"
         span_kind = mock.MagicMock(spec=SpanKind)
         get_value.return_value = None
-        _ = utils._get_span(tracer, channel, properties, task_name, destination, span_kind)
+        _ = utils._get_span(
+            tracer, channel, properties, task_name, destination, span_kind
+        )
         generate_span_name.assert_called_once()
         tracer.start_span.assert_called_once_with(
             name=generate_span_name.return_value, kind=span_kind
@@ -282,8 +283,7 @@ class TestUtils(TestCase):
 
     @mock.patch("opentelemetry.instrumentation.pika.utils._get_span")
     def test_decorate_basic_publish_published_message_to_queue(
-        self,
-        get_span: mock.MagicMock,
+        self, get_span: mock.MagicMock,
     ) -> None:
         callback = mock.MagicMock()
         tracer = mock.MagicMock()
@@ -292,8 +292,12 @@ class TestUtils(TestCase):
         routing_key = "test-routing-key"
         properties = mock.MagicMock()
         mock_body = b"mock_body"
-        decorated_basic_publish = utils._decorate_basic_publish(callback, channel, tracer)
-        decorated_basic_publish(exchange_name, routing_key, mock_body, properties)
+        decorated_basic_publish = utils._decorate_basic_publish(
+            callback, channel, tracer
+        )
+        decorated_basic_publish(
+            exchange_name, routing_key, mock_body, properties
+        )
 
         get_span.assert_called_once_with(
             tracer,
