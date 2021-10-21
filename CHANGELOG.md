@@ -5,31 +5,51 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [Unreleased](https://github.com/open-telemetry/opentelemetry-python/compare/v1.6.0-0.25b0...HEAD)
+## [Unreleased](https://github.com/open-telemetry/opentelemetry-python/compare/v1.6.2-0.25b2...HEAD)
+### Fixed
 
+- `opentelemetry-instrumentation-asgi` now explicitly depends on asgiref as it uses the package instead of instrumenting it.
+  ([#765](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/765))
 - Add support for Python 3.10
   ([#742](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/742))
 
-## [1.6.0-0.25b0](https://github.com/open-telemetry/opentelemetry-python/releases/tag/v1.6.0-0.25b0) - 2021-10-13
-
-
-- `opentelemetry-sdk-extension-aws` Release AWS Python SDK Extension as 1.0.0
-  ([#667](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/667))
-- `opentelemetry-instrumentation-sqlalchemy` Added `packaging` dependency
-  ([#713](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/713))
-- `opentelemetry-sdk-extension-aws` Move AWS X-Ray Propagator into its own `opentelemetry-propagators-aws` package
-  ([#720](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/720))
-- `opentelemetry-instrumentation-sqlalchemy` Respect provided tracer provider when instrumenting SQLAlchemy
-  ([#728](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/728))
-- `opentelemetry-propagators-aws-xray` Rename `AwsXRayFormat` to `AwsXRayPropagator`
-  ([#729](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/729))
-- `opentelemetry-instrumentation-flask` Fix `RuntimeError: Working outside of request context`
-  ([#734](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/734))
+## [1.6.2-0.25b2](https://github.com/open-telemetry/opentelemetry-python/releases/tag/v1.6.2-0.25b2) - 2021-10-19
 
 ### Changed
-- `opentelemetry-instrumentation-jinja2` Allow instrumentation of newer Jinja2 versions.
 
+- `opentelemetry-sdk-extension-aws` & `opentelemetry-propagator-aws` Release AWS Python SDK Extension as 2.0.1 and AWS Propagator as 1.0.1
+  ([#753](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/753))
+- `opentelemetry-instrumentation-pika` Add `_decorate_basic_consume` to ensure post instrumentation `basic_consume` calls are also instrumented.
+  ([#759](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/759))
+
+### Fixed
+
+- `opentelemetry-distro` uses the correct entrypoint name which was updated in the core release of 1.6.0 but the distro was not updated with it
+  ([#755](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/755))
+
+## [1.6.1-0.25b1](https://github.com/open-telemetry/opentelemetry-python/releases/tag/v1.6.1-0.25b1) - 2021-10-18
+
+### Changed
+- `opentelemetry-util-http` no longer contains an instrumentation entrypoint and will not be loaded
+  automatically by the auto instrumentor.
+  ([#745](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/745))
+- `opentelemetry-instrumentation-pika` Bugfix use properties.headers. It will prevent the header injection from raising.
+  ([#740](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/740))
+- `opentelemetry-instrumentation-botocore` Add extension for DynamoDB
+  ([#735](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/735))
+- `opentelemetry-sdk-extension-aws` & `opentelemetry-propagator-aws` Remove unnecessary dependencies on `opentelemetry-test`
+  ([#752](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/752))
+
+## [1.6.0-0.25b0](https://github.com/open-telemetry/opentelemetry-python/releases/tag/v1.6.0-0.25b0) - 2021-10-13
 ### Added
+- `opentelemetry-sdk-extension-aws` Release AWS Python SDK Extension as 1.0.0
+  ([#667](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/667))
+- `opentelemetry-instrumentation-urllib3`, `opentelemetry-instrumentation-requests`
+  The `net.peer.ip` attribute is set to the IP of the connected HTTP server or proxy
+  using a new instrumentor in `opententelemetry-util-http`
+  ([#661](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/661))
+- `opentelemetry-instrumentation-pymongo` Add check for suppression key in PyMongo.
+  ([#736](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/736))
 - `opentelemetry-instrumentation-elasticsearch` Added `response_hook` and `request_hook` callbacks
   ([#670](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/670))
 - `opentelemetry-instrumentation-redis` added request_hook and response_hook callbacks passed as arguments to the instrument method.
@@ -48,6 +68,18 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   ([#391](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/391))
 
 ### Changed
+- `opentelemetry-instrumentation-flask` Fix `RuntimeError: Working outside of request context`
+  ([#734](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/734))
+- `opentelemetry-propagators-aws-xray` Rename `AwsXRayFormat` to `AwsXRayPropagator`
+  ([#729](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/729))
+- `opentelemetry-instrumentation-sqlalchemy` Respect provided tracer provider when instrumenting SQLAlchemy
+  ([#728](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/728))
+- `opentelemetry-sdk-extension-aws` Move AWS X-Ray Propagator into its own `opentelemetry-propagators-aws` package
+  ([#720](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/720))
+- `opentelemetry-instrumentation-sqlalchemy` Added `packaging` dependency
+  ([#713](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/713))
+- `opentelemetry-instrumentation-jinja2` Allow instrumentation of newer Jinja2 versions.
+  ([#712](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/712))
 - `opentelemetry-instrumentation-botocore` Make common span attributes compliant with semantic conventions
   ([#674](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/674))
 - `opentelemetry-sdk-extension-aws` Release AWS Python SDK Extension as 1.0.0
@@ -58,22 +90,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   ([#663](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/663))
 - `opentelemetry-instrumentation-botocore` Introduce instrumentation extensions
   ([#718](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/718))
-
-### Changed
-
 - `opentelemetry-instrumentation-urllib3` Updated `_RequestHookT` with two additional fields - the request body and the request headers
-([#660](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/660))
-
-### Changed
+  ([#660](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/660))
 - Tests for Falcon 3 support
   ([#644](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/644))
-
-### Added
-
-- `opentelemetry-instrumentation-urllib3`, `opentelemetry-instrumentation-requests`
-  The `net.peer.ip` attribute is set to the IP of the connected HTTP server or proxy
-  using a new instrumentor in `opententelemetry-util-http`
-  ([#661](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/661))
 
 ## [1.5.0-0.24b0](https://github.com/open-telemetry/opentelemetry-python/releases/tag/v1.5.0-0.24b0) - 2021-08-26
 

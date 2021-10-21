@@ -20,7 +20,6 @@ from unittest.mock import Mock, patch
 import botocore.session
 from botocore.exceptions import ParamValidationError
 from moto import (  # pylint: disable=import-error
-    mock_dynamodb2,
     mock_ec2,
     mock_iam,
     mock_kinesis,
@@ -179,15 +178,17 @@ class TestBotocoreInstrumentor(TestBase):
 
         location = {"LocationConstraint": "us-west-2"}
         s3.create_bucket(Bucket="mybucket", CreateBucketConfiguration=location)
-        self.assert_span("S3", "CreateBucket")
+        self.assert_span(
+            "S3", "CreateBucket", request_id=_REQUEST_ID_REGEX_MATCH
+        )
         self.memory_exporter.clear()
 
         s3.put_object(Key="foo", Bucket="mybucket", Body=b"bar")
-        self.assert_span("S3", "PutObject")
+        self.assert_span("S3", "PutObject", request_id=_REQUEST_ID_REGEX_MATCH)
         self.memory_exporter.clear()
 
         s3.get_object(Bucket="mybucket", Key="foo")
-        self.assert_span("S3", "GetObject")
+        self.assert_span("S3", "GetObject", request_id=_REQUEST_ID_REGEX_MATCH)
 
     @mock_sqs
     def test_sqs_client(self):
@@ -417,48 +418,6 @@ class TestBotocoreInstrumentor(TestBase):
         finally:
             detach(token)
         self.assertEqual(0, len(self.get_finished_spans()))
-
-    @mock_dynamodb2
-    def test_dynamodb_client(self):
-        ddb = self._make_client("dynamodb")
-
-        test_table_name = "test_table_name"
-
-        ddb.create_table(
-            AttributeDefinitions=[
-                {"AttributeName": "id", "AttributeType": "S"},
-            ],
-            KeySchema=[{"AttributeName": "id", "KeyType": "HASH"}],
-            ProvisionedThroughput={
-                "ReadCapacityUnits": 5,
-                "WriteCapacityUnits": 5,
-            },
-            TableName=test_table_name,
-        )
-        self.assert_span(
-            "DynamoDB",
-            "CreateTable",
-            request_id=_REQUEST_ID_REGEX_MATCH,
-            attributes={"aws.table_name": test_table_name},
-        )
-        self.memory_exporter.clear()
-
-        ddb.put_item(TableName=test_table_name, Item={"id": {"S": "test_key"}})
-        self.assert_span(
-            "DynamoDB",
-            "PutItem",
-            request_id=_REQUEST_ID_REGEX_MATCH,
-            attributes={"aws.table_name": test_table_name},
-        )
-        self.memory_exporter.clear()
-
-        ddb.get_item(TableName=test_table_name, Key={"id": {"S": "test_key"}})
-        self.assert_span(
-            "DynamoDB",
-            "GetItem",
-            request_id=_REQUEST_ID_REGEX_MATCH,
-            attributes={"aws.table_name": test_table_name},
-        )
 
     @mock_s3
     def test_request_hook(self):
