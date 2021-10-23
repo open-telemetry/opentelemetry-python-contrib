@@ -176,8 +176,7 @@ class OpenTelemetryClientInterceptor(
             try:
                 result = invoker(request_or_iterator, metadata)
 
-                for response in result:
-                    yield response
+                yield from result
             except grpc.RpcError as err:
                 span.set_status(Status(StatusCode.ERROR))
                 span.set_attribute(
