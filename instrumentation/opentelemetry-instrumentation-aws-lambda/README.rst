@@ -21,46 +21,6 @@ Installation
     pip install opentelemetry-instrumentation-aws-lambda
 
 
-Usage
------
-
-.. code:: python
-
-    # Copy this snippet into an AWS Lambda function
-
-    import boto3
-    from opentelemetry.instrumentation.botocore import AwsBotocoreInstrumentor
-    from opentelemetry.instrumentation.aws_lambda import AwsLambdaInstrumentor
-
-
-    # Enable instrumentation
-    AwsBotocoreInstrumentor().instrument()
-    AwsLambdaInstrumentor().instrument()
-
-    # Lambda function
-    def lambda_handler(event, context):
-        s3 = boto3.resource('s3')
-        for bucket in s3.buckets.all():
-            print(bucket.name)
-
-        return "200 OK"
-
-Using a custom `event_context_extractor` to parent traces with a Trace Context
-found in the Lambda Event.
-
-.. code:: python
-
-    from opentelemetry.instrumentation.aws_lambda import AwsLambdaInstrumentor
-
-    def custom_event_context_extractor(lambda_event):
-        # If the `TraceContextTextMapPropagator` is the global propagator, we
-        # can use it to parse out the context from the HTTP Headers.
-        return get_global_textmap().extract(lambda_event["foo"]["headers"])
-
-    AwsLambdaInstrumentor().instrument(
-        event_context_extractor=custom_event_context_extractor
-    )
-
 References
 ----------
 
