@@ -115,9 +115,6 @@ class TestFalconInstrumentation(TestFalconBase, WsgiTestBase):
         span = spans[0]
         self.assertEqual(span.name, "HTTP GET")
         self.assertEqual(span.status.status_code, StatusCode.UNSET)
-        self.assertEqual(
-            span.status.description, "NotFound",
-        )
         self.assertSpanHasAttributes(
             span,
             {
