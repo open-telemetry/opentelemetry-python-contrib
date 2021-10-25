@@ -52,7 +52,9 @@ class TestUtils(TestBase):
             (HTTPStatus.PERMANENT_REDIRECT, StatusCode.ERROR),
         ):
             with self.subTest(status_code=status_code):
-                actual = http_status_to_status_code(int(status_code), allow_redirect=False)
+                actual = http_status_to_status_code(
+                    int(status_code), allow_redirect=False
+                )
                 self.assertEqual(actual, expected, status_code)
 
     def test_http_status_to_status_code_server(self):
@@ -75,5 +77,7 @@ class TestUtils(TestBase):
             (99, StatusCode.ERROR),
         ):
             with self.subTest(status_code=status_code):
-                actual = http_status_to_status_code(int(status_code), server_span=True)
+                actual = http_status_to_status_code(
+                    int(status_code), server_span=True
+                )
                 self.assertEqual(actual, expected, status_code)
