@@ -138,13 +138,8 @@ class DjangoInstrumentor(BaseInstrumentor):
         # https://docs.djangoproject.com/en/3.0/topics/http/middleware/#activating-middleware
         # https://docs.djangoproject.com/en/3.0/ref/middleware/#middleware-ordering
 
-        settings_middleware = getattr(settings, "MIDDLEWARE", [])
-        self._middleware_setting = "MIDDLEWARE"
-        # In Django versions 1.x, setting MIDDLEWARE_CLASSES can be used as a legacy
-        # alternative to MIDDLEWARE.
-        if settings_middleware is None and not DJANGO_2_0:
-            settings_middleware = getattr(settings, "MIDDLEWARE_CLASSES", [])
-            self._middleware_setting = "MIDDLEWARE_CLASSES"
+        _middleware_setting = self._get_middleware_setting()
+        settings_middleware = getattr(settings, _middleware_setting, [])
 
         # Django allows to specify middlewares as a tuple, so we convert this tuple to a
         # list, otherwise we wouldn't be able to call append/remove
@@ -152,10 +147,11 @@ class DjangoInstrumentor(BaseInstrumentor):
             settings_middleware = list(settings_middleware)
 
         settings_middleware.insert(0, self._opentelemetry_middleware)
-        setattr(settings, self._middleware_setting, settings_middleware)
+        setattr(settings, _middleware_setting, settings_middleware)
 
     def _uninstrument(self, **kwargs):
-        settings_middleware = getattr(settings, self._middleware_setting, None)
+        _middleware_setting = self._get_middleware_setting()
+        settings_middleware = getattr(settings, _middleware_setting, None)
 
         # FIXME This is starting to smell like trouble. We have 2 mechanisms
         # that may make this condition be True, one implemented in
@@ -168,4 +164,11 @@ class DjangoInstrumentor(BaseInstrumentor):
             return
 
         settings_middleware.remove(self._opentelemetry_middleware)
-        setattr(settings, self._middleware_setting, settings_middleware)
+        setattr(settings, _middleware_setting, settings_middleware)
+
+    def _get_middleware_setting(self) -> str:
+        # In Django versions 1.x, setting MIDDLEWARE_CLASSES can be used as a legacy
+        # alternative to MIDDLEWARE.
+        if not DJANGO_2_0 and getattr(settings, "MIDDLEWARE", []) is None:
+            return "MIDDLEWARE_CLASSES"
+        return "MIDDLEWARE"
