@@ -79,6 +79,27 @@ Usage (Web.py)
         )
         server.start()
 
+Configuration
+-------------
+
+Request/Response hooks
+**********************
+
+Utilize request/reponse hooks to execute custom logic to be performed before/after performing a request. Environ is an instance of WSGIEnvironment.
+Response_headers is a list of key-value (tuples) representing the response headers returned from the response.
+
+.. code-block:: python
+
+    def request_hook(span: Span, environ: WSGIEnvironment):
+        if span and span.is_recording():
+            span.set_attribute("custom_user_attribute_from_request_hook", "some-value")
+
+    def response_hook(span: Span, environ: WSGIEnvironment, status: str, response_headers: List):
+        if span and span.is_recording():
+            span.set_attribute("custom_user_attribute_from_response_hook", "some-value")
+
+    OpenTelemetryMiddleware(request_hook=request_hook, response_hook=response_hook)
+
 API
 ---
 """
@@ -295,8 +316,7 @@ class OpenTelemetryMiddleware:
 def _end_span_after_iterating(iterable, span, tracer, token):
     try:
         with trace.use_span(span):
-            for yielded in iterable:
-                yield yielded
+            yield from iterable
     finally:
         close = getattr(iterable, "close", None)
         if close:
