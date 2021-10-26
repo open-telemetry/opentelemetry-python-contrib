@@ -238,11 +238,7 @@ def create_trace_config(
 
         if trace_config_ctx.span.is_recording():
             trace_config_ctx.span.set_status(
-                Status(
-                    http_status_to_status_code(
-                        int(params.response.status), server_span=True
-                    )
-                )
+                Status(http_status_to_status_code(int(params.response.status)))
             )
             trace_config_ctx.span.set_attribute(
                 SpanAttributes.HTTP_STATUS_CODE, params.response.status
