@@ -83,6 +83,7 @@ from logging import getLogger
 from os import environ
 from typing import Collection
 
+from django import VERSION as django_version
 from django.conf import settings
 
 from opentelemetry.instrumentation.django.environment_variables import (
@@ -93,6 +94,8 @@ from opentelemetry.instrumentation.django.package import _instruments
 from opentelemetry.instrumentation.django.version import __version__
 from opentelemetry.instrumentation.instrumentor import BaseInstrumentor
 from opentelemetry.trace import get_tracer
+
+DJANGO_2_0 = django_version >= (2, 0)
 
 _logger = getLogger(__name__)
 
@@ -136,16 +139,23 @@ class DjangoInstrumentor(BaseInstrumentor):
         # https://docs.djangoproject.com/en/3.0/ref/middleware/#middleware-ordering
 
         settings_middleware = getattr(settings, "MIDDLEWARE", [])
+        self._middleware_setting = "MIDDLEWARE"
+        # In Django versions 1.x, setting MIDDLEWARE_CLASSES can be used as a legacy
+        # alternative to MIDDLEWARE.
+        if settings_middleware is None and not DJANGO_2_0:
+            settings_middleware = getattr(settings, "MIDDLEWARE_CLASSES", [])
+            self._middleware_setting = "MIDDLEWARE_CLASSES"
+
         # Django allows to specify middlewares as a tuple, so we convert this tuple to a
         # list, otherwise we wouldn't be able to call append/remove
         if isinstance(settings_middleware, tuple):
             settings_middleware = list(settings_middleware)
 
         settings_middleware.insert(0, self._opentelemetry_middleware)
-        setattr(settings, "MIDDLEWARE", settings_middleware)
+        setattr(settings, self._middleware_setting, settings_middleware)
 
     def _uninstrument(self, **kwargs):
-        settings_middleware = getattr(settings, "MIDDLEWARE", None)
+        settings_middleware = getattr(settings, self._middleware_setting, None)
 
         # FIXME This is starting to smell like trouble. We have 2 mechanisms
         # that may make this condition be True, one implemented in
@@ -158,4 +168,4 @@ class DjangoInstrumentor(BaseInstrumentor):
             return
 
         settings_middleware.remove(self._opentelemetry_middleware)
-        setattr(settings, "MIDDLEWARE", settings_middleware)
+        setattr(settings, self._middleware_setting, settings_middleware)
