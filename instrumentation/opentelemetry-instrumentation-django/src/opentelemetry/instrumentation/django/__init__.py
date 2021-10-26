@@ -100,6 +100,15 @@ DJANGO_2_0 = django_version >= (2, 0)
 _logger = getLogger(__name__)
 
 
+def _get_django_middleware_setting() -> str:
+    # In Django versions 1.x, setting MIDDLEWARE_CLASSES can be used as a legacy
+    # alternative to MIDDLEWARE. This is the case when `settings.MIDDLEWARE` has
+    # its default value (`None`).
+    if not DJANGO_2_0 and getattr(settings, "MIDDLEWARE", []) is None:
+        return "MIDDLEWARE_CLASSES"
+    return "MIDDLEWARE"
+
+
 class DjangoInstrumentor(BaseInstrumentor):
     """An instrumentor for Django
 
@@ -138,7 +147,7 @@ class DjangoInstrumentor(BaseInstrumentor):
         # https://docs.djangoproject.com/en/3.0/topics/http/middleware/#activating-middleware
         # https://docs.djangoproject.com/en/3.0/ref/middleware/#middleware-ordering
 
-        _middleware_setting = self._get_middleware_setting()
+        _middleware_setting = _get_django_middleware_setting()
         settings_middleware = getattr(settings, _middleware_setting, [])
 
         # Django allows to specify middlewares as a tuple, so we convert this tuple to a
@@ -150,7 +159,7 @@ class DjangoInstrumentor(BaseInstrumentor):
         setattr(settings, _middleware_setting, settings_middleware)
 
     def _uninstrument(self, **kwargs):
-        _middleware_setting = self._get_middleware_setting()
+        _middleware_setting = _get_django_middleware_setting()
         settings_middleware = getattr(settings, _middleware_setting, None)
 
         # FIXME This is starting to smell like trouble. We have 2 mechanisms
@@ -165,10 +174,3 @@ class DjangoInstrumentor(BaseInstrumentor):
 
         settings_middleware.remove(self._opentelemetry_middleware)
         setattr(settings, _middleware_setting, settings_middleware)
-
-    def _get_middleware_setting(self) -> str:
-        # In Django versions 1.x, setting MIDDLEWARE_CLASSES can be used as a legacy
-        # alternative to MIDDLEWARE.
-        if not DJANGO_2_0 and getattr(settings, "MIDDLEWARE", []) is None:
-            return "MIDDLEWARE_CLASSES"
-        return "MIDDLEWARE"
