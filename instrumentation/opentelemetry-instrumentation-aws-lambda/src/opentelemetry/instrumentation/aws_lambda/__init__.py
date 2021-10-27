@@ -185,13 +185,10 @@ def _instrument(
 
         # See more:
         # https://docs.aws.amazon.com/lambda/latest/dg/with-sqs.html
-        if (
-            lambda_event
-            and isinstance(lambda_event, dict)
-            and "Records" in lambda_event
-        ):
-            span_kind = SpanKind.CONSUMER
-        else:
+        try:
+            if lambda_event["Records"][0]["eventSource"] == "aws:sqs":
+                span_kind = SpanKind.CONSUMER
+        except Exception:  # pylint: disable=broad-except
             span_kind = SpanKind.SERVER
 
         tracer = get_tracer(__name__, __version__, tracer_provider)
