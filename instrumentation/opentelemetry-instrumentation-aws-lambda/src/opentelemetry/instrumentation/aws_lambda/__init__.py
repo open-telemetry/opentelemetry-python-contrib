@@ -188,7 +188,7 @@ def _instrument(
         try:
             if lambda_event["Records"][0]["eventSource"] == "aws:sqs":
                 span_kind = SpanKind.CONSUMER
-        except Exception:  # pylint: disable=broad-except
+        except (IndexError, KeyError, TypeError):
             span_kind = SpanKind.SERVER
 
         tracer = get_tracer(__name__, __version__, tracer_provider)
