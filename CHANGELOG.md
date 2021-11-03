@@ -11,6 +11,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - `opentelemetry-instrumentation-asgi` now returns a `traceresponse` response header.
   ([#817](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/817))
+- `opentelemetry-instrumentation-kafka-python` added kafka-python module instrumentation.
+  ([#814](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/814))
 
 ### Fixed
 
@@ -31,7 +33,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - `opentelemetry-instrumentation-tornado` Add support instrumentation for Tornado 5.1.1
   ([#812](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/812))
-
+  
 ## [1.7.1-0.26b1](https://github.com/open-telemetry/opentelemetry-python/releases/tag/v1.7.0-0.26b0) - 2021-11-11
 
 ### Added
