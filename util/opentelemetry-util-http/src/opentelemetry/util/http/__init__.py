@@ -49,11 +49,12 @@ def get_traced_request_attrs(instrumentation):
 
 
 def get_excluded_urls(instrumentation: str) -> ExcludeList:
+    # Get instrumentation-specific excluded URLs. If not set, retrieve them
+    # from generic variable.
     excluded_urls = environ.get(
-        _root.format(f"{instrumentation}_EXCLUDED_URLS"), ""
+        _root.format(f"{instrumentation}_EXCLUDED_URLS"),
+        environ.get(_root.format("EXCLUDED_URLS"), ""),
     )
-    if not excluded_urls:
-        excluded_urls = environ.get(_root.format("EXCLUDED_URLS"), "")
 
     return parse_excluded_urls(excluded_urls)
 
