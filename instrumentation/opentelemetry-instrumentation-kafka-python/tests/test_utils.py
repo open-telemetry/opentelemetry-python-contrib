@@ -76,6 +76,8 @@ class TestUtils(TestCase):
         )
         self.assertEqual(retval, original_send_callback.return_value)
 
+
+    @mock.patch("opentelemetry.trace.get_current_span")
     @mock.patch("opentelemetry.trace.use_span")
     @mock.patch(
         "opentelemetry.instrumentation.kafka.utils._start_consume_span_with_extracted_context"
@@ -90,14 +92,16 @@ class TestUtils(TestCase):
         enrich_span: mock.MagicMock,
         start_consume_span_with_extracted_context: mock.MagicMock,
         use_span: mock.MagicMock,
+        get_current_span: mock.MagicMock,
     ) -> None:
         tracer = mock.MagicMock()
         consume_hook = mock.MagicMock()
         original_next_callback = mock.MagicMock()
         kafka_consumer = mock.MagicMock()
-        context_manager = mock.MagicMock()
 
         wrapped_next = _wrap_next(tracer, context_manager, consume_hook)
+
+        wrapped_next = _wrap_next(tracer, consume_hook)
         record = wrapped_next(
             original_next_callback, kafka_consumer, self.args, self.kwargs
         )
@@ -105,7 +109,9 @@ class TestUtils(TestCase):
         extract_bootstrap_servers.assert_called_once_with(kafka_consumer)
         bootstrap_servers = extract_bootstrap_servers.return_value
 
-        context_manager.close.assert_called_once_with(kafka_consumer)
+        get_current_span.assert_called_once()
+        current_span = get_current_span.return_value
+        current_span.end.assert_called_once()
 
         original_next_callback.assert_called_once_with(
             *self.args, **self.kwargs
@@ -113,11 +119,7 @@ class TestUtils(TestCase):
         self.assertEqual(record, original_next_callback.return_value)
 
         start_consume_span_with_extracted_context.assert_called_once_with(
-            tracer,
-            context_manager,
-            kafka_consumer,
-            record.headers,
-            record.topic,
+            tracer, record.headers, record.topic
         )
         span = start_consume_span_with_extracted_context.return_value
         use_span.assert_called_once_with(span)
@@ -126,21 +128,22 @@ class TestUtils(TestCase):
         )
         consume_hook.assert_called_once_with(span, self.args, self.kwargs)
 
+
+    @mock.patch("opentelemetry.context.attach")
     @mock.patch("opentelemetry.trace.set_span_in_context")
     @mock.patch("opentelemetry.propagate.extract")
     def test_start_consume_span_with_extracted_context(
         self,
         extract: mock.MagicMock,
         set_span_in_context: mock.MagicMock,
+        attach: mock.MagicMock,
     ):
         tracer = mock.MagicMock()
-        context_manager = mock.MagicMock()
         kafka_consumer = mock.MagicMock()
         expected_span_name = _get_span_name("receive", self.topic_name)
 
         _start_consume_span_with_extracted_context(
             tracer,
-            context_manager,
             kafka_consumer,
             self.headers,
             self.topic_name,
@@ -154,6 +157,4 @@ class TestUtils(TestCase):
         span = tracer.start_span.return_value
         set_span_in_context.assert_called_once_with(span, context)
         new_context = set_span_in_context.return_value
-        context_manager.set_consumer_context.assert_called_once_with(
-            kafka_consumer, new_context, span
-        )
+        attach.assert_called_once_with(new_context)
