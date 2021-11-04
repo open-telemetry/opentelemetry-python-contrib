@@ -15,7 +15,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - `opentelemetry-instrumentation-aws-lambda` Add instrumentation for AWS Lambda Service - Implementation (Part 2/2)
   ([#777](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/777))
 - `opentelemetry-instrumentation-pymongo` Add `request_hook`, `response_hook` and `failed_hook` callbacks passed as arguments to the instrument method
-  ([#TODO](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/TODO))
+  ([#793](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/793))
   
 ### Fixed
 
