@@ -16,7 +16,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   ([#777](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/777))
 - `opentelemetry-instrumentation-pymongo` Add `request_hook`, `response_hook` and `failed_hook` callbacks passed as arguments to the instrument method
   ([#793](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/793))
-  
+- `opentelemetry-instrumentation-pymysql` Add support for PyMySQL 1.x series
+  ([#792](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/792))
+
 ### Fixed
 
 - `opentelemetry-instrumentation-asgi` now explicitly depends on asgiref as it uses the package instead of instrumenting it.
