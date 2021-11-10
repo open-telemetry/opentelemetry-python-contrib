@@ -79,7 +79,8 @@ Configuration
 
 Exclude lists
 *************
-To exclude certain URLs from being tracked, set the environment variable ``OTEL_PYTHON_PYRAMID_EXCLUDED_URLS`` with comma delimited regexes representing which URLs to exclude.
+To exclude certain URLs from being tracked, set the environment variable ``OTEL_PYTHON_PYRAMID_EXCLUDED_URLS``
+(or ``OTEL_PYTHON_EXCLUDED_URLS`` as fallback) with comma delimited regexes representing which URLs to exclude.
 
 For example,
 
@@ -153,7 +154,7 @@ class PyramidInstrumentor(BaseInstrumentor):
         _wrap("pyramid.config", "Configurator.__init__", _traced_init)
 
     def _uninstrument(self, **kwargs):
-        """"Disable Pyramid instrumentation"""
+        """ "Disable Pyramid instrumentation"""
         unwrap(Configurator, "__init__")
 
     @staticmethod
