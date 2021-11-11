@@ -12,9 +12,8 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import sys
 from logging import getLogger
-from os import environ, path
+from os import environ
 from os.path import abspath, dirname, pathsep
 from re import sub
 
@@ -29,7 +28,7 @@ from opentelemetry.instrumentation.environment_variables import (
 )
 from opentelemetry.instrumentation.version import __version__
 
-logger = getLogger(__file__)
+logger = getLogger(__name__)
 
 
 def _load_distros() -> BaseDistro:
@@ -126,17 +125,4 @@ def initialize():
         )
 
 
-if (
-    hasattr(sys, "argv")
-    and sys.argv[0].split(path.sep)[-1] == "celery"
-    and "worker" in sys.argv[1:]
-):
-    from celery.signals import worker_process_init  # pylint:disable=E0401
-
-    @worker_process_init.connect(weak=False)
-    def init_celery(*args, **kwargs):
-        initialize()
-
-
-else:
-    initialize()
+initialize()

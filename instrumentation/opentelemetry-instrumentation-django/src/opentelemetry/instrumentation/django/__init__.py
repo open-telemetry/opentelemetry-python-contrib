@@ -32,7 +32,8 @@ Configuration
 
 Exclude lists
 *************
-To exclude certain URLs from being tracked, set the environment variable ``OTEL_PYTHON_DJANGO_EXCLUDED_URLS`` with comma delimited regexes representing which URLs to exclude.
+To exclude certain URLs from being tracked, set the environment variable ``OTEL_PYTHON_DJANGO_EXCLUDED_URLS``
+(or ``OTEL_PYTHON_EXCLUDED_URLS`` as fallback) with comma delimited regexes representing which URLs to exclude.
 
 For example,
 
@@ -131,7 +132,9 @@ class DjangoInstrumentor(BaseInstrumentor):
 
         tracer_provider = kwargs.get("tracer_provider")
         tracer = get_tracer(
-            __name__, __version__, tracer_provider=tracer_provider,
+            __name__,
+            __version__,
+            tracer_provider=tracer_provider,
         )
 
         _DjangoMiddleware._tracer = tracer
