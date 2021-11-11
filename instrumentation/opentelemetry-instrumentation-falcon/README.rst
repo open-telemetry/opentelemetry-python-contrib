@@ -21,7 +21,8 @@ Configuration
 
 Exclude lists
 *************
-To exclude certain URLs from being tracked, set the environment variable ``OTEL_PYTHON_FALCON_EXCLUDED_URLS`` with comma delimited regexes representing which URLs to exclude.
+To exclude certain URLs from being tracked, set the environment variable ``OTEL_PYTHON_FALCON_EXCLUDED_URLS``
+(or ``OTEL_PYTHON_EXCLUDED_URLS`` as fallback) with comma delimited regexes representing which URLs to exclude.
 
 For example,
 
@@ -34,7 +35,7 @@ will exclude requests such as ``https://site/client/123/info`` and ``https://sit
 Request attributes
 ********************
 To extract certain attributes from Falcon's request object and use them as span attributes, set the environment variable ``OTEL_PYTHON_FALCON_TRACED_REQUEST_ATTRS`` to a comma
-delimited list of request attribute names. 
+delimited list of request attribute names.
 
 For example,
 
@@ -45,6 +46,22 @@ For example,
 will extract path_info and content_type attributes from every traced request and add them as span attritbues.
 
 Falcon Request object reference: https://falcon.readthedocs.io/en/stable/api/request_and_response.html#id1
+
+
+Request/Response hooks
+**********************
+The instrumentation supports specifying request and response hooks. These are functions that get called back by the instrumentation right after a Span is created for a request
+and right before the span is finished while processing a response. The hooks can be configured as follows:
+
+::
+
+    def request_hook(span, req):
+        pass
+
+    def response_hook(span, req, resp):
+        pass
+
+    FalconInstrumentation().instrument(request_hook=request_hook, response_hook=response_hook)
 
 References
 ----------

@@ -32,7 +32,8 @@ Configuration
 
 Exclude lists
 *************
-To exclude certain URLs from being tracked, set the environment variable ``OTEL_PYTHON_DJANGO_EXCLUDED_URLS`` with comma delimited regexes representing which URLs to exclude.
+To exclude certain URLs from being tracked, set the environment variable ``OTEL_PYTHON_DJANGO_EXCLUDED_URLS``
+(or ``OTEL_PYTHON_EXCLUDED_URLS`` as fallback) with comma delimited regexes representing which URLs to exclude.
 
 For example,
 
@@ -71,12 +72,19 @@ and right before the span is finished while processing a response. The hooks can
         pass
 
     DjangoInstrumentation().instrument(request_hook=request_hook, response_hook=response_hook)
+
+Django Request object: https://docs.djangoproject.com/en/3.1/ref/request-response/#httprequest-objects
+Django Response object: https://docs.djangoproject.com/en/3.1/ref/request-response/#httpresponse-objects
+
+API
+---
 """
 
 from logging import getLogger
 from os import environ
 from typing import Collection
 
+from django import VERSION as django_version
 from django.conf import settings
 
 from opentelemetry.instrumentation.django.environment_variables import (
@@ -88,7 +96,18 @@ from opentelemetry.instrumentation.django.version import __version__
 from opentelemetry.instrumentation.instrumentor import BaseInstrumentor
 from opentelemetry.trace import get_tracer
 
+DJANGO_2_0 = django_version >= (2, 0)
+
 _logger = getLogger(__name__)
+
+
+def _get_django_middleware_setting() -> str:
+    # In Django versions 1.x, setting MIDDLEWARE_CLASSES can be used as a legacy
+    # alternative to MIDDLEWARE. This is the case when `settings.MIDDLEWARE` has
+    # its default value (`None`).
+    if not DJANGO_2_0 and getattr(settings, "MIDDLEWARE", []) is None:
+        return "MIDDLEWARE_CLASSES"
+    return "MIDDLEWARE"
 
 
 class DjangoInstrumentor(BaseInstrumentor):
@@ -113,7 +132,9 @@ class DjangoInstrumentor(BaseInstrumentor):
 
         tracer_provider = kwargs.get("tracer_provider")
         tracer = get_tracer(
-            __name__, __version__, tracer_provider=tracer_provider,
+            __name__,
+            __version__,
+            tracer_provider=tracer_provider,
         )
 
         _DjangoMiddleware._tracer = tracer
@@ -129,17 +150,20 @@ class DjangoInstrumentor(BaseInstrumentor):
         # https://docs.djangoproject.com/en/3.0/topics/http/middleware/#activating-middleware
         # https://docs.djangoproject.com/en/3.0/ref/middleware/#middleware-ordering
 
-        settings_middleware = getattr(settings, "MIDDLEWARE", [])
+        _middleware_setting = _get_django_middleware_setting()
+        settings_middleware = getattr(settings, _middleware_setting, [])
+
         # Django allows to specify middlewares as a tuple, so we convert this tuple to a
         # list, otherwise we wouldn't be able to call append/remove
         if isinstance(settings_middleware, tuple):
             settings_middleware = list(settings_middleware)
 
         settings_middleware.insert(0, self._opentelemetry_middleware)
-        setattr(settings, "MIDDLEWARE", settings_middleware)
+        setattr(settings, _middleware_setting, settings_middleware)
 
     def _uninstrument(self, **kwargs):
-        settings_middleware = getattr(settings, "MIDDLEWARE", None)
+        _middleware_setting = _get_django_middleware_setting()
+        settings_middleware = getattr(settings, _middleware_setting, None)
 
         # FIXME This is starting to smell like trouble. We have 2 mechanisms
         # that may make this condition be True, one implemented in
@@ -152,4 +176,4 @@ class DjangoInstrumentor(BaseInstrumentor):
             return
 
         settings_middleware.remove(self._opentelemetry_middleware)
-        setattr(settings, "MIDDLEWARE", settings_middleware)
+        setattr(settings, _middleware_setting, settings_middleware)

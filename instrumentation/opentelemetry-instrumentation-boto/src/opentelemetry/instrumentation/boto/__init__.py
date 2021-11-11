@@ -123,7 +123,8 @@ class BotoInstrumentor(BaseInstrumentor):
         endpoint_name = getattr(instance, "host").split(".")[0]
 
         with self._tracer.start_as_current_span(
-            f"{endpoint_name}.command", kind=SpanKind.CONSUMER,
+            f"{endpoint_name}.command",
+            kind=SpanKind.CONSUMER,
         ) as span:
             span.set_attribute("endpoint", endpoint_name)
             if args:
@@ -135,7 +136,11 @@ class BotoInstrumentor(BaseInstrumentor):
 
             if span.is_recording():
                 add_span_arg_tags(
-                    span, endpoint_name, args, args_name, traced_args,
+                    span,
+                    endpoint_name,
+                    args,
+                    args_name,
+                    traced_args,
                 )
 
                 # Obtaining region name
@@ -235,11 +240,11 @@ def add_span_arg_tags(span, aws_service, args, args_names, args_traced):
     # Do not trace `Key Management Service` or `Secure Token Service` API calls
     # over concerns of security leaks.
     if aws_service not in {"kms", "sts"}:
-        tags = dict(
-            (name, value)
+        tags = {
+            name: value
             for (name, value) in zip(args_names, args)
             if name in args_traced
-        )
+        }
         tags = flatten_dict(tags)
 
         for param_key, value in tags.items():

@@ -32,8 +32,11 @@ Usage
     req = request.Request('https://postman-echo.com/post', method="POST")
     r = request.urlopen(req)
 
-Hooks
-*******
+Configuration
+-------------
+
+Request/Response hooks
+**********************
 
 The urllib instrumentation supports extending tracing behavior with the help of
 request and response hooks. These are functions that are called back by the instrumentation
@@ -243,7 +246,9 @@ def _uninstrument_from(instr_root, restore_as_bound_func=False):
     instr_func_name = "open"
     instr_func = getattr(instr_root, instr_func_name)
     if not getattr(
-        instr_func, "opentelemetry_instrumentation_urllib_applied", False,
+        instr_func,
+        "opentelemetry_instrumentation_urllib_applied",
+        False,
     ):
         return
 

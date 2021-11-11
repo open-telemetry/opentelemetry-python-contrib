@@ -34,8 +34,36 @@ Usage
     app.listen(8080)
     tornado.ioloop.IOLoop.current().start()
 
-Hooks
-*******
+Configuration
+-------------
+
+The following environment variables are supported as configuration options:
+
+- OTEL_PYTHON_TORNADO_EXCLUDED_URLS
+
+A comma separated list of paths that should not be automatically traced. For example, if this is set to
+
+::
+
+    export OTEL_PYTHON_TORNADO_EXLUDED_URLS='/healthz,/ping'
+
+Then any requests made to ``/healthz`` and ``/ping`` will not be automatically traced.
+
+Request attributes
+********************
+To extract certain attributes from Tornado's request object and use them as span attributes, set the environment variable ``OTEL_PYTHON_TORNADO_TRACED_REQUEST_ATTRS`` to a comma
+delimited list of request attribute names.
+
+For example,
+
+::
+
+    export OTEL_PYTHON_TORNADO_TRACED_REQUEST_ATTRS='uri,query'
+
+will extract path_info and content_type attributes from every traced request and add them as span attributes.
+
+Request/Response hooks
+**********************
 
 Tornado instrumentation supports extending tracing behaviour with the help of hooks.
 Its ``instrument()`` method accepts three optional functions that get called back with the
@@ -317,7 +345,9 @@ def _finish_span(tracer, handler, error=None):
 
     if ctx.span.is_recording():
         ctx.span.set_attribute(SpanAttributes.HTTP_STATUS_CODE, status_code)
-        otel_status_code = http_status_to_status_code(status_code)
+        otel_status_code = http_status_to_status_code(
+            status_code, server_span=True
+        )
         otel_status_description = None
         if otel_status_code is StatusCode.ERROR:
             otel_status_description = reason

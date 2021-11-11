@@ -1,3 +1,4 @@
+from logging import getLogger
 from typing import Any, Callable, List, Optional
 
 from pika.channel import Channel
@@ -13,6 +14,8 @@ from opentelemetry.semconv.trace import (
 from opentelemetry.trace import SpanKind, Tracer
 from opentelemetry.trace.span import Span
 
+_LOG = getLogger(__name__)
+
 
 class _PikaGetter(Getter):  # type: ignore
     def get(self, carrier: CarrierT, key: str) -> Optional[List[str]]:
@@ -27,11 +30,18 @@ class _PikaGetter(Getter):  # type: ignore
 
 _pika_getter = _PikaGetter()
 
+HookT = Callable[[Span, bytes, BasicProperties], None]
+
+
+def dummy_callback(span: Span, body: bytes, properties: BasicProperties):
+    ...
+
 
 def _decorate_callback(
     callback: Callable[[Channel, Basic.Deliver, BasicProperties, bytes], Any],
     tracer: Tracer,
     task_name: str,
+    consume_hook: HookT = dummy_callback,
 ):
     def decorated_callback(
         channel: Channel,
@@ -46,17 +56,27 @@ def _decorate_callback(
         ctx = propagate.extract(properties.headers, getter=_pika_getter)
         if not ctx:
             ctx = context.get_current()
+        token = context.attach(ctx)
         span = _get_span(
             tracer,
             channel,
             properties,
+            destination=method.exchange
+            if method.exchange
+            else method.routing_key,
             span_kind=SpanKind.CONSUMER,
             task_name=task_name,
-            ctx=ctx,
             operation=MessagingOperationValues.RECEIVE,
         )
-        with trace.use_span(span, end_on_exit=True):
-            retval = callback(channel, method, properties, body)
+        try:
+            with trace.use_span(span, end_on_exit=True):
+                try:
+                    consume_hook(span, body, properties)
+                except Exception as hook_exception:  # pylint: disable=W0703
+                    _LOG.exception(hook_exception)
+                retval = callback(channel, method, properties, body)
+        finally:
+            context.detach(token)
         return retval
 
     return decorated_callback
@@ -66,6 +86,7 @@ def _decorate_basic_publish(
     original_function: Callable[[str, str, bytes, BasicProperties, bool], Any],
     channel: Channel,
     tracer: Tracer,
+    publish_hook: HookT = dummy_callback,
 ):
     def decorated_function(
         exchange: str,
@@ -78,14 +99,13 @@ def _decorate_basic_publish(
             properties = BasicProperties(headers={})
         if properties.headers is None:
             properties.headers = {}
-        ctx = context.get_current()
         span = _get_span(
             tracer,
             channel,
             properties,
+            destination=exchange if exchange else routing_key,
             span_kind=SpanKind.PRODUCER,
             task_name="(temporary)",
-            ctx=ctx,
             operation=None,
         )
         if not span:
@@ -95,6 +115,10 @@ def _decorate_basic_publish(
         with trace.use_span(span, end_on_exit=True):
             if span.is_recording():
                 propagate.inject(properties.headers)
+                try:
+                    publish_hook(span, body, properties)
+                except Exception as hook_exception:  # pylint: disable=W0703
+                    _LOG.exception(hook_exception)
             retval = original_function(
                 exchange, routing_key, body, properties, mandatory
             )
@@ -108,8 +132,8 @@ def _get_span(
     channel: Channel,
     properties: BasicProperties,
     task_name: str,
+    destination: str,
     span_kind: SpanKind,
-    ctx: context.Context,
     operation: Optional[MessagingOperationValues] = None,
 ) -> Optional[Span]:
     if context.get_value("suppress_instrumentation") or context.get_value(
@@ -118,8 +142,7 @@ def _get_span(
         return None
     task_name = properties.type if properties.type else task_name
     span = tracer.start_span(
-        context=ctx,
-        name=_generate_span_name(task_name, operation),
+        name=_generate_span_name(destination, operation),
         kind=span_kind,
     )
     if span.is_recording():
