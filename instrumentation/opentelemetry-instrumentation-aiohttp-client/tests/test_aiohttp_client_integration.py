@@ -92,13 +92,14 @@ class TestAioHttpIntegration(TestBase):
         method: str = "GET",
         status_code: int = HTTPStatus.OK,
         request_handler: typing.Callable = None,
+        body: typing.Any = None,
         **kwargs,
     ) -> typing.Tuple[str, int]:
         """Helper to start an aiohttp test server and send an actual HTTP request to it."""
 
         async def default_handler(request):
             assert "traceparent" in request.headers
-            return aiohttp.web.Response(status=int(status_code))
+            return aiohttp.web.Response(body=body, status=int(status_code))
 
         async def client_request(server: aiohttp.test_utils.TestServer):
             async with aiohttp.test_utils.TestClient(
@@ -207,6 +208,49 @@ class TestAioHttpIntegration(TestBase):
             )
             self.assertIn("response_hook_attr", span.attributes)
             self.assertEqual(span.attributes["response_hook_attr"], "value")
+        self.memory_exporter.clear()
+
+    def test_async_hook(self):
+        method = "PATCH"
+        path = "/some/path"
+
+        async def response_hook(
+            span: Span,
+            params: typing.Union[
+                aiohttp.TraceRequestEndParams,
+                aiohttp.TraceRequestExceptionParams,
+            ],
+        ):
+            text = await params.response.text()
+            span.set_attribute("response_hook_attr", text)
+
+        host, port = self._http_request(
+            trace_config=aiohttp_client.create_trace_config(
+                response_hook=response_hook,
+            ),
+            method=method,
+            url=path,
+            status_code=HTTPStatus.OK,
+            body="test",
+        )
+
+        for span in self.memory_exporter.get_finished_spans():
+            self.assertEqual(
+                (span.status.status_code, span.status.description),
+                (StatusCode.UNSET, None),
+            )
+            self.assertEqual(
+                span.attributes[SpanAttributes.HTTP_METHOD], method
+            )
+            self.assertEqual(
+                span.attributes[SpanAttributes.HTTP_URL],
+                f"http://{host}:{port}{path}",
+            )
+            self.assertEqual(
+                span.attributes[SpanAttributes.HTTP_STATUS_CODE], HTTPStatus.OK
+            )
+            self.assertIn("response_hook_attr", span.attributes)
+            self.assertEqual(span.attributes["response_hook_attr"], "test")
         self.memory_exporter.clear()
 
     def test_url_filter_option(self):

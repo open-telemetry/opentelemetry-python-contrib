@@ -85,6 +85,7 @@ API
 ---
 """
 
+import asyncio
 import types
 import typing
 from typing import Collection
@@ -121,7 +122,7 @@ _ResponseHookT = typing.Optional[
                 aiohttp.TraceRequestExceptionParams,
             ],
         ],
-        None,
+        typing.Awaitable[None],
     ]
 ]
 
@@ -235,7 +236,10 @@ def create_trace_config(
             return
 
         if callable(response_hook):
-            response_hook(trace_config_ctx.span, params)
+            if asyncio.iscoroutinefunction(response_hook):
+                await response_hook(trace_config_ctx.span, params)
+            else:
+                response_hook(trace_config_ctx.span, params)
 
         if trace_config_ctx.span.is_recording():
             trace_config_ctx.span.set_status(
@@ -255,7 +259,10 @@ def create_trace_config(
             return
 
         if callable(response_hook):
-            response_hook(trace_config_ctx.span, params)
+            if asyncio.iscoroutinefunction(response_hook):
+                await response_hook(trace_config_ctx.span, params)
+            else:
+                response_hook(trace_config_ctx.span, params)
 
         if trace_config_ctx.span.is_recording() and params.exception:
             trace_config_ctx.span.set_status(Status(StatusCode.ERROR))
