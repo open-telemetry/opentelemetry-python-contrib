@@ -5,6 +5,7 @@
 | [opentelemetry-instrumentation-aiopg](./opentelemetry-instrumentation-aiopg) | aiopg >= 0.13.0, < 1.3.0 |
 | [opentelemetry-instrumentation-asgi](./opentelemetry-instrumentation-asgi) | asgiref ~= 3.0 |
 | [opentelemetry-instrumentation-asyncpg](./opentelemetry-instrumentation-asyncpg) | asyncpg >= 0.12.0 |
+| [opentelemetry-instrumentation-aws-lambda](./opentelemetry-instrumentation-aws-lambda) | aws_lambda |
 | [opentelemetry-instrumentation-boto](./opentelemetry-instrumentation-boto) | boto~=2.0 |
 | [opentelemetry-instrumentation-botocore](./opentelemetry-instrumentation-botocore) | botocore ~= 1.0 |
 | [opentelemetry-instrumentation-celery](./opentelemetry-instrumentation-celery) | celery >= 4.0, < 6.0 |
@@ -23,7 +24,7 @@
 | [opentelemetry-instrumentation-psycopg2](./opentelemetry-instrumentation-psycopg2) | psycopg2 >= 2.7.3.1 |
 | [opentelemetry-instrumentation-pymemcache](./opentelemetry-instrumentation-pymemcache) | pymemcache ~= 1.3 |
 | [opentelemetry-instrumentation-pymongo](./opentelemetry-instrumentation-pymongo) | pymongo ~= 3.1 |
-| [opentelemetry-instrumentation-pymysql](./opentelemetry-instrumentation-pymysql) | PyMySQL ~= 0.10.1 |
+| [opentelemetry-instrumentation-pymysql](./opentelemetry-instrumentation-pymysql) | PyMySQL < 2 |
 | [opentelemetry-instrumentation-pyramid](./opentelemetry-instrumentation-pyramid) | pyramid >= 1.7 |
 | [opentelemetry-instrumentation-redis](./opentelemetry-instrumentation-redis) | redis >= 2.6 |
 | [opentelemetry-instrumentation-requests](./opentelemetry-instrumentation-requests) | requests ~= 2.0 |

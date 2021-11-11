@@ -6,6 +6,20 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased](https://github.com/open-telemetry/opentelemetry-python/compare/v1.6.2-0.25b2...HEAD)
+- `opentelemetry-instrumentation-aws-lambda` Add instrumentation for AWS Lambda Service - pkg metadata files (Part 1/2)
+  ([#739](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/739))
+- Add support for Python 3.10
+  ([#742](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/742))
+- `opentelemetry-instrumentation` Add `setuptools` to `install_requires`
+  ([#781](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/781))
+- `opentelemetry-instrumentation-aws-lambda` Add instrumentation for AWS Lambda Service - Implementation (Part 2/2)
+  ([#777](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/777))
+- `opentelemetry-instrumentation-pymongo` Add `request_hook`, `response_hook` and `failed_hook` callbacks passed as arguments to the instrument method
+  ([#793](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/793))
+- `opentelemetry-instrumentation-pymysql` Add support for PyMySQL 1.x series
+  ([#792](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/792))
+- Add support for generic OTEL_PYTHON_EXCLUDED_URLS variable
+  ([#790](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/790))
 
 ### Fixed
 
@@ -17,6 +31,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   ([#774](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/774))
 - `opentelemetry-instrumentation-django` Fixed carrier usage on ASGI requests.
   ([#767](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/767))
+- Don't set Span Status on 4xx http status code for SpanKind.SERVER spans
+  ([#776](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/776))
+- `opentelemetry-instrumentation-django` Fixed instrumentation and tests for all Django major versions.
+  ([#780](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/780))
 
 ## [1.6.2-0.25b2](https://github.com/open-telemetry/opentelemetry-python/releases/tag/v1.6.2-0.25b2) - 2021-10-19
 
@@ -33,6 +51,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - `opentelemetry-distro` uses the correct entrypoint name which was updated in the core release of 1.6.0 but the distro was not updated with it
   ([#755](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/755))
+
+### Added
+- `opentelemetry-instrumentation-pika` Add `publish_hook` and `consume_hook` callbacks passed as arguments to the instrument method
+  ([#763](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/763))
+
 
 ## [1.6.1-0.25b1](https://github.com/open-telemetry/opentelemetry-python/releases/tag/v1.6.1-0.25b1) - 2021-10-18
 

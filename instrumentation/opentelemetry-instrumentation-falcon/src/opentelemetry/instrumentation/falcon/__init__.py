@@ -26,7 +26,8 @@ Configuration
 
 Exclude lists
 *************
-To exclude certain URLs from being tracked, set the environment variable ``OTEL_PYTHON_FALCON_EXCLUDED_URLS`` with comma delimited regexes representing which URLs to exclude.
+To exclude certain URLs from being tracked, set the environment variable ``OTEL_PYTHON_FALCON_EXCLUDED_URLS``
+(or ``OTEL_PYTHON_EXCLUDED_URLS`` as fallback) with comma delimited regexes representing which URLs to exclude.
 
 For example,
 
@@ -222,7 +223,9 @@ class _InstrumentedFalconAPI(getattr(falcon, _instrument_app)):
             return super().__call__(env, _start_response)
         except Exception as exc:
             activation.__exit__(
-                type(exc), exc, getattr(exc, "__traceback__", None),
+                type(exc),
+                exc,
+                getattr(exc, "__traceback__", None),
             )
             context.detach(token)
             raise
@@ -299,7 +302,9 @@ class _TraceMiddleware:
             span.set_attribute(SpanAttributes.HTTP_STATUS_CODE, status_code)
             span.set_status(
                 Status(
-                    status_code=http_status_to_status_code(status_code),
+                    status_code=http_status_to_status_code(
+                        status_code, server_span=True
+                    ),
                     description=reason,
                 )
             )
