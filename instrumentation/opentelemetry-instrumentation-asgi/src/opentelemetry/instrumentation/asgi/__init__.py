@@ -160,7 +160,7 @@ def collect_request_attributes(scope):
     if query_string and http_url:
         if isinstance(query_string, bytes):
             query_string = query_string.decode("utf8")
-        http_url = http_url + ("?" + urllib.parse.unquote(query_string))
+        http_url += "?" + urllib.parse.unquote(query_string)
 
     result = {
         SpanAttributes.HTTP_SCHEME: scope.get("scheme"),
@@ -299,7 +299,8 @@ class OpenTelemetryMiddleware:
 
         try:
             with self.tracer.start_as_current_span(
-                span_name, kind=trace.SpanKind.SERVER,
+                span_name,
+                kind=trace.SpanKind.SERVER,
             ) as span:
                 if span.is_recording():
                     attributes = collect_request_attributes(scope)

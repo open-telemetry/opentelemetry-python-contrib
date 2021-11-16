@@ -12,9 +12,8 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import sys
 from logging import getLogger
-from os import environ, path
+from os import environ
 from os.path import abspath, dirname, pathsep
 from re import sub
 
@@ -27,8 +26,9 @@ from opentelemetry.instrumentation.distro import BaseDistro, DefaultDistro
 from opentelemetry.instrumentation.environment_variables import (
     OTEL_PYTHON_DISABLED_INSTRUMENTATIONS,
 )
+from opentelemetry.instrumentation.version import __version__
 
-logger = getLogger(__file__)
+logger = getLogger(__name__)
 
 
 def _load_distros() -> BaseDistro:
@@ -102,7 +102,7 @@ def _load_configurators():
             )
             continue
         try:
-            entry_point.load()().configure()  # type: ignore
+            entry_point.load()().configure(auto_instrumentation_version=__version__)  # type: ignore
             configured = entry_point.name
         except Exception as exc:  # pylint: disable=broad-except
             logger.exception("Configuration of %s failed", entry_point.name)
@@ -125,17 +125,4 @@ def initialize():
         )
 
 
-if (
-    hasattr(sys, "argv")
-    and sys.argv[0].split(path.sep)[-1] == "celery"
-    and "worker" in sys.argv[1:]
-):
-    from celery.signals import worker_process_init  # pylint:disable=E0401
-
-    @worker_process_init.connect(weak=False)
-    def init_celery(*args, **kwargs):
-        initialize()
-
-
-else:
-    initialize()
+initialize()
