@@ -155,19 +155,12 @@ class RichConsoleSpanExporter(SpanExporter):
             _child_to_tree(child, span)
 
         for span in spans:
-            if span.parent:
-                if span.parent.span_id not in parents:
-                    child = tree.add(
-                        label=Text.from_markup(
-                            f"[blue][{_ns_to_time(span.start_time)}][/blue] [bold]{span.name}[/bold], span {opentelemetry.trace.format_span_id(span.context.span_id)}"
-                        )
+            if span.parent and span.parent.span_id in parents:
+                child = parents[span.parent.span_id].add(
+                    label=Text.from_markup(
+                        f"[blue][{_ns_to_time(span.start_time)}][/blue] [bold]{span.name}[/bold], span {opentelemetry.trace.format_span_id(span.context.span_id)}"
                     )
-                else:
-                    child = parents[span.parent.span_id].add(
-                        label=Text.from_markup(
-                            f"[blue][{_ns_to_time(span.start_time)}][/blue] [bold]{span.name}[/bold], span {opentelemetry.trace.format_span_id(span.context.span_id)}"
-                        )
-                    )
+                )
             else:
                 child = tree.add(
                     label=Text.from_markup(
