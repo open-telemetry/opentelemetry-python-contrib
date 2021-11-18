@@ -12,6 +12,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - `opentelemetry-exporter-richconsole` Fixed attribute error on parentless spans.
   ([#782](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/782))
 
+- `opentelemetry-instrumentation-tornado` Add support instrumentation for Tornado 5.1.1
+  ([#812](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/812))
+  
 ## [1.7.1-0.26b1](https://github.com/open-telemetry/opentelemetry-python/releases/tag/v1.7.0-0.26b0) - 2021-11-11
 
 - `opentelemetry-instrumentation-aws-lambda` Add instrumentation for AWS Lambda Service - pkg metadata files (Part 1/2)
