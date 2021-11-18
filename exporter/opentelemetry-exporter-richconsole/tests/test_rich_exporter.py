@@ -19,8 +19,8 @@ from opentelemetry.sdk import trace
 from opentelemetry.sdk.trace.export import BatchSpanProcessor
 
 
-@pytest.fixture
-def span_processor():
+@pytest.fixture(name="span_processor")
+def fixture_span_processor():
     exporter = RichConsoleSpanExporter()
     span_processor = BatchSpanProcessor(exporter)
 
@@ -29,8 +29,8 @@ def span_processor():
     span_processor.shutdown()
 
 
-@pytest.fixture
-def tracer_provider(span_processor):
+@pytest.fixture(name="tracer_provider")
+def fixture_tracer_provider(span_processor):
     tracer_provider = trace.TracerProvider()
     tracer_provider.add_span_processor(span_processor)
 
