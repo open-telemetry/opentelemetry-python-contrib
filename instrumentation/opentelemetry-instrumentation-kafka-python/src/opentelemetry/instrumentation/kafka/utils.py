@@ -86,9 +86,7 @@ def dummy_callback(span, args, kwargs):
 
 
 class KafkaContextGetter(textmap.Getter):
-    def get(
-        self, carrier: textmap.CarrierT, key: str
-    ) -> Optional[List[str]]:
+    def get(self, carrier: textmap.CarrierT, key: str) -> Optional[List[str]]:
         if carrier is None:
             return None
 
@@ -131,7 +129,7 @@ def _enrich_span(
 
 
 def _get_span_name(operation: str, topic: str):
-    return f"kafka.{operation}: {topic}"
+    return f"{topic} {operation}"
 
 
 def _wrap_send(tracer: Tracer, produce_hook: HookT) -> Callable:
@@ -172,7 +170,7 @@ def _start_consume_span_with_extracted_context(
     tracer: Tracer, headers: List, topic: str
 ) -> Span:
     extracted_context = extract(headers, getter=_kafka_getter)
-    span_name = _get_span_name("consume", topic)
+    span_name = _get_span_name("receive", topic)
     span = tracer.start_span(
         span_name, context=extracted_context, kind=trace.SpanKind.CONSUMER
     )
@@ -186,7 +184,7 @@ def _wrap_next(tracer: Tracer, consume_hook: HookT) -> Callable:
         # End the current span if exists before processing the next record
         current_span = trace.get_current_span()
         if current_span.is_recording() and current_span.name.startswith(
-            "kafka.consume"
+            "receive"
         ):
             current_span.end()
 

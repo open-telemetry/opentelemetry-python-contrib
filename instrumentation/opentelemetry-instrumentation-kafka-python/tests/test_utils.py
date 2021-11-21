@@ -134,7 +134,7 @@ class TestUtils(TestCase):
         attach: mock.MagicMock,
     ):
         tracer = mock.MagicMock()
-        expected_span_name = _get_span_name("consume", self.topic_name)
+        expected_span_name = _get_span_name("receive", self.topic_name)
 
         _start_consume_span_with_extracted_context(
             tracer, self.headers, self.topic_name
