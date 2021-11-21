@@ -73,7 +73,7 @@ class KafkaInstrumentor(BaseInstrumentor):
             **kwargs: Optional arguments
                 ``tracer_provider``: a TracerProvider, defaults to global.
                 ``produce_hook``: a callable to be executed just before producing a message
-                ``consume _hook``: a callable to be executed just after consuming a message
+                ``consume_hook``: a callable to be executed just after consuming a message
         """
         tracer_provider = kwargs.get("tracer_provider")
         produce_hook = kwargs.get("produce_hook", dummy_callback)
@@ -84,10 +84,10 @@ class KafkaInstrumentor(BaseInstrumentor):
         )
 
         wrap_function_wrapper(
-            "kafka", "KafkaProducer.send", _wrap_send(tracer, produce_hook)
+            kafka.KafkaProducer, "send", _wrap_send(tracer, produce_hook)
         )
         wrap_function_wrapper(
-            "kafka", "KafkaConsumer.__next__", _wrap_next(tracer, consume_hook)
+            kafka.KafkaConsumer, "__next__", _wrap_next(tracer, consume_hook)
         )
 
     def _uninstrument(self, **kwargs):
