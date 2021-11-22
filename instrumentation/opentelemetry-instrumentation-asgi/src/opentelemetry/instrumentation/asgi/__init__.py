@@ -94,14 +94,20 @@ API
 ---
 """
 
+import os
 import typing
 import urllib
+from distutils.util import strtobool
 from functools import wraps
 from typing import Tuple
 
 from asgiref.compatibility import guarantee_single_callable
 
 from opentelemetry import context, trace
+
+from opentelemetry.instrumentation.asgi.environment_variables import (
+    OTEL_PYTHON_ASGI_EXCLUDE_SPAN_RECEIVE, OTEL_PYTHON_ASGI_EXCLUDE_SPAN_SEND
+)
 from opentelemetry.instrumentation.asgi.version import __version__  # noqa
 from opentelemetry.instrumentation.propagators import (
     get_global_response_propagator,
@@ -295,6 +301,8 @@ class OpenTelemetryMiddleware:
         client_request_hook: _ClientRequestHookT = None,
         client_response_hook: _ClientResponseHookT = None,
         tracer_provider=None,
+        exclude_span_receive=bool(strtobool(os.getenv(OTEL_PYTHON_ASGI_EXCLUDE_SPAN_RECEIVE, "false"))),
+        exclude_span_send=bool(strtobool(os.getenv(OTEL_PYTHON_ASGI_EXCLUDE_SPAN_SEND, "false"))),
     ):
         self.app = guarantee_single_callable(app)
         self.tracer = trace.get_tracer(__name__, __version__, tracer_provider)
@@ -305,6 +313,9 @@ class OpenTelemetryMiddleware:
         self.server_request_hook = server_request_hook
         self.client_request_hook = client_request_hook
         self.client_response_hook = client_response_hook
+
+        self.exclude_span_receive = exclude_span_receive
+        self.exclude_span_send = exclude_span_send
 
     async def __call__(self, scope, receive, send):
         """The ASGI application
@@ -350,6 +361,11 @@ class OpenTelemetryMiddleware:
                     scope,
                     send,
                 )
+
+                if self.exclude_span_send:
+                    otel_receive = receive
+                if self.exclude_span_send:
+                    otel_send = send
 
                 await self.app(scope, otel_receive, otel_send)
         finally:
