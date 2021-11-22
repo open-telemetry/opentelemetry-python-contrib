@@ -148,13 +148,13 @@ libraries = {
         "library": "psutil >= 5",
         "instrumentation": "opentelemetry-instrumentation-system-metrics==0.36b0.dev",
     },
-    "tortoiseorm": {
-        "library": "tortoise-orm >= 0.17.0",
-        "instrumentation": "opentelemetry-instrumentation-tortoiseorm==0.25b2",
-    },
     "tornado": {
         "library": "tornado >= 5.1.1",
         "instrumentation": "opentelemetry-instrumentation-tornado==0.36b0.dev",
+    },
+    "tortoiseorm": {
+        "library": "tortoise-orm >= 0.17.0",
+        "instrumentation": "opentelemetry-instrumentation-tortoiseorm==0.26b1",
     },
     "urllib3": {
         "library": "urllib3 >= 1.0.0, < 2.0.0",
