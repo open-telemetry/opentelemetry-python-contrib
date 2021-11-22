@@ -152,7 +152,7 @@ libraries = {
         "library": "tornado >= 5.1.1",
         "instrumentation": "opentelemetry-instrumentation-tornado==0.36b0.dev",
     },
-    "tortoiseorm": {
+    "tortoise-orm": {
         "library": "tortoise-orm >= 0.17.0",
         "instrumentation": "opentelemetry-instrumentation-tortoiseorm==0.26b1",
     },
