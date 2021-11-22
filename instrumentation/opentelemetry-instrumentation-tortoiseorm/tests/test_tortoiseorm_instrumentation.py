@@ -26,4 +26,3 @@ class TestTortoiseORMInstrumentor(TestBase):
     def tearDown(self):
         super().tearDown()
         TortoiseORMInstrumentor().uninstrument()
-
