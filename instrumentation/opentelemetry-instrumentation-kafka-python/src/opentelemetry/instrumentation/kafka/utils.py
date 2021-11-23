@@ -2,8 +2,11 @@ import json
 from logging import getLogger
 from typing import Callable, Dict, List, Optional
 
+from kafka import KafkaConsumer
+
 from opentelemetry import trace
-from opentelemetry.context import attach
+from opentelemetry.context import attach, detach
+from opentelemetry.context.context import Context
 from opentelemetry.propagate import extract, inject
 from opentelemetry.propagators import textmap
 from opentelemetry.semconv.trace import SpanAttributes
@@ -11,6 +14,46 @@ from opentelemetry.trace import Tracer, set_span_in_context
 from opentelemetry.trace.span import Span
 
 _LOG = getLogger(__name__)
+
+
+class KafkaInstrumentorContextManager:
+    def __init__(self):
+        self.spans = dict()
+        self.tokens = dict()
+
+    def set_consumer_context(
+        self, consumer: KafkaConsumer, context: Context, span: Span
+    ):
+        self.set_span(consumer, span)
+        self.attach_context(consumer, context)
+
+    def set_span(self, consumer: KafkaConsumer, span: Span):
+        self.close_span(consumer)
+        self.spans[consumer] = span
+
+    def close_span(self, consumer: KafkaConsumer):
+        if consumer in self.spans:
+            self.spans.get(consumer).close()
+            del self.spans[consumer]
+
+    def attach_context(self, consumer: KafkaConsumer, context: Context):
+        self.detach_context(consumer)
+        self.tokens[consumer] = attach(context)
+
+    def detach_context(self, consumer: KafkaConsumer):
+        if consumer in self.tokens:
+            detach(self.tokens.get(consumer))
+            del self.tokens[consumer]
+
+    def close(self, kafka_consumer: KafkaConsumer = None):
+        if kafka_consumer:
+            self.close_span(kafka_consumer)
+            self.detach_context(kafka_consumer)
+        else:
+            for consumer in self.spans:
+                self.close_span(consumer)
+            for consumer in self.tokens:
+                self.detach_context(consumer)
 
 
 class KafkaPropertiesExtractor:
@@ -167,7 +210,11 @@ def _wrap_send(tracer: Tracer, produce_hook: HookT) -> Callable:
 
 
 def _start_consume_span_with_extracted_context(
-    tracer: Tracer, headers: List, topic: str
+    tracer: Tracer,
+    context_manager: KafkaInstrumentorContextManager,
+    instance: KafkaConsumer,
+    headers: List,
+    topic: str,
 ) -> Span:
     extracted_context = extract(headers, getter=_kafka_getter)
     span_name = _get_span_name("receive", topic)
@@ -175,18 +222,18 @@ def _start_consume_span_with_extracted_context(
         span_name, context=extracted_context, kind=trace.SpanKind.CONSUMER
     )
     new_context = set_span_in_context(span, extracted_context)
-    attach(new_context)
+    context_manager.set_consumer_context(instance, new_context, span)
     return span
 
 
-def _wrap_next(tracer: Tracer, consume_hook: HookT) -> Callable:
+def _wrap_next(
+    tracer: Tracer,
+    context_manager: KafkaInstrumentorContextManager,
+    consume_hook: HookT,
+) -> Callable:
     def _traced_next(func, instance, args, kwargs):
         # End the current span if exists before processing the next record
-        current_span = trace.get_current_span()
-        if current_span.is_recording() and current_span.name.startswith(
-            "receive"
-        ):
-            current_span.end()
+        context_manager.close(instance)
 
         record = func(*args, **kwargs)
 
@@ -198,7 +245,7 @@ def _wrap_next(tracer: Tracer, consume_hook: HookT) -> Callable:
             )
             partition = record.partition
             span = _start_consume_span_with_extracted_context(
-                tracer, headers, topic
+                tracer, context_manager, instance, headers, topic
             )
             with trace.use_span(span):
                 _enrich_span(span, bootstrap_servers, topic, partition)

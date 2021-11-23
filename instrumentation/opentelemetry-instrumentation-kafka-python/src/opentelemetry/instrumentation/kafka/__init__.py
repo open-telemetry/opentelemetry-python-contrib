@@ -41,6 +41,7 @@ Usage
 API
 ___
 """
+import atexit
 from typing import Collection
 
 import kafka
@@ -50,6 +51,7 @@ from opentelemetry import trace
 from opentelemetry.instrumentation.instrumentor import BaseInstrumentor
 from opentelemetry.instrumentation.kafka.package import _instruments
 from opentelemetry.instrumentation.kafka.utils import (
+    KafkaInstrumentorContextManager,
     _wrap_next,
     _wrap_send,
     dummy_callback,
@@ -83,11 +85,16 @@ class KafkaInstrumentor(BaseInstrumentor):
             __name__, __version__, tracer_provider=tracer_provider
         )
 
+        context_manager = KafkaInstrumentorContextManager()
+        atexit.register(context_manager.close)
+
         wrap_function_wrapper(
             kafka.KafkaProducer, "send", _wrap_send(tracer, produce_hook)
         )
         wrap_function_wrapper(
-            kafka.KafkaConsumer, "__next__", _wrap_next(tracer, consume_hook)
+            kafka.KafkaConsumer,
+            "__next__",
+            _wrap_next(tracer, context_manager, consume_hook),
         )
 
     def _uninstrument(self, **kwargs):
