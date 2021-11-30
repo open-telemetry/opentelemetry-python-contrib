@@ -146,7 +146,7 @@ class CeleryInstrumentor(BaseInstrumentor):
 
         operation_name = f"{_TASK_RUN}/{task.name}"
         span = self._tracer.start_span(
-            operation_name, context=tracectx, kind=trace.SpanKind.CONSUMER
+            operation_name, context=tracectx, kind=trace.SpanKind.SERVER
         )
 
         activation = trace.use_span(span, end_on_exit=True)

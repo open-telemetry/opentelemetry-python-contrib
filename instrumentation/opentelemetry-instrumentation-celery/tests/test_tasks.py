@@ -49,7 +49,7 @@ class TestCeleryInstrumentation(TestBase):
         consumer, producer = spans
 
         self.assertEqual(consumer.name, "run/tests.celery_test_tasks.task_add")
-        self.assertEqual(consumer.kind, SpanKind.CONSUMER)
+        self.assertEqual(consumer.kind, SpanKind.SERVER)
         self.assertSpanHasAttributes(
             consumer,
             {
