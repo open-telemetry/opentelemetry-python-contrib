@@ -62,6 +62,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   ([#759](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/759))
 - Consolidate instrumentation documentation in docstrings
   ([#754](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/754))
+- Flask: Conditionally create SERVER spans
 
 ### Fixed
 
