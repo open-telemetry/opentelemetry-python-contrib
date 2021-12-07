@@ -17,6 +17,6 @@ Installation
 References
 ----------
 
-* `OpenTelemetry logging integration <https://opentelemetry-python-contrib.readthedocs.io/en/latest/instrumentation/kafka-python/kafka-python.html>`_
+* `OpenTelemetry kafka-python Instrumentation <https://opentelemetry-python-contrib.readthedocs.io/en/latest/instrumentation/kafka-python/kafka-python.html>`_
 * `OpenTelemetry Project <https://opentelemetry.io/>`_
 * `OpenTelemetry Python Examples <https://github.com/open-telemetry/opentelemetry-python/tree/main/docs/examples>`_
