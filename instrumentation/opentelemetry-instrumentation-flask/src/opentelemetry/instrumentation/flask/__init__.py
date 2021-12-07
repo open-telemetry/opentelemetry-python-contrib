@@ -179,7 +179,7 @@ def _wrapped_before_request(
 
         token = ctx = None
         span_kind = trace.SpanKind.INTERNAL
-        
+
         if trace.get_current_span() is trace.INVALID_SPAN:
             ctx = extract(flask_request_environ, getter=otel_wsgi.wsgi_getter)
             print(ctx)
