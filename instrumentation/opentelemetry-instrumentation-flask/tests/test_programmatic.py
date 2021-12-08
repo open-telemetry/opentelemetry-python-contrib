@@ -439,4 +439,6 @@ class TestProgrammaticWrappedWithOtherFramework(
         span_list = self.memory_exporter.get_finished_spans()
         self.assertEqual(trace.SpanKind.INTERNAL, span_list[0].kind)
         self.assertEqual(trace.SpanKind.SERVER, span_list[1].kind)
-        self.assertEqual(span_list[0].parent.span_id, span_list[1].context.span_id)
+        self.assertEqual(
+            span_list[0].parent.span_id, span_list[1].context.span_id
+        )
