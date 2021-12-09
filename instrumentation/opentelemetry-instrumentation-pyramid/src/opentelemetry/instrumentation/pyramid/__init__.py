@@ -134,10 +134,12 @@ def _traced_init(wrapped, instance, args, kwargs):
     # to find the calling package. So if we let the original `__init__`
     # function call it, our wrapper will mess things up.
     if not kwargs.get("package", None):
-        # Get the package for the third frame up from this one.
-        # Default is `level=2` which will give us the package from `wrapt`
-        # instead of the desired package (the caller)
-        kwargs["package"] = caller_package(level=3)
+        # Get the package for the 2nd frame up from this one.
+        # Default is `level=2` one level down (in Configurator.__init__).
+        # We want the 3rd level from _there_. Since we are already 1 level above,
+        # we need the 2nd level up from here, which will give us the package from
+        # `wrapt` instead of the desired package (the caller)
+        kwargs["package"] = caller_package(level=2)
 
     wrapped(*args, **kwargs)
     instance.include("opentelemetry.instrumentation.pyramid.callbacks")

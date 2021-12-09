@@ -9,6 +9,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - `opentelemetry-instrumentation-wsgi` Capture custom request/response headers in span attributes
   ([#925])(https://github.com/open-telemetry/opentelemetry-python-contrib/pull/925)
+- `opentelemetry-instrumentation-pyramid` Fixed which package is the correct caller in _traced_init.
+  ([#830](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/830))
 
 ### Added
 
