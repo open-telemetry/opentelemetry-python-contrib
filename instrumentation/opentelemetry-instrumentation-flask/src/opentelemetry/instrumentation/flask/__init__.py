@@ -88,7 +88,7 @@ Flask Request object reference: https://flask.palletsprojects.com/en/2.0.x/api/#
 API
 ---
 """
-
+from functools import partial
 from logging import getLogger
 from typing import Collection
 
@@ -236,37 +236,52 @@ def _wrapped_teardown_request(excluded_urls=None):
 
 class _InstrumentedFlask(flask.Flask):
 
-    _excluded_urls = None
-    _tracer_provider = None
-    _request_hook = None
-    _response_hook = None
-
     def __init__(self, *args, **kwargs):
+        excluded_urls = kwargs.pop("excluded_urls", None)
+        response_hook = kwargs.pop("response_hook", None)
+        request_hook = kwargs.pop("request_hook", None)
+        tracer_provider = kwargs.pop("tracer_provider", None)
+
         super().__init__(*args, **kwargs)
 
         self._original_wsgi_app = self.wsgi_app
         self._is_instrumented_by_opentelemetry = True
 
-        self.wsgi_app = _rewrapped_app(
-            self.wsgi_app,
-            _InstrumentedFlask._response_hook,
-            excluded_urls=_InstrumentedFlask._excluded_urls,
+        self._request_hook = None
+        if callable(request_hook):
+            self._request_hook = request_hook
+        self._response_hook = None
+        if callable(response_hook):
+            self._response_hook = response_hook
+
+        self._excluded_urls = (
+            _excluded_urls_from_env
+            if excluded_urls is None
+            else parse_excluded_urls(excluded_urls)
         )
 
+        self.wsgi_app = _rewrapped_app(
+            self.wsgi_app,
+            self._response_hook,
+            excluded_urls=self._excluded_urls,
+        )
+
+        self._tracer_provider = tracer_provider
+
         tracer = trace.get_tracer(
-            __name__, __version__, _InstrumentedFlask._tracer_provider
+            __name__, __version__, self._tracer_provider
         )
 
         _before_request = _wrapped_before_request(
-            _InstrumentedFlask._request_hook,
+            self._request_hook,
             tracer,
-            excluded_urls=_InstrumentedFlask._excluded_urls,
+            excluded_urls=self._excluded_urls,
         )
         self._before_request = _before_request
         self.before_request(_before_request)
 
         _teardown_request = _wrapped_teardown_request(
-            excluded_urls=_InstrumentedFlask._excluded_urls,
+            excluded_urls=self._excluded_urls,
         )
         self.teardown_request(_teardown_request)
 
@@ -283,21 +298,7 @@ class FlaskInstrumentor(BaseInstrumentor):
 
     def _instrument(self, **kwargs):
         self._original_flask = flask.Flask
-        request_hook = kwargs.get("request_hook")
-        response_hook = kwargs.get("response_hook")
-        if callable(request_hook):
-            _InstrumentedFlask._request_hook = request_hook
-        if callable(response_hook):
-            _InstrumentedFlask._response_hook = response_hook
-        tracer_provider = kwargs.get("tracer_provider")
-        _InstrumentedFlask._tracer_provider = tracer_provider
-        excluded_urls = kwargs.get("excluded_urls")
-        _InstrumentedFlask._excluded_urls = (
-            _excluded_urls_from_env
-            if excluded_urls is None
-            else parse_excluded_urls(excluded_urls)
-        )
-        flask.Flask = _InstrumentedFlask
+        flask.Flask = partial(_InstrumentedFlask, **kwargs)
 
     def _uninstrument(self, **kwargs):
         flask.Flask = self._original_flask
