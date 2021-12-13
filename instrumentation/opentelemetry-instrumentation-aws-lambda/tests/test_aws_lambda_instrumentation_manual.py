@@ -258,7 +258,7 @@ class TestAwsLambdaInstrumentor(TestBase):
                 _X_AMZN_TRACE_ID: MOCK_XRAY_TRACE_CONTEXT_NOT_SAMPLED,
                 # NOT using the X-Ray Propagator
                 OTEL_PROPAGATORS: "tracecontext",
-                OTEL_INSTRUMENTATION_AWS_LAMBDA_FLUSH_TIMEOUT: "10000",
+                OTEL_INSTRUMENTATION_AWS_LAMBDA_FLUSH_TIMEOUT: "invalid-timeout-string",
             },
         )
         test_env_patch.start()
