@@ -45,7 +45,6 @@ from opentelemetry.trace import (
     format_trace_id,
 )
 from opentelemetry.util.http import get_excluded_urls, get_traced_request_attrs
-from packaging.markers import Op
 
 # pylint: disable=import-error
 from .views import (
