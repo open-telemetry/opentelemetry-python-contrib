@@ -12,18 +12,15 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import re
 from sys import modules
 from unittest.mock import Mock, patch
 
 from django import VERSION, conf
-from django.core.wsgi import get_wsgi_application
 from django.core.servers.basehttp import get_internal_wsgi_application
 from django.http import HttpRequest, HttpResponse
-from django.test.client import Client, ClientHandler, RequestFactory
+from django.test.client import Client, RequestFactory
 from django.test.testcases import SimpleTestCase
 from django.test.utils import override_settings, setup_test_environment, teardown_test_environment
-from fastapi import applications
 from opentelemetry import trace
 
 from opentelemetry.instrumentation.django import (
