@@ -437,13 +437,6 @@ class TestMiddlewareWithTracerProvider(TestBase, WsgiTestBase):
 
     
     def test_django_with_wsgi_instrumented(self):
-        """ 
-        This test is related to https://github.com/open-telemetry/opentelemetry-python-contrib/issues/448
-        Here I have added a parent span of kind SpanKind.SERVER in the context 
-        and on sending the request, the newly created span should be of type SpanKind.INTERNAL and 
-        it should be child to the parent_span
-        """
-
         tracer = self.tracer_provider.get_tracer(__name__)
         with tracer.start_as_current_span("test", kind=SpanKind.SERVER) as parent_span:
             resp = Client().get("/span_name/1234/")
