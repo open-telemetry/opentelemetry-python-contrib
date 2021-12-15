@@ -439,7 +439,13 @@ class TestMiddlewareWithTracerProvider(TestBase, WsgiTestBase):
             span.resource.attributes["resource-key"], "resource-value"
         )
 
+    
     def test_django_with_wsgi_instrumented(self):
+        """ 
+        This test is related to https://github.com/open-telemetry/opentelemetry-python-contrib/issues/448
+        Here we have enabled django as well as wsgi instrumentation.
+        and on sending the request, it should give us the two spans with parent-child relationship.
+        """
         application = get_wsgi_application()
         application = OpenTelemetryMiddleware(application, tracer_provider=self.tracer_provider)
         environ = RequestFactory()._base_environ(

@@ -192,7 +192,7 @@ class _DjangoMiddleware(MiddlewareMixin):
         token = context = None
         span_kind = SpanKind.INTERNAL
         if get_current_span() is INVALID_SPAN:
-            context = extract(request_meta, getter=wsgi_getter)
+            context = extract(request_meta, getter=carrier_getter)
             token = attach(context)
             span_kind = SpanKind.SERVER
         span = self._tracer.start_span(
@@ -307,7 +307,8 @@ class _DjangoMiddleware(MiddlewareMixin):
             else:
                 activation.__exit__(None, None, None)
 
-        if self._environ_token in request.META.keys():
+        # if self._environ_token in request.META.keys():
+        if request.META.get(self._environ_token, None) is not None:
             detach(request.META.get(self._environ_token))
             request.META.pop(self._environ_token)
 
