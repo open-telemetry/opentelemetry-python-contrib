@@ -16,6 +16,7 @@ from sys import modules
 from unittest.mock import Mock, patch
 
 from django import VERSION, conf
+from django.core.wsgi import get_wsgi_application
 from django.core.servers.basehttp import get_internal_wsgi_application
 from django.http import HttpRequest, HttpResponse
 from django.test.client import Client, RequestFactory
@@ -405,11 +406,13 @@ class TestMiddlewareWithTracerProvider(TestBase, WsgiTestBase):
     def setUp(self):
         super().setUp()
         setup_test_environment()
-        _django_instrumentor.instrument()
-        
-        result = self.create_tracer_provider()
+        resource = resources.Resource.create(
+            {"resource-key": "resource-value"}
+        )
+        result = self.create_tracer_provider(resource=resource)
         tracer_provider, exporter = result
         self.exporter = exporter
+        self.tracer_provider = tracer_provider
         _django_instrumentor.instrument(tracer_provider=tracer_provider)
 
     def tearDown(self):
@@ -434,39 +437,9 @@ class TestMiddlewareWithTracerProvider(TestBase, WsgiTestBase):
             span.resource.attributes["resource-key"], "resource-value"
         )
 
-class TestDjangoWithOtherFramework(SimpleTestCase, TestBase, WsgiTestBase):
-    @classmethod
-    def setUpClass(cls):
-        conf.settings.configure(ROOT_URLCONF=modules[__name__], WSGI_APPLICATION="tests.wsgi.application")
-        super().setUpClass()
-
-    def setUp(self):
-        super().setUp()
-        setup_test_environment()
-        
-        # conf.settings.WSGI_APPLICATION = "wsgi.application"
-        # application = get_internal_wsgi_application()
-        # application = get_wsgi_application()
-        # _DjangoMiddleware
-        # self.application = OpenTelemetryMiddleware(application)
-        # _django_instrumentor.instrument()
-        # self.application = OpenTelemetryMiddleware(application, tracer_provider=self.tracer_provider)
-        # conf.settings.configure(ROOT_URLCONF=modules[__name__], WSGI_APPLICATION="application")
-        # conf.settings.WSGI_APPLICATION="application"
-        
-
-    def tearDown(self) -> None:
-        super().tearDown()
-        teardown_test_environment()
-        _django_instrumentor.uninstrument()
-    
-    @classmethod
-    def tearDownClass(cls):
-        super().tearDownClass()
-        conf.settings = conf.LazySettings()
-
-
-    def test_with_another_framework(self):
+    def test_django_with_wsgi_instrumented(self):
+        application = get_wsgi_application()
+        application = OpenTelemetryMiddleware(application, tracer_provider=self.tracer_provider)
         environ = RequestFactory()._base_environ(
             PATH_INFO="/span_name/1234/",
             CONTENT_TYPE="text/html; charset=utf-8",
@@ -476,24 +449,9 @@ class TestDjangoWithOtherFramework(SimpleTestCase, TestBase, WsgiTestBase):
         def start_response(status, headers):
             response_data["status"] = status
             response_data["headers"] = headers
-        
-        result = self.create_tracer_provider()
-        tracer_provider, exporter = result
-        self.exporter = exporter
-        
-        
-        _django_instrumentor.instrument(tracer_provider=tracer_provider)
-        application = get_internal_wsgi_application()
-        application = OpenTelemetryMiddleware(application, tracer_provider=tracer_provider)
-        resp = application(environ, start_response)
-        
-        # resp = Client().get("/span_name/1234/")
-        # self.assertEqual(200, resp.status_code)
 
-        # span_list = self.memory_exporter.get_finished_spans()
+        resp = next(application(environ, start_response))
         span_list = self.exporter.get_finished_spans()
-        # print(span_list)
+        self.assertEqual(span_list[0].attributes[SpanAttributes.HTTP_STATUS_CODE], 200)
         self.assertEqual(trace.SpanKind.INTERNAL, span_list[0].kind)
-
-        #Below line give me error "index out of the range" as there is only one span created where it should be 2.
         self.assertEqual(trace.SpanKind.SERVER, span_list[1].kind)
