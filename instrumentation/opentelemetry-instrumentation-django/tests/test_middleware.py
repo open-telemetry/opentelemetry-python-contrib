@@ -62,7 +62,7 @@ DJANGO_3_0 = VERSION >= (3, 0)
 if DJANGO_2_0:
     from django.urls import re_path
 else:
-    from django.conf.urls import url as re_path  # pylint: disable=E0611
+    from django.conf.urls import url as re_path
 
 urlpatterns = [
     re_path(r"^traced/", traced),
