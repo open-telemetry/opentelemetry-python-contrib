@@ -26,7 +26,7 @@ class TestPika(TestCase):
     def setUp(self) -> None:
         self.channel = mock.MagicMock(spec=Channel)
         consumer_info = mock.MagicMock()
-        callback_attr = PikaInstrumentor._consumer_callback_attribute_name()
+        callback_attr = PikaInstrumentor.CONSUMER_CALLBACK_ATTR
         setattr(consumer_info, callback_attr, mock.MagicMock())
         self.channel._consumer_infos = {"consumer-tag": consumer_info}
         self.mock_callback = mock.MagicMock()
@@ -73,7 +73,7 @@ class TestPika(TestCase):
         self, decorate_callback: mock.MagicMock
     ) -> None:
         tracer = mock.MagicMock(spec=Tracer)
-        callback_attr = PikaInstrumentor._consumer_callback_attribute_name()
+        callback_attr = PikaInstrumentor.CONSUMER_CALLBACK_ATTR
         expected_decoration_calls = [
             mock.call(
                 getattr(value, callback_attr), tracer, key, dummy_callback

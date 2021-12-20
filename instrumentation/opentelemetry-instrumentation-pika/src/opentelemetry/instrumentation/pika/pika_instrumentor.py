@@ -14,7 +14,7 @@
 from logging import getLogger
 from typing import Any, Collection, Dict, Optional
 
-import pkg_resources
+import pika
 import wrapt
 from packaging import version
 from pika.adapters import BlockingConnection
@@ -34,7 +34,18 @@ _CTX_KEY = "__otel_task_span"
 _FUNCTIONS_TO_UNINSTRUMENT = ["basic_publish"]
 
 
+def _consumer_callback_attribute_name() -> str:
+    pika_version = version.parse(pika.__version__)
+    return (
+        "on_message_callback"
+        if pika_version >= version.parse("1.0.0")
+        else "consumer_cb"
+    )
+
+
 class PikaInstrumentor(BaseInstrumentor):  # type: ignore
+    CONSUMER_CALLBACK_ATTR = _consumer_callback_attribute_name()
+
     # pylint: disable=attribute-defined-outside-init
     @staticmethod
     def _instrument_blocking_channel_consumers(
@@ -43,9 +54,7 @@ class PikaInstrumentor(BaseInstrumentor):  # type: ignore
         consume_hook: utils.HookT = utils.dummy_callback,
     ) -> Any:
         for consumer_tag, consumer_info in channel._consumer_infos.items():
-            callback_attr = (
-                PikaInstrumentor._consumer_callback_attribute_name()
-            )
+            callback_attr = PikaInstrumentor.CONSUMER_CALLBACK_ATTR
             consumer_callback = getattr(consumer_info, callback_attr)
             decorated_callback = utils._decorate_callback(
                 consumer_callback,
@@ -132,26 +141,13 @@ class PikaInstrumentor(BaseInstrumentor):  # type: ignore
             return
 
         for consumers_tag, client_info in channel._consumer_infos.items():
-            callback_attr = (
-                PikaInstrumentor._consumer_callback_attribute_name()
-            )
+            callback_attr = PikaInstrumentor.CONSUMER_CALLBACK_ATTR
             consumer_callback = getattr(client_info, callback_attr)
             if hasattr(consumer_callback, "_original_callback"):
                 channel._consumer_infos[
                     consumers_tag
                 ] = consumer_callback._original_callback
         PikaInstrumentor._uninstrument_channel_functions(channel)
-
-    @staticmethod
-    def _consumer_callback_attribute_name() -> str:
-        pika_version = version.parse(
-            pkg_resources.get_distribution("pika").version
-        )
-        return (
-            "on_message_callback"
-            if pika_version >= version.parse("1.0.0")
-            else "consumer_cb"
-        )
 
     def _decorate_channel_function(
         self,
