@@ -55,7 +55,9 @@ class PikaInstrumentor(BaseInstrumentor):  # type: ignore
     ) -> Any:
         for consumer_tag, consumer_info in channel._consumer_infos.items():
             callback_attr = PikaInstrumentor.CONSUMER_CALLBACK_ATTR
-            consumer_callback = getattr(consumer_info, callback_attr)
+            consumer_callback = getattr(consumer_info, callback_attr, None)
+            if consumer_callback is None:
+                continue
             decorated_callback = utils._decorate_callback(
                 consumer_callback,
                 tracer,
@@ -142,7 +144,7 @@ class PikaInstrumentor(BaseInstrumentor):  # type: ignore
 
         for consumers_tag, client_info in channel._consumer_infos.items():
             callback_attr = PikaInstrumentor.CONSUMER_CALLBACK_ATTR
-            consumer_callback = getattr(client_info, callback_attr)
+            consumer_callback = getattr(client_info, callback_attr, None)
             if hasattr(consumer_callback, "_original_callback"):
                 channel._consumer_infos[
                     consumers_tag
