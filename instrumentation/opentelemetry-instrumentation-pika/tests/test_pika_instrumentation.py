@@ -18,6 +18,9 @@ from pika.channel import Channel
 from wrapt import BoundFunctionWrapper
 
 from opentelemetry.instrumentation.pika import PikaInstrumentor
+from opentelemetry.instrumentation.pika.pika_instrumentor import (
+    _consumer_callback_attribute_name,
+)
 from opentelemetry.instrumentation.pika.utils import dummy_callback
 from opentelemetry.trace import Tracer
 
@@ -113,3 +116,13 @@ class TestPika(TestCase):
         self.channel.basic_publish._original_function = original_function
         PikaInstrumentor._uninstrument_channel_functions(self.channel)
         self.assertEqual(self.channel.basic_publish, original_function)
+
+    def test_consumer_callback_attribute_name(self) -> None:
+        with mock.patch("pika.__version__", "1.0.0"):
+            self.assertEqual(
+                _consumer_callback_attribute_name(), "on_message_callback"
+            )
+        with mock.patch("pika.__version__", "0.12.0"):
+            self.assertEqual(
+                _consumer_callback_attribute_name(), "consumer_cb"
+            )
