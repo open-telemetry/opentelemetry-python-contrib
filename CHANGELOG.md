@@ -36,7 +36,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - `opentelemetry-instrumentation-flask` Flask: Conditionally create SERVER spans
   ([#828](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/828))
-  
+
 ## [1.7.1-0.26b1](https://github.com/open-telemetry/opentelemetry-python/releases/tag/v1.7.0-0.26b0) - 2021-11-11
 
 ### Added
