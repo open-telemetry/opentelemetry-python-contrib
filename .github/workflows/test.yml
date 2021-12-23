@@ -65,6 +65,7 @@ jobs:
     if: ${{ always() }}
     name: Combine benchmarks from previous build job
     strategy:
+      fail-fast: false
       max-parallel: 1
       matrix:
         python-version: [ py36, py37, py38, py39, py310, pypy3 ]
