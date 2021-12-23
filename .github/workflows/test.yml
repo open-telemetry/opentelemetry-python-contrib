@@ -52,37 +52,38 @@ jobs:
           mkdir -p benchmarks;
           jq -s '.[0].benchmarks = ([.[].benchmarks] | add)
           | if .[0].benchmarks == null then null else .[0] end'
-          **/**/tests/*${{ matrix.package }}*-benchmark.json > benchmarks/output_${{ matrix.package }}.json
-      - name: Upload all benchmarks under same key as an artifact
+          **/**/tests/*${{ matrix.package }}*-benchmark.json > output_${{ matrix.python-version }}_${{ matrix.package }}.json
+      - name: Upload benchmarks using (${{ matrix.python-version }}, ${{ matrix.package }}) key
         if: ${{ success() }}
         uses: actions/upload-artifact@v2
         with:
-          name: benchmarks
-          path: benchmarks/output_${{ matrix.package }}.json
+          name: benchmarks_${{ matrix.python-version }}_${{ matrix.package }}
+          path: output_${{ matrix.python-version }}_${{ matrix.package }}.json
   combine-benchmarks:
     runs-on: ubuntu-latest
     needs: build
     if: ${{ always() }}
     name: Combine benchmarks from previous build job
+    strategy:
+      max-parallel: 1
+      matrix:
+        python-version: [ py36, py37, py38, py39, py310, pypy3 ]
+        # TODO: Add "instrumentation", "distro", "exporter", when they have benchmarks
+        package: ["sdkextension", "propagator"]
     steps:
       - name: Checkout Contrib Repo @ SHA - ${{ github.sha }}
         uses: actions/checkout@v2
-      - name: Download all benchmarks as artifact using key
+      - name: Download benchmarks using (${{ matrix.python-version }}, ${{ matrix.package }}) key
         uses: actions/download-artifact@v2
         with:
-          name: benchmarks
-          path: benchmarks
-      - name: Find and merge all benchmarks
-        run: >-
-          jq -s '.[0].benchmarks = ([.[].benchmarks] | add)
-          | if .[0].benchmarks == null then null else .[0] end'
-          benchmarks/output_*.json > output.json;
+          name: benchmarks_${{ matrix.python-version }}_${{ matrix.package }}
+          path: output_${{ matrix.python-version }}_${{ matrix.package }}.json
       - name: Report on benchmark results
         uses: benchmark-action/github-action-benchmark@v1
         with:
           name: OpenTelemetry Python Benchmarks - Python ${{ env[matrix.python-version ]}} - ${{ matrix.package }}
           tool: pytest
-          output-file-path: output.json
+          output-file-path: output_${{ matrix.python-version }}_${{ matrix.package }}.json
           github-token: ${{ secrets.GITHUB_TOKEN }}
           max-items-in-chart: 100
           # Alert with a commit comment on possible performance regression
