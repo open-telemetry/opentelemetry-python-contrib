@@ -3,6 +3,7 @@ from logging import getLogger
 from typing import Callable, Dict, List, Optional
 
 from opentelemetry import trace
+from opentelemetry.context import detach, attach
 from opentelemetry.propagate import extract, inject
 from opentelemetry.propagators import textmap
 from opentelemetry.semconv.trace import SpanAttributes
@@ -167,15 +168,32 @@ def _wrap_send(tracer: Tracer, produce_hook: HookT) -> Callable:
     return _traced_send
 
 
-def _wrap_next(tracer: Tracer, consume_hook: HookT) -> Callable:
+
+def _start_consume_span_with_extracted_context(
+    tracer: Tracer,
+    headers: List,
+    topic: str,
+) -> (Span, object):
+    extracted_context = extract(headers, getter=_kafka_getter)
+    span_name = _get_span_name("receive", topic)
+    span = tracer.start_span(
+        span_name, context=extracted_context, kind=trace.SpanKind.CONSUMER
+    )
+    new_context = set_span_in_context(span, extracted_context)
+    token = attach(new_context)
+    return span, token
+
+
+def _wrap_next(
+    tracer: Tracer,
+    consume_hook: HookT,
+) -> Callable:
     def _traced_next(func, instance, args, kwargs):
-        # End the current span if exists before processing the next record
         current_span = trace.get_current_span()
         if current_span.is_recording() and current_span.name.startswith(
             "kafka.consume"
         ):
             current_span.end()
-
         record = func(*args, **kwargs)
 
         if record:
@@ -185,7 +203,8 @@ def _wrap_next(tracer: Tracer, consume_hook: HookT) -> Callable:
                 KafkaPropertiesExtractor.extract_bootstrap_servers(instance)
             )
             partition = record.partition
-            span = _start_consume_span_with_extracted_context(
+
+            span, token = _start_consume_span_with_extracted_context(
                 tracer, headers, topic
             )
             with trace.use_span(span):
@@ -194,8 +213,8 @@ def _wrap_next(tracer: Tracer, consume_hook: HookT) -> Callable:
                     consume_hook(span, args, kwargs)
                 except Exception as hook_exception:  # pylint: disable=W0703
                     _LOG.exception(hook_exception)
-        # We do not close the current span when returning to the caller,
-        # so the message processing logic will have the kafka span as parent
+            span.end()
+            detach(token)
         return record
 
     return _traced_next
