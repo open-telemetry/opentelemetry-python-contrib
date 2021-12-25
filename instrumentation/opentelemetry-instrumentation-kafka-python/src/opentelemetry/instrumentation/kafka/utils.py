@@ -2,12 +2,11 @@ import json
 from logging import getLogger
 from typing import Callable, Dict, List, Optional
 
-from opentelemetry import trace
-from opentelemetry.context import detach, attach
-from opentelemetry.propagate import extract, inject
+
+from opentelemetry import context, propagate, trace
 from opentelemetry.propagators import textmap
 from opentelemetry.semconv.trace import SpanAttributes
-from opentelemetry.trace import Tracer, set_span_in_context
+from opentelemetry.trace import Tracer
 from opentelemetry.trace.span import Span
 
 _LOG = getLogger(__name__)
@@ -153,9 +152,9 @@ def _wrap_send(tracer: Tracer, produce_hook: HookT) -> Callable:
             span_name, kind=trace.SpanKind.PRODUCER
         ) as span:
             _enrich_span(span, bootstrap_servers, topic, partition)
-            inject(
+            propagate.inject(
                 headers,
-                context=set_span_in_context(span),
+                context=trace.set_span_in_context(span),
                 setter=_kafka_setter,
             )
             try:
@@ -168,53 +167,40 @@ def _wrap_send(tracer: Tracer, produce_hook: HookT) -> Callable:
     return _traced_send
 
 
-
-def _start_consume_span_with_extracted_context(
-    tracer: Tracer,
-    headers: List,
-    topic: str,
-) -> (Span, object):
-    extracted_context = extract(headers, getter=_kafka_getter)
-    span_name = _get_span_name("receive", topic)
-    span = tracer.start_span(
-        span_name, context=extracted_context, kind=trace.SpanKind.CONSUMER
-    )
-    new_context = set_span_in_context(span, extracted_context)
-    token = attach(new_context)
-    return span, token
-
-
 def _wrap_next(
     tracer: Tracer,
     consume_hook: HookT,
 ) -> Callable:
     def _traced_next(func, instance, args, kwargs):
-        current_span = trace.get_current_span()
-        if current_span.is_recording() and current_span.name.startswith(
-            "kafka.consume"
-        ):
-            current_span.end()
+
         record = func(*args, **kwargs)
 
         if record:
-            headers = record.headers
-            topic = record.topic
             bootstrap_servers = (
                 KafkaPropertiesExtractor.extract_bootstrap_servers(instance)
             )
-            partition = record.partition
 
-            span, token = _start_consume_span_with_extracted_context(
-                tracer, headers, topic
+            extracted_context = propagate.extract(
+                record.headers, getter=_kafka_getter
             )
-            with trace.use_span(span):
-                _enrich_span(span, bootstrap_servers, topic, partition)
+            span_name = _get_span_name("receive", record.topic)
+            with tracer.start_as_current_span(
+                span_name,
+                context=extracted_context,
+                kind=trace.SpanKind.CONSUMER,
+            ) as span:
+                new_context = trace.set_span_in_context(
+                    span, extracted_context
+                )
+                token = context.attach(new_context)
+                _enrich_span(
+                    span, bootstrap_servers, record.topic, record.partition
+                )
                 try:
                     consume_hook(span, args, kwargs)
                 except Exception as hook_exception:  # pylint: disable=W0703
                     _LOG.exception(hook_exception)
-            span.end()
-            detach(token)
+                context.detach(token)
         return record
 
     return _traced_next
