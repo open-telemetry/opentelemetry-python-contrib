@@ -192,7 +192,7 @@ class _DjangoMiddleware(MiddlewareMixin):
         token = context = None
         span_kind = SpanKind.INTERNAL
         if get_current_span() is INVALID_SPAN:
-            context = extract(request_meta, getter=carrier_getter)
+            context = extract(carrier, getter=carrier_getter)
             token = attach(context)
             span_kind = SpanKind.SERVER
         span = self._tracer.start_span(

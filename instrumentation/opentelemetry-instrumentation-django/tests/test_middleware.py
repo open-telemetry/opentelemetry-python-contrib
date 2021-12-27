@@ -34,7 +34,6 @@ from opentelemetry.instrumentation.propagators import (
     TraceResponsePropagator,
     set_global_response_propagator,
 )
-from opentelemetry.instrumentation.wsgi import OpenTelemetryMiddleware
 from opentelemetry.sdk import resources
 from opentelemetry.sdk.trace import Span
 from opentelemetry.sdk.trace.id_generator import RandomIdGenerator
@@ -443,23 +442,20 @@ class TestMiddlewareWithTracerProvider(TestBase, WsgiTestBase):
     def test_django_with_wsgi_instrumented(self):
         """ 
         This test is related to https://github.com/open-telemetry/opentelemetry-python-contrib/issues/448
-        Here we have enabled django as well as wsgi instrumentation.
-        and on sending the request, it should give us the two spans with parent-child relationship.
+        Here I have added a parent span of kind SpanKind.SERVER in the context 
+        and on sending the request, the newly created span should be of type SpanKind.INTERNAL and 
+        it should be child to the parent_span
         """
-        application = get_wsgi_application()
-        application = OpenTelemetryMiddleware(application, tracer_provider=self.tracer_provider)
-        environ = RequestFactory()._base_environ(
-            PATH_INFO="/span_name/1234/",
-            CONTENT_TYPE="text/html; charset=utf-8",
-            REQUEST_METHOD="GET"
-        )
-        response_data = {}
-        def start_response(status, headers):
-            response_data["status"] = status
-            response_data["headers"] = headers
 
-        resp = next(application(environ, start_response))
-        span_list = self.exporter.get_finished_spans()
-        self.assertEqual(span_list[0].attributes[SpanAttributes.HTTP_STATUS_CODE], 200)
-        self.assertEqual(trace.SpanKind.INTERNAL, span_list[0].kind)
-        self.assertEqual(trace.SpanKind.SERVER, span_list[1].kind)
+        tracer = self.tracer_provider.get_tracer(__name__)
+        with tracer.start_as_current_span("test", kind=SpanKind.SERVER) as parent_span:
+            resp = Client().get("/span_name/1234/")
+            span_list = self.exporter.get_finished_spans()
+            print(span_list)
+            self.assertEqual(span_list[0].attributes[SpanAttributes.HTTP_STATUS_CODE], 200)
+            self.assertEqual(trace.SpanKind.INTERNAL, span_list[0].kind)
+            self.assertEqual(parent_span.get_span_context().span_id, span_list[0].parent.span_id)
+                
+            
+        
+
