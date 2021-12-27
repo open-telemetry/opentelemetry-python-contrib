@@ -18,12 +18,9 @@ from sys import modules
 from unittest.mock import Mock, patch
 
 from django import VERSION, conf
-from django.core.wsgi import get_wsgi_application
-from django.core.servers.basehttp import get_internal_wsgi_application
 from django.http import HttpRequest, HttpResponse
-from django.test.client import Client, RequestFactory
-from django.test.testcases import SimpleTestCase
-from django.test.utils import override_settings, setup_test_environment, teardown_test_environment
+from django.test.client import Client
+from django.test.utils import setup_test_environment, teardown_test_environment
 from opentelemetry import trace
 
 from opentelemetry.instrumentation.django import (
