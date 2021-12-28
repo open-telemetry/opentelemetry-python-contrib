@@ -1,6 +1,7 @@
 import json
 from logging import getLogger
 from typing import Callable, Dict, List, Optional
+from kafka.record.abc import ABCRecord
 
 from opentelemetry import context, propagate, trace
 from opentelemetry.propagators import textmap
@@ -76,11 +77,8 @@ class KafkaPropertiesExtractor:
         )
 
 
-HookT = Callable[[Span, List, Dict], None]
-
-
-def dummy_callback(span, args, kwargs):
-    ...
+ProduceHookT = Optional[Callable[[Span, List, Dict], None]]
+ConsumeHookT = Optional[Callable[[Span, ABCRecord, List, Dict], None]]
 
 
 class KafkaContextGetter(textmap.Getter):
@@ -130,7 +128,7 @@ def _get_span_name(operation: str, topic: str):
     return f"{topic} {operation}"
 
 
-def _wrap_send(tracer: Tracer, produce_hook: HookT) -> Callable:
+def _wrap_send(tracer: Tracer, produce_hook: ProduceHookT) -> Callable:
     def _traced_send(func, instance, args, kwargs):
         headers = KafkaPropertiesExtractor.extract_send_headers(args, kwargs)
         if headers is None:
@@ -155,7 +153,8 @@ def _wrap_send(tracer: Tracer, produce_hook: HookT) -> Callable:
                 setter=_kafka_setter,
             )
             try:
-                produce_hook(span, args, kwargs)
+                if callable(produce_hook):
+                    produce_hook(span, args, kwargs)
             except Exception as hook_exception:  # pylint: disable=W0703
                 _LOG.exception(hook_exception)
 
@@ -166,7 +165,7 @@ def _wrap_send(tracer: Tracer, produce_hook: HookT) -> Callable:
 
 def _wrap_next(
     tracer: Tracer,
-    consume_hook: HookT,
+    consume_hook: ConsumeHookT,
 ) -> Callable:
     def _traced_next(func, instance, args, kwargs):
 
@@ -194,7 +193,8 @@ def _wrap_next(
                     span, bootstrap_servers, record.topic, record.partition
                 )
                 try:
-                    consume_hook(span, args, kwargs)
+                    if callable(consume_hook):
+                        consume_hook(span, record, args, kwargs)
                 except Exception as hook_exception:  # pylint: disable=W0703
                     _LOG.exception(hook_exception)
                 context.detach(token)

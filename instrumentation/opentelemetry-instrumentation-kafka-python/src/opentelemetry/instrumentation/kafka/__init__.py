@@ -38,6 +38,35 @@ Usage
     for message in consumer:
         # process message
 
+The `_instrument` method accepts the following keyword args:
+tracer_provider (TracerProvider) - an optional tracer provider
+produce_hook (Callable) - a function with extra user-defined logic to be performed before sending the message
+                          this function signature is:
+                          def produce_hook(span: Span, args, kwargs)
+consume_hook (Callable) - a function with extra user-defined logic to be performed after consuming a message
+                          this function signature is:
+                          def consume
+                          _hook(span: Span, record: , kafka.record.ABCRecord, args, kwargs)
+for example:
+.. code: python
+    from opentelemetry.instrumentation.kafka import KafkaInstrumentor
+    from kafka import KafkaProducer, KafkaConsumer
+
+    def produce_hook(span, args, kwargs):
+        if span and span.is_recording():
+            span.set_attribute("custom_user_attribute_from_produce_hook", "some-value")
+    def consume_hook(span, record, args, kwargs):
+        if span and span.is_recording():
+            span.set_attribute("custom_user_attribute_from_consume_hook", "some-value")
+
+    # instrument kafka with produce and consume hooks
+    KafkaInstrumentor().instrument(produce_hook=produce_hook, consume_hook=consume_hook)
+
+    # Using kafka as normal now will automatically generate spans,
+    # including user custom attributes added from the hooks
+    producer = KafkaProducer(bootstrap_servers=['localhost:9092'])
+    producer.send('my-topic', b'raw_bytes')
+
 API
 ___
 """
@@ -52,7 +81,6 @@ from opentelemetry.instrumentation.kafka.package import _instruments
 from opentelemetry.instrumentation.kafka.utils import (
     _wrap_next,
     _wrap_send,
-    dummy_callback,
 )
 from opentelemetry.instrumentation.kafka.version import __version__
 from opentelemetry.instrumentation.utils import unwrap
@@ -76,8 +104,8 @@ class KafkaInstrumentor(BaseInstrumentor):
                 ``consume_hook``: a callable to be executed just after consuming a message
         """
         tracer_provider = kwargs.get("tracer_provider")
-        produce_hook = kwargs.get("produce_hook", dummy_callback)
-        consume_hook = kwargs.get("consume_hook", dummy_callback)
+        produce_hook = kwargs.get("produce_hook")
+        consume_hook = kwargs.get("consume_hook")
 
         tracer = trace.get_tracer(
             __name__, __version__, tracer_provider=tracer_provider
