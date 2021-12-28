@@ -46,7 +46,7 @@ produce_hook (Callable) - a function with extra user-defined logic to be perform
 consume_hook (Callable) - a function with extra user-defined logic to be performed after consuming a message
                           this function signature is:
                           def consume
-                          _hook(span: Span, record: , kafka.record.ABCRecord, args, kwargs)
+                          _hook(span: Span, record: kafka.record.ABCRecord, args, kwargs)
 for example:
 .. code: python
     from opentelemetry.instrumentation.kafka import KafkaInstrumentor
