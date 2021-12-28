@@ -164,6 +164,32 @@ def _wrap_send(tracer: Tracer, produce_hook: ProduceHookT) -> Callable:
     return _traced_send
 
 
+def _create_consumer_span(
+    tracer,
+    consume_hook,
+    record,
+    extracted_context,
+    bootstrap_servers,
+    args,
+    kwargs,
+):
+    span_name = _get_span_name("receive", record.topic)
+    with tracer.start_as_current_span(
+        span_name,
+        context=extracted_context,
+        kind=trace.SpanKind.CONSUMER,
+    ) as span:
+        new_context = trace.set_span_in_context(span, extracted_context)
+        token = context.attach(new_context)
+        _enrich_span(span, bootstrap_servers, record.topic, record.partition)
+        try:
+            if callable(consume_hook):
+                consume_hook(span, record, args, kwargs)
+        except Exception as hook_exception:  # pylint: disable=W0703
+            _LOG.exception(hook_exception)
+        context.detach(token)
+
+
 def _wrap_next(
     tracer: Tracer,
     consume_hook: ConsumeHookT,
@@ -180,25 +206,15 @@ def _wrap_next(
             extracted_context = propagate.extract(
                 record.headers, getter=_kafka_getter
             )
-            span_name = _get_span_name("receive", record.topic)
-            with tracer.start_as_current_span(
-                span_name,
-                context=extracted_context,
-                kind=trace.SpanKind.CONSUMER,
-            ) as span:
-                new_context = trace.set_span_in_context(
-                    span, extracted_context
-                )
-                token = context.attach(new_context)
-                _enrich_span(
-                    span, bootstrap_servers, record.topic, record.partition
-                )
-                try:
-                    if callable(consume_hook):
-                        consume_hook(span, record, args, kwargs)
-                except Exception as hook_exception:  # pylint: disable=W0703
-                    _LOG.exception(hook_exception)
-                context.detach(token)
+            _create_consumer_span(
+                tracer,
+                consume_hook,
+                record,
+                extracted_context,
+                bootstrap_servers,
+                args,
+                kwargs,
+            )
         return record
 
     return _traced_next
