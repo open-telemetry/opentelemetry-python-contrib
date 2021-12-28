@@ -78,10 +78,7 @@ from wrapt import wrap_function_wrapper
 from opentelemetry import trace
 from opentelemetry.instrumentation.instrumentor import BaseInstrumentor
 from opentelemetry.instrumentation.kafka.package import _instruments
-from opentelemetry.instrumentation.kafka.utils import (
-    _wrap_next,
-    _wrap_send,
-)
+from opentelemetry.instrumentation.kafka.utils import _wrap_next, _wrap_send
 from opentelemetry.instrumentation.kafka.version import __version__
 from opentelemetry.instrumentation.utils import unwrap
 

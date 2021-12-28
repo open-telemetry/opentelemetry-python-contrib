@@ -1,6 +1,7 @@
 import json
 from logging import getLogger
 from typing import Callable, Dict, List, Optional
+
 from kafka.record.abc import ABCRecord
 
 from opentelemetry import context, propagate, trace
