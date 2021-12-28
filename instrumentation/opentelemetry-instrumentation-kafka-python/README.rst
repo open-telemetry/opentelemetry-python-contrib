@@ -1,5 +1,5 @@
 OpenTelemetry kafka-python integration
-=================================
+======================================
 
 |pypi|
 
