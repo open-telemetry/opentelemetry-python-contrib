@@ -2,7 +2,6 @@ import json
 from logging import getLogger
 from typing import Callable, Dict, List, Optional
 
-
 from opentelemetry import context, propagate, trace
 from opentelemetry.propagators import textmap
 from opentelemetry.semconv.trace import SpanAttributes
@@ -85,9 +84,7 @@ def dummy_callback(span, args, kwargs):
 
 
 class KafkaContextGetter(textmap.Getter):
-    def get(
-        self, carrier: textmap.CarrierT, key: str
-    ) -> Optional[List[str]]:
+    def get(self, carrier: textmap.CarrierT, key: str) -> Optional[List[str]]:
         if carrier is None:
             return None
 

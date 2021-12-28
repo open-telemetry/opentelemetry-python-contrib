@@ -75,7 +75,6 @@ class TestUtils(TestCase):
         )
         self.assertEqual(retval, original_send_callback.return_value)
 
-
     @mock.patch("opentelemetry.trace.set_span_in_context")
     @mock.patch("opentelemetry.propagate.extract")
     @mock.patch("opentelemetry.context.attach")
@@ -97,7 +96,6 @@ class TestUtils(TestCase):
         consume_hook = mock.MagicMock()
         original_next_callback = mock.MagicMock()
         kafka_consumer = mock.MagicMock()
-
 
         wrapped_next = _wrap_next(tracer, consume_hook)
         record = wrapped_next(
