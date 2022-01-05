@@ -21,8 +21,8 @@ from django import VERSION, conf
 from django.http import HttpRequest, HttpResponse
 from django.test.client import Client
 from django.test.utils import setup_test_environment, teardown_test_environment
-from opentelemetry import trace
 
+from opentelemetry import trace
 from opentelemetry.instrumentation.django import (
     DjangoInstrumentor,
     _DjangoMiddleware,
@@ -435,17 +435,19 @@ class TestMiddlewareWithTracerProvider(TestBase, WsgiTestBase):
             span.resource.attributes["resource-key"], "resource-value"
         )
 
-    
     def test_django_with_wsgi_instrumented(self):
         tracer = self.tracer_provider.get_tracer(__name__)
-        with tracer.start_as_current_span("test", kind=SpanKind.SERVER) as parent_span:
+        with tracer.start_as_current_span(
+            "test", kind=SpanKind.SERVER
+        ) as parent_span:
             resp = Client().get("/span_name/1234/")
             span_list = self.exporter.get_finished_spans()
             print(span_list)
-            self.assertEqual(span_list[0].attributes[SpanAttributes.HTTP_STATUS_CODE], 200)
+            self.assertEqual(
+                span_list[0].attributes[SpanAttributes.HTTP_STATUS_CODE], 200
+            )
             self.assertEqual(trace.SpanKind.INTERNAL, span_list[0].kind)
-            self.assertEqual(parent_span.get_span_context().span_id, span_list[0].parent.span_id)
-                
-            
-        
-
+            self.assertEqual(
+                parent_span.get_span_context().span_id,
+                span_list[0].parent.span_id,
+            )
