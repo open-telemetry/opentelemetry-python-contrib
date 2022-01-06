@@ -308,7 +308,6 @@ class _DjangoMiddleware(MiddlewareMixin):
             else:
                 activation.__exit__(None, None, None)
 
-        # if self._environ_token in request.META.keys():
         if request.META.get(self._environ_token, None) is not None:
             detach(request.META.get(self._environ_token))
             request.META.pop(self._environ_token)
