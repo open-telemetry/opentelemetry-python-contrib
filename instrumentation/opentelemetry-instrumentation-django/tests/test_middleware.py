@@ -440,7 +440,7 @@ class TestMiddlewareWithTracerProvider(TestBase, WsgiTestBase):
         with tracer.start_as_current_span(
             "test", kind=SpanKind.SERVER
         ) as parent_span:
-            resp = Client().get("/span_name/1234/")
+            Client().get("/span_name/1234/")
             span_list = self.exporter.get_finished_spans()
             print(span_list)
             self.assertEqual(

@@ -7,8 +7,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased](https://github.com/open-telemetry/opentelemetry-python/compare/v1.8.0-0.27b0...HEAD)
 
-- `opentelemetry-instrumentation-django` Django: Conditionally create SERVER spans
-  ([#812](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/832))
 
 ## [1.8.0-0.27b0](https://github.com/open-telemetry/opentelemetry-python/releases/tag/v1.8.0-0.27b0) - 2021-12-17
 
@@ -20,6 +18,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - `opentelemetry-instrumentation-flask` Flask: Conditionally create SERVER spans
   ([#828](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/828))
+
+- `opentelemetry-instrumentation-django` Django: Conditionally create SERVER spans
+  ([#812](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/832))
 
 ## [1.8.0-0.27b0](https://github.com/open-telemetry/opentelemetry-python/releases/tag/v1.8.0-0.27b0) - 2021-12-17
 
