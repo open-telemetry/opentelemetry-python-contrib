@@ -143,6 +143,7 @@ class TestLambdaExtension(TestBase):
             self.assertEqual(2, len(self.memory_exporter.get_finished_spans()))
             self.memory_exporter.clear()
 
+            # pylint: disable=W0612
             response = self.client.invoke(  # noqa: F841
                 Payload=json.dumps({}),
                 FunctionName=function_name,
@@ -150,6 +151,7 @@ class TestLambdaExtension(TestBase):
             )
 
             span = self.assert_invoke_span(function_name)  # noqa: F841
+            # pylint: disable=W0612
             span_context = span.get_span_context()  # noqa: F841
 
             # TODO: Fix build, reading response is not working in tox
