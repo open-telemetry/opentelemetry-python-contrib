@@ -143,7 +143,7 @@ class TestLambdaExtension(TestBase):
             self.assertEqual(2, len(self.memory_exporter.get_finished_spans()))
             self.memory_exporter.clear()
 
-            response = self.client.invoke(    # noqa: F841
+            response = self.client.invoke(  # noqa: F841
                 Payload=json.dumps({}),
                 FunctionName=function_name,
                 InvocationType="RequestResponse",
