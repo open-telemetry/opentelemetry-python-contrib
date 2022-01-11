@@ -146,6 +146,7 @@ def create_trace_config(
     request_hook: _RequestHookT = None,
     response_hook: _ResponseHookT = None,
     tracer_provider: TracerProvider = None,
+    span_name: typing.Optional[str] = None,
 ) -> aiohttp.TraceConfig:
     """Create an aiohttp-compatible trace configuration.
 
@@ -173,6 +174,7 @@ def create_trace_config(
     :param Callable request_hook: Optional callback that can modify span name and request params.
     :param Callable response_hook: Optional callback that can modify span name and response params.
     :param tracer_provider: optional TracerProvider from which to get a Tracer
+    :param span_name: Optional custom span name
 
     :return: An object suitable for use with :py:class:`aiohttp.ClientSession`.
     :rtype: :py:class:`aiohttp.TraceConfig`
@@ -198,7 +200,7 @@ def create_trace_config(
             return
 
         http_method = params.method.upper()
-        request_span_name = f"HTTP {http_method}"
+        request_span_name = f"HTTP {http_method}" if span_name is None else span_name
 
         trace_config_ctx.span = trace_config_ctx.tracer.start_span(
             request_span_name,
