@@ -156,15 +156,15 @@ class TestLambdaExtension(TestBase):
 
             # TODO: Fix build, reading response is not working in tox
             # # assert injected span
-            # headers = json.loads(response["Payload"].read().decode("utf-8"))
-            # self.assertEqual(
-            #     str(span_context.trace_id),
-            #     headers[MockTextMapPropagator.TRACE_ID_KEY],
-            # )
-            # self.assertEqual(
-            #     str(span_context.span_id),
-            #     headers[MockTextMapPropagator.SPAN_ID_KEY],
-            # )
+            headers = json.loads(response["Payload"].read().decode("utf-8"))
+            self.assertEqual(
+                str(span_context.trace_id),
+                headers[MockTextMapPropagator.TRACE_ID_KEY],
+            )
+            self.assertEqual(
+                str(span_context.span_id),
+                headers[MockTextMapPropagator.SPAN_ID_KEY],
+            )
         finally:
             set_global_textmap(previous_propagator)
 
