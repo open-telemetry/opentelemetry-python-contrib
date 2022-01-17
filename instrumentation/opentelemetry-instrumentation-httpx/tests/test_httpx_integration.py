@@ -250,7 +250,7 @@ class BaseTestCases:
             self.assertEqual(span.status.status_code, StatusCode.ERROR)
 
         def test_invalid_url(self):
-            url = "invalid://nope"
+            url = "invalid://nope/"
 
             with respx.mock, self.assertRaises(httpx.UnsupportedProtocol):
                 respx.post("invalid://nope").pass_through()
@@ -259,14 +259,10 @@ class BaseTestCases:
             span = self.assert_span()
 
             self.assertEqual(span.name, "HTTP POST")
-            print(span.attributes)
             self.assertEqual(
-                span.attributes,
-                {
-                    SpanAttributes.HTTP_METHOD: "POST",
-                    SpanAttributes.HTTP_URL: "invalid://nope/",
-                },
+                span.attributes[SpanAttributes.HTTP_METHOD], "POST"
             )
+            self.assertEqual(span.attributes[SpanAttributes.HTTP_URL], url)
             self.assertEqual(span.status.status_code, StatusCode.ERROR)
 
         def test_if_headers_equals_none(self):
