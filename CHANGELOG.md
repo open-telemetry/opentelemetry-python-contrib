@@ -23,7 +23,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - `opentelemetry-instrumentation-asgi` ASGI: Conditionally create SERVER spans
   ([#843](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/843))
 
-- `opentelemetry-instrumentation-aiohttp-client` aiohttp: Add custom span name
+- `opentelemetry-instrumentation-aiohttp-client` aiohttp: Remove `span_name` from docs
   ([#857](https://github.com/open-telemetry/opentelemetry-python-contrib/issues/857))
 
 
