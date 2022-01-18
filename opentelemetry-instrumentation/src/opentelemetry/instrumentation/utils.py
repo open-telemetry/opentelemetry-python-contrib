@@ -14,12 +14,14 @@
 
 from typing import Dict, Sequence
 
+from opentelemetry import context, trace
 from wrapt import ObjectProxy
 
 # pylint: disable=unused-import
 # pylint: disable=E0611
 from opentelemetry.context import _SUPPRESS_INSTRUMENTATION_KEY  # noqa: F401
 from opentelemetry.trace import StatusCode
+from opentelemetry.propagate import extract
 
 
 def extract_attributes_from_object(
@@ -67,3 +69,29 @@ def unwrap(obj, attr: str):
     func = getattr(obj, attr, None)
     if func and isinstance(func, ObjectProxy) and hasattr(func, "__wrapped__"):
         setattr(obj, attr, func.__wrapped__)
+
+
+def get_token_context_span_kind(env, getter):
+    """Based on presence of active span, extracts context and initializes token and span_kind 
+
+    Args:
+        env : object which contains values that are
+            used to construct a Context. This object
+            must be paired with an appropriate getter
+            which understands how to extract a value from it.
+        getter : an object which contains a get function that can retrieve zero
+            or more values from the carrier and a keys function that can get all the keys
+            from carrier. 
+    """
+
+    token = ctx = span_kind = None
+
+    if trace.get_current_span() is trace.INVALID_SPAN:
+        ctx = extract(env, getter=getter)
+        token = context.attach(ctx)
+        span_kind = trace.SpanKind.SERVER
+    else:
+        ctx = context.get_current()
+        span_kind = trace.SpanKind.INTERNAL
+
+    return token, ctx, span_kind
