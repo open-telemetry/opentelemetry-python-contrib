@@ -204,7 +204,7 @@ class _InstrumentedFalconAPI(getattr(falcon, _instrument_app)):
         else:
             ctx = context.get_current()
             span_kind = trace.SpanKind.INTERNAL
-  
+
         span = self._tracer.start_span(
             otel_wsgi.get_default_span_name(env),
             context=ctx,
