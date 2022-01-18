@@ -233,8 +233,8 @@ def _prepare_headers(headers: typing.Optional[Headers]) -> httpx.Headers:
     return httpx.Headers(headers)
 
 
-def extract_parameters(args, kwargs):
-    if type(args[0]) == httpx.Request:
+def _extract_parameters(args, kwargs):
+    if isinstance(args[0], httpx.Request):
         request: httpx.Request = args[0]
         method = request.method.encode()
         url = request.url
@@ -253,10 +253,10 @@ def extract_parameters(args, kwargs):
     return method, url, headers, stream, extensions
 
 
-def inject_propagation_headers(headers, args, kwargs):
+def _inject_propagation_headers(headers, args, kwargs):
     _headers = _prepare_headers(headers)
     inject(_headers)
-    if type(args[0]) == httpx.Request:
+    if isinstance(args[0], httpx.Request):
         request: httpx.Request = args[0]
         request.headers = _headers
     else:
@@ -303,7 +303,7 @@ class SyncOpenTelemetryTransport(httpx.BaseTransport):
         if context.get_value("suppress_instrumentation"):
             return self._transport.handle_request(*args, **kwargs)
 
-        method, url, headers, stream, extensions = extract_parameters(
+        method, url, headers, stream, extensions = _extract_parameters(
             args, kwargs
         )
         span_attributes = _prepare_attributes(method, url)
@@ -319,9 +319,9 @@ class SyncOpenTelemetryTransport(httpx.BaseTransport):
             if self._request_hook is not None:
                 self._request_hook(span, request_info)
 
-            inject_propagation_headers(headers, args, kwargs)
+            _inject_propagation_headers(headers, args, kwargs)
             response = self._transport.handle_request(*args, **kwargs)
-            if type(response) == httpx.Response:
+            if isinstance(response, httpx.Response):
                 response: httpx.Response = response
                 status_code = response.status_code
                 headers = response.headers
@@ -380,7 +380,7 @@ class AsyncOpenTelemetryTransport(httpx.AsyncBaseTransport):
         if context.get_value("suppress_instrumentation"):
             return await self._transport.handle_async_request(*args, **kwargs)
 
-        method, url, headers, stream, extensions = extract_parameters(
+        method, url, headers, stream, extensions = _extract_parameters(
             args, kwargs
         )
         span_attributes = _prepare_attributes(method, url)
@@ -396,12 +396,12 @@ class AsyncOpenTelemetryTransport(httpx.AsyncBaseTransport):
             if self._request_hook is not None:
                 await self._request_hook(span, request_info)
 
-            inject_propagation_headers(headers, args, kwargs)
+            _inject_propagation_headers(headers, args, kwargs)
 
             response = await self._transport.handle_async_request(
                 *args, **kwargs
             )
-            if type(response) == httpx.Response:
+            if isinstance(response, httpx.Response):
                 response: httpx.Response = response
                 status_code = response.status_code
                 headers = response.headers
