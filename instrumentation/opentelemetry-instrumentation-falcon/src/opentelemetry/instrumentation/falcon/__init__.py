@@ -108,10 +108,9 @@ from opentelemetry.instrumentation.propagators import (
 )
 from opentelemetry.instrumentation.utils import (
     extract_attributes_from_object,
+    get_token_context_span_kind,
     http_status_to_status_code,
-    get_token_context_span_kind
 )
-from opentelemetry.propagate import extract
 from opentelemetry.semconv.trace import SpanAttributes
 from opentelemetry.trace.status import Status
 from opentelemetry.util._time import _time_ns
@@ -196,8 +195,10 @@ class _InstrumentedFalconAPI(getattr(falcon, _instrument_app)):
 
         start_time = _time_ns()
 
-        token, ctx, span_kind = get_token_context_span_kind(env, getter=otel_wsgi.wsgi_getter)
-  
+        token, ctx, span_kind = get_token_context_span_kind(
+            env, getter=otel_wsgi.wsgi_getter
+        )
+
         span = self._tracer.start_span(
             otel_wsgi.get_default_span_name(env),
             context=ctx,

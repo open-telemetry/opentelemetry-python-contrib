@@ -14,14 +14,15 @@
 
 from typing import Dict, Sequence
 
-from opentelemetry import context, trace
 from wrapt import ObjectProxy
+
+from opentelemetry import context, trace
 
 # pylint: disable=unused-import
 # pylint: disable=E0611
 from opentelemetry.context import _SUPPRESS_INSTRUMENTATION_KEY  # noqa: F401
-from opentelemetry.trace import StatusCode
 from opentelemetry.propagate import extract
+from opentelemetry.trace import StatusCode
 
 
 def extract_attributes_from_object(
@@ -72,7 +73,7 @@ def unwrap(obj, attr: str):
 
 
 def get_token_context_span_kind(env, getter):
-    """Based on presence of active span, extracts context and initializes token and span_kind 
+    """Based on presence of active span, extracts context and initializes token and span_kind
 
     Args:
         env : object which contains values that are
@@ -81,7 +82,7 @@ def get_token_context_span_kind(env, getter):
             which understands how to extract a value from it.
         getter : an object which contains a get function that can retrieve zero
             or more values from the carrier and a keys function that can get all the keys
-            from carrier. 
+            from carrier.
     """
 
     token = ctx = span_kind = None
