@@ -193,8 +193,9 @@ def trace_tween_factory(handler, registry):
                 else:
                     activation.__exit__(None, None, None)
 
-                if request.environ.get(_ENVIRON_TOKEN, None) is not None:
-                    context.detach(request.environ.get(_ENVIRON_TOKEN))
+                env_token = request.environ.get(_ENVIRON_TOKEN, None)
+                if env_token is not None:
+                    context.detach(env_token)
 
         return response
 
