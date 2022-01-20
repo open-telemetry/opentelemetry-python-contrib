@@ -72,8 +72,8 @@ def unwrap(obj, attr: str):
         setattr(obj, attr, func.__wrapped__)
 
 
-def start_internal_or_server_span(
-    tracer, span_name, start_time, env, context_getter
+def _start_internal_or_server_span(
+    tracer, span_name, start_time, context_carrier, context_getter
 ):
     """Returns internal or server span along with the token which can be used by caller to reset context
 
@@ -82,7 +82,7 @@ def start_internal_or_server_span(
         tracer : tracer in use by given instrumentation library
         name (string): name of the span
         start_time : start time of the span
-        env : object which contains values that are
+        context_carrier : object which contains values that are
             used to construct a Context. This object
             must be paired with an appropriate getter
             which understands how to extract a value from it.
@@ -93,7 +93,7 @@ def start_internal_or_server_span(
 
     token = ctx = span_kind = None
     if trace.get_current_span() is trace.INVALID_SPAN:
-        ctx = extract(env, getter=context_getter)
+        ctx = extract(context_carrier, getter=context_getter)
         token = context.attach(ctx)
         span_kind = trace.SpanKind.SERVER
     else:
