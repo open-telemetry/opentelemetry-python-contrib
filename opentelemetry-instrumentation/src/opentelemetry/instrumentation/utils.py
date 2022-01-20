@@ -72,15 +72,21 @@ def unwrap(obj, attr: str):
         setattr(obj, attr, func.__wrapped__)
 
 
-def get_token_context_span_kind(env, getter):
-    """Based on presence of active span, extracts context and initializes token and span_kind
+def start_internal_or_server_span(
+    tracer, span_name, start_time, env, context_getter
+):
+    """Returns internal or server span along with the token which can be used by caller to reset context
+
 
     Args:
+        tracer : tracer in use by given instrumentation library
+        name (string): name of the span
+        start_time : start time of the span
         env : object which contains values that are
             used to construct a Context. This object
             must be paired with an appropriate getter
             which understands how to extract a value from it.
-        getter : an object which contains a get function that can retrieve zero
+        context_getter : an object which contains a get function that can retrieve zero
             or more values from the carrier and a keys function that can get all the keys
             from carrier.
     """
@@ -88,11 +94,18 @@ def get_token_context_span_kind(env, getter):
     token = ctx = span_kind = None
 
     if trace.get_current_span() is trace.INVALID_SPAN:
-        ctx = extract(env, getter=getter)
+        ctx = extract(env, getter=context_getter)
         token = context.attach(ctx)
         span_kind = trace.SpanKind.SERVER
     else:
         ctx = context.get_current()
         span_kind = trace.SpanKind.INTERNAL
 
-    return token, ctx, span_kind
+    span = tracer.start_span(
+        name=span_name,
+        context=ctx,
+        kind=span_kind,
+        start_time=start_time,
+    )
+
+    return span, token
