@@ -92,7 +92,6 @@ def start_internal_or_server_span(
     """
 
     token = ctx = span_kind = None
-
     if trace.get_current_span() is trace.INVALID_SPAN:
         ctx = extract(env, getter=context_getter)
         token = context.attach(ctx)
@@ -100,12 +99,10 @@ def start_internal_or_server_span(
     else:
         ctx = context.get_current()
         span_kind = trace.SpanKind.INTERNAL
-
     span = tracer.start_span(
         name=span_name,
         context=ctx,
         kind=span_kind,
         start_time=start_time,
     )
-
     return span, token
