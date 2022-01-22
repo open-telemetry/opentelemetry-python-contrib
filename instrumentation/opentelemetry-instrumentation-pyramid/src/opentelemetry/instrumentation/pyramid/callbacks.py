@@ -20,20 +20,13 @@ from pyramid.settings import asbool
 from pyramid.tweens import EXCVIEW
 
 import opentelemetry.instrumentation.wsgi as otel_wsgi
-from opentelemetry import context
+from opentelemetry import context, trace
 from opentelemetry.instrumentation.propagators import (
     get_global_response_propagator,
 )
 from opentelemetry.instrumentation.pyramid.version import __version__
 from opentelemetry.propagate import extract
 from opentelemetry.semconv.trace import SpanAttributes
-from opentelemetry.trace import (
-    INVALID_SPAN,
-    SpanKind,
-    get_current_span,
-    get_tracer,
-    use_span,
-)
 from opentelemetry.util._time import _time_ns
 from opentelemetry.util.http import get_excluded_urls
 
@@ -90,19 +83,18 @@ def _before_traversal(event):
     start_time = request_environ.get(_ENVIRON_STARTTIME_KEY)
 
     token = ctx = None
-    span_kind = SpanKind.INTERNAL
-    tracer = get_tracer(__name__, __version__)
+    span_kind = trace.SpanKind.INTERNAL
+    tracer = trace.get_tracer(__name__, __version__)
 
     if request.matched_route:
         span_name = request.matched_route.pattern
     else:
         span_name = otel_wsgi.get_default_span_name(request_environ)
 
-    if get_current_span() is INVALID_SPAN:
+    if trace.get_current_span() is trace.INVALID_SPAN:
         ctx = extract(request_environ, getter=otel_wsgi.wsgi_getter)
         token = context.attach(ctx)
-        span_kind = SpanKind.SERVER
-
+        span_kind = trace.SpanKind.SERVER
     span = tracer.start_span(
         span_name,
         ctx,
@@ -119,7 +111,7 @@ def _before_traversal(event):
         for key, value in attributes.items():
             span.set_attribute(key, value)
 
-    activation = use_span(span, end_on_exit=True)
+    activation = trace.use_span(span, end_on_exit=True)
     activation.__enter__()  # pylint: disable=E1101
     request_environ[_ENVIRON_ACTIVATION_KEY] = activation
     request_environ[_ENVIRON_SPAN_KEY] = span
