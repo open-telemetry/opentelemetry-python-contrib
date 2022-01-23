@@ -61,9 +61,6 @@ def set_attributes_from_context(span, context):
 
         # Skip `timelimit` if it is not set (it's default/unset value is a
         # tuple or a list of `None` values
-        if key == "timelimit" and value in [(None, None), [None, None]]:
-            continue
-
         if key == "timelimit":
             if value in [(None, None), [None, None]]:
                 continue
