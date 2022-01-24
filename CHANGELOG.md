@@ -13,7 +13,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   ([#817](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/817))
 - `opentelemetry-instrumentation-kafka-python` added kafka-python module instrumentation.
   ([#814](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/814))
-
+- `opentelemetry-instrumentation-falcon` Falcon: Conditionally create SERVER spans
+  ([#867](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/867))
 ### Fixed
 
 - `opentelemetry-instrumentation-django` Django: Conditionally create SERVER spans
@@ -27,6 +28,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - `opentelemetry-instrumentation-asgi` ASGI: Conditionally create SERVER spans
   ([#843](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/843))
 
+- `opentelemetry-instrumentation-django` Django: fix issue preventing detection of MIDDLEWARE_CLASSES
 
 ## [1.8.0-0.27b0](https://github.com/open-telemetry/opentelemetry-python/releases/tag/v1.8.0-0.27b0) - 2021-12-17
 
