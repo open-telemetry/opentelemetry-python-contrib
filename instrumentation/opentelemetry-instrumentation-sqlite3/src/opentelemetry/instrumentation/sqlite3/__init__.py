@@ -39,7 +39,7 @@ API
 ---
 """
 
-import sqlite3
+from sqlite3 import dbapi2
 from typing import Collection
 
 from opentelemetry.instrumentation import dbapi
@@ -65,7 +65,7 @@ class SQLite3Instrumentor(BaseInstrumentor):
 
         dbapi.wrap_connect(
             __name__,
-            sqlite3,
+            dbapi2,
             "connect",
             _DATABASE_SYSTEM,
             _CONNECTION_ATTRIBUTES,
@@ -75,7 +75,7 @@ class SQLite3Instrumentor(BaseInstrumentor):
 
     def _uninstrument(self, **kwargs):
         """ "Disable SQLite3 instrumentation"""
-        dbapi.unwrap_connect(sqlite3, "connect")
+        dbapi.unwrap_connect(dbapi2, "connect")
 
     @staticmethod
     def instrument_connection(connection, tracer_provider=None):
