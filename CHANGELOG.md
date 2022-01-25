@@ -6,9 +6,13 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased](https://github.com/open-telemetry/opentelemetry-python/compare/v1.8.0-0.27b0...HEAD)
+- `opentelemetry-instrumentation-pyramid` Pyramid: Conditionally create SERVER spans
+  ([#869](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/869))
 
 ### Added
 
+- `opentelemetry-instrumentation-grpc` added `trailing_metadata` to _OpenTelemetryServicerContext.
+  ([#871](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/871))
 - `opentelemetry-instrumentation-asgi` now returns a `traceresponse` response header.
   ([#817](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/817))
 - `opentelemetry-instrumentation-kafka-python` added kafka-python module instrumentation.
