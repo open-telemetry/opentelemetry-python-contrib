@@ -235,6 +235,7 @@ def _prepare_headers(headers: typing.Optional[Headers]) -> httpx.Headers:
 
 def _extract_parameters(args, kwargs):
     if isinstance(args[0], httpx.Request):
+        # In httpx >= 0.20.0, handle_request receives a Request object
         request: httpx.Request = args[0]
         method = request.method.encode()
         url = request.url
@@ -242,6 +243,7 @@ def _extract_parameters(args, kwargs):
         stream = request.stream
         extensions = request.extensions
     else:
+        # In httpx < 0.20.0, handle_request receives the parameters separately
         method = args[0]
         url = args[1]
         headers = kwargs.get("headers", args[2] if len(args) > 2 else None)
