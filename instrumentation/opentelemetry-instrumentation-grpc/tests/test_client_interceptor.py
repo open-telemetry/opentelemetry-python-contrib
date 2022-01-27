@@ -277,9 +277,7 @@ class TestClientProto(TestBase):
         previous_propagator = get_global_textmap()
         try:
             set_global_textmap(MockTextMapPropagator())
-            interceptor = OpenTelemetryClientInterceptor(
-                trace._NoOpTracer()
-            )
+            interceptor = OpenTelemetryClientInterceptor(trace.NoOpTracer())
 
             carrier = tuple()
 
