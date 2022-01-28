@@ -82,8 +82,9 @@ from opentelemetry.instrumentation.utils import (
 )
 from opentelemetry.propagate import inject
 from opentelemetry.semconv.trace import SpanAttributes
-from opentelemetry.trace import Span, SpanKind, get_tracer
+from opentelemetry.trace import INVALID_SPAN_CONTEXT, Link, Span, SpanKind, get_current_span, get_tracer
 from opentelemetry.trace.status import Status
+from opentelemetry.util.http import is_redirect
 from opentelemetry.util.http.httplib import set_ip_on_next_http_connection
 
 # A key to a context variable to avoid creating duplicate spans when instrumenting
@@ -156,7 +157,8 @@ def _instrument(
     url_filter: _UrlFilterT = None,
 ):
     def instrumented_urlopen(wrapped, instance, args, kwargs):
-        if _is_instrumentation_suppressed():
+        retry = kwargs.get("retries")
+        if _is_instrumentation_suppressed(retry and len(retry.history)):
             return wrapped(*args, **kwargs)
 
         method = _get_url_open_arg("method", args, kwargs).upper()
@@ -170,25 +172,83 @@ def _instrument(
             SpanAttributes.HTTP_URL: url,
         }
 
+        links = None
+        # If current call is a retry call
+        if retry and len(retry.history):
+            # History reflects how many retry attempts have been made
+            # Only add retry count on retry scenarios
+            if not is_redirect(retry.history[-1].status):
+                span_attributes["http.retry_count"] = len(retry.history)
+            prev_span_context = get_current_span().get_span_context()
+            if prev_span_context is INVALID_SPAN_CONTEXT:
+                # If current span is root but we are in a retry scenario, this
+                # is a redirect scenario
+                prev_span_context = getattr(retry, "_OT_retry_prev_span_context", None)
+            if prev_span_context is not INVALID_SPAN_CONTEXT:
+                links = (Link(prev_span_context),)
+
         with tracer.start_as_current_span(
-            span_name, kind=SpanKind.CLIENT, attributes=span_attributes
+            span_name, kind=SpanKind.CLIENT, attributes=span_attributes, links=links,
         ) as span, set_ip_on_next_http_connection(span):
             if callable(request_hook):
                 request_hook(span, instance, headers, body)
-            inject(headers)
+            # If retry call, we must remove headers from kwargs since the underlying call is
+            # called with headers already populated in args
+            if retry and len(args) >= 4 and args[3] is not None:
+                kwargs.pop("headers", None)
+            else:
+                inject(headers)
 
             with _suppress_further_instrumentation():
                 response = wrapped(*args, **kwargs)
+            
+            # If redirect scenario, and user enables automatically handle redirects,
+            # Store the span context of the original request
+            if is_redirect(response.status):
+                # response.retries.total will be 0 or False if NOT enabled
+                if response.retries and response.retries.total:
+                    # We want to store the first response span context that returns a redirect
+                    # This is because all subsequent redirect spans should be children
+                    # of the original request span
+                    if not hasattr(response.retries, "_OT_retry_original_span_context"):
+                        response.retries._OT_retry_original_span_context = span.get_span_context()
+                    # Update the previous span context in the retry chain
+                    response.retries._OT_retry_prev_span_context = span.get_span_context()
 
             _apply_response(span, response)
             if callable(response_hook):
                 response_hook(span, instance, response)
             return response
 
+    # Instrument increment in urllib3.util.Retry
+    # See https://github.com/urllib3/urllib3/blob/main/src/urllib3/util/retry.py#L421
+    # for implementation
+    def instrumented_increment(wrapped, instance, args, kwargs):
+        original_span_context = getattr(instance, "_OT_retry_original_span_context", None)
+        prev_span_context = getattr(instance, "_OT_retry_prev_span_context", None)
+        retry = wrapped(*args, **kwargs)
+        # Only set original span context to current if not already set
+        # In a retry/redirect scenario, we need to keep track of the root span that made
+        # the original request
+        if not original_span_context:
+            original_span_context = get_current_span().get_span_context()
+        # We need to keep track of the previous span context because redirect
+        # scenario starts a new span tree
+        if prev_span_context is None or prev_span_context is INVALID_SPAN_CONTEXT:
+            prev_span_context = get_current_span().get_span_context()
+        retry._OT_retry_original_span_context = original_span_context
+        retry._OT_retry_prev_span_context = prev_span_context
+        return retry
+
     wrapt.wrap_function_wrapper(
         urllib3.connectionpool.HTTPConnectionPool,
         "urlopen",
         instrumented_urlopen,
+    )
+    wrapt.wrap_function_wrapper(
+        urllib3.util.Retry,
+        "increment",
+        instrumented_increment,
     )
 
 
@@ -250,11 +310,10 @@ def _apply_response(span: Span, response: urllib3.response.HTTPResponse):
     span.set_status(Status(http_status_to_status_code(response.status)))
 
 
-def _is_instrumentation_suppressed() -> bool:
-    return bool(
-        context.get_value(_SUPPRESS_INSTRUMENTATION_KEY)
-        or context.get_value(_SUPPRESS_HTTP_INSTRUMENTATION_KEY)
-    )
+def _is_instrumentation_suppressed(retry: typing.Union[urllib3.util.Retry, bool, int]) -> bool:
+    return bool(context.get_value(_SUPPRESS_INSTRUMENTATION_KEY)) or \
+        (bool(context.get_value(_SUPPRESS_HTTP_INSTRUMENTATION_KEY)) and not \
+        retry)
 
 
 @contextlib.contextmanager
@@ -270,3 +329,4 @@ def _suppress_further_instrumentation():
 
 def _uninstrument():
     unwrap(urllib3.connectionpool.HTTPConnectionPool, "urlopen")
+    unwrap(urllib3.util.Retry, "urlopen")

@@ -98,3 +98,6 @@ def remove_url_credentials(url: str) -> str:
     except ValueError:  # an unparseable url was passed
         pass
     return url
+
+def is_redirect(status: int) -> bool:
+    return status in (301, 302, 303, 307, 308)
