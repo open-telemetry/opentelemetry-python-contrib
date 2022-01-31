@@ -53,31 +53,6 @@ class KafkaPropertiesExtractor:
             "headers", 6, None, args, kwargs
         )
 
-    @staticmethod
-    def extract_produce_partition(instance, args, kwargs):
-        """extract partition `produce` method arguments, using the `_partition` method in Producer class"""
-        topic = KafkaPropertiesExtractor.extract_produce_topic(args)
-        key = KafkaPropertiesExtractor.extract_produce_key(args, kwargs)
-        value = KafkaPropertiesExtractor.extract_produce_value(args, kwargs)
-        partition = KafkaPropertiesExtractor._extract_argument(
-            "partition", 3, None, args, kwargs
-        )
-        key_bytes = instance._serialize(
-            instance.config["key_serializer"], topic, key
-        )
-        value_bytes = instance._serialize(
-            instance.config["value_serializer"], topic, value
-        )
-        valid_types = (bytes, bytearray, memoryview, type(None))
-        if (
-            type(key_bytes) not in valid_types
-            or type(value_bytes) not in valid_types
-        ):
-            return None
-        return instance._partition(
-            topic, partition, key, value, key_bytes, value_bytes
-        )
-
 ProduceHookT = Optional[Callable[[Span, List, Dict], None]]
 ConsumeHookT = Optional[Callable[[Span, Message, List, Dict], None]]
 
