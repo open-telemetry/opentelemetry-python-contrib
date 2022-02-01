@@ -86,6 +86,7 @@ from typing import Collection
 
 import aiohttp
 import wrapt
+import yarl
 
 from opentelemetry import context as context_api
 from opentelemetry import trace
@@ -103,7 +104,7 @@ from opentelemetry.trace import Span, SpanKind, TracerProvider, get_tracer
 from opentelemetry.trace.status import Status, StatusCode
 from opentelemetry.util.http import remove_url_credentials
 
-_UrlFilterT = typing.Optional[typing.Callable[[str], str]]
+_UrlFilterT = typing.Optional[typing.Callable[[yarl.URL], str]]
 _RequestHookT = typing.Optional[
     typing.Callable[[Span, aiohttp.TraceRequestStartParams], None]
 ]
