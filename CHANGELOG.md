@@ -5,24 +5,49 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [Unreleased](https://github.com/open-telemetry/opentelemetry-python/compare/v1.8.0-0.27b0...HEAD)
+## [Unreleased](https://github.com/open-telemetry/opentelemetry-python/compare/v1.9.1-0.28b1...HEAD)
+
+## [1.9.1-0.28b1](https://github.com/open-telemetry/opentelemetry-python/releases/tag/v1.9.1-0.28b1) - 2022-01-29
+
+
+
+### Fixed
+
+- `opentelemetry-instrumentation-pika` requires `packaging` dependency
+
+
+## [1.9.0-0.28b0](https://github.com/open-telemetry/opentelemetry-python/releases/tag/v1.9.0-0.28b0) - 2022-01-26
+
 
 ### Added
 
+- `opentelemetry-instrumentation-pyramid` Pyramid: Conditionally create SERVER spans
+  ([#869](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/869))
+- `opentelemetry-instrumentation-grpc` added `trailing_metadata` to _OpenTelemetryServicerContext.
+  ([#871](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/871))
 - `opentelemetry-instrumentation-asgi` now returns a `traceresponse` response header.
   ([#817](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/817))
+- `opentelemetry-instrumentation-kafka-python` added kafka-python module instrumentation.
+  ([#814](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/814))
+- `opentelemetry-instrumentation-falcon` Falcon: Conditionally create SERVER spans
+  ([#867](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/867))
+- `opentelemetry-instrumentation-pymongo` now supports `pymongo v4`
+  ([#876](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/876))
 
 ### Fixed
 
 - `opentelemetry-instrumentation-django` Django: Conditionally create SERVER spans
   ([#832](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/832))
-  
 - `opentelemetry-instrumentation-flask` Flask: Conditionally create SERVER spans
   ([#828](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/828))
-
+- `opentelemetry-instrumentation-celery` Celery: Support partial task time limit
+  ([#846](https://github.com/open-telemetry/opentelemetry-python-contrib/issues/846))
 - `opentelemetry-instrumentation-asgi` ASGI: Conditionally create SERVER spans
   ([#843](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/843))
-
+- `opentelemetry-instrumentation-django` Django: fix issue preventing detection of MIDDLEWARE_CLASSES
+- `opentelemetry-instrumentation-sqlite3` Instrumentation now works with `dbapi2.connect`
+- `opentelemetry-instrumentation-kafka` Kafka: safe kafka partition extraction
+  ([#872](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/872))
 - `opentelemetry-instrumentation-aiohttp-client` aiohttp: Correct url filter input type
   ([#843](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/864))
 
