@@ -92,6 +92,7 @@ from typing import Collection
 import aiohttp
 import wrapt
 import yarl
+
 from opentelemetry import context as context_api
 from opentelemetry import trace
 from opentelemetry.instrumentation.aiohttp_client.package import _instruments
