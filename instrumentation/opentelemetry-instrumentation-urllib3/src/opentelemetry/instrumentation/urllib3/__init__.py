@@ -92,6 +92,9 @@ from opentelemetry.util.http.httplib import set_ip_on_next_http_connection
 _SUPPRESS_HTTP_INSTRUMENTATION_KEY = context.create_key(
     "suppress_http_instrumentation"
 )
+_URLLIB_RETRY_PARENT_CONTEXT_KEY = context.create_key(
+    "urllib_retry_parent_context"
+)
 
 _UrlFilterT = typing.Optional[typing.Callable[[str], str]]
 _RequestHookT = typing.Optional[
@@ -173,22 +176,34 @@ def _instrument(
         }
 
         links = None
+        prev_span_context = None
+        parent_context = None
+        retry_token = None
         # If current call is a retry call
         if retry and len(retry.history):
             # History reflects how many retry attempts have been made
             # Only add retry count on retry scenarios
             if not is_redirect(retry.history[-1].status):
                 span_attributes["http.retry_count"] = len(retry.history)
-            prev_span_context = get_current_span().get_span_context()
-            if prev_span_context is INVALID_SPAN_CONTEXT:
-                # If current span is root but we are in a retry scenario, this
-                # is a redirect scenario
                 prev_span_context = getattr(retry, "_OT_retry_prev_span_context", None)
-            if prev_span_context is not INVALID_SPAN_CONTEXT:
+                # Set the parent context to the original request's span parent
+                # context for retry scenarios
+                parent_context = context.get_value(_URLLIB_RETRY_PARENT_CONTEXT_KEY)
+            else:
+                prev_span_context = getattr(retry, "_OT_redirect_prev_span_context", None)
+            if prev_span_context and prev_span_context is not INVALID_SPAN_CONTEXT:
                 links = (Link(prev_span_context),)
+        else:
+            # All retry spans should have the same parent as the original
+            # request span, but is handled with recursion so we need to keep
+            # track of original request parent span context
+            parent = context.get_current()
+            retry_token = context.attach(
+                context.set_value(_URLLIB_RETRY_PARENT_CONTEXT_KEY, parent)
+            )
 
         with tracer.start_as_current_span(
-            span_name, kind=SpanKind.CLIENT, attributes=span_attributes, links=links,
+            span_name, context=parent_context, kind=SpanKind.CLIENT, attributes=span_attributes, links=links,
         ) as span, set_ip_on_next_http_connection(span):
             if callable(request_hook):
                 request_hook(span, instance, headers, body)
@@ -207,37 +222,27 @@ def _instrument(
             if is_redirect(response.status):
                 # response.retries.total will be 0 or False if NOT enabled
                 if response.retries and response.retries.total:
-                    # We want to store the first response span context that returns a redirect
-                    # This is because all subsequent redirect spans should be children
-                    # of the original request span
-                    if not hasattr(response.retries, "_OT_retry_original_span_context"):
-                        response.retries._OT_retry_original_span_context = span.get_span_context()
                     # Update the previous span context in the retry chain
-                    response.retries._OT_retry_prev_span_context = span.get_span_context()
-
+                    response.retries._OT_redirect_prev_span_context = span.get_span_context()
+        
             _apply_response(span, response)
             if callable(response_hook):
                 response_hook(span, instance, response)
+            if retry_token:
+                context.detach(retry_token)
             return response
 
     # Instrument increment in urllib3.util.Retry
     # See https://github.com/urllib3/urllib3/blob/main/src/urllib3/util/retry.py#L421
     # for implementation
     def instrumented_increment(wrapped, instance, args, kwargs):
-        original_span_context = getattr(instance, "_OT_retry_original_span_context", None)
-        prev_span_context = getattr(instance, "_OT_retry_prev_span_context", None)
+        prev_redirect_span_context = getattr(instance, "_OT_redirect_prev_span_context", None)
+        # Retry scenarios that are not redirect are handled by recursion,
+        # so the current span is marked as the previous span
+        prev_retry_span_context = get_current_span().get_span_context()
         retry = wrapped(*args, **kwargs)
-        # Only set original span context to current if not already set
-        # In a retry/redirect scenario, we need to keep track of the root span that made
-        # the original request
-        if not original_span_context:
-            original_span_context = get_current_span().get_span_context()
-        # We need to keep track of the previous span context because redirect
-        # scenario starts a new span tree
-        if prev_span_context is None or prev_span_context is INVALID_SPAN_CONTEXT:
-            prev_span_context = get_current_span().get_span_context()
-        retry._OT_retry_original_span_context = original_span_context
-        retry._OT_retry_prev_span_context = prev_span_context
+        retry._OT_redirect_prev_span_context = prev_redirect_span_context
+        retry._OT_retry_prev_span_context = prev_retry_span_context
         return retry
 
     wrapt.wrap_function_wrapper(
