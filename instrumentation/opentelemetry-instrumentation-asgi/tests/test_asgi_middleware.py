@@ -562,8 +562,8 @@ class TestWrappedApplication(AsgiTestBase):
         # Wrapping the otel intercepted app with server span
         async def wrapped_app(scope, receive, send):
             with tracer.start_as_current_span(
-                'test', 
-                kind=SpanKind.SERVER) as parent_span:
+                "test", kind=SpanKind.SERVER
+            ) as parent_span:
                 await app(scope, receive, send)
 
         self.seed_app(wrapped_app)
@@ -582,6 +582,7 @@ class TestWrappedApplication(AsgiTestBase):
         self.assertEqual(
             span_list[4].context.span_id, span_list[3].parent.span_id
         )
+
 
 if __name__ == "__main__":
     unittest.main()
