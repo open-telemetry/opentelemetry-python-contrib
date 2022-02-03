@@ -12,7 +12,7 @@ supported.
 
 Deprecated
 ------------
-This exporter has been deprecated. To export your OpenTelemetry tracer to datadog please refer to [Datadog Python Open Standards](https://docs.datadoghq.com/tracing/setup_overview/open_standards/python/#opentelemetry).
+This exporter has been deprecated. To export your OpenTelemetry traces to Datadog please refer to `Datadog Python Open Standards <https://docs.datadoghq.com/tracing/setup_overview/open_standards/python/#opentelemetry>`_ .
 
 
 Installation
