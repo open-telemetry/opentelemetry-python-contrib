@@ -562,7 +562,7 @@ class TestWrappedApplication(AsgiTestBase):
         async def wrapped_app(scope, receive, send):
             with tracer.start_as_current_span(
                 "test", kind=SpanKind.SERVER
-            ) as parent_span:
+            ) as _:
                 await app(scope, receive, send)
 
         self.seed_app(wrapped_app)
@@ -572,7 +572,7 @@ class TestWrappedApplication(AsgiTestBase):
         self.assertEqual(SpanKind.INTERNAL, span_list[0].kind)
         self.assertEqual(SpanKind.INTERNAL, span_list[1].kind)
         self.assertEqual(SpanKind.INTERNAL, span_list[2].kind)
-        self.assertEqual(SpanKind.INTERNAL, span_list[3].kind)
+        self.assertEqual(trace_api.SpanKind.INTERNAL, span_list[3].kind)
 
         # SERVER "test"
         self.assertEqual(SpanKind.SERVER, span_list[4].kind)
