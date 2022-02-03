@@ -53,6 +53,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - `opentelemetry-instrumentation-aiohttp-client` aiohttp: Correct url filter input type
   ([#843](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/864))
 
+- `opentelemetry-instrumentation-aiohttp-client` aiohttp: Remove `span_name` from docs
+  ([#857](https://github.com/open-telemetry/opentelemetry-python-contrib/issues/857))
+
 
 ## [1.8.0-0.27b0](https://github.com/open-telemetry/opentelemetry-python/releases/tag/v1.8.0-0.27b0) - 2021-12-17
 
@@ -62,6 +65,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - `opentelemetry-instrumentation-pika` Adds support for versions between `0.12.0` to `1.0.0`. ([#837](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/837))
 
 ### Fixed
+
+- `opentelemetry-instrumentation-urllib` Fixed an error on unexpected status values.
+  ([#823](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/823))
 
 - `opentelemetry-exporter-richconsole` Fixed attribute error on parentless spans.
   ([#782](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/782))
