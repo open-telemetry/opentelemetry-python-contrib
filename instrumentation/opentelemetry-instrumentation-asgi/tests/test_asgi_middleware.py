@@ -18,7 +18,6 @@ from unittest import mock
 
 import opentelemetry.instrumentation.asgi as otel_asgi
 from opentelemetry import trace as trace_api
-from opentelemetry.trace import SpanKind
 from opentelemetry.instrumentation.propagators import (
     TraceResponsePropagator,
     get_global_response_propagator,
@@ -31,7 +30,7 @@ from opentelemetry.test.asgitestutil import (
     setup_testing_defaults,
 )
 from opentelemetry.test.test_base import TestBase
-from opentelemetry.trace import format_span_id, format_trace_id
+from opentelemetry.trace import SpanKind, format_span_id, format_trace_id
 
 
 async def http_app(scope, receive, send):
