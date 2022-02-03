@@ -229,7 +229,7 @@ class TestAutoInstrumentationLogic(unittest.TestCase):
 
 
 class TestConditonalServerSpanCreation(TestStarletteManualInstrumentation):
-    def test_wrapped_with_server_span(self):
+    def test_mark_span_internal_in_presence_of_another_span(self):
         tracer = get_tracer(__name__)
         with tracer.start_as_current_span(
             "test", kind=SpanKind.SERVER
