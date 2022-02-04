@@ -5,10 +5,23 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [Unreleased](https://github.com/open-telemetry/opentelemetry-python/compare/v1.9.0-0.28b0...HEAD)
+## [Unreleased](https://github.com/open-telemetry/opentelemetry-python/compare/v1.9.1-0.28b1...HEAD)
+
+### Fixed
+
+- `opentelemetry-instrumentation-logging` retrieves service name defensively.
+  ([#890](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/890))
+
+## [1.9.1-0.28b1](https://github.com/open-telemetry/opentelemetry-python/releases/tag/v1.9.1-0.28b1) - 2022-01-29
+
+### Fixed
+
+- `opentelemetry-instrumentation-pika` requires `packaging` dependency
+
+- `opentelemetry-instrumentation-tornado` Tornado: Conditionally create SERVER spans
+  ([#867](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/889))
 
 ## [1.9.0-0.28b0](https://github.com/open-telemetry/opentelemetry-python/releases/tag/v1.9.0-0.28b0) - 2022-01-26
-
 
 ### Added
 
@@ -24,24 +37,33 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   ([#867](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/867))
 - `opentelemetry-instrumentation-urllib3` implements automatic retry/redirect to comply
   with http semantic conventions.
-  ([#817](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/817))
+  ([#883](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/883))
+- `opentelemetry-instrumentation-pymongo` now supports `pymongo v4`
+  ([#876](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/876))
+
+- `opentelemetry-instrumentation-httpx` now supports versions higher than `0.19.0`.
+  ([#866](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/866))
 
 ### Fixed
 
 - `opentelemetry-instrumentation-django` Django: Conditionally create SERVER spans
   ([#832](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/832))
-  
 - `opentelemetry-instrumentation-flask` Flask: Conditionally create SERVER spans
   ([#828](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/828))
 - `opentelemetry-instrumentation-celery` Celery: Support partial task time limit
   ([#846](https://github.com/open-telemetry/opentelemetry-python-contrib/issues/846))
-
 - `opentelemetry-instrumentation-asgi` ASGI: Conditionally create SERVER spans
   ([#843](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/843))
-
 - `opentelemetry-instrumentation-django` Django: fix issue preventing detection of MIDDLEWARE_CLASSES
-
 - `opentelemetry-instrumentation-sqlite3` Instrumentation now works with `dbapi2.connect`
+- `opentelemetry-instrumentation-kafka` Kafka: safe kafka partition extraction
+  ([#872](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/872))
+- `opentelemetry-instrumentation-aiohttp-client` aiohttp: Correct url filter input type
+  ([#843](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/864))
+
+- `opentelemetry-instrumentation-aiohttp-client` aiohttp: Remove `span_name` from docs
+  ([#857](https://github.com/open-telemetry/opentelemetry-python-contrib/issues/857))
+
 
 ## [1.8.0-0.27b0](https://github.com/open-telemetry/opentelemetry-python/releases/tag/v1.8.0-0.27b0) - 2021-12-17
 
@@ -51,6 +73,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - `opentelemetry-instrumentation-pika` Adds support for versions between `0.12.0` to `1.0.0`. ([#837](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/837))
 
 ### Fixed
+
+- `opentelemetry-instrumentation-urllib` Fixed an error on unexpected status values.
+  ([#823](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/823))
 
 - `opentelemetry-exporter-richconsole` Fixed attribute error on parentless spans.
   ([#782](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/782))

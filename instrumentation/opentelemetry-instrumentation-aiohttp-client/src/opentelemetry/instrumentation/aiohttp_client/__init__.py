@@ -23,10 +23,7 @@ Explicitly instrumenting a single client session:
 .. code:: python
 
     import aiohttp
-    from opentelemetry.instrumentation.aiohttp_client import (
-        create_trace_config,
-        url_path_span_name
-    )
+    from opentelemetry.instrumentation.aiohttp_client import create_trace_config
     import yarl
 
     def strip_query_params(url: yarl.URL) -> str:
@@ -35,8 +32,6 @@ Explicitly instrumenting a single client session:
     async with aiohttp.ClientSession(trace_configs=[create_trace_config(
             # Remove all query params from the URL attribute on the span.
             url_filter=strip_query_params,
-            # Use the URL's path as the span name.
-            span_name=url_path_span_name
     )]) as session:
         async with session.get(url) as response:
             await response.text()
@@ -91,6 +86,7 @@ from typing import Collection
 
 import aiohttp
 import wrapt
+import yarl
 
 from opentelemetry import context as context_api
 from opentelemetry import trace
@@ -108,7 +104,7 @@ from opentelemetry.trace import Span, SpanKind, TracerProvider, get_tracer
 from opentelemetry.trace.status import Status, StatusCode
 from opentelemetry.util.http import remove_url_credentials
 
-_UrlFilterT = typing.Optional[typing.Callable[[str], str]]
+_UrlFilterT = typing.Optional[typing.Callable[[yarl.URL], str]]
 _RequestHookT = typing.Optional[
     typing.Callable[[Span, aiohttp.TraceRequestStartParams], None]
 ]
@@ -124,21 +120,6 @@ _ResponseHookT = typing.Optional[
         None,
     ]
 ]
-
-
-def url_path_span_name(params: aiohttp.TraceRequestStartParams) -> str:
-    """Extract a span name from the request URL path.
-
-    A simple callable to extract the path portion of the requested URL
-    for use as the span name.
-
-    :param aiohttp.TraceRequestStartParams params: Parameters describing
-        the traced request.
-
-    :return: The URL path.
-    :rtype: str
-    """
-    return params.url.path
 
 
 def create_trace_config(
