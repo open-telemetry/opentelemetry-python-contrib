@@ -617,6 +617,17 @@ class TestAsyncIntegration(BaseTestCases.BaseManualTest):
 
         return _async_call(_perform_request())
 
+    def test_basic_multiple(self):
+        # We need to create separate clients because in httpx >= 0.19,
+        # closing the client after "with" means the second http call fails
+        self.perform_request(
+            self.URL, client=self.create_client(self.transport)
+        )
+        self.perform_request(
+            self.URL, client=self.create_client(self.transport)
+        )
+        self.assert_span(num_spans=2)
+
 
 class TestSyncInstrumentationIntegration(BaseTestCases.BaseInstrumentorTest):
     def create_client(
@@ -642,6 +653,13 @@ class TestAsyncInstrumentationIntegration(BaseTestCases.BaseInstrumentorTest):
     request_hook = staticmethod(_async_request_hook)
     no_update_request_hook = staticmethod(_async_no_update_request_hook)
 
+    def setUp(self):
+        super().setUp()
+        HTTPXClientInstrumentor().instrument()
+        self.client = self.create_client()
+        self.client2 = self.create_client()
+        HTTPXClientInstrumentor().uninstrument()
+
     def create_client(
         self,
         transport: typing.Optional[AsyncOpenTelemetryTransport] = None,
@@ -664,3 +682,10 @@ class TestAsyncInstrumentationIntegration(BaseTestCases.BaseInstrumentorTest):
                 return await _client.request(method, url, headers=headers)
 
         return _async_call(_perform_request())
+
+    def test_basic_multiple(self):
+        # We need to create separate clients because in httpx >= 0.19,
+        # closing the client after "with" means the second http call fails
+        self.perform_request(self.URL, client=self.client)
+        self.perform_request(self.URL, client=self.client2)
+        self.assert_span(num_spans=2)
