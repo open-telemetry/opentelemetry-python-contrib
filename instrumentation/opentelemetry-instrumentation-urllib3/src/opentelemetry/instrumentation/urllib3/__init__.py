@@ -82,7 +82,14 @@ from opentelemetry.instrumentation.utils import (
 )
 from opentelemetry.propagate import inject
 from opentelemetry.semconv.trace import SpanAttributes
-from opentelemetry.trace import INVALID_SPAN_CONTEXT, Link, Span, SpanKind, get_current_span, get_tracer
+from opentelemetry.trace import (
+    INVALID_SPAN_CONTEXT,
+    Link,
+    Span,
+    SpanKind,
+    get_current_span,
+    get_tracer,
+)
 from opentelemetry.trace.status import Status
 from opentelemetry.util.http import is_redirect
 from opentelemetry.util.http.httplib import set_ip_on_next_http_connection
@@ -185,13 +192,22 @@ def _instrument(
             # Only add retry count on retry scenarios
             if not is_redirect(retry.history[-1].status):
                 span_attributes["http.retry_count"] = len(retry.history)
-                prev_span_context = getattr(retry, "_OT_retry_prev_span_context", None)
+                prev_span_context = getattr(
+                    retry, "_OT_retry_prev_span_context", None
+                )
                 # Set the parent context to the original request's span parent
                 # context for retry scenarios
-                parent_context = context.get_value(_URLLIB_RETRY_PARENT_CONTEXT_KEY)
+                parent_context = context.get_value(
+                    _URLLIB_RETRY_PARENT_CONTEXT_KEY
+                )
             else:
-                prev_span_context = getattr(retry, "_OT_redirect_prev_span_context", None)
-            if prev_span_context and prev_span_context is not INVALID_SPAN_CONTEXT:
+                prev_span_context = getattr(
+                    retry, "_OT_redirect_prev_span_context", None
+                )
+            if (
+                prev_span_context
+                and prev_span_context is not INVALID_SPAN_CONTEXT
+            ):
                 links = (Link(prev_span_context),)
         else:
             # All retry spans should have the same parent as the original
@@ -203,7 +219,11 @@ def _instrument(
             )
 
         with tracer.start_as_current_span(
-            span_name, context=parent_context, kind=SpanKind.CLIENT, attributes=span_attributes, links=links,
+            span_name,
+            context=parent_context,
+            kind=SpanKind.CLIENT,
+            attributes=span_attributes,
+            links=links,
         ) as span, set_ip_on_next_http_connection(span):
             if callable(request_hook):
                 request_hook(span, instance, headers, body)
@@ -216,15 +236,17 @@ def _instrument(
 
             with _suppress_further_instrumentation():
                 response = wrapped(*args, **kwargs)
-            
+
             # If redirect scenario, and user enables automatically handle redirects,
             # Store the span context of the original request
             if is_redirect(response.status):
                 # response.retries.total will be 0 or False if NOT enabled
                 if response.retries and response.retries.total:
                     # Update the previous span context in the retry chain
-                    response.retries._OT_redirect_prev_span_context = span.get_span_context()
-        
+                    response.retries._OT_redirect_prev_span_context = (
+                        span.get_span_context()
+                    )
+
             _apply_response(span, response)
             if callable(response_hook):
                 response_hook(span, instance, response)
@@ -236,7 +258,9 @@ def _instrument(
     # See https://github.com/urllib3/urllib3/blob/main/src/urllib3/util/retry.py#L421
     # for implementation
     def instrumented_increment(wrapped, instance, args, kwargs):
-        prev_redirect_span_context = getattr(instance, "_OT_redirect_prev_span_context", None)
+        prev_redirect_span_context = getattr(
+            instance, "_OT_redirect_prev_span_context", None
+        )
         # Retry scenarios that are not redirect are handled by recursion,
         # so the current span is marked as the previous span
         prev_retry_span_context = get_current_span().get_span_context()
@@ -315,10 +339,13 @@ def _apply_response(span: Span, response: urllib3.response.HTTPResponse):
     span.set_status(Status(http_status_to_status_code(response.status)))
 
 
-def _is_instrumentation_suppressed(retry: typing.Union[urllib3.util.Retry, bool, int]) -> bool:
-    return bool(context.get_value(_SUPPRESS_INSTRUMENTATION_KEY)) or \
-        (bool(context.get_value(_SUPPRESS_HTTP_INSTRUMENTATION_KEY)) and not \
-        retry)
+def _is_instrumentation_suppressed(
+    retry: typing.Union[urllib3.util.Retry, bool, int]
+) -> bool:
+    return bool(context.get_value(_SUPPRESS_INSTRUMENTATION_KEY)) or (
+        bool(context.get_value(_SUPPRESS_HTTP_INSTRUMENTATION_KEY))
+        and not retry
+    )
 
 
 @contextlib.contextmanager
