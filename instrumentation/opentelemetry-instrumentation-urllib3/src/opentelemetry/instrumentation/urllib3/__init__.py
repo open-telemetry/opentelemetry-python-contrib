@@ -160,6 +160,8 @@ class URLLib3Instrumentor(BaseInstrumentor):
         _uninstrument()
 
 
+# pylint: disable=too-many-locals
+# pylint: disable=too-many-branches
 def _instrument(
     tracer,
     request_hook: _RequestHookT = None,
