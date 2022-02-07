@@ -109,7 +109,10 @@ import typing
 import wsgiref.util as wsgiref_util
 
 from opentelemetry import context, trace
-from opentelemetry.instrumentation.utils import http_status_to_status_code
+from opentelemetry.instrumentation.utils import (
+    http_status_to_status_code,
+    _start_internal_or_server_span
+)
 from opentelemetry.instrumentation.wsgi.version import __version__
 from opentelemetry.propagate import extract
 from opentelemetry.propagators.textmap import Getter
@@ -279,19 +282,13 @@ class OpenTelemetryMiddleware:
             environ: A WSGI environment.
             start_response: The WSGI start_response callable.
         """
-
-        token = ctx = None
-        span_kind = trace.SpanKind.INTERNAL
-        if trace.get_current_span() is trace.INVALID_SPAN:
-            ctx = extract(environ, getter=wsgi_getter)
-            token = context.attach(ctx)
-            span_kind = trace.SpanKind.SERVER
-
-        span = self.tracer.start_span(
-            get_default_span_name(environ),
-            context=ctx,
-            kind=span_kind,
-            attributes=collect_request_attributes(environ),
+        span, token = _start_internal_or_server_span(
+            tracer=self.tracer,
+            span_name=get_default_span_name(environ),
+            start_time=None,
+            context_carrier=environ,
+            context_getter=wsgi_getter,
+            attributes=collect_request_attributes(environ)
         )
 
         if self.request_hook:
