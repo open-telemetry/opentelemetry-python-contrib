@@ -110,11 +110,10 @@ import wsgiref.util as wsgiref_util
 
 from opentelemetry import context, trace
 from opentelemetry.instrumentation.utils import (
+    _start_internal_or_server_span,
     http_status_to_status_code,
-    _start_internal_or_server_span
 )
 from opentelemetry.instrumentation.wsgi.version import __version__
-from opentelemetry.propagate import extract
 from opentelemetry.propagators.textmap import Getter
 from opentelemetry.semconv.trace import SpanAttributes
 from opentelemetry.trace.status import Status, StatusCode
@@ -288,7 +287,7 @@ class OpenTelemetryMiddleware:
             start_time=None,
             context_carrier=environ,
             context_getter=wsgi_getter,
-            attributes=collect_request_attributes(environ)
+            attributes=collect_request_attributes(environ),
         )
 
         if self.request_hook:
