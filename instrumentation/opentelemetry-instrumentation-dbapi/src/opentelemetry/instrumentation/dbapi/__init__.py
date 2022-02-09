@@ -406,7 +406,7 @@ class CursorTracer:
                     args_list[0] += comment
                     args = tuple(args_list)
                 except Exception as exc:
-                    _logger.warning("Exception while generating sql comment: %s", exc)
+                    _logger.exception("Exception while generating sql comment: %s", exc)
             return query_method(*args, **kwargs)
 
 
