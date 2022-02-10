@@ -377,7 +377,7 @@ class CursorTracer:
                     "trace_state": span_context.trace_state.to_header(),
                 }
             )
-        ## TODO(schekuri): revisit to enrich with info such as route, db_driver etc...
+        # TODO(schekuri): revisit to enrich with info such as route, db_driver etc...
         return _generate_sql_comment(**meta)
 
     def traced_execution(
