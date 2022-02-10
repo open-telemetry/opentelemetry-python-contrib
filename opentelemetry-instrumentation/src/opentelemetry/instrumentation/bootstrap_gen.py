@@ -129,7 +129,7 @@ libraries = {
         "instrumentation": "opentelemetry-instrumentation-starlette==0.28b1",
     },
     "tornado": {
-        "library": "tornado >= 5.1.1",
+        "library": "tornado >= 6.0",
         "instrumentation": "opentelemetry-instrumentation-tornado==0.28b1",
     },
     "urllib3": {
