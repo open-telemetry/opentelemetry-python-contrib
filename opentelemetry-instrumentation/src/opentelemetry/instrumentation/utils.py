@@ -142,7 +142,7 @@ def _generate_sql_comment(**meta):
     )
 
 
-def _url_quote(s):
+def _url_quote(s):  # pylint: disable=invalid-name
     if not isinstance(s, (str, bytes)):
         return s
     quoted = urllib.parse.quote(s)

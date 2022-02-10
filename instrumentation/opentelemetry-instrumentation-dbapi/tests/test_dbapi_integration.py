@@ -323,6 +323,10 @@ class MockConnection:
 
 
 class MockCursor:
+    def __init__(self) -> None:
+        self.query = ""
+        self.params = None
+
     # pylint: disable=unused-argument, no-self-use
     def execute(self, query, params=None, throw_exception=False):
         if throw_exception:

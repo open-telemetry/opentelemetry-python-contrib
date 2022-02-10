@@ -407,7 +407,7 @@ class CursorTracer:
                     args_list = list(args)
                     args_list[0] += comment
                     args = tuple(args_list)
-                except Exception as exc:
+                except Exception as exc:  # pylint: disable=broad-except
                     _logger.exception(
                         "Exception while generating sql comment: %s", exc
                     )
