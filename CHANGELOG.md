@@ -10,6 +10,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - `opentelemetry-instrumentation-wsgi` WSGI: Conditionally create SERVER spans
   ([#903](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/903))
 
+- `opentelemetry-instrumentation-tornado` Supported version of tornado changed to 6.0
+  ([#909](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/909))
+
 ### Fixed
 
 - `opentelemetry-instrumentation-logging` retrieves service name defensively.
