@@ -45,7 +45,7 @@ import wrapt
 
 from opentelemetry import trace as trace_api
 from opentelemetry.instrumentation.dbapi.version import __version__
-from opentelemetry.instrumentation.utils import unwrap, _generate_sql_comment
+from opentelemetry.instrumentation.utils import _generate_sql_comment, unwrap
 from opentelemetry.semconv.trace import SpanAttributes
 from opentelemetry.trace import Span, SpanKind, TracerProvider, get_tracer
 
@@ -195,7 +195,7 @@ def instrument_connection(
         version=version,
         tracer_provider=tracer_provider,
         capture_parameters=capture_parameters,
-        enable_commenter=enable_commenter
+        enable_commenter=enable_commenter,
     )
     db_integration.get_connection_attributes(connection)
     return get_traced_connection_proxy(connection, db_integration)
@@ -369,12 +369,14 @@ class CursorTracer:
         span_context = span.get_span_context()
         meta = {}
         if span_context.is_valid:
-            meta.update({
-                'trace_id': span_context.trace_id,
-                'span_id': span_context.span_id,
-                'trace_flags': span_context.trace_flags,
-                'trace_state': span_context.trace_state.to_header()
-            })
+            meta.update(
+                {
+                    "trace_id": span_context.trace_id,
+                    "span_id": span_context.span_id,
+                    "trace_flags": span_context.trace_flags,
+                    "trace_state": span_context.trace_state.to_header(),
+                }
+            )
         ## TODO(schekuri): revisit to enrich with info such as route, db_driver etc...
         return _generate_sql_comment(**meta)
 
@@ -406,7 +408,9 @@ class CursorTracer:
                     args_list[0] += comment
                     args = tuple(args_list)
                 except Exception as exc:
-                    _logger.warning("Exception while generating sql comment: %s", exc)
+                    _logger.warning(
+                        "Exception while generating sql comment: %s", exc
+                    )
             return query_method(*args, **kwargs)
 
 
