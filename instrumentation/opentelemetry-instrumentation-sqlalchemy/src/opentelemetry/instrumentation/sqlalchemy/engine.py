@@ -118,11 +118,11 @@ class EngineTracer:
 
         context._otel_span = span
         if self.enable_commenter:
-            version = '00'
-            span_id = opentelemetry.trace.format_span_id(span.context.span_id)
-            trace_id = opentelemetry.trace.format_trace_id(span.context.trace_id)
-            flags = str(opentelemetry.trace.TraceFlags.SAMPLED)
-            statement = statement + "/*traceparent=" + version + '-' + trace_id + '-' + span_id + '-' + flags + "*/"
+            _version = '00'
+            _span_id = opentelemetry.trace.format_span_id(span.context.span_id)
+            _trace_id = opentelemetry.trace.format_trace_id(span.context.trace_id)
+            _flags = str(opentelemetry.trace.TraceFlags.SAMPLED)
+            statement = statement + "/*traceparent=" + _version + '-' + _trace_id + '-' + _span_id + '-' + _flags + "*/"
         return statement, params
 
 
