@@ -13,6 +13,7 @@
 # limitations under the License.
 import os
 
+import opentelemetry.trace
 from sqlalchemy.event import listen  # pylint: disable=no-name-in-module
 
 from opentelemetry import trace
@@ -70,12 +71,13 @@ def _wrap_create_engine(tracer_provider=None):
 
 
 class EngineTracer:
-    def __init__(self, tracer, engine):
+    def __init__(self, tracer, engine, enable_commenter):
         self.tracer = tracer
         self.engine = engine
         self.vendor = _normalize_vendor(engine.name)
+        self.enable_commenter = enable_commenter
 
-        listen(engine, "before_cursor_execute", self._before_cur_exec)
+        listen(engine, "before_cursor_execute", self._before_cur_exec, retval=True)
         listen(engine, "after_cursor_execute", _after_cur_exec)
         listen(engine, "handle_error", _handle_error)
 
@@ -115,6 +117,13 @@ class EngineTracer:
                     span.set_attribute(key, value)
 
         context._otel_span = span
+        if self.enable_commenter:
+            version = '00'
+            span_id = opentelemetry.trace.format_span_id(span.context.span_id)
+            trace_id = opentelemetry.trace.format_trace_id(span.context.trace_id)
+            flags = str(opentelemetry.trace.TraceFlags.SAMPLED)
+            statement = statement + "/*traceparent=" + version + '-' + trace_id + '-' + span_id + '-' + flags + "*/"
+        return statement, params
 
 
 # pylint: disable=unused-argument
