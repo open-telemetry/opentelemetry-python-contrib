@@ -249,7 +249,7 @@ def capture_custom_response_headers(response_headers, span):
     custom_response_headers = get_custom_headers(
         OTEL_PYTHON_CAPTURE_RESPONSE_HEADERS
     )
-    
+
     response_headers_dict = {}
     if response_headers:
         for header_name, header_value in response_headers:
