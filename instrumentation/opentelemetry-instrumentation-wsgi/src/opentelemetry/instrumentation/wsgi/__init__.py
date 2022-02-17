@@ -229,9 +229,7 @@ def capture_custom_request_headers(environ, attributes):
     )
     for header_name in custom_request_headers:
         wsgi_env_var = header_name.upper().replace("-", "_")
-        header_values = environ.get(
-            "HTTP_{wsgi_env_var}".format(wsgi_env_var=wsgi_env_var)
-        )
+        header_values = environ.get(f"HTTP_{wsgi_env_var}")
 
         if header_values:
             key = normalise_request_header_name(header_name)

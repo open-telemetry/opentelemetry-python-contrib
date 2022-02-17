@@ -104,15 +104,13 @@ def remove_url_credentials(url: str) -> str:
 
 
 def normalise_request_header_name(header):
-    return "http.request.header.{key}".format(
-        key=header.lower().replace("-", "_")
-    )
+    key = header.lower().replace("-", "_")
+    return f"http.request.header.{key}"
 
 
 def normalise_response_header_name(header):
-    return "http.response.header.{key}".format(
-        key=header.lower().replace("-", "_")
-    )
+    key = header.lower().replace("-", "_")
+    return f"http.response.header.{key}"
 
 
 def get_custom_headers(env_var):

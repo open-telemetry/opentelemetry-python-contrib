@@ -33,7 +33,9 @@ class TestCaptureCustomHeaders(TestBase):
         custom_headers_to_capture = get_custom_headers(
             OTEL_PYTHON_CAPTURE_REQUEST_HEADERS
         )
-        assert custom_headers_to_capture == ["User-Agent", "Test-Header"]
+        self.assertEqual(
+            custom_headers_to_capture, ["User-Agent", "Test-Header"]
+        )
 
     @patch.dict(
         "os.environ",
@@ -45,16 +47,19 @@ class TestCaptureCustomHeaders(TestBase):
         custom_headers_to_capture = get_custom_headers(
             OTEL_PYTHON_CAPTURE_RESPONSE_HEADERS
         )
-        assert custom_headers_to_capture == [
-            "content-type",
-            "content-length",
-            "test-header",
-        ]
+        self.assertEqual(
+            custom_headers_to_capture,
+            [
+                "content-type",
+                "content-length",
+                "test-header",
+            ],
+        )
 
     def test_normalise_request_header_name(self):
         key = normalise_request_header_name("Test-Header")
-        assert key == "http.request.header.test_header"
+        self.assertEqual(key, "http.request.header.test_header")
 
     def test_normalise_response_header_name(self):
         key = normalise_response_header_name("Test-Header")
-        assert key == "http.response.header.test_header"
+        self.assertEqual(key, "http.response.header.test_header")
