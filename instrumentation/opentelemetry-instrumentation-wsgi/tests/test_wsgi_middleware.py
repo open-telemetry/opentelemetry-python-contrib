@@ -25,6 +25,10 @@ from opentelemetry.semconv.trace import SpanAttributes
 from opentelemetry.test.test_base import TestBase
 from opentelemetry.test.wsgitestutil import WsgiTestBase
 from opentelemetry.trace import StatusCode
+from opentelemetry.util.http import (
+    OTEL_PYTHON_CAPTURE_REQUEST_HEADERS,
+    OTEL_PYTHON_CAPTURE_RESPONSE_HEADERS,
+)
 
 
 class Response:
@@ -376,6 +380,58 @@ class TestWsgiAttributes(unittest.TestCase):
             otel_wsgi.collect_request_attributes(self.environ).items(),
             expected.items(),
         )
+
+    @mock.patch.dict(
+        "os.environ",
+        {
+            OTEL_PYTHON_CAPTURE_REQUEST_HEADERS: "Custom-Test-Header-1,Custom-Test-Header-2,Custom-Test-Header-3"
+        },
+    )
+    def test_collect_request_attributes_capture_custom_request_headers(self):
+        attributes = {}
+        self.environ.update(
+            {
+                "HTTP_CUSTOM_TEST_HEADER_1": "Test Value 1",
+                "HTTP_CUSTOM_TEST_HEADER_2": "TestValue2,TestValue3",
+            }
+        )
+        attributes = otel_wsgi.collect_request_attributes(self.environ)
+        expected = {
+            "http.request.header.custom_test_header_1": ["Test Value 1"],
+            "http.request.header.custom_test_header_2": [
+                "TestValue2",
+                "TestValue3",
+            ],
+        }
+        self.assertGreaterEqual(attributes.items(), expected.items())
+
+    @mock.patch.dict(
+        "os.environ",
+        {
+            OTEL_PYTHON_CAPTURE_RESPONSE_HEADERS: "content-type,content-length,my-custom-header,invalid-header"
+        },
+    )
+    def test_add_response_attributes_captures_custom_response_headers(self):
+        response_headers = [
+            ("content-type", "text/plain; charset=utf-8"),
+            ("content-length", "100"),
+            ("my-custom-header", "my-custom-value-1,my-custom-header-2"),
+        ]
+        otel_wsgi.add_response_attributes(
+            self.span, "200 OK", response_headers
+        )
+        expected = (
+            mock.call(
+                "http.response.header.content_type",
+                ["text/plain; charset=utf-8"],
+            ),
+            mock.call("http.response.header.content_length", ["100"]),
+            mock.call(
+                "http.response.header.my_custom_header",
+                ["my-custom-value-1", "my-custom-header-2"],
+            ),
+        )
+        self.span.set_attribute.assert_has_calls(expected, any_order=True)
 
 
 class TestWsgiMiddlewareWithTracerProvider(WsgiTestBase):

@@ -212,7 +212,6 @@ def collect_request_attributes(environ):
     if flavor:
         result[SpanAttributes.HTTP_FLAVOR] = flavor
     capture_custom_request_headers(
-        get_custom_headers(OTEL_PYTHON_CAPTURE_REQUEST_HEADERS),
         environ,
         result,
     )
@@ -220,13 +219,14 @@ def collect_request_attributes(environ):
     return result
 
 
-def capture_custom_request_headers(
-    custom_request_headers, environ, attributes
-):
+def capture_custom_request_headers(environ, attributes):
     """Collects custom HTTP request headers configured by the user from the PEP3333-conforming
-    WSGI environ and returns a dictionary to be used as span creation attributes as described
+    WSGI environ and adds it to attributes dictionary to be used as span creation attributes as described
     in the specification https://github.com/open-telemetry/opentelemetry-specification/blob/main/specification/trace/semantic_conventions/http.md#http-request-and-response-headers"""
 
+    custom_request_headers = get_custom_headers(
+        OTEL_PYTHON_CAPTURE_REQUEST_HEADERS
+    )
     for header_name in custom_request_headers:
         wsgi_env_var = header_name.upper().replace("-", "_")
         header_values = environ.get(
@@ -241,27 +241,29 @@ def capture_custom_request_headers(
             ]
 
 
-def capture_custom_response_headers(
-    custom_response_headers, response_headers, span
-):
+def capture_custom_response_headers(response_headers, span):
     """Collects custom HTTP response headers configured by the user from the PEP3333-conforming
     WSGI environ and adds them as span attributes as described in the specification
     https://github.com/open-telemetry/opentelemetry-specification/blob/main/specification/trace/semantic_conventions/http.md#http-request-and-response-headers"""
 
+    custom_response_headers = get_custom_headers(
+        OTEL_PYTHON_CAPTURE_RESPONSE_HEADERS
+    )
     response_headers_dict = {
         header_name.lower(): header_value
         for header_name, header_value in response_headers
     }
     for header_name in custom_response_headers:
         header_values = response_headers_dict.get(header_name.lower())
-        key = normalise_response_header_name(header_name)
-        span.set_attribute(
-            key,
-            [
-                header_value.strip()
-                for header_value in header_values.split(",")
-            ],
-        )
+        if header_values:
+            key = normalise_response_header_name(header_name)
+            span.set_attribute(
+                key,
+                [
+                    header_value.strip()
+                    for header_value in header_values.split(",")
+                ],
+            )
 
 
 def add_response_attributes(
@@ -288,7 +290,6 @@ def add_response_attributes(
             Status(http_status_to_status_code(status_code, server_span=True))
         )
     capture_custom_response_headers(
-        get_custom_headers(OTEL_PYTHON_CAPTURE_RESPONSE_HEADERS),
         response_headers,
         span,
     )
