@@ -19,8 +19,8 @@ from typing import Iterable
 from urllib.parse import urlparse, urlunparse
 
 
-OTEL_PYTHON_CAPTURE_REQUEST_HEADERS = 'OTEL_PYTHON_CAPTURE_REQUEST_HEADERS'
-OTEL_PYTHON_CAPTURE_RESPONSE_HEADERS = 'OTEL_PYTHON_CAPTURE_RESPONSE_HEADERS'
+OTEL_PYTHON_CAPTURE_REQUEST_HEADERS = "OTEL_PYTHON_CAPTURE_REQUEST_HEADERS"
+OTEL_PYTHON_CAPTURE_RESPONSE_HEADERS = "OTEL_PYTHON_CAPTURE_RESPONSE_HEADERS"
 
 
 class ExcludeList:
@@ -105,11 +105,15 @@ def remove_url_credentials(url: str) -> str:
 
 
 def normalise_request_header_name(header):
-    return 'http.request.header.{key}'.format(key=header.lower().replace('-', '_'))
+    return "http.request.header.{key}".format(
+        key=header.lower().replace("-", "_")
+    )
 
 
 def normalise_response_header_name(header):
-    return 'http.response.header.{key}'.format(key=header.lower().replace('-', '_'))
+    return "http.response.header.{key}".format(
+        key=header.lower().replace("-", "_")
+    )
 
 
 def get_custom_headers(env_var):

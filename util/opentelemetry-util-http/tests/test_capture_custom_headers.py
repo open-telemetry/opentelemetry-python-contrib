@@ -20,20 +20,20 @@ from opentelemetry.util.http import (
     normalise_request_header_name,
     normalise_response_header_name,
     OTEL_PYTHON_CAPTURE_REQUEST_HEADERS,
-    OTEL_PYTHON_CAPTURE_RESPONSE_HEADERS
+    OTEL_PYTHON_CAPTURE_RESPONSE_HEADERS,
 )
 
 
 class TestCaptureCustomHeaders(TestBase):
     @patch.dict(
         "os.environ",
-        {
-            OTEL_PYTHON_CAPTURE_REQUEST_HEADERS: "User-Agent,Test-Header"
-        },
+        {OTEL_PYTHON_CAPTURE_REQUEST_HEADERS: "User-Agent,Test-Header"},
     )
     def test_get_custom_request_header(self):
-        custom_headers_to_capture = get_custom_headers(OTEL_PYTHON_CAPTURE_REQUEST_HEADERS)
-        assert custom_headers_to_capture == ['User-Agent', 'Test-Header']
+        custom_headers_to_capture = get_custom_headers(
+            OTEL_PYTHON_CAPTURE_REQUEST_HEADERS
+        )
+        assert custom_headers_to_capture == ["User-Agent", "Test-Header"]
 
     @patch.dict(
         "os.environ",
@@ -42,13 +42,19 @@ class TestCaptureCustomHeaders(TestBase):
         },
     )
     def test_get_custom_response_header(self):
-        custom_headers_to_capture = get_custom_headers(OTEL_PYTHON_CAPTURE_RESPONSE_HEADERS)
-        assert custom_headers_to_capture == ['content-type', 'content-length', 'test-header']
+        custom_headers_to_capture = get_custom_headers(
+            OTEL_PYTHON_CAPTURE_RESPONSE_HEADERS
+        )
+        assert custom_headers_to_capture == [
+            "content-type",
+            "content-length",
+            "test-header",
+        ]
 
     def test_normalise_request_header_name(self):
-        key = normalise_request_header_name('Test-Header')
-        assert key == 'http.request.header.test_header'
+        key = normalise_request_header_name("Test-Header")
+        assert key == "http.request.header.test_header"
 
     def test_normalise_response_header_name(self):
-        key = normalise_response_header_name('Test-Header')
-        assert key == 'http.response.header.test_header'
+        key = normalise_response_header_name("Test-Header")
+        assert key == "http.response.header.test_header"
