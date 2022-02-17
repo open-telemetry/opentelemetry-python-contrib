@@ -18,7 +18,6 @@ from re import search
 from typing import Iterable
 from urllib.parse import urlparse, urlunparse
 
-
 OTEL_PYTHON_CAPTURE_REQUEST_HEADERS = "OTEL_PYTHON_CAPTURE_REQUEST_HEADERS"
 OTEL_PYTHON_CAPTURE_RESPONSE_HEADERS = "OTEL_PYTHON_CAPTURE_RESPONSE_HEADERS"
 

@@ -16,11 +16,11 @@ from unittest.mock import patch
 
 from opentelemetry.test.test_base import TestBase
 from opentelemetry.util.http import (
+    OTEL_PYTHON_CAPTURE_REQUEST_HEADERS,
+    OTEL_PYTHON_CAPTURE_RESPONSE_HEADERS,
     get_custom_headers,
     normalise_request_header_name,
     normalise_response_header_name,
-    OTEL_PYTHON_CAPTURE_REQUEST_HEADERS,
-    OTEL_PYTHON_CAPTURE_RESPONSE_HEADERS,
 )
 
 
