@@ -19,6 +19,10 @@ from typing import Iterable
 from urllib.parse import urlparse, urlunparse
 
 
+OTEL_PYTHON_CAPTURE_REQUEST_HEADERS = 'OTEL_PYTHON_CAPTURE_REQUEST_HEADERS'
+OTEL_PYTHON_CAPTURE_RESPONSE_HEADERS = 'OTEL_PYTHON_CAPTURE_RESPONSE_HEADERS'
+
+
 class ExcludeList:
     """Class to exclude certain paths (given as a list of regexes) from tracing requests"""
 
@@ -98,3 +102,21 @@ def remove_url_credentials(url: str) -> str:
     except ValueError:  # an unparseable url was passed
         pass
     return url
+
+
+def normalise_request_header_name(header):
+    return 'http.request.header.{key}'.format(key=header.lower().replace('-', '_'))
+
+
+def normalise_response_header_name(header):
+    return 'http.response.header.{key}'.format(key=header.lower().replace('-', '_'))
+
+
+def get_custom_headers(env_var):
+    custom_headers = environ.get(env_var, [])
+    if custom_headers:
+        custom_headers = [
+            custom_headers.strip()
+            for custom_headers in custom_headers.split(",")
+        ]
+    return custom_headers

@@ -117,7 +117,14 @@ from opentelemetry.instrumentation.wsgi.version import __version__
 from opentelemetry.propagators.textmap import Getter
 from opentelemetry.semconv.trace import SpanAttributes
 from opentelemetry.trace.status import Status, StatusCode
-from opentelemetry.util.http import remove_url_credentials
+from opentelemetry.util.http import (
+    OTEL_PYTHON_CAPTURE_REQUEST_HEADERS,
+    OTEL_PYTHON_CAPTURE_RESPONSE_HEADERS,
+    get_custom_headers,
+    normalise_request_header_name,
+    normalise_response_header_name,
+    remove_url_credentials,
+)
 
 _HTTP_VERSION_PREFIX = "HTTP/"
 _CARRIER_KEY_PREFIX = "HTTP_"
@@ -204,8 +211,57 @@ def collect_request_attributes(environ):
         flavor = flavor[len(_HTTP_VERSION_PREFIX) :]
     if flavor:
         result[SpanAttributes.HTTP_FLAVOR] = flavor
+    capture_custom_request_headers(
+        get_custom_headers(OTEL_PYTHON_CAPTURE_REQUEST_HEADERS),
+        environ,
+        result,
+    )
 
     return result
+
+
+def capture_custom_request_headers(
+    custom_request_headers, environ, attributes
+):
+    """Collects custom HTTP request headers configured by the user from the PEP3333-conforming
+    WSGI environ and returns a dictionary to be used as span creation attributes as described
+    in the specification https://github.com/open-telemetry/opentelemetry-specification/blob/main/specification/trace/semantic_conventions/http.md#http-request-and-response-headers"""
+
+    for header_name in custom_request_headers:
+        wsgi_env_var = header_name.upper().replace("-", "_")
+        header_values = environ.get(
+            "HTTP_{wsgi_env_var}".format(wsgi_env_var=wsgi_env_var)
+        )
+
+        if header_values:
+            key = normalise_request_header_name(header_name)
+            attributes[key] = [
+                header_value.strip()
+                for header_value in header_values.split(",")
+            ]
+
+
+def capture_custom_response_headers(
+    custom_response_headers, response_headers, span
+):
+    """Collects custom HTTP response headers configured by the user from the PEP3333-conforming
+    WSGI environ and adds them as span attributes as described in the specification
+    https://github.com/open-telemetry/opentelemetry-specification/blob/main/specification/trace/semantic_conventions/http.md#http-request-and-response-headers"""
+
+    response_headers_dict = {
+        header_name.lower(): header_value
+        for header_name, header_value in response_headers
+    }
+    for header_name in custom_response_headers:
+        header_values = response_headers_dict.get(header_name.lower())
+        key = normalise_response_header_name(header_name)
+        span.set_attribute(
+            key,
+            [
+                header_value.strip()
+                for header_value in header_values.split(",")
+            ],
+        )
 
 
 def add_response_attributes(
@@ -231,6 +287,11 @@ def add_response_attributes(
         span.set_status(
             Status(http_status_to_status_code(status_code, server_span=True))
         )
+    capture_custom_response_headers(
+        get_custom_headers(OTEL_PYTHON_CAPTURE_RESPONSE_HEADERS),
+        response_headers,
+        span,
+    )
 
 
 def get_default_span_name(environ):
