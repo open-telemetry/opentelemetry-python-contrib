@@ -12,13 +12,17 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import urllib.parse
 from typing import Dict, Sequence
 
 from wrapt import ObjectProxy
 
+from opentelemetry import context, trace
+
 # pylint: disable=unused-import
 # pylint: disable=E0611
 from opentelemetry.context import _SUPPRESS_INSTRUMENTATION_KEY  # noqa: F401
+from opentelemetry.propagate import extract
 from opentelemetry.trace import StatusCode
 
 
@@ -46,6 +50,9 @@ def http_status_to_status_code(
         status (int): HTTP status code
     """
     # See: https://github.com/open-telemetry/opentelemetry-specification/blob/main/specification/trace/semantic_conventions/http.md#status
+    if not isinstance(status, int):
+        return StatusCode.UNSET
+
     if status < 100:
         return StatusCode.ERROR
     if status <= 299:
@@ -67,3 +74,81 @@ def unwrap(obj, attr: str):
     func = getattr(obj, attr, None)
     if func and isinstance(func, ObjectProxy) and hasattr(func, "__wrapped__"):
         setattr(obj, attr, func.__wrapped__)
+
+
+def _start_internal_or_server_span(
+    tracer,
+    span_name,
+    start_time,
+    context_carrier,
+    context_getter,
+    attributes=None,
+):
+    """Returns internal or server span along with the token which can be used by caller to reset context
+
+
+    Args:
+        tracer : tracer in use by given instrumentation library
+        name (string): name of the span
+        start_time : start time of the span
+        context_carrier : object which contains values that are
+            used to construct a Context. This object
+            must be paired with an appropriate getter
+            which understands how to extract a value from it.
+        context_getter : an object which contains a get function that can retrieve zero
+            or more values from the carrier and a keys function that can get all the keys
+            from carrier.
+    """
+
+    token = ctx = span_kind = None
+    if trace.get_current_span() is trace.INVALID_SPAN:
+        ctx = extract(context_carrier, getter=context_getter)
+        token = context.attach(ctx)
+        span_kind = trace.SpanKind.SERVER
+    else:
+        ctx = context.get_current()
+        span_kind = trace.SpanKind.INTERNAL
+    span = tracer.start_span(
+        name=span_name,
+        context=ctx,
+        kind=span_kind,
+        start_time=start_time,
+        attributes=attributes,
+    )
+    return span, token
+
+
+_KEY_VALUE_DELIMITER = ","
+
+
+def _generate_sql_comment(**meta):
+    """
+    Return a SQL comment with comma delimited key=value pairs created from
+    **meta kwargs.
+    """
+    if not meta:  # No entries added.
+        return ""
+
+    # Sort the keywords to ensure that caching works and that testing is
+    # deterministic. It eases visual inspection as well.
+    # pylint: disable=consider-using-f-string
+    return (
+        " /*"
+        + _KEY_VALUE_DELIMITER.join(
+            "{}={!r}".format(_url_quote(key), _url_quote(value))
+            for key, value in sorted(meta.items())
+            if value is not None
+        )
+        + "*/"
+    )
+
+
+def _url_quote(s):  # pylint: disable=invalid-name
+    if not isinstance(s, (str, bytes)):
+        return s
+    quoted = urllib.parse.quote(s)
+    # Since SQL uses '%' as a keyword, '%' is a by-product of url quoting
+    # e.g. foo,bar --> foo%2Cbar
+    # thus in our quoting, we need to escape it too to finally give
+    #      foo,bar --> foo%%2Cbar
+    return quoted.replace("%", "%%")

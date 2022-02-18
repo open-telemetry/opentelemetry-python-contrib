@@ -11,6 +11,7 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
+# pylint: disable=too-many-locals
 
 """
 The opentelemetry-instrumentation-asgi package provides an ASGI middleware that can be used
@@ -103,11 +104,16 @@ from asgiref.compatibility import guarantee_single_callable
 
 from opentelemetry import context, trace
 from opentelemetry.instrumentation.asgi.version import __version__  # noqa
-from opentelemetry.instrumentation.utils import http_status_to_status_code
-from opentelemetry.propagate import extract
-from opentelemetry.propagators.textmap import Getter
+from opentelemetry.instrumentation.propagators import (
+    get_global_response_propagator,
+)
+from opentelemetry.instrumentation.utils import (
+    _start_internal_or_server_span,
+    http_status_to_status_code,
+)
+from opentelemetry.propagators.textmap import Getter, Setter
 from opentelemetry.semconv.trace import SpanAttributes
-from opentelemetry.trace import Span
+from opentelemetry.trace import Span, set_span_in_context
 from opentelemetry.trace.status import Status, StatusCode
 from opentelemetry.util.http import remove_url_credentials
 
@@ -150,6 +156,30 @@ class ASGIGetter(Getter):
 
 
 asgi_getter = ASGIGetter()
+
+
+class ASGISetter(Setter):
+    def set(
+        self, carrier: dict, key: str, value: str
+    ) -> None:  # pylint: disable=no-self-use
+        """Sets response header values on an ASGI scope according to `the spec <https://asgi.readthedocs.io/en/latest/specs/www.html#response-start-send-event>`_.
+
+        Args:
+            carrier: ASGI scope object
+            key: response header name to set
+            value: response header value
+        Returns:
+            None
+        """
+        headers = carrier.get("headers")
+        if not headers:
+            headers = []
+            carrier["headers"] = headers
+
+        headers.append([key.lower().encode(), value.encode()])
+
+
+asgi_setter = ASGISetter()
 
 
 def collect_request_attributes(scope):
@@ -294,55 +324,88 @@ class OpenTelemetryMiddleware:
         if self.excluded_urls and self.excluded_urls.url_disabled(url):
             return await self.app(scope, receive, send)
 
-        token = context.attach(extract(scope, getter=asgi_getter))
         span_name, additional_attributes = self.default_span_details(scope)
 
+        span, token = _start_internal_or_server_span(
+            tracer=self.tracer,
+            span_name=span_name,
+            start_time=None,
+            context_carrier=scope,
+            context_getter=asgi_getter,
+        )
+
         try:
-            with self.tracer.start_as_current_span(
-                span_name,
-                kind=trace.SpanKind.SERVER,
-            ) as span:
-                if span.is_recording():
+            with trace.use_span(span, end_on_exit=True) as current_span:
+                if current_span.is_recording():
                     attributes = collect_request_attributes(scope)
                     attributes.update(additional_attributes)
                     for key, value in attributes.items():
-                        span.set_attribute(key, value)
+                        current_span.set_attribute(key, value)
 
                 if callable(self.server_request_hook):
-                    self.server_request_hook(span, scope)
+                    self.server_request_hook(current_span, scope)
 
-                @wraps(receive)
-                async def wrapped_receive():
-                    with self.tracer.start_as_current_span(
-                        " ".join((span_name, scope["type"], "receive"))
-                    ) as receive_span:
-                        if callable(self.client_request_hook):
-                            self.client_request_hook(receive_span, scope)
-                        message = await receive()
-                        if receive_span.is_recording():
-                            if message["type"] == "websocket.receive":
-                                set_status_code(receive_span, 200)
-                            receive_span.set_attribute("type", message["type"])
-                    return message
+                otel_receive = self._get_otel_receive(
+                    span_name, scope, receive
+                )
 
-                @wraps(send)
-                async def wrapped_send(message):
-                    with self.tracer.start_as_current_span(
-                        " ".join((span_name, scope["type"], "send"))
-                    ) as send_span:
-                        if callable(self.client_response_hook):
-                            self.client_response_hook(send_span, message)
-                        if send_span.is_recording():
-                            if message["type"] == "http.response.start":
-                                status_code = message["status"]
-                                set_status_code(span, status_code)
-                                set_status_code(send_span, status_code)
-                            elif message["type"] == "websocket.send":
-                                set_status_code(span, 200)
-                                set_status_code(send_span, 200)
-                            send_span.set_attribute("type", message["type"])
-                        await send(message)
+                otel_send = self._get_otel_send(
+                    current_span,
+                    span_name,
+                    scope,
+                    send,
+                )
 
-                await self.app(scope, wrapped_receive, wrapped_send)
+                await self.app(scope, otel_receive, otel_send)
         finally:
-            context.detach(token)
+            if token:
+                context.detach(token)
+
+    def _get_otel_receive(self, server_span_name, scope, receive):
+        @wraps(receive)
+        async def otel_receive():
+            with self.tracer.start_as_current_span(
+                " ".join((server_span_name, scope["type"], "receive"))
+            ) as receive_span:
+                if callable(self.client_request_hook):
+                    self.client_request_hook(receive_span, scope)
+                message = await receive()
+                if receive_span.is_recording():
+                    if message["type"] == "websocket.receive":
+                        set_status_code(receive_span, 200)
+                    receive_span.set_attribute("type", message["type"])
+            return message
+
+        return otel_receive
+
+    def _get_otel_send(self, server_span, server_span_name, scope, send):
+        @wraps(send)
+        async def otel_send(message):
+            with self.tracer.start_as_current_span(
+                " ".join((server_span_name, scope["type"], "send"))
+            ) as send_span:
+                if callable(self.client_response_hook):
+                    self.client_response_hook(send_span, message)
+                if send_span.is_recording():
+                    if message["type"] == "http.response.start":
+                        status_code = message["status"]
+                        set_status_code(server_span, status_code)
+                        set_status_code(send_span, status_code)
+                    elif message["type"] == "websocket.send":
+                        set_status_code(server_span, 200)
+                        set_status_code(send_span, 200)
+                    send_span.set_attribute("type", message["type"])
+
+                propagator = get_global_response_propagator()
+                if propagator:
+                    propagator.inject(
+                        message,
+                        context=set_span_in_context(
+                            server_span, trace.context_api.Context()
+                        ),
+                        setter=asgi_setter,
+                    )
+
+                await send(message)
+
+        return otel_send

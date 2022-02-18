@@ -18,6 +18,11 @@ from unittest import mock
 
 import opentelemetry.instrumentation.asgi as otel_asgi
 from opentelemetry import trace as trace_api
+from opentelemetry.instrumentation.propagators import (
+    TraceResponsePropagator,
+    get_global_response_propagator,
+    set_global_response_propagator,
+)
 from opentelemetry.sdk import resources
 from opentelemetry.semconv.trace import SpanAttributes
 from opentelemetry.test.asgitestutil import (
@@ -25,6 +30,7 @@ from opentelemetry.test.asgitestutil import (
     setup_testing_defaults,
 )
 from opentelemetry.test.test_base import TestBase
+from opentelemetry.trace import SpanKind, format_span_id, format_trace_id
 
 
 async def http_app(scope, receive, send):
@@ -287,6 +293,38 @@ class TestAsgiApplication(AsgiTestBase):
         outputs = self.get_all_output()
         self.validate_outputs(outputs, modifiers=[update_expected_user_agent])
 
+    def test_traceresponse_header(self):
+        """Test a traceresponse header is sent when a global propagator is set."""
+
+        orig = get_global_response_propagator()
+        set_global_response_propagator(TraceResponsePropagator())
+
+        app = otel_asgi.OpenTelemetryMiddleware(simple_asgi)
+        self.seed_app(app)
+        self.send_default_request()
+
+        span = self.memory_exporter.get_finished_spans()[-1]
+        self.assertEqual(trace_api.SpanKind.SERVER, span.kind)
+
+        response_start, response_body, *_ = self.get_all_output()
+        self.assertEqual(response_body["body"], b"*")
+        self.assertEqual(response_start["status"], 200)
+
+        trace_id = format_trace_id(span.get_span_context().trace_id)
+        span_id = format_span_id(span.get_span_context().span_id)
+        traceresponse = f"00-{trace_id}-{span_id}-01"
+
+        self.assertListEqual(
+            response_start["headers"],
+            [
+                [b"Content-Type", b"text/plain"],
+                [b"traceresponse", f"{traceresponse}".encode()],
+                [b"access-control-expose-headers", b"traceresponse"],
+            ],
+        )
+
+        set_global_response_propagator(orig)
+
     def test_websocket(self):
         self.scope = {
             "type": "websocket",
@@ -358,6 +396,46 @@ class TestAsgiApplication(AsgiTestBase):
             self.assertEqual(span.name, expected["name"])
             self.assertEqual(span.kind, expected["kind"])
             self.assertDictEqual(dict(span.attributes), expected["attributes"])
+
+    def test_websocket_traceresponse_header(self):
+        """Test a traceresponse header is set for websocket messages"""
+
+        orig = get_global_response_propagator()
+        set_global_response_propagator(TraceResponsePropagator())
+
+        self.scope = {
+            "type": "websocket",
+            "http_version": "1.1",
+            "scheme": "ws",
+            "path": "/",
+            "query_string": b"",
+            "headers": [],
+            "client": ("127.0.0.1", 32767),
+            "server": ("127.0.0.1", 80),
+        }
+        app = otel_asgi.OpenTelemetryMiddleware(simple_asgi)
+        self.seed_app(app)
+        self.send_input({"type": "websocket.connect"})
+        self.send_input({"type": "websocket.receive", "text": "ping"})
+        self.send_input({"type": "websocket.disconnect"})
+        _, socket_send, *_ = self.get_all_output()
+
+        span = self.memory_exporter.get_finished_spans()[-1]
+        self.assertEqual(trace_api.SpanKind.SERVER, span.kind)
+
+        trace_id = format_trace_id(span.get_span_context().trace_id)
+        span_id = format_span_id(span.get_span_context().span_id)
+        traceresponse = f"00-{trace_id}-{span_id}-01"
+
+        self.assertListEqual(
+            socket_send["headers"],
+            [
+                [b"traceresponse", f"{traceresponse}".encode()],
+                [b"access-control-expose-headers", b"traceresponse"],
+            ],
+        )
+
+        set_global_response_propagator(orig)
 
     def test_lifespan(self):
         self.scope["type"] = "lifespan"
@@ -469,6 +547,39 @@ class TestAsgiAttributes(unittest.TestCase):
         attrs = otel_asgi.collect_request_attributes(self.scope)
         self.assertEqual(
             attrs[SpanAttributes.HTTP_URL], "http://httpbin.org/status/200"
+        )
+
+
+class TestWrappedApplication(AsgiTestBase):
+    def test_mark_span_internal_in_presence_of_span_from_other_framework(self):
+        tracer_provider, exporter = TestBase.create_tracer_provider()
+        tracer = tracer_provider.get_tracer(__name__)
+        app = otel_asgi.OpenTelemetryMiddleware(
+            simple_asgi, tracer_provider=tracer_provider
+        )
+
+        # Wrapping the otel intercepted app with server span
+        async def wrapped_app(scope, receive, send):
+            with tracer.start_as_current_span(
+                "test", kind=SpanKind.SERVER
+            ) as _:
+                await app(scope, receive, send)
+
+        self.seed_app(wrapped_app)
+        self.send_default_request()
+        span_list = exporter.get_finished_spans()
+
+        self.assertEqual(SpanKind.INTERNAL, span_list[0].kind)
+        self.assertEqual(SpanKind.INTERNAL, span_list[1].kind)
+        self.assertEqual(SpanKind.INTERNAL, span_list[2].kind)
+        self.assertEqual(trace_api.SpanKind.INTERNAL, span_list[3].kind)
+
+        # SERVER "test"
+        self.assertEqual(SpanKind.SERVER, span_list[4].kind)
+
+        # internal span should be child of the test span we have provided
+        self.assertEqual(
+            span_list[4].context.span_id, span_list[3].parent.span_id
         )
 
 
