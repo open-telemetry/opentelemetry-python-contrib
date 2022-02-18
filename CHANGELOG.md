@@ -9,6 +9,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+
+- `opentelemetry-instrumentation-aws-lambda` Added additional consumers. Fixes issue 902  
+  ([#926](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/926))
+
 - `opentelemetry-instrumentation-dbapi` add experimental sql commenter capability
   ([#908](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/908))
 
