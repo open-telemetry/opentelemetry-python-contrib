@@ -108,12 +108,12 @@ def normalise_request_header_name(header: str) -> str:
     return f"http.request.header.{key}"
 
 
-def normalise_response_header_name(header):
+def normalise_response_header_name(header: str) -> str:
     key = header.lower().replace("-", "_")
     return f"http.response.header.{key}"
 
 
-def get_custom_headers(env_var):
+def get_custom_headers(env_var: str) -> list[str]:
     custom_headers = environ.get(env_var, [])
     if custom_headers:
         custom_headers = [
