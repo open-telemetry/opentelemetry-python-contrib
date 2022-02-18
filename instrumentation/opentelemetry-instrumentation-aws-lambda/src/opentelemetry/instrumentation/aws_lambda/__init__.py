@@ -189,8 +189,14 @@ def _instrument(
 
         # See more:
         # https://docs.aws.amazon.com/lambda/latest/dg/with-sqs.html
+        # https://docs.aws.amazon.com/lambda/latest/dg/with-sns.html
+        # https://docs.aws.amazon.com/AmazonS3/latest/userguide/notification-content-structure.html
+        # https://docs.aws.amazon.com/lambda/latest/dg/with-ddb.html
+        span_kind = SpanKind.SERVER
+        valid_consumers = ["aws:sqs", "aws:s3", "aws:sns", "aws:dynamodb"]
+
         try:
-            if lambda_event["Records"][0]["eventSource"] == "aws:sqs":
+            if lambda_event["Records"][0]["eventSource"] in valid_consumers:
                 span_kind = SpanKind.CONSUMER
         except (IndexError, KeyError, TypeError):
             span_kind = SpanKind.SERVER
