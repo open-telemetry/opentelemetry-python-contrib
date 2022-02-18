@@ -15,7 +15,7 @@
 from os import environ
 from re import compile as re_compile
 from re import search
-from typing import Iterable
+from typing import Iterable, List
 from urllib.parse import urlparse, urlunparse
 
 OTEL_PYTHON_CAPTURE_REQUEST_HEADERS = "OTEL_PYTHON_CAPTURE_REQUEST_HEADERS"
@@ -113,7 +113,7 @@ def normalise_response_header_name(header: str) -> str:
     return f"http.response.header.{key}"
 
 
-def get_custom_headers(env_var: str) -> list[str]:
+def get_custom_headers(env_var: str) -> List[str]:
     custom_headers = environ.get(env_var, [])
     if custom_headers:
         custom_headers = [
