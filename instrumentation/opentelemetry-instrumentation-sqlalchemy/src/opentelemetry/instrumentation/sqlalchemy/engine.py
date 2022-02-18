@@ -22,6 +22,19 @@ from opentelemetry.semconv.trace import NetTransportValues, SpanAttributes
 from opentelemetry.trace.status import Status, StatusCode
 
 
+def _generate_sql_comment(span):
+    """
+    Returns the SQLComment with traceparent ID
+    """
+    sqlcomment = ''
+    _version = '00'
+    _span_id = opentelemetry.trace.format_span_id(span.context.span_id)
+    _trace_id = opentelemetry.trace.format_trace_id(span.context.trace_id)
+    _flags = str(opentelemetry.trace.TraceFlags.SAMPLED)
+    sqlcomment = sqlcomment + "/*traceparent=" + _version + '-' + _trace_id + '-' + _span_id + '-' + _flags + "*/"
+    return sqlcomment
+
+
 def _normalize_vendor(vendor):
     """Return a canonical name for a type of database."""
     if not vendor:
@@ -71,7 +84,7 @@ def _wrap_create_engine(tracer_provider=None):
 
 
 class EngineTracer:
-    def __init__(self, tracer, engine, enable_commenter):
+    def __init__(self, tracer, engine, enable_commenter=False):
         self.tracer = tracer
         self.engine = engine
         self.vendor = _normalize_vendor(engine.name)
@@ -118,11 +131,8 @@ class EngineTracer:
 
         context._otel_span = span
         if self.enable_commenter:
-            _version = '00'
-            _span_id = opentelemetry.trace.format_span_id(span.context.span_id)
-            _trace_id = opentelemetry.trace.format_trace_id(span.context.trace_id)
-            _flags = str(opentelemetry.trace.TraceFlags.SAMPLED)
-            statement = statement + "/*traceparent=" + _version + '-' + _trace_id + '-' + _span_id + '-' + _flags + "*/"
+            statement = statement + _generate_sql_comment(span)
+
         return statement, params
 
 
