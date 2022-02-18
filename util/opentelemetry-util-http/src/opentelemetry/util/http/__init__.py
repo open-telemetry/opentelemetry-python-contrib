@@ -103,7 +103,7 @@ def remove_url_credentials(url: str) -> str:
     return url
 
 
-def normalise_request_header_name(header):
+def normalise_request_header_name(header: str) -> str:
     key = header.lower().replace("-", "_")
     return f"http.request.header.{key}"
 
