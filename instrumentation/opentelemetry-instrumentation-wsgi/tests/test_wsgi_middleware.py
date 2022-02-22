@@ -399,8 +399,7 @@ class TestWsgiAttributes(unittest.TestCase):
         expected = {
             "http.request.header.custom_test_header_1": ["Test Value 1"],
             "http.request.header.custom_test_header_2": [
-                "TestValue2",
-                "TestValue3",
+                "TestValue2,TestValue3",
             ],
         }
         self.assertGreaterEqual(attributes.items(), expected.items())
@@ -428,7 +427,7 @@ class TestWsgiAttributes(unittest.TestCase):
             mock.call("http.response.header.content_length", ["100"]),
             mock.call(
                 "http.response.header.my_custom_header",
-                ["my-custom-value-1", "my-custom-header-2"],
+                ["my-custom-value-1,my-custom-header-2"],
             ),
         )
         self.span.set_attribute.assert_has_calls(expected, any_order=True)
