@@ -224,9 +224,7 @@ def capture_custom_request_headers(environ, attributes):
     WSGI environ and adds it to attributes dictionary to be used as span creation attributes as described
     in the specification https://github.com/open-telemetry/opentelemetry-specification/blob/main/specification/trace/semantic_conventions/http.md#http-request-and-response-headers"""
 
-    custom_request_headers = get_custom_headers(
-        OTEL_CAPTURE_REQUEST_HEADERS
-    )
+    custom_request_headers = get_custom_headers(OTEL_CAPTURE_REQUEST_HEADERS)
     for header_name in custom_request_headers:
         wsgi_env_var = header_name.upper().replace("-", "_")
         header_values = environ.get(f"HTTP_{wsgi_env_var}")
@@ -241,9 +239,7 @@ def capture_custom_response_headers(response_headers, span):
     WSGI environ and adds them as span attributes as described in the specification
     https://github.com/open-telemetry/opentelemetry-specification/blob/main/specification/trace/semantic_conventions/http.md#http-request-and-response-headers"""
 
-    custom_response_headers = get_custom_headers(
-        OTEL_CAPTURE_RESPONSE_HEADERS
-    )
+    custom_response_headers = get_custom_headers(OTEL_CAPTURE_RESPONSE_HEADERS)
 
     response_headers_dict = {}
     if response_headers:
