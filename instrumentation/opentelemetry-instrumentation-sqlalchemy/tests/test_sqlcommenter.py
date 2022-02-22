@@ -40,7 +40,7 @@ class TestSqlalchemyInstrumentationWithSQLCommenter(TestBase):
         )
         cnx = engine.connect()
         cnx.execute("SELECT  1;").fetchall()
-        self.assertRegex(self.caplog.records[0].getMessage(), r"SELECT  1; /\*traceparent='\d{1,2}-[a-zA-Z0-9_]{32}-[a-zA-Z0-9_]{16}-\d{1,2}'\*/")
+        self.assertRegex(self.caplog.records[-2].getMessage(), r"SELECT  1; /\*traceparent='\d{1,2}-[a-zA-Z0-9_]{32}-[a-zA-Z0-9_]{16}-\d{1,2}'\*/")
 
     def test_sqlcommenter_disabled(self):
         engine = create_engine("sqlite:///:memory:", echo=True)
@@ -51,6 +51,6 @@ class TestSqlalchemyInstrumentationWithSQLCommenter(TestBase):
         cnx = engine.connect()
         cnx.execute("SELECT 1;").fetchall()
 
-        self.assertEqual(self.caplog.records[0].getMessage(), "SELECT 1;")
+        self.assertEqual(self.caplog.records[-2].getMessage(), "SELECT 1;")
 
 

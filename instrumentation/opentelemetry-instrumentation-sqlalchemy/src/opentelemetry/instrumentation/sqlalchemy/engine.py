@@ -21,7 +21,7 @@ from opentelemetry.instrumentation.sqlalchemy.version import __version__
 from opentelemetry.semconv.trace import NetTransportValues, SpanAttributes
 from opentelemetry.trace.status import Status, StatusCode
 from opentelemetry.trace import Span
-from opentelemetry.instrumentation.utils import _generate_sql_comment, unwrap, _generate_opentelemetry_traceparent
+from opentelemetry.instrumentation.utils import _generate_sql_comment, _generate_opentelemetry_traceparent
 
 
 def _normalize_vendor(vendor):

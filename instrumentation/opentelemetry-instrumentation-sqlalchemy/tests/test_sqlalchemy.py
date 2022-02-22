@@ -169,5 +169,5 @@ class TestSqlalchemyInstrumentation(TestBase):
         spans = self.memory_exporter.get_finished_spans()
         self.assertEqual(len(spans), 1)
         span = spans[0]
-        self.assertIn(EngineTracer._generate_comment(span), self.caplog.records[0].getMessage())
+        self.assertIn(EngineTracer._generate_comment(span), self.caplog.records[-2].getMessage())
 
