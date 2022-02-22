@@ -118,8 +118,8 @@ from opentelemetry.propagators.textmap import Getter
 from opentelemetry.semconv.trace import SpanAttributes
 from opentelemetry.trace.status import Status, StatusCode
 from opentelemetry.util.http import (
-    OTEL_PYTHON_CAPTURE_REQUEST_HEADERS,
-    OTEL_PYTHON_CAPTURE_RESPONSE_HEADERS,
+    OTEL_CAPTURE_REQUEST_HEADERS,
+    OTEL_CAPTURE_RESPONSE_HEADERS,
     get_custom_headers,
     normalise_request_header_name,
     normalise_response_header_name,
@@ -225,7 +225,7 @@ def capture_custom_request_headers(environ, attributes):
     in the specification https://github.com/open-telemetry/opentelemetry-specification/blob/main/specification/trace/semantic_conventions/http.md#http-request-and-response-headers"""
 
     custom_request_headers = get_custom_headers(
-        OTEL_PYTHON_CAPTURE_REQUEST_HEADERS
+        OTEL_CAPTURE_REQUEST_HEADERS
     )
     for header_name in custom_request_headers:
         wsgi_env_var = header_name.upper().replace("-", "_")
@@ -233,10 +233,7 @@ def capture_custom_request_headers(environ, attributes):
 
         if header_values:
             key = normalise_request_header_name(header_name)
-            attributes[key] = [
-                header_value.strip()
-                for header_value in header_values.split(",")
-            ]
+            attributes[key] = [header_values]
 
 
 def capture_custom_response_headers(response_headers, span):
@@ -245,7 +242,7 @@ def capture_custom_response_headers(response_headers, span):
     https://github.com/open-telemetry/opentelemetry-specification/blob/main/specification/trace/semantic_conventions/http.md#http-request-and-response-headers"""
 
     custom_response_headers = get_custom_headers(
-        OTEL_PYTHON_CAPTURE_RESPONSE_HEADERS
+        OTEL_CAPTURE_RESPONSE_HEADERS
     )
 
     response_headers_dict = {}
@@ -257,13 +254,7 @@ def capture_custom_response_headers(response_headers, span):
         header_values = response_headers_dict.get(header_name.lower())
         if header_values:
             key = normalise_response_header_name(header_name)
-            span.set_attribute(
-                key,
-                [
-                    header_value.strip()
-                    for header_value in header_values.split(",")
-                ],
-            )
+            span.set_attribute(key, [header_values])
 
 
 def add_response_attributes(

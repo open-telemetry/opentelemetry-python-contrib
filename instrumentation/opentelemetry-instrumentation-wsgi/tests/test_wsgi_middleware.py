@@ -26,8 +26,8 @@ from opentelemetry.test.test_base import TestBase
 from opentelemetry.test.wsgitestutil import WsgiTestBase
 from opentelemetry.trace import StatusCode
 from opentelemetry.util.http import (
-    OTEL_PYTHON_CAPTURE_REQUEST_HEADERS,
-    OTEL_PYTHON_CAPTURE_RESPONSE_HEADERS,
+    OTEL_CAPTURE_REQUEST_HEADERS,
+    OTEL_CAPTURE_RESPONSE_HEADERS,
 )
 
 
@@ -384,7 +384,7 @@ class TestWsgiAttributes(unittest.TestCase):
     @mock.patch.dict(
         "os.environ",
         {
-            OTEL_PYTHON_CAPTURE_REQUEST_HEADERS: "Custom-Test-Header-1,Custom-Test-Header-2,Custom-Test-Header-3"
+            OTEL_CAPTURE_REQUEST_HEADERS: "Custom-Test-Header-1,Custom-Test-Header-2,Custom-Test-Header-3"
         },
     )
     def test_collect_request_attributes_capture_custom_request_headers(self):
@@ -408,7 +408,7 @@ class TestWsgiAttributes(unittest.TestCase):
     @mock.patch.dict(
         "os.environ",
         {
-            OTEL_PYTHON_CAPTURE_RESPONSE_HEADERS: "content-type,content-length,my-custom-header,invalid-header"
+            OTEL_CAPTURE_RESPONSE_HEADERS: "content-type,content-length,my-custom-header,invalid-header"
         },
     )
     def test_add_response_attributes_captures_custom_response_headers(self):
