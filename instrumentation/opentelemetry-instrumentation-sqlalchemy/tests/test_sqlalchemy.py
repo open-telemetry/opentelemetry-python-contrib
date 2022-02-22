@@ -12,6 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 import asyncio
+import logging
 from unittest import mock
 
 import pytest
@@ -23,9 +24,15 @@ from opentelemetry.instrumentation.sqlalchemy import SQLAlchemyInstrumentor
 from opentelemetry.sdk.resources import Resource
 from opentelemetry.sdk.trace import TracerProvider, export
 from opentelemetry.test.test_base import TestBase
+from opentelemetry.instrumentation.sqlalchemy.engine import EngineTracer
 
 
 class TestSqlalchemyInstrumentation(TestBase):
+
+    @pytest.fixture(autouse=True)
+    def inject_fixtures(self, caplog):
+        self.caplog = caplog  # pylint: disable=attribute-defined-outside-init
+
     def tearDown(self):
         super().tearDown()
         SQLAlchemyInstrumentor().uninstrument()
@@ -150,3 +157,17 @@ class TestSqlalchemyInstrumentation(TestBase):
             self.assertEqual(spans[0].kind, trace.SpanKind.CLIENT)
 
         asyncio.get_event_loop().run_until_complete(run())
+
+    def test_generate_commenter(self):
+        from sqlalchemy import create_engine  # pylint: disable-all
+        logging.getLogger('sqlalchemy.engine').setLevel(logging.INFO)
+        engine = create_engine("sqlite:///:memory:")
+        SQLAlchemyInstrumentor().instrument(engine=engine, tracer_provider=self.tracer_provider, enable_commenter=True)
+
+        cnx = engine.connect()
+        cnx.execute("SELECT	1 + 1;").fetchall()
+        spans = self.memory_exporter.get_finished_spans()
+        self.assertEqual(len(spans), 1)
+        span = spans[0]
+        self.assertIn(EngineTracer._generate_comment(span), self.caplog.records[0].getMessage())
+
