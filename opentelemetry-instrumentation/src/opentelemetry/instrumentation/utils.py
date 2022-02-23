@@ -23,7 +23,7 @@ from opentelemetry import context, trace
 # pylint: disable=E0611
 from opentelemetry.context import _SUPPRESS_INSTRUMENTATION_KEY  # noqa: F401
 from opentelemetry.propagate import extract
-from opentelemetry.trace import StatusCode, Span
+from opentelemetry.trace import Span, StatusCode
 
 
 def extract_attributes_from_object(

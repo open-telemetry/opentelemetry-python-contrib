@@ -18,12 +18,13 @@ from unittest import mock
 import pytest
 import sqlalchemy
 from sqlalchemy import create_engine
+
 from opentelemetry import trace
 from opentelemetry.instrumentation.sqlalchemy import SQLAlchemyInstrumentor
+from opentelemetry.instrumentation.sqlalchemy.engine import EngineTracer
 from opentelemetry.sdk.resources import Resource
 from opentelemetry.sdk.trace import TracerProvider, export
 from opentelemetry.test.test_base import TestBase
-from opentelemetry.instrumentation.sqlalchemy.engine import EngineTracer
 
 
 class TestSqlalchemyInstrumentation(TestBase):

@@ -13,16 +13,18 @@
 # limitations under the License.
 import os
 
-from opentelemetry.semconv.trace import NetTransportValues, SpanAttributes
-from opentelemetry.trace import Span
-from opentelemetry.trace.status import Status, StatusCode
 from sqlalchemy.event import listen  # pylint: disable=no-name-in-module
+
 from opentelemetry import trace
 from opentelemetry.instrumentation.sqlalchemy.version import __version__
 from opentelemetry.instrumentation.utils import (
     _generate_sql_comment,
     _generate_opentelemetry_traceparent,
 )
+from opentelemetry.semconv.trace import NetTransportValues, SpanAttributes
+from opentelemetry.trace import Span
+from opentelemetry.trace.status import Status, StatusCode
+
 
 
 def _normalize_vendor(vendor):
