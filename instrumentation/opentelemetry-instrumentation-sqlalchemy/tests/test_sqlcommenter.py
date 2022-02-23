@@ -13,7 +13,6 @@
 # limitations under the License.
 
 import pytest
-
 from sqlalchemy import create_engine
 
 from opentelemetry.instrumentation.sqlalchemy import SQLAlchemyInstrumentor
