@@ -105,7 +105,8 @@ class SQLAlchemyInstrumentor(BaseInstrumentor):
         if kwargs.get("engine") is not None:
             return EngineTracer(
                 _get_tracer(kwargs.get("engine"), tracer_provider),
-                kwargs.get("engine"), kwargs.get("enable_commenter", False)
+                kwargs.get("enable_commenter", False),
+                kwargs.get("engine"),
             )
         return None
 

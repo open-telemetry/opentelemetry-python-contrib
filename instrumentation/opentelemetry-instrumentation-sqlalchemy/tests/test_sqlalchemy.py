@@ -18,7 +18,6 @@ from unittest import mock
 import pytest
 import sqlalchemy
 from sqlalchemy import create_engine
-
 from opentelemetry import trace
 from opentelemetry.instrumentation.sqlalchemy import SQLAlchemyInstrumentor
 from opentelemetry.sdk.resources import Resource
@@ -28,7 +27,6 @@ from opentelemetry.instrumentation.sqlalchemy.engine import EngineTracer
 
 
 class TestSqlalchemyInstrumentation(TestBase):
-
     @pytest.fixture(autouse=True)
     def inject_fixtures(self, caplog):
         self.caplog = caplog  # pylint: disable=attribute-defined-outside-init
@@ -159,15 +157,20 @@ class TestSqlalchemyInstrumentation(TestBase):
         asyncio.get_event_loop().run_until_complete(run())
 
     def test_generate_commenter(self):
-        from sqlalchemy import create_engine  # pylint: disable-all
-        logging.getLogger('sqlalchemy.engine').setLevel(logging.INFO)
+        logging.getLogger("sqlalchemy.engine").setLevel(logging.INFO)
         engine = create_engine("sqlite:///:memory:")
-        SQLAlchemyInstrumentor().instrument(engine=engine, tracer_provider=self.tracer_provider, enable_commenter=True)
+        SQLAlchemyInstrumentor().instrument(
+            engine=engine,
+            tracer_provider=self.tracer_provider,
+            enable_commenter=True,
+        )
 
         cnx = engine.connect()
         cnx.execute("SELECT	1 + 1;").fetchall()
         spans = self.memory_exporter.get_finished_spans()
         self.assertEqual(len(spans), 1)
         span = spans[0]
-        self.assertIn(EngineTracer._generate_comment(span), self.caplog.records[-2].getMessage())
-
+        self.assertIn(
+            EngineTracer._generate_comment(span),
+            self.caplog.records[-2].getMessage(),
+        )

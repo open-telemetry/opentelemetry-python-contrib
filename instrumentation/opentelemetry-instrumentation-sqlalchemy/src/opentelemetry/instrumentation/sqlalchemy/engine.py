@@ -13,15 +13,16 @@
 # limitations under the License.
 import os
 
-import opentelemetry.trace
+from opentelemetry.semconv.trace import NetTransportValues, SpanAttributes
+from opentelemetry.trace import Span
+from opentelemetry.trace.status import Status, StatusCode
 from sqlalchemy.event import listen  # pylint: disable=no-name-in-module
-
 from opentelemetry import trace
 from opentelemetry.instrumentation.sqlalchemy.version import __version__
-from opentelemetry.semconv.trace import NetTransportValues, SpanAttributes
-from opentelemetry.trace.status import Status, StatusCode
-from opentelemetry.trace import Span
-from opentelemetry.instrumentation.utils import _generate_sql_comment, _generate_opentelemetry_traceparent
+from opentelemetry.instrumentation.utils import (
+    _generate_sql_comment,
+    _generate_opentelemetry_traceparent,
+)
 
 
 def _normalize_vendor(vendor):
@@ -79,7 +80,9 @@ class EngineTracer:
         self.vendor = _normalize_vendor(engine.name)
         self.enable_commenter = enable_commenter
 
-        listen(engine, "before_cursor_execute", self._before_cur_exec, retval=True)
+        listen(
+            engine, "before_cursor_execute", self._before_cur_exec, retval=True
+        )
         listen(engine, "after_cursor_execute", _after_cur_exec)
         listen(engine, "handle_error", _handle_error)
 
@@ -129,9 +132,7 @@ class EngineTracer:
         span_context = span.get_span_context()
         meta = {}
         if span_context.is_valid:
-            meta.update(
-                _generate_opentelemetry_traceparent(span)
-            )
+            meta.update(_generate_opentelemetry_traceparent(span))
         return _generate_sql_comment(**meta)
 
 
