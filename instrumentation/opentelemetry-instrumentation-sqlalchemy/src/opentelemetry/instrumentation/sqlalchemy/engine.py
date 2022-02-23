@@ -26,7 +26,6 @@ from opentelemetry.trace import Span
 from opentelemetry.trace.status import Status, StatusCode
 
 
-
 def _normalize_vendor(vendor):
     """Return a canonical name for a type of database."""
     if not vendor:
