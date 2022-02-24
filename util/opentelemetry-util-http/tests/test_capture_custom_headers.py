@@ -16,8 +16,8 @@ from unittest.mock import patch
 
 from opentelemetry.test.test_base import TestBase
 from opentelemetry.util.http import (
-    OTEL_CAPTURE_REQUEST_HEADERS,
-    OTEL_CAPTURE_RESPONSE_HEADERS,
+    OTEL_INSTRUMENTATION_HTTP_CAPTURE_HEADERS_SERVER_REQUEST,
+    OTEL_INSTRUMENTATION_HTTP_CAPTURE_HEADERS_SERVER_RESPONSE,
     get_custom_headers,
     normalise_request_header_name,
     normalise_response_header_name,
@@ -27,11 +27,11 @@ from opentelemetry.util.http import (
 class TestCaptureCustomHeaders(TestBase):
     @patch.dict(
         "os.environ",
-        {OTEL_CAPTURE_REQUEST_HEADERS: "User-Agent,Test-Header"},
+        {OTEL_INSTRUMENTATION_HTTP_CAPTURE_HEADERS_SERVER_REQUEST: "User-Agent,Test-Header"},
     )
     def test_get_custom_request_header(self):
         custom_headers_to_capture = get_custom_headers(
-            OTEL_CAPTURE_REQUEST_HEADERS
+            OTEL_INSTRUMENTATION_HTTP_CAPTURE_HEADERS_SERVER_REQUEST
         )
         self.assertEqual(
             custom_headers_to_capture, ["User-Agent", "Test-Header"]
@@ -40,12 +40,12 @@ class TestCaptureCustomHeaders(TestBase):
     @patch.dict(
         "os.environ",
         {
-            OTEL_CAPTURE_RESPONSE_HEADERS: "content-type,content-length,test-header"
+            OTEL_INSTRUMENTATION_HTTP_CAPTURE_HEADERS_SERVER_RESPONSE: "content-type,content-length,test-header"
         },
     )
     def test_get_custom_response_header(self):
         custom_headers_to_capture = get_custom_headers(
-            OTEL_CAPTURE_RESPONSE_HEADERS
+            OTEL_INSTRUMENTATION_HTTP_CAPTURE_HEADERS_SERVER_RESPONSE
         )
         self.assertEqual(
             custom_headers_to_capture,

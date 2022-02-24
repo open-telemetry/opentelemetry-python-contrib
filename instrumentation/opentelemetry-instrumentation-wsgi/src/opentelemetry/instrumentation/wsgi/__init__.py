@@ -118,8 +118,8 @@ from opentelemetry.propagators.textmap import Getter
 from opentelemetry.semconv.trace import SpanAttributes
 from opentelemetry.trace.status import Status, StatusCode
 from opentelemetry.util.http import (
-    OTEL_CAPTURE_REQUEST_HEADERS,
-    OTEL_CAPTURE_RESPONSE_HEADERS,
+    OTEL_INSTRUMENTATION_HTTP_CAPTURE_HEADERS_SERVER_REQUEST,
+    OTEL_INSTRUMENTATION_HTTP_CAPTURE_HEADERS_SERVER_RESPONSE,
     get_custom_headers,
     normalise_request_header_name,
     normalise_response_header_name,
@@ -222,7 +222,7 @@ def collect_custom_request_headers(environ):
     in the specification https://github.com/open-telemetry/opentelemetry-specification/blob/main/specification/trace/semantic_conventions/http.md#http-request-and-response-headers"""
     attributes = {}
     custom_request_headers_name = get_custom_headers(
-        OTEL_CAPTURE_REQUEST_HEADERS
+        OTEL_INSTRUMENTATION_HTTP_CAPTURE_HEADERS_SERVER_REQUEST
     )
     for header_name in custom_request_headers_name:
         wsgi_env_var = header_name.upper().replace("-", "_")
@@ -239,7 +239,7 @@ def collect_custom_response_headers(response_headers):
     https://github.com/open-telemetry/opentelemetry-specification/blob/main/specification/trace/semantic_conventions/http.md#http-request-and-response-headers"""
     attributes = {}
     custom_response_headers_name = get_custom_headers(
-        OTEL_CAPTURE_RESPONSE_HEADERS
+        OTEL_INSTRUMENTATION_HTTP_CAPTURE_HEADERS_SERVER_RESPONSE
     )
     response_headers_dict = {}
     if response_headers:
