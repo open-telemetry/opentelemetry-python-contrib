@@ -27,7 +27,9 @@ from opentelemetry.util.http import (
 class TestCaptureCustomHeaders(TestBase):
     @patch.dict(
         "os.environ",
-        {OTEL_INSTRUMENTATION_HTTP_CAPTURE_HEADERS_SERVER_REQUEST: "User-Agent,Test-Header"},
+        {
+            OTEL_INSTRUMENTATION_HTTP_CAPTURE_HEADERS_SERVER_REQUEST: "User-Agent,Test-Header"
+        },
     )
     def test_get_custom_request_header(self):
         custom_headers_to_capture = get_custom_headers(
