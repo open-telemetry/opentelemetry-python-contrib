@@ -387,7 +387,7 @@ class TestWsgiAttributes(unittest.TestCase):
             OTEL_CAPTURE_REQUEST_HEADERS: "Custom-Test-Header-1,Custom-Test-Header-2,Custom-Test-Header-3"
         },
     )
-    def test_collect_request_attributes_capture_custom_request_headers(self):
+    def test_collect_request_attributes_collect_custom_request_headers(self):
         attributes = {}
         self.environ.update(
             {
@@ -410,7 +410,7 @@ class TestWsgiAttributes(unittest.TestCase):
             OTEL_CAPTURE_RESPONSE_HEADERS: "content-type,content-length,my-custom-header,invalid-header"
         },
     )
-    def test_add_response_attributes_captures_custom_response_headers(self):
+    def test_add_response_attributes_collects_custom_response_headers(self):
         response_headers = [
             ("content-type", "text/plain; charset=utf-8"),
             ("content-length", "100"),
@@ -419,18 +419,14 @@ class TestWsgiAttributes(unittest.TestCase):
         otel_wsgi.add_response_attributes(
             self.span, "200 OK", response_headers
         )
-        expected = (
-            mock.call(
-                "http.response.header.content_type",
-                ["text/plain; charset=utf-8"],
-            ),
-            mock.call("http.response.header.content_length", ["100"]),
-            mock.call(
-                "http.response.header.my_custom_header",
-                ["my-custom-value-1,my-custom-header-2"],
-            ),
-        )
-        self.span.set_attribute.assert_has_calls(expected, any_order=True)
+        expected = {
+            "http.response.header.content_type": ["text/plain; charset=utf-8"],
+            "http.response.header.content_length": ["100"],
+            "http.response.header.my_custom_header": [
+                "my-custom-value-1,my-custom-header-2"
+            ],
+        }
+        self.span.set_attributes.assert_called_once_with(expected)
 
 
 class TestWsgiMiddlewareWithTracerProvider(WsgiTestBase):
