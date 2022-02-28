@@ -14,6 +14,7 @@
 
 import collections
 import logging
+import os
 import threading
 import typing
 
@@ -67,7 +68,7 @@ class DatadogExportSpanProcessor(SpanProcessor):
         self.traces_spans_count = collections.Counter()
         self.traces_spans_ended_count = collections.Counter()
 
-        self.worker_thread = threading.Thread(target=self.worker, daemon=True)
+        self.worker_thread = self._create_worker_thread()
 
         # threading conditions used for flushing and shutdown
         self.condition = threading.Condition(threading.Lock())
@@ -81,6 +82,24 @@ class DatadogExportSpanProcessor(SpanProcessor):
         self.schedule_delay_millis = schedule_delay_millis
         self.done = False
         self.worker_thread.start()
+        # Only available in *nix since py37.
+        if hasattr(os, "register_at_fork"):
+            os.register_at_fork(
+                after_in_child=self._at_fork_reinit
+            )  # pylint: disable=protected-access
+
+    def _at_fork_reinit(self):
+        self.condition = threading.Condition(threading.Lock())
+        self.flush_condition = threading.Condition(threading.Lock())
+        self.traces_lock = threading.Lock()
+        self.check_traces_queue.clear()
+        self.worker_thread = self._create_worker_thread()
+        self.worker_thread.start()
+
+    def _create_worker_thread(self) -> threading.Thread:
+        return threading.Thread(
+            name="DatadogProcessor", target=self.worker, daemon=True
+        )
 
     def on_start(
         self, span: Span, parent_context: typing.Optional[Context] = None

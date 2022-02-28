@@ -14,6 +14,8 @@
 
 import itertools
 import logging
+import multiprocessing
+import os
 import sys
 import time
 import unittest
@@ -30,6 +32,7 @@ from opentelemetry.sdk import trace
 from opentelemetry.sdk.trace import Resource, sampling
 from opentelemetry.sdk.util.instrumentation import InstrumentationInfo
 from opentelemetry.semconv.trace import SpanAttributes
+from opentelemetry.test.concurrency_test import ConcurrencyTestBase
 
 
 class MockDatadogSpanExporter(datadog.DatadogSpanExporter):
@@ -40,6 +43,9 @@ class MockDatadogSpanExporter(datadog.DatadogSpanExporter):
         agent_writer_mock.started = True
         agent_writer_mock.exit_timeout = 1
         self._agent_writer = agent_writer_mock
+
+    def reset(self):
+        self._agent_writer.reset_mock()
 
 
 def get_spans(tracer, exporter, shutdown=True):
@@ -667,3 +673,53 @@ class TestDatadogSpanExporter(unittest.TestCase):
 
         span = datadog_spans[0]
         self.assertEqual(span["service"], "fallback_service_name")
+
+
+class TestDatadogSpanProcessorConcurrency(ConcurrencyTestBase):
+
+    @unittest.skipUnless(
+        hasattr(os, "fork") and sys.version_info >= (3, 7),
+        "needs *nix and minor version 7 or later",
+    )
+    def test_exports_with_fork(self):
+        # pylint: disable=invalid-name
+        tracer_provider = trace.TracerProvider()
+        tracer = tracer_provider.get_tracer(__name__)
+
+        exporter = MockDatadogSpanExporter()
+
+        span_processor = datadog.DatadogExportSpanProcessor(
+            exporter, schedule_delay_millis=50
+        )
+        tracer_provider.add_span_processor(span_processor)
+        with tracer.start_as_current_span("foo"):
+            pass
+        time.sleep(0.5)  # give some time for the exporter to upload spans
+
+        self.assertTrue(span_processor.force_flush())
+        self.assertEqual(len(get_spans(tracer, exporter, shutdown=False)), 1)
+        exporter.reset()
+
+        def child(conn):
+            def _target():
+                with tracer.start_as_current_span("span") as s:
+                    s.set_attribute("i", "1")
+                    with tracer.start_as_current_span("temp"):
+                        pass
+
+            self.run_with_many_threads(_target, 100)
+
+            time.sleep(0.5)
+
+            spans = get_spans(tracer, exporter, shutdown=False)
+            conn.send(len(spans) == 200)
+            conn.close()
+
+        parent_conn, child_conn = multiprocessing.Pipe()
+        fork_context = multiprocessing.get_context("fork")
+        p = fork_context.Process(target=child, args=(child_conn,))
+        p.start()
+        self.assertTrue(parent_conn.recv())
+        p.join()
+
+        span_processor.shutdown()
