@@ -676,7 +676,6 @@ class TestDatadogSpanExporter(unittest.TestCase):
 
 
 class TestDatadogSpanProcessorConcurrency(ConcurrencyTestBase):
-
     @unittest.skipUnless(
         hasattr(os, "fork") and sys.version_info >= (3, 7),
         "needs *nix and minor version 7 or later",
