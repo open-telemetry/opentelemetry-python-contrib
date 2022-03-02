@@ -8,7 +8,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased](https://github.com/open-telemetry/opentelemetry-python/compare/v1.9.1-0.28b1...HEAD)
 
 ### Added
-
+- `opentelemetry-instrumentation-psycopg2` extended the sql commenter support of dbapi into psycopg2
+  ([#940](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/940))
 - `opentelemetry-instrumentation-dbapi` add experimental sql commenter capability
   ([#908](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/908))
 
