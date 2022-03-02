@@ -1,6 +1,5 @@
 import urllib
 from aiohttp import web
-from guillotina.utils import get_dotted_name
 from multidict import CIMultiDictProxy
 from opentelemetry import context, trace
 from opentelemetry.instrumentation.aiohttp_server.package import _instruments
@@ -19,7 +18,7 @@ from typing import Tuple
 _SUPPRESS_HTTP_INSTRUMENTATION_KEY = "suppress_http_instrumentation"
 
 tracer = trace.get_tracer(__name__)
-_excluded_urls = get_excluded_urls("FLASK")
+_excluded_urls = get_excluded_urls("AIOHTTP_SERVER")
 
 
 def get_default_span_details(request: web.Request) -> Tuple[str, dict]:
@@ -34,9 +33,9 @@ def get_default_span_details(request: web.Request) -> Tuple[str, dict]:
 
 
 def _get_view_func(request) -> str:
-    """TODO: is this only working for guillotina?"""
+    """TODO: is this useful??"""
     try:
-        return get_dotted_name(request.found_view)
+        return request.match_info.handler.__name__
     except AttributeError:
         return "unknown"
 
@@ -139,7 +138,7 @@ async def middleware(request, handler):
     if (
         context.get_value("suppress_instrumentation")
         or context.get_value(_SUPPRESS_HTTP_INSTRUMENTATION_KEY)
-        or not _excluded_urls.url_disabled(request.url)
+        or _excluded_urls.url_disabled(request.url)
     ):
         return await handler(request)
 
@@ -173,7 +172,7 @@ class _InstrumentedApplication(web.Application):
         super().__init__(*args, **kwargs)
 
 
-class AioHttpInstrumentor(BaseInstrumentor):
+class AioHttpServerInstrumentor(BaseInstrumentor):
     # pylint: disable=protected-access,attribute-defined-outside-init
     """An instrumentor for aiohttp.web.Application
 
