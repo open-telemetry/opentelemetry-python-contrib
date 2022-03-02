@@ -86,7 +86,7 @@ class Psycopg2Instrumentor(BaseInstrumentor):
             version=__version__,
             tracer_provider=tracer_provider,
             db_api_integration_factory=DatabaseApiIntegration,
-            enable_commenter=enable_sqlcommenter
+            enable_commenter=enable_sqlcommenter,
         )
 
     def _uninstrument(self, **kwargs):
