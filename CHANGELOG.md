@@ -10,7 +10,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Added
 
  - `opentelemetry-instrumentation-sqlalchemy` added experimental sql commenter capability
-   ([#924](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/924/)
+   ([#924](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/924))
 
 ### Added
 
