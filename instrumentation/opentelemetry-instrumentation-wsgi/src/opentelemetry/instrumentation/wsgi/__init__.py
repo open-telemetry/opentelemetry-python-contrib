@@ -216,7 +216,7 @@ def collect_request_attributes(environ):
 
 
 def add_custom_request_headers(span, environ):
-    """Adds custom HTTP request headers into the span which are configured by the user 
+    """Adds custom HTTP request headers into the span which are configured by the user
     from the PEP3333-conforming WSGI environ to be used as span creation attributes as described
     in the specification https://github.com/open-telemetry/opentelemetry-specification/blob/main/specification/trace/semantic_conventions/http.md#http-request-and-response-headers"""
     if span.kind == trace.SpanKind.SERVER:

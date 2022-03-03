@@ -381,7 +381,6 @@ class TestWsgiAttributes(unittest.TestCase):
             expected.items(),
         )
 
-    
 
 class TestWsgiMiddlewareWithTracerProvider(WsgiTestBase):
     def validate_response(
@@ -448,12 +447,13 @@ class TestWsgiMiddlewareWrappedWithAnotherFramework(WsgiTestBase):
                 parent_span.context.span_id, span_list[0].parent.span_id
             )
 
+
 class TestAdditionOfCustomRequestResponseHeaders(TestBase):
     def setUp(self):
         super().setUp()
         tracer_provider, exporter = self.create_tracer_provider()
         self.tracer = tracer_provider.get_tracer(__name__)
-    
+
     @mock.patch.dict(
         "os.environ",
         {
@@ -464,14 +464,11 @@ class TestAdditionOfCustomRequestResponseHeaders(TestBase):
         with self.tracer.start_as_current_span(
             "test", kind=trace_api.SpanKind.SERVER
         ) as current_span:
-            print(current_span.kind)
             environ = {
-                    "HTTP_CUSTOM_TEST_HEADER_1": "Test Value 1",
-                    "HTTP_CUSTOM_TEST_HEADER_2": "TestValue2,TestValue3",
-                }
-
+                "HTTP_CUSTOM_TEST_HEADER_1": "Test Value 1",
+                "HTTP_CUSTOM_TEST_HEADER_2": "TestValue2,TestValue3",
+            }
             otel_wsgi.add_custom_request_headers(current_span, environ)
-            attributes = current_span.attributes
             expected = {
                 "http.request.header.custom_test_header_1": ("Test Value 1",),
                 "http.request.header.custom_test_header_2": (
@@ -479,6 +476,28 @@ class TestAdditionOfCustomRequestResponseHeaders(TestBase):
                 ),
             }
             self.assertSpanHasAttributes(current_span, expected)
+
+    @mock.patch.dict(
+        "os.environ",
+        {
+            OTEL_INSTRUMENTATION_HTTP_CAPTURE_HEADERS_SERVER_REQUEST: "Custom-Test-Header-1"
+        },
+    )
+    def test_custom_request_headers_not_added_in_internal_span(self):
+        with self.tracer.start_as_current_span(
+            "test", kind=trace_api.SpanKind.INTERNAL
+        ) as current_span:
+            print(current_span.kind)
+            environ = {
+                "HTTP_CUSTOM_TEST_HEADER_1": "Test Value 1",
+            }
+
+            otel_wsgi.add_custom_request_headers(current_span, environ)
+            expected = {
+                "http.request.header.custom_test_header_1": ("Test Value 1",),
+            }
+            for key, val in expected.items():
+                self.assertNotIn(key, current_span.attributes)
 
     @mock.patch.dict(
         "os.environ",
@@ -495,15 +514,44 @@ class TestAdditionOfCustomRequestResponseHeaders(TestBase):
                 ("content-length", "100"),
                 ("my-custom-header", "my-custom-value-1,my-custom-header-2"),
             ]
-            otel_wsgi.add_custom_response_headers(current_span, response_headers)
+            otel_wsgi.add_custom_response_headers(
+                current_span, response_headers
+            )
             expected = {
-                "http.response.header.content_type": ("text/plain; charset=utf-8",),
+                "http.response.header.content_type": (
+                    "text/plain; charset=utf-8",
+                ),
                 "http.response.header.content_length": ("100",),
                 "http.response.header.my_custom_header": (
                     "my-custom-value-1,my-custom-header-2",
                 ),
             }
             self.assertSpanHasAttributes(current_span, expected)
+
+    @mock.patch.dict(
+        "os.environ",
+        {
+            OTEL_INSTRUMENTATION_HTTP_CAPTURE_HEADERS_SERVER_RESPONSE: "my-custom-header"
+        },
+    )
+    def test_custom_response_headers_not_added_in_internal_span(self):
+        with self.tracer.start_as_current_span(
+            "test", kind=trace_api.SpanKind.INTERNAL
+        ) as current_span:
+            response_headers = [
+                ("my-custom-header", "my-custom-value-1,my-custom-header-2"),
+            ]
+            otel_wsgi.add_custom_response_headers(
+                current_span, response_headers
+            )
+            expected = {
+                "http.response.header.my_custom_header": (
+                    "my-custom-value-1,my-custom-header-2",
+                ),
+            }
+            for key, val in expected.items():
+                self.assertNotIn(key, current_span.attributes)
+
 
 if __name__ == "__main__":
     unittest.main()
