@@ -451,7 +451,7 @@ class TestWsgiMiddlewareWrappedWithAnotherFramework(WsgiTestBase):
 class TestAdditionOfCustomRequestResponseHeaders(TestBase):
     def setUp(self):
         super().setUp()
-        tracer_provider, exporter = self.create_tracer_provider()
+        tracer_provider, _ = self.create_tracer_provider()
         self.tracer = tracer_provider.get_tracer(__name__)
 
     @mock.patch.dict(
@@ -496,7 +496,7 @@ class TestAdditionOfCustomRequestResponseHeaders(TestBase):
             expected = {
                 "http.request.header.custom_test_header_1": ("Test Value 1",),
             }
-            for key, val in expected.items():
+            for key, _ in expected.items():
                 self.assertNotIn(key, current_span.attributes)
 
     @mock.patch.dict(
@@ -549,7 +549,7 @@ class TestAdditionOfCustomRequestResponseHeaders(TestBase):
                     "my-custom-value-1,my-custom-header-2",
                 ),
             }
-            for key, val in expected.items():
+            for key, _ in expected.items():
                 self.assertNotIn(key, current_span.attributes)
 
 
