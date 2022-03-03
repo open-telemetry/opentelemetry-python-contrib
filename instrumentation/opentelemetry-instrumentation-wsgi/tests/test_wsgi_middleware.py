@@ -86,6 +86,19 @@ def error_wsgi_unhandled(environ, start_response):
     raise ValueError
 
 
+def wsgi_with_custom_response_headers(self, environ, start_response):
+    assert isinstance(environ, dict)
+    start_response(
+        "200 OK",
+        [
+            ("content-type", "text/plain; charset=utf-8"),
+            ("content-length", "100"),
+            ("my-custom-header", "my-custom-value-1,my-custom-header-2"),
+        ],
+    )
+    return [b"*"]
+
+
 class TestWsgiApplication(WsgiTestBase):
     def validate_response(
         self,
@@ -448,11 +461,19 @@ class TestWsgiMiddlewareWrappedWithAnotherFramework(WsgiTestBase):
             )
 
 
-class TestAdditionOfCustomRequestResponseHeaders(TestBase):
+class TestAdditionOfCustomRequestResponseHeaders(WsgiTestBase, TestBase):
     def setUp(self):
         super().setUp()
-        tracer_provider, _ = self.create_tracer_provider()
+        tracer_provider, _ = TestBase.create_tracer_provider()
         self.tracer = tracer_provider.get_tracer(__name__)
+
+    def iterate_response(self, response):
+        while True:
+            try:
+                value = next(response)
+                self.assertEqual(value, b"*")
+            except StopIteration:
+                break
 
     @mock.patch.dict(
         "os.environ",
@@ -461,21 +482,23 @@ class TestAdditionOfCustomRequestResponseHeaders(TestBase):
         },
     )
     def test_custom_request_headers_added_in_server_span(self):
-        with self.tracer.start_as_current_span(
-            "test", kind=trace_api.SpanKind.SERVER
-        ) as current_span:
-            environ = {
+        self.environ.update(
+            {
                 "HTTP_CUSTOM_TEST_HEADER_1": "Test Value 1",
                 "HTTP_CUSTOM_TEST_HEADER_2": "TestValue2,TestValue3",
             }
-            otel_wsgi.add_custom_request_headers(current_span, environ)
-            expected = {
-                "http.request.header.custom_test_header_1": ("Test Value 1",),
-                "http.request.header.custom_test_header_2": (
-                    "TestValue2,TestValue3",
-                ),
-            }
-            self.assertSpanHasAttributes(current_span, expected)
+        )
+        app = otel_wsgi.OpenTelemetryMiddleware(simple_wsgi)
+        response = app(self.environ, self.start_response)
+        self.iterate_response(response)
+        span = self.memory_exporter.get_finished_spans()[0]
+        expected = {
+            "http.request.header.custom_test_header_1": ("Test Value 1",),
+            "http.request.header.custom_test_header_2": (
+                "TestValue2,TestValue3",
+            ),
+        }
+        self.assertSpanHasAttributes(span, expected)
 
     @mock.patch.dict(
         "os.environ",
@@ -484,20 +507,24 @@ class TestAdditionOfCustomRequestResponseHeaders(TestBase):
         },
     )
     def test_custom_request_headers_not_added_in_internal_span(self):
-        with self.tracer.start_as_current_span(
-            "test", kind=trace_api.SpanKind.INTERNAL
-        ) as current_span:
-            print(current_span.kind)
-            environ = {
+        self.environ.update(
+            {
                 "HTTP_CUSTOM_TEST_HEADER_1": "Test Value 1",
             }
+        )
 
-            otel_wsgi.add_custom_request_headers(current_span, environ)
-            expected = {
+        with self.tracer.start_as_current_span(
+            "test", kind=trace_api.SpanKind.SERVER
+        ):
+            app = otel_wsgi.OpenTelemetryMiddleware(simple_wsgi)
+            response = app(self.environ, self.start_response)
+            self.iterate_response(response)
+            span = self.memory_exporter.get_finished_spans()[0]
+            not_expected = {
                 "http.request.header.custom_test_header_1": ("Test Value 1",),
             }
-            for key, _ in expected.items():
-                self.assertNotIn(key, current_span.attributes)
+            for key, _ in not_expected.items():
+                self.assertNotIn(key, span.attributes)
 
     @mock.patch.dict(
         "os.environ",
@@ -506,27 +533,22 @@ class TestAdditionOfCustomRequestResponseHeaders(TestBase):
         },
     )
     def test_custom_response_headers_added_in_server_span(self):
-        with self.tracer.start_as_current_span(
-            "test", kind=trace_api.SpanKind.SERVER
-        ) as current_span:
-            response_headers = [
-                ("content-type", "text/plain; charset=utf-8"),
-                ("content-length", "100"),
-                ("my-custom-header", "my-custom-value-1,my-custom-header-2"),
-            ]
-            otel_wsgi.add_custom_response_headers(
-                current_span, response_headers
-            )
-            expected = {
-                "http.response.header.content_type": (
-                    "text/plain; charset=utf-8",
-                ),
-                "http.response.header.content_length": ("100",),
-                "http.response.header.my_custom_header": (
-                    "my-custom-value-1,my-custom-header-2",
-                ),
-            }
-            self.assertSpanHasAttributes(current_span, expected)
+        app = otel_wsgi.OpenTelemetryMiddleware(
+            wsgi_with_custom_response_headers
+        )
+        response = app(self.environ, self.start_response)
+        self.iterate_response(response)
+        span = self.memory_exporter.get_finished_spans()[0]
+        expected = {
+            "http.response.header.content_type": (
+                "text/plain; charset=utf-8",
+            ),
+            "http.response.header.content_length": ("100",),
+            "http.response.header.my_custom_header": (
+                "my-custom-value-1,my-custom-header-2",
+            ),
+        }
+        self.assertSpanHasAttributes(span, expected)
 
     @mock.patch.dict(
         "os.environ",
@@ -537,20 +559,20 @@ class TestAdditionOfCustomRequestResponseHeaders(TestBase):
     def test_custom_response_headers_not_added_in_internal_span(self):
         with self.tracer.start_as_current_span(
             "test", kind=trace_api.SpanKind.INTERNAL
-        ) as current_span:
-            response_headers = [
-                ("my-custom-header", "my-custom-value-1,my-custom-header-2"),
-            ]
-            otel_wsgi.add_custom_response_headers(
-                current_span, response_headers
+        ):
+            app = otel_wsgi.OpenTelemetryMiddleware(
+                wsgi_with_custom_response_headers
             )
-            expected = {
+            response = app(self.environ, self.start_response)
+            self.iterate_response(response)
+            span = self.memory_exporter.get_finished_spans()[0]
+            not_expected = {
                 "http.response.header.my_custom_header": (
                     "my-custom-value-1,my-custom-header-2",
                 ),
             }
-            for key, _ in expected.items():
-                self.assertNotIn(key, current_span.attributes)
+            for key, _ in not_expected.items():
+                self.assertNotIn(key, span.attributes)
 
 
 if __name__ == "__main__":
