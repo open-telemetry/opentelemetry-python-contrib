@@ -86,7 +86,7 @@ def error_wsgi_unhandled(environ, start_response):
     raise ValueError
 
 
-def wsgi_with_custom_response_headers(self, environ, start_response):
+def wsgi_with_custom_response_headers(environ, start_response):
     assert isinstance(environ, dict)
     start_response(
         "200 OK",
