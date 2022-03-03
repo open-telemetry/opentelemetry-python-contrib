@@ -381,53 +381,7 @@ class TestWsgiAttributes(unittest.TestCase):
             expected.items(),
         )
 
-    @mock.patch.dict(
-        "os.environ",
-        {
-            OTEL_INSTRUMENTATION_HTTP_CAPTURE_HEADERS_SERVER_REQUEST: "Custom-Test-Header-1,Custom-Test-Header-2,Custom-Test-Header-3"
-        },
-    )
-    def test_collect_request_attributes_collect_custom_request_headers(self):
-        attributes = {}
-        self.environ.update(
-            {
-                "HTTP_CUSTOM_TEST_HEADER_1": "Test Value 1",
-                "HTTP_CUSTOM_TEST_HEADER_2": "TestValue2,TestValue3",
-            }
-        )
-        attributes = otel_wsgi.collect_request_attributes(self.environ)
-        expected = {
-            "http.request.header.custom_test_header_1": ["Test Value 1"],
-            "http.request.header.custom_test_header_2": [
-                "TestValue2,TestValue3",
-            ],
-        }
-        self.assertGreaterEqual(attributes.items(), expected.items())
-
-    @mock.patch.dict(
-        "os.environ",
-        {
-            OTEL_INSTRUMENTATION_HTTP_CAPTURE_HEADERS_SERVER_RESPONSE: "content-type,content-length,my-custom-header,invalid-header"
-        },
-    )
-    def test_add_response_attributes_collects_custom_response_headers(self):
-        response_headers = [
-            ("content-type", "text/plain; charset=utf-8"),
-            ("content-length", "100"),
-            ("my-custom-header", "my-custom-value-1,my-custom-header-2"),
-        ]
-        otel_wsgi.add_response_attributes(
-            self.span, "200 OK", response_headers
-        )
-        expected = {
-            "http.response.header.content_type": ["text/plain; charset=utf-8"],
-            "http.response.header.content_length": ["100"],
-            "http.response.header.my_custom_header": [
-                "my-custom-value-1,my-custom-header-2"
-            ],
-        }
-        self.span.set_attributes.assert_called_once_with(expected)
-
+    
 
 class TestWsgiMiddlewareWithTracerProvider(WsgiTestBase):
     def validate_response(
@@ -494,6 +448,62 @@ class TestWsgiMiddlewareWrappedWithAnotherFramework(WsgiTestBase):
                 parent_span.context.span_id, span_list[0].parent.span_id
             )
 
+class TestAdditionOfCustomRequestResponseHeaders(TestBase):
+    def setUp(self):
+        super().setUp()
+        tracer_provider, exporter = self.create_tracer_provider()
+        self.tracer = tracer_provider.get_tracer(__name__)
+    
+    @mock.patch.dict(
+        "os.environ",
+        {
+            OTEL_INSTRUMENTATION_HTTP_CAPTURE_HEADERS_SERVER_REQUEST: "Custom-Test-Header-1,Custom-Test-Header-2,Custom-Test-Header-3"
+        },
+    )
+    def test_custom_request_headers_added_in_server_span(self):
+        with self.tracer.start_as_current_span(
+            "test", kind=trace_api.SpanKind.SERVER
+        ) as current_span:
+            print(current_span.kind)
+            environ = {
+                    "HTTP_CUSTOM_TEST_HEADER_1": "Test Value 1",
+                    "HTTP_CUSTOM_TEST_HEADER_2": "TestValue2,TestValue3",
+                }
+
+            otel_wsgi.add_custom_request_headers(current_span, environ)
+            attributes = current_span.attributes
+            expected = {
+                "http.request.header.custom_test_header_1": ("Test Value 1",),
+                "http.request.header.custom_test_header_2": (
+                    "TestValue2,TestValue3",
+                ),
+            }
+            self.assertSpanHasAttributes(current_span, expected)
+
+    @mock.patch.dict(
+        "os.environ",
+        {
+            OTEL_INSTRUMENTATION_HTTP_CAPTURE_HEADERS_SERVER_RESPONSE: "content-type,content-length,my-custom-header,invalid-header"
+        },
+    )
+    def test_custom_response_headers_added_in_server_span(self):
+        with self.tracer.start_as_current_span(
+            "test", kind=trace_api.SpanKind.SERVER
+        ) as current_span:
+            response_headers = [
+                ("content-type", "text/plain; charset=utf-8"),
+                ("content-length", "100"),
+                ("my-custom-header", "my-custom-value-1,my-custom-header-2"),
+            ]
+            otel_wsgi.add_custom_response_headers(current_span, response_headers)
+            expected = {
+                "http.response.header.content_type": ("text/plain; charset=utf-8",),
+                "http.response.header.content_length": ("100",),
+                "http.response.header.my_custom_header": (
+                    "my-custom-value-1,my-custom-header-2",
+                ),
+            }
+            self.assertSpanHasAttributes(current_span, expected)
 
 if __name__ == "__main__":
     unittest.main()
