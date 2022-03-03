@@ -18,23 +18,15 @@ import typing
 import unittest
 import urllib.parse
 from functools import partial
-from http import HTTPStatus
 from unittest import mock
 
 import aiohttp
 import aiohttp.test_utils
-import yarl
 from pkg_resources import iter_entry_points
 
-from opentelemetry import context
-from opentelemetry.instrumentation import aiohttp_server
-from opentelemetry.instrumentation.aiohttp_server import (
-    AioHttpServerInstrumentor,
-)
-from opentelemetry.instrumentation.utils import _SUPPRESS_INSTRUMENTATION_KEY
+from opentelemetry.instrumentation.aiohttp_server import AioHttpServerInstrumentor
 from opentelemetry.semconv.trace import SpanAttributes
 from opentelemetry.test.test_base import TestBase
-from opentelemetry.trace import Span, StatusCode
 
 
 def run_with_test_server(
@@ -131,3 +123,13 @@ class TestAioHttpServerIntegration(TestBase):
             self.assertTrue(mock_span.is_recording.called)
             self.assertFalse(mock_span.set_attribute.called)
             self.assertFalse(mock_span.set_status.called)
+
+
+class TestLoadingAioHttpInstrumentor(unittest.TestCase):
+    def test_loading_instrumentor(self):
+        entry_points = iter_entry_points(
+            "opentelemetry_instrumentor", "aiohttp-server"
+        )
+
+        instrumentor = next(entry_points).load()()
+        self.assertIsInstance(instrumentor, AioHttpServerInstrumentor)
