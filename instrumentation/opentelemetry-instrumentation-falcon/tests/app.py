@@ -1,4 +1,5 @@
 import falcon
+from packaging import version as package_version
 
 # pylint:disable=R0201,W0613,E0602
 
@@ -46,12 +47,17 @@ class CustomResponseHeaderResource:
 
 
 def make_app():
-    if hasattr(falcon, "App"):
+    _parsed_falcon_version = package_version.parse(falcon.__version__)
+    if _parsed_falcon_version >= package_version.parse("3.0.0"):
         # Falcon 3
         app = falcon.App()
-    else:
+    elif _parsed_falcon_version >= package_version.parse("2.0.0"):
         # Falcon 2
         app = falcon.API()
+    else:
+        # Falcon 1
+        app = falcon.API()
+
     app.add_route("/hello", HelloWorldResource())
     app.add_route("/ping", HelloWorldResource())
     app.add_route("/error", ErrorResource())
