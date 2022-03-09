@@ -10,9 +10,7 @@ This library allows to export tracing data to `Datadog
 <https://www.datadoghq.com/>`_. OpenTelemetry span event and links are not
 supported.
 
-Deprecated
-------------
-This exporter has been deprecated. To export your OTLP traces from OpenTelemetry SDK directly to Datadog Agent, please refer to `OTLP Ingest in Datadog Agent <https://docs.datadoghq.com/tracing/setup_overview/open_standards/#otlp-ingest-in-datadog-agent>`_ .
+.. warning:: This exporter has been deprecated. To export your OTLP traces from OpenTelemetry SDK directly to Datadog Agent, please refer to `OTLP Ingest in Datadog Agent <https://docs.datadoghq.com/tracing/setup_overview/open_standards/#otlp-ingest-in-datadog-agent>`_ .
 
 
 Installation
