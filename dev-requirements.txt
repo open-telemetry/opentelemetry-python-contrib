@@ -1,4 +1,4 @@
-pylint<2.10
+pylint==2.12.2
 flake8~=3.7
 isort~=5.6
 black>=22.1.0
@@ -13,3 +13,4 @@ readme-renderer~=24.0
 grpcio-tools==1.29.0
 mypy-protobuf>=1.23
 protobuf>=3.13.0
+markupsafe==2.0.1
