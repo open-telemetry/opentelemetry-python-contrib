@@ -1,4 +1,4 @@
-OpenTelemetry Datadog Exporter
+OpenTelemetry Datadog Span Exporter
 ==============================
 
 |pypi|
@@ -12,7 +12,7 @@ supported.
 
 Deprecated
 ------------
-This exporter has been deprecated. To export your OpenTelemetry traces to Datadog please refer to `Datadog Python Open Standards <https://docs.datadoghq.com/tracing/setup_overview/open_standards/python/#opentelemetry>`_ .
+This exporter has been deprecated. To export your OTLP traces from OpenTelemetry SDK directly to Datadog Agent, please refer to `OTLP Ingest in Datadog Agent <https://docs.datadoghq.com/tracing/setup_overview/open_standards/#otlp-ingest-in-datadog-agent>`_ .
 
 
 Installation
