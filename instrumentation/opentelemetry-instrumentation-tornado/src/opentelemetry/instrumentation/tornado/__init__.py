@@ -45,12 +45,13 @@ A comma separated list of paths that should not be automatically traced. For exa
 
 ::
 
-    export OTEL_PYTHON_TORNADO_EXLUDED_URLS='/healthz,/ping'
+    export OTEL_PYTHON_TORNADO_EXCLUDED_URLS='/healthz,/ping'
 
 Then any requests made to ``/healthz`` and ``/ping`` will not be automatically traced.
 
 Request attributes
-********************
+******************
+
 To extract certain attributes from Tornado's request object and use them as span attributes, set the environment variable ``OTEL_PYTHON_TORNADO_TRACED_REQUEST_ATTRS`` to a comma
 delimited list of request attribute names.
 
@@ -119,11 +120,12 @@ from opentelemetry.instrumentation.propagators import (
 from opentelemetry.instrumentation.tornado.package import _instruments
 from opentelemetry.instrumentation.tornado.version import __version__
 from opentelemetry.instrumentation.utils import (
+    _start_internal_or_server_span,
     extract_attributes_from_object,
     http_status_to_status_code,
     unwrap,
 )
-from opentelemetry.propagate import extract
+from opentelemetry.propagators import textmap
 from opentelemetry.semconv.trace import SpanAttributes
 from opentelemetry.trace.status import Status, StatusCode
 from opentelemetry.util._time import _time_ns
@@ -292,13 +294,14 @@ def _get_full_handler_name(handler):
 
 
 def _start_span(tracer, handler, start_time) -> _TraceContext:
-    token = context.attach(extract(handler.request.headers))
-
-    span = tracer.start_span(
-        _get_operation_name(handler, handler.request),
-        kind=trace.SpanKind.SERVER,
+    span, token = _start_internal_or_server_span(
+        tracer=tracer,
+        span_name=_get_operation_name(handler, handler.request),
         start_time=start_time,
+        context_carrier=handler.request.headers,
+        context_getter=textmap.default_getter,
     )
+
     if span.is_recording():
         attributes = _get_attributes_from_request(handler.request)
         for key, value in attributes.items():
@@ -359,5 +362,6 @@ def _finish_span(tracer, handler, error=None):
         )
 
     ctx.activation.__exit__(*finish_args)  # pylint: disable=E1101
-    context.detach(ctx.token)
+    if ctx.token:
+        context.detach(ctx.token)
     delattr(handler, _HANDLER_CONTEXT_KEY)

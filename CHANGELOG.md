@@ -7,14 +7,38 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased](https://github.com/open-telemetry/opentelemetry-python/compare/v1.9.1-0.28b1...HEAD)
 
+- `opentelemetry-instrumentation-wsgi` Capture custom request/response headers in span attributes
+  ([#925])(https://github.com/open-telemetry/opentelemetry-python-contrib/pull/925)
+
+- `opentelemetry-instrumentation-flask` Flask: Capture custom request/response headers in span attributes
+  ([#952])(https://github.com/open-telemetry/opentelemetry-python-contrib/pull/952)
+
+### Added
+
+- `opentelemetry-instrumentation-sqlalchemy` added experimental sql commenter capability
+   ([#924](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/924))
+- `opentelemetry-instrumentation-dbapi` add experimental sql commenter capability
+  ([#908](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/908))
+- `opentelemetry-instrumentation-requests` make span attribute available to samplers
+  ([#931](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/931))
+
+### Fixed
+
+- `opentelemetry-instrumentation-logging` retrieves service name defensively.
+  ([#890](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/890))
+- `opentelemetry-instrumentation-wsgi` WSGI: Conditionally create SERVER spans
+  ([#903](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/903))
+- `opentelemetry-instrumentation-falcon` Safer patching mechanism
+  ([#895](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/895))
+
 ## [1.9.1-0.28b1](https://github.com/open-telemetry/opentelemetry-python/releases/tag/v1.9.1-0.28b1) - 2022-01-29
-
-
 
 ### Fixed
 
 - `opentelemetry-instrumentation-pika` requires `packaging` dependency
 
+- `opentelemetry-instrumentation-tornado` Tornado: Conditionally create SERVER spans
+  ([#889](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/889))
 
 ## [1.9.0-0.28b0](https://github.com/open-telemetry/opentelemetry-python/releases/tag/v1.9.0-0.28b0) - 2022-01-26
 
@@ -33,6 +57,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   ([#867](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/867))
 - `opentelemetry-instrumentation-pymongo` now supports `pymongo v4`
   ([#876](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/876))
+
+- `opentelemetry-instrumentation-httpx` now supports versions higher than `0.19.0`.
+  ([#866](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/866))
 
 ### Fixed
 

@@ -102,7 +102,7 @@ from opentelemetry.instrumentation.instrumentor import BaseInstrumentor
 from opentelemetry.instrumentation.propagators import (
     get_global_response_propagator,
 )
-from opentelemetry.propagate import extract
+from opentelemetry.instrumentation.utils import _start_internal_or_server_span
 from opentelemetry.semconv.trace import SpanAttributes
 from opentelemetry.util._time import _time_ns
 from opentelemetry.util.http import get_excluded_urls, parse_excluded_urls
@@ -153,6 +153,10 @@ def _rewrapped_app(wsgi_app, response_hook=None, excluded_urls=None):
                     otel_wsgi.add_response_attributes(
                         span, status, response_headers
                     )
+                    if span.kind == trace.SpanKind.SERVER:
+                        otel_wsgi.add_custom_response_headers(
+                            span, response_headers
+                        )
                 else:
                     _logger.warning(
                         "Flask environ's OpenTelemetry span "
@@ -177,21 +181,12 @@ def _wrapped_before_request(
         flask_request_environ = flask.request.environ
         span_name = get_default_span_name()
 
-        token = ctx = span_kind = None
-
-        if trace.get_current_span() is trace.INVALID_SPAN:
-            ctx = extract(flask_request_environ, getter=otel_wsgi.wsgi_getter)
-            token = context.attach(ctx)
-            span_kind = trace.SpanKind.SERVER
-        else:
-            ctx = context.get_current()
-            span_kind = trace.SpanKind.INTERNAL
-
-        span = tracer.start_span(
-            span_name,
-            ctx,
-            kind=span_kind,
+        span, token = _start_internal_or_server_span(
+            tracer=tracer,
+            span_name=span_name,
             start_time=flask_request_environ.get(_ENVIRON_STARTTIME_KEY),
+            context_carrier=flask_request_environ,
+            context_getter=otel_wsgi.wsgi_getter,
         )
 
         if request_hook:
@@ -209,6 +204,10 @@ def _wrapped_before_request(
                 ] = flask.request.url_rule.rule
             for key, value in attributes.items():
                 span.set_attribute(key, value)
+            if span.kind == trace.SpanKind.SERVER:
+                otel_wsgi.add_custom_request_headers(
+                    span, flask_request_environ
+                )
 
         activation = trace.use_span(span, end_on_exit=True)
         activation.__enter__()  # pylint: disable=E1101
