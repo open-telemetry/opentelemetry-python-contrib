@@ -444,7 +444,9 @@ class TestProgrammaticWrappedWithOtherFramework(
         )
 
 
-class TestCustomRequestResponseHeaders(InstrumentationTest, TestBase, WsgiTestBase):
+class TestCustomRequestResponseHeaders(
+    InstrumentationTest, TestBase, WsgiTestBase
+):
     def setUp(self):
         super().setUp()
 
@@ -452,7 +454,7 @@ class TestCustomRequestResponseHeaders(InstrumentationTest, TestBase, WsgiTestBa
             "os.environ",
             {
                 "OTEL_INSTRUMENTATION_HTTP_CAPTURE_HEADERS_SERVER_REQUEST": "Custom-Test-Header-1,Custom-Test-Header-2,Custom-Test-Header-3",
-                "OTEL_INSTRUMENTATION_HTTP_CAPTURE_HEADERS_SERVER_RESPONSE": "content-type,content-length,my-custom-header,invalid-header"
+                "OTEL_INSTRUMENTATION_HTTP_CAPTURE_HEADERS_SERVER_RESPONSE": "content-type,content-length,my-custom-header,invalid-header",
             },
         )
         self.env_patch.start()
@@ -466,7 +468,7 @@ class TestCustomRequestResponseHeaders(InstrumentationTest, TestBase, WsgiTestBa
         self.env_patch.stop()
         with self.disable_logging():
             FlaskInstrumentor().uninstrument_app(self.app)
-    
+
     def test_custom_request_header_added_in_server_span(self):
         headers = {
             "Custom-Test-Header-1": "Test Value 1",
@@ -503,7 +505,7 @@ class TestCustomRequestResponseHeaders(InstrumentationTest, TestBase, WsgiTestBa
             self.assertEqual(span.kind, trace.SpanKind.INTERNAL)
             for key, _ in not_expected.items():
                 self.assertNotIn(key, span.attributes)
-    
+
     def test_custom_response_header_added_in_server_span(self):
         resp = self.client.get("/test_custom_response_headers")
         self.assertEqual(resp.status_code, 200)
@@ -519,7 +521,7 @@ class TestCustomRequestResponseHeaders(InstrumentationTest, TestBase, WsgiTestBa
         }
         self.assertEqual(span.kind, trace.SpanKind.SERVER)
         self.assertSpanHasAttributes(span, expected)
-    
+
     def test_custom_response_header_not_added_in_internal_span(self):
         tracer = trace.get_tracer(__name__)
         with tracer.start_as_current_span("test", kind=trace.SpanKind.SERVER):
