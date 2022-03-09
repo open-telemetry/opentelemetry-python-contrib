@@ -12,8 +12,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - `opentelemetry-instrumentation-pyramid` Fixed which package is the correct caller in _traced_init.
   ([#830](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/830))
 
+- `opentelemetry-instrumentation-flask` Flask: Capture custom request/response headers in span attributes
+  ([#952])(https://github.com/open-telemetry/opentelemetry-python-contrib/pull/952)
+
 ### Added
 
+- `opentelemetry-instrumentation-sqlalchemy` added experimental sql commenter capability
+   ([#924](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/924))
 - `opentelemetry-instrumentation-dbapi` add experimental sql commenter capability
   ([#908](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/908))
 - `opentelemetry-instrumentation-requests` make span attribute available to samplers
