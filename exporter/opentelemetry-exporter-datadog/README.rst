@@ -1,5 +1,5 @@
 OpenTelemetry Datadog Span Exporter
-==============================
+===================================
 
 |pypi|
 
