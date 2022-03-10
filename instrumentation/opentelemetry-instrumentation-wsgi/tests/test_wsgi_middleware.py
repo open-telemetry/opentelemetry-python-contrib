@@ -490,7 +490,9 @@ class TestAdditionOfCustomRequestResponseHeaders(WsgiTestBase, TestBase):
                     "HTTP_CUSTOM_TEST_HEADER_2": "TestValue2,TestValue3",
                 }
             )
-            app = otel_wsgi.OpenTelemetryMiddleware(simple_wsgi, tracer_provider=tracer_provider)
+            app = otel_wsgi.OpenTelemetryMiddleware(
+                simple_wsgi, tracer_provider=tracer_provider
+            )
             response = app(self.environ, self.start_response)
             self.iterate_response(response)
         except Exception as e:
