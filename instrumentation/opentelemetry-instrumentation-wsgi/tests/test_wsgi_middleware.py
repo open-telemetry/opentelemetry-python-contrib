@@ -495,7 +495,7 @@ class TestAdditionOfCustomRequestResponseHeaders(WsgiTestBase, TestBase):
             )
             response = app(self.environ, self.start_response)
             self.iterate_response(response)
-        except Exception as exc: # pylint: disable=W0703
+        except Exception as exc:  # pylint: disable=W0703
             self.fail(f"Exception raised with NonRecordingSpan {exc}")
 
     @mock.patch.dict(
