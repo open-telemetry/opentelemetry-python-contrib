@@ -116,7 +116,6 @@ from opentelemetry.instrumentation.utils import (
 from opentelemetry.instrumentation.wsgi.version import __version__
 from opentelemetry.propagators.textmap import Getter
 from opentelemetry.semconv.trace import SpanAttributes
-from opentelemetry.trace import NonRecordingSpan
 from opentelemetry.trace.status import Status, StatusCode
 from opentelemetry.util.http import (
     OTEL_INSTRUMENTATION_HTTP_CAPTURE_HEADERS_SERVER_REQUEST,
