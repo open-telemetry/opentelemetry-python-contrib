@@ -46,9 +46,9 @@ import wrapt
 from opentelemetry import trace as trace_api
 from opentelemetry.instrumentation.dbapi.version import __version__
 from opentelemetry.instrumentation.utils import (
+    _generate_opentelemetry_traceparent,
     _generate_sql_comment,
     unwrap,
-    _generate_opentelemetry_traceparent,
 )
 from opentelemetry.semconv.trace import SpanAttributes
 from opentelemetry.trace import Span, SpanKind, TracerProvider, get_tracer
