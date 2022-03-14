@@ -17,8 +17,13 @@ import psycopg2
 from opentelemetry.instrumentation.psycopg2 import Psycopg2Instrumentor
 from opentelemetry.test.test_base import TestBase
 
-from test_psycopg_functional import POSTGRES_HOST, POSTGRES_DB_NAME, \
-    POSTGRES_PORT, POSTGRES_PASSWORD, POSTGRES_USER
+from test_psycopg_functional import (
+    POSTGRES_HOST,
+    POSTGRES_DB_NAME,
+    POSTGRES_PORT,
+    POSTGRES_PASSWORD,
+    POSTGRES_USER,
+)
 
 
 class TestFunctionalPsycopg(TestBase):
