@@ -12,18 +12,13 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import os
-
 import psycopg2
 
 from opentelemetry.instrumentation.psycopg2 import Psycopg2Instrumentor
 from opentelemetry.test.test_base import TestBase
 
-POSTGRES_HOST = os.getenv("POSTGRESQL_HOST", "localhost")
-POSTGRES_PORT = int(os.getenv("POSTGRESQL_PORT", "5432"))
-POSTGRES_DB_NAME = os.getenv("POSTGRESQL_DB_NAME", "postgres")
-POSTGRES_PASSWORD = os.getenv("POSTGRESQL_PASSWORD", "postgres")
-POSTGRES_USER = os.getenv("POSTGRESQL_USER", "postgres")
+from test_psycopg_functional import POSTGRES_HOST, POSTGRES_DB_NAME, \
+    POSTGRES_PORT, POSTGRES_PASSWORD, POSTGRES_USER
 
 
 class TestFunctionalPsycopg(TestBase):
@@ -53,10 +48,8 @@ class TestFunctionalPsycopg(TestBase):
         Psycopg2Instrumentor().uninstrument()
 
     def test_commenter_enabled(self):
-        self._cursor.execute(
-            "SELECT  1;"
-        )
+        self._cursor.execute("SELECT  1;")
         self.assertRegex(
-            self._cursor.query.decode('ascii'),
+            self._cursor.query.decode("ascii"),
             r"SELECT  1; /\*traceparent='\d{1,2}-[a-zA-Z0-9_]{32}-[a-zA-Z0-9_]{16}-\d{1,2}'\*/",
         )

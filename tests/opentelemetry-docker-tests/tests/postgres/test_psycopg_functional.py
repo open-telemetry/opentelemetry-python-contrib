@@ -180,4 +180,3 @@ class TestFunctionalPsycopg(TestBase):
             span.attributes[SpanAttributes.DB_STATEMENT],
             'SELECT FROM "users" where "name"=\'"abc"\'',
         )
-
