@@ -13,10 +13,6 @@
 # limitations under the License.
 
 import psycopg2
-
-from opentelemetry.instrumentation.psycopg2 import Psycopg2Instrumentor
-from opentelemetry.test.test_base import TestBase
-
 from test_psycopg_functional import (
     POSTGRES_HOST,
     POSTGRES_DB_NAME,
@@ -24,6 +20,9 @@ from test_psycopg_functional import (
     POSTGRES_PASSWORD,
     POSTGRES_USER,
 )
+
+from opentelemetry.instrumentation.psycopg2 import Psycopg2Instrumentor
+from opentelemetry.test.test_base import TestBase
 
 
 class TestFunctionalPsycopg(TestBase):
