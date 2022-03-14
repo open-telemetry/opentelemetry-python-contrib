@@ -14,10 +14,10 @@
 
 import psycopg2
 from test_psycopg_functional import (
-    POSTGRES_HOST,
     POSTGRES_DB_NAME,
-    POSTGRES_PORT,
+    POSTGRES_HOST,
     POSTGRES_PASSWORD,
+    POSTGRES_PORT,
     POSTGRES_USER,
 )
 
