@@ -13,9 +13,12 @@
 # limitations under the License.
 
 from logging import getLogger
+from xmlrpc.client import ResponseError
+
 
 from pyramid.events import BeforeTraversal
 from pyramid.httpexceptions import HTTPException
+from pyramid.response import Response
 from pyramid.settings import asbool
 from pyramid.tweens import EXCVIEW
 
@@ -147,6 +150,12 @@ def trace_tween_factory(handler, registry):
             # As described in docs, Pyramid exceptions are all valid
             # response types
             response_or_exception = exc
+            raise
+        except BaseException as exc:
+            # In the case that a non-HTTPException is bubbled up we
+            # should catch it and encapsulate it in an HTTPException
+            response = Response() if response is None else response
+            response_or_exception = HTTPException(response, exc)
             raise
         finally:
             span = request.environ.get(_ENVIRON_SPAN_KEY)
