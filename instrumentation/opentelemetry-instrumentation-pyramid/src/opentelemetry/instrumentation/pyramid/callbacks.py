@@ -12,14 +12,10 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from lib2to3.pytree import Base
 from logging import getLogger
-from xmlrpc.client import ResponseError
-
 
 from pyramid.events import BeforeTraversal
-from pyramid.httpexceptions import HTTPException, HTTPInternalServerError
-from pyramid.response import Response
+from pyramid.httpexceptions import HTTPException
 from pyramid.settings import asbool
 from pyramid.tweens import EXCVIEW
 
