@@ -17,8 +17,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - `opentelemetry-instrumentation-flask` Flask: Capture custom request/response headers in span attributes
   ([#952])(https://github.com/open-telemetry/opentelemetry-python-contrib/pull/952)
 
+- `opentelemetry-instrumentation-tornado` Tornado: Capture custom request/response headers in span attributes
+  ([#950])(https://github.com/open-telemetry/opentelemetry-python-contrib/pull/950)
+
 ### Added
 
+- `opentelemetry-instrumentation-aws-lambda` `SpanKind.SERVER` by default, add more cases for `SpanKind.CONSUMER` services. ([#926](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/926))
 - `opentelemetry-instrumentation-sqlalchemy` added experimental sql commenter capability
    ([#924](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/924))
 - `opentelemetry-instrumentation-dbapi` add experimental sql commenter capability
@@ -39,6 +43,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   ([#903](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/903))
 - `opentelemetry-instrumentation-falcon` Safer patching mechanism
   ([#895](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/895))
+- `opentelemetry-instrumentation-kafka-python` Fix topic extraction
+  ([#949](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/949))
 
 ## [1.9.1-0.28b1](https://github.com/open-telemetry/opentelemetry-python/releases/tag/v1.9.1-0.28b1) - 2022-01-29
 
