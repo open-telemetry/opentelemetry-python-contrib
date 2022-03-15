@@ -153,7 +153,10 @@ def _rewrapped_app(wsgi_app, response_hook=None, excluded_urls=None):
                     otel_wsgi.add_response_attributes(
                         span, status, response_headers
                     )
-                    if span.is_recording() and span.kind == trace.SpanKind.SERVER:
+                    if (
+                        span.is_recording()
+                        and span.kind == trace.SpanKind.SERVER
+                    ):
                         otel_wsgi.add_custom_response_headers(
                             span, response_headers
                         )
