@@ -7,6 +7,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased](https://github.com/open-telemetry/opentelemetry-python/compare/v1.10.0-0.29b0...HEAD)
 
+- `opentelemetry-instrumentation-pyramid` Handle non-HTTPException exceptions
+  ([#1001](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/1001))
+
 ## [1.10.0-0.29b0](https://github.com/open-telemetry/opentelemetry-python/releases/tag/v1.10.0-0.29b0) - 2022-03-10
 
 
