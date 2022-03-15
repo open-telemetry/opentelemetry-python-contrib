@@ -12,12 +12,13 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+from lib2to3.pytree import Base
 from logging import getLogger
 from xmlrpc.client import ResponseError
 
 
 from pyramid.events import BeforeTraversal
-from pyramid.httpexceptions import HTTPException
+from pyramid.httpexceptions import HTTPException, HTTPInternalServerError
 from pyramid.response import Response
 from pyramid.settings import asbool
 from pyramid.tweens import EXCVIEW
@@ -140,22 +141,24 @@ def trace_tween_factory(handler, registry):
         request.environ[_ENVIRON_ENABLED_KEY] = True
         request.environ[_ENVIRON_STARTTIME_KEY] = _time_ns()
 
+        response = None
+        status = None
+        headerList = None
+
         try:
             response = handler(request)
-            response_or_exception = response
         except HTTPException as exc:
             # If the exception is a pyramid HTTPException,
             # that's still valuable information that isn't necessarily
             # a 500. For instance, HTTPFound is a 302.
             # As described in docs, Pyramid exceptions are all valid
             # response types
-            response_or_exception = exc
+            response = exc
             raise
-        except BaseException as exc:
+        except BaseException:
             # In the case that a non-HTTPException is bubbled up we
-            # should catch it and encapsulate it in an HTTPException
-            response = Response() if response is None else response
-            response_or_exception = HTTPException(response, exc)
+            # should infer a internal server error and raise
+            status = "500 InternalServerError"
             raise
         finally:
             span = request.environ.get(_ENVIRON_SPAN_KEY)
@@ -167,10 +170,16 @@ def trace_tween_factory(handler, registry):
                     "PyramidInstrumentor().instrument_config(config) is called"
                 )
             elif enabled:
+                if response:
+                    if hasattr(response, "status"):
+                        status = response.status
+                    if hasattr(response, "headerList"):
+                        headerList = response.headerList
+
                 otel_wsgi.add_response_attributes(
                     span,
-                    response_or_exception.status,
-                    response_or_exception.headerlist,
+                    status,
+                    headerList,
                 )
 
                 propagator = get_global_response_propagator()
@@ -179,11 +188,11 @@ def trace_tween_factory(handler, registry):
 
                 activation = request.environ.get(_ENVIRON_ACTIVATION_KEY)
 
-                if isinstance(response_or_exception, HTTPException):
+                if isinstance(response, HTTPException):
                     activation.__exit__(
-                        type(response_or_exception),
-                        response_or_exception,
-                        getattr(response_or_exception, "__traceback__", None),
+                        type(response),
+                        response,
+                        getattr(response, "__traceback__", None),
                     )
                 else:
                     activation.__exit__(None, None, None)

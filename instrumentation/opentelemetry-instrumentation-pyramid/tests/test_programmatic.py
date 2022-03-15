@@ -12,6 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+from typing import final
 from unittest.mock import Mock, patch
 
 from pyramid.config import Configurator
@@ -161,6 +162,25 @@ class TestProgrammatic(InstrumentationTest, TestBase, WsgiTestBase):
         resp = self.client.get("/hello/500")
         self.assertEqual(500, resp.status_code)
         resp.close()
+        span_list = self.memory_exporter.get_finished_spans()
+        self.assertEqual(len(span_list), 1)
+        self.assertEqual(span_list[0].name, "/hello/{helloid}")
+        self.assertEqual(span_list[0].kind, trace.SpanKind.SERVER)
+        self.assertEqual(span_list[0].attributes, expected_attrs)
+
+    def test_internal_exception(self):
+        expected_attrs = expected_attributes(
+            {
+                SpanAttributes.HTTP_TARGET: "/hello/900",
+                SpanAttributes.HTTP_ROUTE: "/hello/{helloid}",
+                SpanAttributes.HTTP_STATUS_CODE: 500,
+            }
+        )
+        
+        with self.assertRaises(NotImplementedError) as context:
+            resp = self.client.get("/hello/900")
+            resp.close()
+
         span_list = self.memory_exporter.get_finished_spans()
         self.assertEqual(len(span_list), 1)
         self.assertEqual(span_list[0].name, "/hello/{helloid}")
