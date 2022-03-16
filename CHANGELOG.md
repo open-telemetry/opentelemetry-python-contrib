@@ -7,16 +7,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased](https://github.com/open-telemetry/opentelemetry-python/compare/v1.10.0-0.29b0...HEAD)
 
+- `opentelemetry-instrumentation-flask` Fix non-recording span bug
+  ([#999])(https://github.com/open-telemetry/opentelemetry-python-contrib/pull/999)
+- `opentelemetry-instrumentation-tornado` Fix non-recording span bug
+  ([#999])(https://github.com/open-telemetry/opentelemetry-python-contrib/pull/999)
+
 ## [1.10.0-0.29b0](https://github.com/open-telemetry/opentelemetry-python/releases/tag/v1.10.0-0.29b0) - 2022-03-10
-
-
 
 - `opentelemetry-instrumentation-wsgi` Capture custom request/response headers in span attributes
   ([#925])(https://github.com/open-telemetry/opentelemetry-python-contrib/pull/925)
-
 - `opentelemetry-instrumentation-flask` Flask: Capture custom request/response headers in span attributes
   ([#952])(https://github.com/open-telemetry/opentelemetry-python-contrib/pull/952)
-
 - `opentelemetry-instrumentation-tornado` Tornado: Capture custom request/response headers in span attributes
   ([#950])(https://github.com/open-telemetry/opentelemetry-python-contrib/pull/950)
 
@@ -37,12 +38,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- `opentelemetry-instrumentation-dbapi` Changed the format of traceparent id.
+  ([#941](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/941))
 - `opentelemetry-instrumentation-logging` retrieves service name defensively.
   ([#890](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/890))
 - `opentelemetry-instrumentation-wsgi` WSGI: Conditionally create SERVER spans
   ([#903](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/903))
 - `opentelemetry-instrumentation-falcon` Safer patching mechanism
   ([#895](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/895))
+- `opentelemetry-instrumentation-kafka-python` Fix topic extraction
+  ([#949](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/949))
 
 ## [1.9.1-0.28b1](https://github.com/open-telemetry/opentelemetry-python/releases/tag/v1.9.1-0.28b1) - 2022-01-29
 
