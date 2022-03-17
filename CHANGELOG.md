@@ -7,6 +7,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased](https://github.com/open-telemetry/opentelemetry-python/compare/v1.10.0-0.29b0...HEAD)
 
+### Added
+
+- `opentelemetry-instrumentation-elasticsearch` added support for AsyncElasticsearch
+  ([#1007])(https://github.com/open-telemetry/opentelemetry-python-contrib/pull/1007)
+
+### Fixed 
+
 - `opentelemetry-instrumentation-flask` Fix non-recording span bug
   ([#999])(https://github.com/open-telemetry/opentelemetry-python-contrib/pull/999)
 - `opentelemetry-instrumentation-tornado` Fix non-recording span bug
