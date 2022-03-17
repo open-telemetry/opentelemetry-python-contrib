@@ -13,4 +13,4 @@
 # limitations under the License.
 
 
-_instruments = ("elasticsearch >= 2.0",)
+_instruments = ("elasticsearch >= 2.0, < 8.0.0",)
