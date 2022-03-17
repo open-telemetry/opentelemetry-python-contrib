@@ -305,6 +305,7 @@ class TestCustomRequestResponseHeaders(TestFalconBase):
         )
         span = self.memory_exporter.get_finished_spans()[0]
         assert span.status.is_ok
+
         expected = {
             "http.request.header.custom_test_header_1": ("Test Value 1",),
             "http.request.header.custom_test_header_2": (
@@ -314,6 +315,7 @@ class TestCustomRequestResponseHeaders(TestFalconBase):
         not_expected = {
             "http.request.header.custom_test_header_3": ("TestValue4",),
         }
+
         self.assertEqual(span.kind, trace.SpanKind.SERVER)
         self.assertSpanHasAttributes(span, expected)
         for key, _ in not_expected.items():
