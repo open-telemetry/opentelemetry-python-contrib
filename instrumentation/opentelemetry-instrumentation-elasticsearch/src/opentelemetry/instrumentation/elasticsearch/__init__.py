@@ -183,10 +183,10 @@ def _extract(args, kwargs, span_name_prefix):
             # Remove the full document ID from the URL
             doc_span = match.span()
             op_name = (
-                    span_name_prefix
-                    + url[: doc_span[0]]
-                    + "/_doc/:id"
-                    + url[doc_span[1] :]
+                span_name_prefix
+                + url[: doc_span[0]]
+                + "/_doc/:id"
+                + url[doc_span[1] :]
             )
             # Put the document ID in attributes
             doc_id = match.group(1)
@@ -223,7 +223,7 @@ def _set_span_attributes_from_rv(span, return_value):
 
 
 def _wrap_perform_request(
-        tracer, span_name_prefix, request_hook=None, response_hook=None
+    tracer, span_name_prefix, request_hook=None, response_hook=None
 ):
     # pylint: disable=R0912
     def wrapper(wrapped, _, args, kwargs):
@@ -232,8 +232,8 @@ def _wrap_perform_request(
         )
 
         with tracer.start_as_current_span(
-                op_name,
-                kind=SpanKind.CLIENT,
+            op_name,
+            kind=SpanKind.CLIENT,
         ) as span:
 
             if callable(request_hook):
@@ -254,7 +254,7 @@ def _wrap_perform_request(
 
 
 def _wrap_perform_async_request(
-        tracer, span_name_prefix, request_hook=None, response_hook=None
+    tracer, span_name_prefix, request_hook=None, response_hook=None
 ):
     # pylint: disable=R0912
     async def wrapper(wrapped, _, args, kwargs):
@@ -263,8 +263,8 @@ def _wrap_perform_async_request(
         )
 
         with tracer.start_as_current_span(
-                op_name,
-                kind=SpanKind.CLIENT,
+            op_name,
+            kind=SpanKind.CLIENT,
         ) as span:
 
             if callable(request_hook):
