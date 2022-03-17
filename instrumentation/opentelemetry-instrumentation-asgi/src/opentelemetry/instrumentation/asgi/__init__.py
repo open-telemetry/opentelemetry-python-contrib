@@ -124,7 +124,6 @@ from opentelemetry.util.http import (
     remove_url_credentials,
 )
 
-
 _ServerRequestHookT = typing.Optional[typing.Callable[[Span, dict], None]]
 _ClientRequestHookT = typing.Optional[typing.Callable[[Span, dict], None]]
 _ClientResponseHookT = typing.Optional[typing.Callable[[Span, dict], None]]

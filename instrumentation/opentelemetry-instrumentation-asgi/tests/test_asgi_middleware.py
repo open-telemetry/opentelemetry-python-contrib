@@ -25,16 +25,16 @@ from opentelemetry.instrumentation.propagators import (
 )
 from opentelemetry.sdk import resources
 from opentelemetry.semconv.trace import SpanAttributes
-from opentelemetry.util.http import (
-    OTEL_INSTRUMENTATION_HTTP_CAPTURE_HEADERS_SERVER_REQUEST,
-    OTEL_INSTRUMENTATION_HTTP_CAPTURE_HEADERS_SERVER_RESPONSE,
-)
 from opentelemetry.test.asgitestutil import (
     AsgiTestBase,
     setup_testing_defaults,
 )
 from opentelemetry.test.test_base import TestBase
 from opentelemetry.trace import SpanKind, format_span_id, format_trace_id
+from opentelemetry.util.http import (
+    OTEL_INSTRUMENTATION_HTTP_CAPTURE_HEADERS_SERVER_REQUEST,
+    OTEL_INSTRUMENTATION_HTTP_CAPTURE_HEADERS_SERVER_RESPONSE,
+)
 
 
 async def http_app(scope, receive, send):
