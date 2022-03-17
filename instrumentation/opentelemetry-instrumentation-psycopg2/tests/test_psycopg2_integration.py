@@ -232,7 +232,7 @@ class TestPostgresqlIntegration(TestBase):
         query = "SELECT * FROM test"
         cursor = cnx.cursor()
         cursor.execute(query)
-        kwargs = event_mocked.call_args.kwargs
+        kwargs = event_mocked.call_args[1]
         self.assertEqual(kwargs["enable_commenter"], True)
 
     @mock.patch("opentelemetry.instrumentation.dbapi.wrap_connect")
@@ -242,5 +242,5 @@ class TestPostgresqlIntegration(TestBase):
         query = "SELECT * FROM test"
         cursor = cnx.cursor()
         cursor.execute(query)
-        kwargs = event_mocked.call_args.kwargs
+        kwargs = event_mocked.call_args[1]
         self.assertEqual(kwargs["enable_commenter"], False)
