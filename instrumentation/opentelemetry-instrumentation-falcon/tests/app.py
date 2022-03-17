@@ -42,6 +42,7 @@ class CustomResponseHeaderResource:
         resp.set_header(
             "my-custom-header", "my-custom-value-1,my-custom-header-2"
         )
+        resp.set_header("dont-capture-me", "test-value")
 
 
 def make_app():

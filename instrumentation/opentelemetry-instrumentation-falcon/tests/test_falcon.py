@@ -286,17 +286,19 @@ class TestFalconInstrumentationWrappedWithOtherFramework(TestFalconBase):
             )
 
 
+@patch.dict(
+    "os.environ",
+    {
+        OTEL_INSTRUMENTATION_HTTP_CAPTURE_HEADERS_SERVER_REQUEST: "Custom-Test-Header-1,Custom-Test-Header-2,invalid-header",
+        OTEL_INSTRUMENTATION_HTTP_CAPTURE_HEADERS_SERVER_RESPONSE: "content-type,content-length,my-custom-header,invalid-header",
+    },
+)
 class TestCustomRequestResponseHeaders(TestFalconBase):
-    @patch.dict(
-        "os.environ",
-        {
-            OTEL_INSTRUMENTATION_HTTP_CAPTURE_HEADERS_SERVER_REQUEST: "Custom-Test-Header-1,Custom-Test-Header-2,Custom-Test-Header-3"
-        },
-    )
     def test_custom_request_header_added_in_server_span(self):
         headers = {
             "Custom-Test-Header-1": "Test Value 1",
             "Custom-Test-Header-2": "TestValue2,TestValue3",
+            "Custom-Test-Header-3": "TestValue4",
         }
         self.client().simulate_request(
             method="GET", path="/hello", headers=headers
@@ -309,15 +311,14 @@ class TestCustomRequestResponseHeaders(TestFalconBase):
                 "TestValue2,TestValue3",
             ),
         }
+        not_expected = {
+            "http.request.header.custom_test_header_3": ("TestValue4",),
+        }
         self.assertEqual(span.kind, trace.SpanKind.SERVER)
         self.assertSpanHasAttributes(span, expected)
+        for key, _ in not_expected.items():
+            self.assertNotIn(key, span.attributes)
 
-    @patch.dict(
-        "os.environ",
-        {
-            OTEL_INSTRUMENTATION_HTTP_CAPTURE_HEADERS_SERVER_REQUEST: "Custom-Test-Header-1,Custom-Test-Header-2,Custom-Test-Header-3"
-        },
-    )
     def test_custom_request_header_not_added_in_internal_span(self):
         tracer = trace.get_tracer(__name__)
         with tracer.start_as_current_span("test", kind=trace.SpanKind.SERVER):
@@ -340,12 +341,6 @@ class TestCustomRequestResponseHeaders(TestFalconBase):
             for key, _ in not_expected.items():
                 self.assertNotIn(key, span.attributes)
 
-    @patch.dict(
-        "os.environ",
-        {
-            OTEL_INSTRUMENTATION_HTTP_CAPTURE_HEADERS_SERVER_RESPONSE: "content-type,content-length,my-custom-header,invalid-header"
-        },
-    )
     def test_custom_response_header_added_in_server_span(self):
         self.client().simulate_request(
             method="GET", path="/test_custom_response_headers"
@@ -361,15 +356,14 @@ class TestCustomRequestResponseHeaders(TestFalconBase):
                 "my-custom-value-1,my-custom-header-2",
             ),
         }
+        not_expected = {
+            "http.response.header.dont_capture_me": ("test-value",)
+        }
         self.assertEqual(span.kind, trace.SpanKind.SERVER)
         self.assertSpanHasAttributes(span, expected)
+        for key, _ in not_expected.items():
+            self.assertNotIn(key, span.attributes)
 
-    @patch.dict(
-        "os.environ",
-        {
-            OTEL_INSTRUMENTATION_HTTP_CAPTURE_HEADERS_SERVER_RESPONSE: "content-type,content-length,my-custom-header,invalid-header"
-        },
-    )
     def test_custom_response_header_not_added_in_internal_span(self):
         tracer = trace.get_tracer(__name__)
         with tracer.start_as_current_span("test", kind=trace.SpanKind.SERVER):
