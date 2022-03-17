@@ -175,7 +175,7 @@ class TestProgrammatic(InstrumentationTest, TestBase, WsgiTestBase):
                 SpanAttributes.HTTP_STATUS_CODE: 500,
             }
         )
-        with self.assertRaises(NotImplementedError) as context:
+        with self.assertRaises(NotImplementedError):
             resp = self.client.get("/hello/900")
             resp.close()
 
