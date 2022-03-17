@@ -35,6 +35,7 @@ class ErrorResource:
 
 class CustomResponseHeaderResource:
     def on_get(self, _, resp):
+        # pylint: disable=no-member
         resp.status = falcon.HTTP_201
         resp.set_header("content-type", "text/plain; charset=utf-8")
         resp.set_header("content-length", "0")

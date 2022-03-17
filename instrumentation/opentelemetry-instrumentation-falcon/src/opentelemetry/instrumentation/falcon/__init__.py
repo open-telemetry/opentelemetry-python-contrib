@@ -297,8 +297,6 @@ class _TraceMiddleware:
                     description=reason,
                 )
             )
-            print("Printing response headers")
-            print(resp.headers)
             if span.is_recording() and span.kind == trace.SpanKind.SERVER:
                 otel_wsgi.add_custom_response_headers(
                     span, resp.headers.items()
