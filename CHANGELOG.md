@@ -8,6 +8,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased](https://github.com/open-telemetry/opentelemetry-python/compare/v1.9.1-0.28b1...HEAD)
 
 - `opentelemetry-instrumentation-wsgi` Capture custom request/response headers in span attributes
+  ([#1004])(https://github.com/open-telemetry/opentelemetry-python-contrib/pull/1004)
+
+- `opentelemetry-instrumentation-wsgi` Capture custom request/response headers in span attributes
   ([#925])(https://github.com/open-telemetry/opentelemetry-python-contrib/pull/925)
 
 - `opentelemetry-instrumentation-flask` Flask: Capture custom request/response headers in span attributes
