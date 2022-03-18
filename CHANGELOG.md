@@ -11,6 +11,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - `opentelemetry-instrumentation-elasticsearch` added support for AsyncElasticsearch
   ([#1007])(https://github.com/open-telemetry/opentelemetry-python-contrib/pull/1007)
+- `opentelemetry-instrumentation-psycopg2` extended the sql commenter support of dbapi into psycopg2
+  ([#940](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/940))
 
 ### Fixed 
 
@@ -39,7 +41,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   ([#908](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/908))
 - `opentelemetry-instrumentation-requests` make span attribute available to samplers
   ([#931](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/931))
-
 - `opentelemetry-datadog-exporter` add deprecation note to example.
   ([#900](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/900))
 
