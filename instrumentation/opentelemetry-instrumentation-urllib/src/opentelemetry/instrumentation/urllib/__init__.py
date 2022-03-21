@@ -183,13 +183,8 @@ def _instrument(
             SpanAttributes.HTTP_URL: url,
         }
 
-        span_attributes = {
-            SpanAttributes.HTTP_METHOD: method,
-            SpanAttributes.HTTP_URL: url,
-        }
-
         with tracer.start_as_current_span(
-            span_name, kind=SpanKind.CLIENT, attributes=span_attributes
+            span_name, kind=SpanKind.CLIENT, attributes=labels
         ) as span:
             exception = None
             if callable(request_hook):
