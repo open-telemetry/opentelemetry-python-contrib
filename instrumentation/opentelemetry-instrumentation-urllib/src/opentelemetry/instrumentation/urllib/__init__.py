@@ -182,16 +182,18 @@ def _instrument(
             SpanAttributes.HTTP_METHOD: method,
             SpanAttributes.HTTP_URL: url,
         }
+        
+        span_attributes = {
+            SpanAttributes.HTTP_METHOD: method,
+            SpanAttributes.HTTP_URL: url,
+        }
 
         with tracer.start_as_current_span(
-            span_name, kind=SpanKind.CLIENT
+            span_name, kind=SpanKind.CLIENT, attributes=span_attributes
         ) as span:
             exception = None
             if callable(request_hook):
                 request_hook(span, request)
-            if span.is_recording():
-                span.set_attribute(SpanAttributes.HTTP_METHOD, method)
-                span.set_attribute(SpanAttributes.HTTP_URL, url)
 
             headers = get_or_create_headers()
             inject(headers)
