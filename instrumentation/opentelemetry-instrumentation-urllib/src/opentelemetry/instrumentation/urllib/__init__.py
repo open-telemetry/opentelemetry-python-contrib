@@ -182,7 +182,7 @@ def _instrument(
             SpanAttributes.HTTP_METHOD: method,
             SpanAttributes.HTTP_URL: url,
         }
-        
+
         span_attributes = {
             SpanAttributes.HTTP_METHOD: method,
             SpanAttributes.HTTP_URL: url,

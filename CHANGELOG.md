@@ -9,7 +9,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
-- `opentelemetry-instrumentation-urllib` make spam attribute available to urllib
+- `opentelemetry-instrumentation-urllib` make span attributes available to sampler
   ([1014](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/1014))
 - `opentelemetry-instrumentation-psycopg2` extended the sql commenter support of dbapi into psycopg2
   ([#940](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/940))
