@@ -384,7 +384,7 @@ class OpenTelemetryMiddleware:
                     for key, value in attributes.items():
                         current_span.set_attribute(key, value)
 
-                    if span.kind == trace.SpanKind.SERVER:
+                    if current_span.kind == trace.SpanKind.SERVER:
                         custom_attributes = (
                             collect_custom_request_headers_attributes(scope)
                         )
@@ -445,7 +445,8 @@ class OpenTelemetryMiddleware:
                         set_status_code(send_span, 200)
                     send_span.set_attribute("type", message["type"])
                     if (
-                        server_span.kind == trace.SpanKind.SERVER
+                        server_span.is_recording()
+                        and server_span.kind == trace.SpanKind.SERVER
                         and "headers" in message
                     ):
                         custom_response_attributes = (
