@@ -81,7 +81,7 @@ class TestAutomatic(InstrumentationTest, TestBase, WsgiTestBase):
 
     def test_registry_name_is_this_module(self):
         config = Configurator()
-        self.assertEqual(config.registry.__name__, __name__.rsplit(".")[0])
+        self.assertEqual(config.registry.__name__, __name__.rsplit(".", maxsplit=1)[0])
 
 
 class TestWrappedWithOtherFramework(
