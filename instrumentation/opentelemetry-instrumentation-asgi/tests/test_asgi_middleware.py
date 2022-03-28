@@ -749,7 +749,7 @@ class TestCustomHeaders(AsgiTestBase, TestBase):
         self.send_input({"type": "websocket.connect"})
         self.send_input({"type": "websocket.receive", "text": "ping"})
         self.send_input({"type": "websocket.disconnect"})
-        # self.send_default_request()
+
         self.get_all_output()
         span_list = self.exporter.get_finished_spans()
         expected = {
@@ -782,7 +782,7 @@ class TestCustomHeaders(AsgiTestBase, TestBase):
         self.send_input({"type": "websocket.connect"})
         self.send_input({"type": "websocket.receive", "text": "ping"})
         self.send_input({"type": "websocket.disconnect"})
-        # self.send_default_request()
+
         self.get_all_output()
         span_list = self.exporter.get_finished_spans()
         not_expected = {
