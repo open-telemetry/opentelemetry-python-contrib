@@ -138,6 +138,7 @@ class TestCustomRequestResponseHeaders(
 
     def tearDown(self) -> None:
         super().tearDown()
+        self.env_patch.stop()
         with self.disable_logging():
             PyramidInstrumentor().uninstrument()
 
@@ -249,6 +250,7 @@ class TestCustomHeadersNonRecordingSpan(
 
     def tearDown(self) -> None:
         super().tearDown()
+        self.env_patch.stop()
         with self.disable_logging():
             PyramidInstrumentor().uninstrument()
 
