@@ -107,8 +107,8 @@ For example,
 
 will extract content_type and custom_request_header from request headers and add them as span attributes.
 
-Name of the added span attribute will follow the format ``http.request.header.<header_name>`` where ``<header_name>`` being the normalized HTTP header name (lowercase, with - characters replaced by _ ).
-Value of the attribute will be single item list containing all the header values.
+The name of the added span attribute will follow the format ``http.request.header.<header_name>`` where ``<header_name>`` being the normalized HTTP header name (lowercase, with - characters replaced by _ ).
+The value of the attribute will be single item list containing all the header values.
 
 Example of the added span attribute,
 ``http.request.header.custom_request_header = ["<value1>,<value2>"]``
@@ -126,8 +126,8 @@ For example,
 
 will extract content_type and custom_response_header from response headers and add them as span attributes.
 
-Name of the added span attribute will follow the format ``http.response.header.<header_name>`` where ``<header_name>`` being the normalized HTTP header name (lowercase, with - characters replaced by _ ).
-Value of the attribute will be single item list containing all the header values.
+The name of the added span attribute will follow the format ``http.response.header.<header_name>`` where ``<header_name>`` being the normalized HTTP header name (lowercase, with - characters replaced by _ ).
+The value of the attribute will be single item list containing all the header values.
 
 Example of the added span attribute,
 ``http.response.header.custom_response_header = ["<value1>,<value2>"]``
