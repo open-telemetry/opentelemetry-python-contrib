@@ -174,10 +174,9 @@ def trace_tween_factory(handler, registry):
                         getattr(response, "headerList", None),
                     )
 
-                if hasattr(response, "headers"):
-                    propagator = get_global_response_propagator()
-                    if propagator:
-                        propagator.inject(response.headers)
+                propagator = get_global_response_propagator()
+                if propagator and hasattr(response, "headers"):
+                    propagator.inject(response.headers)
 
                 activation = request.environ.get(_ENVIRON_ACTIVATION_KEY)
 
