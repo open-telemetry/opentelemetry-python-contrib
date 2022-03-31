@@ -139,7 +139,7 @@ def trace_tween_factory(handler, registry):
 
         response = None
         status = None
-        
+
         try:
             response = handler(request)
         except HTTPException as exc:
