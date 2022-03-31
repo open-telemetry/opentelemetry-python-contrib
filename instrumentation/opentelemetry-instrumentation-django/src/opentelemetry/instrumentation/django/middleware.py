@@ -276,6 +276,7 @@ class _DjangoMiddleware(MiddlewareMixin):
         if self._environ_activation_key in request.META.keys():
             request.META[self._environ_exception_key] = exception
 
+    # pylint: disable=too-many-branches
     def process_response(self, request, response):
         if self._excluded_urls.url_disabled(request.build_absolute_uri("?")):
             return response
@@ -291,13 +292,12 @@ class _DjangoMiddleware(MiddlewareMixin):
             if is_asgi_request:
                 set_status_code(span, response.status_code)
                 if span.is_recording() and span.kind == SpanKind.SERVER:
-                    """
-                    asgi_getter inside asgi_collect_custom_response_attributes
-                    requires 'headers' key to fetch the actuals headers where
-                    Django response object has 'headers' properties.
-                    Thats why I have to create a separate dict with 'headers'
-                    key to make it compatible with asgi_getter
-                    """
+                    # asgi_getter inside asgi_collect_custom_response_attributes
+                    # requires 'headers' key to fetch the actuals headers where
+                    # Django response object has 'headers' properties.
+                    # Thats why I have to create a separate dict with 'headers'
+                    # key to make it compatible with asgi_getter
+
                     custom_headers = {"headers": response.items()}
                     custom_res_attributes = (
                         asgi_collect_custom_response_attributes(custom_headers)
