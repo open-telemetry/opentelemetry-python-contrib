@@ -33,8 +33,8 @@ def route_span_name(
 
 def response_with_custom_header(request):
     response = HttpResponse()
-    response.headers["custom-test-header-1"] = "test-header-value-1"
-    response.headers["custom-test-header-2"] = "test-header-value-2"
+    response["custom-test-header-1"] = "test-header-value-1"
+    response["custom-test-header-2"] = "test-header-value-2"
     return response
 
 

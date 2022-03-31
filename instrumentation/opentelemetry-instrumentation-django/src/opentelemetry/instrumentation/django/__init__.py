@@ -87,7 +87,9 @@ to a comma-separated list of HTTP header names.
 
 For example,
 ::
+
     export OTEL_INSTRUMENTATION_HTTP_CAPTURE_HEADERS_SERVER_REQUEST="content_type,custom_request_header"
+
 will extract content_type and custom_request_header from request headers and add them as span attributes.
 
 The name of the added span attribute will follow the format ``http.request.header.<header_name>`` where ``<header_name>`` being the normalized HTTP header name (lowercase, with - characters replaced by _ ).
@@ -103,6 +105,7 @@ to a comma-separated list of HTTP header names.
 
 For example,
 ::
+
     export OTEL_INSTRUMENTATION_HTTP_CAPTURE_HEADERS_SERVER_RESPONSE="content_type,custom_response_header"
 
 will extract content_type and custom_response_header from response headers and add them as span attributes.
