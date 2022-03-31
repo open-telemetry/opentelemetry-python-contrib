@@ -67,7 +67,7 @@ for example:
         # response hook logic
 
     # Instrument Botocore with hooks
-    BotocoreInstrumentor().instrument(request_hook=request_hook, response_hooks=response_hook)
+    BotocoreInstrumentor().instrument(request_hook=request_hook, response_hook=response_hook)
 
     # This will create a span with Botocore-specific attributes, including custom attributes added from the hooks
     session = botocore.session.get_session()
@@ -257,7 +257,7 @@ def _apply_response_attributes(span: Span, result):
 
     retry_attempts = metadata.get("RetryAttempts")
     if retry_attempts is not None:
-        # TODO: update when semantic conventinos exists
+        # TODO: update when semantic conventions exists
         span.set_attribute("retry_attempts", retry_attempts)
 
     status_code = metadata.get("HTTPStatusCode")
