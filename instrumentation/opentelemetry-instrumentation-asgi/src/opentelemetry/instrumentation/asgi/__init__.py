@@ -149,11 +149,13 @@ class ASGIGetter(Getter):
 
         # asgi header keys are in lower case
         key = key.lower()
-        decoded = [
-            _value.decode("utf8")
-            for (_key, _value) in headers
-            if _key.decode("utf8") == key
-        ]
+        decoded = []
+        for _key, _value in headers:
+            if not isinstance(_key, str) and _key.decode("utf8") == key:
+                decoded.append(_value.decode("utf8"))
+            elif isinstance(_key, str) and _key == key:
+                decoded.append(_value)
+
         if not decoded:
             return None
         return decoded
