@@ -29,13 +29,16 @@ from opentelemetry.instrumentation.utils import (
     extract_attributes_from_object,
 )
 from opentelemetry.instrumentation.wsgi import (
-    collect_request_attributes as wsgi_collect_request_attributes,
     add_custom_request_headers as wsgi_add_custom_request_headers,
-    add_custom_response_headers as wsgi_add_custom_response_headers,
-    add_response_attributes,
-    wsgi_getter,
 )
-
+from opentelemetry.instrumentation.wsgi import (
+    add_custom_response_headers as wsgi_add_custom_response_headers,
+)
+from opentelemetry.instrumentation.wsgi import add_response_attributes
+from opentelemetry.instrumentation.wsgi import (
+    collect_request_attributes as wsgi_collect_request_attributes,
+)
+from opentelemetry.instrumentation.wsgi import wsgi_getter
 from opentelemetry.semconv.trace import SpanAttributes
 from opentelemetry.trace import Span, SpanKind, use_span
 from opentelemetry.util.http import get_excluded_urls, get_traced_request_attrs
@@ -80,13 +83,18 @@ else:
 
 # try/except block exclusive for optional ASGI imports.
 try:
+    from opentelemetry.instrumentation.asgi import asgi_getter
+    from opentelemetry.instrumentation.asgi import (
+        collect_custom_request_headers_attributes as asgi_collect_custom_request_attributes,
+    )
+    from opentelemetry.instrumentation.asgi import (
+        collect_custom_response_headers_attributes as asgi_collect_custom_response_attributes,
+    )
     from opentelemetry.instrumentation.asgi import (
         collect_request_attributes as asgi_collect_request_attributes,
-        collect_custom_request_headers_attributes as asgi_collect_custom_request_attributes,
-        collect_custom_response_headers_attributes as asgi_collect_custom_response_attributes,
-        set_status_code,
-        asgi_getter,
     )
+    from opentelemetry.instrumentation.asgi import set_status_code
+
     _is_asgi_supported = True
 except ImportError:
     asgi_getter = None

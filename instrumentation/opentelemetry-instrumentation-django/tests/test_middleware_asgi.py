@@ -15,7 +15,6 @@
 # pylint: disable=E0611
 
 from sys import modules
-from unittest import mock
 from unittest.mock import Mock, patch
 
 import pytest
