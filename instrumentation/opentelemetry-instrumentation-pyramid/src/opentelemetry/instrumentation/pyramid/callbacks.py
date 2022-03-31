@@ -139,8 +139,7 @@ def trace_tween_factory(handler, registry):
 
         response = None
         status = None
-        headerList = None
-
+        
         try:
             response = handler(request)
         except HTTPException as exc:
@@ -166,21 +165,19 @@ def trace_tween_factory(handler, registry):
                     "PyramidInstrumentor().instrument_config(config) is called"
                 )
             elif enabled:
-                if response:
-                    if hasattr(response, "status"):
-                        status = response.status
-                    if hasattr(response, "headerList"):
-                        headerList = response.headerList
+                status = getattr(response, "status", status)
 
-                otel_wsgi.add_response_attributes(
-                    span,
-                    status,
-                    headerList,
-                )
+                if status is not None:
+                    otel_wsgi.add_response_attributes(
+                        span,
+                        status,
+                        getattr(response, "headerList", None),
+                    )
 
-                propagator = get_global_response_propagator()
-                if propagator:
-                    propagator.inject(response.headers)
+                if hasattr(response, "headers"):
+                    propagator = get_global_response_propagator()
+                    if propagator:
+                        propagator.inject(response.headers)
 
                 activation = request.environ.get(_ENVIRON_ACTIVATION_KEY)
 
