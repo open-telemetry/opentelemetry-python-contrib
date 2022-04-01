@@ -103,9 +103,12 @@ For example,
 
 ::
 
-    export OTEL_INSTRUMENTATION_HTTP_CAPTURE_HEADERS_SERVER_REQUEST="content_type,custom_request_header"
+    export OTEL_INSTRUMENTATION_HTTP_CAPTURE_HEADERS_SERVER_REQUEST="content-type,custom_request_header"
 
-will extract content_type and custom_request_header from request headers and add them as span attributes.
+will extract ``content-type`` and ``custom_request_header`` from request headers and add them as span attributes.
+
+It is recommended that you should give the correct names of the headers to be captured in the environment variable. 
+Request header names in pyramid are case insensitive and - characters are replaced by _. So, giving header name as ``CUStom_Header`` in environment variable will be able capture header with name ``custom-header``. 
 
 The name of the added span attribute will follow the format ``http.request.header.<header_name>`` where ``<header_name>`` being the normalized HTTP header name (lowercase, with - characters replaced by _ ).
 The value of the attribute will be single item list containing all the header values.
@@ -122,9 +125,12 @@ For example,
 
 ::
 
-    export OTEL_INSTRUMENTATION_HTTP_CAPTURE_HEADERS_SERVER_RESPONSE="content_type,custom_response_header"
+    export OTEL_INSTRUMENTATION_HTTP_CAPTURE_HEADERS_SERVER_RESPONSE="content-type,custom_response_header"
 
-will extract content_type and custom_response_header from response headers and add them as span attributes.
+will extract ``content-type`` and ``custom_response_header`` from response headers and add them as span attributes.
+
+It is recommended that you should give the correct names of the headers to be captured in the environment variable. 
+Response header names captured in pyramid are case insensitive. So, giving header name as ``CUStomHeader`` in environment variable will be able capture header with name ``customheader``. 
 
 The name of the added span attribute will follow the format ``http.response.header.<header_name>`` where ``<header_name>`` being the normalized HTTP header name (lowercase, with - characters replaced by _ ).
 The value of the attribute will be single item list containing all the header values.
