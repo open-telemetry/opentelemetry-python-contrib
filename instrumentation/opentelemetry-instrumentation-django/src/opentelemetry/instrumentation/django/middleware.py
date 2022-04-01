@@ -291,13 +291,8 @@ class _DjangoMiddleware(MiddlewareMixin):
         if activation and span:
             if is_asgi_request:
                 set_status_code(span, response.status_code)
-                if span.is_recording() and span.kind == SpanKind.SERVER:
-                    # asgi_getter inside asgi_collect_custom_response_attributes
-                    # requires 'headers' key to fetch the actuals headers where
-                    # Django response object has 'headers' properties.
-                    # Thats why I have to create a separate dict with 'headers'
-                    # key to make it compatible with asgi_getter
 
+                if span.is_recording() and span.kind == SpanKind.SERVER:
                     custom_headers = {"headers": response.items()}
                     custom_res_attributes = (
                         asgi_collect_custom_response_attributes(custom_headers)
