@@ -28,7 +28,6 @@ following metrics are configured:
         "system.disk.io": ["read", "write"],
         "system.disk.operations": ["read", "write"],
         "system.disk.time": ["read", "write"],
-        "system.disk.merged": ["read", "write"],
         "system.network.dropped.packets": ["transmit", "receive"],
         "system.network.packets": ["transmit", "receive"],
         "system.network.errors": ["transmit", "receive"],
@@ -64,11 +63,13 @@ Usage
         "runtime.memory": ["rss", "vms"],
         "runtime.cpu.time": ["user", "system"],
     }
-    SystemMetrics(exporter, config=configuration)
+    SystemMetrics(config=configuration)
 
 API
 ---
 """
+
+from typing import Collection
 
 import gc
 import os
@@ -77,24 +78,22 @@ from platform import python_implementation
 
 import psutil
 
-from opentelemetry._metrics import get_meter_provider
+from opentelemetry._metrics import get_meter
 from opentelemetry._metrics.measurement import Measurement
+from opentelemetry.instrumentation.instrumentor import BaseInstrumentor
+from opentelemetry.instrumentation.system_metrics.version import __version__
+from opentelemetry.instrumentation.system_metrics.package import _instruments
 from opentelemetry.sdk.util import get_dict_as_key
 
 
-class SystemMetrics:
+class SystemMetrics(BaseInstrumentor):
     # pylint: disable=too-many-statements
     def __init__(
         self,
-        interval: int = 30,
         labels: Optional[Dict[str, str]] = None,
         config: Optional[Dict[str, List[str]]] = None,
     ):
-        self._labels = {} if labels is None else labels
-        self.meter = get_meter_provider().get_meter(
-            "io.otel.python.instrumentation.system-metrics"
-        )  # TODO: find a better name here
-        self._python_implementation = python_implementation().lower()
+        super().__init__()
         if config is None:
             self._config = {
                 "system.cpu.time": ["idle", "user", "system", "irq"],
@@ -108,7 +107,6 @@ class SystemMetrics:
                 "system.disk.io": ["read", "write"],
                 "system.disk.operations": ["read", "write"],
                 "system.disk.time": ["read", "write"],
-                "system.disk.merged": ["read", "write"],
                 # "system.filesystem.usage": [],
                 # "system.filesystem.utilization": [],
                 "system.network.dropped.packets": ["transmit", "receive"],
@@ -121,6 +119,20 @@ class SystemMetrics:
             }
         else:
             self._config = config
+        self._labels = {} if labels is None else labels
+        self._meter = None
+
+    def instrumentation_dependencies(self) -> Collection[str]:
+        return _instruments
+
+    def _instrument(self, **kwargs):
+        meter_provider = kwargs.get("meter_provider")
+        self._meter = get_meter(
+            "io.otel.python.instrumentation.system_metrics",
+            __version__,
+            meter_provider,
+        )
+        self._python_implementation = python_implementation().lower()
 
         self._proc = psutil.Process(os.getpid())
 
@@ -153,49 +165,49 @@ class SystemMetrics:
         self._runtime_cpu_time_labels = self._labels.copy()
         self._runtime_gc_count_labels = self._labels.copy()
 
-        self.meter.create_observable_counter(
+        self._meter.create_observable_counter(
             callback=self._get_system_cpu_time,
             name="system.cpu.time",
             description="System CPU time",
             unit="seconds",
         )
 
-        self.meter.create_observable_gauge(
+        self._meter.create_observable_gauge(
             callback=self._get_system_cpu_utilization,
             name="system.cpu.utilization",
             description="System CPU utilization",
             unit="1",
         )
 
-        self.meter.create_observable_gauge(
+        self._meter.create_observable_gauge(
             callback=self._get_system_memory_usage,
             name="system.memory.usage",
             description="System memory usage",
             unit="bytes",
         )
 
-        self.meter.create_observable_gauge(
+        self._meter.create_observable_gauge(
             callback=self._get_system_memory_utilization,
             name="system.memory.utilization",
             description="System memory utilization",
             unit="1",
         )
 
-        self.meter.create_observable_gauge(
+        self._meter.create_observable_gauge(
             callback=self._get_system_swap_usage,
             name="system.swap.usage",
             description="System swap usage",
             unit="pages",
         )
 
-        self.meter.create_observable_gauge(
+        self._meter.create_observable_gauge(
             callback=self._get_system_swap_utilization,
             name="system.swap.utilization",
             description="System swap utilization",
             unit="1",
         )
 
-        # # self.meter.create_observable_counter(
+        # # self._meter.create_observable_counter(
         # #     callback=self._get_system_swap_page_faults,
         # #     name="system.swap.page_faults",
         # #     description="System swap page faults",
@@ -203,40 +215,32 @@ class SystemMetrics:
         # #     value_type=int,
         # # )
 
-        # # self.meter.create_observable_counter(
+        # # self._meter.create_observable_counter(
         # #     callback=self._get_system_swap_page_operations,
         # #     name="system.swap.page_operations",
         # #     description="System swap page operations",
         # #     unit="operations",
         # #     value_type=int,
         # # )
-
-        self.meter.create_observable_counter(
+        self._meter.create_observable_counter(
             callback=self._get_system_disk_io,
             name="system.disk.io",
             description="System disk IO",
             unit="bytes",
         )
 
-        self.meter.create_observable_counter(
+        self._meter.create_observable_counter(
             callback=self._get_system_disk_operations,
             name="system.disk.operations",
             description="System disk operations",
             unit="operations",
         )
 
-        self.meter.create_observable_counter(
+        self._meter.create_observable_counter(
             callback=self._get_system_disk_time,
             name="system.disk.time",
             description="System disk time",
             unit="seconds",
-        )
-
-        self.meter.create_observable_counter(
-            callback=self._get_system_disk_merged,
-            name="system.disk.merged",
-            description="System disk merged",
-            unit="1",
         )
 
         # self.accumulator.register_valueobserver(
@@ -247,7 +251,7 @@ class SystemMetrics:
         #     value_type=int,
         # )
 
-        # self.meter.create_observable_gauge(
+        # self._meter.create_observable_gauge(
         #     callback=self._get_system_filesystem_utilization,
         #     name="system.filesystem.utilization",
         #     description="System filesystem utilization",
@@ -255,42 +259,42 @@ class SystemMetrics:
         #     value_type=float,
         # )
 
-        self.meter.create_observable_counter(
+        self._meter.create_observable_counter(
             callback=self._get_system_network_dropped_packets,
             name="system.network.dropped_packets",
             description="System network dropped_packets",
             unit="packets",
         )
 
-        self.meter.create_observable_counter(
+        self._meter.create_observable_counter(
             callback=self._get_system_network_packets,
             name="system.network.packets",
             description="System network packets",
             unit="packets",
         )
 
-        self.meter.create_observable_counter(
+        self._meter.create_observable_counter(
             callback=self._get_system_network_errors,
             name="system.network.errors",
             description="System network errors",
             unit="errors",
         )
 
-        self.meter.create_observable_counter(
+        self._meter.create_observable_counter(
             callback=self._get_system_network_io,
             name="system.network.io",
             description="System network io",
             unit="bytes",
         )
 
-        self.meter.create_observable_up_down_counter(
+        self._meter.create_observable_up_down_counter(
             callback=self._get_system_network_connections,
             name="system.network.connections",
             description="System network connections",
             unit="connections",
         )
 
-        self.meter.create_observable_counter(
+        self._meter.create_observable_counter(
             callback=self._get_runtime_memory,
             name="runtime.{}.memory".format(self._python_implementation),
             description="Runtime {} memory".format(
@@ -299,7 +303,7 @@ class SystemMetrics:
             unit="bytes",
         )
 
-        self.meter.create_observable_counter(
+        self._meter.create_observable_counter(
             callback=self._get_runtime_cpu_time,
             name="runtime.{}.cpu_time".format(self._python_implementation),
             description="Runtime {} CPU time".format(
@@ -308,7 +312,7 @@ class SystemMetrics:
             unit="seconds",
         )
 
-        self.meter.create_observable_counter(
+        self._meter.create_observable_counter(
             callback=self._get_runtime_gc_count,
             name="runtime.{}.gc_count".format(self._python_implementation),
             description="Runtime {} GC count".format(
@@ -316,6 +320,9 @@ class SystemMetrics:
             ),
             unit="bytes",
         )
+    
+    def _uninstrument(self, **__):
+        pass
 
     def _get_system_cpu_time(self) -> Iterable[Measurement]:
         """Observer callback for system CPU time
