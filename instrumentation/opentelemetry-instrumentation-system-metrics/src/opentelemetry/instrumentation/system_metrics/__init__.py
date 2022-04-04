@@ -69,20 +69,18 @@ API
 ---
 """
 
-from typing import Collection
-
 import gc
 import os
-from typing import Dict, List, Iterable, Optional
 from platform import python_implementation
+from typing import Collection, Dict, Iterable, List, Optional
 
 import psutil
 
 from opentelemetry._metrics import get_meter
 from opentelemetry._metrics.measurement import Measurement
 from opentelemetry.instrumentation.instrumentor import BaseInstrumentor
-from opentelemetry.instrumentation.system_metrics.version import __version__
 from opentelemetry.instrumentation.system_metrics.package import _instruments
+from opentelemetry.instrumentation.system_metrics.version import __version__
 from opentelemetry.sdk.util import get_dict_as_key
 
 
