@@ -20,7 +20,7 @@ from unittest import mock
 
 from opentelemetry._metrics import get_meter_provider
 from opentelemetry._metrics.measurement import Measurement
-from opentelemetry.instrumentation.system_metrics import SystemMetrics
+from opentelemetry.instrumentation.system_metrics import SystemMetricsInstrumentor
 from opentelemetry.sdk._metrics import MeterProvider
 from opentelemetry.sdk._metrics.export import InMemoryMetricReader
 from opentelemetry.test.test_base import TestBase
@@ -59,12 +59,12 @@ class TestSystemMetrics(TestBase):
     def tearDown(self):
         super().tearDown()
         self._patch_net_connections.stop()
-        SystemMetrics().uninstrument()
+        SystemMetricsInstrumentor().uninstrument()
 
     def test_system_metrics_instrument(self):
         reader = InMemoryMetricReader()
         meter_provider = MeterProvider(metric_readers=[reader])
-        system_metrics = SystemMetrics()
+        system_metrics = SystemMetricsInstrumentor()
         system_metrics.instrument(meter_provider=meter_provider)
         metrics = reader.get_metrics()
         metric_names = list({x.name for x in metrics })
@@ -117,7 +117,7 @@ class TestSystemMetrics(TestBase):
         reader = InMemoryMetricReader()
         meter_provider = MeterProvider(metric_readers=[reader])
 
-        system_metrics = SystemMetrics()
+        system_metrics = SystemMetricsInstrumentor()
         system_metrics.instrument(meter_provider=meter_provider)
         self._assert_metrics(observer_name, reader, expected)
         system_metrics.uninstrument()

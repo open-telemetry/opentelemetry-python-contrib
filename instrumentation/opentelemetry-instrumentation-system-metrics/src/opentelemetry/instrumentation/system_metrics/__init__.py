@@ -43,14 +43,14 @@ Usage
 .. code:: python
 
     from opentelemetry._metrics import set_meter_provider
-    from opentelemetry.instrumentation.system_metrics import SystemMetrics
+    from opentelemetry.instrumentation.system_metrics import SystemMetricsInstrumentor
     from opentelemetry.sdk._metrics import MeterProvider
     from opentelemetry.sdk._metrics.export import ConsoleMetricExporter, PeriodicExportingMetricReader
 
     exporter = ConsoleMetricExporter()
 
     set_meter_provider(MeterProvider(PeriodicExportingMetricReader(exporter)))
-    SystemMetrics()
+    SystemMetricsInstrumentor().instrument()
 
     # metrics are collected asynchronously
     input("...")
@@ -63,7 +63,7 @@ Usage
         "runtime.memory": ["rss", "vms"],
         "runtime.cpu.time": ["user", "system"],
     }
-    SystemMetrics(config=configuration)
+    SystemMetricsInstrumentor(config=configuration).instrument()
 
 API
 ---
@@ -86,7 +86,7 @@ from opentelemetry.instrumentation.system_metrics.package import _instruments
 from opentelemetry.sdk.util import get_dict_as_key
 
 
-class SystemMetrics(BaseInstrumentor):
+class SystemMetricsInstrumentor(BaseInstrumentor):
     # pylint: disable=too-many-statements
     def __init__(
         self,
