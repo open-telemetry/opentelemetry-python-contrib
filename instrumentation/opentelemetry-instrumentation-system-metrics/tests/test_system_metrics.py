@@ -20,7 +20,9 @@ from unittest import mock
 
 from opentelemetry._metrics import get_meter_provider
 from opentelemetry._metrics.measurement import Measurement
-from opentelemetry.instrumentation.system_metrics import SystemMetricsInstrumentor
+from opentelemetry.instrumentation.system_metrics import (
+    SystemMetricsInstrumentor,
+)
 from opentelemetry.sdk._metrics import MeterProvider
 from opentelemetry.sdk._metrics.export import InMemoryMetricReader
 from opentelemetry.test.test_base import TestBase
@@ -44,18 +46,22 @@ def _mock_netconnection():
         ),
     ]
 
-class _SystemMetricsResult():
+
+class _SystemMetricsResult:
     def __init__(self, attributes, value) -> None:
         self.attributes = attributes
         self.value = value
+
 
 class TestSystemMetrics(TestBase):
     def setUp(self):
         super().setUp()
         self.implementation = python_implementation().lower()
-        self._patch_net_connections = mock.patch("psutil.net_connections", _mock_netconnection)
+        self._patch_net_connections = mock.patch(
+            "psutil.net_connections", _mock_netconnection
+        )
         self._patch_net_connections.start()
-    
+
     def tearDown(self):
         super().tearDown()
         self._patch_net_connections.stop()
@@ -67,7 +73,7 @@ class TestSystemMetrics(TestBase):
         system_metrics = SystemMetricsInstrumentor()
         system_metrics.instrument(meter_provider=meter_provider)
         metrics = reader.get_metrics()
-        metric_names = list({x.name for x in metrics })
+        metric_names = list({x.name for x in metrics})
         self.assertEqual(len(metric_names), 17)
 
         observer_names = [
@@ -96,11 +102,7 @@ class TestSystemMetrics(TestBase):
 
     def _assert_metrics(self, observer_name, reader, expected):
         assertions = 0
-        for (
-            metric
-        ) in (
-            reader.get_metrics() # pylint: disable=protected-access
-        ):
+        for metric in reader.get_metrics():  # pylint: disable=protected-access
             for e in expected:
                 if (
                     metric.attributes == e.attributes
@@ -136,38 +138,62 @@ class TestSystemMetrics(TestBase):
         ]
 
         expected = [
-            _SystemMetricsResult({
-                "cpu": 1,
-                "state": "idle",
-            }, 1.2),
-            _SystemMetricsResult({
-                "cpu": 1,
-                "state": "user",
-            }, 3.4),
-            _SystemMetricsResult({
-                "cpu": 1,
-                "state": "system",
-            }, 5.6),
-            _SystemMetricsResult({
-                "cpu": 1,
-                "state": "irq",
-            }, 7.8),
-            _SystemMetricsResult({
-                "cpu": 2,
-                "state": "idle",
-            }, 1.2),
-            _SystemMetricsResult({
-                "cpu": 2,
-                "state": "user",
-            }, 3.4),
-            _SystemMetricsResult({
-                "cpu": 2,
-                "state": "system",
-            }, 5.6),
-            _SystemMetricsResult({
-                "cpu": 2,
-                "state": "irq",
-            }, 7.8),
+            _SystemMetricsResult(
+                {
+                    "cpu": 1,
+                    "state": "idle",
+                },
+                1.2,
+            ),
+            _SystemMetricsResult(
+                {
+                    "cpu": 1,
+                    "state": "user",
+                },
+                3.4,
+            ),
+            _SystemMetricsResult(
+                {
+                    "cpu": 1,
+                    "state": "system",
+                },
+                5.6,
+            ),
+            _SystemMetricsResult(
+                {
+                    "cpu": 1,
+                    "state": "irq",
+                },
+                7.8,
+            ),
+            _SystemMetricsResult(
+                {
+                    "cpu": 2,
+                    "state": "idle",
+                },
+                1.2,
+            ),
+            _SystemMetricsResult(
+                {
+                    "cpu": 2,
+                    "state": "user",
+                },
+                3.4,
+            ),
+            _SystemMetricsResult(
+                {
+                    "cpu": 2,
+                    "state": "system",
+                },
+                5.6,
+            ),
+            _SystemMetricsResult(
+                {
+                    "cpu": 2,
+                    "state": "irq",
+                },
+                7.8,
+            ),
         ]
         self._test_metrics("system.cpu.time", expected)
 
@@ -183,7 +209,7 @@ class TestSystemMetrics(TestBase):
 
         expected = [
             _SystemMetricsResult({"cpu": 1, "state": "idle"}, 1.2 / 100),
-            _SystemMetricsResult({"cpu": 1, "state": "user"},3.4 / 100),
+            _SystemMetricsResult({"cpu": 1, "state": "user"}, 3.4 / 100),
             _SystemMetricsResult({"cpu": 1, "state": "system"}, 5.6 / 100),
             _SystemMetricsResult({"cpu": 1, "state": "irq"}, 7.8 / 100),
             _SystemMetricsResult({"cpu": 2, "state": "idle"}, 1.2 / 100),
@@ -242,8 +268,8 @@ class TestSystemMetrics(TestBase):
         mock_swap_memory.return_value = SwapMemory(used=1, free=2, total=3)
 
         expected = [
-            _SystemMetricsResult({"state": "used"}, 1/3),
-            _SystemMetricsResult({"state": "free"}, 2/3),
+            _SystemMetricsResult({"state": "used"}, 1 / 3),
+            _SystemMetricsResult({"state": "free"}, 2 / 3),
         ]
         self._test_metrics("system.swap.utilization", expected)
 
@@ -332,10 +358,10 @@ class TestSystemMetrics(TestBase):
         }
 
         expected = [
-            _SystemMetricsResult({"device": "sda", "direction": "read"},  1),
-            _SystemMetricsResult({"device": "sda", "direction": "write"},  2),
-            _SystemMetricsResult({"device": "sdb", "direction": "read"},  9),
-            _SystemMetricsResult({"device": "sdb", "direction": "write"},  10),
+            _SystemMetricsResult({"device": "sda", "direction": "read"}, 1),
+            _SystemMetricsResult({"device": "sda", "direction": "write"}, 2),
+            _SystemMetricsResult({"device": "sdb", "direction": "read"}, 9),
+            _SystemMetricsResult({"device": "sdb", "direction": "write"}, 10),
         ]
         self._test_metrics("system.disk.operations", expected)
 
@@ -378,10 +404,18 @@ class TestSystemMetrics(TestBase):
         }
 
         expected = [
-            _SystemMetricsResult({"device": "sda", "direction": "read"},  5/ 1000),
-            _SystemMetricsResult({"device": "sda", "direction": "write"},  6/ 1000),
-            _SystemMetricsResult({"device": "sdb", "direction": "read"},  13/ 1000),
-            _SystemMetricsResult({"device": "sdb", "direction": "write"},  14/ 1000),
+            _SystemMetricsResult(
+                {"device": "sda", "direction": "read"}, 5 / 1000
+            ),
+            _SystemMetricsResult(
+                {"device": "sda", "direction": "write"}, 6 / 1000
+            ),
+            _SystemMetricsResult(
+                {"device": "sdb", "direction": "read"}, 13 / 1000
+            ),
+            _SystemMetricsResult(
+                {"device": "sdb", "direction": "write"}, 14 / 1000
+            ),
         ]
         self._test_metrics("system.disk.time", expected)
 
@@ -424,10 +458,18 @@ class TestSystemMetrics(TestBase):
         }
 
         expected = [
-            _SystemMetricsResult({"device": "eth0", "direction": "receive"},  1),
-            _SystemMetricsResult({"device": "eth0", "direction": "transmit"},  2),
-            _SystemMetricsResult({"device": "eth1", "direction": "receive"},  9),
-            _SystemMetricsResult({"device": "eth1", "direction": "transmit"},  10),
+            _SystemMetricsResult(
+                {"device": "eth0", "direction": "receive"}, 1
+            ),
+            _SystemMetricsResult(
+                {"device": "eth0", "direction": "transmit"}, 2
+            ),
+            _SystemMetricsResult(
+                {"device": "eth1", "direction": "receive"}, 9
+            ),
+            _SystemMetricsResult(
+                {"device": "eth1", "direction": "transmit"}, 10
+            ),
         ]
         self._test_metrics("system.network.dropped_packets", expected)
 
@@ -470,10 +512,18 @@ class TestSystemMetrics(TestBase):
         }
 
         expected = [
-            _SystemMetricsResult({"device": "eth0", "direction": "receive"},  4),
-            _SystemMetricsResult({"device": "eth0", "direction": "transmit"},  3),
-            _SystemMetricsResult({"device": "eth1", "direction": "receive"},  12),
-            _SystemMetricsResult({"device": "eth1", "direction": "transmit"},  11),
+            _SystemMetricsResult(
+                {"device": "eth0", "direction": "receive"}, 4
+            ),
+            _SystemMetricsResult(
+                {"device": "eth0", "direction": "transmit"}, 3
+            ),
+            _SystemMetricsResult(
+                {"device": "eth1", "direction": "receive"}, 12
+            ),
+            _SystemMetricsResult(
+                {"device": "eth1", "direction": "transmit"}, 11
+            ),
         ]
         self._test_metrics("system.network.packets", expected)
 
@@ -516,10 +566,18 @@ class TestSystemMetrics(TestBase):
         }
 
         expected = [
-            _SystemMetricsResult({"device": "eth0", "direction": "receive"},  5),
-            _SystemMetricsResult({"device": "eth0", "direction": "transmit"},  6),
-            _SystemMetricsResult({"device": "eth1", "direction": "receive"},  13),
-            _SystemMetricsResult({"device": "eth1", "direction": "transmit"},  14),
+            _SystemMetricsResult(
+                {"device": "eth0", "direction": "receive"}, 5
+            ),
+            _SystemMetricsResult(
+                {"device": "eth0", "direction": "transmit"}, 6
+            ),
+            _SystemMetricsResult(
+                {"device": "eth1", "direction": "receive"}, 13
+            ),
+            _SystemMetricsResult(
+                {"device": "eth1", "direction": "transmit"}, 14
+            ),
         ]
         self._test_metrics("system.network.errors", expected)
 
@@ -562,10 +620,18 @@ class TestSystemMetrics(TestBase):
         }
 
         expected = [
-            _SystemMetricsResult({"device": "eth0", "direction": "receive"},  8),
-            _SystemMetricsResult({"device": "eth0", "direction": "transmit"},  7),
-            _SystemMetricsResult({"device": "eth1", "direction": "receive"},  16),
-            _SystemMetricsResult({"device": "eth1", "direction": "transmit"},  15),
+            _SystemMetricsResult(
+                {"device": "eth0", "direction": "receive"}, 8
+            ),
+            _SystemMetricsResult(
+                {"device": "eth0", "direction": "transmit"}, 7
+            ),
+            _SystemMetricsResult(
+                {"device": "eth1", "direction": "receive"}, 16
+            ),
+            _SystemMetricsResult(
+                {"device": "eth1", "direction": "transmit"}, 15
+            ),
         ]
         self._test_metrics("system.network.io", expected)
 
@@ -589,8 +655,24 @@ class TestSystemMetrics(TestBase):
         ]
 
         expected = [
-            _SystemMetricsResult({"family": 1, "protocol": "udp", "state": "ESTABLISHED", "type": Type(value=2)},  1),
-            _SystemMetricsResult({"family": 1, "protocol": "tcp", "state": "ESTABLISHED", "type": Type(value=1)},  1),
+            _SystemMetricsResult(
+                {
+                    "family": 1,
+                    "protocol": "udp",
+                    "state": "ESTABLISHED",
+                    "type": Type(value=2),
+                },
+                1,
+            ),
+            _SystemMetricsResult(
+                {
+                    "family": 1,
+                    "protocol": "tcp",
+                    "state": "ESTABLISHED",
+                    "type": Type(value=1),
+                },
+                1,
+            ),
         ]
         self._test_metrics("system.network.connections", expected)
 

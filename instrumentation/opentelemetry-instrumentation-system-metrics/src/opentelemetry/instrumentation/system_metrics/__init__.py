@@ -320,7 +320,7 @@ class SystemMetricsInstrumentor(BaseInstrumentor):
             ),
             unit="bytes",
         )
-    
+
     def _uninstrument(self, **__):
         pass
 
