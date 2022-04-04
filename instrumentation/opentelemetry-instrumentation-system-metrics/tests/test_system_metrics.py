@@ -18,8 +18,6 @@ from collections import namedtuple
 from platform import python_implementation
 from unittest import mock
 
-from opentelemetry._metrics import get_meter_provider
-from opentelemetry._metrics.measurement import Measurement
 from opentelemetry.instrumentation.system_metrics import (
     SystemMetricsInstrumentor,
 )
