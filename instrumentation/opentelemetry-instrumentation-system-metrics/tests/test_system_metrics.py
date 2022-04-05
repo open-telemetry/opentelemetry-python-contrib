@@ -121,9 +121,8 @@ class TestSystemMetrics(TestBase):
         system_metrics.instrument(meter_provider=meter_provider)
         self._assert_metrics(observer_name, reader, expected)
 
-    # When this test case is executed, _get_system_cpu_utilization gets run
-    # too because of the controller thread which runs all observers. This patch
-    # is added here to stop a warning that would otherwise be raised.
+    # This patch is added here to stop psutil from raising an exception
+    # because we're patching cpu_times
     # pylint: disable=unused-argument
     @mock.patch("psutil.cpu_times_percent")
     @mock.patch("psutil.cpu_times")
@@ -686,9 +685,7 @@ class TestSystemMetrics(TestBase):
             _SystemMetricsResult({"type": "rss"}, 1),
             _SystemMetricsResult({"type": "vms"}, 2),
         ]
-        self._test_metrics(
-            f"runtime.{self.implementation}.memory", expected
-        )
+        self._test_metrics(f"runtime.{self.implementation}.memory", expected)
 
     @mock.patch("psutil.Process.cpu_times")
     def test_runtime_cpu_time(self, mock_process_cpu_times):
@@ -703,9 +700,7 @@ class TestSystemMetrics(TestBase):
             _SystemMetricsResult({"type": "user"}, 1.1),
             _SystemMetricsResult({"type": "system"}, 2.2),
         ]
-        self._test_metrics(
-            f"runtime.{self.implementation}.cpu_time", expected
-        )
+        self._test_metrics(f"runtime.{self.implementation}.cpu_time", expected)
 
     @mock.patch("gc.get_count")
     def test_runtime_get_count(self, mock_gc_get_count):
@@ -717,6 +712,4 @@ class TestSystemMetrics(TestBase):
             _SystemMetricsResult({"count": "1"}, 2),
             _SystemMetricsResult({"count": "2"}, 3),
         ]
-        self._test_metrics(
-            f"runtime.{self.implementation}.gc_count", expected
-        )
+        self._test_metrics(f"runtime.{self.implementation}.gc_count", expected)
