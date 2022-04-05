@@ -14,7 +14,7 @@
 
 from flask import Response
 from werkzeug.test import Client
-from werkzeug.wrappers import BaseResponse
+from werkzeug.wrappers import Response
 
 
 class InstrumentationTest:
@@ -51,4 +51,4 @@ class InstrumentationTest:
         )
 
         # pylint: disable=attribute-defined-outside-init
-        self.client = Client(self.app, BaseResponse)
+        self.client = Client(self.app, Response)
