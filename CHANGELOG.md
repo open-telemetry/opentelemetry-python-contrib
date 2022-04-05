@@ -18,6 +18,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- `opentelemetry-instrumentation-django` Capture custom request/response headers in span attributes
+  ([#1024])(https://github.com/open-telemetry/opentelemetry-python-contrib/pull/1024)
+- `opentelemetry-instrumentation-asgi` Capture custom request/response headers in span attributes
+  ([#1004])(https://github.com/open-telemetry/opentelemetry-python-contrib/pull/1004)
 - `opentelemetry-instrumentation-psycopg2` extended the sql commenter support of dbapi into psycopg2
   ([#940](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/940))
 - `opentelemetry-instrumentation-falcon` Falcon: Capture custom request/response headers in span attributes
@@ -28,9 +32,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   ([#1012](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/1012))
 
 ## [1.10.0-0.29b0](https://github.com/open-telemetry/opentelemetry-python/releases/tag/v1.10.0-0.29b0) - 2022-03-10
-
-- `opentelemetry-instrumentation-wsgi` Capture custom request/response headers in span attributes
-  ([#1004])(https://github.com/open-telemetry/opentelemetry-python-contrib/pull/1004)
 
 - `opentelemetry-instrumentation-wsgi` Capture custom request/response headers in span attributes
   ([#925])(https://github.com/open-telemetry/opentelemetry-python-contrib/pull/925)
