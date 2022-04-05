@@ -83,7 +83,7 @@ else:
 
 # try/except block exclusive for optional ASGI imports.
 try:
-    from opentelemetry.instrumentation.asgi import asgi_getter
+    from opentelemetry.instrumentation.asgi import asgi_getter, asgi_setter
     from opentelemetry.instrumentation.asgi import (
         collect_custom_request_headers_attributes as asgi_collect_custom_request_attributes,
     )
@@ -293,7 +293,10 @@ class _DjangoMiddleware(MiddlewareMixin):
                 set_status_code(span, response.status_code)
 
                 if span.is_recording() and span.kind == SpanKind.SERVER:
-                    custom_headers = {"headers": response.items()}
+                    custom_headers = {}
+                    for key, value in response.items():
+                        asgi_setter.set(custom_headers, key, value)
+
                     custom_res_attributes = (
                         asgi_collect_custom_response_attributes(custom_headers)
                     )
