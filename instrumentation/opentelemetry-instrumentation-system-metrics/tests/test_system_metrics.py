@@ -89,9 +89,9 @@ class TestSystemMetrics(TestBase):
             "system.network.errors",
             "system.network.io",
             "system.network.connections",
-            "runtime.{}.memory".format(self.implementation),
-            "runtime.{}.cpu_time".format(self.implementation),
-            "runtime.{}.gc_count".format(self.implementation),
+            f"runtime.{self.implementation}.memory",
+            f"runtime.{self.implementation}.cpu_time",
+            f"runtime.{self.implementation}.gc_count",
         ]
 
         for observer in metric_names:
@@ -101,14 +101,14 @@ class TestSystemMetrics(TestBase):
     def _assert_metrics(self, observer_name, reader, expected):
         assertions = 0
         for metric in reader.get_metrics():  # pylint: disable=protected-access
-            for e in expected:
+            for expect in expected:
                 if (
-                    metric.attributes == e.attributes
+                    metric.attributes == expect.attributes
                     and metric.name == observer_name
                 ):
                     self.assertEqual(
                         metric.point.value,
-                        e.value,
+                        expect.value,
                     )
                     assertions += 1
         self.assertEqual(len(expected), assertions)
@@ -120,7 +120,6 @@ class TestSystemMetrics(TestBase):
         system_metrics = SystemMetricsInstrumentor()
         system_metrics.instrument(meter_provider=meter_provider)
         self._assert_metrics(observer_name, reader, expected)
-        system_metrics.uninstrument()
 
     # When this test case is executed, _get_system_cpu_utilization gets run
     # too because of the controller thread which runs all observers. This patch
@@ -688,7 +687,7 @@ class TestSystemMetrics(TestBase):
             _SystemMetricsResult({"type": "vms"}, 2),
         ]
         self._test_metrics(
-            "runtime.{}.memory".format(self.implementation), expected
+            f"runtime.{self.implementation}.memory", expected
         )
 
     @mock.patch("psutil.Process.cpu_times")
@@ -705,7 +704,7 @@ class TestSystemMetrics(TestBase):
             _SystemMetricsResult({"type": "system"}, 2.2),
         ]
         self._test_metrics(
-            "runtime.{}.cpu_time".format(self.implementation), expected
+            f"runtime.{self.implementation}.cpu_time", expected
         )
 
     @mock.patch("gc.get_count")
@@ -719,5 +718,5 @@ class TestSystemMetrics(TestBase):
             _SystemMetricsResult({"count": "2"}, 3),
         ]
         self._test_metrics(
-            "runtime.{}.gc_count".format(self.implementation), expected
+            f"runtime.{self.implementation}.gc_count", expected
         )

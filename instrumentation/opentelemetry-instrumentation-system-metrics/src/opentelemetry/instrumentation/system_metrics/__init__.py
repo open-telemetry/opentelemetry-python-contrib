@@ -119,17 +119,6 @@ class SystemMetricsInstrumentor(BaseInstrumentor):
             self._config = config
         self._labels = {} if labels is None else labels
         self._meter = None
-
-    def instrumentation_dependencies(self) -> Collection[str]:
-        return _instruments
-
-    def _instrument(self, **kwargs):
-        meter_provider = kwargs.get("meter_provider")
-        self._meter = get_meter(
-            "io.otel.python.instrumentation.system_metrics",
-            __version__,
-            meter_provider,
-        )
         self._python_implementation = python_implementation().lower()
 
         self._proc = psutil.Process(os.getpid())
@@ -162,6 +151,17 @@ class SystemMetricsInstrumentor(BaseInstrumentor):
         self._runtime_memory_labels = self._labels.copy()
         self._runtime_cpu_time_labels = self._labels.copy()
         self._runtime_gc_count_labels = self._labels.copy()
+
+    def instrumentation_dependencies(self) -> Collection[str]:
+        return _instruments
+
+    def _instrument(self, **kwargs):
+        meter_provider = kwargs.get("meter_provider")
+        self._meter = get_meter(
+            __name__,
+            __version__,
+            meter_provider,
+        )
 
         self._meter.create_observable_counter(
             callback=self._get_system_cpu_time,
@@ -294,28 +294,22 @@ class SystemMetricsInstrumentor(BaseInstrumentor):
 
         self._meter.create_observable_counter(
             callback=self._get_runtime_memory,
-            name="runtime.{}.memory".format(self._python_implementation),
-            description="Runtime {} memory".format(
-                self._python_implementation
-            ),
+            name=f"runtime.{self._python_implementation}.memory",
+            description=f"Runtime {self._python_implementation} memory",
             unit="bytes",
         )
 
         self._meter.create_observable_counter(
             callback=self._get_runtime_cpu_time,
-            name="runtime.{}.cpu_time".format(self._python_implementation),
-            description="Runtime {} CPU time".format(
-                self._python_implementation
-            ),
+            name=f"runtime.{self._python_implementation}.cpu_time",
+            description=f"Runtime {self._python_implementation} CPU time",
             unit="seconds",
         )
 
         self._meter.create_observable_counter(
             callback=self._get_runtime_gc_count,
-            name="runtime.{}.gc_count".format(self._python_implementation),
-            description="Runtime {} GC count".format(
-                self._python_implementation
-            ),
+            name=f"runtime.{self._python_implementation}.gc_count",
+            description=f"Runtime {self._python_implementation} GC count",
             unit="bytes",
         )
 
@@ -430,11 +424,11 @@ class SystemMetricsInstrumentor(BaseInstrumentor):
         """
         for device, counters in psutil.disk_io_counters(perdisk=True).items():
             for metric in self._config["system.disk.io"]:
-                if hasattr(counters, "{}_bytes".format(metric)):
+                if hasattr(counters, f"{metric}_bytes"):
                     self._system_disk_io_labels["device"] = device
                     self._system_disk_io_labels["direction"] = metric
                     yield Measurement(
-                        getattr(counters, "{}_bytes".format(metric)),
+                        getattr(counters, f"{metric}_bytes"),
                         self._system_disk_io_labels,
                     )
 
@@ -446,11 +440,11 @@ class SystemMetricsInstrumentor(BaseInstrumentor):
         """
         for device, counters in psutil.disk_io_counters(perdisk=True).items():
             for metric in self._config["system.disk.operations"]:
-                if hasattr(counters, "{}_count".format(metric)):
+                if hasattr(counters, f"{metric}_count"):
                     self._system_disk_operations_labels["device"] = device
                     self._system_disk_operations_labels["direction"] = metric
                     yield Measurement(
-                        getattr(counters, "{}_count".format(metric)),
+                        getattr(counters, f"{metric}_count"),
                         self._system_disk_operations_labels,
                     )
 
@@ -462,11 +456,11 @@ class SystemMetricsInstrumentor(BaseInstrumentor):
         """
         for device, counters in psutil.disk_io_counters(perdisk=True).items():
             for metric in self._config["system.disk.time"]:
-                if hasattr(counters, "{}_time".format(metric)):
+                if hasattr(counters, f"{metric}_time"):
                     self._system_disk_time_labels["device"] = device
                     self._system_disk_time_labels["direction"] = metric
                     yield Measurement(
-                        getattr(counters, "{}_time".format(metric)) / 1000,
+                        getattr(counters, f"{metric}_time") / 1000,
                         self._system_disk_time_labels,
                     )
 
@@ -482,11 +476,11 @@ class SystemMetricsInstrumentor(BaseInstrumentor):
 
         for device, counters in psutil.disk_io_counters(perdisk=True).items():
             for metric in self._config["system.disk.time"]:
-                if hasattr(counters, "{}_merged_count".format(metric)):
+                if hasattr(counters, f"{metric}_merged_count"):
                     self._system_disk_merged_labels["device"] = device
                     self._system_disk_merged_labels["direction"] = metric
                     yield Measurement(
-                        getattr(counters, "{}_merged_count".format(metric)),
+                        getattr(counters, f"{metric}_merged_count"),
                         self._system_disk_merged_labels,
                     )
 
@@ -505,7 +499,7 @@ class SystemMetricsInstrumentor(BaseInstrumentor):
         for device, counters in psutil.net_io_counters(pernic=True).items():
             for metric in self._config["system.network.dropped.packets"]:
                 in_out = {"receive": "in", "transmit": "out"}[metric]
-                if hasattr(counters, "drop{}".format(in_out)):
+                if hasattr(counters, f"drop{in_out}"):
                     self._system_network_dropped_packets_labels[
                         "device"
                     ] = device
@@ -513,7 +507,7 @@ class SystemMetricsInstrumentor(BaseInstrumentor):
                         "direction"
                     ] = metric
                     yield Measurement(
-                        getattr(counters, "drop{}".format(in_out)),
+                        getattr(counters, f"drop{in_out}"),
                         self._system_network_dropped_packets_labels,
                     )
 
@@ -527,11 +521,11 @@ class SystemMetricsInstrumentor(BaseInstrumentor):
         for device, counters in psutil.net_io_counters(pernic=True).items():
             for metric in self._config["system.network.dropped.packets"]:
                 recv_sent = {"receive": "recv", "transmit": "sent"}[metric]
-                if hasattr(counters, "packets_{}".format(recv_sent)):
+                if hasattr(counters, f"packets_{recv_sent}"):
                     self._system_network_packets_labels["device"] = device
                     self._system_network_packets_labels["direction"] = metric
                     yield Measurement(
-                        getattr(counters, "packets_{}".format(recv_sent)),
+                        getattr(counters, f"packets_{recv_sent}"),
                         self._system_network_packets_labels,
                     )
 
@@ -544,11 +538,11 @@ class SystemMetricsInstrumentor(BaseInstrumentor):
         for device, counters in psutil.net_io_counters(pernic=True).items():
             for metric in self._config["system.network.errors"]:
                 in_out = {"receive": "in", "transmit": "out"}[metric]
-                if hasattr(counters, "err{}".format(in_out)):
+                if hasattr(counters, f"err{in_out}"):
                     self._system_network_errors_labels["device"] = device
                     self._system_network_errors_labels["direction"] = metric
                     yield Measurement(
-                        getattr(counters, "err{}".format(in_out)),
+                        getattr(counters, f"err{in_out}"),
                         self._system_network_errors_labels,
                     )
 
@@ -562,11 +556,11 @@ class SystemMetricsInstrumentor(BaseInstrumentor):
         for device, counters in psutil.net_io_counters(pernic=True).items():
             for metric in self._config["system.network.dropped.packets"]:
                 recv_sent = {"receive": "recv", "transmit": "sent"}[metric]
-                if hasattr(counters, "bytes_{}".format(recv_sent)):
+                if hasattr(counters, f"bytes_{recv_sent}"):
                     self._system_network_io_labels["device"] = device
                     self._system_network_io_labels["direction"] = metric
                     yield Measurement(
-                        getattr(counters, "bytes_{}".format(recv_sent)),
+                        getattr(counters, f"bytes_{recv_sent}"),
                         self._system_network_io_labels,
                     )
 
@@ -598,7 +592,7 @@ class SystemMetricsInstrumentor(BaseInstrumentor):
                 self._system_network_connections_labels
             )
 
-            if connection_counters_key in connection_counters.keys():
+            if connection_counters_key in connection_counters:
                 connection_counters[connection_counters_key]["counter"] += 1
             else:
                 connection_counters[connection_counters_key] = {
