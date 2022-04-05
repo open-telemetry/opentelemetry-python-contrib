@@ -173,12 +173,12 @@ def trace_tween_factory(handler, registry):
                     otel_wsgi.add_response_attributes(
                         span,
                         status,
-                        getattr(response, "headerList", None),
+                        getattr(response, "headerlist", None),
                     )
 
                 if span.is_recording() and span.kind == trace.SpanKind.SERVER:
                     otel_wsgi.add_custom_response_headers(
-                        span, getattr(response, "headerList", None)
+                        span, getattr(response, "headerlist", None)
                     )
 
                 propagator = get_global_response_propagator()
