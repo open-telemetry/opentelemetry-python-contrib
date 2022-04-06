@@ -13,8 +13,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   ([#999])(https://github.com/open-telemetry/opentelemetry-python-contrib/pull/999)
 - `opentelemetry-instrumentation-tornado` Fix non-recording span bug
   ([#999])(https://github.com/open-telemetry/opentelemetry-python-contrib/pull/999)
-- `opentelemetry-instrumentation-pyramid` Handle non-HTTPException exceptions
-  ([#1001](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/1001))
 
 ### Added
 
@@ -28,6 +26,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   ([#1003])(https://github.com/open-telemetry/opentelemetry-python-contrib/pull/1003)
 - `opentelemetry-instrumentation-elasticsearch` no longer creates unique span names by including search target, replaces them with `<target>` and puts the value in attribute `elasticsearch.target`
   ([#1018](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/1018))
+- `opentelemetry-instrumentation-pyramid` Handle non-HTTPException exceptions
+  ([#1001](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/1001))
 - `opentelemetry-instrumentation-system-metrics` restore `SystemMetrics` instrumentation as `SystemMetricsInstrumentor`
   ([#1012](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/1012))
 
