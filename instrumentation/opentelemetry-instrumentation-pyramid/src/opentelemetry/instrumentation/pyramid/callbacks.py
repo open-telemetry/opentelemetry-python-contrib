@@ -129,6 +129,7 @@ def trace_tween_factory(handler, registry):
         return disabled_tween
 
     # make a request tracing function
+    # pylint: disable=too-many-branches
     def trace_tween(request):
         # pylint: disable=E1101
         if _excluded_urls.url_disabled(request.url):
