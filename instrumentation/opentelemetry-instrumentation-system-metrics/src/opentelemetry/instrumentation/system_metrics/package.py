@@ -13,4 +13,4 @@
 # limitations under the License.
 
 
-_instruments = ("psutil >= 5.7.3",)
+_instruments = ("psutil >= 5",)
