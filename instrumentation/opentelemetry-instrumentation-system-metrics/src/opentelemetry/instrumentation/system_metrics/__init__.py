@@ -83,9 +83,27 @@ from opentelemetry.instrumentation.system_metrics.package import _instruments
 from opentelemetry.instrumentation.system_metrics.version import __version__
 from opentelemetry.sdk.util import get_dict_as_key
 
+_DEFAULT_CONFIG = {
+    "system.cpu.time": ["idle", "user", "system", "irq"],
+    "system.cpu.utilization": ["idle", "user", "system", "irq"],
+    "system.memory.usage": ["used", "free", "cached"],
+    "system.memory.utilization": ["used", "free", "cached"],
+    "system.swap.usage": ["used", "free"],
+    "system.swap.utilization": ["used", "free"],
+    "system.disk.io": ["read", "write"],
+    "system.disk.operations": ["read", "write"],
+    "system.disk.time": ["read", "write"],
+    "system.network.dropped.packets": ["transmit", "receive"],
+    "system.network.packets": ["transmit", "receive"],
+    "system.network.errors": ["transmit", "receive"],
+    "system.network.io": ["trasmit", "receive"],
+    "system.network.connections": ["family", "type"],
+    "runtime.memory": ["rss", "vms"],
+    "runtime.cpu.time": ["user", "system"],
+}
+
 
 class SystemMetricsInstrumentor(BaseInstrumentor):
-    # pylint: disable=too-many-statements
     def __init__(
         self,
         labels: Optional[Dict[str, str]] = None,
@@ -93,28 +111,7 @@ class SystemMetricsInstrumentor(BaseInstrumentor):
     ):
         super().__init__()
         if config is None:
-            self._config = {
-                "system.cpu.time": ["idle", "user", "system", "irq"],
-                "system.cpu.utilization": ["idle", "user", "system", "irq"],
-                "system.memory.usage": ["used", "free", "cached"],
-                "system.memory.utilization": ["used", "free", "cached"],
-                "system.swap.usage": ["used", "free"],
-                "system.swap.utilization": ["used", "free"],
-                # system.swap.page.faults: [],
-                # system.swap.page.operations: [],
-                "system.disk.io": ["read", "write"],
-                "system.disk.operations": ["read", "write"],
-                "system.disk.time": ["read", "write"],
-                # "system.filesystem.usage": [],
-                # "system.filesystem.utilization": [],
-                "system.network.dropped.packets": ["transmit", "receive"],
-                "system.network.packets": ["transmit", "receive"],
-                "system.network.errors": ["transmit", "receive"],
-                "system.network.io": ["trasmit", "receive"],
-                "system.network.connections": ["family", "type"],
-                "runtime.memory": ["rss", "vms"],
-                "runtime.cpu.time": ["user", "system"],
-            }
+            self._config = _DEFAULT_CONFIG
         else:
             self._config = config
         self._labels = {} if labels is None else labels
@@ -131,16 +128,11 @@ class SystemMetricsInstrumentor(BaseInstrumentor):
 
         self._system_swap_usage_labels = self._labels.copy()
         self._system_swap_utilization_labels = self._labels.copy()
-        # self._system_swap_page_faults = self._labels.copy()
-        # self._system_swap_page_operations = self._labels.copy()
 
         self._system_disk_io_labels = self._labels.copy()
         self._system_disk_operations_labels = self._labels.copy()
         self._system_disk_time_labels = self._labels.copy()
         self._system_disk_merged_labels = self._labels.copy()
-
-        # self._system_filesystem_usage_labels = self._labels.copy()
-        # self._system_filesystem_utilization_labels = self._labels.copy()
 
         self._system_network_dropped_packets_labels = self._labels.copy()
         self._system_network_packets_labels = self._labels.copy()
@@ -205,21 +197,25 @@ class SystemMetricsInstrumentor(BaseInstrumentor):
             unit="1",
         )
 
-        # # self._meter.create_observable_counter(
-        # #     callback=self._get_system_swap_page_faults,
-        # #     name="system.swap.page_faults",
-        # #     description="System swap page faults",
-        # #     unit="faults",
-        # #     value_type=int,
-        # # )
+        # TODO Add _get_system_swap_page_faults
 
-        # # self._meter.create_observable_counter(
-        # #     callback=self._get_system_swap_page_operations,
-        # #     name="system.swap.page_operations",
-        # #     description="System swap page operations",
-        # #     unit="operations",
-        # #     value_type=int,
-        # # )
+        # self._meter.create_observable_counter(
+        #     callback=self._get_system_swap_page_faults,
+        #     name="system.swap.page_faults",
+        #     description="System swap page faults",
+        #     unit="faults",
+        #     value_type=int,
+        # )
+
+        # TODO Add _get_system_swap_page_operations
+        # self._meter.create_observable_counter(
+        #     callback=self._get_system_swap_page_operations,
+        #     name="system.swap.page_operations",
+        #     description="System swap page operations",
+        #     unit="operations",
+        #     value_type=int,
+        # )
+
         self._meter.create_observable_counter(
             callback=self._get_system_disk_io,
             name="system.disk.io",
@@ -241,6 +237,8 @@ class SystemMetricsInstrumentor(BaseInstrumentor):
             unit="seconds",
         )
 
+        # TODO Add _get_system_filesystem_usage
+
         # self.accumulator.register_valueobserver(
         #     callback=self._get_system_filesystem_usage,
         #     name="system.filesystem.usage",
@@ -249,6 +247,7 @@ class SystemMetricsInstrumentor(BaseInstrumentor):
         #     value_type=int,
         # )
 
+        # TODO Add _get_system_filesystem_utilization
         # self._meter.create_observable_gauge(
         #     callback=self._get_system_filesystem_utilization,
         #     name="system.filesystem.utilization",
@@ -256,6 +255,9 @@ class SystemMetricsInstrumentor(BaseInstrumentor):
         #     unit="1",
         #     value_type=float,
         # )
+
+        # TODO Filesystem information can be obtained with os.statvfs in Unix-like
+        # OSs, how to do the same in Windows?
 
         self._meter.create_observable_counter(
             callback=self._get_system_network_dropped_packets,
@@ -317,11 +319,7 @@ class SystemMetricsInstrumentor(BaseInstrumentor):
         pass
 
     def _get_system_cpu_time(self) -> Iterable[Measurement]:
-        """Observer callback for system CPU time
-
-        Args:
-            observer: the observer to update
-        """
+        """Observer callback for system CPU time"""
         for cpu, times in enumerate(psutil.cpu_times(percpu=True)):
             for metric in self._config["system.cpu.time"]:
                 if hasattr(times, metric):
@@ -332,11 +330,7 @@ class SystemMetricsInstrumentor(BaseInstrumentor):
                     )
 
     def _get_system_cpu_utilization(self) -> Iterable[Measurement]:
-        """Observer callback for system CPU utilization
-
-        Args:
-            observer: the observer to update
-        """
+        """Observer callback for system CPU utilization"""
 
         for cpu, times_percent in enumerate(
             psutil.cpu_times_percent(percpu=True)
@@ -351,11 +345,7 @@ class SystemMetricsInstrumentor(BaseInstrumentor):
                     )
 
     def _get_system_memory_usage(self) -> Iterable[Measurement]:
-        """Observer callback for memory usage
-
-        Args:
-            observer: the observer to update
-        """
+        """Observer callback for memory usage"""
         virtual_memory = psutil.virtual_memory()
         for metric in self._config["system.memory.usage"]:
             self._system_memory_usage_labels["state"] = metric
@@ -366,11 +356,7 @@ class SystemMetricsInstrumentor(BaseInstrumentor):
                 )
 
     def _get_system_memory_utilization(self) -> Iterable[Measurement]:
-        """Observer callback for memory utilization
-
-        Args:
-            observer: the observer to update
-        """
+        """Observer callback for memory utilization"""
         system_memory = psutil.virtual_memory()
 
         for metric in self._config["system.memory.utilization"]:
@@ -382,11 +368,7 @@ class SystemMetricsInstrumentor(BaseInstrumentor):
                 )
 
     def _get_system_swap_usage(self) -> Iterable[Measurement]:
-        """Observer callback for swap usage
-
-        Args:
-            observer: the observer to update
-        """
+        """Observer callback for swap usage"""
         system_swap = psutil.swap_memory()
 
         for metric in self._config["system.swap.usage"]:
@@ -398,11 +380,7 @@ class SystemMetricsInstrumentor(BaseInstrumentor):
                 )
 
     def _get_system_swap_utilization(self) -> Iterable[Measurement]:
-        """Observer callback for swap utilization
-
-        Args:
-            observer: the observer to update
-        """
+        """Observer callback for swap utilization"""
         system_swap = psutil.swap_memory()
 
         for metric in self._config["system.swap.utilization"]:
@@ -413,15 +391,8 @@ class SystemMetricsInstrumentor(BaseInstrumentor):
                     self._system_swap_utilization_labels,
                 )
 
-    # TODO Add _get_system_swap_page_faults
-    # TODO Add _get_system_swap_page_operations
-
     def _get_system_disk_io(self) -> Iterable[Measurement]:
-        """Observer callback for disk IO
-
-        Args:
-            observer: the observer to update
-        """
+        """Observer callback for disk IO"""
         for device, counters in psutil.disk_io_counters(perdisk=True).items():
             for metric in self._config["system.disk.io"]:
                 if hasattr(counters, f"{metric}_bytes"):
@@ -433,11 +404,7 @@ class SystemMetricsInstrumentor(BaseInstrumentor):
                     )
 
     def _get_system_disk_operations(self) -> Iterable[Measurement]:
-        """Observer callback for disk operations
-
-        Args:
-            observer: the observer to update
-        """
+        """Observer callback for disk operations"""
         for device, counters in psutil.disk_io_counters(perdisk=True).items():
             for metric in self._config["system.disk.operations"]:
                 if hasattr(counters, f"{metric}_count"):
@@ -449,11 +416,7 @@ class SystemMetricsInstrumentor(BaseInstrumentor):
                     )
 
     def _get_system_disk_time(self) -> Iterable[Measurement]:
-        """Observer callback for disk time
-
-        Args:
-            observer: the observer to update
-        """
+        """Observer callback for disk time"""
         for device, counters in psutil.disk_io_counters(perdisk=True).items():
             for metric in self._config["system.disk.time"]:
                 if hasattr(counters, f"{metric}_time"):
@@ -465,11 +428,7 @@ class SystemMetricsInstrumentor(BaseInstrumentor):
                     )
 
     def _get_system_disk_merged(self) -> Iterable[Measurement]:
-        """Observer callback for disk merged operations
-
-        Args:
-            observer: the observer to update
-        """
+        """Observer callback for disk merged operations"""
 
         # FIXME The units in the spec is 1, it seems like it should be
         # operations or the value type should be Double
@@ -484,17 +443,8 @@ class SystemMetricsInstrumentor(BaseInstrumentor):
                         self._system_disk_merged_labels,
                     )
 
-    # TODO Add _get_system_filesystem_usage
-    # TODO Add _get_system_filesystem_utilization
-    # TODO Filesystem information can be obtained with os.statvfs in Unix-like
-    # OSs, how to do the same in Windows?
-
     def _get_system_network_dropped_packets(self) -> Iterable[Measurement]:
-        """Observer callback for network dropped packets
-
-        Args:
-            observer: the observer to update
-        """
+        """Observer callback for network dropped packets"""
 
         for device, counters in psutil.net_io_counters(pernic=True).items():
             for metric in self._config["system.network.dropped.packets"]:
@@ -512,11 +462,7 @@ class SystemMetricsInstrumentor(BaseInstrumentor):
                     )
 
     def _get_system_network_packets(self) -> Iterable[Measurement]:
-        """Observer callback for network packets
-
-        Args:
-            observer: the observer to update
-        """
+        """Observer callback for network packets"""
 
         for device, counters in psutil.net_io_counters(pernic=True).items():
             for metric in self._config["system.network.dropped.packets"]:
@@ -530,11 +476,7 @@ class SystemMetricsInstrumentor(BaseInstrumentor):
                     )
 
     def _get_system_network_errors(self) -> Iterable[Measurement]:
-        """Observer callback for network errors
-
-        Args:
-            observer: the observer to update
-        """
+        """Observer callback for network errors"""
         for device, counters in psutil.net_io_counters(pernic=True).items():
             for metric in self._config["system.network.errors"]:
                 in_out = {"receive": "in", "transmit": "out"}[metric]
@@ -547,11 +489,7 @@ class SystemMetricsInstrumentor(BaseInstrumentor):
                     )
 
     def _get_system_network_io(self) -> Iterable[Measurement]:
-        """Observer callback for network IO
-
-        Args:
-            observer: the observer to update
-        """
+        """Observer callback for network IO"""
 
         for device, counters in psutil.net_io_counters(pernic=True).items():
             for metric in self._config["system.network.dropped.packets"]:
@@ -565,11 +503,7 @@ class SystemMetricsInstrumentor(BaseInstrumentor):
                     )
 
     def _get_system_network_connections(self) -> Iterable[Measurement]:
-        """Observer callback for network connections
-
-        Args:
-            observer: the observer to update
-        """
+        """Observer callback for network connections"""
         # TODO How to find the device identifier for a particular
         # connection?
 
@@ -607,11 +541,7 @@ class SystemMetricsInstrumentor(BaseInstrumentor):
             )
 
     def _get_runtime_memory(self) -> Iterable[Measurement]:
-        """Observer callback for runtime memory
-
-        Args:
-            observer: the observer to update
-        """
+        """Observer callback for runtime memory"""
         proc_memory = self._proc.memory_info()
         for metric in self._config["runtime.memory"]:
             if hasattr(proc_memory, metric):
@@ -622,11 +552,7 @@ class SystemMetricsInstrumentor(BaseInstrumentor):
                 )
 
     def _get_runtime_cpu_time(self) -> Iterable[Measurement]:
-        """Observer callback for runtime CPU time
-
-        Args:
-            observer: the observer to update
-        """
+        """Observer callback for runtime CPU time"""
         proc_cpu = self._proc.cpu_times()
         for metric in self._config["runtime.cpu.time"]:
             if hasattr(proc_cpu, metric):
@@ -637,11 +563,7 @@ class SystemMetricsInstrumentor(BaseInstrumentor):
                 )
 
     def _get_runtime_gc_count(self) -> Iterable[Measurement]:
-        """Observer callback for garbage collection
-
-        Args:
-            observer: the observer to update
-        """
+        """Observer callback for garbage collection"""
         for index, count in enumerate(gc.get_count()):
             self._runtime_gc_count_labels["count"] = str(index)
             yield Measurement(count, self._runtime_gc_count_labels)
