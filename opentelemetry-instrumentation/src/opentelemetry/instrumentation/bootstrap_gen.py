@@ -93,7 +93,7 @@ libraries = {
         "instrumentation": "opentelemetry-instrumentation-psycopg2==0.29b0",
     },
     "pymemcache": {
-        "library": "pymemcache ~= 1.3",
+        "library": "pymemcache >= 1.3.5, < 4",
         "instrumentation": "opentelemetry-instrumentation-pymemcache==0.29b0",
     },
     "pymongo": {
@@ -127,6 +127,10 @@ libraries = {
     "starlette": {
         "library": "starlette ~= 0.13.0",
         "instrumentation": "opentelemetry-instrumentation-starlette==0.29b0",
+    },
+    "psutil": {
+        "library": "psutil >= 5",
+        "instrumentation": "opentelemetry-instrumentation-system-metrics==0.29b0",
     },
     "tornado": {
         "library": "tornado >= 5.1.1",
