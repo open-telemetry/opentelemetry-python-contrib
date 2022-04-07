@@ -382,7 +382,7 @@ class TestWrappedApplication(TestBase):
         )
 
 
-class TestCustomHeaders(TestFastAPIManualInstrumentation):
+class TestHTTPAppWithCustomHeaders(TestBase):
     def setUp(self):
         super().setUp()
         self.env_patch = patch.dict(
@@ -394,7 +394,6 @@ class TestCustomHeaders(TestFastAPIManualInstrumentation):
         )
         self.env_patch.start()
         self.app = self._create_http_app()
-
         otel_fastapi.FastAPIInstrumentor().instrument_app(self.app)
         self.client = TestClient(self.app)
 
@@ -417,16 +416,8 @@ class TestCustomHeaders(TestFastAPIManualInstrumentation):
 
         return app
 
-    @staticmethod
-    def _create_websocket_app():
+  
         app = fastapi.FastAPI()
-
-        # @app.websocket("/foobar_web")
-        # async def _(websocket: fastapi.WebSocket):
-        #     websocket.scope["headers"]
-        #     await websocket.accept()
-        #     await websocket.send_json({"message":"hello world"})
-        #     await websocket.close()
 
         @app.websocket("/foobar_web")
         async def _(websocket: fastapi.WebSocket):
@@ -457,7 +448,7 @@ class TestCustomHeaders(TestFastAPIManualInstrumentation):
                 "test-header-value-2",
             ),
         }
-        resp = self._client.get(
+        resp = self.client.get(
             "/foobar",
             headers={
                 "custom-test-header-1": "test-header-value-1",
@@ -468,9 +459,12 @@ class TestCustomHeaders(TestFastAPIManualInstrumentation):
         span_list = self.memory_exporter.get_finished_spans()
         self.assertEqual(len(span_list), 3)
 
-        for span in span_list:
-            if span.kind == trace.SpanKind.SERVER:
-                self.assertSpanHasAttributes(span, expected)
+        server_span = [
+            span for span in span_list
+            if span.kind == trace.SpanKind.SERVER
+        ][0]
+        
+        self.assertSpanHasAttributes(server_span, expected)
 
     def test_http_custom_request_headers_not_in_span_attributes(self):
         not_expected = {
@@ -478,7 +472,7 @@ class TestCustomHeaders(TestFastAPIManualInstrumentation):
                 "test-header-value-3",
             ),
         }
-        resp = self._client.get(
+        resp = self.client.get(
             "/foobar",
             headers={
                 "custom-test-header-1": "test-header-value-1",
@@ -489,11 +483,13 @@ class TestCustomHeaders(TestFastAPIManualInstrumentation):
         span_list = self.memory_exporter.get_finished_spans()
         self.assertEqual(len(span_list), 3)
 
-        server_span = span_list[-1]
+        server_span = [
+            span for span in span_list
+            if span.kind == trace.SpanKind.SERVER
+        ][0]
 
-        if server_span.kind == trace.SpanKind.SERVER:
-            for key, _ in not_expected.items():
-                self.assertNotIn(key, server_span.attributes)
+        for key, _ in not_expected.items():
+            self.assertNotIn(key, server_span.attributes)
 
     def test_http_custom_response_headers_in_span_attributes(self):
         expected = {
@@ -509,9 +505,11 @@ class TestCustomHeaders(TestFastAPIManualInstrumentation):
         span_list = self.memory_exporter.get_finished_spans()
         self.assertEqual(len(span_list), 3)
 
-        for span in span_list:
-            if span.kind == trace.SpanKind.SERVER:
-                self.assertSpanHasAttributes(span, expected)
+        server_span = [
+            span for span in span_list
+            if span.kind == trace.SpanKind.SERVER
+        ][0]
+        self.assertSpanHasAttributes(server_span, expected)
 
     def test_http_custom_response_headers_not_in_span_attributes(self):
         not_expected = {
@@ -519,17 +517,63 @@ class TestCustomHeaders(TestFastAPIManualInstrumentation):
                 "test-header-value-3",
             ),
         }
-        resp = self._client.get("/foobar")
+        resp = self.client.get("/foobar")
         self.assertEqual(200, resp.status_code)
         span_list = self.memory_exporter.get_finished_spans()
         self.assertEqual(len(span_list), 3)
 
-        server_span = span_list[-1]
+        server_span = [
+            span for span in span_list
+            if span.kind == trace.SpanKind.SERVER
+        ][0]
 
-        if server_span.kind == trace.SpanKind.SERVER:
-            for key, _ in not_expected.items():
-                self.assertNotIn(key, server_span.attributes)
+        for key, _ in not_expected.items():
+            self.assertNotIn(key, server_span.attributes)
 
+    
+
+class TestWebSocketAppWithCustomHeaders(TestBase):
+    def setUp(self):
+        super().setUp()
+        self.env_patch = patch.dict(
+            "os.environ",
+            {
+                OTEL_INSTRUMENTATION_HTTP_CAPTURE_HEADERS_SERVER_REQUEST: "Custom-Test-Header-1,Custom-Test-Header-2,Custom-Test-Header-3",
+                OTEL_INSTRUMENTATION_HTTP_CAPTURE_HEADERS_SERVER_RESPONSE: "Custom-Test-Header-1,Custom-Test-Header-2,Custom-Test-Header-3",
+            },
+        )
+        self.env_patch.start()
+        self.app = self._create_app()
+        otel_fastapi.FastAPIInstrumentor().instrument_app(self.app)
+        self.client = TestClient(self.app)
+
+    def _create_app(self):
+        app = fastapi.FastAPI()
+
+        @app.websocket("/foobar_web")
+        async def _(websocket: fastapi.WebSocket):
+            message = await websocket.receive()
+            if message.get("type") == "websocket.connect":
+                await websocket.send(
+                    {
+                        "type": "websocket.accept",
+                        "headers": [
+                            (b"custom-test-header-1", b"test-header-value-1"),
+                            (b"custom-test-header-2", b"test-header-value-2"),
+                        ],
+                    }
+                )
+                await websocket.send_json({"message": "hello world"})
+                await websocket.close()
+            if message.get("type") == "websocket.disconnect":
+                pass
+
+        return app
+
+    def tearDown(self) -> None:
+        super().tearDown()
+        self.env_patch.stop()
+  
     def test_web_socket_custom_request_headers_in_span_attributes(self):
         expected = {
             "http.request.header.custom_test_header_1": (
@@ -539,27 +583,26 @@ class TestCustomHeaders(TestFastAPIManualInstrumentation):
                 "test-header-value-2",
             ),
         }
-        self.app = self._create_websocket_app()
-        otel_fastapi.FastAPIInstrumentor().instrument_app(self.app)
-        self._client = TestClient(self.app)
 
-        with self._client.websocket_connect(
+        with self.client.websocket_connect(
             "/foobar_web",
             headers={
                 "custom-test-header-1": "test-header-value-1",
                 "custom-test-header-2": "test-header-value-2",
             },
         ) as websocket:
-
             data = websocket.receive_json()
             self.assertEqual(data, {"message": "hello world"})
 
-            span_list = self.memory_exporter.get_finished_spans()
+        span_list = self.memory_exporter.get_finished_spans()
+        self.assertEqual(len(span_list), 5)
 
-            self.assertEqual(len(span_list), 5)
-            for span in span_list:
-                if span.kind == trace.SpanKind.SERVER:
-                    self.assertSpanHasAttributes(span, expected)
+        server_span = [
+            span for span in span_list
+            if span.kind == trace.SpanKind.SERVER
+        ][0]
+
+        self.assertSpanHasAttributes(server_span, expected)
 
     def test_web_socket_custom_request_headers_not_in_span_attributes(self):
         not_expected = {
@@ -567,31 +610,27 @@ class TestCustomHeaders(TestFastAPIManualInstrumentation):
                 "test-header-value-3",
             ),
         }
-        self.app = self._create_websocket_app()
-        otel_fastapi.FastAPIInstrumentor().instrument_app(self.app)
-        self._client = TestClient(self.app)
 
-        with self._client.websocket_connect(
+        with self.client.websocket_connect(
             "/foobar_web",
             headers={
                 "custom-test-header-1": "test-header-value-1",
                 "custom-test-header-2": "test-header-value-2",
             },
         ) as websocket:
-
             data = websocket.receive_json()
             self.assertEqual(data, {"message": "hello world"})
 
-            span_list = self.memory_exporter.get_finished_spans()
-            self.assertEqual(len(span_list), 5)
+        span_list = self.memory_exporter.get_finished_spans()
+        self.assertEqual(len(span_list), 5)
 
-            server_span = [
-                span
-                for span in span_list
-                if span.kind == trace.SpanKind.SERVER
-            ][0]
-            for key, _ in not_expected.items():
-                self.assertNotIn(key, server_span.attributes)
+        server_span = [
+            span for span in span_list
+            if span.kind == trace.SpanKind.SERVER
+        ][0]
+
+        for key, _ in not_expected.items():
+            self.assertNotIn(key, server_span.attributes)
 
     def test_web_socket_custom_response_headers_in_span_attributes(self):
         expected = {
@@ -602,20 +641,20 @@ class TestCustomHeaders(TestFastAPIManualInstrumentation):
                 "test-header-value-2",
             ),
         }
-        self.app = self._create_websocket_app()
-        otel_fastapi.FastAPIInstrumentor().instrument_app(self.app)
-        self._client = TestClient(self.app)
 
-        with self._client.websocket_connect("/foobar_web") as websocket:
+        with self.client.websocket_connect("/foobar_web") as websocket:
             data = websocket.receive_json()
             self.assertEqual(data, {"message": "hello world"})
 
-            span_list = self.memory_exporter.get_finished_spans()
+        span_list = self.memory_exporter.get_finished_spans()
+        self.assertEqual(len(span_list), 5)
 
-            self.assertEqual(len(span_list), 5)
-            for span in span_list:
-                if span.kind == trace.SpanKind.SERVER:
-                    self.assertSpanHasAttributes(span, expected)
+        server_span = [
+            span for span in span_list
+            if span.kind == trace.SpanKind.SERVER
+        ][0]
+
+        self.assertSpanHasAttributes(server_span, expected)
 
     def test_web_socket_custom_response_headers_not_in_span_attributes(self):
         not_expected = {
@@ -623,24 +662,18 @@ class TestCustomHeaders(TestFastAPIManualInstrumentation):
                 "test-header-value-3",
             ),
         }
-        self.app = self._create_websocket_app()
-        otel_fastapi.FastAPIInstrumentor().instrument_app(self.app)
-        self._client = TestClient(self.app)
 
-        with self._client.websocket_connect("/foobar_web") as websocket:
+        with self.client.websocket_connect("/foobar_web") as websocket:
             data = websocket.receive_json()
             self.assertEqual(data, {"message": "hello world"})
 
-            span_list = self.memory_exporter.get_finished_spans()
-            self.assertEqual(len(span_list), 5)
+        span_list = self.memory_exporter.get_finished_spans()
+        self.assertEqual(len(span_list), 5)
 
-            server_spans = [
-                span
-                for span in span_list
-                if span.kind == trace.SpanKind.SERVER
-            ]
-            self.assertEqual(len(server_spans), 1)
-            server_span = server_spans[0]
+        server_span = [
+            span for span in span_list
+            if span.kind == trace.SpanKind.SERVER
+        ][0]
 
-            for key, _ in not_expected.items():
-                self.assertNotIn(key, server_span.attributes)
+        for key, _ in not_expected.items():
+            self.assertNotIn(key, server_span.attributes)
