@@ -48,15 +48,12 @@ class CustomResponseHeaderResource:
 
 def make_app():
     _parsed_falcon_version = package_version.parse(falcon.__version__)
-    if _parsed_falcon_version >= package_version.parse("3.0.0"):
-        # Falcon 3
-        app = falcon.App()
-    elif _parsed_falcon_version >= package_version.parse("2.0.0"):
-        # Falcon 2
+    if _parsed_falcon_version < package_version.parse("3.0.0"):
+        # Falcon 1 and Falcon 2
         app = falcon.API()
     else:
-        # Falcon 1
-        app = falcon.API()
+        # Falcon 3
+        app = falcon.App()
 
     app.add_route("/hello", HelloWorldResource())
     app.add_route("/ping", HelloWorldResource())

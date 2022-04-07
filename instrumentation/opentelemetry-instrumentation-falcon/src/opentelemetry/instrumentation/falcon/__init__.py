@@ -326,14 +326,13 @@ class _TraceMiddleware:
 
             # Falcon 1 does not support response headers. So
             # send an empty dict.
-            if _falcon_version == 1:
-                _response_headers_dict = {}.items()
-            else:
-                _response_headers_dict = resp.headers.items()
+            response_headers = {}
+            if _falcon_version > 1:
+                response_headers = resp.headers
 
             if span.is_recording() and span.kind == trace.SpanKind.SERVER:
                 otel_wsgi.add_custom_response_headers(
-                    span, _response_headers_dict
+                    span, response_headers.items()
                 )
         except ValueError:
             pass
