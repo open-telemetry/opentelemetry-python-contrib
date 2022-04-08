@@ -27,9 +27,9 @@ from opentelemetry.semconv.trace import SpanAttributes
 from opentelemetry.test.test_base import TestBase
 from opentelemetry.test.globals_test import reset_trace_globals
 from opentelemetry.trace import (
+    NoOpTracerProvider,
     SpanKind,
     get_tracer,
-    NoOpTracerProvider,
     set_tracer_provider,
 )
 from opentelemetry.util.http import (
