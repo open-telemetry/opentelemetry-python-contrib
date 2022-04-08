@@ -683,7 +683,6 @@ class TestNonRecordingSpanWithCustomHeaders(TestBase):
             self._instrumentor.uninstrument_app(self.app)
 
     def test_custom_header_not_present_in_non_recording_span(self):
-        try:
             resp = self.client.get(
                 "/foobar",
                 headers={
@@ -693,5 +692,3 @@ class TestNonRecordingSpanWithCustomHeaders(TestBase):
             self.assertEqual(200, resp.status_code)
             span_list = self.memory_exporter.get_finished_spans()
             self.assertEqual(len(span_list), 0)
-        except Exception as exc:
-            self.fail(f"Exception raised in Non recording span: {str(exc)}")
