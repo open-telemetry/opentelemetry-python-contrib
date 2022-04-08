@@ -683,12 +683,12 @@ class TestNonRecordingSpanWithCustomHeaders(TestBase):
             self._instrumentor.uninstrument_app(self.app)
 
     def test_custom_header_not_present_in_non_recording_span(self):
-            resp = self.client.get(
-                "/foobar",
-                headers={
-                    "custom-test-header-1": "test-header-value-1",
-                },
-            )
-            self.assertEqual(200, resp.status_code)
-            span_list = self.memory_exporter.get_finished_spans()
-            self.assertEqual(len(span_list), 0)
+        resp = self.client.get(
+            "/foobar",
+            headers={
+                "custom-test-header-1": "test-header-value-1",
+            },
+        )
+        self.assertEqual(200, resp.status_code)
+        span_list = self.memory_exporter.get_finished_spans()
+        self.assertEqual(len(span_list), 0)
