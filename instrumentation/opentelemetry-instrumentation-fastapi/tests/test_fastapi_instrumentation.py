@@ -25,6 +25,7 @@ from opentelemetry.instrumentation.asgi import OpenTelemetryMiddleware
 from opentelemetry.sdk.resources import Resource
 from opentelemetry.semconv.trace import SpanAttributes
 from opentelemetry.test.test_base import TestBase
+from opentelemetry.test.globals_test import reset_trace_globals
 from opentelemetry.util.http import (
     OTEL_INSTRUMENTATION_HTTP_CAPTURE_HEADERS_SERVER_REQUEST,
     OTEL_INSTRUMENTATION_HTTP_CAPTURE_HEADERS_SERVER_RESPONSE,
@@ -650,3 +651,47 @@ class TestWebSocketAppWithCustomHeaders(TestBase):
 
         for key, _ in not_expected.items():
             self.assertNotIn(key, server_span.attributes)
+
+
+class TestNonRecordingSpanWithCustomHeaders(TestBase):
+    def setUp(self):
+        super().setUp()
+        self.env_patch = patch.dict(
+            "os.environ",
+            {
+                OTEL_INSTRUMENTATION_HTTP_CAPTURE_HEADERS_SERVER_REQUEST: "Custom-Test-Header-1,Custom-Test-Header-2,Custom-Test-Header-3",
+            },
+        )
+        self.env_patch.start()
+        self.app = fastapi.FastAPI()
+
+        @self.app.get("/foobar")
+        async def _():
+            return {"message": "hello world"}
+        
+        reset_trace_globals()
+        tracer_provider = trace.NoOpTracerProvider()
+        trace.set_tracer_provider(tracer_provider=tracer_provider)
+
+        self._instrumentor = otel_fastapi.FastAPIInstrumentor()
+        self._instrumentor.instrument_app(self.app)
+        self.client = TestClient(self.app)
+
+    def tearDown(self) -> None:
+        super().tearDown()
+        with self.disable_logging():
+            self._instrumentor.uninstrument_app(self.app)
+    
+    def test_custom_header_not_present_in_non_recording_span(self):
+        try:
+            resp = self.client.get(
+                "/foobar",
+                headers={
+                    "custom-test-header-1": "test-header-value-1",
+                },
+            )
+            self.assertEqual(200, resp.status_code)
+            span_list = self.memory_exporter.get_finished_spans()
+            self.assertEqual(len(span_list), 0)
+        except Exception as e:
+            self.fail(f"Exception raised in Non recording span: {str(e)}")
