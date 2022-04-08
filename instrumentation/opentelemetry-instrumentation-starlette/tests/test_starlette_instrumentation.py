@@ -24,8 +24,8 @@ from starlette.websockets import WebSocket
 import opentelemetry.instrumentation.starlette as otel_starlette
 from opentelemetry.sdk.resources import Resource
 from opentelemetry.semconv.trace import SpanAttributes
-from opentelemetry.test.test_base import TestBase
 from opentelemetry.test.globals_test import reset_trace_globals
+from opentelemetry.test.test_base import TestBase
 from opentelemetry.trace import (
     NoOpTracerProvider,
     SpanKind,
