@@ -693,5 +693,5 @@ class TestNonRecordingSpanWithCustomHeaders(TestBase):
             self.assertEqual(200, resp.status_code)
             span_list = self.memory_exporter.get_finished_spans()
             self.assertEqual(len(span_list), 0)
-        except Exception as e:
-            self.fail(f"Exception raised in Non recording span: {str(e)}")
+        except Exception as exc:
+            self.fail(f"Exception raised in Non recording span: {str(exc)}")
