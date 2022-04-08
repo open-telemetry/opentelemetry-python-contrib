@@ -400,6 +400,8 @@ class TestHTTPAppWithCustomHeaders(TestBase):
     def tearDown(self) -> None:
         super().tearDown()
         self.env_patch.stop()
+        with self.disable_logging():
+            otel_fastapi.FastAPIInstrumentor().uninstrument_app(self.app)
 
     @staticmethod
     def _create_app():
@@ -519,6 +521,12 @@ class TestWebSocketAppWithCustomHeaders(TestBase):
         otel_fastapi.FastAPIInstrumentor().instrument_app(self.app)
         self.client = TestClient(self.app)
 
+    def tearDown(self) -> None:
+        super().tearDown()
+        self.env_patch.stop()
+        with self.disable_logging():
+            otel_fastapi.FastAPIInstrumentor().uninstrument_app(self.app)
+
     @staticmethod
     def _create_app():
         app = fastapi.FastAPI()
@@ -542,10 +550,6 @@ class TestWebSocketAppWithCustomHeaders(TestBase):
                 pass
 
         return app
-
-    def tearDown(self) -> None:
-        super().tearDown()
-        self.env_patch.stop()
 
     def test_web_socket_custom_request_headers_in_span_attributes(self):
         expected = {
