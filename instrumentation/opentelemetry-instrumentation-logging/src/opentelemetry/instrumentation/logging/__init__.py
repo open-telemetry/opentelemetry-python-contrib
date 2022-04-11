@@ -66,11 +66,17 @@ class LoggingInstrumentor(BaseInstrumentor):  # pylint: disable=empty-docstring
             logging.WARN
             logging.ERROR
             logging.FATAL
+        log_hook: execute custom logic when record is created
+            .. code-block:: python
+                def log_hook(span: Span, record: LogRecord):
+                    if span and span.is_recording():
+                        record.custom_user_attribute_from_log_hook = "some-value"
 
     See `BaseInstrumentor`
     """
 
     _old_factory = None
+    _log_hook = None
 
     def instrumentation_dependencies(self) -> Collection[str]:
         return _instruments
@@ -80,6 +86,7 @@ class LoggingInstrumentor(BaseInstrumentor):  # pylint: disable=empty-docstring
         provider = kwargs.get("tracer_provider", None) or get_tracer_provider()
         old_factory = logging.getLogRecordFactory()
         LoggingInstrumentor._old_factory = old_factory
+        LoggingInstrumentor._log_hook = kwargs.get("log_hook", None)
 
         service_name = None
 
@@ -107,6 +114,12 @@ class LoggingInstrumentor(BaseInstrumentor):  # pylint: disable=empty-docstring
                 if ctx != INVALID_SPAN_CONTEXT:
                     record.otelSpanID = format(ctx.span_id, "016x")
                     record.otelTraceID = format(ctx.trace_id, "032x")
+                    if callable(self._log_hook):
+                        try:
+                            self._log_hook(span, record)
+                        except Exception as e:
+                            pass
+
             return record
 
         logging.setLogRecordFactory(record_factory)

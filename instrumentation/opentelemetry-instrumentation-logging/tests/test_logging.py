@@ -150,6 +150,28 @@ class TestLoggingInstrumentor(TestBase):
             format="%(message)s span_id=%(otelSpanID)s", level=logging.WARNING
         )
 
+    def log_hook(span, record):
+        record.custom_user_attribute_from_log_hook = "some-value"
+
+    def test_log_hook(self):
+        LoggingInstrumentor().uninstrument()
+        LoggingInstrumentor().instrument(
+            set_logging_format=True,
+            log_hook=self.log_hook,
+        )
+        with self.tracer.start_as_current_span("s1") as span:
+            span_id = format(span.get_span_context().span_id, "016x")
+            trace_id = format(span.get_span_context().trace_id, "032x")
+            with self.caplog.at_level(level=logging.INFO):
+                logger = logging.getLogger("test logger")
+                logger.info("hello")
+                self.assertEqual(len(self.caplog.records), 1)
+                record = self.caplog.records[0]
+                self.assertEqual(record.otelSpanID, span_id)
+                self.assertEqual(record.otelTraceID, trace_id)
+                self.assertEqual(record.otelServiceName, "unknown_service")
+                self.assertEqual(record.custom_user_attribute_from_log_hook, "some-value")
+
     def test_uninstrumented(self):
         with self.tracer.start_as_current_span("s1") as span:
             span_id = format(span.get_span_context().span_id, "016x")
