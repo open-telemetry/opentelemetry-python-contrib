@@ -55,6 +55,10 @@ class LoggingInstrumentor(BaseInstrumentor):  # pylint: disable=empty-docstring
 
         {DEFAULT_LOGGING_FORMAT}
 
+        def log_hook(span: Span, record: LogRecord):
+                if span and span.is_recording():
+                    record.custom_user_attribute_from_log_hook = "some-value"
+
     Args:
         tracer_provider: Tracer provider instance that can be used to fetch a tracer.
         set_logging_format: When set to True, it calls logging.basicConfig() and sets a logging format.
@@ -67,10 +71,6 @@ class LoggingInstrumentor(BaseInstrumentor):  # pylint: disable=empty-docstring
             logging.ERROR
             logging.FATAL
         log_hook: execute custom logic when record is created
-            .. code-block:: python
-                def log_hook(span: Span, record: LogRecord):
-                    if span and span.is_recording():
-                        record.custom_user_attribute_from_log_hook = "some-value"
 
     See `BaseInstrumentor`
     """
@@ -116,8 +116,11 @@ class LoggingInstrumentor(BaseInstrumentor):  # pylint: disable=empty-docstring
                     record.otelTraceID = format(ctx.trace_id, "032x")
                     if callable(self._log_hook):
                         try:
-                            self._log_hook(span, record)
-                        except Exception as e:
+                            self._log_hook(
+                                span,
+                                record
+                            )  # pylint: disable=E1102
+                        except Exception:  # pylint: disable=W0703
                             pass
 
             return record
