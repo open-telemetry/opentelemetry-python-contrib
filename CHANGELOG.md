@@ -7,27 +7,37 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased](https://github.com/open-telemetry/opentelemetry-python/compare/v1.10.0-0.29b0...HEAD)
 
-### Added
+### Fixed
 
 - `opentelemetry-instrumentation-urllib` make span attributes available to sampler
   ([1014](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/1014))
-- `opentelemetry-instrumentation-psycopg2` extended the sql commenter support of dbapi into psycopg2
-  ([#940](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/940))
 - `opentelemetry-instrumentation-flask` Fix non-recording span bug
   ([#999])(https://github.com/open-telemetry/opentelemetry-python-contrib/pull/999)
 - `opentelemetry-instrumentation-tornado` Fix non-recording span bug
   ([#999])(https://github.com/open-telemetry/opentelemetry-python-contrib/pull/999)
-- `opentelemetry-instrumentation-pyramid` Handle non-HTTPException exceptions
-  ([#1001](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/1001))
+
+### Added
+- `opentelemetry-instrumentation-fastapi` Capture custom request/response headers in span attributes
+  ([#1032])(https://github.com/open-telemetry/opentelemetry-python-contrib/pull/1032)
+- `opentelemetry-instrumentation-django` Capture custom request/response headers in span attributes
+  ([#1024])(https://github.com/open-telemetry/opentelemetry-python-contrib/pull/1024)
+- `opentelemetry-instrumentation-asgi` Capture custom request/response headers in span attributes
+  ([#1004])(https://github.com/open-telemetry/opentelemetry-python-contrib/pull/1004)
+- `opentelemetry-instrumentation-psycopg2` extended the sql commenter support of dbapi into psycopg2
+  ([#940](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/940))
 - `opentelemetry-instrumentation-falcon` Falcon: Capture custom request/response headers in span attributes
   ([#1003])(https://github.com/open-telemetry/opentelemetry-python-contrib/pull/1003)
 - `opentelemetry-instrumentation-elasticsearch` no longer creates unique span names by including search target, replaces them with `<target>` and puts the value in attribute `elasticsearch.target`
   ([#1018](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/1018))
+- `opentelemetry-instrumentation-pyramid` Handle non-HTTPException exceptions
+  ([#1001](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/1001))
+- `opentelemetry-instrumentation-system-metrics` restore `SystemMetrics` instrumentation as `SystemMetricsInstrumentor`
+  ([#1012](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/1012))
+- `opentelemetry-instrumentation-pyramid` Pyramid: Capture custom request/response headers in span attributes
+  ([#1022])(https://github.com/open-telemetry/opentelemetry-python-contrib/pull/1022)
+
 
 ## [1.10.0-0.29b0](https://github.com/open-telemetry/opentelemetry-python/releases/tag/v1.10.0-0.29b0) - 2022-03-10
-
-- `opentelemetry-instrumentation-wsgi` Capture custom request/response headers in span attributes
-  ([#1004])(https://github.com/open-telemetry/opentelemetry-python-contrib/pull/1004)
 
 - `opentelemetry-instrumentation-wsgi` Capture custom request/response headers in span attributes
   ([#925])(https://github.com/open-telemetry/opentelemetry-python-contrib/pull/925)
@@ -62,6 +72,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   ([#895](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/895))
 - `opentelemetry-instrumentation-kafka-python` Fix topic extraction
   ([#949](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/949))
+
+### Changed
+
+- `opentelemetry-instrumentation-pymemcache` should run against newer versions of pymemcache.
+  ([#935](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/935))
 
 ## [1.9.1-0.28b1](https://github.com/open-telemetry/opentelemetry-python/releases/tag/v1.9.1-0.28b1) - 2022-01-29
 
