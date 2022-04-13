@@ -133,6 +133,8 @@ def attach_span(task, task_id, span, is_publish=False):
     and cannot run `task.apply_async()`
     """
     if task is None:
+        # task objects can be optional, if None is passed in, there is nothing to attach
+        # the context state to...
         return
 
     span_dict = getattr(task, CTX_KEY, None)
