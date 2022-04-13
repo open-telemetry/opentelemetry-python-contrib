@@ -144,9 +144,6 @@ Note:
 
 API
 ---
-
-API
----
 """
 
 import typing
