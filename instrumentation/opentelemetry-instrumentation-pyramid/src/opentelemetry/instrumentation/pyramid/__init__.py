@@ -93,6 +93,7 @@ will exclude requests such as ``https://site/client/123/info`` and ``https://sit
 API
 ---
 """
+import platform
 
 from typing import Collection
 
@@ -114,6 +115,11 @@ from opentelemetry.instrumentation.utils import unwrap
 # imported in this module. The next line is necessary to avoid a lint error
 # from importing an unused symbol.
 trace_tween_factory  # pylint: disable=pointless-statement
+
+if platform.python_implementation() == 'PyPy':
+    CALLER_LEVELS = 3
+else:
+    CALLER_LEVELS = 2
 
 
 def _traced_init(wrapped, instance, args, kwargs):
@@ -139,7 +145,7 @@ def _traced_init(wrapped, instance, args, kwargs):
         # We want the 3rd level from _there_. Since we are already 1 level above,
         # we need the 2nd level up from here, which will give us the package from
         # `wrapt` instead of the desired package (the caller)
-        kwargs["package"] = caller_package(level=2)
+        kwargs["package"] = caller_package(level=CALLER_LEVELS)
 
     wrapped(*args, **kwargs)
     instance.include("opentelemetry.instrumentation.pyramid.callbacks")
