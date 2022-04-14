@@ -116,9 +116,9 @@ class LoggingInstrumentor(BaseInstrumentor):  # pylint: disable=empty-docstring
                     record.otelTraceID = format(ctx.trace_id, "032x")
                     if callable(self._log_hook):
                         try:
-                            self._log_hook(
+                            self._log_hook(  # pylint: disable=E1102
                                 span, record
-                            )  # pylint: disable=E1102
+                            )
                         except Exception:  # pylint: disable=W0703
                             pass
 
