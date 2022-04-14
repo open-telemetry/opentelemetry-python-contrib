@@ -117,8 +117,7 @@ class LoggingInstrumentor(BaseInstrumentor):  # pylint: disable=empty-docstring
                     if callable(self._log_hook):
                         try:
                             self._log_hook(
-                                span,
-                                record
+                                span, record
                             )  # pylint: disable=E1102
                         except Exception:  # pylint: disable=W0703
                             pass
