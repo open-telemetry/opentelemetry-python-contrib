@@ -145,7 +145,6 @@ API
 ---
 """
 import platform
-
 from typing import Collection
 
 from pyramid.config import Configurator
