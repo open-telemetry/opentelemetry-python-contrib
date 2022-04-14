@@ -167,7 +167,7 @@ from opentelemetry.instrumentation.utils import unwrap
 # from importing an unused symbol.
 trace_tween_factory  # pylint: disable=pointless-statement
 
-if platform.python_implementation() == 'PyPy':
+if platform.python_implementation() == "PyPy":
     CALLER_LEVELS = 3
 else:
     CALLER_LEVELS = 2
