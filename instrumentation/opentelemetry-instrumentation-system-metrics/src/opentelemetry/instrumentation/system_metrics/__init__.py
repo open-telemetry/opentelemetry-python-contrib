@@ -156,42 +156,42 @@ class SystemMetricsInstrumentor(BaseInstrumentor):
         )
 
         self._meter.create_observable_counter(
-            callback=self._get_system_cpu_time,
+            callbacks=[self._get_system_cpu_time],
             name="system.cpu.time",
             description="System CPU time",
             unit="seconds",
         )
 
         self._meter.create_observable_gauge(
-            callback=self._get_system_cpu_utilization,
+            callbacks=[self._get_system_cpu_utilization],
             name="system.cpu.utilization",
             description="System CPU utilization",
             unit="1",
         )
 
         self._meter.create_observable_gauge(
-            callback=self._get_system_memory_usage,
+            callbacks=[self._get_system_memory_usage],
             name="system.memory.usage",
             description="System memory usage",
             unit="bytes",
         )
 
         self._meter.create_observable_gauge(
-            callback=self._get_system_memory_utilization,
+            callbacks=[self._get_system_memory_utilization],
             name="system.memory.utilization",
             description="System memory utilization",
             unit="1",
         )
 
         self._meter.create_observable_gauge(
-            callback=self._get_system_swap_usage,
+            callbacks=[self._get_system_swap_usage],
             name="system.swap.usage",
             description="System swap usage",
             unit="pages",
         )
 
         self._meter.create_observable_gauge(
-            callback=self._get_system_swap_utilization,
+            callbacks=[self._get_system_swap_utilization],
             name="system.swap.utilization",
             description="System swap utilization",
             unit="1",
@@ -217,21 +217,21 @@ class SystemMetricsInstrumentor(BaseInstrumentor):
         # )
 
         self._meter.create_observable_counter(
-            callback=self._get_system_disk_io,
+            callbacks=[self._get_system_disk_io],
             name="system.disk.io",
             description="System disk IO",
             unit="bytes",
         )
 
         self._meter.create_observable_counter(
-            callback=self._get_system_disk_operations,
+            callbacks=[self._get_system_disk_operations],
             name="system.disk.operations",
             description="System disk operations",
             unit="operations",
         )
 
         self._meter.create_observable_counter(
-            callback=self._get_system_disk_time,
+            callbacks=[self._get_system_disk_time],
             name="system.disk.time",
             description="System disk time",
             unit="seconds",
@@ -260,56 +260,56 @@ class SystemMetricsInstrumentor(BaseInstrumentor):
         # OSs, how to do the same in Windows?
 
         self._meter.create_observable_counter(
-            callback=self._get_system_network_dropped_packets,
+            callbacks=[self._get_system_network_dropped_packets],
             name="system.network.dropped_packets",
             description="System network dropped_packets",
             unit="packets",
         )
 
         self._meter.create_observable_counter(
-            callback=self._get_system_network_packets,
+            callbacks=[self._get_system_network_packets],
             name="system.network.packets",
             description="System network packets",
             unit="packets",
         )
 
         self._meter.create_observable_counter(
-            callback=self._get_system_network_errors,
+            callbacks=[self._get_system_network_errors],
             name="system.network.errors",
             description="System network errors",
             unit="errors",
         )
 
         self._meter.create_observable_counter(
-            callback=self._get_system_network_io,
+            callbacks=[self._get_system_network_io],
             name="system.network.io",
             description="System network io",
             unit="bytes",
         )
 
         self._meter.create_observable_up_down_counter(
-            callback=self._get_system_network_connections,
+            callbacks=[self._get_system_network_connections],
             name="system.network.connections",
             description="System network connections",
             unit="connections",
         )
 
         self._meter.create_observable_counter(
-            callback=self._get_runtime_memory,
+            callbacks=[self._get_runtime_memory],
             name=f"runtime.{self._python_implementation}.memory",
             description=f"Runtime {self._python_implementation} memory",
             unit="bytes",
         )
 
         self._meter.create_observable_counter(
-            callback=self._get_runtime_cpu_time,
+            callbacks=[self._get_runtime_cpu_time],
             name=f"runtime.{self._python_implementation}.cpu_time",
             description=f"Runtime {self._python_implementation} CPU time",
             unit="seconds",
         )
 
         self._meter.create_observable_counter(
-            callback=self._get_runtime_gc_count,
+            callbacks=[self._get_runtime_gc_count],
             name=f"runtime.{self._python_implementation}.gc_count",
             description=f"Runtime {self._python_implementation} GC count",
             unit="bytes",
