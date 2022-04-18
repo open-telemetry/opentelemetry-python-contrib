@@ -5,7 +5,9 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [Unreleased](https://github.com/open-telemetry/opentelemetry-python/compare/v1.10.0-0.29b0...HEAD)
+## [Unreleased](https://github.com/open-telemetry/opentelemetry-python/compare/v1.11.0-0.30b0...HEAD)
+
+## [1.11.0-0.30b0](https://github.com/open-telemetry/opentelemetry-python/releases/tag/v1.11.0-0.30b0) - 2022-04-18
 
 ### Fixed
 - `opentelemetry-instrumentation-aws-lambda` Fixed an issue - in some rare cases (API GW proxy integration test) 
@@ -31,6 +33,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   ([#1004])(https://github.com/open-telemetry/opentelemetry-python-contrib/pull/1004)
 - `opentelemetry-instrumentation-psycopg2` extended the sql commenter support of dbapi into psycopg2
   ([#940](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/940))
+- `opentelemetry-instrumentation-falcon` Add support for falcon==1.4.1
+  ([#1000])(https://github.com/open-telemetry/opentelemetry-python-contrib/pull/1000)
 - `opentelemetry-instrumentation-falcon` Falcon: Capture custom request/response headers in span attributes
   ([#1003])(https://github.com/open-telemetry/opentelemetry-python-contrib/pull/1003)
 - `opentelemetry-instrumentation-elasticsearch` no longer creates unique span names by including search target, replaces them with `<target>` and puts the value in attribute `elasticsearch.target`
