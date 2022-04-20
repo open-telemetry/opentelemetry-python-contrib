@@ -99,7 +99,7 @@ Approvers ([@open-telemetry/python-approvers](https://github.com/orgs/open-telem
 - [Nathaniel Ruiz Nowell](https://github.com/NathanielRN), AWS
 - [Owais Lone](https://github.com/owais), Splunk
 - [Sanket Mehta](https://github.com/sanketmehta28)
-- [Ashutosh Goel](https://github.com/ashu658)
+- [Ashutosh Goel](https://github.com/ashu658), Cisco
 
 *Find more about the approver role in [community repository](https://github.com/open-telemetry/community/blob/main/community-membership.md#approver).*
 
