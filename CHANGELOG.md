@@ -20,6 +20,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   ([#999])(https://github.com/open-telemetry/opentelemetry-python-contrib/pull/999)
 - `opentelemetry-instrumentation-tornado` Fix non-recording span bug
   ([#999])(https://github.com/open-telemetry/opentelemetry-python-contrib/pull/999)
+- Refactoring custom header collection API for consistency
+- ([#1064])(https://github.com/open-telemetry/opentelemetry-python-contrib/pull/1064)
 
 ### Added
 
