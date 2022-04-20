@@ -112,6 +112,10 @@ libraries = {
         "library": "redis >= 2.6",
         "instrumentation": "opentelemetry-instrumentation-redis==0.30b0",
     },
+    "remoulade": {
+        "library": "remoulade >= 0.48",
+        "instrumentation": "opentelemetry-instrumentation-remoulade==0.30b0",
+    },
     "requests": {
         "library": "requests ~= 2.0",
         "instrumentation": "opentelemetry-instrumentation-requests==0.30b0",
