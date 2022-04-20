@@ -267,7 +267,7 @@ def collect_request_attributes(environ):
 
 
 def collect_custom_request_headers_attributes(environ):
-    """Returns custom HTTP request headers into the span which are configured by the user
+    """Returns custom HTTP request headers which are configured by the user
     from the PEP3333-conforming WSGI environ to be used as span creation attributes as described
     in the specification https://github.com/open-telemetry/opentelemetry-specification/blob/main/specification/trace/semantic_conventions/http.md#http-request-and-response-headers"""
     attributes = {}
@@ -284,7 +284,7 @@ def collect_custom_request_headers_attributes(environ):
 
 
 def collect_custom_response_headers_attributes(response_headers):
-    """Returns custom HTTP response headers into the sapn which are configured by the user from the
+    """Returns custom HTTP response headers which are configured by the user from the
     PEP3333-conforming WSGI environ as described in the specification
     https://github.com/open-telemetry/opentelemetry-specification/blob/main/specification/trace/semantic_conventions/http.md#http-request-and-response-headers"""
     attributes = {}
