@@ -269,7 +269,6 @@ class RequestsInstrumentor(BaseInstrumentor):
             if excluded_urls is None
             else parse_excluded_urls(excluded_urls),
         )
-        # Get meter_provider from kwargs here and create instruments
 
     def _uninstrument(self, **kwargs):
         _uninstrument()
