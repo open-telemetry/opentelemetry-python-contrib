@@ -11,7 +11,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - `opentelemetry-instrumentation-aws-lambda` Fixed an issue - in some rare cases (API GW proxy integration test) 
   headers are set to None, breaking context propagators.
   ([#1055](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/1055))
-  
+- Prune autoinstrumentation sitecustomize module directory from PYTHONPATH immediately
+  ([#1066](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/1066))
+
 ## [1.11.0-0.30b0](https://github.com/open-telemetry/opentelemetry-python/releases/tag/v1.11.0-0.30b0) - 2022-04-18
 
 ### Fixed
@@ -27,6 +29,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   ([#999](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/999))
 
 ### Added
+
+- `opentelemetry-instrumentation-starlette` Capture custom request/response headers in span attributes
+  ([#1046])(https://github.com/open-telemetry/opentelemetry-python-contrib/pull/1046)
 - `opentelemetry-instrumentation-fastapi` Capture custom request/response headers in span attributes
   ([#1032])(https://github.com/open-telemetry/opentelemetry-python-contrib/pull/1032)
 - `opentelemetry-instrumentation-django` Capture custom request/response headers in span attributes
