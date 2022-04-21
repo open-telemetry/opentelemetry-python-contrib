@@ -109,7 +109,7 @@ def _default_event_context_extractor(lambda_event: Any) -> Context:
     This is the mapping to use when the Lambda is invoked by an API Gateway
     REST API where API Gateway is acting as a pure proxy for the request.
     Protects headers from being something other than dictionary, as this
-    is what downstream propagators
+    is what downstream propagators expect.
 
     See more:
     https://docs.aws.amazon.com/apigateway/latest/developerguide/set-up-lambda-proxy-integrations.html#api-gateway-simple-proxy-for-lambda-input-format
