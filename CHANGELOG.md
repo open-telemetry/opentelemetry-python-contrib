@@ -7,17 +7,18 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased](https://github.com/open-telemetry/opentelemetry-python/compare/v1.11.1-0.30b1...HEAD)
 
+### Fixed
+- `opentelemetry-instrumentation-aws-lambda` Fixed an issue - in some rare cases (API GW proxy integration test) 
+  headers are set to None, breaking context propagators.
+  ([#1055](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/1055))
+- Prune autoinstrumentation sitecustomize module directory from PYTHONPATH immediately
+  ([#1066](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/1066))
 
 ## [1.11.1-0.30b1](https://github.com/open-telemetry/opentelemetry-python/releases/tag/v1.11.1-0.30b1) - 2022-04-21
 
 ### Added
 - `opentelemetry-instrumentation-starlette` Capture custom request/response headers in span attributes
   ([#1046])(https://github.com/open-telemetry/opentelemetry-python-contrib/pull/1046)
-
-### Added
-
-- Prune autoinstrumentation sitecustomize module directory from PYTHONPATH immediately
-  ([#1066](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/1066))
 - `opentelemetry-instrument` and `opentelemetry-bootstrap` now include a `--version` flag
   ([#1065](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/1065))
 
@@ -27,13 +28,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - `opentelemetry-instrumentation-pyramid` Fixed which package is the correct caller in _traced_init.
   ([#830](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/830))
 - `opentelemetry-instrumentation-tornado` Fix Tornado errors mapping to 500
-  ([#1048])(https://github.com/open-telemetry/opentelemetry-python-contrib/pull/1048)
+  ([#1048](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/1048))
 - `opentelemetry-instrumentation-urllib` make span attributes available to sampler
   ([1014](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/1014))
 - `opentelemetry-instrumentation-flask` Fix non-recording span bug
-  ([#999])(https://github.com/open-telemetry/opentelemetry-python-contrib/pull/999)
+  ([#999](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/999))
 - `opentelemetry-instrumentation-tornado` Fix non-recording span bug
-  ([#999])(https://github.com/open-telemetry/opentelemetry-python-contrib/pull/999)
+  ([#999](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/999))
 
 ### Added
 
