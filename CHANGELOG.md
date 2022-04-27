@@ -5,7 +5,24 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [Unreleased](https://github.com/open-telemetry/opentelemetry-python/compare/v1.11.0-0.30b0...HEAD)
+## [Unreleased](https://github.com/open-telemetry/opentelemetry-python/compare/v1.11.1-0.30b1...HEAD)
+
+### Fixed
+- `opentelemetry-instrumentation-aws-lambda` Fixed an issue - in some rare cases (API GW proxy integration test)
+  headers are set to None, breaking context propagators.
+  ([#1055](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/1055))
+- Refactoring custom header collection API for consistency
+  ([#1064])(https://github.com/open-telemetry/opentelemetry-python-contrib/pull/1064)
+
+## [1.11.1-0.30b1](https://github.com/open-telemetry/opentelemetry-python/releases/tag/v1.11.1-0.30b1) - 2022-04-21
+
+### Added
+- `opentelemetry-instrumentation-starlette` Capture custom request/response headers in span attributes
+  ([#1046])(https://github.com/open-telemetry/opentelemetry-python-contrib/pull/1046)
+
+### Fixed
+- Prune autoinstrumentation sitecustomize module directory from PYTHONPATH immediately
+  ([#1066](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/1066))
 
 ## [1.11.0-0.30b0](https://github.com/open-telemetry/opentelemetry-python/releases/tag/v1.11.0-0.30b0) - 2022-04-18
 
@@ -13,20 +30,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - `opentelemetry-instrumentation-pyramid` Fixed which package is the correct caller in _traced_init.
   ([#830](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/830))
 - `opentelemetry-instrumentation-tornado` Fix Tornado errors mapping to 500
-  ([#1048])(https://github.com/open-telemetry/opentelemetry-python-contrib/pull/1048)
+  ([#1048](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/1048))
 - `opentelemetry-instrumentation-urllib` make span attributes available to sampler
   ([1014](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/1014))
 - `opentelemetry-instrumentation-flask` Fix non-recording span bug
-  ([#999])(https://github.com/open-telemetry/opentelemetry-python-contrib/pull/999)
+  ([#999](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/999))
 - `opentelemetry-instrumentation-tornado` Fix non-recording span bug
   ([#999])(https://github.com/open-telemetry/opentelemetry-python-contrib/pull/999)
-- Refactoring custom header collection API for consistency
-- ([#1064])(https://github.com/open-telemetry/opentelemetry-python-contrib/pull/1064)
 
 ### Added
 
-- `opentelemetry-instrumentation-starlette` Capture custom request/response headers in span attributes
-  ([#1046])(https://github.com/open-telemetry/opentelemetry-python-contrib/pull/1046)
 - `opentelemetry-instrumentation-fastapi` Capture custom request/response headers in span attributes
   ([#1032])(https://github.com/open-telemetry/opentelemetry-python-contrib/pull/1032)
 - `opentelemetry-instrumentation-django` Capture custom request/response headers in span attributes
