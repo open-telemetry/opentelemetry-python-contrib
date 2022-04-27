@@ -9,6 +9,14 @@ from opentelemetry.instrumentation.remoulade.version import __version__
 from opentelemetry.instrumentation.remoulade.package import _instruments
 from opentelemetry.instrumentation.instrumentor import BaseInstrumentor
 from opentelemetry.propagate import extract, inject
+from opentelemetry.semconv.trace import SpanAttributes
+
+
+_MESSAGE_TAG_KEY = "remoulade.action"
+_MESSAGE_SEND = "send"
+_MESSAGE_RUN = "run"
+
+_MESSAGE_NAME_KEY = "remoulade.actor_name"
 
 
 class InstrumentationMiddleware(Middleware):
@@ -35,6 +43,10 @@ class InstrumentationMiddleware(Middleware):
             return
 
         if span.is_recording():
+            span.set_attribute(_MESSAGE_TAG_KEY, _MESSAGE_RUN)
+            # utils.set_attributes_from_context(span, kwargs)
+            # utils.set_attributes_from_context(span, task.request)
+            span.set_attribute(_MESSAGE_NAME_KEY, message.actor_name)
             pass
 
         activation.__exit__(None, None, None)
@@ -46,7 +58,10 @@ class InstrumentationMiddleware(Middleware):
         span = self._tracer.start_span(operation_name, kind=trace.SpanKind.PRODUCER)
 
         if span.is_recording():
-            # span.set_attribute("TEST_ATTRIBUTE", "TEST_VALUE")
+            span.set_attribute(_MESSAGE_TAG_KEY, _MESSAGE_SEND)
+            span.set_attribute(SpanAttributes.MESSAGING_MESSAGE_ID, message.message_id)
+            span.set_attribute(_MESSAGE_NAME_KEY, message.actor_name)
+            #  utils.set_attributes_from_context(span, kwargs)
             pass
 
         activation = trace.use_span(span, end_on_exit=True)

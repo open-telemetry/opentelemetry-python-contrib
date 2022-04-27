@@ -1,11 +1,9 @@
 import remoulade
 from remoulade.brokers.local import LocalBroker
-from remoulade.results import Results
-from remoulade.results.backends import LocalBackend
 from opentelemetry.instrumentation.remoulade import RemouladeInstrumentor
 from opentelemetry.test.test_base import TestBase
 from opentelemetry.trace import SpanKind
-
+from opentelemetry.semconv.trace import SpanAttributes
 
 
 @remoulade.actor
@@ -19,17 +17,13 @@ class TestRemouladeInstrumentation(TestBase):
 
         broker = LocalBroker()
 
-        # Should a backend be added to wait for the result ?
-        # result_backend = LocalBackend()
-        # broker.add_middleware(Results(backend=result_backend))
         remoulade.set_broker(broker)
         RemouladeInstrumentor().instrument()
 
         broker.declare_actor(actor_multiply)
 
     def test_message(self):
-        message = actor_multiply.send(1, 2)
-        # result = message.result.get(block=True)
+        actor_multiply.send(1, 2)
 
         spans = self.sorted_spans(self.memory_exporter.get_finished_spans())
         self.assertEqual(len(spans), 2)
@@ -38,9 +32,23 @@ class TestRemouladeInstrumentation(TestBase):
 
         self.assertEqual(consumer.name, "remoulade/process")
         self.assertEqual(consumer.kind, SpanKind.CONSUMER)
+        self.assertSpanHasAttributes(
+            consumer,
+            {
+                "remoulade.action": "run",
+                "remoulade.actor_name": "actor_multiply",
+            },
+        )
 
         self.assertEqual(producer.name, "remoulade/send")
         self.assertEqual(producer.kind, SpanKind.PRODUCER)
+        self.assertSpanHasAttributes(
+            producer,
+            {
+                "remoulade.action": "send",
+                "remoulade.actor_name": "actor_multiply",
+            },
+        )
 
         self.assertNotEqual(consumer.parent, producer.context)
         self.assertEqual(consumer.parent.span_id, producer.context.span_id)
