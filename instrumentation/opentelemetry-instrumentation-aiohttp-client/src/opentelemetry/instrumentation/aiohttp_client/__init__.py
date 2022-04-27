@@ -180,7 +180,11 @@ def create_trace_config(
 
         http_method = params.method.upper()
         request_span_name = f"HTTP {http_method}"
-        request_url = remove_url_credentials(trace_config_ctx.url_filter(params.url)) if callable(trace_config_ctx.url_filter) else remove_url_credentials(str(params.url)),
+        request_url = (
+            remove_url_credentials(trace_config_ctx.url_filter(params.url))
+            if callable(trace_config_ctx.url_filter)
+            else remove_url_credentials(str(params.url)),
+        )
 
         span_attributes = {
             SpanAttributes.HTTP_METHOD: http_method,
@@ -188,9 +192,7 @@ def create_trace_config(
         }
 
         trace_config_ctx.span = trace_config_ctx.tracer.start_span(
-            request_span_name,
-            kind=SpanKind.CLIENT,
-            attributes=span_attributes
+            request_span_name, kind=SpanKind.CLIENT, attributes=span_attributes
         )
 
         if callable(request_hook):
