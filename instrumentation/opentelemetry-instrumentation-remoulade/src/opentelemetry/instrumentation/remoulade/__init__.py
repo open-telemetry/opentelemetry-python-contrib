@@ -26,9 +26,14 @@ class InstrumentationMiddleware(Middleware):
 
     def before_process_message(self, _broker, message):
         trace_ctx = extract(message.options["trace_ctx"])
-        operation_name = "remoulade/process"
+        retry_count = message.options.get("retries")
+
+        operation_name = "remoulade/process" if retry_count is None else f"remoulade/process(retry-{retry_count})"
 
         span = self._tracer.start_span(operation_name, kind=trace.SpanKind.CONSUMER, context=trace_ctx)
+
+        if retry_count is not None:
+            span.set_attribute("retry_count", retry_count)
 
         activation = trace.use_span(span, end_on_exit=True)
         activation.__enter__()
@@ -44,8 +49,6 @@ class InstrumentationMiddleware(Middleware):
 
         if span.is_recording():
             span.set_attribute(_MESSAGE_TAG_KEY, _MESSAGE_RUN)
-            # utils.set_attributes_from_context(span, kwargs)
-            # utils.set_attributes_from_context(span, task.request)
             span.set_attribute(_MESSAGE_NAME_KEY, message.actor_name)
             pass
 
@@ -53,15 +56,19 @@ class InstrumentationMiddleware(Middleware):
         utils.detach_span(self._span_registry, message.message_id)
 
     def before_enqueue(self, _broker, message, delay):
-        operation_name = "remoulade/send"
+        retry_count = message.options.get("retries")
+
+        operation_name = "remoulade/send" if retry_count is None else f"remoulade/send(retry-{retry_count})"
 
         span = self._tracer.start_span(operation_name, kind=trace.SpanKind.PRODUCER)
+
+        if retry_count is not None:
+            span.set_attribute("retry_count", retry_count)
 
         if span.is_recording():
             span.set_attribute(_MESSAGE_TAG_KEY, _MESSAGE_SEND)
             span.set_attribute(SpanAttributes.MESSAGING_MESSAGE_ID, message.message_id)
             span.set_attribute(_MESSAGE_NAME_KEY, message.actor_name)
-            #  utils.set_attributes_from_context(span, kwargs)
             pass
 
         activation = trace.use_span(span, end_on_exit=True)
