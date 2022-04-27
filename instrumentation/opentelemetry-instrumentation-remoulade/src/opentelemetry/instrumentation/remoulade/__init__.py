@@ -25,7 +25,7 @@ class InstrumentationMiddleware(Middleware):
         self._span_registry = {}
 
     def before_process_message(self, _broker, message):
-        trace_ctx = extract(message.options)  # FIXME: extract/inject in message.option["trace_ctx"]
+        trace_ctx = extract(message.options["trace_ctx"])
         operation_name = "remoulade/process"
 
         span = self._tracer.start_span(operation_name, kind=trace.SpanKind.CONSUMER, context=trace_ctx)
@@ -69,7 +69,9 @@ class InstrumentationMiddleware(Middleware):
 
         utils.attach_span(self._span_registry, message.message_id, (span, activation), is_publish=True)
 
-        inject(message.options)  # FIXME: extract/inject in message.option["trace_ctx"]
+        if "trace_ctx" not in message.options:
+            message.options["trace_ctx"] = {}
+        inject(message.options["trace_ctx"])
 
     def after_enqueue(self, _broker, message, delay, exception=None):
         _, activation = utils.retrieve_span(self._span_registry, message.message_id, is_publish=True)
