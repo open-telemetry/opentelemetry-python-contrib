@@ -24,6 +24,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - `opentelemetry-instrumentation-starlette` Capture custom request/response headers in span attributes
   ([#1046])(https://github.com/open-telemetry/opentelemetry-python-contrib/pull/1046)
 
+### Fixed
+- Prune autoinstrumentation sitecustomize module directory from PYTHONPATH immediately
+  ([#1066](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/1066))
+
 ## [1.11.0-0.30b0](https://github.com/open-telemetry/opentelemetry-python/releases/tag/v1.11.0-0.30b0) - 2022-04-18
 
 ### Fixed
@@ -37,8 +41,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   ([#999](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/999))
 - `opentelemetry-instrumentation-tornado` Fix non-recording span bug
   ([#999](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/999))
-- Prune autoinstrumentation sitecustomize module directory from PYTHONPATH immediately
-  ([#1066](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/1066))
 
 ### Added
 
