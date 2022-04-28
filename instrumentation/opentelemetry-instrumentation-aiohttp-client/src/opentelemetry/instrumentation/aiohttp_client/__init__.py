@@ -183,7 +183,7 @@ def create_trace_config(
         request_url = (
             remove_url_credentials(trace_config_ctx.url_filter(params.url))
             if callable(trace_config_ctx.url_filter)
-            else remove_url_credentials(str(params.url)),
+            else remove_url_credentials(str(params.url))
         )
 
         span_attributes = {
