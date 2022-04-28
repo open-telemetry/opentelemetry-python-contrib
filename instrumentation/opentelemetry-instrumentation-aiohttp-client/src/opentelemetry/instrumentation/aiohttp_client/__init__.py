@@ -265,6 +265,7 @@ def _instrument(
     url_filter: _UrlFilterT = None,
     request_hook: _RequestHookT = None,
     response_hook: _ResponseHookT = None,
+    trace_configs: list = (),
 ):
     """Enables tracing of all ClientSessions
 
@@ -275,8 +276,6 @@ def _instrument(
     def instrumented_init(wrapped, instance, args, kwargs):
         if context_api.get_value(_SUPPRESS_INSTRUMENTATION_KEY):
             return wrapped(*args, **kwargs)
-
-        trace_configs = list(kwargs.get("trace_configs") or ())
 
         trace_config = create_trace_config(
             url_filter=url_filter,
@@ -337,6 +336,7 @@ class AioHttpClientInstrumentor(BaseInstrumentor):
             url_filter=kwargs.get("url_filter"),
             request_hook=kwargs.get("request_hook"),
             response_hook=kwargs.get("response_hook"),
+            trace_configs=kwargs.get("trace_configs"),
         )
 
     def _uninstrument(self, **kwargs):
