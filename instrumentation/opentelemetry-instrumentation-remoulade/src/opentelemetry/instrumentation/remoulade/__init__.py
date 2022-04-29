@@ -104,4 +104,6 @@ class RemouladeInstrumentor(BaseInstrumentor):
         broker.get_broker().add_middleware(instrumentation_middleware)
 
     def _uninstrument(self, **kwargs):
+        # Wait for remoulade==0.49.0 release
+        # broker.get_broker().remove_middleware(InstrumentationMiddleware)
         return
