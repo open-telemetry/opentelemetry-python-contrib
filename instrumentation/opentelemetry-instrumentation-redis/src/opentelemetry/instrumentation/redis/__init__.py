@@ -102,6 +102,10 @@ _ResponseHookT = typing.Optional[
     typing.Callable[[Span, redis.connection.Connection, Any], None]
 ]
 
+_REDIS_ASYNCIO_VERSION = (4, 2, 0)
+if redis.VERSION >= _REDIS_ASYNCIO_VERSION:
+    import redis.asyncio
+
 
 def _set_connection_attributes(span, conn):
     if not span.is_recording():
@@ -176,6 +180,22 @@ def _instrument(
         f"{pipeline_class}.immediate_execute_command",
         _traced_execute_command,
     )
+    if redis.VERSION >= _REDIS_ASYNCIO_VERSION:
+        wrap_function_wrapper(
+            "redis.asyncio",
+            f"{redis_class}.execute_command",
+            _traced_execute_command,
+        )
+        wrap_function_wrapper(
+            "redis.asyncio.client",
+            f"{pipeline_class}.execute",
+            _traced_execute_pipeline,
+        )
+        wrap_function_wrapper(
+            "redis.asyncio.client",
+            f"{pipeline_class}.immediate_execute_command",
+            _traced_execute_command,
+        )
 
 
 class RedisInstrumentor(BaseInstrumentor):
@@ -222,3 +242,8 @@ class RedisInstrumentor(BaseInstrumentor):
             unwrap(redis.Redis, "pipeline")
             unwrap(redis.client.Pipeline, "execute")
             unwrap(redis.client.Pipeline, "immediate_execute_command")
+        if redis.VERSION >= _REDIS_ASYNCIO_VERSION:
+            unwrap(redis.asyncio.Redis, "execute_command")
+            unwrap(redis.asyncio.Redis, "pipeline")
+            unwrap(redis.asyncio.client.Pipeline, "execute")
+            unwrap(redis.asyncio.client.Pipeline, "immediate_execute_command")
