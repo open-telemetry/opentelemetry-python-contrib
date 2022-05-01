@@ -342,6 +342,6 @@ class AioHttpClientInstrumentor(BaseInstrumentor):
         _uninstrument()
 
     @staticmethod
-    def uninstrument_session(client_session: aiohttp.TraceConfig .ClientSession):
+    def uninstrument_session(client_session: aiohttp.ClientSession):
         """Disables instrumentation for the given session"""
         _uninstrument_session(client_session)
