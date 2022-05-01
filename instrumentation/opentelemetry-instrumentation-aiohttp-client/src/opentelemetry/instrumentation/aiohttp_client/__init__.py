@@ -327,6 +327,8 @@ class AioHttpClientInstrumentor(BaseInstrumentor):
                     such as API keys or user personal information.
                 ``request_hook``: An optional callback that is invoked right after a span is created.
                 ``response_hook``: An optional callback which is invoked right before the span is finished processing a response.
+                ``trace_configs``: An optional list of aiohttp.TraceConfig items, allowing customize enrichment of spans
+                 based on aiohttp events (see specification: https://docs.aiohttp.org/en/stable/tracing_reference.html)
         """
         _instrument(
             tracer_provider=kwargs.get("tracer_provider"),
@@ -340,6 +342,6 @@ class AioHttpClientInstrumentor(BaseInstrumentor):
         _uninstrument()
 
     @staticmethod
-    def uninstrument_session(client_session: aiohttp.ClientSession):
+    def uninstrument_session(client_session: aiohttp.TraceConfig .ClientSession):
         """Disables instrumentation for the given session"""
         _uninstrument_session(client_session)
