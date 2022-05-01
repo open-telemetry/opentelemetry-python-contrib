@@ -235,10 +235,7 @@ class TestDatadogFormat(unittest.TestCase):
                             is_remote=False,
                             trace_flags=1,
                             trace_state={constants.DD_ORIGIN: 0},
-                        ),
-                        # "context.trace_flags": 0,
-                        # "context.trace_id": 1,
-                        # "context.trace_state": {constants.DD_ORIGIN: 0},
+                        )
                     }
                 )
             }
