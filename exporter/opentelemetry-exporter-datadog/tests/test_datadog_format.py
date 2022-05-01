@@ -146,6 +146,38 @@ class TestDatadogFormat(unittest.TestCase):
             child_carrier.get(FORMAT.ORIGIN_KEY), self.serialized_origin
         )
 
+    def test_inject_non_recording_span(self):
+        """Test the injection of a non recording span"""
+        id_generator = RandomIdGenerator()
+        trace_id = id_generator.generate_trace_id()
+        span_id = id_generator.generate_span_id()
+        span_context = trace_api.SpanContext(
+            trace_id=trace_id,
+            span_id=span_id,
+            is_remote=True,
+            trace_flags=trace_api.TraceFlags(trace_api.TraceFlags.SAMPLED)
+        )
+        span = trace_api.NonRecordingSpan(span_context)
+
+        carrier = {}
+        context = set_span_in_context(span)
+        FORMAT.inject(carrier, context=context)
+
+        self.assertEqual(
+            span[FORMAT.TRACE_ID_KEY], propagator.format_trace_id(trace_id)
+        )
+        self.assertEqual(
+            carrier[FORMAT.PARENT_ID_KEY], propagator.format_span_id(span_id)
+        )
+        self.assertEqual(
+            carrier[FORMAT.SAMPLING_PRIORITY_KEY],
+            str(constants.AUTO_KEEP),
+        )
+        self.assertEqual(
+            carrier.get(FORMAT.ORIGIN_KEY), self.serialized_origin
+        )
+
+
     def test_sampling_priority_auto_reject(self):
         """Test sampling priority rejected."""
         parent_span_context = get_current_span(
