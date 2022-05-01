@@ -156,6 +156,9 @@ class TestDatadogFormat(unittest.TestCase):
             span_id=span_id,
             is_remote=True,
             trace_flags=trace_api.TraceFlags(trace_api.TraceFlags.SAMPLED),
+            trace_state=trace_api.TraceState(
+                [(constants.DD_ORIGIN, self.serialized_origin)]
+            ),
         )
         span = trace_api.NonRecordingSpan(span_context)
 
@@ -164,7 +167,7 @@ class TestDatadogFormat(unittest.TestCase):
         FORMAT.inject(carrier, context=context)
 
         self.assertEqual(
-            span[FORMAT.TRACE_ID_KEY], propagator.format_trace_id(trace_id)
+            carrier[FORMAT.TRACE_ID_KEY], propagator.format_trace_id(trace_id)
         )
         self.assertEqual(
             carrier[FORMAT.PARENT_ID_KEY], propagator.format_span_id(span_id)
@@ -226,10 +229,16 @@ class TestDatadogFormat(unittest.TestCase):
             **{
                 "return_value": Mock(
                     **{
-                        "get_span_context.return_value": None,
-                        "context.trace_flags": 0,
-                        "context.trace_id": 1,
-                        "context.trace_state": {constants.DD_ORIGIN: 0},
+                        "get_span_context.return_value": trace_api.SpanContext(
+                            trace_id=1,
+                            span_id=2,
+                            is_remote=False,
+                            trace_flags=1,
+                            trace_state={constants.DD_ORIGIN: 0},
+                        ),
+                        # "context.trace_flags": 0,
+                        # "context.trace_id": 1,
+                        # "context.trace_state": {constants.DD_ORIGIN: 0},
                     }
                 )
             }
