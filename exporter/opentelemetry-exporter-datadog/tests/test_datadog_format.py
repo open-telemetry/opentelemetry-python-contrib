@@ -155,7 +155,7 @@ class TestDatadogFormat(unittest.TestCase):
             trace_id=trace_id,
             span_id=span_id,
             is_remote=True,
-            trace_flags=trace_api.TraceFlags(trace_api.TraceFlags.SAMPLED)
+            trace_flags=trace_api.TraceFlags(trace_api.TraceFlags.SAMPLED),
         )
         span = trace_api.NonRecordingSpan(span_context)
 
@@ -176,7 +176,6 @@ class TestDatadogFormat(unittest.TestCase):
         self.assertEqual(
             carrier.get(FORMAT.ORIGIN_KEY), self.serialized_origin
         )
-
 
     def test_sampling_priority_auto_reject(self):
         """Test sampling priority rejected."""
