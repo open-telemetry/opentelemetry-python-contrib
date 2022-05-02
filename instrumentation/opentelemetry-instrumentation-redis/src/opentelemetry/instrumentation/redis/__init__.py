@@ -38,6 +38,22 @@ Usage
     client = redis.StrictRedis(host="localhost", port=6379)
     client.get("my-key")
 
+Async Redis clients (i.e. redis.asyncio.Redis) are also instrumented in the same way:
+
+.. code:: python
+
+    from opentelemetry.instrumentation.redis import RedisInstrumentor
+    import redis.asyncio
+
+
+    # Instrument redis
+    RedisInstrumentor().instrument()
+
+    # This will report a span with the default settings
+    async def redis_get():
+        client = redis.asyncio.Redis(host="localhost", port=6379)
+        await client.get("my-key")
+
 The `instrument` method accepts the following keyword args:
 
 tracer_provider (TracerProvider) - an optional tracer provider
