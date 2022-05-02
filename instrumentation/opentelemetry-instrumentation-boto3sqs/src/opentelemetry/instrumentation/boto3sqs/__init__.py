@@ -30,10 +30,10 @@ Usage
 """
 
 import wrapt
-import logging
 import boto3
+import logging
 import botocore.client
-from typing import Dict, Collection, List, Optional, Any, Tuple
+from typing import Dict, Collection, List, Optional, Any
 from opentelemetry import context, propagate, trace
 from opentelemetry.instrumentation.utils import unwrap
 from opentelemetry.instrumentation.instrumentor import BaseInstrumentor
@@ -64,7 +64,7 @@ class Boto3SQSGetter(Getter):
 
     def keys(self, carrier: CarrierT) -> List[str]:
         return [
-            key.rstrip(OPENTELEMETRY_ATTRIBUTE_IDENTIFIER)
+            key[len(OPENTELEMETRY_ATTRIBUTE_IDENTIFIER):]
             if key.startswith(OPENTELEMETRY_ATTRIBUTE_IDENTIFIER)
             else key
             for key in carrier.keys()
@@ -104,6 +104,7 @@ class Boto3SQSInstrumentor(BaseInstrumentor):
         if not span.is_recording():
             return
         span.set_attribute(SpanAttributes.MESSAGING_SYSTEM, "aws.sqs")
+        span.set_attribute(SpanAttributes.MESSAGING_DESTINATION, queue_name)
         span.set_attribute(
             SpanAttributes.MESSAGING_DESTINATION_KIND,
             MessagingDestinationKindValues.QUEUE.value,
@@ -114,13 +115,42 @@ class Boto3SQSInstrumentor(BaseInstrumentor):
             )
         else:
             span.set_attribute(SpanAttributes.MESSAGING_TEMP_DESTINATION, True)
-        span.set_attribute(SpanAttributes.MESSAGING_DESTINATION, queue_name)
         if conversation_id:
             span.set_attribute(
                 SpanAttributes.MESSAGING_CONVERSATION_ID, conversation_id
             )
         if message_id:
             span.set_attribute(SpanAttributes.MESSAGING_MESSAGE_ID, message_id)
+
+    def _create_processing_span(
+        self, queue_name: str, receipt_handle: str, message: Dict[str, Any]
+    ) -> None:
+        message_attributes = message.get("MessageAttributes", {})
+        links = []
+        if ctx := propagate.extract(
+            message_attributes, getter=boto3sqs_getter
+        ):
+            for item in ctx.values():
+                if hasattr(item, "get_span_context"):
+                    links.append(Link(context=item.get_span_context()))
+        span = self._tracer.start_span(
+            name=f"{queue_name} process",
+            links=links,
+            kind=SpanKind.CONSUMER,
+        )
+        with trace.use_span(span):
+            message_id = message.get("MessageId", None)
+            self._received_messages_spans[receipt_handle] = span
+            Boto3SQSInstrumentor._enrich_span(
+                span,
+                queue_name,
+                message_id=message_id,
+                operation=MessagingOperationValues.PROCESS,
+            )
+
+    def _safe_end_processing_span(self, receipt_handle: str):
+        if receipt_handle in self._received_messages_spans:
+            self._received_messages_spans[receipt_handle].end()
 
     @staticmethod
     def _extract_queue_name_from_url(queue_url: str) -> str:
@@ -141,16 +171,16 @@ class Boto3SQSInstrumentor(BaseInstrumentor):
                 name=f"{queue_name} send",
                 kind=SpanKind.PRODUCER,
             )
-            if span.is_recording():
-                Boto3SQSInstrumentor._enrich_span(span, queue_name)
+            Boto3SQSInstrumentor._enrich_span(span, queue_name)
             with trace.use_span(span, end_on_exit=True):
                 attributes = kwargs.pop("MessageAttributes", {})
                 propagate.inject(attributes, setter=boto3sqs_setter)
                 retval = wrapped(*args, MessageAttributes=attributes, **kwargs)
                 if message_id := retval.get("MessageId"):
-                    span.set_attribute(
-                        SpanAttributes.MESSAGING_MESSAGE_ID, message_id
-                    )
+                    if span.is_recording():
+                        span.set_attribute(
+                            SpanAttributes.MESSAGING_MESSAGE_ID, message_id
+                        )
                 return retval
 
         wrapt.wrap_function_wrapper(
@@ -162,7 +192,7 @@ class Boto3SQSInstrumentor(BaseInstrumentor):
             queue_url = kwargs.get("QueueUrl")
             entries = kwargs.get("Entries")
             # The method expect QueueUrl and Entries params, so if they are None, we call wrapped to receive the
-            # origial exception
+            # original exception
             if (
                 context.get_value(_SUPPRESS_INSTRUMENTATION_KEY)
                 or not queue_url
@@ -180,10 +210,9 @@ class Boto3SQSInstrumentor(BaseInstrumentor):
                     kind=SpanKind.PRODUCER,
                 )
                 ids_to_spans[entry_id] = span
-                if span.is_recording():
-                    Boto3SQSInstrumentor._enrich_span(
-                        span, queue_name, conversation_id=entry_id
-                    )
+                Boto3SQSInstrumentor._enrich_span(
+                    span, queue_name, conversation_id=entry_id
+                )
                 with trace.use_span(span):
                     if "MessageAttributes" not in entry:
                         entry["MessageAttributes"] = {}
@@ -194,10 +223,11 @@ class Boto3SQSInstrumentor(BaseInstrumentor):
             for successful_messages in retval["Successful"]:
                 message_identifier = successful_messages["Id"]
                 if message_span := ids_to_spans.get(message_identifier):
-                    message_span.set_attribute(
-                        SpanAttributes.MESSAGING_MESSAGE_ID,
-                        successful_messages.get("MessageId"),
-                    )
+                    if message_span.is_recording():
+                        message_span.set_attribute(
+                            SpanAttributes.MESSAGING_MESSAGE_ID,
+                            successful_messages.get("MessageId"),
+                        )
             for span in ids_to_spans.values():
                 span.end()
             return retval
@@ -216,45 +246,29 @@ class Boto3SQSInstrumentor(BaseInstrumentor):
             queue_name = Boto3SQSInstrumentor._extract_queue_name_from_url(
                 queue_url
             )
-            with self._tracer.start_as_current_span(name=f"{queue_name} receive", end_on_exit=True) as span:
+            with self._tracer.start_as_current_span(
+                name=f"{queue_name} receive",
+                end_on_exit=True,
+                kind=SpanKind.CONSUMER,
+            ) as span:
                 Boto3SQSInstrumentor._enrich_span(
-                    span, queue_name
+                    span,
+                    queue_name,
+                    operation=MessagingOperationValues.RECEIVE,
                 )
                 retval = wrapped(
-                    *args, MessageAttributeNames=message_attribute_names, **kwargs
+                    *args,
+                    MessageAttributeNames=message_attribute_names,
+                    **kwargs,
                 )
                 messages = retval.get("Messages", [])
                 for message in messages:
                     if not (receipt_handle := message["ReceiptHandle"]):
                         continue
-                    if receipt_handle in self._received_messages_spans:
-                        span, token = self._received_messages_spans[receipt_handle]
-                        context.detach(token)
-                        span.end()
-                    message_attributes = message.get("MessageAttributes", {})
-                    links = []
-                    if ctx := propagate.extract(
-                        message_attributes, getter=boto3sqs_getter
-                    ):
-                        for item in ctx.values():
-                            if hasattr(item, "get_span_context"):
-                                links.append(Link(context=item.get_span_context()))
-                    span = self._tracer.start_span(
-                        name=f"{queue_name} produce",
-                        links=links,
-                        kind=SpanKind.CONSUMER,
+                    self._safe_end_processing_span(receipt_handle)
+                    self._create_processing_span(
+                        queue_name, receipt_handle, message
                     )
-                    with trace.use_span(span):
-                        new_context = trace.set_span_in_context(span, ctx)
-                        token = context.attach(new_context)
-                        message_id = message.get("MessageId", None)
-                        self._received_messages_spans[receipt_handle] = (
-                            span,
-                            token,
-                        )
-                        Boto3SQSInstrumentor._enrich_span(
-                            span, queue_name, message_id=message_id
-                        )
             return retval
 
         wrapt.wrap_function_wrapper(
@@ -264,14 +278,25 @@ class Boto3SQSInstrumentor(BaseInstrumentor):
     def _wrap_delete_message(self) -> None:
         def delete_message_wrapper(wrapped, instance, args, kwargs):
             if receipt_handle := kwargs.get("ReceiptHandle"):
-                if receipt_handle in self._received_messages_spans:
-                    span, token = self._received_messages_spans[receipt_handle]
-                    context.detach(token)
-                    span.end()
+                self._safe_end_processing_span(receipt_handle)
             return wrapped(*args, **kwargs)
 
         wrapt.wrap_function_wrapper(
             self._sqs_class, "delete_message", delete_message_wrapper
+        )
+
+    def _wrap_delete_message_batch(self) -> None:
+        def delete_message_wrapper_batch(wrapped, instance, args, kwargs):
+            entries = kwargs.get("Entries")
+            for entry in entries:
+                if receipt_handle := entry.get("ReceiptHandle"):
+                    self._safe_end_processing_span(receipt_handle)
+                return wrapped(*args, **kwargs)
+
+        wrapt.wrap_function_wrapper(
+            self._sqs_class,
+            "delete_message_batch",
+            delete_message_wrapper_batch,
         )
 
     def _wrap_client_creation(self) -> None:
@@ -297,7 +322,7 @@ class Boto3SQSInstrumentor(BaseInstrumentor):
         sqs_class = [
             cls
             for cls in botocore.client.BaseClient.__subclasses__()
-            if "botocore.client.SQS" in str(cls)
+            if hasattr(cls, "send_message_batch")
         ]
         if sqs_class:
             self._sqs_class = sqs_class[0]
@@ -306,6 +331,7 @@ class Boto3SQSInstrumentor(BaseInstrumentor):
             self._wrap_send_message_batch()
             self._wrap_receive_message()
             self._wrap_delete_message()
+            self._wrap_delete_message_batch()
 
     def _un_decorate_sqs(self) -> None:
         if self._did_decorate:
@@ -313,11 +339,12 @@ class Boto3SQSInstrumentor(BaseInstrumentor):
             unwrap(self._sqs_class, "send_message_batch")
             unwrap(self._sqs_class, "receive_message")
             unwrap(self._sqs_class, "delete_message")
+            unwrap(self._sqs_class, "delete_message_batch")
             self._did_decorate = False
 
     def _instrument(self, **kwargs: Dict[str, Any]) -> None:
         self._did_decorate: bool = False
-        self._received_messages_spans: Dict[str, Tuple[Span, Any]] = {}
+        self._received_messages_spans: Dict[str, Span] = {}
         self._tracer_provider: Optional[TracerProvider] = kwargs.get(
             "tracer_provider"
         )
