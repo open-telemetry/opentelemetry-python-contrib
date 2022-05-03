@@ -12,9 +12,10 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 from unittest import TestCase
+
 from opentelemetry.instrumentation.boto3sqs import (
-    Boto3SQSGetter,
     OPENTELEMETRY_ATTRIBUTE_IDENTIFIER,
+    Boto3SQSGetter,
 )
 
 

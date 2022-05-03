@@ -12,15 +12,19 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+from unittest import TestCase
+
 import boto3
 import botocore.client
-from unittest import TestCase
 from wrapt import BoundFunctionWrapper, FunctionWrapper
+
 from opentelemetry.instrumentation.boto3sqs import Boto3SQSInstrumentor
 
 
+# pylint: disable=attribute-defined-outside-init
 class TestBoto3SQSInstrumentor(TestCase):
     def define_sqs_mock(self) -> None:
+        # pylint: disable=R0201
         class SQSClientMock(botocore.client.BaseClient):
             def send_message(self, *args, **kwargs):
                 ...

@@ -12,9 +12,10 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 from unittest import TestCase
+
 from opentelemetry.instrumentation.boto3sqs import (
-    Boto3SQSSetter,
     OPENTELEMETRY_ATTRIBUTE_IDENTIFIER,
+    Boto3SQSSetter,
 )
 
 
@@ -30,8 +31,8 @@ class TestBoto3SQSSetter(TestCase):
         value = "value"
         self.setter.set(carrier, key, value)
         # Ensure the original value is not harmed
-        for k, v in carrier[original_key].items():
-            self.assertEqual(original_value[k], v)
+        for dict_key, dict_val in carrier[original_key].items():
+            self.assertEqual(original_value[dict_key], dict_val)
         # Ensure the new key is added well
         self.assertIn(
             f"{OPENTELEMETRY_ATTRIBUTE_IDENTIFIER}{key}", carrier.keys()

@@ -29,29 +29,33 @@ Usage
     Boto3SQSInstrumentor().instrument()
 """
 
-import wrapt
-import boto3
 import logging
+from typing import Any, Collection, Dict, Generator, List, Optional
+
+import boto3
 import botocore.client
-from typing import Dict, Collection, List, Optional, Any, Generator
+import wrapt
+
 from opentelemetry import context, propagate, trace
-from opentelemetry.instrumentation.utils import unwrap
-from opentelemetry.instrumentation.instrumentor import BaseInstrumentor
-from opentelemetry.instrumentation.boto3sqs.version import __version__
 from opentelemetry.instrumentation.boto3sqs.package import _instruments
-from opentelemetry.instrumentation.utils import _SUPPRESS_INSTRUMENTATION_KEY
-from opentelemetry.propagators.textmap import Getter, Setter, CarrierT
-from opentelemetry.trace import SpanKind, Tracer, Span, TracerProvider, Link
+from opentelemetry.instrumentation.boto3sqs.version import __version__
+from opentelemetry.instrumentation.instrumentor import BaseInstrumentor
+from opentelemetry.instrumentation.utils import (
+    _SUPPRESS_INSTRUMENTATION_KEY,
+    unwrap,
+)
+from opentelemetry.propagators.textmap import CarrierT, Getter, Setter
 from opentelemetry.semconv.trace import (
+    MessagingDestinationKindValues,
     MessagingOperationValues,
     SpanAttributes,
-    MessagingDestinationKindValues,
 )
+from opentelemetry.trace import Link, Span, SpanKind, Tracer, TracerProvider
 
 logger = logging.getLogger(__name__)
 # We use this prefix so we can request all instrumentation MessageAttributeNames with a wildcard, without harming
 # existing filters
-OPENTELEMETRY_ATTRIBUTE_IDENTIFIER = "otel."
+OPENTELEMETRY_ATTRIBUTE_IDENTIFIER: str = "otel."
 
 
 class Boto3SQSGetter(Getter):
@@ -92,6 +96,7 @@ boto3sqs_getter = Boto3SQSGetter()
 boto3sqs_setter = Boto3SQSSetter()
 
 
+# pylint: disable=attribute-defined-outside-init
 class Boto3SQSInstrumentor(BaseInstrumentor):
     received_messages_spans: Dict[str, Span] = {}
     current_span_related_to_token: Span = None
@@ -133,10 +138,10 @@ class Boto3SQSInstrumentor(BaseInstrumentor):
             return retval
 
         def __iter__(self) -> Generator:
-            i = 0
-            while i < len(self):
-                yield self[i]
-                i = i + 1
+            index = 0
+            while index < len(self):
+                yield self[index]
+                index = index + 1
 
     def instrumentation_dependencies(self) -> Collection[str]:
         return _instruments
