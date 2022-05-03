@@ -113,7 +113,7 @@ libraries = {
         "instrumentation": "opentelemetry-instrumentation-redis==0.30b0",
     },
     "remoulade": {
-        "library": "remoulade >= 0.48",
+        "library": "remoulade >= 0.49",
         "instrumentation": "opentelemetry-instrumentation-remoulade==0.30b0",
     },
     "requests": {
