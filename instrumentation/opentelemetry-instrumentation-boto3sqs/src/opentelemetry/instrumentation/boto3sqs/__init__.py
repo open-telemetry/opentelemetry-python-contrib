@@ -28,7 +28,6 @@ Usage
 
     Boto3SQSInstrumentor().instrument()
 """
-
 import logging
 from typing import Any, Collection, Dict, Generator, List, Optional
 
@@ -37,8 +36,6 @@ import botocore.client
 import wrapt
 
 from opentelemetry import context, propagate, trace
-from opentelemetry.instrumentation.boto3sqs.package import _instruments
-from opentelemetry.instrumentation.boto3sqs.version import __version__
 from opentelemetry.instrumentation.instrumentor import BaseInstrumentor
 from opentelemetry.instrumentation.utils import (
     _SUPPRESS_INSTRUMENTATION_KEY,
@@ -51,6 +48,9 @@ from opentelemetry.semconv.trace import (
     SpanAttributes,
 )
 from opentelemetry.trace import Link, Span, SpanKind, Tracer, TracerProvider
+
+from .package import _instruments
+from .version import __version__
 
 logger = logging.getLogger(__name__)
 # We use this prefix so we can request all instrumentation MessageAttributeNames with a wildcard, without harming
