@@ -13,4 +13,4 @@
 # limitations under the License.
 from typing import Collection
 
-_instruments: Collection[str] = ("boto~=2.0",)
+_instruments: Collection[str] = ("boto3 ~= 1.0",)
