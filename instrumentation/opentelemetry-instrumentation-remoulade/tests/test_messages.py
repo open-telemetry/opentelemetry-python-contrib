@@ -3,7 +3,6 @@ from remoulade.brokers.local import LocalBroker
 from opentelemetry.instrumentation.remoulade import RemouladeInstrumentor
 from opentelemetry.test.test_base import TestBase
 from opentelemetry.trace import SpanKind
-from opentelemetry.semconv.trace import SpanAttributes
 
 
 @remoulade.actor(max_retries=3)
@@ -36,7 +35,7 @@ class TestRemouladeInstrumentation(TestBase):
             consumer,
             {
                 "remoulade.action": "run",
-                "remoulade.actor_name": "actor_multiply",
+                "remoulade.actor_name": "actor_div",
             },
         )
 
@@ -46,7 +45,7 @@ class TestRemouladeInstrumentation(TestBase):
             producer,
             {
                 "remoulade.action": "send",
-                "remoulade.actor_name": "actor_multiply",
+                "remoulade.actor_name": "actor_div",
             },
         )
 
@@ -69,7 +68,7 @@ class TestRemouladeInstrumentation(TestBase):
         self.assertEqual(consumer_spans[0].name, "remoulade/process(retry-3)")
         self.assertSpanHasAttributes(
             consumer_spans[0],
-            { "retry_count": 3 }
+            {"retry_count": 3}
         )
         self.assertEqual(consumer_spans[1].name, "remoulade/process(retry-2)")
         self.assertSpanHasAttributes(
