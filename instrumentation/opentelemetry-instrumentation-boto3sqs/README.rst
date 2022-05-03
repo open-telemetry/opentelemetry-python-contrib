@@ -1,5 +1,5 @@
 OpenTelemetry Boto3 SQS Instrumentation
-===========================
+=======================================
 
 |pypi|
 

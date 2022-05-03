@@ -118,23 +118,22 @@ class Boto3SQSInstrumentor(BaseInstrumentor):
             retval = super(
                 Boto3SQSInstrumentor.ContextableList, self
             ).__getitem__(*args, **kwargs)
-            if isinstance(retval, dict):
-                if receipt_handle := retval.get("ReceiptHandle", None):
-                    if started_span := Boto3SQSInstrumentor.received_messages_spans.get(
-                        receipt_handle, None
-                    ):
-                        if Boto3SQSInstrumentor.current_context_token:
-                            context.detach(
-                                Boto3SQSInstrumentor.current_context_token
-                            )
-                        Boto3SQSInstrumentor.current_context_token = (
-                            context.attach(
-                                trace.set_span_in_context(started_span)
-                            )
-                        )
-                        Boto3SQSInstrumentor.current_span_related_to_token = (
-                            started_span
-                        )
+            if not isinstance(retval, dict):
+                return retval
+            if not (receipt_handle := retval.get("ReceiptHandle", None)):
+                return retval
+            if not (
+                started_span := Boto3SQSInstrumentor.received_messages_spans.get(
+                    receipt_handle, None
+                )
+            ):
+                return retval
+            if Boto3SQSInstrumentor.current_context_token:
+                context.detach(Boto3SQSInstrumentor.current_context_token)
+            Boto3SQSInstrumentor.current_context_token = context.attach(
+                trace.set_span_in_context(started_span)
+            )
+            Boto3SQSInstrumentor.current_span_related_to_token = started_span
             return retval
 
         def __iter__(self) -> Generator:
