@@ -1,19 +1,19 @@
-OpenTelemetry Redis Instrumentation
+OpenTelemetry Remoulade Instrumentation
 ===================================
 
 |pypi|
 
-.. |pypi| image:: https://badge.fury.io/py/opentelemetry-instrumentation-redis.svg
-   :target: https://pypi.org/project/opentelemetry-instrumentation-redis/
+.. |pypi| image:: https://badge.fury.io/py/opentelemetry-instrumentation-remoulade.svg
+   :target: https://pypi.org/project/opentelemetry-instrumentation-remoulade/
 
-This library allows tracing requests made by the Redis library.
+This library allows tracing requests made by the Remoulade library.
 
 Installation
 ------------
 
 ::
 
-    pip install opentelemetry-instrumentation-redis
+    pip install opentelemetry-instrumentation-remoulade
 
 Usage
 -----
@@ -54,6 +54,6 @@ Setting up tracing
 References
 ----------
 
-* `OpenTelemetry Redis Instrumentation <https://opentelemetry-python-contrib.readthedocs.io/en/latest/instrumentation/redis/redis.html>`_
+* `OpenTelemetry Remoulade Instrumentation <https://opentelemetry-python-contrib.readthedocs.io/en/latest/instrumentation/remoulade/remoulade.html>`_
 * `OpenTelemetry Project <https://opentelemetry.io/>`_
 * `OpenTelemetry Python Examples <https://github.com/open-telemetry/opentelemetry-python/tree/main/docs/examples>`_
