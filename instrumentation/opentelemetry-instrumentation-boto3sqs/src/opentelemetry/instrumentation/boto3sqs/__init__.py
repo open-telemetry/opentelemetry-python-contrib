@@ -33,7 +33,7 @@ import wrapt
 import boto3
 import logging
 import botocore.client
-from typing import Dict, Collection, List, Optional, Any
+from typing import Dict, Collection, List, Optional, Any, Generator
 from opentelemetry import context, propagate, trace
 from opentelemetry.instrumentation.utils import unwrap
 from opentelemetry.instrumentation.instrumentor import BaseInstrumentor
@@ -49,6 +49,8 @@ from opentelemetry.semconv.trace import (
 )
 
 logger = logging.getLogger(__name__)
+# We use this prefix so we can request all instrumentation MessageAttributeNames with a wildcard, without harming
+# existing filters
 OPENTELEMETRY_ATTRIBUTE_IDENTIFIER = "otel."
 
 
@@ -64,7 +66,7 @@ class Boto3SQSGetter(Getter):
 
     def keys(self, carrier: CarrierT) -> List[str]:
         return [
-            key[len(OPENTELEMETRY_ATTRIBUTE_IDENTIFIER):]
+            key[len(OPENTELEMETRY_ATTRIBUTE_IDENTIFIER) :]
             if key.startswith(OPENTELEMETRY_ATTRIBUTE_IDENTIFIER)
             else key
             for key in carrier.keys()
@@ -73,6 +75,7 @@ class Boto3SQSGetter(Getter):
 
 class Boto3SQSSetter(Setter):
     def set(self, carrier: CarrierT, key: str, value: str) -> None:
+        # This is a limitation defined by AWS for SQS MessageAttributes size
         if len(carrier.items()) < 10:
             carrier[f"{OPENTELEMETRY_ATTRIBUTE_IDENTIFIER}{key}"] = {
                 "StringValue": value,
@@ -90,6 +93,51 @@ boto3sqs_setter = Boto3SQSSetter()
 
 
 class Boto3SQSInstrumentor(BaseInstrumentor):
+    received_messages_spans: Dict[str, Span] = {}
+    current_span_related_to_token: Span = None
+    current_context_token = None
+
+    class ContextableList(list):
+        """
+        Since the classic way to process SQS messages is using a `for` loop, without a well defined scope like a
+        callback - we are doing something similar to the instrumentaiton of Kafka-python and instrumenting the
+        `__iter__` functions and the `__getitem__` functions to set the span context of the addressed message. Since
+        the return value from an `SQS.ReceiveMessage` returns a builtin list, we cannot wrap it and change all of the
+        calls for `list.__iter__` and `list.__getitem__` - therefore we use ContextableList. It is bound to the
+        received_messages_spans dict
+        """
+
+        def __getitem__(
+            self, *args: List[Any], **kwargs: Dict[str, Any]
+        ) -> Any:
+            retval = super(
+                Boto3SQSInstrumentor.ContextableList, self
+            ).__getitem__(*args, **kwargs)
+            if isinstance(retval, dict):
+                if receipt_handle := retval.get("ReceiptHandle", None):
+                    if started_span := Boto3SQSInstrumentor.received_messages_spans.get(
+                        receipt_handle, None
+                    ):
+                        if Boto3SQSInstrumentor.current_context_token:
+                            context.detach(
+                                Boto3SQSInstrumentor.current_context_token
+                            )
+                        Boto3SQSInstrumentor.current_context_token = (
+                            context.attach(
+                                trace.set_span_in_context(started_span)
+                            )
+                        )
+                        Boto3SQSInstrumentor.current_span_related_to_token = (
+                            started_span
+                        )
+            return retval
+
+        def __iter__(self) -> Generator:
+            i = 0
+            while i < len(self):
+                yield self[i]
+                i = i + 1
+
     def instrumentation_dependencies(self) -> Collection[str]:
         return _instruments
 
@@ -122,6 +170,24 @@ class Boto3SQSInstrumentor(BaseInstrumentor):
         if message_id:
             span.set_attribute(SpanAttributes.MESSAGING_MESSAGE_ID, message_id)
 
+    @staticmethod
+    def _safe_end_processing_span(receipt_handle: str) -> None:
+        if started_span := Boto3SQSInstrumentor.received_messages_spans.pop(
+            receipt_handle, None
+        ):
+            if (
+                Boto3SQSInstrumentor.current_span_related_to_token
+                == started_span
+            ):
+                context.detach(Boto3SQSInstrumentor.current_context_token)
+                Boto3SQSInstrumentor.current_context_token = None
+            started_span.end()
+
+    @staticmethod
+    def _extract_queue_name_from_url(queue_url: str) -> str:
+        # A Queue name cannot have the `/` char, therefore we can return the part after the last /
+        return queue_url.split("/")[-1]
+
     def _create_processing_span(
         self, queue_name: str, receipt_handle: str, message: Dict[str, Any]
     ) -> None:
@@ -140,22 +206,13 @@ class Boto3SQSInstrumentor(BaseInstrumentor):
         )
         with trace.use_span(span):
             message_id = message.get("MessageId", None)
-            self._received_messages_spans[receipt_handle] = span
+            Boto3SQSInstrumentor.received_messages_spans[receipt_handle] = span
             Boto3SQSInstrumentor._enrich_span(
                 span,
                 queue_name,
                 message_id=message_id,
                 operation=MessagingOperationValues.PROCESS,
             )
-
-    def _safe_end_processing_span(self, receipt_handle: str):
-        if receipt_handle in self._received_messages_spans:
-            self._received_messages_spans[receipt_handle].end()
-
-    @staticmethod
-    def _extract_queue_name_from_url(queue_url: str) -> str:
-        # A Queue name cannot have the `/` char, therefore we can return the part after the last /
-        return queue_url.split("/")[-1]
 
     def _wrap_send_message(self) -> None:
         def send_wrapper(wrapped, instance, args, kwargs):
@@ -261,14 +318,22 @@ class Boto3SQSInstrumentor(BaseInstrumentor):
                     MessageAttributeNames=message_attribute_names,
                     **kwargs,
                 )
-                messages = retval.get("Messages", [])
+                if not (messages := retval.get("Messages", [])):
+                    return retval
                 for message in messages:
-                    if not (receipt_handle := message["ReceiptHandle"]):
+                    if not (
+                        receipt_handle := message.get("ReceiptHandle", None)
+                    ):
                         continue
-                    self._safe_end_processing_span(receipt_handle)
+                    Boto3SQSInstrumentor._safe_end_processing_span(
+                        receipt_handle
+                    )
                     self._create_processing_span(
                         queue_name, receipt_handle, message
                     )
+                retval["Messages"] = Boto3SQSInstrumentor.ContextableList(
+                    messages
+                )
             return retval
 
         wrapt.wrap_function_wrapper(
@@ -278,7 +343,7 @@ class Boto3SQSInstrumentor(BaseInstrumentor):
     def _wrap_delete_message(self) -> None:
         def delete_message_wrapper(wrapped, instance, args, kwargs):
             if receipt_handle := kwargs.get("ReceiptHandle"):
-                self._safe_end_processing_span(receipt_handle)
+                Boto3SQSInstrumentor._safe_end_processing_span(receipt_handle)
             return wrapped(*args, **kwargs)
 
         wrapt.wrap_function_wrapper(
@@ -289,8 +354,10 @@ class Boto3SQSInstrumentor(BaseInstrumentor):
         def delete_message_wrapper_batch(wrapped, instance, args, kwargs):
             entries = kwargs.get("Entries")
             for entry in entries:
-                if receipt_handle := entry.get("ReceiptHandle"):
-                    self._safe_end_processing_span(receipt_handle)
+                if receipt_handle := entry.get("ReceiptHandle", None):
+                    Boto3SQSInstrumentor._safe_end_processing_span(
+                        receipt_handle
+                    )
                 return wrapped(*args, **kwargs)
 
         wrapt.wrap_function_wrapper(
@@ -317,8 +384,9 @@ class Boto3SQSInstrumentor(BaseInstrumentor):
     def _decorate_sqs(self) -> None:
         """
         Since botocore creates classes on the fly using schemas, we try to find the class that inherits from the base
-        class and defines SQS to wrap.
+        class and is SQS to wrap.
         """
+        # We define SQS client as the only client that implements send_message_batch
         sqs_class = [
             cls
             for cls in botocore.client.BaseClient.__subclasses__()
@@ -344,7 +412,6 @@ class Boto3SQSInstrumentor(BaseInstrumentor):
 
     def _instrument(self, **kwargs: Dict[str, Any]) -> None:
         self._did_decorate: bool = False
-        self._received_messages_spans: Dict[str, Span] = {}
         self._tracer_provider: Optional[TracerProvider] = kwargs.get(
             "tracer_provider"
         )

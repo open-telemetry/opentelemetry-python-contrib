@@ -33,6 +33,8 @@ class TestBoto3SQSSetter(TestCase):
         for k, v in carrier[original_key].items():
             self.assertEqual(original_value[k], v)
         # Ensure the new key is added well
-        self.assertIn(f"{OPENTELEMETRY_ATTRIBUTE_IDENTIFIER}{key}", carrier.keys())
+        self.assertIn(
+            f"{OPENTELEMETRY_ATTRIBUTE_IDENTIFIER}{key}", carrier.keys()
+        )
         new_value = carrier[f"{OPENTELEMETRY_ATTRIBUTE_IDENTIFIER}{key}"]
         self.assertEqual(new_value["StringValue"], value)

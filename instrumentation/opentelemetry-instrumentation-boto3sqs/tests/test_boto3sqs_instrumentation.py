@@ -52,9 +52,27 @@ class TestBoto3SQSInstrumentor(TestCase):
 
         instrumentation.instrument()
         self.assertTrue(isinstance(boto3.client, FunctionWrapper))
-        self.assertTrue(isinstance(self._boto_sqs_mock.send_message, BoundFunctionWrapper))
-        self.assertTrue(isinstance(self._boto_sqs_mock.send_message_batch, BoundFunctionWrapper))
-        self.assertTrue(isinstance(self._boto_sqs_mock.receive_message, BoundFunctionWrapper))
-        self.assertTrue(isinstance(self._boto_sqs_mock.delete_message, BoundFunctionWrapper))
-        self.assertTrue(isinstance(self._boto_sqs_mock.delete_message_batch, BoundFunctionWrapper))
+        self.assertTrue(
+            isinstance(self._boto_sqs_mock.send_message, BoundFunctionWrapper)
+        )
+        self.assertTrue(
+            isinstance(
+                self._boto_sqs_mock.send_message_batch, BoundFunctionWrapper
+            )
+        )
+        self.assertTrue(
+            isinstance(
+                self._boto_sqs_mock.receive_message, BoundFunctionWrapper
+            )
+        )
+        self.assertTrue(
+            isinstance(
+                self._boto_sqs_mock.delete_message, BoundFunctionWrapper
+            )
+        )
+        self.assertTrue(
+            isinstance(
+                self._boto_sqs_mock.delete_message_batch, BoundFunctionWrapper
+            )
+        )
         instrumentation.uninstrument()
