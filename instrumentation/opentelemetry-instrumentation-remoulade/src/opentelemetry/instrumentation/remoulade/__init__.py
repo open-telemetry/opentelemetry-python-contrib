@@ -1,3 +1,48 @@
+# Copyright The OpenTelemetry Authors
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
+"""
+Usage
+-----
+
+* Start broker backend
+
+::
+
+    docker run -p 5672:5672 rabbitmq
+
+* Run instrumented actor
+
+.. code-block:: python
+
+    from remoulade.brokers.rabbitmq import RabbitmqBroker
+    import remoulade
+
+    RemouladeInstrumentor().instrument()
+
+    broker = RabbitmqBroker()
+    remoulade.set_broker(broker)
+
+    @remoulade.actor
+    def multiply(x, y):
+        return x * y
+
+    broker.declare_actor(count_words)
+
+    multiply.send(43, 51)
+
+"""
 from typing import Collection, Optional, List, Iterable
 
 from remoulade import Middleware, broker

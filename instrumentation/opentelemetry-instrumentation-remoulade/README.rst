@@ -15,37 +15,6 @@ Installation
 
     pip install opentelemetry-instrumentation-remoulade
 
-Usage
------
-
-* Start broker backend
-
-::
-
-    docker run -p 5672:5672 rabbitmq
-
-* Run instrumented actor
-
-.. code-block:: python
-
-    from remoulade.brokers.rabbitmq import RabbitmqBroker
-    import remoulade
-
-    RemouladeInstrumentor().instrument()
-
-    broker = RabbitmqBroker()
-    remoulade.set_broker(broker)
-
-    @remoulade.actor
-    def multiply(x, y):
-        return x * y
-
-    broker.declare_actor(count_words)
-
-    multiply.send(43, 51)
-
-
-
 References
 ----------
 
