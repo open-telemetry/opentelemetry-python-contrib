@@ -1,5 +1,4 @@
-import logging
-from typing import Collection
+from typing import Collection, Optional, List, Iterable
 
 from remoulade import Middleware, broker
 
@@ -8,6 +7,7 @@ from opentelemetry.instrumentation.instrumentor import BaseInstrumentor
 from opentelemetry.instrumentation.remoulade import utils
 from opentelemetry.instrumentation.remoulade.package import _instruments
 from opentelemetry.instrumentation.remoulade.version import __version__
+from opentelemetry.propagators.textmap import CarrierT, Getter
 from opentelemetry.propagate import extract, inject
 from opentelemetry.semconv.trace import SpanAttributes
 
@@ -18,14 +18,33 @@ _MESSAGE_RUN = "run"
 _MESSAGE_NAME_KEY = "remoulade.actor_name"
 
 
+class RemouladeGetter(Getter):
+    def get(self, carrier: CarrierT, key: str) -> Optional[str]:
+        value = carrier.get(key, None)
+        if value is None:
+            return None
+        if isinstance(value, str) or not isinstance(value, Iterable):
+            value = (value,)
+        return value
+
+    def keys(self, carrier: CarrierT) -> List[str]:
+        return []
+
+
+remoulade_getter = RemouladeGetter()
+
+
 class InstrumentationMiddleware(Middleware):
     def __init__(self, _tracer):
         self._tracer = _tracer
         self._span_registry = {}
 
     def before_process_message(self, _broker, message):
-        trace_ctx = extract(message.options["trace_ctx"])
-        retry_count = message.options.get("retries")
+        if "trace_ctx" not in message.options:
+            return
+
+        trace_ctx = extract(message.options["trace_ctx"], getter=remoulade_getter)
+        retry_count = message.options.get("retries", None)
 
         operation_name = (
             "remoulade/process"
@@ -67,7 +86,7 @@ class InstrumentationMiddleware(Middleware):
         utils.detach_span(self._span_registry, message.message_id)
 
     def before_enqueue(self, _broker, message, delay):
-        retry_count = message.options.get("retries")
+        retry_count = message.options.get("retries", None)
 
         operation_name = (
             "remoulade/send"
