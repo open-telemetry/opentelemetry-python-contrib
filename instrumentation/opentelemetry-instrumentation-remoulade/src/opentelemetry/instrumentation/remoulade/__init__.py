@@ -127,9 +127,9 @@ class RemouladeInstrumentor(BaseInstrumentor):
         tracer_provider = kwargs.get("tracer_provider")
 
         self._tracer = trace.get_tracer(__name__, __version__, tracer_provider)
-
         instrumentation_middleware = InstrumentationMiddleware(self._tracer)
-        broker.get_broker().add_middleware(instrumentation_middleware)
+
+        broker.add_extra_default_middleware(instrumentation_middleware)
 
     def _uninstrument(self, **kwargs):
-        broker.get_broker().remove_middleware(InstrumentationMiddleware)
+        broker.remove_extra_default_middleware(InstrumentationMiddleware)

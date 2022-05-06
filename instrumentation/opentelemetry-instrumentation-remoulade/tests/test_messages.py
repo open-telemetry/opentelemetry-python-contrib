@@ -14,11 +14,10 @@ def actor_div(x, y):
 class TestRemouladeInstrumentation(TestBase):
     def setUp(self):
         super().setUp()
+        RemouladeInstrumentor().instrument()
 
         broker = LocalBroker()
-
         remoulade.set_broker(broker)
-        RemouladeInstrumentor().instrument()
 
         broker.declare_actor(actor_div)
 

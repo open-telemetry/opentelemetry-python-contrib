@@ -13,4 +13,4 @@
 # limitations under the License.
 
 
-_instruments = ("remoulade >= 0.49",)
+_instruments = ("remoulade >= 0.50",)

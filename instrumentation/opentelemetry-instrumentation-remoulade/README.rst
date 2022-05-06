@@ -31,10 +31,10 @@ Usage
     from remoulade.brokers.rabbitmq import RabbitmqBroker
     import remoulade
 
+    RemouladeInstrumentor().instrument()
+
     broker = RabbitmqBroker()
     remoulade.set_broker(broker)
-
-    RemouladeInstrumentor().instrument()
 
     @remoulade.actor
     def multiply(x, y):
@@ -43,11 +43,6 @@ Usage
     broker.declare_actor(count_words)
 
     multiply.send(43, 51)
-
-
-Setting up tracing
---------------------
-    The ``instrument()`` method of the RemouladeInstrumentor should always be called after the broker is set, because the instrumentation is attached to the broker.
 
 
 
