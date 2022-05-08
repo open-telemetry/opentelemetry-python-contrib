@@ -406,7 +406,9 @@ class TestAioHttpClientInstrumentor(TestBase):
     def test_instrument_with_custom_trace_config(self):
         AioHttpClientInstrumentor().uninstrument()
         self.assert_spans(0)
-        AioHttpClientInstrumentor().instrument(trace_config=aiohttp_client.create_trace_config())
+        AioHttpClientInstrumentor().instrument(
+            trace_config=aiohttp_client.create_trace_config()
+        )
 
         run_with_test_server(
             self.get_default_request(), self.URL, self.default_handler
