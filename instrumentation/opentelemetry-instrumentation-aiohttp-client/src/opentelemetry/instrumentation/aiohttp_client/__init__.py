@@ -335,7 +335,7 @@ class AioHttpClientInstrumentor(BaseInstrumentor):
             url_filter=kwargs.get("url_filter"),
             request_hook=kwargs.get("request_hook"),
             response_hook=kwargs.get("response_hook"),
-            trace_configs=[kwargs.get("trace_config")],
+            trace_configs=list(kwargs.get("trace_configs")),
         )
 
     def _uninstrument(self, **kwargs):
