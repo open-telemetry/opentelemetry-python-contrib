@@ -274,6 +274,10 @@ def _instrument(
         if context_api.get_value(_SUPPRESS_INSTRUMENTATION_KEY):
             return wrapped(*args, **kwargs)
 
+        trace_configs.append(kwargs.get("trace_configs")) if kwargs.get(
+            "trace_configs"
+        ) else None
+
         trace_config = create_trace_config(
             url_filter=url_filter,
             request_hook=request_hook,
@@ -335,7 +339,7 @@ class AioHttpClientInstrumentor(BaseInstrumentor):
             url_filter=kwargs.get("url_filter"),
             request_hook=kwargs.get("request_hook"),
             response_hook=kwargs.get("response_hook"),
-            trace_configs=list(kwargs.get("trace_configs")),
+            trace_configs=list(kwargs.get("trace_configs", [])),
         )
 
     def _uninstrument(self, **kwargs):

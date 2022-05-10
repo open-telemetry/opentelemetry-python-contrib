@@ -407,7 +407,7 @@ class TestAioHttpClientInstrumentor(TestBase):
         AioHttpClientInstrumentor().uninstrument()
         self.assert_spans(0)
         AioHttpClientInstrumentor().instrument(
-            trace_config=aiohttp_client.create_trace_config()
+            trace_configs=aiohttp_client.create_trace_config()
         )
 
         run_with_test_server(
