@@ -12,6 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+
 def attach_span(span_registry, message_id, span, is_publish=False):
     span_registry[(message_id, is_publish)] = span
 

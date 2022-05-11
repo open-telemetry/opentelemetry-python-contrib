@@ -43,7 +43,7 @@ Usage
     multiply.send(43, 51)
 
 """
-from typing import Collection, Optional, List, Iterable
+from typing import Collection, Iterable, List, Optional
 
 from remoulade import Middleware, broker
 
@@ -52,8 +52,8 @@ from opentelemetry.instrumentation.instrumentor import BaseInstrumentor
 from opentelemetry.instrumentation.remoulade import utils
 from opentelemetry.instrumentation.remoulade.package import _instruments
 from opentelemetry.instrumentation.remoulade.version import __version__
-from opentelemetry.propagators.textmap import CarrierT, Getter
 from opentelemetry.propagate import extract, inject
+from opentelemetry.propagators.textmap import CarrierT, Getter
 from opentelemetry.semconv.trace import SpanAttributes
 
 _MESSAGE_TAG_KEY = "remoulade.action"
@@ -88,7 +88,9 @@ class InstrumentationMiddleware(Middleware):
         if "trace_ctx" not in message.options:
             return
 
-        trace_ctx = extract(message.options["trace_ctx"], getter=remoulade_getter)
+        trace_ctx = extract(
+            message.options["trace_ctx"], getter=remoulade_getter
+        )
         retry_count = message.options.get("retries", None)
 
         operation_name = (
