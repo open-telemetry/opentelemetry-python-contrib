@@ -21,8 +21,8 @@ from unittest import mock
 from opentelemetry.instrumentation.system_metrics import (
     SystemMetricsInstrumentor,
 )
-from opentelemetry.sdk._metrics import MeterProvider
-from opentelemetry.sdk._metrics.export import InMemoryMetricReader
+from opentelemetry.sdk.metrics import MeterProvider
+from opentelemetry.sdk.metrics.export import InMemoryMetricReader
 from opentelemetry.test.test_base import TestBase
 
 
