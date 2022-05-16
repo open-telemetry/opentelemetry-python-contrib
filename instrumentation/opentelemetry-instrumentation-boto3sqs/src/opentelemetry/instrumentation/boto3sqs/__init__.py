@@ -60,11 +60,8 @@ OPENTELEMETRY_ATTRIBUTE_IDENTIFIER: str = "otel."
 
 class Boto3SQSGetter(Getter):
     def get(self, carrier: CarrierT, key: str) -> Optional[List[str]]:
-        if not (
-            value := carrier.get(
-                f"{OPENTELEMETRY_ATTRIBUTE_IDENTIFIER}{key}", {}
-            )
-        ):
+        value = carrier.get(f"{OPENTELEMETRY_ATTRIBUTE_IDENTIFIER}{key}", {})
+        if not value:
             return None
         return [value.get("StringValue", None)]
 
@@ -120,13 +117,13 @@ class Boto3SQSInstrumentor(BaseInstrumentor):
             ).__getitem__(*args, **kwargs)
             if not isinstance(retval, dict):
                 return retval
-            if not (receipt_handle := retval.get("ReceiptHandle", None)):
+            receipt_handle = retval.get("ReceiptHandle", None)
+            if not receipt_handle:
                 return retval
-            if not (
-                started_span := Boto3SQSInstrumentor.received_messages_spans.get(
-                    receipt_handle, None
-                )
-            ):
+            started_span = Boto3SQSInstrumentor.received_messages_spans.get(
+                receipt_handle, None
+            )
+            if not started_span:
                 return retval
             if Boto3SQSInstrumentor.current_context_token:
                 context.detach(Boto3SQSInstrumentor.current_context_token)
@@ -176,9 +173,10 @@ class Boto3SQSInstrumentor(BaseInstrumentor):
 
     @staticmethod
     def _safe_end_processing_span(receipt_handle: str) -> None:
-        if started_span := Boto3SQSInstrumentor.received_messages_spans.pop(
+        started_span = Boto3SQSInstrumentor.received_messages_spans.pop(
             receipt_handle, None
-        ):
+        )
+        if started_span:
             if (
                 Boto3SQSInstrumentor.current_span_related_to_token
                 == started_span
@@ -197,18 +195,14 @@ class Boto3SQSInstrumentor(BaseInstrumentor):
     ) -> None:
         message_attributes = message.get("MessageAttributes", {})
         links = []
-        if ctx := propagate.extract(
-            message_attributes, getter=boto3sqs_getter
-        ):
+        ctx = propagate.extract(message_attributes, getter=boto3sqs_getter)
+        if ctx:
             for item in ctx.values():
                 if hasattr(item, "get_span_context"):
                     links.append(Link(context=item.get_span_context()))
-        span = self._tracer.start_span(
-            name=f"{queue_name} process",
-            links=links,
-            kind=SpanKind.CONSUMER,
-        )
-        with trace.use_span(span):
+        with self._tracer.start_as_current_span(
+            name=f"{queue_name} process", links=links, kind=SpanKind.CONSUMER
+        ) as span:
             message_id = message.get("MessageId", None)
             Boto3SQSInstrumentor.received_messages_spans[receipt_handle] = span
             Boto3SQSInstrumentor._enrich_span(
@@ -228,16 +222,17 @@ class Boto3SQSInstrumentor(BaseInstrumentor):
             queue_name = Boto3SQSInstrumentor._extract_queue_name_from_url(
                 queue_url
             )
-            span = self._tracer.start_span(
+            with self._tracer.start_as_current_span(
                 name=f"{queue_name} send",
                 kind=SpanKind.PRODUCER,
-            )
-            Boto3SQSInstrumentor._enrich_span(span, queue_name)
-            with trace.use_span(span, end_on_exit=True):
+                end_on_exit=True,
+            ) as span:
+                Boto3SQSInstrumentor._enrich_span(span, queue_name)
                 attributes = kwargs.pop("MessageAttributes", {})
                 propagate.inject(attributes, setter=boto3sqs_setter)
                 retval = wrapped(*args, MessageAttributes=attributes, **kwargs)
-                if message_id := retval.get("MessageId"):
+                message_id = retval.get("MessageId")
+                if message_id:
                     if span.is_recording():
                         span.set_attribute(
                             SpanAttributes.MESSAGING_MESSAGE_ID, message_id
@@ -283,7 +278,8 @@ class Boto3SQSInstrumentor(BaseInstrumentor):
             retval = wrapped(*args, **kwargs)
             for successful_messages in retval["Successful"]:
                 message_identifier = successful_messages["Id"]
-                if message_span := ids_to_spans.get(message_identifier):
+                message_span = ids_to_spans.get(message_identifier)
+                if message_span:
                     if message_span.is_recording():
                         message_span.set_attribute(
                             SpanAttributes.MESSAGING_MESSAGE_ID,
@@ -322,12 +318,12 @@ class Boto3SQSInstrumentor(BaseInstrumentor):
                     MessageAttributeNames=message_attribute_names,
                     **kwargs,
                 )
-                if not (messages := retval.get("Messages", [])):
+                messages = retval.get("Messages", [])
+                if not messages:
                     return retval
                 for message in messages:
-                    if not (
-                        receipt_handle := message.get("ReceiptHandle", None)
-                    ):
+                    receipt_handle = message.get("ReceiptHandle", None)
+                    if not receipt_handle:
                         continue
                     Boto3SQSInstrumentor._safe_end_processing_span(
                         receipt_handle
@@ -346,7 +342,8 @@ class Boto3SQSInstrumentor(BaseInstrumentor):
 
     def _wrap_delete_message(self) -> None:
         def delete_message_wrapper(wrapped, instance, args, kwargs):
-            if receipt_handle := kwargs.get("ReceiptHandle"):
+            receipt_handle = kwargs.get("ReceiptHandle")
+            if receipt_handle:
                 Boto3SQSInstrumentor._safe_end_processing_span(receipt_handle)
             return wrapped(*args, **kwargs)
 
@@ -358,7 +355,8 @@ class Boto3SQSInstrumentor(BaseInstrumentor):
         def delete_message_wrapper_batch(wrapped, instance, args, kwargs):
             entries = kwargs.get("Entries")
             for entry in entries:
-                if receipt_handle := entry.get("ReceiptHandle", None):
+                receipt_handle = entry.get("ReceiptHandle", None)
+                if receipt_handle:
                     Boto3SQSInstrumentor._safe_end_processing_span(
                         receipt_handle
                     )

@@ -20,7 +20,12 @@ import boto3
 import botocore.client
 from wrapt import BoundFunctionWrapper, FunctionWrapper
 
-from opentelemetry.instrumentation.boto3sqs import Boto3SQSInstrumentor
+from opentelemetry.instrumentation.boto3sqs import (
+    OPENTELEMETRY_ATTRIBUTE_IDENTIFIER,
+    Boto3SQSGetter,
+    Boto3SQSInstrumentor,
+    Boto3SQSSetter,
+)
 
 
 # pylint: disable=attribute-defined-outside-init
@@ -82,3 +87,66 @@ class TestBoto3SQSInstrumentor(TestCase):
             )
         )
         instrumentation.uninstrument()
+
+
+class TestBoto3SQSGetter(TestCase):
+    def setUp(self) -> None:
+        self.getter = Boto3SQSGetter()
+
+    def test_get_none(self) -> None:
+        carrier = {}
+        value = self.getter.get(carrier, "test")
+        self.assertIsNone(value)
+
+    def test_get_value(self) -> None:
+        key = "test"
+        value = "value"
+        carrier = {
+            f"{OPENTELEMETRY_ATTRIBUTE_IDENTIFIER}{key}": {
+                "StringValue": value,
+                "DataType": "String",
+            }
+        }
+        val = self.getter.get(carrier, key)
+        self.assertEqual(val, [value])
+
+    def test_keys(self):
+        key1 = "test1"
+        value1 = "value1"
+        key2 = "test2"
+        value2 = "value2"
+        carrier = {
+            f"{OPENTELEMETRY_ATTRIBUTE_IDENTIFIER}{key1}": {
+                "StringValue": value1,
+                "DataType": "String",
+            },
+            key2: {"StringValue": value2, "DataType": "String"},
+        }
+        keys = self.getter.keys(carrier)
+        self.assertEqual(keys, [key1, key2])
+
+    def test_keys_empty(self):
+        keys = self.getter.keys({})
+        self.assertEqual(keys, [])
+
+
+class TestBoto3SQSSetter(TestCase):
+    def setUp(self) -> None:
+        self.setter = Boto3SQSSetter()
+
+    def test_simple(self):
+        original_key = "SomeHeader"
+        original_value = {"NumberValue": 1, "DataType": "Number"}
+        carrier = {original_key: original_value.copy()}
+        key = "test"
+        value = "value"
+        self.setter.set(carrier, key, value)
+        # Ensure the original value is not harmed
+        for dict_key, dict_val in carrier[original_key].items():
+            self.assertEqual(original_value[dict_key], dict_val)
+        # Ensure the new key is added well
+        self.assertIn(
+            f"{OPENTELEMETRY_ATTRIBUTE_IDENTIFIER}{key}", carrier.keys()
+        )
+        new_value = carrier[f"{OPENTELEMETRY_ATTRIBUTE_IDENTIFIER}{key}"]
+        self.assertEqual(new_value["StringValue"], value)
