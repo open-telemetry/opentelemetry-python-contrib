@@ -20,8 +20,8 @@ from opentelemetry.test.test_base import TestBase
 
 
 @remoulade.actor(max_retries=3)
-def actor_div(x, y):
-    return x / y
+def actor_div(dividend, divisor):
+    return dividend / divisor
 
 
 class TestRemouladeUninstrumentation(TestBase):

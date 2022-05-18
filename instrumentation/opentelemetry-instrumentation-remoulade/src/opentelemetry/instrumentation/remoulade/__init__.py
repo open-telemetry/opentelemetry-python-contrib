@@ -107,7 +107,7 @@ class InstrumentationMiddleware(Middleware):
             span.set_attribute("retry_count", retry_count)
 
         activation = trace.use_span(span, end_on_exit=True)
-        activation.__enter__()
+        activation.__enter__()  # pylint: disable=E1101
 
         utils.attach_span(
             self._span_registry, message.message_id, (span, activation)
@@ -127,7 +127,6 @@ class InstrumentationMiddleware(Middleware):
         if span.is_recording():
             span.set_attribute(_MESSAGE_TAG_KEY, _MESSAGE_RUN)
             span.set_attribute(_MESSAGE_NAME_KEY, message.actor_name)
-            pass
 
         activation.__exit__(None, None, None)
         utils.detach_span(self._span_registry, message.message_id)
@@ -154,10 +153,9 @@ class InstrumentationMiddleware(Middleware):
                 SpanAttributes.MESSAGING_MESSAGE_ID, message.message_id
             )
             span.set_attribute(_MESSAGE_NAME_KEY, message.actor_name)
-            pass
 
         activation = trace.use_span(span, end_on_exit=True)
-        activation.__enter__()
+        activation.__enter__()  # pylint: disable=E1101
 
         utils.attach_span(
             self._span_registry,
@@ -192,6 +190,7 @@ class RemouladeInstrumentor(BaseInstrumentor):
     def _instrument(self, **kwargs):
         tracer_provider = kwargs.get("tracer_provider")
 
+        # pylint: disable=attribute-defined-outside-init
         self._tracer = trace.get_tracer(__name__, __version__, tracer_provider)
         instrumentation_middleware = InstrumentationMiddleware(self._tracer)
 
