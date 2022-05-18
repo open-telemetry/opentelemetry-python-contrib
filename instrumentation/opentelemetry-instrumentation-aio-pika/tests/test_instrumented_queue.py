@@ -12,17 +12,34 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 import asyncio
-from typing import Type
 from argparse import Namespace
+from typing import Type
 from unittest import TestCase, mock
 
-from yarl import URL
 from aio_pika import Queue
-from opentelemetry.trace import Span, NonRecordingSpan
-from opentelemetry.semconv.trace import SpanAttributes
-from opentelemetry.instrumentation.aio_pika.instrumented_queue import InstrumentedQueue, RobustInstrumentedQueue
+from yarl import URL
 
-from .consts import MESSAGING_SYSTEM, SERVER_HOST, SERVER_PORT, MESSAGE_ID, CORRELATION_ID, QUEUE_NAME, EXCHANGE_NAME, ROUTING_KEY, MESSAGE, CONNECTION, CHANNEL
+from opentelemetry.instrumentation.aio_pika.instrumented_queue import (
+    InstrumentedQueue,
+    RobustInstrumentedQueue,
+)
+from opentelemetry.semconv.trace import SpanAttributes
+from opentelemetry.trace import NonRecordingSpan, Span
+
+from .consts import (
+    CHANNEL,
+    CONNECTION,
+    CORRELATION_ID,
+    EXCHANGE_NAME,
+    MESSAGE,
+    MESSAGE_ID,
+    MESSAGING_SYSTEM,
+    QUEUE_NAME,
+    ROUTING_KEY,
+    SERVER_HOST,
+    SERVER_PORT,
+)
+
 
 class TestInstrumentedQueue(TestCase):
     EXPECTED_ATTRIBUTES = {
@@ -31,7 +48,7 @@ class TestInstrumentedQueue(TestCase):
         SpanAttributes.NET_PEER_NAME: SERVER_HOST,
         SpanAttributes.NET_PEER_PORT: SERVER_PORT,
         SpanAttributes.MESSAGING_MESSAGE_ID: MESSAGE_ID,
-        SpanAttributes.MESSAGING_CONVERSATION_ID: CORRELATION_ID
+        SpanAttributes.MESSAGING_CONVERSATION_ID: CORRELATION_ID,
     }
 
     def setUp(self):
@@ -39,17 +56,27 @@ class TestInstrumentedQueue(TestCase):
         asyncio.set_event_loop(self.loop)
 
     def test_get_callback_span(self):
-        queue = InstrumentedQueue(CHANNEL, QUEUE_NAME, False, False, False, None)
-        with mock.patch.object(NonRecordingSpan, 'is_recording', return_value=True):
-            with mock.patch.object(NonRecordingSpan, 'set_attribute') as mock_set_attrubute:
+        queue = InstrumentedQueue(
+            CHANNEL, QUEUE_NAME, False, False, False, None
+        )
+        with mock.patch.object(
+            NonRecordingSpan, "is_recording", return_value=True
+        ):
+            with mock.patch.object(
+                NonRecordingSpan, "set_attribute"
+            ) as mock_set_attrubute:
                 queue._get_callback_span(MESSAGE)
         for name, value in self.EXPECTED_ATTRIBUTES.items():
             mock_set_attrubute.assert_any_call(name, value)
-    
+
     def test_decorate_callback(self):
-        queue = InstrumentedQueue(CHANNEL, QUEUE_NAME, False, False, False, None)
+        queue = InstrumentedQueue(
+            CHANNEL, QUEUE_NAME, False, False, False, None
+        )
         callback = mock.MagicMock(return_value=asyncio.sleep(0))
-        with mock.patch.object(InstrumentedQueue, '_get_callback_span') as mocked_get_callback_span:
+        with mock.patch.object(
+            InstrumentedQueue, "_get_callback_span"
+        ) as mocked_get_callback_span:
             decorated_callback = queue._decorate_callback(callback)
             self.loop.run_until_complete(decorated_callback(MESSAGE))
         mocked_get_callback_span.assert_called_once()
@@ -60,14 +87,18 @@ class TestInstrumentedQueue(TestCase):
         callback = mock.MagicMock()
         CONNECTION.connected = asyncio.Event()
         CONNECTION.connected.set()
-        with mock.patch.object(InstrumentedQueue, '_decorate_callback') as mocked_decorate_callback:
-            with mock.patch.object(Queue, 'consume', return_value=asyncio.sleep(0)) as mocked_consume:
+        with mock.patch.object(
+            InstrumentedQueue, "_decorate_callback"
+        ) as mocked_decorate_callback:
+            with mock.patch.object(
+                Queue, "consume", return_value=asyncio.sleep(0)
+            ) as mocked_consume:
                 self.loop.run_until_complete(queue.consume(callback))
         mocked_decorate_callback.assert_called_once_with(callback)
         mocked_consume.assert_called_once()
-    
+
     def test_consume(self):
         self._test_consume(InstrumentedQueue)
-    
+
     def test_robust_consume(self):
         self._test_consume(RobustInstrumentedQueue)

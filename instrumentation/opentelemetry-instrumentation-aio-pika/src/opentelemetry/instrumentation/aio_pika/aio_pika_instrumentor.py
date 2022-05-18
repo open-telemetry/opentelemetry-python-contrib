@@ -14,30 +14,33 @@
 from typing import Collection
 
 import aio_pika
+
 from opentelemetry.instrumentation.instrumentor import BaseInstrumentor
 
+from .instrumented_exchange import (
+    InstrumentedExchange,
+    RobustInstrumentedExchange,
+)
+from .instrumented_queue import InstrumentedQueue, RobustInstrumentedQueue
 from .package import _instruments
 from .span_builder import SpanBuilder
-from .instrumented_exchange import InstrumentedExchange, RobustInstrumentedExchange
-from .instrumented_queue import InstrumentedQueue, RobustInstrumentedQueue
 
 
 class AioPikaInstrumentor(BaseInstrumentor):
-
     def _instrument(self, **kwargs):
-        tracer_provider = kwargs.get('tracer_provider', None)
+        tracer_provider = kwargs.get("tracer_provider", None)
         SpanBuilder.TRACER_PROVIDER = tracer_provider
         aio_pika.Channel.EXCHANGE_CLASS = InstrumentedExchange
         aio_pika.Channel.QUEUE_CLASS = InstrumentedQueue
         aio_pika.RobustChannel.EXCHANGE_CLASS = RobustInstrumentedExchange
         aio_pika.RobustChannel.QUEUE_CLASS = RobustInstrumentedQueue
-    
+
     def _uninstrument(self, **kwargs):
         SpanBuilder.TRACER_PROVIDER = None
         aio_pika.Channel.EXCHANGE_CLASS = aio_pika.Exchange
         aio_pika.Channel.QUEUE_CLASS = aio_pika.Queue
         aio_pika.RobustChannel.EXCHANGE_CLASS = aio_pika.RobustExchange
         aio_pika.RobustChannel.QUEUE_CLASS = aio_pika.RobustQueue
-    
+
     def instrumentation_dependencies(self) -> Collection[str]:
         return _instruments

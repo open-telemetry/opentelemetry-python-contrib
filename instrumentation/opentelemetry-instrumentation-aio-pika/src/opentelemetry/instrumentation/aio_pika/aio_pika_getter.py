@@ -11,8 +11,9 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-from typing import Optional, List
-from opentelemetry.propagators.textmap import Getter, CarrierT
+from typing import List, Optional
+
+from opentelemetry.propagators.textmap import CarrierT, Getter
 
 
 class _AioPikaGetter(Getter):  # type: ignore
@@ -21,7 +22,7 @@ class _AioPikaGetter(Getter):  # type: ignore
         if value is None:
             return None
         return [value]
-    
+
     def keys(self, carrier: CarrierT) -> List[str]:
         return []
 

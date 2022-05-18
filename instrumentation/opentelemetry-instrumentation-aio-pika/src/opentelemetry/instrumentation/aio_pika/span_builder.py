@@ -14,9 +14,13 @@
 from typing import Optional
 
 from aio_pika.abc import AbstractChannel, AbstractMessage
+
 from opentelemetry import context, trace
+from opentelemetry.semconv.trace import (
+    MessagingOperationValues,
+    SpanAttributes,
+)
 from opentelemetry.trace import Span, SpanKind
-from opentelemetry.semconv.trace import MessagingOperationValues, SpanAttributes
 
 from .version import __version__
 

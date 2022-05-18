@@ -13,7 +13,9 @@
 # limitations under the License.
 from unittest import TestCase
 
-from opentelemetry.instrumentation.aio_pika.aio_pika_getter import aio_pika_getter
+from opentelemetry.instrumentation.aio_pika.aio_pika_getter import (
+    aio_pika_getter,
+)
 
 
 class TestAioPikaGetter(TestCase):

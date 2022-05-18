@@ -39,13 +39,23 @@ BASE_DIR = os.path.dirname(__file__)
 PACKAGE_INFO = {}
 
 VERSION_FILENAME = os.path.join(
-    BASE_DIR, "src", "opentelemetry", "instrumentation", "aio_pika", "version.py"
+    BASE_DIR,
+    "src",
+    "opentelemetry",
+    "instrumentation",
+    "aio_pika",
+    "version.py",
 )
 with open(VERSION_FILENAME, encoding="utf-8") as f:
     exec(f.read(), PACKAGE_INFO)
 
 PACKAGE_FILENAME = os.path.join(
-    BASE_DIR, "src", "opentelemetry", "instrumentation", "aio_pika", "package.py"
+    BASE_DIR,
+    "src",
+    "opentelemetry",
+    "instrumentation",
+    "aio_pika",
+    "package.py",
 )
 with open(PACKAGE_FILENAME, encoding="utf-8") as f:
     exec(f.read(), PACKAGE_INFO)
