@@ -13,7 +13,7 @@
 # limitations under the License.
 from typing import Any, Callable, Optional
 
-from aio_pika import Channel, Queue, RobustQueue, connect
+from aio_pika import Queue, RobustQueue
 from aio_pika.abc import AbstractIncomingMessage
 from aio_pika.queue import ConsumerTag
 

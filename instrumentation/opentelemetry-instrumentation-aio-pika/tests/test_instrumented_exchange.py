@@ -12,19 +12,17 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 import asyncio
-from argparse import Namespace
 from typing import Type
 from unittest import TestCase, mock
 
 from aio_pika import Exchange
-from yarl import URL
 
 from opentelemetry.instrumentation.aio_pika.instrumented_exchange import (
     InstrumentedExchange,
     RobustInstrumentedExchange,
 )
 from opentelemetry.semconv.trace import SpanAttributes
-from opentelemetry.trace import NonRecordingSpan, Span
+from opentelemetry.trace import NonRecordingSpan
 
 from .consts import (
     CHANNEL,

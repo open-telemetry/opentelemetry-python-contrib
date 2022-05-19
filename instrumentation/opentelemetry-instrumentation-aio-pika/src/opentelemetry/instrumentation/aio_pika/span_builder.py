@@ -34,34 +34,34 @@ class SpanBuilder:
         self._operation: MessagingOperationValues = None
         self._kind: SpanKind = None
         self._destination: str = None
-    
+
     def set_as_producer(self):
         self._kind = SpanKind.PRODUCER
 
     def set_as_consumer(self):
         self._kind = SpanKind.CONSUMER
-    
+
     def set_operation(self, operation: MessagingOperationValues):
         self._operation = operation
-    
+
     def set_destination(self, destination: str):
         self._destination = destination
         self._attributes[SpanAttributes.MESSAGING_DESTINATION] = destination
-    
+
     def set_channel(self, channel: AbstractChannel):
         url = channel.connection.connection.url
         self._attributes.update({
             SpanAttributes.NET_PEER_NAME: url.host,
             SpanAttributes.NET_PEER_PORT: url.port
         })
-    
+
     def set_message(self, message: AbstractMessage):
         properties = message.properties
         if properties.message_id:
             self._attributes[SpanAttributes.MESSAGING_MESSAGE_ID] = properties.message_id
         if properties.correlation_id:
             self._attributes[SpanAttributes.MESSAGING_CONVERSATION_ID] = properties.correlation_id
-    
+
     def build(self) -> Optional[Span]:
         if context.get_value('suppress_instrumentation') or context.get_value(context._SUPPRESS_INSTRUMENTATION_KEY):
             return None
@@ -78,7 +78,7 @@ class SpanBuilder:
         else:
             span.set_attribute(SpanAttributes.MESSAGING_TEMP_DESTINATION, True)
         return span
-    
+
     def _generate_span_name(self) -> str:
         operation_value = self._operation.value if self._operation else 'send'
         return f'{self._destination} {operation_value}'

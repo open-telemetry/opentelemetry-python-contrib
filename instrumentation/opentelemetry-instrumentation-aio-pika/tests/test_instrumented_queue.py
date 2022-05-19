@@ -12,19 +12,17 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 import asyncio
-from argparse import Namespace
 from typing import Type
 from unittest import TestCase, mock
 
 from aio_pika import Queue
-from yarl import URL
 
 from opentelemetry.instrumentation.aio_pika.instrumented_queue import (
     InstrumentedQueue,
     RobustInstrumentedQueue,
 )
 from opentelemetry.semconv.trace import SpanAttributes
-from opentelemetry.trace import NonRecordingSpan, Span
+from opentelemetry.trace import NonRecordingSpan
 
 from .consts import (
     CHANNEL,
@@ -35,7 +33,6 @@ from .consts import (
     MESSAGE_ID,
     MESSAGING_SYSTEM,
     QUEUE_NAME,
-    ROUTING_KEY,
     SERVER_HOST,
     SERVER_PORT,
 )
