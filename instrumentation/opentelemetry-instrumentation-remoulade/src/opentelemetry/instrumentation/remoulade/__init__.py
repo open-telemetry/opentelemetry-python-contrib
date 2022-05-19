@@ -56,11 +56,11 @@ from opentelemetry.propagate import extract, inject
 from opentelemetry.propagators.textmap import CarrierT, Getter
 from opentelemetry.semconv.trace import SpanAttributes
 
-_MESSAGE_TAG_KEY = "remoulade.action"
-_MESSAGE_SEND = "send"
-_MESSAGE_RUN = "run"
+_REMOULADE_MESSAGE_TAG_KEY = "remoulade.action"
+_REMOULADE_MESSAGE_SEND = "send"
+_REMOULADE_MESSAGE_RUN = "run"
 
-_MESSAGE_NAME_KEY = "remoulade.actor_name"
+_REMOULADE_MESSAGE_NAME_KEY = "remoulade.actor_name"
 
 
 class RemouladeGetter(Getter):
@@ -79,7 +79,7 @@ class RemouladeGetter(Getter):
 remoulade_getter = RemouladeGetter()
 
 
-class InstrumentationMiddleware(Middleware):
+class _InstrumentationMiddleware(Middleware):
     def __init__(self, _tracer):
         self._tracer = _tracer
         self._span_registry = {}
@@ -91,20 +91,18 @@ class InstrumentationMiddleware(Middleware):
         trace_ctx = extract(
             message.options["trace_ctx"], getter=remoulade_getter
         )
-        retry_count = message.options.get("retries", None)
-
-        operation_name = (
-            "remoulade/process"
-            if retry_count is None
-            else f"remoulade/process(retry-{retry_count})"
+        retry_count = message.options.get("retries", 0)
+        operation_name = utils.get_operation_name(
+            "before_process_message", retry_count
         )
+        span_attributes = {"retry_count": retry_count}
 
         span = self._tracer.start_span(
-            operation_name, kind=trace.SpanKind.CONSUMER, context=trace_ctx
+            operation_name,
+            kind=trace.SpanKind.CONSUMER,
+            context=trace_ctx,
+            attributes=span_attributes,
         )
-
-        if retry_count is not None:
-            span.set_attribute("retry_count", retry_count)
 
         activation = trace.use_span(span, end_on_exit=True)
         activation.__enter__()  # pylint: disable=E1101
@@ -125,34 +123,35 @@ class InstrumentationMiddleware(Middleware):
             return
 
         if span.is_recording():
-            span.set_attribute(_MESSAGE_TAG_KEY, _MESSAGE_RUN)
-            span.set_attribute(_MESSAGE_NAME_KEY, message.actor_name)
+            span.set_attribute(
+                _REMOULADE_MESSAGE_TAG_KEY, _REMOULADE_MESSAGE_RUN
+            )
+            span.set_attribute(_REMOULADE_MESSAGE_NAME_KEY, message.actor_name)
 
         activation.__exit__(None, None, None)
         utils.detach_span(self._span_registry, message.message_id)
 
     def before_enqueue(self, _broker, message, delay):
-        retry_count = message.options.get("retries", None)
-
-        operation_name = (
-            "remoulade/send"
-            if retry_count is None
-            else f"remoulade/send(retry-{retry_count})"
+        retry_count = message.options.get("retries", 0)
+        operation_name = utils.get_operation_name(
+            "before_enqueue", retry_count
         )
+        span_attributes = {"retry_count": retry_count}
 
         span = self._tracer.start_span(
-            operation_name, kind=trace.SpanKind.PRODUCER
+            operation_name,
+            kind=trace.SpanKind.PRODUCER,
+            attributes=span_attributes,
         )
 
-        if retry_count is not None:
-            span.set_attribute("retry_count", retry_count)
-
         if span.is_recording():
-            span.set_attribute(_MESSAGE_TAG_KEY, _MESSAGE_SEND)
+            span.set_attribute(
+                _REMOULADE_MESSAGE_TAG_KEY, _REMOULADE_MESSAGE_SEND
+            )
             span.set_attribute(
                 SpanAttributes.MESSAGING_MESSAGE_ID, message.message_id
             )
-            span.set_attribute(_MESSAGE_NAME_KEY, message.actor_name)
+            span.set_attribute(_REMOULADE_MESSAGE_NAME_KEY, message.actor_name)
 
         activation = trace.use_span(span, end_on_exit=True)
         activation.__enter__()  # pylint: disable=E1101
@@ -192,9 +191,9 @@ class RemouladeInstrumentor(BaseInstrumentor):
 
         # pylint: disable=attribute-defined-outside-init
         self._tracer = trace.get_tracer(__name__, __version__, tracer_provider)
-        instrumentation_middleware = InstrumentationMiddleware(self._tracer)
+        instrumentation_middleware = _InstrumentationMiddleware(self._tracer)
 
         broker.add_extra_default_middleware(instrumentation_middleware)
 
     def _uninstrument(self, **kwargs):
-        broker.remove_extra_default_middleware(InstrumentationMiddleware)
+        broker.remove_extra_default_middleware(_InstrumentationMiddleware)

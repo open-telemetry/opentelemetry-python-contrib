@@ -1,5 +1,5 @@
 OpenTelemetry Remoulade Instrumentation
-===================================
+=======================================
 
 |pypi|
 
