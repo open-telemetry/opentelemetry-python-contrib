@@ -63,22 +63,6 @@ _REMOULADE_MESSAGE_RUN = "run"
 _REMOULADE_MESSAGE_NAME_KEY = "remoulade.actor_name"
 
 
-class RemouladeGetter(Getter):
-    def get(self, carrier: CarrierT, key: str) -> Optional[str]:
-        value = carrier.get(key, None)
-        if value is None:
-            return None
-        if isinstance(value, str) or not isinstance(value, Iterable):
-            value = (value,)
-        return value
-
-    def keys(self, carrier: CarrierT) -> List[str]:
-        return []
-
-
-remoulade_getter = RemouladeGetter()
-
-
 class _InstrumentationMiddleware(Middleware):
     def __init__(self, _tracer):
         self._tracer = _tracer
@@ -88,14 +72,12 @@ class _InstrumentationMiddleware(Middleware):
         if "trace_ctx" not in message.options:
             return
 
-        trace_ctx = extract(
-            message.options["trace_ctx"], getter=remoulade_getter
-        )
+        trace_ctx = extract(message.options["trace_ctx"])
         retry_count = message.options.get("retries", 0)
         operation_name = utils.get_operation_name(
             "before_process_message", retry_count
         )
-        span_attributes = {"retry_count": retry_count}
+        span_attributes = {"remoulade.retry_count": retry_count}
 
         span = self._tracer.start_span(
             operation_name,
@@ -123,10 +105,13 @@ class _InstrumentationMiddleware(Middleware):
             return
 
         if span.is_recording():
-            span.set_attribute(
-                _REMOULADE_MESSAGE_TAG_KEY, _REMOULADE_MESSAGE_RUN
+            span.set_attributes(
+                {
+                    _REMOULADE_MESSAGE_TAG_KEY: _REMOULADE_MESSAGE_RUN,
+                    _REMOULADE_MESSAGE_NAME_KEY: message.actor_name,
+                    SpanAttributes.MESSAGING_MESSAGE_ID: message.message_id,
+                }
             )
-            span.set_attribute(_REMOULADE_MESSAGE_NAME_KEY, message.actor_name)
 
         activation.__exit__(None, None, None)
         utils.detach_span(self._span_registry, message.message_id)
@@ -136,7 +121,7 @@ class _InstrumentationMiddleware(Middleware):
         operation_name = utils.get_operation_name(
             "before_enqueue", retry_count
         )
-        span_attributes = {"retry_count": retry_count}
+        span_attributes = {"remoulade.retry_count": retry_count}
 
         span = self._tracer.start_span(
             operation_name,
@@ -145,13 +130,13 @@ class _InstrumentationMiddleware(Middleware):
         )
 
         if span.is_recording():
-            span.set_attribute(
-                _REMOULADE_MESSAGE_TAG_KEY, _REMOULADE_MESSAGE_SEND
+            span.set_attributes(
+                {
+                    _REMOULADE_MESSAGE_TAG_KEY: _REMOULADE_MESSAGE_SEND,
+                    _REMOULADE_MESSAGE_NAME_KEY: message.actor_name,
+                    SpanAttributes.MESSAGING_MESSAGE_ID: message.message_id,
+                }
             )
-            span.set_attribute(
-                SpanAttributes.MESSAGING_MESSAGE_ID, message.message_id
-            )
-            span.set_attribute(_REMOULADE_MESSAGE_NAME_KEY, message.actor_name)
 
         activation = trace.use_span(span, end_on_exit=True)
         activation.__enter__()  # pylint: disable=E1101

@@ -80,13 +80,21 @@ class TestRemouladeInstrumentation(TestBase):
         producer_spans = spans[1::2]
 
         self.assertEqual(consumer_spans[0].name, "remoulade/process(retry-3)")
-        self.assertSpanHasAttributes(consumer_spans[0], {"retry_count": 3})
+        self.assertSpanHasAttributes(
+            consumer_spans[0], {"remoulade.retry_count": 3}
+        )
         self.assertEqual(consumer_spans[1].name, "remoulade/process(retry-2)")
-        self.assertSpanHasAttributes(consumer_spans[1], {"retry_count": 2})
+        self.assertSpanHasAttributes(
+            consumer_spans[1], {"remoulade.retry_count": 2}
+        )
         self.assertEqual(consumer_spans[3].name, "remoulade/process")
 
         self.assertEqual(producer_spans[0].name, "remoulade/send(retry-3)")
-        self.assertSpanHasAttributes(producer_spans[0], {"retry_count": 3})
+        self.assertSpanHasAttributes(
+            producer_spans[0], {"remoulade.retry_count": 3}
+        )
         self.assertEqual(producer_spans[1].name, "remoulade/send(retry-2)")
-        self.assertSpanHasAttributes(producer_spans[1], {"retry_count": 2})
+        self.assertSpanHasAttributes(
+            producer_spans[1], {"remoulade.retry_count": 2}
+        )
         self.assertEqual(producer_spans[3].name, "remoulade/send")
