@@ -15,7 +15,7 @@
 from logging import getLogger
 from os import environ
 from os.path import abspath, dirname, pathsep
-from re import sub
+from re import sub, escape
 
 from pkg_resources import iter_entry_points
 
@@ -112,7 +112,7 @@ def _load_configurators():
 def initialize():
     # prevents auto-instrumentation of subprocesses if code execs another python process
     environ["PYTHONPATH"] = sub(
-        rf"{dirname(abspath(__file__))}{pathsep}?",
+        escape(rf"{dirname(abspath(__file__))}{pathsep}?"),
         "",
         environ["PYTHONPATH"],
     )
