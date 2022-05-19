@@ -199,7 +199,9 @@ class Boto3SQSInstrumentor(BaseInstrumentor):
             for item in ctx.values():
                 if hasattr(item, "get_span_context"):
                     links.append(Link(context=item.get_span_context()))
-        span = self._tracer.start_span(name=f"{queue_name} process", links=links, kind=SpanKind.CONSUMER)
+        span = self._tracer.start_span(
+            name=f"{queue_name} process", links=links, kind=SpanKind.CONSUMER
+        )
         with trace.use_span(span):
             message_id = message.get("MessageId")
             Boto3SQSInstrumentor.received_messages_spans[receipt_handle] = span
