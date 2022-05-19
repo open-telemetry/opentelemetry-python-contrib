@@ -21,7 +21,7 @@ import botocore.client
 from wrapt import BoundFunctionWrapper, FunctionWrapper
 
 from opentelemetry.instrumentation.boto3sqs import (
-    OPENTELEMETRY_ATTRIBUTE_IDENTIFIER,
+    _OPENTELEMETRY_ATTRIBUTE_IDENTIFIER,
     Boto3SQSGetter,
     Boto3SQSInstrumentor,
     Boto3SQSSetter,
@@ -102,7 +102,7 @@ class TestBoto3SQSGetter(TestCase):
         key = "test"
         value = "value"
         carrier = {
-            f"{OPENTELEMETRY_ATTRIBUTE_IDENTIFIER}{key}": {
+            f"{_OPENTELEMETRY_ATTRIBUTE_IDENTIFIER}{key}": {
                 "StringValue": value,
                 "DataType": "String",
             }
@@ -116,7 +116,7 @@ class TestBoto3SQSGetter(TestCase):
         key2 = "test2"
         value2 = "value2"
         carrier = {
-            f"{OPENTELEMETRY_ATTRIBUTE_IDENTIFIER}{key1}": {
+            f"{_OPENTELEMETRY_ATTRIBUTE_IDENTIFIER}{key1}": {
                 "StringValue": value1,
                 "DataType": "String",
             },
@@ -146,7 +146,7 @@ class TestBoto3SQSSetter(TestCase):
             self.assertEqual(original_value[dict_key], dict_val)
         # Ensure the new key is added well
         self.assertIn(
-            f"{OPENTELEMETRY_ATTRIBUTE_IDENTIFIER}{key}", carrier.keys()
+            f"{_OPENTELEMETRY_ATTRIBUTE_IDENTIFIER}{key}", carrier.keys()
         )
-        new_value = carrier[f"{OPENTELEMETRY_ATTRIBUTE_IDENTIFIER}{key}"]
+        new_value = carrier[f"{_OPENTELEMETRY_ATTRIBUTE_IDENTIFIER}{key}"]
         self.assertEqual(new_value["StringValue"], value)
