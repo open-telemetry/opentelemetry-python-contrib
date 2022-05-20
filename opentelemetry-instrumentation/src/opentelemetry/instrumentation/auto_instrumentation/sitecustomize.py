@@ -15,7 +15,7 @@
 from logging import getLogger
 from os import environ
 from os.path import abspath, dirname, pathsep
-from re import sub, escape
+from re import escape, sub
 
 from pkg_resources import iter_entry_points
 
