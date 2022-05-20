@@ -7,6 +7,10 @@ components:
     - oxeye-nikolay
     - nikosokolik
 
+  instrumentation/opentelemetry-instrumentation-remoulade:
+    - ben-natan
+    - machine424
+
   propagator/opentelemetry-propagator-aws-xray:
     - NathanielRN
 

@@ -43,7 +43,7 @@ Usage
     multiply.send(43, 51)
 
 """
-from typing import Collection, Iterable, List, Optional
+from typing import Collection
 
 from remoulade import Middleware, broker
 
@@ -53,7 +53,6 @@ from opentelemetry.instrumentation.remoulade import utils
 from opentelemetry.instrumentation.remoulade.package import _instruments
 from opentelemetry.instrumentation.remoulade.version import __version__
 from opentelemetry.propagate import extract, inject
-from opentelemetry.propagators.textmap import CarrierT, Getter
 from opentelemetry.semconv.trace import SpanAttributes
 
 _REMOULADE_MESSAGE_TAG_KEY = "remoulade.action"
@@ -61,6 +60,8 @@ _REMOULADE_MESSAGE_SEND = "send"
 _REMOULADE_MESSAGE_RUN = "run"
 
 _REMOULADE_MESSAGE_NAME_KEY = "remoulade.actor_name"
+
+_REMOULADE_MESSAGE_RETRY_COUNT_KEY = "remoulade.retry_count"
 
 
 class _InstrumentationMiddleware(Middleware):
@@ -77,7 +78,7 @@ class _InstrumentationMiddleware(Middleware):
         operation_name = utils.get_operation_name(
             "before_process_message", retry_count
         )
-        span_attributes = {"remoulade.retry_count": retry_count}
+        span_attributes = {_REMOULADE_MESSAGE_RETRY_COUNT_KEY: retry_count}
 
         span = self._tracer.start_span(
             operation_name,
@@ -121,7 +122,7 @@ class _InstrumentationMiddleware(Middleware):
         operation_name = utils.get_operation_name(
             "before_enqueue", retry_count
         )
-        span_attributes = {"remoulade.retry_count": retry_count}
+        span_attributes = {_REMOULADE_MESSAGE_RETRY_COUNT_KEY: retry_count}
 
         span = self._tracer.start_span(
             operation_name,
