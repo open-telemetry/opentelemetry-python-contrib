@@ -24,13 +24,14 @@ from opentelemetry.trace import Span, SpanKind
 
 from .version import __version__
 
+_DEFAULT_ATTRIBUTES = {SpanAttributes.MESSAGING_SYSTEM: 'rabbitmq'}
+
 
 class SpanBuilder:
-    _DEFAULT_ATTRIBUTES = {SpanAttributes.MESSAGING_SYSTEM: 'rabbitmq'}
     TRACER_PROVIDER = None
 
     def __init__(self):
-        self._attributes = self._DEFAULT_ATTRIBUTES.copy()
+        self._attributes = _DEFAULT_ATTRIBUTES.copy()
         self._operation: MessagingOperationValues = None
         self._kind: SpanKind = None
         self._destination: str = None
