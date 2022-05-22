@@ -21,7 +21,6 @@ from opentelemetry import context, propagate, trace
 from opentelemetry.semconv.trace import MessagingOperationValues
 from opentelemetry.trace import Span
 
-from .aio_pika_getter import aio_pika_getter
 from .span_builder import SpanBuilder
 
 
@@ -42,10 +41,7 @@ class InstrumentedQueue(Queue):
     ) -> Callable[[AbstractIncomingMessage], Any]:
         async def decorated(message: AbstractIncomingMessage):
             headers = message.headers or dict()
-            ctx = (
-                propagate.extract(headers, getter=aio_pika_getter)
-                or context.get_current()
-            )
+            ctx = propagate.extract(headers) or context.get_current()
             token = context.attach(ctx)
             span = self._get_callback_span(message)
             if not span:
