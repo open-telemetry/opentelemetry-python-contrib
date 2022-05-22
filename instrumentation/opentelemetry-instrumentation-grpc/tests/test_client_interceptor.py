@@ -18,7 +18,7 @@ from tests.protobuf import (  # pylint: disable=no-name-in-module
 )
 
 import opentelemetry.instrumentation.grpc
-from opentelemetry import context, trace
+from opentelemetry import context, trace, metrics
 from opentelemetry.instrumentation.grpc import GrpcInstrumentorClient
 from opentelemetry.instrumentation.grpc._client import (
     OpenTelemetryClientInterceptor,
@@ -115,6 +115,8 @@ class TestClientProto(TestBase):
         self.assertEqualSpanInstrumentationInfo(
             span, opentelemetry.instrumentation.grpc
         )
+        metrics_data = self.memory_metrics_reader.get_metrics_data()
+        self.assertEqual(len(metrics_data), 1)
 
     def test_unary_unary(self):
         simple_method(self._stub)
@@ -277,7 +279,7 @@ class TestClientProto(TestBase):
         previous_propagator = get_global_textmap()
         try:
             set_global_textmap(MockTextMapPropagator())
-            interceptor = OpenTelemetryClientInterceptor(trace.NoOpTracer())
+            interceptor = OpenTelemetryClientInterceptor(trace.NoOpTracer(), metrics.NoOpMeter())
 
             carrier = tuple()
 

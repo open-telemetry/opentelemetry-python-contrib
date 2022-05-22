@@ -123,7 +123,7 @@ from typing import Collection
 import grpc  # pylint:disable=import-self
 from wrapt import wrap_function_wrapper as _wrap
 
-from opentelemetry import trace
+from opentelemetry import trace, metrics
 from opentelemetry.instrumentation.grpc.grpcext import intercept_channel
 from opentelemetry.instrumentation.grpc.package import _instruments
 from opentelemetry.instrumentation.grpc.version import __version__
@@ -218,13 +218,14 @@ class GrpcInstrumentorClient(BaseInstrumentor):
     def wrapper_fn(self, original_func, instance, args, kwargs):
         channel = original_func(*args, **kwargs)
         tracer_provider = kwargs.get("tracer_provider")
+        meter_provider = kwargs.get("meter_provider")
         return intercept_channel(
             channel,
-            client_interceptor(tracer_provider=tracer_provider),
+            client_interceptor(tracer_provider=tracer_provider, meter_provider=meter_provider),
         )
 
 
-def client_interceptor(tracer_provider=None):
+def client_interceptor(tracer_provider=None, meter_provider=None):
     """Create a gRPC client channel interceptor.
 
     Args:
@@ -236,8 +237,9 @@ def client_interceptor(tracer_provider=None):
     from . import _client
 
     tracer = trace.get_tracer(__name__, __version__, tracer_provider)
+    meter = metrics.get_meter(__name__, __version__, meter_provider)
 
-    return _client.OpenTelemetryClientInterceptor(tracer)
+    return _client.OpenTelemetryClientInterceptor(tracer, meter)
 
 
 def server_interceptor(tracer_provider=None):
