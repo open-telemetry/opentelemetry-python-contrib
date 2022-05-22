@@ -18,7 +18,7 @@
 libraries = {
     "aio_pika": {
         "library": "aio_pika ~= 7.2.0",
-        "instrumentation": "opentelemetry-instrumentation-aio-pika==0.30b1",
+        "instrumentation": "opentelemetry-instrumentation-aio-pika==0.31b1",
     },
     "aiohttp": {
         "library": "aiohttp ~= 3.0",

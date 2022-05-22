@@ -18,8 +18,9 @@ from aio_pika import Exchange, RobustExchange
 from aio_pika.abc import AbstractMessage
 
 from opentelemetry import propagate, trace
-from opentelemetry.instrumentation.aio_pika.span_builder import SpanBuilder
 from opentelemetry.trace import Span
+
+from .span_builder import SpanBuilder
 
 
 class InstrumentedExchange(Exchange):
