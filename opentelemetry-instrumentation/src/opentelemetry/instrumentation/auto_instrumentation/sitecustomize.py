@@ -109,13 +109,17 @@ def _load_configurators():
             raise exc
 
 
-def initialize():
+def _remove_current_directory_from_python_path():
     # prevents auto-instrumentation of subprocesses if code execs another python process
     environ["PYTHONPATH"] = sub(
         escape(rf"{dirname(abspath(__file__))}{pathsep}?"),
         "",
         environ["PYTHONPATH"],
     )
+
+
+def initialize():
+    _remove_current_directory_from_python_path()
 
     try:
         distro = _load_distros()
