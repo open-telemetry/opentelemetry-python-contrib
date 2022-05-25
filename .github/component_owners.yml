@@ -1,5 +1,9 @@
 components:
   
+  instrumentation/opentelemetry-instrumentation-boto3sqs:
+    - oxeye-nikolay
+    - nikosokolik
+  
   instrumentation/opentelemetry-instrumentation-kafka-python:
     - nozik
   
