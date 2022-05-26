@@ -10,7 +10,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Fixed
 - Adding escape call to fix [auto-instrumentation not producing spans on Windows](https://github.com/open-telemetry/opentelemetry-python/issues/2703).
   ([#1100](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/1100))
-
 - `opentelemetry-instrumentation-grpc` narrow protobuf dependency to exclude protobuf >= 4
   ([1109](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/1109))
 - cleanup type hints for textmap `Getter` and `Setter` classes
