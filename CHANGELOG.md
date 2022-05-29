@@ -14,10 +14,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   ([1109](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/1109))
 - cleanup type hints for textmap `Getter` and `Setter` classes
   ([1106](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/1106))
+<<<<<<< HEAD
   
 ### Added
 - `opentelemetry-instrumentation-remoulade` Initial release
   ([#1082](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/1082))
+=======
+>>>>>>> b4440e8d (updated type hints for getters and setters (#1106))
 
 ## [1.12.0rc1-0.31b0](https://github.com/open-telemetry/opentelemetry-python/releases/tag/v1.12.0rc1-0.31b0) - 2022-05-17
 
