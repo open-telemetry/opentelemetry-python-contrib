@@ -140,7 +140,7 @@ Example of the added span attribute,
 ``http.response.header.custom_response_header = ["<value1>,<value2>"]``
 
 Note:
-    Environment variable names to caputre http headers are still experimental, and thus are subject to change.
+    Environment variable names to capture http headers are still experimental, and thus are subject to change.
 
 API
 ---
@@ -180,7 +180,7 @@ _ClientRequestHookT = typing.Optional[typing.Callable[[Span, dict], None]]
 _ClientResponseHookT = typing.Optional[typing.Callable[[Span, dict], None]]
 
 
-class ASGIGetter(Getter):
+class ASGIGetter(Getter[dict]):
     def get(
         self, carrier: dict, key: str
     ) -> typing.Optional[typing.List[str]]:
@@ -216,7 +216,7 @@ class ASGIGetter(Getter):
 asgi_getter = ASGIGetter()
 
 
-class ASGISetter(Setter):
+class ASGISetter(Setter[dict]):
     def set(
         self, carrier: dict, key: str, value: str
     ) -> None:  # pylint: disable=no-self-use
