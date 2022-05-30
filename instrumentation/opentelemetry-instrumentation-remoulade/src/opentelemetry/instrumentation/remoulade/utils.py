@@ -34,7 +34,7 @@ def get_operation_name(hook_name, retry_count):
             if retry_count == 0
             else f"remoulade/process(retry-{retry_count})"
         )
-    elif hook_name == "before_enqueue":
+    if hook_name == "before_enqueue":
         return (
             "remoulade/send"
             if retry_count == 0

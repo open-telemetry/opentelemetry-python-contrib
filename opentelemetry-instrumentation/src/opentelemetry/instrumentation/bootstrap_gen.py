@@ -118,7 +118,7 @@ libraries = {
     },
     "remoulade": {
         "library": "remoulade >= 0.50",
-        "instrumentation": "opentelemetry-instrumentation-remoulade==0.32b0",
+        "instrumentation": "opentelemetry-instrumentation-remoulade==0.31b0",
     },
     "requests": {
         "library": "requests ~= 2.0",
