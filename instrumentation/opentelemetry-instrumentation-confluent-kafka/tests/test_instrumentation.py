@@ -14,6 +14,7 @@
 from unittest import TestCase
 
 from confluent_kafka import Consumer, Producer
+
 from opentelemetry.instrumentation.confluent_kafka import (
     ConfluentKafkaInstrumentor,
     ProxiedConsumer,
