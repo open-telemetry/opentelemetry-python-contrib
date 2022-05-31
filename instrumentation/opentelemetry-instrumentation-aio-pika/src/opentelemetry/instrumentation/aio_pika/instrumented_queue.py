@@ -21,7 +21,7 @@ from opentelemetry import context, propagate, trace
 from opentelemetry.semconv.trace import MessagingOperationValues
 from opentelemetry.trace import Span
 
-from .span_builder import SpanBuilder
+from opentelemetry.instrumentation.aio_pika.span_builder import SpanBuilder
 
 
 class InstrumentedQueue(Queue):

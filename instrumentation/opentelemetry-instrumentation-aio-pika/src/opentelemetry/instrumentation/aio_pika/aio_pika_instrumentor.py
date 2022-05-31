@@ -17,13 +17,13 @@ import aio_pika
 
 from opentelemetry.instrumentation.instrumentor import BaseInstrumentor
 
-from .instrumented_exchange import (
+from opentelemetry.instrumentation.aio_pika.instrumented_exchange import (
     InstrumentedExchange,
     RobustInstrumentedExchange,
 )
-from .instrumented_queue import InstrumentedQueue, RobustInstrumentedQueue
-from .package import _instruments
-from .span_builder import SpanBuilder
+from opentelemetry.instrumentation.aio_pika.instrumented_queue import InstrumentedQueue, RobustInstrumentedQueue
+from opentelemetry.instrumentation.aio_pika.package import _instruments
+from opentelemetry.instrumentation.aio_pika.span_builder import SpanBuilder
 
 
 class AioPikaInstrumentor(BaseInstrumentor):

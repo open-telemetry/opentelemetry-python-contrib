@@ -22,7 +22,7 @@ from opentelemetry.semconv.trace import (
 )
 from opentelemetry.trace import Span, SpanKind
 
-from .version import __version__
+from opentelemetry.instrumentation.aio_pika.version import __version__
 
 _DEFAULT_ATTRIBUTES = {SpanAttributes.MESSAGING_SYSTEM: 'rabbitmq'}
 
