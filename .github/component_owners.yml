@@ -11,6 +11,10 @@ components:
     - oxeye-nikolay
     - nikosokolik
 
+  instrumentation/opentelemetry-instrumentation-confluent-kafka:
+    - oxeye-dorkolog
+    - dorkolog
+
   propagator/opentelemetry-propagator-aws-xray:
     - NathanielRN
 

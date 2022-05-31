@@ -1,16 +1,12 @@
-import json
-import trace
 from logging import getLogger
 from typing import List, Optional
 
-from opentelemetry import propagate
 from opentelemetry.propagators import textmap
 from opentelemetry.semconv.trace import (
-    SpanAttributes,
-    MessagingOperationValues,
     MessagingDestinationKindValues,
+    MessagingOperationValues,
+    SpanAttributes,
 )
-from opentelemetry.trace import Link, SpanKind
 
 _LOG = getLogger(__name__)
 
@@ -68,14 +64,14 @@ class KafkaContextSetter(textmap.Setter):
 
 
 _kafka_getter = KafkaContextGetter()
+
+
 def _enrich_span(
     span,
     topic,
-    bootstrap_servers: List[str],
     partition: Optional[int] = None,
     offset: Optional[int] = None,
     operation: Optional[MessagingOperationValues] = None,
-
 ):
 
     if not span.is_recording():
@@ -83,11 +79,10 @@ def _enrich_span(
 
     span.set_attribute(SpanAttributes.MESSAGING_SYSTEM, "kafka")
     span.set_attribute(SpanAttributes.MESSAGING_DESTINATION, topic)
-    span.set_attribute(SpanAttributes.MESSAGING_KAFKA_PARTITION, partition)
 
-    span.set_attribute(
-        SpanAttributes.MESSAGING_URL, json.dumps(bootstrap_servers)
-    )
+    if partition:
+        span.set_attribute(SpanAttributes.MESSAGING_KAFKA_PARTITION, partition)
+
     span.set_attribute(
         SpanAttributes.MESSAGING_DESTINATION_KIND,
         MessagingDestinationKindValues.QUEUE.value,
@@ -101,7 +96,10 @@ def _enrich_span(
     # https://stackoverflow.com/questions/65935155/identify-and-find-specific-message-in-kafka-topic
     # A message within Kafka is uniquely defined by its topic name, topic partition and offset.
     if partition and offset and topic:
-        span.set_attribute(SpanAttributes.MESSAGING_MESSAGE_ID, f"{topic}.{partition}.{offset}")
+        span.set_attribute(
+            SpanAttributes.MESSAGING_MESSAGE_ID,
+            f"{topic}.{partition}.{offset}",
+        )
 
 
 _kafka_setter = KafkaContextSetter()

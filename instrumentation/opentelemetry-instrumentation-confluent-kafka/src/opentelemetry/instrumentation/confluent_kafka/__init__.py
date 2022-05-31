@@ -101,24 +101,30 @@ from typing import Collection
 
 import confluent_kafka
 import wrapt
-from confluent_kafka import Producer, Consumer
-from opentelemetry import trace, propagate, context
-from opentelemetry.instrumentation.instrumentor import BaseInstrumentor
-from opentelemetry.semconv.trace import MessagingOperationValues
-from opentelemetry.trace import Tracer, Link, SpanKind
-from opentelemetry.instrumentation.utils import unwrap
+from confluent_kafka import Consumer, Producer
 
-from kafka_instrumentation.package import _instruments
-from kafka_instrumentation.utils import KafkaPropertiesExtractor, _get_span_name, \
-    _kafka_setter, _enrich_span, _kafka_getter
-from kafka_instrumentation.version import __version__
+from opentelemetry import context, propagate, trace
+from opentelemetry.instrumentation.confluent_kafka.package import _instruments
+from opentelemetry.instrumentation.confluent_kafka.utils import (
+    KafkaPropertiesExtractor,
+    _enrich_span,
+    _get_span_name,
+    _kafka_getter,
+    _kafka_setter,
+)
+from opentelemetry.instrumentation.confluent_kafka.version import __version__
+from opentelemetry.instrumentation.instrumentor import BaseInstrumentor
+from opentelemetry.instrumentation.utils import unwrap
+from opentelemetry.semconv.trace import MessagingOperationValues
+from opentelemetry.trace import Link, SpanKind, Tracer
 
 
 class AutoInstrumentedProducer(Producer):
-    def __init__(self, config):
-        super().__init__(config)
 
-    def produce(self, topic, value=None, *args, **kwargs):
+    # This method is deliberately implemented in order to allow wrapt to wrap this function
+    def produce(
+        self, topic, value=None, *args, **kwargs
+    ):  # pylint: disable=keyword-arg-before-vararg,useless-super-delegation
         super().produce(topic, value, *args, **kwargs)
 
 
@@ -127,12 +133,12 @@ class AutoInstrumentedConsumer(Consumer):
         super().__init__(config)
         self._current_consume_span = None
 
-    def poll(self, timeout=-1):
+    # This method is deliberately implemented in order to allow wrapt to wrap this function
+    def poll(self, timeout=-1):  # pylint: disable=useless-super-delegation
         return super().poll(timeout)
 
 
 class ProxiedProducer(Producer):
-
     def __init__(self, producer: Producer, tracer: Tracer):
         self._producer = producer
         self._tracer = tracer
@@ -143,19 +149,22 @@ class ProxiedProducer(Producer):
     def poll(self, timeout=-1):
         self._producer.poll(timeout)
 
-    def produce(self, topic, value=None, *args, **kwargs):
+    def produce(
+        self, topic, value=None, *args, **kwargs
+    ):  # pylint: disable=keyword-arg-before-vararg
         new_kwargs = kwargs.copy()
-        new_kwargs['topic'] = topic
-        new_kwargs['value'] = value
+        new_kwargs["topic"] = topic
+        new_kwargs["value"] = value
 
-        return ConfluentKafkaInstrumentor.wrap_produce(self._producer.produce, self, self._tracer, args, new_kwargs)
+        return ConfluentKafkaInstrumentor.wrap_produce(
+            self._producer.produce, self, self._tracer, args, new_kwargs
+        )
 
     def original_producer(self):
         return self._producer
 
 
 class ProxiedConsumer(Consumer):
-
     def __init__(self, consumer: Consumer, tracer: Tracer):
         self._consumer = consumer
         self._tracer = tracer
@@ -165,19 +174,29 @@ class ProxiedConsumer(Consumer):
     def committed(self, partitions, timeout=-1):
         return self._consumer.committed(partitions, timeout)
 
-    def consume(self, num_messages=1, *args, **kwargs):
+    def consume(
+        self, num_messages=1, *args, **kwargs
+    ):  # pylint: disable=keyword-arg-before-vararg
         return self._consumer.consume(num_messages, *args, **kwargs)
 
-    def get_watermark_offsets(self, partition, timeout=-1, *args, **kwargs):
-        return self._consumer.get_watermark_offsets(partition, timeout, *args, **kwargs)
+    def get_watermark_offsets(
+        self, partition, timeout=-1, *args, **kwargs
+    ):  # pylint: disable=keyword-arg-before-vararg
+        return self._consumer.get_watermark_offsets(
+            partition, timeout, *args, **kwargs
+        )
 
     def offsets_for_times(self, partitions, timeout=-1):
         return self._consumer.offsets_for_times(partitions, timeout)
 
     def poll(self, timeout=-1):
-        return ConfluentKafkaInstrumentor.wrap_poll(self._consumer.poll, self, self._tracer, [timeout], {})
+        return ConfluentKafkaInstrumentor.wrap_poll(
+            self._consumer.poll, self, self._tracer, [timeout], {}
+        )
 
-    def subscribe(self, topics, on_assign=lambda *args: None, *args, **kwargs):
+    def subscribe(
+        self, topics, on_assign=lambda *args: None, *args, **kwargs
+    ):  # pylint: disable=keyword-arg-before-vararg
         self._consumer.subscribe(topics, on_assign, *args, **kwargs)
 
     def original_consumer(self):
@@ -189,8 +208,11 @@ class ConfluentKafkaInstrumentor(BaseInstrumentor):
     See `BaseInstrumentor`
     """
 
+    # pylint: disable=attribute-defined-outside-init
     @staticmethod
-    def instrument_producer(producer: Producer, tracer_provider=None) -> ProxiedProducer:
+    def instrument_producer(
+        producer: Producer, tracer_provider=None
+    ) -> ProxiedProducer:
         tracer = trace.get_tracer(
             __name__, __version__, tracer_provider=tracer_provider
         )
@@ -200,7 +222,9 @@ class ConfluentKafkaInstrumentor(BaseInstrumentor):
         return manual_producer
 
     @staticmethod
-    def instrument_consumer(consumer: Consumer, tracer_provider=None) -> ProxiedConsumer:
+    def instrument_consumer(
+        consumer: Consumer, tracer_provider=None
+    ) -> ProxiedConsumer:
         tracer = trace.get_tracer(
             __name__, __version__, tracer_provider=tracer_provider
         )
@@ -210,14 +234,16 @@ class ConfluentKafkaInstrumentor(BaseInstrumentor):
         return manual_consumer
 
     @staticmethod
-    def uninstrument_producer(producer) -> Producer:
+    def uninstrument_producer(producer: Producer) -> Producer:
         if isinstance(producer, ProxiedProducer):
             return producer.original_producer()
+        return producer
 
     @staticmethod
-    def uninstrument_consumer(consumer) -> Consumer:
+    def uninstrument_consumer(consumer: Consumer) -> Consumer:
         if isinstance(consumer, ProxiedConsumer):
             return consumer.original_consumer()
+        return consumer
 
     def instrumentation_dependencies(self) -> Collection[str]:
         return _instruments
@@ -237,16 +263,26 @@ class ConfluentKafkaInstrumentor(BaseInstrumentor):
         self._tracer = tracer
 
         def _inner_wrap_produce(func, instance, args, kwargs):
-            return ConfluentKafkaInstrumentor.wrap_produce(func, instance, self._tracer, args, kwargs)
+            return ConfluentKafkaInstrumentor.wrap_produce(
+                func, instance, self._tracer, args, kwargs
+            )
 
         def _inner_wrap_poll(func, instance, args, kwargs):
-            return ConfluentKafkaInstrumentor.wrap_poll(func, instance, self._tracer, args, kwargs)
+            return ConfluentKafkaInstrumentor.wrap_poll(
+                func, instance, self._tracer, args, kwargs
+            )
 
-        wrapt.wrap_function_wrapper("kafka_instrumentation",
-                                    "AutoInstrumentedProducer.produce", _inner_wrap_produce)
+        wrapt.wrap_function_wrapper(
+            AutoInstrumentedProducer,
+            "produce",
+            _inner_wrap_produce,
+        )
 
-        wrapt.wrap_function_wrapper("kafka_instrumentation",
-                                    "AutoInstrumentedConsumer.poll", _inner_wrap_poll)
+        wrapt.wrap_function_wrapper(
+            AutoInstrumentedConsumer,
+            "poll",
+            _inner_wrap_poll,
+        )
 
     def _uninstrument(self, **kwargs):
         confluent_kafka.Producer = self._original_kafka_producer
@@ -261,22 +297,29 @@ class ConfluentKafkaInstrumentor(BaseInstrumentor):
         if not topic:
             topic = args[0]
 
-        span_name = _get_span_name("send", topic) 
-        with tracer.start_as_current_span(name=span_name, kind=trace.SpanKind.PRODUCER) as span:
-            headers = KafkaPropertiesExtractor.extract_produce_headers(args, kwargs)
+        span_name = _get_span_name("send", topic)
+        with tracer.start_as_current_span(
+            name=span_name, kind=trace.SpanKind.PRODUCER
+        ) as span:
+            headers = KafkaPropertiesExtractor.extract_produce_headers(
+                args, kwargs
+            )
             if headers is None:
                 headers = []
                 kwargs["headers"] = headers
 
             topic = KafkaPropertiesExtractor.extract_produce_topic(args)
-            bootstrap_servers = KafkaPropertiesExtractor.extract_bootstrap_servers(instance)
-            _enrich_span(span, topic, bootstrap_servers, operation=MessagingOperationValues.RECEIVE)  # Replace
+            _enrich_span(
+                span,
+                topic,
+                operation=MessagingOperationValues.RECEIVE,
+            )  # Replace
             propagate.inject(
                 headers,
                 setter=_kafka_setter,
             )
             return func(*args, **kwargs)
-            
+
     @staticmethod
     def wrap_poll(func, instance, tracer, args, kwargs):
         if instance._current_consume_span:
@@ -285,7 +328,9 @@ class ConfluentKafkaInstrumentor(BaseInstrumentor):
             instance._current_consume_span.end()
             instance._current_consume_span = None
 
-        with tracer.start_as_current_span("recv", end_on_exit=True, kind=trace.SpanKind.CONSUMER) as span:
+        with tracer.start_as_current_span(
+            "recv", end_on_exit=True, kind=trace.SpanKind.CONSUMER
+        ):
             record = func(*args, **kwargs)
             if record:
                 links = []
@@ -296,20 +341,20 @@ class ConfluentKafkaInstrumentor(BaseInstrumentor):
                             links.append(Link(context=item.get_span_context()))
 
                 instance._current_consume_span = tracer.start_span(
-                    name=f"{record.topic()} process", links=links, kind=SpanKind.CONSUMER
+                    name=f"{record.topic()} process",
+                    links=links,
+                    kind=SpanKind.CONSUMER,
                 )
 
-                bootstrap_servers = KafkaPropertiesExtractor.extract_bootstrap_servers(instance)
                 _enrich_span(
                     instance._current_consume_span,
                     record.topic(),
-                    bootstrap_servers,
                     record.partition(),
                     record.offset(),
                     operation=MessagingOperationValues.PROCESS,
-
                 )
         instance._current_context_token = context.attach(
-            trace.set_span_in_context(instance._current_consume_span))
+            trace.set_span_in_context(instance._current_consume_span)
+        )
 
         return record

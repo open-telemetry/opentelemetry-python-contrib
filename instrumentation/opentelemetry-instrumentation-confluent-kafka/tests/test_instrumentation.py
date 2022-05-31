@@ -13,41 +13,44 @@
 # limitations under the License.
 from unittest import TestCase
 
-
-from confluent_kafka import Producer, Consumer
-
-from kafka_instrumentation import ConfluentKafkaInstrumentor, ProxiedProducer, ProxiedConsumer
+from confluent_kafka import Consumer, Producer
+from opentelemetry.instrumentation.confluent_kafka import (
+    ConfluentKafkaInstrumentor,
+    ProxiedConsumer,
+    ProxiedProducer,
+)
 
 
 class TestConfluentKafka(TestCase):
     def test_instrument_api(self) -> None:
         instrumentation = ConfluentKafkaInstrumentor()
 
-        p = Producer({'bootstrap.servers': 'localhost:29092'})
-        p = instrumentation.instrument_producer(p)
+        producer = Producer({"bootstrap.servers": "localhost:29092"})
+        producer = instrumentation.instrument_producer(producer)
 
-        self.assertEqual(p.__class__, ProxiedProducer)
+        self.assertEqual(producer.__class__, ProxiedProducer)
 
-        p = instrumentation.uninstrument_producer(p)
-        self.assertEqual(p.__class__, Producer)
+        producer = instrumentation.uninstrument_producer(producer)
+        self.assertEqual(producer.__class__, Producer)
 
-        p = Producer({'bootstrap.servers': 'localhost:29092'})
-        p = instrumentation.instrument_producer(p)
+        producer = Producer({"bootstrap.servers": "localhost:29092"})
+        producer = instrumentation.instrument_producer(producer)
 
-        self.assertEqual(p.__class__, ProxiedProducer)
+        self.assertEqual(producer.__class__, ProxiedProducer)
 
-        p = instrumentation.uninstrument_producer(p)
-        self.assertEqual(p.__class__, Producer)
+        producer = instrumentation.uninstrument_producer(producer)
+        self.assertEqual(producer.__class__, Producer)
 
-        c = Consumer({
-            'bootstrap.servers': 'localhost:29092',
-            'group.id': 'mygroup',
-            'auto.offset.reset': 'earliest'
-        })
+        consumer = Consumer(
+            {
+                "bootstrap.servers": "localhost:29092",
+                "group.id": "mygroup",
+                "auto.offset.reset": "earliest",
+            }
+        )
 
-        c = instrumentation.instrument_consumer(c)
-        self.assertEqual(c.__class__, ProxiedConsumer)
+        consumer = instrumentation.instrument_consumer(consumer)
+        self.assertEqual(consumer.__class__, ProxiedConsumer)
 
-        c = instrumentation.uninstrument_consumer(c)
-        self.assertEqual(c.__class__, Consumer)
-
+        consumer = instrumentation.uninstrument_consumer(consumer)
+        self.assertEqual(consumer.__class__, Consumer)
