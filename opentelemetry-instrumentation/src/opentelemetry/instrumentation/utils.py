@@ -13,6 +13,8 @@
 # limitations under the License.
 
 import urllib.parse
+from os.path import abspath, dirname, pathsep
+from re import escape, sub
 from typing import Dict, Sequence
 
 from wrapt import ObjectProxy
@@ -163,3 +165,15 @@ def _generate_opentelemetry_traceparent(span: Span) -> str:
     _traceparent = _version + "-" + _trace_id + "-" + _span_id + "-" + _flags
     meta.update({"traceparent": _traceparent})
     return meta
+
+def _python_path_without_current_directory(python_path, file, path_separator):
+    print("file = " + file)
+    print("path_separator = " + path_separator)
+    print("python_path = " + python_path)
+    dir = dirname(abspath(file))
+    print("dir = " + dir)
+    return sub(
+        rf"{escape(dir)}{path_separator}?",
+        "",
+        escape(python_path),
+    )

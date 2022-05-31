@@ -14,7 +14,7 @@
 
 from http import HTTPStatus
 
-from opentelemetry.instrumentation.utils import http_status_to_status_code
+from opentelemetry.instrumentation.utils import _python_path_without_current_directory, http_status_to_status_code
 from opentelemetry.test.test_base import TestBase
 from opentelemetry.trace import StatusCode
 
@@ -111,3 +111,34 @@ class TestUtils(TestBase):
                     int(status_code), server_span=True
                 )
                 self.assertEqual(actual, expected, status_code)
+
+    def test_windows(self):
+        test_python_path = r"c:\users\jeremyvoss\workplace\opentelemetry-python-contrib\opentelemetry-instrumentation\src\opentelemetry\instrumentation\auto_instrumentation;C:\Users\jeremyvoss\workplace"
+        test_file = r"C:\Users\jeremyvoss\workplace\opentelemetry-python-contrib\opentelemetry-instrumentation\src\opentelemetry\instrumentation\auto_instrumentation\sitecustomize.py"
+        test_pathsep = ";"
+        file = r"c:\users\jeremyvoss\workplace\opentelemetry-python-contrib\opentelemetry-instrumentation\src\opentelemetry\instrumentation\auto_instrumentation\sitecustomize.py"
+        path_separator = r";"
+        python_path = r"c:\users\jeremyvoss\workplace\opentelemetry-python-contrib\opentelemetry-instrumentation\src\opentelemetry\instrumentation\auto_instrumentation;C:\Users\jeremyvoss\workplace"
+        test_expected_python_path = r"C:\Users\jeremyvoss\workplace"
+        # self._test_remove_current_directory_from_python_path_helper(test_python_path, test_file, test_pathsep, test_expected_python_path)
+        assert(test_expected_python_path ==
+            _python_path_without_current_directory(
+                python_path,
+                file,
+                path_separator
+            )
+        )
+
+    # def test_linux(self):
+    #     test_python_path = r"c:\users\jeremyvoss\workplace\opentelemetry-python-contrib\opentelemetry-instrumentation\src\opentelemetry\instrumentation\auto_instrumentation;C:\Users\jeremyvoss\workplace"
+    #     test_file = r"C:\Users\jeremyvoss\workplace\opentelemetry-python-contrib\opentelemetry-instrumentation\src\opentelemetry\instrumentation\auto_instrumentation\sitecustomize.py"
+    #     test_pathsep = ";"
+    #     test_expected_python_path = r"c:\users\jeremyvoss\workplace\opentelemetry-python-contrib\opentelemetry-instrumentation\src\opentelemetry\instrumentation\auto_instrumentation;"
+    #     self._test_remove_current_directory_from_python_path_helper(test_python_path, test_file, test_pathsep, test_expected_python_path)
+
+    # def _test_remove_current_directory_from_python_path_helper(self, test_python_path, test_file, test_pathsep, test_expected_python_path):
+    #     assert(test_expected_python_path ==
+    #     opentelemetry.instrumentation.auto_instrumentation.sitecustomize._remove_current_directory_from_python_path(
+    #         test_python_path,
+    #         test_file,
+    #         test_pathsep))

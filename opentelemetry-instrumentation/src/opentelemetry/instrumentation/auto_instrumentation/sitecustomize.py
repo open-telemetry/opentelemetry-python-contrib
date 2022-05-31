@@ -14,8 +14,8 @@
 
 from logging import getLogger
 from os import environ
-from os.path import abspath, dirname, pathsep
-from re import escape, sub
+from os.path import pathsep
+from opentelemetry.instrumentation.utils import _python_path_without_current_directory
 
 from pkg_resources import iter_entry_points
 
@@ -109,17 +109,10 @@ def _load_configurators():
             raise exc
 
 
-def _remove_current_directory_from_python_path():
-    # prevents auto-instrumentation of subprocesses if code execs another python process
-    environ["PYTHONPATH"] = sub(
-        rf"{escape(dirname(abspath(__file__)))}{pathsep}?",
-        "",
-        environ["PYTHONPATH"],
-    )
-
-
 def initialize():
-    _remove_current_directory_from_python_path()
+    # prevents auto-instrumentation of subprocesses if code execs another python process
+    environ["PYTHONPATH"] = _python_path_without_current_directory(environ["PYTHONPATH"], __file__, pathsep)
+    print("expected_python_path = " + environ["PYTHONPATH"])
 
     try:
         distro = _load_distros()
