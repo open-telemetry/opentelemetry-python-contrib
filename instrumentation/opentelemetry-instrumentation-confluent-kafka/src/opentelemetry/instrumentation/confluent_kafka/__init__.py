@@ -47,8 +47,7 @@ Usage
                 if msg.error():
                     if msg.error().code() == KafkaError._PARTITION_EOF:
                         # End of partition event
-                        sys.stderr.write('%% %s [%d] reached end at offset %d\n' %
-                                         (msg.topic(), msg.partition(), msg.offset()))
+                        sys.stderr.write(f"{msg.topic()} [{msg.partition()}] reached end at offset {msg.offset()}}\n")
                     elif msg.error():
                         raise KafkaException(msg.error())
                 else:
