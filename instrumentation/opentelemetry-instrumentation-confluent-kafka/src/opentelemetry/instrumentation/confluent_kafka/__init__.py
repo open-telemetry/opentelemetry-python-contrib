@@ -103,19 +103,20 @@ import wrapt
 from confluent_kafka import Consumer, Producer
 
 from opentelemetry import context, propagate, trace
-from opentelemetry.instrumentation.confluent_kafka.package import _instruments
-from opentelemetry.instrumentation.confluent_kafka.utils import (
+from opentelemetry.instrumentation.instrumentor import BaseInstrumentor
+from opentelemetry.instrumentation.utils import unwrap
+from opentelemetry.semconv.trace import MessagingOperationValues
+from opentelemetry.trace import Link, SpanKind, Tracer
+
+from .package import _instruments
+from .utils import (
     KafkaPropertiesExtractor,
     _enrich_span,
     _get_span_name,
     _kafka_getter,
     _kafka_setter,
 )
-from opentelemetry.instrumentation.confluent_kafka.version import __version__
-from opentelemetry.instrumentation.instrumentor import BaseInstrumentor
-from opentelemetry.instrumentation.utils import unwrap
-from opentelemetry.semconv.trace import MessagingOperationValues
-from opentelemetry.trace import Link, SpanKind, Tracer
+from .version import __version__
 
 
 class AutoInstrumentedProducer(Producer):
