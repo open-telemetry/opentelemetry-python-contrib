@@ -24,15 +24,3 @@ class TestBuilder(TestCase):
         builder.set_destination('destination')
         span = builder.build()
         self.assertTrue(isinstance(span, Span))
-
-    def test_no_destination(self):
-        builder = SpanBuilder()
-        builder.set_as_consumer()
-        with self.assertRaises(AssertionError):
-            builder.build()
-
-    def test_no_kind(self):
-        builder = SpanBuilder()
-        builder.set_destination('destination')
-        with self.assertRaises(AssertionError):
-            builder.build()

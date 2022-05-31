@@ -17,12 +17,12 @@ from unittest import TestCase, mock
 
 from aio_pika import Queue
 
+from opentelemetry.trace import SpanKind
 from opentelemetry.instrumentation.aio_pika.instrumented_queue import (
     InstrumentedQueue,
     RobustInstrumentedQueue,
 )
 from opentelemetry.semconv.trace import SpanAttributes
-from opentelemetry.trace import NonRecordingSpan
 
 from .consts import (
     CHANNEL,
@@ -46,6 +46,7 @@ class TestInstrumentedQueue(TestCase):
         SpanAttributes.NET_PEER_PORT: SERVER_PORT,
         SpanAttributes.MESSAGING_MESSAGE_ID: MESSAGE_ID,
         SpanAttributes.MESSAGING_CONVERSATION_ID: CORRELATION_ID,
+        SpanAttributes.MESSAGING_OPERATION: 'receive'
     }
 
     def setUp(self):
@@ -56,15 +57,17 @@ class TestInstrumentedQueue(TestCase):
         queue = InstrumentedQueue(
             CHANNEL, QUEUE_NAME, False, False, False, None
         )
-        with mock.patch.object(
-            NonRecordingSpan, "is_recording", return_value=True
+        tracer = mock.MagicMock()
+        with mock.patch(
+            'opentelemetry.trace.get_tracer',
+            return_value=tracer
         ):
-            with mock.patch.object(
-                NonRecordingSpan, "set_attribute"
-            ) as mock_set_attrubute:
-                queue._get_callback_span(MESSAGE)
-        for name, value in self.EXPECTED_ATTRIBUTES.items():
-            mock_set_attrubute.assert_any_call(name, value)
+            queue._get_callback_span(MESSAGE)
+        tracer.start_span.assert_called_once_with(
+            f'{EXCHANGE_NAME} receive',
+            kind=SpanKind.CONSUMER,
+            attributes=self.EXPECTED_ATTRIBUTES
+        )
 
     def test_decorate_callback(self):
         queue = InstrumentedQueue(

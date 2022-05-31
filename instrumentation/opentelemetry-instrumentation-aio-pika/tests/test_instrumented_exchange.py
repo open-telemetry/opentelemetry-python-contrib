@@ -17,12 +17,12 @@ from unittest import TestCase, mock
 
 from aio_pika import Exchange
 
+from opentelemetry.trace import SpanKind
 from opentelemetry.instrumentation.aio_pika.instrumented_exchange import (
     InstrumentedExchange,
     RobustInstrumentedExchange,
 )
 from opentelemetry.semconv.trace import SpanAttributes
-from opentelemetry.trace import NonRecordingSpan
 
 from .consts import (
     CHANNEL,
@@ -55,15 +55,17 @@ class TestInstrumentedExchange(TestCase):
 
     def test_get_publish_span(self):
         exchange = InstrumentedExchange(CONNECTION, CHANNEL, EXCHANGE_NAME)
-        with mock.patch.object(
-            NonRecordingSpan, "is_recording", return_value=True
+        tracer = mock.MagicMock()
+        with mock.patch(
+            'opentelemetry.trace.get_tracer',
+            return_value=tracer
         ):
-            with mock.patch.object(
-                NonRecordingSpan, "set_attribute"
-            ) as mock_set_attrubute:
-                exchange._get_publish_span(MESSAGE, ROUTING_KEY)
-        for name, value in self.EXPECTED_ATTRIBUTES.items():
-            mock_set_attrubute.assert_any_call(name, value)
+            exchange._get_publish_span(MESSAGE, ROUTING_KEY)
+        tracer.start_span.assert_called_once_with(
+            f'{EXCHANGE_NAME},{ROUTING_KEY} send',
+            kind=SpanKind.PRODUCER,
+            attributes=self.EXPECTED_ATTRIBUTES
+        )
 
     def _test_publish(self, exchange_type: Type[InstrumentedExchange]):
         exchange = exchange_type(CONNECTION, CHANNEL, EXCHANGE_NAME)

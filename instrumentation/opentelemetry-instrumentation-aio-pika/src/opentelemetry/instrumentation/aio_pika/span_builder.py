@@ -15,7 +15,7 @@ from typing import Optional
 
 from aio_pika.abc import AbstractChannel, AbstractMessage
 
-from opentelemetry import context, trace
+from opentelemetry import trace
 from opentelemetry.semconv.trace import (
     MessagingOperationValues,
     SpanAttributes,

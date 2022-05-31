@@ -24,6 +24,7 @@ from opentelemetry.trace import Span
 from opentelemetry.instrumentation.aio_pika.span_builder import SpanBuilder
 from opentelemetry.instrumentation.aio_pika.utils import is_instrumentation_enabled
 
+
 class InstrumentedQueue(Queue):
     def _get_callback_span(
         self, message: AbstractIncomingMessage
