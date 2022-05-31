@@ -262,7 +262,7 @@ def _instrument(
     url_filter: _UrlFilterT = None,
     request_hook: _RequestHookT = None,
     response_hook: _ResponseHookT = None,
-    trace_configs: list = (),
+    trace_configs: Collection = (),
 ):
     """Enables tracing of all ClientSessions
 
