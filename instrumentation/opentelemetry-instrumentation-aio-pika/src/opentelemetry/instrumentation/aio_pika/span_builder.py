@@ -22,8 +22,10 @@ from opentelemetry.semconv.trace import (
 )
 from opentelemetry.trace import Span, SpanKind
 
+from opentelemetry.instrumentation.aio_pika.utils import is_instrumentation_enabled
 from opentelemetry.instrumentation.aio_pika.version import __version__
 
+_TRACER_NAME = 'opentelemetry.instrumentation.aio-pika'
 _DEFAULT_ATTRIBUTES = {SpanAttributes.MESSAGING_SYSTEM: 'rabbitmq'}
 
 
@@ -64,20 +66,14 @@ class SpanBuilder:
             self._attributes[SpanAttributes.MESSAGING_CONVERSATION_ID] = properties.correlation_id
 
     def build(self) -> Optional[Span]:
-        if context.get_value('suppress_instrumentation') or context.get_value(context._SUPPRESS_INSTRUMENTATION_KEY):
+        if not is_instrumentation_enabled():
             return None
-        assert self._kind, 'kind must be configured.'
-        assert self._destination, 'destination must be configured.'
-        tracer = trace.get_tracer(__name__, __version__, self.TRACER_PROVIDER)
-        span = tracer.start_span(self._generate_span_name(), kind=self._kind)
-        if not span.is_recording():
-            return span
-        for attribute_name, attribute_value in self._attributes.items():
-            span.set_attribute(attribute_name, attribute_value)
         if self._operation:
-            span.set_attribute(SpanAttributes.MESSAGING_OPERATION, self._operation.value)
+            self._attributes[SpanAttributes.MESSAGING_OPERATION] = self._operation.value
         else:
-            span.set_attribute(SpanAttributes.MESSAGING_TEMP_DESTINATION, True)
+            self._attributes[SpanAttributes.MESSAGING_TEMP_DESTINATION] = True
+        tracer = trace.get_tracer(_TRACER_NAME, __version__, self.TRACER_PROVIDER)
+        span = tracer.start_span(self._generate_span_name(), kind=self._kind, attributes=self._attributes)
         return span
 
     def _generate_span_name(self) -> str:

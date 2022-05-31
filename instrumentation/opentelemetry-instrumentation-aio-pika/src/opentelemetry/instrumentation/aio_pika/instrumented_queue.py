@@ -22,7 +22,7 @@ from opentelemetry.semconv.trace import MessagingOperationValues
 from opentelemetry.trace import Span
 
 from opentelemetry.instrumentation.aio_pika.span_builder import SpanBuilder
-
+from opentelemetry.instrumentation.aio_pika.utils import is_instrumentation_enabled
 
 class InstrumentedQueue(Queue):
     def _get_callback_span(
@@ -40,6 +40,8 @@ class InstrumentedQueue(Queue):
         self, callback: Callable[[AbstractIncomingMessage], Any]
     ) -> Callable[[AbstractIncomingMessage], Any]:
         async def decorated(message: AbstractIncomingMessage):
+            if not is_instrumentation_enabled():
+                return await callback(message)
             headers = message.headers or {}
             ctx = propagate.extract(headers)
             token = context.attach(ctx)
