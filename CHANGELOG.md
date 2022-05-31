@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased](https://github.com/open-telemetry/opentelemetry-python/compare/v1.12.0rc1-0.31b0...HEAD)
 
+### Added
+- `opentelemetry-instrumentation-aio-pika` added RabbitMQ aio-pika module instrumentation.
+  ([#1095](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/1095))
+
 ## [1.12.0rc1-0.31b0](https://github.com/open-telemetry/opentelemetry-python/releases/tag/v1.12.0rc1-0.31b0) - 2022-05-17
 
 
@@ -27,8 +31,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   ([#1065](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/1065))
 - `opentelemetry-instrumentation-redis` now instruments asynchronous Redis clients, if the installed redis-py includes async support (>=4.2.0).
   ([#1076](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/1076))
-- `opentelemetry-instrumentation-aio-pika` added RabbitMQ aio-pika module instrumentation.
-  ([#1095](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/1095))
 
 ## [1.11.1-0.30b1](https://github.com/open-telemetry/opentelemetry-python/releases/tag/v1.11.1-0.30b1) - 2022-04-21
 
