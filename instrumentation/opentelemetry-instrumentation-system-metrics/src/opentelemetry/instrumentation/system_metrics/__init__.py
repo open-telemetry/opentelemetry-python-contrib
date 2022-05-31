@@ -42,10 +42,10 @@ Usage
 
 .. code:: python
 
-    from opentelemetry._metrics import set_meter_provider
+    from opentelemetry.metrics import set_meter_provider
     from opentelemetry.instrumentation.system_metrics import SystemMetricsInstrumentor
-    from opentelemetry.sdk._metrics import MeterProvider
-    from opentelemetry.sdk._metrics.export import ConsoleMetricExporter, PeriodicExportingMetricReader
+    from opentelemetry.sdk.metrics import MeterProvider
+    from opentelemetry.sdk.metrics.export import ConsoleMetricExporter, PeriodicExportingMetricReader
 
     exporter = ConsoleMetricExporter()
 
@@ -76,13 +76,12 @@ from typing import Collection, Dict, Iterable, List, Optional
 
 import psutil
 
-from opentelemetry._metrics import Observation, get_meter
-
 # FIXME Remove this pyling disabling line when Github issue is cleared
 # pylint: disable=no-name-in-module
 from opentelemetry.instrumentation.instrumentor import BaseInstrumentor
 from opentelemetry.instrumentation.system_metrics.package import _instruments
 from opentelemetry.instrumentation.system_metrics.version import __version__
+from opentelemetry.metrics import CallbackOptions, Observation, get_meter
 from opentelemetry.sdk.util import get_dict_as_key
 
 _DEFAULT_CONFIG = {
@@ -320,7 +319,9 @@ class SystemMetricsInstrumentor(BaseInstrumentor):
     def _uninstrument(self, **__):
         pass
 
-    def _get_system_cpu_time(self) -> Iterable[Observation]:
+    def _get_system_cpu_time(
+        self, options: CallbackOptions
+    ) -> Iterable[Observation]:
         """Observer callback for system CPU time"""
         for cpu, times in enumerate(psutil.cpu_times(percpu=True)):
             for metric in self._config["system.cpu.time"]:
@@ -331,7 +332,9 @@ class SystemMetricsInstrumentor(BaseInstrumentor):
                         getattr(times, metric), self._system_cpu_time_labels
                     )
 
-    def _get_system_cpu_utilization(self) -> Iterable[Observation]:
+    def _get_system_cpu_utilization(
+        self, options: CallbackOptions
+    ) -> Iterable[Observation]:
         """Observer callback for system CPU utilization"""
 
         for cpu, times_percent in enumerate(
@@ -346,7 +349,9 @@ class SystemMetricsInstrumentor(BaseInstrumentor):
                         self._system_cpu_utilization_labels,
                     )
 
-    def _get_system_memory_usage(self) -> Iterable[Observation]:
+    def _get_system_memory_usage(
+        self, options: CallbackOptions
+    ) -> Iterable[Observation]:
         """Observer callback for memory usage"""
         virtual_memory = psutil.virtual_memory()
         for metric in self._config["system.memory.usage"]:
@@ -357,7 +362,9 @@ class SystemMetricsInstrumentor(BaseInstrumentor):
                     self._system_memory_usage_labels,
                 )
 
-    def _get_system_memory_utilization(self) -> Iterable[Observation]:
+    def _get_system_memory_utilization(
+        self, options: CallbackOptions
+    ) -> Iterable[Observation]:
         """Observer callback for memory utilization"""
         system_memory = psutil.virtual_memory()
 
@@ -369,7 +376,9 @@ class SystemMetricsInstrumentor(BaseInstrumentor):
                     self._system_memory_utilization_labels,
                 )
 
-    def _get_system_swap_usage(self) -> Iterable[Observation]:
+    def _get_system_swap_usage(
+        self, options: CallbackOptions
+    ) -> Iterable[Observation]:
         """Observer callback for swap usage"""
         system_swap = psutil.swap_memory()
 
@@ -381,7 +390,9 @@ class SystemMetricsInstrumentor(BaseInstrumentor):
                     self._system_swap_usage_labels,
                 )
 
-    def _get_system_swap_utilization(self) -> Iterable[Observation]:
+    def _get_system_swap_utilization(
+        self, options: CallbackOptions
+    ) -> Iterable[Observation]:
         """Observer callback for swap utilization"""
         system_swap = psutil.swap_memory()
 
@@ -393,7 +404,9 @@ class SystemMetricsInstrumentor(BaseInstrumentor):
                     self._system_swap_utilization_labels,
                 )
 
-    def _get_system_disk_io(self) -> Iterable[Observation]:
+    def _get_system_disk_io(
+        self, options: CallbackOptions
+    ) -> Iterable[Observation]:
         """Observer callback for disk IO"""
         for device, counters in psutil.disk_io_counters(perdisk=True).items():
             for metric in self._config["system.disk.io"]:
@@ -405,7 +418,9 @@ class SystemMetricsInstrumentor(BaseInstrumentor):
                         self._system_disk_io_labels,
                     )
 
-    def _get_system_disk_operations(self) -> Iterable[Observation]:
+    def _get_system_disk_operations(
+        self, options: CallbackOptions
+    ) -> Iterable[Observation]:
         """Observer callback for disk operations"""
         for device, counters in psutil.disk_io_counters(perdisk=True).items():
             for metric in self._config["system.disk.operations"]:
@@ -417,7 +432,9 @@ class SystemMetricsInstrumentor(BaseInstrumentor):
                         self._system_disk_operations_labels,
                     )
 
-    def _get_system_disk_time(self) -> Iterable[Observation]:
+    def _get_system_disk_time(
+        self, options: CallbackOptions
+    ) -> Iterable[Observation]:
         """Observer callback for disk time"""
         for device, counters in psutil.disk_io_counters(perdisk=True).items():
             for metric in self._config["system.disk.time"]:
@@ -429,7 +446,9 @@ class SystemMetricsInstrumentor(BaseInstrumentor):
                         self._system_disk_time_labels,
                     )
 
-    def _get_system_disk_merged(self) -> Iterable[Observation]:
+    def _get_system_disk_merged(
+        self, options: CallbackOptions
+    ) -> Iterable[Observation]:
         """Observer callback for disk merged operations"""
 
         # FIXME The units in the spec is 1, it seems like it should be
@@ -445,7 +464,9 @@ class SystemMetricsInstrumentor(BaseInstrumentor):
                         self._system_disk_merged_labels,
                     )
 
-    def _get_system_network_dropped_packets(self) -> Iterable[Observation]:
+    def _get_system_network_dropped_packets(
+        self, options: CallbackOptions
+    ) -> Iterable[Observation]:
         """Observer callback for network dropped packets"""
 
         for device, counters in psutil.net_io_counters(pernic=True).items():
@@ -463,7 +484,9 @@ class SystemMetricsInstrumentor(BaseInstrumentor):
                         self._system_network_dropped_packets_labels,
                     )
 
-    def _get_system_network_packets(self) -> Iterable[Observation]:
+    def _get_system_network_packets(
+        self, options: CallbackOptions
+    ) -> Iterable[Observation]:
         """Observer callback for network packets"""
 
         for device, counters in psutil.net_io_counters(pernic=True).items():
@@ -477,7 +500,9 @@ class SystemMetricsInstrumentor(BaseInstrumentor):
                         self._system_network_packets_labels,
                     )
 
-    def _get_system_network_errors(self) -> Iterable[Observation]:
+    def _get_system_network_errors(
+        self, options: CallbackOptions
+    ) -> Iterable[Observation]:
         """Observer callback for network errors"""
         for device, counters in psutil.net_io_counters(pernic=True).items():
             for metric in self._config["system.network.errors"]:
@@ -490,7 +515,9 @@ class SystemMetricsInstrumentor(BaseInstrumentor):
                         self._system_network_errors_labels,
                     )
 
-    def _get_system_network_io(self) -> Iterable[Observation]:
+    def _get_system_network_io(
+        self, options: CallbackOptions
+    ) -> Iterable[Observation]:
         """Observer callback for network IO"""
 
         for device, counters in psutil.net_io_counters(pernic=True).items():
@@ -504,7 +531,9 @@ class SystemMetricsInstrumentor(BaseInstrumentor):
                         self._system_network_io_labels,
                     )
 
-    def _get_system_network_connections(self) -> Iterable[Observation]:
+    def _get_system_network_connections(
+        self, options: CallbackOptions
+    ) -> Iterable[Observation]:
         """Observer callback for network connections"""
         # TODO How to find the device identifier for a particular
         # connection?
@@ -542,7 +571,9 @@ class SystemMetricsInstrumentor(BaseInstrumentor):
                 connection_counter["labels"],
             )
 
-    def _get_runtime_memory(self) -> Iterable[Observation]:
+    def _get_runtime_memory(
+        self, options: CallbackOptions
+    ) -> Iterable[Observation]:
         """Observer callback for runtime memory"""
         proc_memory = self._proc.memory_info()
         for metric in self._config["runtime.memory"]:
@@ -553,7 +584,9 @@ class SystemMetricsInstrumentor(BaseInstrumentor):
                     self._runtime_memory_labels,
                 )
 
-    def _get_runtime_cpu_time(self) -> Iterable[Observation]:
+    def _get_runtime_cpu_time(
+        self, options: CallbackOptions
+    ) -> Iterable[Observation]:
         """Observer callback for runtime CPU time"""
         proc_cpu = self._proc.cpu_times()
         for metric in self._config["runtime.cpu.time"]:
@@ -564,7 +597,9 @@ class SystemMetricsInstrumentor(BaseInstrumentor):
                     self._runtime_cpu_time_labels,
                 )
 
-    def _get_runtime_gc_count(self) -> Iterable[Observation]:
+    def _get_runtime_gc_count(
+        self, options: CallbackOptions
+    ) -> Iterable[Observation]:
         """Observer callback for garbage collection"""
         for index, count in enumerate(gc.get_count()):
             self._runtime_gc_count_labels["count"] = str(index)
