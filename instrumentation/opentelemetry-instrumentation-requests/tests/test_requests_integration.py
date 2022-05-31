@@ -26,6 +26,8 @@ from opentelemetry.instrumentation.requests import RequestsInstrumentor
 from opentelemetry.instrumentation.utils import _SUPPRESS_INSTRUMENTATION_KEY
 from opentelemetry.propagate import get_global_textmap, set_global_textmap
 from opentelemetry.sdk import resources
+from opentelemetry.sdk.metrics import MeterProvider
+from opentelemetry.sdk.metrics.export import InMemoryMetricReader
 from opentelemetry.semconv.trace import SpanAttributes
 from opentelemetry.test.mock_textmap import MockTextMapPropagator
 from opentelemetry.test.test_base import TestBase
@@ -472,3 +474,43 @@ class TestRequestsIntegrationPreparedRequest(
         request = requests.Request("GET", url)
         prepared_request = session.prepare_request(request)
         return session.send(prepared_request)
+
+
+class TestRequestsIntergrationMetric(TestBase):
+    URL = "http://httpbin.org/status/200"
+
+    def setUp(self):
+        super().setUp()
+        self.reader = InMemoryMetricReader()
+        self.meter_provider = MeterProvider(metric_readers=[self.reader])
+        RequestsInstrumentor().instrument(meter_provider=self.meter_provider)
+
+        httpretty.enable()
+        httpretty.register_uri(httpretty.GET, self.URL, body="Hello!")
+
+    @staticmethod
+    def perform_request(url: str) -> requests.Response:
+        return requests.get(url)
+
+    def test_basic_http_success(self):
+        response = self.perform_request(self.URL)
+
+        expected_attributes = {
+            "http.status_code": 200,
+            "http.flavor": "1.1",
+            "http.method": "GET",
+            "http.host": "httpbin.org",
+            "http.scheme": "http",
+            "http.url": self.URL,
+        }
+
+        for (
+            resource_metrics
+        ) in self.reader.get_metrics_data().resource_metrics:
+            for scope_metrics in resource_metrics.scope_metrics:
+                for metric in scope_metrics.metrics:
+                    for data_point in metric.data.data_points:
+                        self.assertDictEqual(
+                            expected_attributes, dict(data_point.attributes)
+                        )
+                        self.assertEqual(data_point.count, 1)
