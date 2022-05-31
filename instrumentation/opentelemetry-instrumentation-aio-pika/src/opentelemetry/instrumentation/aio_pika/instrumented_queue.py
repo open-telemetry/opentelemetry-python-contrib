@@ -40,8 +40,8 @@ class InstrumentedQueue(Queue):
         self, callback: Callable[[AbstractIncomingMessage], Any]
     ) -> Callable[[AbstractIncomingMessage], Any]:
         async def decorated(message: AbstractIncomingMessage):
-            headers = message.headers or dict()
-            ctx = propagate.extract(headers) or context.get_current()
+            headers = message.headers or {}
+            ctx = propagate.extract(headers)
             token = context.attach(ctx)
             span = self._get_callback_span(message)
             if not span:
