@@ -166,9 +166,9 @@ def _generate_opentelemetry_traceparent(span: Span) -> str:
     return meta
 
 
-def _python_path_without_current_directory(python_path, dir, path_separator):
+def _python_path_without_directory(python_path, dir, path_separator):
     return sub(
-        rf"{escape(dir)}{path_separator}?",
+        rf"{escape(dir)}{path_separator}(?!$)",
         "",
         python_path,
     )
