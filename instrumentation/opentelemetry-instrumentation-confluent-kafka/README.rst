@@ -1,5 +1,5 @@
 OpenTelemetry confluent-kafka Instrumentation
-===========================
+=============================================
 
 |pypi|
 
