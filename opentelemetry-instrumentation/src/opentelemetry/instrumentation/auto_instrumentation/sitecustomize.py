@@ -14,8 +14,7 @@
 
 from logging import getLogger
 from os import environ
-from os.path import pathsep
-from opentelemetry.instrumentation.utils import _python_path_without_current_directory
+from os.path import abspath, dirname, pathsep
 
 from pkg_resources import iter_entry_points
 
@@ -25,6 +24,9 @@ from opentelemetry.instrumentation.dependencies import (
 from opentelemetry.instrumentation.distro import BaseDistro, DefaultDistro
 from opentelemetry.instrumentation.environment_variables import (
     OTEL_PYTHON_DISABLED_INSTRUMENTATIONS,
+)
+from opentelemetry.instrumentation.utils import (
+    _python_path_without_current_directory,
 )
 from opentelemetry.instrumentation.version import __version__
 
@@ -111,8 +113,9 @@ def _load_configurators():
 
 def initialize():
     # prevents auto-instrumentation of subprocesses if code execs another python process
-    environ["PYTHONPATH"] = _python_path_without_current_directory(environ["PYTHONPATH"], __file__, pathsep)
-    print("expected_python_path = " + environ["PYTHONPATH"])
+    environ["PYTHONPATH"] = _python_path_without_current_directory(
+        environ["PYTHONPATH"], dirname(abspath(__file__)), pathsep
+    )
 
     try:
         distro = _load_distros()
