@@ -56,14 +56,16 @@ from requests.models import Response
 from requests.sessions import Session
 from requests.structures import CaseInsensitiveDict
 
-from opentelemetry import context
+from opentelemetry import context, trace
 from opentelemetry.instrumentation.instrumentor import BaseInstrumentor
 from opentelemetry.instrumentation.requests.package import _instruments
 from opentelemetry.instrumentation.requests.version import __version__
 from opentelemetry.instrumentation.utils import (
     _SUPPRESS_INSTRUMENTATION_KEY,
+    #_SUPPRESS_HTTP_INSTRUMENTATION_KEY,
     http_status_to_status_code,
 )
+from opentelemetry.context import (_SUPPRESS_HTTP_INSTRUMENTATION_KEY)
 from opentelemetry.propagate import inject
 from opentelemetry.semconv.trace import SpanAttributes
 from opentelemetry.trace import SpanKind, get_tracer
@@ -77,8 +79,8 @@ from opentelemetry.util.http.httplib import set_ip_on_next_http_connection
 
 # A key to a context variable to avoid creating duplicate spans when instrumenting
 # both, Session.request and Session.send, since Session.request calls into Session.send
-_SUPPRESS_HTTP_INSTRUMENTATION_KEY = context.create_key(
-    "suppress_http_instrumentation"
+_REQUESTS_INSTRUMENTATION_KEY = context.create_key(
+    "requests_instrumentation"
 )
 
 _excluded_urls_from_env = get_excluded_urls("REQUESTS")
@@ -176,7 +178,7 @@ def _instrument(
             inject(headers)
 
             token = context.attach(
-                context.set_value(_SUPPRESS_HTTP_INSTRUMENTATION_KEY, True)
+            context.set_value(_SUPPRESS_HTTP_INSTRUMENTATION_KEY, True)
             )
             try:
                 result = call_wrapped()  # *** PROCEED
@@ -185,7 +187,7 @@ def _instrument(
                 result = getattr(exc, "response", None)
             finally:
                 context.detach(token)
-
+            
             if isinstance(result, Response):
                 if span.is_recording():
                     span.set_attribute(
