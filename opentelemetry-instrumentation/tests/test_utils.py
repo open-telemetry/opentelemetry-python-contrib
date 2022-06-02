@@ -145,7 +145,7 @@ class TestUtils(TestBase):
         self.assertEqual(actual_python_path, python_path)
 
     def test_remove_current_directory_from_python_path_linux_only_path(self):
-        dir = r"/home/sandranland/workplace/opentelemetry-python-contrib/opentelemetry-instrumentation/src/opentelemetry/instrumentation/auto_instrumentation"
+        dir = r"/home/SandraBland/workplace/opentelemetry-python-contrib/opentelemetry-instrumentation/src/opentelemetry/instrumentation/auto_instrumentation"
         path_separator = r":"
         python_path = r"/home/SandraBland/workplace/opentelemetry-python-contrib/opentelemetry-instrumentation/src/opentelemetry/instrumentation/auto_instrumentation"
         actual_python_path = _python_path_without_directory(
