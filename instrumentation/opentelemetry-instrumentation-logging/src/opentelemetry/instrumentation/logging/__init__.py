@@ -114,9 +114,9 @@ class LoggingInstrumentor(BaseInstrumentor):  # pylint: disable=empty-docstring
                 if ctx != INVALID_SPAN_CONTEXT:
                     record.otelSpanID = format(ctx.span_id, "016x")
                     record.otelTraceID = format(ctx.trace_id, "032x")
-                    if callable(self._log_hook):
+                    if callable(LoggingInstrumentor._log_hook):
                         try:
-                            self._log_hook(  # pylint: disable=E1102
+                            LoggingInstrumentor._log_hook(  # pylint: disable=E1102
                                 span, record
                             )
                         except Exception:  # pylint: disable=W0703

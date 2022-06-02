@@ -66,7 +66,6 @@ class TestLoggingInstrumentorProxyTracerProvider(TestBase):
 
 def log_hook(span, record):
     record.custom_user_attribute_from_log_hook = "some-value"
-    print("log hook after affect", record.__dict__)
 
 
 class TestLoggingInstrumentor(TestBase):
