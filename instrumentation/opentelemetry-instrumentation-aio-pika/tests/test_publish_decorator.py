@@ -15,14 +15,13 @@ import asyncio
 from typing import Type
 from unittest import TestCase, mock
 
-from aio_pika import Exchange
+from aio_pika import Exchange, RobustExchange
 
-from opentelemetry.trace import SpanKind
-from opentelemetry.instrumentation.aio_pika.instrumented_exchange import (
-    InstrumentedExchange,
-    RobustInstrumentedExchange,
+from opentelemetry.instrumentation.aio_pika.publish_decorator import (
+    PublishDecorator,
 )
 from opentelemetry.semconv.trace import SpanAttributes
+from opentelemetry.trace import SpanKind, get_tracer
 
 from .consts import (
     CHANNEL,
@@ -50,39 +49,41 @@ class TestInstrumentedExchange(TestCase):
     }
 
     def setUp(self):
+        self.tracer = get_tracer(__name__)
         self.loop = asyncio.new_event_loop()
         asyncio.set_event_loop(self.loop)
 
     def test_get_publish_span(self):
-        exchange = InstrumentedExchange(CONNECTION, CHANNEL, EXCHANGE_NAME)
+        exchange = Exchange(CONNECTION, CHANNEL, EXCHANGE_NAME)
         tracer = mock.MagicMock()
-        with mock.patch(
-            'opentelemetry.trace.get_tracer',
-            return_value=tracer
-        ):
-            exchange._get_publish_span(MESSAGE, ROUTING_KEY)
+        PublishDecorator(tracer, exchange)._get_publish_span(
+            MESSAGE, ROUTING_KEY
+        )
         tracer.start_span.assert_called_once_with(
-            f'{EXCHANGE_NAME},{ROUTING_KEY} send',
+            f"{EXCHANGE_NAME},{ROUTING_KEY} send",
             kind=SpanKind.PRODUCER,
-            attributes=self.EXPECTED_ATTRIBUTES
+            attributes=self.EXPECTED_ATTRIBUTES,
         )
 
-    def _test_publish(self, exchange_type: Type[InstrumentedExchange]):
+    def _test_publish(self, exchange_type: Type[Exchange]):
         exchange = exchange_type(CONNECTION, CHANNEL, EXCHANGE_NAME)
         with mock.patch.object(
-            InstrumentedExchange, "_get_publish_span"
+            PublishDecorator, "_get_publish_span"
         ) as mock_get_publish_span:
             with mock.patch.object(
                 Exchange, "publish", return_value=asyncio.sleep(0)
             ) as mock_publish:
+                decorated_publish = PublishDecorator(
+                    self.tracer, exchange
+                ).decorate(mock_publish)
                 self.loop.run_until_complete(
-                    exchange.publish(MESSAGE, ROUTING_KEY)
+                    decorated_publish(MESSAGE, ROUTING_KEY)
                 )
         mock_publish.assert_called_once()
         mock_get_publish_span.assert_called_once()
 
     def test_publish(self):
-        self._test_publish(InstrumentedExchange)
+        self._test_publish(Exchange)
 
     def test_robust_publish(self):
-        self._test_publish(RobustInstrumentedExchange)
+        self._test_publish(RobustExchange)

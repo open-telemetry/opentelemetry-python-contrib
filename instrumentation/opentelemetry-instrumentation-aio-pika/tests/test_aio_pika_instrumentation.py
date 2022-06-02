@@ -13,42 +13,22 @@
 # limitations under the License.
 from unittest import TestCase
 
-import aio_pika
+import wrapt
+from aio_pika import Exchange, Queue
 
 from opentelemetry.instrumentation.aio_pika import AioPikaInstrumentor
-from opentelemetry.instrumentation.aio_pika.instrumented_exchange import (
-    InstrumentedExchange,
-    RobustInstrumentedExchange,
-)
-from opentelemetry.instrumentation.aio_pika.instrumented_queue import (
-    InstrumentedQueue,
-    RobustInstrumentedQueue,
-)
 
 
 class TestPika(TestCase):
     def test_instrument_api(self) -> None:
         instrumentation = AioPikaInstrumentor()
         instrumentation.instrument()
+        self.assertTrue(isinstance(Queue.consume, wrapt.BoundFunctionWrapper))
         self.assertTrue(
-            aio_pika.Channel.EXCHANGE_CLASS == InstrumentedExchange
+            isinstance(Exchange.publish, wrapt.BoundFunctionWrapper)
         )
-        self.assertTrue(aio_pika.Channel.QUEUE_CLASS == InstrumentedQueue)
-        self.assertTrue(
-            aio_pika.RobustChannel.EXCHANGE_CLASS == RobustInstrumentedExchange
-        )
-        self.assertTrue(
-            aio_pika.RobustChannel.QUEUE_CLASS == RobustInstrumentedQueue
-        )
-
         instrumentation.uninstrument()
+        self.assertFalse(isinstance(Queue.consume, wrapt.BoundFunctionWrapper))
         self.assertFalse(
-            aio_pika.Channel.EXCHANGE_CLASS == InstrumentedExchange
-        )
-        self.assertFalse(aio_pika.Channel.QUEUE_CLASS == InstrumentedQueue)
-        self.assertFalse(
-            aio_pika.RobustChannel.EXCHANGE_CLASS == RobustInstrumentedExchange
-        )
-        self.assertFalse(
-            aio_pika.RobustChannel.QUEUE_CLASS == RobustInstrumentedQueue
+            isinstance(Exchange.publish, wrapt.BoundFunctionWrapper)
         )

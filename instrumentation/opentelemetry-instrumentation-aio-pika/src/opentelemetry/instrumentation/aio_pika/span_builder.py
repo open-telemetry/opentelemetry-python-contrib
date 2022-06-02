@@ -15,24 +15,21 @@ from typing import Optional
 
 from aio_pika.abc import AbstractChannel, AbstractMessage
 
-from opentelemetry import trace
+from opentelemetry.instrumentation.aio_pika.utils import (
+    is_instrumentation_enabled,
+)
 from opentelemetry.semconv.trace import (
     MessagingOperationValues,
     SpanAttributes,
 )
-from opentelemetry.trace import Span, SpanKind
+from opentelemetry.trace import Span, SpanKind, Tracer
 
-from opentelemetry.instrumentation.aio_pika.utils import is_instrumentation_enabled
-from opentelemetry.instrumentation.aio_pika.version import __version__
-
-_TRACER_NAME = 'opentelemetry.instrumentation.aio-pika'
 _DEFAULT_ATTRIBUTES = {SpanAttributes.MESSAGING_SYSTEM: 'rabbitmq'}
 
 
 class SpanBuilder:
-    TRACER_PROVIDER = None
-
-    def __init__(self):
+    def __init__(self, tracer: Tracer):
+        self._tracer = tracer
         self._attributes = _DEFAULT_ATTRIBUTES.copy()
         self._operation: MessagingOperationValues = None
         self._kind: SpanKind = None
@@ -72,8 +69,7 @@ class SpanBuilder:
             self._attributes[SpanAttributes.MESSAGING_OPERATION] = self._operation.value
         else:
             self._attributes[SpanAttributes.MESSAGING_TEMP_DESTINATION] = True
-        tracer = trace.get_tracer(_TRACER_NAME, __version__, self.TRACER_PROVIDER)
-        span = tracer.start_span(self._generate_span_name(), kind=self._kind, attributes=self._attributes)
+        span = self._tracer.start_span(self._generate_span_name(), kind=self._kind, attributes=self._attributes)
         return span
 
     def _generate_span_name(self) -> str:

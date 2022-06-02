@@ -11,36 +11,71 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-from typing import Collection
+from typing import Any, Callable, Collection
 
-import aio_pika
+import wrapt
+from aio_pika import Exchange, Queue
+from aio_pika.abc import AbstractIncomingMessage
 
-from opentelemetry.instrumentation.instrumentor import BaseInstrumentor
-
-from opentelemetry.instrumentation.aio_pika.instrumented_exchange import (
-    InstrumentedExchange,
-    RobustInstrumentedExchange,
+from opentelemetry import trace
+from opentelemetry.instrumentation.aio_pika.callback_decorator import (
+    CallbackDecorator,
 )
-from opentelemetry.instrumentation.aio_pika.instrumented_queue import InstrumentedQueue, RobustInstrumentedQueue
 from opentelemetry.instrumentation.aio_pika.package import _instruments
-from opentelemetry.instrumentation.aio_pika.span_builder import SpanBuilder
+from opentelemetry.instrumentation.aio_pika.publish_decorator import (
+    PublishDecorator,
+)
+from opentelemetry.instrumentation.aio_pika.version import __version__
+from opentelemetry.instrumentation.instrumentor import BaseInstrumentor
+from opentelemetry.instrumentation.utils import unwrap
+from opentelemetry.trace import Tracer
+
+_INSTRUMENTATION_MODULE_NAME = "opentelemetry.instrumentation.aio_pika"
 
 
 class AioPikaInstrumentor(BaseInstrumentor):
+    def _instrument_queue(self, tracer: Tracer):
+        async def wrapper(wrapped, instance, args, kwargs):
+            async def consume(
+                callback: Callable[[AbstractIncomingMessage], Any],
+                *fargs,
+                **fkwargs
+            ):
+                decorated_callback = CallbackDecorator(
+                    tracer, instance
+                ).decorate(callback)
+                return await wrapped(decorated_callback, *fargs, **fkwargs)
+
+            return await consume(*args, **kwargs)
+
+        wrapt.wrap_function_wrapper(Queue, "consume", wrapper)
+
+    def _instrument_exchange(self, tracer: Tracer):
+        async def wrapper(wrapped, instance, args, kwargs):
+            decorated_publish = PublishDecorator(tracer, instance).decorate(
+                wrapped
+            )
+            return await decorated_publish(*args, **kwargs)
+
+        wrapt.wrap_function_wrapper(Exchange, "publish", wrapper)
+
     def _instrument(self, **kwargs):
         tracer_provider = kwargs.get("tracer_provider", None)
-        SpanBuilder.TRACER_PROVIDER = tracer_provider
-        aio_pika.Channel.EXCHANGE_CLASS = InstrumentedExchange
-        aio_pika.Channel.QUEUE_CLASS = InstrumentedQueue
-        aio_pika.RobustChannel.EXCHANGE_CLASS = RobustInstrumentedExchange
-        aio_pika.RobustChannel.QUEUE_CLASS = RobustInstrumentedQueue
+        tracer = trace.get_tracer(
+            _INSTRUMENTATION_MODULE_NAME, __version__, tracer_provider
+        )
+        self._instrument_queue(tracer)
+        self._instrument_exchange(tracer)
+
+    def _uninstrument_queue(self):
+        unwrap(Queue, "consume")
+
+    def _uninstrument_exchange(self):
+        unwrap(Exchange, "publish")
 
     def _uninstrument(self, **kwargs):
-        SpanBuilder.TRACER_PROVIDER = None
-        aio_pika.Channel.EXCHANGE_CLASS = aio_pika.Exchange
-        aio_pika.Channel.QUEUE_CLASS = aio_pika.Queue
-        aio_pika.RobustChannel.EXCHANGE_CLASS = aio_pika.RobustExchange
-        aio_pika.RobustChannel.QUEUE_CLASS = aio_pika.RobustQueue
+        self._uninstrument_queue()
+        self._uninstrument_exchange()
 
     def instrumentation_dependencies(self) -> Collection[str]:
         return _instruments
