@@ -56,7 +56,7 @@ from requests.models import Response
 from requests.sessions import Session
 from requests.structures import CaseInsensitiveDict
 
-from opentelemetry import context, trace
+from opentelemetry import context
 from opentelemetry.instrumentation.instrumentor import BaseInstrumentor
 from opentelemetry.instrumentation.requests.package import _instruments
 from opentelemetry.instrumentation.requests.version import __version__

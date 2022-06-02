@@ -98,6 +98,7 @@ from opentelemetry.instrumentation.utils import (
     _SUPPRESS_INSTRUMENTATION_KEY,
     unwrap,
 )
+from opentelemetry.context import (_SUPPRESS_HTTP_INSTRUMENTATION_KEY)
 from opentelemetry.propagate import inject
 from opentelemetry.semconv.trace import SpanAttributes
 from opentelemetry.trace import get_tracer
@@ -108,10 +109,10 @@ logger = logging.getLogger(__name__)
 # A key to a context variable to avoid creating duplicate spans when instrumenting
 # both botocore.client and urllib3.connectionpool.HTTPConnectionPool.urlopen since
 # botocore calls urlopen
-_SUPPRESS_HTTP_INSTRUMENTATION_KEY = context_api.create_key(
-    "suppress_http_instrumentation"
-)
 
+_BOTOCORE_INSTRUMENTATION_KEY = context_api.create_key(
+    "botocore_instrumentation"
+)
 
 # pylint: disable=unused-argument
 def _patched_endpoint_prepare_request(wrapped, instance, args, kwargs):
