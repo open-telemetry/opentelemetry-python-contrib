@@ -82,18 +82,15 @@ from opentelemetry.instrumentation.utils import (
     _SUPPRESS_INSTRUMENTATION_KEY,
     http_status_to_status_code,
 )
-from opentelemetry.context import _SUPPRESS_HTTP_INSTRUMENTATION_KEY
+from opentelemetry.context import (
+    _SUPPRESS_HTTP_INSTRUMENTATION_KEY
+)
 from opentelemetry.propagate import inject
 from opentelemetry.semconv.trace import SpanAttributes
 from opentelemetry.trace import Span, SpanKind, get_tracer
 from opentelemetry.trace.status import Status
 from opentelemetry.util.http import remove_url_credentials
 
-# A key to a context variable to avoid creating duplicate spans when instrumenting
-# both, Session.request and Session.send, since Session.request calls into Session.send
-_URLLIB_INSTRUMENTATION_KEY = context.create_key(
-    "urllib_instrumentation"
-)
 _RequestHookT = typing.Optional[typing.Callable[[Span, Request], None]]
 _ResponseHookT = typing.Optional[
     typing.Callable[[Span, Request, client.HTTPResponse], None]
