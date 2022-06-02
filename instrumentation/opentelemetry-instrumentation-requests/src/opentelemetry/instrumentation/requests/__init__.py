@@ -173,7 +173,18 @@ def _instrument(
             SpanAttributes.HTTP_METHOD: method,
             SpanAttributes.HTTP_URL: url,
         }
-        parsed_url = urlparse(url)
+
+        metric_labels = {
+            "http.method": method,
+            "http.url": url,
+        }
+
+        try:
+            parsed_url = urlparse(url)
+            metric_labels["http.host"] = parsed_url.hostname
+            metric_labels["http.scheme"] = parsed_url.scheme
+        except ValueError:
+            pass
 
         with tracer.start_as_current_span(
             span_name, kind=SpanKind.CLIENT, attributes=span_attributes
@@ -186,8 +197,9 @@ def _instrument(
             token = context.attach(
                 context.set_value(_SUPPRESS_HTTP_INSTRUMENTATION_KEY, True)
             )
+
             start_time = time()
-            metric_labels = {}
+
             try:
                 result = call_wrapped()  # *** PROCEED
             except Exception as exc:  # pylint: disable=W0703
@@ -206,23 +218,18 @@ def _instrument(
                     )
 
                 metric_labels["http.status_code"] = result.status_code
-                metric_labels["http.flavor"] = (
-                    "1.1" if result.raw.version == 11 else "1.0"
-                )
+
+                if result.raw is not None:
+                    version = getattr(result.raw, "version", None)
+                    if version:
+                        metric_labels["http.flavor"] = (
+                            "1.1" if version == 11 else "1.0"
+                        )
 
             if span_callback is not None:
                 span_callback(span, result)
 
             elapsed_time = time() - start_time
-
-            metric_labels.update(
-                {
-                    "http.method": method,
-                    "http.host": parsed_url.hostname,
-                    "http.scheme": parsed_url.scheme,
-                    "http.url": url,
-                }
-            )
 
             metric_recorder.record(
                 elapsed_time * 1000, attributes=metric_labels
