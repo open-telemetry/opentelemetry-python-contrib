@@ -152,4 +152,3 @@ class TestUtils(TestBase):
             python_path, dir, path_separator
         )
         self.assertEqual(actual_python_path, python_path)
-        
