@@ -149,7 +149,7 @@ Example of the added span attribute,
 ``http.response.header.custom_response_header = ["<value1>,<value2>"]``
 
 Note:
-    Environment variable names to caputre http headers are still experimental, and thus are subject to change.
+    Environment variable names to capture http headers are still experimental, and thus are subject to change.
 
 API
 ---
@@ -182,7 +182,7 @@ _CARRIER_KEY_PREFIX = "HTTP_"
 _CARRIER_KEY_PREFIX_LEN = len(_CARRIER_KEY_PREFIX)
 
 
-class WSGIGetter(Getter):
+class WSGIGetter(Getter[dict]):
     def get(
         self, carrier: dict, key: str
     ) -> typing.Optional[typing.List[str]]:
