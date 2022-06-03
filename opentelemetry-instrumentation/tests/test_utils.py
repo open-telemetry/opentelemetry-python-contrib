@@ -116,39 +116,39 @@ class TestUtils(TestBase):
                 self.assertEqual(actual, expected, status_code)
 
     def test_remove_current_directory_from_python_path_windows(self):
-        dir = r"c:\users\Trayvon Martin\workplace\opentelemetry-python-contrib\opentelemetry-instrumentation\src\opentelemetry\instrumentation\auto_instrumentation"
+        directory = r"c:\users\Trayvon Martin\workplace\opentelemetry-python-contrib\opentelemetry-instrumentation\src\opentelemetry\instrumentation\auto_instrumentation"
         path_separator = r";"
         python_path = r"c:\users\Trayvon Martin\workplace\opentelemetry-python-contrib\opentelemetry-instrumentation\src\opentelemetry\instrumentation\auto_instrumentation;C:\Users\trayvonmartin\workplace"
         actual_python_path = _python_path_without_directory(
-            python_path, dir, path_separator
+            python_path, directory, path_separator
         )
         expected_python_path = r"C:\Users\trayvonmartin\workplace"
         self.assertEqual(actual_python_path, expected_python_path)
 
     def test_remove_current_directory_from_python_path_linux(self):
-        dir = r"/home/georgefloyd/workplace/opentelemetry-python-contrib/opentelemetry-instrumentation/src/opentelemetry/instrumentation/auto_instrumentation"
+        directory = r"/home/georgefloyd/workplace/opentelemetry-python-contrib/opentelemetry-instrumentation/src/opentelemetry/instrumentation/auto_instrumentation"
         path_separator = r":"
         python_path = r"/home/georgefloyd/workplace/opentelemetry-python-contrib/opentelemetry-instrumentation/src/opentelemetry/instrumentation/auto_instrumentation:/home/georgefloyd/workplace"
         actual_python_path = _python_path_without_directory(
-            python_path, dir, path_separator
+            python_path, directory, path_separator
         )
         expected_python_path = r"/home/georgefloyd/workplace"
         self.assertEqual(actual_python_path, expected_python_path)
 
     def test_remove_current_directory_from_python_path_windows_only_path(self):
-        dir = r"c:\users\Charleena Lyles\workplace\opentelemetry-python-contrib\opentelemetry-instrumentation\src\opentelemetry\instrumentation\auto_instrumentation"
+        directory = r"c:\users\Charleena Lyles\workplace\opentelemetry-python-contrib\opentelemetry-instrumentation\src\opentelemetry\instrumentation\auto_instrumentation"
         path_separator = r";"
         python_path = r"c:\users\Charleena Lyles\workplace\opentelemetry-python-contrib\opentelemetry-instrumentation\src\opentelemetry\instrumentation\auto_instrumentation"
         actual_python_path = _python_path_without_directory(
-            python_path, dir, path_separator
+            python_path, directory, path_separator
         )
         self.assertEqual(actual_python_path, python_path)
 
     def test_remove_current_directory_from_python_path_linux_only_path(self):
-        dir = r"/home/SandraBland/workplace/opentelemetry-python-contrib/opentelemetry-instrumentation/src/opentelemetry/instrumentation/auto_instrumentation"
+        directory = r"/home/SandraBland/workplace/opentelemetry-python-contrib/opentelemetry-instrumentation/src/opentelemetry/instrumentation/auto_instrumentation"
         path_separator = r":"
         python_path = r"/home/SandraBland/workplace/opentelemetry-python-contrib/opentelemetry-instrumentation/src/opentelemetry/instrumentation/auto_instrumentation"
         actual_python_path = _python_path_without_directory(
-            python_path, dir, path_separator
+            python_path, directory, path_separator
         )
         self.assertEqual(actual_python_path, python_path)
