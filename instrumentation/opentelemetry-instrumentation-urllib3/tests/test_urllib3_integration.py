@@ -20,13 +20,9 @@ import urllib3
 import urllib3.exceptions
 
 from opentelemetry import context, trace
-from opentelemetry.instrumentation.urllib3 import (
-    URLLib3Instrumentor,
-)
+from opentelemetry.context import _SUPPRESS_HTTP_INSTRUMENTATION_KEY
+from opentelemetry.instrumentation.urllib3 import URLLib3Instrumentor
 from opentelemetry.instrumentation.utils import _SUPPRESS_INSTRUMENTATION_KEY
-from opentelemetry.context import (
-    _SUPPRESS_HTTP_INSTRUMENTATION_KEY
-)
 from opentelemetry.propagate import get_global_textmap, set_global_textmap
 from opentelemetry.semconv.trace import SpanAttributes
 from opentelemetry.test.mock_textmap import MockTextMapPropagator

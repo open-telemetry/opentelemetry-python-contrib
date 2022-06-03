@@ -57,15 +57,13 @@ from requests.sessions import Session
 from requests.structures import CaseInsensitiveDict
 
 from opentelemetry import context
+from opentelemetry.context import _SUPPRESS_HTTP_INSTRUMENTATION_KEY
 from opentelemetry.instrumentation.instrumentor import BaseInstrumentor
 from opentelemetry.instrumentation.requests.package import _instruments
 from opentelemetry.instrumentation.requests.version import __version__
 from opentelemetry.instrumentation.utils import (
     _SUPPRESS_INSTRUMENTATION_KEY,
     http_status_to_status_code,
-)
-from opentelemetry.context import (
-    _SUPPRESS_HTTP_INSTRUMENTATION_KEY
 )
 from opentelemetry.propagate import inject
 from opentelemetry.semconv.trace import SpanAttributes
@@ -77,7 +75,6 @@ from opentelemetry.util.http import (
     remove_url_credentials,
 )
 from opentelemetry.util.http.httplib import set_ip_on_next_http_connection
-
 
 _excluded_urls_from_env = get_excluded_urls("REQUESTS")
 
@@ -174,7 +171,7 @@ def _instrument(
             inject(headers)
 
             token = context.attach(
-            context.set_value(_SUPPRESS_HTTP_INSTRUMENTATION_KEY, True)
+                context.set_value(_SUPPRESS_HTTP_INSTRUMENTATION_KEY, True)
             )
             try:
                 result = call_wrapped()  # *** PROCEED
@@ -183,7 +180,7 @@ def _instrument(
                 result = getattr(exc, "response", None)
             finally:
                 context.detach(token)
-            
+
             if isinstance(result, Response):
                 if span.is_recording():
                     span.set_attribute(

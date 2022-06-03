@@ -87,6 +87,7 @@ from botocore.exceptions import ClientError
 from wrapt import wrap_function_wrapper
 
 from opentelemetry import context as context_api
+from opentelemetry.context import _SUPPRESS_HTTP_INSTRUMENTATION_KEY
 from opentelemetry.instrumentation.botocore.extensions import _find_extension
 from opentelemetry.instrumentation.botocore.extensions.types import (
     _AwsSdkCallContext,
@@ -97,9 +98,6 @@ from opentelemetry.instrumentation.instrumentor import BaseInstrumentor
 from opentelemetry.instrumentation.utils import (
     _SUPPRESS_INSTRUMENTATION_KEY,
     unwrap,
-)
-from opentelemetry.context import (
-    _SUPPRESS_HTTP_INSTRUMENTATION_KEY
 )
 from opentelemetry.propagate import inject
 from opentelemetry.semconv.trace import SpanAttributes

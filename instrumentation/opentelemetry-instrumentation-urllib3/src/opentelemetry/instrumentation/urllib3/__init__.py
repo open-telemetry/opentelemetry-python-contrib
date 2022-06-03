@@ -72,6 +72,7 @@ import urllib3.connectionpool
 import wrapt
 
 from opentelemetry import context
+from opentelemetry.context import _SUPPRESS_HTTP_INSTRUMENTATION_KEY
 from opentelemetry.instrumentation.instrumentor import BaseInstrumentor
 from opentelemetry.instrumentation.urllib3.package import _instruments
 from opentelemetry.instrumentation.urllib3.version import __version__
@@ -80,15 +81,11 @@ from opentelemetry.instrumentation.utils import (
     http_status_to_status_code,
     unwrap,
 )
-from opentelemetry.context import (
-    _SUPPRESS_HTTP_INSTRUMENTATION_KEY
-)
 from opentelemetry.propagate import inject
 from opentelemetry.semconv.trace import SpanAttributes
 from opentelemetry.trace import Span, SpanKind, get_tracer
 from opentelemetry.trace.status import Status
 from opentelemetry.util.http.httplib import set_ip_on_next_http_connection
-
 
 _UrlFilterT = typing.Optional[typing.Callable[[str], str]]
 _RequestHookT = typing.Optional[
