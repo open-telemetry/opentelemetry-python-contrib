@@ -18,6 +18,10 @@ components:
     - ben-natan
     - machine424
 
+  instrumentation/opentelemetry-instrumentation-confluent-kafka:
+    - oxeye-dorkolog
+    - dorkolog
+
   propagator/opentelemetry-propagator-aws-xray:
     - NathanielRN
 
