@@ -488,6 +488,11 @@ class TestRequestsIntergrationMetric(TestBase):
         httpretty.enable()
         httpretty.register_uri(httpretty.GET, self.URL, body="Hello!")
 
+    def tearDown(self):
+        super().tearDown()
+        RequestsInstrumentor().uninstrument()
+        httpretty.disable()
+
     @staticmethod
     def perform_request(url: str) -> requests.Response:
         return requests.get(url)
