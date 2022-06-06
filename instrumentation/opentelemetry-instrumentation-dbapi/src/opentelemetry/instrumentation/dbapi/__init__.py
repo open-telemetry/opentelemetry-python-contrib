@@ -317,13 +317,6 @@ def get_traced_connection_proxy(
                 object.__getattribute__(self, "_connection"), name
             )
 
-        def __enter__(self):
-            self._connection.__enter__()
-            return self
-
-        def __exit__(self, exc_type, exc_value, traceback):
-            self._connection.__exit__(exc_type, exc_value, traceback)
-
         def cursor(self, *args, **kwargs):
             return get_traced_cursor_proxy(
                 self._connection.cursor(*args, **kwargs), db_api_integration
