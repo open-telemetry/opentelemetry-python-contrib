@@ -498,7 +498,7 @@ class TestRequestsIntergrationMetric(TestBase):
         return requests.get(url)
 
     def test_basic_http_success(self):
-        response = self.perform_request(self.URL)
+        self.perform_request(self.URL)
 
         expected_attributes = {
             "http.status_code": 200,
