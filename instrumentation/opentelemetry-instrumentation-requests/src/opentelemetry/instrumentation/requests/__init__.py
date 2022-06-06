@@ -150,6 +150,7 @@ def _instrument(
             request.method, request.url, call_wrapped, get_or_create_headers
         )
 
+    # pylint: disable-msg=too-many-locals,too-many-branches
     def _instrumented_requests_call(
         method: str, url: str, call_wrapped, get_or_create_headers
     ):
@@ -300,12 +301,12 @@ class RequestsInstrumentor(BaseInstrumentor):
         tracer = get_tracer(__name__, __version__, tracer_provider)
         excluded_urls = kwargs.get("excluded_urls")
         meter_provider = kwargs.get("meter_provider")
-        self._meter = get_meter(
+        meter = get_meter(
             __name__,
             __version__,
             meter_provider,
         )
-        self._metric_recorder = self._meter.create_histogram(
+        metric_recorder = meter.create_histogram(
             name="http.client.duration",
             unit="ms",
             description="measures the duration of the outbound HTTP request",
@@ -317,7 +318,7 @@ class RequestsInstrumentor(BaseInstrumentor):
             excluded_urls=_excluded_urls_from_env
             if excluded_urls is None
             else parse_excluded_urls(excluded_urls),
-            metric_recorder=self._metric_recorder,
+            metric_recorder=metric_recorder,
         )
 
     def _uninstrument(self, **kwargs):
