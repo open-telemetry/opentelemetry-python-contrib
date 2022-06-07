@@ -481,8 +481,6 @@ class TestRequestsIntergrationMetric(TestBase):
 
     def setUp(self):
         super().setUp()
-        self.reader = InMemoryMetricReader()
-        self.meter_provider = MeterProvider(metric_readers=[self.reader])
         RequestsInstrumentor().instrument(meter_provider=self.meter_provider)
 
         httpretty.enable()
@@ -497,7 +495,7 @@ class TestRequestsIntergrationMetric(TestBase):
     def perform_request(url: str) -> requests.Response:
         return requests.get(url)
 
-    def test_basic_http_success(self):
+    def test_basic_metric_success(self):
         self.perform_request(self.URL)
 
         expected_attributes = {
@@ -511,11 +509,10 @@ class TestRequestsIntergrationMetric(TestBase):
 
         for (
             resource_metrics
-        ) in self.reader.get_metrics_data().resource_metrics:
+        ) in self.memory_metrics_reader.get_metrics_data().resource_metrics:
             for scope_metrics in resource_metrics.scope_metrics:
                 for metric in scope_metrics.metrics:
                     for data_point in metric.data.data_points:
-                        print(dict(data_point.attributes))
                         self.assertDictEqual(
                             expected_attributes, dict(data_point.attributes)
                         )
