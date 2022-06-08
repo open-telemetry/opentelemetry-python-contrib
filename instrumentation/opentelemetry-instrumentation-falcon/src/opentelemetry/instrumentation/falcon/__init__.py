@@ -86,16 +86,67 @@ and right before the span is finished while processing a response. The hooks can
 
     FalconInstrumentation().instrument(request_hook=request_hook, response_hook=response_hook)
 
+Capture HTTP request and response headers
+*****************************************
+You can configure the agent to capture predefined HTTP headers as span attributes, according to the `semantic convention <https://github.com/open-telemetry/opentelemetry-specification/blob/main/specification/trace/semantic_conventions/http.md#http-request-and-response-headers>`_.
+
+Request headers
+***************
+To capture predefined HTTP request headers as span attributes, set the environment variable ``OTEL_INSTRUMENTATION_HTTP_CAPTURE_HEADERS_SERVER_REQUEST``
+to a comma-separated list of HTTP header names.
+
+For example,
+
+::
+
+    export OTEL_INSTRUMENTATION_HTTP_CAPTURE_HEADERS_SERVER_REQUEST="content-type,custom_request_header"
+
+will extract ``content-type`` and ``custom_request_header`` from request headers and add them as span attributes.
+
+It is recommended that you should give the correct names of the headers to be captured in the environment variable.
+Request header names in falcon are case insensitive and - characters are replaced by _. So, giving header name as ``CUStom_Header`` in environment variable will be able capture header with name ``custom-header``.
+
+The name of the added span attribute will follow the format ``http.request.header.<header_name>`` where ``<header_name>`` being the normalized HTTP header name (lowercase, with - characters replaced by _ ).
+The value of the attribute will be single item list containing all the header values.
+
+Example of the added span attribute,
+``http.request.header.custom_request_header = ["<value1>,<value2>"]``
+
+Response headers
+****************
+To capture predefined HTTP response headers as span attributes, set the environment variable ``OTEL_INSTRUMENTATION_HTTP_CAPTURE_HEADERS_SERVER_RESPONSE``
+to a comma-separated list of HTTP header names.
+
+For example,
+
+::
+
+    export OTEL_INSTRUMENTATION_HTTP_CAPTURE_HEADERS_SERVER_RESPONSE="content-type,custom_response_header"
+
+will extract ``content-type`` and ``custom_response_header`` from response headers and add them as span attributes.
+
+It is recommended that you should give the correct names of the headers to be captured in the environment variable.
+Response header names captured in falcon are case insensitive. So, giving header name as ``CUStomHeader`` in environment variable will be able capture header with name ``customheader``.
+
+The name of the added span attribute will follow the format ``http.response.header.<header_name>`` where ``<header_name>`` being the normalized HTTP header name (lowercase, with - characters replaced by _ ).
+The value of the attribute will be single item list containing all the header values.
+
+Example of the added span attribute,
+``http.response.header.custom_response_header = ["<value1>,<value2>"]``
+
+Note:
+    Environment variable names to capture http headers are still experimental, and thus are subject to change.
+
 API
 ---
 """
 
-from functools import partial
 from logging import getLogger
 from sys import exc_info
 from typing import Collection
 
 import falcon
+from packaging import version as package_version
 
 import opentelemetry.instrumentation.wsgi as otel_wsgi
 from opentelemetry import context, trace
@@ -127,76 +178,85 @@ _ENVIRON_EXC = "opentelemetry-falcon.exc"
 
 _response_propagation_setter = FuncSetter(falcon.Response.append_header)
 
-if hasattr(falcon, "App"):
+_parsed_falcon_version = package_version.parse(falcon.__version__)
+if _parsed_falcon_version >= package_version.parse("3.0.0"):
     # Falcon 3
     _instrument_app = "App"
-else:
+    _falcon_version = 3
+elif _parsed_falcon_version >= package_version.parse("2.0.0"):
     # Falcon 2
     _instrument_app = "API"
-
-
-class FalconInstrumentor(BaseInstrumentor):
-    # pylint: disable=protected-access,attribute-defined-outside-init
-    """An instrumentor for falcon.API
-
-    See `BaseInstrumentor`
-    """
-
-    def instrumentation_dependencies(self) -> Collection[str]:
-        return _instruments
-
-    def _instrument(self, **kwargs):
-        self._original_falcon_api = getattr(falcon, _instrument_app)
-        setattr(
-            falcon, _instrument_app, partial(_InstrumentedFalconAPI, **kwargs)
-        )
-
-    def _uninstrument(self, **kwargs):
-        setattr(falcon, _instrument_app, self._original_falcon_api)
+    _falcon_version = 2
+else:
+    # Falcon 1
+    _instrument_app = "API"
+    _falcon_version = 1
 
 
 class _InstrumentedFalconAPI(getattr(falcon, _instrument_app)):
     def __init__(self, *args, **kwargs):
+        otel_opts = kwargs.pop("_otel_opts", {})
+
         # inject trace middleware
         middlewares = kwargs.pop("middleware", [])
-        tracer_provider = kwargs.pop("tracer_provider", None)
+        tracer_provider = otel_opts.pop("tracer_provider", None)
         if not isinstance(middlewares, (list, tuple)):
             middlewares = [middlewares]
 
-        self._tracer = trace.get_tracer(__name__, __version__, tracer_provider)
+        self._otel_tracer = trace.get_tracer(
+            __name__, __version__, tracer_provider
+        )
 
         trace_middleware = _TraceMiddleware(
-            self._tracer,
-            kwargs.pop(
+            self._otel_tracer,
+            otel_opts.pop(
                 "traced_request_attributes", get_traced_request_attrs("FALCON")
             ),
-            kwargs.pop("request_hook", None),
-            kwargs.pop("response_hook", None),
+            otel_opts.pop("request_hook", None),
+            otel_opts.pop("response_hook", None),
         )
         middlewares.insert(0, trace_middleware)
         kwargs["middleware"] = middlewares
 
-        self._excluded_urls = get_excluded_urls("FALCON")
+        self._otel_excluded_urls = get_excluded_urls("FALCON")
         super().__init__(*args, **kwargs)
 
     def _handle_exception(
-        self, req, resp, ex, params
+        self, arg1, arg2, arg3, arg4
     ):  # pylint: disable=C0103
         # Falcon 3 does not execute middleware within the context of the exception
         # so we capture the exception here and save it into the env dict
+
+        # Translation layer for handling the changed arg position of "ex" in Falcon > 2 vs
+        # Falcon < 2
+        if _falcon_version == 1:
+            ex = arg1
+            req = arg2
+            resp = arg3
+            params = arg4
+        else:
+            req = arg1
+            resp = arg2
+            ex = arg3
+            params = arg4
+
         _, exc, _ = exc_info()
         req.env[_ENVIRON_EXC] = exc
+
+        if _falcon_version == 1:
+            return super()._handle_exception(ex, req, resp, params)
+
         return super()._handle_exception(req, resp, ex, params)
 
     def __call__(self, env, start_response):
         # pylint: disable=E1101
-        if self._excluded_urls.url_disabled(env.get("PATH_INFO", "/")):
+        if self._otel_excluded_urls.url_disabled(env.get("PATH_INFO", "/")):
             return super().__call__(env, start_response)
 
         start_time = _time_ns()
 
         span, token = _start_internal_or_server_span(
-            tracer=self._tracer,
+            tracer=self._otel_tracer,
             span_name=otel_wsgi.get_default_span_name(env),
             start_time=start_time,
             context_carrier=env,
@@ -207,6 +267,12 @@ class _InstrumentedFalconAPI(getattr(falcon, _instrument_app)):
             attributes = otel_wsgi.collect_request_attributes(env)
             for key, value in attributes.items():
                 span.set_attribute(key, value)
+            if span.is_recording() and span.kind == trace.SpanKind.SERVER:
+                custom_attributes = (
+                    otel_wsgi.collect_custom_request_headers_attributes(env)
+                )
+                if len(custom_attributes) > 0:
+                    span.set_attributes(custom_attributes)
 
         activation = trace.use_span(span, end_on_exit=True)
         activation.__enter__()
@@ -275,7 +341,7 @@ class _TraceMiddleware:
 
     def process_response(
         self, req, resp, resource, req_succeeded=None
-    ):  # pylint:disable=R0201
+    ):  # pylint:disable=R0201,R0912
         span = req.env.get(_ENVIRON_SPAN_KEY)
 
         if not span or not span.is_recording():
@@ -312,6 +378,21 @@ class _TraceMiddleware:
                     description=reason,
                 )
             )
+
+            # Falcon 1 does not support response headers. So
+            # send an empty dict.
+            response_headers = {}
+            if _falcon_version > 1:
+                response_headers = resp.headers
+
+            if span.is_recording() and span.kind == trace.SpanKind.SERVER:
+                custom_attributes = (
+                    otel_wsgi.collect_custom_response_headers_attributes(
+                        response_headers.items()
+                    )
+                )
+                if len(custom_attributes) > 0:
+                    span.set_attributes(custom_attributes)
         except ValueError:
             pass
 
@@ -321,3 +402,27 @@ class _TraceMiddleware:
 
         if self._response_hook:
             self._response_hook(span, req, resp)
+
+
+class FalconInstrumentor(BaseInstrumentor):
+    # pylint: disable=protected-access,attribute-defined-outside-init
+    """An instrumentor for falcon.API
+
+    See `BaseInstrumentor`
+    """
+
+    def instrumentation_dependencies(self) -> Collection[str]:
+        return _instruments
+
+    def _instrument(self, **opts):
+        self._original_falcon_api = getattr(falcon, _instrument_app)
+
+        class FalconAPI(_InstrumentedFalconAPI):
+            def __init__(self, *args, **kwargs):
+                kwargs["_otel_opts"] = opts
+                super().__init__(*args, **kwargs)
+
+        setattr(falcon, _instrument_app, FalconAPI)
+
+    def _uninstrument(self, **kwargs):
+        setattr(falcon, _instrument_app, self._original_falcon_api)

@@ -1,4 +1,5 @@
 import falcon
+from packaging import version as package_version
 
 # pylint:disable=R0201,W0613,E0602
 
@@ -33,14 +34,31 @@ class ErrorResource:
         print(non_existent_var)  # noqa
 
 
+class CustomResponseHeaderResource:
+    def on_get(self, _, resp):
+        # pylint: disable=no-member
+        resp.status = falcon.HTTP_201
+        resp.set_header("content-type", "text/plain; charset=utf-8")
+        resp.set_header("content-length", "0")
+        resp.set_header(
+            "my-custom-header", "my-custom-value-1,my-custom-header-2"
+        )
+        resp.set_header("dont-capture-me", "test-value")
+
+
 def make_app():
-    if hasattr(falcon, "App"):
+    _parsed_falcon_version = package_version.parse(falcon.__version__)
+    if _parsed_falcon_version < package_version.parse("3.0.0"):
+        # Falcon 1 and Falcon 2
+        app = falcon.API()
+    else:
         # Falcon 3
         app = falcon.App()
-    else:
-        # Falcon 2
-        app = falcon.API()
+
     app.add_route("/hello", HelloWorldResource())
     app.add_route("/ping", HelloWorldResource())
     app.add_route("/error", ErrorResource())
+    app.add_route(
+        "/test_custom_response_headers", CustomResponseHeaderResource()
+    )
     return app

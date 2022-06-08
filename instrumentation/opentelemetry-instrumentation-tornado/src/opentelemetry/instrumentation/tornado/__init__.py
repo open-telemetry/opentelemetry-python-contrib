@@ -45,12 +45,13 @@ A comma separated list of paths that should not be automatically traced. For exa
 
 ::
 
-    export OTEL_PYTHON_TORNADO_EXLUDED_URLS='/healthz,/ping'
+    export OTEL_PYTHON_TORNADO_EXCLUDED_URLS='/healthz,/ping'
 
 Then any requests made to ``/healthz`` and ``/ping`` will not be automatically traced.
 
 Request attributes
-********************
+******************
+
 To extract certain attributes from Tornado's request object and use them as span attributes, set the environment variable ``OTEL_PYTHON_TORNADO_TRACED_REQUEST_ATTRS`` to a comma
 delimited list of request attribute names.
 
@@ -96,6 +97,57 @@ created span and some other contextual information. Example:
         client_response_hook=client_resposne_hook
     )
 
+Capture HTTP request and response headers
+*****************************************
+You can configure the agent to capture predefined HTTP headers as span attributes, according to the `semantic convention <https://github.com/open-telemetry/opentelemetry-specification/blob/main/specification/trace/semantic_conventions/http.md#http-request-and-response-headers>`_.
+
+Request headers
+***************
+To capture predefined HTTP request headers as span attributes, set the environment variable ``OTEL_INSTRUMENTATION_HTTP_CAPTURE_HEADERS_SERVER_REQUEST``
+to a comma-separated list of HTTP header names.
+
+For example,
+
+::
+
+    export OTEL_INSTRUMENTATION_HTTP_CAPTURE_HEADERS_SERVER_REQUEST="content-type,custom_request_header"
+
+will extract ``content-type`` and ``custom_request_header`` from request headers and add them as span attributes.
+
+It is recommended that you should give the correct names of the headers to be captured in the environment variable.
+Request header names in tornado are case insensitive. So, giving header name as ``CUStomHeader`` in environment variable will be able capture header with name ``customheader``.
+
+The name of the added span attribute will follow the format ``http.request.header.<header_name>`` where ``<header_name>`` being the normalized HTTP header name (lowercase, with - characters replaced by _ ).
+The value of the attribute will be single item list containing all the header values.
+
+Example of the added span attribute,
+``http.request.header.custom_request_header = ["<value1>,<value2>"]``
+
+Response headers
+****************
+To capture predefined HTTP response headers as span attributes, set the environment variable ``OTEL_INSTRUMENTATION_HTTP_CAPTURE_HEADERS_SERVER_RESPONSE``
+to a comma-separated list of HTTP header names.
+
+For example,
+
+::
+
+    export OTEL_INSTRUMENTATION_HTTP_CAPTURE_HEADERS_SERVER_RESPONSE="content-type,custom_response_header"
+
+will extract ``content-type`` and ``custom_response_header`` from response headers and add them as span attributes.
+
+It is recommended that you should give the correct names of the headers to be captured in the environment variable.
+Response header names captured in tornado are case insensitive. So, giving header name as ``CUStomHeader`` in environment variable will be able capture header with name ``customheader``.
+
+The name of the added span attribute will follow the format ``http.response.header.<header_name>`` where ``<header_name>`` being the normalized HTTP header name (lowercase, with - characters replaced by _ ).
+The value of the attribute will be single item list containing all the header values.
+
+Example of the added span attribute,
+``http.response.header.custom_response_header = ["<value1>,<value2>"]``
+
+Note:
+    Environment variable names to capture http headers are still experimental, and thus are subject to change.
+
 API
 ---
 """
@@ -119,15 +171,24 @@ from opentelemetry.instrumentation.propagators import (
 from opentelemetry.instrumentation.tornado.package import _instruments
 from opentelemetry.instrumentation.tornado.version import __version__
 from opentelemetry.instrumentation.utils import (
+    _start_internal_or_server_span,
     extract_attributes_from_object,
     http_status_to_status_code,
     unwrap,
 )
-from opentelemetry.propagate import extract
+from opentelemetry.propagators import textmap
 from opentelemetry.semconv.trace import SpanAttributes
 from opentelemetry.trace.status import Status, StatusCode
 from opentelemetry.util._time import _time_ns
-from opentelemetry.util.http import get_excluded_urls, get_traced_request_attrs
+from opentelemetry.util.http import (
+    OTEL_INSTRUMENTATION_HTTP_CAPTURE_HEADERS_SERVER_REQUEST,
+    OTEL_INSTRUMENTATION_HTTP_CAPTURE_HEADERS_SERVER_RESPONSE,
+    get_custom_headers,
+    get_excluded_urls,
+    get_traced_request_attrs,
+    normalise_request_header_name,
+    normalise_response_header_name,
+)
 
 from .client import fetch_async  # pylint: disable=E0401
 
@@ -139,7 +200,6 @@ _OTEL_PATCHED_KEY = "_otel_patched_key"
 
 _excluded_urls = get_excluded_urls("TORNADO")
 _traced_request_attrs = get_traced_request_attrs("TORNADO")
-
 response_propagation_setter = FuncSetter(tornado.web.RequestHandler.add_header)
 
 
@@ -167,7 +227,7 @@ class TornadoInstrumentor(BaseInstrumentor):
 
         In order to work around this, we patch the __init__ method of RequestHandler and then dynamically patch
         the prepare, on_finish and log_exception methods of the derived classes _only_ the first time we see them.
-        Note that the patch does not apply on every single __init__ call, only the first one for the enture
+        Note that the patch does not apply on every single __init__ call, only the first one for the entire
         process lifetime.
         """
         tracer_provider = kwargs.get("tracer_provider")
@@ -255,6 +315,32 @@ def _log_exception(tracer, func, handler, args, kwargs):
     return func(*args, **kwargs)
 
 
+def _collect_custom_request_headers_attributes(request_headers):
+    custom_request_headers_name = get_custom_headers(
+        OTEL_INSTRUMENTATION_HTTP_CAPTURE_HEADERS_SERVER_REQUEST
+    )
+    attributes = {}
+    for header_name in custom_request_headers_name:
+        header_values = request_headers.get(header_name)
+        if header_values:
+            key = normalise_request_header_name(header_name.lower())
+            attributes[key] = [header_values]
+    return attributes
+
+
+def _collect_custom_response_headers_attributes(response_headers):
+    custom_response_headers_name = get_custom_headers(
+        OTEL_INSTRUMENTATION_HTTP_CAPTURE_HEADERS_SERVER_RESPONSE
+    )
+    attributes = {}
+    for header_name in custom_response_headers_name:
+        header_values = response_headers.get(header_name)
+        if header_values:
+            key = normalise_response_header_name(header_name.lower())
+            attributes[key] = [header_values]
+    return attributes
+
+
 def _get_attributes_from_request(request):
     attrs = {
         SpanAttributes.HTTP_METHOD: request.method,
@@ -292,18 +378,25 @@ def _get_full_handler_name(handler):
 
 
 def _start_span(tracer, handler, start_time) -> _TraceContext:
-    token = context.attach(extract(handler.request.headers))
-
-    span = tracer.start_span(
-        _get_operation_name(handler, handler.request),
-        kind=trace.SpanKind.SERVER,
+    span, token = _start_internal_or_server_span(
+        tracer=tracer,
+        span_name=_get_operation_name(handler, handler.request),
         start_time=start_time,
+        context_carrier=handler.request.headers,
+        context_getter=textmap.default_getter,
     )
+
     if span.is_recording():
         attributes = _get_attributes_from_request(handler.request)
         for key, value in attributes.items():
             span.set_attribute(key, value)
         span.set_attribute("tornado.handler", _get_full_handler_name(handler))
+        if span.is_recording() and span.kind == trace.SpanKind.SERVER:
+            custom_attributes = _collect_custom_request_headers_attributes(
+                handler.request.headers
+            )
+            if len(custom_attributes) > 0:
+                span.set_attributes(custom_attributes)
 
     activation = trace.use_span(span, end_on_exit=True)
     activation.__enter__()  # pylint: disable=E1101
@@ -331,14 +424,15 @@ def _finish_span(tracer, handler, error=None):
             status_code = error.status_code
             if not ctx and status_code == 404:
                 ctx = _start_span(tracer, handler, _time_ns())
-        if status_code != 404:
+        else:
+            status_code = 500
+            reason = None
+        if status_code >= 500:
             finish_args = (
                 type(error),
                 error,
                 getattr(error, "__traceback__", None),
             )
-            status_code = 500
-            reason = None
 
     if not ctx:
         return
@@ -357,7 +451,14 @@ def _finish_span(tracer, handler, error=None):
                 description=otel_status_description,
             )
         )
+        if ctx.span.is_recording() and ctx.span.kind == trace.SpanKind.SERVER:
+            custom_attributes = _collect_custom_response_headers_attributes(
+                handler._headers
+            )
+            if len(custom_attributes) > 0:
+                ctx.span.set_attributes(custom_attributes)
 
     ctx.activation.__exit__(*finish_args)  # pylint: disable=E1101
-    context.detach(ctx.token)
+    if ctx.token:
+        context.detach(ctx.token)
     delattr(handler, _HANDLER_CONTEXT_KEY)

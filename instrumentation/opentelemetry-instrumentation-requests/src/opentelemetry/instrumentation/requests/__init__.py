@@ -162,13 +162,15 @@ def _instrument(
 
         url = remove_url_credentials(url)
 
+        span_attributes = {
+            SpanAttributes.HTTP_METHOD: method,
+            SpanAttributes.HTTP_URL: url,
+        }
+
         with tracer.start_as_current_span(
-            span_name, kind=SpanKind.CLIENT
+            span_name, kind=SpanKind.CLIENT, attributes=span_attributes
         ) as span, set_ip_on_next_http_connection(span):
             exception = None
-            if span.is_recording():
-                span.set_attribute(SpanAttributes.HTTP_METHOD, method)
-                span.set_attribute(SpanAttributes.HTTP_URL, url)
 
             headers = get_or_create_headers()
             inject(headers)
@@ -253,7 +255,7 @@ class RequestsInstrumentor(BaseInstrumentor):
                 ``name_callback``: Callback which calculates a generic span name for an
                     outgoing HTTP request based on the method and url.
                     Optional: Defaults to get_default_span_name.
-                ``excluded_urls``: A string containing a comma-delimitted
+                ``excluded_urls``: A string containing a comma-delimited
                     list of regexes used to exclude URLs from tracking
         """
         tracer_provider = kwargs.get("tracer_provider")

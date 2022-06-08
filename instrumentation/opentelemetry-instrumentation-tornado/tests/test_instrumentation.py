@@ -32,7 +32,12 @@ from opentelemetry.semconv.trace import SpanAttributes
 from opentelemetry.test.test_base import TestBase
 from opentelemetry.test.wsgitestutil import WsgiTestBase
 from opentelemetry.trace import SpanKind
-from opentelemetry.util.http import get_excluded_urls, get_traced_request_attrs
+from opentelemetry.util.http import (
+    OTEL_INSTRUMENTATION_HTTP_CAPTURE_HEADERS_SERVER_REQUEST,
+    OTEL_INSTRUMENTATION_HTTP_CAPTURE_HEADERS_SERVER_RESPONSE,
+    get_excluded_urls,
+    get_traced_request_attrs,
+)
 
 from .tornado_test_app import (
     AsyncHandler,
@@ -312,6 +317,41 @@ class TestTornadoInstrumentation(TornadoTest, WsgiTestBase):
             },
         )
 
+    def test_http_error(self):
+        response = self.fetch("/raise_403")
+        self.assertEqual(response.code, 403)
+
+        spans = self.sorted_spans(self.memory_exporter.get_finished_spans())
+        self.assertEqual(len(spans), 2)
+        server, client = spans
+
+        self.assertEqual(server.name, "RaiseHTTPErrorHandler.get")
+        self.assertEqual(server.kind, SpanKind.SERVER)
+        self.assertSpanHasAttributes(
+            server,
+            {
+                SpanAttributes.HTTP_METHOD: "GET",
+                SpanAttributes.HTTP_SCHEME: "http",
+                SpanAttributes.HTTP_HOST: "127.0.0.1:"
+                + str(self.get_http_port()),
+                SpanAttributes.HTTP_TARGET: "/raise_403",
+                SpanAttributes.HTTP_CLIENT_IP: "127.0.0.1",
+                SpanAttributes.HTTP_STATUS_CODE: 403,
+                "tornado.handler": "tests.tornado_test_app.RaiseHTTPErrorHandler",
+            },
+        )
+
+        self.assertEqual(client.name, "GET")
+        self.assertEqual(client.kind, SpanKind.CLIENT)
+        self.assertSpanHasAttributes(
+            client,
+            {
+                SpanAttributes.HTTP_URL: self.get_url("/raise_403"),
+                SpanAttributes.HTTP_METHOD: "GET",
+                SpanAttributes.HTTP_STATUS_CODE: 403,
+            },
+        )
+
     def test_dynamic_handler(self):
         response = self.fetch("/dyna")
         self.assertEqual(response.code, 404)
@@ -574,3 +614,152 @@ class TestTornadoUninstrument(TornadoTest):
         self.assertEqual(len(spans), 1)
         manual = spans[0]
         self.assertEqual(manual.name, "manual")
+
+
+class TestTornadoWrappedWithOtherFramework(TornadoTest):
+    def get_app(self):
+        tracer = trace.get_tracer(__name__)
+        app = make_app(tracer)
+
+        def middleware(request):
+            """Wraps the request with a server span"""
+            with tracer.start_as_current_span(
+                "test", kind=trace.SpanKind.SERVER
+            ):
+                app(request)
+
+        return middleware
+
+    def test_mark_span_internal_in_presence_of_another_span(self):
+        response = self.fetch("/")
+        self.assertEqual(response.code, 201)
+        spans = self.sorted_spans(self.memory_exporter.get_finished_spans())
+        self.assertEqual(len(spans), 4)
+
+        tornado_handler_span = spans[1]
+        self.assertEqual(trace.SpanKind.INTERNAL, tornado_handler_span.kind)
+
+        test_span = spans[2]
+        self.assertEqual(trace.SpanKind.SERVER, test_span.kind)
+        self.assertEqual(
+            test_span.context.span_id, tornado_handler_span.parent.span_id
+        )
+
+
+class TestTornadoCustomRequestResponseHeadersAddedWithServerSpan(TornadoTest):
+    @patch.dict(
+        "os.environ",
+        {
+            OTEL_INSTRUMENTATION_HTTP_CAPTURE_HEADERS_SERVER_REQUEST: "Custom-Test-Header-1,Custom-Test-Header-2,Custom-Test-Header-3"
+        },
+    )
+    def test_custom_request_headers_added_in_server_span(self):
+        headers = {
+            "Custom-Test-Header-1": "Test Value 1",
+            "Custom-Test-Header-2": "TestValue2,TestValue3",
+        }
+        response = self.fetch("/", headers=headers)
+        self.assertEqual(response.code, 201)
+        _, tornado_span, _ = self.sorted_spans(
+            self.memory_exporter.get_finished_spans()
+        )
+        expected = {
+            "http.request.header.custom_test_header_1": ("Test Value 1",),
+            "http.request.header.custom_test_header_2": (
+                "TestValue2,TestValue3",
+            ),
+        }
+        self.assertEqual(tornado_span.kind, trace.SpanKind.SERVER)
+        self.assertSpanHasAttributes(tornado_span, expected)
+
+    @patch.dict(
+        "os.environ",
+        {
+            OTEL_INSTRUMENTATION_HTTP_CAPTURE_HEADERS_SERVER_RESPONSE: "content-type,content-length,my-custom-header,invalid-header"
+        },
+    )
+    def test_custom_response_headers_added_in_server_span(self):
+        response = self.fetch("/test_custom_response_headers")
+        self.assertEqual(response.code, 200)
+        tornado_span, _ = self.sorted_spans(
+            self.memory_exporter.get_finished_spans()
+        )
+        expected = {
+            "http.response.header.content_type": (
+                "text/plain; charset=utf-8",
+            ),
+            "http.response.header.content_length": ("0",),
+            "http.response.header.my_custom_header": (
+                "my-custom-value-1,my-custom-header-2",
+            ),
+        }
+        self.assertEqual(tornado_span.kind, trace.SpanKind.SERVER)
+        self.assertSpanHasAttributes(tornado_span, expected)
+
+
+class TestTornadoCustomRequestResponseHeadersNotAddedWithInternalSpan(
+    TornadoTest
+):
+    def get_app(self):
+        tracer = trace.get_tracer(__name__)
+        app = make_app(tracer)
+
+        def middleware(request):
+            """Wraps the request with a server span"""
+            with tracer.start_as_current_span(
+                "test", kind=trace.SpanKind.SERVER
+            ):
+                app(request)
+
+        return middleware
+
+    @patch.dict(
+        "os.environ",
+        {
+            OTEL_INSTRUMENTATION_HTTP_CAPTURE_HEADERS_SERVER_REQUEST: "Custom-Test-Header-1,Custom-Test-Header-2,Custom-Test-Header-3"
+        },
+    )
+    def test_custom_request_headers_not_added_in_internal_span(self):
+        headers = {
+            "Custom-Test-Header-1": "Test Value 1",
+            "Custom-Test-Header-2": "TestValue2,TestValue3",
+        }
+        response = self.fetch("/", headers=headers)
+        self.assertEqual(response.code, 201)
+        _, tornado_span, _, _ = self.sorted_spans(
+            self.memory_exporter.get_finished_spans()
+        )
+        not_expected = {
+            "http.request.header.custom_test_header_1": ("Test Value 1",),
+            "http.request.header.custom_test_header_2": (
+                "TestValue2,TestValue3",
+            ),
+        }
+        self.assertEqual(tornado_span.kind, trace.SpanKind.INTERNAL)
+        for key, _ in not_expected.items():
+            self.assertNotIn(key, tornado_span.attributes)
+
+    @patch.dict(
+        "os.environ",
+        {
+            OTEL_INSTRUMENTATION_HTTP_CAPTURE_HEADERS_SERVER_RESPONSE: "content-type,content-length,my-custom-header,invalid-header"
+        },
+    )
+    def test_custom_response_headers_not_added_in_internal_span(self):
+        response = self.fetch("/test_custom_response_headers")
+        self.assertEqual(response.code, 200)
+        tornado_span, _, _ = self.sorted_spans(
+            self.memory_exporter.get_finished_spans()
+        )
+        not_expected = {
+            "http.response.header.content_type": (
+                "text/plain; charset=utf-8",
+            ),
+            "http.response.header.content_length": ("0",),
+            "http.response.header.my_custom_header": (
+                "my-custom-value-1,my-custom-header-2",
+            ),
+        }
+        self.assertEqual(tornado_span.kind, trace.SpanKind.INTERNAL)
+        for key, _ in not_expected.items():
+            self.assertNotIn(key, tornado_span.attributes)

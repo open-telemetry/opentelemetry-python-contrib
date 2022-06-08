@@ -90,10 +90,61 @@ For example,
 
 will exclude requests such as ``https://site/client/123/info`` and ``https://site/xyz/healthcheck``.
 
+Capture HTTP request and response headers
+*****************************************
+You can configure the agent to capture predefined HTTP headers as span attributes, according to the `semantic convention <https://github.com/open-telemetry/opentelemetry-specification/blob/main/specification/trace/semantic_conventions/http.md#http-request-and-response-headers>`_.
+
+Request headers
+***************
+To capture predefined HTTP request headers as span attributes, set the environment variable ``OTEL_INSTRUMENTATION_HTTP_CAPTURE_HEADERS_SERVER_REQUEST``
+to a comma-separated list of HTTP header names.
+
+For example,
+
+::
+
+    export OTEL_INSTRUMENTATION_HTTP_CAPTURE_HEADERS_SERVER_REQUEST="content-type,custom_request_header"
+
+will extract ``content-type`` and ``custom_request_header`` from request headers and add them as span attributes.
+
+It is recommended that you should give the correct names of the headers to be captured in the environment variable.
+Request header names in pyramid are case insensitive and - characters are replaced by _. So, giving header name as ``CUStom_Header`` in environment variable will be able capture header with name ``custom-header``.
+
+The name of the added span attribute will follow the format ``http.request.header.<header_name>`` where ``<header_name>`` being the normalized HTTP header name (lowercase, with - characters replaced by _ ).
+The value of the attribute will be single item list containing all the header values.
+
+Example of the added span attribute,
+``http.request.header.custom_request_header = ["<value1>,<value2>"]``
+
+Response headers
+****************
+To capture predefined HTTP response headers as span attributes, set the environment variable ``OTEL_INSTRUMENTATION_HTTP_CAPTURE_HEADERS_SERVER_RESPONSE``
+to a comma-separated list of HTTP header names.
+
+For example,
+
+::
+
+    export OTEL_INSTRUMENTATION_HTTP_CAPTURE_HEADERS_SERVER_RESPONSE="content-type,custom_response_header"
+
+will extract ``content-type`` and ``custom_response_header`` from response headers and add them as span attributes.
+
+It is recommended that you should give the correct names of the headers to be captured in the environment variable.
+Response header names captured in pyramid are case insensitive. So, giving header name as ``CUStomHeader`` in environment variable will be able capture header with name ``customheader``.
+
+The name of the added span attribute will follow the format ``http.response.header.<header_name>`` where ``<header_name>`` being the normalized HTTP header name (lowercase, with - characters replaced by _ ).
+The value of the attribute will be single item list containing all the header values.
+
+Example of the added span attribute,
+``http.response.header.custom_response_header = ["<value1>,<value2>"]``
+
+Note:
+    Environment variable names to capture http headers are still experimental, and thus are subject to change.
+
 API
 ---
 """
-
+import platform
 from typing import Collection
 
 from pyramid.config import Configurator
@@ -115,6 +166,11 @@ from opentelemetry.instrumentation.utils import unwrap
 # from importing an unused symbol.
 trace_tween_factory  # pylint: disable=pointless-statement
 
+if platform.python_implementation() == "PyPy":
+    CALLER_LEVELS = 3
+else:
+    CALLER_LEVELS = 2
+
 
 def _traced_init(wrapped, instance, args, kwargs):
     settings = kwargs.get("settings", {})
@@ -134,10 +190,12 @@ def _traced_init(wrapped, instance, args, kwargs):
     # to find the calling package. So if we let the original `__init__`
     # function call it, our wrapper will mess things up.
     if not kwargs.get("package", None):
-        # Get the package for the third frame up from this one.
-        # Default is `level=2` which will give us the package from `wrapt`
-        # instead of the desired package (the caller)
-        kwargs["package"] = caller_package(level=3)
+        # Get the package for the 2nd frame up from this one.
+        # Default is `level=2` one level down (in Configurator.__init__).
+        # We want the 3rd level from _there_. Since we are already 1 level above,
+        # we need the 2nd level up from here, which will give us the package from
+        # `wrapt` instead of the desired package (the caller)
+        kwargs["package"] = caller_package(level=CALLER_LEVELS)
 
     wrapped(*args, **kwargs)
     instance.include("opentelemetry.instrumentation.pyramid.callbacks")

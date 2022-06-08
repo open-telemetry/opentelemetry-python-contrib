@@ -12,6 +12,8 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import urllib.parse
+from re import escape, sub
 from typing import Dict, Sequence
 
 from wrapt import ObjectProxy
@@ -22,7 +24,7 @@ from opentelemetry import context, trace
 # pylint: disable=E0611
 from opentelemetry.context import _SUPPRESS_INSTRUMENTATION_KEY  # noqa: F401
 from opentelemetry.propagate import extract
-from opentelemetry.trace import StatusCode
+from opentelemetry.trace import Span, StatusCode
 
 
 def extract_attributes_from_object(
@@ -76,7 +78,12 @@ def unwrap(obj, attr: str):
 
 
 def _start_internal_or_server_span(
-    tracer, span_name, start_time, context_carrier, context_getter
+    tracer,
+    span_name,
+    start_time,
+    context_carrier,
+    context_getter,
+    attributes=None,
 ):
     """Returns internal or server span along with the token which can be used by caller to reset context
 
@@ -107,5 +114,61 @@ def _start_internal_or_server_span(
         context=ctx,
         kind=span_kind,
         start_time=start_time,
+        attributes=attributes,
     )
     return span, token
+
+
+_KEY_VALUE_DELIMITER = ","
+
+
+def _generate_sql_comment(**meta):
+    """
+    Return a SQL comment with comma delimited key=value pairs created from
+    **meta kwargs.
+    """
+    if not meta:  # No entries added.
+        return ""
+
+    # Sort the keywords to ensure that caching works and that testing is
+    # deterministic. It eases visual inspection as well.
+    # pylint: disable=consider-using-f-string
+    return (
+        " /*"
+        + _KEY_VALUE_DELIMITER.join(
+            "{}={!r}".format(_url_quote(key), _url_quote(value))
+            for key, value in sorted(meta.items())
+            if value is not None
+        )
+        + "*/"
+    )
+
+
+def _url_quote(s):  # pylint: disable=invalid-name
+    if not isinstance(s, (str, bytes)):
+        return s
+    quoted = urllib.parse.quote(s)
+    # Since SQL uses '%' as a keyword, '%' is a by-product of url quoting
+    # e.g. foo,bar --> foo%2Cbar
+    # thus in our quoting, we need to escape it too to finally give
+    #      foo,bar --> foo%%2Cbar
+    return quoted.replace("%", "%%")
+
+
+def _generate_opentelemetry_traceparent(span: Span) -> str:
+    meta = {}
+    _version = "00"
+    _span_id = trace.format_span_id(span.context.span_id)
+    _trace_id = trace.format_trace_id(span.context.trace_id)
+    _flags = str(trace.TraceFlags.SAMPLED)
+    _traceparent = _version + "-" + _trace_id + "-" + _span_id + "-" + _flags
+    meta.update({"traceparent": _traceparent})
+    return meta
+
+
+def _python_path_without_directory(python_path, directory, path_separator):
+    return sub(
+        rf"{escape(directory)}{path_separator}(?!$)",
+        "",
+        python_path,
+    )

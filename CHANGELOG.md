@@ -5,16 +5,144 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [Unreleased](https://github.com/open-telemetry/opentelemetry-python/compare/v1.9.1-0.28b1...HEAD)
+## [Unreleased](https://github.com/open-telemetry/opentelemetry-python/compare/v1.12.0rc1-0.31b0...HEAD)
+
+### Fixed
+- Adding escape call to fix [auto-instrumentation not producing spans on Windows](https://github.com/open-telemetry/opentelemetry-python/issues/2703).
+  ([#1100](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/1100))
+- `opentelemetry-instrumentation-grpc` narrow protobuf dependency to exclude protobuf >= 4
+  ([1109](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/1109))
+- cleanup type hints for textmap `Getter` and `Setter` classes
+  ([1106](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/1106))
+  
+### Added
+- `opentelemetry-instrumentation-remoulade` Initial release
+  ([#1082](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/1082))
+
+### Added
+- Added `opentelemetry-instrumention-confluent-kafka`
+  ([#1111](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/1111))
+
+
+## [1.12.0rc1-0.31b0](https://github.com/open-telemetry/opentelemetry-python/releases/tag/v1.12.0rc1-0.31b0) - 2022-05-17
+
+### Fixed
+- `opentelemetry-instrumentation-aiohttp-client` make span attributes available to sampler
+  ([1072](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/1072))
+- `opentelemetry-instrumentation-aws-lambda` Fixed an issue - in some rare cases (API GW proxy integration test)
+  headers are set to None, breaking context propagators.
+  ([#1055](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/1055))
+- Refactoring custom header collection API for consistency
+  ([#1064](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/1064))
+- `opentelemetry-instrumentation-sqlalchemy` will correctly report `otel.library.name`
+  ([#1086](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/1086))
+- `opentelemetry-sdk-extension-aws` change timeout for AWS EC2 and EKS metadata requests from 1000 seconds and 2000 seconds to 1 second
+
+### Added
+- `opentelemetry-instrument` and `opentelemetry-bootstrap` now include a `--version` flag
+  ([#1065](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/1065))
+- `opentelemetry-instrumentation-redis` now instruments asynchronous Redis clients, if the installed redis-py includes async support (>=4.2.0).
+  ([#1076](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/1076))
+- `opentelemetry-instrumentation-boto3sqs` added AWS's SQS instrumentation.
+  ([#1081](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/1081))
+
+## [1.11.1-0.30b1](https://github.com/open-telemetry/opentelemetry-python/releases/tag/v1.11.1-0.30b1) - 2022-04-21
+
+### Added
+- `opentelemetry-instrumentation-starlette` Capture custom request/response headers in span attributes
+  ([#1046])(https://github.com/open-telemetry/opentelemetry-python-contrib/pull/1046)
+
+### Fixed
+- Prune autoinstrumentation sitecustomize module directory from PYTHONPATH immediately
+  ([#1066](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/1066))
+
+## [1.11.0-0.30b0](https://github.com/open-telemetry/opentelemetry-python/releases/tag/v1.11.0-0.30b0) - 2022-04-18
+
+### Fixed
+- `opentelemetry-instrumentation-pyramid` Fixed which package is the correct caller in _traced_init.
+  ([#830](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/830))
+- `opentelemetry-instrumentation-tornado` Fix Tornado errors mapping to 500
+  ([#1048](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/1048))
+- `opentelemetry-instrumentation-urllib` make span attributes available to sampler
+  ([1014](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/1014))
+- `opentelemetry-instrumentation-flask` Fix non-recording span bug
+  ([#999](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/999))
+- `opentelemetry-instrumentation-tornado` Fix non-recording span bug
+  ([#999](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/999))
+
+### Added
+
+- `opentelemetry-instrumentation-fastapi` Capture custom request/response headers in span attributes
+  ([#1032])(https://github.com/open-telemetry/opentelemetry-python-contrib/pull/1032)
+- `opentelemetry-instrumentation-django` Capture custom request/response headers in span attributes
+  ([#1024])(https://github.com/open-telemetry/opentelemetry-python-contrib/pull/1024)
+- `opentelemetry-instrumentation-asgi` Capture custom request/response headers in span attributes
+  ([#1004])(https://github.com/open-telemetry/opentelemetry-python-contrib/pull/1004)
+- `opentelemetry-instrumentation-psycopg2` extended the sql commenter support of dbapi into psycopg2
+  ([#940](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/940))
+- `opentelemetry-instrumentation-falcon` Add support for falcon==1.4.1
+  ([#1000])(https://github.com/open-telemetry/opentelemetry-python-contrib/pull/1000)
+- `opentelemetry-instrumentation-falcon` Falcon: Capture custom request/response headers in span attributes
+  ([#1003])(https://github.com/open-telemetry/opentelemetry-python-contrib/pull/1003)
+- `opentelemetry-instrumentation-elasticsearch` no longer creates unique span names by including search target, replaces them with `<target>` and puts the value in attribute `elasticsearch.target`
+  ([#1018](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/1018))
+- `opentelemetry-instrumentation-pyramid` Handle non-HTTPException exceptions
+  ([#1001](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/1001))
+- `opentelemetry-instrumentation-system-metrics` restore `SystemMetrics` instrumentation as `SystemMetricsInstrumentor`
+  ([#1012](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/1012))
+- `opentelemetry-instrumentation-pyramid` Pyramid: Capture custom request/response headers in span attributes
+  ([#1022])(https://github.com/open-telemetry/opentelemetry-python-contrib/pull/1022)
+
+
+## [1.10.0-0.29b0](https://github.com/open-telemetry/opentelemetry-python/releases/tag/v1.10.0-0.29b0) - 2022-03-10
+
+- `opentelemetry-instrumentation-wsgi` Capture custom request/response headers in span attributes
+  ([#925])(https://github.com/open-telemetry/opentelemetry-python-contrib/pull/925)
+- `opentelemetry-instrumentation-flask` Flask: Capture custom request/response headers in span attributes
+  ([#952])(https://github.com/open-telemetry/opentelemetry-python-contrib/pull/952)
+- `opentelemetry-instrumentation-tornado` Tornado: Capture custom request/response headers in span attributes
+  ([#950])(https://github.com/open-telemetry/opentelemetry-python-contrib/pull/950)
+
+### Added
+
+- `opentelemetry-instrumentation-aws-lambda` `SpanKind.SERVER` by default, add more cases for `SpanKind.CONSUMER` services. ([#926](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/926))
+- `opentelemetry-instrumentation-sqlalchemy` added experimental sql commenter capability
+   ([#924](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/924))
+- `opentelemetry-contrib-instrumentations` added new meta-package that installs all contrib instrumentations.
+  ([#681](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/681))
+- `opentelemetry-instrumentation-dbapi` add experimental sql commenter capability
+  ([#908](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/908))
+- `opentelemetry-instrumentation-requests` make span attribute available to samplers
+  ([#931](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/931))
+- `opentelemetry-datadog-exporter` add deprecation note to example.
+  ([#900](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/900))
+
+### Fixed
+
+- `opentelemetry-instrumentation-dbapi` Changed the format of traceparent id.
+  ([#941](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/941))
+- `opentelemetry-instrumentation-logging` retrieves service name defensively.
+  ([#890](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/890))
+- `opentelemetry-instrumentation-wsgi` WSGI: Conditionally create SERVER spans
+  ([#903](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/903))
+- `opentelemetry-instrumentation-falcon` Safer patching mechanism
+  ([#895](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/895))
+- `opentelemetry-instrumentation-kafka-python` Fix topic extraction
+  ([#949](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/949))
+
+### Changed
+
+- `opentelemetry-instrumentation-pymemcache` should run against newer versions of pymemcache.
+  ([#935](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/935))
 
 ## [1.9.1-0.28b1](https://github.com/open-telemetry/opentelemetry-python/releases/tag/v1.9.1-0.28b1) - 2022-01-29
-
-
 
 ### Fixed
 
 - `opentelemetry-instrumentation-pika` requires `packaging` dependency
 
+- `opentelemetry-instrumentation-tornado` Tornado: Conditionally create SERVER spans
+  ([#889](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/889))
 
 ## [1.9.0-0.28b0](https://github.com/open-telemetry/opentelemetry-python/releases/tag/v1.9.0-0.28b0) - 2022-01-26
 
@@ -33,6 +161,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   ([#867](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/867))
 - `opentelemetry-instrumentation-pymongo` now supports `pymongo v4`
   ([#876](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/876))
+
+- `opentelemetry-instrumentation-httpx` now supports versions higher than `0.19.0`.
+  ([#866](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/866))
 
 ### Fixed
 

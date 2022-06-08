@@ -25,11 +25,11 @@ class KafkaPropertiesExtractor:
         return kwargs.get(key, default_value)
 
     @staticmethod
-    def extract_send_topic(args):
+    def extract_send_topic(args, kwargs):
         """extract topic from `send` method arguments in KafkaProducer class"""
-        if len(args) > 0:
-            return args[0]
-        return "unknown"
+        return KafkaPropertiesExtractor._extract_argument(
+            "topic", 0, "unknown", args, kwargs
+        )
 
     @staticmethod
     def extract_send_value(args, kwargs):
@@ -56,7 +56,7 @@ class KafkaPropertiesExtractor:
     def extract_send_partition(instance, args, kwargs):
         """extract partition `send` method arguments, using the `_partition` method in KafkaProducer class"""
         try:
-            topic = KafkaPropertiesExtractor.extract_send_topic(args)
+            topic = KafkaPropertiesExtractor.extract_send_topic(args, kwargs)
             key = KafkaPropertiesExtractor.extract_send_key(args, kwargs)
             value = KafkaPropertiesExtractor.extract_send_value(args, kwargs)
             partition = KafkaPropertiesExtractor._extract_argument(
@@ -91,7 +91,7 @@ ProduceHookT = Optional[Callable[[Span, List, Dict], None]]
 ConsumeHookT = Optional[Callable[[Span, ABCRecord, List, Dict], None]]
 
 
-class KafkaContextGetter(textmap.Getter):
+class KafkaContextGetter(textmap.Getter[textmap.CarrierT]):
     def get(self, carrier: textmap.CarrierT, key: str) -> Optional[List[str]]:
         if carrier is None:
             return None
@@ -108,7 +108,7 @@ class KafkaContextGetter(textmap.Getter):
         return [key for (key, value) in carrier]
 
 
-class KafkaContextSetter(textmap.Setter):
+class KafkaContextSetter(textmap.Setter[textmap.CarrierT]):
     def set(self, carrier: textmap.CarrierT, key: str, value: str) -> None:
         if carrier is None or key is None:
             return
@@ -145,7 +145,7 @@ def _wrap_send(tracer: Tracer, produce_hook: ProduceHookT) -> Callable:
             headers = []
             kwargs["headers"] = headers
 
-        topic = KafkaPropertiesExtractor.extract_send_topic(args)
+        topic = KafkaPropertiesExtractor.extract_send_topic(args, kwargs)
         bootstrap_servers = KafkaPropertiesExtractor.extract_bootstrap_servers(
             instance
         )

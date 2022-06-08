@@ -85,6 +85,57 @@ Response_headers is a list of key-value (tuples) representing the response heade
 
 Flask Request object reference: https://flask.palletsprojects.com/en/2.0.x/api/#flask.Request
 
+Capture HTTP request and response headers
+*****************************************
+You can configure the agent to capture predefined HTTP headers as span attributes, according to the `semantic convention <https://github.com/open-telemetry/opentelemetry-specification/blob/main/specification/trace/semantic_conventions/http.md#http-request-and-response-headers>`_.
+
+Request headers
+***************
+To capture predefined HTTP request headers as span attributes, set the environment variable ``OTEL_INSTRUMENTATION_HTTP_CAPTURE_HEADERS_SERVER_REQUEST``
+to a comma-separated list of HTTP header names.
+
+For example,
+
+::
+
+    export OTEL_INSTRUMENTATION_HTTP_CAPTURE_HEADERS_SERVER_REQUEST="content-type,custom_request_header"
+
+will extract ``content-type`` and ``custom_request_header`` from request headers and add them as span attributes.
+
+It is recommended that you should give the correct names of the headers to be captured in the environment variable.
+Request header names in flask are case insensitive and - characters are replaced by _. So, giving header name as ``CUStom_Header`` in environment variable will be able capture header with name ``custom-header``.
+
+The name of the added span attribute will follow the format ``http.request.header.<header_name>`` where ``<header_name>`` being the normalized HTTP header name (lowercase, with - characters replaced by _ ).
+The value of the attribute will be single item list containing all the header values.
+
+Example of the added span attribute,
+``http.request.header.custom_request_header = ["<value1>,<value2>"]``
+
+Response headers
+****************
+To capture predefined HTTP response headers as span attributes, set the environment variable ``OTEL_INSTRUMENTATION_HTTP_CAPTURE_HEADERS_SERVER_RESPONSE``
+to a comma-separated list of HTTP header names.
+
+For example,
+
+::
+
+    export OTEL_INSTRUMENTATION_HTTP_CAPTURE_HEADERS_SERVER_RESPONSE="content-type,custom_response_header"
+
+will extract ``content-type`` and ``custom_response_header`` from response headers and add them as span attributes.
+
+It is recommended that you should give the correct names of the headers to be captured in the environment variable.
+Response header names captured in flask are case insensitive. So, giving header name as ``CUStomHeader`` in environment variable will be able capture header with name ``customheader``.
+
+The name of the added span attribute will follow the format ``http.response.header.<header_name>`` where ``<header_name>`` being the normalized HTTP header name (lowercase, with - characters replaced by _ ).
+The value of the attribute will be single item list containing all the header values.
+
+Example of the added span attribute,
+``http.response.header.custom_response_header = ["<value1>,<value2>"]``
+
+Note:
+    Environment variable names to capture http headers are still experimental, and thus are subject to change.
+
 API
 ---
 """
@@ -102,7 +153,7 @@ from opentelemetry.instrumentation.instrumentor import BaseInstrumentor
 from opentelemetry.instrumentation.propagators import (
     get_global_response_propagator,
 )
-from opentelemetry.propagate import extract
+from opentelemetry.instrumentation.utils import _start_internal_or_server_span
 from opentelemetry.semconv.trace import SpanAttributes
 from opentelemetry.util._time import _time_ns
 from opentelemetry.util.http import get_excluded_urls, parse_excluded_urls
@@ -153,6 +204,15 @@ def _rewrapped_app(wsgi_app, response_hook=None, excluded_urls=None):
                     otel_wsgi.add_response_attributes(
                         span, status, response_headers
                     )
+                    if (
+                        span.is_recording()
+                        and span.kind == trace.SpanKind.SERVER
+                    ):
+                        custom_attributes = otel_wsgi.collect_custom_response_headers_attributes(
+                            response_headers
+                        )
+                        if len(custom_attributes) > 0:
+                            span.set_attributes(custom_attributes)
                 else:
                     _logger.warning(
                         "Flask environ's OpenTelemetry span "
@@ -177,21 +237,12 @@ def _wrapped_before_request(
         flask_request_environ = flask.request.environ
         span_name = get_default_span_name()
 
-        token = ctx = span_kind = None
-
-        if trace.get_current_span() is trace.INVALID_SPAN:
-            ctx = extract(flask_request_environ, getter=otel_wsgi.wsgi_getter)
-            token = context.attach(ctx)
-            span_kind = trace.SpanKind.SERVER
-        else:
-            ctx = context.get_current()
-            span_kind = trace.SpanKind.INTERNAL
-
-        span = tracer.start_span(
-            span_name,
-            ctx,
-            kind=span_kind,
+        span, token = _start_internal_or_server_span(
+            tracer=tracer,
+            span_name=span_name,
             start_time=flask_request_environ.get(_ENVIRON_STARTTIME_KEY),
+            context_carrier=flask_request_environ,
+            context_getter=otel_wsgi.wsgi_getter,
         )
 
         if request_hook:
@@ -209,6 +260,14 @@ def _wrapped_before_request(
                 ] = flask.request.url_rule.rule
             for key, value in attributes.items():
                 span.set_attribute(key, value)
+            if span.is_recording() and span.kind == trace.SpanKind.SERVER:
+                custom_attributes = (
+                    otel_wsgi.collect_custom_request_headers_attributes(
+                        flask_request_environ
+                    )
+                )
+                if len(custom_attributes) > 0:
+                    span.set_attributes(custom_attributes)
 
         activation = trace.use_span(span, end_on_exit=True)
         activation.__enter__()  # pylint: disable=E1101
