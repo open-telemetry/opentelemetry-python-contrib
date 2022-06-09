@@ -15,9 +15,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - cleanup type hints for textmap `Getter` and `Setter` classes
   ([1106](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/1106))
   
+
+### Added
+- `opentelemetry-instrumentation-logging` add log hook support
+  ([#1117](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/1117))
+
+
 ### Added
 - `opentelemetry-instrumentation-remoulade` Initial release
   ([#1082](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/1082))
+
 
 ### Added
 - Added `opentelemetry-instrumention-confluent-kafka`
