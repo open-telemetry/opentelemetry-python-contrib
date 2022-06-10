@@ -28,6 +28,7 @@ from opentelemetry.instrumentation.urllib import (  # pylint: disable=no-name-in
     URLLibInstrumentor,
 )
 from opentelemetry.instrumentation.utils import _SUPPRESS_INSTRUMENTATION_KEY
+from opentelemetry.context import _SUPPRESS_HTTP_INSTRUMENTATION_KEY
 from opentelemetry.propagate import get_global_textmap, set_global_textmap
 from opentelemetry.sdk import resources
 from opentelemetry.semconv.trace import SpanAttributes
@@ -179,6 +180,18 @@ class RequestsIntegrationTestBase(abc.ABC):
     def test_suppress_instrumentation(self):
         token = context.attach(
             context.set_value(_SUPPRESS_INSTRUMENTATION_KEY, True)
+        )
+        try:
+            result = self.perform_request(self.URL)
+            self.assertEqual(result.read(), b"Hello!")
+        finally:
+            context.detach(token)
+
+        self.assert_span(num_spans=0)
+
+    def test_suppress_http_instrumentation(self):
+        token = context.attach(
+            context.set_value(_SUPPRESS_HTTP_INSTRUMENTATION_KEY, True)
         )
         try:
             result = self.perform_request(self.URL)
