@@ -147,6 +147,27 @@ class TestWsgiApplication(WsgiTestBase):
             expected_attributes[SpanAttributes.HTTP_METHOD] = http_method
         self.assertEqual(span_list[0].attributes, expected_attributes)
 
+        expected_names = [
+            "http.server.active_requests",
+            "http.server.duration",
+        ]
+        recommended_attrs = {
+            "http.server.active_requests": otel_wsgi._active_requests_count_attrs,
+            "http.server.duration": otel_wsgi._duration_attrs,
+        }
+
+        metrics_list = self.memory_metrics_reader.get_metrics_data()
+        self.assertTrue(len(metrics_list.resource_metrics) != 0)
+        for resource_metric in metrics_list.resource_metrics:
+            self.assertTrue(len(resource_metric.scope_metrics) != 0)
+            for scope_metric in resource_metric.scope_metrics:
+                self.assertTrue(len(scope_metric.metrics) != 0)
+                for metric in scope_metric.metrics:
+                    self.assertIn(metric.name, expected_names)
+                    for point in metric.data.data_points:
+                        for attr in point.attributes:
+                            self.assertIn(attr, recommended_attrs[metric.name])
+
     def test_basic_wsgi_call(self):
         app = otel_wsgi.OpenTelemetryMiddleware(simple_wsgi)
         response = app(self.environ, self.start_response)
