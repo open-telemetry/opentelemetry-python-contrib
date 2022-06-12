@@ -20,6 +20,7 @@ from urllib.parse import urlsplit
 
 import opentelemetry.instrumentation.wsgi as otel_wsgi
 from opentelemetry import trace as trace_api
+from opentelemetry.sdk.metrics.export import HistogramDataPoint
 from opentelemetry.sdk.resources import Resource
 from opentelemetry.semconv.trace import SpanAttributes
 from opentelemetry.test.test_base import TestBase
@@ -99,6 +100,16 @@ def wsgi_with_custom_response_headers(environ, start_response):
     return [b"*"]
 
 
+_expected_metric_names = [
+    "http.server.active_requests",
+    "http.server.duration",
+]
+_recommended_attrs = {
+    "http.server.active_requests": otel_wsgi._active_requests_count_attrs,
+    "http.server.duration": otel_wsgi._duration_attrs,
+}
+
+
 class TestWsgiApplication(WsgiTestBase):
     def validate_response(
         self,
@@ -146,27 +157,6 @@ class TestWsgiApplication(WsgiTestBase):
         if http_method is not None:
             expected_attributes[SpanAttributes.HTTP_METHOD] = http_method
         self.assertEqual(span_list[0].attributes, expected_attributes)
-
-        expected_names = [
-            "http.server.active_requests",
-            "http.server.duration",
-        ]
-        recommended_attrs = {
-            "http.server.active_requests": otel_wsgi._active_requests_count_attrs,
-            "http.server.duration": otel_wsgi._duration_attrs,
-        }
-
-        metrics_list = self.memory_metrics_reader.get_metrics_data()
-        self.assertTrue(len(metrics_list.resource_metrics) != 0)
-        for resource_metric in metrics_list.resource_metrics:
-            self.assertTrue(len(resource_metric.scope_metrics) != 0)
-            for scope_metric in resource_metric.scope_metrics:
-                self.assertTrue(len(scope_metric.metrics) != 0)
-                for metric in scope_metric.metrics:
-                    self.assertIn(metric.name, expected_names)
-                    for point in metric.data.data_points:
-                        for attr in point.attributes:
-                            self.assertIn(attr, recommended_attrs[metric.name])
 
     def test_basic_wsgi_call(self):
         app = otel_wsgi.OpenTelemetryMiddleware(simple_wsgi)
@@ -250,6 +240,30 @@ class TestWsgiApplication(WsgiTestBase):
             span_list[0].status.status_code,
             StatusCode.ERROR,
         )
+
+    def test_wsgi_metrics(self):
+        app = otel_wsgi.OpenTelemetryMiddleware(error_wsgi_unhandled)
+        self.assertRaises(ValueError, app, self.environ, self.start_response)
+        self.assertRaises(ValueError, app, self.environ, self.start_response)
+        self.assertRaises(ValueError, app, self.environ, self.start_response)
+        metrics_list = self.memory_metrics_reader.get_metrics_data()
+
+        self.assertTrue(len(metrics_list.resource_metrics) != 0)
+        for resource_metric in metrics_list.resource_metrics:
+            self.assertTrue(len(resource_metric.scope_metrics) != 0)
+            for scope_metric in resource_metric.scope_metrics:
+                self.assertTrue(len(scope_metric.metrics) != 0)
+                for metric in scope_metric.metrics:
+                    self.assertIn(metric.name, _expected_metric_names)
+                    data_points = list(metric.data.data_points)
+                    self.assertEqual(len(data_points), 1)
+                    for point in data_points:
+                        if isinstance(point, HistogramDataPoint):
+                            self.assertEqual(point.count, 3)
+                        for attr in point.attributes:
+                            self.assertIn(
+                                attr, _recommended_attrs[metric.name]
+                            )
 
     def test_default_span_name_missing_request_method(self):
         """Test that default span_names with missing request method."""
