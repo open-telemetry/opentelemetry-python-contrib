@@ -73,6 +73,9 @@ class SQLAlchemyInstrumentor(BaseInstrumentor):
     See `BaseInstrumentor`
     """
 
+    def __new__(cls, *args, **kwargs):
+        return object.__new__(cls, *args, **kwargs)
+
     def instrumentation_dependencies(self) -> Collection[str]:
         return _instruments
 
