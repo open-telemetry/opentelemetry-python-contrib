@@ -136,7 +136,9 @@ from django.conf import settings
 from opentelemetry.instrumentation.django.environment_variables import (
     OTEL_PYTHON_DJANGO_INSTRUMENT,
 )
-from opentelemetry.instrumentation.django.middleware.otel_middleware import _DjangoMiddleware
+from opentelemetry.instrumentation.django.middleware.otel_middleware import (
+    _DjangoMiddleware,
+)
 from opentelemetry.instrumentation.django.package import _instruments
 from opentelemetry.instrumentation.django.version import __version__
 from opentelemetry.instrumentation.instrumentor import BaseInstrumentor
@@ -166,7 +168,7 @@ class DjangoInstrumentor(BaseInstrumentor):
         [_DjangoMiddleware.__module__, _DjangoMiddleware.__qualname__]
     )
 
-    _sql_commenter_middleware = 'opentelemetry.instrumentation.django.middleware.sqlcommenter_middleware.SqlCommenter'
+    _sql_commenter_middleware = "opentelemetry.instrumentation.django.middleware.sqlcommenter_middleware.SqlCommenter"
 
     def instrumentation_dependencies(self) -> Collection[str]:
         return _instruments
@@ -225,7 +227,7 @@ class DjangoInstrumentor(BaseInstrumentor):
         # stop _instrument from running and thus, settings_middleware not being
         # set.
         if settings_middleware is None or (
-                self._opentelemetry_middleware not in settings_middleware
+            self._opentelemetry_middleware not in settings_middleware
         ):
             return
 

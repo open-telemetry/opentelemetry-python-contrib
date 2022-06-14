@@ -18,16 +18,20 @@ from __future__ import absolute_import
 
 import logging
 import sys
+
 if sys.version_info.major <= 2:
     import urllib
+
     url_quote_fn = urllib.quote
 else:
     import urllib.parse
+
     url_quote_fn = urllib.parse.quote
 
 import django
 from django.db import connection
 from django.db.backends.utils import CursorDebugWrapper
+
 try:
     from opentelemetry.trace.propagation.tracecontext import (
         TraceContextTextMapPropagator,
@@ -40,7 +44,7 @@ except ImportError:
 django_version = django.get_version()
 logger = logging.getLogger(__name__)
 
-KEY_VALUE_DELIMITER = ','
+KEY_VALUE_DELIMITER = ","
 
 
 class SqlCommenter:
@@ -48,6 +52,7 @@ class SqlCommenter:
     Middleware to append a comment to each database query with details about
     the framework and the execution context.
     """
+
     def __init__(self, get_response):
         self.get_response = get_response
 
@@ -61,13 +66,27 @@ class QueryWrapper:
         self.request = request
 
     def __call__(self, execute, sql, params, many, context):
-        _with_framework = getattr(django.conf.settings, 'SQLCOMMENTER_WITH_FRAMEWORK', True)
-        _with_controller = getattr(django.conf.settings, 'SQLCOMMENTER_WITH_CONTROLLER', True)
-        _with_route = getattr(django.conf.settings, 'SQLCOMMENTER_WITH_ROUTE', True)
-        _with_app_name = getattr(django.conf.settings, 'SQLCOMMENTER_WITH_APP_NAME', False)
-        _with_opencensus = getattr(django.conf.settings, 'SQLCOMMENTER_WITH_OPENCENSUS', False)
-        _with_opentelemetry = getattr(django.conf.settings, 'SQLCOMMENTER_WITH_OPENTELEMETRY', False)
-        _with_db_driver = getattr(django.conf.settings, 'SQLCOMMENTER_WITH_DB_DRIVER', False)
+        _with_framework = getattr(
+            django.conf.settings, "SQLCOMMENTER_WITH_FRAMEWORK", True
+        )
+        _with_controller = getattr(
+            django.conf.settings, "SQLCOMMENTER_WITH_CONTROLLER", True
+        )
+        _with_route = getattr(
+            django.conf.settings, "SQLCOMMENTER_WITH_ROUTE", True
+        )
+        _with_app_name = getattr(
+            django.conf.settings, "SQLCOMMENTER_WITH_APP_NAME", False
+        )
+        _with_opencensus = getattr(
+            django.conf.settings, "SQLCOMMENTER_WITH_OPENCENSUS", False
+        )
+        _with_opentelemetry = getattr(
+            django.conf.settings, "SQLCOMMENTER_WITH_OPENTELEMETRY", False
+        )
+        _with_db_driver = getattr(
+            django.conf.settings, "SQLCOMMENTER_WITH_DB_DRIVER", False
+        )
 
         if _with_opencensus and _with_opentelemetry:
             logger.warning(
@@ -75,21 +94,29 @@ class QueryWrapper:
                 "Only use one to avoid unexpected behavior"
             )
 
-        _db_driver = context['connection'].settings_dict.get('ENGINE', '')
+        _db_driver = context["connection"].settings_dict.get("ENGINE", "")
         _resolver_match = self.request.resolver_match
 
         _sql_comment = _generate_sql_comment(
             # Information about the controller.
-            controller=_resolver_match.view_name if _resolver_match and _with_controller else None,
+            controller=_resolver_match.view_name
+            if _resolver_match and _with_controller
+            else None,
             # route is the pattern that matched a request with a controller i.e. the regex
             # See https://docs.djangoproject.com/en/stable/ref/urlresolvers/#django.urls.ResolverMatch.route
             # getattr() because the attribute doesn't exist in Django < 2.2.
-            route=getattr(_resolver_match, 'route', None) if _resolver_match and _with_route else None,
+            route=getattr(_resolver_match, "route", None)
+            if _resolver_match and _with_route
+            else None,
             # app_name is the application namespace for the URL pattern that matches the URL.
             # See https://docs.djangoproject.com/en/stable/ref/urlresolvers/#django.urls.ResolverMatch.app_name
-            app_name=(_resolver_match.app_name or None) if _resolver_match and _with_app_name else None,
+            app_name=(_resolver_match.app_name or None)
+            if _resolver_match and _with_app_name
+            else None,
             # Framework centric information.
-            framework=('django:%s' % django_version) if _with_framework else None,
+            framework=("django:%s" % django_version)
+            if _with_framework
+            else None,
             # Information about the database and driver.
             db_driver=_db_driver if _with_db_driver else None,
             **_get_opentelemetry_values() if _with_opentelemetry else {}
@@ -103,8 +130,8 @@ class QueryWrapper:
         sql += _sql_comment
 
         # Add the query to the query log if debugging.
-        if context['cursor'].__class__ is CursorDebugWrapper:
-            context['connection'].queries_log.append(sql)
+        if context["cursor"].__class__ is CursorDebugWrapper:
+            context["connection"].queries_log.append(sql)
 
         return execute(sql, params, many, context)
 
@@ -115,14 +142,19 @@ def _generate_sql_comment(**meta):
     **meta kwargs.
     """
     if not meta:  # No entries added.
-        return ''
+        return ""
 
     # Sort the keywords to ensure that caching works and that testing is
     # deterministic. It eases visual inspection as well.
-    return ' /*' + KEY_VALUE_DELIMITER.join(
-        '{}={!r}'.format(_url_quote(key), _url_quote(value)) for key, value in sorted(meta.items())
-        if value is not None
-    ) + '*/'
+    return (
+        " /*"
+        + KEY_VALUE_DELIMITER.join(
+            "{}={!r}".format(_url_quote(key), _url_quote(value))
+            for key, value in sorted(meta.items())
+            if value is not None
+        )
+        + "*/"
+    )
 
 
 def _url_quote(s):
@@ -133,7 +165,7 @@ def _url_quote(s):
     # e.g. foo,bar --> foo%2Cbar
     # thus in our quoting, we need to escape it too to finally give
     #      foo,bar --> foo%%2Cbar
-    return _quoted.replace('%', '%%')
+    return _quoted.replace("%", "%%")
 
 
 def _get_opentelemetry_values():
@@ -148,4 +180,3 @@ def _get_opentelemetry_values():
         return _headers
     else:
         raise ImportError("OpenTelemetry is not installed.")
-
