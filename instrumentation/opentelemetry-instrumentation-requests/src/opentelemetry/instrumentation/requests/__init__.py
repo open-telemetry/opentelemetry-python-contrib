@@ -20,7 +20,7 @@ Usage
 -----
 
 Capturing traces
-**********
+****************
 
 .. code-block:: python
 
@@ -32,7 +32,7 @@ Capturing traces
     response = requests.get(url="https://www.example.org/")
 
 Capturing metrics
-***********
+*****************
 
 .. code:: python
 
@@ -45,6 +45,7 @@ Capturing metrics
     exporter = ConsoleMetricExporter()
     set_meter_provider(MeterProvider([PeriodicExportingMetricReader(exporter)]))
     RequestsInstrumentor().instrument()
+    response = requests.get(url="https://www.example.org/")
 
 Configuration
 -------------
