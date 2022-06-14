@@ -16,18 +16,14 @@
 
 from unittest.mock import MagicMock, patch
 
-from opentelemetry.instrumentation.django.middleware.sqlcommenter_middleware import (
-    QueryWrapper,
-)
 import django
 from django import VERSION, conf
 from django.http import HttpResponse
-from django.test.utils import (
-    setup_test_environment,
-    teardown_test_environment,
-)
-from opentelemetry.instrumentation.django import (
-    DjangoInstrumentor,
+from django.test.utils import setup_test_environment, teardown_test_environment
+
+from opentelemetry.instrumentation.django import DjangoInstrumentor
+from opentelemetry.instrumentation.django.middleware.sqlcommenter_middleware import (
+    QueryWrapper,
 )
 from opentelemetry.test.test_base import TestBase
 from opentelemetry.test.wsgitestutil import WsgiTestBase
