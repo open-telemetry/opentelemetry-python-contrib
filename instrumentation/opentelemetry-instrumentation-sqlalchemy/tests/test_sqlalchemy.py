@@ -55,7 +55,6 @@ class TestSqlalchemyInstrumentation(TestBase):
         engine_2 = create_engine("sqlite:///:memory:")
 
         SQLAlchemyInstrumentor().instrument(
-            engines=[engine_1, engine_2],
             tracer_provider=self.tracer_provider,
         )
 

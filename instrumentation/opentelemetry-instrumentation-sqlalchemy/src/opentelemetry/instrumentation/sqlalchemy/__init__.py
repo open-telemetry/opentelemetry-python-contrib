@@ -109,11 +109,17 @@ class SQLAlchemyInstrumentor(BaseInstrumentor):
                 kwargs.get("engine"),
                 kwargs.get("enable_commenter", False),
             )
-        if kwargs.get("engines") is not None and isinstance(kwargs.get("engines"), list):
-            return [EngineTracer(
-                _get_tracer(tracer_provider),
-                engine,
-                kwargs.get("enable_commenter", False),) for engine in kwargs.get("engines")]
+        if kwargs.get("engines") is not None and isinstance(
+            kwargs.get("engines"), list
+        ):
+            return [
+                EngineTracer(
+                    _get_tracer(tracer_provider),
+                    engine,
+                    kwargs.get("enable_commenter", False),
+                )
+                for engine in kwargs.get("engines")
+            ]
 
         return None
 
