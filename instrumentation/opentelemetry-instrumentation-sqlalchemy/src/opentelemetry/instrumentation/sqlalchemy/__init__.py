@@ -87,7 +87,7 @@ class SQLAlchemyInstrumentor(BaseInstrumentor):
                 ``tracer_provider``: a TracerProvider, defaults to global
 
         Returns:
-            An instrumented engine if passed in as an argument, None otherwise.
+            An instrumented engine if passed in as an argument or list of instrumented engines, None otherwise.
         """
         tracer_provider = kwargs.get("tracer_provider")
         _w("sqlalchemy", "create_engine", _wrap_create_engine(tracer_provider))
