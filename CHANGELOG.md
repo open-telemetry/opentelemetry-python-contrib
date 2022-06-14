@@ -19,6 +19,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   
 
 ### Added
+- `opentelemetry-instrumentation-sqlalchemy` add support to instrument multiple engines
+  ([#1130](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/1130))
 - `opentelemetry-instrumentation-logging` add log hook support
   ([#1117](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/1117))
 - `opentelemetry-instrumentation-remoulade` Initial release
