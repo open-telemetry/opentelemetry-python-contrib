@@ -73,9 +73,6 @@ class SQLAlchemyInstrumentor(BaseInstrumentor):
     See `BaseInstrumentor`
     """
 
-    def __new__(cls, *args, **kwargs):
-        return object.__new__(cls, *args, **kwargs)
-
     def instrumentation_dependencies(self) -> Collection[str]:
         return _instruments
 
@@ -86,6 +83,7 @@ class SQLAlchemyInstrumentor(BaseInstrumentor):
         Args:
             **kwargs: Optional arguments
                 ``engine``: a SQLAlchemy engine instance
+                ``engines``: a list of SQLAlchemy engine instances
                 ``tracer_provider``: a TracerProvider, defaults to global
 
         Returns:
@@ -111,6 +109,12 @@ class SQLAlchemyInstrumentor(BaseInstrumentor):
                 kwargs.get("engine"),
                 kwargs.get("enable_commenter", False),
             )
+        if kwargs.get("engines") is not None and isinstance(kwargs.get("engines"), list):
+            return [EngineTracer(
+                _get_tracer(tracer_provider),
+                engine,
+                kwargs.get("enable_commenter", False),) for engine in kwargs.get("engines")]
+
         return None
 
     def _uninstrument(self, **kwargs):

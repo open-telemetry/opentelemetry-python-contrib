@@ -55,16 +55,12 @@ class TestSqlalchemyInstrumentation(TestBase):
         engine_2 = create_engine("sqlite:///:memory:")
 
         SQLAlchemyInstrumentor().instrument(
-            engine=engine_1,
+            engines=[engine_1, engine_2],
             tracer_provider=self.tracer_provider,
         )
+
         cnx_1 = engine_1.connect()
         cnx_1.execute("SELECT	1 + 1;").fetchall()
-
-        SQLAlchemyInstrumentor().instrument(
-            engine=engine_2,
-            tracer_provider=self.tracer_provider,
-        )
         cnx_2 = engine_2.connect()
         cnx_2.execute("SELECT	1 + 1;").fetchall()
 
