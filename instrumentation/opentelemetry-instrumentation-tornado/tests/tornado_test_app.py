@@ -102,6 +102,15 @@ class CustomResponseHeaderHandler(tornado.web.RequestHandler):
         self.set_header(
             "my-custom-header", "my-custom-value-1,my-custom-header-2"
         )
+        self.set_header(
+            "my-custom-regex-header-1",
+            "my-custom-regex-value-1,my-custom-regex-value-2",
+        )
+        self.set_header(
+            "My-Custom-Regex-Header-2",
+            "my-custom-regex-value-3,my-custom-regex-value-4",
+        )
+        self.set_header("my-secret-header", "my-secret-value")
         self.set_status(200)
 
 

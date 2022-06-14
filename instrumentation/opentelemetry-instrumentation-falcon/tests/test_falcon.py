@@ -32,6 +32,7 @@ from opentelemetry.test.test_base import TestBase
 from opentelemetry.test.wsgitestutil import WsgiTestBase
 from opentelemetry.trace import StatusCode
 from opentelemetry.util.http import (
+    OTEL_INSTRUMENTATION_HTTP_CAPTURE_HEADERS_SANITIZE_FIELDS,
     OTEL_INSTRUMENTATION_HTTP_CAPTURE_HEADERS_SERVER_REQUEST,
     OTEL_INSTRUMENTATION_HTTP_CAPTURE_HEADERS_SERVER_RESPONSE,
 )
@@ -307,19 +308,22 @@ class TestFalconInstrumentationWrappedWithOtherFramework(TestFalconBase):
             )
 
 
-@patch.dict(
-    "os.environ",
-    {
-        OTEL_INSTRUMENTATION_HTTP_CAPTURE_HEADERS_SERVER_REQUEST: "Custom-Test-Header-1,Custom-Test-Header-2,invalid-header",
-        OTEL_INSTRUMENTATION_HTTP_CAPTURE_HEADERS_SERVER_RESPONSE: "content-type,content-length,my-custom-header,invalid-header",
-    },
-)
 class TestCustomRequestResponseHeaders(TestFalconBase):
+    @patch.dict(
+        "os.environ",
+        {
+            OTEL_INSTRUMENTATION_HTTP_CAPTURE_HEADERS_SANITIZE_FIELDS: ".*my-secret.*",
+            OTEL_INSTRUMENTATION_HTTP_CAPTURE_HEADERS_SERVER_REQUEST: "Custom-Test-Header-1,Custom-Test-Header-2,Regex-Test-Header-.*,Regex-Invalid-Test-Header-.*,.*my-secret.*",
+        },
+    )
     def test_custom_request_header_added_in_server_span(self):
         headers = {
             "Custom-Test-Header-1": "Test Value 1",
             "Custom-Test-Header-2": "TestValue2,TestValue3",
             "Custom-Test-Header-3": "TestValue4",
+            "Regex-Test-Header-1": "Regex Test Value 1",
+            "regex-test-header-2": "RegexTestValue2,RegexTestValue3",
+            "My-Secret-Header": "My Secret Value",
         }
         self.client().simulate_request(
             method="GET", path="/hello", headers=headers
@@ -332,6 +336,11 @@ class TestCustomRequestResponseHeaders(TestFalconBase):
             "http.request.header.custom_test_header_2": (
                 "TestValue2,TestValue3",
             ),
+            "http.request.header.regex_test_header_1": ("Regex Test Value 1",),
+            "http.request.header.regex_test_header_2": (
+                "RegexTestValue2,RegexTestValue3",
+            ),
+            "http.request.header.my_secret_header": ("[REDACTED]",),
         }
         not_expected = {
             "http.request.header.custom_test_header_3": ("TestValue4",),
@@ -342,12 +351,22 @@ class TestCustomRequestResponseHeaders(TestFalconBase):
         for key, _ in not_expected.items():
             self.assertNotIn(key, span.attributes)
 
+    @patch.dict(
+        "os.environ",
+        {
+            OTEL_INSTRUMENTATION_HTTP_CAPTURE_HEADERS_SANITIZE_FIELDS: ".*my-secret.*",
+            OTEL_INSTRUMENTATION_HTTP_CAPTURE_HEADERS_SERVER_REQUEST: "Custom-Test-Header-1,Custom-Test-Header-2,Regex-Test-Header-.*,Regex-Invalid-Test-Header-.*,.*my-secret.*",
+        },
+    )
     def test_custom_request_header_not_added_in_internal_span(self):
         tracer = trace.get_tracer(__name__)
         with tracer.start_as_current_span("test", kind=trace.SpanKind.SERVER):
             headers = {
                 "Custom-Test-Header-1": "Test Value 1",
                 "Custom-Test-Header-2": "TestValue2,TestValue3",
+                "Regex-Test-Header-1": "Regex Test Value 1",
+                "regex-test-header-2": "RegexTestValue2,RegexTestValue3",
+                "My-Secret-Header": "My Secret Value",
             }
             self.client().simulate_request(
                 method="GET", path="/hello", headers=headers
@@ -359,6 +378,13 @@ class TestCustomRequestResponseHeaders(TestFalconBase):
                 "http.request.header.custom_test_header_2": (
                     "TestValue2,TestValue3",
                 ),
+                "http.request.header.regex_test_header_1": (
+                    "Regex Test Value 1",
+                ),
+                "http.request.header.regex_test_header_2": (
+                    "RegexTestValue2,RegexTestValue3",
+                ),
+                "http.request.header.my_secret_header": ("[REDACTED]",),
             }
             self.assertEqual(span.kind, trace.SpanKind.INTERNAL)
             for key, _ in not_expected.items():
@@ -368,6 +394,13 @@ class TestCustomRequestResponseHeaders(TestFalconBase):
         condition=package_version.parse(_falcon_verison)
         < package_version.parse("2.0.0"),
         reason="falcon<2 does not implement custom response headers",
+    )
+    @patch.dict(
+        "os.environ",
+        {
+            OTEL_INSTRUMENTATION_HTTP_CAPTURE_HEADERS_SANITIZE_FIELDS: ".*my-secret.*",
+            OTEL_INSTRUMENTATION_HTTP_CAPTURE_HEADERS_SERVER_RESPONSE: "content-type,content-length,my-custom-header,invalid-header,my-custom-regex-header-.*,invalid-regex-header-.*,.*my-secret.*",
+        },
     )
     def test_custom_response_header_added_in_server_span(self):
         self.client().simulate_request(
@@ -383,6 +416,13 @@ class TestCustomRequestResponseHeaders(TestFalconBase):
             "http.response.header.my_custom_header": (
                 "my-custom-value-1,my-custom-header-2",
             ),
+            "http.response.header.my_custom_regex_header_1": (
+                "my-custom-regex-value-1,my-custom-regex-value-2",
+            ),
+            "http.response.header.my_custom_regex_header_2": (
+                "my-custom-regex-value-3,my-custom-regex-value-4",
+            ),
+            "http.response.header.my_secret_header": ("[REDACTED]",),
         }
         not_expected = {
             "http.response.header.dont_capture_me": ("test-value",)
@@ -396,6 +436,13 @@ class TestCustomRequestResponseHeaders(TestFalconBase):
         condition=package_version.parse(_falcon_verison)
         < package_version.parse("2.0.0"),
         reason="falcon<2 does not implement custom response headers",
+    )
+    @patch.dict(
+        "os.environ",
+        {
+            OTEL_INSTRUMENTATION_HTTP_CAPTURE_HEADERS_SANITIZE_FIELDS: ".*my-secret.*",
+            OTEL_INSTRUMENTATION_HTTP_CAPTURE_HEADERS_SERVER_RESPONSE: "content-type,content-length,my-custom-header,invalid-header,my-custom-regex-header-.*,invalid-regex-header-.*,.*my-secret.*",
+        },
     )
     def test_custom_response_header_not_added_in_internal_span(self):
         tracer = trace.get_tracer(__name__)
@@ -413,7 +460,90 @@ class TestCustomRequestResponseHeaders(TestFalconBase):
                 "http.response.header.my_custom_header": (
                     "my-custom-value-1,my-custom-header-2",
                 ),
+                "http.response.header.my_custom_regex_header_1": (
+                    "my-custom-regex-value-1,my-custom-regex-value-2",
+                ),
+                "http.response.header.my_custom_regex_header_2": (
+                    "my-custom-regex-value-3,my-custom-regex-value-4",
+                ),
+                "http.response.header.my_secret_header": ("[REDACTED]",),
             }
             self.assertEqual(span.kind, trace.SpanKind.INTERNAL)
             for key, _ in not_expected.items():
                 self.assertNotIn(key, span.attributes)
+
+    @patch.dict(
+        "os.environ",
+        {
+            OTEL_INSTRUMENTATION_HTTP_CAPTURE_HEADERS_SANITIZE_FIELDS: ".*my-secret.*",
+            OTEL_INSTRUMENTATION_HTTP_CAPTURE_HEADERS_SERVER_REQUEST: "all",
+        },
+    )
+    def test_custom_request_header_added_in_server_span_all(self):
+        headers = {
+            "Custom-Test-Header-1": "Test Value 1",
+            "Custom-Test-Header-2": "TestValue2,TestValue3",
+            "Custom-Test-Header-3": "TestValue4",
+            "Regex-Test-Header-1": "Regex Test Value 1",
+            "regex-test-header-2": "RegexTestValue2,RegexTestValue3",
+            "My-Secret-Header": "My Secret Value",
+        }
+        self.client().simulate_request(
+            method="GET", path="/hello", headers=headers
+        )
+        span = self.memory_exporter.get_finished_spans()[0]
+        assert span.status.is_ok
+
+        expected = {
+            "http.request.header.custom_test_header_1": ("Test Value 1",),
+            "http.request.header.custom_test_header_2": (
+                "TestValue2,TestValue3",
+            ),
+            "http.request.header.custom_test_header_3": ("TestValue4",),
+            "http.request.header.regex_test_header_1": ("Regex Test Value 1",),
+            "http.request.header.regex_test_header_2": (
+                "RegexTestValue2,RegexTestValue3",
+            ),
+            "http.request.header.my_secret_header": ("[REDACTED]",),
+        }
+
+        self.assertEqual(span.kind, trace.SpanKind.SERVER)
+        self.assertSpanHasAttributes(span, expected)
+
+    @pytest.mark.skipif(
+        condition=package_version.parse(_falcon_verison)
+        < package_version.parse("2.0.0"),
+        reason="falcon<2 does not implement custom response headers",
+    )
+    @patch.dict(
+        "os.environ",
+        {
+            OTEL_INSTRUMENTATION_HTTP_CAPTURE_HEADERS_SANITIZE_FIELDS: ".*my-secret.*",
+            OTEL_INSTRUMENTATION_HTTP_CAPTURE_HEADERS_SERVER_RESPONSE: "all",
+        },
+    )
+    def test_custom_response_header_added_in_server_span_all(self):
+        self.client().simulate_request(
+            method="GET", path="/test_custom_response_headers"
+        )
+        span = self.memory_exporter.get_finished_spans()[0]
+        assert span.status.is_ok
+        expected = {
+            "http.response.header.content_type": (
+                "text/plain; charset=utf-8",
+            ),
+            "http.response.header.content_length": ("0",),
+            "http.response.header.dont_capture_me": ("test-value",),
+            "http.response.header.my_custom_header": (
+                "my-custom-value-1,my-custom-header-2",
+            ),
+            "http.response.header.my_custom_regex_header_1": (
+                "my-custom-regex-value-1,my-custom-regex-value-2",
+            ),
+            "http.response.header.my_custom_regex_header_2": (
+                "my-custom-regex-value-3,my-custom-regex-value-4",
+            ),
+            "http.response.header.my_secret_header": ("[REDACTED]",),
+        }
+        self.assertEqual(span.kind, trace.SpanKind.SERVER)
+        self.assertSpanHasAttributes(span, expected)

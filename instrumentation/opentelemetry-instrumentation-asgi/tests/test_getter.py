@@ -46,5 +46,5 @@ class TestASGIGetter(TestCase):
 
     def test_keys(self):
         getter = ASGIGetter()
-        keys = getter.keys({})
+        keys = getter.keys({"headers": []})
         self.assertEqual(keys, [])

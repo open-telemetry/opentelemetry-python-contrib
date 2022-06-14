@@ -37,23 +37,25 @@ Usage
 Configuration
 -------------
 
-The following environment variables are supported as configuration options:
+Exclude lists
+*************
+To exclude certain URLs from tracking, set the environment variable ``OTEL_PYTHON_TORNADO_EXCLUDED_URLS``
+(or ``OTEL_PYTHON_EXCLUDED_URLS`` to cover all instrumentations) to a string of comma delimited regexes that match the
+URLs.
 
-- OTEL_PYTHON_TORNADO_EXCLUDED_URLS
-
-A comma separated list of paths that should not be automatically traced. For example, if this is set to
+For example,
 
 ::
 
-    export OTEL_PYTHON_TORNADO_EXCLUDED_URLS='/healthz,/ping'
+    export OTEL_PYTHON_TORNADO_EXCLUDED_URLS="client/.*/info,healthcheck"
 
-Then any requests made to ``/healthz`` and ``/ping`` will not be automatically traced.
+will exclude requests such as ``https://site/client/123/info`` and ``https://site/xyz/healthcheck``.
 
 Request attributes
 ******************
 
-To extract certain attributes from Tornado's request object and use them as span attributes, set the environment variable ``OTEL_PYTHON_TORNADO_TRACED_REQUEST_ATTRS`` to a comma
-delimited list of request attribute names.
+To extract attributes from Tornado's request object and use them as span attributes, set the environment variable
+``OTEL_PYTHON_TORNADO_TRACED_REQUEST_ATTRS`` to a comma delimited list of request attribute names.
 
 For example,
 
@@ -61,14 +63,14 @@ For example,
 
     export OTEL_PYTHON_TORNADO_TRACED_REQUEST_ATTRS='uri,query'
 
-will extract path_info and content_type attributes from every traced request and add them as span attributes.
+will extract the ``uri`` and ``query`` attributes from every traced request and add them as span attributes.
 
 Request/Response hooks
 **********************
 
 Tornado instrumentation supports extending tracing behaviour with the help of hooks.
-Its ``instrument()`` method accepts three optional functions that get called back with the
-created span and some other contextual information. Example:
+Its ``instrument()`` method accepts three optional functions that get called with the
+created span and some other contextual information. Examples:
 
 .. code-block:: python
 
@@ -84,75 +86,115 @@ created span and some other contextual information. Example:
     def client_request_hook(span, request):
         pass
 
-    # will be called after a outgoing request made with
+    # will be called after an outgoing request made with
     # `tornado.httpclient.AsyncHTTPClient.fetch` finishes.
     # `response`` is an instance of ``Future[tornado.httpclient.HTTPResponse]`.
-    def client_resposne_hook(span, future):
+    def client_response_hook(span, future):
         pass
 
     # apply tornado instrumentation with hooks
     TornadoInstrumentor().instrument(
         server_request_hook=server_request_hook,
         client_request_hook=client_request_hook,
-        client_response_hook=client_resposne_hook
+        client_response_hook=client_response_hook
     )
 
 Capture HTTP request and response headers
 *****************************************
-You can configure the agent to capture predefined HTTP headers as span attributes, according to the `semantic convention <https://github.com/open-telemetry/opentelemetry-specification/blob/main/specification/trace/semantic_conventions/http.md#http-request-and-response-headers>`_.
+You can configure the agent to capture specified HTTP headers as span attributes, according to the
+`semantic convention <https://github.com/open-telemetry/opentelemetry-specification/blob/main/specification/trace/semantic_conventions/http.md#http-request-and-response-headers>`_.
 
 Request headers
 ***************
-To capture predefined HTTP request headers as span attributes, set the environment variable ``OTEL_INSTRUMENTATION_HTTP_CAPTURE_HEADERS_SERVER_REQUEST``
-to a comma-separated list of HTTP header names.
+To capture HTTP request headers as span attributes, set the environment variable
+``OTEL_INSTRUMENTATION_HTTP_CAPTURE_HEADERS_SERVER_REQUEST`` to a comma delimited list of HTTP header names.
 
 For example,
-
 ::
 
     export OTEL_INSTRUMENTATION_HTTP_CAPTURE_HEADERS_SERVER_REQUEST="content-type,custom_request_header"
 
-will extract ``content-type`` and ``custom_request_header`` from request headers and add them as span attributes.
+will extract ``content-type`` and ``custom_request_header`` from the request headers and add them as span attributes.
 
-It is recommended that you should give the correct names of the headers to be captured in the environment variable.
-Request header names in tornado are case insensitive. So, giving header name as ``CUStomHeader`` in environment variable will be able capture header with name ``customheader``.
+Request header names in Tornado are case-insensitive. So, giving the header name as ``CUStom-Header`` in the environment
+variable will capture the header named ``custom-header``.
 
-The name of the added span attribute will follow the format ``http.request.header.<header_name>`` where ``<header_name>`` being the normalized HTTP header name (lowercase, with - characters replaced by _ ).
-The value of the attribute will be single item list containing all the header values.
+Regular expressions may also be used to match multiple headers that correspond to the given pattern.  For example:
+::
 
-Example of the added span attribute,
+    export OTEL_INSTRUMENTATION_HTTP_CAPTURE_HEADERS_SERVER_REQUEST="Accept.*,X-.*"
+
+Would match all request headers that start with ``Accept`` and ``X-``.
+
+Additionally, the special keyword ``all`` can be used to capture all request headers.
+::
+
+    export OTEL_INSTRUMENTATION_HTTP_CAPTURE_HEADERS_SERVER_REQUEST="all"
+
+The name of the added span attribute will follow the format ``http.request.header.<header_name>`` where ``<header_name>``
+is the normalized HTTP header name (lowercase, with ``-`` replaced by ``_``). The value of the attribute will be a
+single item list containing all the header values.
+
+For example:
 ``http.request.header.custom_request_header = ["<value1>,<value2>"]``
 
 Response headers
 ****************
-To capture predefined HTTP response headers as span attributes, set the environment variable ``OTEL_INSTRUMENTATION_HTTP_CAPTURE_HEADERS_SERVER_RESPONSE``
-to a comma-separated list of HTTP header names.
+To capture HTTP response headers as span attributes, set the environment variable
+``OTEL_INSTRUMENTATION_HTTP_CAPTURE_HEADERS_SERVER_RESPONSE`` to a comma delimited list of HTTP header names.
 
 For example,
-
 ::
 
     export OTEL_INSTRUMENTATION_HTTP_CAPTURE_HEADERS_SERVER_RESPONSE="content-type,custom_response_header"
 
-will extract ``content-type`` and ``custom_response_header`` from response headers and add them as span attributes.
+will extract ``content-type`` and ``custom_response_header`` from the response headers and add them as span attributes.
 
-It is recommended that you should give the correct names of the headers to be captured in the environment variable.
-Response header names captured in tornado are case insensitive. So, giving header name as ``CUStomHeader`` in environment variable will be able capture header with name ``customheader``.
+Response header names in Tornado are case-insensitive. So, giving the header name as ``CUStom-Header`` in the environment
+variable will capture the header named ``custom-header``.
 
-The name of the added span attribute will follow the format ``http.response.header.<header_name>`` where ``<header_name>`` being the normalized HTTP header name (lowercase, with - characters replaced by _ ).
-The value of the attribute will be single item list containing all the header values.
+Regular expressions may also be used to match multiple headers that correspond to the given pattern.  For example:
+::
 
-Example of the added span attribute,
+    export OTEL_INSTRUMENTATION_HTTP_CAPTURE_HEADERS_SERVER_RESPONSE="Content.*,X-.*"
+
+Would match all response headers that start with ``Content`` and ``X-``.
+
+Additionally, the special keyword ``all`` can be used to capture all response headers.
+::
+
+    export OTEL_INSTRUMENTATION_HTTP_CAPTURE_HEADERS_SERVER_RESPONSE="all"
+
+The name of the added span attribute will follow the format ``http.response.header.<header_name>`` where ``<header_name>``
+is the normalized HTTP header name (lowercase, with ``-`` replaced by ``_``). The value of the attribute will be a
+single item list containing all the header values.
+
+For example:
 ``http.response.header.custom_response_header = ["<value1>,<value2>"]``
 
+Sanitizing headers
+******************
+In order to prevent storing sensitive data such as personally identifiable information (PII), session keys, passwords,
+etc, set the environment variable ``OTEL_INSTRUMENTATION_HTTP_CAPTURE_HEADERS_SANITIZE_FIELDS``
+to a comma delimited list of HTTP header names to be sanitized.  Regexes may be used, and all header names will be
+matched in a case-insensitive manner.
+
+For example,
+::
+
+    export OTEL_INSTRUMENTATION_HTTP_CAPTURE_HEADERS_SANITIZE_FIELDS=".*session.*,set-cookie"
+
+will replace the value of headers such as ``session-id`` and ``set-cookie`` with ``[REDACTED]`` in the span.
+
 Note:
-    Environment variable names to capture http headers are still experimental, and thus are subject to change.
+    The environment variable names used to capture HTTP headers are still experimental, and thus are subject to change.
 
 API
 ---
 """
 
 
+import re
 from collections import namedtuple
 from functools import partial
 from logging import getLogger
@@ -181,8 +223,10 @@ from opentelemetry.semconv.trace import SpanAttributes
 from opentelemetry.trace.status import Status, StatusCode
 from opentelemetry.util._time import _time_ns
 from opentelemetry.util.http import (
+    OTEL_INSTRUMENTATION_HTTP_CAPTURE_HEADERS_SANITIZE_FIELDS,
     OTEL_INSTRUMENTATION_HTTP_CAPTURE_HEADERS_SERVER_REQUEST,
     OTEL_INSTRUMENTATION_HTTP_CAPTURE_HEADERS_SERVER_RESPONSE,
+    SanitizeValue,
     get_custom_headers,
     get_excluded_urls,
     get_traced_request_attrs,
@@ -316,28 +360,76 @@ def _log_exception(tracer, func, handler, args, kwargs):
 
 
 def _collect_custom_request_headers_attributes(request_headers):
+    attributes = {}
+
+    sanitized_fields = get_custom_headers(
+        OTEL_INSTRUMENTATION_HTTP_CAPTURE_HEADERS_SANITIZE_FIELDS
+    )
+
+    s = SanitizeValue(sanitized_fields)
+
     custom_request_headers_name = get_custom_headers(
         OTEL_INSTRUMENTATION_HTTP_CAPTURE_HEADERS_SERVER_REQUEST
     )
-    attributes = {}
-    for header_name in custom_request_headers_name:
-        header_values = request_headers.get(header_name)
-        if header_values:
-            key = normalise_request_header_name(header_name.lower())
-            attributes[key] = [header_values]
+
+    if custom_request_headers_name:
+        custom_request_headers_regex_compiled = re.compile(
+            "|".join("^" + i + "$" for i in custom_request_headers_name),
+            re.IGNORECASE,
+        )
+
+        for header_name in list(
+            filter(
+                custom_request_headers_regex_compiled.match,
+                request_headers.keys(),
+            )
+        ):
+            header_values = request_headers.get(header_name)
+            if header_values:
+                key = normalise_request_header_name(header_name.lower())
+                attributes[key] = [
+                    s.sanitize_header_value(
+                        header=header_name, value=header_values
+                    )
+                ]
+
     return attributes
 
 
 def _collect_custom_response_headers_attributes(response_headers):
+    attributes = {}
+
+    sanitized_fields = get_custom_headers(
+        OTEL_INSTRUMENTATION_HTTP_CAPTURE_HEADERS_SANITIZE_FIELDS
+    )
+
+    s = SanitizeValue(sanitized_fields)
+
     custom_response_headers_name = get_custom_headers(
         OTEL_INSTRUMENTATION_HTTP_CAPTURE_HEADERS_SERVER_RESPONSE
     )
-    attributes = {}
-    for header_name in custom_response_headers_name:
-        header_values = response_headers.get(header_name)
-        if header_values:
-            key = normalise_response_header_name(header_name.lower())
-            attributes[key] = [header_values]
+
+    if custom_response_headers_name:
+        custom_response_headers_regex_compiled = re.compile(
+            "|".join("^" + i + "$" for i in custom_response_headers_name),
+            re.IGNORECASE,
+        )
+
+        for header_name in list(
+            filter(
+                custom_response_headers_regex_compiled.match,
+                response_headers.keys(),
+            )
+        ):
+            header_values = response_headers.get(header_name.lower())
+            if header_values:
+                key = normalise_response_header_name(header_name)
+                attributes[key] = [
+                    s.sanitize_header_value(
+                        header=header_name, value=header_values
+                    )
+                ]
+
     return attributes
 
 

@@ -33,6 +33,7 @@ from opentelemetry.test.test_base import TestBase
 from opentelemetry.test.wsgitestutil import WsgiTestBase
 from opentelemetry.trace import SpanKind
 from opentelemetry.util.http import (
+    OTEL_INSTRUMENTATION_HTTP_CAPTURE_HEADERS_SANITIZE_FIELDS,
     OTEL_INSTRUMENTATION_HTTP_CAPTURE_HEADERS_SERVER_REQUEST,
     OTEL_INSTRUMENTATION_HTTP_CAPTURE_HEADERS_SERVER_RESPONSE,
     get_excluded_urls,
@@ -650,13 +651,17 @@ class TestTornadoCustomRequestResponseHeadersAddedWithServerSpan(TornadoTest):
     @patch.dict(
         "os.environ",
         {
-            OTEL_INSTRUMENTATION_HTTP_CAPTURE_HEADERS_SERVER_REQUEST: "Custom-Test-Header-1,Custom-Test-Header-2,Custom-Test-Header-3"
+            OTEL_INSTRUMENTATION_HTTP_CAPTURE_HEADERS_SANITIZE_FIELDS: ".*my-secret.*",
+            OTEL_INSTRUMENTATION_HTTP_CAPTURE_HEADERS_SERVER_REQUEST: "Custom-Test-Header-1,Custom-Test-Header-2,Custom-Test-Header-3,Regex-Test-Header-.*,Regex-Invalid-Test-Header-.*,.*my-secret.*",
         },
     )
     def test_custom_request_headers_added_in_server_span(self):
         headers = {
             "Custom-Test-Header-1": "Test Value 1",
             "Custom-Test-Header-2": "TestValue2,TestValue3",
+            "Regex-Test-Header-1": "Regex Test Value 1",
+            "regex-test-header-2": "RegexTestValue2,RegexTestValue3",
+            "My-Secret-Header": "My Secret Value",
         }
         response = self.fetch("/", headers=headers)
         self.assertEqual(response.code, 201)
@@ -668,6 +673,11 @@ class TestTornadoCustomRequestResponseHeadersAddedWithServerSpan(TornadoTest):
             "http.request.header.custom_test_header_2": (
                 "TestValue2,TestValue3",
             ),
+            "http.request.header.regex_test_header_1": ("Regex Test Value 1",),
+            "http.request.header.regex_test_header_2": (
+                "RegexTestValue2,RegexTestValue3",
+            ),
+            "http.request.header.my_secret_header": ("[REDACTED]",),
         }
         self.assertEqual(tornado_span.kind, trace.SpanKind.SERVER)
         self.assertSpanHasAttributes(tornado_span, expected)
@@ -675,7 +685,8 @@ class TestTornadoCustomRequestResponseHeadersAddedWithServerSpan(TornadoTest):
     @patch.dict(
         "os.environ",
         {
-            OTEL_INSTRUMENTATION_HTTP_CAPTURE_HEADERS_SERVER_RESPONSE: "content-type,content-length,my-custom-header,invalid-header"
+            OTEL_INSTRUMENTATION_HTTP_CAPTURE_HEADERS_SANITIZE_FIELDS: ".*my-secret.*",
+            OTEL_INSTRUMENTATION_HTTP_CAPTURE_HEADERS_SERVER_RESPONSE: "content-type,content-length,my-custom-header,invalid-header,my-custom-regex-header-.*,invalid-regex-header-.*,.*my-secret.*",
         },
     )
     def test_custom_response_headers_added_in_server_span(self):
@@ -692,6 +703,79 @@ class TestTornadoCustomRequestResponseHeadersAddedWithServerSpan(TornadoTest):
             "http.response.header.my_custom_header": (
                 "my-custom-value-1,my-custom-header-2",
             ),
+            "http.response.header.my_custom_regex_header_1": (
+                "my-custom-regex-value-1,my-custom-regex-value-2",
+            ),
+            "http.response.header.my_custom_regex_header_2": (
+                "my-custom-regex-value-3,my-custom-regex-value-4",
+            ),
+            "http.response.header.my_secret_header": ("[REDACTED]",),
+        }
+        self.assertEqual(tornado_span.kind, trace.SpanKind.SERVER)
+        self.assertSpanHasAttributes(tornado_span, expected)
+
+    @patch.dict(
+        "os.environ",
+        {
+            OTEL_INSTRUMENTATION_HTTP_CAPTURE_HEADERS_SANITIZE_FIELDS: ".*my-secret.*",
+            OTEL_INSTRUMENTATION_HTTP_CAPTURE_HEADERS_SERVER_REQUEST: "all",
+        },
+    )
+    def test_custom_request_headers_added_in_server_span_all(self):
+        headers = {
+            "Custom-Test-Header-1": "Test Value 1",
+            "Custom-Test-Header-2": "TestValue2,TestValue3",
+            "Regex-Test-Header-1": "Regex Test Value 1",
+            "regex-test-header-2": "RegexTestValue2,RegexTestValue3",
+            "My-Secret-Header": "My Secret Value",
+        }
+        response = self.fetch("/", headers=headers)
+        self.assertEqual(response.code, 201)
+        _, tornado_span, _ = self.sorted_spans(
+            self.memory_exporter.get_finished_spans()
+        )
+        expected = {
+            "http.request.header.custom_test_header_1": ("Test Value 1",),
+            "http.request.header.custom_test_header_2": (
+                "TestValue2,TestValue3",
+            ),
+            "http.request.header.regex_test_header_1": ("Regex Test Value 1",),
+            "http.request.header.regex_test_header_2": (
+                "RegexTestValue2,RegexTestValue3",
+            ),
+            "http.request.header.my_secret_header": ("[REDACTED]",),
+        }
+        self.assertEqual(tornado_span.kind, trace.SpanKind.SERVER)
+        self.assertSpanHasAttributes(tornado_span, expected)
+
+    @patch.dict(
+        "os.environ",
+        {
+            OTEL_INSTRUMENTATION_HTTP_CAPTURE_HEADERS_SANITIZE_FIELDS: ".*my-secret.*",
+            OTEL_INSTRUMENTATION_HTTP_CAPTURE_HEADERS_SERVER_RESPONSE: "all",
+        },
+    )
+    def test_custom_response_headers_added_in_server_span_all(self):
+        response = self.fetch("/test_custom_response_headers")
+        self.assertEqual(response.code, 200)
+        tornado_span, _ = self.sorted_spans(
+            self.memory_exporter.get_finished_spans()
+        )
+        expected = {
+            "http.response.header.content_type": (
+                "text/plain; charset=utf-8",
+            ),
+            "http.response.header.content_length": ("0",),
+            "http.response.header.my_custom_header": (
+                "my-custom-value-1,my-custom-header-2",
+            ),
+            "http.response.header.my_custom_regex_header_1": (
+                "my-custom-regex-value-1,my-custom-regex-value-2",
+            ),
+            "http.response.header.my_custom_regex_header_2": (
+                "my-custom-regex-value-3,my-custom-regex-value-4",
+            ),
+            "http.response.header.my_secret_header": ("[REDACTED]",),
         }
         self.assertEqual(tornado_span.kind, trace.SpanKind.SERVER)
         self.assertSpanHasAttributes(tornado_span, expected)
@@ -716,13 +800,17 @@ class TestTornadoCustomRequestResponseHeadersNotAddedWithInternalSpan(
     @patch.dict(
         "os.environ",
         {
-            OTEL_INSTRUMENTATION_HTTP_CAPTURE_HEADERS_SERVER_REQUEST: "Custom-Test-Header-1,Custom-Test-Header-2,Custom-Test-Header-3"
+            OTEL_INSTRUMENTATION_HTTP_CAPTURE_HEADERS_SANITIZE_FIELDS: ".*my-secret.*",
+            OTEL_INSTRUMENTATION_HTTP_CAPTURE_HEADERS_SERVER_REQUEST: "Custom-Test-Header-1,Custom-Test-Header-2,Custom-Test-Header-3,Regex-Test-Header-.*,Regex-Invalid-Test-Header-.*,.*my-secret.*",
         },
     )
     def test_custom_request_headers_not_added_in_internal_span(self):
         headers = {
             "Custom-Test-Header-1": "Test Value 1",
             "Custom-Test-Header-2": "TestValue2,TestValue3",
+            "Regex-Test-Header-1": "Regex Test Value 1",
+            "regex-test-header-2": "RegexTestValue2,RegexTestValue3",
+            "My-Secret-Header": "My Secret Value",
         }
         response = self.fetch("/", headers=headers)
         self.assertEqual(response.code, 201)
@@ -734,6 +822,11 @@ class TestTornadoCustomRequestResponseHeadersNotAddedWithInternalSpan(
             "http.request.header.custom_test_header_2": (
                 "TestValue2,TestValue3",
             ),
+            "http.request.header.regex_test_header_1": ("Regex Test Value 1",),
+            "http.request.header.regex_test_header_2": (
+                "RegexTestValue2,RegexTestValue3",
+            ),
+            "http.request.header.my_secret_header": ("[REDACTED]",),
         }
         self.assertEqual(tornado_span.kind, trace.SpanKind.INTERNAL)
         for key, _ in not_expected.items():
@@ -742,7 +835,8 @@ class TestTornadoCustomRequestResponseHeadersNotAddedWithInternalSpan(
     @patch.dict(
         "os.environ",
         {
-            OTEL_INSTRUMENTATION_HTTP_CAPTURE_HEADERS_SERVER_RESPONSE: "content-type,content-length,my-custom-header,invalid-header"
+            OTEL_INSTRUMENTATION_HTTP_CAPTURE_HEADERS_SANITIZE_FIELDS: ".*my-secret.*",
+            OTEL_INSTRUMENTATION_HTTP_CAPTURE_HEADERS_SERVER_RESPONSE: "content-type,content-length,my-custom-header,invalid-header,my-custom-regex-header-.*,invalid-regex-header-.*,.*my-secret.*",
         },
     )
     def test_custom_response_headers_not_added_in_internal_span(self):
@@ -759,6 +853,13 @@ class TestTornadoCustomRequestResponseHeadersNotAddedWithInternalSpan(
             "http.response.header.my_custom_header": (
                 "my-custom-value-1,my-custom-header-2",
             ),
+            "http.response.header.my_custom_regex_header_1": (
+                "my-custom-regex-value-1,my-custom-regex-value-2",
+            ),
+            "http.response.header.my_custom_regex_header_2": (
+                "my-custom-regex-value-3,my-custom-regex-value-4",
+            ),
+            "http.response.header.my_secret_header": ("[REDACTED]",),
         }
         self.assertEqual(tornado_span.kind, trace.SpanKind.INTERNAL)
         for key, _ in not_expected.items():

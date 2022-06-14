@@ -32,7 +32,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   ([#1116](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/1116))
 - fixed typo in `system.network.io` metric configuration
   ([#1135](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/1135))
-
+- Fix keys() in class ASGIGetter so it returns the HTTP header keys instead of a list of available request data.
+  ([#1172](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/1172))
+- Use resp.text instead of resp.body for Falcon 3 to avoid a deprecation warning.
+  ([#1172](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/1172))
+- Make ASGIGetter.get() compare all keys in a case insensitive manner.
+  ([#1172](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/1172))
 
 ### Added
 - `opentelemetry-instrumentation-aiohttp-client` Add support for optional custom trace_configs argument.
@@ -55,6 +60,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   ([#1110](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/1110))
 - Integrated sqlcommenter plugin into opentelemetry-instrumentation-django
   ([#896](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/896))
+- Add support for regular expression matching of HTTP headers.
+  ([#1172](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/1172))
+- Add support for sanitizing HTTP header values.
+  ([#1172](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/1172))
 
 
 ## [1.12.0rc1-0.31b0](https://github.com/open-telemetry/opentelemetry-python/releases/tag/v1.12.0rc1-0.31b0) - 2022-05-17
