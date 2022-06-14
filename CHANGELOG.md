@@ -16,14 +16,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   ([1106](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/1106))
 
 ### Added
+- `opentelemetry-instrumentation-logging` add log hook support
+  ([#1117](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/1117))
 - `opentelemetry-instrumentation-remoulade` Initial release
   ([#1082](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/1082))
-
-- `opentelemetry-instrumentation-requests` Restoring metrics in requests
-  ([1110](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/1110)
-### Added
 - Added `opentelemetry-instrumention-confluent-kafka`
   ([#1111](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/1111))
+- Set otlp-proto-grpc as the default metrics exporter for auto-instrumentation
+  ([#1127](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/1127))
+- `opentelemetry-instrumentation-requests` Restoring metrics in requests
+  ([#1110](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/1110)
 
 
 ## [1.12.0rc1-0.31b0](https://github.com/open-telemetry/opentelemetry-python/releases/tag/v1.12.0rc1-0.31b0) - 2022-05-17

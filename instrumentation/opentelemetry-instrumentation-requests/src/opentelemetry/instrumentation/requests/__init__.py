@@ -19,6 +19,9 @@ This library allows tracing HTTP requests made by the
 Usage
 -----
 
+Capturing traces
+**********
+
 .. code-block:: python
 
     import requests
@@ -27,6 +30,21 @@ Usage
     # You can optionally pass a custom TracerProvider to instrument().
     RequestsInstrumentor().instrument()
     response = requests.get(url="https://www.example.org/")
+
+Capturing metrics
+***********
+
+.. code:: python
+
+    from opentelemetry.metrics import set_meter_provider
+    from opentelemetry.instrumentation.requests import RequestsInstrumentor
+    from opentelemetry.sdk.metrics import MeterProvider
+    from opentelemetry.sdk.metrics.export import ConsoleMetricExporter, PeriodicExportingMetricReader
+
+    # you can configure any other exporter here.
+    exporter = ConsoleMetricExporter()
+    set_meter_provider(MeterProvider([PeriodicExportingMetricReader(exporter)]))
+    RequestsInstrumentor().instrument()
 
 Configuration
 -------------
@@ -51,7 +69,7 @@ API
 import functools
 import types
 from time import time
-from typing import Collection
+from typing import Callable, Collection, Iterable, Optional
 from urllib.parse import urlparse
 
 from requests.models import Response
@@ -67,9 +85,11 @@ from opentelemetry.instrumentation.utils import (
     http_status_to_status_code,
 )
 from opentelemetry.metrics import get_meter
+from opentelemetry.metrics._internal.instrument import Histogram
 from opentelemetry.propagate import inject
 from opentelemetry.semconv.trace import SpanAttributes
-from opentelemetry.trace import SpanKind, get_tracer
+from opentelemetry.trace import SpanKind, Tracer, get_tracer
+from opentelemetry.trace.span import Span
 from opentelemetry.trace.status import Status
 from opentelemetry.util.http import (
     get_excluded_urls,
@@ -90,11 +110,11 @@ _excluded_urls_from_env = get_excluded_urls("REQUESTS")
 # pylint: disable=unused-argument
 # pylint: disable=R0915
 def _instrument(
-    tracer,
-    span_callback=None,
-    name_callback=None,
-    excluded_urls=None,
-    metric_recorder=None,
+    tracer: Tracer,
+    metric_recorder: Histogram,
+    span_callback: Optional[Callable[[Span, Response], str]] = None,
+    name_callback: Optional[Callable[[str, str], str]] = None,
+    excluded_urls: Iterable[str] = None,
 ):
     """Enables tracing of all requests calls that go through
     :code:`requests.session.Session.request` (this includes
@@ -207,6 +227,7 @@ def _instrument(
                 exception = exc
                 result = getattr(exc, "response", None)
             finally:
+                elapsed_time = time() - start_time
                 context.detach(token)
 
             if isinstance(result, Response):
@@ -229,8 +250,6 @@ def _instrument(
 
             if span_callback is not None:
                 span_callback(span, result)
-
-            elapsed_time = time() - start_time
 
             metric_recorder.record(
                 elapsed_time * 1000, attributes=metric_labels
@@ -313,12 +332,12 @@ class RequestsInstrumentor(BaseInstrumentor):
         )
         _instrument(
             tracer,
+            metric_recorder,
             span_callback=kwargs.get("span_callback"),
             name_callback=kwargs.get("name_callback"),
             excluded_urls=_excluded_urls_from_env
             if excluded_urls is None
             else parse_excluded_urls(excluded_urls),
-            metric_recorder=metric_recorder,
         )
 
     def _uninstrument(self, **kwargs):
