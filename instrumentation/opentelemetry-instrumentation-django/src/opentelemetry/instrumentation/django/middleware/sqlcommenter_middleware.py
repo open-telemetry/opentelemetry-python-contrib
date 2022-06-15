@@ -13,24 +13,25 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-
 from __future__ import absolute_import
+
+import django
+from django.db import connection
+from django.db.backends.utils import CursorDebugWrapper
 
 import logging
 import sys
 
+
 if sys.version_info.major <= 2:
     import urllib
 
-    url_quote_fn = urllib.quote
+    url_quote_fn = urllib.quote  # pylint: disable=maybe-no-member
 else:
     import urllib.parse
 
     url_quote_fn = urllib.parse.quote
 
-import django
-from django.db import connection
-from django.db.backends.utils import CursorDebugWrapper
 
 try:
     from opentelemetry.trace.propagation.tracecontext import (
@@ -66,6 +67,7 @@ class QueryWrapper:
         self.request = request
 
     def __call__(self, execute, sql, params, many, context):
+        # pylint: disable-msg=too-many-locals
         _with_framework = getattr(
             django.conf.settings, "SQLCOMMENTER_WITH_FRAMEWORK", True
         )
@@ -157,10 +159,10 @@ def _generate_sql_comment(**meta):
     )
 
 
-def _url_quote(s):
-    if not isinstance(s, (str, bytes)):
-        return s
-    _quoted = url_quote_fn(s)
+def _url_quote(value):
+    if not isinstance(value, (str, bytes)):
+        return value
+    _quoted = url_quote_fn(value)
     # Since SQL uses '%' as a keyword, '%' is a by-product of url quoting
     # e.g. foo,bar --> foo%2Cbar
     # thus in our quoting, we need to escape it too to finally give
@@ -173,6 +175,7 @@ def _get_opentelemetry_values():
     Return the OpenTelemetry Trace and Span IDs if Span ID is set in the
     OpenTelemetry execution context.
     """
+    # pylint: disable=no-else-return
     if propagator:
         # Insert the W3C TraceContext generated
         _headers = {}
