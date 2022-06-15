@@ -24,6 +24,8 @@ class InstrumentationTest:
         helloid = int(request.matchdict["helloid"])
         if helloid == 500:
             raise exc.HTTPInternalServerError()
+        if helloid == 302:
+            raise exc.HTTPFound()
         if helloid == 900:
             raise NotImplementedError()
         return Response("Hello: " + str(helloid))
