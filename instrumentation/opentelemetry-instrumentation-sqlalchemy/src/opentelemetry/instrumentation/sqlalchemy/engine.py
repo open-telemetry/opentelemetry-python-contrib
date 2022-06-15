@@ -77,6 +77,17 @@ def _wrap_create_engine(tracer_provider=None):
     return _wrap_create_engine_internal
 
 
+def _wrap_connect(tracer_provider=None):
+    def _wrap_connect_internal(func, module, args, kwargs):
+        tracer = trace.get_tracer(
+            module.name,
+            __version__,
+            tracer_provider=tracer_provider,
+        )
+        with tracer.start_as_current_span("database-connect") as span:
+            return func(*args, **kwargs)
+    return _wrap_connect_internal
+
 class EngineTracer:
     def __init__(self, tracer, engine, enable_commenter=False):
         self.tracer = tracer

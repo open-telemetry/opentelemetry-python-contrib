@@ -63,6 +63,7 @@ from opentelemetry.instrumentation.sqlalchemy.engine import (
     _get_tracer,
     _wrap_create_async_engine,
     _wrap_create_engine,
+    _wrap_connect,
 )
 from opentelemetry.instrumentation.sqlalchemy.package import _instruments
 from opentelemetry.instrumentation.utils import unwrap
@@ -101,7 +102,11 @@ class SQLAlchemyInstrumentor(BaseInstrumentor):
                 "create_async_engine",
                 _wrap_create_async_engine(tracer_provider),
             )
-
+        _w(
+            "sqlalchemy.engine.base",
+            "Engine.connect",
+            _wrap_connect(tracer_provider)
+        )
         if kwargs.get("engine") is not None:
             return EngineTracer(
                 _get_tracer(tracer_provider),
