@@ -22,7 +22,6 @@ import django
 from django.db import connection
 from django.db.backends.utils import CursorDebugWrapper
 
-
 if sys.version_info.major <= 2:
     import urllib
 
@@ -31,7 +30,6 @@ else:
     import urllib.parse
 
     url_quote_fn = urllib.parse.quote
-
 
 try:
     from opentelemetry.trace.propagation.tracecontext import (
