@@ -26,7 +26,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Set otlp-proto-grpc as the default metrics exporter for auto-instrumentation
   ([#1127](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/1127))
 - Integrated sqlcommenter plugin into opentelemetry-instrumentation-django
-  ([#896](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/896/files))
+  ([#896](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/896))
 
 
 ## [1.12.0rc1-0.31b0](https://github.com/open-telemetry/opentelemetry-python/releases/tag/v1.12.0rc1-0.31b0) - 2022-05-17
