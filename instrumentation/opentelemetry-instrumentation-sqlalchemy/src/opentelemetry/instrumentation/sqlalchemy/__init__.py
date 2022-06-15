@@ -51,6 +51,7 @@ Usage
 API
 ---
 """
+from collections.abc import Sequence
 from typing import Collection
 
 import sqlalchemy
@@ -110,7 +111,7 @@ class SQLAlchemyInstrumentor(BaseInstrumentor):
                 kwargs.get("enable_commenter", False),
             )
         if kwargs.get("engines") is not None and isinstance(
-            kwargs.get("engines"), list
+            kwargs.get("engines"), Sequence
         ):
             return [
                 EngineTracer(
