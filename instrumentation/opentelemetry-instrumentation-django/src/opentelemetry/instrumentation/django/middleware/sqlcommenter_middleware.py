@@ -15,12 +15,12 @@
 # limitations under the License.
 from __future__ import absolute_import
 
+import logging
+import sys
+
 import django
 from django.db import connection
 from django.db.backends.utils import CursorDebugWrapper
-
-import logging
-import sys
 
 
 if sys.version_info.major <= 2:
