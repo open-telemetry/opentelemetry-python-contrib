@@ -26,6 +26,8 @@ class InstrumentationTest:
             raise exc.HTTPInternalServerError()
         if helloid == 302:
             raise exc.HTTPFound()
+        if helloid == 204:
+            raise exc.HTTPNoContent()
         if helloid == 900:
             raise NotImplementedError()
         return Response("Hello: " + str(helloid))
