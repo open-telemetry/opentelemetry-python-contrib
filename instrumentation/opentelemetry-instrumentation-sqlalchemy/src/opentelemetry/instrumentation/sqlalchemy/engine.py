@@ -84,7 +84,7 @@ def _wrap_connect(tracer_provider=None):
             __version__,
             tracer_provider=tracer_provider,
         )
-        with tracer.start_as_current_span("database-connect") as span:
+        with tracer.start_as_current_span("database-connect", kind=trace.SpanKind.CLIENT) as span:
             return func(*args, **kwargs)
     return _wrap_connect_internal
 

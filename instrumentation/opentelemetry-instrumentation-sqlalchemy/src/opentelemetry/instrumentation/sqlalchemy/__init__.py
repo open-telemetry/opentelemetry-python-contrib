@@ -54,6 +54,7 @@ API
 from typing import Collection
 
 import sqlalchemy
+from sqlalchemy.engine.base import Engine
 from packaging.version import parse as parse_version
 from wrapt import wrap_function_wrapper as _w
 
@@ -102,11 +103,11 @@ class SQLAlchemyInstrumentor(BaseInstrumentor):
                 "create_async_engine",
                 _wrap_create_async_engine(tracer_provider),
             )
-        _w(
-            "sqlalchemy.engine.base",
-            "Engine.connect",
-            _wrap_connect(tracer_provider)
-        )
+            _w(
+                "sqlalchemy.engine.base",
+                "Engine.connect",
+                _wrap_connect(tracer_provider)
+            )
         if kwargs.get("engine") is not None:
             return EngineTracer(
                 _get_tracer(tracer_provider),
@@ -120,3 +121,4 @@ class SQLAlchemyInstrumentor(BaseInstrumentor):
         unwrap(sqlalchemy.engine, "create_engine")
         if parse_version(sqlalchemy.__version__).release >= (1, 4):
             unwrap(sqlalchemy.ext.asyncio, "create_async_engine")
+            unwrap(Engine, "connect")
