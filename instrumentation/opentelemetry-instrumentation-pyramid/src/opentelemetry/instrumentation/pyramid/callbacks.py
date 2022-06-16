@@ -15,7 +15,7 @@
 from logging import getLogger
 
 from pyramid.events import BeforeTraversal
-from pyramid.httpexceptions import HTTPServerError, HTTPException
+from pyramid.httpexceptions import HTTPException, HTTPServerError
 from pyramid.settings import asbool
 from pyramid.tweens import EXCVIEW
 
