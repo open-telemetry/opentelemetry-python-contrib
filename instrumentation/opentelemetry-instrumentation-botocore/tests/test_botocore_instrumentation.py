@@ -27,10 +27,14 @@ from moto import (  # pylint: disable=import-error
 )
 
 from opentelemetry import trace as trace_api
-from opentelemetry.context import attach, detach, set_value
+from opentelemetry.context import (
+    _SUPPRESS_HTTP_INSTRUMENTATION_KEY,
+    attach,
+    detach,
+    set_value,
+)
 from opentelemetry.instrumentation.botocore import BotocoreInstrumentor
 from opentelemetry.instrumentation.utils import _SUPPRESS_INSTRUMENTATION_KEY
-from opentelemetry.context import _SUPPRESS_HTTP_INSTRUMENTATION_KEY
 from opentelemetry.propagate import get_global_textmap, set_global_textmap
 from opentelemetry.semconv.trace import SpanAttributes
 from opentelemetry.test.mock_textmap import MockTextMapPropagator
@@ -326,7 +330,7 @@ class TestBotocoreInstrumentor(TestBase):
         finally:
             detach(token)
         self.assertEqual(0, len(self.get_finished_spans()))
-    
+
     @mock_xray
     def test_suppress_http_instrumentation_xray_client(self):
         xray_client = self._make_client("xray")
