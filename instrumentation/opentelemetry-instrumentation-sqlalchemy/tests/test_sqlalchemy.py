@@ -72,6 +72,18 @@ class TestSqlalchemyInstrumentation(TestBase):
         # 2 queries + 2 engine connect
         self.assertEqual(len(spans), 4)
 
+    def test_instrument_engine_connect(self):
+        engine = create_engine("sqlite:///:memory:")
+
+        SQLAlchemyInstrumentor().instrument(
+            engine=engine,
+            tracer_provider=self.tracer_provider,
+        )
+
+        engine.connect()
+        spans = self.memory_exporter.get_finished_spans()
+        self.assertEqual(len(spans), 1)
+
     @pytest.mark.skipif(
         not sqlalchemy.__version__.startswith("1.4"),
         reason="only run async tests for 1.4",
