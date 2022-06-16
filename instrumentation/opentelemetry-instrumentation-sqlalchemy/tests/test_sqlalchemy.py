@@ -69,8 +69,8 @@ class TestSqlalchemyInstrumentation(TestBase):
         cnx_2.execute("SELECT	1 + 1;").fetchall()
 
         spans = self.memory_exporter.get_finished_spans()
-
-        self.assertEqual(len(spans), 2)
+        # 2 queries + 2 engine connect
+        self.assertEqual(len(spans), 4)
 
     @pytest.mark.skipif(
         not sqlalchemy.__version__.startswith("1.4"),
