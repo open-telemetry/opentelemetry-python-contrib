@@ -106,6 +106,7 @@ from opentelemetry.trace.span import Span
 
 logger = logging.getLogger(__name__)
 
+
 # pylint: disable=unused-argument
 def _patched_endpoint_prepare_request(wrapped, instance, args, kwargs):
     request = args[0]
