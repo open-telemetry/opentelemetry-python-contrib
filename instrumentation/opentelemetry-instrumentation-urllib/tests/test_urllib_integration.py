@@ -24,6 +24,8 @@ import httpretty
 
 import opentelemetry.instrumentation.urllib  # pylint: disable=no-name-in-module,import-error
 from opentelemetry import context, trace
+
+# FIXME: fix the importing of this private attribute when the location of the _SUPPRESS_HTTP_INSTRUMENTATION_KEY is defined.
 from opentelemetry.context import _SUPPRESS_HTTP_INSTRUMENTATION_KEY
 from opentelemetry.instrumentation.urllib import (  # pylint: disable=no-name-in-module,import-error
     URLLibInstrumentor,
