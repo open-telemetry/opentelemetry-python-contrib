@@ -25,6 +25,14 @@ from opentelemetry import context, trace
 from opentelemetry.context import _SUPPRESS_INSTRUMENTATION_KEY  # noqa: F401
 from opentelemetry.propagate import extract
 from opentelemetry.trace import Span, StatusCode
+try:
+    from opentelemetry.trace.propagation.tracecontext import (
+        TraceContextTextMapPropagator,
+    )
+
+    propagator = TraceContextTextMapPropagator()
+except ImportError:
+    propagator = None
 
 
 def extract_attributes_from_object(
@@ -154,21 +162,23 @@ def _url_quote(s):  # pylint: disable=invalid-name
     #      foo,bar --> foo%%2Cbar
     return quoted.replace("%", "%%")
 
-
-def _generate_opentelemetry_traceparent(span: Span) -> str:
-    meta = {}
-    _version = "00"
-    _span_id = trace.format_span_id(span.context.span_id)
-    _trace_id = trace.format_trace_id(span.context.trace_id)
-    _flags = str(trace.TraceFlags.SAMPLED)
-    _traceparent = _version + "-" + _trace_id + "-" + _span_id + "-" + _flags
-    meta.update({"traceparent": _traceparent})
-    return meta
-
-
 def _python_path_without_directory(python_path, directory, path_separator):
     return sub(
         rf"{escape(directory)}{path_separator}(?!$)",
         "",
         python_path,
     )
+
+
+def get_opentelemetry_values():
+    """
+    Return the OpenTelemetry Trace and Span IDs if Span ID is set in the
+    OpenTelemetry execution context.
+    """
+    if propagator:
+        # Insert the W3C TraceContext generated
+        headers = {}
+        propagator.inject(headers)
+        return headers
+    else:
+        raise ImportError("OpenTelemetry is not installed.")

@@ -229,7 +229,7 @@ def _rewrapped_app(wsgi_app, response_hook=None, excluded_urls=None):
 
 
 def _wrapped_before_request(
-    request_hook=None, tracer=None, excluded_urls=None
+        request_hook=None, tracer=None, excluded_urls=None, sql_orm_instrumentation_object=None
 ):
     def _before_request():
         if excluded_urls and excluded_urls.url_disabled(flask.request.url):
@@ -247,7 +247,9 @@ def _wrapped_before_request(
 
         if request_hook:
             request_hook(span, flask_request_environ)
-
+        if sql_orm_instrumentation_object:
+            sql_orm_instrumentation_object.request_context = {"controller": flask.request.endpoint,
+                                                          "route": flask.request.url_rule.rule}
         if span.is_recording():
             attributes = otel_wsgi.collect_request_attributes(
                 flask_request_environ
@@ -305,7 +307,6 @@ def _wrapped_teardown_request(excluded_urls=None):
 
 
 class _InstrumentedFlask(flask.Flask):
-
     _excluded_urls = None
     _tracer_provider = None
     _request_hook = None
@@ -374,11 +375,13 @@ class FlaskInstrumentor(BaseInstrumentor):
 
     @staticmethod
     def instrument_app(
-        app,
-        request_hook=None,
-        response_hook=None,
-        tracer_provider=None,
-        excluded_urls=None,
+            app,
+            request_hook=None,
+            response_hook=None,
+            tracer_provider=None,
+            excluded_urls=None,
+            sql_orm_instrumentation_object=None
+
     ):
         if not hasattr(app, "_is_instrumented_by_opentelemetry"):
             app._is_instrumented_by_opentelemetry = False
@@ -400,6 +403,7 @@ class FlaskInstrumentor(BaseInstrumentor):
                 request_hook,
                 tracer,
                 excluded_urls=excluded_urls,
+                sql_orm_instrumentation_object=sql_orm_instrumentation_object
             )
             app._before_request = _before_request
             app.before_request(_before_request)
