@@ -392,15 +392,15 @@ class OpenTelemetryMiddleware:
         self.wsgi = wsgi
         self.tracer = trace.get_tracer(__name__, __version__, tracer_provider)
         self.meter = get_meter(__name__, __version__, meter_provider)
-        self.duration_recorder = self.meter.create_histogram(
-            "http.server.duration",
-            "ms",
-            "measures the duration of the inbound HTTP request",
+        self.duration_histogram = self.meter.create_histogram(
+            name="http.server.duration",
+            unit="ms",
+            description="measures the duration of the inbound HTTP request",
         )
         self.active_requests_counter = self.meter.create_up_down_counter(
-            "http.server.active_requests",
-            "1",
-            "measures the number of concurrent HTTP requests that are currently in-flight",
+            name="http.server.active_requests",
+            unit="requests",
+            description="measures the number of concurrent HTTP requests that are currently in-flight",
         )
         self.request_hook = request_hook
         self.response_hook = response_hook
@@ -484,8 +484,8 @@ class OpenTelemetryMiddleware:
                 context.detach(token)
             raise
         finally:
-            duration = max(default_timer() - start, 0)
-            self.duration_recorder.record(duration, duration_attrs)
+            duration = max(round((default_timer() - start) * 1000), 0)
+            self.duration_histogram.record(duration, duration_attrs)
             self.active_requests_counter.add(-1, active_requests_count_attrs)
 
 

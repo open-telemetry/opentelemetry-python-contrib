@@ -20,7 +20,10 @@ from urllib.parse import urlsplit
 
 import opentelemetry.instrumentation.wsgi as otel_wsgi
 from opentelemetry import trace as trace_api
-from opentelemetry.sdk.metrics.export import HistogramDataPoint
+from opentelemetry.sdk.metrics.export import (
+    HistogramDataPoint,
+    NumberDataPoint,
+)
 from opentelemetry.sdk.resources import Resource
 from opentelemetry.semconv.trace import SpanAttributes
 from opentelemetry.test.test_base import TestBase
@@ -247,6 +250,8 @@ class TestWsgiApplication(WsgiTestBase):
         self.assertRaises(ValueError, app, self.environ, self.start_response)
         self.assertRaises(ValueError, app, self.environ, self.start_response)
         metrics_list = self.memory_metrics_reader.get_metrics_data()
+        number_data_point_seen = False
+        histogram_data_point_seen = False
 
         self.assertTrue(len(metrics_list.resource_metrics) != 0)
         for resource_metric in metrics_list.resource_metrics:
@@ -260,10 +265,14 @@ class TestWsgiApplication(WsgiTestBase):
                     for point in data_points:
                         if isinstance(point, HistogramDataPoint):
                             self.assertEqual(point.count, 3)
+                            histogram_data_point_seen = True
+                        if isinstance(point, NumberDataPoint):
+                            number_data_point_seen = True
                         for attr in point.attributes:
                             self.assertIn(
                                 attr, _recommended_attrs[metric.name]
                             )
+        self.assertTrue(number_data_point_seen and histogram_data_point_seen)
 
     def test_default_span_name_missing_request_method(self):
         """Test that default span_names with missing request method."""
