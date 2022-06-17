@@ -6,7 +6,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased](https://github.com/open-telemetry/opentelemetry-python/compare/v1.12.0rc1-0.31b0...HEAD)
-- Pyramid: Only categorize 400s and 500s exceptions as errors
+- Pyramid: Only categorize 500s server exceptions as errors
   ([#1037](https://github.com/open-telemetry/opentelemetry-python-contrib/issues/1037))
 
 ### Fixed
@@ -23,6 +23,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 
 ### Added
+- `opentelemetry-instrumentation-sqlalchemy` add support to instrument multiple engines
+  ([#1132](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/1132))
 - `opentelemetry-instrumentation-logging` add log hook support
   ([#1117](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/1117))
 - `opentelemetry-instrumentation-remoulade` Initial release
