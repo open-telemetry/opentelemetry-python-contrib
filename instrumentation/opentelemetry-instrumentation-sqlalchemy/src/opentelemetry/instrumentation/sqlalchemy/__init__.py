@@ -99,16 +99,16 @@ class SQLAlchemyInstrumentor(BaseInstrumentor):
             "create_engine",
             _wrap_create_engine(tracer_provider),
         )
+        _w(
+            "sqlalchemy.engine.base",
+            "Engine.connect",
+            _wrap_connect(tracer_provider)
+        )
         if parse_version(sqlalchemy.__version__).release >= (1, 4):
             _w(
                 "sqlalchemy.ext.asyncio",
                 "create_async_engine",
                 _wrap_create_async_engine(tracer_provider),
-            )
-            _w(
-                "sqlalchemy.engine.base",
-                "Engine.connect",
-                _wrap_connect(tracer_provider)
             )
         if kwargs.get("engine") is not None:
             return EngineTracer(
@@ -133,6 +133,7 @@ class SQLAlchemyInstrumentor(BaseInstrumentor):
     def _uninstrument(self, **kwargs):
         unwrap(sqlalchemy, "create_engine")
         unwrap(sqlalchemy.engine, "create_engine")
+        unwrap(Engine, "connect")
         if parse_version(sqlalchemy.__version__).release >= (1, 4):
             unwrap(sqlalchemy.ext.asyncio, "create_async_engine")
-            unwrap(Engine, "connect")
+
