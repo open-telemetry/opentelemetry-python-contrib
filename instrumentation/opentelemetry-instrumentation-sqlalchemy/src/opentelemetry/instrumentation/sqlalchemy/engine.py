@@ -77,12 +77,12 @@ def _wrap_create_engine(tracer_provider=None):
 
 
 class EngineTracer:
-    def __init__(self, tracer, engine, enable_commenter=False, request_context=None):
+    def __init__(self, tracer, engine, enable_commenter=False, request_info=None):
         self.tracer = tracer
         self.engine = engine
         self.vendor = _normalize_vendor(engine.name)
         self.enable_commenter = enable_commenter
-        self.request_context = request_context
+        self.request_info = request_info
 
         listen(
             engine, "before_cursor_execute", self._before_cur_exec, retval=True
@@ -127,7 +127,7 @@ class EngineTracer:
 
         context._otel_span = span
         if self.enable_commenter:
-            statement = statement + EngineTracer._generate_comment(**self.request_context)
+            statement = statement + EngineTracer._generate_comment(**self.request_info)
 
         return statement, params
 

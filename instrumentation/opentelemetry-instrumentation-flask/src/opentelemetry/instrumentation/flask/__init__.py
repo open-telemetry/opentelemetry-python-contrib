@@ -248,7 +248,8 @@ def _wrapped_before_request(
         if request_hook:
             request_hook(span, flask_request_environ)
         if sql_orm_instrumentation_object:
-            sql_orm_instrumentation_object.request_context = {"controller": flask.request.endpoint,
+            # Set the flask request info in the sql_orm_instrumentation object
+            sql_orm_instrumentation_object.request_info = {"controller": flask.request.endpoint,
                                                           "route": flask.request.url_rule.rule}
         if span.is_recording():
             attributes = otel_wsgi.collect_request_attributes(
@@ -403,6 +404,7 @@ class FlaskInstrumentor(BaseInstrumentor):
                 request_hook,
                 tracer,
                 excluded_urls=excluded_urls,
+                # Set the controller details before every request in sql_orm_instrumentation_object
                 sql_orm_instrumentation_object=sql_orm_instrumentation_object
             )
             app._before_request = _before_request
