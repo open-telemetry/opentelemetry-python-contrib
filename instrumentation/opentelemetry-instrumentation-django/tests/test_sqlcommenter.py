@@ -23,12 +23,11 @@ from django.test.utils import setup_test_environment, teardown_test_environment
 
 from opentelemetry.instrumentation.django import DjangoInstrumentor
 from opentelemetry.instrumentation.django.middleware.sqlcommenter_middleware import (
-    QueryWrapper,
+    _QueryWrapper,
 )
 from opentelemetry.test.test_base import TestBase
 from opentelemetry.test.wsgitestutil import WsgiTestBase
 
-DJANGO_2_0 = VERSION >= (2, 0)
 
 _django_instrumentor = DjangoInstrumentor()
 
@@ -37,8 +36,8 @@ class TestMiddleware(TestBase, WsgiTestBase):
     @classmethod
     def setUpClass(cls):
         conf.settings.configure(
-            SQLCOMMENTER_WITH_OPENTELEMETRY=True,
             SQLCOMMENTER_WITH_FRAMEWORK=False,
+            SQLCOMMENTER_WITH_DB_DRIVER=False,
         )
         super().setUpClass()
 
@@ -63,10 +62,8 @@ class TestMiddleware(TestBase, WsgiTestBase):
     def test_middleware_added(self, sqlcommenter_middleware):
         instance = sqlcommenter_middleware.return_value
         instance.get_response = HttpResponse()
-        if DJANGO_2_0:
-            middleware = django.conf.settings.MIDDLEWARE
-        else:
-            middleware = django.conf.settings.MIDDLEWARE_CLASSES
+        middleware = django.conf.settings.MIDDLEWARE
+
         self.assertTrue(
             "opentelemetry.instrumentation.django.middleware.sqlcommenter_middleware.SqlCommenter"
             in middleware
@@ -79,11 +76,12 @@ class TestMiddleware(TestBase, WsgiTestBase):
         requests_mock = MagicMock()
         requests_mock.resolver_match.view_name = "view"
         requests_mock.resolver_match.route = "route"
+        requests_mock.resolver_match.app_name = "app"
 
         trace_capture.return_value = {
             "traceparent": "*traceparent='00-000000000000000000000000deadbeef-000000000000beef-00"
         }
-        qw_instance = QueryWrapper(requests_mock)
+        qw_instance = _QueryWrapper(requests_mock)
         execute_mock_obj = MagicMock()
         qw_instance(
             execute_mock_obj,
@@ -95,6 +93,6 @@ class TestMiddleware(TestBase, WsgiTestBase):
         output_sql = execute_mock_obj.call_args[0][0]
         self.assertEqual(
             output_sql,
-            "Select 1 /*controller='view',route='route',traceparent='%%2Atraceparent%%3D%%2700-0000000"
+            "Select 1 /*app_name='app',controller='view',route='route',traceparent='%%2Atraceparent%%3D%%2700-0000000"
             "00000000000000000deadbeef-000000000000beef-00'*/",
         )

@@ -16,20 +16,12 @@
 from __future__ import absolute_import
 
 import logging
-import sys
+import urllib
 
 import django
 from django.db import connection
 from django.db.backends.utils import CursorDebugWrapper
 
-if sys.version_info.major <= 2:
-    import urllib
-
-    url_quote_fn = urllib.quote  # pylint: disable=maybe-no-member
-else:
-    import urllib.parse
-
-    url_quote_fn = urllib.parse.quote
 
 try:
     from opentelemetry.trace.propagation.tracecontext import (
@@ -56,11 +48,11 @@ class SqlCommenter:
         self.get_response = get_response
 
     def __call__(self, request):
-        with connection.execute_wrapper(QueryWrapper(request)):
+        with connection.execute_wrapper(_QueryWrapper(request)):
             return self.get_response(request)
 
 
-class QueryWrapper:
+class _QueryWrapper:
     def __init__(self, request):
         self.request = request
 
@@ -76,23 +68,14 @@ class QueryWrapper:
             django.conf.settings, "SQLCOMMENTER_WITH_ROUTE", True
         )
         _with_app_name = getattr(
-            django.conf.settings, "SQLCOMMENTER_WITH_APP_NAME", False
-        )
-        _with_opencensus = getattr(
-            django.conf.settings, "SQLCOMMENTER_WITH_OPENCENSUS", False
+            django.conf.settings, "SQLCOMMENTER_WITH_APP_NAME", True
         )
         _with_opentelemetry = getattr(
-            django.conf.settings, "SQLCOMMENTER_WITH_OPENTELEMETRY", False
+            django.conf.settings, "SQLCOMMENTER_WITH_OPENTELEMETRY", True
         )
         _with_db_driver = getattr(
-            django.conf.settings, "SQLCOMMENTER_WITH_DB_DRIVER", False
+            django.conf.settings, "SQLCOMMENTER_WITH_DB_DRIVER", True
         )
-
-        if _with_opencensus and _with_opentelemetry:
-            logger.warning(
-                "SQLCOMMENTER_WITH_OPENCENSUS and SQLCOMMENTER_WITH_OPENTELEMETRY were enabled. "
-                "Only use one to avoid unexpected behavior"
-            )
 
         _db_driver = context["connection"].settings_dict.get("ENGINE", "")
         _resolver_match = self.request.resolver_match
@@ -160,7 +143,7 @@ def _generate_sql_comment(**meta):
 def _url_quote(value):
     if not isinstance(value, (str, bytes)):
         return value
-    _quoted = url_quote_fn(value)
+    _quoted = urllib.parse.quote(value)
     # Since SQL uses '%' as a keyword, '%' is a by-product of url quoting
     # e.g. foo,bar --> foo%2Cbar
     # thus in our quoting, we need to escape it too to finally give
@@ -174,10 +157,7 @@ def _get_opentelemetry_values():
     OpenTelemetry execution context.
     """
     # pylint: disable=no-else-return
-    if propagator:
-        # Insert the W3C TraceContext generated
-        _headers = {}
-        propagator.inject(_headers)
-        return _headers
-    else:
-        raise ImportError("OpenTelemetry is not installed.")
+    # Insert the W3C TraceContext generated
+    _headers = {}
+    propagator.inject(_headers)
+    return _headers
