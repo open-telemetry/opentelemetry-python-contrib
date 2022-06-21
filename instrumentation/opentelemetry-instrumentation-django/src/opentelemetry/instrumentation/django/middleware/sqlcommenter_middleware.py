@@ -22,14 +22,11 @@ import django
 from django.db import connection
 from django.db.backends.utils import CursorDebugWrapper
 
-try:
-    from opentelemetry.trace.propagation.tracecontext import (
-        TraceContextTextMapPropagator,
-    )
+from opentelemetry.trace.propagation.tracecontext import (
+    TraceContextTextMapPropagator,
+)
 
-    propagator = TraceContextTextMapPropagator()
-except ImportError:
-    propagator = None
+_propagator = TraceContextTextMapPropagator()
 
 django_version = django.get_version()
 logger = logging.getLogger(__name__)
@@ -156,5 +153,5 @@ def _get_opentelemetry_values():
     # pylint: disable=no-else-return
     # Insert the W3C TraceContext generated
     _headers = {}
-    propagator.inject(_headers)
+    _propagator.inject(_headers)
     return _headers
