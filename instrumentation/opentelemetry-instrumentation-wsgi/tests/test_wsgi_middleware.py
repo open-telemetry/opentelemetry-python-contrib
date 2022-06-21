@@ -505,7 +505,7 @@ class TestWsgiMiddlewareWrappedWithAnotherFramework(WsgiTestBase):
             )
 
 
-class TestAdditionOfCustomRequestResponseHeaders(WsgiTestBase, TestBase):
+class TestAdditionOfCustomRequestResponseHeaders(WsgiTestBase):
     def setUp(self):
         super().setUp()
         tracer_provider, _ = TestBase.create_tracer_provider()
