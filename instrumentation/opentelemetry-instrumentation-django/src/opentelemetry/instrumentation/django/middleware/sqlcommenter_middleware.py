@@ -96,12 +96,10 @@ class _QueryWrapper:
             if _resolver_match and _with_app_name
             else None,
             # Framework centric information.
-            framework=f"django:{django_version}"
-            if _with_framework
-            else None,
+            framework=f"django:{django_version}" if _with_framework else None,
             # Information about the database and driver.
             db_driver=_db_driver if _with_db_driver else None,
-            **_get_opentelemetry_values() if _with_opentelemetry else {}
+            **_get_opentelemetry_values() if _with_opentelemetry else {},
         )
 
         # TODO: MySQL truncates logs > 1024B so prepend comments
