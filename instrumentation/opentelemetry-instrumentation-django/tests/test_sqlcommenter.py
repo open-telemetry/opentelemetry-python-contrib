@@ -17,7 +17,7 @@
 from unittest.mock import MagicMock, patch
 
 import django
-from django import VERSION, conf
+from django import conf
 from django.http import HttpResponse
 from django.test.utils import setup_test_environment, teardown_test_environment
 
