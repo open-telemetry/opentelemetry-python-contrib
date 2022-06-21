@@ -24,8 +24,7 @@ _prefix = "opentelemetry-instrumentation-"
 
 header = """
 | Instrumentation | Supported Packages | Metrics support |
-| --------------- | ------------------ | --------------- |
-"""
+| --------------- | ------------------ | --------------- |"""
 
 
 def main():
