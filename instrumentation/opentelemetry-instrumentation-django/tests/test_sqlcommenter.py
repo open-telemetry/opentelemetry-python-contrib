@@ -17,7 +17,7 @@
 from unittest.mock import MagicMock, patch
 
 import django
-from django import conf
+from django import VERSION, conf
 from django.http import HttpResponse
 from django.test.utils import setup_test_environment, teardown_test_environment
 
@@ -27,6 +27,8 @@ from opentelemetry.instrumentation.django.middleware.sqlcommenter_middleware imp
 )
 from opentelemetry.test.test_base import TestBase
 from opentelemetry.test.wsgitestutil import WsgiTestBase
+
+DJANGO_2_0 = VERSION >= (2, 0)
 
 _django_instrumentor = DjangoInstrumentor()
 
@@ -61,7 +63,10 @@ class TestMiddleware(TestBase, WsgiTestBase):
     def test_middleware_added(self, sqlcommenter_middleware):
         instance = sqlcommenter_middleware.return_value
         instance.get_response = HttpResponse()
-        middleware = django.conf.settings.MIDDLEWARE
+        if DJANGO_2_0:
+            middleware = django.conf.settings.MIDDLEWARE
+        else:
+            middleware = django.conf.settings.MIDDLEWARE_CLASSES
 
         self.assertTrue(
             "opentelemetry.instrumentation.django.middleware.sqlcommenter_middleware.SqlCommenter"
