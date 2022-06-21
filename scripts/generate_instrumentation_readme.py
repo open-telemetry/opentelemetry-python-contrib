@@ -67,10 +67,10 @@ def main():
         if not instruments:
             instruments = (name,)
 
-        metric_colum = "[x]" if supports_metrics else "[ ]"
+        metric_column = "Yes" if supports_metrics else "No"
 
         table.append(
-            f"| [{instrumentation}](./{instrumentation}) | {','.join(instruments)} | {metric_colum}"
+            f"| [{instrumentation}](./{instrumentation}) | {','.join(instruments)} | {metric_column} |"
         )
 
     with open(
