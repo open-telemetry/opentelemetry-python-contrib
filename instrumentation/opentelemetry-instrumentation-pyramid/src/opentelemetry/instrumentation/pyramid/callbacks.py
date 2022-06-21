@@ -15,7 +15,7 @@
 from logging import getLogger
 
 from pyramid.events import BeforeTraversal
-from pyramid.httpexceptions import HTTPException
+from pyramid.httpexceptions import HTTPException, HTTPServerError
 from pyramid.settings import asbool
 from pyramid.tweens import EXCVIEW
 
@@ -198,7 +198,9 @@ def trace_tween_factory(handler, registry):
 
                 activation = request.environ.get(_ENVIRON_ACTIVATION_KEY)
 
-                if isinstance(response, HTTPException):
+                # Only considering HTTPServerError
+                # to make sure 200, 300 and 400 exceptions are not reported as error
+                if isinstance(response, HTTPServerError):
                     activation.__exit__(
                         type(response),
                         response,
