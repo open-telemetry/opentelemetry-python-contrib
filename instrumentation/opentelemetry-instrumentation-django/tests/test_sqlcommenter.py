@@ -28,7 +28,6 @@ from opentelemetry.instrumentation.django.middleware.sqlcommenter_middleware imp
 from opentelemetry.test.test_base import TestBase
 from opentelemetry.test.wsgitestutil import WsgiTestBase
 
-
 _django_instrumentor = DjangoInstrumentor()
 
 

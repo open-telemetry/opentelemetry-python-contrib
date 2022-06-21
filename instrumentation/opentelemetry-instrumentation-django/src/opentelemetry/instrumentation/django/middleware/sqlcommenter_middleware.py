@@ -22,7 +22,6 @@ import django
 from django.db import connection
 from django.db.backends.utils import CursorDebugWrapper
 
-
 try:
     from opentelemetry.trace.propagation.tracecontext import (
         TraceContextTextMapPropagator,
