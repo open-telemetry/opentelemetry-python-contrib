@@ -96,7 +96,7 @@ class _QueryWrapper:
             if _resolver_match and _with_app_name
             else None,
             # Framework centric information.
-            framework=("django:%s" % django_version)
+            framework=f"django:{django_version}"
             if _with_framework
             else None,
             # Information about the database and driver.
@@ -131,7 +131,7 @@ def _generate_sql_comment(**meta):
     return (
         " /*"
         + KEY_VALUE_DELIMITER.join(
-            "{}={!r}".format(_url_quote(key), _url_quote(value))
+            f"{_url_quote(key)}={_url_quote(value)!r}"
             for key, value in sorted(meta.items())
             if value is not None
         )
