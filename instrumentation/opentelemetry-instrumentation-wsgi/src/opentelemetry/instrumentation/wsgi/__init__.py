@@ -427,6 +427,7 @@ class OpenTelemetryMiddleware:
 
         return _start_response
 
+    # pylint: disable=too-many-branches
     def __call__(self, environ, start_response):
         """The WSGI application
 
