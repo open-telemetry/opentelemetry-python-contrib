@@ -6,6 +6,8 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased](https://github.com/open-telemetry/opentelemetry-python/compare/v1.12.0rc1-0.31b0...HEAD)
+- Pyramid: Only categorize 500s server exceptions as errors
+  ([#1037](https://github.com/open-telemetry/opentelemetry-python-contrib/issues/1037))
 
 ### Fixed
 - Fix bug in system metrics by checking their configuration
@@ -13,11 +15,18 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Adding escape call to fix [auto-instrumentation not producing spans on Windows](https://github.com/open-telemetry/opentelemetry-python/issues/2703).
   ([#1100](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/1100))
 - `opentelemetry-instrumentation-grpc` narrow protobuf dependency to exclude protobuf >= 4
-  ([1109](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/1109))
+  ([#1109](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/1109))
 - cleanup type hints for textmap `Getter` and `Setter` classes
   ([1106](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/1106))
+- Suppressing downstream HTTP instrumentation to avoid [extra spans](https://github.com/open-telemetry/opentelemetry-python-contrib/issues/930)
+  ([#1116](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/1116))
+- fixed typo in `system.network.io` metric configuration
+  ([#1135](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/1135))
+
 
 ### Added
+- `opentelemetry-instrumentation-sqlalchemy` add support to instrument multiple engines
+  ([#1132](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/1132))
 - `opentelemetry-instrumentation-logging` add log hook support
   ([#1117](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/1117))
 - `opentelemetry-instrumentation-remoulade` Initial release
@@ -34,7 +43,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 - `opentelemetry-instrumentation-aiohttp-client` make span attributes available to sampler
-  ([1072](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/1072))
+  ([#1072](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/1072))
 - `opentelemetry-instrumentation-aws-lambda` Fixed an issue - in some rare cases (API GW proxy integration test)
   headers are set to None, breaking context propagators.
   ([#1055](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/1055))
