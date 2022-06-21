@@ -475,7 +475,7 @@ class TestRequestsIntegrationPreparedRequest(
 
 
 class TestRequestsIntergrationMetric(TestBase):
-    URL = "http://httpbin.org/status/200"
+    URL = "http://examplehost:8000/status/200"
 
     def setUp(self):
         super().setUp()
@@ -498,8 +498,9 @@ class TestRequestsIntergrationMetric(TestBase):
 
         expected_attributes = {
             "http.status_code": 200,
-            "http.url": self.URL,
-            "http.host": "httpbin.org",
+            "http.host": "examplehost",
+            "net.peer.port": 8000,
+            "net.peer.name": "examplehost",
             "http.method": "GET",
             "http.flavor": "1.1",
             "http.scheme": "http",
@@ -511,6 +512,7 @@ class TestRequestsIntergrationMetric(TestBase):
             for scope_metrics in resource_metrics.scope_metrics:
                 for metric in scope_metrics.metrics:
                     for data_point in metric.data.data_points:
+                        print(data_point.attributes)
                         self.assertDictEqual(
                             expected_attributes, dict(data_point.attributes)
                         )

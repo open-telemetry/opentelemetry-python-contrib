@@ -197,14 +197,19 @@ def _instrument(
         }
 
         metric_labels = {
-            "http.method": method,
-            "http.url": url,
+            SpanAttributes.HTTP_METHOD: method,
         }
 
         try:
             parsed_url = urlparse(url)
-            metric_labels["http.host"] = parsed_url.hostname
-            metric_labels["http.scheme"] = parsed_url.scheme
+            metric_labels[SpanAttributes.HTTP_SCHEME] = parsed_url.scheme
+            if parsed_url.hostname:
+                metric_labels[SpanAttributes.HTTP_HOST] = parsed_url.hostname
+                metric_labels[
+                    SpanAttributes.NET_PEER_NAME
+                ] = parsed_url.hostname
+            if parsed_url.port:
+                metric_labels[SpanAttributes.NET_PEER_PORT] = parsed_url.port
         except ValueError:
             pass
 
@@ -240,12 +245,14 @@ def _instrument(
                         Status(http_status_to_status_code(result.status_code))
                     )
 
-                metric_labels["http.status_code"] = result.status_code
+                metric_labels[
+                    SpanAttributes.HTTP_STATUS_CODE
+                ] = result.status_code
 
                 if result.raw is not None:
                     version = getattr(result.raw, "version", None)
                     if version:
-                        metric_labels["http.flavor"] = (
+                        metric_labels[SpanAttributes.HTTP_FLAVOR] = (
                             "1.1" if version == 11 else "1.0"
                         )
 
