@@ -70,7 +70,7 @@ def main():
         metric_column = "Yes" if supports_metrics else "No"
 
         table.append(
-            f"| [{instrumentation}](./{instrumentation}) | {','.join(instruments)} | {metric_column} |"
+            f"| [{instrumentation}](./{instrumentation}) | {','.join(instruments)} | {metric_column}"
         )
 
     with open(
