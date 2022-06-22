@@ -527,7 +527,6 @@ class TestRequestsIntergrationMetric(TestBase):
             for scope_metrics in resource_metrics.scope_metrics:
                 for metric in scope_metrics.metrics:
                     for data_point in metric.data.data_points:
-                        print(data_point.attributes)
                         self.assertDictEqual(
                             expected_attributes, dict(data_point.attributes)
                         )
