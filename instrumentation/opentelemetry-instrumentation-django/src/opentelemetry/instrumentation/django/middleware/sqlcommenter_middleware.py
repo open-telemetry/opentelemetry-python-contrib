@@ -17,6 +17,7 @@ from logging import getLogger
 from typing import Any, Type, TypeVar
 from urllib.parse import quote as urllib_quote
 
+# pylint: disable=no-name-in-module
 from django import conf, get_version
 from django.db import connection
 from django.db.backends.utils import CursorDebugWrapper
