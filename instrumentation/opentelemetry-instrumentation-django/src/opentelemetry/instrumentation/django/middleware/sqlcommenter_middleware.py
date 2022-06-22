@@ -14,8 +14,8 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 from logging import getLogger
-from urllib.parse import quote as urllib_quote
 from typing import Any, Type, TypeVar
+from urllib.parse import quote as urllib_quote
 
 from django import conf, get_version
 from django.db import connection
