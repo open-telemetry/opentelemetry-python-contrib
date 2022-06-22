@@ -21,11 +21,11 @@ from django import VERSION, conf
 from django.http import HttpRequest, HttpResponse
 from django.test.client import Client
 from django.test.utils import setup_test_environment, teardown_test_environment
+from opentelemetry.test.test_base import TestBase
 
 from opentelemetry import trace
 from opentelemetry.instrumentation.django import (
     DjangoInstrumentor,
-    _DjangoMiddleware,
 )
 from opentelemetry.instrumentation.propagators import (
     TraceResponsePropagator,
@@ -458,8 +458,8 @@ class TestMiddlewareWithTracerProvider(WsgiTestBase):
                 span_list[0].parent.span_id,
             )
 
-
-class TestMiddlewareWsgiWithCustomHeaders(WsgiTestBase):
+# fix
+class TestMiddlewareWsgiWithCustomHeaders(TestBase, WsgiTestBase):
     @classmethod
     def setUpClass(cls):
         conf.settings.configure(ROOT_URLCONF=modules[__name__])
