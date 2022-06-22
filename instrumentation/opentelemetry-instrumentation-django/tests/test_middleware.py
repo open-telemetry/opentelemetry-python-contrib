@@ -26,6 +26,7 @@ from opentelemetry.test.test_base import TestBase
 from opentelemetry import trace
 from opentelemetry.instrumentation.django import (
     DjangoInstrumentor,
+    _DjangoMiddleware
 )
 from opentelemetry.instrumentation.propagators import (
     TraceResponsePropagator,
@@ -458,8 +459,9 @@ class TestMiddlewareWithTracerProvider(WsgiTestBase):
                 span_list[0].parent.span_id,
             )
 
-# fix
-class TestMiddlewareWsgiWithCustomHeaders(TestBase, WsgiTestBase):
+
+# FIx: need to inherit test base
+class TestMiddlewareWsgiWithCustomHeaders(WsgiTestBase):
     @classmethod
     def setUpClass(cls):
         conf.settings.configure(ROOT_URLCONF=modules[__name__])
