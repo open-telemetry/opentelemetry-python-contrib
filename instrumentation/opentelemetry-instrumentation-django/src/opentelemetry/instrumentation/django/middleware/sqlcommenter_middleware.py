@@ -13,12 +13,11 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-from __future__ import absolute_import
+from logging import getLogger
+from urllib.parse import quote as urllib_quote
+from typing import Any, Type, TypeVar
 
-import logging
-import urllib
-
-import django
+from django import conf, get_version
 from django.db import connection
 from django.db.backends.utils import CursorDebugWrapper
 
@@ -28,10 +27,10 @@ from opentelemetry.trace.propagation.tracecontext import (
 
 _propagator = TraceContextTextMapPropagator()
 
-django_version = django.get_version()
-logger = logging.getLogger(__name__)
+_django_version = get_version()
+_logger = getLogger(__name__)
 
-KEY_VALUE_DELIMITER = ","
+T = TypeVar("T")  # pylint: disable-msg=invalid-name
 
 
 class SqlCommenter:
@@ -40,63 +39,61 @@ class SqlCommenter:
     the framework and the execution context.
     """
 
-    def __init__(self, get_response):
+    def __init__(self, get_response) -> None:
         self.get_response = get_response
 
-    def __call__(self, request):
+    def __call__(self, request) -> Any:
         with connection.execute_wrapper(_QueryWrapper(request)):
             return self.get_response(request)
 
 
 class _QueryWrapper:
-    def __init__(self, request):
+    def __init__(self, request) -> None:
         self.request = request
 
-    def __call__(self, execute, sql, params, many, context):
+    def __call__(self, execute: Type[T], sql, params, many, context) -> T:
         # pylint: disable-msg=too-many-locals
-        _with_framework = getattr(
-            django.conf.settings, "SQLCOMMENTER_WITH_FRAMEWORK", True
+        with_framework = getattr(
+            conf.settings, "SQLCOMMENTER_WITH_FRAMEWORK", True
         )
-        _with_controller = getattr(
-            django.conf.settings, "SQLCOMMENTER_WITH_CONTROLLER", True
+        with_controller = getattr(
+            conf.settings, "SQLCOMMENTER_WITH_CONTROLLER", True
         )
-        _with_route = getattr(
-            django.conf.settings, "SQLCOMMENTER_WITH_ROUTE", True
+        with_route = getattr(conf.settings, "SQLCOMMENTER_WITH_ROUTE", True)
+        with_app_name = getattr(
+            conf.settings, "SQLCOMMENTER_WITH_APP_NAME", True
         )
-        _with_app_name = getattr(
-            django.conf.settings, "SQLCOMMENTER_WITH_APP_NAME", True
+        with_opentelemetry = getattr(
+            conf.settings, "SQLCOMMENTER_WITH_OPENTELEMETRY", True
         )
-        _with_opentelemetry = getattr(
-            django.conf.settings, "SQLCOMMENTER_WITH_OPENTELEMETRY", True
-        )
-        _with_db_driver = getattr(
-            django.conf.settings, "SQLCOMMENTER_WITH_DB_DRIVER", True
+        with_db_driver = getattr(
+            conf.settings, "SQLCOMMENTER_WITH_DB_DRIVER", True
         )
 
-        _db_driver = context["connection"].settings_dict.get("ENGINE", "")
-        _resolver_match = self.request.resolver_match
+        db_driver = context["connection"].settings_dict.get("ENGINE", "")
+        resolver_match = self.request.resolver_match
 
-        _sql_comment = _generate_sql_comment(
+        sql_comment = _generate_sql_comment(
             # Information about the controller.
-            controller=_resolver_match.view_name
-            if _resolver_match and _with_controller
+            controller=resolver_match.view_name
+            if resolver_match and with_controller
             else None,
             # route is the pattern that matched a request with a controller i.e. the regex
             # See https://docs.djangoproject.com/en/stable/ref/urlresolvers/#django.urls.ResolverMatch.route
             # getattr() because the attribute doesn't exist in Django < 2.2.
-            route=getattr(_resolver_match, "route", None)
-            if _resolver_match and _with_route
+            route=getattr(resolver_match, "route", None)
+            if resolver_match and with_route
             else None,
             # app_name is the application namespace for the URL pattern that matches the URL.
             # See https://docs.djangoproject.com/en/stable/ref/urlresolvers/#django.urls.ResolverMatch.app_name
-            app_name=(_resolver_match.app_name or None)
-            if _resolver_match and _with_app_name
+            app_name=(resolver_match.app_name or None)
+            if resolver_match and with_app_name
             else None,
             # Framework centric information.
-            framework=f"django:{django_version}" if _with_framework else None,
+            framework=f"django:{_django_version}" if with_framework else None,
             # Information about the database and driver.
-            db_driver=_db_driver if _with_db_driver else None,
-            **_get_opentelemetry_values() if _with_opentelemetry else {},
+            db_driver=db_driver if with_db_driver else None,
+            **_get_opentelemetry_values() if with_opentelemetry else {},
         )
 
         # TODO: MySQL truncates logs > 1024B so prepend comments
@@ -104,7 +101,7 @@ class _QueryWrapper:
         # See:
         #  * https://github.com/basecamp/marginalia/issues/61
         #  * https://github.com/basecamp/marginalia/pull/80
-        sql += _sql_comment
+        sql += sql_comment
 
         # Add the query to the query log if debugging.
         if context["cursor"].__class__ is CursorDebugWrapper:
@@ -113,11 +110,13 @@ class _QueryWrapper:
         return execute(sql, params, many, context)
 
 
-def _generate_sql_comment(**meta):
+def _generate_sql_comment(**meta) -> str:
     """
     Return a SQL comment with comma delimited key=value pairs created from
     **meta kwargs.
     """
+    key_value_delimiter = ","
+
     if not meta:  # No entries added.
         return ""
 
@@ -125,7 +124,7 @@ def _generate_sql_comment(**meta):
     # deterministic. It eases visual inspection as well.
     return (
         " /*"
-        + KEY_VALUE_DELIMITER.join(
+        + key_value_delimiter.join(
             f"{_url_quote(key)}={_url_quote(value)!r}"
             for key, value in sorted(meta.items())
             if value is not None
@@ -134,10 +133,10 @@ def _generate_sql_comment(**meta):
     )
 
 
-def _url_quote(value):
+def _url_quote(value) -> str:
     if not isinstance(value, (str, bytes)):
         return value
-    _quoted = urllib.parse.quote(value)
+    _quoted = urllib_quote(value)
     # Since SQL uses '%' as a keyword, '%' is a by-product of url quoting
     # e.g. foo,bar --> foo%2Cbar
     # thus in our quoting, we need to escape it too to finally give
@@ -145,13 +144,9 @@ def _url_quote(value):
     return _quoted.replace("%", "%%")
 
 
-def _get_opentelemetry_values():
+def _get_opentelemetry_values() -> dict or None:
     """
     Return the OpenTelemetry Trace and Span IDs if Span ID is set in the
     OpenTelemetry execution context.
     """
-    # pylint: disable=no-else-return
-    # Insert the W3C TraceContext generated
-    _headers = {}
-    _propagator.inject(_headers)
-    return _headers
+    return _propagator.inject({})
