@@ -28,7 +28,6 @@ Usage
     RequestsInstrumentor().instrument()
     response = requests.get(url="https://www.example.org/")
 
-
 Configuration
 -------------
 
