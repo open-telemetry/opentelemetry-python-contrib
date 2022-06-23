@@ -19,9 +19,6 @@ This library allows tracing HTTP requests made by the
 Usage
 -----
 
-Capturing traces
-****************
-
 .. code-block:: python
 
     import requests
@@ -31,21 +28,6 @@ Capturing traces
     RequestsInstrumentor().instrument()
     response = requests.get(url="https://www.example.org/")
 
-Capturing metrics
-*****************
-
-.. code:: python
-
-    from opentelemetry.metrics import set_meter_provider
-    from opentelemetry.instrumentation.requests import RequestsInstrumentor
-    from opentelemetry.sdk.metrics import MeterProvider
-    from opentelemetry.sdk.metrics.export import ConsoleMetricExporter, PeriodicExportingMetricReader
-
-    # you can configure any other exporter here.
-    exporter = ConsoleMetricExporter()
-    set_meter_provider(MeterProvider([PeriodicExportingMetricReader(exporter)]))
-    RequestsInstrumentor().instrument()
-    response = requests.get(url="https://www.example.org/")
 
 Configuration
 -------------
@@ -69,7 +51,7 @@ API
 
 import functools
 import types
-from time import time
+from timeit import default_timer
 from typing import Callable, Collection, Iterable, Optional
 from urllib.parse import urlparse
 
@@ -89,7 +71,7 @@ from opentelemetry.instrumentation.utils import (
     http_status_to_status_code,
 )
 from opentelemetry.metrics import get_meter
-from opentelemetry.metrics._internal.instrument import Histogram
+from opentelemetry.metrics import Histogram
 from opentelemetry.propagate import inject
 from opentelemetry.semconv.trace import SpanAttributes
 from opentelemetry.trace import SpanKind, Tracer, get_tracer
@@ -109,7 +91,7 @@ _excluded_urls_from_env = get_excluded_urls("REQUESTS")
 # pylint: disable=R0915
 def _instrument(
     tracer: Tracer,
-    metric_recorder: Histogram,
+    duration_histogram: Histogram,
     span_callback: Optional[Callable[[Span, Response], str]] = None,
     name_callback: Optional[Callable[[str, str], str]] = None,
     excluded_urls: Iterable[str] = None,
@@ -222,7 +204,7 @@ def _instrument(
                 context.set_value(_SUPPRESS_HTTP_INSTRUMENTATION_KEY, True)
             )
 
-            start_time = time()
+            start_time = default_timer()
 
             try:
                 result = call_wrapped()  # *** PROCEED
@@ -230,7 +212,7 @@ def _instrument(
                 exception = exc
                 result = getattr(exc, "response", None)
             finally:
-                elapsed_time = time() - start_time
+                elapsed_time = max(round((default_timer() - start_time) * 1000), 0)
                 context.detach(token)
 
             if isinstance(result, Response):
@@ -256,8 +238,8 @@ def _instrument(
             if span_callback is not None:
                 span_callback(span, result)
 
-            metric_recorder.record(
-                elapsed_time * 1000, attributes=metric_labels
+            duration_histogram.record(
+                elapsed_time, attributes=metric_labels
             )
 
             if exception is not None:
@@ -330,14 +312,14 @@ class RequestsInstrumentor(BaseInstrumentor):
             __version__,
             meter_provider,
         )
-        metric_recorder = meter.create_histogram(
+        duration_histogram = meter.create_histogram(
             name="http.client.duration",
             unit="ms",
             description="measures the duration of the outbound HTTP request",
         )
         _instrument(
             tracer,
-            metric_recorder,
+            duration_histogram,
             span_callback=kwargs.get("span_callback"),
             name_callback=kwargs.get("name_callback"),
             excluded_urls=_excluded_urls_from_env
