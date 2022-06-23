@@ -49,6 +49,17 @@ class SqlCommenter:
 
 
 class _QueryWrapper:
+    """
+    This class appends metrics to the sql query configurable by variables in settings
+
+    SQLCOMMENTER_WITH_FRAMEWORK: Add django with version
+    SQLCOMMENTER_WITH_CONTROLLER: Add view name that handles the request
+    SQLCOMMENTER_WITH_ROUTE: Add url path of the request
+    SQLCOMMENTER_WITH_APP_NAME: Add app name which handles the request
+    SQLCOMMENTER_WITH_OPENTELEMETRY: Add traceparent id
+    SQLCOMMENTER_WITH_DB_DRIVER: Add db-driver with version
+
+    """
     def __init__(self, request) -> None:
         self.request = request
 
