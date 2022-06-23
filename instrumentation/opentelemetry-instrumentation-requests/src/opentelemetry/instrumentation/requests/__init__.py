@@ -69,8 +69,7 @@ from opentelemetry.instrumentation.utils import (
     _SUPPRESS_INSTRUMENTATION_KEY,
     http_status_to_status_code,
 )
-from opentelemetry.metrics import get_meter
-from opentelemetry.metrics import Histogram
+from opentelemetry.metrics import Histogram, get_meter
 from opentelemetry.propagate import inject
 from opentelemetry.semconv.trace import SpanAttributes
 from opentelemetry.trace import SpanKind, Tracer, get_tracer
@@ -211,7 +210,9 @@ def _instrument(
                 exception = exc
                 result = getattr(exc, "response", None)
             finally:
-                elapsed_time = max(round((default_timer() - start_time) * 1000), 0)
+                elapsed_time = max(
+                    round((default_timer() - start_time) * 1000), 0
+                )
                 context.detach(token)
 
             if isinstance(result, Response):
@@ -237,9 +238,7 @@ def _instrument(
             if span_callback is not None:
                 span_callback(span, result)
 
-            duration_histogram.record(
-                elapsed_time, attributes=metric_labels
-            )
+            duration_histogram.record(elapsed_time, attributes=metric_labels)
 
             if exception is not None:
                 raise exception.with_traceback(exception.__traceback__)
