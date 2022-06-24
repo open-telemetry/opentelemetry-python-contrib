@@ -9,10 +9,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Pyramid: Only categorize 500s server exceptions as errors
   ([#1037](https://github.com/open-telemetry/opentelemetry-python-contrib/issues/1037))
 
-### Added
-- `opentelemetry-instrumentation-aio-pika` added RabbitMQ aio-pika module instrumentation.
-  ([#1095](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/1095))
-  
 ### Fixed
 - Fix bug in system metrics by checking their configuration
   ([#1129](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/1129))
@@ -27,8 +23,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   ([#1135](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/1135))
 
 
-## [1.12.0rc1-0.31b0](https://github.com/open-telemetry/opentelemetry-python/releases/tag/v1.12.0rc1-0.31b0) - 2022-05-17
-
 ### Added
 - `opentelemetry-instrumentation-sqlalchemy` add support to instrument multiple engines
   ([#1132](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/1132))
@@ -42,6 +36,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   ([#1127](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/1127))
 - Add metric instrumentation for WSGI
   ([#1128](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/1128))
+- `opentelemetry-instrumentation-aio-pika` added RabbitMQ aio-pika module instrumentation.
+  ([#1095](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/1095))
 
 
 ## [1.12.0rc1-0.31b0](https://github.com/open-telemetry/opentelemetry-python/releases/tag/v1.12.0rc1-0.31b0) - 2022-05-17
