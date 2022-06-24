@@ -34,7 +34,8 @@ _INSTRUMENTATION_MODULE_NAME = "opentelemetry.instrumentation.aio_pika"
 
 
 class AioPikaInstrumentor(BaseInstrumentor):
-    def _instrument_queue(self, tracer: Tracer):
+    @staticmethod
+    def _instrument_queue(tracer: Tracer):
         async def wrapper(wrapped, instance, args, kwargs):
             async def consume(
                 callback: Callable[[AbstractIncomingMessage], Any],
@@ -50,7 +51,8 @@ class AioPikaInstrumentor(BaseInstrumentor):
 
         wrapt.wrap_function_wrapper(Queue, "consume", wrapper)
 
-    def _instrument_exchange(self, tracer: Tracer):
+    @staticmethod
+    def _instrument_exchange(tracer: Tracer):
         async def wrapper(wrapped, instance, args, kwargs):
             decorated_publish = PublishDecorator(tracer, instance).decorate(
                 wrapped
@@ -67,10 +69,12 @@ class AioPikaInstrumentor(BaseInstrumentor):
         self._instrument_queue(tracer)
         self._instrument_exchange(tracer)
 
-    def _uninstrument_queue(self):
+    @staticmethod
+    def _uninstrument_queue():
         unwrap(Queue, "consume")
 
-    def _uninstrument_exchange(self):
+    @staticmethod
+    def _uninstrument_exchange():
         unwrap(Exchange, "publish")
 
     def _uninstrument(self, **kwargs):

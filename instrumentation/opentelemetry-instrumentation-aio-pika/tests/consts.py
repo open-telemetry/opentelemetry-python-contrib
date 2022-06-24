@@ -19,8 +19,8 @@ CONNECTION = Namespace(connection=Namespace(url=SERVER_URL))
 CHANNEL = Namespace(connection=CONNECTION, loop=None)
 MESSAGE = Namespace(
     properties=Namespace(
-        message_id=MESSAGE_ID, correlation_id=CORRELATION_ID, headers=dict()
+        message_id=MESSAGE_ID, correlation_id=CORRELATION_ID, headers={}
     ),
     exchange=EXCHANGE_NAME,
-    headers=dict(),
+    headers={},
 )
