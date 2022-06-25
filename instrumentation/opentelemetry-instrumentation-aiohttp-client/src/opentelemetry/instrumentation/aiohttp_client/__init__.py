@@ -262,21 +262,24 @@ def _instrument(
     url_filter: _UrlFilterT = None,
     request_hook: _RequestHookT = None,
     response_hook: _ResponseHookT = None,
-    trace_configs: Collection = (),
+    trace_configs: [aiohttp.TraceConfig] = None,
 ):
     """Enables tracing of all ClientSessions
 
     When a ClientSession gets created a TraceConfig is automatically added to
     the session's trace_configs.
     """
+
+    if trace_configs is None:
+        trace_configs = []
+
     # pylint:disable=unused-argument
     def instrumented_init(wrapped, instance, args, kwargs):
         if context_api.get_value(_SUPPRESS_INSTRUMENTATION_KEY):
             return wrapped(*args, **kwargs)
 
-        trace_configs.append(kwargs.get("trace_configs")) if kwargs.get(
-            "trace_configs"
-        ) else None
+        if kwargs.get("trace_configs"):
+            trace_configs.extend(kwargs.get("trace_configs"))
 
         trace_config = create_trace_config(
             url_filter=url_filter,
@@ -339,7 +342,7 @@ class AioHttpClientInstrumentor(BaseInstrumentor):
             url_filter=kwargs.get("url_filter"),
             request_hook=kwargs.get("request_hook"),
             response_hook=kwargs.get("response_hook"),
-            trace_configs=list(kwargs.get("trace_configs", [])),
+            trace_configs=kwargs.get("trace_configs"),
         )
 
     def _uninstrument(self, **kwargs):
