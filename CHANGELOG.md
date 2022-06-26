@@ -23,6 +23,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 
 ### Added
+- `opentelemetry-instrumentation-aiohttp-client` Add support for optional custom trace_configs argument.
+  ([1079](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/1079))
 - `opentelemetry-instrumentation-sqlalchemy` add support to instrument multiple engines
   ([#1132](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/1132))
 - `opentelemetry-instrumentation-logging` add log hook support
@@ -36,10 +38,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 
 ## [1.12.0rc1-0.31b0](https://github.com/open-telemetry/opentelemetry-python/releases/tag/v1.12.0rc1-0.31b0) - 2022-05-17
-
-### Added
-- `opentelemetry-instrumentation-aiohttp-client` Add support for optional custom trace_configs argument.
-  ([1079](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/1079))
 
 ### Fixed
 - `opentelemetry-instrumentation-aiohttp-client` make span attributes available to sampler

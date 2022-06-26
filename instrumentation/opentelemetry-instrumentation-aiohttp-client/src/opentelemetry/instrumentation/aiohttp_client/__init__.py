@@ -262,7 +262,7 @@ def _instrument(
     url_filter: _UrlFilterT = None,
     request_hook: _RequestHookT = None,
     response_hook: _ResponseHookT = None,
-    trace_configs: [aiohttp.TraceConfig] = None,
+    trace_configs: typing.Optional[aiohttp.TraceConfig] = None,
 ):
     """Enables tracing of all ClientSessions
 
