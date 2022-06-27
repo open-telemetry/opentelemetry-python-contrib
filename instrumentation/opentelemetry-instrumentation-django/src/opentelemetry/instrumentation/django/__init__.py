@@ -146,41 +146,41 @@ For example,
 
 
 SQLCommenter Configurations
-******************
+***************************
 We can configure the metrics to be appended to the sqlquery log by adding below variables to the settings.py
 
 SQLCOMMENTER_WITH_FRAMEWORK = True(Default) or False
-********
+
 For example,
 ::
 Enabling this flag will add django framework and it's version which is /*framework='django%3A2.2.3*/
 
 SQLCOMMENTER_WITH_CONTROLLER = True(Default) or False
-********
+
 For example,
 ::
 Enabling this flag will add controller name that handles the request /*controller='index'*/
 
 SQLCOMMENTER_WITH_ROUTE = True(Default) or False
-********
+
 For example,
 ::
 Enabling this flag will add url path that handles the request /*route='polls/'*/
 
 SQLCOMMENTER_WITH_APP_NAME = True(Default) or False
-********
+
 For example,
 ::
 Enabling this flag will add app name that handles the request /*app_name='polls'*/
 
 SQLCOMMENTER_WITH_OPENTELEMETRY = True(Default) or False
-********
+
 For example,
 ::
 Enabling this flag will add opentelemetry traceparent /*traceparent='00-fd720cffceba94bbf75940ff3caaf3cc-4fd1a2bdacf56388-01'*/
 
 SQLCOMMENTER_WITH_DB_DRIVER = True(Default) or False
-********
+
 For example,
 ::
 Enabling this flag will add name of the db driver /*db_driver='django.db.backends.postgresql'*/
