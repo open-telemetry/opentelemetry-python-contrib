@@ -13,6 +13,8 @@
 # limitations under the License.
 """
 
+API
+---
 Instrument `django`_ to trace Django applications.
 
 .. _django: https://pypi.org/project/django/
@@ -122,11 +124,10 @@ The value of the attribute will be single item list containing all the header va
 Example of the added span attribute,
 ``http.response.header.custom_response_header = ["<value1>,<value2>"]``
 
-API
----
 SQLCOMMENTER
 *****************************************
-We can configure sqlcommenter to append metrics to the sqlquery
+You can optionally configure Django instrumentation to enable sqlcommenter which enriches
+the query with contextual information.
 
 Usage
 -----
@@ -142,12 +143,12 @@ For example,
 ::
 
    Invoking Users().objects.all() will lead to sql query "select * from auth_users" but when SQLCommenter is enabled
-   the query will get appended with some configurable metrics like "select * from auth_users /*metrics=value*/;"
+   the query will get appended with some configurable tags like "select * from auth_users /*metrics=value*/;"
 
 
 SQLCommenter Configurations
 ***************************
-We can configure the metrics to be appended to the sqlquery log by adding below variables to the settings.py
+We can configure the tags to be appended to the sqlquery log by adding below variables to the settings.py
 
 SQLCOMMENTER_WITH_FRAMEWORK = True(Default) or False
 
