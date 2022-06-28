@@ -272,11 +272,11 @@ def _instrument(
             lambda_event, event_context_extractor
         )
 
-        span_kind = None
         try:
-            if lambda_event["Records"][0]["eventSource"] in set(
-                ["aws:sqs", "aws:s3", "aws:sns", "aws:dynamodb"]
-            ):
+            if lambda_event["Records"][0]["eventSource"] in {"aws:sqs",
+                                                             "aws:s3",
+                                                             "aws:sns",
+                                                             "aws:dynamodb"}:
                 # See more:
                 # https://docs.aws.amazon.com/lambda/latest/dg/with-sqs.html
                 # https://docs.aws.amazon.com/lambda/latest/dg/with-sns.html

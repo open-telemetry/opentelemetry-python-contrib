@@ -78,7 +78,7 @@ from typing import Collection, Dict, Iterable, List, Optional
 
 import psutil
 
-# FIXME Remove this pyling disabling line when Github issue is cleared
+# FIXME Remove this pylint disabling line when Github issue is cleared
 # pylint: disable=no-name-in-module
 from opentelemetry.instrumentation.instrumentor import BaseInstrumentor
 from opentelemetry.instrumentation.system_metrics.package import _instruments

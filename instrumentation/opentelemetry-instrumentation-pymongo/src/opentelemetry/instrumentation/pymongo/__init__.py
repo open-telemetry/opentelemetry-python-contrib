@@ -194,7 +194,7 @@ class CommandTracer(monitoring.CommandListener):
 
 def _get_span_dict_key(event):
     if event.connection_id is not None:
-        return (event.request_id, event.connection_id)
+        return event.request_id, event.connection_id
     return event.request_id
 
 
