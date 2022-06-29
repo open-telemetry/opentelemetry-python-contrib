@@ -229,7 +229,7 @@ def _rewrapped_app(wsgi_app, response_hook=None, excluded_urls=None):
 
 
 def _wrapped_before_request(
-        request_hook=None, tracer=None, excluded_urls=None, sql_orm_instrumentation_object=None
+        request_hook=None, tracer=None, excluded_urls=None, enable_commenter=None
 ):
     def _before_request():
         if excluded_urls and excluded_urls.url_disabled(flask.request.url):
@@ -247,10 +247,7 @@ def _wrapped_before_request(
 
         if request_hook:
             request_hook(span, flask_request_environ)
-        if sql_orm_instrumentation_object:
-            # Set the flask request info in the sql_orm_instrumentation object
-            sql_orm_instrumentation_object.request_info = {"controller": flask.request.endpoint,
-                                                          "route": flask.request.url_rule.rule}
+
         if span.is_recording():
             attributes = otel_wsgi.collect_request_attributes(
                 flask_request_environ
@@ -278,6 +275,12 @@ def _wrapped_before_request(
         flask_request_environ[_ENVIRON_SPAN_KEY] = span
         flask_request_environ[_ENVIRON_TOKEN] = token
 
+        if enable_commenter:
+            current_context = context.get_current()
+            sqlcommenter_context = context.set_value("SQLCOMMENTER_VALUES", {"controller": flask.request.endpoint,
+                                                          "route": flask.request.url_rule.rule}, current_context)
+
+            context.attach(sqlcommenter_context)
     return _before_request
 
 
@@ -381,7 +384,7 @@ class FlaskInstrumentor(BaseInstrumentor):
             response_hook=None,
             tracer_provider=None,
             excluded_urls=None,
-            sql_orm_instrumentation_object=None
+            enable_commenter=None
 
     ):
         if not hasattr(app, "_is_instrumented_by_opentelemetry"):
@@ -404,8 +407,7 @@ class FlaskInstrumentor(BaseInstrumentor):
                 request_hook,
                 tracer,
                 excluded_urls=excluded_urls,
-                # Set the controller details before every request in sql_orm_instrumentation_object
-                sql_orm_instrumentation_object=sql_orm_instrumentation_object
+                enable_commenter=enable_commenter
             )
             app._before_request = _before_request
             app.before_request(_before_request)

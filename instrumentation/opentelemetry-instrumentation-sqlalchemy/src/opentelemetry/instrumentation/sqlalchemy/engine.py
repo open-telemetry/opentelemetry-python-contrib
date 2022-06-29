@@ -26,7 +26,7 @@ from opentelemetry.instrumentation.utils import (
 )
 from opentelemetry.semconv.trace import NetTransportValues, SpanAttributes
 from opentelemetry.trace.status import Status, StatusCode
-
+from opentelemetry import context as otel_context
 
 def _normalize_vendor(vendor):
     """Return a canonical name for a type of database."""
@@ -77,12 +77,11 @@ def _wrap_create_engine(tracer_provider=None):
 
 
 class EngineTracer:
-    def __init__(self, tracer, engine, enable_commenter=False, request_info=None):
+    def __init__(self, tracer, engine, enable_commenter=False):
         self.tracer = tracer
         self.engine = engine
         self.vendor = _normalize_vendor(engine.name)
         self.enable_commenter = enable_commenter
-        self.request_info = request_info
 
         listen(
             engine, "before_cursor_execute", self._before_cur_exec, retval=True
@@ -127,7 +126,8 @@ class EngineTracer:
 
         context._otel_span = span
         if self.enable_commenter:
-            statement = statement + EngineTracer._generate_comment(**self.request_info)
+            sqlcommenter_values = otel_context.get_value('SQLCOMMENTER_VALUES')
+            statement = statement + EngineTracer._generate_comment(**sqlcommenter_values)
 
         return statement, params
 
