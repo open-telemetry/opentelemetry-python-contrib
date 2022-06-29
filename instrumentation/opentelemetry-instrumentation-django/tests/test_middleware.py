@@ -35,7 +35,6 @@ from opentelemetry.sdk import resources
 from opentelemetry.sdk.trace import Span
 from opentelemetry.sdk.trace.id_generator import RandomIdGenerator
 from opentelemetry.semconv.trace import SpanAttributes
-from opentelemetry.test.test_base import TestBase
 from opentelemetry.test.wsgitestutil import WsgiTestBase
 from opentelemetry.trace import (
     SpanKind,
@@ -84,7 +83,7 @@ urlpatterns = [
 _django_instrumentor = DjangoInstrumentor()
 
 
-class TestMiddleware(TestBase, WsgiTestBase):
+class TestMiddleware(WsgiTestBase):
     @classmethod
     def setUpClass(cls):
         conf.settings.configure(ROOT_URLCONF=modules[__name__])
@@ -103,11 +102,11 @@ class TestMiddleware(TestBase, WsgiTestBase):
         )
         self.env_patch.start()
         self.exclude_patch = patch(
-            "opentelemetry.instrumentation.django.middleware._DjangoMiddleware._excluded_urls",
+            "opentelemetry.instrumentation.django.middleware.otel_middleware._DjangoMiddleware._excluded_urls",
             get_excluded_urls("DJANGO"),
         )
         self.traced_patch = patch(
-            "opentelemetry.instrumentation.django.middleware._DjangoMiddleware._traced_request_attrs",
+            "opentelemetry.instrumentation.django.middleware.otel_middleware._DjangoMiddleware._traced_request_attrs",
             get_traced_request_attrs("DJANGO"),
         )
         self.exclude_patch.start()
@@ -402,7 +401,7 @@ class TestMiddleware(TestBase, WsgiTestBase):
         self.memory_exporter.clear()
 
 
-class TestMiddlewareWithTracerProvider(TestBase, WsgiTestBase):
+class TestMiddlewareWithTracerProvider(WsgiTestBase):
     @classmethod
     def setUpClass(cls):
         conf.settings.configure(ROOT_URLCONF=modules[__name__])
@@ -460,7 +459,7 @@ class TestMiddlewareWithTracerProvider(TestBase, WsgiTestBase):
             )
 
 
-class TestMiddlewareWsgiWithCustomHeaders(TestBase, WsgiTestBase):
+class TestMiddlewareWsgiWithCustomHeaders(WsgiTestBase):
     @classmethod
     def setUpClass(cls):
         conf.settings.configure(ROOT_URLCONF=modules[__name__])
