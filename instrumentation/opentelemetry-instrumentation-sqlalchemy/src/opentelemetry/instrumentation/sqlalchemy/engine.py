@@ -126,7 +126,8 @@ class EngineTracer:
 
         context._otel_span = span
         if self.enable_commenter:
-            sqlcommenter_values = otel_context.get_value('SQLCOMMENTER_VALUES')
+            # Read metrics value if any in context
+            sqlcommenter_values = otel_context.get_value('SQLCOMMENTER_VALUES') if otel_context.get_value('SQLCOMMENTER_VALUES') else {}
             statement = statement + EngineTracer._generate_comment(**sqlcommenter_values)
 
         return statement, params
