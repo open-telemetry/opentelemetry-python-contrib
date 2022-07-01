@@ -19,9 +19,9 @@ from pyramid.config import Configurator
 from opentelemetry import trace
 from opentelemetry.instrumentation.pyramid import PyramidInstrumentor
 from opentelemetry.test.globals_test import reset_trace_globals
-from opentelemetry.test.test_base import TestBase
 from opentelemetry.test.wsgitestutil import WsgiTestBase
 from opentelemetry.trace import SpanKind
+from opentelemetry.trace.status import StatusCode
 from opentelemetry.util.http import (
     OTEL_INSTRUMENTATION_HTTP_CAPTURE_HEADERS_SERVER_REQUEST,
     OTEL_INSTRUMENTATION_HTTP_CAPTURE_HEADERS_SERVER_RESPONSE,
@@ -31,7 +31,7 @@ from opentelemetry.util.http import (
 from .pyramid_base_test import InstrumentationTest
 
 
-class TestAutomatic(InstrumentationTest, TestBase, WsgiTestBase):
+class TestAutomatic(InstrumentationTest, WsgiTestBase):
     def setUp(self):
         super().setUp()
 
@@ -93,10 +93,71 @@ class TestAutomatic(InstrumentationTest, TestBase, WsgiTestBase):
             config.registry.__name__, __name__.rsplit(".", maxsplit=1)[0]
         )
 
+    def test_redirect_response_is_not_an_error(self):
+        tween_list = "pyramid.tweens.excview_tween_factory"
+        config = Configurator(settings={"pyramid.tweens": tween_list})
+        self._common_initialization(config)
+        resp = self.client.get("/hello/302")
+        self.assertEqual(302, resp.status_code)
+        span_list = self.memory_exporter.get_finished_spans()
+        self.assertEqual(len(span_list), 1)
+        self.assertEqual(span_list[0].status.status_code, StatusCode.UNSET)
 
-class TestWrappedWithOtherFramework(
-    InstrumentationTest, TestBase, WsgiTestBase
-):
+        PyramidInstrumentor().uninstrument()
+
+        self.config = Configurator()
+
+        self._common_initialization(self.config)
+
+        resp = self.client.get("/hello/302")
+        self.assertEqual(302, resp.status_code)
+        span_list = self.memory_exporter.get_finished_spans()
+        self.assertEqual(len(span_list), 1)
+
+    def test_204_empty_response_is_not_an_error(self):
+        tween_list = "pyramid.tweens.excview_tween_factory"
+        config = Configurator(settings={"pyramid.tweens": tween_list})
+        self._common_initialization(config)
+        resp = self.client.get("/hello/204")
+        self.assertEqual(204, resp.status_code)
+        span_list = self.memory_exporter.get_finished_spans()
+        self.assertEqual(len(span_list), 1)
+        self.assertEqual(span_list[0].status.status_code, StatusCode.UNSET)
+
+        PyramidInstrumentor().uninstrument()
+
+        self.config = Configurator()
+
+        self._common_initialization(self.config)
+
+        resp = self.client.get("/hello/204")
+        self.assertEqual(204, resp.status_code)
+        span_list = self.memory_exporter.get_finished_spans()
+        self.assertEqual(len(span_list), 1)
+
+    def test_400s_response_is_not_an_error(self):
+        tween_list = "pyramid.tweens.excview_tween_factory"
+        config = Configurator(settings={"pyramid.tweens": tween_list})
+        self._common_initialization(config)
+        resp = self.client.get("/hello/404")
+        self.assertEqual(404, resp.status_code)
+        span_list = self.memory_exporter.get_finished_spans()
+        self.assertEqual(len(span_list), 1)
+        self.assertEqual(span_list[0].status.status_code, StatusCode.UNSET)
+
+        PyramidInstrumentor().uninstrument()
+
+        self.config = Configurator()
+
+        self._common_initialization(self.config)
+
+        resp = self.client.get("/hello/404")
+        self.assertEqual(404, resp.status_code)
+        span_list = self.memory_exporter.get_finished_spans()
+        self.assertEqual(len(span_list), 1)
+
+
+class TestWrappedWithOtherFramework(InstrumentationTest, WsgiTestBase):
     def setUp(self):
         super().setUp()
         PyramidInstrumentor().instrument()
@@ -125,9 +186,7 @@ class TestWrappedWithOtherFramework(
             )
 
 
-class TestCustomRequestResponseHeaders(
-    InstrumentationTest, TestBase, WsgiTestBase
-):
+class TestCustomRequestResponseHeaders(InstrumentationTest, WsgiTestBase):
     def setUp(self):
         super().setUp()
         PyramidInstrumentor().instrument()
@@ -232,9 +291,7 @@ class TestCustomRequestResponseHeaders(
                 self.assertNotIn(key, span.attributes)
 
 
-class TestCustomHeadersNonRecordingSpan(
-    InstrumentationTest, TestBase, WsgiTestBase
-):
+class TestCustomHeadersNonRecordingSpan(InstrumentationTest, WsgiTestBase):
     def setUp(self):
         super().setUp()
         # This is done because set_tracer_provider cannot override the
