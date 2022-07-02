@@ -1,5 +1,5 @@
 OpenTelemetry Aio-pika Instrumentation
-==================================
+======================================
 
 |pypi|
 
