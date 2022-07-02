@@ -122,6 +122,9 @@ _REDIS_ASYNCIO_VERSION = (4, 2, 0)
 if redis.VERSION >= _REDIS_ASYNCIO_VERSION:
     import redis.asyncio
 
+_REDIS_CLUSTER_VERSION = (4, 1, 0)
+_REDIS_ASYNCIO_CLUSTER_VERSION = (4, 3, 0)
+
 
 def _set_connection_attributes(span, conn):
     if not span.is_recording():
@@ -149,7 +152,8 @@ def _instrument(
         ) as span:
             if span.is_recording():
                 span.set_attribute(SpanAttributes.DB_STATEMENT, query)
-                _set_connection_attributes(span, instance)
+                if hasattr(instance, "connection_pool"):
+                    _set_connection_attributes(span, instance)
                 span.set_attribute("db.redis.args_length", len(args))
             if callable(request_hook):
                 request_hook(span, instance, args, kwargs)
@@ -178,6 +182,27 @@ def _instrument(
                 response_hook(span, instance, response)
             return response
 
+    def _traced_execute_cluster_pipeline(func, instance, args, kwargs):
+        cmds = [_format_command_args(c.args) for c in (instance.command_stack if hasattr(instance, "command_stack") else instance._command_stack)]
+        resource = "\n".join(cmds)
+
+        span_name = " ".join([c.args[0] for c in (instance.command_stack if hasattr(instance, "command_stack") else instance._command_stack)])
+
+        with tracer.start_as_current_span(
+            span_name, kind=trace.SpanKind.CLIENT
+        ) as span:
+            if span.is_recording():
+                span.set_attribute(SpanAttributes.DB_STATEMENT, resource)
+                if hasattr(instance, "connection_pool"):
+                    _set_connection_attributes(span, instance)
+                span.set_attribute(
+                    "db.redis.pipeline_length", len(instance.command_stack) if hasattr(instance, "command_stack") else len(instance._command_stack)
+                )
+            response = func(*args, **kwargs)
+            if callable(response_hook):
+                response_hook(span, instance, response)
+            return response
+
     pipeline_class = (
         "BasePipeline" if redis.VERSION < (3, 0, 0) else "Pipeline"
     )
@@ -196,6 +221,17 @@ def _instrument(
         f"{pipeline_class}.immediate_execute_command",
         _traced_execute_command,
     )
+    if redis.VERSION >= _REDIS_CLUSTER_VERSION:
+        wrap_function_wrapper(
+            "redis.cluster",
+            "RedisCluster.execute_command",
+            _traced_execute_command,
+        )
+        wrap_function_wrapper(
+            "redis.cluster",
+            "ClusterPipeline.execute",
+            _traced_execute_cluster_pipeline,
+        )
     if redis.VERSION >= _REDIS_ASYNCIO_VERSION:
         wrap_function_wrapper(
             "redis.asyncio",
@@ -211,6 +247,17 @@ def _instrument(
             "redis.asyncio.client",
             f"{pipeline_class}.immediate_execute_command",
             _traced_execute_command,
+        )
+    if redis.VERSION >= _REDIS_ASYNCIO_CLUSTER_VERSION:
+        wrap_function_wrapper(
+            "redis.asyncio.cluster",
+            "RedisCluster.execute_command",
+            _traced_execute_command,
+        )
+        wrap_function_wrapper(
+            "redis.asyncio.cluster",
+            "ClusterPipeline.execute",
+            _traced_execute_cluster_pipeline,
         )
 
 
@@ -258,8 +305,16 @@ class RedisInstrumentor(BaseInstrumentor):
             unwrap(redis.Redis, "pipeline")
             unwrap(redis.client.Pipeline, "execute")
             unwrap(redis.client.Pipeline, "immediate_execute_command")
+        if redis.VERSION >= _REDIS_CLUSTER_VERSION:
+            unwrap(redis.cluster.RedisCluster, "execute_command")
+            unwrap(redis.cluster.RedisCluster, "pipeline")
+            unwrap(redis.cluster.ClusterPipeline, "execute")
         if redis.VERSION >= _REDIS_ASYNCIO_VERSION:
             unwrap(redis.asyncio.Redis, "execute_command")
             unwrap(redis.asyncio.Redis, "pipeline")
             unwrap(redis.asyncio.client.Pipeline, "execute")
             unwrap(redis.asyncio.client.Pipeline, "immediate_execute_command")
+        if redis.VERSION >= _REDIS_ASYNCIO_CLUSTER_VERSION:
+            unwrap(redis.asyncio.cluster.RedisCluster, "execute_command")
+            unwrap(redis.asyncio.cluster.RedisCluster, "pipeline")
+            unwrap(redis.asyncio.cluster.ClusterPipeline, "execute")
