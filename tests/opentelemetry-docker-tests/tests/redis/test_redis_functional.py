@@ -127,7 +127,9 @@ class TestRedisInstrument(TestBase):
 class TestRedisClusterInstrument(TestBase):
     def setUp(self):
         super().setUp()
-        self.redis_client = redis.cluster.RedisCluster(host="localhost", port=7000)
+        self.redis_client = redis.cluster.RedisCluster(
+            host="localhost", port=7000
+        )
         self.redis_client.flushall()
         RedisInstrumentor().instrument(tracer_provider=self.tracer_provider)
 
@@ -305,7 +307,9 @@ class TestAsyncRedisInstrument(TestBase):
 class TestAsyncRedisClusterInstrument(TestBase):
     def setUp(self):
         super().setUp()
-        self.redis_client = redis.asyncio.cluster.RedisCluster(host="localhost", port=7000)
+        self.redis_client = redis.asyncio.cluster.RedisCluster(
+            host="localhost", port=7000
+        )
         async_call(self.redis_client.flushall())
         RedisInstrumentor().instrument(tracer_provider=self.tracer_provider)
 

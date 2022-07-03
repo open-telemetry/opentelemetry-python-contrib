@@ -183,10 +183,26 @@ def _instrument(
             return response
 
     def _traced_execute_cluster_pipeline(func, instance, args, kwargs):
-        cmds = [_format_command_args(c.args) for c in (instance.command_stack if hasattr(instance, "command_stack") else instance._command_stack)]
+        cmds = [
+            _format_command_args(c.args)
+            for c in (
+                instance.command_stack
+                if hasattr(instance, "command_stack")
+                else instance._command_stack
+            )
+        ]
         resource = "\n".join(cmds)
 
-        span_name = " ".join([c.args[0] for c in (instance.command_stack if hasattr(instance, "command_stack") else instance._command_stack)])
+        span_name = " ".join(
+            [
+                c.args[0]
+                for c in (
+                    instance.command_stack
+                    if hasattr(instance, "command_stack")
+                    else instance._command_stack
+                )
+            ]
+        )
 
         with tracer.start_as_current_span(
             span_name, kind=trace.SpanKind.CLIENT
@@ -196,7 +212,10 @@ def _instrument(
                 if hasattr(instance, "connection_pool"):
                     _set_connection_attributes(span, instance)
                 span.set_attribute(
-                    "db.redis.pipeline_length", len(instance.command_stack) if hasattr(instance, "command_stack") else len(instance._command_stack)
+                    "db.redis.pipeline_length",
+                    len(instance.command_stack)
+                    if hasattr(instance, "command_stack")
+                    else len(instance._command_stack),
                 )
             response = func(*args, **kwargs)
             if callable(response_hook):
