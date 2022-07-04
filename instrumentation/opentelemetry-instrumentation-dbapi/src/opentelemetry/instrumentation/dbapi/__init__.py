@@ -46,12 +46,12 @@ import wrapt
 from opentelemetry import trace as trace_api
 from opentelemetry.instrumentation.dbapi.version import __version__
 from opentelemetry.instrumentation.utils import (
-    _generate_opentelemetry_traceparent,
     _generate_sql_comment,
-    unwrap,
+    unwrap, get_opentelemetry_values,
 )
 from opentelemetry.semconv.trace import SpanAttributes
 from opentelemetry.trace import Span, SpanKind, TracerProvider, get_tracer
+from opentelemetry import context as opentelemetry_context
 
 _logger = logging.getLogger(__name__)
 
@@ -376,13 +376,10 @@ class CursorTracer:
         return statement
 
     @staticmethod
-    def _generate_comment(span: Span) -> str:
-        span_context = span.get_span_context()
-        meta = {}
-        if span_context.is_valid:
-            meta.update(_generate_opentelemetry_traceparent(span))
+    def _generate_comment(**kwargs):
+        kwargs.update(get_opentelemetry_values())
         # TODO(schekuri): revisit to enrich with info such as route, db_driver etc...
-        return _generate_sql_comment(**meta)
+        return _generate_sql_comment(**kwargs)
 
     def traced_execution(
         self,
@@ -405,7 +402,9 @@ class CursorTracer:
             self._populate_span(span, cursor, *args)
             if args and self._commenter_enabled:
                 try:
-                    comment = self._generate_comment(span)
+                    sqlcommenter_values = opentelemetry_context.get_value('SQLCOMMENTER_VALUES') if opentelemetry_context.get_value(
+                        'SQLCOMMENTER_VALUES') else {}
+                    comment = self._generate_comment(**sqlcommenter_values)
                     if isinstance(args[0], bytes):
                         comment = comment.encode("utf8")
                     args_list = list(args)
