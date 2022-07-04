@@ -163,44 +163,21 @@ def _instrument(
             return response
 
     def _traced_execute_pipeline(func, instance, args, kwargs):
-        cmds = [_format_command_args(c) for c, _ in instance.command_stack]
-        resource = "\n".join(cmds)
-
-        span_name = " ".join([args[0] for args, _ in instance.command_stack])
-
-        with tracer.start_as_current_span(
-            span_name, kind=trace.SpanKind.CLIENT
-        ) as span:
-            if span.is_recording():
-                span.set_attribute(SpanAttributes.DB_STATEMENT, resource)
-                _set_connection_attributes(span, instance)
-                span.set_attribute(
-                    "db.redis.pipeline_length", len(instance.command_stack)
-                )
-            response = func(*args, **kwargs)
-            if callable(response_hook):
-                response_hook(span, instance, response)
-            return response
-
-    def _traced_execute_cluster_pipeline(func, instance, args, kwargs):
+        command_stack = (
+            instance.command_stack
+            if hasattr(instance, "command_stack")
+            else instance._command_stack
+        )
         cmds = [
-            _format_command_args(c.args)
-            for c in (
-                instance.command_stack
-                if hasattr(instance, "command_stack")
-                else instance._command_stack
-            )
+            _format_command_args(c.args if hasattr(c, "args") else c[0])
+            for c in command_stack
         ]
         resource = "\n".join(cmds)
 
         span_name = " ".join(
             [
-                c.args[0]
-                for c in (
-                    instance.command_stack
-                    if hasattr(instance, "command_stack")
-                    else instance._command_stack
-                )
+                (c.args[0] if hasattr(c, "args") else c[0][0])
+                for c in command_stack
             ]
         )
 
@@ -212,10 +189,7 @@ def _instrument(
                 if hasattr(instance, "connection_pool"):
                     _set_connection_attributes(span, instance)
                 span.set_attribute(
-                    "db.redis.pipeline_length",
-                    len(instance.command_stack)
-                    if hasattr(instance, "command_stack")
-                    else len(instance._command_stack),
+                    "db.redis.pipeline_length", len(command_stack)
                 )
             response = func(*args, **kwargs)
             if callable(response_hook):
@@ -249,7 +223,7 @@ def _instrument(
         wrap_function_wrapper(
             "redis.cluster",
             "ClusterPipeline.execute",
-            _traced_execute_cluster_pipeline,
+            _traced_execute_pipeline,
         )
     if redis.VERSION >= _REDIS_ASYNCIO_VERSION:
         wrap_function_wrapper(
@@ -276,7 +250,7 @@ def _instrument(
         wrap_function_wrapper(
             "redis.asyncio.cluster",
             "ClusterPipeline.execute",
-            _traced_execute_cluster_pipeline,
+            _traced_execute_pipeline,
         )
 
 
