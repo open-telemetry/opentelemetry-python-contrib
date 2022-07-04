@@ -64,8 +64,9 @@ class TestLoggingInstrumentorProxyTracerProvider(TestBase):
             self.assertEqual(record.otelServiceName, "")
 
 
-def log_hook(span, record):
+def log_hook(span, record, level):
     record.custom_user_attribute_from_log_hook = "some-value"
+    record.log_level = level
 
 
 class TestLoggingInstrumentor(TestBase):
@@ -174,6 +175,7 @@ class TestLoggingInstrumentor(TestBase):
                 self.assertEqual(
                     record.custom_user_attribute_from_log_hook, "some-value"
                 )
+                self.assertEqual(record.log_level, logging.INFO)
 
     def test_uninstrumented(self):
         with self.tracer.start_as_current_span("s1") as span:

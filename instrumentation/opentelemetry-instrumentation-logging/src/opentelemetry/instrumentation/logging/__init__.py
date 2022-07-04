@@ -55,7 +55,7 @@ class LoggingInstrumentor(BaseInstrumentor):  # pylint: disable=empty-docstring
 
         {DEFAULT_LOGGING_FORMAT}
 
-        def log_hook(span: Span, record: LogRecord):
+        def log_hook(span: Span, record: LogRecord, logLevel: int):
                 if span and span.is_recording():
                     record.custom_user_attribute_from_log_hook = "some-value"
 
@@ -117,7 +117,7 @@ class LoggingInstrumentor(BaseInstrumentor):  # pylint: disable=empty-docstring
                     if callable(LoggingInstrumentor._log_hook):
                         try:
                             LoggingInstrumentor._log_hook(  # pylint: disable=E1102
-                                span, record
+                                span, record, args[1]
                             )
                         except Exception:  # pylint: disable=W0703
                             pass
