@@ -142,6 +142,7 @@ API
 
 from logging import getLogger
 from typing import Collection
+from timeit import default_timer
 
 import flask
 
@@ -149,13 +150,13 @@ import opentelemetry.instrumentation.wsgi as otel_wsgi
 from opentelemetry import context, trace
 from opentelemetry.instrumentation.flask.package import _instruments
 from opentelemetry.instrumentation.flask.version import __version__
+from opentelemetry.metrics import get_meter
 from opentelemetry.instrumentation.instrumentor import BaseInstrumentor
 from opentelemetry.instrumentation.propagators import (
     get_global_response_propagator,
 )
 from opentelemetry.instrumentation.utils import _start_internal_or_server_span
 from opentelemetry.semconv.trace import SpanAttributes
-from opentelemetry.util._time import _time_ns
 from opentelemetry.util.http import get_excluded_urls, parse_excluded_urls
 
 _logger = getLogger(__name__)
@@ -164,7 +165,27 @@ _ENVIRON_STARTTIME_KEY = "opentelemetry-flask.starttime_key"
 _ENVIRON_SPAN_KEY = "opentelemetry-flask.span_key"
 _ENVIRON_ACTIVATION_KEY = "opentelemetry-flask.activation_key"
 _ENVIRON_TOKEN = "opentelemetry-flask.token"
+_ENVIRON_STATUS_CODE_KEY = "opentelemetry-flask.status_code"
 
+# List of recommended attributes
+_duration_attrs = [
+    SpanAttributes.HTTP_METHOD,
+    SpanAttributes.HTTP_HOST,
+    SpanAttributes.HTTP_SCHEME,
+    SpanAttributes.HTTP_STATUS_CODE,
+    SpanAttributes.HTTP_FLAVOR,
+    SpanAttributes.HTTP_SERVER_NAME,
+    SpanAttributes.NET_HOST_NAME,
+    SpanAttributes.NET_HOST_PORT,
+]
+
+_active_requests_count_attrs = [
+    SpanAttributes.HTTP_METHOD,
+    SpanAttributes.HTTP_HOST,
+    SpanAttributes.HTTP_SCHEME,
+    SpanAttributes.HTTP_FLAVOR,
+    SpanAttributes.HTTP_SERVER_NAME,
+]
 
 _excluded_urls_from_env = get_excluded_urls("FLASK")
 
@@ -177,6 +198,12 @@ def get_default_span_name():
         span_name = otel_wsgi.get_default_span_name(flask.request.environ)
     return span_name
 
+def _parse_status_code(resp_status):
+    status_code, _ = resp_status.split(" ", 1)
+    try:
+        return int(status_code)
+    except ValueError:
+        return None
 
 def _rewrapped_app(wsgi_app, response_hook=None, excluded_urls=None):
     def _wrapped_app(wrapped_app_environ, start_response):
@@ -184,8 +211,7 @@ def _rewrapped_app(wsgi_app, response_hook=None, excluded_urls=None):
         # In theory, we could start the span here and use
         # update_name later but that API is "highly discouraged" so
         # we better avoid it.
-        wrapped_app_environ[_ENVIRON_STARTTIME_KEY] = _time_ns()
-
+        wrapped_app_environ[_ENVIRON_STARTTIME_KEY] = default_timer()
         def _start_response(status, response_headers, *args, **kwargs):
             if flask.request and (
                 excluded_urls is None
@@ -204,6 +230,9 @@ def _rewrapped_app(wsgi_app, response_hook=None, excluded_urls=None):
                     otel_wsgi.add_response_attributes(
                         span, status, response_headers
                     )
+                    status_code = _parse_status_code(status)
+                    if status_code is not None:
+                        flask.request.environ[_ENVIRON_STATUS_CODE_KEY] = status_code
                     if (
                         span.is_recording()
                         and span.kind == trace.SpanKind.SERVER
@@ -229,7 +258,10 @@ def _rewrapped_app(wsgi_app, response_hook=None, excluded_urls=None):
 
 
 def _wrapped_before_request(
-    request_hook=None, tracer=None, excluded_urls=None
+    active_requests_counter,
+    request_hook=None,
+    tracer=None,
+    excluded_urls=None,
 ):
     def _before_request():
         if excluded_urls and excluded_urls.url_disabled(flask.request.url):
@@ -252,6 +284,11 @@ def _wrapped_before_request(
             attributes = otel_wsgi.collect_request_attributes(
                 flask_request_environ
             )
+            active_requests_count_attrs = {}
+            for attr_key in _active_requests_count_attrs:
+                if attributes.get(attr_key) is not None:
+                    active_requests_count_attrs[attr_key] = attributes[attr_key]
+            active_requests_counter.add(1, active_requests_count_attrs)
             if flask.request.url_rule:
                 # For 404 that result from no route found, etc, we
                 # don't have a url_rule.
@@ -278,7 +315,11 @@ def _wrapped_before_request(
     return _before_request
 
 
-def _wrapped_teardown_request(excluded_urls=None):
+def _wrapped_teardown_request(
+    active_requests_counter,
+    duration_histogram,
+    excluded_urls=None,
+):
     def _teardown_request(exc):
         # pylint: disable=E1101
         if excluded_urls and excluded_urls.url_disabled(flask.request.url):
@@ -290,7 +331,26 @@ def _wrapped_teardown_request(excluded_urls=None):
             # a way that doesn't run `before_request`, like when it is created
             # with `app.test_request_context`.
             return
+        start = flask.request.environ.get(_ENVIRON_STARTTIME_KEY)
+        duration = max(round((default_timer() - start) * 1000), 0)
+        attributes = otel_wsgi.collect_request_attributes(
+            flask.request.environ
+        )
+        active_requests_count_attrs = {}
+        for attr_key in _active_requests_count_attrs:
+            if attributes.get(attr_key) is not None:
+                active_requests_count_attrs[attr_key] = attributes[attr_key]
+        
+        duration_attrs = {}
+        for attr_key in _duration_attrs:
+            if attributes.get(attr_key) is not None:
+                duration_attrs[attr_key] = attributes[attr_key]
+        status_code = flask.request.environ.get(_ENVIRON_STATUS_CODE_KEY, None)
+        if status_code:
+            duration_attrs[SpanAttributes.HTTP_STATUS_CODE] = status_code
 
+        duration_histogram.record(duration, duration_attrs)
+        active_requests_counter.add(-1, active_requests_count_attrs)
         if exc is None:
             activation.__exit__(None, None, None)
         else:
@@ -310,6 +370,7 @@ class _InstrumentedFlask(flask.Flask):
     _tracer_provider = None
     _request_hook = None
     _response_hook = None
+    _meter_provider = None
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
@@ -327,16 +388,31 @@ class _InstrumentedFlask(flask.Flask):
             __name__, __version__, _InstrumentedFlask._tracer_provider
         )
 
+        meter = get_meter(__name__, __version__, _InstrumentedFlask._meter_provider)
+        duration_histogram = meter.create_histogram(
+            name="http.server.duration",
+            unit="ms",
+            description="measures the duration of the inbound HTTP request",
+        )
+        active_requests_counter = meter.create_up_down_counter(
+            name="http.server.active_requests",
+            unit="requests",
+            description="measures the number of concurrent HTTP requests that are currently in-flight",
+        )
+
         _before_request = _wrapped_before_request(
             _InstrumentedFlask._request_hook,
             tracer,
             excluded_urls=_InstrumentedFlask._excluded_urls,
+            active_requests_counter=active_requests_counter,
         )
         self._before_request = _before_request
         self.before_request(_before_request)
 
         _teardown_request = _wrapped_teardown_request(
             excluded_urls=_InstrumentedFlask._excluded_urls,
+            active_requests_counter=active_requests_counter,
+            duration_histogram=duration_histogram,
         )
         self.teardown_request(_teardown_request)
 
@@ -367,6 +443,8 @@ class FlaskInstrumentor(BaseInstrumentor):
             if excluded_urls is None
             else parse_excluded_urls(excluded_urls)
         )
+        meter_provider = kwargs.get("meter_provider")
+        _InstrumentedFlask._meter_provider = meter_provider
         flask.Flask = _InstrumentedFlask
 
     def _uninstrument(self, **kwargs):
@@ -379,6 +457,7 @@ class FlaskInstrumentor(BaseInstrumentor):
         response_hook=None,
         tracer_provider=None,
         excluded_urls=None,
+        meter_provider=None,
     ):
         if not hasattr(app, "_is_instrumented_by_opentelemetry"):
             app._is_instrumented_by_opentelemetry = False
@@ -395,8 +474,20 @@ class FlaskInstrumentor(BaseInstrumentor):
             )
 
             tracer = trace.get_tracer(__name__, __version__, tracer_provider)
+            meter = get_meter(__name__, __version__, meter_provider)
+            duration_histogram = meter.create_histogram(
+                name="http.server.duration",
+                unit="ms",
+                description="measures the duration of the inbound HTTP request",
+            )
+            active_requests_counter = meter.create_up_down_counter(
+                name="http.server.active_requests",
+                unit="requests",
+                description="measures the number of concurrent HTTP requests that are currently in-flight",
+            )
 
             _before_request = _wrapped_before_request(
+                active_requests_counter,
                 request_hook,
                 tracer,
                 excluded_urls=excluded_urls,
@@ -405,6 +496,8 @@ class FlaskInstrumentor(BaseInstrumentor):
             app.before_request(_before_request)
 
             _teardown_request = _wrapped_teardown_request(
+                active_requests_counter,
+                duration_histogram,
                 excluded_urls=excluded_urls,
             )
             app._teardown_request = _teardown_request
