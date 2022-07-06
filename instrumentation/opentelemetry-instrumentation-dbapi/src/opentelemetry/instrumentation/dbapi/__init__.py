@@ -357,7 +357,7 @@ def get_traced_connection_proxy(
         def close(self):
             self._connection.close()
 
-    return TracedConnectionProxy(connection)
+    return TracedConnectionProxy(connection, *args, **kwargs)
 
 
 class CursorTracer:
