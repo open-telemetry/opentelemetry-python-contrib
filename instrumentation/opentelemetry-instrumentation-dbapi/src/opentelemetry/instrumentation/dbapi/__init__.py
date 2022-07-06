@@ -330,6 +330,7 @@ def get_traced_connection_proxy(
     # pylint: disable=abstract-method
     class TracedConnectionProxy(type(connection), _TracedConnectionProxy):
         def __init__(self, connection):
+            super().__init__()
             self._connection = connection
 
         def __getattr__(self, name):
