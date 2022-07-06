@@ -127,7 +127,7 @@ _REDIS_ASYNCIO_CLUSTER_VERSION = (4, 3, 0)
 
 
 def _set_connection_attributes(span, conn):
-    if not span.is_recording():
+    if not span.is_recording() or not hasattr(conn, "connection_pool"):
         return
     for key, value in _extract_conn_attributes(
         conn.connection_pool.connection_kwargs
@@ -152,8 +152,7 @@ def _instrument(
         ) as span:
             if span.is_recording():
                 span.set_attribute(SpanAttributes.DB_STATEMENT, query)
-                if hasattr(instance, "connection_pool"):
-                    _set_connection_attributes(span, instance)
+                _set_connection_attributes(span, instance)
                 span.set_attribute("db.redis.args_length", len(args))
             if callable(request_hook):
                 request_hook(span, instance, args, kwargs)
@@ -183,6 +182,7 @@ def _instrument(
                 ]
             )
         except (AttributeError, IndexError):
+            command_stack = []
             resource = ""
             span_name = ""
 
@@ -191,8 +191,7 @@ def _instrument(
         ) as span:
             if span.is_recording():
                 span.set_attribute(SpanAttributes.DB_STATEMENT, resource)
-                if hasattr(instance, "connection_pool"):
-                    _set_connection_attributes(span, instance)
+                _set_connection_attributes(span, instance)
                 span.set_attribute(
                     "db.redis.pipeline_length", len(command_stack)
                 )
