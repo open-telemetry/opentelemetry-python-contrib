@@ -163,11 +163,15 @@ def _instrument(
             return response
 
     def _traced_execute_pipeline(func, instance, args, kwargs):
-        command_stack = (
-            instance.command_stack
-            if hasattr(instance, "command_stack")
-            else instance._command_stack
-        )
+        try:
+            command_stack = (
+                instance.command_stack
+                if hasattr(instance, "command_stack")
+                else instance._command_stack
+            )
+        except AttributeError:
+            command_stack = []
+
         cmds = [
             _format_command_args(c.args if hasattr(c, "args") else c[0])
             for c in command_stack
@@ -300,7 +304,6 @@ class RedisInstrumentor(BaseInstrumentor):
             unwrap(redis.client.Pipeline, "immediate_execute_command")
         if redis.VERSION >= _REDIS_CLUSTER_VERSION:
             unwrap(redis.cluster.RedisCluster, "execute_command")
-            unwrap(redis.cluster.RedisCluster, "pipeline")
             unwrap(redis.cluster.ClusterPipeline, "execute")
         if redis.VERSION >= _REDIS_ASYNCIO_VERSION:
             unwrap(redis.asyncio.Redis, "execute_command")
@@ -309,5 +312,4 @@ class RedisInstrumentor(BaseInstrumentor):
             unwrap(redis.asyncio.client.Pipeline, "immediate_execute_command")
         if redis.VERSION >= _REDIS_ASYNCIO_CLUSTER_VERSION:
             unwrap(redis.asyncio.cluster.RedisCluster, "execute_command")
-            unwrap(redis.asyncio.cluster.RedisCluster, "pipeline")
             unwrap(redis.asyncio.cluster.ClusterPipeline, "execute")

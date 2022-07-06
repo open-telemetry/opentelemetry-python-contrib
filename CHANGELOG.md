@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased](https://github.com/open-telemetry/opentelemetry-python/compare/v1.12.0rc2-0.32b0...HEAD)
 
+### Added
+- `opentelemetry-instrumentation-redis` add support to instrument RedisCluster clients
+  ([#1177](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/1177))
+
 ## [1.12.0rc2-0.32b0](https://github.com/open-telemetry/opentelemetry-python/releases/tag/v1.12.0rc2-0.32b0) - 2022-07-01
 
 
@@ -28,8 +32,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 
 ### Added
-- `opentelemetry-instrumentation-redis` add support to instrument RedisCluster clients
-  ([#1177](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/1177))
 - `opentelemetry-instrumentation-aiohttp-client` Add support for optional custom trace_configs argument.
   ([1079](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/1079))
 - `opentelemetry-instrumentation-sqlalchemy` add support to instrument multiple engines
