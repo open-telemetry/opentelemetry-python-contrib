@@ -172,18 +172,24 @@ def _instrument(
         except AttributeError:
             command_stack = []
 
-        cmds = [
-            _format_command_args(c.args if hasattr(c, "args") else c[0])
-            for c in command_stack
-        ]
-        resource = "\n".join(cmds)
-
-        span_name = " ".join(
-            [
-                (c.args[0] if hasattr(c, "args") else c[0][0])
+        try:
+            cmds = [
+                _format_command_args(c.args if hasattr(c, "args") else c[0])
                 for c in command_stack
             ]
-        )
+            resource = "\n".join(cmds)
+        except IndexError:
+            resource = ""
+
+        try:
+            span_name = " ".join(
+                [
+                    (c.args[0] if hasattr(c, "args") else c[0][0])
+                    for c in command_stack
+                ]
+            )
+        except IndexError:
+            span_name = ""
 
         with tracer.start_as_current_span(
             span_name, kind=trace.SpanKind.CLIENT
