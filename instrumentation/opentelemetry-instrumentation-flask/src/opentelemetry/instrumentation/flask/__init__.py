@@ -401,18 +401,18 @@ class _InstrumentedFlask(flask.Flask):
         )
 
         _before_request = _wrapped_before_request(
+            active_requests_counter,
             _InstrumentedFlask._request_hook,
             tracer,
             excluded_urls=_InstrumentedFlask._excluded_urls,
-            active_requests_counter=active_requests_counter,
         )
         self._before_request = _before_request
         self.before_request(_before_request)
 
         _teardown_request = _wrapped_teardown_request(
-            excluded_urls=_InstrumentedFlask._excluded_urls,
-            active_requests_counter=active_requests_counter,
-            duration_histogram=duration_histogram,
+            active_requests_counter,
+            duration_histogram,
+            excluded_urls=_InstrumentedFlask._excluded_urls
         )
         self.teardown_request(_teardown_request)
 

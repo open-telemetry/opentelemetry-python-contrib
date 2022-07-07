@@ -17,11 +17,19 @@ from unittest.mock import Mock, patch
 from flask import Flask, request
 
 from opentelemetry import trace
-from opentelemetry.instrumentation.flask import FlaskInstrumentor
+from opentelemetry.instrumentation.flask import (
+    FlaskInstrumentor,
+    _duration_attrs,
+    _active_requests_count_attrs,
+)
 from opentelemetry.instrumentation.propagators import (
     TraceResponsePropagator,
     get_global_response_propagator,
     set_global_response_propagator,
+)
+from opentelemetry.sdk.metrics.export import (
+    HistogramDataPoint,
+    NumberDataPoint,
 )
 from opentelemetry.instrumentation.wsgi import OpenTelemetryMiddleware
 from opentelemetry.sdk.resources import Resource
@@ -47,6 +55,15 @@ def expected_attributes(override_attributes):
     for key, val in override_attributes.items():
         default_attributes[key] = val
     return default_attributes
+
+_expected_metric_names = [
+    "http.server.active_requests",
+    "http.server.duration",
+]
+_recommended_attrs = {
+    "http.server.active_requests": _active_requests_count_attrs,
+    "http.server.duration": _duration_attrs,
+}
 
 
 class TestProgrammatic(InstrumentationTest, WsgiTestBase):
@@ -249,6 +266,34 @@ class TestProgrammatic(InstrumentationTest, WsgiTestBase):
         client.get("/explicit_excluded_noarg2")
         span_list = self.memory_exporter.get_finished_spans()
         self.assertEqual(len(span_list), 1)
+
+    def test_wsgi_metrics(self):
+        self.client.get('/hello/123')
+        self.client.get('/hello/321')
+        self.client.get('/hello/756')
+        metrics_list = self.memory_metrics_reader.get_metrics_data()
+        number_data_point_seen = False
+        histogram_data_point_seen = False
+        self.assertTrue(len(metrics_list.resource_metrics) != 0)
+        for resource_metric in metrics_list.resource_metrics:
+            self.assertTrue(len(resource_metric.scope_metrics) != 0)
+            for scope_metric in resource_metric.scope_metrics:
+                self.assertTrue(len(scope_metric.metrics) != 0)
+                for metric in scope_metric.metrics:
+                    self.assertIn(metric.name, _expected_metric_names)
+                    data_points = list(metric.data.data_points)
+                    self.assertEqual(len(data_points), 1)
+                    for point in data_points:
+                        if isinstance(point, HistogramDataPoint):
+                            self.assertEqual(point.count, 3)
+                            histogram_data_point_seen = True
+                        if isinstance(point, NumberDataPoint):
+                            number_data_point_seen = True
+                        for attr in point.attributes:
+                            self.assertIn(
+                                attr, _recommended_attrs[metric.name]
+                            )
+        self.assertTrue(number_data_point_seen and histogram_data_point_seen)
 
 
 class TestProgrammaticHooks(InstrumentationTest, WsgiTestBase):
