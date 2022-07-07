@@ -5,7 +5,11 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [Unreleased](https://github.com/open-telemetry/opentelemetry-python/compare/v1.12.0rc1-0.31b0...HEAD)
+## [Unreleased](https://github.com/open-telemetry/opentelemetry-python/compare/v1.12.0rc2-0.32b0...HEAD)
+
+## [1.12.0rc2-0.32b0](https://github.com/open-telemetry/opentelemetry-python/releases/tag/v1.12.0rc2-0.32b0) - 2022-07-01
+
+
 - Pyramid: Only categorize 500s server exceptions as errors
   ([#1037](https://github.com/open-telemetry/opentelemetry-python-contrib/issues/1037))
 
@@ -24,6 +28,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 
 ### Added
+- `opentelemetry-instrumentation-aiohttp-client` Add support for optional custom trace_configs argument.
+  ([1079](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/1079))
 - `opentelemetry-instrumentation-sqlalchemy` add support to instrument multiple engines
   ([#1132](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/1132))
 - `opentelemetry-instrumentation-logging` add log hook support
@@ -36,6 +42,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   ([#1127](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/1127))
 - Add metric instrumentation for WSGI
   ([#1128](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/1128))
+- `opentelemetry-instrumentation-aio-pika` added RabbitMQ aio-pika module instrumentation.
+  ([#1095](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/1095))
+- `opentelemetry-instrumentation-requests` Restoring metrics in requests
+  ([#1110](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/1110))
+- Integrated sqlcommenter plugin into opentelemetry-instrumentation-django
+  ([#896](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/896))
 
 
 ## [1.12.0rc1-0.31b0](https://github.com/open-telemetry/opentelemetry-python/releases/tag/v1.12.0rc1-0.31b0) - 2022-05-17
