@@ -22,7 +22,7 @@ from opentelemetry.instrumentation.sqlalchemy.package import (
 from opentelemetry.instrumentation.sqlalchemy.version import __version__
 from opentelemetry.instrumentation.utils import (
     _generate_opentelemetry_traceparent,
-    _generate_sql_comment,
+    generate_sql_comment,
 )
 from opentelemetry.semconv.trace import NetTransportValues, SpanAttributes
 from opentelemetry.trace import Span
@@ -137,7 +137,7 @@ class EngineTracer:
         meta = {}
         if span_context.is_valid:
             meta.update(_generate_opentelemetry_traceparent(span))
-        return _generate_sql_comment(**meta)
+        return generate_sql_comment(**meta)
 
 
 # pylint: disable=unused-argument

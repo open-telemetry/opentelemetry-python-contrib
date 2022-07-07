@@ -15,15 +15,19 @@
 # limitations under the License.
 from logging import getLogger
 from typing import Any, Type, TypeVar
-from urllib.parse import quote as urllib_quote
+from contextlib import ExitStack
 
 # pylint: disable=no-name-in-module
 from django import conf, get_version
-from django.db import connection
+from django.db import connections
 from django.db.backends.utils import CursorDebugWrapper
 
 from opentelemetry.trace.propagation.tracecontext import (
     TraceContextTextMapPropagator,
+)
+from opentelemetry.instrumentation.utils import (
+    get_opentelemetry_values,
+    generate_sql_comment,
 )
 
 _propagator = TraceContextTextMapPropagator()
@@ -44,7 +48,13 @@ class SqlCommenter:
         self.get_response = get_response
 
     def __call__(self, request) -> Any:
-        with connection.execute_wrapper(_QueryWrapper(request)):
+        with ExitStack() as stack:
+            for db_alias in connections:
+                stack.enter_context(
+                    connections[db_alias].execute_wrapper(
+                        _QueryWrapper(request)
+                    )
+                )
             return self.get_response(request)
 
 
@@ -74,7 +84,7 @@ class _QueryWrapper:
         db_driver = context["connection"].settings_dict.get("ENGINE", "")
         resolver_match = self.request.resolver_match
 
-        sql_comment = _generate_sql_comment(
+        sql_comment = generate_sql_comment(
             # Information about the controller.
             controller=resolver_match.view_name
             if resolver_match and with_controller
@@ -94,7 +104,7 @@ class _QueryWrapper:
             framework=f"django:{_django_version}" if with_framework else None,
             # Information about the database and driver.
             db_driver=db_driver if with_db_driver else None,
-            **_get_opentelemetry_values() if with_opentelemetry else {},
+            **get_opentelemetry_values() if with_opentelemetry else {},
         )
 
         # TODO: MySQL truncates logs > 1024B so prepend comments
@@ -105,49 +115,7 @@ class _QueryWrapper:
         sql += sql_comment
 
         # Add the query to the query log if debugging.
-        if context["cursor"].__class__ is CursorDebugWrapper:
+        if isinstance(context["cursor"], CursorDebugWrapper):
             context["connection"].queries_log.append(sql)
 
         return execute(sql, params, many, context)
-
-
-def _generate_sql_comment(**meta) -> str:
-    """
-    Return a SQL comment with comma delimited key=value pairs created from
-    **meta kwargs.
-    """
-    key_value_delimiter = ","
-
-    if not meta:  # No entries added.
-        return ""
-
-    # Sort the keywords to ensure that caching works and that testing is
-    # deterministic. It eases visual inspection as well.
-    return (
-        " /*"
-        + key_value_delimiter.join(
-            f"{_url_quote(key)}={_url_quote(value)!r}"
-            for key, value in sorted(meta.items())
-            if value is not None
-        )
-        + "*/"
-    )
-
-
-def _url_quote(value) -> str:
-    if not isinstance(value, (str, bytes)):
-        return value
-    _quoted = urllib_quote(value)
-    # Since SQL uses '%' as a keyword, '%' is a by-product of url quoting
-    # e.g. foo,bar --> foo%2Cbar
-    # thus in our quoting, we need to escape it too to finally give
-    #      foo,bar --> foo%%2Cbar
-    return _quoted.replace("%", "%%")
-
-
-def _get_opentelemetry_values() -> dict or None:
-    """
-    Return the OpenTelemetry Trace and Span IDs if Span ID is set in the
-    OpenTelemetry execution context.
-    """
-    return _propagator.inject({})

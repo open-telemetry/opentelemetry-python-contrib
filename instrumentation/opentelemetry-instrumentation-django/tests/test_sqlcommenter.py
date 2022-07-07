@@ -13,7 +13,6 @@
 # limitations under the License.
 
 # pylint: disable=no-name-in-module
-
 from unittest.mock import MagicMock, patch
 
 from django import VERSION, conf
@@ -23,6 +22,7 @@ from django.test.utils import setup_test_environment, teardown_test_environment
 from opentelemetry.instrumentation.django import DjangoInstrumentor
 from opentelemetry.instrumentation.django.middleware.sqlcommenter_middleware import (
     _QueryWrapper,
+    SqlCommenter,
 )
 from opentelemetry.test.wsgitestutil import WsgiTestBase
 
@@ -72,7 +72,7 @@ class TestMiddleware(WsgiTestBase):
         )
 
     @patch(
-        "opentelemetry.instrumentation.django.middleware.sqlcommenter_middleware._get_opentelemetry_values"
+        "opentelemetry.instrumentation.django.middleware.sqlcommenter_middleware.get_opentelemetry_values"
     )
     def test_query_wrapper(self, trace_capture):
         requests_mock = MagicMock()
@@ -98,3 +98,16 @@ class TestMiddleware(WsgiTestBase):
             "Select 1 /*app_name='app',controller='view',route='route',traceparent='%%2Atraceparent%%3D%%2700-0000000"
             "00000000000000000deadbeef-000000000000beef-00'*/",
         )
+
+    @patch(
+        "opentelemetry.instrumentation.django.middleware.sqlcommenter_middleware._QueryWrapper"
+    )
+    def test_multiple_connection_support(self, query_wrapper):
+        requests_mock = MagicMock()
+        get_response = MagicMock()
+
+        sql_instance = SqlCommenter(get_response)
+        sql_instance(requests_mock)
+
+        # check if query_wrapper is added to the context for 2 databases
+        self.assertEqual(query_wrapper.call_count, 2)
