@@ -19,19 +19,19 @@ from flask import Flask, request
 from opentelemetry import trace
 from opentelemetry.instrumentation.flask import (
     FlaskInstrumentor,
-    _duration_attrs,
     _active_requests_count_attrs,
+    _duration_attrs,
 )
 from opentelemetry.instrumentation.propagators import (
     TraceResponsePropagator,
     get_global_response_propagator,
     set_global_response_propagator,
 )
+from opentelemetry.instrumentation.wsgi import OpenTelemetryMiddleware
 from opentelemetry.sdk.metrics.export import (
     HistogramDataPoint,
     NumberDataPoint,
 )
-from opentelemetry.instrumentation.wsgi import OpenTelemetryMiddleware
 from opentelemetry.sdk.resources import Resource
 from opentelemetry.semconv.trace import SpanAttributes
 from opentelemetry.test.wsgitestutil import WsgiTestBase
@@ -55,6 +55,7 @@ def expected_attributes(override_attributes):
     for key, val in override_attributes.items():
         default_attributes[key] = val
     return default_attributes
+
 
 _expected_metric_names = [
     "http.server.active_requests",
@@ -268,9 +269,9 @@ class TestProgrammatic(InstrumentationTest, WsgiTestBase):
         self.assertEqual(len(span_list), 1)
 
     def test_wsgi_metrics(self):
-        self.client.get('/hello/123')
-        self.client.get('/hello/321')
-        self.client.get('/hello/756')
+        self.client.get("/hello/123")
+        self.client.get("/hello/321")
+        self.client.get("/hello/756")
         metrics_list = self.memory_metrics_reader.get_metrics_data()
         number_data_point_seen = False
         histogram_data_point_seen = False

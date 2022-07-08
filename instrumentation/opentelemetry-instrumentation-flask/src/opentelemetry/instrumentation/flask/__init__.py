@@ -141,8 +141,8 @@ API
 """
 
 from logging import getLogger
-from typing import Collection
 from timeit import default_timer
+from typing import Collection
 
 import flask
 
@@ -150,12 +150,12 @@ import opentelemetry.instrumentation.wsgi as otel_wsgi
 from opentelemetry import context, trace
 from opentelemetry.instrumentation.flask.package import _instruments
 from opentelemetry.instrumentation.flask.version import __version__
-from opentelemetry.metrics import get_meter
 from opentelemetry.instrumentation.instrumentor import BaseInstrumentor
 from opentelemetry.instrumentation.propagators import (
     get_global_response_propagator,
 )
 from opentelemetry.instrumentation.utils import _start_internal_or_server_span
+from opentelemetry.metrics import get_meter
 from opentelemetry.semconv.trace import SpanAttributes
 from opentelemetry.util.http import get_excluded_urls, parse_excluded_urls
 
@@ -198,12 +198,14 @@ def get_default_span_name():
         span_name = otel_wsgi.get_default_span_name(flask.request.environ)
     return span_name
 
+
 def _parse_status_code(resp_status):
     status_code, _ = resp_status.split(" ", 1)
     try:
         return int(status_code)
     except ValueError:
         return None
+
 
 def _rewrapped_app(wsgi_app, response_hook=None, excluded_urls=None):
     def _wrapped_app(wrapped_app_environ, start_response):
@@ -212,6 +214,7 @@ def _rewrapped_app(wsgi_app, response_hook=None, excluded_urls=None):
         # update_name later but that API is "highly discouraged" so
         # we better avoid it.
         wrapped_app_environ[_ENVIRON_STARTTIME_KEY] = default_timer()
+
         def _start_response(status, response_headers, *args, **kwargs):
             if flask.request and (
                 excluded_urls is None
@@ -232,7 +235,9 @@ def _rewrapped_app(wsgi_app, response_hook=None, excluded_urls=None):
                     )
                     status_code = _parse_status_code(status)
                     if status_code is not None:
-                        flask.request.environ[_ENVIRON_STATUS_CODE_KEY] = status_code
+                        flask.request.environ[
+                            _ENVIRON_STATUS_CODE_KEY
+                        ] = status_code
                     if (
                         span.is_recording()
                         and span.kind == trace.SpanKind.SERVER
@@ -287,7 +292,9 @@ def _wrapped_before_request(
             active_requests_count_attrs = {}
             for attr_key in _active_requests_count_attrs:
                 if attributes.get(attr_key) is not None:
-                    active_requests_count_attrs[attr_key] = attributes[attr_key]
+                    active_requests_count_attrs[attr_key] = attributes[
+                        attr_key
+                    ]
             active_requests_counter.add(1, active_requests_count_attrs)
             if flask.request.url_rule:
                 # For 404 that result from no route found, etc, we
@@ -340,7 +347,7 @@ def _wrapped_teardown_request(
         for attr_key in _active_requests_count_attrs:
             if attributes.get(attr_key) is not None:
                 active_requests_count_attrs[attr_key] = attributes[attr_key]
-        
+
         duration_attrs = {}
         for attr_key in _duration_attrs:
             if attributes.get(attr_key) is not None:
@@ -388,7 +395,9 @@ class _InstrumentedFlask(flask.Flask):
             __name__, __version__, _InstrumentedFlask._tracer_provider
         )
 
-        meter = get_meter(__name__, __version__, _InstrumentedFlask._meter_provider)
+        meter = get_meter(
+            __name__, __version__, _InstrumentedFlask._meter_provider
+        )
         duration_histogram = meter.create_histogram(
             name="http.server.duration",
             unit="ms",
@@ -412,7 +421,7 @@ class _InstrumentedFlask(flask.Flask):
         _teardown_request = _wrapped_teardown_request(
             active_requests_counter,
             duration_histogram,
-            excluded_urls=_InstrumentedFlask._excluded_urls
+            excluded_urls=_InstrumentedFlask._excluded_urls,
         )
         self.teardown_request(_teardown_request)
 
