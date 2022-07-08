@@ -15,14 +15,15 @@
 # pylint: disable=no-name-in-module
 from unittest.mock import MagicMock, patch
 
+import pytest
 from django import VERSION, conf
 from django.http import HttpResponse
 from django.test.utils import setup_test_environment, teardown_test_environment
 
 from opentelemetry.instrumentation.django import DjangoInstrumentor
 from opentelemetry.instrumentation.django.middleware.sqlcommenter_middleware import (
-    _QueryWrapper,
     SqlCommenter,
+    _QueryWrapper,
 )
 from opentelemetry.test.wsgitestutil import WsgiTestBase
 
@@ -103,6 +104,9 @@ class TestMiddleware(WsgiTestBase):
         "opentelemetry.instrumentation.django.middleware.sqlcommenter_middleware._QueryWrapper"
     )
     def test_multiple_connection_support(self, query_wrapper):
+        if not DJANGO_2_0:
+            pytest.skip()
+
         requests_mock = MagicMock()
         get_response = MagicMock()
 

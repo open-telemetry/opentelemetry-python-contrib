@@ -13,21 +13,21 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
+from contextlib import ExitStack
 from logging import getLogger
 from typing import Any, Type, TypeVar
-from contextlib import ExitStack
 
 # pylint: disable=no-name-in-module
 from django import conf, get_version
 from django.db import connections
 from django.db.backends.utils import CursorDebugWrapper
 
+from opentelemetry.instrumentation.utils import (
+    generate_sql_comment,
+    get_opentelemetry_values,
+)
 from opentelemetry.trace.propagation.tracecontext import (
     TraceContextTextMapPropagator,
-)
-from opentelemetry.instrumentation.utils import (
-    get_opentelemetry_values,
-    generate_sql_comment,
 )
 
 _propagator = TraceContextTextMapPropagator()
