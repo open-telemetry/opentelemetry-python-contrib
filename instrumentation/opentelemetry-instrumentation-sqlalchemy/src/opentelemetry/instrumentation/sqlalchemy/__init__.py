@@ -55,17 +55,17 @@ from collections.abc import Sequence
 from typing import Collection
 
 import sqlalchemy
-from sqlalchemy.engine.base import Engine
 from packaging.version import parse as parse_version
+from sqlalchemy.engine.base import Engine
 from wrapt import wrap_function_wrapper as _w
 
 from opentelemetry.instrumentation.instrumentor import BaseInstrumentor
 from opentelemetry.instrumentation.sqlalchemy.engine import (
     EngineTracer,
     _get_tracer,
+    _wrap_connect,
     _wrap_create_async_engine,
     _wrap_create_engine,
-    _wrap_connect,
 )
 from opentelemetry.instrumentation.sqlalchemy.package import _instruments
 from opentelemetry.instrumentation.utils import unwrap
@@ -102,7 +102,7 @@ class SQLAlchemyInstrumentor(BaseInstrumentor):
         _w(
             "sqlalchemy.engine.base",
             "Engine.connect",
-            _wrap_connect(tracer_provider)
+            _wrap_connect(tracer_provider),
         )
         if parse_version(sqlalchemy.__version__).release >= (1, 4):
             _w(
@@ -136,4 +136,3 @@ class SQLAlchemyInstrumentor(BaseInstrumentor):
         unwrap(Engine, "connect")
         if parse_version(sqlalchemy.__version__).release >= (1, 4):
             unwrap(sqlalchemy.ext.asyncio, "create_async_engine")
-
