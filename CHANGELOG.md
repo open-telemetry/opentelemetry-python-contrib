@@ -44,6 +44,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   ([#1110](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/1110))
 - Integrated sqlcommenter plugin into opentelemetry-instrumentation-django
   ([#896](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/896))
+- `opentelemetry-instrumentation-sqlalchemy` Added span for the connection phase ([#1133](https://github.com/open-telemetry/opentelemetry-python-contrib/issues/1133))
 
 
 ## [1.12.0rc1-0.31b0](https://github.com/open-telemetry/opentelemetry-python/releases/tag/v1.12.0rc1-0.31b0) - 2022-05-17
