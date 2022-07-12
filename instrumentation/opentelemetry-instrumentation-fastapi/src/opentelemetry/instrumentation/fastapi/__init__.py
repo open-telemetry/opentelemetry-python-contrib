@@ -165,6 +165,7 @@ class FastAPIInstrumentor(BaseInstrumentor):
         client_request_hook: _ClientRequestHookT = None,
         client_response_hook: _ClientResponseHookT = None,
         tracer_provider=None,
+        meter_provider=None,
         excluded_urls=None,
     ):
         """Instrument an uninstrumented FastAPI application."""
@@ -185,6 +186,7 @@ class FastAPIInstrumentor(BaseInstrumentor):
                 client_request_hook=client_request_hook,
                 client_response_hook=client_response_hook,
                 tracer_provider=tracer_provider,
+                meter_provider=meter_provider,
             )
             app._is_instrumented_by_opentelemetry = True
         else:
@@ -223,6 +225,7 @@ class FastAPIInstrumentor(BaseInstrumentor):
             if _excluded_urls is None
             else parse_excluded_urls(_excluded_urls)
         )
+        _InstrumentedFastAPI._meter_provider = kwargs.get("meter_provider")
         fastapi.FastAPI = _InstrumentedFastAPI
 
     def _uninstrument(self, **kwargs):
@@ -231,6 +234,7 @@ class FastAPIInstrumentor(BaseInstrumentor):
 
 class _InstrumentedFastAPI(fastapi.FastAPI):
     _tracer_provider = None
+    _meter_provider = None
     _excluded_urls = None
     _server_request_hook: _ServerRequestHookT = None
     _client_request_hook: _ClientRequestHookT = None
@@ -246,6 +250,7 @@ class _InstrumentedFastAPI(fastapi.FastAPI):
             client_request_hook=_InstrumentedFastAPI._client_request_hook,
             client_response_hook=_InstrumentedFastAPI._client_response_hook,
             tracer_provider=_InstrumentedFastAPI._tracer_provider,
+            meter_provider=_InstrumentedFastAPI._meter_provider,
         )
 
 
