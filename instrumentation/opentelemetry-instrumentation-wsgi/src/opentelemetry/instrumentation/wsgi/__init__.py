@@ -333,6 +333,7 @@ def parse_status_code(resp_status):
     except ValueError:
         return None
 
+
 def parse_active_request_count_attrs(req_attrs):
     active_requests_count_attrs = {}
     for attr_key in _active_requests_count_attrs:
@@ -340,12 +341,14 @@ def parse_active_request_count_attrs(req_attrs):
             active_requests_count_attrs[attr_key] = req_attrs[attr_key]
     return active_requests_count_attrs
 
+
 def parse_duration_attrs(req_attrs):
     duration_attrs = {}
     for attr_key in _duration_attrs:
         if req_attrs.get(attr_key) is not None:
             duration_attrs[attr_key] = req_attrs[attr_key]
     return duration_attrs
+
 
 def add_response_attributes(
     span, start_response_status, response_headers
@@ -449,7 +452,9 @@ class OpenTelemetryMiddleware:
             start_response: The WSGI start_response callable.
         """
         req_attrs = collect_request_attributes(environ)
-        active_requests_count_attrs = parse_active_request_count_attrs(req_attrs)
+        active_requests_count_attrs = parse_active_request_count_attrs(
+            req_attrs
+        )
         duration_attrs = parse_duration_attrs(req_attrs)
 
         span, token = _start_internal_or_server_span(

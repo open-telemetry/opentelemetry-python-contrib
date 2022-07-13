@@ -261,7 +261,9 @@ def _wrapped_before_request(
             attributes = otel_wsgi.collect_request_attributes(
                 flask_request_environ
             )
-            active_requests_count_attrs = otel_wsgi.parse_active_request_count_attrs(attributes)
+            active_requests_count_attrs = (
+                otel_wsgi.parse_active_request_count_attrs(attributes)
+            )
             active_requests_counter.add(1, active_requests_count_attrs)
             if flask.request.url_rule:
                 # For 404 that result from no route found, etc, we
@@ -310,7 +312,9 @@ def _wrapped_teardown_request(
         attributes = otel_wsgi.collect_request_attributes(
             flask.request.environ
         )
-        active_requests_count_attrs = otel_wsgi.parse_active_request_count_attrs(attributes)
+        active_requests_count_attrs = (
+            otel_wsgi.parse_active_request_count_attrs(attributes)
+        )
         duration_attrs = otel_wsgi.parse_duration_attrs(attributes)
         status_code = flask.request.environ.get(_ENVIRON_STATUS_CODE_KEY, None)
         if status_code:

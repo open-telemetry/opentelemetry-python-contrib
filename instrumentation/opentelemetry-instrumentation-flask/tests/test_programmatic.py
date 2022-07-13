@@ -17,9 +17,7 @@ from unittest.mock import Mock, patch
 from flask import Flask, request
 
 from opentelemetry import trace
-from opentelemetry.instrumentation.flask import (
-    FlaskInstrumentor,
-)
+from opentelemetry.instrumentation.flask import FlaskInstrumentor
 from opentelemetry.instrumentation.propagators import (
     TraceResponsePropagator,
     get_global_response_propagator,
