@@ -167,26 +167,6 @@ _ENVIRON_ACTIVATION_KEY = "opentelemetry-flask.activation_key"
 _ENVIRON_TOKEN = "opentelemetry-flask.token"
 _ENVIRON_STATUS_CODE_KEY = "opentelemetry-flask.status_code"
 
-# List of recommended attributes
-_duration_attrs = [
-    SpanAttributes.HTTP_METHOD,
-    SpanAttributes.HTTP_HOST,
-    SpanAttributes.HTTP_SCHEME,
-    SpanAttributes.HTTP_STATUS_CODE,
-    SpanAttributes.HTTP_FLAVOR,
-    SpanAttributes.HTTP_SERVER_NAME,
-    SpanAttributes.NET_HOST_NAME,
-    SpanAttributes.NET_HOST_PORT,
-]
-
-_active_requests_count_attrs = [
-    SpanAttributes.HTTP_METHOD,
-    SpanAttributes.HTTP_HOST,
-    SpanAttributes.HTTP_SCHEME,
-    SpanAttributes.HTTP_FLAVOR,
-    SpanAttributes.HTTP_SERVER_NAME,
-]
-
 _excluded_urls_from_env = get_excluded_urls("FLASK")
 
 
@@ -197,14 +177,6 @@ def get_default_span_name():
     except AttributeError:
         span_name = otel_wsgi.get_default_span_name(flask.request.environ)
     return span_name
-
-
-def _parse_status_code(resp_status):
-    status_code, _ = resp_status.split(" ", 1)
-    try:
-        return int(status_code)
-    except ValueError:
-        return None
 
 
 def _rewrapped_app(wsgi_app, response_hook=None, excluded_urls=None):
@@ -233,7 +205,7 @@ def _rewrapped_app(wsgi_app, response_hook=None, excluded_urls=None):
                     otel_wsgi.add_response_attributes(
                         span, status, response_headers
                     )
-                    status_code = _parse_status_code(status)
+                    status_code = otel_wsgi.parse_status_code(status)
                     if status_code is not None:
                         flask.request.environ[
                             _ENVIRON_STATUS_CODE_KEY
@@ -289,12 +261,7 @@ def _wrapped_before_request(
             attributes = otel_wsgi.collect_request_attributes(
                 flask_request_environ
             )
-            active_requests_count_attrs = {}
-            for attr_key in _active_requests_count_attrs:
-                if attributes.get(attr_key) is not None:
-                    active_requests_count_attrs[attr_key] = attributes[
-                        attr_key
-                    ]
+            active_requests_count_attrs = otel_wsgi.parse_active_request_count_attrs(attributes)
             active_requests_counter.add(1, active_requests_count_attrs)
             if flask.request.url_rule:
                 # For 404 that result from no route found, etc, we
@@ -343,15 +310,8 @@ def _wrapped_teardown_request(
         attributes = otel_wsgi.collect_request_attributes(
             flask.request.environ
         )
-        active_requests_count_attrs = {}
-        for attr_key in _active_requests_count_attrs:
-            if attributes.get(attr_key) is not None:
-                active_requests_count_attrs[attr_key] = attributes[attr_key]
-
-        duration_attrs = {}
-        for attr_key in _duration_attrs:
-            if attributes.get(attr_key) is not None:
-                duration_attrs[attr_key] = attributes[attr_key]
+        active_requests_count_attrs = otel_wsgi.parse_active_request_count_attrs(attributes)
+        duration_attrs = otel_wsgi.parse_duration_attrs(attributes)
         status_code = flask.request.environ.get(_ENVIRON_STATUS_CODE_KEY, None)
         if status_code:
             duration_attrs[SpanAttributes.HTTP_STATUS_CODE] = status_code

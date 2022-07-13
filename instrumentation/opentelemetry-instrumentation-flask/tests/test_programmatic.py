@@ -19,15 +19,17 @@ from flask import Flask, request
 from opentelemetry import trace
 from opentelemetry.instrumentation.flask import (
     FlaskInstrumentor,
-    _active_requests_count_attrs,
-    _duration_attrs,
 )
 from opentelemetry.instrumentation.propagators import (
     TraceResponsePropagator,
     get_global_response_propagator,
     set_global_response_propagator,
 )
-from opentelemetry.instrumentation.wsgi import OpenTelemetryMiddleware
+from opentelemetry.instrumentation.wsgi import (
+    OpenTelemetryMiddleware,
+    _active_requests_count_attrs,
+    _duration_attrs,
+)
 from opentelemetry.sdk.metrics.export import (
     HistogramDataPoint,
     NumberDataPoint,

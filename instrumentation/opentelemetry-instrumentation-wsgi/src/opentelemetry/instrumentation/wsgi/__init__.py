@@ -326,13 +326,26 @@ def collect_custom_response_headers_attributes(response_headers):
     return attributes
 
 
-def _parse_status_code(resp_status):
+def parse_status_code(resp_status):
     status_code, _ = resp_status.split(" ", 1)
     try:
         return int(status_code)
     except ValueError:
         return None
 
+def parse_active_request_count_attrs(req_attrs):
+    active_requests_count_attrs = {}
+    for attr_key in _active_requests_count_attrs:
+        if req_attrs.get(attr_key) is not None:
+            active_requests_count_attrs[attr_key] = req_attrs[attr_key]
+    return active_requests_count_attrs
+
+def parse_duration_attrs(req_attrs):
+    duration_attrs = {}
+    for attr_key in _duration_attrs:
+        if req_attrs.get(attr_key) is not None:
+            duration_attrs[attr_key] = req_attrs[attr_key]
+    return duration_attrs
 
 def add_response_attributes(
     span, start_response_status, response_headers
@@ -412,7 +425,7 @@ class OpenTelemetryMiddleware:
         @functools.wraps(start_response)
         def _start_response(status, response_headers, *args, **kwargs):
             add_response_attributes(span, status, response_headers)
-            status_code = _parse_status_code(status)
+            status_code = parse_status_code(status)
             if status_code is not None:
                 duration_attrs[SpanAttributes.HTTP_STATUS_CODE] = status_code
             if span.is_recording() and span.kind == trace.SpanKind.SERVER:
@@ -436,15 +449,8 @@ class OpenTelemetryMiddleware:
             start_response: The WSGI start_response callable.
         """
         req_attrs = collect_request_attributes(environ)
-        active_requests_count_attrs = {}
-        for attr_key in _active_requests_count_attrs:
-            if req_attrs.get(attr_key) is not None:
-                active_requests_count_attrs[attr_key] = req_attrs[attr_key]
-
-        duration_attrs = {}
-        for attr_key in _duration_attrs:
-            if req_attrs.get(attr_key) is not None:
-                duration_attrs[attr_key] = req_attrs[attr_key]
+        active_requests_count_attrs = parse_active_request_count_attrs(req_attrs)
+        duration_attrs = parse_duration_attrs(req_attrs)
 
         span, token = _start_internal_or_server_span(
             tracer=self.tracer,
