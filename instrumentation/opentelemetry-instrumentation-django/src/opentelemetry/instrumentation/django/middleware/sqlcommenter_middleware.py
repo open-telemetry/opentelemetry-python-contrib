@@ -23,7 +23,7 @@ from django.db import connections
 from django.db.backends.utils import CursorDebugWrapper
 
 from opentelemetry.instrumentation.utils import (
-    generate_sql_comment,
+    _generate_sql_comment,
     get_opentelemetry_values,
 )
 from opentelemetry.trace.propagation.tracecontext import (
@@ -84,7 +84,7 @@ class _QueryWrapper:
         db_driver = context["connection"].settings_dict.get("ENGINE", "")
         resolver_match = self.request.resolver_match
 
-        sql_comment = generate_sql_comment(
+        sql_comment = _generate_sql_comment(
             # Information about the controller.
             controller=resolver_match.view_name
             if resolver_match and with_controller

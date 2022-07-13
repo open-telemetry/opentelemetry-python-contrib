@@ -128,7 +128,7 @@ def _start_internal_or_server_span(
     return span, token
 
 
-def generate_sql_comment(**meta) -> str:
+def _generate_sql_comment(**meta) -> str:
     """
     Return a SQL comment with comma delimited key=value pairs created from
     **meta kwargs.

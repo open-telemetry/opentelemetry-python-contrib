@@ -47,7 +47,7 @@ from opentelemetry import trace as trace_api
 from opentelemetry.instrumentation.dbapi.version import __version__
 from opentelemetry.instrumentation.utils import (
     _generate_opentelemetry_traceparent,
-    generate_sql_comment,
+    _generate_sql_comment,
     unwrap,
 )
 from opentelemetry.semconv.trace import SpanAttributes
@@ -382,7 +382,7 @@ class CursorTracer:
         if span_context.is_valid:
             meta.update(_generate_opentelemetry_traceparent(span))
         # TODO(schekuri): revisit to enrich with info such as route, db_driver etc...
-        return generate_sql_comment(**meta)
+        return _generate_sql_comment(**meta)
 
     def traced_execution(
         self,
