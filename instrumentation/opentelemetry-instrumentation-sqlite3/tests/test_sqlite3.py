@@ -21,7 +21,6 @@ from opentelemetry.test.test_base import TestBase
 
 
 class TestSQLite3(TestBase):
-
     def setUp(self):
         super().setUp()
         SQLite3Instrumentor().instrument(tracer_provider=self.tracer_provider)

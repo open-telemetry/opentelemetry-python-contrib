@@ -21,7 +21,6 @@ from opentelemetry.trace import SpanKind
 
 
 class TestRedis(TestBase):
-
     def setUp(self):
         super().setUp()
         RedisInstrumentor().instrument(tracer_provider=self.tracer_provider)
@@ -32,7 +31,6 @@ class TestRedis(TestBase):
 
     def test_span_properties(self):
         redis_client = redis.Redis()
-        
 
         with mock.patch.object(redis_client, "connection"):
             redis_client.get("key")

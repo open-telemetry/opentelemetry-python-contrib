@@ -511,6 +511,9 @@ class TestAdditionOfCustomRequestResponseHeaders(WsgiTestBase):
         tracer_provider, _ = TestBase.create_tracer_provider()
         self.tracer = tracer_provider.get_tracer(__name__)
 
+    def tearDown(self):
+        super().tearDown()
+
     def iterate_response(self, response):
         while True:
             try:

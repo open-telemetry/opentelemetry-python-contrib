@@ -35,6 +35,7 @@ class SQLAlchemyInstrumentTestCase(TestBase):
     """
 
     def setUp(self):
+        super().setUp()
         # create a traced engine with the given arguments
         SQLAlchemyInstrumentor().instrument()
         dsn = (
@@ -45,13 +46,13 @@ class SQLAlchemyInstrumentTestCase(TestBase):
 
         # prepare a connection
         self.conn = self.engine.connect()
-        super().setUp()
 
     def tearDown(self):
         # clear the database and dispose the engine
         self.conn.close()
         self.engine.dispose()
         SQLAlchemyInstrumentor().uninstrument()
+        super().tearDown()
 
     def test_engine_traced(self):
         # ensures that the engine is traced
