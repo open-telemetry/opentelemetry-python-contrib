@@ -143,7 +143,7 @@ def _generate_sql_comment(**meta) -> str:
     return (
         " /*"
         + key_value_delimiter.join(
-            f"{url_quote(key)}={url_quote(value)!r}"
+            f"{_url_quote(key)}={_url_quote(value)!r}"
             for key, value in sorted(meta.items())
             if value is not None
         )
@@ -151,7 +151,7 @@ def _generate_sql_comment(**meta) -> str:
     )
 
 
-def url_quote(s):  # pylint: disable=invalid-name
+def _url_quote(s):  # pylint: disable=invalid-name
     if not isinstance(s, (str, bytes)):
         return s
     quoted = urllib.parse.quote(s)
@@ -162,7 +162,7 @@ def url_quote(s):  # pylint: disable=invalid-name
     return quoted.replace("%", "%%")
 
 
-def get_opentelemetry_values():
+def _get_opentelemetry_values():
     """
     Return the OpenTelemetry Trace and Span IDs if Span ID is set in the
     OpenTelemetry execution context.

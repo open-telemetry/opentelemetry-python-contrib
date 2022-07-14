@@ -24,7 +24,7 @@ from django.db.backends.utils import CursorDebugWrapper
 
 from opentelemetry.instrumentation.utils import (
     _generate_sql_comment,
-    get_opentelemetry_values,
+    _get_opentelemetry_values,
 )
 from opentelemetry.trace.propagation.tracecontext import (
     TraceContextTextMapPropagator,
@@ -104,7 +104,7 @@ class _QueryWrapper:
             framework=f"django:{_django_version}" if with_framework else None,
             # Information about the database and driver.
             db_driver=db_driver if with_db_driver else None,
-            **get_opentelemetry_values() if with_opentelemetry else {},
+            **_get_opentelemetry_values() if with_opentelemetry else {},
         )
 
         # TODO: MySQL truncates logs > 1024B so prepend comments

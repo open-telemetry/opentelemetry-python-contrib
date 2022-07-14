@@ -73,7 +73,7 @@ class TestMiddleware(WsgiTestBase):
         )
 
     @patch(
-        "opentelemetry.instrumentation.django.middleware.sqlcommenter_middleware.get_opentelemetry_values"
+        "opentelemetry.instrumentation.django.middleware.sqlcommenter_middleware._get_opentelemetry_values"
     )
     def test_query_wrapper(self, trace_capture):
         requests_mock = MagicMock()
