@@ -25,15 +25,11 @@ from opentelemetry import context, trace
 from opentelemetry.context import _SUPPRESS_INSTRUMENTATION_KEY  # noqa: F401
 from opentelemetry.propagate import extract
 from opentelemetry.trace import Span, StatusCode
+from opentelemetry.trace.propagation.tracecontext import (
+    TraceContextTextMapPropagator,
+)
 
-try:
-    from opentelemetry.trace.propagation.tracecontext import (
-        TraceContextTextMapPropagator,
-    )
-
-    propagator = TraceContextTextMapPropagator()
-except ImportError:
-    propagator = None
+propagator = TraceContextTextMapPropagator()
 
 
 def extract_attributes_from_object(
