@@ -19,7 +19,6 @@ from opentelemetry.instrumentation.utils import (
     _python_path_without_directory,
     http_status_to_status_code,
 )
-from opentelemetry.test.test_base import TestBase
 from opentelemetry.trace import StatusCode
 
 
