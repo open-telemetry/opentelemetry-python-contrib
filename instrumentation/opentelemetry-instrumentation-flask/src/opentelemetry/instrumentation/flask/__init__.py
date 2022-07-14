@@ -157,11 +157,13 @@ from opentelemetry.instrumentation.propagators import (
 from opentelemetry.instrumentation.utils import _start_internal_or_server_span
 from opentelemetry.metrics import get_meter
 from opentelemetry.semconv.trace import SpanAttributes
+from opentelemetry.util._time import _time_ns
 from opentelemetry.util.http import get_excluded_urls, parse_excluded_urls
 
 _logger = getLogger(__name__)
 
 _ENVIRON_STARTTIME_KEY = "opentelemetry-flask.starttime_key"
+_ENVIRON_DURATION_STARTTIME_KEY = "opentelemetry-flask.duration_starttime_key"
 _ENVIRON_SPAN_KEY = "opentelemetry-flask.span_key"
 _ENVIRON_ACTIVATION_KEY = "opentelemetry-flask.activation_key"
 _ENVIRON_TOKEN = "opentelemetry-flask.token"
@@ -185,7 +187,8 @@ def _rewrapped_app(wsgi_app, response_hook=None, excluded_urls=None):
         # In theory, we could start the span here and use
         # update_name later but that API is "highly discouraged" so
         # we better avoid it.
-        wrapped_app_environ[_ENVIRON_STARTTIME_KEY] = default_timer()
+        wrapped_app_environ[_ENVIRON_STARTTIME_KEY] = _time_ns()
+        wrapped_app_environ[_ENVIRON_DURATION_STARTTIME_KEY] = default_timer()
 
         def _start_response(status, response_headers, *args, **kwargs):
             if flask.request and (
@@ -307,7 +310,7 @@ def _wrapped_teardown_request(
             # a way that doesn't run `before_request`, like when it is created
             # with `app.test_request_context`.
             return
-        start = flask.request.environ.get(_ENVIRON_STARTTIME_KEY)
+        start = flask.request.environ.get(_ENVIRON_DURATION_STARTTIME_KEY)
         duration = max(round((default_timer() - start) * 1000), 0)
         attributes = otel_wsgi.collect_request_attributes(
             flask.request.environ
