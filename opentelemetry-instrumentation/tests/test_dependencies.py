@@ -26,12 +26,6 @@ from opentelemetry.test.test_base import TestBase
 
 
 class TestDependencyConflicts(TestBase):
-    def setUp(self):
-        super().setUp()
-
-    def tearDown(self):
-        super().tearDown()
-
     def test_get_dependency_conflicts_empty(self):
         self.assertIsNone(get_dependency_conflicts([]))
 

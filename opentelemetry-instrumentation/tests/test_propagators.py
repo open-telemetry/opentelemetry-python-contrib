@@ -58,12 +58,6 @@ class TestDictHeaderSetter(unittest.TestCase):
 
 
 class TestTraceResponsePropagator(TestBase):
-    def setUp(self):
-        return super().setUp()
-
-    def tearDown(self):
-        return super().tearDown()
-
     def test_inject(self):
         span = trace.NonRecordingSpan(
             trace.SpanContext(
