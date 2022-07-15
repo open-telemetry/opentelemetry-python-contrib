@@ -31,7 +31,9 @@ class TestFunctionalPymongo(TestBase):
     def setUp(self):
         super().setUp()
         self._tracer = self.tracer_provider.get_tracer(__name__)
-        PymongoInstrumentor().instrument()
+        self.instrumentor = PymongoInstrumentor()
+        self.instrumentor.instrument()
+        self.instrumentor._commandtracer_instance._tracer = self._tracer
         client = MongoClient(
             MONGODB_HOST, MONGODB_PORT, serverSelectionTimeoutMS=2000
         )
@@ -39,8 +41,7 @@ class TestFunctionalPymongo(TestBase):
         self._collection = db[MONGODB_COLLECTION_NAME]
 
     def tearDown(self):
-        PymongoInstrumentor._commandtracer_instance = None
-        PymongoInstrumentor().uninstrument()
+        self.instrumentor.uninstrument()
         super().tearDown()
 
     def validate_spans(self):
