@@ -1,5 +1,8 @@
 components:
   
+  instrumentation/opentelemetry-instrumentation-aio-pika:
+    - ofek1weiss
+
   instrumentation/opentelemetry-instrumentation-boto3sqs:
     - oxeye-nikolay
     - nikosokolik
@@ -10,6 +13,9 @@ components:
   instrumentation/opentelemetry-instrumentation-pika:
     - oxeye-nikolay
     - nikosokolik
+
+  instrumentation/opentelemetry-instrumentation-redis:
+    - sungwonh
 
   instrumentation/opentelemetry-instrumentation-remoulade:
     - ben-natan
