@@ -223,7 +223,7 @@ class PymongoInstrumentor(BaseInstrumentor):
         request_hook = kwargs.get("request_hook", dummy_callback)
         response_hook = kwargs.get("response_hook", dummy_callback)
         failed_hook = kwargs.get("failed_hook", dummy_callback)
-        print(self._commandtracer_instance, id(self._commandtracer_instance))
+        print("_instrument", self._commandtracer_instance, self._commandtracer_instance.is_enabled, id(self._commandtracer_instance))
         # Create and register a CommandTracer only the first time
         if self._commandtracer_instance is None:
             tracer = get_tracer(__name__, __version__, tracer_provider)
@@ -240,6 +240,6 @@ class PymongoInstrumentor(BaseInstrumentor):
         self._commandtracer_instance.is_enabled = True
 
     def _uninstrument(self, **kwargs):
-        print(self._commandtracer_instance, id(self._commandtracer_instance))
+        print("_uninstrument", self._commandtracer_instance, self._commandtracer_instance.is_enabled, id(self._commandtracer_instance))
         if self._commandtracer_instance is not None:
             self._commandtracer_instance.is_enabled = False
