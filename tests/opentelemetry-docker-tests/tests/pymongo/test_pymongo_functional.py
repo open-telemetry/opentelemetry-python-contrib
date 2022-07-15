@@ -44,6 +44,8 @@ class TestFunctionalPymongo(TestBase):
 
     def validate_spans(self):
         spans = self.memory_exporter.get_finished_spans()
+        for s in spans:
+            print(s.to_json())
         self.assertEqual(len(spans), 2)
         for span in spans:
             if span.name == "rootSpan":
