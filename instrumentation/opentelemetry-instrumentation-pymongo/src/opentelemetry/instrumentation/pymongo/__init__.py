@@ -234,11 +234,9 @@ class PymongoInstrumentor(BaseInstrumentor):
                 failed_hook=failed_hook,
             )
             monitoring.register(self._commandtracer_instance)
-        print("_instrument", self._commandtracer_instance, self._commandtracer_instance.is_enabled, id(self._commandtracer_instance))
         # If already created, just enable it
         self._commandtracer_instance.is_enabled = True
 
     def _uninstrument(self, **kwargs):
-        print("_uninstrument", self._commandtracer_instance, self._commandtracer_instance.is_enabled, id(self._commandtracer_instance))
         if self._commandtracer_instance is not None:
             self._commandtracer_instance.is_enabled = False

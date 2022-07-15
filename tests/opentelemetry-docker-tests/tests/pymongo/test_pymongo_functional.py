@@ -39,6 +39,7 @@ class TestFunctionalPymongo(TestBase):
         self._collection = db[MONGODB_COLLECTION_NAME]
 
     def tearDown(self):
+        PymongoInstrumentor._commandtracer_instance = None
         PymongoInstrumentor().uninstrument()
         super().tearDown()
 
