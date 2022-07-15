@@ -43,6 +43,7 @@ class TestFunctionalMysql(TestBase):
         self._cursor = self._connection.cursor()
 
     def tearDown(self):
+        self._cursor.close()
         self._connection.close()
         MySQLInstrumentor().uninstrument()
         super().tearDown()

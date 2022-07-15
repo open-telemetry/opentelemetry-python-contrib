@@ -40,7 +40,6 @@ class TestFunctionalPsycopg(TestBase):
         self._connection.set_session(autocommit=True)
         self._cursor = self._connection.cursor()
 
-    @classmethod
     def tearDown(self):
         self._cursor.close()
         self._connection.close()

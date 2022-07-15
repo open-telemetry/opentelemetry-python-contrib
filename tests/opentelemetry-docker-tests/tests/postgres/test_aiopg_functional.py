@@ -37,6 +37,7 @@ def async_call(coro):
 
 class TestFunctionalAiopgConnect(TestBase):
     def setUp(self):
+        super().setUp()
         self._tracer = self.tracer_provider.get_tracer(__name__)
         AiopgInstrumentor().instrument(tracer_provider=self.tracer_provider)
         self._connection = async_call(

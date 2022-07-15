@@ -31,8 +31,6 @@ MYSQL_DB_NAME = os.getenv("MYSQL_DB_NAME", "opentelemetry-tests")
 class TestFunctionalPyMysql(TestBase):
     def setUp(self):
         super().setUp()
-        self._connection = None
-        self._cursor = None
         self._tracer = self.tracer_provider.get_tracer(__name__)
         PyMySQLInstrumentor().instrument()
         self._connection = pymy.connect(
@@ -45,8 +43,8 @@ class TestFunctionalPyMysql(TestBase):
         self._cursor = self._connection.cursor()
 
     def tearDown(self):
-        if self._connection:
-            self._connection.close()
+        self._cursor.close()
+        self._connection.close()
         PyMySQLInstrumentor().uninstrument()
         super().tearDown()
 

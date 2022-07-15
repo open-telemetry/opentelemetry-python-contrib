@@ -30,7 +30,7 @@ POSTGRES_USER = os.getenv("POSTGRESQL_USER", "testuser")
 
 
 class TestFunctionalPsycopg(TestBase):
-    def setU(self):
+    def setUp(self):
         super().setUp()
         self._tracer = self.tracer_provider.get_tracer(__name__)
         Psycopg2Instrumentor().instrument(tracer_provider=self.tracer_provider)
@@ -45,10 +45,8 @@ class TestFunctionalPsycopg(TestBase):
         self._cursor = self._connection.cursor()
 
     def tearDown(self):
-        if self._cursor:
-            self._cursor.close()
-        if self._connection:
-            self._connection.close()
+        self._cursor.close()
+        self._connection.close()
         Psycopg2Instrumentor().uninstrument()
         super().tearDown()
 
