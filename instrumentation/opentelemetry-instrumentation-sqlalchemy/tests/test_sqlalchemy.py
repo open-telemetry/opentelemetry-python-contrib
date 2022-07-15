@@ -186,22 +186,3 @@ class TestSqlalchemyInstrumentation(TestBase):
             )
 
         asyncio.get_event_loop().run_until_complete(run())
-
-    def test_generate_commenter(self):
-        logging.getLogger("sqlalchemy.engine").setLevel(logging.INFO)
-        engine = create_engine("sqlite:///:memory:")
-        SQLAlchemyInstrumentor().instrument(
-            engine=engine,
-            tracer_provider=self.tracer_provider,
-            enable_commenter=True,
-        )
-
-        cnx = engine.connect()
-        cnx.execute("SELECT	1 + 1;").fetchall()
-        spans = self.memory_exporter.get_finished_spans()
-        self.assertEqual(len(spans), 1)
-        span = spans[0]
-        self.assertIn(
-            EngineTracer._generate_comment(span),
-            self.caplog.records[-2].getMessage(),
-        )
