@@ -22,7 +22,7 @@ from opentelemetry.instrumentation.sqlalchemy.package import (
 from opentelemetry.instrumentation.sqlalchemy.version import __version__
 from opentelemetry.instrumentation.utils import (
     add_sql_comment,
-    get_opentelemetry_values,
+    _get_opentelemetry_values,
 )
 from opentelemetry.semconv.trace import NetTransportValues, SpanAttributes
 from opentelemetry.trace.status import Status, StatusCode
@@ -123,12 +123,12 @@ class EngineTracer:
                 span.set_attribute(SpanAttributes.DB_SYSTEM, self.vendor)
                 for key, value in attrs.items():
                     span.set_attribute(key, value)
+            if self.enable_commenter:
+                commenter_data = {}
+                commenter_data.update(_get_opentelemetry_values())
+                statement = add_sql_comment(statement, **commenter_data)
 
         context._otel_span = span
-        if self.enable_commenter:
-            commenter_data = {}
-            commenter_data.update(get_opentelemetry_values())
-            statement = add_sql_comment(statement, **commenter_data)
 
         return statement, params
 

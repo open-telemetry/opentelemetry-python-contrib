@@ -25,15 +25,11 @@ from opentelemetry import context, trace
 from opentelemetry.context import _SUPPRESS_INSTRUMENTATION_KEY  # noqa: F401
 from opentelemetry.propagate import extract
 from opentelemetry.trace import Span, StatusCode
+from opentelemetry.trace.propagation.tracecontext import (
+    TraceContextTextMapPropagator,
+)
 
-try:
-    from opentelemetry.trace.propagation.tracecontext import (
-        TraceContextTextMapPropagator,
-    )
-
-    propagator = TraceContextTextMapPropagator()
-except ImportError:
-    propagator = None
+propagator = TraceContextTextMapPropagator()
 
 
 def extract_attributes_from_object(
@@ -128,7 +124,7 @@ def _start_internal_or_server_span(
     return span, token
 
 
-def generate_sql_comment(**meta) -> str:
+def _generate_sql_comment(**meta) -> str:
     """
     Return a SQL comment with comma delimited key=value pairs created from
     **meta kwargs.
@@ -143,7 +139,7 @@ def generate_sql_comment(**meta) -> str:
     return (
         " /*"
         + key_value_delimiter.join(
-            f"{url_quote(key)}={url_quote(value)!r}"
+            f"{_url_quote(key)}={_url_quote(value)!r}"
             for key, value in sorted(meta.items())
             if value is not None
         )
@@ -151,7 +147,7 @@ def generate_sql_comment(**meta) -> str:
     )
 
 
-def url_quote(s):  # pylint: disable=invalid-name
+def _url_quote(s):  # pylint: disable=invalid-name
     if not isinstance(s, (str, bytes)):
         return s
     quoted = urllib.parse.quote(s)
@@ -162,7 +158,7 @@ def url_quote(s):  # pylint: disable=invalid-name
     return quoted.replace("%", "%%")
 
 
-def get_opentelemetry_values():
+def _get_opentelemetry_values():
     """
     Return the OpenTelemetry Trace and Span IDs if Span ID is set in the
     OpenTelemetry execution context.
@@ -192,10 +188,10 @@ def _python_path_without_directory(python_path, directory, path_separator):
 
 
 def add_sql_comment(sql, **meta) -> str:
-    comment = generate_sql_comment(**meta)
+    comment = _generate_sql_comment(**meta)
     sql = sql.rstrip()
     if sql[-1] == ';':
         sql = sql[:-1] + comment + ';'
     else:
-       sql = sql + comment
+        sql = sql + comment
     return sql
