@@ -146,3 +146,43 @@ class TestRedis(TestBase):
 
         span = spans[0]
         self.assertEqual(span.attributes.get(custom_attribute_name), "GET")
+
+
+class TestRedisIntegrationMetric(TestBase):
+
+    def setUp(self):
+        super().setUp()
+        RedisInstrumentor().instrument(meter_provider=self.meter_provider)
+
+    def tearDown(self):
+        super().tearDown()
+        RedisInstrumentor().uninstrument()
+
+    @staticmethod
+    def redis_get():
+        pool = redis.ConnectionPool(host='localhost', port=6379, db=0)
+        redis_client = redis.Redis(connection_pool=pool)
+        redis_client.get('foo')
+        return pool.pid
+
+    def test_multiple_connections_metric_success_redis(self):
+        pid = self.redis_get()
+        expected_metric_names = {
+            "db.client.connection.usage",
+        }
+        expected_metric_attributes = {
+            "db.client.connection.usage.state": "used",
+            "db.client.connection.usage.name": pid,
+        }
+        for (
+                resource_metrics
+        ) in self.memory_metrics_reader.get_metrics_data().resource_metrics:
+            for scope_metrics in resource_metrics.scope_metrics:
+                for metric in scope_metrics.metrics:
+                    self.assertIn(metric.name, expected_metric_names)
+                    for data_point in metric.data.data_points:
+                        for attr in data_point.attributes:
+                            self.assertIn(
+                                attr, expected_metric_attributes
+                            )
+

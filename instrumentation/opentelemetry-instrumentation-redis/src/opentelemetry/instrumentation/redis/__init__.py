@@ -91,7 +91,6 @@ API
 """
 import typing
 from typing import Any, Collection
-
 import redis
 from wrapt import wrap_function_wrapper
 
@@ -106,6 +105,7 @@ from opentelemetry.instrumentation.redis.version import __version__
 from opentelemetry.instrumentation.utils import unwrap
 from opentelemetry.semconv.trace import SpanAttributes
 from opentelemetry.trace import Span
+from opentelemetry.metrics import UpDownCounter, get_meter
 
 _DEFAULT_SERVICE = "redis"
 
@@ -119,6 +119,7 @@ _ResponseHookT = typing.Optional[
 ]
 
 _REDIS_ASYNCIO_VERSION = (4, 2, 0)
+
 if redis.VERSION >= _REDIS_ASYNCIO_VERSION:
     import redis.asyncio
 
@@ -137,6 +138,7 @@ def _set_connection_attributes(span, conn):
 
 def _instrument(
     tracer,
+    connections_usage: UpDownCounter,
     request_hook: _RequestHookT = None,
     response_hook: _ResponseHookT = None,
 ):
@@ -147,18 +149,33 @@ def _instrument(
             name = args[0]
         else:
             name = instance.connection_pool.connection_kwargs.get("db", 0)
-        with tracer.start_as_current_span(
-            name, kind=trace.SpanKind.CLIENT
-        ) as span:
-            if span.is_recording():
-                span.set_attribute(SpanAttributes.DB_STATEMENT, query)
-                _set_connection_attributes(span, instance)
-                span.set_attribute("db.redis.args_length", len(args))
-            if callable(request_hook):
-                request_hook(span, instance, args, kwargs)
-            response = func(*args, **kwargs)
-            if callable(response_hook):
-                response_hook(span, instance, response)
+
+        try:
+            with tracer.start_as_current_span(
+                name, kind=trace.SpanKind.CLIENT
+            ) as span:
+                if span.is_recording():
+                    span.set_attribute(SpanAttributes.DB_STATEMENT, query)
+                    _set_connection_attributes(span, instance)
+                    span.set_attribute("db.redis.args_length", len(args))
+                if callable(request_hook):
+                    request_hook(span, instance, args, kwargs)
+                response = func(*args, **kwargs)
+                connections_usage.add(
+                    1,
+                    {
+                        "db.client.connection.usage.state": "used",
+                        "db.client.connection.usage.name": instance.connection_pool.pid,
+                    })
+                if callable(response_hook):
+                    response_hook(span, instance, response)
+        finally:
+            connections_usage.add(
+                -1,
+                {
+                    "db.client.connection.usage.state": "idle",
+                    "db.client.connection.usage.name": instance.connection_pool.pid,
+                })
             return response
 
     def _traced_execute_pipeline(func, instance, args, kwargs):
@@ -200,13 +217,26 @@ def _instrument(
                 response_hook(span, instance, response)
             return response
 
+    def _traced_get_connection(func, connection_pool, command_name, *keys, **options):
+        response = func(command_name, *keys, **options)
+        connections_usage.add(
+            1,
+            {
+                "db.client.connection.usage.state": "used",
+                "db.client.connection.usage.name": connection_pool.pid,
+            })
+        return response
+
+
     pipeline_class = (
         "BasePipeline" if redis.VERSION < (3, 0, 0) else "Pipeline"
     )
     redis_class = "StrictRedis" if redis.VERSION < (3, 0, 0) else "Redis"
 
     wrap_function_wrapper(
-        "redis", f"{redis_class}.execute_command", _traced_execute_command
+        "redis",
+        f"{redis_class}.execute_command",
+        _traced_execute_command
     )
     wrap_function_wrapper(
         "redis.client",
@@ -229,6 +259,11 @@ def _instrument(
             "ClusterPipeline.execute",
             _traced_execute_pipeline,
         )
+    wrap_function_wrapper(
+        "redis",
+        "ConnectionPool.get_connection",
+        _traced_get_connection
+    )
     if redis.VERSION >= _REDIS_ASYNCIO_VERSION:
         wrap_function_wrapper(
             "redis.asyncio",
@@ -278,8 +313,20 @@ class RedisInstrumentor(BaseInstrumentor):
         tracer = trace.get_tracer(
             __name__, __version__, tracer_provider=tracer_provider
         )
+        meter_provider = kwargs.get("meter_provider")
+        meter = get_meter(
+            __name__,
+            __version__,
+            meter_provider
+        )
+        connections_usage = meter.create_up_down_counter(
+            name="db.client.connection.usage",
+            description="The number of connections that are currently in state described",
+            unit="1",
+        )
         _instrument(
             tracer,
+            connections_usage,
             request_hook=kwargs.get("request_hook"),
             response_hook=kwargs.get("response_hook"),
         )
