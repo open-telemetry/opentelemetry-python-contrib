@@ -84,6 +84,7 @@ def _wrap_connect(tracer_provider=None):
         tracer_provider=tracer_provider,
     )
 
+    # pylint: disable=unused-argument
     def _wrap_connect_internal(func, module, args, kwargs):
         with tracer.start_as_current_span(
             "connect", kind=trace.SpanKind.CLIENT

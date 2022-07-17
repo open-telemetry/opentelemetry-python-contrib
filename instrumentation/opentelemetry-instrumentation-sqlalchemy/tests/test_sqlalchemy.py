@@ -50,7 +50,7 @@ class TestSqlalchemyInstrumentation(TestBase):
         # first span - the connection to the db
         self.assertEqual(spans[0].name, "connect")
         self.assertEqual(spans[0].kind, trace.SpanKind.CLIENT)
-        # second span - the query it self
+        # second span - the query itself
         self.assertEqual(spans[1].name, "SELECT :memory:")
         self.assertEqual(spans[1].kind, trace.SpanKind.CLIENT)
 
