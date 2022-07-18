@@ -150,10 +150,12 @@ import typing
 import urllib
 from functools import wraps
 from typing import Tuple
+from timeit import default_timer
 
 from asgiref.compatibility import guarantee_single_callable
 
 from opentelemetry import context, trace
+from opentelemetry.metrics import get_meter
 from opentelemetry.instrumentation.asgi.version import __version__  # noqa
 from opentelemetry.instrumentation.propagators import (
     get_global_response_propagator,
@@ -179,6 +181,25 @@ _ServerRequestHookT = typing.Optional[typing.Callable[[Span, dict], None]]
 _ClientRequestHookT = typing.Optional[typing.Callable[[Span, dict], None]]
 _ClientResponseHookT = typing.Optional[typing.Callable[[Span, dict], None]]
 
+# List of recommended attributes
+_duration_attrs = [
+    SpanAttributes.HTTP_METHOD,
+    SpanAttributes.HTTP_HOST,
+    SpanAttributes.HTTP_SCHEME,
+    SpanAttributes.HTTP_STATUS_CODE,
+    SpanAttributes.HTTP_FLAVOR,
+    SpanAttributes.HTTP_SERVER_NAME,
+    SpanAttributes.NET_HOST_NAME,
+    SpanAttributes.NET_HOST_PORT,
+]
+
+_active_requests_count_attrs = [
+    SpanAttributes.HTTP_METHOD,
+    SpanAttributes.HTTP_HOST,
+    SpanAttributes.HTTP_SCHEME,
+    SpanAttributes.HTTP_FLAVOR,
+    SpanAttributes.HTTP_SERVER_NAME,
+]
 
 class ASGIGetter(Getter[dict]):
     def get(
@@ -360,6 +381,20 @@ def get_default_span_details(scope: dict) -> Tuple[str, dict]:
 
     return span_name, {}
 
+def parse_active_request_count_attrs(req_attrs):
+    active_requests_count_attrs = {}
+    for attr_key in _active_requests_count_attrs:
+        if req_attrs.get(attr_key) is not None:
+            active_requests_count_attrs[attr_key] = req_attrs[attr_key]
+    return active_requests_count_attrs
+
+def parse_duration_attrs(req_attrs):
+    duration_attrs = {}
+    for attr_key in _duration_attrs:
+        if req_attrs.get(attr_key) is not None:
+            duration_attrs[attr_key] = req_attrs[attr_key]
+    return duration_attrs
+
 
 class OpenTelemetryMiddleware:
     """The ASGI application middleware.
@@ -391,9 +426,21 @@ class OpenTelemetryMiddleware:
         client_request_hook: _ClientRequestHookT = None,
         client_response_hook: _ClientResponseHookT = None,
         tracer_provider=None,
+        meter_provider=None,
     ):
         self.app = guarantee_single_callable(app)
         self.tracer = trace.get_tracer(__name__, __version__, tracer_provider)
+        self.meter = get_meter(__name__, __version__, meter_provider)
+        self.duration_histogram = self.meter.create_histogram(
+            name="http.server.duration",
+            unit="ms",
+            description="measures the duration of the inbound HTTP request",
+        )
+        self.active_requests_counter = self.meter.create_up_down_counter(
+            name="http.server.active_requests",
+            unit="requests",
+            description="measures the number of concurrent HTTP requests that are currently in-flight",
+        )
         self.excluded_urls = excluded_urls
         self.default_span_details = (
             default_span_details or get_default_span_details
@@ -426,7 +473,7 @@ class OpenTelemetryMiddleware:
             context_carrier=scope,
             context_getter=asgi_getter,
         )
-
+        start = default_timer()
         try:
             with trace.use_span(span, end_on_exit=True) as current_span:
                 if current_span.is_recording():
@@ -434,6 +481,8 @@ class OpenTelemetryMiddleware:
                     attributes.update(additional_attributes)
                     for key, value in attributes.items():
                         current_span.set_attribute(key, value)
+                    active_requests_count_attrs = parse_active_request_count_attrs(attributes)
+                    duration_attrs = parse_duration_attrs(attributes)
 
                     if current_span.kind == trace.SpanKind.SERVER:
                         custom_attributes = (
