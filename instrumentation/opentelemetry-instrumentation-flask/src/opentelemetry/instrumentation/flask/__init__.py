@@ -143,7 +143,6 @@ API
 from logging import getLogger
 from timeit import default_timer
 from typing import Collection
-from unittest import result
 
 import flask
 
