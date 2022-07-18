@@ -268,7 +268,7 @@ class TestProgrammatic(InstrumentationTest, WsgiTestBase):
         span_list = self.memory_exporter.get_finished_spans()
         self.assertEqual(len(span_list), 1)
 
-    def test_wsgi_metrics(self):
+    def test_flask_metrics(self):
         self.client.get("/hello/123")
         self.client.get("/hello/321")
         self.client.get("/hello/756")
