@@ -59,10 +59,10 @@ class SQLAlchemyInstrumentTestCase(TestBase):
         rows = self.conn.execute("SELECT").fetchall()
         self.assertEqual(len(rows), 1)
 
-        traces = self.memory_exporter.get_finished_spans()
+        spans = self.memory_exporter.get_finished_spans()
         # trace composition
-        self.assertEqual(len(traces), 1)
-        span = traces[0]
+        self.assertEqual(len(spans), 2)
+        span = spans[1]
         # check subset of span fields
         self.assertEqual(span.name, "SELECT opentelemetry-tests")
         self.assertIs(span.status.status_code, trace.StatusCode.UNSET)
