@@ -164,11 +164,9 @@ from opentelemetry.util.http import get_excluded_urls, parse_excluded_urls
 _logger = getLogger(__name__)
 
 _ENVIRON_STARTTIME_KEY = "opentelemetry-flask.starttime_key"
-_ENVIRON_DURATION_STARTTIME_KEY = "opentelemetry-flask.duration_starttime_key"
 _ENVIRON_SPAN_KEY = "opentelemetry-flask.span_key"
 _ENVIRON_ACTIVATION_KEY = "opentelemetry-flask.activation_key"
 _ENVIRON_TOKEN = "opentelemetry-flask.token"
-_ENVIRON_STATUS_CODE_KEY = "opentelemetry-flask.status_code"
 
 _excluded_urls_from_env = get_excluded_urls("FLASK")
 
@@ -198,9 +196,9 @@ def _rewrapped_app(
         start = default_timer()
         attributes = otel_wsgi.collect_request_attributes(wrapped_app_environ)
         active_requests_count_attrs = (
-            otel_wsgi.parse_active_request_count_attrs(attributes)
+            otel_wsgi._parse_active_request_count_attrs(attributes)
         )
-        duration_attrs = otel_wsgi.parse_duration_attrs(attributes)
+        duration_attrs = otel_wsgi._parse_duration_attrs(attributes)
         active_requests_counter.add(1, active_requests_count_attrs)
 
         def _start_response(status, response_headers, *args, **kwargs):
@@ -221,7 +219,7 @@ def _rewrapped_app(
                     otel_wsgi.add_response_attributes(
                         span, status, response_headers
                     )
-                    status_code = otel_wsgi.parse_status_code(status)
+                    status_code = otel_wsgi._parse_status_code(status)
                     if status_code is not None:
                         duration_attrs[
                             SpanAttributes.HTTP_STATUS_CODE
