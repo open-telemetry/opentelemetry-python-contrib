@@ -9,7 +9,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Adding multiple db connections support for django-instrumentation's sqlcommenter
   ([#1187](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/1187))
 
-### Addedgi
+### Added
 - `opentelemetry-instrumentation-redis` add support to instrument RedisCluster clients
   ([#1177](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/1177))
 - `opentelemetry-instrumentation-sqlalchemy` Added span for the connection phase ([#1133](https://github.com/open-telemetry/opentelemetry-python-contrib/issues/1133))
