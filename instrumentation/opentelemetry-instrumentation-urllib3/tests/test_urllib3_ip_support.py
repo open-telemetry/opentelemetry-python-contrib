@@ -84,3 +84,50 @@ class TestURLLib3InstrumentorWithRealSocket(HttpTestBase, TestBase):
             "net.peer.ip": self.assert_ip,
         }
         self.assertGreaterEqual(span.attributes.items(), attributes.items())
+
+class TestURLLib3InstrumentorMetric(HttpTestBase, TestBase):
+
+    def setUp(self):
+        super().setUp()
+        self.assert_ip = self.server.server_address[0]
+        self.assert_port = self.server.server_address[1]
+        self.http_host = ":".join(map(str, self.server.server_address[:2]))
+        self.http_url_base = "http://" + self.http_host
+        self.http_url = self.http_url_base + "/status/200"
+        URLLib3Instrumentor().instrument(meter_provider=self.meter_provider)
+
+    def tearDown(self):
+        super().tearDown()
+        URLLib3Instrumentor().uninstrument()
+
+    @staticmethod
+    def perform_request(url: str) -> urllib3.response.HTTPResponse:
+        with urllib3.PoolManager() as pool:
+            resp = pool.request("GET", url)
+            resp.close()
+        return resp
+
+    def test_basic_metric_success(self):
+        with urllib3.HTTPConnectionPool(self.http_host, timeout=3) as pool:
+            response = pool.request("GET", "/status/200",fields={"data":"test"})
+
+            expected_attributes = {
+                "http.status_code": 200,
+                "http.host": self.assert_ip,
+                "http.method": "GET",
+                "http.flavor": "1.1",
+                "http.scheme": "http",
+                'net.peer.name': self.assert_ip,
+                'net.peer.port': self.assert_port
+            }
+
+            resource_metrics = self.memory_metrics_reader.get_metrics_data().resource_metrics
+            for metrics in resource_metrics:
+                for scope_metrics in metrics.scope_metrics:
+                    self.assertEqual(len(scope_metrics.metrics), 3)
+                    for metric in scope_metrics.metrics:
+                        for data_point in metric.data.data_points:
+                            self.assertDictEqual(
+                                expected_attributes, dict(data_point.attributes)
+                            )
+                            self.assertEqual(data_point.count, 1)
