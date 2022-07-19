@@ -24,6 +24,10 @@ from opentelemetry.instrumentation.propagators import (
     set_global_response_propagator,
 )
 from opentelemetry.sdk import resources
+from opentelemetry.sdk.metrics.export import (
+    HistogramDataPoint,
+    NumberDataPoint,
+)
 from opentelemetry.semconv.trace import SpanAttributes
 from opentelemetry.test.asgitestutil import (
     AsgiTestBase,
@@ -35,10 +39,6 @@ from opentelemetry.util.http import (
     OTEL_INSTRUMENTATION_HTTP_CAPTURE_HEADERS_SERVER_REQUEST,
     OTEL_INSTRUMENTATION_HTTP_CAPTURE_HEADERS_SERVER_RESPONSE,
 )
-from opentelemetry.sdk.metrics.export import (
-    HistogramDataPoint,
-    NumberDataPoint,
-)
 
 _expected_metric_names = [
     "http.server.active_requests",
@@ -48,6 +48,7 @@ _recommended_attrs = {
     "http.server.active_requests": otel_asgi._active_requests_count_attrs,
     "http.server.duration": otel_asgi._duration_attrs,
 }
+
 
 async def http_app(scope, receive, send):
     message = await receive()

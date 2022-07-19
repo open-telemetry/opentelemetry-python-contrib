@@ -149,13 +149,12 @@ API
 import typing
 import urllib
 from functools import wraps
-from typing import Tuple
 from timeit import default_timer
+from typing import Tuple
 
 from asgiref.compatibility import guarantee_single_callable
 
 from opentelemetry import context, trace
-from opentelemetry.metrics import get_meter
 from opentelemetry.instrumentation.asgi.version import __version__  # noqa
 from opentelemetry.instrumentation.propagators import (
     get_global_response_propagator,
@@ -164,6 +163,7 @@ from opentelemetry.instrumentation.utils import (
     _start_internal_or_server_span,
     http_status_to_status_code,
 )
+from opentelemetry.metrics import get_meter
 from opentelemetry.propagators.textmap import Getter, Setter
 from opentelemetry.semconv.trace import SpanAttributes
 from opentelemetry.trace import Span, set_span_in_context
@@ -200,6 +200,7 @@ _active_requests_count_attrs = [
     SpanAttributes.HTTP_FLAVOR,
     SpanAttributes.HTTP_SERVER_NAME,
 ]
+
 
 class ASGIGetter(Getter[dict]):
     def get(
@@ -381,12 +382,14 @@ def get_default_span_details(scope: dict) -> Tuple[str, dict]:
 
     return span_name, {}
 
+
 def _parse_active_request_count_attrs(req_attrs):
     active_requests_count_attrs = {}
     for attr_key in _active_requests_count_attrs:
         if req_attrs.get(attr_key) is not None:
             active_requests_count_attrs[attr_key] = req_attrs[attr_key]
     return active_requests_count_attrs
+
 
 def _parse_duration_attrs(req_attrs):
     duration_attrs = {}
@@ -475,7 +478,9 @@ class OpenTelemetryMiddleware:
         )
         attributes = collect_request_attributes(scope)
         attributes.update(additional_attributes)
-        active_requests_count_attrs = _parse_active_request_count_attrs(attributes)
+        active_requests_count_attrs = _parse_active_request_count_attrs(
+            attributes
+        )
         duration_attrs = _parse_duration_attrs(attributes)
         start = default_timer()
         self.active_requests_counter.add(1, active_requests_count_attrs)
@@ -532,7 +537,9 @@ class OpenTelemetryMiddleware:
 
         return otel_receive
 
-    def _get_otel_send(self, server_span, server_span_name, scope, send, duration_attrs):
+    def _get_otel_send(
+        self, server_span, server_span_name, scope, send, duration_attrs
+    ):
         @wraps(send)
         async def otel_send(message):
             with self.tracer.start_as_current_span(
@@ -543,7 +550,9 @@ class OpenTelemetryMiddleware:
                 if send_span.is_recording():
                     if message["type"] == "http.response.start":
                         status_code = message["status"]
-                        duration_attrs[SpanAttributes.HTTP_STATUS_CODE] = status_code
+                        duration_attrs[
+                            SpanAttributes.HTTP_STATUS_CODE
+                        ] = status_code
                         set_status_code(server_span, status_code)
                         set_status_code(send_span, status_code)
                     elif message["type"] == "websocket.send":
