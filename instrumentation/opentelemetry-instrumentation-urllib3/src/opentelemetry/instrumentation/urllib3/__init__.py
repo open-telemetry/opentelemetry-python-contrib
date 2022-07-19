@@ -67,6 +67,7 @@ API
 import contextlib
 import typing
 from typing import Collection
+from timeit import default_timer
 
 import urllib3.connectionpool
 import wrapt
@@ -83,9 +84,10 @@ from opentelemetry.instrumentation.utils import (
     http_status_to_status_code,
     unwrap,
 )
+from opentelemetry.metrics import Histogram, get_meter
 from opentelemetry.propagate import inject
 from opentelemetry.semconv.trace import SpanAttributes
-from opentelemetry.trace import Span, SpanKind, get_tracer
+from opentelemetry.trace import Span, Tracer, SpanKind, get_tracer
 from opentelemetry.trace.status import Status
 from opentelemetry.util.http.httplib import set_ip_on_next_http_connection
 
@@ -135,8 +137,31 @@ class URLLib3Instrumentor(BaseInstrumentor):
         """
         tracer_provider = kwargs.get("tracer_provider")
         tracer = get_tracer(__name__, __version__, tracer_provider)
+
+        meter_provider = kwargs.get("meter_provider")
+        meter = get_meter(__name__, __version__, meter_provider)
+
+        duration_histogram = meter.create_histogram(
+            name="http.client.duration",
+            unit="ms",
+            description="measures the duration outbound HTTP requests",
+        )
+        request_size_histogram = meter.create_histogram(
+            name="http.client.request.size",
+            unit="By",
+            description="measures the size of HTTP request messages (compressed)",
+        )
+        response_size_histogram = meter.create_histogram(
+            name="http.client.response.size",
+            unit="By",
+            description="measures the size of HTTP response messages (compressed)",
+        )
+
         _instrument(
             tracer,
+            duration_histogram,
+            request_size_histogram,
+            response_size_histogram,
             request_hook=kwargs.get("request_hook"),
             response_hook=kwargs.get("response_hook"),
             url_filter=kwargs.get("url_filter"),
@@ -147,7 +172,10 @@ class URLLib3Instrumentor(BaseInstrumentor):
 
 
 def _instrument(
-    tracer,
+    tracer: Tracer,
+    duration_histogram: Histogram,
+    request_size_histogram: Histogram,
+    response_size_histogram: Histogram,
     request_hook: _RequestHookT = None,
     response_hook: _ResponseHookT = None,
     url_filter: _UrlFilterT = None,
@@ -175,11 +203,35 @@ def _instrument(
             inject(headers)
 
             with _suppress_further_instrumentation():
+                start_time = default_timer()
                 response = wrapped(*args, **kwargs)
+                elapsed_time = (default_timer() - start_time) * 1000
 
             _apply_response(span, response)
             if callable(response_hook):
                 response_hook(span, instance, response)
+
+            parsed_url = urlparse(url)
+
+            metric_labels = {
+                SpanAttributes.HTTP_METHOD: method,
+                SpanAttributes.HTTP_HOST: parsed_url.hostname,
+                SpanAttributes.HTTP_SCHEME: parsed_url.scheme,
+                SpanAttributes.HTTP_STATUS_CODE: response.status,
+                SpanAttributes.NET_PEER_NAME: parsed_url.hostname,
+                SpanAttributes.NET_PEER_PORT: parsed_url.port
+            }
+
+            version = getattr(response, "version")
+            if version:
+                metric_labels[SpanAttributes.HTTP_FLAVOR] = \
+                    "1.1" if version == 11 else "1.0"
+
+            request_size = 0 if body is None else len(body)
+            duration_histogram.record(elapsed_time, attributes=metric_labels)
+            request_size_histogram.record(request_size, attributes=metric_labels)
+            response_size_histogram.record(len(response.data), attributes=metric_labels)
+
             return response
 
     wrapt.wrap_function_wrapper(
