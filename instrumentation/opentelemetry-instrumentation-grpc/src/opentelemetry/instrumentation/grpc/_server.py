@@ -68,8 +68,8 @@ class _OpenTelemetryServicerContext(grpc.ServicerContext):
     def __init__(self, servicer_context, active_span):
         self._servicer_context = servicer_context
         self._active_span = active_span
-        self.code = grpc.StatusCode.OK
-        self.details = None
+        self._code = grpc.StatusCode.OK
+        self._details = None
         super().__init__()
 
     def __getattr__(self, attr):
@@ -118,26 +118,41 @@ class _OpenTelemetryServicerContext(grpc.ServicerContext):
         return self._servicer_context.trailing_metadata()
 
     def abort(self, code, details):
-        self.code = code
-        self.details = details
+        if not hasattr(self._servicer_context, "abort"):
+            raise RuntimeError(
+                "abort() is not supported with the installed version of grpcio"
+            )
+        self._code = code
+        self._details = details
         self._active_span.set_attribute(
             SpanAttributes.RPC_GRPC_STATUS_CODE, code.value[0]
         )
         self._active_span.set_status(
             Status(
                 status_code=StatusCode.ERROR,
-                description=f"{code}:{details}",
+                description=f"{code}: {details}",
             )
         )
         return self._servicer_context.abort(code, details)
 
     def abort_with_status(self, status):
+        if not hasattr(self._servicer_context, "abort_with_status"):
+            raise RuntimeError(
+                "abort_with_status() is not supported with the installed version of grpcio"
+            )
         return self._servicer_context.abort_with_status(status)
 
+    def code(self):
+        if not hasattr(self._servicer_context, "code"):
+            raise RuntimeError(
+                "code() is not supported with the installed version of grpcio"
+            )
+        return self._servicer_context.code()
+
     def set_code(self, code):
-        self.code = code
+        self._code = code
         # use details if we already have it, otherwise the status description
-        details = self.details or code.value[1]
+        details = self._details or code.value[1]
         self._active_span.set_attribute(
             SpanAttributes.RPC_GRPC_STATUS_CODE, code.value[0]
         )
@@ -145,18 +160,26 @@ class _OpenTelemetryServicerContext(grpc.ServicerContext):
             self._active_span.set_status(
                 Status(
                     status_code=StatusCode.ERROR,
-                    description=f"{code}:{details}",
+                    description=f"{code}: {details}",
                 )
             )
         return self._servicer_context.set_code(code)
 
+    def details(self):
+        if not hasattr(self._servicer_context, "details"):
+            raise RuntimeError(
+                "details() is not supported with the installed version of "
+                "grpcio"
+            )
+        return self._servicer_context.details()
+
     def set_details(self, details):
-        self.details = details
-        if self.code != grpc.StatusCode.OK:
+        self._details = details
+        if self._code != grpc.StatusCode.OK:
             self._active_span.set_status(
                 Status(
                     status_code=StatusCode.ERROR,
-                    description=f"{self.code}:{details}",
+                    description=f"{self._code}: {details}",
                 )
             )
         return self._servicer_context.set_details(details)
