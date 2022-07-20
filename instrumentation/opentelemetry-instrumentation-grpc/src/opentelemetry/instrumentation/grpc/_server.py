@@ -29,7 +29,7 @@ import grpc
 from opentelemetry import trace
 from opentelemetry.context import attach, detach
 from opentelemetry.propagate import extract
-from opentelemetry.semconv.trace import SpanAttributes
+from opentelemetry.semconv.trace import RpcSystemValues, SpanAttributes
 from opentelemetry.trace.status import Status, StatusCode
 
 logger = logging.getLogger(__name__)
@@ -206,7 +206,7 @@ class OpenTelemetryServerInterceptor(grpc.ServerInterceptor):
 
         # standard attributes
         attributes = {
-            SpanAttributes.RPC_SYSTEM: "grpc",
+            SpanAttributes.RPC_SYSTEM: RpcSystemValues.GRPC.value,
             SpanAttributes.RPC_GRPC_STATUS_CODE: grpc.StatusCode.OK.value[0],
         }
 
@@ -217,8 +217,8 @@ class OpenTelemetryServerInterceptor(grpc.ServerInterceptor):
             )
             attributes.update(
                 {
-                    SpanAttributes.RPC_METHOD: method,
                     SpanAttributes.RPC_SERVICE: service,
+                    SpanAttributes.RPC_METHOD: method,
                 }
             )
 
