@@ -147,7 +147,7 @@ def _generate_sql_comment(**meta) -> str:
     )
 
 
-def _url_quote(s):  # pylint: disable=invalid-name
+def _url_quote(s) -> str:  # pylint: disable=invalid-name
     if not isinstance(s, (str, bytes)):
         return s
     quoted = urllib.parse.quote(s)
@@ -158,7 +158,7 @@ def _url_quote(s):  # pylint: disable=invalid-name
     return quoted.replace("%", "%%")
 
 
-def _get_opentelemetry_values():
+def _get_opentelemetry_values() -> dict:
     """
     Return the OpenTelemetry Trace and Span IDs if Span ID is set in the
     OpenTelemetry execution context.
@@ -169,17 +169,6 @@ def _get_opentelemetry_values():
     return _headers
 
 
-def _generate_opentelemetry_traceparent(span: Span) -> str:
-    meta = {}
-    _version = "00"
-    _span_id = trace.format_span_id(span.context.span_id)
-    _trace_id = trace.format_trace_id(span.context.trace_id)
-    _flags = str(trace.TraceFlags.SAMPLED)
-    _traceparent = _version + "-" + _trace_id + "-" + _span_id + "-" + _flags
-    meta.update({"traceparent": _traceparent})
-    return meta
-
-
 def _python_path_without_directory(python_path, directory, path_separator):
     return sub(
         rf"{escape(directory)}{path_separator}(?!$)",
@@ -187,7 +176,10 @@ def _python_path_without_directory(python_path, directory, path_separator):
         python_path,)
 
 
-def add_sql_comment(sql, **meta) -> str:
+def _add_sql_comment(sql, **meta) -> str:
+    """
+    Appends comments to the sql statement and returns it
+    """
     comment = _generate_sql_comment(**meta)
     sql = sql.rstrip()
     if sql[-1] == ';':

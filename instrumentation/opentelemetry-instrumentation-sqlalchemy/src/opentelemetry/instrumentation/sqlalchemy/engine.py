@@ -21,7 +21,7 @@ from opentelemetry.instrumentation.sqlalchemy.package import (
 )
 from opentelemetry.instrumentation.sqlalchemy.version import __version__
 from opentelemetry.instrumentation.utils import (
-    add_sql_comment,
+    _add_sql_comment,
     _get_opentelemetry_values,
 )
 from opentelemetry.semconv.trace import NetTransportValues, SpanAttributes
@@ -126,7 +126,7 @@ class EngineTracer:
             if self.enable_commenter:
                 commenter_data = {}
                 commenter_data.update(_get_opentelemetry_values())
-                statement = add_sql_comment(statement, **commenter_data)
+                statement = _add_sql_comment(statement, **commenter_data)
 
         context._otel_span = span
 
