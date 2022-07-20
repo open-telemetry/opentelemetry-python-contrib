@@ -82,6 +82,17 @@ class _OpenTelemetryServicerContext(grpc.ServicerContext):
         return self._servicer_context.time_remaining(*args, **kwargs)
 
     def cancel(self, *args, **kwargs):
+        self._code = grpc.StatusCode.CANCELLED
+        self._details = self._code.value[1]
+        self._active_span.set_attribute(
+            SpanAttributes.RPC_GRPC_STATUS_CODE, self._code.value[0]
+        )
+        self._active_span.set_status(
+            Status(
+                status_code=StatusCode.ERROR,
+                description=f"{self._code}: {self._details}",
+            )
+        )
         return self._servicer_context.cancel(*args, **kwargs)
 
     def add_callback(self, *args, **kwargs):
