@@ -375,7 +375,6 @@ class CursorTracer:
             return statement.decode("utf8", "replace")
         return statement
 
-
     def traced_execution(
         self,
         cursor,
@@ -400,7 +399,9 @@ class CursorTracer:
                     args_list = list(args)
                     commenter_data = {}
                     commenter_data.update(_get_opentelemetry_values())
-                    statement = _add_sql_comment(args_list[0], **commenter_data)
+                    statement = _add_sql_comment(
+                        args_list[0], **commenter_data
+                    )
 
                     args_list[0] = statement
                     args = tuple(args_list)

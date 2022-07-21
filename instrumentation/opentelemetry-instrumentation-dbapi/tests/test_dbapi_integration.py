@@ -239,7 +239,7 @@ class TestDBApiIntegration(TestBase):
         cursor.executemany("Select 1;")
         self.assertRegex(
             cursor.query,
-            r"Select 1 /\*traceparent='\d{1,2}-[a-zA-Z0-9_]{32}-[a-zA-Z0-9_]{16}-\d{1,2}'\*/;"
+            r"Select 1 /\*traceparent='\d{1,2}-[a-zA-Z0-9_]{32}-[a-zA-Z0-9_]{16}-\d{1,2}'\*/;",
         )
 
     def test_callproc(self):

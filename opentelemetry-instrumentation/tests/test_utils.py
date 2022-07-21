@@ -157,20 +157,32 @@ class TestUtils(unittest.TestCase):
     def test_add_sql_comments_with_semicolon(self):
         sql_query_without_semicolon = "Select 1;"
         comments = {"comment_1": "value 1", "comment 2": "value 3"}
-        commented_sql_without_semicolon = _add_sql_comment(sql_query_without_semicolon, **comments)
+        commented_sql_without_semicolon = _add_sql_comment(
+            sql_query_without_semicolon, **comments
+        )
 
-        self.assertEqual(commented_sql_without_semicolon, "Select 1 /*comment%%202='value%%203',comment_1='value%%201'*/;")
+        self.assertEqual(
+            commented_sql_without_semicolon,
+            "Select 1 /*comment%%202='value%%203',comment_1='value%%201'*/;",
+        )
 
     def test_add_sql_comments_without_semicolon(self):
         sql_query_without_semicolon = "Select 1"
         comments = {"comment_1": "value 1", "comment 2": "value 3"}
-        commented_sql_without_semicolon = _add_sql_comment(sql_query_without_semicolon, **comments)
+        commented_sql_without_semicolon = _add_sql_comment(
+            sql_query_without_semicolon, **comments
+        )
 
-        self.assertEqual(commented_sql_without_semicolon, "Select 1 /*comment%%202='value%%203',comment_1='value%%201'*/")
+        self.assertEqual(
+            commented_sql_without_semicolon,
+            "Select 1 /*comment%%202='value%%203',comment_1='value%%201'*/",
+        )
 
     def test_add_sql_comments_without_comments(self):
         sql_query_without_semicolon = "Select 1"
         comments = {}
-        commented_sql_without_semicolon = _add_sql_comment(sql_query_without_semicolon, **comments)
+        commented_sql_without_semicolon = _add_sql_comment(
+            sql_query_without_semicolon, **comments
+        )
 
         self.assertEqual(commented_sql_without_semicolon, "Select 1")

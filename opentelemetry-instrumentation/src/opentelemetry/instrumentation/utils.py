@@ -173,7 +173,8 @@ def _python_path_without_directory(python_path, directory, path_separator):
     return sub(
         rf"{escape(directory)}{path_separator}(?!$)",
         "",
-        python_path,)
+        python_path,
+    )
 
 
 def _add_sql_comment(sql, **meta) -> str:
@@ -182,8 +183,8 @@ def _add_sql_comment(sql, **meta) -> str:
     """
     comment = _generate_sql_comment(**meta)
     sql = sql.rstrip()
-    if sql[-1] == ';':
-        sql = sql[:-1] + comment + ';'
+    if sql[-1] == ";":
+        sql = sql[:-1] + comment + ";"
     else:
         sql = sql + comment
     return sql
