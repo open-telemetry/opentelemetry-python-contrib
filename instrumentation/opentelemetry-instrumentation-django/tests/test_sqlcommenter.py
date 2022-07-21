@@ -25,7 +25,6 @@ from opentelemetry.instrumentation.django.middleware.sqlcommenter_middleware imp
     SqlCommenter,
     _QueryWrapper,
 )
-from opentelemetry.instrumentation.utils import _get_opentelemetry_values
 from opentelemetry.test.wsgitestutil import WsgiTestBase
 
 DJANGO_2_0 = VERSION >= (2, 0)

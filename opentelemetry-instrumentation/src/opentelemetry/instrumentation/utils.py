@@ -24,7 +24,7 @@ from opentelemetry import context, trace
 # pylint: disable=E0611
 from opentelemetry.context import _SUPPRESS_INSTRUMENTATION_KEY  # noqa: F401
 from opentelemetry.propagate import extract
-from opentelemetry.trace import Span, StatusCode
+from opentelemetry.trace import StatusCode
 from opentelemetry.trace.propagation.tracecontext import (
     TraceContextTextMapPropagator,
 )
