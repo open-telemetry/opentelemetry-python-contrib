@@ -14,6 +14,7 @@
 
 import urllib3
 import urllib3.exceptions
+from urllib3.request import encode_multipart_formdata
 
 from opentelemetry import trace
 from opentelemetry.instrumentation.urllib3 import URLLib3Instrumentor
@@ -107,10 +108,9 @@ class TestURLLib3InstrumentorMetric(HttpTestBase, TestBase):
             resp.close()
         return resp
 
-    def test_basic_metric_success(self):
+    def test_basic_metric_check_client_size_get(self):
         with urllib3.HTTPConnectionPool(self.http_host, timeout=3) as pool:
-            response = pool.request("GET", "/status/200",fields={"data":"test"})
-
+            response = pool.request("GET", "/status/200")
             expected_attributes = {
                 "http.status_code": 200,
                 "http.host": self.assert_ip,
@@ -120,6 +120,44 @@ class TestURLLib3InstrumentorMetric(HttpTestBase, TestBase):
                 'net.peer.name': self.assert_ip,
                 'net.peer.port': self.assert_port
             }
+            expected_data = {
+                "http.client.request.size": 0,
+                "http.client.response.size": len(response.data)
+            }
+            resource_metrics = self.memory_metrics_reader.get_metrics_data().resource_metrics
+            for metrics in resource_metrics:
+                for scope_metrics in metrics.scope_metrics:
+                    self.assertEqual(len(scope_metrics.metrics), 3)
+                    for metric in scope_metrics.metrics:
+                        for data_point in metric.data.data_points:
+                            if metric.name in expected_data:
+                                self.assertEqual(data_point.sum, expected_data[metric.name])
+                            self.assertDictEqual(
+                                expected_attributes, dict(data_point.attributes)
+                            )
+                            self.assertEqual(data_point.count, 1)
+
+    def test_basic_metric_check_client_size_post(self):
+        with urllib3.HTTPConnectionPool(self.http_host, timeout=3) as pool:
+            data_fields = {"data": "test"}
+            response = pool.request("POST", "/status/200", fields=data_fields)
+
+            expected_attributes = {
+                "http.status_code": 501,
+                "http.host": self.assert_ip,
+                "http.method": "POST",
+                "http.flavor": "1.1",
+                "http.scheme": "http",
+                'net.peer.name': self.assert_ip,
+                'net.peer.port': self.assert_port
+            }
+
+            body, content_type = encode_multipart_formdata(data_fields)
+
+            expected_data = {
+                "http.client.request.size": len(body),
+                "http.client.response.size": len(response.data)
+            }
 
             resource_metrics = self.memory_metrics_reader.get_metrics_data().resource_metrics
             for metrics in resource_metrics:
@@ -127,7 +165,11 @@ class TestURLLib3InstrumentorMetric(HttpTestBase, TestBase):
                     self.assertEqual(len(scope_metrics.metrics), 3)
                     for metric in scope_metrics.metrics:
                         for data_point in metric.data.data_points:
+                            if metric.name in expected_data:
+                                self.assertEqual(data_point.sum, expected_data[metric.name])
+
                             self.assertDictEqual(
                                 expected_attributes, dict(data_point.attributes)
                             )
                             self.assertEqual(data_point.count, 1)
+
