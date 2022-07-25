@@ -414,7 +414,7 @@ class CursorTracer:
             if args and self._commenter_enabled:
                 try:
                     args_list = list(args)
-                    psycopg2_attributes = dict(
+                    commenter_data = dict(
                         # Psycopg2/framework information
                         db_driver='psycopg2:%s' % self._connect_module.__version__,
                         dbapi_threadsafety=self._connect_module.threadsafety,
@@ -422,11 +422,11 @@ class CursorTracer:
                         libpq_version=self._connect_module.__libpq_version__,
                         driver_paramstyle=self._connect_module.paramstyle,
             )
-                    commenter_data = {}
+                    if self._commenter_options.get('opentelemetry_values', True):
+                        commenter_data.update(**_get_opentelemetry_values())
 
-                    commenter_data.update(_get_opentelemetry_values())
                     # Filter down to just the requested attributes.
-                    data = {k: v for k, v in psycopg2_attributes.items() if self._commenter_options.get(k)}
+                    commenter_data = {k: v for k, v in commenter_data.items() if self._commenter_options.get(k, True)}
                     statement = _add_sql_comment(
                         args_list[0], **commenter_data
                     )
