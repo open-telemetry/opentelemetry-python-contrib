@@ -211,15 +211,13 @@ def _instrument(
             if callable(response_hook):
                 response_hook(span, instance, response)
 
-            parsed_url = urlparse(url)
-
             metric_labels = {
                 SpanAttributes.HTTP_METHOD: method,
-                SpanAttributes.HTTP_HOST: parsed_url.hostname,
-                SpanAttributes.HTTP_SCHEME: parsed_url.scheme,
+                SpanAttributes.HTTP_HOST: instance.host,
+                SpanAttributes.HTTP_SCHEME: instance.scheme,
                 SpanAttributes.HTTP_STATUS_CODE: response.status,
-                SpanAttributes.NET_PEER_NAME: parsed_url.hostname,
-                SpanAttributes.NET_PEER_PORT: parsed_url.port
+                SpanAttributes.NET_PEER_NAME: instance.host,
+                SpanAttributes.NET_PEER_PORT: instance.port
             }
 
             version = getattr(response, "version")

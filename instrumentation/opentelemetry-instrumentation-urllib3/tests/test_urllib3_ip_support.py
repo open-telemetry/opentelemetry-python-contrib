@@ -101,16 +101,9 @@ class TestURLLib3InstrumentorMetric(HttpTestBase, TestBase):
         super().tearDown()
         URLLib3Instrumentor().uninstrument()
 
-    @staticmethod
-    def perform_request(url: str) -> urllib3.response.HTTPResponse:
-        with urllib3.PoolManager() as pool:
-            resp = pool.request("GET", url)
-            resp.close()
-        return resp
-
     def test_basic_metric_check_client_size_get(self):
-        with urllib3.HTTPConnectionPool(self.http_host, timeout=3) as pool:
-            response = pool.request("GET", "/status/200")
+        with urllib3.PoolManager() as pool:
+            response = pool.request("GET", self.http_url)
             expected_attributes = {
                 "http.status_code": 200,
                 "http.host": self.assert_ip,
@@ -138,9 +131,9 @@ class TestURLLib3InstrumentorMetric(HttpTestBase, TestBase):
                             self.assertEqual(data_point.count, 1)
 
     def test_basic_metric_check_client_size_post(self):
-        with urllib3.HTTPConnectionPool(self.http_host, timeout=3) as pool:
+        with urllib3.PoolManager() as pool:
             data_fields = {"data": "test"}
-            response = pool.request("POST", "/status/200", fields=data_fields)
+            response = pool.request("POST", self.http_url, fields=data_fields)
 
             expected_attributes = {
                 "http.status_code": 501,
