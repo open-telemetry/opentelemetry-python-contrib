@@ -77,6 +77,7 @@ class Psycopg2Instrumentor(BaseInstrumentor):
         """
         tracer_provider = kwargs.get("tracer_provider")
         enable_sqlcommenter = kwargs.get("enable_commenter", False)
+        commenter_options = kwargs.get("commenter_options", {})
         dbapi.wrap_connect(
             __name__,
             psycopg2,
@@ -87,6 +88,7 @@ class Psycopg2Instrumentor(BaseInstrumentor):
             tracer_provider=tracer_provider,
             db_api_integration_factory=DatabaseApiIntegration,
             enable_commenter=enable_sqlcommenter,
+            commenter_options=commenter_options,
         )
 
     def _uninstrument(self, **kwargs):
