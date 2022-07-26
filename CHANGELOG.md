@@ -10,6 +10,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   ([#1187](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/1187))
 - SQLCommenter semicolon bug fix
   ([#1200](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/1200/files))
+- remoulade: Account for the retry mechanism
+  ([#1204](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/1204))
+
 
 ### Added
 - `opentelemetry-instrumentation-redis` add support to instrument RedisCluster clients
