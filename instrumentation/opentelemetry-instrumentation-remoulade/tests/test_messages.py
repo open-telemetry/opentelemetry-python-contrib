@@ -45,6 +45,8 @@ class TestRemouladeInstrumentation(TestBase):
 
     def tearDown(self):
         RemouladeInstrumentor().uninstrument()
+        self._worker.stop()
+        self._thread.join()
         super().tearDown()
 
     def test_message(self):
