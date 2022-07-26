@@ -15,6 +15,7 @@
 import urllib3
 import urllib3.exceptions
 from urllib3.request import encode_multipart_formdata
+from timeit import default_timer
 
 from opentelemetry import trace
 from opentelemetry.instrumentation.urllib3 import URLLib3Instrumentor
@@ -71,9 +72,7 @@ class TestURLLib3InstrumentorWithRealSocket(HttpTestBase, TestBase):
             return span_list[0]
         return span_list
 
-    def assert_success_span(
-        self, response: urllib3.response.HTTPResponse, url: str
-    ):
+    def assert_success_span(self, response: urllib3.response.HTTPResponse, url: str):
         self.assertEqual(b"Hello!", response.data)
 
         span = self.assert_span()
@@ -86,8 +85,8 @@ class TestURLLib3InstrumentorWithRealSocket(HttpTestBase, TestBase):
         }
         self.assertGreaterEqual(span.attributes.items(), attributes.items())
 
-class TestURLLib3InstrumentorMetric(HttpTestBase, TestBase):
 
+class TestURLLib3InstrumentorMetric(HttpTestBase, TestBase):
     def setUp(self):
         super().setUp()
         self.assert_ip = self.server.server_address[0]
@@ -103,28 +102,48 @@ class TestURLLib3InstrumentorMetric(HttpTestBase, TestBase):
 
     def test_basic_metric_check_client_size_get(self):
         with urllib3.PoolManager() as pool:
+            start_time = default_timer()
             response = pool.request("GET", self.http_url)
+            client_duration_estimated = (default_timer() - start_time) * 1000
+
             expected_attributes = {
                 "http.status_code": 200,
                 "http.host": self.assert_ip,
                 "http.method": "GET",
                 "http.flavor": "1.1",
                 "http.scheme": "http",
-                'net.peer.name': self.assert_ip,
-                'net.peer.port': self.assert_port
+                "net.peer.name": self.assert_ip,
+                "net.peer.port": self.assert_port,
             }
             expected_data = {
                 "http.client.request.size": 0,
-                "http.client.response.size": len(response.data)
+                "http.client.response.size": len(response.data),
             }
-            resource_metrics = self.memory_metrics_reader.get_metrics_data().resource_metrics
+            expected_metrics = [
+                "http.client.duration",
+                "http.client.request.size",
+                "http.client.response.size",
+            ]
+
+            resource_metrics = (
+                self.memory_metrics_reader.get_metrics_data().resource_metrics
+            )
             for metrics in resource_metrics:
                 for scope_metrics in metrics.scope_metrics:
                     self.assertEqual(len(scope_metrics.metrics), 3)
                     for metric in scope_metrics.metrics:
                         for data_point in metric.data.data_points:
                             if metric.name in expected_data:
-                                self.assertEqual(data_point.sum, expected_data[metric.name])
+                                self.assertEqual(
+                                    data_point.sum, expected_data[metric.name]
+                                )
+                            if metric.name == "http.client.duration":
+                                self.assertAlmostEqual(
+                                    data_point.sum,
+                                    client_duration_estimated,
+                                    delta=5000,
+                                )
+                            self.assertIn(metric.name, expected_metrics)
                             self.assertDictEqual(
                                 expected_attributes, dict(data_point.attributes)
                             )
@@ -132,8 +151,10 @@ class TestURLLib3InstrumentorMetric(HttpTestBase, TestBase):
 
     def test_basic_metric_check_client_size_post(self):
         with urllib3.PoolManager() as pool:
+            start_time = default_timer()
             data_fields = {"data": "test"}
             response = pool.request("POST", self.http_url, fields=data_fields)
+            client_duration_estimated = (default_timer() - start_time) * 1000
 
             expected_attributes = {
                 "http.status_code": 501,
@@ -141,28 +162,43 @@ class TestURLLib3InstrumentorMetric(HttpTestBase, TestBase):
                 "http.method": "POST",
                 "http.flavor": "1.1",
                 "http.scheme": "http",
-                'net.peer.name': self.assert_ip,
-                'net.peer.port': self.assert_port
+                "net.peer.name": self.assert_ip,
+                "net.peer.port": self.assert_port,
             }
 
             body, content_type = encode_multipart_formdata(data_fields)
 
             expected_data = {
                 "http.client.request.size": len(body),
-                "http.client.response.size": len(response.data)
+                "http.client.response.size": len(response.data),
             }
+            expected_metrics = [
+                "http.client.duration",
+                "http.client.request.size",
+                "http.client.response.size",
+            ]
 
-            resource_metrics = self.memory_metrics_reader.get_metrics_data().resource_metrics
+            resource_metrics = (
+                self.memory_metrics_reader.get_metrics_data().resource_metrics
+            )
             for metrics in resource_metrics:
                 for scope_metrics in metrics.scope_metrics:
                     self.assertEqual(len(scope_metrics.metrics), 3)
                     for metric in scope_metrics.metrics:
                         for data_point in metric.data.data_points:
                             if metric.name in expected_data:
-                                self.assertEqual(data_point.sum, expected_data[metric.name])
+                                self.assertEqual(
+                                    data_point.sum, expected_data[metric.name]
+                                )
+                            if metric.name == "http.client.duration":
+                                self.assertAlmostEqual(
+                                    data_point.sum,
+                                    client_duration_estimated,
+                                    delta=5000,
+                                )
+                            self.assertIn(metric.name, expected_metrics)
 
                             self.assertDictEqual(
                                 expected_attributes, dict(data_point.attributes)
                             )
                             self.assertEqual(data_point.count, 1)
-
