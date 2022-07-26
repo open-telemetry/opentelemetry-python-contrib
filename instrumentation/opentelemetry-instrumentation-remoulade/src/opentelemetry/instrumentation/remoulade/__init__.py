@@ -76,7 +76,7 @@ class _InstrumentationMiddleware(Middleware):
         trace_ctx = extract(message.options["trace_ctx"])
         retry_count = message.options.get("retries", 0)
         operation_name = utils.get_operation_name(
-            "before_process_message", retry_count
+            "before_process_message", retry_count, None
         )
         span_attributes = {_REMOULADE_MESSAGE_RETRY_COUNT_KEY: retry_count}
 
@@ -114,20 +114,28 @@ class _InstrumentationMiddleware(Middleware):
                 }
             )
 
+            utils.set_attributes_from_context(span, message)
+
         activation.__exit__(None, None, None)
         utils.detach_span(self._span_registry, message.message_id)
 
     def before_enqueue(self, _broker, message, delay):
         retry_count = message.options.get("retries", 0)
+        eta = message.options.get("eta", 0)
         operation_name = utils.get_operation_name(
-            "before_enqueue", retry_count
+            "before_enqueue", retry_count, eta
         )
-        span_attributes = {_REMOULADE_MESSAGE_RETRY_COUNT_KEY: retry_count}
+        span_attributes = {
+            _REMOULADE_MESSAGE_RETRY_COUNT_KEY: retry_count,
+        }
+
+        trace_ctx = extract(message.options.get("trace_ctx", {})) or None
 
         span = self._tracer.start_span(
             operation_name,
             kind=trace.SpanKind.PRODUCER,
             attributes=span_attributes,
+            context=trace_ctx,
         )
 
         if span.is_recording():
@@ -138,6 +146,8 @@ class _InstrumentationMiddleware(Middleware):
                     SpanAttributes.MESSAGING_MESSAGE_ID: message.message_id,
                 }
             )
+
+            utils.set_attributes_from_context(span, message)
 
         activation = trace.use_span(span, end_on_exit=True)
         activation.__enter__()  # pylint: disable=E1101

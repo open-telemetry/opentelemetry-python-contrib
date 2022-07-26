@@ -12,6 +12,12 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import time
+
+_REMOULADE_MESSAGE_DELAY_SECONDS_KEY = "remoulade.delay.seconds"
+_REMOULADE_MESSAGE_COMPOSITION_ID_KEY = "remoulade.composition.id"
+_REMOULADE_MESSAGE_GROUP_ID_KEY = "remoulade.group.id"
+
 
 def attach_span(
     span_registry, message_id, span_and_activation, is_publish=False
@@ -27,7 +33,7 @@ def retrieve_span(span_registry, message_id, is_publish=False):
     return span_registry.get((message_id, is_publish), (None, None))
 
 
-def get_operation_name(hook_name, retry_count):
+def get_operation_name(hook_name, retry_count, eta):
     if hook_name == "before_process_message":
         return (
             "remoulade/process"
@@ -35,9 +41,37 @@ def get_operation_name(hook_name, retry_count):
             else f"remoulade/process(retry-{retry_count})"
         )
     if hook_name == "before_enqueue":
-        return (
-            "remoulade/send"
-            if retry_count == 0
-            else f"remoulade/send(retry-{retry_count})"
-        )
+        if eta:
+            return (
+                "remoulade/send"
+                if retry_count == 0
+                else f"remoulade/delay(retry-{retry_count})"
+            )
+        else:
+            return (
+                "remoulade/send"
+                if retry_count == 0
+                else f"remoulade/send(retry-{retry_count})"
+            )
     return ""
+
+
+def set_attributes_from_context(span, message):
+    if "composition_id" in message.options:
+        span.set_attribute(
+            _REMOULADE_MESSAGE_COMPOSITION_ID_KEY,
+            message.options.get("composition_id"),
+        )
+
+    if "group_info" in message.options:
+        span.set_attribute(
+            _REMOULADE_MESSAGE_GROUP_ID_KEY,
+            message.options.get("group_info", {}).get("group_id"),
+        )
+
+    if "eta" in message.options:
+        span.set_attribute(
+            _REMOULADE_MESSAGE_DELAY_SECONDS_KEY,
+            "%.5f"
+            % ((message.options.get("eta", 0) - time.time() * 1000) / 1000),
+        )
