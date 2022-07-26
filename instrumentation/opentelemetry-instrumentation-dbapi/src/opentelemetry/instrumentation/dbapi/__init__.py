@@ -105,7 +105,7 @@ def wrap_connect(
     capture_parameters: bool = False,
     enable_commenter: bool = False,
     db_api_integration_factory=None,
-    commenter_options: dict = {},
+    commenter_options: dict = None,
 ):
     """Integrate with DB API library.
     https://www.python.org/dev/peps/pep-0249/
@@ -178,7 +178,7 @@ def instrument_connection(
     tracer_provider: typing.Optional[TracerProvider] = None,
     capture_parameters: bool = False,
     enable_commenter: bool = False,
-    commenter_options: dict = {},
+    commenter_options: dict = None,
 ):
     """Enable instrumentation in a database connection.
 
@@ -241,7 +241,7 @@ class DatabaseApiIntegration:
         tracer_provider: typing.Optional[TracerProvider] = None,
         capture_parameters: bool = False,
         enable_commenter: bool = False,
-        commenter_options: dict = {},
+        commenter_options: dict = None,
         connect_module: typing.Callable[..., typing.Any] = None,
     ):
         self.connection_attributes = connection_attributes
@@ -349,14 +349,18 @@ class CursorTracer:
     def __init__(self, db_api_integration: DatabaseApiIntegration) -> None:
         self._db_api_integration = db_api_integration
         self._commenter_enabled = self._db_api_integration.enable_commenter
-        self._commenter_options = self._db_api_integration.commenter_options
+        self._commenter_options = (
+            self._db_api_integration.commenter_options
+            if self._db_api_integration.commenter_options
+            else {}
+        )
         self._connect_module = self._db_api_integration.connect_module
 
     def _populate_span(
         self,
         span: trace_api.Span,
         cursor,
-        *args: typing.Tuple[typing.Any, typing.Any]
+        *args: typing.Tuple[typing.Any, typing.Any],
     ):
         if not span.is_recording():
             return
@@ -396,7 +400,7 @@ class CursorTracer:
         cursor,
         query_method: typing.Callable[..., typing.Any],
         *args: typing.Tuple[typing.Any, typing.Any],
-        **kwargs: typing.Dict[typing.Any, typing.Any]
+        **kwargs: typing.Dict[typing.Any, typing.Any],
     ):
         name = self.get_operation_name(cursor, args)
         if not name:
@@ -415,8 +419,7 @@ class CursorTracer:
                     args_list = list(args)
                     commenter_data = dict(
                         # Psycopg2/framework information
-                        db_driver="psycopg2:%s"
-                        % self._connect_module.__version__.split(" ")[0],
+                        db_driver=f"psycopg2:{self._connect_module.__version__.split(' ')[0]}",
                         dbapi_threadsafety=self._connect_module.threadsafety,
                         dbapi_level=self._connect_module.apilevel,
                         libpq_version=self._connect_module.__libpq_version__,
