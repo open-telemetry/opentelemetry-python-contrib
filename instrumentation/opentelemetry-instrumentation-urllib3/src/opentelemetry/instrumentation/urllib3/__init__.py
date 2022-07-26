@@ -217,18 +217,23 @@ def _instrument(
                 SpanAttributes.HTTP_SCHEME: instance.scheme,
                 SpanAttributes.HTTP_STATUS_CODE: response.status,
                 SpanAttributes.NET_PEER_NAME: instance.host,
-                SpanAttributes.NET_PEER_PORT: instance.port
+                SpanAttributes.NET_PEER_PORT: instance.port,
             }
 
             version = getattr(response, "version")
             if version:
-                metric_labels[SpanAttributes.HTTP_FLAVOR] = \
+                metric_labels[SpanAttributes.HTTP_FLAVOR] = (
                     "1.1" if version == 11 else "1.0"
+                )
 
             request_size = 0 if body is None else len(body)
             duration_histogram.record(elapsed_time, attributes=metric_labels)
-            request_size_histogram.record(request_size, attributes=metric_labels)
-            response_size_histogram.record(len(response.data), attributes=metric_labels)
+            request_size_histogram.record(
+                request_size, attributes=metric_labels
+            )
+            response_size_histogram.record(
+                len(response.data), attributes=metric_labels
+            )
 
             return response
 

@@ -72,7 +72,9 @@ class TestURLLib3InstrumentorWithRealSocket(HttpTestBase, TestBase):
             return span_list[0]
         return span_list
 
-    def assert_success_span(self, response: urllib3.response.HTTPResponse, url: str):
+    def assert_success_span(
+        self, response: urllib3.response.HTTPResponse, url: str
+    ):
         self.assertEqual(b"Hello!", response.data)
 
         span = self.assert_span()
@@ -145,7 +147,8 @@ class TestURLLib3InstrumentorMetric(HttpTestBase, TestBase):
                                 )
                             self.assertIn(metric.name, expected_metrics)
                             self.assertDictEqual(
-                                expected_attributes, dict(data_point.attributes)
+                                expected_attributes,
+                                dict(data_point.attributes),
                             )
                             self.assertEqual(data_point.count, 1)
 
@@ -199,6 +202,7 @@ class TestURLLib3InstrumentorMetric(HttpTestBase, TestBase):
                             self.assertIn(metric.name, expected_metrics)
 
                             self.assertDictEqual(
-                                expected_attributes, dict(data_point.attributes)
+                                expected_attributes,
+                                dict(data_point.attributes),
                             )
                             self.assertEqual(data_point.count, 1)
