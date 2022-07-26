@@ -179,7 +179,6 @@ def instrument_connection(
     capture_parameters: bool = False,
     enable_commenter: bool = False,
     commenter_options: dict = {},
-
 ):
     """Enable instrumentation in a database connection.
 
@@ -210,6 +209,7 @@ def instrument_connection(
         tracer_provider=tracer_provider,
         capture_parameters=capture_parameters,
         enable_commenter=enable_commenter,
+        commenter_options=commenter_options,
     )
     db_integration.get_connection_attributes(connection)
     return get_traced_connection_proxy(connection, db_integration)
@@ -243,7 +243,6 @@ class DatabaseApiIntegration:
         enable_commenter: bool = False,
         commenter_options: dict = {},
         connect_module: typing.Callable[..., typing.Any] = None,
-
     ):
         self.connection_attributes = connection_attributes
         if self.connection_attributes is None:
@@ -416,17 +415,24 @@ class CursorTracer:
                     args_list = list(args)
                     commenter_data = dict(
                         # Psycopg2/framework information
-                        db_driver='psycopg2:%s' % self._connect_module.__version__,
+                        db_driver="psycopg2:%s"
+                        % self._connect_module.__version__.split(" ")[0],
                         dbapi_threadsafety=self._connect_module.threadsafety,
                         dbapi_level=self._connect_module.apilevel,
                         libpq_version=self._connect_module.__libpq_version__,
                         driver_paramstyle=self._connect_module.paramstyle,
-            )
-                    if self._commenter_options.get('opentelemetry_values', True):
+                    )
+                    if self._commenter_options.get(
+                        "opentelemetry_values", True
+                    ):
                         commenter_data.update(**_get_opentelemetry_values())
 
                     # Filter down to just the requested attributes.
-                    commenter_data = {k: v for k, v in commenter_data.items() if self._commenter_options.get(k, True)}
+                    commenter_data = {
+                        k: v
+                        for k, v in commenter_data.items()
+                        if self._commenter_options.get(k, True)
+                    }
                     statement = _add_sql_comment(
                         args_list[0], **commenter_data
                     )
