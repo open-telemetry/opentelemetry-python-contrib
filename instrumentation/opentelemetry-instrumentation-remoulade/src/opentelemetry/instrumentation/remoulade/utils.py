@@ -47,12 +47,11 @@ def get_operation_name(hook_name, retry_count, eta):
                 if retry_count == 0
                 else f"remoulade/delay(retry-{retry_count})"
             )
-        else:
-            return (
-                "remoulade/send"
-                if retry_count == 0
-                else f"remoulade/send(retry-{retry_count})"
-            )
+        return (
+            "remoulade/send"
+            if retry_count == 0
+            else f"remoulade/send(retry-{retry_count})"
+        )
     return ""
 
 
@@ -72,6 +71,6 @@ def set_attributes_from_context(span, message):
     if "eta" in message.options:
         span.set_attribute(
             _REMOULADE_MESSAGE_DELAY_SECONDS_KEY,
-            "%.5f"
+            "%.5f"  # pylint: disable=consider-using-f-string
             % ((message.options.get("eta", 0) - time.time() * 1000) / 1000),
         )
