@@ -12,12 +12,12 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+from timeit import default_timer
 from unittest.mock import Mock, patch
 
 from flask import Flask, request
 
 from opentelemetry import trace
-from timeit import default_timer
 from opentelemetry.instrumentation.flask import FlaskInstrumentor
 from opentelemetry.instrumentation.propagators import (
     TraceResponsePropagator,
@@ -290,7 +290,9 @@ class TestProgrammatic(InstrumentationTest, WsgiTestBase):
                     for point in data_points:
                         if isinstance(point, HistogramDataPoint):
                             self.assertEqual(point.count, 3)
-                            self.assertAlmostEqual(duration, point.sum, delta=10)
+                            self.assertAlmostEqual(
+                                duration, point.sum, delta=10
+                            )
                             histogram_data_point_seen = True
                         if isinstance(point, NumberDataPoint):
                             number_data_point_seen = True
