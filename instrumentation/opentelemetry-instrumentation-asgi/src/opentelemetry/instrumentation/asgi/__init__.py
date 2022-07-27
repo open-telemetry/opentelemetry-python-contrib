@@ -482,7 +482,6 @@ class OpenTelemetryMiddleware:
             attributes
         )
         duration_attrs = _parse_duration_attrs(attributes)
-        start = default_timer()
         self.active_requests_counter.add(1, active_requests_count_attrs)
         try:
             with trace.use_span(span, end_on_exit=True) as current_span:
@@ -511,6 +510,7 @@ class OpenTelemetryMiddleware:
                     send,
                     duration_attrs,
                 )
+                start = default_timer()
 
                 await self.app(scope, otel_receive, otel_send)
         finally:
