@@ -12,6 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+from cmath import e
 from timeit import default_timer
 from unittest.mock import Mock, patch
 
@@ -301,6 +302,42 @@ class TestProgrammatic(InstrumentationTest, WsgiTestBase):
                                 attr, _recommended_attrs[metric.name]
                             )
         self.assertTrue(number_data_point_seen and histogram_data_point_seen)
+
+    def test_basic_metric_success(self):
+        self.client.get("/hello/123")
+        expected_duration_attributes = {
+            "http.method": "GET",
+            "http.host": "localhost",
+            "http.scheme": "http",
+            "http.flavor": "1.1",
+            "http.server_name": "localhost",
+            "net.host.port": 80,
+            "http.status_code": 200,
+        }
+        expected_requests_count_attributes = {
+            "http.method": "GET",
+            "http.host": "localhost",
+            "http.scheme": "http",
+            "http.flavor": "1.1",
+            "http.server_name": "localhost",
+        }
+        metrics_list = self.memory_metrics_reader.get_metrics_data()
+        for resource_metric in metrics_list.resource_metrics:
+            for scope_metrics in resource_metric.scope_metrics:
+                for metric in scope_metrics.metrics:
+                    for point in list(metric.data.data_points):
+                        if isinstance(point, HistogramDataPoint):
+                            self.assertDictEqual(
+                                expected_duration_attributes,
+                                dict(point.attributes),
+                            )
+                            self.assertEqual(point.count, 1)
+                        elif isinstance(point, NumberDataPoint):
+                            self.assertDictEqual(
+                                expected_requests_count_attributes,
+                                dict(point.attributes),
+                            )
+                            self.assertEqual(point.value, 0)
 
 
 class TestProgrammaticHooks(InstrumentationTest, WsgiTestBase):
