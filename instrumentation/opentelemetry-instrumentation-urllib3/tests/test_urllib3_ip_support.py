@@ -12,10 +12,11 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+from timeit import default_timer
+
 import urllib3
 import urllib3.exceptions
 from urllib3.request import encode_multipart_formdata
-from timeit import default_timer
 
 from opentelemetry import trace
 from opentelemetry.instrumentation.urllib3 import URLLib3Instrumentor
@@ -197,7 +198,7 @@ class TestURLLib3InstrumentorMetric(HttpTestBase, TestBase):
                                 self.assertAlmostEqual(
                                     data_point.sum,
                                     client_duration_estimated,
-                                    delta=5000,
+                                    delta=1000,
                                 )
                             self.assertIn(metric.name, expected_metrics)
 

@@ -66,8 +66,8 @@ API
 
 import contextlib
 import typing
-from typing import Collection
 from timeit import default_timer
+from typing import Collection
 
 import urllib3.connectionpool
 import wrapt
@@ -205,7 +205,7 @@ def _instrument(
             with _suppress_further_instrumentation():
                 start_time = default_timer()
                 response = wrapped(*args, **kwargs)
-                elapsed_time = (default_timer() - start_time) * 1000
+                elapsed_time = round((default_timer() - start_time) * 1000)
 
             _apply_response(span, response)
             if callable(response_hook):
@@ -227,12 +227,14 @@ def _instrument(
                 )
 
             request_size = 0 if body is None else len(body)
+            response_size = int(response.headers.get("Content-Length", 0))
+
             duration_histogram.record(elapsed_time, attributes=metric_labels)
             request_size_histogram.record(
                 request_size, attributes=metric_labels
             )
             response_size_histogram.record(
-                len(response.data), attributes=metric_labels
+                response_size, attributes=metric_labels
             )
 
             return response
