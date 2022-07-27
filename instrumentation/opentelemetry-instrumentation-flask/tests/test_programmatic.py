@@ -17,6 +17,7 @@ from unittest.mock import Mock, patch
 from flask import Flask, request
 
 from opentelemetry import trace
+from timeit import default_timer
 from opentelemetry.instrumentation.flask import FlaskInstrumentor
 from opentelemetry.instrumentation.propagators import (
     TraceResponsePropagator,
@@ -269,9 +270,11 @@ class TestProgrammatic(InstrumentationTest, WsgiTestBase):
         self.assertEqual(len(span_list), 1)
 
     def test_flask_metrics(self):
+        start = default_timer()
         self.client.get("/hello/123")
         self.client.get("/hello/321")
         self.client.get("/hello/756")
+        duration = max(round((default_timer() - start) * 1000), 0)
         metrics_list = self.memory_metrics_reader.get_metrics_data()
         number_data_point_seen = False
         histogram_data_point_seen = False
@@ -287,6 +290,7 @@ class TestProgrammatic(InstrumentationTest, WsgiTestBase):
                     for point in data_points:
                         if isinstance(point, HistogramDataPoint):
                             self.assertEqual(point.count, 3)
+                            self.assertAlmostEqual(duration, point.sum, delta=10)
                             histogram_data_point_seen = True
                         if isinstance(point, NumberDataPoint):
                             number_data_point_seen = True
