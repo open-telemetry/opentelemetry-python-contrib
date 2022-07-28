@@ -13,6 +13,7 @@
 # limitations under the License.
 
 from concurrent import futures
+import time
 
 import grpc
 
@@ -26,51 +27,98 @@ class TestServer(test_server_pb2_grpc.GRPCTestServerServicer):
     # pylint: disable=no-self-use
 
     def SimpleMethod(self, request, context):
-        if request.request_data == "error":
-            context.set_code(grpc.StatusCode.INVALID_ARGUMENT)
+        if request.request_data == "abort":
+            context.abort(
+                grpc.StatusCode.FAILED_PRECONDITION, request.request_data
+            )
+        elif request.request_data == "cancel":
+            context.cancel()
             return test_server_pb2.Response()
-        response = test_server_pb2.Response(
+        elif request.request_data == "error":
+            context.set_code(grpc.StatusCode.INVALID_ARGUMENT)
+            context.set_details(request.request_data)
+            return test_server_pb2.Response()
+        elif request.request_data == "exception":
+            raise ValueError(request.request_data)
+        elif request.request_data == "sleep":
+            time.sleep(0.5)
+
+        return test_server_pb2.Response(
             server_id=SERVER_ID, response_data="data"
         )
-        return response
 
     def ClientStreamingMethod(self, request_iterator, context):
         data = list(request_iterator)
-        if data[0].request_data == "error":
-            context.set_code(grpc.StatusCode.INVALID_ARGUMENT)
+
+        if data[0].request_data == "abort":
+            context.abort(
+                grpc.StatusCode.FAILED_PRECONDITION, data[0].request_data
+            )
+        elif data[0].request_data == "cancel":
+            context.cancel()
             return test_server_pb2.Response()
-        response = test_server_pb2.Response(
+        elif data[0].request_data == "error":
+            context.set_code(grpc.StatusCode.INVALID_ARGUMENT)
+            context.set_details(data[0].request_data)
+            return test_server_pb2.Response()
+        elif data[0].request_data == "exception":
+            raise ValueError(data[0].request_data)
+        elif data[0].request_data == "sleep":
+            time.sleep(0.5)
+
+        return test_server_pb2.Response(
             server_id=SERVER_ID, response_data="data"
         )
-        return response
 
     def ServerStreamingMethod(self, request, context):
-        if request.request_data == "error":
 
+        yield test_server_pb2.Response(
+            server_id=SERVER_ID, response_data="data"
+        )
+
+        if request.request_data == "abort":
             context.abort(
-                code=grpc.StatusCode.INVALID_ARGUMENT,
-                details="server stream error",
+                grpc.StatusCode.FAILED_PRECONDITION, request.request_data
             )
+        elif request.request_data == "cancel":
+            context.cancel()
             return test_server_pb2.Response()
+        elif request.request_data == "error":
+            context.set_code(grpc.StatusCode.INVALID_ARGUMENT)
+            context.set_details(request.request_data)
+            return test_server_pb2.Response()
+        elif request.request_data == "exception":
+            raise ValueError(request.request_data)
+        elif request.request_data == "sleep":
+            time.sleep(0.5)
 
-        # create a generator
-        def response_messages():
-            for _ in range(5):
-                response = test_server_pb2.Response(
-                    server_id=SERVER_ID, response_data="data"
-                )
-                yield response
-
-        return response_messages()
+        for _ in range(5):
+            yield test_server_pb2.Response(
+                server_id=SERVER_ID, response_data="data"
+            )
 
     def BidirectionalStreamingMethod(self, request_iterator, context):
         data = list(request_iterator)
-        if data[0].request_data == "error":
+
+        yield test_server_pb2.Response(
+            server_id=SERVER_ID, response_data="data"
+        )
+
+        if data[0].request_data == "abort":
             context.abort(
-                code=grpc.StatusCode.INVALID_ARGUMENT,
-                details="bidirectional error",
+                grpc.StatusCode.FAILED_PRECONDITION, data[0].request_data
             )
+        elif data[0].request_data == "cancel":
+            context.cancel()
             return
+        elif data[0].request_data == "error":
+            context.set_code(grpc.StatusCode.INVALID_ARGUMENT)
+            context.set_details(data[0].request_data)
+            return
+        elif data[0].request_data == "exception":
+            raise ValueError(data[0].request_data)
+        elif data[0].request_data == "sleep":
+            time.sleep(0.5)
 
         for _ in range(5):
             yield test_server_pb2.Response(
