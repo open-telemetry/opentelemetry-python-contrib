@@ -28,7 +28,7 @@ Usage
 
 .. code:: python
 
-    from opentelemetry.instrumentation.django import Psycopg2Instrumentor
+    from opentelemetry.instrumentation.psycopg2 import Psycopg2Instrumentor
 
     Psycopg2Instrumentor().instrument(enable_commenter=True, commenter_options={})
 
@@ -73,6 +73,12 @@ driver_paramstyle = True(Default) or False
 For example,
 ::
 Enabling this flag will add driver_paramstyle /*driver_paramstyle='pyformat'*/
+
+opentelemetry_values = True(Default) or False
+
+For example,
+::
+Enabling this flag will add traceparent values /*traceparent='00-03afa25236b8cd948fa853d67038ac79-405ff022e8247c46-01'*/
 
 Usage
 -----
