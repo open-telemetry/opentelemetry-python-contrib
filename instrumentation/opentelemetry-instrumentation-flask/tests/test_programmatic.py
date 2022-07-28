@@ -12,7 +12,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from cmath import e
 from timeit import default_timer
 from unittest.mock import Mock, patch
 
