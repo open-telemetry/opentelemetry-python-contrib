@@ -101,7 +101,7 @@ class EngineTracer:
         self.engine = engine
         self.vendor = _normalize_vendor(engine.name)
         self.enable_commenter = enable_commenter
-        self.commenter_options = commenter_options
+        self.commenter_options = commenter_options if commenter_options else {}
 
         listen(
             engine, "before_cursor_execute", self._before_cur_exec, retval=True
