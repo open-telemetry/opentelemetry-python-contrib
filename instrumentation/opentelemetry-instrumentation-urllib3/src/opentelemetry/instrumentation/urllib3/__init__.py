@@ -87,7 +87,7 @@ from opentelemetry.instrumentation.utils import (
 from opentelemetry.metrics import Histogram, get_meter
 from opentelemetry.propagate import inject
 from opentelemetry.semconv.trace import SpanAttributes
-from opentelemetry.trace import Span, Tracer, SpanKind, get_tracer
+from opentelemetry.trace import Span, SpanKind, Tracer, get_tracer
 from opentelemetry.trace.status import Status
 from opentelemetry.util.http.httplib import set_ip_on_next_http_connection
 
