@@ -46,7 +46,7 @@ class TestSqlalchemyInstrumentationWithSQLCommenter(TestBase):
             engine=engine,
             tracer_provider=self.tracer_provider,
             enable_commenter=True,
-            commenter_options={'db_framework': False},
+            commenter_options={"db_framework": False},
         )
         cnx = engine.connect()
         cnx.execute("SELECT  1;").fetchall()

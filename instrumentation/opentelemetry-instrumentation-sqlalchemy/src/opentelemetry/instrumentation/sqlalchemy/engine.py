@@ -94,7 +94,9 @@ def _wrap_connect(tracer_provider=None):
 
 
 class EngineTracer:
-    def __init__(self, tracer, engine, enable_commenter=True, commenter_options={}):
+    def __init__(
+        self, tracer, engine, enable_commenter=True, commenter_options=None
+    ):
         self.tracer = tracer
         self.engine = engine
         self.vendor = _normalize_vendor(engine.name)
@@ -148,9 +150,7 @@ class EngineTracer:
                     db_framework=f"sqlalchemy:{__version__}",
                 )
 
-                if self.commenter_options.get(
-                        "opentelemetry_values", True
-                ):
+                if self.commenter_options.get("opentelemetry_values", True):
                     commenter_data.update(**_get_opentelemetry_values())
 
                 # Filter down to just the requested attributes.
@@ -159,7 +159,6 @@ class EngineTracer:
                     for k, v in commenter_data.items()
                     if self.commenter_options.get(k, True)
                 }
-                commenter_data = {k: v for k, v in commenter_data.items() if self.commenter_options.get(k, True)}
 
                 statement = _add_sql_comment(statement, **commenter_data)
 
