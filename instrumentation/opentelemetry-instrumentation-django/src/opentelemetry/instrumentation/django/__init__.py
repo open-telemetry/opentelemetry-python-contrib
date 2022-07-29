@@ -251,11 +251,7 @@ class DjangoInstrumentor(BaseInstrumentor):
             __version__,
             tracer_provider=tracer_provider,
         )
-        meter = get_meter(
-            __name__,
-            __version__,
-            meter_provider=meter_provider
-        )
+        meter = get_meter(__name__, __version__, meter_provider=meter_provider)
         _DjangoMiddleware._tracer = tracer
         _DjangoMiddleware._meter = meter
         _DjangoMiddleware._otel_request_hook = kwargs.pop("request_hook", None)
@@ -265,12 +261,12 @@ class DjangoInstrumentor(BaseInstrumentor):
         _DjangoMiddleware._duration_histogram = meter.create_histogram(
             name="http.server.duration",
             unit="ms",
-            description="measures the duration of the inbound http request"
+            description="measures the duration of the inbound http request",
         )
         _DjangoMiddleware._active_request_counter = meter.create_up_down_counter(
             name="http.server.active_requests",
             unit="requests",
-            description="measures the number of concurent HTTP requests those are currently in flight"
+            description="measures the number of concurent HTTP requests those are currently in flight",
         )
         # This can not be solved, but is an inherent problem of this approach:
         # the order of middleware entries matters, and here you have no control

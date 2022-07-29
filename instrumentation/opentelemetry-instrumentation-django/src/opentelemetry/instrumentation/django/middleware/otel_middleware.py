@@ -29,7 +29,6 @@ from opentelemetry.instrumentation.utils import (
     _start_internal_or_server_span,
     extract_attributes_from_object,
 )
-
 from opentelemetry.instrumentation.wsgi import (
     _active_requests_count_attrs,
     _duration_attrs,
@@ -145,8 +144,12 @@ class _DjangoMiddleware(MiddlewareMixin):
     _environ_token = "opentelemetry-instrumentor-django.token"
     _environ_span_key = "opentelemetry-instrumentor-django.span_key"
     _environ_exception_key = "opentelemetry-instrumentor-django.exception_key"
-    _environ_active_request_attr_key = "opentelemetry-instrumentor-django.active_request_attr_key"
-    _environ_duration_attr_key = "opentelemetry-instrumentor-django.duration_attr_key"
+    _environ_active_request_attr_key = (
+        "opentelemetry-instrumentor-django.active_request_attr_key"
+    )
+    _environ_duration_attr_key = (
+        "opentelemetry-instrumentor-django.duration_attr_key"
+    )
     _environ_timer_key = "opentelemetry-instrumentor-django.timer_key"
     _traced_request_attrs = get_traced_request_attrs("DJANGO")
     _excluded_urls = get_excluded_urls("DJANGO")
@@ -229,7 +232,9 @@ class _DjangoMiddleware(MiddlewareMixin):
             if attributes.get(attr_key) is not None
         }
         request_start_time = default_timer()
-        request.META[self._environ_active_request_attr_key] = active_requests_count_attrs
+        request.META[
+            self._environ_active_request_attr_key
+        ] = active_requests_count_attrs
         request.META[self._environ_duration_attr_key] = duration_attrs
         request.META[self._environ_timer_key] = request_start_time
 
@@ -316,7 +321,9 @@ class _DjangoMiddleware(MiddlewareMixin):
 
         activation = request.META.pop(self._environ_activation_key, None)
         span = request.META.pop(self._environ_span_key, None)
-        active_requests_count_attrs = request.META.pop(self._environ_active_request_attr_key)
+        active_requests_count_attrs = request.META.pop(
+            self._environ_active_request_attr_key
+        )
         duration_attrs = request.META.pop(self._environ_duration_attr_key)
         request_start_time = request.META.pop(self._environ_timer_key)
 
