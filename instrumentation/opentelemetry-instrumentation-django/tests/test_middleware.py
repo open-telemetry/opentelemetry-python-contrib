@@ -21,6 +21,7 @@ from django import VERSION, conf
 from django.http import HttpRequest, HttpResponse
 from django.test.client import Client
 from django.test.utils import setup_test_environment, teardown_test_environment
+from numpy import histogram
 
 from opentelemetry import trace
 from opentelemetry.instrumentation.django import (
@@ -31,7 +32,15 @@ from opentelemetry.instrumentation.propagators import (
     TraceResponsePropagator,
     set_global_response_propagator,
 )
+from opentelemetry.instrumentation.wsgi import (
+    _active_requests_count_attrs,
+    _duration_attrs,
+)
 from opentelemetry.sdk import resources
+from opentelemetry.sdk.metrics.export import (
+    HistogramDataPoint,
+    NumberDataPoint,
+)
 from opentelemetry.sdk.trace import Span
 from opentelemetry.sdk.trace.id_generator import RandomIdGenerator
 from opentelemetry.semconv.trace import SpanAttributes
@@ -405,6 +414,43 @@ class TestMiddleware(WsgiTestBase):
             self.memory_exporter.get_finished_spans()[0],
         )
         self.memory_exporter.clear()
+
+    def test_wsgi_metrics(self):
+        _expected_metric_names = [
+            "http.server.active_requests",
+            "http.server.duration",
+        ]
+        _recommended_attrs = {
+            "http.server.active_requests": _active_requests_count_attrs,
+            "http.server.duration": _duration_attrs,
+        }
+        for req_index in range(3):
+            response = Client().get("/span_name/1234/")
+            self.assertEqual(response.status_code, 200)
+        metrics_list = self.memory_metrics_reader.get_metrics_data()
+        number_data_point_seen = False
+        histrogram_data_point_seen = False
+
+        self.assertTrue(len(metrics_list.resource_metrics) != 0)
+        for resource_metric in metrics_list.resource_metrics:
+            self.assertTrue(len(resource_metric.scope_metrics) != 0)
+            for scope_metric in resource_metric.scope_metrics:
+                self.assertTrue(len(scope_metric.metrics) != 0)
+                for metric in scope_metric.metrics:
+                    self.assertIn(metric.name, _expected_metric_names)
+                    data_points = list(metric.data.data_points)
+                    self.assertEqual(len(data_points), 1)
+                    for point in data_points:
+                        if isinstance(point, HistogramDataPoint):
+                            self.assertEqual(point.count, 3)
+                            histrogram_data_point_seen = True
+                        if isinstance(point, NumberDataPoint):
+                            number_data_point_seen = True
+                        for attr in point.attributes:
+                            self.assertIn(
+                                attr, _recommended_attrs[metric.name]
+                            )
+        self.assertTrue(histrogram_data_point_seen and number_data_point_seen)
 
 
 class TestMiddlewareWithTracerProvider(WsgiTestBase):
