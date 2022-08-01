@@ -339,9 +339,9 @@ class TestProgrammatic(InstrumentationTest, WsgiTestBase):
                             self.assertEqual(point.value, 0)
 
     def test_metric_uninstrument(self):
-        self.client.get("/hello/756")
+        self.client.post("/hello/756")
         FlaskInstrumentor().uninstrument_app(self.app)
-        self.client.get("/hello/756")
+        self.client.post("/hello/756")
         metrics_list = self.memory_metrics_reader.get_metrics_data()
         for resource_metric in metrics_list.resource_metrics:
             for scope_metric in resource_metric.scope_metrics:
