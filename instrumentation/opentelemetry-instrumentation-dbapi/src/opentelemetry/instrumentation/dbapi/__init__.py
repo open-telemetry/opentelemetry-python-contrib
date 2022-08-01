@@ -52,6 +52,7 @@ from opentelemetry.instrumentation.utils import (
 )
 from opentelemetry.semconv.trace import SpanAttributes
 from opentelemetry.trace import SpanKind, TracerProvider, get_tracer
+from opentelemetry import context as opentelemetry_context
 
 _logger = logging.getLogger(__name__)
 
@@ -429,6 +430,12 @@ class CursorTracer:
                         "opentelemetry_values", True
                     ):
                         commenter_data.update(**_get_opentelemetry_values())
+
+                    # Add flask related tags
+                    sqlcommenter_flask_values = opentelemetry_context.get_value(
+                        'SQLCOMMENTER_FLASK_VALUES') if opentelemetry_context.get_value(
+                        'SQLCOMMENTER_FLASK_VALUES') else {}
+                    commenter_data.update(**sqlcommenter_flask_values)
 
                     # Filter down to just the requested attributes.
                     commenter_data = {
