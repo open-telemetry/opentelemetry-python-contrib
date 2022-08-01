@@ -364,6 +364,23 @@ def get_default_span_name(environ):
     return f"HTTP {environ.get('REQUEST_METHOD', '')}".strip()
 
 
+def _parse_active_request_count_attrs(req_attrs):
+    active_requests_count_attrs = {}
+    for attr_key in _active_requests_count_attrs:
+        if req_attrs.get(attr_key) is not None:
+            active_requests_count_attrs[attr_key] = req_attrs[attr_key]
+    return active_requests_count_attrs
+
+
+def _parse_duration_attrs(req_attrs):
+    duration_attrs = {}
+    for attr_key in _duration_attrs:
+        if req_attrs.get(attr_key) is not None:
+            duration_attrs[attr_key] = req_attrs[attr_key]
+    return duration_attrs
+
+
+
 class OpenTelemetryMiddleware:
     """The WSGI application middleware.
 
