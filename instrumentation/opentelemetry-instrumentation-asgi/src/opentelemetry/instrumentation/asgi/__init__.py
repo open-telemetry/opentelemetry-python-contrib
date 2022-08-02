@@ -482,7 +482,8 @@ class OpenTelemetryMiddleware:
             attributes
         )
         duration_attrs = _parse_duration_attrs(attributes)
-        self.active_requests_counter.add(1, active_requests_count_attrs)
+        if scope["type"] == "http":
+            self.active_requests_counter.add(1, active_requests_count_attrs)
         try:
             with trace.use_span(span, end_on_exit=True) as current_span:
                 if current_span.is_recording():
@@ -514,9 +515,12 @@ class OpenTelemetryMiddleware:
 
                 await self.app(scope, otel_receive, otel_send)
         finally:
-            duration = max(round((default_timer() - start) * 1000), 0)
-            self.duration_histogram.record(duration, duration_attrs)
-            self.active_requests_counter.add(-1, active_requests_count_attrs)
+            if scope["type"] == "http":
+                duration = max(round((default_timer() - start) * 1000), 0)
+                self.duration_histogram.record(duration, duration_attrs)
+                self.active_requests_counter.add(
+                    -1, active_requests_count_attrs
+                )
             if token:
                 context.detach(token)
 
