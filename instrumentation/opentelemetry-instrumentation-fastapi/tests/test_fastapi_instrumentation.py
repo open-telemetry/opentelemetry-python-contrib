@@ -13,6 +13,7 @@
 # limitations under the License.
 
 import unittest
+from timeit import default_timer
 from unittest.mock import patch
 
 import fastapi
@@ -205,6 +206,78 @@ class TestFastAPIManualInstrumentation(TestBase):
                                 attr, _recommended_attrs[metric.name]
                             )
         self.assertTrue(number_data_point_seen and histogram_data_point_seen)
+
+    def test_basic_metric_success(self):
+        start = default_timer()
+        self._client.get("/foobar")
+        duration = max(round((default_timer() - start) * 1000), 0)
+        expected_duration_attributes = {
+            "http.method": "GET",
+            "http.host": "testserver",
+            "http.scheme": "http",
+            "http.flavor": "1.1",
+            "http.server_name": "testserver",
+            "net.host.port": 80,
+            "http.status_code": 200,
+        }
+        expected_requests_count_attributes = {
+            "http.method": "GET",
+            "http.host": "testserver",
+            "http.scheme": "http",
+            "http.flavor": "1.1",
+            "http.server_name": "testserver",
+        }
+        metrics_list = self.memory_metrics_reader.get_metrics_data()
+        for resource_metric in metrics_list.resource_metrics:
+            for scope_metric in resource_metric.scope_metrics:
+                for metric in scope_metric.metrics:
+                    for point in list(metric.data.data_points):
+                        if isinstance(point, HistogramDataPoint):
+                            self.assertDictEqual(
+                                expected_duration_attributes,
+                                dict(point.attributes),
+                            )
+                            self.assertEqual(point.count, 1)
+                            self.assertAlmostEqual(
+                                duration, point.sum, delta=10
+                            )
+                        if isinstance(point, NumberDataPoint):
+                            self.assertDictEqual(
+                                expected_requests_count_attributes,
+                                dict(point.attributes),
+                            )
+                            self.assertEqual(point.value, 0)
+
+    def test_basic_post_request_metric_success(self):
+        start = default_timer()
+        self._client.post("/foobar")
+        duration = max(round((default_timer() - start) * 1000), 0)
+        metrics_list = self.memory_metrics_reader.get_metrics_data()
+        for resource_metric in metrics_list.resource_metrics:
+            for scope_metric in resource_metric.scope_metrics:
+                for metric in scope_metric.metrics:
+                    for point in list(metric.data.data_points):
+                        if isinstance(point, HistogramDataPoint):
+                            self.assertEqual(point.count, 1)
+                            self.assertAlmostEqual(
+                                duration, point.sum, delta=10
+                            )
+                        if isinstance(point, NumberDataPoint):
+                            self.assertEqual(point.value, 0)
+
+    def test_metric_uninstruemnt(self):
+        self._client.get("/foobar")
+        self._instrumentor.uninstrument_app(self._app)
+        self._client.get("/foobar")
+        metrics_list = self.memory_metrics_reader.get_metrics_data()
+        for resource_metric in metrics_list.resource_metrics:
+            for scope_metric in resource_metric.scope_metrics:
+                for metric in scope_metric.metrics:
+                    for point in list(metric.data.data_points):
+                        if isinstance(point, HistogramDataPoint):
+                            self.assertEqual(point.count, 1)
+                        if isinstance(point, NumberDataPoint):
+                            self.assertEqual(point.value, 0)
 
     @staticmethod
     def _create_fastapi_app():
