@@ -302,6 +302,25 @@ class TestProgrammatic(InstrumentationTest, WsgiTestBase):
                             )
         self.assertTrue(number_data_point_seen and histogram_data_point_seen)
 
+    def test_flask_metric_values(self):
+        start = default_timer()
+        self.client.post("/hello/756")
+        self.client.post("/hello/756")
+        self.client.post("/hello/756")
+        duration = max(round((default_timer() - start) * 1000), 0)
+        metrics_list = self.memory_metrics_reader.get_metrics_data()
+        for resource_metric in metrics_list.resource_metrics:
+            for scope_metric in resource_metric.scope_metrics:
+                for metric in scope_metric.metrics:
+                    for point in list(metric.data.data_points):
+                        if isinstance(point, HistogramDataPoint):
+                            self.assertEqual(point.count, 3)
+                            self.assertAlmostEqual(
+                                duration, point.sum, delta=10
+                            )
+                        if isinstance(point, NumberDataPoint):
+                            self.assertEqual(point.value, 0)
+
     def test_basic_metric_success(self):
         self.client.get("/hello/756")
         expected_duration_attributes = {
@@ -339,15 +358,14 @@ class TestProgrammatic(InstrumentationTest, WsgiTestBase):
                             self.assertEqual(point.value, 0)
 
     def test_metric_uninstrument(self):
-        self.client.post("/hello/756")
+        self.client.delete("/hello/756")
         FlaskInstrumentor().uninstrument_app(self.app)
-        self.client.post("/hello/756")
+        self.client.delete("/hello/756")
         metrics_list = self.memory_metrics_reader.get_metrics_data()
         for resource_metric in metrics_list.resource_metrics:
             for scope_metric in resource_metric.scope_metrics:
                 for metric in scope_metric.metrics:
-                    data_points = list(metric.data.data_points)
-                    for point in data_points:
+                    for point in list(metric.data.data_points):
                         if isinstance(point, HistogramDataPoint):
                             self.assertEqual(point.count, 1)
 
