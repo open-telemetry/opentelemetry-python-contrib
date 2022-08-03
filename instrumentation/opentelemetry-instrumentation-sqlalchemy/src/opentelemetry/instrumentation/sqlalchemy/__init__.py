@@ -23,7 +23,7 @@ instrumentation via the following code:
 .. _sqlalchemy: https://pypi.org/project/sqlalchemy/
 
 SQLCOMMENTER
-*****************************************
+****************************************
 You can optionally configure SQLAlchemy instrumentation to enable sqlcommenter which enriches
 the query with contextual information.
 
