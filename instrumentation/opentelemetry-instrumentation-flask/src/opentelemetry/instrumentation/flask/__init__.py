@@ -24,6 +24,53 @@ supports Flask-specific features such as:
 * The ``http.route`` Span attribute is set so that one can see which URL rule
   matched a request.
 
+SQLCOMMENTER
+*****************************************
+You can optionally configure Flask instrumentation to enable sqlcommenter which enriches
+the query with contextual information.
+
+Usage
+-----
+
+.. code:: python
+
+    from opentelemetry.instrumentation.flask import FlaskInstrumentor
+
+    FlaskInstrumentor().instrument(enable_commenter=True, commenter_options={})
+
+
+For example,
+::
+
+   FlaskInstrumentor when used with SQLAlchemyInstrumentor or Psycopg2Instrumentor, invoking cursor.execute("select * from auth_users")
+   will lead to sql query "select * from auth_users" but when SQLCommenter is enabled
+   the query will get appended with some configurable tags like "select * from auth_users /*metrics=value*/;"
+
+    Inorder for the commenter to append flask related tags to sql queries, the commenter needs to enabled on
+    the respective  SQLAlchemyInstrumentor or Psycopg2Instrumentor framework too.
+
+SQLCommenter Configurations
+***************************
+We can configure the tags to be appended to the sqlquery log by adding configuration inside commenter_options(default:{}) keyword
+
+framework = True(Default) or False
+
+For example,
+::
+Enabling this flag will add flask and it's version which is /*flask%%3A2.9.3*/
+
+route = True(Default) or False
+
+For example,
+::
+Enabling this flag will add route uri /*route='/home'*/
+
+controller = True(Default) or False
+
+For example,
+::
+Enabling this flag will add controller name /*controller='home_view'*/
+
 Usage
 -----
 
@@ -324,6 +371,8 @@ class _InstrumentedFlask(flask.Flask):
     _tracer_provider = None
     _request_hook = None
     _response_hook = None
+    _enable_commenter = True
+    _commenter_options = None
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
@@ -345,6 +394,8 @@ class _InstrumentedFlask(flask.Flask):
             _InstrumentedFlask._request_hook,
             tracer,
             excluded_urls=_InstrumentedFlask._excluded_urls,
+            enable_commenter=_InstrumentedFlask._enable_commenter,
+            commenter_options=_InstrumentedFlask._commenter_options,
         )
         self._before_request = _before_request
         self.before_request(_before_request)
@@ -381,6 +432,11 @@ class FlaskInstrumentor(BaseInstrumentor):
             if excluded_urls is None
             else parse_excluded_urls(excluded_urls)
         )
+        enable_commenter = kwargs.get("enable_commenter", True)
+        _InstrumentedFlask._enable_commenter = enable_commenter
+
+        commenter_options = kwargs.get("commenter_options", {})
+        _InstrumentedFlask._commenter_options = commenter_options
         flask.Flask = _InstrumentedFlask
 
     def _uninstrument(self, **kwargs):
