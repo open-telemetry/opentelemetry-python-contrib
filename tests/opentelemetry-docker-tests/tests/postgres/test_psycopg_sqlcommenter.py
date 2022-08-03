@@ -26,34 +26,29 @@ from opentelemetry.test.test_base import TestBase
 
 
 class TestFunctionalPsycopg(TestBase):
-    @classmethod
-    def setUpClass(cls):
-        super().setUpClass()
-        cls._connection = None
-        cls._cursor = None
-        cls._tracer = cls.tracer_provider.get_tracer(__name__)
+    def setUp(self):
+        super().setUp()
+        self._tracer = self.tracer_provider.get_tracer(__name__)
         Psycopg2Instrumentor().instrument(enable_commenter=True)
-        cls._connection = psycopg2.connect(
+        self._connection = psycopg2.connect(
             dbname=POSTGRES_DB_NAME,
             user=POSTGRES_USER,
             password=POSTGRES_PASSWORD,
             host=POSTGRES_HOST,
             port=POSTGRES_PORT,
         )
-        cls._connection.set_session(autocommit=True)
-        cls._cursor = cls._connection.cursor()
+        self._connection.set_session(autocommit=True)
+        self._cursor = self._connection.cursor()
 
-    @classmethod
-    def tearDownClass(cls):
-        if cls._cursor:
-            cls._cursor.close()
-        if cls._connection:
-            cls._connection.close()
+    def tearDown(self):
+        self._cursor.close()
+        self._connection.close()
         Psycopg2Instrumentor().uninstrument()
+        super().tearDown()
 
     def test_commenter_enabled(self):
         self._cursor.execute("SELECT  1;")
         self.assertRegex(
             self._cursor.query.decode("ascii"),
-            r"SELECT  1; /\*traceparent='\d{1,2}-[a-zA-Z0-9_]{32}-[a-zA-Z0-9_]{16}-\d{1,2}'\*/",
+            r"SELECT  1 /\*db_driver='psycopg2(.*)',dbapi_level='\d.\d',dbapi_threadsafety=\d,driver_paramstyle=(.*),libpq_version=\d*,traceparent='\d{1,2}-[a-zA-Z0-9_]{32}-[a-zA-Z0-9_]{16}-\d{1,2}'\*/;",
         )

@@ -21,11 +21,10 @@ from opentelemetry.instrumentation.sqlalchemy.package import (
 )
 from opentelemetry.instrumentation.sqlalchemy.version import __version__
 from opentelemetry.instrumentation.utils import (
-    _generate_opentelemetry_traceparent,
-    _generate_sql_comment,
+    _add_sql_comment,
+    _get_opentelemetry_values,
 )
 from opentelemetry.semconv.trace import NetTransportValues, SpanAttributes
-from opentelemetry.trace import Span
 from opentelemetry.trace.status import Status, StatusCode
 
 
@@ -77,6 +76,23 @@ def _wrap_create_engine(tracer_provider=None):
     return _wrap_create_engine_internal
 
 
+def _wrap_connect(tracer_provider=None):
+    tracer = trace.get_tracer(
+        _instrumenting_module_name,
+        __version__,
+        tracer_provider=tracer_provider,
+    )
+
+    # pylint: disable=unused-argument
+    def _wrap_connect_internal(func, module, args, kwargs):
+        with tracer.start_as_current_span(
+            "connect", kind=trace.SpanKind.CLIENT
+        ):
+            return func(*args, **kwargs)
+
+    return _wrap_connect_internal
+
+
 class EngineTracer:
     def __init__(self, tracer, engine, enable_commenter=False):
         self.tracer = tracer
@@ -124,20 +140,14 @@ class EngineTracer:
                 span.set_attribute(SpanAttributes.DB_SYSTEM, self.vendor)
                 for key, value in attrs.items():
                     span.set_attribute(key, value)
+            if self.enable_commenter:
+                commenter_data = {}
+                commenter_data.update(_get_opentelemetry_values())
+                statement = _add_sql_comment(statement, **commenter_data)
 
         context._otel_span = span
-        if self.enable_commenter:
-            statement = statement + EngineTracer._generate_comment(span=span)
 
         return statement, params
-
-    @staticmethod
-    def _generate_comment(span: Span) -> str:
-        span_context = span.get_span_context()
-        meta = {}
-        if span_context.is_valid:
-            meta.update(_generate_opentelemetry_traceparent(span))
-        return _generate_sql_comment(**meta)
 
 
 # pylint: disable=unused-argument
