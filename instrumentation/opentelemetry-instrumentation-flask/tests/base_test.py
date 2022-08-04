@@ -29,7 +29,8 @@ class InstrumentationTest:
     def _sqlcommenter_endpoint():
         current_context = context.get_current()
         sqlcommenter_flask_values = current_context.get(
-            'SQLCOMMENTER_FLASK_VALUES', {})
+            "SQLCOMMENTER_FLASK_VALUES", {}
+        )
         return sqlcommenter_flask_values
 
     @staticmethod

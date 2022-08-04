@@ -276,7 +276,12 @@ def _rewrapped_app(wsgi_app, response_hook=None, excluded_urls=None):
 
 
 def _wrapped_before_request(
-    request_hook=None, tracer=None, excluded_urls=None, enable_commenter=True, commenter_options=None):
+    request_hook=None,
+    tracer=None,
+    excluded_urls=None,
+    enable_commenter=True,
+    commenter_options=None,
+):
     def _before_request():
         if excluded_urls and excluded_urls.url_disabled(flask.request.url):
             return
@@ -327,13 +332,22 @@ def _wrapped_before_request(
 
             # https://flask.palletsprojects.com/en/1.1.x/api/#flask.has_request_context
             if flask and flask.request:
-                if commenter_options.get('framework', True):
-                    flask_info['framework'] = 'flask:%s' % flask.__version__
-                if commenter_options.get('controller', True) and flask.request.endpoint:
-                    flask_info['controller'] = flask.request.endpoint
-                if commenter_options.get('route', True) and flask.request.url_rule and flask.request.url_rule.rule:
-                    flask_info['route'] = flask.request.url_rule.rule
-            sqlcommenter_context = context.set_value("SQLCOMMENTER_FLASK_VALUES", flask_info, current_context)
+                if commenter_options.get("framework", True):
+                    flask_info["framework"] = "flask:%s" % flask.__version__
+                if (
+                    commenter_options.get("controller", True)
+                    and flask.request.endpoint
+                ):
+                    flask_info["controller"] = flask.request.endpoint
+                if (
+                    commenter_options.get("route", True)
+                    and flask.request.url_rule
+                    and flask.request.url_rule.rule
+                ):
+                    flask_info["route"] = flask.request.url_rule.rule
+            sqlcommenter_context = context.set_value(
+                "SQLCOMMENTER_FLASK_VALUES", flask_info, current_context
+            )
             context.attach(sqlcommenter_context)
 
     return _before_request
@@ -473,7 +487,9 @@ class FlaskInstrumentor(BaseInstrumentor):
                 tracer,
                 excluded_urls=excluded_urls,
                 enable_commenter=enable_commenter,
-                commenter_options=commenter_options if commenter_options else {},
+                commenter_options=commenter_options
+                if commenter_options
+                else {},
             )
             app._before_request = _before_request
             app.before_request(_before_request)

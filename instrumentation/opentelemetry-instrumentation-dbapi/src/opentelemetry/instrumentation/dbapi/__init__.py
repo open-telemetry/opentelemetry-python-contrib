@@ -432,9 +432,15 @@ class CursorTracer:
                         commenter_data.update(**_get_opentelemetry_values())
 
                     # Add flask related tags
-                    sqlcommenter_flask_values = opentelemetry_context.get_value(
-                        'SQLCOMMENTER_FLASK_VALUES') if opentelemetry_context.get_value(
-                        'SQLCOMMENTER_FLASK_VALUES') else {}
+                    sqlcommenter_flask_values = (
+                        opentelemetry_context.get_value(
+                            "SQLCOMMENTER_FLASK_VALUES"
+                        )
+                        if opentelemetry_context.get_value(
+                            "SQLCOMMENTER_FLASK_VALUES"
+                        )
+                        else {}
+                    )
                     commenter_data.update(**sqlcommenter_flask_values)
 
                     # Filter down to just the requested attributes.

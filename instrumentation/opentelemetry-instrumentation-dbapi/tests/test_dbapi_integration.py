@@ -23,6 +23,7 @@ from opentelemetry.semconv.trace import SpanAttributes
 from opentelemetry.test.test_base import TestBase
 from opentelemetry import context
 
+
 class TestDBApiIntegration(TestBase):
     def setUp(self):
         super().setUp()
@@ -271,7 +272,9 @@ class TestDBApiIntegration(TestBase):
             connect_module=connect_module,
         )
         current_context = context.get_current()
-        sqlcommenter_context = context.set_value("SQLCOMMENTER_FLASK_VALUES", {"flask": 1}, current_context)
+        sqlcommenter_context = context.set_value(
+            "SQLCOMMENTER_FLASK_VALUES", {"flask": 1}, current_context
+        )
         context.attach(sqlcommenter_context)
 
         mock_connection = db_integration.wrapped_connection(

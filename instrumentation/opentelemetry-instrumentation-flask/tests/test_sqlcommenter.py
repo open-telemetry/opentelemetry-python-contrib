@@ -43,12 +43,16 @@ class TestSQLCommenter(InstrumentationTest, WsgiTestBase):
 
         resp = client.get("/sqlcommenter")
         self.assertEqual(200, resp.status_code)
-        self.assertRegex(list(resp.response)[0].strip(),
-                         b"{\"controller\":\"_sqlcommenter_endpoint\",\"framework\":\"flask:(.*)\",\"route\":\"\/sqlcommenter\"}")
+        self.assertRegex(
+            list(resp.response)[0].strip(),
+            b'{"controller":"_sqlcommenter_endpoint","framework":"flask:(.*)","route":"\/sqlcommenter"}',
+        )
 
     def test_sqlcommenter_enabled_with_configurations(self):
         FlaskInstrumentor().uninstrument()
-        FlaskInstrumentor().instrument(enable_commenter=True, commenter_options={"route": False})
+        FlaskInstrumentor().instrument(
+            enable_commenter=True, commenter_options={"route": False}
+        )
 
         self.app = flask.Flask(__name__)
         self.app.route("/sqlcommenter")(self._sqlcommenter_endpoint)
@@ -56,8 +60,10 @@ class TestSQLCommenter(InstrumentationTest, WsgiTestBase):
 
         resp = client.get("/sqlcommenter")
         self.assertEqual(200, resp.status_code)
-        self.assertRegex(list(resp.response)[0].strip(),
-                         b"{\"controller\":\"_sqlcommenter_endpoint\",\"framework\":\"flask:(.*)\"}")
+        self.assertRegex(
+            list(resp.response)[0].strip(),
+            b'{"controller":"_sqlcommenter_endpoint","framework":"flask:(.*)"}',
+        )
 
     def test_sqlcommenter_disabled(self):
         FlaskInstrumentor().uninstrument()
