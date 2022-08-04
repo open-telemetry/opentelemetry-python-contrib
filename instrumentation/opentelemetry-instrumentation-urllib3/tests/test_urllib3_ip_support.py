@@ -103,6 +103,19 @@ class TestURLLib3InstrumentorMetric(HttpTestBase, TestBase):
         super().tearDown()
         URLLib3Instrumentor().uninstrument()
 
+    def test_metric_uninstrument(self):
+        with urllib3.PoolManager() as pool:
+            pool.request("GET", self.http_url)
+            URLLib3Instrumentor().uninstrument()
+            pool.request("GET", self.http_url)
+
+            metrics_list = self.memory_metrics_reader.get_metrics_data()
+            for resource_metric in metrics_list.resource_metrics:
+                for scope_metric in resource_metric.scope_metrics:
+                    for metric in scope_metric.metrics:
+                        for point in list(metric.data.data_points):
+                            self.assertEqual(point.count, 1)
+
     def test_basic_metric_check_client_size_get(self):
         with urllib3.PoolManager() as pool:
             start_time = default_timer()
