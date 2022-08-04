@@ -21,7 +21,6 @@ from django import VERSION, conf
 from django.http import HttpRequest, HttpResponse
 from django.test.client import Client
 from django.test.utils import setup_test_environment, teardown_test_environment
-from numpy import histogram
 
 from opentelemetry import trace
 from opentelemetry.instrumentation.django import (
