@@ -423,7 +423,7 @@ class TestMiddleware(WsgiTestBase):
             "http.server.active_requests": _active_requests_count_attrs,
             "http.server.duration": _duration_attrs,
         }
-        for req_index in range(3):
+        for _ in range(3):
             response = Client().get("/span_name/1234/")
             self.assertEqual(response.status_code, 200)
         metrics_list = self.memory_metrics_reader.get_metrics_data()

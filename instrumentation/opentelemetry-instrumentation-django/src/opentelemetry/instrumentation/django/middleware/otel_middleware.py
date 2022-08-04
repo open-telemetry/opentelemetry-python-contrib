@@ -185,6 +185,7 @@ class _DjangoMiddleware(MiddlewareMixin):
         except Resolver404:
             return f"HTTP {request.method}"
 
+    # pylint: disable=too-many-locals
     def process_request(self, request):
         # request.META is a dictionary containing all available HTTP headers
         # Read more about request.META here:
@@ -311,6 +312,7 @@ class _DjangoMiddleware(MiddlewareMixin):
             request.META[self._environ_exception_key] = exception
 
     # pylint: disable=too-many-branches
+    # pylint: disable=too-many-locals
     def process_response(self, request, response):
         if self._excluded_urls.url_disabled(request.build_absolute_uri("?")):
             return response
