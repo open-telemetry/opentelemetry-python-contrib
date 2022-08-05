@@ -17,6 +17,7 @@ from re import compile as re_compile
 from re import search
 from typing import Iterable, List
 from urllib.parse import urlparse, urlunparse
+from opentelemetry.semconv.trace import SpanAttributes
 
 OTEL_INSTRUMENTATION_HTTP_CAPTURE_HEADERS_SERVER_REQUEST = (
     "OTEL_INSTRUMENTATION_HTTP_CAPTURE_HEADERS_SERVER_REQUEST"
@@ -25,6 +26,25 @@ OTEL_INSTRUMENTATION_HTTP_CAPTURE_HEADERS_SERVER_RESPONSE = (
     "OTEL_INSTRUMENTATION_HTTP_CAPTURE_HEADERS_SERVER_RESPONSE"
 )
 
+# List of recommended metrics attributes
+_duration_attrs = [
+    SpanAttributes.HTTP_METHOD,
+    SpanAttributes.HTTP_HOST,
+    SpanAttributes.HTTP_SCHEME,
+    SpanAttributes.HTTP_STATUS_CODE,
+    SpanAttributes.HTTP_FLAVOR,
+    SpanAttributes.HTTP_SERVER_NAME,
+    SpanAttributes.NET_HOST_NAME,
+    SpanAttributes.NET_HOST_PORT,
+]
+
+_active_requests_count_attrs = [
+    SpanAttributes.HTTP_METHOD,
+    SpanAttributes.HTTP_HOST,
+    SpanAttributes.HTTP_SCHEME,
+    SpanAttributes.HTTP_FLAVOR,
+    SpanAttributes.HTTP_SERVER_NAME,
+]
 
 class ExcludeList:
     """Class to exclude certain paths (given as a list of regexes) from tracing requests"""
@@ -125,3 +145,18 @@ def get_custom_headers(env_var: str) -> List[str]:
             for custom_headers in custom_headers.split(",")
         ]
     return custom_headers
+
+def _parse_active_request_count_attrs(req_attrs):
+    active_requests_count_attrs = {}
+    for attr_key in _active_requests_count_attrs:
+        if req_attrs.get(attr_key) is not None:
+            active_requests_count_attrs[attr_key] = req_attrs[attr_key]
+    return active_requests_count_attrs
+
+
+def _parse_duration_attrs(req_attrs):
+    duration_attrs = {}
+    for attr_key in _duration_attrs:
+        if req_attrs.get(attr_key) is not None:
+            duration_attrs[attr_key] = req_attrs[attr_key]
+    return duration_attrs
