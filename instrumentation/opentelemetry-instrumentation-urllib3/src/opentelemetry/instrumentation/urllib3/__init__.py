@@ -211,30 +211,20 @@ def _instrument(
             if callable(response_hook):
                 response_hook(span, instance, response)
 
-            metric_labels = {
-                SpanAttributes.HTTP_METHOD: method,
-                SpanAttributes.HTTP_HOST: instance.host,
-                SpanAttributes.HTTP_SCHEME: instance.scheme,
-                SpanAttributes.HTTP_STATUS_CODE: response.status,
-                SpanAttributes.NET_PEER_NAME: instance.host,
-                SpanAttributes.NET_PEER_PORT: instance.port,
-            }
-
-            version = getattr(response, "version")
-            if version:
-                metric_labels[SpanAttributes.HTTP_FLAVOR] = (
-                    "1.1" if version == 11 else "1.0"
-                )
-
             request_size = 0 if body is None else len(body)
             response_size = int(response.headers.get("Content-Length", 0))
+            metric_attributes = create_metric_attributes(
+                instance, response, method
+            )
 
-            duration_histogram.record(elapsed_time, attributes=metric_labels)
+            duration_histogram.record(
+                elapsed_time, attributes=metric_attributes
+            )
             request_size_histogram.record(
-                request_size, attributes=metric_labels
+                request_size, attributes=metric_attributes
             )
             response_size_histogram.record(
-                response_size, attributes=metric_labels
+                response_size, attributes=metric_attributes
             )
 
             return response
@@ -309,6 +299,29 @@ def _is_instrumentation_suppressed() -> bool:
         context.get_value(_SUPPRESS_INSTRUMENTATION_KEY)
         or context.get_value(_SUPPRESS_HTTP_INSTRUMENTATION_KEY)
     )
+
+
+def create_metric_attributes(
+    instance: urllib3.connectionpool.HTTPConnectionPool,
+    response: urllib3.response.HTTPResponse,
+    method: str,
+) -> dict:
+    metric_attributes = {
+        SpanAttributes.HTTP_METHOD: method,
+        SpanAttributes.HTTP_HOST: instance.host,
+        SpanAttributes.HTTP_SCHEME: instance.scheme,
+        SpanAttributes.HTTP_STATUS_CODE: response.status,
+        SpanAttributes.NET_PEER_NAME: instance.host,
+        SpanAttributes.NET_PEER_PORT: instance.port,
+    }
+
+    version = getattr(response, "version")
+    if version:
+        metric_attributes[SpanAttributes.HTTP_FLAVOR] = (
+            "1.1" if version == 11 else "1.0"
+        )
+
+    return metric_attributes
 
 
 @contextlib.contextmanager

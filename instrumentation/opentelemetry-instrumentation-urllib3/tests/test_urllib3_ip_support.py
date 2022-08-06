@@ -183,7 +183,7 @@ class TestURLLib3InstrumentorMetric(HttpTestBase, TestBase):
                 "net.peer.port": self.assert_port,
             }
 
-            body, content_type = encode_multipart_formdata(data_fields)
+            body = encode_multipart_formdata(data_fields)[0]
 
             expected_data = {
                 "http.client.request.size": len(body),
