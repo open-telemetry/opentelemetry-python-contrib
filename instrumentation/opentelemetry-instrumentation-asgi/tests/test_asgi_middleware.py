@@ -39,6 +39,8 @@ from opentelemetry.trace import SpanKind, format_span_id, format_trace_id
 from opentelemetry.util.http import (
     OTEL_INSTRUMENTATION_HTTP_CAPTURE_HEADERS_SERVER_REQUEST,
     OTEL_INSTRUMENTATION_HTTP_CAPTURE_HEADERS_SERVER_RESPONSE,
+    _active_requests_count_attrs,
+    _duration_attrs,
 )
 
 _expected_metric_names = [
@@ -46,8 +48,8 @@ _expected_metric_names = [
     "http.server.duration",
 ]
 _recommended_attrs = {
-    "http.server.active_requests": otel_asgi._active_requests_count_attrs,
-    "http.server.duration": otel_asgi._duration_attrs,
+    "http.server.active_requests": _active_requests_count_attrs,
+    "http.server.duration": _duration_attrs,
 }
 
 
