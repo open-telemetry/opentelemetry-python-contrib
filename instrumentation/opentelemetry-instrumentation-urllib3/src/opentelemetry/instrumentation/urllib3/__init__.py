@@ -213,7 +213,7 @@ def _instrument(
 
             request_size = 0 if body is None else len(body)
             response_size = int(response.headers.get("Content-Length", 0))
-            metric_attributes = create_metric_attributes(
+            metric_attributes = _create_metric_attributes(
                 instance, response, method
             )
 
@@ -301,7 +301,7 @@ def _is_instrumentation_suppressed() -> bool:
     )
 
 
-def create_metric_attributes(
+def _create_metric_attributes(
     instance: urllib3.connectionpool.HTTPConnectionPool,
     response: urllib3.response.HTTPResponse,
     method: str,

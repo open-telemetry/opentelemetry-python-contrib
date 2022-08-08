@@ -157,7 +157,7 @@ class TestURLLib3InstrumentorMetric(HttpTestBase, TestBase):
                                 self.assertAlmostEqual(
                                     data_point.sum,
                                     client_duration_estimated,
-                                    delta=5000,
+                                    delta=1000,
                                 )
                             self.assertIn(metric.name, expected_metrics)
                             self.assertDictEqual(
