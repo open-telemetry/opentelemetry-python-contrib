@@ -46,6 +46,7 @@ _active_requests_count_attrs = [
     SpanAttributes.HTTP_SERVER_NAME,
 ]
 
+
 class ExcludeList:
     """Class to exclude certain paths (given as a list of regexes) from tracing requests"""
 
@@ -145,6 +146,7 @@ def get_custom_headers(env_var: str) -> List[str]:
             for custom_headers in custom_headers.split(",")
         ]
     return custom_headers
+
 
 def _parse_active_request_count_attrs(req_attrs):
     active_requests_count_attrs = {}
