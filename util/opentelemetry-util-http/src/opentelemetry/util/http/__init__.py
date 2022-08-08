@@ -17,6 +17,7 @@ from re import compile as re_compile
 from re import search
 from typing import Iterable, List
 from urllib.parse import urlparse, urlunparse
+
 from opentelemetry.semconv.trace import SpanAttributes
 
 OTEL_INSTRUMENTATION_HTTP_CAPTURE_HEADERS_SERVER_REQUEST = (
