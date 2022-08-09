@@ -356,7 +356,7 @@ def _wrapped_before_request(
             # https://flask.palletsprojects.com/en/1.1.x/api/#flask.has_request_context
             if flask and flask.request:
                 if commenter_options.get("framework", True):
-                    flask_info["framework"] = "flask:%s" % flask.__version__
+                    flask_info["framework"] = f"flask:{flask.__version__}"
                 if (
                     commenter_options.get("controller", True)
                     and flask.request.endpoint
