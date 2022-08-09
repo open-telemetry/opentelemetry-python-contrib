@@ -239,7 +239,7 @@ class TestFastAPIManualInstrumentation(TestBase):
                             )
                             self.assertEqual(point.count, 1)
                             self.assertAlmostEqual(
-                                duration, point.sum, delta=10
+                                duration, point.sum, delta=20
                             )
                         if isinstance(point, NumberDataPoint):
                             self.assertDictEqual(
