@@ -45,7 +45,7 @@ class TestSQLCommenter(InstrumentationTest, WsgiTestBase):
         self.assertEqual(200, resp.status_code)
         self.assertRegex(
             list(resp.response)[0].strip(),
-            b'{"controller":"_sqlcommenter_endpoint","framework":"flask:(.*)","route":"\/sqlcommenter"}',
+            b'{"controller":"_sqlcommenter_endpoint","framework":"flask:(.*)","route":"/sqlcommenter"}',
         )
 
     def test_sqlcommenter_enabled_with_configurations(self):
