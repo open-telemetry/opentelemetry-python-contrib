@@ -560,7 +560,9 @@ class SystemMetricsInstrumentor(BaseInstrumentor):
         """Observer callback for disk operation time write"""
         for device, counters in psutil.disk_io_counters(perdisk=True).items():
             if hasattr(counters, "write_time"):
-                self._system_disk_operation_time_write_labels["device"] = device
+                self._system_disk_operation_time_write_labels[
+                    "device"
+                ] = device
                 yield Observation(
                     getattr(counters, "write_time") / 1000,
                     self._system_disk_operation_time_write_labels.copy(),
@@ -573,7 +575,6 @@ class SystemMetricsInstrumentor(BaseInstrumentor):
 
         # FIXME The units in the spec is 1, it seems like it should be
         # operations or the value type should be Double
-        
         # FIXME Metric should be system.disk.merged
 
         for device, counters in psutil.disk_io_counters(perdisk=True).items():
