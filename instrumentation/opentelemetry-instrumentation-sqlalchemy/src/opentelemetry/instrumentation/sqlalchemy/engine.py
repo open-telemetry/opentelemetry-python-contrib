@@ -26,6 +26,7 @@ from opentelemetry.instrumentation.utils import (
 )
 from opentelemetry.semconv.trace import NetTransportValues, SpanAttributes
 from opentelemetry.trace.status import Status, StatusCode
+from opentelemetry import context as opentelemetry_context
 
 
 def _normalize_vendor(vendor):
@@ -159,6 +160,18 @@ class EngineTracer:
                     for k, v in commenter_data.items()
                     if self.commenter_options.get(k, True)
                 }
+
+                # Add flask related tags
+                sqlcommenter_flask_values = (
+                    opentelemetry_context.get_value(
+                        "SQLCOMMENTER_FLASK_VALUES"
+                    )
+                    if opentelemetry_context.get_value(
+                        "SQLCOMMENTER_FLASK_VALUES"
+                    )
+                    else {}
+                )
+                commenter_data.update(**sqlcommenter_flask_values)
 
                 statement = _add_sql_comment(statement, **commenter_data)
 
