@@ -43,6 +43,7 @@ import typing
 
 import wrapt
 
+from opentelemetry import context as opentelemetry_context
 from opentelemetry import trace as trace_api
 from opentelemetry.instrumentation.dbapi.version import __version__
 from opentelemetry.instrumentation.utils import (
@@ -52,7 +53,6 @@ from opentelemetry.instrumentation.utils import (
 )
 from opentelemetry.semconv.trace import SpanAttributes
 from opentelemetry.trace import SpanKind, TracerProvider, get_tracer
-from opentelemetry import context as opentelemetry_context
 
 _logger = logging.getLogger(__name__)
 

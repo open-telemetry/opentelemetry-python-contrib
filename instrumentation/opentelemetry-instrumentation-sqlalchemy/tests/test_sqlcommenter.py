@@ -16,9 +16,9 @@ import logging
 import pytest
 from sqlalchemy import create_engine
 
+from opentelemetry import context
 from opentelemetry.instrumentation.sqlalchemy import SQLAlchemyInstrumentor
 from opentelemetry.test.test_base import TestBase
-from opentelemetry import context
 
 
 class TestSqlalchemyInstrumentationWithSQLCommenter(TestBase):

@@ -15,6 +15,7 @@
 import flask
 from werkzeug.test import Client
 from werkzeug.wrappers import Response
+
 from opentelemetry import context
 
 

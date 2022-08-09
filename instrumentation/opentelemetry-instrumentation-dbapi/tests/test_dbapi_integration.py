@@ -16,12 +16,12 @@
 import logging
 from unittest import mock
 
+from opentelemetry import context
 from opentelemetry import trace as trace_api
 from opentelemetry.instrumentation import dbapi
 from opentelemetry.sdk import resources
 from opentelemetry.semconv.trace import SpanAttributes
 from opentelemetry.test.test_base import TestBase
-from opentelemetry import context
 
 
 class TestDBApiIntegration(TestBase):
