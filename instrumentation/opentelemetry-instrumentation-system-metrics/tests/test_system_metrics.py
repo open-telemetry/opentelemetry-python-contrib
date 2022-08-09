@@ -455,7 +455,7 @@ class TestSystemMetrics(TestBase):
         }
 
         expected = [
-            _SystemMetricsResult({"device": "sda",}, 2),
+            _SystemMetricsResult({"device": "sda"}, 2),
             _SystemMetricsResult({"device": "sdb"}, 10),
         ]
         self._test_metrics("system.disk.operations.write", expected)
