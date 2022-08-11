@@ -15,6 +15,7 @@
 # pylint: disable=E0611
 
 from sys import modules
+from timeit import default_timer
 from unittest.mock import Mock, patch
 
 from django import VERSION, conf
@@ -423,9 +424,11 @@ class TestMiddleware(WsgiTestBase):
             "http.server.active_requests": _active_requests_count_attrs,
             "http.server.duration": _duration_attrs,
         }
+        start = default_timer()
         for _ in range(3):
             response = Client().get("/span_name/1234/")
             self.assertEqual(response.status_code, 200)
+        duration = max(round((default_timer() - start) * 1000), 0)
         metrics_list = self.memory_metrics_reader.get_metrics_data()
         number_data_point_seen = False
         histrogram_data_point_seen = False
@@ -443,8 +446,12 @@ class TestMiddleware(WsgiTestBase):
                         if isinstance(point, HistogramDataPoint):
                             self.assertEqual(point.count, 3)
                             histrogram_data_point_seen = True
+                            self.assertAlmostEqual(
+                                duration, point.sum, delta=100
+                            )
                         if isinstance(point, NumberDataPoint):
                             number_data_point_seen = True
+                            self.assertEqual(point.value, 0)
                         for attr in point.attributes:
                             self.assertIn(
                                 attr, _recommended_attrs[metric.name]
