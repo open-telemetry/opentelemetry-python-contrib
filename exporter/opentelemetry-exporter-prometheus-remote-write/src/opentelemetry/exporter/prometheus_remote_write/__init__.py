@@ -16,6 +16,8 @@ import logging
 import re
 from typing import Dict, Sequence
 
+from collections import defaultdict
+from itertools import chain
 import requests
 import snappy
 
@@ -30,10 +32,12 @@ from opentelemetry.exporter.prometheus_remote_write.gen.types_pb2 import (
 from opentelemetry.sdk.metrics.export import (
     MetricExporter,
     MetricExportResult,
-    AggregationTemporality,
     Gauge,
     Sum,
     Histogram,
+    MetricExportResult,
+    MetricsData,
+    Metric,
 )
 #from opentelemetry.sdk.metrics.export.aggregate import (
 #    HistogramAggregator,
@@ -162,8 +166,8 @@ class PrometheusRemoteWriteMetricsExporter(MetricExporter):
         self._headers = headers
 
     def export(
-        self, export_records: Sequence[ExportRecord]
-    ) -> MetricsExportResult:
+        self, export_records
+    ) ->MetricExportResult:
         if not export_records:
             return MetricsExportResult.SUCCESS
         timeseries = self._convert_to_timeseries(export_records)
@@ -181,9 +185,82 @@ class PrometheusRemoteWriteMetricsExporter(MetricExporter):
 
     def _translate_data(self, data: MetricsData):
         rw_timeseries = []
-        
+
+        for resource_metrics in data.resource_metrics:
+            resource = resource_metrics.resource
+            # OTLP Data model suggests combining some attrs into  job/instance
+            # Should we do that here?
+            resource_labels = self._get_resource_labels(resource.attributes)
+            # Scope name/version probably not too useful from a labeling perspective
+            for scope_metrics in resource_metrics.scope_metrics:
+                for metric in scope_metrics.metrics:
+                    rw_timeseries.extend( self._parse_metric(metric,resource_labels) )
+
+    def _get_resource_labels(self,attrs):
+        """ Converts Resource Attributes to Prometheus Labels based on
+        OTLP Metric Data Model's recommendations on Resource Attributes
+        """
+        return [ (n,str(v)) for n,v in resource.attributes.items() ]
+
+    def _parse_metric(self, metric: Metric, resource_labels: Sequence) -> Sequence[TimeSeries]:
+        """
+        Parses the Metric & lower objects, then converts the output into
+        OM TimeSeries. Returns a List of TimeSeries objects based on one Metric
+        """
+        # datapoints have attributes associated with them. these would be sent
+        # to RW as different metrics: name & labels is a unique time series
+        sample_sets = defaultdict(list)
+        if isinstance(metric.data,(Gauge,Sum)):
+            for dp in metric.data.data_points:
+                attrs,sample = self._parse_data_point(dp)
+                sample_sets[attrs].append(sample)
+        elif isinstance(metric.data,(HistogramType)):
+            raise NotImplementedError("Coming sooN!")
+        else:
+            logger.warn("Unsupported Metric Type: %s",type(metric.data))
+            return []
+
+        # Create the metric name, will be a label later
+        if metric.unit:
+            #Prom. naming guidelines add unit to the name
+            name =f"{metric.name}_{metric.unit}"
+        else:
+            name = metric.name
+
+        timeseries = []
+        for labels, samples in sample_sets.items():
+            ts = TimeSeries()
+            ts.labels.append(self._label("__name__",name))
+            for label_name,label_value in chain(resource_labels,labels):
+                # Previous implementation did not str() the names...
+                ts.labels.append(self._label(label_name,str(label_value)))
+            for value,timestamp in samples:
+                ts.samples.append(self._sample(value,timestamp))
+            timeseries.append(ts)
+        return timeseries
+
+    def _sample(self,value,timestamp :int):
+        sample = Sample()
+        sample.value = value
+        sample.timestamp = timestamp
+        return sample
+
+    def _label(self,name:str,value:str):
+        label = Label()
+        label.name = name
+        label.value = value
+        return label
+
+    def _parse_data_point(self, data_point):
+
+        attrs = tuple(data_point.attributes.items())
+        #TODO: Optimize? create Sample here
+        # remote write time is in milliseconds
+        sample = (data_point.value,(data_point.time_unix_nano // 1_000_000))
+        return attrs,sample
+
     def _convert_to_timeseries(
-        self, export_records: Sequence[ExportRecord]
+        self, export_records
     ) -> Sequence[TimeSeries]:
         timeseries = []
         for export_record in export_records:
@@ -199,7 +276,7 @@ class PrometheusRemoteWriteMetricsExporter(MetricExporter):
         return timeseries
 
     def _convert_from_sum(
-        self, sum_record: ExportRecord
+        self, sum_record
     ) -> Sequence[TimeSeries]:
         return [
             self._create_timeseries(
@@ -211,22 +288,9 @@ class PrometheusRemoteWriteMetricsExporter(MetricExporter):
 
     def _convert_from_gauge(self, gauge_record):
         raise NotImplementedError("Do this")
-    def _convert_from_min_max_sum_count(
-        self, min_max_sum_count_record: ExportRecord
-    ) -> Sequence[TimeSeries]:
-        timeseries = []
-        for agg_type in ["min", "max", "sum", "count"]:
-            name = min_max_sum_count_record.instrument.name + "_" + agg_type
-            value = getattr(
-                min_max_sum_count_record.aggregator.checkpoint, agg_type
-            )
-            timeseries.append(
-                self._create_timeseries(min_max_sum_count_record, name, value)
-            )
-        return timeseries
 
     def _convert_from_histogram(
-        self, histogram_record: ExportRecord
+        self, histogram_record
     ) -> Sequence[TimeSeries]:
         timeseries = []
         for bound in histogram_record.aggregator.checkpoint.keys():
@@ -242,43 +306,10 @@ class PrometheusRemoteWriteMetricsExporter(MetricExporter):
             )
         return timeseries
 
-    def _convert_from_last_value(
-        self, last_value_record: ExportRecord
-    ) -> Sequence[TimeSeries]:
-        return [
-            self._create_timeseries(
-                last_value_record,
-                last_value_record.instrument.name + "_last",
-                last_value_record.aggregator.checkpoint,
-            )
-        ]
-
-    def _convert_from_value_observer(
-        self, value_observer_record: ExportRecord
-    ) -> Sequence[TimeSeries]:
-        timeseries = []
-        for agg_type in ["min", "max", "sum", "count", "last"]:
-            timeseries.append(
-                self._create_timeseries(
-                    value_observer_record,
-                    value_observer_record.instrument.name + "_" + agg_type,
-                    getattr(
-                        value_observer_record.aggregator.checkpoint, agg_type
-                    ),
-                )
-            )
-        return timeseries
-
-    # TODO: Implement convert from quantile once supported by SDK for Prometheus Summaries
-    def _convert_from_quantile(
-        self, summary_record: ExportRecord
-    ) -> Sequence[TimeSeries]:
-        raise NotImplementedError()
-
     # pylint: disable=no-member,no-self-use
     def _create_timeseries(
         self,
-        export_record: ExportRecord,
+        export_record,
         name: str,
         value: float,
         extra_label: (str, str) = None,
@@ -344,7 +375,7 @@ class PrometheusRemoteWriteMetricsExporter(MetricExporter):
 
     def _send_message(
         self, message: bytes, headers: Dict
-    ) -> MetricsExportResult:
+    ) -> MetricExportResult:
         auth = None
         if self.basic_auth:
             auth = (self.basic_auth["username"], self.basic_auth["password"])

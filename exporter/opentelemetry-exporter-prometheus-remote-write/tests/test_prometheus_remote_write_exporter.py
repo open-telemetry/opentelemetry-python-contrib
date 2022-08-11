@@ -23,16 +23,67 @@ from opentelemetry.exporter.prometheus_remote_write.gen.types_pb2 import (
     TimeSeries,
 )
 from opentelemetry.sdk.metrics import Counter
-from opentelemetry.sdk.metrics.export import ExportRecord, MetricsExportResult
-from opentelemetry.sdk.metrics.export.aggregate import (
-    HistogramAggregator,
-    LastValueAggregator,
-    MinMaxSumCountAggregator,
-    SumAggregator,
-    ValueObserverAggregator,
+#from opentelemetry.sdk.metrics.export import ExportRecord, MetricExportResult
+#from opentelemetry.sdk.metrics.export.aggregate import (
+#    HistogramAggregator,
+#    LastValueAggregator,
+#    MinMaxSumCountAggregator,
+#    SumAggregator,
+#    ValueObserverAggregator,
+#)
+
+from opentelemetry.sdk.metrics.export import (
+    NumberDataPoint,
 )
 from opentelemetry.sdk.resources import Resource
 from opentelemetry.sdk.util import get_dict_as_key
+
+import pytest
+
+def test_parse_data_point(prom_rw):
+
+    attrs = {"Foo" : "Bar","Baz" : 42}
+    timestamp = 1641946016139533244
+    value = 242.42
+    dp = NumberDataPoint(
+        attrs,
+        0,
+        timestamp,
+        value
+    )
+    labels, sample = prom_rw._parse_data_point(dp)
+    assert labels == (("Foo", "Bar"),("Baz", 42))
+    assert sample == (value,timestamp // 1_000_000)
+
+@pytest.mark.parametrize("metric",[
+    "gauge",
+    "sum",
+],indirect=["metric"])
+def test_parse_metric(metric,prom_rw):
+    # We have 1 data point & 5 labels total
+    attributes = {
+        "service" : "foo",
+        "id" : 42,
+    }
+
+    series = prom_rw._parse_metric(metric,tuple(attributes.items()))
+    assert len(series) == 1
+
+    #Build out the expected attributes and check they all made it as labels
+    proto_out = series[0]
+    number_data_point = metric.data.data_points[0]
+    attributes.update(number_data_point.attributes)
+    attributes["__name__"] = metric.name +f"_{metric.unit}"
+
+    for label in proto_out.labels:
+        assert label.value == str(attributes[label.name])
+
+    # Ensure we have one sample with the correct time & value
+    assert len(series.samples) == 1
+    sample = proto_out.samples[0]
+    assert sample.timestamp == (number_data_point.time_unix_nano // 1_000_000)
+    assert sample.value == number_data_point.value
+
 
 
 class TestValidation(unittest.TestCase):
