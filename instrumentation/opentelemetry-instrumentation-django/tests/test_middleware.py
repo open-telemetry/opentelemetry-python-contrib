@@ -415,6 +415,7 @@ class TestMiddleware(WsgiTestBase):
         )
         self.memory_exporter.clear()
 
+    # pylint: disable=too-many-locals
     def test_wsgi_metrics(self):
         _expected_metric_names = [
             "http.server.active_requests",
