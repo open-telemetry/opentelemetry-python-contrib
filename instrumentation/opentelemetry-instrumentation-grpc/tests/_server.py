@@ -40,31 +40,36 @@ class TestServer(test_server_pb2_grpc.GRPCTestServerServicer):
             return test_server_pb2.Response()
         elif request.request_data == "exception":
             raise ValueError(request.request_data)
-        elif request.request_data == "sleep":
-            time.sleep(0.5)
+        elif "sleep" in request.request_data:
+            sleep = float(request.request_data.split(" ", 1)[1])
+            time.sleep(sleep)
 
         return test_server_pb2.Response(
             server_id=SERVER_ID, response_data="data"
         )
 
     def ClientStreamingMethod(self, request_iterator, context):
-        data = list(request_iterator)
+        request = next(request_iterator)
 
-        if data[0].request_data == "abort":
+        if request.request_data == "abort":
             context.abort(
-                grpc.StatusCode.FAILED_PRECONDITION, data[0].request_data
+                grpc.StatusCode.FAILED_PRECONDITION, request.request_data
             )
-        elif data[0].request_data == "cancel":
+        elif request.request_data == "cancel":
             context.cancel()
             return test_server_pb2.Response()
-        elif data[0].request_data == "error":
+        elif request.request_data == "error":
             context.set_code(grpc.StatusCode.INVALID_ARGUMENT)
-            context.set_details(data[0].request_data)
+            context.set_details(request.request_data)
             return test_server_pb2.Response()
-        elif data[0].request_data == "exception":
-            raise ValueError(data[0].request_data)
-        elif data[0].request_data == "sleep":
-            time.sleep(0.5)
+        elif request.request_data == "exception":
+            raise ValueError(request.request_data)
+        elif "sleep" in request.request_data:
+            sleep = float(request.request_data.split(" ", 1)[1])
+            time.sleep(sleep)
+
+        for _ in request_iterator:
+            pass
 
         return test_server_pb2.Response(
             server_id=SERVER_ID, response_data="data"
@@ -89,8 +94,9 @@ class TestServer(test_server_pb2_grpc.GRPCTestServerServicer):
             return test_server_pb2.Response()
         elif request.request_data == "exception":
             raise ValueError(request.request_data)
-        elif request.request_data == "sleep":
-            time.sleep(0.5)
+        elif "sleep" in request.request_data:
+            sleep = float(request.request_data.split(" ", 1)[1])
+            time.sleep(sleep)
 
         for _ in range(5):
             yield test_server_pb2.Response(
@@ -98,27 +104,31 @@ class TestServer(test_server_pb2_grpc.GRPCTestServerServicer):
             )
 
     def BidirectionalStreamingMethod(self, request_iterator, context):
-        data = list(request_iterator)
+        request = next(request_iterator)
 
         yield test_server_pb2.Response(
             server_id=SERVER_ID, response_data="data"
         )
 
-        if data[0].request_data == "abort":
+        if request.request_data == "abort":
             context.abort(
-                grpc.StatusCode.FAILED_PRECONDITION, data[0].request_data
+                grpc.StatusCode.FAILED_PRECONDITION, request.request_data
             )
-        elif data[0].request_data == "cancel":
+        elif request.request_data == "cancel":
             context.cancel()
             return
-        elif data[0].request_data == "error":
+        elif request.request_data == "error":
             context.set_code(grpc.StatusCode.INVALID_ARGUMENT)
-            context.set_details(data[0].request_data)
+            context.set_details(request.request_data)
             return
-        elif data[0].request_data == "exception":
-            raise ValueError(data[0].request_data)
-        elif data[0].request_data == "sleep":
-            time.sleep(0.5)
+        elif request.request_data == "exception":
+            raise ValueError(request.request_data)
+        elif "sleep" in request.request_data:
+            sleep = float(request.request_data.split(" ", 1)[1])
+            time.sleep(sleep)
+
+        for _ in request_iterator:
+            pass
 
         for _ in range(5):
             yield test_server_pb2.Response(
