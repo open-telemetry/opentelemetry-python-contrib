@@ -27,6 +27,11 @@ Usage Client
 
     from opentelemetry import trace
     from opentelemetry.instrumentation.grpc import GrpcInstrumentorClient
+    from opentelemetry.sdk.metrics import MeterProvider
+    from opentelemetry.sdk.metrics.export import (
+        ConsoleMetricExporter,
+        PeriodicExportingMetricReader,
+    )
     from opentelemetry.sdk.trace import TracerProvider
     from opentelemetry.sdk.trace.export import (
         ConsoleSpanExporter,
@@ -37,6 +42,12 @@ Usage Client
         from .gen import helloworld_pb2, helloworld_pb2_grpc
     except ImportError:
         from gen import helloworld_pb2, helloworld_pb2_grpc
+
+    exporter = ConsoleMetricExporter()
+    reader = PeriodicExportingMetricReader(exporter)
+    metrics.set_meter_provider(
+        MeterProvider(metric_readers=[reader])
+    )
 
     trace.set_tracer_provider(TracerProvider())
     trace.get_tracer_provider().add_span_processor(
@@ -57,6 +68,18 @@ Usage Client
     if __name__ == "__main__":
         logging.basicConfig()
         run()
+
+You can also add the instrumentor manually, rather than using
+:py:class:`~opentelemetry.instrumentation.grpc.GrpcInstrumentorClient`:
+
+.. code-block:: python
+
+    from opentelemetry.instrumentation.grpc import client_interceptor
+
+    channel = grpc.intercept_channel(
+        grpc.insecure_channel(...) / grpc.secure_channel(...),
+        client_interceptor()
+    )
 
 Usage Server
 ------------
@@ -135,7 +158,6 @@ import grpc  # pylint:disable=import-self
 from wrapt import wrap_function_wrapper as _wrap
 
 from opentelemetry import metrics, trace
-from opentelemetry.instrumentation.grpc.grpcext import intercept_channel
 from opentelemetry.instrumentation.grpc.package import _instruments
 from opentelemetry.instrumentation.grpc.version import __version__
 from opentelemetry.instrumentation.instrumentor import BaseInstrumentor
@@ -235,39 +257,47 @@ class GrpcInstrumentorClient(BaseInstrumentor):
 
     def wrapper_fn(self, original_func, instance, args, kwargs):
         channel = original_func(*args, **kwargs)
+        meter_provider = kwargs.get("meter_provider")
         tracer_provider = kwargs.get("tracer_provider")
-        return intercept_channel(
+        return grpc.intercept_channel(
             channel,
-            client_interceptor(tracer_provider=tracer_provider),
+            client_interceptor(
+                meter_provider=meter_provider,
+                tracer_provider=tracer_provider
+            )
         )
 
 
-def client_interceptor(tracer_provider=None):
+def client_interceptor(meter_provider=None, tracer_provider=None):
     """Create a gRPC client channel interceptor.
 
     Args:
-        tracer: The tracer to use to create client-side spans.
+        meter_provider: The meter provider which allows access to the meter.
+        tracer_provider: The tracer provider which allows access to the tracer.
 
     Returns:
         An invocation-side interceptor object.
     """
+
     from . import _client
 
+    meter = metrics.get_meter(__name__, __version__, meter_provider)
     tracer = trace.get_tracer(__name__, __version__, tracer_provider)
 
-    return _client.OpenTelemetryClientInterceptor(tracer)
+    return _client.OpenTelemetryClientInterceptor(meter, tracer)
 
 
 def server_interceptor(meter_provider=None, tracer_provider=None):
     """Create a gRPC server interceptor.
 
     Args:
-        meter_provider: The meter provider which allows acess to the meter.
-        tracer_provider: The tracer provider which allows acess to the tracer.
+        meter_provider: The meter provider which allows access to the meter.
+        tracer_provider: The tracer provider which allows access to the tracer.
 
     Returns:
         A service-side interceptor object.
     """
+
     from . import _server
 
     meter = metrics.get_meter(__name__, __version__, meter_provider)
