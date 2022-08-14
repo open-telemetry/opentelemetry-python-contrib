@@ -5,16 +5,27 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [Unreleased](https://github.com/open-telemetry/opentelemetry-python/compare/v1.12.0rc2-0.32b0...HEAD)
+## [Unreleased]
+
+## [1.12.0-0.33b0](https://github.com/open-telemetry/opentelemetry-python/releases/tag/v1.12.0-0.33b0) - 2022-08-08
+
 - Adding multiple db connections support for django-instrumentation's sqlcommenter
   ([#1187](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/1187))
 - SQLCommenter semicolon bug fix
   ([#1200](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/1200/files))
+- Adding sqlalchemy native tags in sqlalchemy commenter
+  ([#1206](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/1206))
+- Add psycopg2 native tags to sqlcommenter
+  ([#1203](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/1203))
 
 ### Added
 - `opentelemetry-instrumentation-redis` add support to instrument RedisCluster clients
   ([#1177](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/1177))
 - `opentelemetry-instrumentation-sqlalchemy` Added span for the connection phase ([#1133](https://github.com/open-telemetry/opentelemetry-python-contrib/issues/1133))
+- Add metric instrumentation in asgi
+  ([#1197](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/1197))
+- Add metric instumentation for flask
+  ([#1186](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/1186))
 
 ## [1.12.0rc2-0.32b0](https://github.com/open-telemetry/opentelemetry-python/releases/tag/v1.12.0rc2-0.32b0) - 2022-07-01
 
@@ -51,6 +62,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   ([#1127](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/1127))
 - Add metric instrumentation for WSGI
   ([#1128](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/1128))
+- Add metric instrumentation for Urllib3
+  ([#1198](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/1198))
 - `opentelemetry-instrumentation-aio-pika` added RabbitMQ aio-pika module instrumentation.
   ([#1095](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/1095))
 - `opentelemetry-instrumentation-requests` Restoring metrics in requests
