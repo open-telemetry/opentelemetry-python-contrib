@@ -18,14 +18,15 @@ from collections import namedtuple
 from contextlib import contextmanager
 from enum import Enum
 from timeit import default_timer
+from types import TracebackType
 from typing import Callable, Dict, Generator, Iterable, Iterator, NoReturn, Optional
 
 import grpc
 from opentelemetry import metrics, trace
-from opentelemetry.instrumentation.grpc._types import ProtoMessage
+from opentelemetry.instrumentation.grpc._types import Metadata, ProtoMessage
 from opentelemetry.semconv.trace import MessageTypeValues, SpanAttributes
 from opentelemetry.trace.status import Status, StatusCode
-from opentelemetry.util.types import Attributes, Metadata
+from opentelemetry.util.types import Attributes
 
 
 _MESSAGE: str = "message"
@@ -406,6 +407,147 @@ class _EventMetricRecorder:
                 code.value[0]
             )
             self._duration_histogram.record(duration, metric_attributes)
+
+
+class _OpentelemetryResponseIterator(
+    grpc.Call, grpc.Future, grpc.RpcError, Iterator
+):
+
+    def __init__(
+        self,
+        response_iterator,
+        metric_recorder: _EventMetricRecorder,
+        span: trace.Span,
+        attributes: Attributes,
+        start_time: float
+    ) -> None:
+        self._iterator = response_iterator
+        self._metric_recorder = metric_recorder
+        self._span = span
+        self._attributes = attributes
+        self._start_time = start_time
+        self._response_id = 0
+
+    def __repr__(self):
+        return self._iterator.__repr__()
+
+    def __str__(self):
+        return self._iterator.__str__()
+
+    # Interface of grpc.RpcContext
+
+    def add_callback(self, callback: Callable[[], None]) -> None:
+        return self._iterator.add_callback(callback)
+
+    def cancel(self) -> bool:
+        return self._iterator.cancel()
+
+    def is_active(self) -> bool:
+        return self._iterator.is_active()
+
+    def time_remaining(self) -> Optional[float]:
+        return self._iterator.time_remaining()
+
+    # Interface of grpc.Call
+
+    def code(self) -> grpc.StatusCode:
+        return self._iterator.code()
+
+    def details(self) -> Optional[str]:
+        return self._iterator.details()
+
+    def initial_metadata(self) -> Metadata:
+        return self._iterator.initial_metadata()
+
+    def trailing_metadata(self) -> Metadata:
+        return self._iterator.trailing_metadata()
+
+    # Interface of grpc.Future
+
+    # pylint: disable=invalid-name
+    def add_done_callback(self, fn: Callable[[grpc.Future], None]) -> None:
+        return self._iterator.add_done_callback(fn)
+
+    def cancelled(self) -> bool:
+        return self._iterator.cancelled()
+
+    def done(self) -> bool:
+        return self._iterator.done()
+
+    def exception(self, timeout: Optional[float] = None) -> Exception:
+        return self._iterator.exception(timeout)
+
+    def result(self, timeout: Optional[float] = None) -> ProtoMessage:
+        return self._iterator.result(timeout)
+
+    def running(self) -> bool:
+        return self._iterator.running()
+
+    def traceback(self, timeout: Optional[float] = None) -> TracebackType:
+        return self._iterator.traceback(timeout)
+
+    # Iterator inteface
+
+    def __iter__(self):
+        return self
+
+    def next(self):
+        return self._next()
+
+    def __next__(self):
+        return self._next()
+
+    def _next(self) -> ProtoMessage:
+        with trace.use_span(
+            self._span,
+            end_on_exit=False,
+            record_exception=False,
+            set_status_on_exception=False
+        ):
+            try:
+                response = self._iterator._next()
+                self._response_id += 1
+                self._metric_recorder._record_unary_or_streaming_response(
+                    self._span,
+                    response,
+                    MessageTypeValues.RECEIVED,
+                    self._attributes,
+                    response_id=self._response_id
+                )
+                return response
+            except grpc.RpcError as exc:
+                code = exc.code()
+                details = exc.details()
+                self._span.set_attribute(
+                    SpanAttributes.RPC_GRPC_STATUS_CODE, code.value[0]
+                )
+                self._span.set_status(
+                    Status(
+                        status_code=StatusCode.ERROR,
+                        description=f"{code}: {details}",
+                    )
+                )
+                self._span.record_exception(exc)
+
+                self._metric_recorder._record_num_of_responses_per_rpc(
+                    self._response_id, self._attributes
+                )
+                self._metric_recorder._record_duration(
+                    self._start_time, self._attributes, self._iterator
+                )
+                self._span.end()
+                raise
+
+            except StopIteration:
+                self._metric_recorder._record_num_of_responses_per_rpc(
+                    self._response_id, self._attributes
+                )
+
+                self._metric_recorder._record_duration(
+                    self._start_time, self._attributes, self._iterator
+                )
+                self._span.end()
+                raise
 
 
 # pylint:disable=abstract-method
