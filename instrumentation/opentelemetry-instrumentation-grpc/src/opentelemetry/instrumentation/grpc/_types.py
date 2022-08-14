@@ -14,6 +14,7 @@
 
 """Internal types."""
 
+import abc
 from typing import Dict, Iterator, TypeVar, Union
 
 import grpc
@@ -27,3 +28,13 @@ ProtoMessage = TypeVar("ProtoMessage")
 
 ProtoMessageOrIterator = Union[ProtoMessage, Iterator[ProtoMessage]]
 """Type for a protobuf message or a iterator of protobuf messages."""
+
+
+class StreamingRendezvous(
+    grpc.Call,
+    grpc.Future,
+    grpc.RpcError,
+    Iterator,
+    abc.ABC
+):
+    """Class for a streaming rendezvous."""
