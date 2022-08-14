@@ -15,14 +15,12 @@
 # pylint:disable=unused-argument
 # pylint:disable=no-self-use
 
-from ftplib import error_perm
-import logging
 import threading
 from concurrent import futures
 
 import grpc
 
-from opentelemetry import trace, metrics
+from opentelemetry import trace
 import opentelemetry.instrumentation.grpc
 from opentelemetry.instrumentation.grpc import GrpcInstrumentorServer, server_interceptor
 from opentelemetry.sdk.metrics.export import Histogram, HistogramDataPoint
@@ -369,9 +367,6 @@ class TestOpenTelemetryServerInterceptor(TestBase):
             "child event",
             {}
         )
-
-        logging.error("%r", self.memory_metrics_reader)
-        logging.error("%r", self.memory_metrics_reader.get_metrics_data())
 
     def test_create_span_streaming(self):
         """Check that the interceptor wraps calls with spans server-side, on a
@@ -1514,7 +1509,6 @@ class TestOpenTelemetryServerInterceptor(TestBase):
                 server.stop(None)
 
         metrics_list = self.memory_metrics_reader.get_metrics_data()
-        data_point_seen = True
 
         self.assertNotEqual(len(metrics_list.resource_metrics), 0)
         for resource_metric in metrics_list.resource_metrics:
@@ -1581,10 +1575,6 @@ class TestOpenTelemetryServerInterceptor(TestBase):
                                 },
                             )
 
-                        data_point_seen &= True
-
-        self.assertTrue(data_point_seen)
-
     def test_metrics_error(self):
 
         error_message = "error"
@@ -1614,7 +1604,6 @@ class TestOpenTelemetryServerInterceptor(TestBase):
                 server.stop(None)
 
         metrics_list = self.memory_metrics_reader.get_metrics_data()
-        data_point_seen = True
 
         self.assertNotEqual(len(metrics_list.resource_metrics), 0)
         for resource_metric in metrics_list.resource_metrics:
@@ -1682,9 +1671,6 @@ class TestOpenTelemetryServerInterceptor(TestBase):
                                         ]
                                 },
                             )
-                        data_point_seen &= True
-
-        self.assertTrue(data_point_seen)
 
     def test_metrics_three_calls(self):
         no_calls = 3
@@ -1714,7 +1700,6 @@ class TestOpenTelemetryServerInterceptor(TestBase):
                 server.stop(None)
 
         metrics_list = self.memory_metrics_reader.get_metrics_data()
-        data_point_seen = True
 
         self.assertNotEqual(len(metrics_list.resource_metrics), 0)
         for resource_metric in metrics_list.resource_metrics:
@@ -1784,9 +1769,6 @@ class TestOpenTelemetryServerInterceptor(TestBase):
                                         grpc.StatusCode.OK.value[0]
                                 },
                             )
-                        data_point_seen &= True
-
-        self.assertTrue(data_point_seen)
 
     def test_metrics_client_streaming(self):
 
@@ -1815,7 +1797,6 @@ class TestOpenTelemetryServerInterceptor(TestBase):
                 server.stop(None)
 
         metrics_list = self.memory_metrics_reader.get_metrics_data()
-        data_point_seen = True
 
         self.assertNotEqual(len(metrics_list.resource_metrics), 0)
         for resource_metric in metrics_list.resource_metrics:
@@ -1888,9 +1869,6 @@ class TestOpenTelemetryServerInterceptor(TestBase):
                                         grpc.StatusCode.OK.value[0]
                                 },
                             )
-                        data_point_seen &= True
-
-        self.assertTrue(data_point_seen)
 
     def test_metrics_client_streaming_abort(self):
 
@@ -1922,7 +1900,6 @@ class TestOpenTelemetryServerInterceptor(TestBase):
                 server.stop(None)
 
         metrics_list = self.memory_metrics_reader.get_metrics_data()
-        data_point_seen = True
 
         self.assertNotEqual(len(metrics_list.resource_metrics), 0)
         for resource_metric in metrics_list.resource_metrics:
@@ -1961,19 +1938,17 @@ class TestOpenTelemetryServerInterceptor(TestBase):
                                 self.assertEqual(point.count, 1)
                                 self.assertGreaterEqual(point.sum, 0)
                             elif metric.name == "rpc.server.request.size":
-                                self.assertEqual(point.count, len(requests))
-                                self.assertEqual(
-                                    point.sum, sum(map(len, requests))
-                                )
+                                self.assertEqual(point.count, 1)
+                                self.assertEqual(point.sum, len(requests[0]))
                             elif metric.name == "rpc.server.response.size":
                                 self.assertEqual(point.count, 0)
-                                # self.assertEqual(point.sum, 0)
+                                self.assertEqual(point.sum, 0)
                             elif metric.name == "rpc.server.requests_per_rpc":
                                 self.assertEqual(point.count, 1)
-                                self.assertEqual(point.sum, len(requests))
+                                self.assertEqual(point.sum, 1)
                             elif metric.name == "rpc.server.responses_per_rpc":
                                 self.assertEqual(point.count, 0)
-                                # self.assertEqual(point.sum, 1)
+                                self.assertEqual(point.sum, 0)
 
                         self.assertMetricDataPointHasAttributes(
                             point,
@@ -1997,9 +1972,6 @@ class TestOpenTelemetryServerInterceptor(TestBase):
                                         ]
                                 },
                             )
-                        data_point_seen &= True
-
-        self.assertTrue(data_point_seen)
 
     def test_metrics_server_streaming(self):
 
@@ -2028,7 +2000,6 @@ class TestOpenTelemetryServerInterceptor(TestBase):
                 server.stop(None)
 
         metrics_list = self.memory_metrics_reader.get_metrics_data()
-        data_point_seen = True
 
         self.assertNotEqual(len(metrics_list.resource_metrics), 0)
         for resource_metric in metrics_list.resource_metrics:
@@ -2101,9 +2072,6 @@ class TestOpenTelemetryServerInterceptor(TestBase):
                                         grpc.StatusCode.OK.value[0]
                                 },
                             )
-                        data_point_seen &= True
-
-        self.assertTrue(data_point_seen)
 
     def test_metrics_bidirectional_streaming(self):
 
@@ -2134,7 +2102,6 @@ class TestOpenTelemetryServerInterceptor(TestBase):
                 server.stop(None)
 
         metrics_list = self.memory_metrics_reader.get_metrics_data()
-        data_point_seen = True
 
         self.assertNotEqual(len(metrics_list.resource_metrics), 0)
         for resource_metric in metrics_list.resource_metrics:
@@ -2209,9 +2176,6 @@ class TestOpenTelemetryServerInterceptor(TestBase):
                                         grpc.StatusCode.OK.value[0]
                                 },
                             )
-                        data_point_seen &= True
-
-        self.assertTrue(data_point_seen)
 
 
 def get_latch(num):
