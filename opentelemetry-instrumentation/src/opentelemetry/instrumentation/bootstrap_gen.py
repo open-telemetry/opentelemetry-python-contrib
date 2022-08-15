@@ -72,6 +72,10 @@ libraries = {
         "library": "fastapi ~= 0.58",
         "instrumentation": "opentelemetry-instrumentation-fastapi==0.33b0",
     },
+    "fastapi-events": {
+        "library": "fastapi-events >= 0.4.0, < 1.0",
+        "instrumentation": "opentelemetry-instrumentation-fastapi-events==0.33b0",
+    },
     "flask": {
         "library": "flask >= 1.0, < 3.0",
         "instrumentation": "opentelemetry-instrumentation-flask==0.33b0",
