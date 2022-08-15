@@ -15,10 +15,12 @@ from fastapi import FastAPI
 from fastapi_events.dispatcher import dispatch
 from fastapi_events.handlers.local import LocalHandler
 from fastapi_events.middleware import EventHandlerASGIMiddleware
-from opentelemetry.test.test_base import TestBase
 from starlette.testclient import TestClient
 
-from opentelemetry.instrumentation.fastapi_events import FastAPIEventsInstrumentor
+from opentelemetry.instrumentation.fastapi_events import (
+    FastAPIEventsInstrumentor,
+)
+from opentelemetry.test.test_base import TestBase
 
 
 class TestFastAPIEventsInstrumentor(TestBase):
@@ -32,7 +34,9 @@ class TestFastAPIEventsInstrumentor(TestBase):
         app = FastAPI()
         local_handler = LocalHandler()
 
-        app.add_middleware(EventHandlerASGIMiddleware, handlers=[local_handler])
+        app.add_middleware(
+            EventHandlerASGIMiddleware, handlers=[local_handler]
+        )
 
         FastAPIEventsInstrumentor().instrument()
 

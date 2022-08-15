@@ -12,26 +12,25 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from inspect import ismodule, getmembers, isclass
+from inspect import getmembers, isclass, ismodule
 from typing import Collection
 
 import fastapi_events
 import wrapt
 from fastapi_events.handlers.base import BaseEventHandler
-from opentelemetry.instrumentation.instrumentor import BaseInstrumentor
-from opentelemetry.instrumentation.utils import unwrap
-from opentelemetry.trace import SpanKind
 
 from opentelemetry import trace
 from opentelemetry.instrumentation.fastapi_events.package import _instruments
+from opentelemetry.instrumentation.instrumentor import BaseInstrumentor
+from opentelemetry.instrumentation.utils import unwrap
+from opentelemetry.trace import SpanKind
 
 
 async def _handle_wrapper(wrapped, instance, args, kwargs):
     tracer = trace.get_tracer(__name__)
     event = args[0] if args else kwargs.get("event")
     with tracer.start_as_current_span(
-        f"handling event {event[0]}",
-        kind=SpanKind.CONSUMER
+        f"handling event {event[0]}", kind=SpanKind.CONSUMER
     ) as span:
         return await wrapped(event)
 
@@ -40,8 +39,7 @@ async def _handle_many_wrapper(wrapped, instance, args, kwargs):
     tracer = trace.get_tracer(__name__)
     events = args[0] if args else kwargs.get("events")
     with tracer.start_as_current_span(
-        f"handling multiple events",
-        kind=SpanKind.CONSUMER
+        f"handling multiple events", kind=SpanKind.CONSUMER
     ) as span:
         return await wrapped(events)
 
@@ -68,12 +66,16 @@ class FastAPIEventsInstrumentor(BaseInstrumentor):
             for _, class_ in getmembers(module, isclass):
                 if issubclass(class_, BaseEventHandler):
                     self._instrumented_classes.append(class_)
-                    wrapt.wrap_function_wrapper(class_, "handle", _handle_wrapper)
-                    wrapt.wrap_function_wrapper(class_, "handle_many", _handle_many_wrapper)
+                    wrapt.wrap_function_wrapper(
+                        class_, "handle", _handle_wrapper
+                    )
+                    wrapt.wrap_function_wrapper(
+                        class_, "handle_many", _handle_many_wrapper
+                    )
 
-        wrapt.wrap_function_wrapper(fastapi_events.dispatcher,
-                                    "dispatch",
-                                    dispatch_wrapper)
+        wrapt.wrap_function_wrapper(
+            fastapi_events.dispatcher, "dispatch", dispatch_wrapper
+        )
 
     def _uninstrument(self, **kwargs):
         for class_ in self._instrumented_classes:
