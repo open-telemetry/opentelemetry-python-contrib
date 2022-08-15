@@ -12,18 +12,18 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from abc import abstractmethod
 from inspect import ismodule, getmembers, isclass
 from typing import Collection
 
 import fastapi_events
 import wrapt
 from fastapi_events.handlers.base import BaseEventHandler
-from opentelemetry import trace
-from opentelemetry.instrumentation.fastapi_events.package import _instruments
 from opentelemetry.instrumentation.instrumentor import BaseInstrumentor
 from opentelemetry.instrumentation.utils import unwrap
 from opentelemetry.trace import SpanKind
+
+from opentelemetry import trace
+from opentelemetry.instrumentation.fastapi_events.package import _instruments
 
 
 async def _handle_wrapper(wrapped, instance, args, kwargs):
@@ -46,15 +46,24 @@ async def _handle_many_wrapper(wrapped, instance, args, kwargs):
         return await wrapped(events)
 
 
+def dispatch_wrapper(wrapped, instance, args, kwargs):
+    event = args[0] if args else kwargs.get("event")
+
+    current_span = trace.get_current_span()
+    current_span.add_event(f"Event dispatched {event}")
+
+    return wrapped(*args, **kwargs)
+
+
 class FastAPIEventsInstrumentor(BaseInstrumentor):
     def __init__(self):
+        super().__init__()
         self._instrumented_classes = []
 
     def instrumentation_dependencies(self) -> Collection[str]:
         return _instruments
 
     def _instrument(self, **kwargs):
-        """Instrument the library"""
         for _, module in getmembers(fastapi_events.handlers, ismodule):
             for _, class_ in getmembers(module, isclass):
                 if issubclass(class_, BaseEventHandler):
@@ -62,9 +71,13 @@ class FastAPIEventsInstrumentor(BaseInstrumentor):
                     wrapt.wrap_function_wrapper(class_, "handle", _handle_wrapper)
                     wrapt.wrap_function_wrapper(class_, "handle_many", _handle_many_wrapper)
 
-    @abstractmethod
+        wrapt.wrap_function_wrapper(fastapi_events.dispatcher,
+                                    "dispatch",
+                                    dispatch_wrapper)
+
     def _uninstrument(self, **kwargs):
-        """Uninstrument the library"""
         for class_ in self._instrumented_classes:
             unwrap(class_, "handle")
             unwrap(class_, "handle_many")
+
+        unwrap(fastapi_events.dispatcher, "dispatch")
