@@ -15,14 +15,14 @@ from fastapi import FastAPI
 from fastapi_events.dispatcher import dispatch
 from fastapi_events.handlers.local import LocalHandler
 from fastapi_events.middleware import EventHandlerASGIMiddleware
-from opentelemetry.test.test_base import TestBase
-from opentelemetry.trace import SpanKind
 from starlette.testclient import TestClient
 
 from opentelemetry import trace
 from opentelemetry.instrumentation.fastapi_events import (
     FastAPIEventsInstrumentor,
 )
+from opentelemetry.test.test_base import TestBase
+from opentelemetry.trace import SpanKind
 
 
 class TestFastAPIEventsInstrumentor(TestBase):
@@ -54,8 +54,7 @@ class TestFastAPIEventsInstrumentor(TestBase):
         async def index():
             tracer = trace.get_tracer(__name__)
             with tracer.start_as_current_span(
-                "handling request",
-                kind=SpanKind.SERVER
+                "handling request", kind=SpanKind.SERVER
             ):
                 dispatch("VISITOR_SPOTTED")
 
@@ -75,6 +74,6 @@ class TestFastAPIEventsInstrumentor(TestBase):
         self._client.get("/")
 
         spans = self.memory_exporter.get_finished_spans()
-        handling_req_span = [span for span in spans if span._name == "handling request"][0]
+        span_names = [span._name for span in spans]
 
-        self.assertIn("Event VISITOR_SPOTTED dispatched", handling_req_span.events[0]._name)
+        self.assertIn("Event VISITOR_SPOTTED dispatched", span_names)

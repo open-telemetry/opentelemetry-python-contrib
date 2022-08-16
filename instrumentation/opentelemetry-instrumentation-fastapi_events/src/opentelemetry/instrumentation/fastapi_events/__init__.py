@@ -48,12 +48,12 @@ import fastapi_events
 import fastapi_events.dispatcher
 import wrapt
 from fastapi_events.handlers.base import BaseEventHandler
-from opentelemetry.instrumentation.instrumentor import BaseInstrumentor
-from opentelemetry.instrumentation.utils import unwrap
-from opentelemetry.trace import SpanKind
 
 from opentelemetry import trace
 from opentelemetry.instrumentation.fastapi_events.package import _instruments
+from opentelemetry.instrumentation.instrumentor import BaseInstrumentor
+from opentelemetry.instrumentation.utils import unwrap
+from opentelemetry.trace import SpanKind
 
 
 async def _handle_wrapper(wrapped, instance, args, kwargs):
@@ -76,11 +76,12 @@ async def _handle_many_wrapper(wrapped, instance, args, kwargs):
 
 def _dispatch_wrapper(wrapped, instance, args, kwargs):
     event_name = kwargs.get("event_name")
+    tracer = trace.get_tracer(__name__)
 
-    current_span = trace.get_current_span()
-    current_span.add_event(f"Event {event_name} dispatched")
-
-    return wrapped(*args, **kwargs)
+    with tracer.start_as_current_span(
+        f"Event {event_name} dispatched", kind=SpanKind.PRODUCER
+    ) as span:
+        return wrapped(*args, **kwargs)
 
 
 class FastAPIEventsInstrumentor(BaseInstrumentor):
@@ -94,7 +95,10 @@ class FastAPIEventsInstrumentor(BaseInstrumentor):
     def _instrument(self, **kwargs):
         for _, module in getmembers(fastapi_events.handlers, ismodule):
             for _, class_ in getmembers(module, isclass):
-                if issubclass(class_, BaseEventHandler) and class_ is not BaseEventHandler:
+                if (
+                    issubclass(class_, BaseEventHandler)
+                    and class_ is not BaseEventHandler
+                ):
                     self._instrumented_classes.append(class_)
                     wrapt.wrap_function_wrapper(
                         class_, "handle", _handle_wrapper
