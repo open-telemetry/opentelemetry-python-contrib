@@ -56,6 +56,7 @@ _recommended_attrs = {
     "http.server.duration": _duration_attrs,
 }
 
+
 class TestFalconBase(TestBase):
     def setUp(self):
         super().setUp()
@@ -286,10 +287,24 @@ class TestFalconInstrumentation(TestFalconBase, WsgiTestBase):
                                 attr, _recommended_attrs[metric.name]
                             )
         self.assertTrue(number_data_point_seen and histogram_data_point_seen)
-    
+
     def test_falcon_metric_values(self):
-        expected_duration_attributes = {'http.method': 'GET', 'http.host': 'falconframework.org', 'http.scheme': 'http', 'http.flavor': '1.1', 'http.server_name': 'falconframework.org', 'net.host.port': 80, 'http.status_code': 404}
-        expected_requests_count_attributes = {'http.method': 'GET', 'http.host': 'falconframework.org', 'http.scheme': 'http', 'http.flavor': '1.1', 'http.server_name': 'falconframework.org'}
+        expected_duration_attributes = {
+            "http.method": "GET",
+            "http.host": "falconframework.org",
+            "http.scheme": "http",
+            "http.flavor": "1.1",
+            "http.server_name": "falconframework.org",
+            "net.host.port": 80,
+            "http.status_code": 404,
+        }
+        expected_requests_count_attributes = {
+            "http.method": "GET",
+            "http.host": "falconframework.org",
+            "http.scheme": "http",
+            "http.flavor": "1.1",
+            "http.server_name": "falconframework.org",
+        }
         start = default_timer()
         self.client().simulate_get("/hello/756")
         duration = max(round((default_timer() - start) * 1000), 0)
@@ -326,6 +341,7 @@ class TestFalconInstrumentation(TestFalconBase, WsgiTestBase):
                     for point in list(metric.data.data_points):
                         if isinstance(point, HistogramDataPoint):
                             self.assertEqual(point.count, 1)
+
 
 class TestFalconInstrumentationWithTracerProvider(TestBase):
     def setUp(self):

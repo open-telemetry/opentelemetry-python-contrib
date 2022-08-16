@@ -153,7 +153,6 @@ import opentelemetry.instrumentation.wsgi as otel_wsgi
 from opentelemetry import context, trace
 from opentelemetry.instrumentation.falcon.package import _instruments
 from opentelemetry.instrumentation.falcon.version import __version__
-from opentelemetry.metrics import get_meter
 from opentelemetry.instrumentation.instrumentor import BaseInstrumentor
 from opentelemetry.instrumentation.propagators import (
     FuncSetter,
@@ -164,6 +163,7 @@ from opentelemetry.instrumentation.utils import (
     extract_attributes_from_object,
     http_status_to_status_code,
 )
+from opentelemetry.metrics import get_meter
 from opentelemetry.semconv.trace import SpanAttributes
 from opentelemetry.trace.status import Status
 from opentelemetry.util._time import _time_ns
@@ -209,9 +209,7 @@ class _InstrumentedFalconAPI(getattr(falcon, _instrument_app)):
         self._otel_tracer = trace.get_tracer(
             __name__, __version__, tracer_provider
         )
-        self._otel_meter = get_meter(
-            __name__, __version__, meter_provider
-        )
+        self._otel_meter = get_meter(__name__, __version__, meter_provider)
         self.duration_histogram = self._otel_meter.create_histogram(
             name="http.server.duration",
             unit="ms",
@@ -279,7 +277,9 @@ class _InstrumentedFalconAPI(getattr(falcon, _instrument_app)):
             context_getter=otel_wsgi.wsgi_getter,
         )
         attributes = otel_wsgi.collect_request_attributes(env)
-        active_requests_count_attrs = otel_wsgi._parse_active_request_count_attrs(attributes)
+        active_requests_count_attrs = (
+            otel_wsgi._parse_active_request_count_attrs(attributes)
+        )
         duration_attrs = otel_wsgi._parse_duration_attrs(attributes)
         self.active_requests_counter.add(1, active_requests_count_attrs)
 
@@ -319,10 +319,13 @@ class _InstrumentedFalconAPI(getattr(falcon, _instrument_app)):
                 context.detach(token)
             raise
         finally:
-            duration_attrs[SpanAttributes.HTTP_STATUS_CODE] = span.attributes.get(SpanAttributes.HTTP_STATUS_CODE)
+            duration_attrs[
+                SpanAttributes.HTTP_STATUS_CODE
+            ] = span.attributes.get(SpanAttributes.HTTP_STATUS_CODE)
             duration = max(round((default_timer() - start) * 1000), 0)
             self.duration_histogram.record(duration, duration_attrs)
             self.active_requests_counter.add(-1, active_requests_count_attrs)
+
 
 class _TraceMiddleware:
     # pylint:disable=R0201,W0613
