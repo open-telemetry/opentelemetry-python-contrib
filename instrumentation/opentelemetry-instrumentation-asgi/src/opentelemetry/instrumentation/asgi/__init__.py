@@ -171,6 +171,8 @@ from opentelemetry.trace.status import Status, StatusCode
 from opentelemetry.util.http import (
     OTEL_INSTRUMENTATION_HTTP_CAPTURE_HEADERS_SERVER_REQUEST,
     OTEL_INSTRUMENTATION_HTTP_CAPTURE_HEADERS_SERVER_RESPONSE,
+    _parse_active_request_count_attrs,
+    _parse_duration_attrs,
     get_custom_headers,
     normalise_request_header_name,
     normalise_response_header_name,
