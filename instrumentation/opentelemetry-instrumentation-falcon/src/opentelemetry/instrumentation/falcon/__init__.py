@@ -264,6 +264,7 @@ class _InstrumentedFalconAPI(getattr(falcon, _instrument_app)):
 
     def __call__(self, env, start_response):
         # pylint: disable=E1101
+        # pylint: disable=too-many-locals
         if self._otel_excluded_urls.url_disabled(env.get("PATH_INFO", "/")):
             return super().__call__(env, start_response)
 
