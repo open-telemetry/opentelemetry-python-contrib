@@ -143,6 +143,7 @@ API
 
 from logging import getLogger
 from sys import exc_info
+from timeit import default_timer
 from typing import Collection
 
 import falcon
@@ -152,6 +153,7 @@ import opentelemetry.instrumentation.wsgi as otel_wsgi
 from opentelemetry import context, trace
 from opentelemetry.instrumentation.falcon.package import _instruments
 from opentelemetry.instrumentation.falcon.version import __version__
+from opentelemetry.metrics import get_meter
 from opentelemetry.instrumentation.instrumentor import BaseInstrumentor
 from opentelemetry.instrumentation.propagators import (
     FuncSetter,
@@ -200,11 +202,25 @@ class _InstrumentedFalconAPI(getattr(falcon, _instrument_app)):
         # inject trace middleware
         middlewares = kwargs.pop("middleware", [])
         tracer_provider = otel_opts.pop("tracer_provider", None)
+        meter_provider = otel_opts.pop("meter_provider", None)
         if not isinstance(middlewares, (list, tuple)):
             middlewares = [middlewares]
 
         self._otel_tracer = trace.get_tracer(
             __name__, __version__, tracer_provider
+        )
+        self._otel_meter = get_meter(
+            __name__, __version__, meter_provider
+        )
+        self.duration_histogram = self._otel_meter.create_histogram(
+            name="http.server.duration",
+            unit="ms",
+            description="measures the duration of the inbound HTTP request",
+        )
+        self.active_requests_counter = self._otel_meter.create_up_down_counter(
+            name="http.server.active_requests",
+            unit="requests",
+            description="measures the number of concurrent HTTP requests that are currently in-flight",
         )
 
         trace_middleware = _TraceMiddleware(
@@ -254,7 +270,7 @@ class _InstrumentedFalconAPI(getattr(falcon, _instrument_app)):
             return super().__call__(env, start_response)
 
         start_time = _time_ns()
-
+        start = default_timer()
         span, token = _start_internal_or_server_span(
             tracer=self._otel_tracer,
             span_name=otel_wsgi.get_default_span_name(env),
@@ -262,9 +278,12 @@ class _InstrumentedFalconAPI(getattr(falcon, _instrument_app)):
             context_carrier=env,
             context_getter=otel_wsgi.wsgi_getter,
         )
+        attributes = otel_wsgi.collect_request_attributes(env)
+        active_requests_count_attrs = otel_wsgi._parse_active_request_count_attrs(attributes)
+        duration_attrs = otel_wsgi._parse_duration_attrs(attributes)
+        self.active_requests_counter.add(1, active_requests_count_attrs)
 
         if span.is_recording():
-            attributes = otel_wsgi.collect_request_attributes(env)
             for key, value in attributes.items():
                 span.set_attribute(key, value)
             if span.is_recording() and span.kind == trace.SpanKind.SERVER:
@@ -299,7 +318,11 @@ class _InstrumentedFalconAPI(getattr(falcon, _instrument_app)):
             if token is not None:
                 context.detach(token)
             raise
-
+        finally:
+            duration_attrs[SpanAttributes.HTTP_STATUS_CODE] = span.attributes.get(SpanAttributes.HTTP_STATUS_CODE)
+            duration = max(round((default_timer() - start) * 1000), 0)
+            self.duration_histogram.record(duration, duration_attrs)
+            self.active_requests_counter.add(-1, active_requests_count_attrs)
 
 class _TraceMiddleware:
     # pylint:disable=R0201,W0613
