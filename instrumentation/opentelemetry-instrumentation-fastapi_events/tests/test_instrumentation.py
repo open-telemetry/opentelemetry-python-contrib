@@ -44,12 +44,11 @@ class TestFastAPIEventsInstrumentor(TestBase):
 
         @local_handler.register(event_name="VISITOR_SPOTTED")
         async def handle_visitor_spotted(event):
-            print(f"{event[0]} handled =)")
             dispatch("VISITOR_SPOTTED_HANDLED")
 
         @local_handler.register(event_name="VISITOR_SPOTTED_HANDLED")
         async def handle_visitor_spotted_handled(event):
-            print(f"{event[0]} handled =)")
+            pass
 
         @app.get("/")
         async def index():
