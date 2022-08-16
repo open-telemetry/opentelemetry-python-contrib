@@ -94,7 +94,7 @@ class FastAPIEventsInstrumentor(BaseInstrumentor):
     def _instrument(self, **kwargs):
         for _, module in getmembers(fastapi_events.handlers, ismodule):
             for _, class_ in getmembers(module, isclass):
-                if issubclass(class_, BaseEventHandler):
+                if issubclass(class_, BaseEventHandler) and class_ is not BaseEventHandler:
                     self._instrumented_classes.append(class_)
                     wrapt.wrap_function_wrapper(
                         class_, "handle", _handle_wrapper
