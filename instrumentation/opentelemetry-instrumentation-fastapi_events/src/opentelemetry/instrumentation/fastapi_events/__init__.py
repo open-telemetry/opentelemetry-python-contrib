@@ -12,6 +12,35 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+"""
+Usage
+-----
+
+.. code-block:: python
+
+    from fastapi import FastAPI
+    from fastapi_events.dispatcher import dispatch
+    from fastapi_events.handlers.local import LocalHandler
+    from fastapi_events.middleware import EventHandlerASGIMiddleware
+    from opentelemetry.instrumentation.fastapi_events import FastAPIEventsInstrumentor
+
+    app = FastAPI()
+    app.add_middleware(
+        EventHandlerASGIMiddleware, handlers=[local_handler]
+    )
+
+    FastAPIEventsInstrumentor().instrument()
+
+    @local_handler.register(event_name="VISITOR_SPOTTED")
+    async def handle_visitor_spotted(event):
+        pass
+
+    @app.get("/")
+    async def index():
+        dispatch("VISITOR_SPOTTED")
+        return {"message": "visitor spotted"}
+"""
+
 from inspect import getmembers, isclass, ismodule
 from typing import Collection
 
