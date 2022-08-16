@@ -45,14 +45,15 @@ from inspect import getmembers, isclass, ismodule
 from typing import Collection
 
 import fastapi_events
+import fastapi_events.dispatcher
 import wrapt
 from fastapi_events.handlers.base import BaseEventHandler
-
-from opentelemetry import trace
-from opentelemetry.instrumentation.fastapi_events.package import _instruments
 from opentelemetry.instrumentation.instrumentor import BaseInstrumentor
 from opentelemetry.instrumentation.utils import unwrap
 from opentelemetry.trace import SpanKind
+
+from opentelemetry import trace
+from opentelemetry.instrumentation.fastapi_events.package import _instruments
 
 
 async def _handle_wrapper(wrapped, instance, args, kwargs):
@@ -73,11 +74,11 @@ async def _handle_many_wrapper(wrapped, instance, args, kwargs):
         return await wrapped(events)
 
 
-def dispatch_wrapper(wrapped, instance, args, kwargs):
-    event = args[0] if args else kwargs.get("event")
+def _dispatch_wrapper(wrapped, instance, args, kwargs):
+    event_name = kwargs.get("event_name")
 
     current_span = trace.get_current_span()
-    current_span.add_event(f"Event dispatched {event}")
+    current_span.add_event(f"Event {event_name} dispatched")
 
     return wrapped(*args, **kwargs)
 
@@ -103,7 +104,7 @@ class FastAPIEventsInstrumentor(BaseInstrumentor):
                     )
 
         wrapt.wrap_function_wrapper(
-            fastapi_events.dispatcher, "dispatch", dispatch_wrapper
+            fastapi_events.dispatcher, "_dispatch", _dispatch_wrapper
         )
 
     def _uninstrument(self, **kwargs):
