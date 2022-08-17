@@ -23,11 +23,11 @@ class KafkaPropertiesExtractor:
         return kwargs.get(key, default_value)
 
     @staticmethod
-    def extract_produce_topic(args):
+    def extract_produce_topic(args, kwargs):
         """extract topic from `produce` method arguments in Producer class"""
-        if len(args) > 0:
-            return args[0]
-        return "unknown"
+        return KafkaPropertiesExtractor._extract_argument(
+            "topic", 0, "unknown", args, kwargs
+        )
 
     @staticmethod
     def extract_produce_headers(args, kwargs):
@@ -72,6 +72,7 @@ def _enrich_span(
     partition: Optional[int] = None,
     offset: Optional[int] = None,
     operation: Optional[MessagingOperationValues] = None,
+    temp_destination: Optional[bool] = None,
 ):
 
     if not span.is_recording():
@@ -90,8 +91,9 @@ def _enrich_span(
 
     if operation:
         span.set_attribute(SpanAttributes.MESSAGING_OPERATION, operation.value)
-    else:
-        span.set_attribute(SpanAttributes.MESSAGING_TEMP_DESTINATION, True)
+
+    if temp_destination:
+        span.set_attribute(SpanAttributes.MESSAGING_TEMP_DESTINATION, temp_destination)
 
     # https://stackoverflow.com/questions/65935155/identify-and-find-specific-message-in-kafka-topic
     # A message within Kafka is uniquely defined by its topic name, topic partition and offset.
