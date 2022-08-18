@@ -264,7 +264,7 @@ class Boto3SQSInstrumentor(BaseInstrumentor):
             for entry in entries:
                 entry_id = entry["Id"]
                 span = self._tracer.start_span(
-                    name=f"{queue_name} send", kind=SpanKind.PRODUCER,
+                    name=f"{queue_name} send", kind=SpanKind.PRODUCER
                 )
                 ids_to_spans[entry_id] = span
                 Boto3SQSInstrumentor._enrich_span(
@@ -367,7 +367,7 @@ class Boto3SQSInstrumentor(BaseInstrumentor):
                 return wrapped(*args, **kwargs)
 
         wrap_function_wrapper(
-            sqs_class, "delete_message_batch", delete_message_wrapper_batch,
+            sqs_class, "delete_message_batch", delete_message_wrapper_batch
         )
 
     def _wrap_client_creation(self) -> None:

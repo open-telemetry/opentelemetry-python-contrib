@@ -288,7 +288,7 @@ class TestBoto3SQSInstrumentation(TestBase):
             attrs = msg_def[msg_id]
             with self._mocked_endpoint(None):
                 self._client.delete_message(
-                    QueueUrl=self._queue_url, ReceiptHandle=attrs["receipt"],
+                    QueueUrl=self._queue_url, ReceiptHandle=attrs["receipt"]
                 )
 
             span = self._get_only_span()
