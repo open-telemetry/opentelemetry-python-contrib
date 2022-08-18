@@ -375,13 +375,12 @@ class _DjangoMiddleware(MiddlewareMixin):
             else:
                 activation.__exit__(None, None, None)
 
-        if request_start_time and duration_attrs:
+        if request_start_time is not None:
             duration = max(
                 round((default_timer() - request_start_time) * 1000), 0
             )
             self._duration_histogram.record(duration, duration_attrs)
-        if active_requests_count_attrs:
-            self._active_request_counter.add(-1, active_requests_count_attrs)
+        self._active_request_counter.add(-1, active_requests_count_attrs)
         if request.META.get(self._environ_token, None) is not None:
             detach(request.META.get(self._environ_token))
             request.META.pop(self._environ_token)

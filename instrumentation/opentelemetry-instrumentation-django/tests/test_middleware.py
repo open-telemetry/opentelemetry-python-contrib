@@ -462,6 +462,7 @@ class TestMiddleware(WsgiTestBase):
     def test_wsgi_metrics_unistrument(self):
         Client().get("/span_name/1234/")
         _django_instrumentor.uninstrument()
+        Client().get("/span_name/1234/")
         metrics_list = self.memory_metrics_reader.get_metrics_data()
         for resource_metric in metrics_list.resource_metrics:
             for scope_metric in resource_metric.scope_metrics:
