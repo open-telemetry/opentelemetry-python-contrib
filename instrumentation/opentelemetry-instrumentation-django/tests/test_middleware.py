@@ -32,10 +32,6 @@ from opentelemetry.instrumentation.propagators import (
     TraceResponsePropagator,
     set_global_response_propagator,
 )
-from opentelemetry.util.http import (
-    _active_requests_count_attrs,
-    _duration_attrs,
-)
 from opentelemetry.sdk import resources
 from opentelemetry.sdk.metrics.export import (
     HistogramDataPoint,
@@ -54,6 +50,8 @@ from opentelemetry.trace import (
 from opentelemetry.util.http import (
     OTEL_INSTRUMENTATION_HTTP_CAPTURE_HEADERS_SERVER_REQUEST,
     OTEL_INSTRUMENTATION_HTTP_CAPTURE_HEADERS_SERVER_RESPONSE,
+    _active_requests_count_attrs,
+    _duration_attrs,
     get_excluded_urls,
     get_traced_request_attrs,
 )
