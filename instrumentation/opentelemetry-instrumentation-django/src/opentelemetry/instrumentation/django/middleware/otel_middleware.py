@@ -223,7 +223,9 @@ class _DjangoMiddleware(MiddlewareMixin):
         )
 
         attributes = collect_request_attributes(carrier)
-        active_requests_count_attrs = _parse_active_request_count_attrs(attributes)
+        active_requests_count_attrs = _parse_active_request_count_attrs(
+            attributes
+        )
         duration_attrs = _parse_duration_attrs(attributes)
         request_start_time = default_timer()
         request.META[
@@ -319,7 +321,9 @@ class _DjangoMiddleware(MiddlewareMixin):
         active_requests_count_attrs = request.META.pop(
             self._environ_active_request_attr_key, None
         )
-        duration_attrs = request.META.pop(self._environ_duration_attr_key, None)
+        duration_attrs = request.META.pop(
+            self._environ_duration_attr_key, None
+        )
         request_start_time = request.META.pop(self._environ_timer_key, None)
 
         if activation and span:
@@ -372,7 +376,9 @@ class _DjangoMiddleware(MiddlewareMixin):
                 activation.__exit__(None, None, None)
 
         if request_start_time and duration_attrs:
-            duration = max(round((default_timer() - request_start_time) * 1000), 0)
+            duration = max(
+                round((default_timer() - request_start_time) * 1000), 0
+            )
             self._duration_histogram.record(duration, duration_attrs)
         if active_requests_count_attrs:
             self._active_request_counter.add(-1, active_requests_count_attrs)
