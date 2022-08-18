@@ -32,7 +32,7 @@ from opentelemetry.instrumentation.propagators import (
     TraceResponsePropagator,
     set_global_response_propagator,
 )
-from opentelemetry.instrumentation.wsgi import (
+from opentelemetry.util.http import (
     _active_requests_count_attrs,
     _duration_attrs,
 )
