@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+- Add metric instrumentation in fastapi
+  ([#1199](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/1199))
+
 ## [1.12.0-0.33b0](https://github.com/open-telemetry/opentelemetry-python/releases/tag/v1.12.0-0.33b0) - 2022-08-08
 
 - Adding multiple db connections support for django-instrumentation's sqlcommenter
@@ -24,8 +28,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - `opentelemetry-instrumentation-sqlalchemy` Added span for the connection phase ([#1133](https://github.com/open-telemetry/opentelemetry-python-contrib/issues/1133))
 - Add metric instrumentation in asgi
   ([#1197](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/1197))
-- Add metric instrumentation in fastapi
-  ([#1199](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/1199))
 - Add metric instumentation for flask
   ([#1186](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/1186))
 

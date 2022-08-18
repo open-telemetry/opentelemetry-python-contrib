@@ -245,6 +245,9 @@ class _InstrumentedFastAPI(fastapi.FastAPI):
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
+        meter = get_meter(
+            __name__, __version__, _InstrumentedFastAPI._meter_provider
+        )
         self.add_middleware(
             OpenTelemetryMiddleware,
             excluded_urls=_InstrumentedFastAPI._excluded_urls,
@@ -253,7 +256,7 @@ class _InstrumentedFastAPI(fastapi.FastAPI):
             client_request_hook=_InstrumentedFastAPI._client_request_hook,
             client_response_hook=_InstrumentedFastAPI._client_response_hook,
             tracer_provider=_InstrumentedFastAPI._tracer_provider,
-            meter_provider=_InstrumentedFastAPI._meter_provider,
+            meter=meter,
         )
 
 

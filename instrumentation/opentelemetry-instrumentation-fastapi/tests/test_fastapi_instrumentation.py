@@ -22,11 +22,7 @@ from fastapi.testclient import TestClient
 
 import opentelemetry.instrumentation.fastapi as otel_fastapi
 from opentelemetry import trace
-from opentelemetry.instrumentation.asgi import (
-    OpenTelemetryMiddleware,
-    _active_requests_count_attrs,
-    _duration_attrs,
-)
+from opentelemetry.instrumentation.asgi import OpenTelemetryMiddleware
 from opentelemetry.sdk.metrics.export import (
     HistogramDataPoint,
     NumberDataPoint,
@@ -38,6 +34,8 @@ from opentelemetry.test.test_base import TestBase
 from opentelemetry.util.http import (
     OTEL_INSTRUMENTATION_HTTP_CAPTURE_HEADERS_SERVER_REQUEST,
     OTEL_INSTRUMENTATION_HTTP_CAPTURE_HEADERS_SERVER_RESPONSE,
+    _active_requests_count_attrs,
+    _duration_attrs,
     get_excluded_urls,
 )
 
@@ -186,11 +184,12 @@ class TestFastAPIManualInstrumentation(TestBase):
         metrics_list = self.memory_metrics_reader.get_metrics_data()
         number_data_point_seen = False
         histogram_data_point_seen = False
-        self.assertTrue(len(metrics_list.resource_metrics) != 0)
+        self.assertTrue(len(metrics_list.resource_metrics) == 1)
         for resource_metric in metrics_list.resource_metrics:
-            self.assertTrue(len(resource_metric.scope_metrics) != 0)
+            self.assertTrue(len(resource_metric.scope_metrics) == 1)
             for scope_metric in resource_metric.scope_metrics:
-                self.assertTrue(len(scope_metric.metrics) != 0)
+                self.assertTrue(len(scope_metric.metrics) == 2)
+                print(scope_metric.metrics)
                 for metric in scope_metric.metrics:
                     self.assertIn(metric.name, _expected_metric_names)
                     data_points = list(metric.data.data_points)
@@ -228,56 +227,52 @@ class TestFastAPIManualInstrumentation(TestBase):
             "http.server_name": "testserver",
         }
         metrics_list = self.memory_metrics_reader.get_metrics_data()
-        for resource_metric in metrics_list.resource_metrics:
-            for scope_metric in resource_metric.scope_metrics:
-                for metric in scope_metric.metrics:
-                    for point in list(metric.data.data_points):
-                        if isinstance(point, HistogramDataPoint):
-                            self.assertDictEqual(
-                                expected_duration_attributes,
-                                dict(point.attributes),
-                            )
-                            self.assertEqual(point.count, 1)
-                            self.assertAlmostEqual(
-                                duration, point.sum, delta=20
-                            )
-                        if isinstance(point, NumberDataPoint):
-                            self.assertDictEqual(
-                                expected_requests_count_attributes,
-                                dict(point.attributes),
-                            )
-                            self.assertEqual(point.value, 0)
+        for metric in (
+            metrics_list.resource_metrics[0].scope_metrics[0].metrics
+        ):
+            for point in list(metric.data.data_points):
+                if isinstance(point, HistogramDataPoint):
+                    self.assertDictEqual(
+                        expected_duration_attributes,
+                        dict(point.attributes),
+                    )
+                    self.assertEqual(point.count, 1)
+                    self.assertAlmostEqual(duration, point.sum, delta=20)
+                if isinstance(point, NumberDataPoint):
+                    self.assertDictEqual(
+                        expected_requests_count_attributes,
+                        dict(point.attributes),
+                    )
+                    self.assertEqual(point.value, 0)
 
     def test_basic_post_request_metric_success(self):
         start = default_timer()
         self._client.post("/foobar")
         duration = max(round((default_timer() - start) * 1000), 0)
         metrics_list = self.memory_metrics_reader.get_metrics_data()
-        for resource_metric in metrics_list.resource_metrics:
-            for scope_metric in resource_metric.scope_metrics:
-                for metric in scope_metric.metrics:
-                    for point in list(metric.data.data_points):
-                        if isinstance(point, HistogramDataPoint):
-                            self.assertEqual(point.count, 1)
-                            self.assertAlmostEqual(
-                                duration, point.sum, delta=10
-                            )
-                        if isinstance(point, NumberDataPoint):
-                            self.assertEqual(point.value, 0)
+        for metric in (
+            metrics_list.resource_metrics[0].scope_metrics[0].metrics
+        ):
+            for point in list(metric.data.data_points):
+                if isinstance(point, HistogramDataPoint):
+                    self.assertEqual(point.count, 1)
+                    self.assertAlmostEqual(duration, point.sum, delta=30)
+                if isinstance(point, NumberDataPoint):
+                    self.assertEqual(point.value, 0)
 
     def test_metric_uninstruemnt(self):
         self._client.get("/foobar")
         self._instrumentor.uninstrument_app(self._app)
         self._client.get("/foobar")
         metrics_list = self.memory_metrics_reader.get_metrics_data()
-        for resource_metric in metrics_list.resource_metrics:
-            for scope_metric in resource_metric.scope_metrics:
-                for metric in scope_metric.metrics:
-                    for point in list(metric.data.data_points):
-                        if isinstance(point, HistogramDataPoint):
-                            self.assertEqual(point.count, 1)
-                        if isinstance(point, NumberDataPoint):
-                            self.assertEqual(point.value, 0)
+        for metric in (
+            metrics_list.resource_metrics[0].scope_metrics[0].metrics
+        ):
+            for point in list(metric.data.data_points):
+                if isinstance(point, HistogramDataPoint):
+                    self.assertEqual(point.count, 1)
+                if isinstance(point, NumberDataPoint):
+                    self.assertEqual(point.value, 0)
 
     @staticmethod
     def _create_fastapi_app():
