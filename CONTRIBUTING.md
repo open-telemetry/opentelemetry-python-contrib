@@ -44,6 +44,7 @@ You can run:
 - `tox -e py37-test-flask` to e.g. run the Flask tests under a specific
   Python version
 - `tox -e lint` to run lint checks on all code
+- `tox -e spellcheck` to run spell check on the code
 
 See
 [`tox.ini`](https://github.com/open-telemetry/opentelemetry-python-contrib/blob/main/tox.ini)
