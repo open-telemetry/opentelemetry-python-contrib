@@ -324,6 +324,7 @@ class _DjangoMiddleware(MiddlewareMixin):
         duration_attrs = request.META.pop(
             self._environ_duration_attr_key, None
         )
+        duration_attrs[SpanAttributes.HTTP_STATUS_CODE] = response.status_code
         request_start_time = request.META.pop(self._environ_timer_key, None)
 
         if activation and span:
