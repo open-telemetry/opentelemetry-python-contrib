@@ -415,6 +415,8 @@ class Boto3SQSInstrumentor(BaseInstrumentor):
         unwrap(sqs_class, "delete_message")
         unwrap(sqs_class, "delete_message_batch")
 
+        setattr(sqs_class, _IS_SQS_INSTRUMENTED_ATTRIBUTE, False)
+
     def _instrument(self, **kwargs: Dict[str, Any]) -> None:
         self._tracer_provider: Optional[TracerProvider] = kwargs.get(
             "tracer_provider"
