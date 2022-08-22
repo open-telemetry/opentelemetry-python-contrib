@@ -138,7 +138,7 @@ class ElasticsearchInstrumentor(BaseInstrumentor):
         response_hook = kwargs.get("response_hook")
         _wrap(
             elasticsearch,
-            "Transport.perform_request",
+            "AsyncTransport.perform_request",
             _wrap_perform_request(
                 tracer, self._span_name_prefix, request_hook, response_hook
             ),
