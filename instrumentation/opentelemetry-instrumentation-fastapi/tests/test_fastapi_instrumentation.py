@@ -260,10 +260,32 @@ class TestFastAPIManualInstrumentation(TestBase):
                 if isinstance(point, NumberDataPoint):
                     self.assertEqual(point.value, 0)
 
-    def test_metric_uninstruemnt(self):
+    def test_metric_uninstruemnt_app(self):
         self._client.get("/foobar")
         self._instrumentor.uninstrument_app(self._app)
         self._client.get("/foobar")
+        metrics_list = self.memory_metrics_reader.get_metrics_data()
+        for metric in (
+            metrics_list.resource_metrics[0].scope_metrics[0].metrics
+        ):
+            for point in list(metric.data.data_points):
+                if isinstance(point, HistogramDataPoint):
+                    self.assertEqual(point.count, 1)
+                if isinstance(point, NumberDataPoint):
+                    self.assertEqual(point.value, 0)
+
+    def test_metric_uninstrument(self):
+        # instrumenting class and creating app to send request
+        self._instrumentor.instrument()
+        app = self._create_fastapi_app()
+        client = TestClient(app)
+        client.get("/foobar")
+        # uninstrumenting class and creating the app again
+        self._instrumentor.uninstrument()
+        app = self._create_fastapi_app()
+        client = TestClient(app)
+        client.get("/foobar")
+
         metrics_list = self.memory_metrics_reader.get_metrics_data()
         for metric in (
             metrics_list.resource_metrics[0].scope_metrics[0].metrics
