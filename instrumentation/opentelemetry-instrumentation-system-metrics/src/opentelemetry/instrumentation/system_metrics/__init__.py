@@ -163,6 +163,7 @@ class SystemMetricsInstrumentor(BaseInstrumentor):
     def instrumentation_dependencies(self) -> Collection[str]:
         return _instruments
 
+    # pylint: disable=too-many-statements
     def _instrument(self, **kwargs):
         # pylint: disable=too-many-branches
         meter_provider = kwargs.get("meter_provider")

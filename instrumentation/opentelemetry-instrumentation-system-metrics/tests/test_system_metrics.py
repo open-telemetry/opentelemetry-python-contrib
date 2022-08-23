@@ -50,7 +50,7 @@ class _SystemMetricsResult:
         self.attributes = attributes
         self.value = value
 
-
+# pylint: disable=too-many-public-methods
 class TestSystemMetrics(TestBase):
     def setUp(self):
         super().setUp()
