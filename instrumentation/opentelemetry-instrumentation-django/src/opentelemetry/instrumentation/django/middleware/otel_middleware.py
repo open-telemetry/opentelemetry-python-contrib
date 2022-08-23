@@ -227,13 +227,11 @@ class _DjangoMiddleware(MiddlewareMixin):
             attributes
         )
         duration_attrs = _parse_duration_attrs(attributes)
-        request_start_time = default_timer()
+        
         request.META[
             self._environ_active_request_attr_key
         ] = active_requests_count_attrs
         request.META[self._environ_duration_attr_key] = duration_attrs
-        request.META[self._environ_timer_key] = request_start_time
-
         self._active_request_counter.add(1, active_requests_count_attrs)
         if span.is_recording():
             attributes = extract_attributes_from_object(
@@ -268,7 +266,8 @@ class _DjangoMiddleware(MiddlewareMixin):
 
         activation = use_span(span, end_on_exit=True)
         activation.__enter__()  # pylint: disable=E1101
-
+        request_start_time = default_timer()
+        request.META[self._environ_timer_key] = request_start_time
         request.META[self._environ_activation_key] = activation
         request.META[self._environ_span_key] = span
         if token:
@@ -324,7 +323,8 @@ class _DjangoMiddleware(MiddlewareMixin):
         duration_attrs = request.META.pop(
             self._environ_duration_attr_key, None
         )
-        duration_attrs[SpanAttributes.HTTP_STATUS_CODE] = response.status_code
+        if duration_attrs:
+            duration_attrs[SpanAttributes.HTTP_STATUS_CODE] = response.status_code
         request_start_time = request.META.pop(self._environ_timer_key, None)
 
         if activation and span:
