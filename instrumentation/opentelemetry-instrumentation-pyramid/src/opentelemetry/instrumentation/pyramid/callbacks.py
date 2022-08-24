@@ -19,7 +19,6 @@ from pyramid.events import BeforeTraversal
 from pyramid.httpexceptions import HTTPException, HTTPServerError
 from pyramid.settings import asbool
 from pyramid.tweens import EXCVIEW
-from opentelemetry.metrics import get_meter
 
 import opentelemetry.instrumentation.wsgi as otel_wsgi
 from opentelemetry import context, trace
@@ -28,6 +27,7 @@ from opentelemetry.instrumentation.propagators import (
 )
 from opentelemetry.instrumentation.pyramid.version import __version__
 from opentelemetry.instrumentation.utils import _start_internal_or_server_span
+from opentelemetry.metrics import get_meter
 from opentelemetry.semconv.trace import SpanAttributes
 from opentelemetry.util._time import _time_ns
 from opentelemetry.util.http import get_excluded_urls
@@ -126,7 +126,7 @@ def _before_traversal(event):
 def trace_tween_factory(handler, registry):
     settings = registry.settings
     enabled = asbool(settings.get(SETTING_TRACE_ENABLED, True))
-    meter = get_meter(__name__,__version__)
+    meter = get_meter(__name__, __version__)
     duration_histogram = meter.create_histogram(
         name="http.server.duration",
         unit="ms",
@@ -189,7 +189,9 @@ def trace_tween_factory(handler, registry):
         finally:
             duration = max(round((default_timer() - start) * 1000), 0)
             status = getattr(response, "status", status)
-            duration_attrs[SpanAttributes.HTTP_STATUS_CODE] = otel_wsgi._parse_status_code(status)
+            duration_attrs[
+                SpanAttributes.HTTP_STATUS_CODE
+            ] = otel_wsgi._parse_status_code(status)
             duration_histogram.record(duration, duration_attrs)
             active_requests_counter.add(-1, active_requests_count_attrs)
             span = request.environ.get(_ENVIRON_SPAN_KEY)
