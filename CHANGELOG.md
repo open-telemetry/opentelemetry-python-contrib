@@ -5,13 +5,12 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-### Fixed
-
-- `opentelemetry-instrumentation-boto3sqs` Make propagation compatible with other SQS
-  instrumentations, add 'messaging.url' span attribute, and fix missing package dependencies.
-  ([#1234](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/1234))
 
 ## [Unreleased]
+
+- Fixed `opentelemetry-instrumentation-boto3sqs` Make propagation compatible with other SQS
+  instrumentations, add 'messaging.url' span attribute, and fix missing package dependencies.
+  ([#1234](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/1234))
 
 - Fixed restoring metrics in django framework
   ([#1208](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/1208))
