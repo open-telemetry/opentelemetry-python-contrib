@@ -58,7 +58,7 @@ class MockSocketModule:
     def socket(self):  # noqa: A002
         mock_socket = MockSocket([], connect_failure=self.connect_failure)
         self.sockets.append(mock_socket)
-        return mock_socket 
+        return mock_socket
 
     def __getattr__(self, name):
         return getattr(socket, name)
