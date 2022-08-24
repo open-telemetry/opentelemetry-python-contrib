@@ -141,9 +141,9 @@ API
 ---
 """
 
-from time import time_ns
 from logging import getLogger
 from sys import exc_info
+from time import time_ns
 from typing import Collection
 
 import falcon

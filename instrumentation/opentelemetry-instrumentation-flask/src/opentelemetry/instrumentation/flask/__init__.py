@@ -141,9 +141,9 @@ API
 """
 
 from logging import getLogger
+from time import time_ns
 from timeit import default_timer
 from typing import Collection
-from time import time_ns
 
 import flask
 

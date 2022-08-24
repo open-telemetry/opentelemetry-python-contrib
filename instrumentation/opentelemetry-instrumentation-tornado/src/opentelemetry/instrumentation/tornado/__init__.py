@@ -156,8 +156,8 @@ API
 from collections import namedtuple
 from functools import partial
 from logging import getLogger
-from typing import Collection
 from time import time_ns
+from typing import Collection
 
 import tornado.web
 import wrapt
