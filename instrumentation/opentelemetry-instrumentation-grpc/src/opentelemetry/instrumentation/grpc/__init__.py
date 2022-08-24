@@ -108,7 +108,7 @@ Usage Server
         logging.basicConfig()
         serve()
 
-You can also add the instrumentor manually, rather than using
+You can also add the interceptor manually, rather than using
 :py:class:`~opentelemetry.instrumentation.grpc.GrpcInstrumentorServer`:
 
 .. code-block:: python
@@ -117,6 +117,64 @@ You can also add the instrumentor manually, rather than using
 
     server = grpc.server(futures.ThreadPoolExecutor(),
                          interceptors = [server_interceptor()])
+
+Usage Aio Server
+------------
+.. code-block:: python
+
+    import logging
+    import asyncio
+
+    import grpc
+
+    from opentelemetry import trace
+    from opentelemetry.instrumentation.grpc import GrpcAioInstrumentorServer
+    from opentelemetry.sdk.trace import TracerProvider
+    from opentelemetry.sdk.trace.export import (
+        ConsoleSpanExporter,
+        SimpleSpanProcessor,
+    )
+
+    try:
+        from .gen import helloworld_pb2, helloworld_pb2_grpc
+    except ImportError:
+        from gen import helloworld_pb2, helloworld_pb2_grpc
+
+    trace.set_tracer_provider(TracerProvider())
+    trace.get_tracer_provider().add_span_processor(
+        SimpleSpanProcessor(ConsoleSpanExporter())
+    )
+
+    grpc_server_instrumentor = GrpcAioInstrumentorServer()
+    grpc_server_instrumentor.instrument()
+
+    class Greeter(helloworld_pb2_grpc.GreeterServicer):
+        async def SayHello(self, request, context):
+            return helloworld_pb2.HelloReply(message="Hello, %s!" % request.name)
+
+
+    async def serve():
+
+        server = grpc.aio.server()
+
+        helloworld_pb2_grpc.add_GreeterServicer_to_server(Greeter(), server)
+        server.add_insecure_port("[::]:50051")
+        await server.start()
+        await server.wait_for_termination()
+
+
+    if __name__ == "__main__":
+        logging.basicConfig()
+        asyncio.run(serve())
+
+You can also add the interceptor manually, rather than using
+:py:class:`~opentelemetry.instrumentation.grpc.GrpcAioInstrumentorServer`:
+
+.. code-block:: python
+
+    from opentelemetry.instrumentation.grpc import aio_server_interceptor
+
+    server = grpc.aio.server(interceptors = [aio_server_interceptor()])
 
 """
 from typing import Collection
@@ -172,6 +230,44 @@ class GrpcInstrumentorServer(BaseInstrumentor):
 
     def _uninstrument(self, **kwargs):
         grpc.server = self._original_func
+
+
+class GrpcAioInstrumentorServer(BaseInstrumentor):
+    """
+    Globally instrument the grpc.aio server.
+
+    Usage::
+
+        grpc_aio_server_instrumentor = GrpcAioInstrumentorServer()
+        grpc_aio_server_instrumentor.instrument()
+
+    """
+
+    # pylint:disable=attribute-defined-outside-init, redefined-outer-name
+
+    def instrumentation_dependencies(self) -> Collection[str]:
+        return _instruments
+
+    def _instrument(self, **kwargs):
+        self._original_func = grpc.aio.server
+        tracer_provider = kwargs.get("tracer_provider")
+
+        def server(*args, **kwargs):
+            if "interceptors" in kwargs:
+                # add our interceptor as the first
+                kwargs["interceptors"].insert(
+                    0, aio_server_interceptor(tracer_provider=tracer_provider)
+                )
+            else:
+                kwargs["interceptors"] = [
+                    aio_server_interceptor(tracer_provider=tracer_provider)
+                ]
+            return self._original_func(*args, **kwargs)
+
+        grpc.aio.server = server
+
+    def _uninstrument(self, **kwargs):
+        grpc.aio.server = self._original_func
 
 
 class GrpcInstrumentorClient(BaseInstrumentor):
@@ -255,3 +351,19 @@ def server_interceptor(tracer_provider=None):
     tracer = trace.get_tracer(__name__, __version__, tracer_provider)
 
     return _server.OpenTelemetryServerInterceptor(tracer)
+
+
+def aio_server_interceptor(tracer_provider=None):
+    """Create a gRPC aio server interceptor.
+
+    Args:
+        tracer: The tracer to use to create server-side spans.
+
+    Returns:
+        A service-side interceptor object.
+    """
+    from . import _aio_server
+
+    tracer = trace.get_tracer(__name__, __version__, tracer_provider)
+
+    return _aio_server.OpenTelemetryAioServerInterceptor(tracer)
