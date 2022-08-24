@@ -13,11 +13,13 @@
 # limitations under the License.
 
 from logging import getLogger
+from timeit import default_timer
 
 from pyramid.events import BeforeTraversal
 from pyramid.httpexceptions import HTTPException, HTTPServerError
 from pyramid.settings import asbool
 from pyramid.tweens import EXCVIEW
+from opentelemetry.metrics import get_meter
 
 import opentelemetry.instrumentation.wsgi as otel_wsgi
 from opentelemetry import context, trace
@@ -124,6 +126,17 @@ def _before_traversal(event):
 def trace_tween_factory(handler, registry):
     settings = registry.settings
     enabled = asbool(settings.get(SETTING_TRACE_ENABLED, True))
+    meter = get_meter(__name__,__version__)
+    duration_histogram = meter.create_histogram(
+        name="http.server.duration",
+        unit="ms",
+        description="measures the duration of the inbound HTTP request",
+    )
+    active_requests_counter = meter.create_up_down_counter(
+        name="http.server.active_requests",
+        unit="requests",
+        description="measures the number of concurrent HTTP requests that are currently in-flight",
+    )
 
     if not enabled:
         # If disabled, make a tween that signals to the
@@ -143,8 +156,17 @@ def trace_tween_factory(handler, registry):
             # short-circuit when we don't want to trace anything
             return handler(request)
 
+        attributes = otel_wsgi.collect_request_attributes(request.environ)
+
         request.environ[_ENVIRON_ENABLED_KEY] = True
         request.environ[_ENVIRON_STARTTIME_KEY] = _time_ns()
+        active_requests_count_attrs = (
+            otel_wsgi._parse_active_request_count_attrs(attributes)
+        )
+        duration_attrs = otel_wsgi._parse_duration_attrs(attributes)
+
+        start = default_timer()
+        active_requests_counter.add(1, active_requests_count_attrs)
 
         response = None
         status = None
@@ -165,6 +187,11 @@ def trace_tween_factory(handler, registry):
             status = "500 InternalServerError"
             raise
         finally:
+            duration = max(round((default_timer() - start) * 1000), 0)
+            status = getattr(response, "status", status)
+            duration_attrs[SpanAttributes.HTTP_STATUS_CODE] = otel_wsgi._parse_status_code(status)
+            duration_histogram.record(duration, duration_attrs)
+            active_requests_counter.add(-1, active_requests_count_attrs)
             span = request.environ.get(_ENVIRON_SPAN_KEY)
             enabled = request.environ.get(_ENVIRON_ENABLED_KEY)
             if not span and enabled:
@@ -174,7 +201,6 @@ def trace_tween_factory(handler, registry):
                     "PyramidInstrumentor().instrument_config(config) is called"
                 )
             elif enabled:
-                status = getattr(response, "status", status)
 
                 if status is not None:
                     otel_wsgi.add_response_attributes(
