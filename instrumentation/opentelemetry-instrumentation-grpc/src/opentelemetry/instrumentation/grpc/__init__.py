@@ -155,16 +155,22 @@ class GrpcInstrumentorServer(BaseInstrumentor):
     def _instrument(self, **kwargs):
         self._original_func = grpc.server
         tracer_provider = kwargs.get("tracer_provider")
+        _filter = kwargs.get("filter")
 
         def server(*args, **kwargs):
             if "interceptors" in kwargs:
                 # add our interceptor as the first
                 kwargs["interceptors"].insert(
-                    0, server_interceptor(tracer_provider=tracer_provider)
+                    0,
+                    server_interceptor(
+                        tracer_provider=tracer_provider, filter=_filter
+                    ),
                 )
             else:
                 kwargs["interceptors"] = [
-                    server_interceptor(tracer_provider=tracer_provider)
+                    server_interceptor(
+                        tracer_provider=tracer_provider, filter=_filter
+                    )
                 ]
             return self._original_func(*args, **kwargs)
 
@@ -219,13 +225,16 @@ class GrpcInstrumentorClient(BaseInstrumentor):
     def wrapper_fn(self, original_func, instance, args, kwargs):
         channel = original_func(*args, **kwargs)
         tracer_provider = kwargs.get("tracer_provider")
+        _filter = kwargs.get("filter")
         return intercept_channel(
             channel,
-            client_interceptor(tracer_provider=tracer_provider),
+            client_interceptor(
+                tracer_provider=tracer_provider, filter=_filter
+            ),
         )
 
 
-def client_interceptor(tracer_provider=None):
+def client_interceptor(tracer_provider=None, filter=None):
     """Create a gRPC client channel interceptor.
 
     Args:
@@ -238,10 +247,10 @@ def client_interceptor(tracer_provider=None):
 
     tracer = trace.get_tracer(__name__, __version__, tracer_provider)
 
-    return _client.OpenTelemetryClientInterceptor(tracer)
+    return _client.OpenTelemetryClientInterceptor(tracer, filter=filter)
 
 
-def server_interceptor(tracer_provider=None):
+def server_interceptor(tracer_provider=None, filter=None):
     """Create a gRPC server interceptor.
 
     Args:
@@ -254,4 +263,4 @@ def server_interceptor(tracer_provider=None):
 
     tracer = trace.get_tracer(__name__, __version__, tracer_provider)
 
-    return _server.OpenTelemetryServerInterceptor(tracer)
+    return _server.OpenTelemetryServerInterceptor(tracer, filter=filter)
