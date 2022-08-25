@@ -16,8 +16,6 @@ import os
 
 import grpc
 
-from opentelemetry.instrumentation.grpc import grpcext
-
 
 def _full_method(metadata):
     name = ""
