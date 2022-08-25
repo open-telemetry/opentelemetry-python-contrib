@@ -150,6 +150,7 @@ class OpenTelemetryClientInterceptor(
 
     def intercept_unary(self, request, metadata, client_info, invoker):
         if self._filter is not None and not self._filter(client_info):
+            print("not intercepted")
             return invoker(request, metadata)
         return self._intercept(request, metadata, client_info, invoker)
 

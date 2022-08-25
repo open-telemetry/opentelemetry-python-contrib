@@ -149,13 +149,15 @@ class GrpcInstrumentorServer(BaseInstrumentor):
 
     # pylint:disable=attribute-defined-outside-init, redefined-outer-name
 
+    def __init__(self, filters=None):
+        self._filters = filters
+
     def instrumentation_dependencies(self) -> Collection[str]:
         return _instruments
 
     def _instrument(self, **kwargs):
         self._original_func = grpc.server
         tracer_provider = kwargs.get("tracer_provider")
-        _filter = kwargs.get("filter")
 
         def server(*args, **kwargs):
             if "interceptors" in kwargs:
@@ -163,13 +165,13 @@ class GrpcInstrumentorServer(BaseInstrumentor):
                 kwargs["interceptors"].insert(
                     0,
                     server_interceptor(
-                        tracer_provider=tracer_provider, filters=_filter
+                        tracer_provider=tracer_provider, filters=self._filters
                     ),
                 )
             else:
                 kwargs["interceptors"] = [
                     server_interceptor(
-                        tracer_provider=tracer_provider, filters=_filter
+                        tracer_provider=tracer_provider, filters=self._filters
                     )
                 ]
             return self._original_func(*args, **kwargs)
@@ -190,6 +192,9 @@ class GrpcInstrumentorClient(BaseInstrumentor):
         grpc_client_instrumentor.instrument()
 
     """
+
+    def __init__(self, filters=None):
+        self._filters = filters
 
     # Figures out which channel type we need to wrap
     def _which_channel(self, kwargs):
@@ -225,11 +230,11 @@ class GrpcInstrumentorClient(BaseInstrumentor):
     def wrapper_fn(self, original_func, instance, args, kwargs):
         channel = original_func(*args, **kwargs)
         tracer_provider = kwargs.get("tracer_provider")
-        _filter = kwargs.get("filter")
         return intercept_channel(
             channel,
             client_interceptor(
-                tracer_provider=tracer_provider, filters=_filter
+                tracer_provider=tracer_provider,
+                filters=self._filters,
             ),
         )
 
@@ -246,7 +251,7 @@ def client_interceptor(tracer_provider=None, filters=None):
     from . import _client
 
     tracer = trace.get_tracer(__name__, __version__, tracer_provider)
-
+    print(f"client.client_interceptor filters: {filters}\n")
     return _client.OpenTelemetryClientInterceptor(tracer, filters=filters)
 
 
