@@ -311,7 +311,7 @@ def test_health_check(test_case):
     [
         (
             True,
-            filters.all(
+            filters.all_of(
                 filters.method_name("SimpleMethod"),
                 filters.service_name("GRPCTestServer"),
             ),
@@ -322,7 +322,7 @@ def test_health_check(test_case):
         ),
         (
             True,
-            filters.any(
+            filters.any_of(
                 filters.method_name("NotSimpleMethod"),
                 filters.service_name("GRPCTestServer"),
             ),

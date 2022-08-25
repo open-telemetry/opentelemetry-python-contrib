@@ -261,7 +261,8 @@ def client_interceptor(tracer_provider=None, filters=None):
         tracer: The tracer to use to create client-side spans.
 
         filters: filter function that returns True if gRPC requests
-        matches the condition. Default is None and intercept all requests.
+                 matches the condition. Default is None and intercept
+                 all requests.
 
     Returns:
         An invocation-side interceptor object.
@@ -280,7 +281,8 @@ def server_interceptor(tracer_provider=None, filters=None):
         tracer: The tracer to use to create server-side spans.
 
         filters: filter function that returns True if gRPC requests
-        matches the condition. Default is None and intercept all requests.
+                 matches the condition. Default is None and intercept
+                 all requests.
 
     Returns:
         A service-side interceptor object.

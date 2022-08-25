@@ -37,7 +37,7 @@ def _split_full_method(metadata):
     return (service, method)
 
 
-def all(*args):
+def all_of(*args):
     """Returns a filter function that returns True if all filter functions
     assigned matches conditions.
 
@@ -58,7 +58,7 @@ def all(*args):
     return filter_fn
 
 
-def any(*args):
+def any_of(*args):
     """Returns a filter function that returns True if either of filter functions
     assigned matches conditions.
 
