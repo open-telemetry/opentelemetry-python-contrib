@@ -304,3 +304,43 @@ def test_service_prefix(test_case):
 def test_health_check(test_case):
     fn = filters.health_check()
     assert test_case[0] == fn(test_case[1])
+
+
+@pytest.mark.parametrize(
+    "test_case",
+    [
+        (
+            True,
+            filters.all(
+                filters.method_name("SimpleMethod"),
+                filters.service_name("GRPCTestServer"),
+            ),
+            _UnaryClientInfo(
+                full_method="/GRPCTestServer/SimpleMethod",
+                timeout=3000,
+            ),
+        ),
+        (
+            True,
+            filters.any(
+                filters.method_name("NotSimpleMethod"),
+                filters.service_name("GRPCTestServer"),
+            ),
+            _UnaryClientInfo(
+                full_method="/GRPCTestServer/SimpleMethod",
+                timeout=3000,
+            ),
+        ),
+        (
+            False,
+            filters.reverse(filters.method_name("SimpleMethod")),
+            _UnaryClientInfo(
+                full_method="/GRPCTestServer/SimpleMethod",
+                timeout=3000,
+            ),
+        ),
+    ],
+)
+def test_all_any_reverse(test_case):
+    fn = test_case[1]
+    assert test_case[0] == fn(test_case[2])

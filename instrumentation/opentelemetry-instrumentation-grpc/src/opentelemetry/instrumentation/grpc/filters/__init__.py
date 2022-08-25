@@ -37,6 +37,66 @@ def _split_full_method(metadata):
     return (service, method)
 
 
+def all(*args):
+    """Returns a filter function that returns True if all filter functions
+    assigned matches conditions.
+
+    Args:
+        args (function): a list of filter function
+
+    Returns:
+        A filter function that returns True if all filter functions
+    assigned matches conditions.
+    """
+
+    def filter_fn(metadata):
+        for func in args:
+            if not func(metadata):
+                return False
+        return True
+
+    return filter_fn
+
+
+def any(*args):
+    """Returns a filter function that returns True if either of filter functions
+    assigned matches conditions.
+
+    Args:
+        args (function): a list of filter function
+
+    Returns:
+        A filter function that returns True if either of filter functions
+    assigned matches conditions.
+    """
+
+    def filter_fn(metadata):
+        for func in args:
+            if func(metadata):
+                return True
+        return False
+
+    return filter_fn
+
+
+def reverse(func):
+    """Returns a filter function that reverse the result of func
+
+    Args:
+        func (function): filter function that returns True if
+        request's gRPC method name matches name
+
+    Returns:
+        A filter function that returns False if request's gRPC method
+        name matches name
+    """
+
+    def filter_fn(metadata):
+        return not func(metadata)
+
+    return filter_fn
+
+
 def method_name(name):
     """Returns a filter function that return True if
     request's gRPC method name matches name.

@@ -172,7 +172,7 @@ class OpenTelemetryServerInterceptor(grpc.ServerInterceptor):
     Usage::
 
         tracer = some OpenTelemetry tracer
-        filter = not filters.method_name("service.Foo")
+        filter = filters.reverse(filters.method_name("service.Foo"))
 
         interceptors = [
             OpenTelemetryServerInterceptor(tracer, filter),
@@ -261,9 +261,7 @@ class OpenTelemetryServerInterceptor(grpc.ServerInterceptor):
         )
 
     def intercept_service(self, continuation, handler_call_details):
-        print(f"server filters: {self._filter}")
         if self._filter is not None and not self._filter(handler_call_details):
-            print("not intercepted")
             return continuation(handler_call_details)
 
         def telemetry_wrapper(behavior, request_streaming, response_streaming):

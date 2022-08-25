@@ -145,6 +145,13 @@ class GrpcInstrumentorServer(BaseInstrumentor):
         grpc_server_instrumentor = GrpcInstrumentorServer()
         grpc_server_instrumentor.instrument()
 
+        If you want to add filters that only intercept requests
+        to match the condition, assign filters option to GrpcInstrumentorServer.
+
+        grpc_server_instrumentor = GrpcInstrumentorServer(
+            filters=filters.method_prefix("SimpleMethod"))
+        grpc_server_instrumentor.instrument()
+
     """
 
     # pylint:disable=attribute-defined-outside-init, redefined-outer-name
@@ -189,6 +196,13 @@ class GrpcInstrumentorClient(BaseInstrumentor):
     Usage::
 
         grpc_client_instrumentor = GrpcInstrumentorClient()
+        grpc_client_instrumentor.instrument()
+
+        If you want to add filters that only intercept requests
+        to match the condition, assign filters option to GrpcInstrumentorClient.
+
+        grpc_client_instrumentor = GrpcInstrumentorClient(
+            filter=not filters.health_check())
         grpc_client_instrumentor.instrument()
 
     """
@@ -245,13 +259,16 @@ def client_interceptor(tracer_provider=None, filters=None):
     Args:
         tracer: The tracer to use to create client-side spans.
 
+        filters: filter function that returns True if gRPC requests
+        matches the condition.
+
     Returns:
         An invocation-side interceptor object.
     """
     from . import _client
 
     tracer = trace.get_tracer(__name__, __version__, tracer_provider)
-    print(f"client.client_interceptor filters: {filters}\n")
+
     return _client.OpenTelemetryClientInterceptor(tracer, filters=filters)
 
 
@@ -260,6 +277,9 @@ def server_interceptor(tracer_provider=None, filters=None):
 
     Args:
         tracer: The tracer to use to create server-side spans.
+
+        filters: filter function that returns True if gRPC requests
+        matches the condition.
 
     Returns:
         A service-side interceptor object.
