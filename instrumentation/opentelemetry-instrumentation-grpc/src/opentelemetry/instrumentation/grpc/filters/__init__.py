@@ -30,11 +30,11 @@ def _full_method(metadata):
 
 def _split_full_method(metadata):
     name = _full_method(metadata)
-    s, m = os.path.split(name)
-    if s != "":
-        s = os.path.normpath(s)
-        s = s.lstrip("/")
-    return (s, m)
+    service, method = os.path.split(name)
+    if service != "":
+        service = os.path.normpath(service)
+        service = service.lstrip("/")
+    return (service, method)
 
 
 def method_name(name):
@@ -49,11 +49,11 @@ def method_name(name):
         name matches name
     """
 
-    def fn(metadata):
+    def filter_fn(metadata):
         _, method = _split_full_method(metadata)
         return method == name
 
-    return fn
+    return filter_fn
 
 
 def method_prefix(prefix):
@@ -68,11 +68,11 @@ def method_prefix(prefix):
         name starts with prefix
     """
 
-    def fn(metadata):
+    def filter_fn(metadata):
         _, method = _split_full_method(metadata)
         return method.startswith(prefix)
 
-    return fn
+    return filter_fn
 
 
 def full_method_name(name):
@@ -87,11 +87,11 @@ def full_method_name(name):
         method name matches name
     """
 
-    def fn(metadata):
+    def filter_fn(metadata):
         fm = _full_method(metadata)
         return fm == name
 
-    return fn
+    return filter_fn
 
 
 def service_name(name):
@@ -106,11 +106,11 @@ def service_name(name):
         name matches name
     """
 
-    def fn(metadata):
+    def filter_fn(metadata):
         service, _ = _split_full_method(metadata)
         return service == name
 
-    return fn
+    return filter_fn
 
 
 def service_prefix(prefix):
@@ -125,11 +125,11 @@ def service_prefix(prefix):
         name starts with prefix
     """
 
-    def fn(metadata):
+    def filter_fn(metadata):
         service, _ = _split_full_method(metadata)
         return service.startswith(prefix)
 
-    return fn
+    return filter_fn
 
 
 def health_check():

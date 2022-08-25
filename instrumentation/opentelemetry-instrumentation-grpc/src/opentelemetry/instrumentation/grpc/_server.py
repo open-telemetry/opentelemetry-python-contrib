@@ -184,9 +184,9 @@ class OpenTelemetryServerInterceptor(grpc.ServerInterceptor):
 
     """
 
-    def __init__(self, tracer, filter=None):
+    def __init__(self, tracer, filters=None):
         self._tracer = tracer
-        self._filter = filter
+        self._filter = filters
 
     @contextmanager
     def _set_remote_context(self, servicer_context):
