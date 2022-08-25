@@ -23,9 +23,9 @@ def _full_method(metadata):
     name = ""
     if isinstance(metadata, grpc.HandlerCallDetails):
         name = metadata.method
-    elif isinstance(metadata, grpcext.UnaryClientInfo):
-        name = metadata.full_method
-    elif isinstance(metadata, grpcext.StreamClientInfo):
+    # NOTE: replace here if there's better way to match cases to handle
+    # grpcext._interceptor._UnaryClientInfo/_StreamClientInfo
+    elif hasattr(metadata, "full_method"):
         name = metadata.full_method
     return name
 
@@ -35,7 +35,7 @@ def _split_full_method(metadata):
     s, m = os.path.split(name)
     if s != "":
         s = os.path.normpath(s)
-        s.lstrip("/")
+        s = s.lstrip("/")
     return (s, m)
 
 
