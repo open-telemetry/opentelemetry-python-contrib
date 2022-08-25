@@ -44,7 +44,6 @@ def _mock_netconnection():
         ),
     ]
 
-
 class _SystemMetricsResult:
     def __init__(self, attributes, value) -> None:
         self.attributes = attributes
