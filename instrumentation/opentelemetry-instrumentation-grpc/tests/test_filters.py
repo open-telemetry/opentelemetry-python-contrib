@@ -49,7 +49,7 @@ class _StreamClientInfo(
 
 
 @pytest.mark.parametrize(
-    "tc",
+    "test_case",
     [
         (
             True,
@@ -105,13 +105,13 @@ class _StreamClientInfo(
         ),
     ],
 )
-def test_method_name(tc):
-    fn = filters.method_name(tc[1])
-    assert tc[0] == fn(tc[2])
+def test_method_name(test_case):
+    fn = filters.method_name(test_case[1])
+    assert test_case[0] == fn(test_case[2])
 
 
 @pytest.mark.parametrize(
-    "tc",
+    "test_case",
     [
         (
             True,
@@ -167,13 +167,13 @@ def test_method_name(tc):
         ),
     ],
 )
-def test_method_prefix(tc):
-    fn = filters.method_prefix(tc[1])
-    assert tc[0] == fn(tc[2])
+def test_method_prefix(test_case):
+    fn = filters.method_prefix(test_case[1])
+    assert test_case[0] == fn(test_case[2])
 
 
 @pytest.mark.parametrize(
-    "tc",
+    "test_case",
     [
         (
             True,
@@ -213,13 +213,13 @@ def test_method_prefix(tc):
         ),
     ],
 )
-def test_service_name(tc):
-    fn = filters.service_name(tc[1])
-    assert tc[0] == fn(tc[2])
+def test_service_name(test_case):
+    fn = filters.service_name(test_case[1])
+    assert test_case[0] == fn(test_case[2])
 
 
 @pytest.mark.parametrize(
-    "tc",
+    "test_case",
     [
         (
             True,
@@ -259,13 +259,13 @@ def test_service_name(tc):
         ),
     ],
 )
-def test_service_prefix(tc):
-    fn = filters.service_prefix(tc[1])
-    assert tc[0] == fn(tc[2])
+def test_service_prefix(test_case):
+    fn = filters.service_prefix(test_case[1])
+    assert test_case[0] == fn(test_case[2])
 
 
 @pytest.mark.parametrize(
-    "tc",
+    "test_case",
     [
         (
             True,
@@ -301,6 +301,6 @@ def test_service_prefix(tc):
         ),
     ],
 )
-def test_health_check(tc):
+def test_health_check(test_case):
     fn = filters.health_check()
-    assert tc[0] == fn(tc[1])
+    assert test_case[0] == fn(test_case[1])
