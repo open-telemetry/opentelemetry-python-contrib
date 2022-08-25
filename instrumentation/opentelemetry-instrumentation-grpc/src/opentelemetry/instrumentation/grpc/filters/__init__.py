@@ -50,9 +50,11 @@ def method_name(name):
         A filter function that returns True if request's gRPC method
         name matches name
     """
+
     def fn(metadata):
         _, method = _split_full_method(metadata)
         return method == name
+
     return fn
 
 
@@ -67,9 +69,11 @@ def method_prefix(prefix):
         A filter function that returns True if request's gRPC method
         name starts with prefix
     """
+
     def fn(metadata):
         _, method = _split_full_method(metadata)
         return method.startswith(prefix)
+
     return fn
 
 
@@ -84,9 +88,11 @@ def full_method_name(name):
         A filter function that returns True if request's gRPC full
         method name matches name
     """
+
     def fn(metadata):
         fm = _full_method(metadata)
         return fm == name
+
     return fn
 
 
@@ -101,9 +107,11 @@ def service_name(name):
         A filter function that returns True if request's gRPC service
         name matches name
     """
+
     def fn(metadata):
         service, _ = _split_full_method(metadata)
         return service == name
+
     return fn
 
 
@@ -118,9 +126,11 @@ def service_prefix(prefix):
         A filter function that returns True if request's gRPC method
         name starts with prefix
     """
+
     def fn(metadata):
         service, _ = _split_full_method(metadata)
         return service.startswith(prefix)
+
     return fn
 
 
