@@ -18,7 +18,7 @@ from tests.protobuf import (  # pylint: disable=no-name-in-module
 )
 
 import opentelemetry.instrumentation.grpc
-from opentelemetry import context, trace
+from opentelemetry import trace
 from opentelemetry.instrumentation.grpc import GrpcInstrumentorClient, filters
 from opentelemetry.instrumentation.grpc._client import (
     OpenTelemetryClientInterceptor,
@@ -26,7 +26,6 @@ from opentelemetry.instrumentation.grpc._client import (
 from opentelemetry.instrumentation.grpc.grpcext._interceptor import (
     _UnaryClientInfo,
 )
-from opentelemetry.instrumentation.utils import _SUPPRESS_INSTRUMENTATION_KEY
 from opentelemetry.propagate import get_global_textmap, set_global_textmap
 from opentelemetry.semconv.trace import SpanAttributes
 from opentelemetry.test.mock_textmap import MockTextMapPropagator

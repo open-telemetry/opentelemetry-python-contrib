@@ -15,7 +15,6 @@
 # pylint:disable=unused-argument
 # pylint:disable=no-self-use
 
-import threading
 from concurrent import futures
 
 import grpc
@@ -27,10 +26,8 @@ from opentelemetry.instrumentation.grpc import (
     filters,
     server_interceptor,
 )
-from opentelemetry.sdk import trace as trace_sdk
 from opentelemetry.semconv.trace import SpanAttributes
 from opentelemetry.test.test_base import TestBase
-from opentelemetry.trace import StatusCode
 
 from .protobuf.test_server_pb2 import Request, Response
 from .protobuf.test_server_pb2_grpc import (
