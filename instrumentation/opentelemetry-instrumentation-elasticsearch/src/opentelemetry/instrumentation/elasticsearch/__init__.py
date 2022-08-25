@@ -130,7 +130,7 @@ class ElasticsearchInstrumentor(BaseInstrumentor):
 
     def _instrument(self, **kwargs):
         """
-        Instruments elasticsarch module
+        Instruments elasticsearch module
         """
         tracer_provider = kwargs.get("tracer_provider")
         tracer = get_tracer(__name__, __version__, tracer_provider)
@@ -145,7 +145,7 @@ class ElasticsearchInstrumentor(BaseInstrumentor):
         )
 
     def _uninstrument(self, **kwargs):
-        unwrap(elasticsearch.Transport, "perform_request")
+        unwrap(elasticsearch.AsyncTransport, "perform_request")
 
 
 _regex_doc_url = re.compile(r"/_doc/([^/]+)")
