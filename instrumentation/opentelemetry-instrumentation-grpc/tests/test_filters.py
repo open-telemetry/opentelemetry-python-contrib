@@ -332,6 +332,17 @@ def test_health_check(test_case):
             ),
         ),
         (
+            True,
+            filters.any_of(
+                filters.service_name("GRPCMockServer"),
+                filters.service_name("GRPCTestServer"),
+            ),
+            _UnaryClientInfo(
+                full_method="/GRPCTestServer/SimpleMethod",
+                timeout=3000,
+            ),
+        ),
+        (
             False,
             filters.reverse(filters.method_name("SimpleMethod")),
             _UnaryClientInfo(

@@ -12,6 +12,9 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import os
+from unittest import mock
+
 import grpc
 from tests.protobuf import (  # pylint: disable=no-name-in-module
     test_server_pb2_grpc,
@@ -369,3 +372,38 @@ class TestClientProtoFilterMethodPrefix(TestBase):
 
         finally:
             set_global_textmap(previous_propagator)
+
+
+class TestClientProtoFilterByEnv(TestBase):
+    def setUp(self):
+        with mock.patch.dict(
+            os.environ,
+            {
+                "OTEL_PYTHON_GRPC_EXCLUDED_SERVICES": "GRPCMockServer,GRPCTestServer"
+            },
+        ):
+            super().setUp()
+            GrpcInstrumentorClient().instrument()
+            self.server = create_test_server(25565)
+            self.server.start()
+            # use a user defined interceptor along with the opentelemetry client interceptor
+            interceptors = [Interceptor()]
+            self.channel = grpc.insecure_channel("localhost:25565")
+            self.channel = grpc.intercept_channel(self.channel, *interceptors)
+            self._stub = test_server_pb2_grpc.GRPCTestServerStub(self.channel)
+
+    def tearDown(self):
+        super().tearDown()
+        GrpcInstrumentorClient().uninstrument()
+        self.server.stop(None)
+        self.channel.close()
+
+    def test_unary_unary_future(self):
+        simple_method_future(self._stub).result()
+        spans = self.memory_exporter.get_finished_spans()
+        self.assertEqual(len(spans), 0)
+
+    def test_unary_unary(self):
+        simple_method(self._stub)
+        spans = self.memory_exporter.get_finished_spans()
+        self.assertEqual(len(spans), 0)
