@@ -143,8 +143,8 @@ API
 
 from logging import getLogger
 from sys import exc_info
-from timeit import default_timer
 from time import time_ns
+from timeit import default_timer
 from typing import Collection
 
 import falcon
@@ -268,8 +268,9 @@ class _InstrumentedFalconAPI(getattr(falcon, _instrument_app)):
         if self._otel_excluded_urls.url_disabled(env.get("PATH_INFO", "/")):
             return super().__call__(env, start_response)
 
-        start_time = _time_ns()
+        start_time = time_ns()
         start = default_timer()
+
         span, token = _start_internal_or_server_span(
             tracer=self._otel_tracer,
             span_name=otel_wsgi.get_default_span_name(env),
