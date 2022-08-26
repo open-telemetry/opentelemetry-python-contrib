@@ -23,9 +23,9 @@ from django.db import connections
 from django.db.backends.utils import CursorDebugWrapper
 
 from opentelemetry.instrumentation.utils import (
-    _add_sql_comment,
     _get_opentelemetry_values,
 )
+from opentelemetry.instrumentation.sqlcommenter_utils import _add_sql_comment
 from opentelemetry.trace.propagation.tracecontext import (
     TraceContextTextMapPropagator,
 )

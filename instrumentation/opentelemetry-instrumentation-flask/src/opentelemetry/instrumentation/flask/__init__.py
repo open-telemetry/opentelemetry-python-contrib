@@ -369,7 +369,7 @@ def _wrapped_before_request(
                 ):
                     flask_info["route"] = flask.request.url_rule.rule
             sqlcommenter_context = context.set_value(
-                "SQLCOMMENTER_FLASK_VALUES", flask_info, current_context
+                "SQLCOMMENTER_ORM_TAGS_AND_VALUES", flask_info, current_context
             )
             context.attach(sqlcommenter_context)
 

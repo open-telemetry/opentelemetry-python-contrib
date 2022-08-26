@@ -273,7 +273,7 @@ class TestDBApiIntegration(TestBase):
         )
         current_context = context.get_current()
         sqlcommenter_context = context.set_value(
-            "SQLCOMMENTER_FLASK_VALUES", {"flask": 1}, current_context
+            "SQLCOMMENTER_ORM_TAGS_AND_VALUES", {"flask": 1}, current_context
         )
         context.attach(sqlcommenter_context)
 

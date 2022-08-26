@@ -22,9 +22,9 @@ from opentelemetry.instrumentation.sqlalchemy.package import (
 )
 from opentelemetry.instrumentation.sqlalchemy.version import __version__
 from opentelemetry.instrumentation.utils import (
-    _add_sql_comment,
     _get_opentelemetry_values,
 )
+from opentelemetry.instrumentation.sqlcommenter_utils import _add_sql_comment
 from opentelemetry.semconv.trace import NetTransportValues, SpanAttributes
 from opentelemetry.trace.status import Status, StatusCode
 
@@ -160,18 +160,6 @@ class EngineTracer:
                     for k, v in commenter_data.items()
                     if self.commenter_options.get(k, True)
                 }
-
-                # Add flask related tags
-                sqlcommenter_flask_values = (
-                    opentelemetry_context.get_value(
-                        "SQLCOMMENTER_FLASK_VALUES"
-                    )
-                    if opentelemetry_context.get_value(
-                        "SQLCOMMENTER_FLASK_VALUES"
-                    )
-                    else {}
-                )
-                commenter_data.update(**sqlcommenter_flask_values)
 
                 statement = _add_sql_comment(statement, **commenter_data)
 
