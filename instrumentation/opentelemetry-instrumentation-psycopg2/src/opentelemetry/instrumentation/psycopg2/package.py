@@ -13,4 +13,4 @@
 # limitations under the License.
 
 
-_instruments = ("psycopg2-binary",)
+_instruments = ("psycopg2 >= 2.7.3.1",)
