@@ -144,6 +144,7 @@ API
 from logging import getLogger
 from sys import exc_info
 from timeit import default_timer
+from time import time_ns
 from typing import Collection
 
 import falcon
@@ -166,7 +167,6 @@ from opentelemetry.instrumentation.utils import (
 from opentelemetry.metrics import get_meter
 from opentelemetry.semconv.trace import SpanAttributes
 from opentelemetry.trace.status import Status
-from opentelemetry.util._time import _time_ns
 from opentelemetry.util.http import get_excluded_urls, get_traced_request_attrs
 
 _logger = getLogger(__name__)
