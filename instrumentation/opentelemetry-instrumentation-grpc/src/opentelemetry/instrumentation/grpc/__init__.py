@@ -363,8 +363,8 @@ def _excluded_service_filter() -> Union[Callable[[object], bool], None]:
     if len(services) == 0:
         return None
     filters = []
-    for s in services:
-        filters.append(service_name(s))
+    for srv in services:
+        filters.append(service_name(srv))
     return reverse(any_of(*filters))
 
 
