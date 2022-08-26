@@ -15,11 +15,11 @@
 import unittest
 from http import HTTPStatus
 
+from opentelemetry.instrumentation.sqlcommenter_utils import _add_sql_comment
 from opentelemetry.instrumentation.utils import (
     _python_path_without_directory,
     http_status_to_status_code,
 )
-from opentelemetry.instrumentation.sqlcommenter_utils import _add_sql_comment
 from opentelemetry.trace import StatusCode
 
 

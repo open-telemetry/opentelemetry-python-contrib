@@ -15,16 +15,13 @@ import os
 
 from sqlalchemy.event import listen  # pylint: disable=no-name-in-module
 
-from opentelemetry import context as opentelemetry_context
 from opentelemetry import trace
 from opentelemetry.instrumentation.sqlalchemy.package import (
     _instrumenting_module_name,
 )
 from opentelemetry.instrumentation.sqlalchemy.version import __version__
-from opentelemetry.instrumentation.utils import (
-    _get_opentelemetry_values,
-)
 from opentelemetry.instrumentation.sqlcommenter_utils import _add_sql_comment
+from opentelemetry.instrumentation.utils import _get_opentelemetry_values
 from opentelemetry.semconv.trace import NetTransportValues, SpanAttributes
 from opentelemetry.trace.status import Status, StatusCode
 

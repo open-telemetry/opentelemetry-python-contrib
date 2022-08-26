@@ -1,5 +1,5 @@
-from opentelemetry.instrumentation.utils import _url_quote
 from opentelemetry import context
+from opentelemetry.instrumentation.utils import _url_quote
 
 
 def _add_sql_comment(sql, **meta) -> str:
