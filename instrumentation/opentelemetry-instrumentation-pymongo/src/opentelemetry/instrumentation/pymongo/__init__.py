@@ -124,7 +124,6 @@ class CommandTracer(monitoring.CommandListener):
         name = event.command_name
         statement = event.command_name
         if command:
-            name += "." + str(command)
             statement += " " + str(command)
 
         try:
