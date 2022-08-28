@@ -31,10 +31,6 @@ ProtoMessageOrIterator = Union[ProtoMessage, Iterator[ProtoMessage]]
 
 
 class StreamingRendezvous(
-    grpc.Call,
-    grpc.Future,
-    grpc.RpcError,
-    Iterator,
-    abc.ABC
+    grpc.Call, grpc.Future, grpc.RpcError, Iterator, abc.ABC
 ):
     """Class for a streaming rendezvous."""

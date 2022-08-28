@@ -26,11 +26,20 @@ import grpc
 
 from opentelemetry import context, trace
 from opentelemetry.instrumentation.grpc._types import ProtoMessage
-from opentelemetry.instrumentation.grpc._utilities import _ClientCallDetails, _EventMetricRecorder, _MetricKind, _OpentelemetryResponseIterator
+from opentelemetry.instrumentation.grpc._utilities import (
+    _ClientCallDetails,
+    _EventMetricRecorder,
+    _MetricKind,
+    _OpentelemetryResponseIterator,
+)
 from opentelemetry.instrumentation.utils import _SUPPRESS_INSTRUMENTATION_KEY
 from opentelemetry.propagate import inject
 from opentelemetry.propagators.textmap import Setter
-from opentelemetry.semconv.trace import MessageTypeValues, RpcSystemValues, SpanAttributes
+from opentelemetry.semconv.trace import (
+    MessageTypeValues,
+    RpcSystemValues,
+    SpanAttributes,
+)
 from opentelemetry.trace import Span
 from opentelemetry.trace.status import Status, StatusCode
 from opentelemetry.util.types import Attributes
@@ -42,10 +51,7 @@ class _CarrierSetter(Setter):
     """
 
     def set(
-        self,
-        carrier: MutableMapping[str, str],
-        key: str,
-        value: str
+        self, carrier: MutableMapping[str, str], key: str, value: str
     ) -> None:
         carrier[key.lower()] = value
 
@@ -59,7 +65,6 @@ def _make_future_done_callback(
     attributes: Attributes,
     start_time: float,
 ) -> Callable[[grpc.Future], None]:
-
     def callback(response_future: grpc.Future) -> None:
         with trace.use_span(
             span,
@@ -93,9 +98,7 @@ def _make_future_done_callback(
                     )
 
         metric_recorder._record_duration(
-            start_time,
-            attributes,
-            response_future
+            start_time, attributes, response_future
         )
 
     return callback
@@ -106,9 +109,8 @@ class OpenTelemetryClientInterceptor(
     grpc.UnaryUnaryClientInterceptor,
     grpc.UnaryStreamClientInterceptor,
     grpc.StreamUnaryClientInterceptor,
-    grpc.StreamStreamClientInterceptor
+    grpc.StreamStreamClientInterceptor,
 ):
-
     def __init__(self, meter, tracer):
         super().__init__(meter, _MetricKind.CLIENT)
         self._tracer = tracer
@@ -126,7 +128,7 @@ class OpenTelemetryClientInterceptor(
         self,
         continuation,
         client_call_details: grpc.ClientCallDetails,
-        request: ProtoMessage
+        request: ProtoMessage,
     ):
         if context.get_value(_SUPPRESS_INSTRUMENTATION_KEY):
             return continuation(client_call_details, request)
@@ -158,20 +160,16 @@ class OpenTelemetryClientInterceptor(
                     metadata=metadata,
                     credentials=client_call_details.credentials,
                     wait_for_ready=client_call_details.wait_for_ready,
-                    compression=client_call_details.compression
+                    compression=client_call_details.compression,
                 )
 
                 start_time = self._start_duration_measurement()
                 self._record_unary_request(
-                    span,
-                    request,
-                    MessageTypeValues.SENT,
-                    attributes
+                    span, request, MessageTypeValues.SENT, attributes
                 )
 
                 response_future = continuation(
-                    new_client_call_details,
-                    request
+                    new_client_call_details, request
                 )
 
             finally:
@@ -180,10 +178,7 @@ class OpenTelemetryClientInterceptor(
                 else:
                     response_future.add_done_callback(
                         _make_future_done_callback(
-                            span,
-                            self,
-                            attributes,
-                            start_time
+                            span, self, attributes, start_time
                         )
                     )
 
@@ -193,7 +188,7 @@ class OpenTelemetryClientInterceptor(
         self,
         continuation,
         client_call_details: grpc.ClientCallDetails,
-        request: ProtoMessage
+        request: ProtoMessage,
     ):
         if context.get_value(_SUPPRESS_INSTRUMENTATION_KEY):
             return continuation(client_call_details, request)
@@ -221,7 +216,7 @@ class OpenTelemetryClientInterceptor(
                 metadata=metadata,
                 credentials=client_call_details.credentials,
                 wait_for_ready=client_call_details.wait_for_ready,
-                compression=client_call_details.compression
+                compression=client_call_details.compression,
             )
 
             start_time = self._start_duration_measurement()
@@ -229,22 +224,17 @@ class OpenTelemetryClientInterceptor(
                 span, request, MessageTypeValues.SENT, attributes
             )
 
-            response_iterator = continuation(
-                new_client_call_details, request
-            )
+            response_iterator = continuation(new_client_call_details, request)
 
             return _OpentelemetryResponseIterator(
-                response_iterator,
-                self, span,
-                attributes,
-                start_time
+                response_iterator, self, span, attributes, start_time
             )
 
     def intercept_stream_unary(
         self,
         continuation,
         client_call_details: grpc.ClientCallDetails,
-        request_iterator: Iterator[ProtoMessage]
+        request_iterator: Iterator[ProtoMessage],
     ):
         if context.get_value(_SUPPRESS_INSTRUMENTATION_KEY):
             return continuation(client_call_details, request_iterator)
@@ -276,7 +266,7 @@ class OpenTelemetryClientInterceptor(
                     metadata=metadata,
                     credentials=client_call_details.credentials,
                     wait_for_ready=client_call_details.wait_for_ready,
-                    compression=client_call_details.compression
+                    compression=client_call_details.compression,
                 )
 
                 start_time = self._start_duration_measurement()
@@ -285,8 +275,7 @@ class OpenTelemetryClientInterceptor(
                 )
 
                 response_future = continuation(
-                    new_client_call_details,
-                    request_iterator
+                    new_client_call_details, request_iterator
                 )
 
             finally:
@@ -295,10 +284,7 @@ class OpenTelemetryClientInterceptor(
                 else:
                     response_future.add_done_callback(
                         _make_future_done_callback(
-                            span,
-                            self,
-                            attributes,
-                            start_time
+                            span, self, attributes, start_time
                         )
                     )
 
@@ -308,7 +294,7 @@ class OpenTelemetryClientInterceptor(
         self,
         continuation,
         client_call_details: grpc.ClientCallDetails,
-        request_iterator: Iterator[ProtoMessage]
+        request_iterator: Iterator[ProtoMessage],
     ):
         if context.get_value(_SUPPRESS_INSTRUMENTATION_KEY):
             return continuation(client_call_details, request_iterator)
@@ -336,7 +322,7 @@ class OpenTelemetryClientInterceptor(
                 metadata=metadata,
                 credentials=client_call_details.credentials,
                 wait_for_ready=client_call_details.wait_for_ready,
-                compression=client_call_details.compression
+                compression=client_call_details.compression,
             )
 
             start_time = self._start_duration_measurement()
@@ -349,8 +335,5 @@ class OpenTelemetryClientInterceptor(
             )
 
             return _OpentelemetryResponseIterator(
-                response_iterator,
-                self, span,
-                attributes,
-                start_time
+                response_iterator, self, span, attributes, start_time
             )

@@ -30,10 +30,21 @@ import grpc
 
 from opentelemetry import metrics, trace
 from opentelemetry.context import attach, detach
-from opentelemetry.instrumentation.grpc._types import ProtoMessage, ProtoMessageOrIterator
-from opentelemetry.instrumentation.grpc._utilities import _EventMetricRecorder, _MetricKind, _OpenTelemetryServicerContext
+from opentelemetry.instrumentation.grpc._types import (
+    ProtoMessage,
+    ProtoMessageOrIterator,
+)
+from opentelemetry.instrumentation.grpc._utilities import (
+    _EventMetricRecorder,
+    _MetricKind,
+    _OpenTelemetryServicerContext,
+)
 from opentelemetry.propagate import extract
-from opentelemetry.semconv.trace import MessageTypeValues, RpcSystemValues, SpanAttributes
+from opentelemetry.semconv.trace import (
+    MessageTypeValues,
+    RpcSystemValues,
+    SpanAttributes,
+)
 from opentelemetry.trace.status import Status, StatusCode
 from opentelemetry.util.types import Attributes
 
@@ -50,9 +61,8 @@ _RPC_USER_AGENT = "rpc.user_agent"
 def _wrap_rpc_behavior(
     handler: Optional[grpc.RpcMethodHandler],
     continuation: Callable[
-        [ProtoMessageOrIterator, grpc.ServicerContext],
-        ProtoMessageOrIterator
-    ]
+        [ProtoMessageOrIterator, grpc.ServicerContext], ProtoMessageOrIterator
+    ],
 ) -> Optional[grpc.RpcMethodHandler]:
     if handler is None:
         return None
@@ -83,8 +93,7 @@ def _wrap_rpc_behavior(
 # pylint:disable=no-self-use
 # pylint:disable=unused-argument
 class OpenTelemetryServerInterceptor(
-    _EventMetricRecorder,
-    grpc.ServerInterceptor
+    _EventMetricRecorder, grpc.ServerInterceptor
 ):
     """
     A gRPC server interceptor, to add OpenTelemetry.
@@ -105,18 +114,13 @@ class OpenTelemetryServerInterceptor(
 
     """
 
-    def __init__(
-        self,
-        meter: metrics.Meter,
-        tracer: trace.Tracer
-    ) -> None:
+    def __init__(self, meter: metrics.Meter, tracer: trace.Tracer) -> None:
         super().__init__(meter, _MetricKind.SERVER)
         self._tracer = tracer
 
     @contextmanager
     def _set_remote_context(
-        self,
-        context: grpc.ServicerContext
+        self, context: grpc.ServicerContext
     ) -> Generator[None, None, None]:
         metadata = context.invocation_metadata()
         if metadata:
@@ -131,16 +135,14 @@ class OpenTelemetryServerInterceptor(
             yield
 
     def _create_attributes(
-        self,
-        context: grpc.ServicerContext,
-        full_method: str
+        self, context: grpc.ServicerContext, full_method: str
     ) -> Attributes:
         # standard attributes
         service, method = full_method.lstrip("/").split("/", 1)
         attributes = {
             SpanAttributes.RPC_SYSTEM: RpcSystemValues.GRPC.value,
             SpanAttributes.RPC_SERVICE: service,
-            SpanAttributes.RPC_METHOD: method
+            SpanAttributes.RPC_METHOD: method,
         }
 
         # add some attributes from the metadata
@@ -179,50 +181,55 @@ class OpenTelemetryServerInterceptor(
         continuation: Callable[
             [grpc.HandlerCallDetails], Optional[grpc.RpcMethodHandler]
         ],
-        handler_call_details: grpc.HandlerCallDetails
+        handler_call_details: grpc.HandlerCallDetails,
     ) -> Optional[grpc.RpcMethodHandler]:
-
         def telemetry_wrapper(
             behavior: Callable[
                 [ProtoMessageOrIterator, grpc.ServicerContext],
-                ProtoMessageOrIterator
+                ProtoMessageOrIterator,
             ],
             request_streaming: bool,
-            response_streaming: bool
+            response_streaming: bool,
         ) -> Callable[
             [ProtoMessageOrIterator, grpc.ServicerContext],
-            ProtoMessageOrIterator
+            ProtoMessageOrIterator,
         ]:
-
             def telemetry_interceptor(
                 request_or_iterator: ProtoMessageOrIterator,
-                context: grpc.ServicerContext
+                context: grpc.ServicerContext,
             ) -> ProtoMessageOrIterator:
                 if request_streaming and response_streaming:
                     return self.intercept_stream_stream(
-                        behavior, request_or_iterator, context,
-                        handler_call_details.method
+                        behavior,
+                        request_or_iterator,
+                        context,
+                        handler_call_details.method,
                     )
                 if not request_streaming and response_streaming:
                     return self.intercept_unary_stream(
-                        behavior, request_or_iterator, context,
-                        handler_call_details.method
+                        behavior,
+                        request_or_iterator,
+                        context,
+                        handler_call_details.method,
                     )
                 if request_streaming and not response_streaming:
                     return self.intercept_stream_unary(
-                        behavior, request_or_iterator, context,
-                        handler_call_details.method
+                        behavior,
+                        request_or_iterator,
+                        context,
+                        handler_call_details.method,
                     )
                 return self.intercept_unary_unary(
-                    behavior, request_or_iterator, context,
-                    handler_call_details.method
+                    behavior,
+                    request_or_iterator,
+                    context,
+                    handler_call_details.method,
                 )
 
             return telemetry_interceptor
 
         return _wrap_rpc_behavior(
-            continuation(handler_call_details),
-            telemetry_wrapper
+            continuation(handler_call_details), telemetry_wrapper
         )
 
     def intercept_unary_unary(
@@ -232,15 +239,15 @@ class OpenTelemetryServerInterceptor(
         ],
         request: ProtoMessage,
         context: grpc.ServicerContext,
-        full_method: str
+        full_method: str,
     ) -> ProtoMessage:
 
         with self._set_remote_context(context):
             metric_attributes = self._create_attributes(context, full_method)
             span_attributes = copy.deepcopy(metric_attributes)
-            span_attributes[SpanAttributes.RPC_GRPC_STATUS_CODE] = (
-                grpc.StatusCode.OK.value[0]
-            )
+            span_attributes[
+                SpanAttributes.RPC_GRPC_STATUS_CODE
+            ] = grpc.StatusCode.OK.value[0]
 
             with self._tracer.start_as_current_span(
                 name=full_method,
@@ -248,7 +255,7 @@ class OpenTelemetryServerInterceptor(
                 attributes=span_attributes,
                 end_on_exit=True,
                 record_exception=False,
-                set_status_on_exception=False
+                set_status_on_exception=False,
             ) as span:
                 # wrap the context
                 context = _OpenTelemetryServicerContext(context, span)
@@ -260,7 +267,7 @@ class OpenTelemetryServerInterceptor(
                             span,
                             request,
                             MessageTypeValues.RECEIVED,
-                            metric_attributes
+                            metric_attributes,
                         )
 
                         # call the actual RPC
@@ -271,7 +278,7 @@ class OpenTelemetryServerInterceptor(
                             span,
                             response,
                             MessageTypeValues.SENT,
-                            metric_attributes
+                            metric_attributes,
                         )
 
                         return response
@@ -284,7 +291,7 @@ class OpenTelemetryServerInterceptor(
                         if type(exc) != Exception:
                             span.set_attribute(
                                 SpanAttributes.RPC_GRPC_STATUS_CODE,
-                                grpc.StatusCode.UNKNOWN.value[0]
+                                grpc.StatusCode.UNKNOWN.value[0],
                             )
                             span.set_status(
                                 Status(
@@ -302,15 +309,15 @@ class OpenTelemetryServerInterceptor(
         ],
         request: ProtoMessage,
         context: grpc.ServicerContext,
-        full_method: str
+        full_method: str,
     ) -> Iterator[ProtoMessage]:
 
         with self._set_remote_context(context):
             metric_attributes = self._create_attributes(context, full_method)
             span_attributes = copy.deepcopy(metric_attributes)
-            span_attributes[SpanAttributes.RPC_GRPC_STATUS_CODE] = (
-                grpc.StatusCode.OK.value[0]
-            )
+            span_attributes[
+                SpanAttributes.RPC_GRPC_STATUS_CODE
+            ] = grpc.StatusCode.OK.value[0]
 
             with self._tracer.start_as_current_span(
                 name=full_method,
@@ -318,7 +325,7 @@ class OpenTelemetryServerInterceptor(
                 attributes=span_attributes,
                 end_on_exit=True,
                 record_exception=False,
-                set_status_on_exception=False
+                set_status_on_exception=False,
             ) as span:
                 # wrap the context
                 context = _OpenTelemetryServicerContext(context, span)
@@ -330,7 +337,7 @@ class OpenTelemetryServerInterceptor(
                             span,
                             request,
                             MessageTypeValues.RECEIVED,
-                            metric_attributes
+                            metric_attributes,
                         )
 
                         # call the actual RPC
@@ -341,7 +348,7 @@ class OpenTelemetryServerInterceptor(
                             span,
                             response_iterator,
                             MessageTypeValues.SENT,
-                            metric_attributes
+                            metric_attributes,
                         )
 
                     except Exception as exc:
@@ -352,7 +359,7 @@ class OpenTelemetryServerInterceptor(
                         if type(exc) != Exception:
                             span.set_attribute(
                                 SpanAttributes.RPC_GRPC_STATUS_CODE,
-                                grpc.StatusCode.UNKNOWN.value[0]
+                                grpc.StatusCode.UNKNOWN.value[0],
                             )
                             span.set_status(
                                 Status(
@@ -370,15 +377,15 @@ class OpenTelemetryServerInterceptor(
         ],
         request_iterator: Iterator[ProtoMessage],
         context: grpc.ServicerContext,
-        full_method: str
+        full_method: str,
     ) -> ProtoMessage:
 
         with self._set_remote_context(context):
             metric_attributes = self._create_attributes(context, full_method)
             span_attributes = copy.deepcopy(metric_attributes)
-            span_attributes[SpanAttributes.RPC_GRPC_STATUS_CODE] = (
-                grpc.StatusCode.OK.value[0]
-            )
+            span_attributes[
+                SpanAttributes.RPC_GRPC_STATUS_CODE
+            ] = grpc.StatusCode.OK.value[0]
 
             with self._tracer.start_as_current_span(
                 name=full_method,
@@ -386,7 +393,7 @@ class OpenTelemetryServerInterceptor(
                 attributes=span_attributes,
                 end_on_exit=True,
                 record_exception=False,
-                set_status_on_exception=False
+                set_status_on_exception=False,
             ) as span:
                 # wrap the context
                 context = _OpenTelemetryServicerContext(context, span)
@@ -398,7 +405,7 @@ class OpenTelemetryServerInterceptor(
                             span,
                             request_iterator,
                             MessageTypeValues.RECEIVED,
-                            metric_attributes
+                            metric_attributes,
                         )
 
                         # call the actual RPC
@@ -409,7 +416,7 @@ class OpenTelemetryServerInterceptor(
                             span,
                             response,
                             MessageTypeValues.SENT,
-                            metric_attributes
+                            metric_attributes,
                         )
 
                         return response
@@ -422,7 +429,7 @@ class OpenTelemetryServerInterceptor(
                         if type(exc) != Exception:
                             span.set_attribute(
                                 SpanAttributes.RPC_GRPC_STATUS_CODE,
-                                grpc.StatusCode.UNKNOWN.value[0]
+                                grpc.StatusCode.UNKNOWN.value[0],
                             )
                             span.set_status(
                                 Status(
@@ -437,19 +444,19 @@ class OpenTelemetryServerInterceptor(
         self,
         continuation: Callable[
             [Iterator[ProtoMessage], grpc.ServicerContext],
-            Iterator[ProtoMessage]
+            Iterator[ProtoMessage],
         ],
         request_iterator: Iterator[ProtoMessage],
         context: grpc.ServicerContext,
-        full_method: str
+        full_method: str,
     ) -> Iterator[ProtoMessage]:
 
         with self._set_remote_context(context):
             metric_attributes = self._create_attributes(context, full_method)
             span_attributes = copy.deepcopy(metric_attributes)
-            span_attributes[SpanAttributes.RPC_GRPC_STATUS_CODE] = (
-                grpc.StatusCode.OK.value[0]
-            )
+            span_attributes[
+                SpanAttributes.RPC_GRPC_STATUS_CODE
+            ] = grpc.StatusCode.OK.value[0]
 
             with self._tracer.start_as_current_span(
                 name=full_method,
@@ -457,7 +464,7 @@ class OpenTelemetryServerInterceptor(
                 attributes=span_attributes,
                 end_on_exit=True,
                 record_exception=False,
-                set_status_on_exception=False
+                set_status_on_exception=False,
             ) as span:
                 # wrap the context
                 context = _OpenTelemetryServicerContext(context, span)
@@ -469,7 +476,7 @@ class OpenTelemetryServerInterceptor(
                             span,
                             request_iterator,
                             MessageTypeValues.RECEIVED,
-                            metric_attributes
+                            metric_attributes,
                         )
 
                         # call the actual RPC
@@ -482,7 +489,7 @@ class OpenTelemetryServerInterceptor(
                             span,
                             response_iterator,
                             MessageTypeValues.SENT,
-                            metric_attributes
+                            metric_attributes,
                         )
 
                     except Exception as exc:
@@ -493,7 +500,7 @@ class OpenTelemetryServerInterceptor(
                         if type(exc) != Exception:
                             span.set_attribute(
                                 SpanAttributes.RPC_GRPC_STATUS_CODE,
-                                grpc.StatusCode.UNKNOWN.value[0]
+                                grpc.StatusCode.UNKNOWN.value[0],
                             )
                             span.set_status(
                                 Status(

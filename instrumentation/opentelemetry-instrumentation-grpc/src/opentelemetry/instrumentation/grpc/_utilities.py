@@ -19,7 +19,15 @@ from contextlib import contextmanager
 from enum import Enum
 from timeit import default_timer
 from types import TracebackType
-from typing import Callable, Dict, Generator, Iterable, Iterator, NoReturn, Optional
+from typing import (
+    Callable,
+    Dict,
+    Generator,
+    Iterable,
+    Iterator,
+    NoReturn,
+    Optional,
+)
 
 import grpc
 from opentelemetry import metrics, trace
@@ -37,7 +45,7 @@ def _add_message_event(
     active_span: trace.Span,
     message_type: str,
     message_size_by: int,
-    message_id: int = 1
+    message_id: int = 1,
 ) -> None:
     """Adds a message event of an RPC to an active span.
 
@@ -56,7 +64,7 @@ def _add_message_event(
             SpanAttributes.MESSAGE_TYPE: message_type,
             SpanAttributes.MESSAGE_ID: message_id,
             SpanAttributes.MESSAGE_UNCOMPRESSED_SIZE: message_size_by,
-        }
+        },
     )
 
 
@@ -88,19 +96,24 @@ def _get_status_code(context: grpc.RpcContext) -> grpc.StatusCode:
 
 
 class _ClientCallDetails(
-        namedtuple(
-            "_ClientCallDetails",
-            ("method", "timeout", "metadata", "credentials",
-             "wait_for_ready", "compression")
+    namedtuple(
+        "_ClientCallDetails",
+        (
+            "method",
+            "timeout",
+            "metadata",
+            "credentials",
+            "wait_for_ready",
+            "compression",
         ),
-        grpc.ClientCallDetails
+    ),
+    grpc.ClientCallDetails,
 ):
     pass
 
 
 class _MetricKind(Enum):
-    """Specifies the kind of the metric.
-    """
+    """Specifies the kind of the metric."""
 
     #: Indicates that the metric is of a server.
     CLIENT = "client"
@@ -140,19 +153,19 @@ class _EventMetricRecorder:
             name=f"rpc.{metric_kind.value}.response.size",
             unit="By",
             description="Measures size of RPC response messages "
-                        "(uncompressed)",
+            "(uncompressed)",
         )
         self._requests_per_rpc_histogram = self._meter.create_histogram(
             name=f"rpc.{metric_kind.value}.requests_per_rpc",
             unit="1",
             description="Measures the number of messages received per RPC. "
-                        "Should be 1 for all non-streaming RPCs",
+            "Should be 1 for all non-streaming RPCs",
         )
         self._responses_per_rpc_histogram = self._meter.create_histogram(
             name=f"rpc.{metric_kind.value}.responses_per_rpc",
             unit="1",
             description="Measures the number of messages sent per RPC. "
-                        "Should be 1 for all non-streaming RPCs",
+            "Should be 1 for all non-streaming RPCs",
         )
 
     def _record_unary_request(
@@ -160,7 +173,7 @@ class _EventMetricRecorder:
         active_span: trace.Span,
         request: ProtoMessage,
         message_type: MessageTypeValues,
-        metric_attributes: Attributes
+        metric_attributes: Attributes,
     ) -> None:
         """Records a unary request.
 
@@ -188,7 +201,7 @@ class _EventMetricRecorder:
         response: ProtoMessage,
         message_type: MessageTypeValues,
         metric_attributes: Attributes,
-        response_id: int = 1
+        response_id: int = 1,
     ) -> None:
         """Records a unary OR a single, streaming response.
 
@@ -210,16 +223,14 @@ class _EventMetricRecorder:
             active_span,
             message_type.value,
             message_size_by,
-            message_id=response_id
+            message_id=response_id,
         )
         self._response_size_histogram.record(
             message_size_by, metric_attributes
         )
 
     def _record_num_of_responses_per_rpc(
-        self,
-        responses_per_rpc: int,
-        metric_attributes: Attributes
+        self, responses_per_rpc: int, metric_attributes: Attributes
     ) -> None:
         """Records the number of responses in the responses-per-RPC-histogram
         for a streaming response.
@@ -239,7 +250,7 @@ class _EventMetricRecorder:
         active_span: trace.Span,
         response: ProtoMessage,
         message_type: MessageTypeValues,
-        metric_attributes: Attributes
+        metric_attributes: Attributes,
     ) -> None:
         """Records a unary response.
 
@@ -266,7 +277,7 @@ class _EventMetricRecorder:
         active_span: trace.Span,
         request_iterator: Iterator[ProtoMessage],
         message_type: MessageTypeValues,
-        metric_attributes: Attributes
+        metric_attributes: Attributes,
     ) -> Iterator[ProtoMessage]:
         """Records a streaming request.
 
@@ -296,7 +307,7 @@ class _EventMetricRecorder:
                     active_span,
                     message_type.value,
                     message_size_by,
-                    message_id=req_id
+                    message_id=req_id,
                 )
                 self._request_size_histogram.record(
                     message_size_by, metric_attributes
@@ -310,7 +321,7 @@ class _EventMetricRecorder:
         active_span: trace.Span,
         response_iterator: Iterator[ProtoMessage],
         message_type: MessageTypeValues,
-        metric_attributes: Attributes
+        metric_attributes: Attributes,
     ) -> Iterator[ProtoMessage]:
         """Records a streaming response.
 
@@ -340,7 +351,7 @@ class _EventMetricRecorder:
                     response,
                     message_type,
                     metric_attributes,
-                    response_id=res_id
+                    response_id=res_id,
                 )
                 yield response
         finally:
@@ -359,7 +370,7 @@ class _EventMetricRecorder:
         self,
         start_time: float,
         metric_attributes: Attributes,
-        context: grpc.RpcContext
+        context: grpc.RpcContext,
     ) -> None:
         """Records a duration of an RPC in the duration histogram. The duration
         is calculated as difference between the call of this method and the
@@ -380,9 +391,7 @@ class _EventMetricRecorder:
 
     @contextmanager
     def _record_duration_manager(
-        self,
-        metric_attributes: Attributes,
-        context: grpc.RpcContext
+        self, metric_attributes: Attributes, context: grpc.RpcContext
     ) -> Generator[None, None, None]:
         """Returns a context manager to measure the duration of an RPC in the
         duration histogram.
@@ -403,23 +412,22 @@ class _EventMetricRecorder:
         finally:
             duration = max(round((default_timer() - start_time) * 1000), 0)
             code = _get_status_code(context)
-            metric_attributes[SpanAttributes.RPC_GRPC_STATUS_CODE] = (
-                code.value[0]
-            )
+            metric_attributes[
+                SpanAttributes.RPC_GRPC_STATUS_CODE
+            ] = code.value[0]
             self._duration_histogram.record(duration, metric_attributes)
 
 
 class _OpentelemetryResponseIterator(
     grpc.Call, grpc.Future, grpc.RpcError, Iterator
 ):
-
     def __init__(
         self,
         response_iterator,
         metric_recorder: _EventMetricRecorder,
         span: trace.Span,
         attributes: Attributes,
-        start_time: float
+        start_time: float,
     ) -> None:
         self._iterator = response_iterator
         self._metric_recorder = metric_recorder
@@ -502,7 +510,7 @@ class _OpentelemetryResponseIterator(
             self._span,
             end_on_exit=False,
             record_exception=False,
-            set_status_on_exception=False
+            set_status_on_exception=False,
         ):
             try:
                 response = self._iterator._next()
@@ -512,7 +520,7 @@ class _OpentelemetryResponseIterator(
                     response,
                     MessageTypeValues.RECEIVED,
                     self._attributes,
-                    response_id=self._response_id
+                    response_id=self._response_id,
                 )
                 return response
             except grpc.RpcError as exc:
@@ -552,11 +560,8 @@ class _OpentelemetryResponseIterator(
 
 # pylint:disable=abstract-method
 class _OpenTelemetryServicerContext(grpc.ServicerContext):
-
     def __init__(
-        self,
-        servicer_context: grpc.ServicerContext,
-        active_span: trace.Span
+        self, servicer_context: grpc.ServicerContext, active_span: trace.Span
     ) -> None:
         self._servicer_context = servicer_context
         self._active_span = active_span

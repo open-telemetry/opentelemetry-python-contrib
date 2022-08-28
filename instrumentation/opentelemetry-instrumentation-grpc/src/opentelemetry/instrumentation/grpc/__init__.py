@@ -194,16 +194,17 @@ class GrpcInstrumentorServer(BaseInstrumentor):
             if "interceptors" in kwargs:
                 # add our interceptor as the first
                 kwargs["interceptors"].insert(
-                    0, server_interceptor(
+                    0,
+                    server_interceptor(
                         meter_provider=meter_provider,
-                        tracer_provider=tracer_provider
-                    )
+                        tracer_provider=tracer_provider,
+                    ),
                 )
             else:
                 kwargs["interceptors"] = [
                     server_interceptor(
                         meter_provider=meter_provider,
-                        tracer_provider=tracer_provider
+                        tracer_provider=tracer_provider,
                     )
                 ]
             return self._original_func(*args, **kwargs)
@@ -263,9 +264,8 @@ class GrpcInstrumentorClient(BaseInstrumentor):
         return grpc.intercept_channel(
             channel,
             client_interceptor(
-                meter_provider=meter_provider,
-                tracer_provider=tracer_provider
-            )
+                meter_provider=meter_provider, tracer_provider=tracer_provider
+            ),
         )
 
 

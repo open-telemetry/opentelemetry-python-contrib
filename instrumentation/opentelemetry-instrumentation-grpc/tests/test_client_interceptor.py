@@ -23,7 +23,9 @@ from tests.protobuf import (  # pylint: disable=no-name-in-module
 import opentelemetry.instrumentation.grpc
 from opentelemetry import context, metrics, trace
 from opentelemetry.instrumentation.grpc import GrpcInstrumentorClient
-from opentelemetry.instrumentation.grpc._client import OpenTelemetryClientInterceptor
+from opentelemetry.instrumentation.grpc._client import (
+    OpenTelemetryClientInterceptor,
+)
 from opentelemetry.instrumentation.grpc._utilities import _ClientCallDetails
 from opentelemetry.instrumentation.utils import _SUPPRESS_INSTRUMENTATION_KEY
 from opentelemetry.propagate import get_global_textmap, set_global_textmap
@@ -39,11 +41,7 @@ from .protobuf.test_server_pb2 import Request, Response
 CLIENT_ID = 1
 
 _expected_metric_names = {
-    "rpc.client.duration": (
-        Histogram,
-        "ms",
-        "Measures duration of RPC"
-    ),
+    "rpc.client.duration": (Histogram, "ms", "Measures duration of RPC"),
     "rpc.client.request.size": (
         Histogram,
         "By",
@@ -58,7 +56,7 @@ _expected_metric_names = {
         Histogram,
         "1",
         "Measures the number of messages received per RPC. "
-        "Should be 1 for all non-streaming RPCs"
+        "Should be 1 for all non-streaming RPCs",
     ),
     "rpc.client.responses_per_rpc": (
         Histogram,
@@ -112,17 +110,16 @@ class Interceptor(
 
 
 class TestOpenTelemetryClientInterceptor(TestBase):
-
     def assertEvent(self, event, name, attributes, msg=None):
         self.assertEqual(event.name, name, msg=msg)
         for key, val in attributes.items():
             out_msg = (
                 str(event.attributes)
-                if msg is None else
-                ", ".join([msg, str(event.attributes)])
+                if msg is None
+                else ", ".join([msg, str(event.attributes)])
             )
             self.assertIn(key, event.attributes, msg=out_msg)
-            self.assertEqual(val, event.attributes[key],  msg=out_msg)
+            self.assertEqual(val, event.attributes[key], msg=out_msg)
 
     def assertEqualMetricInstrumentationScope(self, scope_metrics, module):
         self.assertEqual(scope_metrics.scope.name, module.__name__)
@@ -181,8 +178,9 @@ class TestOpenTelemetryClientInterceptor(TestBase):
                 SpanAttributes.RPC_METHOD: "SimpleMethod",
                 SpanAttributes.RPC_SERVICE: "GRPCTestServer",
                 SpanAttributes.RPC_SYSTEM: "grpc",
-                SpanAttributes.RPC_GRPC_STATUS_CODE:
-                    grpc.StatusCode.OK.value[0]
+                SpanAttributes.RPC_GRPC_STATUS_CODE: grpc.StatusCode.OK.value[
+                    0
+                ],
             },
         )
 
@@ -194,8 +192,8 @@ class TestOpenTelemetryClientInterceptor(TestBase):
             {
                 SpanAttributes.MESSAGE_TYPE: "SENT",
                 SpanAttributes.MESSAGE_ID: 1,
-                SpanAttributes.MESSAGE_UNCOMPRESSED_SIZE: request.ByteSize()
-            }
+                SpanAttributes.MESSAGE_UNCOMPRESSED_SIZE: request.ByteSize(),
+            },
         )
         self.assertEvent(
             span.events[1],
@@ -203,8 +201,8 @@ class TestOpenTelemetryClientInterceptor(TestBase):
             {
                 SpanAttributes.MESSAGE_TYPE: "RECEIVED",
                 SpanAttributes.MESSAGE_ID: 1,
-                SpanAttributes.MESSAGE_UNCOMPRESSED_SIZE: response.ByteSize()
-            }
+                SpanAttributes.MESSAGE_UNCOMPRESSED_SIZE: response.ByteSize(),
+            },
         )
 
     def test_unary_unary_abort(self):
@@ -232,8 +230,9 @@ class TestOpenTelemetryClientInterceptor(TestBase):
                 SpanAttributes.RPC_METHOD: "SimpleMethod",
                 SpanAttributes.RPC_SERVICE: "GRPCTestServer",
                 SpanAttributes.RPC_SYSTEM: "grpc",
-                SpanAttributes.RPC_GRPC_STATUS_CODE:
-                    grpc.StatusCode.FAILED_PRECONDITION.value[0],
+                SpanAttributes.RPC_GRPC_STATUS_CODE: grpc.StatusCode.FAILED_PRECONDITION.value[
+                    0
+                ],
             },
         )
 
@@ -252,8 +251,8 @@ class TestOpenTelemetryClientInterceptor(TestBase):
             {
                 SpanAttributes.MESSAGE_TYPE: "SENT",
                 SpanAttributes.MESSAGE_ID: 1,
-                SpanAttributes.MESSAGE_UNCOMPRESSED_SIZE: request.ByteSize()
-            }
+                SpanAttributes.MESSAGE_UNCOMPRESSED_SIZE: request.ByteSize(),
+            },
         )
         self.assertEvent(
             span.events[1],
@@ -263,7 +262,7 @@ class TestOpenTelemetryClientInterceptor(TestBase):
                 # "exception.message": error_message,
                 # "exception.stacktrace": "...",
                 "exception.escaped": str(False),
-            }
+            },
         )
 
     def test_unary_unary_cancel_on_server_side(self):
@@ -291,8 +290,9 @@ class TestOpenTelemetryClientInterceptor(TestBase):
                 SpanAttributes.RPC_METHOD: "SimpleMethod",
                 SpanAttributes.RPC_SERVICE: "GRPCTestServer",
                 SpanAttributes.RPC_SYSTEM: "grpc",
-                SpanAttributes.RPC_GRPC_STATUS_CODE:
-                    grpc.StatusCode.CANCELLED.value[0],
+                SpanAttributes.RPC_GRPC_STATUS_CODE: grpc.StatusCode.CANCELLED.value[
+                    0
+                ],
             },
         )
 
@@ -312,8 +312,8 @@ class TestOpenTelemetryClientInterceptor(TestBase):
             {
                 SpanAttributes.MESSAGE_TYPE: "SENT",
                 SpanAttributes.MESSAGE_ID: 1,
-                SpanAttributes.MESSAGE_UNCOMPRESSED_SIZE: request.ByteSize()
-            }
+                SpanAttributes.MESSAGE_UNCOMPRESSED_SIZE: request.ByteSize(),
+            },
         )
         self.assertEvent(
             span.events[1],
@@ -323,7 +323,7 @@ class TestOpenTelemetryClientInterceptor(TestBase):
                 # "exception.message": error_message,
                 # "exception.stacktrace": "...",
                 "exception.escaped": str(False),
-            }
+            },
         )
 
     def test_unary_unary_error(self):
@@ -351,8 +351,9 @@ class TestOpenTelemetryClientInterceptor(TestBase):
                 SpanAttributes.RPC_METHOD: "SimpleMethod",
                 SpanAttributes.RPC_SERVICE: "GRPCTestServer",
                 SpanAttributes.RPC_SYSTEM: "grpc",
-                SpanAttributes.RPC_GRPC_STATUS_CODE:
-                    grpc.StatusCode.INVALID_ARGUMENT.value[0],
+                SpanAttributes.RPC_GRPC_STATUS_CODE: grpc.StatusCode.INVALID_ARGUMENT.value[
+                    0
+                ],
             },
         )
 
@@ -371,8 +372,8 @@ class TestOpenTelemetryClientInterceptor(TestBase):
             {
                 SpanAttributes.MESSAGE_TYPE: "SENT",
                 SpanAttributes.MESSAGE_ID: 1,
-                SpanAttributes.MESSAGE_UNCOMPRESSED_SIZE: request.ByteSize()
-            }
+                SpanAttributes.MESSAGE_UNCOMPRESSED_SIZE: request.ByteSize(),
+            },
         )
         self.assertEvent(
             span.events[1],
@@ -382,7 +383,7 @@ class TestOpenTelemetryClientInterceptor(TestBase):
                 # "exception.message": error_message,
                 # "exception.stacktrace": "...",
                 "exception.escaped": str(False),
-            }
+            },
         )
 
     def test_unary_unary_exception(self):
@@ -410,8 +411,9 @@ class TestOpenTelemetryClientInterceptor(TestBase):
                 SpanAttributes.RPC_METHOD: "SimpleMethod",
                 SpanAttributes.RPC_SERVICE: "GRPCTestServer",
                 SpanAttributes.RPC_SYSTEM: "grpc",
-                SpanAttributes.RPC_GRPC_STATUS_CODE:
-                    grpc.StatusCode.UNKNOWN.value[0],
+                SpanAttributes.RPC_GRPC_STATUS_CODE: grpc.StatusCode.UNKNOWN.value[
+                    0
+                ],
             },
         )
 
@@ -431,8 +433,8 @@ class TestOpenTelemetryClientInterceptor(TestBase):
             {
                 SpanAttributes.MESSAGE_TYPE: "SENT",
                 SpanAttributes.MESSAGE_ID: 1,
-                SpanAttributes.MESSAGE_UNCOMPRESSED_SIZE: request.ByteSize()
-            }
+                SpanAttributes.MESSAGE_UNCOMPRESSED_SIZE: request.ByteSize(),
+            },
         )
         self.assertEvent(
             span.events[1],
@@ -442,7 +444,7 @@ class TestOpenTelemetryClientInterceptor(TestBase):
                 # "exception.message": error_message,
                 # "exception.stacktrace": "...",
                 "exception.escaped": str(False),
-            }
+            },
         )
 
     def test_unary_unary_future(self):
@@ -484,8 +486,9 @@ class TestOpenTelemetryClientInterceptor(TestBase):
                 SpanAttributes.RPC_METHOD: "SimpleMethod",
                 SpanAttributes.RPC_SERVICE: "GRPCTestServer",
                 SpanAttributes.RPC_SYSTEM: "grpc",
-                SpanAttributes.RPC_GRPC_STATUS_CODE:
-                    grpc.StatusCode.OK.value[0]
+                SpanAttributes.RPC_GRPC_STATUS_CODE: grpc.StatusCode.OK.value[
+                    0
+                ],
             },
         )
 
@@ -497,8 +500,8 @@ class TestOpenTelemetryClientInterceptor(TestBase):
             {
                 SpanAttributes.MESSAGE_TYPE: "SENT",
                 SpanAttributes.MESSAGE_ID: 1,
-                SpanAttributes.MESSAGE_UNCOMPRESSED_SIZE: request.ByteSize()
-            }
+                SpanAttributes.MESSAGE_UNCOMPRESSED_SIZE: request.ByteSize(),
+            },
         )
         self.assertEvent(
             span.events[1],
@@ -506,8 +509,8 @@ class TestOpenTelemetryClientInterceptor(TestBase):
             {
                 SpanAttributes.MESSAGE_TYPE: "RECEIVED",
                 SpanAttributes.MESSAGE_ID: 1,
-                SpanAttributes.MESSAGE_UNCOMPRESSED_SIZE: response.ByteSize()
-            }
+                SpanAttributes.MESSAGE_UNCOMPRESSED_SIZE: response.ByteSize(),
+            },
         )
 
     def test_unary_unary_future_cancel_on_client_side(self):
@@ -548,8 +551,9 @@ class TestOpenTelemetryClientInterceptor(TestBase):
                 SpanAttributes.RPC_METHOD: "SimpleMethod",
                 SpanAttributes.RPC_SERVICE: "GRPCTestServer",
                 SpanAttributes.RPC_SYSTEM: "grpc",
-                SpanAttributes.RPC_GRPC_STATUS_CODE:
-                    grpc.StatusCode.CANCELLED.value[0],
+                SpanAttributes.RPC_GRPC_STATUS_CODE: grpc.StatusCode.CANCELLED.value[
+                    0
+                ],
             },
         )
 
@@ -568,8 +572,8 @@ class TestOpenTelemetryClientInterceptor(TestBase):
             {
                 SpanAttributes.MESSAGE_TYPE: "SENT",
                 SpanAttributes.MESSAGE_ID: 1,
-                SpanAttributes.MESSAGE_UNCOMPRESSED_SIZE: request.ByteSize()
-            }
+                SpanAttributes.MESSAGE_UNCOMPRESSED_SIZE: request.ByteSize(),
+            },
         )
 
     def test_unary_unary_future_error(self):
@@ -618,8 +622,9 @@ class TestOpenTelemetryClientInterceptor(TestBase):
                 SpanAttributes.RPC_METHOD: "SimpleMethod",
                 SpanAttributes.RPC_SERVICE: "GRPCTestServer",
                 SpanAttributes.RPC_SYSTEM: "grpc",
-                SpanAttributes.RPC_GRPC_STATUS_CODE:
-                    grpc.StatusCode.INVALID_ARGUMENT.value[0]
+                SpanAttributes.RPC_GRPC_STATUS_CODE: grpc.StatusCode.INVALID_ARGUMENT.value[
+                    0
+                ],
             },
         )
 
@@ -631,8 +636,8 @@ class TestOpenTelemetryClientInterceptor(TestBase):
             {
                 SpanAttributes.MESSAGE_TYPE: "SENT",
                 SpanAttributes.MESSAGE_ID: 1,
-                SpanAttributes.MESSAGE_UNCOMPRESSED_SIZE: request.ByteSize()
-            }
+                SpanAttributes.MESSAGE_UNCOMPRESSED_SIZE: request.ByteSize(),
+            },
         )
         self.assertEvent(
             span.events[1],
@@ -642,7 +647,7 @@ class TestOpenTelemetryClientInterceptor(TestBase):
                 # "exception.message": error_message,
                 # "exception.stacktrace": "...",
                 "exception.escaped": str(False),
-            }
+            },
         )
 
     def test_unary_unary_metrics(self):
@@ -677,7 +682,7 @@ class TestOpenTelemetryClientInterceptor(TestBase):
                     )
                     self.assertEqual(
                         metric.description,
-                        _expected_metric_names[metric.name][2]
+                        _expected_metric_names[metric.name][2],
                     )
 
                     data_points = list(metric.data.data_points)
@@ -685,9 +690,7 @@ class TestOpenTelemetryClientInterceptor(TestBase):
 
                     for point in data_points:
                         if isinstance(metric.data, Histogram):
-                            self.assertIsInstance(
-                                point, HistogramDataPoint
-                            )
+                            self.assertIsInstance(point, HistogramDataPoint)
                             self.assertEqual(point.count, 1)
                             if metric.name == "rpc.client.duration":
                                 self.assertGreaterEqual(point.sum, 0)
@@ -714,8 +717,9 @@ class TestOpenTelemetryClientInterceptor(TestBase):
                             self.assertMetricDataPointHasAttributes(
                                 point,
                                 {
-                                    SpanAttributes.RPC_GRPC_STATUS_CODE:
-                                        grpc.StatusCode.OK.value[0]
+                                    SpanAttributes.RPC_GRPC_STATUS_CODE: grpc.StatusCode.OK.value[
+                                        0
+                                    ]
                                 },
                             )
 
@@ -755,7 +759,7 @@ class TestOpenTelemetryClientInterceptor(TestBase):
                     )
                     self.assertEqual(
                         metric.description,
-                        _expected_metric_names[metric.name][2]
+                        _expected_metric_names[metric.name][2],
                     )
 
                     data_points = list(metric.data.data_points)
@@ -763,9 +767,7 @@ class TestOpenTelemetryClientInterceptor(TestBase):
 
                     for point in data_points:
                         if isinstance(metric.data, Histogram):
-                            self.assertIsInstance(
-                                point, HistogramDataPoint
-                            )
+                            self.assertIsInstance(point, HistogramDataPoint)
                             self.assertEqual(point.count, 1)
                             if metric.name == "rpc.client.duration":
                                 self.assertGreaterEqual(point.sum, 0)
@@ -786,10 +788,9 @@ class TestOpenTelemetryClientInterceptor(TestBase):
                             self.assertMetricDataPointHasAttributes(
                                 point,
                                 {
-                                    SpanAttributes.RPC_GRPC_STATUS_CODE:
-                                        grpc.StatusCode.INVALID_ARGUMENT.value[
-                                            0
-                                        ]
+                                    SpanAttributes.RPC_GRPC_STATUS_CODE: grpc.StatusCode.INVALID_ARGUMENT.value[
+                                        0
+                                    ]
                                 },
                             )
 
@@ -837,7 +838,7 @@ class TestOpenTelemetryClientInterceptor(TestBase):
                     )
                     self.assertEqual(
                         metric.description,
-                        _expected_metric_names[metric.name][2]
+                        _expected_metric_names[metric.name][2],
                     )
 
                     data_points = list(metric.data.data_points)
@@ -845,9 +846,7 @@ class TestOpenTelemetryClientInterceptor(TestBase):
 
                     for point in data_points:
                         if isinstance(metric.data, Histogram):
-                            self.assertIsInstance(
-                                point, HistogramDataPoint
-                            )
+                            self.assertIsInstance(point, HistogramDataPoint)
                             self.assertEqual(point.count, 1)
                             if metric.name == "rpc.client.duration":
                                 self.assertGreaterEqual(point.sum, 0)
@@ -874,8 +873,9 @@ class TestOpenTelemetryClientInterceptor(TestBase):
                             self.assertMetricDataPointHasAttributes(
                                 point,
                                 {
-                                    SpanAttributes.RPC_GRPC_STATUS_CODE:
-                                        grpc.StatusCode.OK.value[0]
+                                    SpanAttributes.RPC_GRPC_STATUS_CODE: grpc.StatusCode.OK.value[
+                                        0
+                                    ]
                                 },
                             )
 
@@ -884,9 +884,7 @@ class TestOpenTelemetryClientInterceptor(TestBase):
             context.set_value(_SUPPRESS_INSTRUMENTATION_KEY, True)
         )
 
-        request = Request(
-            client_id=CLIENT_ID, request_data="data"
-        )
+        request = Request(client_id=CLIENT_ID, request_data="data")
         try:
             self._stub.SimpleMethod(request)
             spans = self.memory_exporter.get_finished_spans()
@@ -927,8 +925,9 @@ class TestOpenTelemetryClientInterceptor(TestBase):
                 SpanAttributes.RPC_METHOD: "ServerStreamingMethod",
                 SpanAttributes.RPC_SERVICE: "GRPCTestServer",
                 SpanAttributes.RPC_SYSTEM: "grpc",
-                SpanAttributes.RPC_GRPC_STATUS_CODE:
-                    grpc.StatusCode.OK.value[0]
+                SpanAttributes.RPC_GRPC_STATUS_CODE: grpc.StatusCode.OK.value[
+                    0
+                ],
             },
         )
 
@@ -940,8 +939,8 @@ class TestOpenTelemetryClientInterceptor(TestBase):
             {
                 SpanAttributes.MESSAGE_TYPE: "SENT",
                 SpanAttributes.MESSAGE_ID: 1,
-                SpanAttributes.MESSAGE_UNCOMPRESSED_SIZE: request.ByteSize()
-            }
+                SpanAttributes.MESSAGE_UNCOMPRESSED_SIZE: request.ByteSize(),
+            },
         )
         for res_id, response in enumerate(responses, start=1):
             self.assertEvent(
@@ -950,10 +949,9 @@ class TestOpenTelemetryClientInterceptor(TestBase):
                 {
                     SpanAttributes.MESSAGE_TYPE: "RECEIVED",
                     SpanAttributes.MESSAGE_ID: res_id,
-                    SpanAttributes.MESSAGE_UNCOMPRESSED_SIZE:
-                        response.ByteSize()
+                    SpanAttributes.MESSAGE_UNCOMPRESSED_SIZE: response.ByteSize(),
                 },
-                msg=f"Response ID: {res_id:d}"
+                msg=f"Response ID: {res_id:d}",
             )
 
     def test_unary_stream_abort(self):
@@ -989,8 +987,9 @@ class TestOpenTelemetryClientInterceptor(TestBase):
                 SpanAttributes.RPC_METHOD: "ServerStreamingMethod",
                 SpanAttributes.RPC_SERVICE: "GRPCTestServer",
                 SpanAttributes.RPC_SYSTEM: "grpc",
-                SpanAttributes.RPC_GRPC_STATUS_CODE:
-                    grpc.StatusCode.FAILED_PRECONDITION.value[0],
+                SpanAttributes.RPC_GRPC_STATUS_CODE: grpc.StatusCode.FAILED_PRECONDITION.value[
+                    0
+                ],
             },
         )
 
@@ -1009,8 +1008,8 @@ class TestOpenTelemetryClientInterceptor(TestBase):
             {
                 SpanAttributes.MESSAGE_TYPE: "SENT",
                 SpanAttributes.MESSAGE_ID: 1,
-                SpanAttributes.MESSAGE_UNCOMPRESSED_SIZE: request.ByteSize()
-            }
+                SpanAttributes.MESSAGE_UNCOMPRESSED_SIZE: request.ByteSize(),
+            },
         )
         for res_id, response in enumerate(responses, start=1):
             self.assertEvent(
@@ -1019,9 +1018,8 @@ class TestOpenTelemetryClientInterceptor(TestBase):
                 {
                     SpanAttributes.MESSAGE_TYPE: "RECEIVED",
                     SpanAttributes.MESSAGE_ID: res_id,
-                    SpanAttributes.MESSAGE_UNCOMPRESSED_SIZE:
-                        response.ByteSize()
-                }
+                    SpanAttributes.MESSAGE_UNCOMPRESSED_SIZE: response.ByteSize(),
+                },
             )
         self.assertEvent(
             span.events[-1],
@@ -1031,7 +1029,7 @@ class TestOpenTelemetryClientInterceptor(TestBase):
                 # "exception.message": error_message,
                 # "exception.stacktrace": "...",
                 "exception.escaped": str(False),
-            }
+            },
         )
 
     def test_unary_stream_cancel_on_client_side(self):
@@ -1069,8 +1067,9 @@ class TestOpenTelemetryClientInterceptor(TestBase):
                 SpanAttributes.RPC_METHOD: "ServerStreamingMethod",
                 SpanAttributes.RPC_SERVICE: "GRPCTestServer",
                 SpanAttributes.RPC_SYSTEM: "grpc",
-                SpanAttributes.RPC_GRPC_STATUS_CODE:
-                    grpc.StatusCode.CANCELLED.value[0],
+                SpanAttributes.RPC_GRPC_STATUS_CODE: grpc.StatusCode.CANCELLED.value[
+                    0
+                ],
             },
         )
 
@@ -1078,7 +1077,7 @@ class TestOpenTelemetryClientInterceptor(TestBase):
         self.assertEqual(span.status.status_code, trace.StatusCode.ERROR)
         self.assertEqual(
             span.status.description,
-            f"{grpc.StatusCode.CANCELLED}: Locally cancelled by application!"
+            f"{grpc.StatusCode.CANCELLED}: Locally cancelled by application!",
         )
 
         # check events
@@ -1089,8 +1088,8 @@ class TestOpenTelemetryClientInterceptor(TestBase):
             {
                 SpanAttributes.MESSAGE_TYPE: "SENT",
                 SpanAttributes.MESSAGE_ID: 1,
-                SpanAttributes.MESSAGE_UNCOMPRESSED_SIZE: request.ByteSize()
-            }
+                SpanAttributes.MESSAGE_UNCOMPRESSED_SIZE: request.ByteSize(),
+            },
         )
         for res_id, response in enumerate(responses, start=1):
             self.assertEvent(
@@ -1099,9 +1098,8 @@ class TestOpenTelemetryClientInterceptor(TestBase):
                 {
                     SpanAttributes.MESSAGE_TYPE: "RECEIVED",
                     SpanAttributes.MESSAGE_ID: res_id,
-                    SpanAttributes.MESSAGE_UNCOMPRESSED_SIZE:
-                        response.ByteSize()
-                }
+                    SpanAttributes.MESSAGE_UNCOMPRESSED_SIZE: response.ByteSize(),
+                },
             )
 
     def test_unary_stream_cancel_on_server_side(self):
@@ -1137,8 +1135,9 @@ class TestOpenTelemetryClientInterceptor(TestBase):
                 SpanAttributes.RPC_METHOD: "ServerStreamingMethod",
                 SpanAttributes.RPC_SERVICE: "GRPCTestServer",
                 SpanAttributes.RPC_SYSTEM: "grpc",
-                SpanAttributes.RPC_GRPC_STATUS_CODE:
-                    grpc.StatusCode.CANCELLED.value[0],
+                SpanAttributes.RPC_GRPC_STATUS_CODE: grpc.StatusCode.CANCELLED.value[
+                    0
+                ],
             },
         )
 
@@ -1158,8 +1157,8 @@ class TestOpenTelemetryClientInterceptor(TestBase):
             {
                 SpanAttributes.MESSAGE_TYPE: "SENT",
                 SpanAttributes.MESSAGE_ID: 1,
-                SpanAttributes.MESSAGE_UNCOMPRESSED_SIZE: request.ByteSize()
-            }
+                SpanAttributes.MESSAGE_UNCOMPRESSED_SIZE: request.ByteSize(),
+            },
         )
         for res_id, response in enumerate(responses, start=1):
             self.assertEvent(
@@ -1168,9 +1167,8 @@ class TestOpenTelemetryClientInterceptor(TestBase):
                 {
                     SpanAttributes.MESSAGE_TYPE: "RECEIVED",
                     SpanAttributes.MESSAGE_ID: res_id,
-                    SpanAttributes.MESSAGE_UNCOMPRESSED_SIZE:
-                        response.ByteSize()
-                }
+                    SpanAttributes.MESSAGE_UNCOMPRESSED_SIZE: response.ByteSize(),
+                },
             )
         self.assertEvent(
             span.events[-1],
@@ -1180,7 +1178,7 @@ class TestOpenTelemetryClientInterceptor(TestBase):
                 # "exception.message": error_message,
                 # "exception.stacktrace": "...",
                 "exception.escaped": str(False),
-            }
+            },
         )
 
     def test_unary_stream_error(self):
@@ -1216,8 +1214,9 @@ class TestOpenTelemetryClientInterceptor(TestBase):
                 SpanAttributes.RPC_METHOD: "ServerStreamingMethod",
                 SpanAttributes.RPC_SERVICE: "GRPCTestServer",
                 SpanAttributes.RPC_SYSTEM: "grpc",
-                SpanAttributes.RPC_GRPC_STATUS_CODE:
-                    grpc.StatusCode.INVALID_ARGUMENT.value[0],
+                SpanAttributes.RPC_GRPC_STATUS_CODE: grpc.StatusCode.INVALID_ARGUMENT.value[
+                    0
+                ],
             },
         )
 
@@ -1236,8 +1235,8 @@ class TestOpenTelemetryClientInterceptor(TestBase):
             {
                 SpanAttributes.MESSAGE_TYPE: "SENT",
                 SpanAttributes.MESSAGE_ID: 1,
-                SpanAttributes.MESSAGE_UNCOMPRESSED_SIZE: request.ByteSize()
-            }
+                SpanAttributes.MESSAGE_UNCOMPRESSED_SIZE: request.ByteSize(),
+            },
         )
         for res_id, response in enumerate(responses, start=1):
             self.assertEvent(
@@ -1246,9 +1245,8 @@ class TestOpenTelemetryClientInterceptor(TestBase):
                 {
                     SpanAttributes.MESSAGE_TYPE: "RECEIVED",
                     SpanAttributes.MESSAGE_ID: res_id,
-                    SpanAttributes.MESSAGE_UNCOMPRESSED_SIZE:
-                        response.ByteSize()
-                }
+                    SpanAttributes.MESSAGE_UNCOMPRESSED_SIZE: response.ByteSize(),
+                },
             )
         self.assertEvent(
             span.events[-1],
@@ -1258,7 +1256,7 @@ class TestOpenTelemetryClientInterceptor(TestBase):
                 # "exception.message": error_message,
                 # "exception.stacktrace": "...",
                 "exception.escaped": str(False),
-            }
+            },
         )
 
     def test_unary_stream_exception(self):
@@ -1294,8 +1292,9 @@ class TestOpenTelemetryClientInterceptor(TestBase):
                 SpanAttributes.RPC_METHOD: "ServerStreamingMethod",
                 SpanAttributes.RPC_SERVICE: "GRPCTestServer",
                 SpanAttributes.RPC_SYSTEM: "grpc",
-                SpanAttributes.RPC_GRPC_STATUS_CODE:
-                    grpc.StatusCode.UNKNOWN.value[0],
+                SpanAttributes.RPC_GRPC_STATUS_CODE: grpc.StatusCode.UNKNOWN.value[
+                    0
+                ],
             },
         )
 
@@ -1315,8 +1314,8 @@ class TestOpenTelemetryClientInterceptor(TestBase):
             {
                 SpanAttributes.MESSAGE_TYPE: "SENT",
                 SpanAttributes.MESSAGE_ID: 1,
-                SpanAttributes.MESSAGE_UNCOMPRESSED_SIZE: request.ByteSize()
-            }
+                SpanAttributes.MESSAGE_UNCOMPRESSED_SIZE: request.ByteSize(),
+            },
         )
         for res_id, response in enumerate(responses, start=1):
             self.assertEvent(
@@ -1325,9 +1324,8 @@ class TestOpenTelemetryClientInterceptor(TestBase):
                 {
                     SpanAttributes.MESSAGE_TYPE: "RECEIVED",
                     SpanAttributes.MESSAGE_ID: res_id,
-                    SpanAttributes.MESSAGE_UNCOMPRESSED_SIZE:
-                        response.ByteSize()
-                }
+                    SpanAttributes.MESSAGE_UNCOMPRESSED_SIZE: response.ByteSize(),
+                },
             )
         self.assertEvent(
             span.events[-1],
@@ -1337,7 +1335,7 @@ class TestOpenTelemetryClientInterceptor(TestBase):
                 # "exception.message": error_message,
                 # "exception.stacktrace": "...",
                 "exception.escaped": str(False),
-            }
+            },
         )
 
     def test_unary_stream_metrics(self):
@@ -1375,7 +1373,7 @@ class TestOpenTelemetryClientInterceptor(TestBase):
                     )
                     self.assertEqual(
                         metric.description,
-                        _expected_metric_names[metric.name][2]
+                        _expected_metric_names[metric.name][2],
                     )
 
                     data_points = list(metric.data.data_points)
@@ -1383,9 +1381,7 @@ class TestOpenTelemetryClientInterceptor(TestBase):
 
                     for point in data_points:
                         if isinstance(metric.data, Histogram):
-                            self.assertIsInstance(
-                                point, HistogramDataPoint
-                            )
+                            self.assertIsInstance(point, HistogramDataPoint)
                             if metric.name == "rpc.client.duration":
                                 self.assertEqual(point.count, 1)
                                 self.assertGreaterEqual(point.sum, 0)
@@ -1396,7 +1392,7 @@ class TestOpenTelemetryClientInterceptor(TestBase):
                                 self.assertEqual(point.count, len(responses))
                                 self.assertEqual(
                                     point.sum,
-                                    sum(r.ByteSize() for r in responses)
+                                    sum(r.ByteSize() for r in responses),
                                 )
                             elif metric.name == "rpc.client.requests_per_rpc":
                                 self.assertEqual(point.count, 1)
@@ -1408,8 +1404,7 @@ class TestOpenTelemetryClientInterceptor(TestBase):
                         self.assertMetricDataPointHasAttributes(
                             point,
                             {
-                                SpanAttributes.RPC_METHOD:
-                                    "ServerStreamingMethod",
+                                SpanAttributes.RPC_METHOD: "ServerStreamingMethod",
                                 SpanAttributes.RPC_SERVICE: "GRPCTestServer",
                                 SpanAttributes.RPC_SYSTEM: "grpc",
                             },
@@ -1418,8 +1413,9 @@ class TestOpenTelemetryClientInterceptor(TestBase):
                             self.assertMetricDataPointHasAttributes(
                                 point,
                                 {
-                                    SpanAttributes.RPC_GRPC_STATUS_CODE:
-                                        grpc.StatusCode.OK.value[0]
+                                    SpanAttributes.RPC_GRPC_STATUS_CODE: grpc.StatusCode.OK.value[
+                                        0
+                                    ]
                                 },
                             )
 
@@ -1462,7 +1458,7 @@ class TestOpenTelemetryClientInterceptor(TestBase):
                     )
                     self.assertEqual(
                         metric.description,
-                        _expected_metric_names[metric.name][2]
+                        _expected_metric_names[metric.name][2],
                     )
 
                     data_points = list(metric.data.data_points)
@@ -1470,9 +1466,7 @@ class TestOpenTelemetryClientInterceptor(TestBase):
 
                     for point in data_points:
                         if isinstance(metric.data, Histogram):
-                            self.assertIsInstance(
-                                point, HistogramDataPoint
-                            )
+                            self.assertIsInstance(point, HistogramDataPoint)
                             if metric.name == "rpc.client.duration":
                                 self.assertEqual(point.count, 1)
                                 self.assertGreaterEqual(point.sum, 0)
@@ -1483,7 +1477,7 @@ class TestOpenTelemetryClientInterceptor(TestBase):
                                 self.assertEqual(point.count, len(responses))
                                 self.assertEqual(
                                     point.sum,
-                                    sum(r.ByteSize() for r in responses)
+                                    sum(r.ByteSize() for r in responses),
                                 )
                             elif metric.name == "rpc.client.requests_per_rpc":
                                 self.assertEqual(point.count, 1)
@@ -1495,8 +1489,7 @@ class TestOpenTelemetryClientInterceptor(TestBase):
                         self.assertMetricDataPointHasAttributes(
                             point,
                             {
-                                SpanAttributes.RPC_METHOD:
-                                    "ServerStreamingMethod",
+                                SpanAttributes.RPC_METHOD: "ServerStreamingMethod",
                                 SpanAttributes.RPC_SERVICE: "GRPCTestServer",
                                 SpanAttributes.RPC_SYSTEM: "grpc",
                             },
@@ -1505,10 +1498,9 @@ class TestOpenTelemetryClientInterceptor(TestBase):
                             self.assertMetricDataPointHasAttributes(
                                 point,
                                 {
-                                    SpanAttributes.RPC_GRPC_STATUS_CODE:
-                                        grpc.StatusCode.INVALID_ARGUMENT.value[
-                                            0
-                                        ]
+                                    SpanAttributes.RPC_GRPC_STATUS_CODE: grpc.StatusCode.INVALID_ARGUMENT.value[
+                                        0
+                                    ]
                                 },
                             )
 
@@ -1565,8 +1557,9 @@ class TestOpenTelemetryClientInterceptor(TestBase):
                 SpanAttributes.RPC_METHOD: "ClientStreamingMethod",
                 SpanAttributes.RPC_SERVICE: "GRPCTestServer",
                 SpanAttributes.RPC_SYSTEM: "grpc",
-                SpanAttributes.RPC_GRPC_STATUS_CODE:
-                    grpc.StatusCode.OK.value[0]
+                SpanAttributes.RPC_GRPC_STATUS_CODE: grpc.StatusCode.OK.value[
+                    0
+                ],
             },
         )
 
@@ -1579,10 +1572,9 @@ class TestOpenTelemetryClientInterceptor(TestBase):
                 {
                     SpanAttributes.MESSAGE_TYPE: "SENT",
                     SpanAttributes.MESSAGE_ID: req_id,
-                    SpanAttributes.MESSAGE_UNCOMPRESSED_SIZE:
-                        request.ByteSize()
+                    SpanAttributes.MESSAGE_UNCOMPRESSED_SIZE: request.ByteSize(),
                 },
-                msg=f"Request ID: {req_id:d}"
+                msg=f"Request ID: {req_id:d}",
             )
         self.assertEvent(
             span.events[len(requests)],
@@ -1590,8 +1582,7 @@ class TestOpenTelemetryClientInterceptor(TestBase):
             {
                 SpanAttributes.MESSAGE_TYPE: "RECEIVED",
                 SpanAttributes.MESSAGE_ID: 1,
-                SpanAttributes.MESSAGE_UNCOMPRESSED_SIZE:
-                    response.ByteSize()
+                SpanAttributes.MESSAGE_UNCOMPRESSED_SIZE: response.ByteSize(),
             },
         )
 
@@ -1628,8 +1619,9 @@ class TestOpenTelemetryClientInterceptor(TestBase):
                 SpanAttributes.RPC_METHOD: "ClientStreamingMethod",
                 SpanAttributes.RPC_SERVICE: "GRPCTestServer",
                 SpanAttributes.RPC_SYSTEM: "grpc",
-                SpanAttributes.RPC_GRPC_STATUS_CODE:
-                    grpc.StatusCode.FAILED_PRECONDITION.value[0]
+                SpanAttributes.RPC_GRPC_STATUS_CODE: grpc.StatusCode.FAILED_PRECONDITION.value[
+                    0
+                ],
             },
         )
 
@@ -1649,10 +1641,9 @@ class TestOpenTelemetryClientInterceptor(TestBase):
                 {
                     SpanAttributes.MESSAGE_TYPE: "SENT",
                     SpanAttributes.MESSAGE_ID: req_id,
-                    SpanAttributes.MESSAGE_UNCOMPRESSED_SIZE:
-                        request.ByteSize()
+                    SpanAttributes.MESSAGE_UNCOMPRESSED_SIZE: request.ByteSize(),
                 },
-                msg=f"Request ID: {req_id:d}"
+                msg=f"Request ID: {req_id:d}",
             )
         self.assertEvent(
             span.events[len(requests)],
@@ -1662,7 +1653,7 @@ class TestOpenTelemetryClientInterceptor(TestBase):
                 # "exception.message": error_message,
                 # "exception.stacktrace": "...",
                 "exception.escaped": str(False),
-            }
+            },
         )
 
     def test_stream_unary_cancel_on_server_side(self):
@@ -1698,8 +1689,9 @@ class TestOpenTelemetryClientInterceptor(TestBase):
                 SpanAttributes.RPC_METHOD: "ClientStreamingMethod",
                 SpanAttributes.RPC_SERVICE: "GRPCTestServer",
                 SpanAttributes.RPC_SYSTEM: "grpc",
-                SpanAttributes.RPC_GRPC_STATUS_CODE:
-                    grpc.StatusCode.CANCELLED.value[0]
+                SpanAttributes.RPC_GRPC_STATUS_CODE: grpc.StatusCode.CANCELLED.value[
+                    0
+                ],
             },
         )
 
@@ -1720,10 +1712,9 @@ class TestOpenTelemetryClientInterceptor(TestBase):
                 {
                     SpanAttributes.MESSAGE_TYPE: "SENT",
                     SpanAttributes.MESSAGE_ID: req_id,
-                    SpanAttributes.MESSAGE_UNCOMPRESSED_SIZE:
-                        request.ByteSize()
+                    SpanAttributes.MESSAGE_UNCOMPRESSED_SIZE: request.ByteSize(),
                 },
-                msg=f"Request ID: {req_id:d}"
+                msg=f"Request ID: {req_id:d}",
             )
         self.assertEvent(
             span.events[len(requests)],
@@ -1733,7 +1724,7 @@ class TestOpenTelemetryClientInterceptor(TestBase):
                 # "exception.message": error_message,
                 # "exception.stacktrace": "...",
                 "exception.escaped": str(False),
-            }
+            },
         )
 
     def test_stream_unary_error(self):
@@ -1769,8 +1760,9 @@ class TestOpenTelemetryClientInterceptor(TestBase):
                 SpanAttributes.RPC_METHOD: "ClientStreamingMethod",
                 SpanAttributes.RPC_SERVICE: "GRPCTestServer",
                 SpanAttributes.RPC_SYSTEM: "grpc",
-                SpanAttributes.RPC_GRPC_STATUS_CODE:
-                    grpc.StatusCode.INVALID_ARGUMENT.value[0]
+                SpanAttributes.RPC_GRPC_STATUS_CODE: grpc.StatusCode.INVALID_ARGUMENT.value[
+                    0
+                ],
             },
         )
 
@@ -1790,10 +1782,9 @@ class TestOpenTelemetryClientInterceptor(TestBase):
                 {
                     SpanAttributes.MESSAGE_TYPE: "SENT",
                     SpanAttributes.MESSAGE_ID: req_id,
-                    SpanAttributes.MESSAGE_UNCOMPRESSED_SIZE:
-                        request.ByteSize()
+                    SpanAttributes.MESSAGE_UNCOMPRESSED_SIZE: request.ByteSize(),
                 },
-                msg=f"Request ID: {req_id:d}"
+                msg=f"Request ID: {req_id:d}",
             )
         self.assertEvent(
             span.events[len(requests)],
@@ -1803,7 +1794,7 @@ class TestOpenTelemetryClientInterceptor(TestBase):
                 # "exception.message": error_message,
                 # "exception.stacktrace": "...",
                 "exception.escaped": str(False),
-            }
+            },
         )
 
     def test_stream_unary_exception(self):
@@ -1839,8 +1830,9 @@ class TestOpenTelemetryClientInterceptor(TestBase):
                 SpanAttributes.RPC_METHOD: "ClientStreamingMethod",
                 SpanAttributes.RPC_SERVICE: "GRPCTestServer",
                 SpanAttributes.RPC_SYSTEM: "grpc",
-                SpanAttributes.RPC_GRPC_STATUS_CODE:
-                    grpc.StatusCode.UNKNOWN.value[0]
+                SpanAttributes.RPC_GRPC_STATUS_CODE: grpc.StatusCode.UNKNOWN.value[
+                    0
+                ],
             },
         )
 
@@ -1861,10 +1853,9 @@ class TestOpenTelemetryClientInterceptor(TestBase):
                 {
                     SpanAttributes.MESSAGE_TYPE: "SENT",
                     SpanAttributes.MESSAGE_ID: req_id,
-                    SpanAttributes.MESSAGE_UNCOMPRESSED_SIZE:
-                        request.ByteSize()
+                    SpanAttributes.MESSAGE_UNCOMPRESSED_SIZE: request.ByteSize(),
                 },
-                msg=f"Request ID: {req_id:d}"
+                msg=f"Request ID: {req_id:d}",
             )
         self.assertEvent(
             span.events[len(requests)],
@@ -1874,7 +1865,7 @@ class TestOpenTelemetryClientInterceptor(TestBase):
                 # "exception.message": error_message,
                 # "exception.stacktrace": "...",
                 "exception.escaped": str(False),
-            }
+            },
         )
 
     def test_stream_unary_future(self):
@@ -1925,8 +1916,9 @@ class TestOpenTelemetryClientInterceptor(TestBase):
                 SpanAttributes.RPC_METHOD: "ClientStreamingMethod",
                 SpanAttributes.RPC_SERVICE: "GRPCTestServer",
                 SpanAttributes.RPC_SYSTEM: "grpc",
-                SpanAttributes.RPC_GRPC_STATUS_CODE:
-                    grpc.StatusCode.OK.value[0]
+                SpanAttributes.RPC_GRPC_STATUS_CODE: grpc.StatusCode.OK.value[
+                    0
+                ],
             },
         )
 
@@ -1939,10 +1931,9 @@ class TestOpenTelemetryClientInterceptor(TestBase):
                 {
                     SpanAttributes.MESSAGE_TYPE: "SENT",
                     SpanAttributes.MESSAGE_ID: req_id,
-                    SpanAttributes.MESSAGE_UNCOMPRESSED_SIZE:
-                        request.ByteSize()
+                    SpanAttributes.MESSAGE_UNCOMPRESSED_SIZE: request.ByteSize(),
                 },
-                msg=f"Request ID: {req_id:d}"
+                msg=f"Request ID: {req_id:d}",
             )
         self.assertEvent(
             span.events[len(requests)],
@@ -1950,8 +1941,7 @@ class TestOpenTelemetryClientInterceptor(TestBase):
             {
                 SpanAttributes.MESSAGE_TYPE: "RECEIVED",
                 SpanAttributes.MESSAGE_ID: 1,
-                SpanAttributes.MESSAGE_UNCOMPRESSED_SIZE:
-                    response.ByteSize()
+                SpanAttributes.MESSAGE_UNCOMPRESSED_SIZE: response.ByteSize(),
             },
         )
 
@@ -2006,8 +1996,9 @@ class TestOpenTelemetryClientInterceptor(TestBase):
                 SpanAttributes.RPC_METHOD: "ClientStreamingMethod",
                 SpanAttributes.RPC_SERVICE: "GRPCTestServer",
                 SpanAttributes.RPC_SYSTEM: "grpc",
-                SpanAttributes.RPC_GRPC_STATUS_CODE:
-                    grpc.StatusCode.CANCELLED.value[0]
+                SpanAttributes.RPC_GRPC_STATUS_CODE: grpc.StatusCode.CANCELLED.value[
+                    0
+                ],
             },
         )
 
@@ -2027,10 +2018,9 @@ class TestOpenTelemetryClientInterceptor(TestBase):
                 {
                     SpanAttributes.MESSAGE_TYPE: "SENT",
                     SpanAttributes.MESSAGE_ID: req_id,
-                    SpanAttributes.MESSAGE_UNCOMPRESSED_SIZE:
-                        request.ByteSize()
+                    SpanAttributes.MESSAGE_UNCOMPRESSED_SIZE: request.ByteSize(),
                 },
-                msg=f"Request ID: {req_id:d}"
+                msg=f"Request ID: {req_id:d}",
             )
 
     def test_stream_unary_future_error(self):
@@ -2081,8 +2071,9 @@ class TestOpenTelemetryClientInterceptor(TestBase):
                 SpanAttributes.RPC_METHOD: "ClientStreamingMethod",
                 SpanAttributes.RPC_SERVICE: "GRPCTestServer",
                 SpanAttributes.RPC_SYSTEM: "grpc",
-                SpanAttributes.RPC_GRPC_STATUS_CODE:
-                    grpc.StatusCode.INVALID_ARGUMENT.value[0]
+                SpanAttributes.RPC_GRPC_STATUS_CODE: grpc.StatusCode.INVALID_ARGUMENT.value[
+                    0
+                ],
             },
         )
 
@@ -2102,10 +2093,9 @@ class TestOpenTelemetryClientInterceptor(TestBase):
                 {
                     SpanAttributes.MESSAGE_TYPE: "SENT",
                     SpanAttributes.MESSAGE_ID: req_id,
-                    SpanAttributes.MESSAGE_UNCOMPRESSED_SIZE:
-                        request.ByteSize()
+                    SpanAttributes.MESSAGE_UNCOMPRESSED_SIZE: request.ByteSize(),
                 },
-                msg=f"Request ID: {req_id:d}"
+                msg=f"Request ID: {req_id:d}",
             )
         self.assertEvent(
             span.events[len(requests)],
@@ -2115,7 +2105,7 @@ class TestOpenTelemetryClientInterceptor(TestBase):
                 # "exception.message": error_message,
                 # "exception.stacktrace": "...",
                 "exception.escaped": str(False),
-            }
+            },
         )
 
     def test_stream_unary_metrics(self):
@@ -2159,7 +2149,7 @@ class TestOpenTelemetryClientInterceptor(TestBase):
                     )
                     self.assertEqual(
                         metric.description,
-                        _expected_metric_names[metric.name][2]
+                        _expected_metric_names[metric.name][2],
                     )
 
                     data_points = list(metric.data.data_points)
@@ -2167,9 +2157,7 @@ class TestOpenTelemetryClientInterceptor(TestBase):
 
                     for point in data_points:
                         if isinstance(metric.data, Histogram):
-                            self.assertIsInstance(
-                                point, HistogramDataPoint
-                            )
+                            self.assertIsInstance(point, HistogramDataPoint)
                             if metric.name == "rpc.client.duration":
                                 self.assertEqual(point.count, 1)
                                 self.assertGreaterEqual(point.sum, 0)
@@ -2177,7 +2165,7 @@ class TestOpenTelemetryClientInterceptor(TestBase):
                                 self.assertEqual(point.count, len(requests))
                                 self.assertEqual(
                                     point.sum,
-                                    sum(r.ByteSize() for r in requests)
+                                    sum(r.ByteSize() for r in requests),
                                 )
                             elif metric.name == "rpc.client.response.size":
                                 self.assertEqual(point.count, 1)
@@ -2194,8 +2182,7 @@ class TestOpenTelemetryClientInterceptor(TestBase):
                         self.assertMetricDataPointHasAttributes(
                             point,
                             {
-                                SpanAttributes.RPC_METHOD:
-                                    "ClientStreamingMethod",
+                                SpanAttributes.RPC_METHOD: "ClientStreamingMethod",
                                 SpanAttributes.RPC_SERVICE: "GRPCTestServer",
                                 SpanAttributes.RPC_SYSTEM: "grpc",
                             },
@@ -2204,8 +2191,9 @@ class TestOpenTelemetryClientInterceptor(TestBase):
                             self.assertMetricDataPointHasAttributes(
                                 point,
                                 {
-                                    SpanAttributes.RPC_GRPC_STATUS_CODE:
-                                        grpc.StatusCode.OK.value[0]
+                                    SpanAttributes.RPC_GRPC_STATUS_CODE: grpc.StatusCode.OK.value[
+                                        0
+                                    ]
                                 },
                             )
 
@@ -2238,8 +2226,9 @@ class TestOpenTelemetryClientInterceptor(TestBase):
                     scope_metric, opentelemetry.instrumentation.grpc
                 )
                 self.assertEqual(
-                    len(scope_metric.metrics), len(_expected_metric_names) - 2,
-                    msg=", ".join([m.name for m in scope_metric.metrics])
+                    len(scope_metric.metrics),
+                    len(_expected_metric_names) - 2,
+                    msg=", ".join([m.name for m in scope_metric.metrics]),
                 )
                 self.assertNotIn(
                     "rpc.client.response.size", scope_metric.metrics
@@ -2258,7 +2247,7 @@ class TestOpenTelemetryClientInterceptor(TestBase):
                     )
                     self.assertEqual(
                         metric.description,
-                        _expected_metric_names[metric.name][2]
+                        _expected_metric_names[metric.name][2],
                     )
 
                     data_points = list(metric.data.data_points)
@@ -2266,9 +2255,7 @@ class TestOpenTelemetryClientInterceptor(TestBase):
 
                     for point in data_points:
                         if isinstance(metric.data, Histogram):
-                            self.assertIsInstance(
-                                point, HistogramDataPoint
-                            )
+                            self.assertIsInstance(point, HistogramDataPoint)
                             if metric.name == "rpc.client.duration":
                                 self.assertEqual(point.count, 1)
                                 self.assertGreaterEqual(point.sum, 0)
@@ -2276,7 +2263,7 @@ class TestOpenTelemetryClientInterceptor(TestBase):
                                 self.assertEqual(point.count, len(requests))
                                 self.assertEqual(
                                     point.sum,
-                                    sum(r.ByteSize() for r in requests)
+                                    sum(r.ByteSize() for r in requests),
                                 )
                             elif metric.name == "rpc.client.requests_per_rpc":
                                 self.assertEqual(point.count, 1)
@@ -2285,8 +2272,7 @@ class TestOpenTelemetryClientInterceptor(TestBase):
                         self.assertMetricDataPointHasAttributes(
                             point,
                             {
-                                SpanAttributes.RPC_METHOD:
-                                    "ClientStreamingMethod",
+                                SpanAttributes.RPC_METHOD: "ClientStreamingMethod",
                                 SpanAttributes.RPC_SERVICE: "GRPCTestServer",
                                 SpanAttributes.RPC_SYSTEM: "grpc",
                             },
@@ -2295,10 +2281,9 @@ class TestOpenTelemetryClientInterceptor(TestBase):
                             self.assertMetricDataPointHasAttributes(
                                 point,
                                 {
-                                    SpanAttributes.RPC_GRPC_STATUS_CODE:
-                                        grpc.StatusCode.INVALID_ARGUMENT.value[
-                                            0
-                                        ]
+                                    SpanAttributes.RPC_GRPC_STATUS_CODE: grpc.StatusCode.INVALID_ARGUMENT.value[
+                                        0
+                                    ]
                                 },
                             )
 
@@ -2356,7 +2341,7 @@ class TestOpenTelemetryClientInterceptor(TestBase):
                     )
                     self.assertEqual(
                         metric.description,
-                        _expected_metric_names[metric.name][2]
+                        _expected_metric_names[metric.name][2],
                     )
 
                     data_points = list(metric.data.data_points)
@@ -2364,9 +2349,7 @@ class TestOpenTelemetryClientInterceptor(TestBase):
 
                     for point in data_points:
                         if isinstance(metric.data, Histogram):
-                            self.assertIsInstance(
-                                point, HistogramDataPoint
-                            )
+                            self.assertIsInstance(point, HistogramDataPoint)
                             if metric.name == "rpc.client.duration":
                                 self.assertEqual(point.count, 1)
                                 self.assertGreaterEqual(point.sum, 0)
@@ -2374,7 +2357,7 @@ class TestOpenTelemetryClientInterceptor(TestBase):
                                 self.assertEqual(point.count, len(requests))
                                 self.assertEqual(
                                     point.sum,
-                                    sum(r.ByteSize() for r in requests)
+                                    sum(r.ByteSize() for r in requests),
                                 )
                             elif metric.name == "rpc.client.response.size":
                                 self.assertEqual(point.count, 1)
@@ -2391,8 +2374,7 @@ class TestOpenTelemetryClientInterceptor(TestBase):
                         self.assertMetricDataPointHasAttributes(
                             point,
                             {
-                                SpanAttributes.RPC_METHOD:
-                                    "ClientStreamingMethod",
+                                SpanAttributes.RPC_METHOD: "ClientStreamingMethod",
                                 SpanAttributes.RPC_SERVICE: "GRPCTestServer",
                                 SpanAttributes.RPC_SYSTEM: "grpc",
                             },
@@ -2401,8 +2383,9 @@ class TestOpenTelemetryClientInterceptor(TestBase):
                             self.assertMetricDataPointHasAttributes(
                                 point,
                                 {
-                                    SpanAttributes.RPC_GRPC_STATUS_CODE:
-                                        grpc.StatusCode.OK.value[0]
+                                    SpanAttributes.RPC_GRPC_STATUS_CODE: grpc.StatusCode.OK.value[
+                                        0
+                                    ]
                                 },
                             )
 
@@ -2469,8 +2452,9 @@ class TestOpenTelemetryClientInterceptor(TestBase):
                 SpanAttributes.RPC_METHOD: "BidirectionalStreamingMethod",
                 SpanAttributes.RPC_SERVICE: "GRPCTestServer",
                 SpanAttributes.RPC_SYSTEM: "grpc",
-                SpanAttributes.RPC_GRPC_STATUS_CODE:
-                    grpc.StatusCode.OK.value[0]
+                SpanAttributes.RPC_GRPC_STATUS_CODE: grpc.StatusCode.OK.value[
+                    0
+                ],
             },
         )
 
@@ -2489,9 +2473,10 @@ class TestOpenTelemetryClientInterceptor(TestBase):
                     {
                         SpanAttributes.MESSAGE_TYPE: "SENT",
                         SpanAttributes.MESSAGE_ID: req_id,
-                        SpanAttributes.MESSAGE_UNCOMPRESSED_SIZE:
-                            requests[req_id - 1].ByteSize()
-                    }
+                        SpanAttributes.MESSAGE_UNCOMPRESSED_SIZE: requests[
+                            req_id - 1
+                        ].ByteSize(),
+                    },
                 )
             elif event.attributes[SpanAttributes.MESSAGE_TYPE] == "RECEIVED":
                 res_id += 1
@@ -2501,9 +2486,10 @@ class TestOpenTelemetryClientInterceptor(TestBase):
                     {
                         SpanAttributes.MESSAGE_TYPE: "RECEIVED",
                         SpanAttributes.MESSAGE_ID: res_id,
-                        SpanAttributes.MESSAGE_UNCOMPRESSED_SIZE:
-                            responses[res_id - 1].ByteSize()
-                    }
+                        SpanAttributes.MESSAGE_UNCOMPRESSED_SIZE: responses[
+                            res_id - 1
+                        ].ByteSize(),
+                    },
                 )
             else:
                 self.fail(
@@ -2558,8 +2544,9 @@ class TestOpenTelemetryClientInterceptor(TestBase):
                 SpanAttributes.RPC_METHOD: "BidirectionalStreamingMethod",
                 SpanAttributes.RPC_SERVICE: "GRPCTestServer",
                 SpanAttributes.RPC_SYSTEM: "grpc",
-                SpanAttributes.RPC_GRPC_STATUS_CODE:
-                    grpc.StatusCode.FAILED_PRECONDITION.value[0],
+                SpanAttributes.RPC_GRPC_STATUS_CODE: grpc.StatusCode.FAILED_PRECONDITION.value[
+                    0
+                ],
             },
         )
 
@@ -2585,9 +2572,10 @@ class TestOpenTelemetryClientInterceptor(TestBase):
                     {
                         SpanAttributes.MESSAGE_TYPE: "SENT",
                         SpanAttributes.MESSAGE_ID: req_id,
-                        SpanAttributes.MESSAGE_UNCOMPRESSED_SIZE:
-                            requests[req_id - 1].ByteSize()
-                    }
+                        SpanAttributes.MESSAGE_UNCOMPRESSED_SIZE: requests[
+                            req_id - 1
+                        ].ByteSize(),
+                    },
                 )
             elif event.attributes[SpanAttributes.MESSAGE_TYPE] == "RECEIVED":
                 res_id += 1
@@ -2597,9 +2585,10 @@ class TestOpenTelemetryClientInterceptor(TestBase):
                     {
                         SpanAttributes.MESSAGE_TYPE: "RECEIVED",
                         SpanAttributes.MESSAGE_ID: res_id,
-                        SpanAttributes.MESSAGE_UNCOMPRESSED_SIZE:
-                            responses[res_id - 1].ByteSize()
-                    }
+                        SpanAttributes.MESSAGE_UNCOMPRESSED_SIZE: responses[
+                            res_id - 1
+                        ].ByteSize(),
+                    },
                 )
             else:
                 self.fail(
@@ -2617,7 +2606,7 @@ class TestOpenTelemetryClientInterceptor(TestBase):
                 # "exception.message": error_message,
                 # "exception.stacktrace": "...",
                 "exception.escaped": str(False),
-            }
+            },
         )
 
     def test_stream_stream_cancel_on_client_side(self):
@@ -2667,8 +2656,9 @@ class TestOpenTelemetryClientInterceptor(TestBase):
                 SpanAttributes.RPC_METHOD: "BidirectionalStreamingMethod",
                 SpanAttributes.RPC_SERVICE: "GRPCTestServer",
                 SpanAttributes.RPC_SYSTEM: "grpc",
-                SpanAttributes.RPC_GRPC_STATUS_CODE:
-                    grpc.StatusCode.CANCELLED.value[0],
+                SpanAttributes.RPC_GRPC_STATUS_CODE: grpc.StatusCode.CANCELLED.value[
+                    0
+                ],
             },
         )
 
@@ -2676,13 +2666,14 @@ class TestOpenTelemetryClientInterceptor(TestBase):
         self.assertEqual(span.status.status_code, trace.StatusCode.ERROR)
         self.assertEqual(
             span.status.description,
-            f"{grpc.StatusCode.CANCELLED}: Locally cancelled by application!"
+            f"{grpc.StatusCode.CANCELLED}: Locally cancelled by application!",
         )
 
         # check events
         self.assertGreaterEqual(
-            len(span.events), len(requests) + len(responses),
-            msg=", ".join([e.name for e in span.events])
+            len(span.events),
+            len(requests) + len(responses),
+            msg=", ".join([e.name for e in span.events]),
         )
         # requests and responses occur random
         req_id = 0
@@ -2698,11 +2689,14 @@ class TestOpenTelemetryClientInterceptor(TestBase):
                         {
                             SpanAttributes.MESSAGE_TYPE: "SENT",
                             SpanAttributes.MESSAGE_ID: req_id,
-                            SpanAttributes.MESSAGE_UNCOMPRESSED_SIZE:
-                                requests[req_id - 1].ByteSize()
-                        }
+                            SpanAttributes.MESSAGE_UNCOMPRESSED_SIZE: requests[
+                                req_id - 1
+                            ].ByteSize(),
+                        },
                     )
-                elif event.attributes[SpanAttributes.MESSAGE_TYPE] == "RECEIVED":
+                elif (
+                    event.attributes[SpanAttributes.MESSAGE_TYPE] == "RECEIVED"
+                ):
                     res_id += 1
                     self.assertEvent(
                         event,
@@ -2710,9 +2704,10 @@ class TestOpenTelemetryClientInterceptor(TestBase):
                         {
                             SpanAttributes.MESSAGE_TYPE: "RECEIVED",
                             SpanAttributes.MESSAGE_ID: res_id,
-                            SpanAttributes.MESSAGE_UNCOMPRESSED_SIZE:
-                                responses[res_id - 1].ByteSize()
-                        }
+                            SpanAttributes.MESSAGE_UNCOMPRESSED_SIZE: responses[
+                                res_id - 1
+                            ].ByteSize(),
+                        },
                     )
                 else:
                     self.fail(
@@ -2728,7 +2723,7 @@ class TestOpenTelemetryClientInterceptor(TestBase):
                         # "exception.message": error_message,
                         # "exception.stacktrace": "...",
                         "exception.escaped": str(False),
-                    }
+                    },
                 )
                 self.assertEqual(event_id, len(span.events))
             else:
@@ -2781,8 +2776,9 @@ class TestOpenTelemetryClientInterceptor(TestBase):
                 SpanAttributes.RPC_METHOD: "BidirectionalStreamingMethod",
                 SpanAttributes.RPC_SERVICE: "GRPCTestServer",
                 SpanAttributes.RPC_SYSTEM: "grpc",
-                SpanAttributes.RPC_GRPC_STATUS_CODE:
-                    grpc.StatusCode.CANCELLED.value[0],
+                SpanAttributes.RPC_GRPC_STATUS_CODE: grpc.StatusCode.CANCELLED.value[
+                    0
+                ],
             },
         )
 
@@ -2809,9 +2805,10 @@ class TestOpenTelemetryClientInterceptor(TestBase):
                     {
                         SpanAttributes.MESSAGE_TYPE: "SENT",
                         SpanAttributes.MESSAGE_ID: req_id,
-                        SpanAttributes.MESSAGE_UNCOMPRESSED_SIZE:
-                            requests[req_id - 1].ByteSize()
-                    }
+                        SpanAttributes.MESSAGE_UNCOMPRESSED_SIZE: requests[
+                            req_id - 1
+                        ].ByteSize(),
+                    },
                 )
             elif event.attributes[SpanAttributes.MESSAGE_TYPE] == "RECEIVED":
                 res_id += 1
@@ -2821,9 +2818,10 @@ class TestOpenTelemetryClientInterceptor(TestBase):
                     {
                         SpanAttributes.MESSAGE_TYPE: "RECEIVED",
                         SpanAttributes.MESSAGE_ID: res_id,
-                        SpanAttributes.MESSAGE_UNCOMPRESSED_SIZE:
-                            responses[res_id - 1].ByteSize()
-                    }
+                        SpanAttributes.MESSAGE_UNCOMPRESSED_SIZE: responses[
+                            res_id - 1
+                        ].ByteSize(),
+                    },
                 )
             else:
                 self.fail(
@@ -2841,7 +2839,7 @@ class TestOpenTelemetryClientInterceptor(TestBase):
                 # "exception.message": error_message,
                 # "exception.stacktrace": "...",
                 "exception.escaped": str(False),
-            }
+            },
         )
 
     def test_stream_stream_error(self):
@@ -2889,8 +2887,9 @@ class TestOpenTelemetryClientInterceptor(TestBase):
                 SpanAttributes.RPC_METHOD: "BidirectionalStreamingMethod",
                 SpanAttributes.RPC_SERVICE: "GRPCTestServer",
                 SpanAttributes.RPC_SYSTEM: "grpc",
-                SpanAttributes.RPC_GRPC_STATUS_CODE:
-                    grpc.StatusCode.INVALID_ARGUMENT.value[0],
+                SpanAttributes.RPC_GRPC_STATUS_CODE: grpc.StatusCode.INVALID_ARGUMENT.value[
+                    0
+                ],
             },
         )
 
@@ -2916,9 +2915,10 @@ class TestOpenTelemetryClientInterceptor(TestBase):
                     {
                         SpanAttributes.MESSAGE_TYPE: "SENT",
                         SpanAttributes.MESSAGE_ID: req_id,
-                        SpanAttributes.MESSAGE_UNCOMPRESSED_SIZE:
-                            requests[req_id - 1].ByteSize()
-                    }
+                        SpanAttributes.MESSAGE_UNCOMPRESSED_SIZE: requests[
+                            req_id - 1
+                        ].ByteSize(),
+                    },
                 )
             elif event.attributes[SpanAttributes.MESSAGE_TYPE] == "RECEIVED":
                 res_id += 1
@@ -2928,9 +2928,10 @@ class TestOpenTelemetryClientInterceptor(TestBase):
                     {
                         SpanAttributes.MESSAGE_TYPE: "RECEIVED",
                         SpanAttributes.MESSAGE_ID: res_id,
-                        SpanAttributes.MESSAGE_UNCOMPRESSED_SIZE:
-                            responses[res_id - 1].ByteSize()
-                    }
+                        SpanAttributes.MESSAGE_UNCOMPRESSED_SIZE: responses[
+                            res_id - 1
+                        ].ByteSize(),
+                    },
                 )
             else:
                 self.fail(
@@ -2948,7 +2949,7 @@ class TestOpenTelemetryClientInterceptor(TestBase):
                 # "exception.message": error_message,
                 # "exception.stacktrace": "...",
                 "exception.escaped": str(False),
-            }
+            },
         )
 
     def test_stream_stream_exception(self):
@@ -2979,7 +2980,9 @@ class TestOpenTelemetryClientInterceptor(TestBase):
         spans_list = self.memory_exporter.get_finished_spans()
         self.assertEqual(len(spans_list), 1)
         span = spans_list[0]
-        self.assertEqual(span.name, "/GRPCTestServer/BidirectionalStreamingMethod")
+        self.assertEqual(
+            span.name, "/GRPCTestServer/BidirectionalStreamingMethod"
+        )
         self.assertIs(span.kind, trace.SpanKind.CLIENT)
 
         # check version and name in span's instrumentation info
@@ -2994,8 +2997,9 @@ class TestOpenTelemetryClientInterceptor(TestBase):
                 SpanAttributes.RPC_METHOD: "BidirectionalStreamingMethod",
                 SpanAttributes.RPC_SERVICE: "GRPCTestServer",
                 SpanAttributes.RPC_SYSTEM: "grpc",
-                SpanAttributes.RPC_GRPC_STATUS_CODE:
-                    grpc.StatusCode.UNKNOWN.value[0],
+                SpanAttributes.RPC_GRPC_STATUS_CODE: grpc.StatusCode.UNKNOWN.value[
+                    0
+                ],
             },
         )
 
@@ -3022,9 +3026,10 @@ class TestOpenTelemetryClientInterceptor(TestBase):
                     {
                         SpanAttributes.MESSAGE_TYPE: "SENT",
                         SpanAttributes.MESSAGE_ID: req_id,
-                        SpanAttributes.MESSAGE_UNCOMPRESSED_SIZE:
-                            requests[req_id - 1].ByteSize()
-                    }
+                        SpanAttributes.MESSAGE_UNCOMPRESSED_SIZE: requests[
+                            req_id - 1
+                        ].ByteSize(),
+                    },
                 )
             elif event.attributes[SpanAttributes.MESSAGE_TYPE] == "RECEIVED":
                 res_id += 1
@@ -3034,9 +3039,10 @@ class TestOpenTelemetryClientInterceptor(TestBase):
                     {
                         SpanAttributes.MESSAGE_TYPE: "RECEIVED",
                         SpanAttributes.MESSAGE_ID: res_id,
-                        SpanAttributes.MESSAGE_UNCOMPRESSED_SIZE:
-                            responses[res_id - 1].ByteSize()
-                    }
+                        SpanAttributes.MESSAGE_UNCOMPRESSED_SIZE: responses[
+                            res_id - 1
+                        ].ByteSize(),
+                    },
                 )
             else:
                 self.fail(
@@ -3054,7 +3060,7 @@ class TestOpenTelemetryClientInterceptor(TestBase):
                 # "exception.message": error_message,
                 # "exception.stacktrace": "...",
                 "exception.escaped": str(False),
-            }
+            },
         )
 
     def test_stream_stream_metrics(self):
@@ -3103,7 +3109,7 @@ class TestOpenTelemetryClientInterceptor(TestBase):
                     )
                     self.assertEqual(
                         metric.description,
-                        _expected_metric_names[metric.name][2]
+                        _expected_metric_names[metric.name][2],
                     )
 
                     data_points = list(metric.data.data_points)
@@ -3111,9 +3117,7 @@ class TestOpenTelemetryClientInterceptor(TestBase):
 
                     for point in data_points:
                         if isinstance(metric.data, Histogram):
-                            self.assertIsInstance(
-                                point, HistogramDataPoint
-                            )
+                            self.assertIsInstance(point, HistogramDataPoint)
                             if metric.name == "rpc.client.duration":
                                 self.assertEqual(point.count, 1)
                                 self.assertGreaterEqual(point.sum, 0)
@@ -3121,13 +3125,13 @@ class TestOpenTelemetryClientInterceptor(TestBase):
                                 self.assertEqual(point.count, len(requests))
                                 self.assertEqual(
                                     point.sum,
-                                    sum(r.ByteSize() for r in requests)
+                                    sum(r.ByteSize() for r in requests),
                                 )
                             elif metric.name == "rpc.client.response.size":
                                 self.assertEqual(point.count, len(responses))
                                 self.assertEqual(
                                     point.sum,
-                                    sum(r.ByteSize() for r in responses)
+                                    sum(r.ByteSize() for r in responses),
                                 )
                             elif metric.name == "rpc.client.requests_per_rpc":
                                 self.assertEqual(point.count, 1)
@@ -3139,8 +3143,7 @@ class TestOpenTelemetryClientInterceptor(TestBase):
                         self.assertMetricDataPointHasAttributes(
                             point,
                             {
-                                SpanAttributes.RPC_METHOD:
-                                    "BidirectionalStreamingMethod",
+                                SpanAttributes.RPC_METHOD: "BidirectionalStreamingMethod",
                                 SpanAttributes.RPC_SERVICE: "GRPCTestServer",
                                 SpanAttributes.RPC_SYSTEM: "grpc",
                             },
@@ -3149,8 +3152,9 @@ class TestOpenTelemetryClientInterceptor(TestBase):
                             self.assertMetricDataPointHasAttributes(
                                 point,
                                 {
-                                    SpanAttributes.RPC_GRPC_STATUS_CODE:
-                                        grpc.StatusCode.OK.value[0]
+                                    SpanAttributes.RPC_GRPC_STATUS_CODE: grpc.StatusCode.OK.value[
+                                        0
+                                    ]
                                 },
                             )
 
@@ -3193,8 +3197,9 @@ class TestOpenTelemetryClientInterceptor(TestBase):
                     scope_metric, opentelemetry.instrumentation.grpc
                 )
                 self.assertEqual(
-                    len(scope_metric.metrics), len(_expected_metric_names),
-                    msg=", ".join([m.name for m in scope_metric.metrics])
+                    len(scope_metric.metrics),
+                    len(_expected_metric_names),
+                    msg=", ".join([m.name for m in scope_metric.metrics]),
                 )
 
                 for metric in scope_metric.metrics:
@@ -3207,7 +3212,7 @@ class TestOpenTelemetryClientInterceptor(TestBase):
                     )
                     self.assertEqual(
                         metric.description,
-                        _expected_metric_names[metric.name][2]
+                        _expected_metric_names[metric.name][2],
                     )
 
                     data_points = list(metric.data.data_points)
@@ -3215,9 +3220,7 @@ class TestOpenTelemetryClientInterceptor(TestBase):
 
                     for point in data_points:
                         if isinstance(metric.data, Histogram):
-                            self.assertIsInstance(
-                                point, HistogramDataPoint
-                            )
+                            self.assertIsInstance(point, HistogramDataPoint)
                             if metric.name == "rpc.client.duration":
                                 self.assertEqual(point.count, 1)
                                 self.assertGreaterEqual(point.sum, 0)
@@ -3225,13 +3228,13 @@ class TestOpenTelemetryClientInterceptor(TestBase):
                                 self.assertEqual(point.count, len(requests))
                                 self.assertEqual(
                                     point.sum,
-                                    sum(r.ByteSize() for r in requests)
+                                    sum(r.ByteSize() for r in requests),
                                 )
                             elif metric.name == "rpc.client.response.size":
                                 self.assertEqual(point.count, len(responses))
                                 self.assertEqual(
                                     point.sum,
-                                    sum(r.ByteSize() for r in responses)
+                                    sum(r.ByteSize() for r in responses),
                                 )
                             elif metric.name == "rpc.client.requests_per_rpc":
                                 self.assertEqual(point.count, 1)
@@ -3243,8 +3246,7 @@ class TestOpenTelemetryClientInterceptor(TestBase):
                         self.assertMetricDataPointHasAttributes(
                             point,
                             {
-                                SpanAttributes.RPC_METHOD:
-                                    "BidirectionalStreamingMethod",
+                                SpanAttributes.RPC_METHOD: "BidirectionalStreamingMethod",
                                 SpanAttributes.RPC_SERVICE: "GRPCTestServer",
                                 SpanAttributes.RPC_SYSTEM: "grpc",
                             },
@@ -3253,10 +3255,9 @@ class TestOpenTelemetryClientInterceptor(TestBase):
                             self.assertMetricDataPointHasAttributes(
                                 point,
                                 {
-                                    SpanAttributes.RPC_GRPC_STATUS_CODE:
-                                        grpc.StatusCode.INVALID_ARGUMENT.value[
-                                            0
-                                        ]
+                                    SpanAttributes.RPC_GRPC_STATUS_CODE: grpc.StatusCode.INVALID_ARGUMENT.value[
+                                        0
+                                    ]
                                 },
                             )
 
@@ -3307,9 +3308,9 @@ class TestOpenTelemetryClientInterceptor(TestBase):
                     metadata=None,
                     credentials=None,
                     wait_for_ready=False,
-                    compression=None
+                    compression=None,
                 ),
-                request
+                request,
             )
 
             assert len(carrier) == 2
