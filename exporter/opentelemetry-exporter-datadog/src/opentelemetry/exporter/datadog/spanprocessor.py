@@ -127,7 +127,6 @@ class DatadogExportSpanProcessor(SpanProcessor):
                         # missing spans will be sent when calling flush
                         break
 
-
             # subtract the duration of this export call to the next timeout
             start = time_ns()
             self.export()
