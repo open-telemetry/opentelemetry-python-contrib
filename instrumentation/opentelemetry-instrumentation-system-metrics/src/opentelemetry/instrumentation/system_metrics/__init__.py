@@ -276,7 +276,7 @@ class SystemMetricsInstrumentor(BaseInstrumentor):
             self._meter.create_observable_counter(
                 name="system.disk.operation_time.read",
                 callbacks=[self._get_system_disk_operation_time_read],
-                description="System disk operation time read",
+                description="Sum of the time each operation took to complete",
                 unit="seconds",
             )
 
@@ -284,7 +284,7 @@ class SystemMetricsInstrumentor(BaseInstrumentor):
             self._meter.create_observable_counter(
                 name="system.disk.operation_time.write",
                 callbacks=[self._get_system_disk_operation_time_write],
-                description="System disk operation time write",
+                description="Sum of the time each operation took to complete",
                 unit="seconds",
             )
 
@@ -314,7 +314,7 @@ class SystemMetricsInstrumentor(BaseInstrumentor):
             self._meter.create_observable_counter(
                 name="system.network.dropped.transmit",
                 callbacks=[self._get_system_network_dropped_transmit],
-                description="System network dropped packets transmit",
+                description="Count of packets that are dropped or discarded on transmit even though there was no error",
                 unit="packets",
             )
 
@@ -322,7 +322,7 @@ class SystemMetricsInstrumentor(BaseInstrumentor):
             self._meter.create_observable_counter(
                 name="system.network.dropped.receive",
                 callbacks=[self._get_system_network_dropped_receive],
-                description="System network dropped packets receive",
+                description="Count of packets that are dropped or discarded on receive even though there was no error",
                 unit="packets",
             )
 
@@ -330,7 +330,7 @@ class SystemMetricsInstrumentor(BaseInstrumentor):
             self._meter.create_observable_counter(
                 name="system.network.packets.transmit",
                 callbacks=[self._get_system_network_packets_transmit],
-                description="System network packets transmit",
+                description="Count of packets transmitted",
                 unit="packets",
             )
 
@@ -338,7 +338,7 @@ class SystemMetricsInstrumentor(BaseInstrumentor):
             self._meter.create_observable_counter(
                 name="system.network.packets.receive",
                 callbacks=[self._get_system_network_packets_receive],
-                description="System network packets receive",
+                description="Count of packets received",
                 unit="packets",
             )
 
@@ -346,7 +346,7 @@ class SystemMetricsInstrumentor(BaseInstrumentor):
             self._meter.create_observable_counter(
                 name="system.network.errors.transmit",
                 callbacks=[self._get_system_network_errors_transmit],
-                description="System network errors transmit",
+                description="Count of network errors detected on transmit",
                 unit="errors",
             )
 
@@ -354,7 +354,7 @@ class SystemMetricsInstrumentor(BaseInstrumentor):
             self._meter.create_observable_counter(
                 name="system.network.errors.receive",
                 callbacks=[self._get_system_network_errors_receive],
-                description="System network errors receive",
+                description="Count of network errors detected on receive",
                 unit="errors",
             )
 
@@ -362,7 +362,7 @@ class SystemMetricsInstrumentor(BaseInstrumentor):
             self._meter.create_observable_counter(
                 name="system.network.io.transmit",
                 callbacks=[self._get_system_network_io_transmit],
-                description="System network io transmit",
+                description="Bytes sent",
                 unit="bytes",
             )
 
@@ -370,7 +370,7 @@ class SystemMetricsInstrumentor(BaseInstrumentor):
             self._meter.create_observable_counter(
                 name="system.network.io.receive",
                 callbacks=[self._get_system_network_io_receive],
-                description="System network io receive",
+                description="Bytes received",
                 unit="bytes",
             )
 
