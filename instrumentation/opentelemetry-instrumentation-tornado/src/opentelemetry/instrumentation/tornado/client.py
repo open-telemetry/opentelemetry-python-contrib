@@ -41,7 +41,16 @@ def _normalize_request(args, kwargs):
     return (new_args, new_kwargs)
 
 
-def fetch_async(tracer, request_hook, response_hook, func, _, args, kwargs):
+def fetch_async(
+    tracer,
+    request_hook,
+    response_hook,
+    response_size_histogram,
+    func,
+    _,
+    args,
+    kwargs,
+):
     start_time = _time_ns()
 
     # Return immediately if no args were provided (error)
@@ -78,12 +87,15 @@ def fetch_async(tracer, request_hook, response_hook, func, _, args, kwargs):
                 _finish_tracing_callback,
                 span=span,
                 response_hook=response_hook,
+                response_size_histogram=response_size_histogram,
             )
         )
         return future
 
 
-def _finish_tracing_callback(future, span, response_hook):
+def _finish_tracing_callback(
+    future, span, response_hook, response_size_histogram
+):
     status_code = None
     description = None
     exc = future.exception()
@@ -102,6 +114,22 @@ def _finish_tracing_callback(future, span, response_hook):
                 description=description,
             )
         )
+    response = future.result()
+    metric_attributes = _create_metric_attributes(response)
+    response_size = int(response.headers["Content-Length"])
+
+    response_size_histogram.record(response_size, attributes=metric_attributes)
+
     if response_hook:
         response_hook(span, future)
     span.end()
+
+
+def _create_metric_attributes(response):
+    metric_attributes = {
+        SpanAttributes.HTTP_STATUS_CODE: response.code,
+        SpanAttributes.HTTP_URL: remove_url_credentials(response.request.url),
+        SpanAttributes.HTTP_METHOD: response.request.method,
+    }
+
+    return metric_attributes

@@ -157,6 +157,8 @@ from collections import namedtuple
 from functools import partial
 from logging import getLogger
 from typing import Collection
+from timeit import default_timer
+
 
 import tornado.web
 import wrapt
@@ -177,6 +179,7 @@ from opentelemetry.instrumentation.utils import (
     unwrap,
 )
 from opentelemetry.propagators import textmap
+from opentelemetry.metrics import Histogram, get_meter
 from opentelemetry.semconv.trace import SpanAttributes
 from opentelemetry.trace.status import Status, StatusCode
 from opentelemetry.util._time import _time_ns
@@ -189,6 +192,7 @@ from opentelemetry.util.http import (
     normalise_request_header_name,
     normalise_response_header_name,
 )
+from opentelemetry.util.http import get_excluded_urls, get_traced_request_attrs
 
 from .client import fetch_async  # pylint: disable=E0401
 
@@ -231,7 +235,31 @@ class TornadoInstrumentor(BaseInstrumentor):
         process lifetime.
         """
         tracer_provider = kwargs.get("tracer_provider")
-        tracer = trace.get_tracer(__name__, __version__, tracer_provider)
+        self.tracer = trace.get_tracer(__name__, __version__, tracer_provider)
+
+        meter_provider = kwargs.get("meter_provider")
+        self.meter = get_meter(__name__, __version__, meter_provider)
+
+        self.duration_histogram = self.meter.create_histogram(
+            name="http.server.duration",
+            unit="ms",
+            description="measures the duration outbound HTTP requests",
+        )
+        self.request_size_histogram = self.meter.create_histogram(
+            name="http.server.request.size",
+            unit="By",
+            description="measures the size of HTTP request messages (compressed)",
+        )
+        self.response_size_histogram = self.meter.create_histogram(
+            name="http.server.response.size",
+            unit="By",
+            description="measures the size of HTTP response messages (compressed)",
+        )
+        self.active_requests_histogram = self.meter.create_up_down_counter(
+            name="http.server.active_requests",
+            unit="requests",
+            description="measures the number of concurrent HTTP requests that are currently in-flight",
+        )
 
         client_request_hook = kwargs.get("client_request_hook", None)
         client_response_hook = kwargs.get("client_response_hook", None)
@@ -239,7 +267,7 @@ class TornadoInstrumentor(BaseInstrumentor):
 
         def handler_init(init, handler, args, kwargs):
             cls = handler.__class__
-            if patch_handler_class(tracer, cls, server_request_hook):
+            if patch_handler_class(self, cls, server_request_hook):
                 self.patched_handlers.append(cls)
             return init(*args, **kwargs)
 
@@ -250,7 +278,11 @@ class TornadoInstrumentor(BaseInstrumentor):
             "tornado.httpclient",
             "AsyncHTTPClient.fetch",
             partial(
-                fetch_async, tracer, client_request_hook, client_response_hook
+                fetch_async,
+                self.tracer,
+                client_request_hook,
+                client_response_hook,
+                self.response_size_histogram,
             ),
         )
 
@@ -262,14 +294,14 @@ class TornadoInstrumentor(BaseInstrumentor):
         self.patched_handlers = []
 
 
-def patch_handler_class(tracer, cls, request_hook=None):
+def patch_handler_class(self, cls, request_hook=None):
     if getattr(cls, _OTEL_PATCHED_KEY, False):
         return False
 
     setattr(cls, _OTEL_PATCHED_KEY, True)
-    _wrap(cls, "prepare", partial(_prepare, tracer, request_hook))
-    _wrap(cls, "on_finish", partial(_on_finish, tracer))
-    _wrap(cls, "log_exception", partial(_log_exception, tracer))
+    _wrap(cls, "prepare", partial(_prepare, self, request_hook))
+    _wrap(cls, "on_finish", partial(_on_finish, self))
+    _wrap(cls, "log_exception", partial(_log_exception, self))
     return True
 
 
@@ -289,29 +321,28 @@ def _wrap(cls, method_name, wrapper):
     wrapt.apply_patch(cls, method_name, wrapper)
 
 
-def _prepare(tracer, request_hook, func, handler, args, kwargs):
-    start_time = _time_ns()
+def _prepare(self, request_hook, func, handler, args, kwargs):
     request = handler.request
     if _excluded_urls.url_disabled(request.uri):
         return func(*args, **kwargs)
-    ctx = _start_span(tracer, handler, start_time)
+    ctx = _start_span(self, handler)
     if request_hook:
         request_hook(ctx.span, handler)
     return func(*args, **kwargs)
 
 
-def _on_finish(tracer, func, handler, args, kwargs):
+def _on_finish(self, func, handler, args, kwargs):
     response = func(*args, **kwargs)
-    _finish_span(tracer, handler)
+    _finish_span(self, handler)
     return response
 
 
-def _log_exception(tracer, func, handler, args, kwargs):
+def _log_exception(self, func, handler, args, kwargs):
     error = None
     if len(args) == 3:
         error = args[1]
 
-    _finish_span(tracer, handler, error)
+    _finish_span(self, handler, error)
     return func(*args, **kwargs)
 
 
@@ -377,11 +408,14 @@ def _get_full_handler_name(handler):
     return f"{klass.__module__}.{klass.__qualname__}"
 
 
-def _start_span(tracer, handler, start_time) -> _TraceContext:
+def _start_span(self, handler) -> _TraceContext:
+    start_time_ns = _time_ns()
+    start_time = default_timer()
+
     span, token = _start_internal_or_server_span(
-        tracer=tracer,
+        tracer=self.tracer,
         span_name=_get_operation_name(handler, handler.request),
-        start_time=start_time,
+        start_time=start_time_ns,
         context_carrier=handler.request.headers,
         context_getter=textmap.default_getter,
     )
@@ -398,6 +432,14 @@ def _start_span(tracer, handler, start_time) -> _TraceContext:
             if len(custom_attributes) > 0:
                 span.set_attributes(custom_attributes)
 
+    metric_attributes = _create_metric_attributes(handler)
+    request_size = len(handler.request.body)
+
+    self.request_size_histogram.record(
+        request_size, attributes=metric_attributes
+    )
+    self.active_requests_histogram.add(1, attributes=metric_attributes)
+
     activation = trace.use_span(span, end_on_exit=True)
     activation.__enter__()  # pylint: disable=E1101
     ctx = _TraceContext(activation, span, token)
@@ -410,10 +452,15 @@ def _start_span(tracer, handler, start_time) -> _TraceContext:
     if propagator:
         propagator.inject(handler, setter=response_propagation_setter)
 
+    elapsed_time = round((default_timer() - start_time) * 1000)
+
+    self.duration_histogram.record(elapsed_time, attributes=metric_attributes)
+    self.active_requests_histogram.add(-1, attributes=metric_attributes)
+
     return ctx
 
 
-def _finish_span(tracer, handler, error=None):
+def _finish_span(self, handler, error=None):
     status_code = handler.get_status()
     reason = getattr(handler, "_reason")
     finish_args = (None, None, None)
@@ -423,7 +470,7 @@ def _finish_span(tracer, handler, error=None):
         if isinstance(error, tornado.web.HTTPError):
             status_code = error.status_code
             if not ctx and status_code == 404:
-                ctx = _start_span(tracer, handler, _time_ns())
+                ctx = _start_span(self, handler, _time_ns())
         else:
             status_code = 500
             reason = None
@@ -462,3 +509,15 @@ def _finish_span(tracer, handler, error=None):
     if ctx.token:
         context.detach(ctx.token)
     delattr(handler, _HANDLER_CONTEXT_KEY)
+
+
+def _create_metric_attributes(handler):
+    metric_attributes = {
+        SpanAttributes.HTTP_METHOD: handler.request.method,
+        SpanAttributes.HTTP_SCHEME: handler.request.protocol,
+        SpanAttributes.HTTP_STATUS_CODE: handler.get_status(),
+        SpanAttributes.HTTP_FLAVOR: handler.request.version,
+        SpanAttributes.HTTP_HOST: handler.request.host,
+    }
+
+    return metric_attributes
