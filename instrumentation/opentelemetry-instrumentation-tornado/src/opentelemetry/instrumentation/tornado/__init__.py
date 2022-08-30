@@ -157,9 +157,8 @@ from collections import namedtuple
 from functools import partial
 from logging import getLogger
 from time import time_ns
-from typing import Collection
 from timeit import default_timer
-
+from typing import Collection
 
 import tornado.web
 import wrapt
@@ -179,8 +178,8 @@ from opentelemetry.instrumentation.utils import (
     http_status_to_status_code,
     unwrap,
 )
-from opentelemetry.propagators import textmap
 from opentelemetry.metrics import Histogram, get_meter
+from opentelemetry.propagators import textmap
 from opentelemetry.semconv.trace import SpanAttributes
 from opentelemetry.trace.status import Status, StatusCode
 from opentelemetry.util.http import (
@@ -192,7 +191,6 @@ from opentelemetry.util.http import (
     normalise_request_header_name,
     normalise_response_header_name,
 )
-from opentelemetry.util.http import get_excluded_urls, get_traced_request_attrs
 
 from .client import fetch_async  # pylint: disable=E0401
 

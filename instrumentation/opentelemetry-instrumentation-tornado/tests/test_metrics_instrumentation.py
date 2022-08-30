@@ -14,17 +14,14 @@
 
 
 from timeit import default_timer
+
 from tornado.testing import AsyncHTTPTestCase
 
 from opentelemetry import trace
-from opentelemetry.instrumentation.tornado import (
-    TornadoInstrumentor,
-)
+from opentelemetry.instrumentation.tornado import TornadoInstrumentor
 from opentelemetry.test.test_base import TestBase
 
-from .tornado_test_app import (
-    make_app,
-)
+from .tornado_test_app import make_app
 
 
 class TornadoTest(AsyncHTTPTestCase, TestBase):
