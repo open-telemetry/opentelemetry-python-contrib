@@ -118,6 +118,59 @@ You can also add the interceptor manually, rather than using
     server = grpc.server(futures.ThreadPoolExecutor(),
                          interceptors = [server_interceptor()])
 
+Usage Aio Client
+------------
+.. code-block:: python
+
+    import logging
+    import asyncio
+
+    import grpc
+
+    from opentelemetry import trace
+    from opentelemetry.instrumentation.grpc import GrpcAioInstrumentorClient
+    from opentelemetry.sdk.trace import TracerProvider
+    from opentelemetry.sdk.trace.export import (
+        ConsoleSpanExporter,
+        SimpleSpanProcessor,
+    )
+
+    try:
+        from .gen import helloworld_pb2, helloworld_pb2_grpc
+    except ImportError:
+        from gen import helloworld_pb2, helloworld_pb2_grpc
+
+    trace.set_tracer_provider(TracerProvider())
+    trace.get_tracer_provider().add_span_processor(
+        SimpleSpanProcessor(ConsoleSpanExporter())
+    )
+
+    grpc_client_instrumentor = GrpcAioInstrumentorClient()
+    grpc_client_instrumentor.instrument()
+
+    async def run():
+        with grpc.aio.insecure_channel("localhost:50051") as channel:
+
+            stub = helloworld_pb2_grpc.GreeterStub(channel)
+            response = await stub.SayHello(helloworld_pb2.HelloRequest(name="YOU"))
+
+        print("Greeter client received: " + response.message)
+
+
+    if __name__ == "__main__":
+        logging.basicConfig()
+        asyncio.run(run())
+
+You can also add the interceptor manually, rather than using
+:py:class:`~opentelemetry.instrumentation.grpc.GrpcAioInstrumentorClient`:
+
+.. code-block:: python
+
+    from opentelemetry.instrumentation.grpc import aio_client_interceptors
+
+    channel = grpc.aio.insecure_channel("localhost:12345", interceptors=aio_client_interceptors())
+
+
 Usage Aio Server
 ------------
 .. code-block:: python
@@ -321,6 +374,58 @@ class GrpcInstrumentorClient(BaseInstrumentor):
         )
 
 
+class GrpcAioInstrumentorClient(BaseInstrumentor):
+    """
+    Globally instrument the grpc.aio client.
+
+    Usage::
+
+        grpc_aio_client_instrumentor = GrpcAioInstrumentorClient()
+        grpc_aio_client_instrumentor.instrument()
+
+    """
+
+    # pylint:disable=attribute-defined-outside-init, redefined-outer-name
+
+    def instrumentation_dependencies(self) -> Collection[str]:
+        return _instruments
+
+    def _add_interceptors(self, tracer_provider, kwargs):
+        if "interceptors" in kwargs and kwargs["interceptors"]:
+            kwargs["interceptors"] = (
+                aio_client_interceptors(tracer_provider=tracer_provider)
+                + kwargs["interceptors"]
+            )
+        else:
+            kwargs["interceptors"] = aio_client_interceptors(
+                tracer_provider=tracer_provider
+            )
+
+        return kwargs
+
+    def _instrument(self, **kwargs):
+        self._original_insecure = grpc.aio.insecure_channel
+        self._original_secure = grpc.aio.secure_channel
+        tracer_provider = kwargs.get("tracer_provider")
+
+        def insecure(*args, **kwargs):
+            kwargs = self._add_interceptors(tracer_provider, kwargs)
+
+            return self._original_insecure(*args, **kwargs)
+
+        def secure(*args, **kwargs):
+            kwargs = self._add_interceptors(tracer_provider, kwargs)
+
+            return self._original_secure(*args, **kwargs)
+
+        grpc.aio.insecure_channel = insecure
+        grpc.aio.secure_channel = secure
+
+    def _uninstrument(self, **kwargs):
+        grpc.aio.insecure_channel = self._original_insecure
+        grpc.aio.secure_channel = self._original_secure
+
+
 def client_interceptor(tracer_provider=None):
     """Create a gRPC client channel interceptor.
 
@@ -351,6 +456,27 @@ def server_interceptor(tracer_provider=None):
     tracer = trace.get_tracer(__name__, __version__, tracer_provider)
 
     return _server.OpenTelemetryServerInterceptor(tracer)
+
+
+def aio_client_interceptors(tracer_provider=None):
+    """Create a gRPC client channel interceptor.
+
+    Args:
+        tracer: The tracer to use to create client-side spans.
+
+    Returns:
+        An invocation-side interceptor object.
+    """
+    from . import _aio_client
+
+    tracer = trace.get_tracer(__name__, __version__, tracer_provider)
+
+    return [
+        _aio_client.UnaryUnaryAioClientInterceptor(tracer),
+        _aio_client.UnaryStreamAioClientInterceptor(tracer),
+        _aio_client.StreamUnaryAioClientInterceptor(tracer),
+        _aio_client.StreamStreamAioClientInterceptor(tracer),
+    ]
 
 
 def aio_server_interceptor(tracer_provider=None):
