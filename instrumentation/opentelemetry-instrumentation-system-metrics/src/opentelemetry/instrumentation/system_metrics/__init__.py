@@ -253,7 +253,7 @@ class SystemMetricsInstrumentor(BaseInstrumentor):
             self._meter.create_observable_counter(
                 name="system.disk.io.read",
                 callbacks=[self._get_system_disk_io_read],
-                description="System disk IO read",
+                description="",
                 unit="bytes",
             )
 
@@ -261,7 +261,7 @@ class SystemMetricsInstrumentor(BaseInstrumentor):
             self._meter.create_observable_counter(
                 name="system.disk.io.write",
                 callbacks=[self._get_system_disk_io_write],
-                description="System disk IO write",
+                description="",
                 unit="bytes",
             )
 
@@ -269,7 +269,7 @@ class SystemMetricsInstrumentor(BaseInstrumentor):
             self._meter.create_observable_counter(
                 name="system.disk.operations.read",
                 callbacks=[self._get_system_disk_operations_read],
-                description="System disk operations read",
+                description="",
                 unit="operations",
             )
 
@@ -277,7 +277,7 @@ class SystemMetricsInstrumentor(BaseInstrumentor):
             self._meter.create_observable_counter(
                 name="system.disk.operations.write",
                 callbacks=[self._get_system_disk_operations_write],
-                description="System disk operations write",
+                description="",
                 unit="operations",
             )
 
