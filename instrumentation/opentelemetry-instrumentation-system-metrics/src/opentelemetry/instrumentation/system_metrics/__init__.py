@@ -569,25 +569,6 @@ class SystemMetricsInstrumentor(BaseInstrumentor):
                     self._system_disk_operation_time_write_labels.copy(),
                 )
 
-    def _get_system_disk_merged(
-        self, options: CallbackOptions
-    ) -> Iterable[Observation]:
-        """Observer callback for disk merged operations"""
-
-        # FIXME The units in the spec is 1, it seems like it should be
-        # operations or the value type should be Double
-        # FIXME Metric should be system.disk.merged
-
-        for device, counters in psutil.disk_io_counters(perdisk=True).items():
-            for metric in self._config["system.disk.time"]:
-                if hasattr(counters, f"{metric}_merged_count"):
-                    self._system_disk_merged_labels["device"] = device
-                    self._system_disk_merged_labels["direction"] = metric
-                    yield Observation(
-                        getattr(counters, f"{metric}_merged_count"),
-                        self._system_disk_merged_labels.copy(),
-                    )
-
     def _get_system_network_dropped_transmit(
         self, options: CallbackOptions
     ) -> Iterable[Observation]:
