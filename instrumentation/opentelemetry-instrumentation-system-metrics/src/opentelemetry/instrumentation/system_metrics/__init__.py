@@ -25,16 +25,24 @@ following metrics are configured:
         "system.memory.utilization": ["used", "free", "cached"],
         "system.swap.usage": ["used", "free"],
         "system.swap.utilization": ["used", "free"],
-        "system.disk.io": ["read", "write"],
-        "system.disk.operations": ["read", "write"],
-        "system.disk.time": ["read", "write"],
-        "system.network.dropped.packets": ["transmit", "receive"],
-        "system.network.packets": ["transmit", "receive"],
-        "system.network.errors": ["transmit", "receive"],
-        "system.network.io": ["transmit", "receive"],
+        "system.disk.io.read": None,
+        "system.disk.io.write": None,
+        "system.disk.operations.read": None,
+        "system.disk.operations.write": None,
+        "system.disk.operation_time.read": None,
+        "system.disk.operation_time.write": None,
+        "system.network.dropped.transmit": None,
+        "system.network.dropped.receive": None,
+        "system.network.packets.transmit": None,
+        "system.network.packets.receive": None,
+        "system.network.errors.transmit": None,
+        "system.network.errors.receive": None,
+        "system.network.io.transmit": None,
+        "system.network.io.receive": None,
         "system.network.connections": ["family", "type"],
         "runtime.memory": ["rss", "vms"],
         "runtime.cpu.time": ["user", "system"],
+        "runtime.gc_count": None
     }
 
 Usage
@@ -59,7 +67,8 @@ Usage
     configuration = {
         "system.memory.usage": ["used", "free", "cached"],
         "system.cpu.time": ["idle", "user", "system", "irq"],
-        "system.network.io": ["transmit", "receive"],
+        "system.network.io.transmit": None,
+        "system.network.io.receive": None,
         "runtime.memory": ["rss", "vms"],
         "runtime.cpu.time": ["user", "system"],
     }
