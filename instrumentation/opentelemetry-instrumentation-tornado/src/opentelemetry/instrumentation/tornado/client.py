@@ -51,7 +51,7 @@ def fetch_async(
     args,
     kwargs,
 ):
-    start_time = _time_ns()
+    start_time = time_ns()
 
     # Return immediately if no args were provided (error)
     # or original_request is set (meaning we are in a redirect step).

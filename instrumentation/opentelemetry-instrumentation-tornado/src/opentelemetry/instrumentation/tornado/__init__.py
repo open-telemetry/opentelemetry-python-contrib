@@ -178,7 +178,7 @@ from opentelemetry.instrumentation.utils import (
     http_status_to_status_code,
     unwrap,
 )
-from opentelemetry.metrics import Histogram, get_meter
+from opentelemetry.metrics import get_meter
 from opentelemetry.propagators import textmap
 from opentelemetry.semconv.trace import SpanAttributes
 from opentelemetry.trace.status import Status, StatusCode
@@ -407,13 +407,12 @@ def _get_full_handler_name(handler):
 
 
 def _start_span(self, handler) -> _TraceContext:
-    start_time_ns = _time_ns()
     start_time = default_timer()
 
     span, token = _start_internal_or_server_span(
         tracer=self.tracer,
         span_name=_get_operation_name(handler, handler.request),
-        start_time=start_time_ns,
+        start_time=time_ns(),
         context_carrier=handler.request.headers,
         context_getter=textmap.default_getter,
     )
@@ -468,7 +467,7 @@ def _finish_span(self, handler, error=None):
         if isinstance(error, tornado.web.HTTPError):
             status_code = error.status_code
             if not ctx and status_code == 404:
-                ctx = _start_span(self, handler, _time_ns())
+                ctx = _start_span(self, handler)
         else:
             status_code = 500
             reason = None
