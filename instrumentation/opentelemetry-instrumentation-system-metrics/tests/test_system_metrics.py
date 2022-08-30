@@ -44,10 +44,12 @@ def _mock_netconnection():
         ),
     ]
 
+
 class _SystemMetricsResult:
     def __init__(self, attributes, value) -> None:
         self.attributes = attributes
         self.value = value
+
 
 # pylint: disable=too-many-public-methods
 class TestSystemMetrics(TestBase):
