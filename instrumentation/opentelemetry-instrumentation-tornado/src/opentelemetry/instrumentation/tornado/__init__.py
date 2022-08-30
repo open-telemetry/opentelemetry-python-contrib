@@ -156,6 +156,7 @@ API
 from collections import namedtuple
 from functools import partial
 from logging import getLogger
+from time import time_ns
 from typing import Collection
 from timeit import default_timer
 
@@ -182,7 +183,6 @@ from opentelemetry.propagators import textmap
 from opentelemetry.metrics import Histogram, get_meter
 from opentelemetry.semconv.trace import SpanAttributes
 from opentelemetry.trace.status import Status, StatusCode
-from opentelemetry.util._time import _time_ns
 from opentelemetry.util.http import (
     OTEL_INSTRUMENTATION_HTTP_CAPTURE_HEADERS_SERVER_REQUEST,
     OTEL_INSTRUMENTATION_HTTP_CAPTURE_HEADERS_SERVER_RESPONSE,
@@ -225,7 +225,7 @@ class TornadoInstrumentor(BaseInstrumentor):
         perfectly on the other hand as it executes in the same context as on_finish and log_exection which
         are patched to finish a span after a request is served.
 
-        However, we cannot just patch RequestHandler's prepare method because it is supposed to be overwridden
+        However, we cannot just patch RequestHandler's prepare method because it is supposed to be overridden
         by sub-classes and since the parent prepare method does not do anything special, sub-classes don't
         have to call super() when overriding the method.
 

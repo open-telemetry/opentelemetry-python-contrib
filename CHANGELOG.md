@@ -5,15 +5,37 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [Unreleased](https://github.com/open-telemetry/opentelemetry-python/compare/v1.12.0rc2-0.32b0...HEAD)
+## [Unreleased]
+
+### Fixed
+
+- `opentelemetry-instrumentation-boto3sqs` Make propagation compatible with other SQS instrumentations, add 'messaging.url' span attribute, and fix missing package dependencies.
+  ([#1234](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/1234))
+- restoring metrics in django framework
+  ([#1208](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/1208))
+- `opentelemetry-instrumentation-aiohttp-client` Fix producing additional spans with each newly created ClientSession
+- ([#1246](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/1246))
+
+## [1.12.0-0.33b0](https://github.com/open-telemetry/opentelemetry-python/releases/tag/v1.12.0-0.33b0) - 2022-08-08
+
 - Adding multiple db connections support for django-instrumentation's sqlcommenter
   ([#1187](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/1187))
+- SQLCommenter semicolon bug fix
+  ([#1200](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/1200/files))
+- Adding sqlalchemy native tags in sqlalchemy commenter
+  ([#1206](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/1206))
+- Add psycopg2 native tags to sqlcommenter
+  ([#1203](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/1203))
 
 ### Added
 - `opentelemetry-instrumentation-redis` add support to instrument RedisCluster clients
   ([#1177](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/1177))
 - `opentelemetry-instrumentation-sqlalchemy` Added span for the connection phase ([#1133](https://github.com/open-telemetry/opentelemetry-python-contrib/issues/1133))
-- `opentelemetry-instrumentation-tornado` Add metric instrumentation
+- Add metric instrumentation in asgi
+  ([#1197](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/1197))
+- Add metric instumentation for flask
+  ([#1186](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/1186))
+- Add metric instrumentation for tornado
   ([#1252](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/1252))
 
 ## [1.12.0rc2-0.32b0](https://github.com/open-telemetry/opentelemetry-python/releases/tag/v1.12.0rc2-0.32b0) - 2022-07-01
@@ -51,6 +73,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   ([#1127](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/1127))
 - Add metric instrumentation for WSGI
   ([#1128](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/1128))
+- Add metric instrumentation for Urllib3
+  ([#1198](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/1198))
 - `opentelemetry-instrumentation-aio-pika` added RabbitMQ aio-pika module instrumentation.
   ([#1095](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/1095))
 - `opentelemetry-instrumentation-requests` Restoring metrics in requests
@@ -418,7 +442,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   ([#567](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/567))
 - `opentelemetry-instrumentation-grpc` Respect the suppress instrumentation in gRPC client instrumentor
   ([#559](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/559))
-- `opentelemetry-instrumentation-grpc` Fixed asynchonous unary call traces
+- `opentelemetry-instrumentation-grpc` Fixed asynchronous unary call traces
   ([#536](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/536))
 - `opentelemetry-sdk-extension-aws` Update AWS entry points to match spec
   ([#566](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/566))
@@ -714,7 +738,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   ([#182](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/182))
 - `opentelemetry-instrumentation-botocore` Botocore SpanKind as CLIENT and modify existing traced attributes
   ([#150](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/150))
-- `opentelemetry-instrumentation-dbapi` Update dbapi and its dependant instrumentations to follow semantic conventions
+- `opentelemetry-instrumentation-dbapi` Update dbapi and its dependent instrumentations to follow semantic conventions
   ([#195](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/195))
 - `opentelemetry-instrumentation-dbapi` Stop capturing query parameters by default
   ([#156](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/156))

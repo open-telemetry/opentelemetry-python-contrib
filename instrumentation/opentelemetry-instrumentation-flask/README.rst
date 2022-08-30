@@ -41,7 +41,7 @@ You can also pass the comma delimited regexes to the ``instrument_app`` method d
 Request/Response hooks
 **********************
 
-Utilize request/reponse hooks to execute custom logic to be performed before/after performing a request. Environ is an instance of WSGIEnvironment (flask.request.environ).
+Utilize request/response hooks to execute custom logic to be performed before/after performing a request. Environ is an instance of WSGIEnvironment (flask.request.environ).
 Response_headers is a list of key-value (tuples) representing the response headers returned from the response.
 
 .. code-block:: python
@@ -61,6 +61,6 @@ Flask Request object reference: https://flask.palletsprojects.com/en/2.0.x/api/#
 References
 ----------
 
-* `OpenTelemetry Flask Instrumentation <https://opentelemetry-python-contrib.readthedocs.io/en/stable/instrumentation/flask/flask.html>`_
+* `OpenTelemetry Flask Instrumentation <https://opentelemetry-python-contrib.readthedocs.io/en/latest/instrumentation/flask/flask.html>`_
 * `OpenTelemetry Project <https://opentelemetry.io/>`_
 * `OpenTelemetry Python Examples <https://github.com/open-telemetry/opentelemetry-python/tree/main/docs/examples>`_

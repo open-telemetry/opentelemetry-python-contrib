@@ -46,12 +46,12 @@ import wrapt
 from opentelemetry import trace as trace_api
 from opentelemetry.instrumentation.dbapi.version import __version__
 from opentelemetry.instrumentation.utils import (
-    _generate_opentelemetry_traceparent,
-    _generate_sql_comment,
+    _add_sql_comment,
+    _get_opentelemetry_values,
     unwrap,
 )
 from opentelemetry.semconv.trace import SpanAttributes
-from opentelemetry.trace import Span, SpanKind, TracerProvider, get_tracer
+from opentelemetry.trace import SpanKind, TracerProvider, get_tracer
 
 _logger = logging.getLogger(__name__)
 
@@ -105,6 +105,7 @@ def wrap_connect(
     capture_parameters: bool = False,
     enable_commenter: bool = False,
     db_api_integration_factory=None,
+    commenter_options: dict = None,
 ):
     """Integrate with DB API library.
     https://www.python.org/dev/peps/pep-0249/
@@ -119,6 +120,8 @@ def wrap_connect(
         tracer_provider: The :class:`opentelemetry.trace.TracerProvider` to
             use. If omitted the current configured one is used.
         capture_parameters: Configure if db.statement.parameters should be captured.
+        enable_commenter: Flag to enable/disable sqlcommenter.
+        commenter_options: Configurations for tags to be appended at the sql query.
 
     """
     db_api_integration_factory = (
@@ -140,6 +143,8 @@ def wrap_connect(
             tracer_provider=tracer_provider,
             capture_parameters=capture_parameters,
             enable_commenter=enable_commenter,
+            commenter_options=commenter_options,
+            connect_module=connect_module,
         )
         return db_integration.wrapped_connection(wrapped, args, kwargs)
 
@@ -173,6 +178,7 @@ def instrument_connection(
     tracer_provider: typing.Optional[TracerProvider] = None,
     capture_parameters: bool = False,
     enable_commenter: bool = False,
+    commenter_options: dict = None,
 ):
     """Enable instrumentation in a database connection.
 
@@ -185,6 +191,9 @@ def instrument_connection(
         tracer_provider: The :class:`opentelemetry.trace.TracerProvider` to
             use. If omitted the current configured one is used.
         capture_parameters: Configure if db.statement.parameters should be captured.
+        enable_commenter: Flag to enable/disable sqlcommenter.
+        commenter_options: Configurations for tags to be appended at the sql query.
+
     Returns:
         An instrumented connection.
     """
@@ -200,6 +209,7 @@ def instrument_connection(
         tracer_provider=tracer_provider,
         capture_parameters=capture_parameters,
         enable_commenter=enable_commenter,
+        commenter_options=commenter_options,
     )
     db_integration.get_connection_attributes(connection)
     return get_traced_connection_proxy(connection, db_integration)
@@ -231,6 +241,8 @@ class DatabaseApiIntegration:
         tracer_provider: typing.Optional[TracerProvider] = None,
         capture_parameters: bool = False,
         enable_commenter: bool = False,
+        commenter_options: dict = None,
+        connect_module: typing.Callable[..., typing.Any] = None,
     ):
         self.connection_attributes = connection_attributes
         if self.connection_attributes is None:
@@ -249,11 +261,13 @@ class DatabaseApiIntegration:
         )
         self.capture_parameters = capture_parameters
         self.enable_commenter = enable_commenter
+        self.commenter_options = commenter_options
         self.database_system = database_system
         self.connection_props = {}
         self.span_attributes = {}
         self.name = ""
         self.database = ""
+        self.connect_module = connect_module
 
     def wrapped_connection(
         self,
@@ -335,12 +349,18 @@ class CursorTracer:
     def __init__(self, db_api_integration: DatabaseApiIntegration) -> None:
         self._db_api_integration = db_api_integration
         self._commenter_enabled = self._db_api_integration.enable_commenter
+        self._commenter_options = (
+            self._db_api_integration.commenter_options
+            if self._db_api_integration.commenter_options
+            else {}
+        )
+        self._connect_module = self._db_api_integration.connect_module
 
     def _populate_span(
         self,
         span: trace_api.Span,
         cursor,
-        *args: typing.Tuple[typing.Any, typing.Any]
+        *args: typing.Tuple[typing.Any, typing.Any],
     ):
         if not span.is_recording():
             return
@@ -375,21 +395,12 @@ class CursorTracer:
             return statement.decode("utf8", "replace")
         return statement
 
-    @staticmethod
-    def _generate_comment(span: Span) -> str:
-        span_context = span.get_span_context()
-        meta = {}
-        if span_context.is_valid:
-            meta.update(_generate_opentelemetry_traceparent(span))
-        # TODO(schekuri): revisit to enrich with info such as route, db_driver etc...
-        return _generate_sql_comment(**meta)
-
     def traced_execution(
         self,
         cursor,
         query_method: typing.Callable[..., typing.Any],
         *args: typing.Tuple[typing.Any, typing.Any],
-        **kwargs: typing.Dict[typing.Any, typing.Any]
+        **kwargs: typing.Dict[typing.Any, typing.Any],
     ):
         name = self.get_operation_name(cursor, args)
         if not name:
@@ -405,12 +416,33 @@ class CursorTracer:
             self._populate_span(span, cursor, *args)
             if args and self._commenter_enabled:
                 try:
-                    comment = self._generate_comment(span)
-                    if isinstance(args[0], bytes):
-                        comment = comment.encode("utf8")
                     args_list = list(args)
-                    args_list[0] += comment
+                    commenter_data = dict(
+                        # Psycopg2/framework information
+                        db_driver=f"psycopg2:{self._connect_module.__version__.split(' ')[0]}",
+                        dbapi_threadsafety=self._connect_module.threadsafety,
+                        dbapi_level=self._connect_module.apilevel,
+                        libpq_version=self._connect_module.__libpq_version__,
+                        driver_paramstyle=self._connect_module.paramstyle,
+                    )
+                    if self._commenter_options.get(
+                        "opentelemetry_values", True
+                    ):
+                        commenter_data.update(**_get_opentelemetry_values())
+
+                    # Filter down to just the requested attributes.
+                    commenter_data = {
+                        k: v
+                        for k, v in commenter_data.items()
+                        if self._commenter_options.get(k, True)
+                    }
+                    statement = _add_sql_comment(
+                        args_list[0], **commenter_data
+                    )
+
+                    args_list[0] = statement
                     args = tuple(args_list)
+
                 except Exception as exc:  # pylint: disable=broad-except
                     _logger.exception(
                         "Exception while generating sql comment: %s", exc
