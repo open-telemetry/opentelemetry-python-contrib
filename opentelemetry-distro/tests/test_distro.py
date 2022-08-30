@@ -20,8 +20,8 @@ from pkg_resources import DistributionNotFound, require
 
 from opentelemetry.distro import OpenTelemetryDistro
 from opentelemetry.environment_variables import (
-    OTEL_TRACES_EXPORTER,
     OTEL_METRICS_EXPORTER,
+    OTEL_TRACES_EXPORTER,
 )
 
 
