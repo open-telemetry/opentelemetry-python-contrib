@@ -224,10 +224,12 @@ class FastAPIInstrumentor(BaseInstrumentor):
             else parse_excluded_urls(_excluded_urls)
         )
         fastapi.FastAPI = _InstrumentedFastAPI
+        for instance in _InstrumentedFastAPI._instrumented_fastapi_apps:
+            self.instrument_app(instance)
 
     def _uninstrument(self, **kwargs):
         for instance in _InstrumentedFastAPI._instrumented_fastapi_apps:
-            FastAPIInstrumentor.uninstrument_app(instance)
+            self.uninstrument_app(instance)
         fastapi.FastAPI = self._original_fastapi
 
 
