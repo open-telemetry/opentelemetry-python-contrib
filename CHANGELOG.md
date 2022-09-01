@@ -9,7 +9,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
-- fix kafka: wait for metadata
+- `opentelemetry-instrumentation-kafka-python`: wait for metadata
   ([#1260](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/1260))
 - `opentelemetry-instrumentation-boto3sqs` Make propagation compatible with other SQS instrumentations, add 'messaging.url' span attribute, and fix missing package dependencies.
   ([#1234](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/1234))
