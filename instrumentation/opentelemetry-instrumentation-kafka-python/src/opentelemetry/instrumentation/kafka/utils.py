@@ -2,6 +2,7 @@ import json
 from logging import getLogger
 from typing import Callable, Dict, List, Optional
 
+from kafka.errors import errors as KafkaErrors
 from kafka.record.abc import ABCRecord
 
 from opentelemetry import context, propagate, trace
@@ -146,6 +147,10 @@ def _wrap_send(tracer: Tracer, produce_hook: ProduceHookT) -> Callable:
             kwargs["headers"] = headers
 
         topic = KafkaPropertiesExtractor.extract_send_topic(args, kwargs)
+        try:
+            instance._wait_on_metadata(topic, instance.config['max_block_ms'] / 1000.0)
+        except KafkaErrors.BrokerResponseError as kafka_exception:
+            _LOG.exception(kafka_exception)
         bootstrap_servers = KafkaPropertiesExtractor.extract_bootstrap_servers(
             instance
         )
