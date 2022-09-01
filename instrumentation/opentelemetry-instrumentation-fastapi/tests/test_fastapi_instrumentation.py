@@ -89,6 +89,17 @@ class TestFastAPIManualInstrumentation(TestBase):
         for span in spans:
             self.assertIn("/foobar", span.name)
 
+    def test_uninstrument_after_instrument(self):
+        if not isinstance(self, TestAutoInstrumentation):
+            self._instrumentor.instrument()
+        app = self._create_fastapi_app()
+        client = TestClient(app)
+        client.get("/foobar")
+        self._instrumentor.uninstrument()
+        client.get("/foobar")
+        spans = self.memory_exporter.get_finished_spans()
+        self.assertEqual(len(spans), 3)
+
     def test_uninstrument_app(self):
         self._client.get("/foobar")
         spans = self.memory_exporter.get_finished_spans()

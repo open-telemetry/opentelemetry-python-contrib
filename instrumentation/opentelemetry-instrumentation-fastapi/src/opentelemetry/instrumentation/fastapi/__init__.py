@@ -226,6 +226,8 @@ class FastAPIInstrumentor(BaseInstrumentor):
         fastapi.FastAPI = _InstrumentedFastAPI
 
     def _uninstrument(self, **kwargs):
+        for instance in _InstrumentedFastAPI._instrumented_fastapi_apps:
+            FastAPIInstrumentor.uninstrument_app(instance)
         fastapi.FastAPI = self._original_fastapi
 
 
@@ -235,6 +237,7 @@ class _InstrumentedFastAPI(fastapi.FastAPI):
     _server_request_hook: _ServerRequestHookT = None
     _client_request_hook: _ClientRequestHookT = None
     _client_response_hook: _ClientResponseHookT = None
+    _instrumented_fastapi_apps = set()
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
@@ -247,6 +250,10 @@ class _InstrumentedFastAPI(fastapi.FastAPI):
             client_response_hook=_InstrumentedFastAPI._client_response_hook,
             tracer_provider=_InstrumentedFastAPI._tracer_provider,
         )
+        _InstrumentedFastAPI._instrumented_fastapi_apps.add(self)
+    
+    def __del__(self):
+        _InstrumentedFastAPI._instrumented_fastapi_apps.remove(self)
 
 
 def _get_route_details(scope):
