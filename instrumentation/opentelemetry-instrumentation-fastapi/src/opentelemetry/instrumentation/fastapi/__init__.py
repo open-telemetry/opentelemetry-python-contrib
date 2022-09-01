@@ -251,7 +251,7 @@ class _InstrumentedFastAPI(fastapi.FastAPI):
             tracer_provider=_InstrumentedFastAPI._tracer_provider,
         )
         _InstrumentedFastAPI._instrumented_fastapi_apps.add(self)
-    
+
     def __del__(self):
         _InstrumentedFastAPI._instrumented_fastapi_apps.remove(self)
 
