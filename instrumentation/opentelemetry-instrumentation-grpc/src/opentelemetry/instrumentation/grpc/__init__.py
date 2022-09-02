@@ -119,7 +119,7 @@ You can also add the interceptor manually, rather than using
                          interceptors = [server_interceptor()])
 
 Usage Aio Client
-------------
+----------------
 .. code-block:: python
 
     import logging
@@ -172,7 +172,7 @@ You can also add the interceptor manually, rather than using
 
 
 Usage Aio Server
-------------
+----------------
 .. code-block:: python
 
     import logging

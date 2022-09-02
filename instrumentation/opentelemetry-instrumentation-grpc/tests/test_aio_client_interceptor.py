@@ -11,44 +11,34 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-import pytest
 from unittest import IsolatedAsyncioTestCase
 
-import asyncio
 import grpc
-from grpc.aio import ClientCallDetails
+import pytest
 
 import opentelemetry.instrumentation.grpc
 from opentelemetry import context, trace
 from opentelemetry.instrumentation.grpc import (
-    aio_client_interceptors,
     GrpcAioInstrumentorClient,
+    aio_client_interceptors,
 )
-from opentelemetry.semconv.trace import SpanAttributes
-from opentelemetry.instrumentation.utils import _SUPPRESS_INSTRUMENTATION_KEY
-from opentelemetry.propagate import get_global_textmap, set_global_textmap
-from opentelemetry.semconv.trace import SpanAttributes
-
-from opentelemetry.test.mock_textmap import MockTextMapPropagator
-from opentelemetry.test.test_base import TestBase
-
-from tests.protobuf import (  # pylint: disable=no-name-in-module
-    test_server_pb2_grpc,
-    test_server_pb2,
-)
-from .protobuf.test_server_pb2 import Request
-
-from ._aio_client import (
-    simple_method,
-    server_streaming_method,
-    client_streaming_method,
-    bidirectional_streaming_method,
-)
-from ._server import create_test_server
-
 from opentelemetry.instrumentation.grpc._aio_client import (
     UnaryUnaryAioClientInterceptor,
 )
+from opentelemetry.instrumentation.utils import _SUPPRESS_INSTRUMENTATION_KEY
+from opentelemetry.propagate import get_global_textmap, set_global_textmap
+from opentelemetry.semconv.trace import SpanAttributes
+from opentelemetry.test.mock_textmap import MockTextMapPropagator
+from opentelemetry.test.test_base import TestBase
+
+from ._aio_client import (
+    bidirectional_streaming_method,
+    client_streaming_method,
+    server_streaming_method,
+    simple_method,
+)
+from ._server import create_test_server
+from .protobuf import test_server_pb2_grpc  # pylint: disable=no-name-in-module
 
 
 class RecordingInterceptor(grpc.aio.UnaryUnaryClientInterceptor):
@@ -280,6 +270,7 @@ class TestAioClientInterceptor(TestBase, IsolatedAsyncioTestCase):
             trace.StatusCode.ERROR,
         )
 
+    # pylint:disable=no-self-use
     async def test_client_interceptor_trace_context_propagation(self):
         """ensure that client interceptor correctly inject trace context into all outgoing requests."""
 
@@ -347,7 +338,7 @@ class TestAioClientInterceptor(TestBase, IsolatedAsyncioTestCase):
         finally:
             context.detach(token)
 
-    async def test_stream_unary_with_suppress_key(self):
+    async def test_stream_stream_with_suppress_key(self):
         token = context.attach(
             context.set_value(_SUPPRESS_INSTRUMENTATION_KEY, True)
         )

@@ -11,23 +11,22 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-
-# pylint:disable=unused-argument
-# pylint:disable=no-self-use
-import pytest
+import asyncio
 from unittest import IsolatedAsyncioTestCase
 
-import asyncio
 import grpc
 import grpc.aio
-from concurrent.futures.thread import ThreadPoolExecutor
+import pytest
 
-from time import sleep
-from opentelemetry.test.test_base import TestBase
-from opentelemetry import trace
 import opentelemetry.instrumentation.grpc
-from opentelemetry.semconv.trace import SpanAttributes
+from opentelemetry import trace
+from opentelemetry.instrumentation.grpc import (
+    GrpcAioInstrumentorServer,
+    aio_server_interceptor,
+)
 from opentelemetry.sdk import trace as trace_sdk
+from opentelemetry.semconv.trace import SpanAttributes
+from opentelemetry.test.test_base import TestBase
 from opentelemetry.trace import StatusCode
 
 from .protobuf.test_server_pb2 import Request, Response
@@ -35,10 +34,9 @@ from .protobuf.test_server_pb2_grpc import (
     GRPCTestServerServicer,
     add_GRPCTestServerServicer_to_server,
 )
-from opentelemetry.instrumentation.grpc import (
-    GrpcAioInstrumentorServer,
-    aio_server_interceptor,
-)
+
+# pylint:disable=unused-argument
+# pylint:disable=no-self-use
 
 
 class Servicer(GRPCTestServerServicer):
@@ -351,6 +349,7 @@ class TestOpenTelemetryAioServerInterceptor(TestBase, IsolatedAsyncioTestCase):
         class SpanLifetimeServicer(GRPCTestServerServicer):
             # pylint:disable=C0103
             async def SimpleMethod(self, request, context):
+                # pylint:disable=attribute-defined-outside-init
                 self.span = trace.get_current_span()
 
                 return Response(
@@ -394,7 +393,9 @@ class TestOpenTelemetryAioServerInterceptor(TestBase, IsolatedAsyncioTestCase):
         spans_list = self.memory_exporter.get_finished_spans()
         self.assertEqual(len(spans_list), 2)
 
-        span1, span2 = spans_list
+        span1 = spans_list[0]
+        span2 = spans_list[1]
+
         # Spans should belong to separate traces
         self.assertNotEqual(span1.context.span_id, span2.context.span_id)
         self.assertNotEqual(span1.context.trace_id, span2.context.trace_id)
@@ -453,7 +454,9 @@ class TestOpenTelemetryAioServerInterceptor(TestBase, IsolatedAsyncioTestCase):
         spans_list = self.memory_exporter.get_finished_spans()
         self.assertEqual(len(spans_list), 2)
 
-        span1, span2 = spans_list
+        span1 = spans_list[0]
+        span2 = spans_list[1]
+
         # Spans should belong to separate traces
         self.assertNotEqual(span1.context.span_id, span2.context.span_id)
         self.assertNotEqual(span1.context.trace_id, span2.context.trace_id)
@@ -501,9 +504,6 @@ class TestOpenTelemetryAioServerInterceptor(TestBase, IsolatedAsyncioTestCase):
         await run_with_test_server(request, servicer=AbortServicer())
 
         spans_list = self.memory_exporter.get_finished_spans()
-        self.assertEqual(len(spans_list), 1)
-        child_span = spans_list[0]
-
         self.assertEqual(len(spans_list), 1)
         span = spans_list[0]
 

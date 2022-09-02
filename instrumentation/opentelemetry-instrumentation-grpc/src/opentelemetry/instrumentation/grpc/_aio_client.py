@@ -12,24 +12,21 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from collections import OrderedDict
 import functools
+from collections import OrderedDict
 
 import grpc
 from grpc.aio import ClientCallDetails
 
-from opentelemetry import context, trace
-from opentelemetry.semconv.trace import SpanAttributes
-from opentelemetry.propagate import inject
-from opentelemetry.instrumentation.utils import _SUPPRESS_INSTRUMENTATION_KEY
-from opentelemetry.instrumentation.grpc.version import __version__
-
-from opentelemetry.trace.status import Status, StatusCode
-
+from opentelemetry import context
 from opentelemetry.instrumentation.grpc._client import (
     OpenTelemetryClientInterceptor,
     _carrier_setter,
 )
+from opentelemetry.instrumentation.utils import _SUPPRESS_INSTRUMENTATION_KEY
+from opentelemetry.propagate import inject
+from opentelemetry.semconv.trace import SpanAttributes
+from opentelemetry.trace.status import Status, StatusCode
 
 
 def _unary_done_callback(span, code, details):
@@ -55,7 +52,6 @@ def _unary_done_callback(span, code, details):
 class _BaseAioClientInterceptor(OpenTelemetryClientInterceptor):
     @staticmethod
     def propagate_trace_in_details(client_call_details):
-        method = client_call_details.method.decode("utf-8")
         metadata = client_call_details.metadata
         if not metadata:
             mutable_metadata = OrderedDict()

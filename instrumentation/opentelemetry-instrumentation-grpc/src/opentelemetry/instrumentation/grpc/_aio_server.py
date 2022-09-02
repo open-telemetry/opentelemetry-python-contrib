@@ -16,8 +16,8 @@ import grpc.aio
 
 from ._server import (
     OpenTelemetryServerInterceptor,
-    _wrap_rpc_behavior,
     _OpenTelemetryServicerContext,
+    _wrap_rpc_behavior,
 )
 
 
@@ -40,21 +40,21 @@ class OpenTelemetryAioServerInterceptor(
         def telemetry_wrapper(behavior, request_streaming, response_streaming):
             # handle streaming responses specially
             if response_streaming:
-                return self._intercept_server_stream(
+                return self._intercept_aio_server_stream(
                     behavior,
                     handler_call_details,
                 )
-            else:
-                return self._intercept_server_unary(
-                    behavior,
-                    handler_call_details,
-                )
+
+            return self._intercept_aio_server_unary(
+                behavior,
+                handler_call_details,
+            )
 
         next_handler = await continuation(handler_call_details)
 
         return _wrap_rpc_behavior(next_handler, telemetry_wrapper)
 
-    def _intercept_server_unary(self, behavior, handler_call_details):
+    def _intercept_aio_server_unary(self, behavior, handler_call_details):
         async def _unary_interceptor(request_or_iterator, context):
             with self._set_remote_context(context):
                 with self._start_span(
@@ -80,7 +80,7 @@ class OpenTelemetryAioServerInterceptor(
 
         return _unary_interceptor
 
-    def _intercept_server_stream(self, behavior, handler_call_details):
+    def _intercept_aio_server_stream(self, behavior, handler_call_details):
         async def _stream_interceptor(request_or_iterator, context):
             with self._set_remote_context(context):
                 with self._start_span(
