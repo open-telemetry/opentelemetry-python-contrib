@@ -122,7 +122,7 @@ class CommandTracer(monitoring.CommandListener):
             return
         command = event.command.get(event.command_name, "")
         name = event.database_name
-        name +=  "." + event.command_name
+        name += "." + event.command_name
         statement = event.command_name
         if command:
             statement += " " + str(command)
