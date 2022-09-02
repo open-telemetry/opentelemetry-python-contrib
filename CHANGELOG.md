@@ -7,6 +7,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- `opentelemetry-instrumentation-pymssql` Add pymssql instrumentation
+  ([#394](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/394))
+
 ### Fixed
 
 - `opentelemetry-instrumentation-boto3sqs` Make propagation compatible with other SQS instrumentations, add 'messaging.url' span attribute, and fix missing package dependencies.

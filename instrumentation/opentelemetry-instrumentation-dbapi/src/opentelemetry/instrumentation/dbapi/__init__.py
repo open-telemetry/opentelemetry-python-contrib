@@ -60,7 +60,7 @@ def trace_integration(
     connect_module: typing.Callable[..., typing.Any],
     connect_method_name: str,
     database_system: str,
-    connection_attributes: typing.Dict = None,
+    connection_attributes: typing.Optional[typing.Dict] = None,
     tracer_provider: typing.Optional[TracerProvider] = None,
     capture_parameters: bool = False,
     enable_commenter: bool = False,
@@ -99,13 +99,13 @@ def wrap_connect(
     connect_module: typing.Callable[..., typing.Any],
     connect_method_name: str,
     database_system: str,
-    connection_attributes: typing.Dict = None,
+    connection_attributes: typing.Optional[typing.Dict] = None,
     version: str = "",
     tracer_provider: typing.Optional[TracerProvider] = None,
     capture_parameters: bool = False,
     enable_commenter: bool = False,
     db_api_integration_factory=None,
-    commenter_options: dict = None,
+    commenter_options: typing.Optional[dict] = None,
 ):
     """Integrate with DB API library.
     https://www.python.org/dev/peps/pep-0249/
@@ -173,12 +173,14 @@ def instrument_connection(
     name: str,
     connection,
     database_system: str,
-    connection_attributes: typing.Dict = None,
+    connection_attributes: typing.Optional[typing.Dict] = None,
     version: str = "",
     tracer_provider: typing.Optional[TracerProvider] = None,
     capture_parameters: bool = False,
     enable_commenter: bool = False,
-    commenter_options: dict = None,
+    commenter_options: typing.Optional[dict] = None,
+    db_api_integration_factory=None,
+
 ):
     """Enable instrumentation in a database connection.
 
@@ -201,7 +203,11 @@ def instrument_connection(
         _logger.warning("Connection already instrumented")
         return connection
 
-    db_integration = DatabaseApiIntegration(
+    db_api_integration_factory = (
+        db_api_integration_factory or DatabaseApiIntegration
+    )
+
+    db_integration = db_api_integration_factory(
         name,
         database_system,
         connection_attributes=connection_attributes,
@@ -241,8 +247,8 @@ class DatabaseApiIntegration:
         tracer_provider: typing.Optional[TracerProvider] = None,
         capture_parameters: bool = False,
         enable_commenter: bool = False,
-        commenter_options: dict = None,
-        connect_module: typing.Callable[..., typing.Any] = None,
+        commenter_options: typing.Optional[dict] = None,
+        connect_module: typing.Optional[typing.Callable[..., typing.Any]] = None,
     ):
         self.connection_attributes = connection_attributes
         if self.connection_attributes is None:
@@ -336,9 +342,15 @@ def get_traced_connection_proxy(
                 self._connection.cursor(*args, **kwargs), db_api_integration
             )
 
-        # For some reason this is necessary as trying to access the close
-        # method of self._connection via __getattr__ leads to unexplained
-        # errors.
+        # For some reason this is necessary as trying to access some methods
+        # such as commit and close method of self._connection via __getattr__
+        # leads to unexplained errors.
+        def commit(self):
+            self._connection.commit()
+
+        def rollback(self):
+            self._connection.rollback()
+
         def close(self):
             self._connection.close()
 
