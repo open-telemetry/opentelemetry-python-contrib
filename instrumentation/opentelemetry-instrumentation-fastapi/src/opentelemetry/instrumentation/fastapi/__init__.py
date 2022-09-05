@@ -140,7 +140,7 @@ from opentelemetry.instrumentation.asgi.package import _instruments
 from opentelemetry.instrumentation.instrumentor import BaseInstrumentor
 from opentelemetry.semconv.trace import SpanAttributes
 from opentelemetry.trace import Span
-from opentelemetry.util.http import get_excluded_urls, parse_excluded_urls
+from opentelemetry.util.http import ExcludeList, get_excluded_urls, parse_excluded_urls
 
 _excluded_urls_from_env = get_excluded_urls("FASTAPI")
 _logger = logging.getLogger(__name__)
@@ -175,7 +175,7 @@ class FastAPIInstrumentor(BaseInstrumentor):
             if excluded_urls is None:
                 excluded_urls = _excluded_urls_from_env
             else:
-                excluded_urls = parse_excluded_urls(excluded_urls)
+                excluded_urls = excluded_urls if type(excluded_urls) == ExcludeList else parse_excluded_urls(excluded_urls)
 
             app.add_middleware(
                 OpenTelemetryMiddleware,
@@ -187,6 +187,8 @@ class FastAPIInstrumentor(BaseInstrumentor):
                 tracer_provider=tracer_provider,
             )
             app._is_instrumented_by_opentelemetry = True
+            if not app in _InstrumentedFastAPI._instrumented_fastapi_apps:
+                _InstrumentedFastAPI._instrumented_fastapi_apps.add(app)
         else:
             _logger.warning(
                 "Attempting to instrument FastAPI app while already instrumented"
@@ -218,18 +220,31 @@ class FastAPIInstrumentor(BaseInstrumentor):
             "client_response_hook"
         )
         _excluded_urls = kwargs.get("excluded_urls")
-        _InstrumentedFastAPI._excluded_urls = (
-            _excluded_urls_from_env
-            if _excluded_urls is None
-            else parse_excluded_urls(_excluded_urls)
-        )
+        if _excluded_urls is None:
+            _InstrumentedFastAPI._excluded_urls = _excluded_urls_from_env
+        elif type(_excluded_urls) == ExcludeList:
+            _InstrumentedFastAPI._excluded_urls = _excluded_urls
+        else:
+            _InstrumentedFastAPI._excluded_urls = parse_excluded_urls(_excluded_urls)
         fastapi.FastAPI = _InstrumentedFastAPI
         for instance in _InstrumentedFastAPI._instrumented_fastapi_apps:
-            self.instrument_app(instance)
+            self.instrument_app(
+                instance,
+                # server_request_hook=_InstrumentedFastAPI._server_request_hook,
+                # client_request_hook=_InstrumentedFastAPI._client_request_hook,
+                # client_response_hook=_InstrumentedFastAPI._client_response_hook,
+                # tracer_provider=_InstrumentedFastAPI._tracer_provider,
+                # excluded_urls=_InstrumentedFastAPI._excluded_urls,
+            )
 
     def _uninstrument(self, **kwargs):
         for instance in _InstrumentedFastAPI._instrumented_fastapi_apps:
             self.uninstrument_app(instance)
+        _InstrumentedFastAPI._instrumented_fastapi_apps = {
+            instance
+            for instance in _InstrumentedFastAPI._instrumented_fastapi_apps
+            if type(instance) == _InstrumentedFastAPI
+        }
         fastapi.FastAPI = self._original_fastapi
 
 
@@ -255,6 +270,11 @@ class _InstrumentedFastAPI(fastapi.FastAPI):
         _InstrumentedFastAPI._instrumented_fastapi_apps.add(self)
 
     def __del__(self):
+        print("-----------")
+        print("-----------")
+        print("Yes it got deleted")
+        print("-----------")
+        print("-----------")
         _InstrumentedFastAPI._instrumented_fastapi_apps.remove(self)
 
 

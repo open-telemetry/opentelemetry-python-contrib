@@ -273,7 +273,7 @@ class TestAutoInstrumentation(TestFastAPIManualInstrumentation):
         for span in spans:
             self.assertEqual(span.resource.attributes["key1"], "value1")
             self.assertEqual(span.resource.attributes["key2"], "value2")
-    
+
     def test_uninstrument_after_instrument(self):
         app = self._create_fastapi_app()
         client = TestClient(app)
@@ -282,26 +282,32 @@ class TestAutoInstrumentation(TestFastAPIManualInstrumentation):
         client.get("/foobar")
         spans = self.memory_exporter.get_finished_spans()
         self.assertEqual(len(spans), 3)
-    
-    # def test_instrument_after_uninstrument(self):
-    #     instrumentor = otel_fastapi.FastAPIInstrumentor()
-    #     # tracer_provider = None
-    #     resource = Resource.create({"key1": "value1", "key2": "value2"})
-    #     tracer_provider, exporter = self.create_tracer_provider(resource=resource)
-    #     instrumentor.instrument(tracer_provider=tracer_provider)
-    #     app = self._create_fastapi_app()
-    #     client = TestClient(app)
-    #     client.get("/foobar")
-    #     spans = self.memory_exporter.get_finished_spans()
-    #     self.assertEqual(len(spans), 3)
-    #     instrumentor.uninstrument()
-    #     client.get("/foobar")
-    #     spans = self.memory_exporter.get_finished_spans()
-    #     self.assertEqual(len(spans), 3)
-    #     instrumentor.instrument(tracer_provider=tracer_provider)
-    #     client.get("/foobar")
-    #     spans = self.memory_exporter.get_finished_spans()
-    #     self.assertEqual(len(spans), 6)
+
+    def test_instrument_after_uninstrument(self):
+        # self._instrumentor.instrument_app(self._app)
+        # print(self._app.user_middleware)
+        self._instrumentor.uninstrument()
+        # self._app = None
+        # instrumentor = otel_fastapi.FastAPIInstrumentor()
+        # resource = Resource.create({"key1": "value1", "key2": "value2"})
+        # tracer_provider, exporter = self.create_tracer_provider(
+        #     resource=resource
+        # )
+        self._instrumentor.instrument()
+        # self._app = self._create_fastapi_app()
+        # selfclient = TestClient(app)
+        # breakpoint()
+        self._client.get("/foobar")
+        spans = self.memory_exporter.get_finished_spans()
+        self.assertEqual(len(spans), 3)
+        self._instrumentor.uninstrument()
+        self._client.get("/foobar")
+        spans = self.memory_exporter.get_finished_spans()
+        self.assertEqual(len(spans), 3)
+        self._instrumentor.instrument()
+        self._client.get("/foobar")
+        spans = self.memory_exporter.get_finished_spans()
+        self.assertEqual(len(spans), 6)
 
     def tearDown(self):
         self._instrumentor.uninstrument()
