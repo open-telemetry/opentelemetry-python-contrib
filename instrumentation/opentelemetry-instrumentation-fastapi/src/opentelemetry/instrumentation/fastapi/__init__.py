@@ -181,7 +181,7 @@ class FastAPIInstrumentor(BaseInstrumentor):
             else:
                 excluded_urls = (
                     excluded_urls
-                    if type(excluded_urls) == ExcludeList
+                    if isinstance(excluded_urls, ExcludeList)
                     else parse_excluded_urls(excluded_urls)
                 )
 
@@ -230,7 +230,7 @@ class FastAPIInstrumentor(BaseInstrumentor):
         _excluded_urls = kwargs.get("excluded_urls")
         if _excluded_urls is None:
             _InstrumentedFastAPI._excluded_urls = _excluded_urls_from_env
-        elif type(_excluded_urls) == ExcludeList:
+        elif isinstance(_excluded_urls, ExcludeList):
             _InstrumentedFastAPI._excluded_urls = _excluded_urls
         else:
             _InstrumentedFastAPI._excluded_urls = parse_excluded_urls(
@@ -253,7 +253,7 @@ class FastAPIInstrumentor(BaseInstrumentor):
         _InstrumentedFastAPI._instrumented_fastapi_apps = {
             instance
             for instance in _InstrumentedFastAPI._instrumented_fastapi_apps
-            if type(instance) == _InstrumentedFastAPI
+            if isinstance(instance, _InstrumentedFastAPI)
         }
         fastapi.FastAPI = self._original_fastapi
 
