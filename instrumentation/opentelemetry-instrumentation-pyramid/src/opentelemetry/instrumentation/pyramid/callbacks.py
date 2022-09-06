@@ -124,7 +124,7 @@ def _before_traversal(event):
 
 
 def trace_tween_factory(handler, registry):
-    # pylint: diable=too-many-statements
+    # pylint: disable=too-many-statements
     settings = registry.settings
     enabled = asbool(settings.get(SETTING_TRACE_ENABLED, True))
     meter = get_meter(__name__, __version__)
