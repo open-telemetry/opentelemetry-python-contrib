@@ -285,7 +285,6 @@ class TestAutoInstrumentation(TestFastAPIManualInstrumentation):
 
     def test_instrument_after_uninstrument(self):
         self._instrumentor.uninstrument()
-        self._app = None
         instrumentor = otel_fastapi.FastAPIInstrumentor()
         resource = Resource.create({"key1": "value1", "key2": "value2"})
         tracer_provider, exporter = self.create_tracer_provider(
