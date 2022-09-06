@@ -187,7 +187,7 @@ class FastAPIInstrumentor(BaseInstrumentor):
                 tracer_provider=tracer_provider,
             )
             app._is_instrumented_by_opentelemetry = True
-            if not app in _InstrumentedFastAPI._instrumented_fastapi_apps:
+            if app not in _InstrumentedFastAPI._instrumented_fastapi_apps:
                 _InstrumentedFastAPI._instrumented_fastapi_apps.add(app)
         else:
             _logger.warning(
@@ -230,11 +230,11 @@ class FastAPIInstrumentor(BaseInstrumentor):
         for instance in _InstrumentedFastAPI._instrumented_fastapi_apps:
             self.instrument_app(
                 instance,
-                # server_request_hook=_InstrumentedFastAPI._server_request_hook,
-                # client_request_hook=_InstrumentedFastAPI._client_request_hook,
-                # client_response_hook=_InstrumentedFastAPI._client_response_hook,
-                # tracer_provider=_InstrumentedFastAPI._tracer_provider,
-                # excluded_urls=_InstrumentedFastAPI._excluded_urls,
+                server_request_hook=_InstrumentedFastAPI._server_request_hook,
+                client_request_hook=_InstrumentedFastAPI._client_request_hook,
+                client_response_hook=_InstrumentedFastAPI._client_response_hook,
+                tracer_provider=_InstrumentedFastAPI._tracer_provider,
+                excluded_urls=_InstrumentedFastAPI._excluded_urls,
             )
 
     def _uninstrument(self, **kwargs):
@@ -270,11 +270,6 @@ class _InstrumentedFastAPI(fastapi.FastAPI):
         _InstrumentedFastAPI._instrumented_fastapi_apps.add(self)
 
     def __del__(self):
-        print("-----------")
-        print("-----------")
-        print("Yes it got deleted")
-        print("-----------")
-        print("-----------")
         _InstrumentedFastAPI._instrumented_fastapi_apps.remove(self)
 
 
