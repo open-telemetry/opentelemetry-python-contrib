@@ -309,6 +309,7 @@ class _InstrumentedFalconAPI(getattr(falcon, _instrument_app)):
                 context.detach(token)
             return response
 
+        start = default_timer()
         try:
             return super().__call__(env, _start_response)
         except Exception as exc:
