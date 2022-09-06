@@ -140,7 +140,11 @@ from opentelemetry.instrumentation.asgi.package import _instruments
 from opentelemetry.instrumentation.instrumentor import BaseInstrumentor
 from opentelemetry.semconv.trace import SpanAttributes
 from opentelemetry.trace import Span
-from opentelemetry.util.http import ExcludeList, get_excluded_urls, parse_excluded_urls
+from opentelemetry.util.http import (
+    ExcludeList,
+    get_excluded_urls,
+    parse_excluded_urls,
+)
 
 _excluded_urls_from_env = get_excluded_urls("FASTAPI")
 _logger = logging.getLogger(__name__)
@@ -175,7 +179,11 @@ class FastAPIInstrumentor(BaseInstrumentor):
             if excluded_urls is None:
                 excluded_urls = _excluded_urls_from_env
             else:
-                excluded_urls = excluded_urls if type(excluded_urls) == ExcludeList else parse_excluded_urls(excluded_urls)
+                excluded_urls = (
+                    excluded_urls
+                    if type(excluded_urls) == ExcludeList
+                    else parse_excluded_urls(excluded_urls)
+                )
 
             app.add_middleware(
                 OpenTelemetryMiddleware,
@@ -225,7 +233,9 @@ class FastAPIInstrumentor(BaseInstrumentor):
         elif type(_excluded_urls) == ExcludeList:
             _InstrumentedFastAPI._excluded_urls = _excluded_urls
         else:
-            _InstrumentedFastAPI._excluded_urls = parse_excluded_urls(_excluded_urls)
+            _InstrumentedFastAPI._excluded_urls = parse_excluded_urls(
+                _excluded_urls
+            )
         fastapi.FastAPI = _InstrumentedFastAPI
         for instance in _InstrumentedFastAPI._instrumented_fastapi_apps:
             self.instrument_app(
