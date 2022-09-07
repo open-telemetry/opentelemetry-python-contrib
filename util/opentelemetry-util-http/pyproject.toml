@@ -25,7 +25,7 @@ classifiers = [
 ]
 
 [project.urls]
-Homepage = "https://github.com/open-telemetry/opentelemetry-python-contrib/util/opentelemetry-util-http"
+Homepage = "https://github.com/open-telemetry/opentelemetry-python-contrib/tree/main/util/opentelemetry-util-http"
 
 [tool.hatch.version]
 path = "src/opentelemetry/util/http/version.py"
