@@ -34,7 +34,7 @@ dependencies = [
 test = []
 
 [project.urls]
-Homepage = "https://github.com/open-telemetry/opentelemetry-python-contrib/exporter/opentelemetry-exporter-richconsole"
+Homepage = "https://github.com/open-telemetry/opentelemetry-python-contrib/tree/main/exporter/opentelemetry-exporter-richconsole"
 
 [tool.hatch.version]
 path = "src/opentelemetry/exporter/richconsole/version.py"
