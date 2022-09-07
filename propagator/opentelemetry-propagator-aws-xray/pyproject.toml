@@ -34,7 +34,7 @@ test = []
 xray = "opentelemetry.propagators.aws:AwsXRayPropagator"
 
 [project.urls]
-Homepage = "https://github.com/open-telemetry/opentelemetry-python-contrib/tree/propagator/opentelemetry-propagator-aws-xray"
+Homepage = "https://github.com/open-telemetry/opentelemetry-python-contrib/tree/main/propagator/opentelemetry-propagator-aws-xray"
 
 [tool.hatch.version]
 path = "src/opentelemetry/propagators/aws/version.py"
