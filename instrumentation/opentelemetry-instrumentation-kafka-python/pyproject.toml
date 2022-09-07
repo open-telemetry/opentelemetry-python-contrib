@@ -43,7 +43,7 @@ test = [
 kafka = "opentelemetry.instrumentation.kafka:KafkaInstrumentor"
 
 [project.urls]
-Homepage = "https://github.com/open-telemetry/opentelemetry-python-contrib/tree/master/instrumentation/opentelemetry-instrumentation-kafka-python"
+Homepage = "https://github.com/open-telemetry/opentelemetry-python-contrib/tree/main/instrumentation/opentelemetry-instrumentation-kafka-python"
 
 [tool.hatch.version]
 path = "src/opentelemetry/instrumentation/kafka/version.py"
