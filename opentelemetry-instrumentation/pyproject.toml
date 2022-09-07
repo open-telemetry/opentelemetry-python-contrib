@@ -40,7 +40,7 @@ opentelemetry-instrument = "opentelemetry.instrumentation.auto_instrumentation:r
 instrumentation = "opentelemetry.instrumentation.environment_variables"
 
 [project.urls]
-Homepage = "https://github.com/open-telemetry/opentelemetry-python/tree/main/opentelemetry-instrumentation"
+Homepage = "https://github.com/open-telemetry/opentelemetry-python-contrib/tree/main/opentelemetry-instrumentation"
 
 [tool.hatch.version]
 path = "src/opentelemetry/instrumentation/version.py"
