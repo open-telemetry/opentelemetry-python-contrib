@@ -37,7 +37,7 @@ test = [
 logging = "opentelemetry.instrumentation.logging:LoggingInstrumentor"
 
 [project.urls]
-Homepage = "https://github.com/open-telemetry/opentelemetry-python-contrib/tree/master/instrumentation/opentelemetry-instrumentation-logging"
+Homepage = "https://github.com/open-telemetry/opentelemetry-python-contrib/tree/main/instrumentation/opentelemetry-instrumentation-logging"
 
 [tool.hatch.version]
 path = "src/opentelemetry/instrumentation/logging/version.py"
