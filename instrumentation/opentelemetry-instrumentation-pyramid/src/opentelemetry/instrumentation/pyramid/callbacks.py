@@ -160,7 +160,14 @@ def trace_tween_factory(handler, registry):
         attributes = otel_wsgi.collect_request_attributes(request.environ)
 
         request.environ[_ENVIRON_ENABLED_KEY] = True
-        request.environ[_ENVIRON_STARTTIME_KEY] = _time_ns()
+        request.environ[_ENVIRON_STARTTIME_KEY] = time_ns()
+        active_requests_count_attrs = (
+            otel_wsgi._parse_active_request_count_attrs(attributes)
+        )
+        duration_attrs = otel_wsgi._parse_duration_attrs(attributes)
+
+        start = default_timer()
+        active_requests_counter.add(1, active_requests_count_attrs)
 
         response = None
         status = None
