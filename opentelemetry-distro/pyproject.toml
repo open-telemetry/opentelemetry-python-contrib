@@ -41,7 +41,7 @@ configurator = "opentelemetry.distro:OpenTelemetryConfigurator"
 distro = "opentelemetry.distro:OpenTelemetryDistro"
 
 [project.urls]
-Homepage = "https://github.com/open-telemetry/opentelemetry-python/tree/main/opentelemetry-distro"
+Homepage = "https://github.com/open-telemetry/opentelemetry-python-contrib/tree/main/opentelemetry-distro"
 
 [tool.hatch.version]
 path = "src/opentelemetry/distro/version.py"
