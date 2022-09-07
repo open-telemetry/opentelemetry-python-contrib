@@ -71,7 +71,7 @@ dependencies = [
 test = []
 
 [project.urls]
-Homepage = "https://github.com/open-telemetry/opentelemetry-python/tree/main/opentelemetry-contrib-instrumentations"
+Homepage = "https://github.com/open-telemetry/opentelemetry-python-contrib/tree/main/opentelemetry-contrib-instrumentations"
 
 [tool.hatch.version]
 path = "src/opentelemetry/contrib-instrumentations/version.py"
