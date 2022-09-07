@@ -43,7 +43,7 @@ test = [
 boto3 = "opentelemetry.instrumentation.boto3sqs:Boto3SQSInstrumentor"
 
 [project.urls]
-Homepage = "https://github.com/open-telemetry/opentelemetry-python-contrib/instrumentation/opentelemetry-instrumentation-boto3sqs"
+Homepage = "https://github.com/open-telemetry/opentelemetry-python-contrib/tree/main/instrumentation/opentelemetry-instrumentation-boto3sqs"
 
 [tool.hatch.version]
 path = "src/opentelemetry/instrumentation/boto3sqs/version.py"
