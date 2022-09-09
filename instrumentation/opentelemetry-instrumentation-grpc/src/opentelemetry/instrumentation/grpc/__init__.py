@@ -158,7 +158,7 @@ If you'd like to exclude specific services for the instrumentations, you can use
 ``OTEL_PYTHON_GRPC_EXCLUDED_SERVICES`` environment variables.
 
 For example, if you assign ``"GRPCTestServer,GRPCHealthServer"`` to the variable,
-then the global interceptor automatically add the filter to exclude requests to
+then the global interceptor automatically adds the filters to exclude requests to
 services ``GRPCTestServer`` and ``GRPCHealthServer``.
 
 """
