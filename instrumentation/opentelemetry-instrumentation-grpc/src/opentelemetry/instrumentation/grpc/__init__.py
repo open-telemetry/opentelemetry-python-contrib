@@ -138,7 +138,7 @@ You can write a global server instrumentor as follows:
     )
     grpc_server_instrumentor.instrument()
 
-You can also use the filter to manual instrumentors:
+You can also use the filters directly on the provided interceptors:
 
 .. code-block::
 
