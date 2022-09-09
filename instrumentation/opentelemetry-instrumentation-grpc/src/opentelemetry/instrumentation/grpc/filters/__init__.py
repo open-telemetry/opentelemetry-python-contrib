@@ -56,7 +56,7 @@ def all_of(*args):
 
 
 def any_of(*args):
-    """Returns a filter function that returns True if either of filter functions
+    """Returns a filter function that returns True if any of filter functions
     assigned matches conditions.
 
     Args:
