@@ -50,10 +50,7 @@ def all_of(*args):
     """
 
     def filter_fn(metadata):
-        for func in args:
-            if not func(metadata):
-                return False
-        return True
+        return all(func(metadata) for func in args)
 
     return filter_fn
 
