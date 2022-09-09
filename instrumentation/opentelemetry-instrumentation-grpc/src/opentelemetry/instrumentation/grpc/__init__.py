@@ -212,7 +212,7 @@ class GrpcInstrumentorServer(BaseInstrumentor):
             if filters is None:
                 filters = excluded_service_filter
             else:
-                filters = all_of(filters, excluded_service_filter)
+                filters = any_of(filters, excluded_service_filter)
         self._filters = filters
 
     def instrumentation_dependencies(self) -> Collection[str]:
@@ -270,7 +270,7 @@ class GrpcInstrumentorClient(BaseInstrumentor):
             if filters is None:
                 filters = excluded_service_filter
             else:
-                filters = all_of(filters, excluded_service_filter)
+                filters = any_of(filters, excluded_service_filter)
         self._filters = filters
 
     # Figures out which channel type we need to wrap
