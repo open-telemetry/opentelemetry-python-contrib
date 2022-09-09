@@ -277,6 +277,7 @@ class _InstrumentedFastAPI(fastapi.FastAPI):
             client_response_hook=_InstrumentedFastAPI._client_response_hook,
             tracer_provider=_InstrumentedFastAPI._tracer_provider,
         )
+        self._is_instrumented_by_opentelemetry = True
         _InstrumentedFastAPI._instrumented_fastapi_apps.add(self)
 
     def __del__(self):
