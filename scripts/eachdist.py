@@ -518,18 +518,19 @@ def lint_args(args):
 
     runsubprocess(
         args.dry_run,
-        ("black", ".") + (("--diff", "--check") if args.check_only else ()),
+        ("black", "--config", "../pyproject.toml", ".")
+        + (("--diff", "--check") if args.check_only else ()),
         cwd=rootdir,
         check=True,
     )
     runsubprocess(
         args.dry_run,
-        ("isort", ".")
+        ("isort", "--settings-path", "../.isort.cfg", ".")
         + (("--diff", "--check-only") if args.check_only else ()),
         cwd=rootdir,
         check=True,
     )
-    runsubprocess(args.dry_run, ("flake8", rootdir), check=True)
+    runsubprocess(args.dry_run, ("flake8", "--config", "../.flake8", rootdir), check=True)
     execute_args(
         parse_subargs(
             args, ("exec", "pylint {}", "--all", "--mode", "lintroots")
@@ -644,7 +645,7 @@ def update_dependencies(targets, version, packages):
 
         update_files(
             targets,
-            "setup.cfg",
+            "pyproject.toml",
             fr"({package_name}.*)==(.*)",
             r"\1== " + version,
         )
@@ -719,11 +720,14 @@ def format_args(args):
         format_dir = os.path.join(format_dir, args.path)
 
     runsubprocess(
-        args.dry_run, ("black", "."), cwd=format_dir, check=True,
+        args.dry_run,
+        ("black", "--config", "../pyproject.toml", "."),
+        cwd=format_dir,
+        check=True,
     )
     runsubprocess(
         args.dry_run,
-        ("isort", "--profile", "black", "."),
+        ("isort", "--settings-path", "../.isort.cfg", "--profile", "black", "."),
         cwd=format_dir,
         check=True,
     )
