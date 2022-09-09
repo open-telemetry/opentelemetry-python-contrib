@@ -344,7 +344,7 @@ def test_health_check(test_case):
         ),
         (
             False,
-            filters.reverse(filters.method_name("SimpleMethod")),
+            filters.negate(filters.method_name("SimpleMethod")),
             _UnaryClientInfo(
                 full_method="/GRPCTestServer/SimpleMethod",
                 timeout=3000,
@@ -352,6 +352,6 @@ def test_health_check(test_case):
         ),
     ],
 )
-def test_all_any_reverse(test_case):
+def test_all_any_negate(test_case):
     fn = test_case[1]
     assert test_case[0] == fn(test_case[2])

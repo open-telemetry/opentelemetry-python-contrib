@@ -143,7 +143,7 @@ You can also use the filters directly on the provided interceptors:
 .. code-block::
 
     my_interceptor = server_interceptor(
-        filters = filters.reverse(filters.method_name("TestMethod"))
+        filters = filters.negate(filters.method_name("TestMethod"))
     )
     server = grpc.server(futures.ThreadPoolExecutor(),
                          interceptors = [my_interceptor])
@@ -172,7 +172,7 @@ from opentelemetry import trace
 from opentelemetry.instrumentation.grpc.filters import (
     all_of,
     any_of,
-    reverse,
+    negate,
     service_name,
 )
 from opentelemetry.instrumentation.grpc.grpcext import intercept_channel
@@ -195,8 +195,8 @@ class GrpcInstrumentorServer(BaseInstrumentor):
         grpc_server_instrumentor = GrpcInstrumentorServer()
         grpc_server_instrumentor.instrument()
 
-        If you want to add filters that skip requests which match
-        the condition, pass ``filters`` option to GrpcInstrumentorServer.
+        If you want to add filters that only intercept requests
+        to match the condition, pass ``filters`` to GrpcInstrumentorServer.
 
         grpc_server_instrumentor = GrpcInstrumentorServer(
             filters=filters.method_prefix("SimpleMethod"))
@@ -255,10 +255,10 @@ class GrpcInstrumentorClient(BaseInstrumentor):
         grpc_client_instrumentor.instrument()
 
         If you want to add filters that only intercept requests
-        to match the condition, assign filters option to GrpcInstrumentorClient.
+        to match the condition, pass ``filters`` option to GrpcInstrumentorClient.
 
         grpc_client_instrumentor = GrpcInstrumentorClient(
-            filter=filters.reverse(filters.health_check())
+            filter=filters.negate(filters.health_check())
         )
         grpc_client_instrumentor.instrument()
 
@@ -363,7 +363,7 @@ def _excluded_service_filter() -> Union[Callable[[object], bool], None]:
     if len(services) == 0:
         return None
     filters = (service_name(srv) for srv in services)
-    return reverse(any_of(*filters))
+    return negate(any_of(*filters))
 
 
 def _parse_services(excluded_services: str) -> List[str]:

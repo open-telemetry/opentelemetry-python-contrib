@@ -173,7 +173,7 @@ class OpenTelemetryServerInterceptor(grpc.ServerInterceptor):
     Usage::
 
         tracer = some OpenTelemetry tracer
-        filter = filters.reverse(filters.method_name("service.Foo"))
+        filter = filters.negate(filters.method_name("service.Foo"))
 
         interceptors = [
             OpenTelemetryServerInterceptor(tracer, filter),

@@ -13,9 +13,12 @@
 # limitations under the License.
 
 import os
+from typing import Callable, TypeVar, Union
 
 import grpc
 
+TCallDetails = TypeVar('TCallDetails', grpc.HandlerCallDetails, grpc.ClientCallDetails)
+Condition = Callable[[TCallDetails], bool]
 
 def _full_method(metadata):
     name = ""
@@ -37,7 +40,7 @@ def _split_full_method(metadata):
     return (service, method)
 
 
-def all_of(*args):
+def all_of(*args: Condition[TCallDetails]) -> Condition[TCallDetails]:
     """Returns a filter function that returns True if all filter functions
     assigned matches conditions.
 
@@ -55,7 +58,7 @@ def all_of(*args):
     return filter_fn
 
 
-def any_of(*args):
+def any_of(*args: Condition[TCallDetails]) -> Condition[TCallDetails]:
     """Returns a filter function that returns True if any of filter functions
     assigned matches conditions.
 
@@ -68,24 +71,19 @@ def any_of(*args):
     """
 
     def filter_fn(metadata):
-        for func in args:
-            if func(metadata):
-                return True
-        return False
+        return any(func(metadata) for func in args)
 
     return filter_fn
 
 
-def reverse(func):
-    """Returns a filter function that reverse the result of func
+def negate(func: Condition[TCallDetails]) -> Condition[TCallDetails]:
+    """Returns a filter function that negate the result of func
 
     Args:
-        func (function): filter function that returns True if
-        request's gRPC method name matches name
+        func (function): filter function to negate the result
 
     Returns:
-        A filter function that returns False if request's gRPC method
-        name matches name
+        A filter function that negate the result of func
     """
 
     def filter_fn(metadata):
@@ -94,7 +92,7 @@ def reverse(func):
     return filter_fn
 
 
-def method_name(name):
+def method_name(name: Condition[Union[grpc.HandlerCallDetails, grpc.ClientCallDetails]]) -> Condition[TCallDetails]:
     """Returns a filter function that return True if
     request's gRPC method name matches name.
 
@@ -113,7 +111,7 @@ def method_name(name):
     return filter_fn
 
 
-def method_prefix(prefix):
+def method_prefix(prefix: Condition[Union[grpc.HandlerCallDetails, grpc.ClientCallDetails]]) -> Condition[TCallDetails]:
     """Returns a filter function that return True if
     request's gRPC method name starts with prefix.
 
@@ -132,7 +130,7 @@ def method_prefix(prefix):
     return filter_fn
 
 
-def full_method_name(name):
+def full_method_name(name: Condition[Union[grpc.HandlerCallDetails, grpc.ClientCallDetails]]) -> Condition[TCallDetails]:
     """Returns a filter function that return True if
     request's gRPC full method name matches name.
 
@@ -151,7 +149,7 @@ def full_method_name(name):
     return filter_fn
 
 
-def service_name(name):
+def service_name(name: Condition[Union[grpc.HandlerCallDetails, grpc.ClientCallDetails]]) -> Condition[TCallDetails]:
     """Returns a filter function that return True if
     request's gRPC service name matches name.
 
@@ -170,15 +168,15 @@ def service_name(name):
     return filter_fn
 
 
-def service_prefix(prefix):
+def service_prefix(prefix: Condition[Union[grpc.HandlerCallDetails, grpc.ClientCallDetails]]) -> Condition[TCallDetails]:
     """Returns a filter function that return True if
     request's gRPC service name starts with prefix.
 
     Args:
-        prefix (str): method prefix to match
+        prefix (str): service prefix to match
 
     Returns:
-        A filter function that returns True if request's gRPC method
+        A filter function that returns True if request's gRPC service
         name starts with prefix
     """
 
@@ -189,7 +187,7 @@ def service_prefix(prefix):
     return filter_fn
 
 
-def health_check():
+def health_check() -> Condition[TCallDetails]:
     """Returns a Filter that returns true if the request's
     service name is health check defined by gRPC Health Checking Protocol.
     https://github.com/grpc/grpc/blob/master/doc/health-checking.md
