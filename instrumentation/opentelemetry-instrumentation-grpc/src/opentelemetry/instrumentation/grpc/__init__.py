@@ -195,8 +195,8 @@ class GrpcInstrumentorServer(BaseInstrumentor):
         grpc_server_instrumentor = GrpcInstrumentorServer()
         grpc_server_instrumentor.instrument()
 
-        If you want to add filters that only intercept requests
-        to match the condition, assign filters option to GrpcInstrumentorServer.
+        If you want to add filters that skip requests which match
+        the condition, pass ``filters`` option to GrpcInstrumentorServer.
 
         grpc_server_instrumentor = GrpcInstrumentorServer(
             filters=filters.method_prefix("SimpleMethod"))
