@@ -414,9 +414,7 @@ class TestClientProtoFilterByEnvAndOption(TestBase):
     def setUp(self):
         with mock.patch.dict(
             os.environ,
-            {
-                "OTEL_PYTHON_GRPC_EXCLUDED_SERVICES": "GRPCMockServer"
-            },
+            {"OTEL_PYTHON_GRPC_EXCLUDED_SERVICES": "GRPCMockServer"},
         ):
             super().setUp()
             GrpcInstrumentorClient(
