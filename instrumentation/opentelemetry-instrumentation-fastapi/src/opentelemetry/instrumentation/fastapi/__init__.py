@@ -258,6 +258,7 @@ class _InstrumentedFastAPI(fastapi.FastAPI):
             tracer_provider=_InstrumentedFastAPI._tracer_provider,
             meter=meter,
         )
+        self._is_instrumented_by_opentelemetry = True
 
 
 def _get_route_details(scope):
