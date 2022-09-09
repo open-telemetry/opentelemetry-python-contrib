@@ -170,7 +170,6 @@ from wrapt import wrap_function_wrapper as _wrap
 
 from opentelemetry import trace
 from opentelemetry.instrumentation.grpc.filters import (
-    all_of,
     any_of,
     negate,
     service_name,
