@@ -63,7 +63,7 @@ def any_of(*args):
         args (function): a list of filter function
 
     Returns:
-        A filter function that returns True if either of filter functions
+        A filter function that returns True if any of filter functions
     assigned matches conditions.
     """
 
