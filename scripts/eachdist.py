@@ -525,7 +525,7 @@ def lint_args(args):
     )
     runsubprocess(
         args.dry_run,
-        ("isort", "--settings-path", "../.isort.cfg", ".")
+        ("isort", "--settings-path", f"{rootdir}/.isort.cfg", ".")
         + (("--diff", "--check-only") if args.check_only else ()),
         cwd=rootdir,
         check=True,
