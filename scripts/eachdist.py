@@ -530,7 +530,7 @@ def lint_args(args):
         cwd=rootdir,
         check=True,
     )
-    runsubprocess(args.dry_run, ("flake8", "--config", "../.flake8", rootdir), check=True)
+    runsubprocess(args.dry_run, ("flake8", "--config", f"{rootdir}/.flake8", rootdir), check=True)
     execute_args(
         parse_subargs(
             args, ("exec", "pylint {}", "--all", "--mode", "lintroots")
