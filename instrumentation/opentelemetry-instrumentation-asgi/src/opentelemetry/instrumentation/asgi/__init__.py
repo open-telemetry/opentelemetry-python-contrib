@@ -365,6 +365,34 @@ def get_default_span_details(scope: dict) -> Tuple[str, dict]:
     return span_name, {}
 
 
+def _collect_target_attribute(
+    scope: typing.Dict[str, typing.Any]
+) -> typing.Optional[str]:
+    """
+    Returns the target path as defined by the Semantic Conventions.
+
+    This value is suitable to use in metrics as it should replace concrete
+    values with a parameterized name. Example: /api/users/{user_id}
+
+    Refer to the specification
+    https://github.com/open-telemetry/opentelemetry-specification/blob/main/specification/metrics/semantic_conventions/http-metrics.md#parameterized-attributes
+
+    Note: this function requires specific code for each framework, as there's no
+    standard attribute to use.
+    """
+    # FastAPI
+    root_path = scope.get("root_path", "")
+
+    route = scope.get("route")
+    if not route:
+        return None
+    path_format = getattr(route, "path_format", None)
+    if path_format:
+        return f"{root_path}{path_format}"
+
+    return None
+
+
 class OpenTelemetryMiddleware:
     """The ASGI application middleware.
 
@@ -448,6 +476,12 @@ class OpenTelemetryMiddleware:
             attributes
         )
         duration_attrs = _parse_duration_attrs(attributes)
+
+        target = _collect_target_attribute(scope)
+        if target:
+            active_requests_count_attrs[SpanAttributes.HTTP_TARGET] = target
+            duration_attrs[SpanAttributes.HTTP_TARGET] = target
+
         if scope["type"] == "http":
             self.active_requests_counter.add(1, active_requests_count_attrs)
         try:
