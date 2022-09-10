@@ -727,7 +727,7 @@ def format_args(args):
     )
     runsubprocess(
         args.dry_run,
-        ("isort", "--settings-path", "../.isort.cfg", "--profile", "black", "."),
+        ("isort", "--settings-path", f"{root_dir}/.isort.cfg", "--profile", "black", "."),
         cwd=format_dir,
         check=True,
     )
