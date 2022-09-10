@@ -518,7 +518,7 @@ def lint_args(args):
 
     runsubprocess(
         args.dry_run,
-        ("black", "--config", "../pyproject.toml", ".")
+        ("black", "--config", f"{rootdir}/pyproject.toml", ".")
         + (("--diff", "--check") if args.check_only else ()),
         cwd=rootdir,
         check=True,
