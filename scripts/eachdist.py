@@ -718,7 +718,7 @@ def format_args(args):
     format_dir = str(find_projectroot())
     if args.path:
         format_dir = os.path.join(format_dir, args.path)
-
+    root_dir = str(find_projectroot())
     runsubprocess(
         args.dry_run,
         ("black", "--config", "../pyproject.toml", "."),
