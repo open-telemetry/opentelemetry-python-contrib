@@ -23,6 +23,7 @@ from opentelemetry.environment_variables import (
     OTEL_METRICS_EXPORTER,
     OTEL_TRACES_EXPORTER,
 )
+from opentelemetry.sdk.environment_variables import OTEL_EXPORTER_OTLP_PROTOCOL
 
 
 class TestDistribution(TestCase):
@@ -42,4 +43,7 @@ class TestDistribution(TestCase):
         )
         self.assertEqual(
             "otlp", os.environ.get(OTEL_METRICS_EXPORTER)
+        )
+        self.assertEqual(
+            "grpc", os.environ.get(OTEL_METRICS_EXPORTER)
         )

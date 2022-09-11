@@ -22,7 +22,7 @@ This package provides a couple of commands that help automatically instruments a
     For more info about ``opentelemetry-distro`` check `here <https://opentelemetry-python.readthedocs.io/en/latest/examples/distro/README.html>`__
     ::
 
-        pip install opentelemetry-distro
+        pip install opentelemetry-distro[otlp]
 
 
 opentelemetry-bootstrap
