@@ -133,6 +133,7 @@ class AsyncPGInstrumentor(BaseInstrumentor):
         exception = None
         params = getattr(instance, "_params", {})
         name = args[0] if args[0] else params.get("database", "postgresql")
+        name = name.split()[0]
 
         with self._tracer.start_as_current_span(
             name, kind=SpanKind.CLIENT
