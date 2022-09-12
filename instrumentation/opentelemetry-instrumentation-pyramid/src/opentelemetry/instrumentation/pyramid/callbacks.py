@@ -190,9 +190,11 @@ def trace_tween_factory(handler, registry):
         finally:
             duration = max(round((default_timer() - start) * 1000), 0)
             status = getattr(response, "status", status)
-            duration_attrs[
-                SpanAttributes.HTTP_STATUS_CODE
-            ] = otel_wsgi._parse_status_code(status)
+            status_code = otel_wsgi._parse_status_code(status)
+            if status_code is not None:
+                duration_attrs[
+                    SpanAttributes.HTTP_STATUS_CODE
+                ] = otel_wsgi._parse_status_code(status)
             duration_histogram.record(duration, duration_attrs)
             active_requests_counter.add(-1, active_requests_count_attrs)
             span = request.environ.get(_ENVIRON_SPAN_KEY)
