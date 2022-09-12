@@ -151,7 +151,7 @@ def trace_tween_factory(handler, registry):
     # make a request tracing function
     # pylint: disable=too-many-branches
     def trace_tween(request):
-        # pylint: disable=E1101
+        # pylint: disable=E1101, too-many-locals
         if _excluded_urls.url_disabled(request.url):
             request.environ[_ENVIRON_ENABLED_KEY] = False
             # short-circuit when we don't want to trace anything
