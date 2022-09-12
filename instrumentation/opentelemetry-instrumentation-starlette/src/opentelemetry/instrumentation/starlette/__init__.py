@@ -130,7 +130,9 @@ from starlette.routing import Match
 
 from opentelemetry.instrumentation.asgi import OpenTelemetryMiddleware
 from opentelemetry.instrumentation.asgi.package import _instruments
+from opentelemetry.instrumentation.starlette.version import __version__
 from opentelemetry.instrumentation.instrumentor import BaseInstrumentor
+from opentelemetry.metrics import get_meter
 from opentelemetry.semconv.trace import SpanAttributes
 from opentelemetry.trace import Span
 from opentelemetry.util.http import get_excluded_urls
@@ -156,9 +158,11 @@ class StarletteInstrumentor(BaseInstrumentor):
         server_request_hook: _ServerRequestHookT = None,
         client_request_hook: _ClientRequestHookT = None,
         client_response_hook: _ClientResponseHookT = None,
+        meter_provider=None,
         tracer_provider=None,
     ):
         """Instrument an uninstrumented Starlette application."""
+        meter = get_meter(__name__, __version__, meter_provider)
         if not getattr(app, "is_instrumented_by_opentelemetry", False):
             app.add_middleware(
                 OpenTelemetryMiddleware,
@@ -168,6 +172,7 @@ class StarletteInstrumentor(BaseInstrumentor):
                 client_request_hook=client_request_hook,
                 client_response_hook=client_response_hook,
                 tracer_provider=tracer_provider,
+                meter=meter,
             )
             app.is_instrumented_by_opentelemetry = True
 
@@ -186,6 +191,9 @@ class StarletteInstrumentor(BaseInstrumentor):
         _InstrumentedStarlette._client_response_hook = kwargs.get(
             "client_response_hook"
         )
+        _InstrumentedStarlette._meter_provider = kwargs.get(
+            "_meter_provider"
+        )
         applications.Starlette = _InstrumentedStarlette
 
     def _uninstrument(self, **kwargs):
@@ -194,12 +202,16 @@ class StarletteInstrumentor(BaseInstrumentor):
 
 class _InstrumentedStarlette(applications.Starlette):
     _tracer_provider = None
+    _meter_provider = None
     _server_request_hook: _ServerRequestHookT = None
     _client_request_hook: _ClientRequestHookT = None
     _client_response_hook: _ClientResponseHookT = None
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
+        meter = get_meter(
+            __name__, __version__, _InstrumentedStarlette._meter_provider
+        )
         self.add_middleware(
             OpenTelemetryMiddleware,
             excluded_urls=_excluded_urls,
@@ -208,6 +220,7 @@ class _InstrumentedStarlette(applications.Starlette):
             client_request_hook=_InstrumentedStarlette._client_request_hook,
             client_response_hook=_InstrumentedStarlette._client_response_hook,
             tracer_provider=_InstrumentedStarlette._tracer_provider,
+            meter=meter,
         )
 
 
