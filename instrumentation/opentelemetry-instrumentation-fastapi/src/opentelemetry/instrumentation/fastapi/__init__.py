@@ -182,11 +182,7 @@ class FastAPIInstrumentor(BaseInstrumentor):
             if excluded_urls is None:
                 excluded_urls = _excluded_urls_from_env
             else:
-                excluded_urls = (
-                    excluded_urls
-                    if isinstance(excluded_urls, ExcludeList)
-                    else parse_excluded_urls(excluded_urls)
-                )
+                excluded_urls = parse_excluded_urls(excluded_urls)
             meter = get_meter(__name__, __version__, meter_provider)
 
             app.add_middleware(
@@ -233,34 +229,18 @@ class FastAPIInstrumentor(BaseInstrumentor):
             "client_response_hook"
         )
         _excluded_urls = kwargs.get("excluded_urls")
-        if _excluded_urls is None:
-            _InstrumentedFastAPI._excluded_urls = _excluded_urls_from_env
-        elif isinstance(_excluded_urls, ExcludeList):
-            _InstrumentedFastAPI._excluded_urls = _excluded_urls
-        else:
-            _InstrumentedFastAPI._excluded_urls = parse_excluded_urls(
-                _excluded_urls
-            )
+        _InstrumentedFastAPI._excluded_urls = (
+            _excluded_urls_from_env
+            if _excluded_urls is None
+            else parse_excluded_urls(_excluded_urls)
+        )
         _InstrumentedFastAPI._meter_provider = kwargs.get("meter_provider")
         fastapi.FastAPI = _InstrumentedFastAPI
-        for instance in _InstrumentedFastAPI._instrumented_fastapi_apps:
-            self.instrument_app(
-                instance,
-                server_request_hook=_InstrumentedFastAPI._server_request_hook,
-                client_request_hook=_InstrumentedFastAPI._client_request_hook,
-                client_response_hook=_InstrumentedFastAPI._client_response_hook,
-                tracer_provider=_InstrumentedFastAPI._tracer_provider,
-                excluded_urls=_InstrumentedFastAPI._excluded_urls,
-            )
 
     def _uninstrument(self, **kwargs):
         for instance in _InstrumentedFastAPI._instrumented_fastapi_apps:
             self.uninstrument_app(instance)
-        _InstrumentedFastAPI._instrumented_fastapi_apps = {
-            instance
-            for instance in _InstrumentedFastAPI._instrumented_fastapi_apps
-            if isinstance(instance, _InstrumentedFastAPI)
-        }
+        _InstrumentedFastAPI._instrumented_fastapi_apps.clear()
         fastapi.FastAPI = self._original_fastapi
 
 
@@ -292,7 +272,8 @@ class _InstrumentedFastAPI(fastapi.FastAPI):
         _InstrumentedFastAPI._instrumented_fastapi_apps.add(self)
 
     def __del__(self):
-        _InstrumentedFastAPI._instrumented_fastapi_apps.remove(self)
+        if self in _InstrumentedFastAPI._instrumented_fastapi_apps:
+            _InstrumentedFastAPI._instrumented_fastapi_apps.remove(self)
 
 
 def _get_route_details(scope):

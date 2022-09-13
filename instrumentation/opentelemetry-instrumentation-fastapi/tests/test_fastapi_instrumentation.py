@@ -274,16 +274,11 @@ class TestFastAPIManualInstrumentation(TestBase):
                     self.assertEqual(point.value, 0)
 
     def test_metric_uninstrument(self):
-        # instrumenting class and creating app to send request
-        self._instrumentor.instrument()
-        app = self._create_fastapi_app()
-        client = TestClient(app)
-        client.get("/foobar")
-        # uninstrumenting class and creating the app again
+        if not isinstance(self, TestAutoInstrumentation):
+            self._instrumentor.instrument()
+        self._client.get("/foobar")
         self._instrumentor.uninstrument()
-        app = self._create_fastapi_app()
-        client = TestClient(app)
-        client.get("/foobar")
+        self._client.get("/foobar")
 
         metrics_list = self.memory_metrics_reader.get_metrics_data()
         for metric in (
@@ -424,28 +419,6 @@ class TestAutoInstrumentation(TestFastAPIManualInstrumentation):
         client.get("/foobar")
         spans = self.memory_exporter.get_finished_spans()
         self.assertEqual(len(spans), 3)
-
-    def test_instrument_after_uninstrument(self):
-        self._instrumentor.uninstrument()
-        instrumentor = otel_fastapi.FastAPIInstrumentor()
-        resource = Resource.create({"key1": "value1", "key2": "value2"})
-        tracer_provider, exporter = self.create_tracer_provider(
-            resource=resource
-        )
-        instrumentor.instrument(tracer_provider=tracer_provider)
-        self._app = self._create_fastapi_app()
-        self._client = TestClient(self._app)
-        self._client.get("/foobar")
-        spans = exporter.get_finished_spans()
-        self.assertEqual(len(spans), 3)
-        instrumentor.uninstrument()
-        self._client.get("/foobar")
-        spans = exporter.get_finished_spans()
-        self.assertEqual(len(spans), 3)
-        instrumentor.instrument(tracer_provider=tracer_provider)
-        self._client.get("/foobar")
-        spans = exporter.get_finished_spans()
-        self.assertEqual(len(spans), 6)
 
     def tearDown(self):
         self._instrumentor.uninstrument()
