@@ -14,6 +14,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   ([#1199](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/1199))
 - Add metric instrumentation in Pyramid
   ([#1242](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/1242))
+- Add metric instrumentation in starlette
+  ([#1327](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/1327))
 
 ### Fixed
 

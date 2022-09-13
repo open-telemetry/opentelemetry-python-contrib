@@ -130,8 +130,8 @@ from starlette.routing import Match
 
 from opentelemetry.instrumentation.asgi import OpenTelemetryMiddleware
 from opentelemetry.instrumentation.asgi.package import _instruments
-from opentelemetry.instrumentation.starlette.version import __version__
 from opentelemetry.instrumentation.instrumentor import BaseInstrumentor
+from opentelemetry.instrumentation.starlette.version import __version__
 from opentelemetry.metrics import get_meter
 from opentelemetry.semconv.trace import SpanAttributes
 from opentelemetry.trace import Span
@@ -172,7 +172,7 @@ class StarletteInstrumentor(BaseInstrumentor):
                 client_request_hook=client_request_hook,
                 client_response_hook=client_response_hook,
                 tracer_provider=tracer_provider,
-                meter=meter
+                meter=meter,
             )
             app.is_instrumented_by_opentelemetry = True
 
@@ -191,9 +191,7 @@ class StarletteInstrumentor(BaseInstrumentor):
         _InstrumentedStarlette._client_response_hook = kwargs.get(
             "client_response_hook"
         )
-        _InstrumentedStarlette._meter_provider = kwargs.get(
-            "_meter_provider"
-        )
+        _InstrumentedStarlette._meter_provider = kwargs.get("_meter_provider")
         applications.Starlette = _InstrumentedStarlette
 
     def _uninstrument(self, **kwargs):
@@ -220,7 +218,7 @@ class _InstrumentedStarlette(applications.Starlette):
             client_request_hook=_InstrumentedStarlette._client_request_hook,
             client_response_hook=_InstrumentedStarlette._client_response_hook,
             tracer_provider=_InstrumentedStarlette._tracer_provider,
-            meter=meter
+            meter=meter,
         )
 
 

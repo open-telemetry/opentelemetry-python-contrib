@@ -23,6 +23,10 @@ from starlette.testclient import TestClient
 from starlette.websockets import WebSocket
 
 import opentelemetry.instrumentation.starlette as otel_starlette
+from opentelemetry.sdk.metrics.export import (
+    HistogramDataPoint,
+    NumberDataPoint,
+)
 from opentelemetry.sdk.resources import Resource
 from opentelemetry.semconv.trace import SpanAttributes
 from opentelemetry.test.globals_test import reset_trace_globals
@@ -36,15 +40,10 @@ from opentelemetry.trace import (
 from opentelemetry.util.http import (
     OTEL_INSTRUMENTATION_HTTP_CAPTURE_HEADERS_SERVER_REQUEST,
     OTEL_INSTRUMENTATION_HTTP_CAPTURE_HEADERS_SERVER_RESPONSE,
-    get_excluded_urls,
     _active_requests_count_attrs,
     _duration_attrs,
+    get_excluded_urls,
 )
-from opentelemetry.sdk.metrics.export import (
-    HistogramDataPoint,
-    NumberDataPoint,
-)
-
 
 _expected_metric_names = [
     "http.server.active_requests",
@@ -54,7 +53,6 @@ _recommended_attrs = {
     "http.server.active_requests": _active_requests_count_attrs,
     "http.server.duration": _duration_attrs,
 }
-
 
 
 class TestStarletteManualInstrumentation(TestBase):
@@ -117,7 +115,7 @@ class TestStarletteManualInstrumentation(TestBase):
         self._client.get("/healthzz")
         spans = self.memory_exporter.get_finished_spans()
         self.assertEqual(len(spans), 0)
-    
+
     def test_starlette_metrics(self):
         self._client.get("/foobar")
         self._client.get("/foobar")
@@ -145,7 +143,7 @@ class TestStarletteManualInstrumentation(TestBase):
                                 attr, _recommended_attrs[metric.name]
                             )
         self.assertTrue(number_data_point_seen and histogram_data_point_seen)
-    
+
     def test_basic_post_request_metric_success(self):
         start = default_timer()
         self._client.post("/foobar")
