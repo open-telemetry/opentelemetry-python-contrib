@@ -172,7 +172,7 @@ class StarletteInstrumentor(BaseInstrumentor):
                 client_request_hook=client_request_hook,
                 client_response_hook=client_response_hook,
                 tracer_provider=tracer_provider,
-                meter=meter,
+                meter=meter
             )
             app.is_instrumented_by_opentelemetry = True
 
@@ -220,7 +220,7 @@ class _InstrumentedStarlette(applications.Starlette):
             client_request_hook=_InstrumentedStarlette._client_request_hook,
             client_response_hook=_InstrumentedStarlette._client_response_hook,
             tracer_provider=_InstrumentedStarlette._tracer_provider,
-            meter=meter,
+            meter=meter
         )
 
 
