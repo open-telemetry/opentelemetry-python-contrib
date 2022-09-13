@@ -142,10 +142,7 @@ from opentelemetry.instrumentation.instrumentor import BaseInstrumentor
 from opentelemetry.metrics import get_meter
 from opentelemetry.semconv.trace import SpanAttributes
 from opentelemetry.trace import Span
-from opentelemetry.util.http import (
-    get_excluded_urls,
-    parse_excluded_urls,
-)
+from opentelemetry.util.http import get_excluded_urls, parse_excluded_urls
 
 _excluded_urls_from_env = get_excluded_urls("FASTAPI")
 _logger = logging.getLogger(__name__)
