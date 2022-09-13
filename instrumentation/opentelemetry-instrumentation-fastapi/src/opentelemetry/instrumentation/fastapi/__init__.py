@@ -137,7 +137,9 @@ from starlette.routing import Match
 
 from opentelemetry.instrumentation.asgi import OpenTelemetryMiddleware
 from opentelemetry.instrumentation.asgi.package import _instruments
+from opentelemetry.instrumentation.fastapi.version import __version__
 from opentelemetry.instrumentation.instrumentor import BaseInstrumentor
+from opentelemetry.metrics import get_meter
 from opentelemetry.semconv.trace import SpanAttributes
 from opentelemetry.trace import Span
 from opentelemetry.util.http import (
@@ -169,6 +171,7 @@ class FastAPIInstrumentor(BaseInstrumentor):
         client_request_hook: _ClientRequestHookT = None,
         client_response_hook: _ClientResponseHookT = None,
         tracer_provider=None,
+        meter_provider=None,
         excluded_urls=None,
     ):
         """Instrument an uninstrumented FastAPI application."""
@@ -184,6 +187,7 @@ class FastAPIInstrumentor(BaseInstrumentor):
                     if isinstance(excluded_urls, ExcludeList)
                     else parse_excluded_urls(excluded_urls)
                 )
+            meter = get_meter(__name__, __version__, meter_provider)
 
             app.add_middleware(
                 OpenTelemetryMiddleware,
@@ -193,6 +197,7 @@ class FastAPIInstrumentor(BaseInstrumentor):
                 client_request_hook=client_request_hook,
                 client_response_hook=client_response_hook,
                 tracer_provider=tracer_provider,
+                meter=meter,
             )
             app._is_instrumented_by_opentelemetry = True
             if app not in _InstrumentedFastAPI._instrumented_fastapi_apps:
@@ -236,6 +241,7 @@ class FastAPIInstrumentor(BaseInstrumentor):
             _InstrumentedFastAPI._excluded_urls = parse_excluded_urls(
                 _excluded_urls
             )
+        _InstrumentedFastAPI._meter_provider = kwargs.get("meter_provider")
         fastapi.FastAPI = _InstrumentedFastAPI
         for instance in _InstrumentedFastAPI._instrumented_fastapi_apps:
             self.instrument_app(
@@ -260,6 +266,7 @@ class FastAPIInstrumentor(BaseInstrumentor):
 
 class _InstrumentedFastAPI(fastapi.FastAPI):
     _tracer_provider = None
+    _meter_provider = None
     _excluded_urls = None
     _server_request_hook: _ServerRequestHookT = None
     _client_request_hook: _ClientRequestHookT = None
@@ -268,6 +275,9 @@ class _InstrumentedFastAPI(fastapi.FastAPI):
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
+        meter = get_meter(
+            __name__, __version__, _InstrumentedFastAPI._meter_provider
+        )
         self.add_middleware(
             OpenTelemetryMiddleware,
             excluded_urls=_InstrumentedFastAPI._excluded_urls,
@@ -276,6 +286,7 @@ class _InstrumentedFastAPI(fastapi.FastAPI):
             client_request_hook=_InstrumentedFastAPI._client_request_hook,
             client_response_hook=_InstrumentedFastAPI._client_response_hook,
             tracer_provider=_InstrumentedFastAPI._tracer_provider,
+            meter=meter,
         )
         self._is_instrumented_by_opentelemetry = True
         _InstrumentedFastAPI._instrumented_fastapi_apps.add(self)
