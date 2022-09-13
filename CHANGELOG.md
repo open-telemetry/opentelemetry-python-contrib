@@ -10,6 +10,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Added
 - Flask sqlalchemy psycopg2 integration
   ([#1224](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/1224))
+- Add metric instrumentation in fastapi
+  ([#1199](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/1199))
+- Add metric instrumentation in Pyramid
+  ([#1242](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/1242))
+- `opentelemetry-util-http` Add support for sanitizing HTTP header values.
+  ([#1253](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/1253))
 
 ### Fixed
 
