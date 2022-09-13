@@ -143,7 +143,6 @@ from opentelemetry.metrics import get_meter
 from opentelemetry.semconv.trace import SpanAttributes
 from opentelemetry.trace import Span
 from opentelemetry.util.http import (
-    ExcludeList,
     get_excluded_urls,
     parse_excluded_urls,
 )
