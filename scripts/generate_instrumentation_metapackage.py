@@ -16,7 +16,8 @@
 
 import logging
 import os
-from configparser import ConfigParser
+import tomli
+import tomli_w
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger("instrumentation_metapackage_generator")
@@ -65,17 +66,18 @@ def get_instrumentation_packages():
 def main():
     dependencies = get_instrumentation_packages()
 
-    setup_cfg_path = os.path.join(
-        root_path, "opentelemetry-contrib-instrumentations", "setup.cfg"
+    pyproject_toml_path = os.path.join(
+        root_path, "opentelemetry-contrib-instrumentations", "pyproject.toml"
     )
-    config = ConfigParser()
-    config.read(setup_cfg_path)
 
-    deps = "\n".join(f"{pkg}=={version}" for pkg, version in dependencies)
+    deps = [f"{pkg}=={version}" for pkg, version in dependencies]
+    with open(pyproject_toml_path, "rb") as f:
+        pyproject_toml = tomli.load(f)
 
-    config["options"]["install_requires"] = "\n" + deps
-    with open(setup_cfg_path, "w", encoding="utf-8") as fh:
-        config.write(fh)
+
+    pyproject_toml["project"]["dependencies"] = deps
+    with open(pyproject_toml_path, "wb") as fh:
+        tomli_w.dump(pyproject_toml, fh)
 
 
 if __name__ == "__main__":
