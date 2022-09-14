@@ -6,7 +6,7 @@
 set -ev
 
 # Get the latest versions of packaging tools
-python3 -m pip install --upgrade pip setuptools wheel
+python3 -m pip install --upgrade pip build setuptools wheel
 
 BASEDIR=$(dirname $(readlink -f $(dirname $0)))
 DISTDIR=dist
