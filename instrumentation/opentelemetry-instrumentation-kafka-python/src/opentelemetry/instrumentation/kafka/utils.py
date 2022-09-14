@@ -1,8 +1,10 @@
 import json
+
+import kafka.errors as KafkaErrors
+
 from logging import getLogger
 from typing import Callable, Dict, List, Optional
 
-from kafka.errors import errors as KafkaErrors
 from kafka.record.abc import ABCRecord
 
 from opentelemetry import context, propagate, trace
