@@ -146,6 +146,22 @@ class TestStarletteManualInstrumentation(TestBase):
 
     def test_basic_post_request_metric_success(self):
         start = default_timer()
+        expected_duration_attributes = {
+            "http.flavor": "1.1",
+            "http.host": "testserver",
+            "http.method": "POST",
+            "http.scheme": "http",
+            "http.server_name": "testserver",
+            "http.status_code": 405,
+            "net.host.port": 80,
+        }
+        expected_requests_count_attributes = {
+            "http.flavor": "1.1",
+            "http.host": "testserver",
+            "http.method": "POST",
+            "http.scheme": "http",
+            "http.server_name": "testserver",
+        }
         self._client.post("/foobar")
         duration = max(round((default_timer() - start) * 1000), 0)
         metrics_list = self.memory_metrics_reader.get_metrics_data()
@@ -156,21 +172,43 @@ class TestStarletteManualInstrumentation(TestBase):
                 if isinstance(point, HistogramDataPoint):
                     self.assertEqual(point.count, 1)
                     self.assertAlmostEqual(duration, point.sum, delta=30)
+                    self.assertDictEqual(
+                        dict(point.attributes), expected_duration_attributes
+                    )
+                if isinstance(point, NumberDataPoint):
+                    self.assertDictEqual(
+                        expected_requests_count_attributes,
+                        dict(point.attributes),
+                    )
+                    self.assertEqual(point.value, 0)
+
+    def test_metric_for_uninstrment_app_method(self):
+        self._client.get("/foobar")
+        # uninstrumenting the existing client app
+        self._instrumentor.uninstrument_app(self._app)
+        self._client.get("/foobar")
+        self._client.get("/foobar")
+        metrics_list = self.memory_metrics_reader.get_metrics_data()
+        for metric in (
+            metrics_list.resource_metrics[0].scope_metrics[0].metrics
+        ):
+            for point in list(metric.data.data_points):
+                if isinstance(point, HistogramDataPoint):
+                    self.assertEqual(point.count, 1)
                 if isinstance(point, NumberDataPoint):
                     self.assertEqual(point.value, 0)
 
-    def test_metric_uninstrument(self):
+    def test_metric_uninstrument_inherited_by_base(self):
         # instrumenting class and creating app to send request
         self._instrumentor.instrument()
         app = self._create_starlette_app()
         client = TestClient(app)
         client.get("/foobar")
-        # uninstrumenting class and creating the app again
+        # calling uninstrument and checking for telemetry data
         self._instrumentor.uninstrument()
-        app = self._create_starlette_app()
-        client = TestClient(app)
         client.get("/foobar")
-
+        client.get("/foobar")
+        client.get("/foobar")
         metrics_list = self.memory_metrics_reader.get_metrics_data()
         for metric in (
             metrics_list.resource_metrics[0].scope_metrics[0].metrics
