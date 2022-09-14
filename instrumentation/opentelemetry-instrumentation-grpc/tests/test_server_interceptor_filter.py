@@ -81,7 +81,7 @@ class TestOpenTelemetryServerInterceptorFilterMethodName(TestBase):
             return b""
 
         grpc_server_instrumentor = GrpcInstrumentorServer(
-            filters=filters.method_name("handler")
+            filter_=filters.method_name("handler")
         )
         grpc_server_instrumentor.instrument()
         with futures.ThreadPoolExecutor(max_workers=1) as executor:
@@ -135,7 +135,7 @@ class TestOpenTelemetryServerInterceptorFilterMethodName(TestBase):
             return b""
 
         grpc_server_instrumentor = GrpcInstrumentorServer(
-            filters=filters.method_name("SimpleMethod")
+            filter_=filters.method_name("SimpleMethod")
         )
         grpc_server_instrumentor.instrument()
         grpc_server_instrumentor.uninstrument()
@@ -165,7 +165,7 @@ class TestOpenTelemetryServerInterceptorFilterMethodName(TestBase):
 
         # Intercept gRPC calls...
         interceptor = server_interceptor(
-            filters=filters.method_name("SimpleMethod")
+            filter_=filters.method_name("SimpleMethod")
         )
 
         with futures.ThreadPoolExecutor(max_workers=1) as executor:

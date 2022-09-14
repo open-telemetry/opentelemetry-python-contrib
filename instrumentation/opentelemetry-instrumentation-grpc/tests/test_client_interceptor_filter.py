@@ -91,7 +91,7 @@ class TestClientProtoFilterMethodName(TestBase):
     def setUp(self):
         super().setUp()
         GrpcInstrumentorClient(
-            filters=filters.method_name("SimpleMethod")
+            filter_=filters.method_name("SimpleMethod")
         ).instrument()
         self.server = create_test_server(25565)
         self.server.start()
@@ -235,7 +235,7 @@ class TestClientProtoFilterMethodPrefix(TestBase):
     def setUp(self):
         super().setUp()
         GrpcInstrumentorClient(
-            filters=filters.method_prefix("Simple")
+            filter_=filters.method_prefix("Simple")
         ).instrument()
         self.server = create_test_server(25565)
         self.server.start()
@@ -418,7 +418,7 @@ class TestClientProtoFilterByEnvAndOption(TestBase):
         ):
             super().setUp()
             GrpcInstrumentorClient(
-                filters=filters.service_prefix("GRPCTestServer")
+                filter_=filters.service_prefix("GRPCTestServer")
             ).instrument()
             self.server = create_test_server(25565)
             self.server.start()
