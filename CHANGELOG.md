@@ -12,7 +12,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   ([#1224](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/1224))
 - Add metric instrumentation in Falcon
   ([#1230](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/1230))
-  
+- Add metric instrumentation in fastapi
+  ([#1199](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/1199))
+- Add metric instrumentation in Pyramid
+  ([#1242](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/1242))
+- `opentelemetry-util-http` Add support for sanitizing HTTP header values.
+  ([#1253](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/1253))
+
 ### Fixed
 
 - `opentelemetry-instrumentation-boto3sqs` Make propagation compatible with other SQS instrumentations, add 'messaging.url' span attribute, and fix missing package dependencies.
