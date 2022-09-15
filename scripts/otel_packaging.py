@@ -14,6 +14,7 @@
 
 import os
 import subprocess
+
 import tomli
 
 scripts_path = os.path.dirname(os.path.abspath(__file__))
