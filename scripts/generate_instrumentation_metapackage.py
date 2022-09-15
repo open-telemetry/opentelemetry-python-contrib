@@ -72,8 +72,8 @@ def main():
     )
 
     deps = [f"{pkg}=={version}" for pkg, version in dependencies]
-    with open(pyproject_toml_path, "rb") as f:
-        pyproject_toml = tomli.load(f)
+    with open(pyproject_toml_path, "rb") as file:
+        pyproject_toml = tomli.load(file)
 
     pyproject_toml["project"]["dependencies"] = deps
     with open(pyproject_toml_path, "wb") as fh:

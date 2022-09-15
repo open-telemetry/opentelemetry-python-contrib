@@ -36,8 +36,8 @@ def get_instrumentation_packages():
         )
         pyproject_toml_path = os.path.join(pkg_path, "pyproject.toml")
 
-        with open(pyproject_toml_path, "rb") as f:
-            pyproject_toml = tomli.load(f)
+        with open(pyproject_toml_path, "rb") as file:
+            pyproject_toml = tomli.load(file)
 
         instrumentation = {
             "name": pyproject_toml["project"]["name"],
