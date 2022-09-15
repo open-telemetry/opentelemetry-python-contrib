@@ -7,14 +7,28 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+- Flask sqlalchemy psycopg2 integration
+  ([#1224](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/1224))
+- Add metric instrumentation in fastapi
+  ([#1199](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/1199))
+- Add metric instrumentation in Pyramid
+  ([#1242](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/1242))
+- `opentelemetry-util-http` Add support for sanitizing HTTP header values.
+  ([#1253](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/1253))
+
 ### Fixed
 
 - `opentelemetry-instrumentation-boto3sqs` Make propagation compatible with other SQS instrumentations, add 'messaging.url' span attribute, and fix missing package dependencies.
-  ([#1234](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/1234))
+  ([#1234](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/1234)) 
+- `opentelemetry-instrumentation-pymongo` Change span names to not contain queries but only database name and command name
+  ([#1247](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/1247)) 
 - restoring metrics in django framework
   ([#1208](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/1208))
 - `opentelemetry-instrumentation-aiohttp-client` Fix producing additional spans with each newly created ClientSession
 - ([#1246](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/1246))
+- Add _is_openetlemetry_instrumented check in _InstrumentedFastAPI class
+  ([#1313](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/1313))
 
 ## [1.12.0-0.33b0](https://github.com/open-telemetry/opentelemetry-python/releases/tag/v1.12.0-0.33b0) - 2022-08-08
 
@@ -26,6 +40,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   ([#1206](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/1206))
 - Add psycopg2 native tags to sqlcommenter
   ([#1203](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/1203))
+- Deprecation of direction attribute for metrics. Addition of direction based metric names
+  ([#1214](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/1214))
 
 ### Added
 - `opentelemetry-instrumentation-redis` add support to instrument RedisCluster clients
