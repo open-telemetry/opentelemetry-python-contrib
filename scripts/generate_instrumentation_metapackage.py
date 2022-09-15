@@ -74,7 +74,6 @@ def main():
     with open(pyproject_toml_path, "rb") as f:
         pyproject_toml = tomli.load(f)
 
-
     pyproject_toml["project"]["dependencies"] = deps
     with open(pyproject_toml_path, "wb") as fh:
         tomli_w.dump(pyproject_toml, fh)
