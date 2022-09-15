@@ -14,7 +14,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-# This script builds wheels for a single package when trigged from a push to
+# This script builds wheels for a single package when triggered from a push to
 # a tag as part of a GitHub workflow (See .github/publish-a-package.yml). The
 # wheel is then published to PyPI.
 
@@ -42,18 +42,18 @@ distdir=${basedir}/dist
 mkdir -p $distdir
 rm -rf $distdir/*
 
-setup_py_file_path=$(ls **/$pkg_name/setup.py)
+pyproject_toml_file_path=$(ls **/$pkg_name/pyproject.toml)
 
-if [ -z $setup_py_file_path ]; then
-  echo "Error! setup.py not found for $pkg_name, can't build."
+if [ -z $pyproject_toml_file_path ]; then
+  echo "Error! pyproject.toml not found for $pkg_name, can't build."
   exit -1
 fi
 
-directory_with_package=$(dirname $setup_py_file_path)
+directory_with_package=$(dirname $pyproject_toml_file_path)
 
 cd $directory_with_package
 
-python3 setup.py sdist --dist-dir ${distdir} clean --all
+python3 -m build --outdir ${distdir}
 
 cd $distdir
 
