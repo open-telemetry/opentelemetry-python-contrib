@@ -73,9 +73,7 @@ def _ns_to_time(nanoseconds):
 
 
 def _child_to_tree(child: Tree, span: ReadableSpan):
-    child.add(
-        Text.from_markup(f"[bold cyan]Kind :[/bold cyan] {span.kind.name}")
-    )
+    child.add(Text.from_markup(f"[bold cyan]Kind :[/bold cyan] {span.kind.name}"))
     if not span.status.is_unset:
         if not span.status.is_ok:
             child.add(
@@ -97,9 +95,7 @@ def _child_to_tree(child: Tree, span: ReadableSpan):
         )
 
     if span.events:
-        events = child.add(
-            label=Text.from_markup("[bold cyan]Events :[/bold cyan] ")
-        )
+        events = child.add(label=Text.from_markup("[bold cyan]Events :[/bold cyan] "))
         for event in span.events:
             event_node = events.add(Text(event.name))
             for key, val in event.attributes.items():
@@ -122,6 +118,16 @@ def _child_to_tree(child: Tree, span: ReadableSpan):
                         f"[bold cyan]{attribute} :[/bold cyan] {span.attributes[attribute]}"
                     )
                 )
+    if span.resource:
+        resources = child.add(
+            label=Text.from_markup("[bold cyan]Resources :[/bold cyan] ")
+        )
+        for resource in span.resource.attributes:
+            resources.add(
+                Text.from_markup(
+                    f"[bold cyan]{resource} :[/bold cyan] {span.resource.attributes[resource]}"
+                )
+            )
 
 
 class RichConsoleSpanExporter(SpanExporter):
@@ -141,35 +147,36 @@ class RichConsoleSpanExporter(SpanExporter):
     def export(self, spans: typing.Sequence[ReadableSpan]) -> SpanExportResult:
         if not spans:
             return SpanExportResult.SUCCESS
-        tree = Tree(
-            label=f"Trace {opentelemetry.trace.format_trace_id(spans[0].context.trace_id)}"
-        )
+
+        trees = dict()
+        all_parent_ids = {span.context.span_id for span in spans}
         parents = {}
-        for span in spans:
-            child = tree.add(
-                label=Text.from_markup(
-                    f"[blue][{_ns_to_time(span.start_time)}][/blue] [bold]{span.name}[/bold], span {opentelemetry.trace.format_span_id(span.context.span_id)}"
-                )
-            )
-            parents[span.context.span_id] = child
-            _child_to_tree(child, span)
-
-        for span in spans:
-            if span.parent and span.parent.span_id in parents:
-                child = parents[span.parent.span_id].add(
-                    label=Text.from_markup(
-                        f"[blue][{_ns_to_time(span.start_time)}][/blue] [bold]{span.name}[/bold], span {opentelemetry.trace.format_span_id(span.context.span_id)}"
+        spans = list(spans)
+        while spans:
+            for span in spans:
+                if not span.parent:
+                    trace_id = opentelemetry.trace.format_trace_id(
+                        span.context.trace_id
                     )
-                )
-            else:
-                child = tree.add(
-                    label=Text.from_markup(
-                        f"[blue][{_ns_to_time(span.start_time)}][/blue] [bold]{span.name}[/bold], span {opentelemetry.trace.format_span_id(span.context.span_id)}"
+                    trees[trace_id] = Tree(label=f"Trace {trace_id}")
+                    child = trees[trace_id].add(
+                        label=Text.from_markup(
+                            f"[blue][{_ns_to_time(span.start_time)}][/blue] [bold]{span.name}[/bold], span {opentelemetry.trace.format_span_id(span.context.span_id)}"
+                        )
                     )
-                )
+                    parents[span.context.span_id] = child
+                    _child_to_tree(child, span)
+                    spans.remove(span)
+                elif span.parent and span.parent.span_id in parents:
+                    child = parents[span.parent.span_id].add(
+                        label=Text.from_markup(
+                            f"[blue][{_ns_to_time(span.start_time)}][/blue] [bold]{span.name}[/bold], span {opentelemetry.trace.format_span_id(span.context.span_id)}"
+                        )
+                    )
+                    parents[span.context.span_id] = child
+                    _child_to_tree(child, span)
+                    spans.remove(span)
 
-            parents[span.context.span_id] = child
-            _child_to_tree(child, span)
-
-        self.console.print(tree)
+        for tree in trees.values():
+            self.console.print(tree)
         return SpanExportResult.SUCCESS
