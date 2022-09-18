@@ -40,10 +40,10 @@ following metrics are configured:
         "system.network.io.transmit": None,
         "system.network.io.receive": None,
         "system.network.connections": ["family", "type"],
+        "system.threading.active_count": None
         "runtime.memory": ["rss", "vms"],
         "runtime.cpu.time": ["user", "system"],
-        "runtime.gc_count": None,
-        "runtime.threading.active_count": None
+        "runtime.gc_count": None
     }
 
 Usage
@@ -117,10 +117,10 @@ _DEFAULT_CONFIG = {
     "system.network.io.transmit": None,
     "system.network.io.receive": None,
     "system.network.connections": ["family", "type"],
+    "system.threading.active_count": None,
     "runtime.memory": ["rss", "vms"],
     "runtime.cpu.time": ["user", "system"],
     "runtime.gc_count": None,
-    "runtime.threading.active_count": None,
 }
 
 
@@ -168,10 +168,11 @@ class SystemMetricsInstrumentor(BaseInstrumentor):
         self._system_network_io_receive_labels = self._labels.copy()
         self._system_network_connections_labels = self._labels.copy()
 
+        self._system_threading_active_count_labels = self._labels.copy()
+
         self._runtime_memory_labels = self._labels.copy()
         self._runtime_cpu_time_labels = self._labels.copy()
         self._runtime_gc_count_labels = self._labels.copy()
-        self._runtime_threading_active_count_labels = self._labels.copy()
 
     def instrumentation_dependencies(self) -> Collection[str]:
         return _instruments
@@ -395,6 +396,13 @@ class SystemMetricsInstrumentor(BaseInstrumentor):
                 unit="connections",
             )
 
+        if "system.threading.active_count" in self._config:
+            self._meter.create_observable_gauge(
+                name=f"system.threading.active_count",
+                callbacks=[self._get_system_threading_active_count],
+                description=f"System active threads count",
+            )
+
         if "runtime.memory" in self._config:
             self._meter.create_observable_counter(
                 name=f"runtime.{self._python_implementation}.memory",
@@ -417,14 +425,6 @@ class SystemMetricsInstrumentor(BaseInstrumentor):
                 callbacks=[self._get_runtime_gc_count],
                 description=f"Runtime {self._python_implementation} GC count",
                 unit="bytes",
-            )
-
-        if "runtime.threading.active_count" in self._config:
-            self._meter.create_observable_gauge(
-                name=f"runtime.{self._python_implementation}.threading.active_count",
-                callbacks=[self._get_runtime_threading_active_count],
-                description=f"Runtime {self._python_implementation} active threads count",
-                unit="threads",
             )
 
     def _uninstrument(self, **__):
@@ -726,6 +726,14 @@ class SystemMetricsInstrumentor(BaseInstrumentor):
                 connection_counter["labels"],
             )
 
+    def _get_system_threading_active_count(
+        self, options: CallbackOptions
+    ) -> Iterable[Observation]:
+        """Observer callback for active threads count"""
+        yield Observation(
+            threading.active_count(), self._system_threading_active_count_labels
+        )
+
     def _get_runtime_memory(
         self, options: CallbackOptions
     ) -> Iterable[Observation]:
@@ -759,11 +767,3 @@ class SystemMetricsInstrumentor(BaseInstrumentor):
         for index, count in enumerate(gc.get_count()):
             self._runtime_gc_count_labels["count"] = str(index)
             yield Observation(count, self._runtime_gc_count_labels.copy())
-
-    def _get_runtime_threading_active_count(
-        self, options: CallbackOptions
-    ) -> Iterable[Observation]:
-        """Observer callback for threading active count"""
-        yield Observation(
-            threading.active_count(), self._runtime_threading_active_count_labels
-        )
