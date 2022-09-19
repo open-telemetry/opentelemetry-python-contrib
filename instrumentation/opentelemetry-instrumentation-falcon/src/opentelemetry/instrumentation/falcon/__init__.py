@@ -194,7 +194,7 @@ else:
 
 
 class _InstrumentedFalconAPI(getattr(falcon, _instrument_app)):
-    _instrumented_falcon_apis = set()
+    _instrumented_falcon_apps = set()
 
     def __init__(self, *args, **kwargs):
         otel_opts = kwargs.pop("_otel_opts", {})
@@ -222,12 +222,12 @@ class _InstrumentedFalconAPI(getattr(falcon, _instrument_app)):
 
         self._otel_excluded_urls = get_excluded_urls("FALCON")
         self._is_instrumented_by_opentelemetry = True
-        _InstrumentedFalconAPI._instrumented_falcon_apis.add(self)
+        _InstrumentedFalconAPI._instrumented_falcon_apps.add(self)
         super().__init__(*args, **kwargs)
     
     def __del__(self):
-        if self in _InstrumentedFalconAPI._instrumented_falcon_apis:
-            _InstrumentedFalconAPI._instrumented_falcon_apis.remove(self)
+        if self in _InstrumentedFalconAPI._instrumented_falcon_apps:
+            _InstrumentedFalconAPI._instrumented_falcon_apps.remove(self)
 
     def _handle_exception(
         self, arg1, arg2, arg3, arg4
@@ -428,18 +428,18 @@ class FalconInstrumentor(BaseInstrumentor):
         return _instruments
 
     @staticmethod
-    def uninstrument_api(api):
-        if hasattr(api, "_is_instrumented_by_opentelemetry") and api._is_instrumented_by_opentelemetry:
-            api._unprepared_middleware = [
+    def uninstrument_app(app):
+        if hasattr(app, "_is_instrumented_by_opentelemetry") and app._is_instrumented_by_opentelemetry:
+            app._unprepared_middleware = [
                 x
-                for x in api._unprepared_middleware
+                for x in app._unprepared_middleware
                 if not isinstance(x, _TraceMiddleware)
             ]
-            api._middleware = api._prepare_middleware(
-                api._unprepared_middleware,
-                independent_middleware=api._independent_middleware,
+            app._middleware = app._prepare_middleware(
+                app._unprepared_middleware,
+                independent_middleware=app._independent_middleware,
             )
-            api._is_instrumented_by_opentelemetry = False
+            app._is_instrumented_by_opentelemetry = False
         
 
     def _instrument(self, **opts):
@@ -453,6 +453,7 @@ class FalconInstrumentor(BaseInstrumentor):
         setattr(falcon, _instrument_app, FalconAPI)
 
     def _uninstrument(self, **kwargs):
-        for api in _InstrumentedFalconAPI._instrumented_falcon_apis:
+        for api in _InstrumentedFalconAPI._instrumented_falcon_apps:
             self.uninstrument_api(api)
+        _InstrumentedFalconAPI._instrumented_falcon_apps.clear()
         setattr(falcon, _instrument_app, self._original_falcon_api)
