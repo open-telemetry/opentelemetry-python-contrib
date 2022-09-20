@@ -95,9 +95,7 @@ def negate(func: Condition[TCallDetails]) -> Condition[TCallDetails]:
     return filter_fn
 
 
-def method_name(
-    name: Condition[Union[grpc.HandlerCallDetails, grpc.ClientCallDetails]]
-) -> Condition[TCallDetails]:
+def method_name(name: str) -> Condition[TCallDetails]:
     """Returns a filter function that return True if
     request's gRPC method name matches name.
 
@@ -116,9 +114,7 @@ def method_name(
     return filter_fn
 
 
-def method_prefix(
-    prefix: Condition[Union[grpc.HandlerCallDetails, grpc.ClientCallDetails]]
-) -> Condition[TCallDetails]:
+def method_prefix(prefix: str) -> Condition[TCallDetails]:
     """Returns a filter function that return True if
     request's gRPC method name starts with prefix.
 
@@ -137,9 +133,7 @@ def method_prefix(
     return filter_fn
 
 
-def full_method_name(
-    name: Condition[Union[grpc.HandlerCallDetails, grpc.ClientCallDetails]]
-) -> Condition[TCallDetails]:
+def full_method_name(name: str) -> Condition[TCallDetails]:
     """Returns a filter function that return True if
     request's gRPC full method name matches name.
 
@@ -158,9 +152,7 @@ def full_method_name(
     return filter_fn
 
 
-def service_name(
-    name: Condition[Union[grpc.HandlerCallDetails, grpc.ClientCallDetails]]
-) -> Condition[TCallDetails]:
+def service_name(name: str) -> Condition[TCallDetails]:
     """Returns a filter function that return True if
     request's gRPC service name matches name.
 
@@ -179,9 +171,7 @@ def service_name(
     return filter_fn
 
 
-def service_prefix(
-    prefix: Condition[Union[grpc.HandlerCallDetails, grpc.ClientCallDetails]]
-) -> Condition[TCallDetails]:
+def service_prefix(prefix: str) -> Condition[TCallDetails]:
     """Returns a filter function that return True if
     request's gRPC service name starts with prefix.
 
