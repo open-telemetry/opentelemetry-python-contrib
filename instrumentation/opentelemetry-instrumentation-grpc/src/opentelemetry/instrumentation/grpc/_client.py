@@ -20,18 +20,29 @@
 """Implementation of the invocation-side open-telemetry interceptor."""
 
 from collections import OrderedDict
-from typing import MutableMapping
+from typing import Callable, Iterator, MutableMapping
 
 import grpc
 
 from opentelemetry import context, trace
-from opentelemetry.instrumentation.grpc import grpcext
-from opentelemetry.instrumentation.grpc._utilities import RpcInfo
+from opentelemetry.instrumentation.grpc._types import ProtoMessage
+from opentelemetry.instrumentation.grpc._utilities import (
+    _ClientCallDetails,
+    _EventMetricRecorder,
+    _MetricKind,
+    _OpentelemetryResponseIterator,
+)
 from opentelemetry.instrumentation.utils import _SUPPRESS_INSTRUMENTATION_KEY
 from opentelemetry.propagate import inject
 from opentelemetry.propagators.textmap import Setter
-from opentelemetry.semconv.trace import SpanAttributes
+from opentelemetry.semconv.trace import (
+    MessageTypeValues,
+    RpcSystemValues,
+    SpanAttributes,
+)
+from opentelemetry.trace import Span
 from opentelemetry.trace.status import Status, StatusCode
+from opentelemetry.util.types import Attributes
 
 
 class _CarrierSetter(Setter):
@@ -39,160 +50,290 @@ class _CarrierSetter(Setter):
     keys as is required by grpc.
     """
 
-    def set(self, carrier: MutableMapping[str, str], key: str, value: str):
+    def set(
+        self, carrier: MutableMapping[str, str], key: str, value: str
+    ) -> None:
         carrier[key.lower()] = value
 
 
 _carrier_setter = _CarrierSetter()
 
 
-def _make_future_done_callback(span, rpc_info):
-    def callback(response_future):
-        with trace.use_span(span, end_on_exit=True):
+def _make_future_done_callback(
+    span: Span,
+    metric_recorder: _EventMetricRecorder,
+    attributes: Attributes,
+    start_time: float,
+) -> Callable[[grpc.Future], None]:
+    def callback(response_future: grpc.Future) -> None:
+        with trace.use_span(
+            span,
+            record_exception=False,
+            set_status_on_exception=False,
+            end_on_exit=True,
+        ):
             code = response_future.code()
             if code != grpc.StatusCode.OK:
-                rpc_info.error = code
-                return
-            response = response_future.result()
-            rpc_info.response = response
+                details = response_future.details()
+                span.set_attribute(
+                    SpanAttributes.RPC_GRPC_STATUS_CODE, code.value[0]
+                )
+                span.set_status(
+                    Status(
+                        status_code=StatusCode.ERROR,
+                        description=f"{code}: {details}",
+                    )
+                )
+
+                try:
+                    span.record_exception(response_future.exception())
+                except grpc.FutureCancelledError:
+                    pass
+
+            else:
+                response = response_future.result()
+                if response is not None:
+                    metric_recorder._record_unary_response(
+                        span, response, MessageTypeValues.RECEIVED, attributes
+                    )
+
+        metric_recorder._record_duration(
+            start_time, attributes, response_future
+        )
 
     return callback
 
 
 class OpenTelemetryClientInterceptor(
-    grpcext.UnaryClientInterceptor, grpcext.StreamClientInterceptor
+    _EventMetricRecorder,
+    grpc.UnaryUnaryClientInterceptor,
+    grpc.UnaryStreamClientInterceptor,
+    grpc.StreamUnaryClientInterceptor,
+    grpc.StreamStreamClientInterceptor,
 ):
-    def __init__(self, tracer):
+    def __init__(self, meter, tracer):
+        super().__init__(meter, _MetricKind.CLIENT)
         self._tracer = tracer
 
-    def _start_span(self, method, **kwargs):
-        service, meth = method.lstrip("/").split("/", 1)
-        attributes = {
-            SpanAttributes.RPC_SYSTEM: "grpc",
-            SpanAttributes.RPC_GRPC_STATUS_CODE: grpc.StatusCode.OK.value[0],
-            SpanAttributes.RPC_METHOD: meth,
+    def _create_attributes(self, full_method: str) -> Attributes:
+        service, method = full_method.lstrip("/").split("/", 1)
+        return {
+            SpanAttributes.RPC_SYSTEM: RpcSystemValues.GRPC.value,
             SpanAttributes.RPC_SERVICE: service,
+            SpanAttributes.RPC_METHOD: method,
+            SpanAttributes.RPC_GRPC_STATUS_CODE: grpc.StatusCode.OK.value[0],
         }
 
-        return self._tracer.start_as_current_span(
-            name=method,
-            kind=trace.SpanKind.CLIENT,
-            attributes=attributes,
-            **kwargs,
-        )
-
-    # pylint:disable=no-self-use
-    def _trace_result(self, span, rpc_info, result):
-        # If the RPC is called asynchronously, add a callback to end the span
-        # when the future is done, else end the span immediately
-        if isinstance(result, grpc.Future):
-            result.add_done_callback(
-                _make_future_done_callback(span, rpc_info)
-            )
-            return result
-        response = result
-        # Handle the case when the RPC is initiated via the with_call
-        # method and the result is a tuple with the first element as the
-        # response.
-        # http://www.grpc.io/grpc/python/grpc.html#grpc.UnaryUnaryMultiCallable.with_call
-        if isinstance(result, tuple):
-            response = result[0]
-        rpc_info.response = response
-        span.end()
-        return result
-
-    def _intercept(self, request, metadata, client_info, invoker):
+    def intercept_unary_unary(
+        self,
+        continuation,
+        client_call_details: grpc.ClientCallDetails,
+        request: ProtoMessage,
+    ):
         if context.get_value(_SUPPRESS_INSTRUMENTATION_KEY):
-            return invoker(request, metadata)
+            return continuation(client_call_details, request)
 
-        if not metadata:
+        attributes = self._create_attributes(client_call_details.method)
+
+        if not client_call_details.metadata:
             mutable_metadata = OrderedDict()
         else:
-            mutable_metadata = OrderedDict(metadata)
-        with self._start_span(
-            client_info.full_method,
+            mutable_metadata = OrderedDict(client_call_details.metadata)
+
+        with self._tracer.start_as_current_span(
+            name=client_call_details.method,
+            kind=trace.SpanKind.CLIENT,
+            attributes=attributes,
             end_on_exit=False,
             record_exception=False,
             set_status_on_exception=False,
         ) as span:
-            result = None
+            response_future = None
+            start_time = 0.0
+
             try:
                 inject(mutable_metadata, setter=_carrier_setter)
                 metadata = tuple(mutable_metadata.items())
-
-                rpc_info = RpcInfo(
-                    full_method=client_info.full_method,
+                new_client_call_details = _ClientCallDetails(
+                    method=client_call_details.method,
+                    timeout=client_call_details.timeout,
                     metadata=metadata,
-                    timeout=client_info.timeout,
-                    request=request,
+                    credentials=client_call_details.credentials,
+                    wait_for_ready=client_call_details.wait_for_ready,
+                    compression=client_call_details.compression,
                 )
 
-                result = invoker(request, metadata)
-            except Exception as exc:
-                if isinstance(exc, grpc.RpcError):
-                    span.set_attribute(
-                        SpanAttributes.RPC_GRPC_STATUS_CODE,
-                        exc.code().value[0],
-                    )
-                span.set_status(
-                    Status(
-                        status_code=StatusCode.ERROR,
-                        description=f"{type(exc).__name__}: {exc}",
-                    )
+                start_time = self._start_duration_measurement()
+                self._record_unary_request(
+                    span, request, MessageTypeValues.SENT, attributes
                 )
-                span.record_exception(exc)
-                raise exc
+
+                response_future = continuation(
+                    new_client_call_details, request
+                )
+
             finally:
-                if not result:
+                if not response_future:
                     span.end()
-        return self._trace_result(span, rpc_info, result)
+                else:
+                    response_future.add_done_callback(
+                        _make_future_done_callback(
+                            span, self, attributes, start_time
+                        )
+                    )
 
-    def intercept_unary(self, request, metadata, client_info, invoker):
-        return self._intercept(request, metadata, client_info, invoker)
+            return response_future
 
-    # For RPCs that stream responses, the result can be a generator. To record
-    # the span across the generated responses and detect any errors, we wrap
-    # the result in a new generator that yields the response values.
-    def _intercept_server_stream(
-        self, request_or_iterator, metadata, client_info, invoker
-    ):
-        if not metadata:
-            mutable_metadata = OrderedDict()
-        else:
-            mutable_metadata = OrderedDict(metadata)
-
-        with self._start_span(client_info.full_method) as span:
-            inject(mutable_metadata, setter=_carrier_setter)
-            metadata = tuple(mutable_metadata.items())
-            rpc_info = RpcInfo(
-                full_method=client_info.full_method,
-                metadata=metadata,
-                timeout=client_info.timeout,
-            )
-
-            if client_info.is_client_stream:
-                rpc_info.request = request_or_iterator
-
-            try:
-                yield from invoker(request_or_iterator, metadata)
-            except grpc.RpcError as err:
-                span.set_status(Status(StatusCode.ERROR))
-                span.set_attribute(
-                    SpanAttributes.RPC_GRPC_STATUS_CODE, err.code().value[0]
-                )
-                raise err
-
-    def intercept_stream(
-        self, request_or_iterator, metadata, client_info, invoker
+    def intercept_unary_stream(
+        self,
+        continuation,
+        client_call_details: grpc.ClientCallDetails,
+        request: ProtoMessage,
     ):
         if context.get_value(_SUPPRESS_INSTRUMENTATION_KEY):
-            return invoker(request_or_iterator, metadata)
+            return continuation(client_call_details, request)
 
-        if client_info.is_server_stream:
-            return self._intercept_server_stream(
-                request_or_iterator, metadata, client_info, invoker
+        attributes = self._create_attributes(client_call_details.method)
+
+        if not client_call_details.metadata:
+            mutable_metadata = OrderedDict()
+        else:
+            mutable_metadata = OrderedDict(client_call_details.metadata)
+
+        with self._tracer.start_as_current_span(
+            name=client_call_details.method,
+            kind=trace.SpanKind.CLIENT,
+            attributes=attributes,
+            end_on_exit=False,
+            record_exception=False,
+            set_status_on_exception=False,
+        ) as span:
+            inject(mutable_metadata, setter=_carrier_setter)
+            metadata = tuple(mutable_metadata.items())
+            new_client_call_details = _ClientCallDetails(
+                method=client_call_details.method,
+                timeout=client_call_details.timeout,
+                metadata=metadata,
+                credentials=client_call_details.credentials,
+                wait_for_ready=client_call_details.wait_for_ready,
+                compression=client_call_details.compression,
             )
 
-        return self._intercept(
-            request_or_iterator, metadata, client_info, invoker
-        )
+            start_time = self._start_duration_measurement()
+            self._record_unary_request(
+                span, request, MessageTypeValues.SENT, attributes
+            )
+
+            response_iterator = continuation(new_client_call_details, request)
+
+            return _OpentelemetryResponseIterator(
+                response_iterator, self, span, attributes, start_time
+            )
+
+    def intercept_stream_unary(
+        self,
+        continuation,
+        client_call_details: grpc.ClientCallDetails,
+        request_iterator: Iterator[ProtoMessage],
+    ):
+        if context.get_value(_SUPPRESS_INSTRUMENTATION_KEY):
+            return continuation(client_call_details, request_iterator)
+
+        attributes = self._create_attributes(client_call_details.method)
+
+        if not client_call_details.metadata:
+            mutable_metadata = OrderedDict()
+        else:
+            mutable_metadata = OrderedDict(client_call_details.metadata)
+
+        with self._tracer.start_as_current_span(
+            name=client_call_details.method,
+            kind=trace.SpanKind.CLIENT,
+            attributes=attributes,
+            end_on_exit=False,
+            record_exception=False,
+            set_status_on_exception=False,
+        ) as span:
+            response_future = None
+            start_time = 0
+
+            try:
+                inject(mutable_metadata, setter=_carrier_setter)
+                metadata = tuple(mutable_metadata.items())
+                new_client_call_details = _ClientCallDetails(
+                    method=client_call_details.method,
+                    timeout=client_call_details.timeout,
+                    metadata=metadata,
+                    credentials=client_call_details.credentials,
+                    wait_for_ready=client_call_details.wait_for_ready,
+                    compression=client_call_details.compression,
+                )
+
+                start_time = self._start_duration_measurement()
+                request_iterator = self._record_streaming_request(
+                    span, request_iterator, MessageTypeValues.SENT, attributes
+                )
+
+                response_future = continuation(
+                    new_client_call_details, request_iterator
+                )
+
+            finally:
+                if not response_future:
+                    span.end()
+                else:
+                    response_future.add_done_callback(
+                        _make_future_done_callback(
+                            span, self, attributes, start_time
+                        )
+                    )
+
+            return response_future
+
+    def intercept_stream_stream(
+        self,
+        continuation,
+        client_call_details: grpc.ClientCallDetails,
+        request_iterator: Iterator[ProtoMessage],
+    ):
+        if context.get_value(_SUPPRESS_INSTRUMENTATION_KEY):
+            return continuation(client_call_details, request_iterator)
+
+        attributes = self._create_attributes(client_call_details.method)
+
+        if not client_call_details.metadata:
+            mutable_metadata = OrderedDict()
+        else:
+            mutable_metadata = OrderedDict(client_call_details.metadata)
+
+        with self._tracer.start_as_current_span(
+            name=client_call_details.method,
+            kind=trace.SpanKind.CLIENT,
+            attributes=attributes,
+            end_on_exit=False,
+            record_exception=False,
+            set_status_on_exception=False,
+        ) as span:
+            inject(mutable_metadata, setter=_carrier_setter)
+            metadata = tuple(mutable_metadata.items())
+            new_client_call_details = _ClientCallDetails(
+                method=client_call_details.method,
+                timeout=client_call_details.timeout,
+                metadata=metadata,
+                credentials=client_call_details.credentials,
+                wait_for_ready=client_call_details.wait_for_ready,
+                compression=client_call_details.compression,
+            )
+
+            start_time = self._start_duration_measurement()
+            request_iterator = self._record_streaming_request(
+                span, request_iterator, MessageTypeValues.SENT, attributes
+            )
+
+            response_iterator = continuation(
+                new_client_call_details, request_iterator
+            )
+
+            return _OpentelemetryResponseIterator(
+                response_iterator, self, span, attributes, start_time
+            )

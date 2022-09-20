@@ -21,24 +21,50 @@
 Implementation of the service-side open-telemetry interceptor.
 """
 
+import copy
 import logging
 from contextlib import contextmanager
 from urllib.parse import unquote
+from typing import Callable, Iterator, Generator, Optional
 
 import grpc
 
-from opentelemetry import trace
+from opentelemetry import metrics, trace
 from opentelemetry.context import attach, detach
+from opentelemetry.instrumentation.grpc._types import (
+    ProtoMessage,
+    ProtoMessageOrIterator,
+)
+from opentelemetry.instrumentation.grpc._utilities import (
+    _EventMetricRecorder,
+    _MetricKind,
+    _OpenTelemetryServicerContext,
+)
 from opentelemetry.propagate import extract
-from opentelemetry.semconv.trace import SpanAttributes
+from opentelemetry.semconv.trace import (
+    MessageTypeValues,
+    RpcSystemValues,
+    SpanAttributes,
+)
 from opentelemetry.trace.status import Status, StatusCode
+from opentelemetry.util.types import Attributes
+
 
 logger = logging.getLogger(__name__)
 
 
+_RPC_USER_AGENT = "rpc.user_agent"
+"""span attribute for RPC user agent."""
+
+
 # wrap an RPC call
 # see https://github.com/grpc/grpc/issues/18191
-def _wrap_rpc_behavior(handler, continuation):
+def _wrap_rpc_behavior(
+    handler: Optional[grpc.RpcMethodHandler],
+    continuation: Callable[
+        [ProtoMessageOrIterator, grpc.ServicerContext], ProtoMessageOrIterator
+    ],
+) -> Optional[grpc.RpcMethodHandler]:
     if handler is None:
         return None
 
@@ -65,131 +91,39 @@ def _wrap_rpc_behavior(handler, continuation):
 
 
 # pylint:disable=abstract-method
-class _OpenTelemetryServicerContext(grpc.ServicerContext):
-    def __init__(self, servicer_context, active_span):
-        self._servicer_context = servicer_context
-        self._active_span = active_span
-        self.code = grpc.StatusCode.OK
-        self.details = None
-        super().__init__()
-
-    def __getattr__(self, attr):
-        return getattr(self._servicer_context, attr)
-
-    def is_active(self, *args, **kwargs):
-        return self._servicer_context.is_active(*args, **kwargs)
-
-    def time_remaining(self, *args, **kwargs):
-        return self._servicer_context.time_remaining(*args, **kwargs)
-
-    def cancel(self, *args, **kwargs):
-        return self._servicer_context.cancel(*args, **kwargs)
-
-    def add_callback(self, *args, **kwargs):
-        return self._servicer_context.add_callback(*args, **kwargs)
-
-    def disable_next_message_compression(self):
-        return self._service_context.disable_next_message_compression()
-
-    def invocation_metadata(self, *args, **kwargs):
-        return self._servicer_context.invocation_metadata(*args, **kwargs)
-
-    def peer(self):
-        return self._servicer_context.peer()
-
-    def peer_identities(self):
-        return self._servicer_context.peer_identities()
-
-    def peer_identity_key(self):
-        return self._servicer_context.peer_identity_key()
-
-    def auth_context(self):
-        return self._servicer_context.auth_context()
-
-    def set_compression(self, compression):
-        return self._servicer_context.set_compression(compression)
-
-    def send_initial_metadata(self, *args, **kwargs):
-        return self._servicer_context.send_initial_metadata(*args, **kwargs)
-
-    def set_trailing_metadata(self, *args, **kwargs):
-        return self._servicer_context.set_trailing_metadata(*args, **kwargs)
-
-    def trailing_metadata(self):
-        return self._servicer_context.trailing_metadata()
-
-    def abort(self, code, details):
-        self.code = code
-        self.details = details
-        self._active_span.set_attribute(
-            SpanAttributes.RPC_GRPC_STATUS_CODE, code.value[0]
-        )
-        self._active_span.set_status(
-            Status(
-                status_code=StatusCode.ERROR,
-                description=f"{code}:{details}",
-            )
-        )
-        return self._servicer_context.abort(code, details)
-
-    def abort_with_status(self, status):
-        return self._servicer_context.abort_with_status(status)
-
-    def set_code(self, code):
-        self.code = code
-        # use details if we already have it, otherwise the status description
-        details = self.details or code.value[1]
-        self._active_span.set_attribute(
-            SpanAttributes.RPC_GRPC_STATUS_CODE, code.value[0]
-        )
-        if code != grpc.StatusCode.OK:
-            self._active_span.set_status(
-                Status(
-                    status_code=StatusCode.ERROR,
-                    description=f"{code}:{details}",
-                )
-            )
-        return self._servicer_context.set_code(code)
-
-    def set_details(self, details):
-        self.details = details
-        if self.code != grpc.StatusCode.OK:
-            self._active_span.set_status(
-                Status(
-                    status_code=StatusCode.ERROR,
-                    description=f"{self.code}:{details}",
-                )
-            )
-        return self._servicer_context.set_details(details)
-
-
-# pylint:disable=abstract-method
 # pylint:disable=no-self-use
 # pylint:disable=unused-argument
-class OpenTelemetryServerInterceptor(grpc.ServerInterceptor):
+class OpenTelemetryServerInterceptor(
+    _EventMetricRecorder, grpc.ServerInterceptor
+):
     """
     A gRPC server interceptor, to add OpenTelemetry.
 
     Usage::
 
+        meter = some OpenTelemetry meter
         tracer = some OpenTelemetry tracer
 
         interceptors = [
-            OpenTelemetryServerInterceptor(tracer),
+            OpenTelemetryServerInterceptor(meter, tracer),
         ]
 
         server = grpc.server(
             futures.ThreadPoolExecutor(max_workers=concurrency),
-            interceptors = interceptors)
+            interceptors = interceptors
+        )
 
     """
 
-    def __init__(self, tracer):
+    def __init__(self, meter: metrics.Meter, tracer: trace.Tracer) -> None:
+        super().__init__(meter, _MetricKind.SERVER)
         self._tracer = tracer
 
     @contextmanager
-    def _set_remote_context(self, servicer_context):
-        metadata = servicer_context.invocation_metadata()
+    def _set_remote_context(
+        self, context: grpc.ServicerContext
+    ) -> Generator[None, None, None]:
+        metadata = context.invocation_metadata()
         if metadata:
             md_dict = {md.key: md.value for md in metadata}
             ctx = extract(md_dict)
@@ -201,32 +135,21 @@ class OpenTelemetryServerInterceptor(grpc.ServerInterceptor):
         else:
             yield
 
-    def _start_span(
-        self, handler_call_details, context, set_status_on_exception=False
-    ):
-
+    def _create_attributes(
+        self, context: grpc.ServicerContext, full_method: str
+    ) -> Attributes:
         # standard attributes
+        service, method = full_method.lstrip("/").split("/", 1)
         attributes = {
-            SpanAttributes.RPC_SYSTEM: "grpc",
-            SpanAttributes.RPC_GRPC_STATUS_CODE: grpc.StatusCode.OK.value[0],
+            SpanAttributes.RPC_SYSTEM: RpcSystemValues.GRPC.value,
+            SpanAttributes.RPC_SERVICE: service,
+            SpanAttributes.RPC_METHOD: method,
         }
-
-        # if we have details about the call, split into service and method
-        if handler_call_details.method:
-            service, method = handler_call_details.method.lstrip("/").split(
-                "/", 1
-            )
-            attributes.update(
-                {
-                    SpanAttributes.RPC_METHOD: method,
-                    SpanAttributes.RPC_SERVICE: service,
-                }
-            )
 
         # add some attributes from the metadata
         metadata = dict(context.invocation_metadata())
         if "user-agent" in metadata:
-            attributes["rpc.user_agent"] = metadata["user-agent"]
+            attributes[_RPC_USER_AGENT] = metadata["user-agent"]
 
         # Split up the peer to keep with how other telemetry sources
         # do it.  This looks like:
@@ -253,47 +176,57 @@ class OpenTelemetryServerInterceptor(grpc.ServerInterceptor):
         except IndexError:
             logger.warning("Failed to parse peer address '%s'", context.peer())
 
-        return self._tracer.start_as_current_span(
-            name=handler_call_details.method,
-            kind=trace.SpanKind.SERVER,
-            attributes=attributes,
-            set_status_on_exception=set_status_on_exception,
-        )
+        return attributes
 
-    def intercept_service(self, continuation, handler_call_details):
-        def telemetry_wrapper(behavior, request_streaming, response_streaming):
-            def telemetry_interceptor(request_or_iterator, context):
-
-                # handle streaming responses specially
-                if response_streaming:
-                    return self._intercept_server_stream(
+    def intercept_service(
+        self,
+        continuation: Callable[
+            [grpc.HandlerCallDetails], Optional[grpc.RpcMethodHandler]
+        ],
+        handler_call_details: grpc.HandlerCallDetails,
+    ) -> Optional[grpc.RpcMethodHandler]:
+        def telemetry_wrapper(
+            behavior: Callable[
+                [ProtoMessageOrIterator, grpc.ServicerContext],
+                ProtoMessageOrIterator,
+            ],
+            request_streaming: bool,
+            response_streaming: bool,
+        ) -> Callable[
+            [ProtoMessageOrIterator, grpc.ServicerContext],
+            ProtoMessageOrIterator,
+        ]:
+            def telemetry_interceptor(
+                request_or_iterator: ProtoMessageOrIterator,
+                context: grpc.ServicerContext,
+            ) -> ProtoMessageOrIterator:
+                if request_streaming and response_streaming:
+                    return self.intercept_stream_stream(
                         behavior,
-                        handler_call_details,
                         request_or_iterator,
                         context,
+                        handler_call_details.method,
                     )
-
-                with self._set_remote_context(context):
-                    with self._start_span(
-                        handler_call_details,
+                if not request_streaming and response_streaming:
+                    return self.intercept_unary_stream(
+                        behavior,
+                        request_or_iterator,
                         context,
-                        set_status_on_exception=False,
-                    ) as span:
-                        # wrap the context
-                        context = _OpenTelemetryServicerContext(context, span)
-
-                        # And now we run the actual RPC.
-                        try:
-                            return behavior(request_or_iterator, context)
-
-                        except Exception as error:
-                            # Bare exceptions are likely to be gRPC aborts, which
-                            # we handle in our context wrapper.
-                            # Here, we're interested in uncaught exceptions.
-                            # pylint:disable=unidiomatic-typecheck
-                            if type(error) != Exception:
-                                span.record_exception(error)
-                            raise error
+                        handler_call_details.method,
+                    )
+                if request_streaming and not response_streaming:
+                    return self.intercept_stream_unary(
+                        behavior,
+                        request_or_iterator,
+                        context,
+                        handler_call_details.method,
+                    )
+                return self.intercept_unary_unary(
+                    behavior,
+                    request_or_iterator,
+                    context,
+                    handler_call_details.method,
+                )
 
             return telemetry_interceptor
 
@@ -301,24 +234,281 @@ class OpenTelemetryServerInterceptor(grpc.ServerInterceptor):
             continuation(handler_call_details), telemetry_wrapper
         )
 
-    # Handle streaming responses separately - we have to do this
-    # to return a *new* generator or various upstream things
-    # get confused, or we'll lose the consistent trace
-    def _intercept_server_stream(
-        self, behavior, handler_call_details, request_or_iterator, context
-    ):
+    def intercept_unary_unary(
+        self,
+        continuation: Callable[
+            [ProtoMessage, grpc.ServicerContext], ProtoMessage
+        ],
+        request: ProtoMessage,
+        context: grpc.ServicerContext,
+        full_method: str,
+    ) -> ProtoMessage:
 
         with self._set_remote_context(context):
-            with self._start_span(
-                handler_call_details, context, set_status_on_exception=False
+            metric_attributes = self._create_attributes(context, full_method)
+            span_attributes = copy.deepcopy(metric_attributes)
+            span_attributes[
+                SpanAttributes.RPC_GRPC_STATUS_CODE
+            ] = grpc.StatusCode.OK.value[0]
+
+            with self._tracer.start_as_current_span(
+                name=full_method,
+                kind=trace.SpanKind.SERVER,
+                attributes=span_attributes,
+                end_on_exit=True,
+                record_exception=False,
+                set_status_on_exception=False,
             ) as span:
+                # wrap the context
                 context = _OpenTelemetryServicerContext(context, span)
 
-                try:
-                    yield from behavior(request_or_iterator, context)
+                with self._record_duration_manager(metric_attributes, context):
+                    try:
+                        # record the request
+                        self._record_unary_request(
+                            span,
+                            request,
+                            MessageTypeValues.RECEIVED,
+                            metric_attributes,
+                        )
 
-                except Exception as error:
-                    # pylint:disable=unidiomatic-typecheck
-                    if type(error) != Exception:
-                        span.record_exception(error)
-                    raise error
+                        # call the actual RPC
+                        response = continuation(request, context)
+
+                        # record the response
+                        self._record_unary_response(
+                            span,
+                            response,
+                            MessageTypeValues.SENT,
+                            metric_attributes,
+                        )
+
+                        return response
+
+                    except Exception as exc:
+                        # Bare exceptions are likely to be gRPC aborts, which
+                        # we handle in our context wrapper.
+                        # Here, we're interested in uncaught exceptions.
+                        # pylint:disable=unidiomatic-typecheck
+                        if type(exc) != Exception:
+                            span.set_attribute(
+                                SpanAttributes.RPC_GRPC_STATUS_CODE,
+                                grpc.StatusCode.UNKNOWN.value[0],
+                            )
+                            span.set_status(
+                                Status(
+                                    status_code=StatusCode.ERROR,
+                                    description=f"{type(exc).__name__}: {exc}",
+                                )
+                            )
+                            span.record_exception(exc)
+                        raise exc
+
+    def intercept_unary_stream(
+        self,
+        continuation: Callable[
+            [ProtoMessage, grpc.ServicerContext], Iterator[ProtoMessage]
+        ],
+        request: ProtoMessage,
+        context: grpc.ServicerContext,
+        full_method: str,
+    ) -> Iterator[ProtoMessage]:
+
+        with self._set_remote_context(context):
+            metric_attributes = self._create_attributes(context, full_method)
+            span_attributes = copy.deepcopy(metric_attributes)
+            span_attributes[
+                SpanAttributes.RPC_GRPC_STATUS_CODE
+            ] = grpc.StatusCode.OK.value[0]
+
+            with self._tracer.start_as_current_span(
+                name=full_method,
+                kind=trace.SpanKind.SERVER,
+                attributes=span_attributes,
+                end_on_exit=True,
+                record_exception=False,
+                set_status_on_exception=False,
+            ) as span:
+                # wrap the context
+                context = _OpenTelemetryServicerContext(context, span)
+
+                with self._record_duration_manager(metric_attributes, context):
+                    try:
+                        # record the request
+                        self._record_unary_request(
+                            span,
+                            request,
+                            MessageTypeValues.RECEIVED,
+                            metric_attributes,
+                        )
+
+                        # call the actual RPC
+                        response_iterator = continuation(request, context)
+
+                        # wrap the response iterator with a recorder
+                        yield from self._record_streaming_response(
+                            span,
+                            response_iterator,
+                            MessageTypeValues.SENT,
+                            metric_attributes,
+                        )
+
+                    except Exception as exc:
+                        # Bare exceptions are likely to be gRPC aborts, which
+                        # we handle in our context wrapper.
+                        # Here, we're interested in uncaught exceptions.
+                        # pylint:disable=unidiomatic-typecheck
+                        if type(exc) != Exception:
+                            span.set_attribute(
+                                SpanAttributes.RPC_GRPC_STATUS_CODE,
+                                grpc.StatusCode.UNKNOWN.value[0],
+                            )
+                            span.set_status(
+                                Status(
+                                    status_code=StatusCode.ERROR,
+                                    description=f"{type(exc).__name__}: {exc}",
+                                )
+                            )
+                            span.record_exception(exc)
+                        raise exc
+
+    def intercept_stream_unary(
+        self,
+        continuation: Callable[
+            [Iterator[ProtoMessage], grpc.ServicerContext], ProtoMessage
+        ],
+        request_iterator: Iterator[ProtoMessage],
+        context: grpc.ServicerContext,
+        full_method: str,
+    ) -> ProtoMessage:
+
+        with self._set_remote_context(context):
+            metric_attributes = self._create_attributes(context, full_method)
+            span_attributes = copy.deepcopy(metric_attributes)
+            span_attributes[
+                SpanAttributes.RPC_GRPC_STATUS_CODE
+            ] = grpc.StatusCode.OK.value[0]
+
+            with self._tracer.start_as_current_span(
+                name=full_method,
+                kind=trace.SpanKind.SERVER,
+                attributes=span_attributes,
+                end_on_exit=True,
+                record_exception=False,
+                set_status_on_exception=False,
+            ) as span:
+                # wrap the context
+                context = _OpenTelemetryServicerContext(context, span)
+
+                with self._record_duration_manager(metric_attributes, context):
+                    try:
+                        # wrap the request iterator with a recorder
+                        request_iterator = self._record_streaming_request(
+                            span,
+                            request_iterator,
+                            MessageTypeValues.RECEIVED,
+                            metric_attributes,
+                        )
+
+                        # call the actual RPC
+                        response = continuation(request_iterator, context)
+
+                        # record the response
+                        self._record_unary_response(
+                            span,
+                            response,
+                            MessageTypeValues.SENT,
+                            metric_attributes,
+                        )
+
+                        return response
+
+                    except Exception as exc:
+                        # Bare exceptions are likely to be gRPC aborts, which
+                        # we handle in our context wrapper.
+                        # Here, we're interested in uncaught exceptions.
+                        # pylint:disable=unidiomatic-typecheck
+                        if type(exc) != Exception:
+                            span.set_attribute(
+                                SpanAttributes.RPC_GRPC_STATUS_CODE,
+                                grpc.StatusCode.UNKNOWN.value[0],
+                            )
+                            span.set_status(
+                                Status(
+                                    status_code=StatusCode.ERROR,
+                                    description=f"{type(exc).__name__}: {exc}",
+                                )
+                            )
+                            span.record_exception(exc)
+                        raise exc
+
+    def intercept_stream_stream(
+        self,
+        continuation: Callable[
+            [Iterator[ProtoMessage], grpc.ServicerContext],
+            Iterator[ProtoMessage],
+        ],
+        request_iterator: Iterator[ProtoMessage],
+        context: grpc.ServicerContext,
+        full_method: str,
+    ) -> Iterator[ProtoMessage]:
+
+        with self._set_remote_context(context):
+            metric_attributes = self._create_attributes(context, full_method)
+            span_attributes = copy.deepcopy(metric_attributes)
+            span_attributes[
+                SpanAttributes.RPC_GRPC_STATUS_CODE
+            ] = grpc.StatusCode.OK.value[0]
+
+            with self._tracer.start_as_current_span(
+                name=full_method,
+                kind=trace.SpanKind.SERVER,
+                attributes=span_attributes,
+                end_on_exit=True,
+                record_exception=False,
+                set_status_on_exception=False,
+            ) as span:
+                # wrap the context
+                context = _OpenTelemetryServicerContext(context, span)
+
+                with self._record_duration_manager(metric_attributes, context):
+                    try:
+                        # wrap the request iterator with a recorder
+                        request_iterator = self._record_streaming_request(
+                            span,
+                            request_iterator,
+                            MessageTypeValues.RECEIVED,
+                            metric_attributes,
+                        )
+
+                        # call the actual RPC
+                        response_iterator = continuation(
+                            request_iterator, context
+                        )
+
+                        # wrap the response iterator with a recorder
+                        yield from self._record_streaming_response(
+                            span,
+                            response_iterator,
+                            MessageTypeValues.SENT,
+                            metric_attributes,
+                        )
+
+                    except Exception as exc:
+                        # Bare exceptions are likely to be gRPC aborts, which
+                        # we handle in our context wrapper.
+                        # Here, we're interested in uncaught exceptions.
+                        # pylint:disable=unidiomatic-typecheck
+                        if type(exc) != Exception:
+                            span.set_attribute(
+                                SpanAttributes.RPC_GRPC_STATUS_CODE,
+                                grpc.StatusCode.UNKNOWN.value[0],
+                            )
+                            span.set_status(
+                                Status(
+                                    status_code=StatusCode.ERROR,
+                                    description=f"{type(exc).__name__}: {exc}",
+                                )
+                            )
+                            span.record_exception(exc)
+                        raise exc
