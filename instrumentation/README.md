@@ -15,7 +15,7 @@
 | [opentelemetry-instrumentation-dbapi](./opentelemetry-instrumentation-dbapi) | dbapi | No
 | [opentelemetry-instrumentation-django](./opentelemetry-instrumentation-django) | django >= 1.10 | Yes
 | [opentelemetry-instrumentation-elasticsearch](./opentelemetry-instrumentation-elasticsearch) | elasticsearch >= 2.0 | No
-| [opentelemetry-instrumentation-falcon](./opentelemetry-instrumentation-falcon) | falcon >= 1.4.1, < 4.0.0 | No
+| [opentelemetry-instrumentation-falcon](./opentelemetry-instrumentation-falcon) | falcon >= 1.4.1, < 4.0.0 | Yes
 | [opentelemetry-instrumentation-fastapi](./opentelemetry-instrumentation-fastapi) | fastapi ~= 0.58 | Yes
 | [opentelemetry-instrumentation-flask](./opentelemetry-instrumentation-flask) | flask >= 1.0, < 3.0 | Yes
 | [opentelemetry-instrumentation-grpc](./opentelemetry-instrumentation-grpc) | grpcio ~= 1.27 | No
@@ -29,7 +29,7 @@
 | [opentelemetry-instrumentation-pymemcache](./opentelemetry-instrumentation-pymemcache) | pymemcache >= 1.3.5, < 4 | No
 | [opentelemetry-instrumentation-pymongo](./opentelemetry-instrumentation-pymongo) | pymongo >= 3.1, < 5.0 | No
 | [opentelemetry-instrumentation-pymysql](./opentelemetry-instrumentation-pymysql) | PyMySQL < 2 | No
-| [opentelemetry-instrumentation-pyramid](./opentelemetry-instrumentation-pyramid) | pyramid >= 1.7 | No
+| [opentelemetry-instrumentation-pyramid](./opentelemetry-instrumentation-pyramid) | pyramid >= 1.7 | Yes
 | [opentelemetry-instrumentation-redis](./opentelemetry-instrumentation-redis) | redis >= 2.6 | No
 | [opentelemetry-instrumentation-remoulade](./opentelemetry-instrumentation-remoulade) | remoulade >= 0.50 | No
 | [opentelemetry-instrumentation-requests](./opentelemetry-instrumentation-requests) | requests ~= 2.0 | Yes
