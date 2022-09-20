@@ -13,7 +13,7 @@
 # limitations under the License.
 
 import os
-from typing import Callable, TypeVar, Union
+from typing import Callable, TypeVar
 
 import grpc
 
