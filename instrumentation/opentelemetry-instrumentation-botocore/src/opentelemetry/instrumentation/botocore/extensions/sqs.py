@@ -15,7 +15,12 @@
 from opentelemetry.instrumentation.botocore.extensions.types import (
     _AttributeMapT,
     _AwsSdkExtension,
+    _BotoResultT,
 )
+from opentelemetry.trace.span import Span
+from opentelemetry.semconv.trace import SpanAttributes
+
+SUPPORTED_OPERATIONS = ["SendMessage", "SendMessageBatch", "ReceiveMessage"]
 
 
 class _SqsExtension(_AwsSdkExtension):
@@ -24,3 +29,16 @@ class _SqsExtension(_AwsSdkExtension):
         if queue_url:
             # TODO: update when semantic conventions exist
             attributes["aws.queue_url"] = queue_url
+
+    def on_success(self, span: Span, result: _BotoResultT):
+        operation = self._call_context.operation
+        if operation in SUPPORTED_OPERATIONS:
+            span.set_attribute(SpanAttributes.MESSAGING_SYSTEM, "aws.sqs")
+            span.set_attribute(SpanAttributes.MESSAGING_DESTINATION, self._call_context.params.get("QueueUrl", "").split("/")[-1])
+            if operation == 'SendMessage':
+                span.set_attribute(SpanAttributes.MESSAGING_MESSAGE_ID, result.get("MessageId"))
+            elif operation == 'SendMessageBatch' and result["Successful"]:
+                span.set_attribute(SpanAttributes.MESSAGING_MESSAGE_ID, result["Successful"][0]["MessageId"])
+            elif operation == 'ReceiveMessage':
+                span.set_attribute(SpanAttributes.MESSAGING_MESSAGE_ID, result["Messages"][0]["MessageId"])
+
