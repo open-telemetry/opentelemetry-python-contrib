@@ -344,7 +344,6 @@ class TestFalconInstrumentation(TestFalconBase, WsgiTestBase):
     def test_metric_uninstrument(self):
         self.client().simulate_request(method="POST", path="/hello/756")
         FalconInstrumentor().uninstrument()
-        self.app = make_app()
         self.client().simulate_request(method="POST", path="/hello/756")
         metrics_list = self.memory_metrics_reader.get_metrics_data()
         for resource_metric in metrics_list.resource_metrics:
