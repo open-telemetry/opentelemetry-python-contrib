@@ -553,7 +553,6 @@ def server_interceptor(tracer_provider=None, filter_=None):
 
     tracer = trace.get_tracer(__name__, __version__, tracer_provider)
 
-<<<<<<< HEAD
     return _server.OpenTelemetryServerInterceptor(tracer, filter_=filter_)
 
 
