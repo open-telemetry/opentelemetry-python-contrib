@@ -26,41 +26,39 @@ def prom_rw():
     return PrometheusRemoteWriteMetricsExporter("http://victoria:8428/api/v1/write")
 
 
-
 @pytest.fixture
-def generate_metrics_data(data):
-    pass
+def metric(request):
+    if hasattr(request,"param"):
+        type_ = request.param
+    else:
+        type_ = random.choice(["gauge","sum"])
+    if type_ == "gauge":
+        return metric_util._generate_gauge("test_gauge",random.randint(0,100))
+    elif type_ == "sum":
+        return metric_util._generate_sum("test_sum",random.randint(0,9_999_999_999))
+    elif type_ == "histogram":
+        return _generate_histogram("test_histogram")
 
-
-
-@pytest.fixture
-def metric_histogram():
+def _generate_histogram(name):
     dp = HistogramDataPoint(
         attributes={"foo": "bar", "baz": 42},
         start_time_unix_nano=1641946016139533244,
         time_unix_nano=1641946016139533244,
-        count=random.randint(1,10),
-        sum=random.randint(42,420),
+        count=5,
+        sum=420,
         bucket_counts=[1, 4],
-        explicit_bounds=[10.0, 20.0],
+        explicit_bounds=[10.0],
         min=8,
-        max=18,
+        max=80,
     )
     data = Histogram(
         [dp],
         AggregationTemporality.CUMULATIVE,
     )
     return Metric(
-        "test_histogram",
+        name,
         "foo",
         "tu",
         data=data,
     )
-
-@pytest.fixture
-def metric(request):
-    if request.param == "gauge":
-        return metric_util._generate_gauge("test_gauge",random.randint(0,100))
-    elif request.param == "sum":
-        return metric_util._generate_sum("test_sum",random.randint(0,9_999_999_999))
 

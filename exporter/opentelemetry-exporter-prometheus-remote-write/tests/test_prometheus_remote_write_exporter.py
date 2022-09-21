@@ -14,6 +14,7 @@
 
 import unittest
 from unittest.mock import patch
+import snappy
 
 from opentelemetry.exporter.prometheus_remote_write import (
     PrometheusRemoteWriteMetricsExporter,
@@ -23,7 +24,7 @@ from opentelemetry.exporter.prometheus_remote_write.gen.types_pb2 import (
     TimeSeries,
 )
 from opentelemetry.sdk.metrics import Counter
-#from opentelemetry.sdk.metrics.export import ExportRecord, MetricExportResult
+#from opentelemetry.sdk.metrics.export import MetricExportResult
 #from opentelemetry.sdk.metrics.export.aggregate import (
 #    HistogramAggregator,
 #    LastValueAggregator,
@@ -34,7 +35,15 @@ from opentelemetry.sdk.metrics import Counter
 
 from opentelemetry.sdk.metrics.export import (
     NumberDataPoint,
+    HistogramDataPoint,
+    Histogram,
+    MetricsData,
+    ScopeMetrics,
+    ResourceMetrics,
+    MetricExportResult,
 )
+
+from opentelemetry.sdk.util.instrumentation import InstrumentationScope
 from opentelemetry.sdk.resources import Resource
 from opentelemetry.sdk.util import get_dict_as_key
 
@@ -51,39 +60,89 @@ def test_parse_data_point(prom_rw):
         timestamp,
         value
     )
-    labels, sample = prom_rw._parse_data_point(dp)
-    assert labels == (("Foo", "Bar"),("Baz", 42))
+    name = "abc123_42"
+    labels, sample = prom_rw._parse_data_point(dp,name)
+
+    assert labels == (("Foo", "Bar"),("Baz", 42),("__name__",name))
     assert sample == (value,timestamp // 1_000_000)
+
+def test_parse_histogram_dp(prom_rw):
+    attrs = {"foo": "bar", "baz": 42}
+    timestamp = 1641946016139533244
+    bounds = [10.0, 20.0]
+    dp = HistogramDataPoint(
+        attributes=attrs,
+        start_time_unix_nano=1641946016139533244,
+        time_unix_nano=timestamp,
+        count=9,
+        sum=180,
+        bucket_counts=[1, 4, 4],
+        explicit_bounds=bounds,
+        min=8,
+        max=80,
+    )
+    name = "foo_histogram"
+    label_sample_pairs = prom_rw._parse_histogram_data_point(dp,name)
+    timestamp = timestamp // 1_000_000
+    bounds.append("+Inf")
+    for pos,bound in enumerate(bounds):
+        # We have to attributes, we kinda assume the bucket label is last...
+        assert ("le",str(bound)) == label_sample_pairs[pos][0][-1]
+        # Check and make sure we are putting the bucket counts in there
+        assert (dp.bucket_counts[pos],timestamp) == label_sample_pairs[pos][1]
+
+    # Last two are the sum & total count
+    pos +=1
+    assert ("__name__",f"{name}_sum") in label_sample_pairs[pos][0]
+    assert (dp.sum,timestamp) == label_sample_pairs[pos][1]
+
+    pos +=1
+    assert ("__name__",f"{name}_count") in label_sample_pairs[pos][0]
+    assert (dp.count,timestamp) == label_sample_pairs[pos][1]
 
 @pytest.mark.parametrize("metric",[
     "gauge",
     "sum",
+    "histogram",
 ],indirect=["metric"])
 def test_parse_metric(metric,prom_rw):
-    # We have 1 data point & 5 labels total
+    """
+    Ensures output from parse_metrics are TimeSeries with expected data/size
+    """
     attributes = {
         "service" : "foo",
-        "id" : 42,
+        "bool" : True,
     }
 
+    assert len(metric.data.data_points) == 1, "We can only support a single datapoint in tests"
     series = prom_rw._parse_metric(metric,tuple(attributes.items()))
-    assert len(series) == 1
-
-    #Build out the expected attributes and check they all made it as labels
-    proto_out = series[0]
-    number_data_point = metric.data.data_points[0]
-    attributes.update(number_data_point.attributes)
-    attributes["__name__"] = metric.name +f"_{metric.unit}"
-
-    for label in proto_out.labels:
-        assert label.value == str(attributes[label.name])
-
-    # Ensure we have one sample with the correct time & value
-    assert len(series.samples) == 1
-    sample = proto_out.samples[0]
-    assert sample.timestamp == (number_data_point.time_unix_nano // 1_000_000)
-    assert sample.value == number_data_point.value
-
+    timestamp = metric.data.data_points[0].time_unix_nano // 1_000_000
+    for single_series in series:
+        labels = str(single_series.labels)
+        # Its a bit easier to validate these stringified where we dont have to
+        # worry about ordering and protobuf TimeSeries object structure
+        # This doesn't guarantee the labels aren't mixed up, but our other
+        # test cases already do.
+        assert "__name__" in labels
+        assert metric.name in labels
+        combined_attrs = list(attributes.items()) + list(metric.data.data_points[0].attributes.items())
+        for name,value in combined_attrs:
+            assert name in labels
+            assert str(value) in labels
+        if isinstance(metric.data,Histogram):
+            values = [
+                metric.data.data_points[0].count,
+                metric.data.data_points[0].sum,
+                metric.data.data_points[0].bucket_counts[0],
+                metric.data.data_points[0].bucket_counts[1],
+            ]
+        else:
+            values = [
+                metric.data.data_points[0].value,
+            ]
+        for sample in single_series.samples:
+            assert sample.timestamp == timestamp
+            assert sample.value in values
 
 
 class TestValidation(unittest.TestCase):
@@ -179,287 +238,64 @@ class TestValidation(unittest.TestCase):
             )
 
 
-class TestConversion(unittest.TestCase):
-    # Initializes test data that is reused across tests
-    def setUp(self):
-        self.exporter = PrometheusRemoteWriteMetricsExporter(
-            endpoint="/prom/test_endpoint"
-        )
 
-    # Ensures conversion to timeseries function works with valid aggregation types
-    def test_valid_convert_to_timeseries(self):
-        test_records = [
-            ExportRecord(
-                Counter("testname", "testdesc", "testunit", int, None),
-                None,
-                SumAggregator(),
-                Resource({}),
-            ),
-            ExportRecord(
-                Counter("testname", "testdesc", "testunit", int, None),
-                None,
-                MinMaxSumCountAggregator(),
-                Resource({}),
-            ),
-            ExportRecord(
-                Counter("testname", "testdesc", "testunit", int, None),
-                None,
-                HistogramAggregator(),
-                Resource({}),
-            ),
-            ExportRecord(
-                Counter("testname", "testdesc", "testunit", int, None),
-                None,
-                LastValueAggregator(),
-                Resource({}),
-            ),
-            ExportRecord(
-                Counter("testname", "testdesc", "testunit", int, None),
-                None,
-                ValueObserverAggregator(),
-                Resource({}),
-            ),
-        ]
-        for record in test_records:
-            record.aggregator.update(5)
-            record.aggregator.take_checkpoint()
-        data = self.exporter._convert_to_timeseries(test_records)
-        self.assertIsInstance(data, list)
-        self.assertEqual(len(data), 13)
-        for timeseries in data:
-            self.assertIsInstance(timeseries, TimeSeries)
+# Ensures export is successful with valid export_records and config
+@patch("requests.post")
+def test_valid_export(mock_post,prom_rw,metric):
+    metric = metric
+    mock_post.return_value.configure_mock(**{"status_code": 200})
+    labels = get_dict_as_key({"environment": "testing"})
 
-    # Ensures conversion to timeseries fails for unsupported aggregation types
-    def test_invalid_convert_to_timeseries(self):
-        data = self.exporter._convert_to_timeseries(
-            [ExportRecord(None, None, None, Resource({}))]
-        )
-        self.assertIsInstance(data, list)
-        self.assertEqual(len(data), 0)
+    # Assumed a "None" for Scope or Resource aren't valid, so build them here
+    scope = ScopeMetrics(
+        InstrumentationScope(name="prom-rw-test"),
+        [metric],
+        None
+    )
+    resource = ResourceMetrics(
+        Resource({"service.name" : "foo"}),
+        [scope],
+        None
+    )
+    record = MetricsData([resource])
 
-    # Ensures sum aggregator is correctly converted to timeseries
-    def test_convert_from_sum(self):
-        sum_record = ExportRecord(
-            Counter("testname", "testdesc", "testunit", int, None),
-            None,
-            SumAggregator(),
-            Resource({}),
-        )
-        sum_record.aggregator.update(3)
-        sum_record.aggregator.update(2)
-        sum_record.aggregator.take_checkpoint()
+    result = prom_rw.export(record)
+    assert result == MetricExportResult.SUCCESS
+    assert mock_post.call_count == 1
 
-        expected_timeseries = self.exporter._create_timeseries(
-            sum_record, "testname_sum", 5.0
-        )
-        timeseries = self.exporter._convert_from_sum(sum_record)
-        self.assertEqual(timeseries[0], expected_timeseries)
+    result = prom_rw.export([])
+    assert result == MetricExportResult.SUCCESS
 
-    # Ensures sum min_max_count aggregator is correctly converted to timeseries
-    def test_convert_from_min_max_sum_count(self):
-        min_max_sum_count_record = ExportRecord(
-            Counter("testname", "testdesc", "testunit", int, None),
-            None,
-            MinMaxSumCountAggregator(),
-            Resource({}),
-        )
-        min_max_sum_count_record.aggregator.update(5)
-        min_max_sum_count_record.aggregator.update(1)
-        min_max_sum_count_record.aggregator.take_checkpoint()
+def test_invalid_export(prom_rw):
+    record = MetricsData([])
 
-        expected_min_timeseries = self.exporter._create_timeseries(
-            min_max_sum_count_record, "testname_min", 1.0
-        )
-        expected_max_timeseries = self.exporter._create_timeseries(
-            min_max_sum_count_record, "testname_max", 5.0
-        )
-        expected_sum_timeseries = self.exporter._create_timeseries(
-            min_max_sum_count_record, "testname_sum", 6.0
-        )
-        expected_count_timeseries = self.exporter._create_timeseries(
-            min_max_sum_count_record, "testname_count", 2.0
-        )
+    result = prom_rw.export(record)
+    assert result == MetricExportResult.FAILURE
 
-        timeseries = self.exporter._convert_from_min_max_sum_count(
-            min_max_sum_count_record
-        )
-        self.assertEqual(timeseries[0], expected_min_timeseries)
-        self.assertEqual(timeseries[1], expected_max_timeseries)
-        self.assertEqual(timeseries[2], expected_sum_timeseries)
-        self.assertEqual(timeseries[3], expected_count_timeseries)
+@patch("requests.post")
+def test_valid_send_message(mock_post,prom_rw):
+    mock_post.return_value.configure_mock(**{"ok": True})
+    result = prom_rw._send_message(bytes(), {})
+    assert mock_post.call_count == 1
+    assert result == MetricExportResult.SUCCESS
 
-    # Ensures histogram aggregator is correctly converted to timeseries
-    def test_convert_from_histogram(self):
-        histogram_record = ExportRecord(
-            Counter("testname", "testdesc", "testunit", int, None),
-            None,
-            HistogramAggregator(),
-            Resource({}),
-        )
-        histogram_record.aggregator.update(5)
-        histogram_record.aggregator.update(2)
-        histogram_record.aggregator.update(-1)
-        histogram_record.aggregator.take_checkpoint()
+def test_invalid_send_message(prom_rw):
+    result = prom_rw._send_message(bytes(), {})
+    assert result == MetricExportResult.FAILURE
 
-        expected_le_0_timeseries = self.exporter._create_timeseries(
-            histogram_record, "testname_histogram", 1.0, ("le", "0")
-        )
-        expected_le_inf_timeseries = self.exporter._create_timeseries(
-            histogram_record, "testname_histogram", 2.0, ("le", "+Inf")
-        )
-        timeseries = self.exporter._convert_from_histogram(histogram_record)
-        self.assertEqual(timeseries[0], expected_le_0_timeseries)
-        self.assertEqual(timeseries[1], expected_le_inf_timeseries)
+# Verifies that build_message calls snappy.compress and returns SerializedString
+@patch("snappy.compress", return_value=bytes())
+def test_build_message(mock_compress,prom_rw):
+    message = prom_rw._build_message([TimeSeries()])
+    assert mock_compress.call_count == 1
+    assert isinstance(message, bytes)
 
-    # Ensures last value aggregator is correctly converted to timeseries
-    def test_convert_from_last_value(self):
-        last_value_record = ExportRecord(
-            Counter("testname", "testdesc", "testunit", int, None),
-            None,
-            LastValueAggregator(),
-            Resource({}),
-        )
-        last_value_record.aggregator.update(1)
-        last_value_record.aggregator.update(5)
-        last_value_record.aggregator.take_checkpoint()
+# Ensure correct headers are added when valid config is provided
+def test_build_headers(prom_rw):
+    prom_rw.headers = {"Custom Header": "test_header"}
 
-        expected_timeseries = self.exporter._create_timeseries(
-            last_value_record, "testname_last", 5.0
-        )
-        timeseries = self.exporter._convert_from_last_value(last_value_record)
-        self.assertEqual(timeseries[0], expected_timeseries)
-
-    # Ensures value observer aggregator is correctly converted to timeseries
-    def test_convert_from_value_observer(self):
-        value_observer_record = ExportRecord(
-            Counter("testname", "testdesc", "testunit", int, None),
-            None,
-            ValueObserverAggregator(),
-            Resource({}),
-        )
-        value_observer_record.aggregator.update(5)
-        value_observer_record.aggregator.update(1)
-        value_observer_record.aggregator.update(2)
-        value_observer_record.aggregator.take_checkpoint()
-
-        expected_min_timeseries = self.exporter._create_timeseries(
-            value_observer_record, "testname_min", 1.0
-        )
-        expected_max_timeseries = self.exporter._create_timeseries(
-            value_observer_record, "testname_max", 5.0
-        )
-        expected_sum_timeseries = self.exporter._create_timeseries(
-            value_observer_record, "testname_sum", 8.0
-        )
-        expected_count_timeseries = self.exporter._create_timeseries(
-            value_observer_record, "testname_count", 3.0
-        )
-        expected_last_timeseries = self.exporter._create_timeseries(
-            value_observer_record, "testname_last", 2.0
-        )
-        timeseries = self.exporter._convert_from_value_observer(
-            value_observer_record
-        )
-        self.assertEqual(timeseries[0], expected_min_timeseries)
-        self.assertEqual(timeseries[1], expected_max_timeseries)
-        self.assertEqual(timeseries[2], expected_sum_timeseries)
-        self.assertEqual(timeseries[3], expected_count_timeseries)
-        self.assertEqual(timeseries[4], expected_last_timeseries)
-
-    # Ensures quantile aggregator is correctly converted to timeseries
-    # TODO: Add test_convert_from_quantile once method is implemented
-
-    # Ensures timeseries produced contains appropriate sample and labels
-    def test_create_timeseries(self):
-        def create_label(name, value):
-            label = Label()
-            label.name = name
-            label.value = value
-            return label
-
-        sum_aggregator = SumAggregator()
-        sum_aggregator.update(5)
-        sum_aggregator.take_checkpoint()
-        export_record = ExportRecord(
-            Counter("testname", "testdesc", "testunit", int, None),
-            get_dict_as_key({"record_name": "record_value"}),
-            sum_aggregator,
-            Resource({"resource_name": "resource_value"}),
-        )
-
-        expected_timeseries = TimeSeries()
-        expected_timeseries.labels.append(  # pylint:disable=E1101
-            create_label("__name__", "testname")
-        )
-        expected_timeseries.labels.append(  # pylint:disable=E1101
-            create_label("resource_name", "resource_value")
-        )
-        expected_timeseries.labels.append(  # pylint:disable=E1101
-            create_label("record_name", "record_value")
-        )
-
-        sample = expected_timeseries.samples.add()  # pylint:disable=E1101
-        sample.timestamp = int(sum_aggregator.last_update_timestamp / 1000000)
-        sample.value = 5.0
-
-        timeseries = self.exporter._create_timeseries(
-            export_record, "testname", 5.0
-        )
-        self.assertEqual(timeseries, expected_timeseries)
-
-
-class TestExport(unittest.TestCase):
-    # Initializes test data that is reused across tests
-    def setUp(self):
-        self.exporter = PrometheusRemoteWriteMetricsExporter(
-            endpoint="/prom/test_endpoint"
-        )
-
-    # Ensures export is successful with valid export_records and config
-    @patch("requests.post")
-    def test_valid_export(self, mock_post):
-        mock_post.return_value.configure_mock(**{"status_code": 200})
-        test_metric = Counter("testname", "testdesc", "testunit", int, None)
-        labels = get_dict_as_key({"environment": "testing"})
-        record = ExportRecord(
-            test_metric, labels, SumAggregator(), Resource({})
-        )
-        result = self.exporter.export([record])
-        self.assertIs(result, MetricsExportResult.SUCCESS)
-        self.assertEqual(mock_post.call_count, 1)
-
-        result = self.exporter.export([])
-        self.assertIs(result, MetricsExportResult.SUCCESS)
-
-    def test_invalid_export(self):
-        record = ExportRecord(None, None, None, None)
-        result = self.exporter.export([record])
-        self.assertIs(result, MetricsExportResult.FAILURE)
-
-    @patch("requests.post")
-    def test_valid_send_message(self, mock_post):
-        mock_post.return_value.configure_mock(**{"ok": True})
-        result = self.exporter._send_message(bytes(), {})
-        self.assertEqual(mock_post.call_count, 1)
-        self.assertEqual(result, MetricsExportResult.SUCCESS)
-
-    def test_invalid_send_message(self):
-        result = self.exporter._send_message(bytes(), {})
-        self.assertEqual(result, MetricsExportResult.FAILURE)
-
-    # Verifies that build_message calls snappy.compress and returns SerializedString
-    @patch("snappy.compress", return_value=bytes())
-    def test_build_message(self, mock_compress):
-        message = self.exporter._build_message([TimeSeries()])
-        self.assertEqual(mock_compress.call_count, 1)
-        self.assertIsInstance(message, bytes)
-
-    # Ensure correct headers are added when valid config is provided
-    def test_build_headers(self):
-        self.exporter.headers = {"Custom Header": "test_header"}
-
-        headers = self.exporter._build_headers()
-        self.assertEqual(headers["Content-Encoding"], "snappy")
-        self.assertEqual(headers["Content-Type"], "application/x-protobuf")
-        self.assertEqual(headers["X-Prometheus-Remote-Write-Version"], "0.1.0")
-        self.assertEqual(headers["Custom Header"], "test_header")
+    headers = prom_rw._build_headers()
+    assert headers["Content-Encoding"] == "snappy"
+    assert headers["Content-Type"] == "application/x-protobuf"
+    assert headers["X-Prometheus-Remote-Write-Version"] == "0.1.0"
+    assert headers["Custom Header"] == "test_header"

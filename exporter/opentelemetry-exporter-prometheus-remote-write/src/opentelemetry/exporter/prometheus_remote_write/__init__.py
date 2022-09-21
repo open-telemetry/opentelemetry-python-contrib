@@ -71,6 +71,7 @@ class PrometheusRemoteWriteMetricsExporter(MetricExporter):
         timeout: int = 30,
         tls_config: Dict = None,
         proxies: Dict = None,
+        resources_as_labels : bool = True,
     ):
         self.endpoint = endpoint
         self.basic_auth = basic_auth
@@ -78,12 +79,7 @@ class PrometheusRemoteWriteMetricsExporter(MetricExporter):
         self.timeout = timeout
         self.tls_config = tls_config
         self.proxies = proxies
-
-        self.converter_map = {
-            Sum: self._convert_from_sum,
-            Histogram: self._convert_from_histogram,
-            Gauge: self._convert_from_gauge,
-        }
+        self.resources_as_labels = resources_as_labels
 
 
     @property
@@ -166,16 +162,16 @@ class PrometheusRemoteWriteMetricsExporter(MetricExporter):
         self._headers = headers
 
     def export(
-        self, export_records
+            self,metrics_data : MetricsData
     ) ->MetricExportResult:
-        if not export_records:
-            return MetricsExportResult.SUCCESS
-        timeseries = self._convert_to_timeseries(export_records)
+        if not metrics_data:
+            return MetricExportResult.SUCCESS
+        timeseries = self._translate_data(metrics_data)
         if not timeseries:
             logger.error(
                 "All records contain unsupported aggregators, export aborted"
             )
-            return MetricsExportResult.FAILURE
+            return MetricExportResult.FAILURE
         message = self._build_message(timeseries)
         headers = self._build_headers()
         return self._send_message(message, headers)
@@ -183,42 +179,29 @@ class PrometheusRemoteWriteMetricsExporter(MetricExporter):
     def shutdown(self) -> None:
         pass
 
-    def _translate_data(self, data: MetricsData):
+    def _translate_data(self, data: MetricsData) -> Sequence[TimeSeries]:
         rw_timeseries = []
 
         for resource_metrics in data.resource_metrics:
             resource = resource_metrics.resource
             # OTLP Data model suggests combining some attrs into  job/instance
             # Should we do that here?
-            resource_labels = self._get_resource_labels(resource.attributes)
+            if self.resources_as_labels:
+                resource_labels = [ (n,str(v)) for n,v in resource.attributes.items() ]
+            else:
+                resource_labels = []
             # Scope name/version probably not too useful from a labeling perspective
             for scope_metrics in resource_metrics.scope_metrics:
                 for metric in scope_metrics.metrics:
                     rw_timeseries.extend( self._parse_metric(metric,resource_labels) )
-
-    def _get_resource_labels(self,attrs):
-        """ Converts Resource Attributes to Prometheus Labels based on
-        OTLP Metric Data Model's recommendations on Resource Attributes
-        """
-        return [ (n,str(v)) for n,v in resource.attributes.items() ]
+        return rw_timeseries
 
     def _parse_metric(self, metric: Metric, resource_labels: Sequence) -> Sequence[TimeSeries]:
         """
         Parses the Metric & lower objects, then converts the output into
         OM TimeSeries. Returns a List of TimeSeries objects based on one Metric
         """
-        # datapoints have attributes associated with them. these would be sent
-        # to RW as different metrics: name & labels is a unique time series
-        sample_sets = defaultdict(list)
-        if isinstance(metric.data,(Gauge,Sum)):
-            for dp in metric.data.data_points:
-                attrs,sample = self._parse_data_point(dp)
-                sample_sets[attrs].append(sample)
-        elif isinstance(metric.data,(HistogramType)):
-            raise NotImplementedError("Coming sooN!")
-        else:
-            logger.warn("Unsupported Metric Type: %s",type(metric.data))
-            return []
+
 
         # Create the metric name, will be a label later
         if metric.unit:
@@ -227,10 +210,25 @@ class PrometheusRemoteWriteMetricsExporter(MetricExporter):
         else:
             name = metric.name
 
+        # datapoints have attributes associated with them. these would be sent
+        # to RW as different metrics: name & labels is a unique time series
+        sample_sets = defaultdict(list)
+        if isinstance(metric.data,(Gauge,Sum)):
+            for dp in metric.data.data_points:
+                attrs,sample = self._parse_data_point(dp,name)
+                sample_sets[attrs].append(sample)
+        elif isinstance(metric.data,Histogram):
+            for dp in metric.data.data_points:
+                dp_result = self._parse_histogram_data_point(dp,name)
+                for attrs,sample in dp_result:
+                    sample_sets[attrs].append(sample)
+        else:
+            logger.warn("Unsupported Metric Type: %s",type(metric.data))
+            return []
+
         timeseries = []
         for labels, samples in sample_sets.items():
             ts = TimeSeries()
-            ts.labels.append(self._label("__name__",name))
             for label_name,label_value in chain(resource_labels,labels):
                 # Previous implementation did not str() the names...
                 ts.labels.append(self._label(label_name,str(label_value)))
@@ -239,23 +237,61 @@ class PrometheusRemoteWriteMetricsExporter(MetricExporter):
             timeseries.append(ts)
         return timeseries
 
-    def _sample(self,value,timestamp :int):
+    def _sample(self,value: int,timestamp :int) -> Sample:
         sample = Sample()
         sample.value = value
         sample.timestamp = timestamp
         return sample
 
-    def _label(self,name:str,value:str):
+    def _label(self,name:str,value:str) -> Label:
         label = Label()
         label.name = name
         label.value = value
         return label
 
-    def _parse_data_point(self, data_point):
+    def _parse_histogram_data_point(self, data_point, name):
 
-        attrs = tuple(data_point.attributes.items())
-        #TODO: Optimize? create Sample here
-        # remote write time is in milliseconds
+        #if (len(data_point.explicit_bounds)+1) != len(data_point.bucket_counts):
+        #    raise ValueError("Number of buckets must be 1 more than the explicit bounds!")
+
+        sample_attr_pairs = []
+
+        base_attrs = [(n,v) for n,v in data_point.attributes.items()]
+        timestamp = data_point.time_unix_nano // 1_000_000
+
+
+        def handle_bucket(value,bound=None,name_override=None):
+            # Metric Level attributes + the bucket boundry attribute + name
+            ts_attrs = base_attrs.copy()
+            ts_attrs.append(("__name__",name_override or name))
+            if bound:
+                ts_attrs.append(("le",str(bound)))
+            # Value is count of values in each bucket
+            ts_sample = (value,timestamp)
+            return tuple(ts_attrs), ts_sample
+
+        for bound_pos,bound in enumerate(data_point.explicit_bounds):
+            sample_attr_pairs.append(
+                handle_bucket(data_point.bucket_counts[bound_pos],bound)
+            )
+
+        # Add the last label for implicit +inf bucket
+        sample_attr_pairs.append(
+            handle_bucket(data_point.bucket_counts[-1],bound="+Inf")
+        )
+
+        #Lastly, add series for count & sum
+        sample_attr_pairs.append(
+            handle_bucket(data_point.sum,name_override=f"{name}_sum")
+        )
+        sample_attr_pairs.append(
+            handle_bucket(data_point.count,name_override=f"{name}_count")
+        )
+        return sample_attr_pairs
+
+    def _parse_data_point(self, data_point,name=None):
+
+        attrs = tuple(data_point.attributes.items()) + (("__name__",name),)
         sample = (data_point.value,(data_point.time_unix_nano // 1_000_000))
         return attrs,sample
 
@@ -275,27 +311,17 @@ class PrometheusRemoteWriteMetricsExporter(MetricExporter):
                 )
         return timeseries
 
-    def _convert_from_sum(
-        self, sum_record
-    ) -> Sequence[TimeSeries]:
-        return [
-            self._create_timeseries(
-                sum_record,
-                sum_record.instrument.name + "_sum",
-                sum_record.aggregator.checkpoint,
-            )
-        ]
-
-    def _convert_from_gauge(self, gauge_record):
-        raise NotImplementedError("Do this")
-
     def _convert_from_histogram(
-        self, histogram_record
+        self, histogram: Histogram,
     ) -> Sequence[TimeSeries]:
-        timeseries = []
-        for bound in histogram_record.aggregator.checkpoint.keys():
+        sample_sets = defaultdict(list)
+
+        base_attrs = [self._label(n,v) for n,v in histogram.attributes]
+        for bound in histogram.explicit_bounds:
             bound_str = "+Inf" if bound == float("inf") else str(bound)
-            value = histogram_record.aggregator.checkpoint[bound]
+            # General attributes apply
+            ts_attrs = base_attrs.copy.append(self._label("le",str(bound)))
+            sample_sets[attrs].append(sample)
             timeseries.append(
                 self._create_timeseries(
                     histogram_record,
@@ -411,5 +437,5 @@ class PrometheusRemoteWriteMetricsExporter(MetricExporter):
                 response.raise_for_status()
         except requests.exceptions.RequestException as err:
             logger.error("Export POST request failed with reason: %s", err)
-            return MetricsExportResult.FAILURE
-        return MetricsExportResult.SUCCESS
+            return MetricExportResult.FAILURE
+        return MetricExportResult.SUCCESS
