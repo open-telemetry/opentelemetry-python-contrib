@@ -260,6 +260,18 @@ class TestFalconInstrumentation(TestFalconBase, WsgiTestBase):
             self.assertFalse(mock_span.set_attribute.called)
             self.assertFalse(mock_span.set_status.called)
 
+    def test_uninstrument_after_instrument(self):
+        self.client().simulate_get(path="/hello")
+        spans = self.memory_exporter.get_finished_spans()
+        self.assertEqual(len(spans), 1)
+
+        FalconInstrumentor().uninstrument()
+        self.memory_exporter.clear()
+
+        self.client().simulate_get(path="/hello")
+        spans = self.memory_exporter.get_finished_spans()
+        self.assertEqual(len(spans), 0)
+
     def test_falcon_metrics(self):
         self.client().simulate_get("/hello/756")
         self.client().simulate_get("/hello/756")
