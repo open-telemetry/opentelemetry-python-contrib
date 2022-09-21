@@ -46,9 +46,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   ([#1313](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/1313))
 - Fix uninstrumentation of existing app instances in FastAPI
   ([#1258](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/1258))
-- Fix uninstrumentation of existing app instances in falcon
-  ([#1336]https://github.com/open-telemetry/opentelemetry-python-contrib/pull/1336)
-- `opentelemetry-exporter-richconsole` Fixing RichConsoleExpoter to allow multiple traces, fixing duplicate spans and include resources
+- `opentelemetry-exporter-richconsole` Fixing RichConsoleExpoter to allow multiple traces, fixing duplicate spans and include resources ([#1336](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/1336))
 
 ## [1.12.0-0.33b0](https://github.com/open-telemetry/opentelemetry-python/releases/tag/v1.12.0-0.33b0) - 2022-08-08
 
