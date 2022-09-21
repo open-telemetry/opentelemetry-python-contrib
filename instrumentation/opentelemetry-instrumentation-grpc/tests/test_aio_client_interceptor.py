@@ -11,7 +11,21 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-from unittest import IsolatedAsyncioTestCase
+try:
+    from unittest import IsolatedAsyncioTestCase
+except ImportError:
+    # unittest.IsolatedAsyncioTestCase was introduced in Python 3.8. It's use
+    # simplifies the following tests. Without it, the amount of test code
+    # increases significantly, with most of the additional code handling
+    # the asyncio set up.
+    from unittest import TestCase
+
+    class IsolatedAsyncioTestCase(TestCase):
+        def run(self, result=None):
+            self.skipTest(
+                "This test requires Python 3.8 for unittest.IsolatedAsyncioTestCase"
+            )
+
 
 import grpc
 import pytest
