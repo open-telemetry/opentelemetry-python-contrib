@@ -283,7 +283,6 @@ class _InstrumentedFalconAPI(getattr(falcon, _instrument_app)):
             return super().__call__(env, start_response)
 
         start_time = time_ns()
-        start = default_timer()
 
         span, token = _start_internal_or_server_span(
             tracer=self._otel_tracer,
