@@ -647,7 +647,7 @@ def update_dependencies(targets, version, packages):
             targets,
             "pyproject.toml",
             fr"({package_name}.*)==(.*)",
-            r"\1==" + version + '",',
+            r"\1== " + version + '",',
         )
 
 
