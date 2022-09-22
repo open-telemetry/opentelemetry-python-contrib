@@ -94,12 +94,12 @@ class TestTornadoInstrumentor(TornadoTest):
         )
 
         self.assertEqual(duration.name, "http.server.duration")
-        for data_point in duration.data.data_points:
-            self.assertAlmostEqual(
-                data_point.sum,
-                client_duration_estimated,
-                delta=200,
-            )
+        data_point = list(duration.data.data_points)[0]
+        self.assertAlmostEqual(
+            data_point.sum,
+            client_duration_estimated,
+            delta=200,
+        )
         self.assertMetricHasAttributes(
             duration,
             {
