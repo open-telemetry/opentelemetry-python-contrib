@@ -19,6 +19,7 @@ from tornado.testing import AsyncHTTPTestCase
 
 from opentelemetry import trace
 from opentelemetry.instrumentation.tornado import TornadoInstrumentor
+from opentelemetry.sdk.metrics.export import HistogramDataPoint
 from opentelemetry.test.test_base import TestBase
 
 from .tornado_test_app import make_app
@@ -30,6 +31,32 @@ class TornadoTest(AsyncHTTPTestCase, TestBase):
         tracer = trace.get_tracer(__name__)
         app = make_app(tracer)
         return app
+
+    def get_sorted_metrics(self):
+        resource_metrics = (
+            self.memory_metrics_reader.get_metrics_data().resource_metrics
+        )
+        for metrics in resource_metrics:
+            for scope_metrics in metrics.scope_metrics:
+                all_metrics = [metric for metric in scope_metrics.metrics]
+                return self.sorted_metrics(all_metrics)
+
+    @staticmethod
+    def sorted_metrics(metrics):
+        """
+        Sorts metrics by metric name.
+        """
+        return sorted(
+            metrics,
+            key=lambda m: m.name,
+        )
+
+    def assertMetricHasAttributes(self, metric, expected_attributes):
+        for data_point in metric.data.data_points:
+            self.assertDictEqual(
+                expected_attributes,
+                dict(data_point.attributes),
+            )
 
     def setUp(self):
         super().setUp()
@@ -51,64 +78,60 @@ class TestTornadoInstrumentor(TornadoTest):
         response = self.fetch("/")
         client_duration_estimated = (default_timer() - start_time) * 1000
 
-        expected_attributes = {
-            "http.status_code": 200,
-            "http.method": "GET",
-            "http.flavor": "HTTP/1.1",
-            "http.scheme": "http",
-            "http.host": response.request.headers["host"],
-        }
-        expected_response_attributes = {
-            "http.status_code": response.code,
-            "http.method": "GET",
-            "http.url": self.get_url("/"),
-        }
-        expected_data = {
-            "http.server.request.size": 0,
-            "http.server.response.size": int(
-                response.headers["Content-Length"]
-            ),
-        }
-        expected_metrics = [
-            "http.server.duration",
-            "http.server.request.size",
-            "http.server.response.size",
-            "http.server.active_requests",
-        ]
+        metrics = self.get_sorted_metrics()
+        self.assertEqual(len(metrics), 4)
+        active_request, duration, request_size, response_size = metrics
 
-        resource_metrics = (
-            self.memory_metrics_reader.get_metrics_data().resource_metrics
+        self.assertEqual(active_request.name, "http.server.active_requests")
+        self.assertMetricHasAttributes(
+            active_request,
+            {
+                "http.method": "GET",
+                "http.flavor": "HTTP/1.1",
+                "http.scheme": "http",
+                "http.host": response.request.headers["host"],
+            },
         )
-        for metrics in resource_metrics:
-            for scope_metrics in metrics.scope_metrics:
-                self.assertEqual(
-                    len(scope_metrics.metrics), len(expected_metrics)
-                )
-                for metric in scope_metrics.metrics:
-                    for data_point in metric.data.data_points:
-                        if metric.name in expected_data:
-                            self.assertEqual(
-                                data_point.sum, expected_data[metric.name]
-                            )
 
-                        self.assertIn(metric.name, expected_metrics)
-                        if metric.name == "http.server.duration":
-                            self.assertAlmostEqual(
-                                data_point.sum,
-                                client_duration_estimated,
-                                delta=1000,
-                            )
+        self.assertEqual(duration.name, "http.server.duration")
+        for data_point in duration.data.data_points:
+            self.assertAlmostEqual(
+                data_point.sum,
+                client_duration_estimated,
+                delta=200,
+            )
+        self.assertMetricHasAttributes(
+            duration,
+            {
+                "http.status_code": 201,
+                "http.method": "GET",
+                "http.flavor": "HTTP/1.1",
+                "http.scheme": "http",
+                "http.host": response.request.headers["host"],
+            },
+        )
 
-                        if metric.name == "http.server.response.size":
-                            self.assertDictEqual(
-                                expected_response_attributes,
-                                dict(data_point.attributes),
-                            )
-                        else:
-                            self.assertDictEqual(
-                                expected_attributes,
-                                dict(data_point.attributes),
-                            )
+        self.assertEqual(request_size.name, "http.server.request.size")
+        self.assertMetricHasAttributes(
+            request_size,
+            {
+                "http.status_code": 200,
+                "http.method": "GET",
+                "http.flavor": "HTTP/1.1",
+                "http.scheme": "http",
+                "http.host": response.request.headers["host"],
+            },
+        )
+
+        self.assertEqual(response_size.name, "http.server.response.size")
+        self.assertMetricHasAttributes(
+            response_size,
+            {
+                "http.status_code": response.code,
+                "http.method": "GET",
+                "http.url": self.get_url("/"),
+            },
+        )
 
     def test_metric_uninstrument(self):
         self.fetch("/")
@@ -119,6 +142,6 @@ class TestTornadoInstrumentor(TornadoTest):
         for resource_metric in metrics_list.resource_metrics:
             for scope_metric in resource_metric.scope_metrics:
                 for metric in scope_metric.metrics:
-                    if metric.name != "http.server.active_requests":
-                        for point in list(metric.data.data_points):
+                    for point in list(metric.data.data_points):
+                        if isinstance(point, HistogramDataPoint):
                             self.assertEqual(point.count, 1)

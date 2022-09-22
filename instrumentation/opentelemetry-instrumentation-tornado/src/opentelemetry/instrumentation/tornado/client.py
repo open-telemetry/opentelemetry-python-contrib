@@ -99,12 +99,13 @@ def _finish_tracing_callback(
     status_code = None
     description = None
     exc = future.exception()
+    response = future.result()
     if span.is_recording() and exc:
         if isinstance(exc, HTTPError):
             status_code = exc.code
         description = f"{type(exc).__name__}: {exc}"
     else:
-        status_code = future.result().code
+        status_code = response.code
 
     if status_code is not None:
         span.set_attribute(SpanAttributes.HTTP_STATUS_CODE, status_code)
@@ -114,7 +115,6 @@ def _finish_tracing_callback(
                 description=description,
             )
         )
-    response = future.result()
     metric_attributes = _create_metric_attributes(response)
     response_size = int(response.headers["Content-Length"])
 

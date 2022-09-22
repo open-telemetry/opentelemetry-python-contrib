@@ -292,14 +292,14 @@ class TornadoInstrumentor(BaseInstrumentor):
         self.patched_handlers = []
 
 
-def patch_handler_class(self, cls, request_hook=None):
+def patch_handler_class(instrumentation, cls, request_hook=None):
     if getattr(cls, _OTEL_PATCHED_KEY, False):
         return False
 
     setattr(cls, _OTEL_PATCHED_KEY, True)
-    _wrap(cls, "prepare", partial(_prepare, self, request_hook))
-    _wrap(cls, "on_finish", partial(_on_finish, self))
-    _wrap(cls, "log_exception", partial(_log_exception, self))
+    _wrap(cls, "prepare", partial(_prepare, instrumentation, request_hook))
+    _wrap(cls, "on_finish", partial(_on_finish, instrumentation))
+    _wrap(cls, "log_exception", partial(_log_exception, instrumentation))
     return True
 
 
@@ -319,28 +319,36 @@ def _wrap(cls, method_name, wrapper):
     wrapt.apply_patch(cls, method_name, wrapper)
 
 
-def _prepare(self, request_hook, func, handler, args, kwargs):
+def _prepare(instrumentation, request_hook, func, handler, args, kwargs):
+    instrumentation.start_time = default_timer()
     request = handler.request
     if _excluded_urls.url_disabled(request.uri):
         return func(*args, **kwargs)
-    ctx = _start_span(self, handler)
+
+    _record_prepare_metrics(instrumentation, handler)
+
+    ctx = _start_span(instrumentation.tracer, handler)
     if request_hook:
         request_hook(ctx.span, handler)
     return func(*args, **kwargs)
 
 
-def _on_finish(self, func, handler, args, kwargs):
+def _on_finish(instrumentation, func, handler, args, kwargs):
     response = func(*args, **kwargs)
-    _finish_span(self, handler)
+
+    _record_on_finish_metrics(instrumentation, handler)
+
+    _finish_span(instrumentation.tracer, handler)
+
     return response
 
 
-def _log_exception(self, func, handler, args, kwargs):
+def _log_exception(instrumentation, func, handler, args, kwargs):
     error = None
     if len(args) == 3:
         error = args[1]
 
-    _finish_span(self, handler, error)
+    _finish_span(instrumentation, handler, error)
     return func(*args, **kwargs)
 
 
@@ -406,11 +414,9 @@ def _get_full_handler_name(handler):
     return f"{klass.__module__}.{klass.__qualname__}"
 
 
-def _start_span(self, handler) -> _TraceContext:
-    start_time = default_timer()
-
+def _start_span(tracer, handler) -> _TraceContext:
     span, token = _start_internal_or_server_span(
-        tracer=self.tracer,
+        tracer=tracer,
         span_name=_get_operation_name(handler, handler.request),
         start_time=time_ns(),
         context_carrier=handler.request.headers,
@@ -429,14 +435,6 @@ def _start_span(self, handler) -> _TraceContext:
             if len(custom_attributes) > 0:
                 span.set_attributes(custom_attributes)
 
-    metric_attributes = _create_metric_attributes(handler)
-    request_size = len(handler.request.body)
-
-    self.request_size_histogram.record(
-        request_size, attributes=metric_attributes
-    )
-    self.active_requests_histogram.add(1, attributes=metric_attributes)
-
     activation = trace.use_span(span, end_on_exit=True)
     activation.__enter__()  # pylint: disable=E1101
     ctx = _TraceContext(activation, span, token)
@@ -449,15 +447,10 @@ def _start_span(self, handler) -> _TraceContext:
     if propagator:
         propagator.inject(handler, setter=response_propagation_setter)
 
-    elapsed_time = round((default_timer() - start_time) * 1000)
-
-    self.duration_histogram.record(elapsed_time, attributes=metric_attributes)
-    self.active_requests_histogram.add(-1, attributes=metric_attributes)
-
     return ctx
 
 
-def _finish_span(self, handler, error=None):
+def _finish_span(tracer, handler, error=None):
     status_code = handler.get_status()
     reason = getattr(handler, "_reason")
     finish_args = (None, None, None)
@@ -467,7 +460,7 @@ def _finish_span(self, handler, error=None):
         if isinstance(error, tornado.web.HTTPError):
             status_code = error.status_code
             if not ctx and status_code == 404:
-                ctx = _start_span(self, handler)
+                ctx = _start_span(tracer, handler)
         else:
             status_code = 500
             reason = None
@@ -508,13 +501,51 @@ def _finish_span(self, handler, error=None):
     delattr(handler, _HANDLER_CONTEXT_KEY)
 
 
-def _create_metric_attributes(handler):
+def _record_prepare_metrics(instrumentation, handler):
+    request_size = len(handler.request.body)
+    metric_attributes = _create_metric_attributes(handler)
+
+    instrumentation.request_size_histogram.record(
+        request_size, attributes=metric_attributes
+    )
+
+    active_requests_attributes = _create_active_requests_attributes(
+        handler.request
+    )
+    instrumentation.active_requests_histogram.add(
+        1, attributes=active_requests_attributes
+    )
+
+
+def _record_on_finish_metrics(instrumentation, handler):
+    elapsed_time = round((default_timer() - instrumentation.start_time) * 1000)
+
+    metric_attributes = _create_metric_attributes(handler)
+    instrumentation.duration_histogram.record(
+        elapsed_time, attributes=metric_attributes
+    )
+
+    active_requests_attributes = _create_active_requests_attributes(
+        handler.request
+    )
+    instrumentation.active_requests_histogram.add(
+        -1, attributes=active_requests_attributes
+    )
+
+
+def _create_active_requests_attributes(request):
     metric_attributes = {
-        SpanAttributes.HTTP_METHOD: handler.request.method,
-        SpanAttributes.HTTP_SCHEME: handler.request.protocol,
-        SpanAttributes.HTTP_STATUS_CODE: handler.get_status(),
-        SpanAttributes.HTTP_FLAVOR: handler.request.version,
-        SpanAttributes.HTTP_HOST: handler.request.host,
+        SpanAttributes.HTTP_METHOD: request.method,
+        SpanAttributes.HTTP_SCHEME: request.protocol,
+        SpanAttributes.HTTP_FLAVOR: request.version,
+        SpanAttributes.HTTP_HOST: request.host,
     }
+
+    return metric_attributes
+
+
+def _create_metric_attributes(handler):
+    metric_attributes = _create_active_requests_attributes(handler.request)
+    metric_attributes[SpanAttributes.HTTP_STATUS_CODE] = handler.get_status()
 
     return metric_attributes
