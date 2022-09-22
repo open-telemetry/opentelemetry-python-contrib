@@ -209,16 +209,6 @@ class StarletteInstrumentor(BaseInstrumentor):
 
         applications.Starlette = _InstrumentedStarlette
 
-        for instance in _InstrumentedStarlette._instrumented_starlette_apps:
-            self.instrument_app(
-                instance,
-                server_request_hook=_InstrumentedStarlette._server_request_hook,
-                client_request_hook=_InstrumentedStarlette._client_request_hook,
-                client_response_hook=_InstrumentedStarlette._client_response_hook,
-                tracer_provider=_InstrumentedStarlette._tracer_provider,
-                meter=_InstrumentedStarlette._meter_provider
-            )
-
     def _uninstrument(self, **kwargs):
 
         """uninstrumenting all created apps by user"""
