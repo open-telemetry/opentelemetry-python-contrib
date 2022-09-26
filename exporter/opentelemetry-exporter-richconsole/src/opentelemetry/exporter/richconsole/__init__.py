@@ -54,7 +54,7 @@ API
 
 import datetime
 import typing
-from typing import Optional
+from typing import Optional, List, Dict
 
 from rich.console import Console
 from rich.syntax import Syntax
@@ -148,6 +148,12 @@ class RichConsoleSpanExporter(SpanExporter):
         if not spans:
             return SpanExportResult.SUCCESS
 
+        for tree in self.spans_to_tree(spans):
+            self.console.print(tree)
+
+        return SpanExportResult.SUCCESS
+
+    def spans_to_tree(self, spans: typing.Sequence[ReadableSpan]) -> Dict[str, Tree]:
         trees = dict()
         all_parent_ids = {span.context.span_id for span in spans}
         parents = {}
@@ -176,7 +182,4 @@ class RichConsoleSpanExporter(SpanExporter):
                     parents[span.context.span_id] = child
                     _child_to_tree(child, span)
                     spans.remove(span)
-
-        for tree in trees.values():
-            self.console.print(tree)
-        return SpanExportResult.SUCCESS
+        return trees

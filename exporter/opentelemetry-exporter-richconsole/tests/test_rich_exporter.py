@@ -16,7 +16,10 @@ import pytest
 
 from opentelemetry.exporter.richconsole import RichConsoleSpanExporter
 from opentelemetry.sdk import trace
+from opentelemetry.sdk.trace import ReadableSpan
 from opentelemetry.sdk.trace.export import BatchSpanProcessor
+import opentelemetry.trace
+from rich.tree import Tree
 
 
 @pytest.fixture(name="span_processor")
@@ -45,3 +48,30 @@ def test_span_exporter(tracer_provider, span_processor, capsys):
     span_processor.force_flush()
     captured = capsys.readouterr()
     assert "V4LuE" in captured.out
+
+
+def walk_tree(root: Tree) -> int:
+    # counts the amount of spans in a tree that contains a span
+    return sum([walk_tree(child) for child in root.children]) + int(
+        "span" in root.label
+    )
+
+
+def test_multiple_traces(tracer_provider):
+    exporter = RichConsoleSpanExporter()
+    tracer = tracer_provider.get_tracer(__name__)
+    with tracer.start_as_current_span("parent_1") as parent_1:
+        with tracer.start_as_current_span("child_1") as child_1:
+            pass
+
+    with tracer.start_as_current_span("parent_2") as parent_2:
+        pass
+
+    trees = exporter.spans_to_tree((parent_2, parent_1, child_1))
+    # asserts that we have all traces
+    assert len(trees) == 2
+    assert opentelemetry.trace.format_trace_id(parent_1.context.trace_id) in trees
+    assert opentelemetry.trace.format_trace_id(parent_2.context.trace_id) in trees
+
+    # asserts that we have exactly the number of spans we exported
+    assert sum([walk_tree(tree) for tree in trees.values()]) == 3
