@@ -153,6 +153,7 @@ class RichConsoleSpanExporter(SpanExporter):
 
         return SpanExportResult.SUCCESS
 
+    @staticmethod
     def spans_to_tree(self, spans: typing.Sequence[ReadableSpan]) -> Dict[str, Tree]:
         trees = dict()
         all_parent_ids = {span.context.span_id for span in spans}
