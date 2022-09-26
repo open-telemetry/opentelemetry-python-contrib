@@ -30,25 +30,28 @@ from opentelemetry.exporter.prometheus_remote_write.gen.types_pb2 import (
     TimeSeries,
 )
 from opentelemetry.sdk.metrics.export import (
-    MetricExporter,
-    MetricExportResult,
+    AggregationTemporality,
     Gauge,
     Sum,
     Histogram,
+    MetricExporter,
     MetricExportResult,
     MetricsData,
     Metric,
 )
-#from opentelemetry.sdk.metrics.export.aggregate import (
-#    HistogramAggregator,
-#    LastValueAggregator,
-#    MinMaxSumCountAggregator,
-#    SumAggregator,
-#    ValueObserverAggregator,
-#)
+from opentelemetry.sdk.metrics import (
+    Counter,
+    Histogram as ClientHistogram,
+    ObservableCounter,
+    ObservableGauge,
+    ObservableUpDownCounter,
+    UpDownCounter,
+)
 
 logger = logging.getLogger(__name__)
 
+PROMETHEUS_NAME_REGEX = re.compile(r'[^\w:]')
+PROMETHEUS_LABEL_REGEX = re.compile(r'[^\w]')
 
 class PrometheusRemoteWriteMetricsExporter(MetricExporter):
     """
@@ -72,6 +75,8 @@ class PrometheusRemoteWriteMetricsExporter(MetricExporter):
         tls_config: Dict = None,
         proxies: Dict = None,
         resources_as_labels : bool = True,
+        preferred_temporality: Dict[type, AggregationTemporality] = None,
+        preferred_aggregation: Dict = None,
     ):
         self.endpoint = endpoint
         self.basic_auth = basic_auth
@@ -81,6 +86,18 @@ class PrometheusRemoteWriteMetricsExporter(MetricExporter):
         self.proxies = proxies
         self.resources_as_labels = resources_as_labels
 
+        if not preferred_temporality:
+            preferred_temporality = {
+                Counter: AggregationTemporality.CUMULATIVE,
+                UpDownCounter: AggregationTemporality.CUMULATIVE,
+                ClientHistogram: AggregationTemporality.CUMULATIVE,
+                ObservableCounter: AggregationTemporality.CUMULATIVE,
+                ObservableUpDownCounter: AggregationTemporality.CUMULATIVE,
+                ObservableGauge: AggregationTemporality.CUMULATIVE,
+            }
+        logger.error("Calling MetricExporter")
+
+        super().__init__(preferred_temporality,preferred_aggregation)
 
     @property
     def endpoint(self):
@@ -162,7 +179,9 @@ class PrometheusRemoteWriteMetricsExporter(MetricExporter):
         self._headers = headers
 
     def export(
-            self,metrics_data : MetricsData
+        self,
+        metrics_data : MetricsData,
+        timeout_millis: float = 10_000,
     ) ->MetricExportResult:
         if not metrics_data:
             return MetricExportResult.SUCCESS
@@ -175,9 +194,6 @@ class PrometheusRemoteWriteMetricsExporter(MetricExporter):
         message = self._build_message(timeseries)
         headers = self._build_headers()
         return self._send_message(message, headers)
-
-    def shutdown(self) -> None:
-        pass
 
     def _translate_data(self, data: MetricsData) -> Sequence[TimeSeries]:
         rw_timeseries = []
@@ -245,9 +261,17 @@ class PrometheusRemoteWriteMetricsExporter(MetricExporter):
 
     def _label(self,name:str,value:str) -> Label:
         label = Label()
-        label.name = name
+        label.name = PROMETHEUS_LABEL_REGEX.sub("_",name)
         label.value = value
         return label
+
+    def _sanitize_name(self,name):
+        # I Think Prometheus requires names to NOT start with a number this
+        # would not catch that, but do cover the other cases. The naming rules
+        # don't explicit say this, but the supplied regex implies it.
+        # Got a little weird trying to do substitution with it, but can be
+        # fixed if we allow numeric beginnings to metric names
+        return PROMETHEUS_NAME_REGEX.sub("_",name)
 
     def _parse_histogram_data_point(self, data_point, name):
 
@@ -263,7 +287,7 @@ class PrometheusRemoteWriteMetricsExporter(MetricExporter):
         def handle_bucket(value,bound=None,name_override=None):
             # Metric Level attributes + the bucket boundry attribute + name
             ts_attrs = base_attrs.copy()
-            ts_attrs.append(("__name__",name_override or name))
+            ts_attrs.append(("__name__",self._sanitize_name(name_override or name)))
             if bound:
                 ts_attrs.append(("le",str(bound)))
             # Value is count of values in each bucket
@@ -291,95 +315,9 @@ class PrometheusRemoteWriteMetricsExporter(MetricExporter):
 
     def _parse_data_point(self, data_point,name=None):
 
-        attrs = tuple(data_point.attributes.items()) + (("__name__",name),)
+        attrs = tuple(data_point.attributes.items()) + (("__name__",self._sanitize_name(name)),)
         sample = (data_point.value,(data_point.time_unix_nano // 1_000_000))
         return attrs,sample
-
-    def _convert_to_timeseries(
-        self, export_records
-    ) -> Sequence[TimeSeries]:
-        timeseries = []
-        for export_record in export_records:
-            aggregator_type = type(export_record.aggregator)
-            converter = self.converter_map.get(aggregator_type)
-            if converter:
-                timeseries.extend(converter(export_record))
-            else:
-                logger.warning(
-                    "%s aggregator is not supported, record dropped",
-                    aggregator_type,
-                )
-        return timeseries
-
-    def _convert_from_histogram(
-        self, histogram: Histogram,
-    ) -> Sequence[TimeSeries]:
-        sample_sets = defaultdict(list)
-
-        base_attrs = [self._label(n,v) for n,v in histogram.attributes]
-        for bound in histogram.explicit_bounds:
-            bound_str = "+Inf" if bound == float("inf") else str(bound)
-            # General attributes apply
-            ts_attrs = base_attrs.copy.append(self._label("le",str(bound)))
-            sample_sets[attrs].append(sample)
-            timeseries.append(
-                self._create_timeseries(
-                    histogram_record,
-                    histogram_record.instrument.name + "_histogram",
-                    value,
-                    extra_label=("le", bound_str),
-                )
-            )
-        return timeseries
-
-    # pylint: disable=no-member,no-self-use
-    def _create_timeseries(
-        self,
-        export_record,
-        name: str,
-        value: float,
-        extra_label: (str, str) = None,
-    ) -> TimeSeries:
-        timeseries = TimeSeries()
-        seen = set()
-
-        def add_label(label_name: str, label_value: str):
-            # Label name must contain only alphanumeric characters and underscores
-            label_name = re.sub("[^\\w_]", "_", label_name)
-            if label_name not in seen:
-                label = Label()
-                label.name = label_name
-                label.value = label_value
-                timeseries.labels.append(label)
-                seen.add(label_name)
-            else:
-                logger.warning(
-                    "Duplicate label with name %s and value %s",
-                    label_name,
-                    label_value,
-                )
-
-        # The __name__ label is required by PromQL as its value appears as the metric_name
-        add_label("__name__", name)
-        if extra_label:
-            add_label(extra_label[0], extra_label[1])
-        if export_record.resource.attributes:
-            for (
-                label_name,
-                label_value,
-            ) in export_record.resource.attributes.items():
-                add_label(label_name, str(label_value))
-        if export_record.labels:
-            for [label_name, label_value] in export_record.labels:
-                add_label(label_name, label_value)
-
-        sample = Sample()
-        sample.timestamp = int(
-            export_record.aggregator.last_update_timestamp / 1000000
-        )
-        sample.value = value
-        timeseries.samples.append(sample)
-        return timeseries
 
     # pylint: disable=no-member,no-self-use
     def _build_message(self, timeseries: Sequence[TimeSeries]) -> bytes:
@@ -439,3 +377,10 @@ class PrometheusRemoteWriteMetricsExporter(MetricExporter):
             logger.error("Export POST request failed with reason: %s", err)
             return MetricExportResult.FAILURE
         return MetricExportResult.SUCCESS
+
+    def force_flush(self, timeout_millis: float = 10_000) -> bool:
+        return True
+
+    def shutdown(self) -> None:
+        pass
+

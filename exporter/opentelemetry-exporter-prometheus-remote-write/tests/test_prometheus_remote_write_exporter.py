@@ -18,6 +18,8 @@ import snappy
 
 from opentelemetry.exporter.prometheus_remote_write import (
     PrometheusRemoteWriteMetricsExporter,
+    PROMETHEUS_LABEL_REGEX,
+    PROMETHEUS_NAME_REGEX,
 )
 from opentelemetry.exporter.prometheus_remote_write.gen.types_pb2 import (
     Label,
@@ -49,6 +51,16 @@ from opentelemetry.sdk.util import get_dict_as_key
 
 import pytest
 
+@pytest.mark.parametrize("name,result",[
+    ("abc.124","abc_124"),
+    (":abc", ":abc"),
+    ("abc.name.hi","abc_name_hi"),
+    ("service.name...","service_name___"),
+])
+def test_name_regex(name,result,prom_rw):
+    assert prom_rw._sanitize_name(name) == result
+
+
 def test_parse_data_point(prom_rw):
 
     attrs = {"Foo" : "Bar","Baz" : 42}
@@ -60,9 +72,10 @@ def test_parse_data_point(prom_rw):
         timestamp,
         value
     )
-    name = "abc123_42"
+    name = "abc.123_42"
     labels, sample = prom_rw._parse_data_point(dp,name)
 
+    name = "abc_123_42"
     assert labels == (("Foo", "Bar"),("Baz", 42),("__name__",name))
     assert sample == (value,timestamp // 1_000_000)
 
@@ -110,8 +123,8 @@ def test_parse_metric(metric,prom_rw):
     Ensures output from parse_metrics are TimeSeries with expected data/size
     """
     attributes = {
-        "service" : "foo",
-        "bool" : True,
+        "service_name" : "foo",
+        "bool_value" : True,
     }
 
     assert len(metric.data.data_points) == 1, "We can only support a single datapoint in tests"
@@ -124,10 +137,10 @@ def test_parse_metric(metric,prom_rw):
         # This doesn't guarantee the labels aren't mixed up, but our other
         # test cases already do.
         assert "__name__" in labels
-        assert metric.name in labels
+        assert PROMETHEUS_NAME_REGEX.sub("_",metric.name) in labels
         combined_attrs = list(attributes.items()) + list(metric.data.data_points[0].attributes.items())
         for name,value in combined_attrs:
-            assert name in labels
+            assert PROMETHEUS_LABEL_REGEX.sub("_",name) in labels
             assert str(value) in labels
         if isinstance(metric.data,Histogram):
             values = [

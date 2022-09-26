@@ -33,9 +33,9 @@ def metric(request):
     else:
         type_ = random.choice(["gauge","sum"])
     if type_ == "gauge":
-        return metric_util._generate_gauge("test_gauge",random.randint(0,100))
+        return metric_util._generate_gauge("test.gauge",random.randint(0,100))
     elif type_ == "sum":
-        return metric_util._generate_sum("test_sum",random.randint(0,9_999_999_999))
+        return metric_util._generate_sum("test.sum",random.randint(0,9_999_999_999))
     elif type_ == "histogram":
         return _generate_histogram("test_histogram")
 
