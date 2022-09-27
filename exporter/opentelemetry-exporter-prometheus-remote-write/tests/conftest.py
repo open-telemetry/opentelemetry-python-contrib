@@ -1,43 +1,49 @@
-
-
 import random
+
 import pytest
 
-import opentelemetry.test.metrictestutil as metric_util#import _generate_gauge, _generate_sum
-
+import opentelemetry.test.metrictestutil as metric_util  # import _generate_gauge, _generate_sum
+from opentelemetry.exporter.prometheus_remote_write import (
+    PrometheusRemoteWriteMetricsExporter,
+)
 from opentelemetry.sdk.metrics.export import (
     AggregationTemporality,
+    Gauge,
     Histogram,
     HistogramDataPoint,
-    Sum,
-    Gauge,
+    Metric,
     MetricExportResult,
     MetricsData,
     ResourceMetrics,
     ScopeMetrics,
-    Metric,
+    Sum,
 )
 
-from opentelemetry.exporter.prometheus_remote_write import (
-    PrometheusRemoteWriteMetricsExporter,
-)
+
 @pytest.fixture
 def prom_rw():
-    return PrometheusRemoteWriteMetricsExporter("http://victoria:8428/api/v1/write")
+    return PrometheusRemoteWriteMetricsExporter(
+        "http://victoria:8428/api/v1/write"
+    )
 
 
 @pytest.fixture
 def metric(request):
-    if hasattr(request,"param"):
+    if hasattr(request, "param"):
         type_ = request.param
     else:
-        type_ = random.choice(["gauge","sum"])
+        type_ = random.choice(["gauge", "sum"])
     if type_ == "gauge":
-        return metric_util._generate_gauge("test.gauge",random.randint(0,100))
+        return metric_util._generate_gauge(
+            "test.gauge", random.randint(0, 100)
+        )
     elif type_ == "sum":
-        return metric_util._generate_sum("test.sum",random.randint(0,9_999_999_999))
+        return metric_util._generate_sum(
+            "test.sum", random.randint(0, 9_999_999_999)
+        )
     elif type_ == "histogram":
         return _generate_histogram("test_histogram")
+
 
 def _generate_histogram(name):
     dp = HistogramDataPoint(
@@ -61,4 +67,3 @@ def _generate_histogram(name):
         "tu",
         data=data,
     )
-

@@ -14,70 +14,69 @@
 
 import unittest
 from unittest.mock import patch
+
+import pytest
 import snappy
 
 from opentelemetry.exporter.prometheus_remote_write import (
-    PrometheusRemoteWriteMetricsExporter,
     PROMETHEUS_LABEL_REGEX,
     PROMETHEUS_NAME_REGEX,
+    PrometheusRemoteWriteMetricsExporter,
 )
 from opentelemetry.exporter.prometheus_remote_write.gen.types_pb2 import (
     Label,
     TimeSeries,
 )
 from opentelemetry.sdk.metrics import Counter
-#from opentelemetry.sdk.metrics.export import MetricExportResult
-#from opentelemetry.sdk.metrics.export.aggregate import (
+from opentelemetry.sdk.metrics.export import (
+    Histogram,
+    HistogramDataPoint,
+    MetricExportResult,
+    MetricsData,
+    NumberDataPoint,
+    ResourceMetrics,
+    ScopeMetrics,
+)
+from opentelemetry.sdk.resources import Resource
+from opentelemetry.sdk.util import get_dict_as_key
+from opentelemetry.sdk.util.instrumentation import InstrumentationScope
+
+# from opentelemetry.sdk.metrics.export import MetricExportResult
+# from opentelemetry.sdk.metrics.export.aggregate import (
 #    HistogramAggregator,
 #    LastValueAggregator,
 #    MinMaxSumCountAggregator,
 #    SumAggregator,
 #    ValueObserverAggregator,
-#)
+# )
 
-from opentelemetry.sdk.metrics.export import (
-    NumberDataPoint,
-    HistogramDataPoint,
-    Histogram,
-    MetricsData,
-    ScopeMetrics,
-    ResourceMetrics,
-    MetricExportResult,
+
+@pytest.mark.parametrize(
+    "name,result",
+    [
+        ("abc.124", "abc_124"),
+        (":abc", ":abc"),
+        ("abc.name.hi", "abc_name_hi"),
+        ("service.name...", "service_name___"),
+    ],
 )
-
-from opentelemetry.sdk.util.instrumentation import InstrumentationScope
-from opentelemetry.sdk.resources import Resource
-from opentelemetry.sdk.util import get_dict_as_key
-
-import pytest
-
-@pytest.mark.parametrize("name,result",[
-    ("abc.124","abc_124"),
-    (":abc", ":abc"),
-    ("abc.name.hi","abc_name_hi"),
-    ("service.name...","service_name___"),
-])
-def test_name_regex(name,result,prom_rw):
+def test_name_regex(name, result, prom_rw):
     assert prom_rw._sanitize_name(name) == result
 
 
 def test_parse_data_point(prom_rw):
 
-    attrs = {"Foo" : "Bar","Baz" : 42}
+    attrs = {"Foo": "Bar", "Baz": 42}
     timestamp = 1641946016139533244
     value = 242.42
-    dp = NumberDataPoint(
-        attrs,
-        0,
-        timestamp,
-        value
-    )
+    dp = NumberDataPoint(attrs, 0, timestamp, value)
     name = "abc.123_42"
-    labels, sample = prom_rw._parse_data_point(dp,name)
+    labels, sample = prom_rw._parse_data_point(dp, name)
 
     name = "abc_123_42"
-    assert labels == (("Foo", "Bar"),("Baz", 42),("__name__",name))
-    assert sample == (value,timestamp // 1_000_000)
+    assert labels == (("Foo", "Bar"), ("Baz", 42), ("__name__", name))
+    assert sample == (value, timestamp // 1_000_000)
+
 
 def test_parse_histogram_dp(prom_rw):
     attrs = {"foo": "bar", "baz": 42}
@@ -95,40 +94,47 @@ def test_parse_histogram_dp(prom_rw):
         max=80,
     )
     name = "foo_histogram"
-    label_sample_pairs = prom_rw._parse_histogram_data_point(dp,name)
+    label_sample_pairs = prom_rw._parse_histogram_data_point(dp, name)
     timestamp = timestamp // 1_000_000
     bounds.append("+Inf")
-    for pos,bound in enumerate(bounds):
+    for pos, bound in enumerate(bounds):
         # We have to attributes, we kinda assume the bucket label is last...
-        assert ("le",str(bound)) == label_sample_pairs[pos][0][-1]
+        assert ("le", str(bound)) == label_sample_pairs[pos][0][-1]
         # Check and make sure we are putting the bucket counts in there
-        assert (dp.bucket_counts[pos],timestamp) == label_sample_pairs[pos][1]
+        assert (dp.bucket_counts[pos], timestamp) == label_sample_pairs[pos][1]
 
     # Last two are the sum & total count
-    pos +=1
-    assert ("__name__",f"{name}_sum") in label_sample_pairs[pos][0]
-    assert (dp.sum,timestamp) == label_sample_pairs[pos][1]
+    pos += 1
+    assert ("__name__", f"{name}_sum") in label_sample_pairs[pos][0]
+    assert (dp.sum, timestamp) == label_sample_pairs[pos][1]
 
-    pos +=1
-    assert ("__name__",f"{name}_count") in label_sample_pairs[pos][0]
-    assert (dp.count,timestamp) == label_sample_pairs[pos][1]
+    pos += 1
+    assert ("__name__", f"{name}_count") in label_sample_pairs[pos][0]
+    assert (dp.count, timestamp) == label_sample_pairs[pos][1]
 
-@pytest.mark.parametrize("metric",[
-    "gauge",
-    "sum",
-    "histogram",
-],indirect=["metric"])
-def test_parse_metric(metric,prom_rw):
+
+@pytest.mark.parametrize(
+    "metric",
+    [
+        "gauge",
+        "sum",
+        "histogram",
+    ],
+    indirect=["metric"],
+)
+def test_parse_metric(metric, prom_rw):
     """
     Ensures output from parse_metrics are TimeSeries with expected data/size
     """
     attributes = {
-        "service_name" : "foo",
-        "bool_value" : True,
+        "service_name": "foo",
+        "bool_value": True,
     }
 
-    assert len(metric.data.data_points) == 1, "We can only support a single datapoint in tests"
-    series = prom_rw._parse_metric(metric,tuple(attributes.items()))
+    assert (
+        len(metric.data.data_points) == 1
+    ), "We can only support a single datapoint in tests"
+    series = prom_rw._parse_metric(metric, tuple(attributes.items()))
     timestamp = metric.data.data_points[0].time_unix_nano // 1_000_000
     for single_series in series:
         labels = str(single_series.labels)
@@ -137,12 +143,14 @@ def test_parse_metric(metric,prom_rw):
         # This doesn't guarantee the labels aren't mixed up, but our other
         # test cases already do.
         assert "__name__" in labels
-        assert PROMETHEUS_NAME_REGEX.sub("_",metric.name) in labels
-        combined_attrs = list(attributes.items()) + list(metric.data.data_points[0].attributes.items())
-        for name,value in combined_attrs:
-            assert PROMETHEUS_LABEL_REGEX.sub("_",name) in labels
+        assert PROMETHEUS_NAME_REGEX.sub("_", metric.name) in labels
+        combined_attrs = list(attributes.items()) + list(
+            metric.data.data_points[0].attributes.items()
+        )
+        for name, value in combined_attrs:
+            assert PROMETHEUS_LABEL_REGEX.sub("_", name) in labels
             assert str(value) in labels
-        if isinstance(metric.data,Histogram):
+        if isinstance(metric.data, Histogram):
             values = [
                 metric.data.data_points[0].count,
                 metric.data.data_points[0].sum,
@@ -251,24 +259,19 @@ class TestValidation(unittest.TestCase):
             )
 
 
-
 # Ensures export is successful with valid export_records and config
 @patch("requests.post")
-def test_valid_export(mock_post,prom_rw,metric):
+def test_valid_export(mock_post, prom_rw, metric):
     metric = metric
     mock_post.return_value.configure_mock(**{"status_code": 200})
     labels = get_dict_as_key({"environment": "testing"})
 
     # Assumed a "None" for Scope or Resource aren't valid, so build them here
     scope = ScopeMetrics(
-        InstrumentationScope(name="prom-rw-test"),
-        [metric],
-        None
+        InstrumentationScope(name="prom-rw-test"), [metric], None
     )
     resource = ResourceMetrics(
-        Resource({"service.name" : "foo"}),
-        [scope],
-        None
+        Resource({"service.name": "foo"}), [scope], None
     )
     record = MetricsData([resource])
 
@@ -279,29 +282,34 @@ def test_valid_export(mock_post,prom_rw,metric):
     result = prom_rw.export([])
     assert result == MetricExportResult.SUCCESS
 
+
 def test_invalid_export(prom_rw):
     record = MetricsData([])
 
     result = prom_rw.export(record)
     assert result == MetricExportResult.FAILURE
 
+
 @patch("requests.post")
-def test_valid_send_message(mock_post,prom_rw):
+def test_valid_send_message(mock_post, prom_rw):
     mock_post.return_value.configure_mock(**{"ok": True})
     result = prom_rw._send_message(bytes(), {})
     assert mock_post.call_count == 1
     assert result == MetricExportResult.SUCCESS
 
+
 def test_invalid_send_message(prom_rw):
     result = prom_rw._send_message(bytes(), {})
     assert result == MetricExportResult.FAILURE
 
+
 # Verifies that build_message calls snappy.compress and returns SerializedString
 @patch("snappy.compress", return_value=bytes())
-def test_build_message(mock_compress,prom_rw):
+def test_build_message(mock_compress, prom_rw):
     message = prom_rw._build_message([TimeSeries()])
     assert mock_compress.call_count == 1
     assert isinstance(message, bytes)
+
 
 # Ensure correct headers are added when valid config is provided
 def test_build_headers(prom_rw):

@@ -7,14 +7,13 @@ from logging import INFO
 import psutil
 
 from opentelemetry import metrics
-
+from opentelemetry.exporter.prometheus_remote_write import (
+    PrometheusRemoteWriteMetricsExporter,
+)
 from opentelemetry.metrics import (
     Observation,
     get_meter_provider,
     set_meter_provider,
-)
-from opentelemetry.exporter.prometheus_remote_write import (
-    PrometheusRemoteWriteMetricsExporter,
 )
 from opentelemetry.sdk.metrics import MeterProvider
 from opentelemetry.sdk.metrics.export import PeriodicExportingMetricReader
@@ -29,7 +28,7 @@ exporter = PrometheusRemoteWriteMetricsExporter(
     endpoint="http://cortex:9009/api/prom/push",
     headers={"X-Scope-Org-ID": "5"},
 )
-reader = PeriodicExportingMetricReader(exporter,1000)
+reader = PeriodicExportingMetricReader(exporter, 1000)
 provider = MeterProvider(metric_readers=[reader])
 metrics.set_meter_provider(provider)
 meter = metrics.get_meter(__name__)
@@ -98,7 +97,7 @@ while True:
     # updown counter
     requests_active.add(num % 7231 + 200, testing_labels)
 
-    request_latency.record(num % 92,testing_labels)
+    request_latency.record(num % 92, testing_labels)
     logger.log(level=INFO, msg="completed metrics collection cycle")
     time.sleep(1)
     num += 9791
