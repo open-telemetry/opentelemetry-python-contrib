@@ -5,13 +5,19 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [Unreleased]
+## [Unreleased](https://github.com/open-telemetry/opentelemetry-python/compare/v1.13.0-0.34b0...HEAD)
+
+## [1.13.0-0.34b0](https://github.com/open-telemetry/opentelemetry-python/releases/tag/v1.13.0-0.34b0) - 2022-09-26
+
+
 
 ### Added
 
 - `opentelemetry-instrumentation-grpc` add supports to filter requests to instrument. ([#1241](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/1241))
 - Flask sqlalchemy psycopg2 integration
   ([#1224](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/1224))
+- Add metric instrumentation in Falcon
+  ([#1230](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/1230))
 - Add metric instrumentation in fastapi
   ([#1199](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/1199))
 - Add metric instrumentation in Pyramid
