@@ -73,7 +73,9 @@ def _ns_to_time(nanoseconds):
 
 
 def _child_to_tree(child: Tree, span: ReadableSpan):
-    child.add(Text.from_markup(f"[bold cyan]Kind :[/bold cyan] {span.kind.name}"))
+    child.add(
+        Text.from_markup(f"[bold cyan]Kind :[/bold cyan] {span.kind.name}")
+    )
     if not span.status.is_unset:
         if not span.status.is_ok:
             child.add(
@@ -95,7 +97,9 @@ def _child_to_tree(child: Tree, span: ReadableSpan):
         )
 
     if span.events:
-        events = child.add(label=Text.from_markup("[bold cyan]Events :[/bold cyan] "))
+        events = child.add(
+            label=Text.from_markup("[bold cyan]Events :[/bold cyan] ")
+        )
         for event in span.events:
             event_node = events.add(Text(event.name))
             for key, val in event.attributes.items():
@@ -154,7 +158,9 @@ class RichConsoleSpanExporter(SpanExporter):
         return SpanExportResult.SUCCESS
 
     @staticmethod
-    def spans_to_tree(self, spans: typing.Sequence[ReadableSpan]) -> Dict[str, Tree]:
+    def spans_to_tree(
+        self, spans: typing.Sequence[ReadableSpan]
+    ) -> Dict[str, Tree]:
         trees = dict()
         all_parent_ids = {span.context.span_id for span in spans}
         parents = {}

@@ -70,8 +70,12 @@ def test_multiple_traces(tracer_provider):
     trees = exporter.spans_to_tree((parent_2, parent_1, child_1))
     # asserts that we have all traces
     assert len(trees) == 2
-    assert opentelemetry.trace.format_trace_id(parent_1.context.trace_id) in trees
-    assert opentelemetry.trace.format_trace_id(parent_2.context.trace_id) in trees
+    assert (
+        opentelemetry.trace.format_trace_id(parent_1.context.trace_id) in trees
+    )
+    assert (
+        opentelemetry.trace.format_trace_id(parent_2.context.trace_id) in trees
+    )
 
     # asserts that we have exactly the number of spans we exported
     assert sum([walk_tree(tree) for tree in trees.values()]) == 3
