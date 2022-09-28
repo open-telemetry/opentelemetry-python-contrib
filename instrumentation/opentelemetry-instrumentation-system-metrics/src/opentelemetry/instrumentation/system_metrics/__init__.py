@@ -318,9 +318,9 @@ class SystemMetricsInstrumentor(BaseInstrumentor):
 
         if "system.thread_count" in self._config:
             self._meter.create_observable_gauge(
-                name=f"system.thread_count",
+                name="system.thread_count",
                 callbacks=[self._get_system_thread_count],
-                description=f"System active threads count",
+                description="System active threads count",
             )
 
         if "runtime.memory" in self._config:
