@@ -221,7 +221,9 @@ class AwsEcsResourceDetectorTest(unittest.TestCase):
             OrderedDict(
                 {
                     **MockEcsResourceAttributes,
-                    ResourceAttributes.AWS_LOG_GROUP_NAMES: ("/ecs/containerlogs",),
+                    ResourceAttributes.AWS_LOG_GROUP_NAMES: (
+                        "/ecs/containerlogs",
+                    ),
                     ResourceAttributes.AWS_LOG_GROUP_ARNS: (
                         "arn:aws:logs:us-west-2:111122223333:log-group:/ecs/containerlogs",
                     ),

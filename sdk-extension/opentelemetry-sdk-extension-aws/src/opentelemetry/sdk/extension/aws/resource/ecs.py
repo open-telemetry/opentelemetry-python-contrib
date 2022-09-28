@@ -135,7 +135,7 @@ def _get_logs_resource(metadata_container):
 
             if not logs_region:
                 aws_region_match = re.match(
-                    r'arn:aws:ecs:([^:]+):.*', container_arn
+                    r"arn:aws:ecs:([^:]+):.*", container_arn
                 )
                 if aws_region_match:
                     logs_region = aws_region_match.group(1)
@@ -147,7 +147,7 @@ def _get_logs_resource(metadata_container):
             # log-group and log-stream ARNs
             aws_account = None
             aws_account_match = re.match(
-                r'arn:aws:ecs:[^:]+:([^:]+):.*', container_arn
+                r"arn:aws:ecs:[^:]+:([^:]+):.*", container_arn
             )
             if aws_account_match:
                 aws_account = aws_account_match.group(1)
