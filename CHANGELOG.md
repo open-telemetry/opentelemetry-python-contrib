@@ -15,6 +15,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 
 
+- `opentelemetry-instrumentation-asyncpg` Fix high cardinality in the span name
+  ([#1170](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/1324))
+
 ### Added
 
 - `opentelemetry-instrumentation-grpc` add supports to filter requests to instrument. ([#1241](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/1241))
