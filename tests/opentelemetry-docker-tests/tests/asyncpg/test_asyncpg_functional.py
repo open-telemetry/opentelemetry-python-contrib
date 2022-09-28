@@ -64,7 +64,7 @@ class TestFunctionalAsyncPG(TestBase):
         self.check_span(spans[0])
         self.assertEqual(spans[0].name, "SELECT")
         self.assertEqual(
-            spans[0].attributes[SpanAttributes.DB_STATEMENT], "SELECT"
+            spans[0].attributes[SpanAttributes.DB_STATEMENT], "SELECT 42;"
         )
 
     def test_instrumented_fetch_method_without_arguments(self, *_, **__):
@@ -72,6 +72,7 @@ class TestFunctionalAsyncPG(TestBase):
         spans = self.memory_exporter.get_finished_spans()
         self.assertEqual(len(spans), 1)
         self.check_span(spans[0])
+        self.assertEqual(spans[0].name, "SELECT")
         self.assertEqual(
             spans[0].attributes[SpanAttributes.DB_STATEMENT], "SELECT 42;"
         )
@@ -191,7 +192,7 @@ class TestFunctionalAsyncPG_CaptureParameters(TestBase):
         self.check_span(spans[0])
         self.assertEqual(spans[0].name, "SELECT")
         self.assertEqual(
-            spans[0].attributes[SpanAttributes.DB_STATEMENT], "SELECT"
+            spans[0].attributes[SpanAttributes.DB_STATEMENT], "SELECT $1;"
         )
         self.assertEqual(
             spans[0].attributes["db.statement.parameters"], "('1',)"
@@ -203,6 +204,7 @@ class TestFunctionalAsyncPG_CaptureParameters(TestBase):
         self.assertEqual(len(spans), 1)
 
         self.check_span(spans[0])
+        self.assertEqual(spans[0].name, "SELECT")
         self.assertEqual(
             spans[0].attributes[SpanAttributes.DB_STATEMENT], "SELECT $1;"
         )
