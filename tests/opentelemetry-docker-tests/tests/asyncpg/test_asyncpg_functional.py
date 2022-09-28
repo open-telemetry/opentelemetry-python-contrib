@@ -62,9 +62,9 @@ class TestFunctionalAsyncPG(TestBase):
         self.assertEqual(len(spans), 1)
         self.assertIs(StatusCode.UNSET, spans[0].status.status_code)
         self.check_span(spans[0])
-        self.assertEqual(spans[0].name, "SELECT 42;")
+        self.assertEqual(spans[0].name, "SELECT")
         self.assertEqual(
-            spans[0].attributes[SpanAttributes.DB_STATEMENT], "SELECT 42;"
+            spans[0].attributes[SpanAttributes.DB_STATEMENT], "SELECT"
         )
 
     def test_instrumented_fetch_method_without_arguments(self, *_, **__):
@@ -189,9 +189,9 @@ class TestFunctionalAsyncPG_CaptureParameters(TestBase):
         self.assertIs(StatusCode.UNSET, spans[0].status.status_code)
 
         self.check_span(spans[0])
-        self.assertEqual(spans[0].name, "SELECT $1;")
+        self.assertEqual(spans[0].name, "SELECT")
         self.assertEqual(
-            spans[0].attributes[SpanAttributes.DB_STATEMENT], "SELECT $1;"
+            spans[0].attributes[SpanAttributes.DB_STATEMENT], "SELECT"
         )
         self.assertEqual(
             spans[0].attributes["db.statement.parameters"], "('1',)"
