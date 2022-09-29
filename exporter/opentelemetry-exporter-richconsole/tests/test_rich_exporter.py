@@ -13,16 +13,15 @@
 # limitations under the License.
 
 import pytest
+from rich.tree import Tree
 
+import opentelemetry.trace
 from opentelemetry.exporter.richconsole import RichConsoleSpanExporter
 from opentelemetry.sdk import trace
-from opentelemetry.sdk.trace import ReadableSpan
 from opentelemetry.sdk.trace.export import (
     BatchSpanProcessor,
     SimpleSpanProcessor,
 )
-import opentelemetry.trace
-from rich.tree import Tree
 
 
 @pytest.fixture(name="span_processor")

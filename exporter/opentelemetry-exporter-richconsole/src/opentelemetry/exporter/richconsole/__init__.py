@@ -54,7 +54,7 @@ API
 
 import datetime
 import typing
-from typing import Optional, List, Dict
+from typing import Dict, List, Optional
 
 from rich.console import Console
 from rich.syntax import Syntax
@@ -73,7 +73,6 @@ def _ns_to_time(nanoseconds):
 
 
 def _child_to_tree(child: Tree, span: ReadableSpan):
-    print(span.name)
     child.add(
         Text.from_markup(f"[bold cyan]Kind :[/bold cyan] {span.kind.name}")
     )
