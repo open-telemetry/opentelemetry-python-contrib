@@ -146,6 +146,7 @@ from sys import exc_info
 from time import time_ns
 from timeit import default_timer
 from typing import Collection
+from xxlimited import new
 
 import falcon
 from packaging import version as package_version
@@ -446,6 +447,35 @@ class _TraceMiddleware:
             self._response_hook(span, req, resp)
 
 
+def _prepare_middleware_tupple(middleware, trace_middleware, independent_middleware):
+    request_mw, resource_mw, respose_mw = middleware
+    
+    new_request_mw = []
+    new_response_mw = []
+    new_resource_mw = []
+    
+    process_request = getattr(trace_middleware, 'process_request')
+    process_resource = getattr(trace_middleware, 'process_resource')
+    process_response = getattr(trace_middleware, 'process_response')
+    
+    if independent_middleware:
+        new_request_mw.insert(0, process_request)
+        new_response_mw.append(process_response)
+    else:
+        new_request_mw.insert(0, (process_request, process_response))
+    
+    new_resource_mw.insert(0, process_resource)
+    
+    for each in request_mw:
+        new_request_mw.append(each)
+    for each in respose_mw:
+        new_response_mw.append(each)
+    for each in resource_mw:
+        new_resource_mw.append(each)
+    
+    return (tuple(new_request_mw), tuple(new_resource_mw), tuple(new_response_mw))
+
+
 class FalconInstrumentor(BaseInstrumentor):
     # pylint: disable=protected-access,attribute-defined-outside-init
     """An instrumentor for falcon.API
@@ -473,7 +503,7 @@ class FalconInstrumentor(BaseInstrumentor):
             app._otel_excluded_urls = excluded_urls if excluded_urls is None else get_excluded_urls("FALCON")
             app._otel_tracer = trace.get_tracer(__name__, __version__, tracer_provider)
             app._otel_meter = get_meter(__name__, __version__, meter_provider)
-            app.duration_histogram = self._otel_meter.create_histogram(
+            app.duration_histogram = app._otel_meter.create_histogram(
                 name="http.server.duration",
                 unit="ms",
                 description="measures the duration of the inbound HTTP request",
@@ -491,7 +521,14 @@ class FalconInstrumentor(BaseInstrumentor):
                 request_hook,
                 response_hook,
             )
-            # TODO: implement middleware addition logic for falcon 1,2 & 3
+            if _falcon_version == 3:
+                app._unprepared_middleware.insert(0, trace_middleware)
+                app._middleware = app._prepare_middleware(
+                    app._unprepared_middleware,
+                    independent_middleware=app._independent_middleware,
+                )
+            else:
+                app._middleware = _prepare_middleware_tupple(app._middleware, trace_middleware, app._independet_middleware)
             app._is_instrumented_by_opentelemetry = True
             app.__class__ = _InstrumentedFalconAPI
 
