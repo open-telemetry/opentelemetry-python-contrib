@@ -146,7 +146,6 @@ from sys import exc_info
 from time import time_ns
 from timeit import default_timer
 from typing import Collection
-from xxlimited import new
 
 import falcon
 from packaging import version as package_version
@@ -447,16 +446,19 @@ class _TraceMiddleware:
             self._response_hook(span, req, resp)
 
 
-def _prepare_middleware_tupple(middleware, trace_middleware, independent_middleware):
-    request_mw, resource_mw, respose_mw = middleware
+def _prepare_middleware_tupple(middleware_tupple, trace_middleware, independent_middleware):
+    request_mw, resource_mw, response_mw = middleware_tupple
     
     new_request_mw = []
     new_response_mw = []
     new_resource_mw = []
     
     process_request = getattr(trace_middleware, 'process_request')
+    process_request._is_otel_method = True
     process_resource = getattr(trace_middleware, 'process_resource')
+    process_resource._is_otel_method = True
     process_response = getattr(trace_middleware, 'process_response')
+    process_response._is_otel_method = True
     
     if independent_middleware:
         new_request_mw.insert(0, process_request)
@@ -468,12 +470,28 @@ def _prepare_middleware_tupple(middleware, trace_middleware, independent_middlew
     
     for each in request_mw:
         new_request_mw.append(each)
-    for each in respose_mw:
-        new_response_mw.append(each)
     for each in resource_mw:
         new_resource_mw.append(each)
+    for each in response_mw:
+        new_response_mw.append(each)
     
     return (tuple(new_request_mw), tuple(new_resource_mw), tuple(new_response_mw))
+
+def remove_trace_middleware(middleware_tupple):
+    request_mw, resource_mw, response_mw = middleware_tupple
+    
+    new_request_mw = []
+    for each in request_mw:
+        if isinstance(each, tuple) and not getattr(each[0], '_is_otel_method'):
+            new_request_mw.append(each)
+        elif not isinstance(each, tuple) and not getattr(each, '_is_otel_method'):
+            new_request_mw.append(each)
+    
+    new_response_mw = [x for x in response_mw if not getattr(each, '_is_otel_method')]
+    new_resource_mw = [x for x in resource_mw if not getattr(each, '_is_otel_method')]
+
+    return (tuple(new_request_mw), tuple(new_resource_mw), tuple(new_response_mw))
+    
 
 
 class FalconInstrumentor(BaseInstrumentor):
@@ -549,7 +567,7 @@ class FalconInstrumentor(BaseInstrumentor):
                     app._unprepared_middleware,
                     independent_middleware=app._independent_middleware,
                 )
-            else:
+            elif hasattr(app, '_middleware_list'):
                 app._middlewares_list = [
                     x
                     for x in app._middlewares_list
@@ -560,6 +578,8 @@ class FalconInstrumentor(BaseInstrumentor):
                     app._middlewares_list,
                     independent_middleware=app._independent_middleware,
                 )
+            else:
+                app._middleware = remove_trace_middleware(app._middleware)
             app._is_instrumented_by_opentelemetry = False
 
     def _instrument(self, **opts):
