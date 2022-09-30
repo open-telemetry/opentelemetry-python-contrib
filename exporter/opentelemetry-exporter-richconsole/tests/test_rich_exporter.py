@@ -105,5 +105,3 @@ def test_multiple_traces(tracer_provider):
             for child in trees[traceid_1].children[0].children
         ]
     )
-
-    assert trees[traceid_1].children
