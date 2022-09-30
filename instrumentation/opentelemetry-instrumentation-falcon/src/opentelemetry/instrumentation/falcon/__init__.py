@@ -455,6 +455,46 @@ class FalconInstrumentor(BaseInstrumentor):
 
     def instrumentation_dependencies(self) -> Collection[str]:
         return _instruments
+    
+    @staticmethod
+    def instrument_app(
+        app, 
+        request_hook=None, 
+        response_hook=None, 
+        tracer_provider=None, 
+        meter_provider=None, 
+        excluded_urls=None,
+        **kwargs
+    ):
+        if not hasattr(app, "_is_instrumented_by_opentelemetry"):
+            app._is_instrumented_by_opentelemetry = False
+        
+        if not getattr(app, "_is_instrumented_by_opentelemetry", False):
+            app._otel_excluded_urls = excluded_urls if excluded_urls is None else get_excluded_urls("FALCON")
+            app._otel_tracer = trace.get_tracer(__name__, __version__, tracer_provider)
+            app._otel_meter = get_meter(__name__, __version__, meter_provider)
+            app.duration_histogram = self._otel_meter.create_histogram(
+                name="http.server.duration",
+                unit="ms",
+                description="measures the duration of the inbound HTTP request",
+            )
+            app.active_requests_counter = app._otel_meter.create_up_down_counter(
+                name="http.server.active_requests",
+                unit="requests",
+                description="measures the number of concurrent HTTP requests that are currently in-flight",
+            )
+            trace_middleware = _TraceMiddleware(
+                app._otel_tracer,
+                kwargs.pop(
+                    "traced_request_attributes", get_traced_request_attrs("FALCON")
+                ),
+                request_hook,
+                response_hook,
+            )
+            # TODO: implement middleware addition logic for falcon 1,2 & 3
+            app._is_instrumented_by_opentelemetry = True
+            app.__class__ = _InstrumentedFalconAPI
+
 
     # pylint:disable=no-self-use
     def _remove_instrumented_middleware(self, app):
