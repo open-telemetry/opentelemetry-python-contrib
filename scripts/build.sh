@@ -27,14 +27,13 @@ DISTDIR=dist
      fi
    )
  done
- # Build a wheel for each source distribution
  (
    cd $DISTDIR
    for x in *.tar.gz ; do
     # NOTE: We filter beta vs 1.0 package at this point because we can read the
     # version directly from the .tar.gz file.
-    if (echo "$x" | grep -Eq ^opentelemetry-.*-0\..*\.tar\.gz$); then
-      pip wheel --no-deps $x
+    if (echo "$x" | grep -Eq ^opentelemetry_.*-0\..*\.tar\.gz$); then
+      :
     else
       echo "Skipping $x because it is not in pre-1.0 state and should be released using a tag."
       rm $x
@@ -42,3 +41,6 @@ DISTDIR=dist
    done
  )
 )
+
+# FIXME: This is a temporary workaround, see #1357.
+rm -rf $DISTDIR/opentelemetry_exporter_datadog-0.30b0.tar.gz
