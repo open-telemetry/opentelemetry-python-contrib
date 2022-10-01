@@ -515,7 +515,7 @@ class FalconInstrumentor(BaseInstrumentor):
         **kwargs
     ):
         if not hasattr(app, "_is_instrumented_by_opentelemetry"):
-            app._is_instrumented_by_opentelemetry = False
+            setattr(app, '_is_instrumented_by_opentelemetry', False)
         
         if not getattr(app, "_is_instrumented_by_opentelemetry", False):
             app._otel_excluded_urls = excluded_urls if excluded_urls is None else get_excluded_urls("FALCON")

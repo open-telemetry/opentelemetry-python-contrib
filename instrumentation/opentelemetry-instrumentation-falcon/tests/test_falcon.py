@@ -353,6 +353,38 @@ class TestFalconInstrumentation(TestFalconBase, WsgiTestBase):
                         if isinstance(point, HistogramDataPoint):
                             self.assertEqual(point.count, 1)
 
+class TestFalconManualInstrumentation(TestFalconInstrumentation):
+    def setUp(self):
+        TestBase.setUp(self)
+        self.env_patch = patch.dict(
+            "os.environ",
+            {
+                "OTEL_PYTHON_FALCON_EXCLUDED_URLS": "ping",
+                "OTEL_PYTHON_FALCON_TRACED_REQUEST_ATTRS": "query_string",
+            },
+        )
+        self.env_patch.start()
+        
+        # FalconInstrumentor().instrument(
+            # request_hook=getattr(self, "request_hook", None),
+            # response_hook=getattr(self, "response_hook", None),
+        # )
+        self.app = make_app()
+
+        FalconInstrumentor.instrument_app(
+            self.app,
+            request_hook=getattr(self, "request_hook", None),
+            response_hook=getattr(self, "response_hook", None),
+        )
+
+    def client(self):
+        return testing.TestClient(self.app)
+
+    def tearDown(self):
+        TestBase.tearDown(self)
+        with self.disable_logging():
+            FalconInstrumentor.uninstrument_app(self.app)
+        self.env_patch.stop()
 
 class TestFalconInstrumentationWithTracerProvider(TestBase):
     def setUp(self):
