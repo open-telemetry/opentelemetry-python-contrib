@@ -482,13 +482,13 @@ def remove_trace_middleware(middleware_tupple):
     
     new_request_mw = []
     for each in request_mw:
-        if isinstance(each, tuple) and not getattr(each[0], '_is_otel_method'):
+        if isinstance(each, tuple) and not hasattr(each[0], '_is_otel_method'):
             new_request_mw.append(each)
-        elif not isinstance(each, tuple) and not getattr(each, '_is_otel_method'):
+        elif not isinstance(each, tuple) and not hasattr(each, '_is_otel_method'):
             new_request_mw.append(each)
     
-    new_response_mw = [x for x in response_mw if not getattr(each, '_is_otel_method')]
-    new_resource_mw = [x for x in resource_mw if not getattr(each, '_is_otel_method')]
+    new_response_mw = [x for x in response_mw if not hasattr(each, '_is_otel_method')]
+    new_resource_mw = [x for x in resource_mw if not hasattr(each, '_is_otel_method')]
 
     return (tuple(new_request_mw), tuple(new_resource_mw), tuple(new_response_mw))
     
@@ -551,8 +551,8 @@ class FalconInstrumentor(BaseInstrumentor):
             app.__class__ = _InstrumentedFalconAPI
 
 
-    # pylint:disable=no-self-use
-    def _remove_instrumented_middleware(self, app):
+    @staticmethod
+    def uinstrument_app(app):
         if (
             hasattr(app, "_is_instrumented_by_opentelemetry")
             and app._is_instrumented_by_opentelemetry
@@ -594,6 +594,6 @@ class FalconInstrumentor(BaseInstrumentor):
 
     def _uninstrument(self, **kwargs):
         for app in _InstrumentedFalconAPI._instrumented_falcon_apps:
-            self._remove_instrumented_middleware(app)
+            FalconInstrumentor.uinstrument_app(app)
         _InstrumentedFalconAPI._instrumented_falcon_apps.clear()
         setattr(falcon, _instrument_app, self._original_falcon_api)
