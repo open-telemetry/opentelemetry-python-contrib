@@ -144,6 +144,7 @@ API
 from logging import getLogger
 from sys import exc_info
 from time import time_ns
+from timeit import default_timer
 from typing import Collection
 
 import falcon
@@ -163,6 +164,7 @@ from opentelemetry.instrumentation.utils import (
     extract_attributes_from_object,
     http_status_to_status_code,
 )
+from opentelemetry.metrics import get_meter
 from opentelemetry.semconv.trace import SpanAttributes
 from opentelemetry.trace.status import Status
 from opentelemetry.util.http import get_excluded_urls, get_traced_request_attrs
@@ -194,17 +196,31 @@ else:
 
 
 class _InstrumentedFalconAPI(getattr(falcon, _instrument_app)):
+    _instrumented_falcon_apps = set()
+
     def __init__(self, *args, **kwargs):
         otel_opts = kwargs.pop("_otel_opts", {})
 
         # inject trace middleware
-        middlewares = kwargs.pop("middleware", [])
+        self._middlewares_list = kwargs.pop("middleware", [])
         tracer_provider = otel_opts.pop("tracer_provider", None)
-        if not isinstance(middlewares, (list, tuple)):
-            middlewares = [middlewares]
+        meter_provider = otel_opts.pop("meter_provider", None)
+        if not isinstance(self._middlewares_list, (list, tuple)):
+            self._middlewares_list = [self._middlewares_list]
 
         self._otel_tracer = trace.get_tracer(
             __name__, __version__, tracer_provider
+        )
+        self._otel_meter = get_meter(__name__, __version__, meter_provider)
+        self.duration_histogram = self._otel_meter.create_histogram(
+            name="http.server.duration",
+            unit="ms",
+            description="measures the duration of the inbound HTTP request",
+        )
+        self.active_requests_counter = self._otel_meter.create_up_down_counter(
+            name="http.server.active_requests",
+            unit="requests",
+            description="measures the number of concurrent HTTP requests that are currently in-flight",
         )
 
         trace_middleware = _TraceMiddleware(
@@ -215,11 +231,17 @@ class _InstrumentedFalconAPI(getattr(falcon, _instrument_app)):
             otel_opts.pop("request_hook", None),
             otel_opts.pop("response_hook", None),
         )
-        middlewares.insert(0, trace_middleware)
-        kwargs["middleware"] = middlewares
+        self._middlewares_list.insert(0, trace_middleware)
+        kwargs["middleware"] = self._middlewares_list
 
         self._otel_excluded_urls = get_excluded_urls("FALCON")
+        self._is_instrumented_by_opentelemetry = True
+        _InstrumentedFalconAPI._instrumented_falcon_apps.add(self)
         super().__init__(*args, **kwargs)
+
+    def __del__(self):
+        if self in _InstrumentedFalconAPI._instrumented_falcon_apps:
+            _InstrumentedFalconAPI._instrumented_falcon_apps.remove(self)
 
     def _handle_exception(
         self, arg1, arg2, arg3, arg4
@@ -229,6 +251,9 @@ class _InstrumentedFalconAPI(getattr(falcon, _instrument_app)):
 
         # Translation layer for handling the changed arg position of "ex" in Falcon > 2 vs
         # Falcon < 2
+        if not self._is_instrumented_by_opentelemetry:
+            return super()._handle_exception(arg1, arg2, arg3, arg4)
+
         if _falcon_version == 1:
             ex = arg1
             req = arg2
@@ -250,7 +275,11 @@ class _InstrumentedFalconAPI(getattr(falcon, _instrument_app)):
 
     def __call__(self, env, start_response):
         # pylint: disable=E1101
+        # pylint: disable=too-many-locals
         if self._otel_excluded_urls.url_disabled(env.get("PATH_INFO", "/")):
+            return super().__call__(env, start_response)
+
+        if not self._is_instrumented_by_opentelemetry:
             return super().__call__(env, start_response)
 
         start_time = time_ns()
@@ -262,9 +291,14 @@ class _InstrumentedFalconAPI(getattr(falcon, _instrument_app)):
             context_carrier=env,
             context_getter=otel_wsgi.wsgi_getter,
         )
+        attributes = otel_wsgi.collect_request_attributes(env)
+        active_requests_count_attrs = (
+            otel_wsgi._parse_active_request_count_attrs(attributes)
+        )
+        duration_attrs = otel_wsgi._parse_duration_attrs(attributes)
+        self.active_requests_counter.add(1, active_requests_count_attrs)
 
         if span.is_recording():
-            attributes = otel_wsgi.collect_request_attributes(env)
             for key, value in attributes.items():
                 span.set_attribute(key, value)
             if span.is_recording() and span.kind == trace.SpanKind.SERVER:
@@ -288,6 +322,7 @@ class _InstrumentedFalconAPI(getattr(falcon, _instrument_app)):
                 context.detach(token)
             return response
 
+        start = default_timer()
         try:
             return super().__call__(env, _start_response)
         except Exception as exc:
@@ -299,6 +334,13 @@ class _InstrumentedFalconAPI(getattr(falcon, _instrument_app)):
             if token is not None:
                 context.detach(token)
             raise
+        finally:
+            duration_attrs[
+                SpanAttributes.HTTP_STATUS_CODE
+            ] = span.attributes.get(SpanAttributes.HTTP_STATUS_CODE)
+            duration = max(round((default_timer() - start) * 1000), 0)
+            self.duration_histogram.record(duration, duration_attrs)
+            self.active_requests_counter.add(-1, active_requests_count_attrs)
 
 
 class _TraceMiddleware:
@@ -414,6 +456,35 @@ class FalconInstrumentor(BaseInstrumentor):
     def instrumentation_dependencies(self) -> Collection[str]:
         return _instruments
 
+    # pylint:disable=no-self-use
+    def _remove_instrumented_middleware(self, app):
+        if (
+            hasattr(app, "_is_instrumented_by_opentelemetry")
+            and app._is_instrumented_by_opentelemetry
+        ):
+            if _falcon_version == 3:
+                app._unprepared_middleware = [
+                    x
+                    for x in app._unprepared_middleware
+                    if not isinstance(x, _TraceMiddleware)
+                ]
+                app._middleware = app._prepare_middleware(
+                    app._unprepared_middleware,
+                    independent_middleware=app._independent_middleware,
+                )
+            else:
+                app._middlewares_list = [
+                    x
+                    for x in app._middlewares_list
+                    if not isinstance(x, _TraceMiddleware)
+                ]
+                # pylint: disable=c-extension-no-member
+                app._middleware = falcon.api_helpers.prepare_middleware(
+                    app._middlewares_list,
+                    independent_middleware=app._independent_middleware,
+                )
+            app._is_instrumented_by_opentelemetry = False
+
     def _instrument(self, **opts):
         self._original_falcon_api = getattr(falcon, _instrument_app)
 
@@ -425,4 +496,7 @@ class FalconInstrumentor(BaseInstrumentor):
         setattr(falcon, _instrument_app, FalconAPI)
 
     def _uninstrument(self, **kwargs):
+        for app in _InstrumentedFalconAPI._instrumented_falcon_apps:
+            self._remove_instrumented_middleware(app)
+        _InstrumentedFalconAPI._instrumented_falcon_apps.clear()
         setattr(falcon, _instrument_app, self._original_falcon_api)
