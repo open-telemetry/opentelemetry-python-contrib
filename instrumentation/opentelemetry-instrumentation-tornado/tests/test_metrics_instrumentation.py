@@ -19,7 +19,10 @@ from tornado.testing import AsyncHTTPTestCase
 
 from opentelemetry import trace
 from opentelemetry.instrumentation.tornado import TornadoInstrumentor
-from opentelemetry.sdk.metrics.export import HistogramDataPoint
+from opentelemetry.sdk.metrics.export import (
+    HistogramDataPoint,
+    NumberDataPoint,
+)
 from opentelemetry.test.test_base import TestBase
 
 from .tornado_test_app import make_app
@@ -51,12 +54,42 @@ class TornadoTest(AsyncHTTPTestCase, TestBase):
             key=lambda m: m.name,
         )
 
-    def assertMetricHasAttributes(self, metric, expected_attributes):
-        for data_point in metric.data.data_points:
-            self.assertDictEqual(
-                expected_attributes,
-                dict(data_point.attributes),
+    def assertMetricExpected(
+        self, metric, expected_value, expected_attributes
+    ):
+        data_point = next(metric.data.data_points)
+
+        if isinstance(data_point, HistogramDataPoint):
+            self.assertEqual(
+                data_point.sum,
+                expected_value,
             )
+        elif isinstance(data_point, NumberDataPoint):
+            self.assertEqual(
+                data_point.value,
+                expected_value,
+            )
+
+        self.assertDictEqual(
+            expected_attributes,
+            dict(data_point.attributes),
+        )
+
+    def assertDurationMetricExpected(
+        self, metric, duration_estimated, expected_attributes
+    ):
+        data_point = next(metric.data.data_points)
+
+        self.assertAlmostEqual(
+            data_point.sum,
+            duration_estimated,
+            delta=200,
+        )
+
+        self.assertDictEqual(
+            expected_attributes,
+            dict(data_point.attributes),
+        )
 
     def setUp(self):
         super().setUp()
@@ -79,57 +112,112 @@ class TestTornadoInstrumentor(TornadoTest):
         client_duration_estimated = (default_timer() - start_time) * 1000
 
         metrics = self.get_sorted_metrics()
-        self.assertEqual(len(metrics), 4)
-        active_request, duration, request_size, response_size = metrics
+        self.assertEqual(len(metrics), 7)
 
-        self.assertEqual(active_request.name, "http.server.active_requests")
-        self.assertMetricHasAttributes(
-            active_request,
+        (
+            client_duration,
+            client_request_size,
+            client_response_size,
+        ) = metrics[:3]
+
+        (
+            server_active_request,
+            server_duration,
+            server_request_size,
+            server_response_size,
+        ) = metrics[3:]
+
+        self.assertEqual(
+            server_active_request.name, "http.server.active_requests"
+        )
+        self.assertMetricExpected(
+            server_active_request,
+            0,
             {
                 "http.method": "GET",
                 "http.flavor": "HTTP/1.1",
                 "http.scheme": "http",
+                "http.target": "/",
                 "http.host": response.request.headers["host"],
             },
         )
 
-        self.assertEqual(duration.name, "http.server.duration")
-        data_point = list(duration.data.data_points)[0]
-        self.assertAlmostEqual(
-            data_point.sum,
+        self.assertEqual(server_duration.name, "http.server.duration")
+        self.assertDurationMetricExpected(
+            server_duration,
             client_duration_estimated,
-            delta=200,
-        )
-        self.assertMetricHasAttributes(
-            duration,
             {
-                "http.status_code": 201,
+                "http.status_code": response.code,
                 "http.method": "GET",
                 "http.flavor": "HTTP/1.1",
                 "http.scheme": "http",
+                "http.target": "/",
                 "http.host": response.request.headers["host"],
             },
         )
 
-        self.assertEqual(request_size.name, "http.server.request.size")
-        self.assertMetricHasAttributes(
-            request_size,
+        self.assertEqual(server_request_size.name, "http.server.request.size")
+        self.assertMetricExpected(
+            server_request_size,
+            0,
             {
                 "http.status_code": 200,
                 "http.method": "GET",
                 "http.flavor": "HTTP/1.1",
                 "http.scheme": "http",
+                "http.target": "/",
                 "http.host": response.request.headers["host"],
             },
         )
 
-        self.assertEqual(response_size.name, "http.server.response.size")
-        self.assertMetricHasAttributes(
-            response_size,
+        self.assertEqual(
+            server_response_size.name, "http.server.response.size"
+        )
+        self.assertMetricExpected(
+            server_response_size,
+            len(response.body),
             {
                 "http.status_code": response.code,
                 "http.method": "GET",
-                "http.url": self.get_url("/"),
+                "http.flavor": "HTTP/1.1",
+                "http.scheme": "http",
+                "http.target": "/",
+                "http.host": response.request.headers["host"],
+            },
+        )
+
+        self.assertEqual(client_duration.name, "http.client.duration")
+        self.assertDurationMetricExpected(
+            client_duration,
+            client_duration_estimated,
+            {
+                "http.status_code": response.code,
+                "http.method": "GET",
+                "http.url": response.effective_url,
+            },
+        )
+
+        self.assertEqual(client_request_size.name, "http.client.request.size")
+        self.assertMetricExpected(
+            client_request_size,
+            0,
+            {
+                "http.status_code": response.code,
+                "http.method": "GET",
+                "http.url": response.effective_url,
+            },
+        )
+
+        self.assertEqual(
+            client_response_size.name, "http.client.response.size"
+        )
+        self.assertMetricExpected(
+            client_response_size,
+            len(response.body),
+            {
+                "http.status_code": response.code,
+                "http.method": "GET",
+                "http.url": response.effective_url,
             },
         )
 

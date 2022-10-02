@@ -236,27 +236,43 @@ class TornadoInstrumentor(BaseInstrumentor):
         self.tracer = trace.get_tracer(__name__, __version__, tracer_provider)
 
         meter_provider = kwargs.get("meter_provider")
-        self.meter = get_meter(__name__, __version__, meter_provider)
+        meter = get_meter(__name__, __version__, meter_provider)
 
-        self.duration_histogram = self.meter.create_histogram(
+        self.duration_histogram = meter.create_histogram(
             name="http.server.duration",
             unit="ms",
             description="measures the duration outbound HTTP requests",
         )
-        self.request_size_histogram = self.meter.create_histogram(
+        self.request_size_histogram = meter.create_histogram(
             name="http.server.request.size",
             unit="By",
             description="measures the size of HTTP request messages (compressed)",
         )
-        self.response_size_histogram = self.meter.create_histogram(
+        self.response_size_histogram = meter.create_histogram(
             name="http.server.response.size",
             unit="By",
             description="measures the size of HTTP response messages (compressed)",
         )
-        self.active_requests_histogram = self.meter.create_up_down_counter(
+        self.active_requests_histogram = meter.create_up_down_counter(
             name="http.server.active_requests",
             unit="requests",
             description="measures the number of concurrent HTTP requests that are currently in-flight",
+        )
+
+        client_duration_histogram = meter.create_histogram(
+            name="http.client.duration",
+            unit="ms",
+            description="measures the duration outbound HTTP requests",
+        )
+        client_request_size_histogram = meter.create_histogram(
+            name="http.client.request.size",
+            unit="By",
+            description="measures the size of HTTP request messages (compressed)",
+        )
+        client_response_size_histogram = meter.create_histogram(
+            name="http.client.response.size",
+            unit="By",
+            description="measures the size of HTTP response messages (compressed)",
         )
 
         client_request_hook = kwargs.get("client_request_hook", None)
@@ -280,7 +296,9 @@ class TornadoInstrumentor(BaseInstrumentor):
                 self.tracer,
                 client_request_hook,
                 client_response_hook,
-                self.response_size_histogram,
+                client_duration_histogram,
+                client_request_size_histogram,
+                client_response_size_histogram,
             ),
         )
 
@@ -520,7 +538,12 @@ def _record_prepare_metrics(instrumentation, handler):
 def _record_on_finish_metrics(instrumentation, handler):
     elapsed_time = round((default_timer() - instrumentation.start_time) * 1000)
 
+    response_size = int(handler._headers.get("Content-Length", 0))
     metric_attributes = _create_metric_attributes(handler)
+    instrumentation.response_size_histogram.record(
+        response_size, attributes=metric_attributes
+    )
+
     instrumentation.duration_histogram.record(
         elapsed_time, attributes=metric_attributes
     )
@@ -539,6 +562,7 @@ def _create_active_requests_attributes(request):
         SpanAttributes.HTTP_SCHEME: request.protocol,
         SpanAttributes.HTTP_FLAVOR: request.version,
         SpanAttributes.HTTP_HOST: request.host,
+        SpanAttributes.HTTP_TARGET: request.path,
     }
 
     return metric_attributes
