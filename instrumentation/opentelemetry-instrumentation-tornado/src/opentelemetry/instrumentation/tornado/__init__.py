@@ -366,6 +366,8 @@ def _log_exception(instrumentation, func, handler, args, kwargs):
     if len(args) == 3:
         error = args[1]
 
+    _record_on_finish_metrics(instrumentation, handler, error)
+
     _finish_span(instrumentation, handler, error)
     return func(*args, **kwargs)
 
@@ -535,11 +537,15 @@ def _record_prepare_metrics(instrumentation, handler):
     )
 
 
-def _record_on_finish_metrics(instrumentation, handler):
+def _record_on_finish_metrics(instrumentation, handler, error=None):
     elapsed_time = round((default_timer() - instrumentation.start_time) * 1000)
 
     response_size = int(handler._headers.get("Content-Length", 0))
     metric_attributes = _create_metric_attributes(handler)
+
+    if isinstance(error, tornado.web.HTTPError):
+        metric_attributes[SpanAttributes.HTTP_STATUS_CODE] = error.status_code
+
     instrumentation.response_size_histogram.record(
         response_size, attributes=metric_attributes
     )

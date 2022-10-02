@@ -41,7 +41,7 @@ class TornadoTest(AsyncHTTPTestCase, TestBase):
         )
         for metrics in resource_metrics:
             for scope_metrics in metrics.scope_metrics:
-                all_metrics = [metric for metric in scope_metrics.metrics]
+                all_metrics = list(scope_metrics.metrics)
                 return self.sorted_metrics(all_metrics)
 
     @staticmethod
@@ -54,7 +54,7 @@ class TornadoTest(AsyncHTTPTestCase, TestBase):
             key=lambda m: m.name,
         )
 
-    def assertMetricExpected(
+    def assert_metric_expected(
         self, metric, expected_value, expected_attributes
     ):
         data_point = next(metric.data.data_points)
@@ -75,7 +75,7 @@ class TornadoTest(AsyncHTTPTestCase, TestBase):
             dict(data_point.attributes),
         )
 
-    def assertDurationMetricExpected(
+    def assert_duration_metric_expected(
         self, metric, duration_estimated, expected_attributes
     ):
         data_point = next(metric.data.data_points)
@@ -130,7 +130,7 @@ class TestTornadoInstrumentor(TornadoTest):
         self.assertEqual(
             server_active_request.name, "http.server.active_requests"
         )
-        self.assertMetricExpected(
+        self.assert_metric_expected(
             server_active_request,
             0,
             {
@@ -143,7 +143,7 @@ class TestTornadoInstrumentor(TornadoTest):
         )
 
         self.assertEqual(server_duration.name, "http.server.duration")
-        self.assertDurationMetricExpected(
+        self.assert_duration_metric_expected(
             server_duration,
             client_duration_estimated,
             {
@@ -157,7 +157,7 @@ class TestTornadoInstrumentor(TornadoTest):
         )
 
         self.assertEqual(server_request_size.name, "http.server.request.size")
-        self.assertMetricExpected(
+        self.assert_metric_expected(
             server_request_size,
             0,
             {
@@ -173,7 +173,7 @@ class TestTornadoInstrumentor(TornadoTest):
         self.assertEqual(
             server_response_size.name, "http.server.response.size"
         )
-        self.assertMetricExpected(
+        self.assert_metric_expected(
             server_response_size,
             len(response.body),
             {
@@ -187,7 +187,7 @@ class TestTornadoInstrumentor(TornadoTest):
         )
 
         self.assertEqual(client_duration.name, "http.client.duration")
-        self.assertDurationMetricExpected(
+        self.assert_duration_metric_expected(
             client_duration,
             client_duration_estimated,
             {
@@ -198,7 +198,7 @@ class TestTornadoInstrumentor(TornadoTest):
         )
 
         self.assertEqual(client_request_size.name, "http.client.request.size")
-        self.assertMetricExpected(
+        self.assert_metric_expected(
             client_request_size,
             0,
             {
@@ -211,7 +211,7 @@ class TestTornadoInstrumentor(TornadoTest):
         self.assertEqual(
             client_response_size.name, "http.client.response.size"
         )
-        self.assertMetricExpected(
+        self.assert_metric_expected(
             client_response_size,
             len(response.body),
             {
