@@ -195,6 +195,7 @@ from typing import Collection
 
 from django import VERSION as django_version
 from django.conf import settings
+from django.core.exceptions import ImproperlyConfigured
 
 from opentelemetry.instrumentation.django.environment_variables import (
     OTEL_PYTHON_DJANGO_INSTRUMENT,
@@ -275,7 +276,12 @@ class DjangoInstrumentor(BaseInstrumentor):
         # https://docs.djangoproject.com/en/3.0/ref/middleware/#middleware-ordering
 
         _middleware_setting = _get_django_middleware_setting()
-        settings_middleware = getattr(settings, _middleware_setting, [])
+        settings_middleware = []
+        try:
+            settings_middleware = getattr(settings, _middleware_setting, [])
+        except ImproperlyConfigured:
+            settings.configure()
+            settings_middleware = getattr(settings, _middleware_setting, [])
 
         # Django allows to specify middlewares as a tuple, so we convert this tuple to a
         # list, otherwise we wouldn't be able to call append/remove
@@ -288,7 +294,6 @@ class DjangoInstrumentor(BaseInstrumentor):
             settings_middleware.insert(0, self._sql_commenter_middleware)
 
         settings_middleware.insert(0, self._opentelemetry_middleware)
-
         setattr(settings, _middleware_setting, settings_middleware)
 
     def _uninstrument(self, **kwargs):
