@@ -158,7 +158,7 @@ from functools import partial
 from logging import getLogger
 from time import time_ns
 from timeit import default_timer
-from typing import Collection
+from typing import Collection, Dict
 
 import tornado.web
 import wrapt
@@ -179,6 +179,7 @@ from opentelemetry.instrumentation.utils import (
     unwrap,
 )
 from opentelemetry.metrics import get_meter
+from opentelemetry.metrics._internal.instrument import Histogram
 from opentelemetry.propagators import textmap
 from opentelemetry.semconv.trace import SpanAttributes
 from opentelemetry.trace.status import Status, StatusCode
@@ -199,6 +200,12 @@ _TraceContext = namedtuple("TraceContext", ["activation", "span", "token"])
 _HANDLER_CONTEXT_KEY = "_otel_trace_context_key"
 _OTEL_PATCHED_KEY = "_otel_patched_key"
 
+
+_START_TIME = "start_time"
+_SERVER_DURATION_HISTOGRAM = "http.server.duration"
+_SERVER_REQUEST_SIZE_HISTOGRAM = "http.server.request.size"
+_SERVER_RESPONSE_SIZE_HISTOGRAM = "http.server.response.size"
+_SERVER_ACTIVE_REQUESTS_HISTOGRAM = "http.server.active_requests"
 
 _excluded_urls = get_excluded_urls("TORNADO")
 _traced_request_attrs = get_traced_request_attrs("TORNADO")
@@ -233,31 +240,12 @@ class TornadoInstrumentor(BaseInstrumentor):
         process lifetime.
         """
         tracer_provider = kwargs.get("tracer_provider")
-        self.tracer = trace.get_tracer(__name__, __version__, tracer_provider)
+        tracer = trace.get_tracer(__name__, __version__, tracer_provider)
 
         meter_provider = kwargs.get("meter_provider")
         meter = get_meter(__name__, __version__, meter_provider)
 
-        self.duration_histogram = meter.create_histogram(
-            name="http.server.duration",
-            unit="ms",
-            description="measures the duration outbound HTTP requests",
-        )
-        self.request_size_histogram = meter.create_histogram(
-            name="http.server.request.size",
-            unit="By",
-            description="measures the size of HTTP request messages (compressed)",
-        )
-        self.response_size_histogram = meter.create_histogram(
-            name="http.server.response.size",
-            unit="By",
-            description="measures the size of HTTP response messages (compressed)",
-        )
-        self.active_requests_histogram = meter.create_up_down_counter(
-            name="http.server.active_requests",
-            unit="requests",
-            description="measures the number of concurrent HTTP requests that are currently in-flight",
-        )
+        server_histograms = _create_server_histograms(meter)
 
         client_duration_histogram = meter.create_histogram(
             name="http.client.duration",
@@ -281,7 +269,9 @@ class TornadoInstrumentor(BaseInstrumentor):
 
         def handler_init(init, handler, args, kwargs):
             cls = handler.__class__
-            if patch_handler_class(self, cls, server_request_hook):
+            if patch_handler_class(
+                tracer, server_histograms, cls, server_request_hook
+            ):
                 self.patched_handlers.append(cls)
             return init(*args, **kwargs)
 
@@ -293,7 +283,7 @@ class TornadoInstrumentor(BaseInstrumentor):
             "AsyncHTTPClient.fetch",
             partial(
                 fetch_async,
-                self.tracer,
+                tracer,
                 client_request_hook,
                 client_response_hook,
                 client_duration_histogram,
@@ -310,14 +300,49 @@ class TornadoInstrumentor(BaseInstrumentor):
         self.patched_handlers = []
 
 
-def patch_handler_class(instrumentation, cls, request_hook=None):
+def _create_server_histograms(meter) -> Dict[str, Histogram]:
+    histograms = {
+        _SERVER_DURATION_HISTOGRAM: meter.create_histogram(
+            name="http.server.duration",
+            unit="ms",
+            description="measures the duration outbound HTTP requests",
+        ),
+        _SERVER_REQUEST_SIZE_HISTOGRAM: meter.create_histogram(
+            name="http.server.request.size",
+            unit="By",
+            description="measures the size of HTTP request messages (compressed)",
+        ),
+        _SERVER_RESPONSE_SIZE_HISTOGRAM: meter.create_histogram(
+            name="http.server.response.size",
+            unit="By",
+            description="measures the size of HTTP response messages (compressed)",
+        ),
+        _SERVER_ACTIVE_REQUESTS_HISTOGRAM: meter.create_up_down_counter(
+            name="http.server.active_requests",
+            unit="requests",
+            description="measures the number of concurrent HTTP requests that are currently in-flight",
+        ),
+    }
+
+    return histograms
+
+
+def patch_handler_class(tracer, server_histograms, cls, request_hook=None):
     if getattr(cls, _OTEL_PATCHED_KEY, False):
         return False
 
     setattr(cls, _OTEL_PATCHED_KEY, True)
-    _wrap(cls, "prepare", partial(_prepare, instrumentation, request_hook))
-    _wrap(cls, "on_finish", partial(_on_finish, instrumentation))
-    _wrap(cls, "log_exception", partial(_log_exception, instrumentation))
+    _wrap(
+        cls,
+        "prepare",
+        partial(_prepare, tracer, server_histograms, request_hook),
+    )
+    _wrap(cls, "on_finish", partial(_on_finish, tracer, server_histograms))
+    _wrap(
+        cls,
+        "log_exception",
+        partial(_log_exception, tracer, server_histograms),
+    )
     return True
 
 
@@ -337,38 +362,41 @@ def _wrap(cls, method_name, wrapper):
     wrapt.apply_patch(cls, method_name, wrapper)
 
 
-def _prepare(instrumentation, request_hook, func, handler, args, kwargs):
-    instrumentation.start_time = default_timer()
+def _prepare(
+    tracer, server_histograms, request_hook, func, handler, args, kwargs
+):
+    server_histograms[_START_TIME] = default_timer()
+
     request = handler.request
     if _excluded_urls.url_disabled(request.uri):
         return func(*args, **kwargs)
 
-    _record_prepare_metrics(instrumentation, handler)
+    _record_prepare_metrics(server_histograms, handler)
 
-    ctx = _start_span(instrumentation.tracer, handler)
+    ctx = _start_span(tracer, handler)
     if request_hook:
         request_hook(ctx.span, handler)
     return func(*args, **kwargs)
 
 
-def _on_finish(instrumentation, func, handler, args, kwargs):
+def _on_finish(tracer, server_histograms, func, handler, args, kwargs):
     response = func(*args, **kwargs)
 
-    _record_on_finish_metrics(instrumentation, handler)
+    _record_on_finish_metrics(server_histograms, handler)
 
-    _finish_span(instrumentation.tracer, handler)
+    _finish_span(tracer, handler)
 
     return response
 
 
-def _log_exception(instrumentation, func, handler, args, kwargs):
+def _log_exception(tracer, server_histograms, func, handler, args, kwargs):
     error = None
     if len(args) == 3:
         error = args[1]
 
-    _record_on_finish_metrics(instrumentation, handler, error)
+    _record_on_finish_metrics(server_histograms, handler, error)
 
-    _finish_span(instrumentation, handler, error)
+    _finish_span(tracer, handler, error)
     return func(*args, **kwargs)
 
 
@@ -521,24 +549,26 @@ def _finish_span(tracer, handler, error=None):
     delattr(handler, _HANDLER_CONTEXT_KEY)
 
 
-def _record_prepare_metrics(instrumentation, handler):
+def _record_prepare_metrics(server_histograms, handler):
     request_size = len(handler.request.body)
     metric_attributes = _create_metric_attributes(handler)
 
-    instrumentation.request_size_histogram.record(
+    server_histograms[_SERVER_REQUEST_SIZE_HISTOGRAM].record(
         request_size, attributes=metric_attributes
     )
 
     active_requests_attributes = _create_active_requests_attributes(
         handler.request
     )
-    instrumentation.active_requests_histogram.add(
+    server_histograms[_SERVER_ACTIVE_REQUESTS_HISTOGRAM].add(
         1, attributes=active_requests_attributes
     )
 
 
-def _record_on_finish_metrics(instrumentation, handler, error=None):
-    elapsed_time = round((default_timer() - instrumentation.start_time) * 1000)
+def _record_on_finish_metrics(server_histograms, handler, error=None):
+    elapsed_time = round(
+        (default_timer() - server_histograms[_START_TIME]) * 1000
+    )
 
     response_size = int(handler._headers.get("Content-Length", 0))
     metric_attributes = _create_metric_attributes(handler)
@@ -546,18 +576,18 @@ def _record_on_finish_metrics(instrumentation, handler, error=None):
     if isinstance(error, tornado.web.HTTPError):
         metric_attributes[SpanAttributes.HTTP_STATUS_CODE] = error.status_code
 
-    instrumentation.response_size_histogram.record(
+    server_histograms[_SERVER_RESPONSE_SIZE_HISTOGRAM].record(
         response_size, attributes=metric_attributes
     )
 
-    instrumentation.duration_histogram.record(
+    server_histograms[_SERVER_DURATION_HISTOGRAM].record(
         elapsed_time, attributes=metric_attributes
     )
 
     active_requests_attributes = _create_active_requests_attributes(
         handler.request
     )
-    instrumentation.active_requests_histogram.add(
+    server_histograms[_SERVER_ACTIVE_REQUESTS_HISTOGRAM].add(
         -1, attributes=active_requests_attributes
     )
 

@@ -110,9 +110,9 @@ class TestTornadoInstrumentor(TornadoTest):
 
     def test_patch_applied_only_once(self):
         tracer = trace.get_tracer(__name__)
-        self.assertTrue(patch_handler_class(tracer, AsyncHandler))
-        self.assertFalse(patch_handler_class(tracer, AsyncHandler))
-        self.assertFalse(patch_handler_class(tracer, AsyncHandler))
+        self.assertTrue(patch_handler_class(tracer, {}, AsyncHandler))
+        self.assertFalse(patch_handler_class(tracer, {}, AsyncHandler))
+        self.assertFalse(patch_handler_class(tracer, {}, AsyncHandler))
         unpatch_handler_class(AsyncHandler)
 
 
