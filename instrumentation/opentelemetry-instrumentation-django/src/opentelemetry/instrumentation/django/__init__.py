@@ -189,6 +189,7 @@ API
 
 """
 
+from asyncio.log import logger
 from logging import getLogger
 from os import environ
 from typing import Collection
@@ -279,7 +280,12 @@ class DjangoInstrumentor(BaseInstrumentor):
         settings_middleware = []
         try:
             settings_middleware = getattr(settings, _middleware_setting, [])
-        except ImproperlyConfigured:
+        except ImproperlyConfigured as e:
+            logger.debug("DJANGO_SETTINGS_MODULE environment variable not configured. Defaulting to empty settings: " + e)
+            settings.configure()
+            settings_middleware = getattr(settings, _middleware_setting, [])
+        except ModuleNotFoundError as e:
+            logger.debug("DJANGO_SETTINGS_MODULE points to a non-existant module. Defaulting to empty settings: " + e)
             settings.configure()
             settings_middleware = getattr(settings, _middleware_setting, [])
 
