@@ -286,7 +286,6 @@ class DjangoInstrumentor(BaseInstrumentor):
 
         if is_sql_commentor_enabled:
             settings_middleware.insert(0, self._sql_commenter_middleware)
-
         settings_middleware.insert(0, self._opentelemetry_middleware)
 
         setattr(settings, _middleware_setting, settings_middleware)
