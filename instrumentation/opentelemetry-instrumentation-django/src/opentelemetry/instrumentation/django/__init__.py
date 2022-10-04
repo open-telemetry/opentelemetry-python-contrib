@@ -281,15 +281,15 @@ class DjangoInstrumentor(BaseInstrumentor):
             settings_middleware = getattr(settings, _middleware_setting, [])
         except ImproperlyConfigured as exception:
             _logger.debug(
-                "DJANGO_SETTINGS_MODULE environment variable not configured. Defaulting to empty settings: %s"
-                % exception
+                "DJANGO_SETTINGS_MODULE environment variable not configured. Defaulting to empty settings: %s",
+                exception,
             )
             settings.configure()
             settings_middleware = getattr(settings, _middleware_setting, [])
         except ModuleNotFoundError as exception:
             _logger.debug(
-                "DJANGO_SETTINGS_MODULE points to a non-existent module. Defaulting to empty settings: %s"
-                % exception
+                "DJANGO_SETTINGS_MODULE points to a non-existent module. Defaulting to empty settings: %s",
+                exception,
             )
             settings.configure()
             settings_middleware = getattr(settings, _middleware_setting, [])
