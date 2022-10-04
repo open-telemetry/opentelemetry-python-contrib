@@ -189,7 +189,6 @@ API
 
 """
 
-from asyncio.log import logger
 from logging import getLogger
 from os import environ
 from typing import Collection
@@ -306,6 +305,7 @@ class DjangoInstrumentor(BaseInstrumentor):
             settings_middleware.insert(0, self._sql_commenter_middleware)
 
         settings_middleware.insert(0, self._opentelemetry_middleware)
+
         setattr(settings, _middleware_setting, settings_middleware)
 
     def _uninstrument(self, **kwargs):
