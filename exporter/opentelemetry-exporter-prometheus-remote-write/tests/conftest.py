@@ -8,15 +8,9 @@ from opentelemetry.exporter.prometheus_remote_write import (
 )
 from opentelemetry.sdk.metrics.export import (
     AggregationTemporality,
-    Gauge,
     Histogram,
     HistogramDataPoint,
     Metric,
-    MetricExportResult,
-    MetricsData,
-    ResourceMetrics,
-    ScopeMetrics,
-    Sum,
 )
 
 

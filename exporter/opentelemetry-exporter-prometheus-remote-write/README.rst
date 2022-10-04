@@ -95,7 +95,7 @@ This example uses `Docker Compose`_ to set up:
 
 1. A Python program that creates 5 instruments with 5 unique aggregators
    and a randomized load generator
-2. An instance of `Cortex`_ to recieve the metrics data
+2. An instance of `Cortex`_ to receive the metrics data
 3. An instance of `Grafana`_ to visualizse the exported data
 
 Requirements
@@ -143,7 +143,7 @@ attach themselves to the service’s logs manually using
    -  Set up auto-refresh by selecting an option under the
       dropdown next to the refresh button on the upper right side of the
       graph **(Optional)**
-   -  Click the refresh button and data should show up on hte graph
+   -  Click the refresh button and data should show up on the graph
 
 6. Shutdown the services when finished
 

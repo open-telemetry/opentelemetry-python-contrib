@@ -16,7 +16,6 @@ import unittest
 from unittest.mock import patch
 
 import pytest
-import snappy
 
 from opentelemetry.exporter.prometheus_remote_write import (
     PROMETHEUS_LABEL_REGEX,
@@ -24,10 +23,8 @@ from opentelemetry.exporter.prometheus_remote_write import (
     PrometheusRemoteWriteMetricsExporter,
 )
 from opentelemetry.exporter.prometheus_remote_write.gen.types_pb2 import (
-    Label,
     TimeSeries,
 )
-from opentelemetry.sdk.metrics import Counter
 from opentelemetry.sdk.metrics.export import (
     Histogram,
     HistogramDataPoint,
@@ -38,17 +35,7 @@ from opentelemetry.sdk.metrics.export import (
     ScopeMetrics,
 )
 from opentelemetry.sdk.resources import Resource
-from opentelemetry.sdk.util import get_dict_as_key
 from opentelemetry.sdk.util.instrumentation import InstrumentationScope
-
-# from opentelemetry.sdk.metrics.export import MetricExportResult
-# from opentelemetry.sdk.metrics.export.aggregate import (
-#    HistogramAggregator,
-#    LastValueAggregator,
-#    MinMaxSumCountAggregator,
-#    SumAggregator,
-#    ValueObserverAggregator,
-# )
 
 
 @pytest.mark.parametrize(
@@ -264,7 +251,6 @@ class TestValidation(unittest.TestCase):
 def test_valid_export(mock_post, prom_rw, metric):
     metric = metric
     mock_post.return_value.configure_mock(**{"status_code": 200})
-    labels = get_dict_as_key({"environment": "testing"})
 
     # Assumed a "None" for Scope or Resource aren't valid, so build them here
     scope = ScopeMetrics(

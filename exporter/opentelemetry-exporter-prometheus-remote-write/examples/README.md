@@ -3,7 +3,7 @@ This example uses [Docker Compose](https://docs.docker.com/compose/) to set up:
 
 1. A Python program that creates 5 instruments with 5 unique
 aggregators and a randomized load generator
-2. An instance of [Cortex](https://cortexmetrics.io/) to recieve the metrics
+2. An instance of [Cortex](https://cortexmetrics.io/) to receive the metrics
 data
 3. An instance of [Grafana](https://grafana.com/) to visualizse the exported
 data
@@ -36,7 +36,7 @@ terminal session. This also causes no logs to show up. Users can attach themselv
    * click `Metrics` for a dropdown list of all the available metrics
    * (OPTIONAL) Adjust time range by clicking the `Last 6 hours` button on the upper right side of the graph
    * (OPTIONAL) Set up auto-refresh by selecting an option under the dropdown next to the refresh button on the upper right side of the graph
-   * Click the refresh button and data should show up on hte graph
+   * Click the refresh button and data should show up on the graph
 
 6. Shutdown the services when finished
    * Run `docker-compose down` in the examples directory

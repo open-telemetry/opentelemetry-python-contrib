@@ -10,11 +10,7 @@ from opentelemetry import metrics
 from opentelemetry.exporter.prometheus_remote_write import (
     PrometheusRemoteWriteMetricsExporter,
 )
-from opentelemetry.metrics import (
-    Observation,
-    get_meter_provider,
-    set_meter_provider,
-)
+from opentelemetry.metrics import Observation
 from opentelemetry.sdk.metrics import MeterProvider
 from opentelemetry.sdk.metrics.export import PeriodicExportingMetricReader
 
@@ -32,6 +28,7 @@ reader = PeriodicExportingMetricReader(exporter, 1000)
 provider = MeterProvider(metric_readers=[reader])
 metrics.set_meter_provider(provider)
 meter = metrics.get_meter(__name__)
+
 
 # Callback to gather cpu usage
 def get_cpu_usage_callback(observer):

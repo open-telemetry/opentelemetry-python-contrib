@@ -289,7 +289,7 @@ class PrometheusRemoteWriteMetricsExporter(MetricExporter):
         timestamp = data_point.time_unix_nano // 1_000_000
 
         def handle_bucket(value, bound=None, name_override=None):
-            # Metric Level attributes + the bucket boundry attribute + name
+            # Metric Level attributes + the bucket boundary attribute + name
             ts_attrs = base_attrs.copy()
             ts_attrs.append(
                 ("__name__", self._sanitize_name(name_override or name))
