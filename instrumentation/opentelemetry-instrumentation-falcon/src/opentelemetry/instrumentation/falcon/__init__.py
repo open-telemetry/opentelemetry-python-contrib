@@ -520,7 +520,7 @@ class FalconInstrumentor(BaseInstrumentor):
                 def __init__(self, *args, ** kwargs):
                     for attribute in app.__slots__:
                         setattr(self, attribute, getattr(app, attribute, None)) 
-                    self._otel_excluded_urls = excluded_urls if excluded_urls is None else get_excluded_urls("FALCON")
+                    self._otel_excluded_urls = excluded_urls if excluded_urls is not None else get_excluded_urls("FALCON")
                     self._otel_tracer = trace.get_tracer(__name__, __version__, tracer_provider)
                     self._otel_meter = get_meter(__name__, __version__, meter_provider)
                     self.duration_histogram = self._otel_meter.create_histogram(
@@ -555,6 +555,7 @@ class FalconInstrumentor(BaseInstrumentor):
             else:
                 app._middleware = _prepare_middleware_tuple(app._middleware, trace_middleware, app._independent_middleware)
             app._is_instrumented_by_opentelemetry = True
+        return app
 
     @staticmethod
     def uninstrument_app(app):

@@ -371,7 +371,7 @@ class TestFalconManualInstrumentation(TestFalconInstrumentation):
         # )
         self.app = make_app()
 
-        FalconInstrumentor.instrument_app(
+        self.app = FalconInstrumentor.instrument_app(
             self.app,
             request_hook=getattr(self, "request_hook", None),
             response_hook=getattr(self, "response_hook", None),
@@ -385,6 +385,30 @@ class TestFalconManualInstrumentation(TestFalconInstrumentation):
         with self.disable_logging():
             FalconInstrumentor.uninstrument_app(self.app)
         self.env_patch.stop()
+    
+    def test_uninstrument_after_instrument(self):
+        self.client().simulate_get(path="/hello")
+        spans = self.memory_exporter.get_finished_spans()
+        self.assertEqual(len(spans), 1)
+
+        FalconInstrumentor().uninstrument_app(self.app)
+        self.memory_exporter.clear()
+
+        self.client().simulate_get(path="/hello")
+        spans = self.memory_exporter.get_finished_spans()
+        self.assertEqual(len(spans), 0)
+    
+    def test_metric_uninstrument(self):
+        self.client().simulate_request(method="POST", path="/hello/756")
+        FalconInstrumentor().uninstrument_app(self.app)
+        self.client().simulate_request(method="POST", path="/hello/756")
+        metrics_list = self.memory_metrics_reader.get_metrics_data()
+        for resource_metric in metrics_list.resource_metrics:
+            for scope_metric in resource_metric.scope_metrics:
+                for metric in scope_metric.metrics:
+                    for point in list(metric.data.data_points):
+                        if isinstance(point, HistogramDataPoint):
+                            self.assertEqual(point.count, 1)
 
 class TestFalconInstrumentationWithTracerProvider(TestBase):
     def setUp(self):
