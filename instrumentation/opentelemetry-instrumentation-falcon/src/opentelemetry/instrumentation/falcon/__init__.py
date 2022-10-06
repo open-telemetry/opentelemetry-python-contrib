@@ -448,18 +448,21 @@ class _TraceMiddleware:
 
 def _prepare_middleware_tupple(middleware_tupple, trace_middleware, independent_middleware):
     request_mw, resource_mw, response_mw = middleware_tupple
-    
+
     new_request_mw = []
     new_response_mw = []
     new_resource_mw = []
-    
+
     process_request = getattr(trace_middleware, 'process_request')
     process_request._is_otel_method = True
     process_resource = getattr(trace_middleware, 'process_resource')
     process_resource._is_otel_method = True
     process_response = getattr(trace_middleware, 'process_response')
     process_response._is_otel_method = True
-    
+
+    for each in response_mw:
+        new_response_mw.append(each)
+
     if independent_middleware:
         new_request_mw.insert(0, process_request)
         new_response_mw.append(process_response)
@@ -472,8 +475,6 @@ def _prepare_middleware_tupple(middleware_tupple, trace_middleware, independent_
         new_request_mw.append(each)
     for each in resource_mw:
         new_resource_mw.append(each)
-    for each in response_mw:
-        new_response_mw.append(each)
     
     return (tuple(new_request_mw), tuple(new_resource_mw), tuple(new_response_mw))
 
