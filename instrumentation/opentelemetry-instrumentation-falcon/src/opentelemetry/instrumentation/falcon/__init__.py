@@ -335,11 +335,12 @@ class _InstrumentedFalconAPI(getattr(falcon, _instrument_app)):
                 context.detach(token)
             raise
         finally:
-            duration_attrs[
-                SpanAttributes.HTTP_STATUS_CODE
-            ] = span.attributes.get(SpanAttributes.HTTP_STATUS_CODE)
-            duration = max(round((default_timer() - start) * 1000), 0)
-            self.duration_histogram.record(duration, duration_attrs)
+            if span and hasattr(span, "attributes"):
+                duration_attrs[
+                    SpanAttributes.HTTP_STATUS_CODE
+                ] = span.attributes.get(SpanAttributes.HTTP_STATUS_CODE)
+                duration = max(round((default_timer() - start) * 1000), 0)
+                self.duration_histogram.record(duration, duration_attrs)
             self.active_requests_counter.add(-1, active_requests_count_attrs)
 
 
