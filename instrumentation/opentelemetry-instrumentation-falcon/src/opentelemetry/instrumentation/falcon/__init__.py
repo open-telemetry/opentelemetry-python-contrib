@@ -446,19 +446,19 @@ class _TraceMiddleware:
             self._response_hook(span, req, resp)
 
 
-def _prepare_middleware_tupple(middleware_tupple, trace_middleware, independent_middleware):
-    request_mw, resource_mw, response_mw = middleware_tupple
+def _prepare_middleware_tuple(middleware_tuple, trace_middleware, independent_middleware):
+    request_mw, resource_mw, response_mw = middleware_tuple
 
     new_request_mw = []
     new_response_mw = []
     new_resource_mw = []
 
     process_request = getattr(trace_middleware, 'process_request')
-    process_request._is_otel_method = True
+    setattr(process_request.__func__, '_is_otel_method', True)
     process_resource = getattr(trace_middleware, 'process_resource')
-    process_resource._is_otel_method = True
+    setattr(process_resource.__func__, '_is_otel_method', True)
     process_response = getattr(trace_middleware, 'process_response')
-    process_response._is_otel_method = True
+    setattr(process_response.__func__, '_is_otel_method', True)
 
     for each in response_mw:
         new_response_mw.append(each)
@@ -478,8 +478,8 @@ def _prepare_middleware_tupple(middleware_tupple, trace_middleware, independent_
     
     return (tuple(new_request_mw), tuple(new_resource_mw), tuple(new_response_mw))
 
-def remove_trace_middleware(middleware_tupple):
-    request_mw, resource_mw, response_mw = middleware_tupple
+def remove_trace_middleware(middleware_tuple):
+    request_mw, resource_mw, response_mw = middleware_tuple
     
     new_request_mw = []
     for each in request_mw:
@@ -513,28 +513,34 @@ class FalconInstrumentor(BaseInstrumentor):
         tracer_provider=None, 
         meter_provider=None, 
         excluded_urls=None,
-        **kwargs
+        **opts
     ):
         if not hasattr(app, "_is_instrumented_by_opentelemetry"):
-            setattr(app, '_is_instrumented_by_opentelemetry', False)
+            class FalconAPI(_InstrumentedFalconAPI):
+                def __init__(self, *args, ** kwargs):
+                    for attribute in app.__slots__:
+                        setattr(self, attribute, getattr(app, attribute, None)) 
+                    self._otel_excluded_urls = excluded_urls if excluded_urls is None else get_excluded_urls("FALCON")
+                    self._otel_tracer = trace.get_tracer(__name__, __version__, tracer_provider)
+                    self._otel_meter = get_meter(__name__, __version__, meter_provider)
+                    self.duration_histogram = self._otel_meter.create_histogram(
+                        name="http.server.duration",
+                        unit="ms",
+                        description="measures the duration of the inbound HTTP request",
+                    )
+                    self.active_requests_counter = self._otel_meter.create_up_down_counter(
+                        name="http.server.active_requests",
+                        unit="requests",
+                        description="measures the number of concurrent HTTP requests that are currently in-flight",
+                    )
+                    self._is_instrumented_by_opentelemetry = False
+
+            app = FalconAPI()
         
         if not getattr(app, "_is_instrumented_by_opentelemetry", False):
-            app._otel_excluded_urls = excluded_urls if excluded_urls is None else get_excluded_urls("FALCON")
-            app._otel_tracer = trace.get_tracer(__name__, __version__, tracer_provider)
-            app._otel_meter = get_meter(__name__, __version__, meter_provider)
-            app.duration_histogram = app._otel_meter.create_histogram(
-                name="http.server.duration",
-                unit="ms",
-                description="measures the duration of the inbound HTTP request",
-            )
-            app.active_requests_counter = app._otel_meter.create_up_down_counter(
-                name="http.server.active_requests",
-                unit="requests",
-                description="measures the number of concurrent HTTP requests that are currently in-flight",
-            )
             trace_middleware = _TraceMiddleware(
                 app._otel_tracer,
-                kwargs.pop(
+                opts.pop(
                     "traced_request_attributes", get_traced_request_attrs("FALCON")
                 ),
                 request_hook,
@@ -547,13 +553,11 @@ class FalconInstrumentor(BaseInstrumentor):
                     independent_middleware=app._independent_middleware,
                 )
             else:
-                app._middleware = _prepare_middleware_tupple(app._middleware, trace_middleware, app._independet_middleware)
+                app._middleware = _prepare_middleware_tuple(app._middleware, trace_middleware, app._independent_middleware)
             app._is_instrumented_by_opentelemetry = True
-            app.__class__ = _InstrumentedFalconAPI
-
 
     @staticmethod
-    def uinstrument_app(app):
+    def uninstrument_app(app):
         if (
             hasattr(app, "_is_instrumented_by_opentelemetry")
             and app._is_instrumented_by_opentelemetry
@@ -595,6 +599,6 @@ class FalconInstrumentor(BaseInstrumentor):
 
     def _uninstrument(self, **kwargs):
         for app in _InstrumentedFalconAPI._instrumented_falcon_apps:
-            FalconInstrumentor.uinstrument_app(app)
+            FalconInstrumentor.uninstrument_app(app)
         _InstrumentedFalconAPI._instrumented_falcon_apps.clear()
         setattr(falcon, _instrument_app, self._original_falcon_api)
