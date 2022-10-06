@@ -335,7 +335,7 @@ class _InstrumentedFalconAPI(getattr(falcon, _instrument_app)):
                 context.detach(token)
             raise
         finally:
-            if span and hasattr(span, "attributes"):
+            if span.is_recording():
                 duration_attrs[
                     SpanAttributes.HTTP_STATUS_CODE
                 ] = span.attributes.get(SpanAttributes.HTTP_STATUS_CODE)
