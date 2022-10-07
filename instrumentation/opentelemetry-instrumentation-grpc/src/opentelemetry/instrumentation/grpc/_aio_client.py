@@ -84,6 +84,21 @@ class _BaseAioClientInterceptor(OpenTelemetryClientInterceptor):
         )
         span.record_exception(exc)
 
+    def _start_interceptor_span(self, method):
+        # method _should_ be a string here but due to a bug in grpc, it is
+        # populated with a bytes object. Handle both cases such that we
+        # are forward-compatible with a fixed version of grpc
+        # More info: https://github.com/grpc/grpc/issues/31092
+        if isinstance(method, bytes):
+            method = method.decode()
+
+        return self._start_span(
+            method,
+            end_on_exit=False,
+            record_exception=False,
+            set_status_on_exception=False
+        )
+
     async def _wrap_unary_response(self, continuation, span):
         try:
             call = await continuation()
@@ -123,12 +138,8 @@ class UnaryUnaryAioClientInterceptor(
         if context.get_value(_SUPPRESS_INSTRUMENTATION_KEY):
             return await continuation(client_call_details, request)
 
-        method = client_call_details.method.decode("utf-8")
-        with self._start_span(
-            method,
-            end_on_exit=False,
-            record_exception=False,
-            set_status_on_exception=False,
+        with self._start_interceptor_span(
+            client_call_details.method,
         ) as span:
             new_details = self.propagate_trace_in_details(client_call_details)
 
@@ -150,12 +161,8 @@ class UnaryStreamAioClientInterceptor(
         if context.get_value(_SUPPRESS_INSTRUMENTATION_KEY):
             return await continuation(client_call_details, request)
 
-        method = client_call_details.method.decode("utf-8")
-        with self._start_span(
-            method,
-            end_on_exit=False,
-            record_exception=False,
-            set_status_on_exception=False,
+        with self._start_interceptor_span(
+            client_call_details.method,
         ) as span:
             new_details = self.propagate_trace_in_details(client_call_details)
 
@@ -174,12 +181,8 @@ class StreamUnaryAioClientInterceptor(
         if context.get_value(_SUPPRESS_INSTRUMENTATION_KEY):
             return await continuation(client_call_details, request_iterator)
 
-        method = client_call_details.method.decode("utf-8")
-        with self._start_span(
-            method,
-            end_on_exit=False,
-            record_exception=False,
-            set_status_on_exception=False,
+        with self._start_interceptor_span(
+            client_call_details.method,
         ) as span:
             new_details = self.propagate_trace_in_details(client_call_details)
 
@@ -201,12 +204,8 @@ class StreamStreamAioClientInterceptor(
         if context.get_value(_SUPPRESS_INSTRUMENTATION_KEY):
             return await continuation(client_call_details, request_iterator)
 
-        method = client_call_details.method.decode("utf-8")
-        with self._start_span(
-            method,
-            end_on_exit=False,
-            record_exception=False,
-            set_status_on_exception=False,
+        with self._start_interceptor_span(
+            client_call_details.method,
         ) as span:
             new_details = self.propagate_trace_in_details(client_call_details)
 
