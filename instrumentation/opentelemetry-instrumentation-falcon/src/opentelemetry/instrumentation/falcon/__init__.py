@@ -441,7 +441,6 @@ class _TraceMiddleware:
         propagator = get_global_response_propagator()
         if propagator:
             propagator.inject(resp, setter=_response_propagation_setter)
-
         if self._response_hook:
             self._response_hook(span, req, resp)
 
@@ -453,12 +452,12 @@ def _prepare_middleware_tuple(middleware_tuple, trace_middleware, independent_mi
     new_response_mw = []
     new_resource_mw = []
 
-    process_request = getattr(trace_middleware, 'process_request')
-    setattr(process_request.__func__, '_is_otel_method', True)
-    process_resource = getattr(trace_middleware, 'process_resource')
-    setattr(process_resource.__func__, '_is_otel_method', True)
-    process_response = getattr(trace_middleware, 'process_response')
-    setattr(process_response.__func__, '_is_otel_method', True)
+    process_request = getattr(trace_middleware, "process_request")
+    setattr(process_request.__func__, "_is_otel_method", True)
+    process_resource = getattr(trace_middleware, "process_resource")
+    setattr(process_resource.__func__, "_is_otel_method", True)
+    process_response = getattr(trace_middleware, "process_response")
+    setattr(process_response.__func__, "_is_otel_method", True)
 
     for each in response_mw:
         new_response_mw.append(each)
@@ -468,31 +467,41 @@ def _prepare_middleware_tuple(middleware_tuple, trace_middleware, independent_mi
         new_response_mw.append(process_response)
     else:
         new_request_mw.insert(0, (process_request, process_response))
-    
     new_resource_mw.insert(0, process_resource)
-    
     for each in request_mw:
         new_request_mw.append(each)
     for each in resource_mw:
         new_resource_mw.append(each)
-    
-    return (tuple(new_request_mw), tuple(new_resource_mw), tuple(new_response_mw))
+
+    return (
+        tuple(new_request_mw),
+        tuple(new_resource_mw),
+        tuple(new_response_mw),
+    )
 
 def remove_trace_middleware(middleware_tuple):
     request_mw, resource_mw, response_mw = middleware_tuple
-    
     new_request_mw = []
     for each in request_mw:
-        if isinstance(each, tuple) and not hasattr(each[0], '_is_otel_method'):
+        if isinstance(each, tuple) and not hasattr(each[0], "_is_otel_method"):
             new_request_mw.append(each)
-        elif not isinstance(each, tuple) and not hasattr(each, '_is_otel_method'):
+        elif not isinstance(each, tuple) and not hasattr(
+            each, "_is_otel_method"
+        ):
             new_request_mw.append(each)
-    
-    new_response_mw = [x for x in response_mw if not hasattr(each, '_is_otel_method')]
-    new_resource_mw = [x for x in resource_mw if not hasattr(each, '_is_otel_method')]
 
-    return (tuple(new_request_mw), tuple(new_resource_mw), tuple(new_response_mw))
-    
+    new_response_mw = [
+        x for x in response_mw if not hasattr(each, "_is_otel_method")
+    ]
+    new_resource_mw = [
+        x for x in resource_mw if not hasattr(each, "_is_otel_method")
+    ]
+
+    return (
+        tuple(new_request_mw),
+        tuple(new_resource_mw),
+        tuple(new_response_mw),
+    )
 
 
 class FalconInstrumentor(BaseInstrumentor):
@@ -504,7 +513,7 @@ class FalconInstrumentor(BaseInstrumentor):
 
     def instrumentation_dependencies(self) -> Collection[str]:
         return _instruments
-    
+ 
     @staticmethod
     def instrument_app(
         app, 
@@ -513,16 +522,25 @@ class FalconInstrumentor(BaseInstrumentor):
         tracer_provider=None, 
         meter_provider=None, 
         excluded_urls=None,
-        **opts
+        **opts,
     ):
         if not hasattr(app, "_is_instrumented_by_opentelemetry"):
+
             class FalconAPI(_InstrumentedFalconAPI):
-                def __init__(self, *args, ** kwargs):
+                def __init__(self, *args, **kwargs):
                     for attribute in app.__slots__:
                         setattr(self, attribute, getattr(app, attribute, None)) 
-                    self._otel_excluded_urls = excluded_urls if excluded_urls is not None else get_excluded_urls("FALCON")
-                    self._otel_tracer = trace.get_tracer(__name__, __version__, tracer_provider)
-                    self._otel_meter = get_meter(__name__, __version__, meter_provider)
+                    self._otel_excluded_urls = (
+                        excluded_urls
+                        if excluded_urls is not None
+                        else get_excluded_urls("FALCON")
+                    )
+                    self._otel_tracer = trace.get_tracer(
+                        __name__, __version__, tracer_provider
+                    )
+                    self._otel_meter = get_meter(
+                        __name__, __version__, meter_provider
+                    )
                     self.duration_histogram = self._otel_meter.create_histogram(
                         name="http.server.duration",
                         unit="ms",
@@ -536,12 +554,13 @@ class FalconInstrumentor(BaseInstrumentor):
                     self._is_instrumented_by_opentelemetry = False
 
             app = FalconAPI()
-        
+
         if not getattr(app, "_is_instrumented_by_opentelemetry", False):
             trace_middleware = _TraceMiddleware(
                 app._otel_tracer,
                 opts.pop(
-                    "traced_request_attributes", get_traced_request_attrs("FALCON")
+                    "traced_request_attributes",
+                    get_traced_request_attrs("FALCON"),
                 ),
                 request_hook,
                 response_hook,
@@ -553,7 +572,11 @@ class FalconInstrumentor(BaseInstrumentor):
                     independent_middleware=app._independent_middleware,
                 )
             else:
-                app._middleware = _prepare_middleware_tuple(app._middleware, trace_middleware, app._independent_middleware)
+                app._middleware = _prepare_middleware_tuple(
+                    app._middleware,
+                    trace_middleware,
+                    app._independent_middleware
+                )
             app._is_instrumented_by_opentelemetry = True
         return app
 
@@ -573,7 +596,7 @@ class FalconInstrumentor(BaseInstrumentor):
                     app._unprepared_middleware,
                     independent_middleware=app._independent_middleware,
                 )
-            elif hasattr(app, '_middleware_list'):
+            elif hasattr(app, "_middleware_list"):
                 app._middlewares_list = [
                     x
                     for x in app._middlewares_list
