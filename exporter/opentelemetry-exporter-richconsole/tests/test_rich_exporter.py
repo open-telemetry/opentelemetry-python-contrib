@@ -18,10 +18,7 @@ from rich.tree import Tree
 import opentelemetry.trace
 from opentelemetry.exporter.richconsole import RichConsoleSpanExporter
 from opentelemetry.sdk import trace
-from opentelemetry.sdk.trace.export import (
-    BatchSpanProcessor,
-    SimpleSpanProcessor,
-)
+from opentelemetry.sdk.trace.export import BatchSpanProcessor
 
 
 @pytest.fixture(name="span_processor")

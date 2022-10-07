@@ -54,7 +54,7 @@ API
 
 import datetime
 import typing
-from typing import Dict, List, Optional
+from typing import Dict, Optional
 
 from rich.console import Console
 from rich.syntax import Syntax
