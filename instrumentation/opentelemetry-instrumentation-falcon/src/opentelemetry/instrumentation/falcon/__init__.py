@@ -445,7 +445,9 @@ class _TraceMiddleware:
             self._response_hook(span, req, resp)
 
 
-def _prepare_middleware_tuple(middleware_tuple, trace_middleware, independent_middleware):
+def _prepare_middleware_tuple(
+    middleware_tuple, trace_middleware, independent_middleware
+):
     request_mw, resource_mw, response_mw = middleware_tuple
 
     new_request_mw = []
@@ -478,6 +480,7 @@ def _prepare_middleware_tuple(middleware_tuple, trace_middleware, independent_mi
         tuple(new_resource_mw),
         tuple(new_response_mw),
     )
+
 
 def remove_trace_middleware(middleware_tuple):
     request_mw, resource_mw, response_mw = middleware_tuple
@@ -513,14 +516,14 @@ class FalconInstrumentor(BaseInstrumentor):
 
     def instrumentation_dependencies(self) -> Collection[str]:
         return _instruments
- 
+
     @staticmethod
     def instrument_app(
-        app, 
-        request_hook=None, 
-        response_hook=None, 
-        tracer_provider=None, 
-        meter_provider=None, 
+        app,
+        request_hook=None,
+        response_hook=None,
+        tracer_provider=None,
+        meter_provider=None,
         excluded_urls=None,
         **opts,
     ):
@@ -529,7 +532,7 @@ class FalconInstrumentor(BaseInstrumentor):
             class FalconAPI(_InstrumentedFalconAPI):
                 def __init__(self, *args, **kwargs):
                     for attribute in app.__slots__:
-                        setattr(self, attribute, getattr(app, attribute, None)) 
+                        setattr(self, attribute, getattr(app, attribute, None))
                     self._otel_excluded_urls = (
                         excluded_urls
                         if excluded_urls is not None
@@ -575,8 +578,10 @@ class FalconInstrumentor(BaseInstrumentor):
                 app._middleware = _prepare_middleware_tuple(
                     app._middleware,
                     trace_middleware,
-                    app._independent_middleware
+                    app._independent_middleware,
                 )
+            if app not in _InstrumentedFalconAPI._instrumented_falcon_apps:
+                _InstrumentedFalconAPI._instrumented_falcon_apps.add(app)
             app._is_instrumented_by_opentelemetry = True
         return app
 
