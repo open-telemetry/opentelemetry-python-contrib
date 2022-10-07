@@ -494,10 +494,10 @@ def remove_trace_middleware(middleware_tuple):
             new_request_mw.append(each)
 
     new_response_mw = [
-        x for x in response_mw if not hasattr(each, "_is_otel_method")
+        x for x in response_mw if not hasattr(x, "_is_otel_method")
     ]
     new_resource_mw = [
-        x for x in resource_mw if not hasattr(each, "_is_otel_method")
+        x for x in resource_mw if not hasattr(x, "_is_otel_method")
     ]
 
     return (
