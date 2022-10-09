@@ -763,7 +763,7 @@ class TestAsgiAttributes(unittest.TestCase):
     def test_collect_target_attribute_fastapi_starlette_invalid(self):
         self.scope["route"] = object()
         self.assertIsNone(
-            otel_asgi._collect_target_attribute(self.scope), None
+            otel_asgi._collect_target_attribute(self.scope), "HTTP_TARGET values is not None"
         )
 
 
