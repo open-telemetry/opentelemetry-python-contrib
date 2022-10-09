@@ -384,8 +384,6 @@ def _collect_target_attribute(
     root_path = scope.get("root_path", "")
 
     route = scope.get("route")
-    if not route:
-        return None
     path_format = getattr(route, "path_format", None)
     if path_format:
         return f"{root_path}{path_format}"
