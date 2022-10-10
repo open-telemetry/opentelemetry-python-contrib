@@ -388,11 +388,16 @@ class GrpcAioInstrumentorServer(BaseInstrumentor):
             if "interceptors" in kwargs:
                 # add our interceptor as the first
                 kwargs["interceptors"].insert(
-                    0, aio_server_interceptor(tracer_provider=tracer_provider, filter_=self._filter)
+                    0,
+                    aio_server_interceptor(
+                        tracer_provider=tracer_provider, filter_=self._filter
+                    ),
                 )
             else:
                 kwargs["interceptors"] = [
-                    aio_server_interceptor(tracer_provider=tracer_provider, filter_=self._filter)
+                    aio_server_interceptor(
+                        tracer_provider=tracer_provider, filter_=self._filter
+                    )
                 ]
             return self._original_func(*args, **kwargs)
 
@@ -502,15 +507,13 @@ class GrpcAioInstrumentorClient(BaseInstrumentor):
         if "interceptors" in kwargs and kwargs["interceptors"]:
             kwargs["interceptors"] = (
                 aio_client_interceptors(
-                    tracer_provider=tracer_provider,
-                    filter_=self._filter
+                    tracer_provider=tracer_provider, filter_=self._filter
                 )
                 + kwargs["interceptors"]
             )
         else:
             kwargs["interceptors"] = aio_client_interceptors(
-                tracer_provider=tracer_provider,
-                filter_=self._filter
+                tracer_provider=tracer_provider, filter_=self._filter
             )
 
         return kwargs
@@ -612,11 +615,15 @@ def aio_server_interceptor(tracer_provider=None, filter_=None):
 
     tracer = trace.get_tracer(__name__, __version__, tracer_provider)
 
-    return _aio_server.OpenTelemetryAioServerInterceptor(tracer, filter_=filter_)
+    return _aio_server.OpenTelemetryAioServerInterceptor(
+        tracer, filter_=filter_
+    )
 
 
 def _excluded_service_filter() -> Union[Callable[[object], bool], None]:
-    services = _parse_services(os.environ.get("OTEL_PYTHON_GRPC_EXCLUDED_SERVICES", ""))
+    services = _parse_services(
+        os.environ.get("OTEL_PYTHON_GRPC_EXCLUDED_SERVICES", "")
+    )
     if len(services) == 0:
         return None
     filters = (service_name(srv) for srv in services)
@@ -625,7 +632,9 @@ def _excluded_service_filter() -> Union[Callable[[object], bool], None]:
 
 def _parse_services(excluded_services: str) -> List[str]:
     if excluded_services != "":
-        excluded_service_list = [s.strip() for s in excluded_services.split(",")]
+        excluded_service_list = [
+            s.strip() for s in excluded_services.split(",")
+        ]
     else:
         excluded_service_list = []
     return excluded_service_list

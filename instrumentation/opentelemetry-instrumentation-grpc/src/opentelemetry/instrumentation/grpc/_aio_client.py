@@ -96,7 +96,7 @@ class _BaseAioClientInterceptor(OpenTelemetryClientInterceptor):
             method,
             end_on_exit=False,
             record_exception=False,
-            set_status_on_exception=False
+            set_status_on_exception=False,
         )
 
     async def _wrap_unary_response(self, continuation, span):
@@ -126,7 +126,6 @@ class _BaseAioClientInterceptor(OpenTelemetryClientInterceptor):
             raise exc
         finally:
             span.end()
-
 
     def tracing_skipped(self, client_call_details):
         return context.get_value(

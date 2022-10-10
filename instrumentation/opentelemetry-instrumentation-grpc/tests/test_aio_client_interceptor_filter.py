@@ -26,6 +26,7 @@ except ImportError:
                 "This test requires Python 3.8 for unittest.IsolatedAsyncioTestCase"
             )
 
+
 from unittest import mock
 
 import os
@@ -123,9 +124,7 @@ class TestAioClientInterceptorFiltered(TestBase, IsolatedAsyncioTestCase):
     async def test_instrument_filtered_env_and_option(self):
         with mock.patch.dict(
             os.environ,
-            {
-                "OTEL_PYTHON_GRPC_EXCLUDED_SERVICES": "GRPCMockServer"
-            },
+            {"OTEL_PYTHON_GRPC_EXCLUDED_SERVICES": "GRPCMockServer"},
         ):
             instrumentor = GrpcAioInstrumentorClient(
                 filter_=filters.service_prefix("GRPCTestServer")
