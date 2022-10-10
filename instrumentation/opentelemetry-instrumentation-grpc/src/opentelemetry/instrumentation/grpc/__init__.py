@@ -477,18 +477,31 @@ class GrpcAioInstrumentorClient(BaseInstrumentor):
 
     # pylint:disable=attribute-defined-outside-init, redefined-outer-name
 
+    def __init__(self, filter_=None):
+        excluded_service_filter = _excluded_service_filter()
+        if excluded_service_filter is not None:
+            if filter_ is None:
+                filter_ = excluded_service_filter
+            else:
+                filter_ = any_of(filter_, excluded_service_filter)
+        self._filter = filter_
+
     def instrumentation_dependencies(self) -> Collection[str]:
         return _instruments
 
     def _add_interceptors(self, tracer_provider, kwargs):
         if "interceptors" in kwargs and kwargs["interceptors"]:
             kwargs["interceptors"] = (
-                aio_client_interceptors(tracer_provider=tracer_provider)
+                aio_client_interceptors(
+                    tracer_provider=tracer_provider,
+                    filter_=self._filter
+                )
                 + kwargs["interceptors"]
             )
         else:
             kwargs["interceptors"] = aio_client_interceptors(
-                tracer_provider=tracer_provider
+                tracer_provider=tracer_provider,
+                filter_=self._filter
             )
 
         return kwargs
@@ -556,7 +569,7 @@ def server_interceptor(tracer_provider=None, filter_=None):
     return _server.OpenTelemetryServerInterceptor(tracer, filter_=filter_)
 
 
-def aio_client_interceptors(tracer_provider=None):
+def aio_client_interceptors(tracer_provider=None, filter_=None):
     """Create a gRPC client channel interceptor.
 
     Args:
@@ -570,10 +583,10 @@ def aio_client_interceptors(tracer_provider=None):
     tracer = trace.get_tracer(__name__, __version__, tracer_provider)
 
     return [
-        _aio_client.UnaryUnaryAioClientInterceptor(tracer),
-        _aio_client.UnaryStreamAioClientInterceptor(tracer),
-        _aio_client.StreamUnaryAioClientInterceptor(tracer),
-        _aio_client.StreamStreamAioClientInterceptor(tracer),
+        _aio_client.UnaryUnaryAioClientInterceptor(tracer, filter_=filter_),
+        _aio_client.UnaryStreamAioClientInterceptor(tracer, filter_=filter_),
+        _aio_client.StreamUnaryAioClientInterceptor(tracer, filter_=filter_),
+        _aio_client.StreamStreamAioClientInterceptor(tracer, filter_=filter_),
     ]
 
 
@@ -594,9 +607,7 @@ def aio_server_interceptor(tracer_provider=None):
 
 
 def _excluded_service_filter() -> Union[Callable[[object], bool], None]:
-    services = _parse_services(
-        os.environ.get("OTEL_PYTHON_GRPC_EXCLUDED_SERVICES", "")
-    )
+    services = _parse_services(os.environ.get("OTEL_PYTHON_GRPC_EXCLUDED_SERVICES", ""))
     if len(services) == 0:
         return None
     filters = (service_name(srv) for srv in services)
@@ -605,9 +616,7 @@ def _excluded_service_filter() -> Union[Callable[[object], bool], None]:
 
 def _parse_services(excluded_services: str) -> List[str]:
     if excluded_services != "":
-        excluded_service_list = [
-            s.strip() for s in excluded_services.split(",")
-        ]
+        excluded_service_list = [s.strip() for s in excluded_services.split(",")]
     else:
         excluded_service_list = []
     return excluded_service_list

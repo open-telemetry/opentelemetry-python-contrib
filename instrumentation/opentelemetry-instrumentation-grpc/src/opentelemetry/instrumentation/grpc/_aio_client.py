@@ -128,6 +128,15 @@ class _BaseAioClientInterceptor(OpenTelemetryClientInterceptor):
             span.end()
 
 
+    def tracing_skipped(self, client_call_details):
+        return context.get_value(
+            _SUPPRESS_INSTRUMENTATION_KEY
+        ) or not self.rpc_matches_filters(client_call_details)
+
+    def rpc_matches_filters(self, client_call_details):
+        return self._filter is None or self._filter(client_call_details)
+
+
 class UnaryUnaryAioClientInterceptor(
     grpc.aio.UnaryUnaryClientInterceptor,
     _BaseAioClientInterceptor,
@@ -135,7 +144,7 @@ class UnaryUnaryAioClientInterceptor(
     async def intercept_unary_unary(
         self, continuation, client_call_details, request
     ):
-        if context.get_value(_SUPPRESS_INSTRUMENTATION_KEY):
+        if self.tracing_skipped(client_call_details):
             return await continuation(client_call_details, request)
 
         with self._start_interceptor_span(
@@ -158,7 +167,7 @@ class UnaryStreamAioClientInterceptor(
     async def intercept_unary_stream(
         self, continuation, client_call_details, request
     ):
-        if context.get_value(_SUPPRESS_INSTRUMENTATION_KEY):
+        if self.tracing_skipped(client_call_details):
             return await continuation(client_call_details, request)
 
         with self._start_interceptor_span(
@@ -178,7 +187,7 @@ class StreamUnaryAioClientInterceptor(
     async def intercept_stream_unary(
         self, continuation, client_call_details, request_iterator
     ):
-        if context.get_value(_SUPPRESS_INSTRUMENTATION_KEY):
+        if self.tracing_skipped(client_call_details):
             return await continuation(client_call_details, request_iterator)
 
         with self._start_interceptor_span(
@@ -201,7 +210,7 @@ class StreamStreamAioClientInterceptor(
     async def intercept_stream_stream(
         self, continuation, client_call_details, request_iterator
     ):
-        if context.get_value(_SUPPRESS_INSTRUMENTATION_KEY):
+        if self.tracing_skipped(client_call_details):
             return await continuation(client_call_details, request_iterator)
 
         with self._start_interceptor_span(
