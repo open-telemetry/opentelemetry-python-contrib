@@ -12,6 +12,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - `opentelemetry-instrumentation-django` Fixed bug where auto-instrumentation fails when django is installed and settings are not configured.
   ([#1369](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/1369))
 - `opentelemetry-instrumentation-system-metrics` add supports to collect system thread count. ([#1339](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/1339))
+- `opentelemetry-exporter-richconsole` Fixing RichConsoleExpoter to allow multiple traces, fixing duplicate spans and include resources ([#1336](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/1336))
 
 ## [1.13.0-0.34b0](https://github.com/open-telemetry/opentelemetry-python/releases/tag/v1.13.0-0.34b0) - 2022-09-26
 
@@ -51,7 +52,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   ([#1313](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/1313))
 - Fix uninstrumentation of existing app instances in FastAPI
   ([#1258](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/1258))
-- `opentelemetry-exporter-richconsole` Fixing RichConsoleExpoter to allow multiple traces, fixing duplicate spans and include resources ([#1336](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/1336))
+- Fix uninstrumentation of existing app instances in falcon
+  ([#1341]https://github.com/open-telemetry/opentelemetry-python-contrib/pull/1341)
 
 ## [1.12.0-0.33b0](https://github.com/open-telemetry/opentelemetry-python/releases/tag/v1.12.0-0.33b0) - 2022-08-08
 
