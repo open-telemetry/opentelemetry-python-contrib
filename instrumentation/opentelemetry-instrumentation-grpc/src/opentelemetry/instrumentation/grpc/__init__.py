@@ -368,6 +368,15 @@ class GrpcAioInstrumentorServer(BaseInstrumentor):
 
     # pylint:disable=attribute-defined-outside-init, redefined-outer-name
 
+    def __init__(self, filter_=None):
+        excluded_service_filter = _excluded_service_filter()
+        if excluded_service_filter is not None:
+            if filter_ is None:
+                filter_ = excluded_service_filter
+            else:
+                filter_ = any_of(filter_, excluded_service_filter)
+        self._filter = filter_
+
     def instrumentation_dependencies(self) -> Collection[str]:
         return _instruments
 
@@ -379,11 +388,11 @@ class GrpcAioInstrumentorServer(BaseInstrumentor):
             if "interceptors" in kwargs:
                 # add our interceptor as the first
                 kwargs["interceptors"].insert(
-                    0, aio_server_interceptor(tracer_provider=tracer_provider)
+                    0, aio_server_interceptor(tracer_provider=tracer_provider, filter_=self._filter)
                 )
             else:
                 kwargs["interceptors"] = [
-                    aio_server_interceptor(tracer_provider=tracer_provider)
+                    aio_server_interceptor(tracer_provider=tracer_provider, filter_=self._filter)
                 ]
             return self._original_func(*args, **kwargs)
 
@@ -590,7 +599,7 @@ def aio_client_interceptors(tracer_provider=None, filter_=None):
     ]
 
 
-def aio_server_interceptor(tracer_provider=None):
+def aio_server_interceptor(tracer_provider=None, filter_=None):
     """Create a gRPC aio server interceptor.
 
     Args:
@@ -603,7 +612,7 @@ def aio_server_interceptor(tracer_provider=None):
 
     tracer = trace.get_tracer(__name__, __version__, tracer_provider)
 
-    return _aio_server.OpenTelemetryAioServerInterceptor(tracer)
+    return _aio_server.OpenTelemetryAioServerInterceptor(tracer, filter_=filter_)
 
 
 def _excluded_service_filter() -> Union[Callable[[object], bool], None]:

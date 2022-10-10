@@ -37,6 +37,9 @@ class OpenTelemetryAioServerInterceptor(
     """
 
     async def intercept_service(self, continuation, handler_call_details):
+        if self._filter is not None and not self._filter(handler_call_details):
+            return continuation(handler_call_details)
+
         def telemetry_wrapper(behavior, request_streaming, response_streaming):
             # handle streaming responses specially
             if response_streaming:

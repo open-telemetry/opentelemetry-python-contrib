@@ -101,43 +101,45 @@ class TestOpenTelemetryAioServerInterceptor(TestBase, IsolatedAsyncioTestCase):
         rpc_call = "/GRPCTestServer/SimpleMethod"
 
         grpc_aio_server_instrumentor = GrpcAioInstrumentorServer()
-        grpc_aio_server_instrumentor.instrument()
+        try:
+            grpc_aio_server_instrumentor.instrument()
 
-        async def request(channel):
-            request = Request(client_id=1, request_data="test")
-            msg = request.SerializeToString()
-            return await channel.unary_unary(rpc_call)(msg)
+            async def request(channel):
+                request = Request(client_id=1, request_data="test")
+                msg = request.SerializeToString()
+                return await channel.unary_unary(rpc_call)(msg)
 
-        await run_with_test_server(request, add_interceptor=False)
+            await run_with_test_server(request, add_interceptor=False)
 
-        spans_list = self.memory_exporter.get_finished_spans()
-        self.assertEqual(len(spans_list), 1)
-        span = spans_list[0]
+            spans_list = self.memory_exporter.get_finished_spans()
+            self.assertEqual(len(spans_list), 1)
+            span = spans_list[0]
 
-        self.assertEqual(span.name, rpc_call)
-        self.assertIs(span.kind, trace.SpanKind.SERVER)
+            self.assertEqual(span.name, rpc_call)
+            self.assertIs(span.kind, trace.SpanKind.SERVER)
 
-        # Check version and name in span's instrumentation info
-        self.assertEqualSpanInstrumentationInfo(
-            span, opentelemetry.instrumentation.grpc
-        )
+            # Check version and name in span's instrumentation info
+            self.assertEqualSpanInstrumentationInfo(
+                span, opentelemetry.instrumentation.grpc
+            )
 
-        # Check attributes
-        self.assertSpanHasAttributes(
-            span,
-            {
-                SpanAttributes.NET_PEER_IP: "[::1]",
-                SpanAttributes.NET_PEER_NAME: "localhost",
-                SpanAttributes.RPC_METHOD: "SimpleMethod",
-                SpanAttributes.RPC_SERVICE: "GRPCTestServer",
-                SpanAttributes.RPC_SYSTEM: "grpc",
-                SpanAttributes.RPC_GRPC_STATUS_CODE: grpc.StatusCode.OK.value[
-                    0
-                ],
-            },
-        )
+            # Check attributes
+            self.assertSpanHasAttributes(
+                span,
+                {
+                    SpanAttributes.NET_PEER_IP: "[::1]",
+                    SpanAttributes.NET_PEER_NAME: "localhost",
+                    SpanAttributes.RPC_METHOD: "SimpleMethod",
+                    SpanAttributes.RPC_SERVICE: "GRPCTestServer",
+                    SpanAttributes.RPC_SYSTEM: "grpc",
+                    SpanAttributes.RPC_GRPC_STATUS_CODE: grpc.StatusCode.OK.value[
+                        0
+                    ],
+                },
+            )
 
-        grpc_aio_server_instrumentor.uninstrument()
+        finally:
+            grpc_aio_server_instrumentor.uninstrument()
 
     async def test_uninstrument(self):
         """Check that uninstrument removes the interceptor"""
