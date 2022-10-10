@@ -50,7 +50,6 @@ from .protobuf.test_server_pb2_grpc import (
     GRPCTestServerServicer,
     add_GRPCTestServerServicer_to_server,
 )
-
 from .test_aio_server_interceptor import Servicer, run_with_test_server
 
 # pylint:disable=unused-argument

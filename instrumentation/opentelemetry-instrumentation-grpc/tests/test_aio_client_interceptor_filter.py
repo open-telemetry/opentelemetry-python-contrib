@@ -27,9 +27,9 @@ except ImportError:
             )
 
 
+import os
 from unittest import mock
 
-import os
 import grpc
 import pytest
 
