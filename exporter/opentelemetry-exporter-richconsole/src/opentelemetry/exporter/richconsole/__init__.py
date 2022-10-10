@@ -76,6 +76,11 @@ def _child_to_tree(child: Tree, span: ReadableSpan):
     child.add(
         Text.from_markup(f"[bold cyan]Kind :[/bold cyan] {span.kind.name}")
     )
+    _add_status(child, span)
+    _child_add_optional_attributes(child, span)
+
+
+def _add_status(child: Tree, span: ReadableSpan):
     if not span.status.is_unset:
         if not span.status.is_ok:
             child.add(
@@ -96,6 +101,8 @@ def _child_to_tree(child: Tree, span: ReadableSpan):
             )
         )
 
+
+def _child_add_optional_attributes(child: Tree, span: ReadableSpan):
     if span.events:
         events = child.add(
             label=Text.from_markup("[bold cyan]Events :[/bold cyan] ")
@@ -159,7 +166,7 @@ class RichConsoleSpanExporter(SpanExporter):
 
     @staticmethod
     def spans_to_tree(spans: typing.Sequence[ReadableSpan]) -> Dict[str, Tree]:
-        trees = dict()
+        trees = {}
         parents = {}
         spans = list(spans)
         while spans:

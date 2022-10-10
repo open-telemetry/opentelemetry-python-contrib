@@ -53,7 +53,7 @@ def test_span_exporter(tracer_provider, span_processor, capsys):
 
 def walk_tree(root: Tree) -> int:
     # counts the amount of spans in a tree that contains a span
-    return sum([walk_tree(child) for child in root.children]) + int(
+    return sum(walk_tree(child) for child in root.children) + int(
         "span" in root.label
     )
 
@@ -80,25 +80,19 @@ def test_multiple_traces(tracer_provider):
     )
 
     # asserts that we have exactly the number of spans we exported
-    assert sum([walk_tree(tree) for tree in trees.values()]) == 3
+    assert sum(walk_tree(tree) for tree in trees.values()) == 3
 
     # assert that the relationship is correct
     assert parent_1.name in trees[traceid_1].children[0].label
     assert any(
-        [
-            child_1.name in child.label
-            for child in trees[traceid_1].children[0].children
-        ]
+        child_1.name in child.label
+        for child in trees[traceid_1].children[0].children
     )
     assert not any(
-        [
-            parent_1.name in child.label
-            for child in trees[traceid_1].children[0].children
-        ]
+        parent_1.name in child.label
+        for child in trees[traceid_1].children[0].children
     )
     assert not any(
-        [
-            parent_2.name in child.label
-            for child in trees[traceid_1].children[0].children
-        ]
+        parent_2.name in child.label
+        for child in trees[traceid_1].children[0].children
     )
