@@ -42,6 +42,13 @@ def _full_method(metadata):
     # grpcext._interceptor._UnaryClientInfo/_StreamClientInfo
     elif hasattr(metadata, "full_method"):
         name = metadata.full_method
+    # NOTE: this is to handle the grpc.aio Server case. The type interface
+    # indicates that metadata should be a grpc.HandlerCallDetails and be
+    # matched prior to this but it is in fact an internal C-extension level
+    # object.
+    elif hasattr(metadata, "method"):
+        name = metadata.method
+
     return name
 
 
