@@ -389,5 +389,5 @@ class PrometheusRemoteWriteMetricsExporter(MetricExporter):
     def force_flush(self, timeout_millis: float = 10_000) -> bool:
         return True
 
-    def shutdown(self) -> None:
+    def shutdown(self, timeout_millis: float = 30_000, **kwargs) -> None:
         pass
