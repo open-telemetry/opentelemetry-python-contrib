@@ -200,8 +200,10 @@ _TraceContext = namedtuple("TraceContext", ["activation", "span", "token"])
 _HANDLER_CONTEXT_KEY = "_otel_trace_context_key"
 _OTEL_PATCHED_KEY = "_otel_patched_key"
 
-
 _START_TIME = "start_time"
+_CLIENT_DURATION_HISTOGRAM = "http.client.duration"
+_CLIENT_REQUEST_SIZE_HISTOGRAM = "http.client.request.size"
+_CLIENT_RESPONSE_SIZE_HISTOGRAM = "http.client.response.size"
 _SERVER_DURATION_HISTOGRAM = "http.server.duration"
 _SERVER_REQUEST_SIZE_HISTOGRAM = "http.server.request.size"
 _SERVER_RESPONSE_SIZE_HISTOGRAM = "http.server.response.size"
@@ -245,23 +247,8 @@ class TornadoInstrumentor(BaseInstrumentor):
         meter_provider = kwargs.get("meter_provider")
         meter = get_meter(__name__, __version__, meter_provider)
 
+        client_histograms = _create_client_histograms(meter)
         server_histograms = _create_server_histograms(meter)
-
-        client_duration_histogram = meter.create_histogram(
-            name="http.client.duration",
-            unit="ms",
-            description="measures the duration outbound HTTP requests",
-        )
-        client_request_size_histogram = meter.create_histogram(
-            name="http.client.request.size",
-            unit="By",
-            description="measures the size of HTTP request messages (compressed)",
-        )
-        client_response_size_histogram = meter.create_histogram(
-            name="http.client.response.size",
-            unit="By",
-            description="measures the size of HTTP response messages (compressed)",
-        )
 
         client_request_hook = kwargs.get("client_request_hook", None)
         client_response_hook = kwargs.get("client_response_hook", None)
@@ -286,9 +273,9 @@ class TornadoInstrumentor(BaseInstrumentor):
                 tracer,
                 client_request_hook,
                 client_response_hook,
-                client_duration_histogram,
-                client_request_size_histogram,
-                client_response_size_histogram,
+                client_histograms[_CLIENT_DURATION_HISTOGRAM],
+                client_histograms[_CLIENT_REQUEST_SIZE_HISTOGRAM],
+                client_histograms[_CLIENT_RESPONSE_SIZE_HISTOGRAM],
             ),
         )
 
@@ -321,6 +308,28 @@ def _create_server_histograms(meter) -> Dict[str, Histogram]:
             name="http.server.active_requests",
             unit="requests",
             description="measures the number of concurrent HTTP requests that are currently in-flight",
+        ),
+    }
+
+    return histograms
+
+
+def _create_client_histograms(meter) -> Dict[str, Histogram]:
+    histograms = {
+        _CLIENT_DURATION_HISTOGRAM: meter.create_histogram(
+            name="http.client.duration",
+            unit="ms",
+            description="measures the duration outbound HTTP requests",
+        ),
+        _CLIENT_REQUEST_SIZE_HISTOGRAM: meter.create_histogram(
+            name="http.client.request.size",
+            unit="By",
+            description="measures the size of HTTP request messages (compressed)",
+        ),
+        _CLIENT_RESPONSE_SIZE_HISTOGRAM: meter.create_histogram(
+            name="http.client.response.size",
+            unit="By",
+            description="measures the size of HTTP response messages (compressed)",
         ),
     }
 
@@ -550,7 +559,7 @@ def _finish_span(tracer, handler, error=None):
 
 
 def _record_prepare_metrics(server_histograms, handler):
-    request_size = len(handler.request.body)
+    request_size = int(handler.request.headers.get("Content-Length", 0))
     metric_attributes = _create_metric_attributes(handler)
 
     server_histograms[_SERVER_REQUEST_SIZE_HISTOGRAM].record(
