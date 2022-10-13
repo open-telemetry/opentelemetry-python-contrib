@@ -33,17 +33,11 @@ from unittest import mock
 import grpc
 import pytest
 
-import opentelemetry.instrumentation.grpc
-from opentelemetry import context, trace
 from opentelemetry.instrumentation.grpc import (
     GrpcAioInstrumentorClient,
     aio_client_interceptors,
     filters,
 )
-from opentelemetry.instrumentation.grpc._aio_client import (
-    UnaryUnaryAioClientInterceptor,
-)
-from opentelemetry.semconv.trace import SpanAttributes
 from opentelemetry.test.test_base import TestBase
 
 from ._aio_client import (

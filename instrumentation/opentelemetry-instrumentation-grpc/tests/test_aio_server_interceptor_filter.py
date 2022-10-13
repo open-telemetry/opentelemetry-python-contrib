@@ -26,6 +26,7 @@ except ImportError:
                 "This test requires Python 3.8 for unittest.IsolatedAsyncioTestCase"
             )
 
+
 import grpc
 import grpc.aio
 import pytest
@@ -36,16 +37,10 @@ from opentelemetry.instrumentation.grpc import (
     aio_server_interceptor,
     filters,
 )
-from opentelemetry.sdk import trace as trace_sdk
-from opentelemetry.semconv.trace import SpanAttributes
 from opentelemetry.test.test_base import TestBase
-from opentelemetry.trace import StatusCode
 
-from .protobuf.test_server_pb2 import Request, Response
-from .protobuf.test_server_pb2_grpc import (
-    GRPCTestServerServicer,
-    add_GRPCTestServerServicer_to_server,
-)
+from .protobuf.test_server_pb2 import Request
+from .protobuf.test_server_pb2_grpc import add_GRPCTestServerServicer_to_server
 from .test_aio_server_interceptor import Servicer
 
 # pylint:disable=unused-argument
