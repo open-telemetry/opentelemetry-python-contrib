@@ -338,7 +338,9 @@ class _InstrumentedFalconAPI(getattr(falcon, _instrument_app)):
                 activation.__exit__(None, None, None)
             else:
                 activation.__exit__(
-                    type(exception), exception, getattr(exception, "__traceback__", None)
+                    type(exception),
+                    exception,
+                    getattr(exception, "__traceback__", None),
                 )
             if token is not None:
                 context.detach(token)
