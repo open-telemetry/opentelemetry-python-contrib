@@ -312,7 +312,7 @@ class RequestsInstrumentor(BaseInstrumentor):
             meter_provider,
         )
         duration_histogram = meter.create_histogram(
-            name="MetricInstruments.HTTP_CLIENT_DURATION",
+            name=MetricInstruments.HTTP_CLIENT_DURATION,
             unit="ms",
             description="measures the duration of the outbound HTTP request",
         )
