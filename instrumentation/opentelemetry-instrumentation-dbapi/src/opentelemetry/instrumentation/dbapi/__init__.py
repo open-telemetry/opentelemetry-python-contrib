@@ -324,6 +324,10 @@ def get_traced_connection_proxy(
     # pylint: disable=abstract-method
     class TracedConnectionProxy(type(connection), _TracedConnectionProxy):
         def __init__(self, connection):
+            self._sock = connection._sock
+            self._auth_plugin_name = connection._auth_plugin_name
+            self._closed = connection._closed
+            self._secure = connection._secure
             self._connection = connection
 
         def __getattr__(self, name):
