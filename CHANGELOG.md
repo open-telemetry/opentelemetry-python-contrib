@@ -6,12 +6,16 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased](https://github.com/open-telemetry/opentelemetry-python/compare/v1.13.0-0.34b0...HEAD)
+- Add metric instrumentation for tornado
+  ([#1252](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/1252))
+
 
 ### Added
 
 - `opentelemetry-instrumentation-django` Fixed bug where auto-instrumentation fails when django is installed and settings are not configured.
   ([#1369](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/1369))
 - `opentelemetry-instrumentation-system-metrics` add supports to collect system thread count. ([#1339](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/1339))
+- `opentelemetry-exporter-richconsole` Fixing RichConsoleExpoter to allow multiple traces, fixing duplicate spans and include resources ([#1336](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/1336))
 
 ## [1.13.0-0.34b0](https://github.com/open-telemetry/opentelemetry-python/releases/tag/v1.13.0-0.34b0) - 2022-09-26
 
@@ -73,6 +77,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   ([#1197](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/1197))
 - Add metric instumentation for flask
   ([#1186](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/1186))
+- Add a test for asgi using NoOpTracerProvider
+  ([#1367](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/1367))
 
 ## [1.12.0rc2-0.32b0](https://github.com/open-telemetry/opentelemetry-python/releases/tag/v1.12.0rc2-0.32b0) - 2022-07-01
 
