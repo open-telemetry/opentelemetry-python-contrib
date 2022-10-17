@@ -66,6 +66,8 @@ class MySQLInstrumentor(BaseInstrumentor):
         https://dev.mysql.com/doc/connector-python/en/
         """
         tracer_provider = kwargs.get("tracer_provider")
+        enable_sqlcommenter = kwargs.get("enable_commenter", False)
+        commenter_options = kwargs.get("commenter_options", {})
 
         dbapi.wrap_connect(
             __name__,
@@ -75,6 +77,8 @@ class MySQLInstrumentor(BaseInstrumentor):
             self._CONNECTION_ATTRIBUTES,
             version=__version__,
             tracer_provider=tracer_provider,
+            enable_commenter=enable_sqlcommenter,
+            commenter_options=commenter_options,
         )
 
     def _uninstrument(self, **kwargs):
