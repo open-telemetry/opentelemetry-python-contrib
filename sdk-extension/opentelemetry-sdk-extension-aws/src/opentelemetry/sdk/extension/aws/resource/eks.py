@@ -121,14 +121,19 @@ class AwsEksResourceDetector(ResourceDetector):
                     "Neither cluster name nor container ID found on EKS process."
                 )
 
-            return Resource(
-                {
-                    ResourceAttributes.CLOUD_PROVIDER: CloudProviderValues.AWS.value,
-                    ResourceAttributes.CLOUD_PLATFORM: CloudPlatformValues.AWS_EKS.value,
-                    ResourceAttributes.K8S_CLUSTER_NAME: cluster_name,
-                    ResourceAttributes.CONTAINER_ID: container_id,
-                }
-            )
+            resource_attributes = {
+                ResourceAttributes.CLOUD_PROVIDER: CloudProviderValues.AWS.value,
+                ResourceAttributes.CLOUD_PLATFORM: CloudPlatformValues.AWS_EKS.value,
+                ResourceAttributes.K8S_CLUSTER_NAME: cluster_name,
+                ResourceAttributes.CONTAINER_ID: container_id
+            }
+
+            if cluster_name:
+                log_group_name = f"/aws/containerinsights/{cluster_name}/application"
+                resource_attributes[ResourceAttributes.AWS_LOG_GROUP_NAMES] = [log_group_name]
+
+            return Resource(resource_attributes)
+
         # pylint: disable=broad-except
         except Exception as exception:
             if self.raise_on_error:

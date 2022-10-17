@@ -28,6 +28,7 @@ MockEksResourceAttributes = {
     ResourceAttributes.CLOUD_PLATFORM: CloudPlatformValues.AWS_EKS.value,
     ResourceAttributes.K8S_CLUSTER_NAME: "mock-cluster-name",
     ResourceAttributes.CONTAINER_ID: "a4d00c9dd675d67f866c786181419e1b44832d4696780152e61afd44a3e02856",
+    ResourceAttributes.AWS_LOG_GROUP_NAMES: ("/aws/containerinsights/mock-cluster-name/application",)
 }
 
 
