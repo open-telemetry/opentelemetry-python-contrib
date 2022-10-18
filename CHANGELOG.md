@@ -8,6 +8,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased](https://github.com/open-telemetry/opentelemetry-python/compare/v1.13.0-0.34b0...HEAD)
 - Add metric instrumentation for tornado
   ([#1252](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/1252))
+- `opentelemetry-distro` Deprecate `otlp_proto_grpc` and `otlp_proto_http` in favor of using
+  `OTEL_EXPORTER_OTLP_TRACES_PROTOCOL` as according to specifications
+  ([#1250](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/1250))
 
 
 ### Added
@@ -43,9 +46,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
-- `opentelemetry-distro` Deprecate `otlp_proto_grpc` and `otlp_proto_http` in favor of using
-  `OTEL_EXPORTER_OTLP_TRACES_PROTOCOL` as according to specifications
-  ([#1250](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/1250))
 - `opentelemetry-instrumentation-boto3sqs` Make propagation compatible with other SQS instrumentations, add 'messaging.url' span attribute, and fix missing package dependencies.
   ([#1234](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/1234))
 - `opentelemetry-instrumentation-pymongo` Change span names to not contain queries but only database name and command name
