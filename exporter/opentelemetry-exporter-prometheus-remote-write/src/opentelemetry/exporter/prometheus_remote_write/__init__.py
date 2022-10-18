@@ -50,8 +50,9 @@ from opentelemetry.sdk.metrics.export import (
 
 logger = logging.getLogger(__name__)
 
-PROMETHEUS_NAME_REGEX = re.compile(r"[^\w:]")
-PROMETHEUS_LABEL_REGEX = re.compile(r"[^\w]")
+PROMETHEUS_NAME_REGEX = re.compile(r"^\d|[^\w:]")
+PROMETHEUS_LABEL_REGEX = re.compile(r"^\d|[^\w]")
+UNDERSCORE_REGEX = re.compile(r"_+")
 
 
 class PrometheusRemoteWriteMetricsExporter(MetricExporter):
@@ -266,17 +267,28 @@ class PrometheusRemoteWriteMetricsExporter(MetricExporter):
 
     def _label(self, name: str, value: str) -> Label:
         label = Label()
-        label.name = PROMETHEUS_LABEL_REGEX.sub("_", name)
+        label.name = self._sanitize_string(name,"label")
         label.value = value
         return label
 
-    def _sanitize_name(self, name):
+    def _sanitize_string(self, string: str, type_: str) -> str:
         # I Think Prometheus requires names to NOT start with a number this
         # would not catch that, but do cover the other cases. The naming rules
         # don't explicit say this, but the supplied regex implies it.
         # Got a little weird trying to do substitution with it, but can be
         # fixed if we allow numeric beginnings to metric names
-        return PROMETHEUS_NAME_REGEX.sub("_", name)
+        if type_ == "name":
+            sanitized = PROMETHEUS_NAME_REGEX.sub("_", string)
+        elif type_ == "label":
+            sanitized = PROMETHEUS_LABEL_REGEX.sub("_", string)
+        else:
+            raise TypeError(f"Unsupported string type: {type_}")
+
+        # Remove consecutive underscores
+        # TODO: Unfortunately this clobbbers __name__
+        #sanitized = UNDERSCORE_REGEX.sub("_",sanitized)
+
+        return sanitized
 
     def _parse_histogram_data_point(self, data_point, name):
 
@@ -292,7 +304,7 @@ class PrometheusRemoteWriteMetricsExporter(MetricExporter):
             # Metric Level attributes + the bucket boundary attribute + name
             ts_attrs = base_attrs.copy()
             ts_attrs.append(
-                ("__name__", self._sanitize_name(name_override or name))
+                ("__name__", self._sanitize_string(name_override or name,"name"))
             )
             if bound:
                 ts_attrs.append(("le", str(bound)))
@@ -322,7 +334,7 @@ class PrometheusRemoteWriteMetricsExporter(MetricExporter):
     def _parse_data_point(self, data_point, name=None):
 
         attrs = tuple(data_point.attributes.items()) + (
-            ("__name__", self._sanitize_name(name)),
+            ("__name__", self._sanitize_string(name,"name")),
         )
         sample = (data_point.value, (data_point.time_unix_nano // 1_000_000))
         return attrs, sample
