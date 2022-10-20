@@ -267,7 +267,7 @@ class PrometheusRemoteWriteMetricsExporter(MetricExporter):
 
     def _label(self, name: str, value: str) -> Label:
         label = Label()
-        label.name = self._sanitize_string(name,"label")
+        label.name = self._sanitize_string(name, "label")
         label.value = value
         return label
 
@@ -286,14 +286,11 @@ class PrometheusRemoteWriteMetricsExporter(MetricExporter):
 
         # Remove consecutive underscores
         # TODO: Unfortunately this clobbbers __name__
-        #sanitized = UNDERSCORE_REGEX.sub("_",sanitized)
+        # sanitized = UNDERSCORE_REGEX.sub("_",sanitized)
 
         return sanitized
 
     def _parse_histogram_data_point(self, data_point, name):
-
-        # if (len(data_point.explicit_bounds)+1) != len(data_point.bucket_counts):
-        #    raise ValueError("Number of buckets must be 1 more than the explicit bounds!")
 
         sample_attr_pairs = []
 
@@ -304,7 +301,10 @@ class PrometheusRemoteWriteMetricsExporter(MetricExporter):
             # Metric Level attributes + the bucket boundary attribute + name
             ts_attrs = base_attrs.copy()
             ts_attrs.append(
-                ("__name__", self._sanitize_string(name_override or name,"name"))
+                (
+                    "__name__",
+                    self._sanitize_string(name_override or name, "name"),
+                )
             )
             if bound:
                 ts_attrs.append(("le", str(bound)))
@@ -334,7 +334,7 @@ class PrometheusRemoteWriteMetricsExporter(MetricExporter):
     def _parse_data_point(self, data_point, name=None):
 
         attrs = tuple(data_point.attributes.items()) + (
-            ("__name__", self._sanitize_string(name,"name")),
+            ("__name__", self._sanitize_string(name, "name")),
         )
         sample = (data_point.value, (data_point.time_unix_nano // 1_000_000))
         return attrs, sample

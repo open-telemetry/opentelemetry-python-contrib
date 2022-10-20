@@ -6,6 +6,7 @@ exclude = '''
   | \.tox
   | venv
   | build
+  | gen
   | dist
 )
 '''

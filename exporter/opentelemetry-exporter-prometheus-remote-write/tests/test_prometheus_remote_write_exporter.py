@@ -43,15 +43,17 @@ from opentelemetry.sdk.util.instrumentation import InstrumentationScope
         (":abc", ":abc"),
         ("abc.name.hi", "abc_name_hi"),
         ("service.name...", "service_name___"),
-        ("4hellowor:ld5∂©∑","_hellowor:ld5___"),
+        ("4hellowor:ld5∂©∑", "_hellowor:ld5___"),
     ],
 )
 def test_regex(name, result, prom_rw):
-    assert prom_rw._sanitize_string(name,"name") == result
+    assert prom_rw._sanitize_string(name, "name") == result
+
 
 def test_regex_invalid(prom_rw):
     with pytest.raises(TypeError):
-        prom_rw("foo_bar","A random type")
+        prom_rw("foo_bar", "A random type")
+
 
 def test_parse_data_point(prom_rw):
 
@@ -132,12 +134,12 @@ def test_parse_metric(metric, prom_rw):
         # This doesn't guarantee the labels aren't mixed up, but our other
         # test cases already do.
         assert "__name__" in labels
-        assert prom_rw._sanitize_string(metric.name,"name") in labels
+        assert prom_rw._sanitize_string(metric.name, "name") in labels
         combined_attrs = list(attributes.items()) + list(
             metric.data.data_points[0].attributes.items()
         )
         for name, value in combined_attrs:
-            assert prom_rw._sanitize_string(name,"label") in labels
+            assert prom_rw._sanitize_string(name, "label") in labels
             assert str(value) in labels
         if isinstance(metric.data, Histogram):
             values = [

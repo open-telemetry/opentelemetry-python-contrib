@@ -2,7 +2,7 @@ import random
 
 import pytest
 
-import opentelemetry.test.metrictestutil as metric_util  # import _generate_gauge, _generate_sum
+import opentelemetry.test.metrictestutil as metric_util
 from opentelemetry.exporter.prometheus_remote_write import (
     PrometheusRemoteWriteMetricsExporter,
 )
