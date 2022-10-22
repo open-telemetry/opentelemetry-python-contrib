@@ -528,6 +528,7 @@ class OpenTelemetryMiddleware:
                 )
             if token:
                 context.detach(token)
+
     # pylint: enable=too-many-branches
 
     def _get_otel_receive(self, server_span_name, scope, receive):
