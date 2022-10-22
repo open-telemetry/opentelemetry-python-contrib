@@ -171,10 +171,10 @@ def _get_logs_resource(metadata_container):
                     ResourceAttributes.AWS_LOG_STREAM_ARNS: [logs_stream_arn],
                 }
             )
-        else:
-            logger.warning(
-                "The metadata endpoint v4 has returned 'awslogs' as 'LogDriver', but there is no 'LogOptions' data"
-            )
+
+        logger.warning(
+            "The metadata endpoint v4 has returned 'awslogs' as 'LogDriver', but there is no 'LogOptions' data"
+        )
 
     return Resource.get_empty()
 
