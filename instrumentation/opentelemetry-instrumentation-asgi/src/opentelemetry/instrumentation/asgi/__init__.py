@@ -165,6 +165,7 @@ from opentelemetry.instrumentation.utils import (
 )
 from opentelemetry.metrics import get_meter
 from opentelemetry.propagators.textmap import Getter, Setter
+from opentelemetry.semconv.metrics import MetricInstruments
 from opentelemetry.semconv.trace import SpanAttributes
 from opentelemetry.trace import Span, set_span_in_context
 from opentelemetry.trace.status import Status, StatusCode
@@ -365,6 +366,32 @@ def get_default_span_details(scope: dict) -> Tuple[str, dict]:
     return span_name, {}
 
 
+def _collect_target_attribute(
+    scope: typing.Dict[str, typing.Any]
+) -> typing.Optional[str]:
+    """
+    Returns the target path as defined by the Semantic Conventions.
+
+    This value is suitable to use in metrics as it should replace concrete
+    values with a parameterized name. Example: /api/users/{user_id}
+
+    Refer to the specification
+    https://github.com/open-telemetry/opentelemetry-specification/blob/main/specification/metrics/semantic_conventions/http-metrics.md#parameterized-attributes
+
+    Note: this function requires specific code for each framework, as there's no
+    standard attribute to use.
+    """
+    # FastAPI
+    root_path = scope.get("root_path", "")
+
+    route = scope.get("route")
+    path_format = getattr(route, "path_format", None)
+    if path_format:
+        return f"{root_path}{path_format}"
+
+    return None
+
+
 class OpenTelemetryMiddleware:
     """The ASGI application middleware.
 
@@ -386,6 +413,7 @@ class OpenTelemetryMiddleware:
             the current globally configured one is used.
     """
 
+    # pylint: disable=too-many-branches
     def __init__(
         self,
         app,
@@ -406,12 +434,12 @@ class OpenTelemetryMiddleware:
             else meter
         )
         self.duration_histogram = self.meter.create_histogram(
-            name="http.server.duration",
+            name=MetricInstruments.HTTP_SERVER_DURATION,
             unit="ms",
             description="measures the duration of the inbound HTTP request",
         )
         self.active_requests_counter = self.meter.create_up_down_counter(
-            name="http.server.active_requests",
+            name=MetricInstruments.HTTP_SERVER_ACTIVE_REQUESTS,
             unit="requests",
             description="measures the number of concurrent HTTP requests that are currently in-flight",
         )
@@ -453,6 +481,12 @@ class OpenTelemetryMiddleware:
             attributes
         )
         duration_attrs = _parse_duration_attrs(attributes)
+
+        target = _collect_target_attribute(scope)
+        if target:
+            active_requests_count_attrs[SpanAttributes.HTTP_TARGET] = target
+            duration_attrs[SpanAttributes.HTTP_TARGET] = target
+
         if scope["type"] == "http":
             self.active_requests_counter.add(1, active_requests_count_attrs)
         try:
@@ -494,6 +528,8 @@ class OpenTelemetryMiddleware:
                 )
             if token:
                 context.detach(token)
+
+    # pylint: enable=too-many-branches
 
     def _get_otel_receive(self, server_span_name, scope, receive):
         @wraps(receive)
