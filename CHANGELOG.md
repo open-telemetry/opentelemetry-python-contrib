@@ -8,6 +8,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased](https://github.com/open-telemetry/opentelemetry-python/compare/v1.13.0-0.34b0...HEAD)
 - Add metric instrumentation for tornado
   ([#1252](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/1252))
+- Fix bug in Falcon instrumentation
+  ([#1377](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/1377))
 
 
 ### Added
@@ -18,6 +20,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Manual Instrumentation in Falcon
   ([#1365](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/1365))
 - `opentelemetry-exporter-richconsole` Fixing RichConsoleExpoter to allow multiple traces, fixing duplicate spans and include resources ([#1336](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/1336))
+- `opentelemetry-instrumentation-asgi` metrics record target attribute (FastAPI only)
+  ([#1323](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/1323))
 
 ## [1.13.0-0.34b0](https://github.com/open-telemetry/opentelemetry-python/releases/tag/v1.13.0-0.34b0) - 2022-09-26
 
