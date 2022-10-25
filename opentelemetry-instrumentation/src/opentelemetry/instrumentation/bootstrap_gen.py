@@ -104,6 +104,10 @@ libraries = {
         "library": "psycopg2 >= 2.7.3.1",
         "instrumentation": "opentelemetry-instrumentation-psycopg2==0.38b0.dev",
     },
+    "pulsar-client": {
+        "library": "pulsar-client ~= 2.8",
+        "instrumentation": "opentelemetry-instrumentation-pulsar==0.34b0",
+    },
     "pymemcache": {
         "library": "pymemcache >= 1.3.5, < 4",
         "instrumentation": "opentelemetry-instrumentation-pymemcache==0.38b0.dev",

@@ -1,0 +1,247 @@
+# Copyright The OpenTelemetry Authors
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
+"""
+Instrument `pulsar-client` to report instrumentation-pulsar produced and consumed messages
+
+Usage
+-----
+
+..code:: python
+
+    from opentelemetry.instrumentation.pulsar import PulsarInstrumentor
+
+    # Instrument pulsar
+    PulsarInstrumentor().instrument()
+
+    import threading
+
+    import pulsar
+    from pulsar import ConsumerType, InitialPosition
+
+
+    def main():
+        client = pulsar.Client("pulsar://localhost:6650")
+        print(client)
+        producer = client.create_producer("sample")
+
+        # produce messages with the current span
+        producer.send(b"hello world")
+
+        consumer = client.subscribe("sample", "consumer-1", consumer_type=ConsumerType.KeyShared, initial_position=InitialPosition.Earliest)
+        # start a span with producer's trace information
+        # right now, it immediately ends, in a next iteration, this should
+        # end the span on every receive or consumer.close
+        print(consumer.receive(1_000))
+
+        done = threading.Event()
+
+        # consumer as callback, this way the whole callback runs inside a span
+        def consume(consumer, message):
+            print('Consumer', consumer, 'Message', message)
+            done.set()
+
+        consumer2 = client.subscribe("sample", "consumer-2", message_listener=consume, consumer_type=ConsumerType.KeyShared, initial_position=InitialPosition.Earliest)
+        consumer2.resume_message_listener()
+
+        done.wait()
+        consumer2.close()
+        consumer.close()
+
+        producer.close()
+        client.close()
+"""
+import contextlib
+from functools import wraps
+from typing import Collection, Optional
+
+import pulsar
+import wrapt
+from opentelemetry.instrumentation.instrumentor import BaseInstrumentor
+from opentelemetry.instrumentation.utils import unwrap, propagator
+from opentelemetry.semconv.trace import MessagingOperationValues
+from opentelemetry.trace import SpanKind, Tracer, Span
+from pulsar import Consumer, Producer, Client, Message
+
+from opentelemetry import propagate, trace
+from .package import _instruments
+from .utils import (
+    _enrich_span,
+    _enrich_span_with_message_id,
+    _enrich_span_with_message,
+    _get_span_name,
+)
+from .version import __version__
+
+PROPERTIES_KEY = "properties"
+
+
+class TracerMixin:
+    _tracer: Tracer
+
+    def _set_tracer(self, tracer):
+        self._tracer = tracer
+
+
+class SpanMixin:
+    _current_span: Optional[Span] = None
+
+    def _set_current_span(self, current_span):
+        self._current_span = current_span
+
+    def _end_span(self):
+        if self._current_span:
+            with contextlib.suppress(Exception):
+                self._current_span.end()
+                self._current_span = None
+
+class InstrumentedClient(TracerMixin, Client):
+    def subscribe(self, topic, *args, message_listener=None, **kwargs):
+        wrapper = message_listener
+        if message_listener:
+            @wraps(message_listener)
+            def wrapper(consumer, message: InstrumentedMessage, *args, **kwargs):
+                ctx = propagator.extract(message.properties())
+                span = self._tracer.start_span(f"{topic} process", ctx, SpanKind.CONSUMER)
+                _enrich_span(span, topic, MessagingOperationValues.RECEIVE, message.partition_key())
+                _enrich_span_with_message(span, message)
+                message._set_current_span(span)
+                with trace.use_span(span, True):
+                    return message_listener(consumer, message, *args, **kwargs)
+
+        return super().subscribe(topic, *args, message_listener=wrapper, **kwargs)
+
+
+class InstrumentedProducer(TracerMixin, Producer):
+    def send(self, *args, **kwargs):
+        with self._create_span() as span:
+            self._before_send(span, kwargs)
+            message: pulsar.MessageId = super(InstrumentedProducer, self).send(*args, **kwargs)
+            return self._after_send(message, span)
+
+    send.__doc__ = Producer.send.__doc__
+
+    def send_async(self, content, callback, *args, **kwargs):
+        with self._create_span() as span:
+            self._before_send(span, kwargs)
+            callback_context = span.get_span_context()
+
+            @wraps(callback)
+            def wrapper(_response, message_id, *args, **kwargs):
+                with self._tracer.start_as_current_span("callback", callback_context) as span:
+                    self._after_send(message_id, span)
+                    return callback(*args, **kwargs)
+
+            super().send_async(content, wrapper, *args, **kwargs)
+    send_async.__doc__ = Producer.send_async.__doc__
+
+    def _after_send(self, message, span):
+        _enrich_span_with_message_id(span, message)
+        return message
+
+    def _before_send(self, span, kwargs):
+        properties = kwargs.pop(PROPERTIES_KEY, {}) or {}
+        propagator.inject(properties)
+        kwargs[PROPERTIES_KEY] = properties
+        _enrich_span(span, self.topic(), operation=MessagingOperationValues.RECEIVE, **kwargs)
+
+    def _create_span(self):
+        return self._tracer.start_as_current_span(
+            name=_get_span_name("send", self.topic()), kind=trace.SpanKind.PRODUCER
+        )
+
+
+class InstrumentedMessage(SpanMixin, Message):
+    pass
+
+
+class InstrumentedConsumer(TracerMixin, Consumer):
+    _last_message: InstrumentedMessage = None
+
+    def receive(self, *args, **kwargs):
+        if self._last_message:
+            self._last_message._end_span()
+        with self._tracer.start_as_current_span(
+                "recv", end_on_exit=True, kind=trace.SpanKind.CONSUMER
+        ):
+            message: InstrumentedMessage = super().receive(*args, **kwargs)
+            context = propagate.extract(message.properties())
+            span = self._tracer.start_span(f"{self.topic()} process", context=context)
+            _enrich_span(span, self.topic(), operation=MessagingOperationValues.PROCESS)
+            message._set_current_span(span)
+
+            return message
+
+    def acknowledge(self, message: InstrumentedMessage):
+        message._end_span()
+        super().acknowledge(message)
+
+    acknowledge.__doc__ = Consumer.acknowledge.__doc__
+
+    def negative_acknowledge(self, message: InstrumentedMessage):
+        message._end_span()
+        super().negative_acknowledge(message)
+
+    negative_acknowledge.__doc__ = Consumer.negative_acknowledge.__doc__
+
+    def acknowledge_cumulative(self, message: InstrumentedMessage):
+        message._end_span()
+        super().acknowledge_cumulative(message)
+
+    acknowledge_cumulative.__doc__ = Consumer.acknowledge_cumulative.__doc__
+
+
+class PulsarInstrumentor(BaseInstrumentor):
+    """An instrumentor for confluent kafka module
+    See `BaseInstrumentor`
+    """
+
+    def instrumentation_dependencies(self) -> Collection[str]:
+        return _instruments
+
+    def _instrument(self, **kwargs):
+        self._original_pulsar_producer = pulsar.Producer
+        self._original_pulsar_client = pulsar.Client
+        self._original_pulsar_consumer = pulsar.Consumer
+        self._original_pulsar_message = pulsar.Message
+
+        pulsar.Client = InstrumentedClient
+        pulsar.Producer = InstrumentedProducer
+        pulsar.Consumer = InstrumentedConsumer
+        pulsar.Message = InstrumentedMessage
+
+        tracer_provider = kwargs.get("tracer_provider")
+        tracer = trace.get_tracer(
+            __name__, __version__, tracer_provider=tracer_provider
+        )
+
+        self._tracer = tracer
+
+        def init(wrapped, self, args, kwargs):
+            wrapped(*args, **kwargs)
+            self._set_tracer(tracer)
+
+        wrapt.wrap_function_wrapper(InstrumentedClient, "__init__", init)
+        wrapt.wrap_function_wrapper(InstrumentedConsumer, "__init__", init)
+        wrapt.wrap_function_wrapper(InstrumentedProducer, "__init__", init)
+
+    def _uninstrument(self, **kwargs):
+        pulsar.Client = self._original_pulsar_client
+        pulsar.Producer = self._original_pulsar_producer
+        pulsar.Consumer = self._original_pulsar_consumer
+        pulsar.Message = self._original_pulsar_message
+
+        unwrap(InstrumentedClient, "__init__")
+        unwrap(InstrumentedConsumer, "__init__")
+        unwrap(InstrumentedProducer, "__init__")
