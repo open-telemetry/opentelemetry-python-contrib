@@ -69,23 +69,24 @@ from typing import Collection, Optional
 
 import pulsar
 import wrapt
-from opentelemetry.instrumentation.instrumentor import BaseInstrumentor
-from opentelemetry.instrumentation.utils import unwrap, propagator
-from opentelemetry.semconv.trace import MessagingOperationValues
-from opentelemetry.trace import SpanKind, Tracer, Span
-from pulsar import Consumer, Producer, Client, Message
+from pulsar import Client, Consumer, Message, Producer
 
 from opentelemetry import propagate, trace
+from opentelemetry.instrumentation.instrumentor import BaseInstrumentor
+from opentelemetry.instrumentation.utils import propagator, unwrap
+from opentelemetry.semconv.trace import MessagingOperationValues
+from opentelemetry.trace import Span, SpanKind, Tracer
+
 from .package import _instruments
 from .utils import (
     _enrich_span,
-    _enrich_span_with_message_id,
     _enrich_span_with_message,
+    _enrich_span_with_message_id,
     _get_span_name,
 )
 from .version import __version__
 
-MESSAGE_LISTENER_ARGUMENT = 'message_listener'
+MESSAGE_LISTENER_ARGUMENT = "message_listener"
 PROPERTIES_KEY = "properties"
 
 
@@ -108,21 +109,34 @@ class SpanMixin:
                 self._current_span.end()
                 self._current_span = None
 
+
 class InstrumentedClient(TracerMixin, Client):
     _subscribe_signature = inspect.signature(Client.subscribe)
 
     def subscribe(self, topic, *args, **kwargs):
-        bound_arguments = self._subscribe_signature.bind(self, topic, *args, **kwargs)
+        bound_arguments = self._subscribe_signature.bind(
+            self, topic, *args, **kwargs
+        )
         bound_arguments.apply_defaults()
 
         message_listener = bound_arguments.arguments[MESSAGE_LISTENER_ARGUMENT]
         wrapper = message_listener
         if message_listener:
+
             @wraps(message_listener)
-            def wrapper(consumer, message: InstrumentedMessage, *args, **kwargs):
+            def wrapper(  # pylint: disable=function-redefined
+                consumer, message: InstrumentedMessage, *args, **kwargs
+            ):
                 ctx = propagator.extract(message.properties())
-                span = self._tracer.start_span(f"{topic} process", ctx, SpanKind.CONSUMER)
-                _enrich_span(span, topic, MessagingOperationValues.RECEIVE, message.partition_key())
+                span = self._tracer.start_span(
+                    f"{topic} process", ctx, SpanKind.CONSUMER
+                )
+                _enrich_span(
+                    span,
+                    topic,
+                    MessagingOperationValues.RECEIVE,
+                    message.partition_key(),
+                )
                 _enrich_span_with_message(span, message)
                 message._set_current_span(span)
                 with trace.use_span(span, True):
@@ -136,6 +150,7 @@ class InstrumentedClient(TracerMixin, Client):
 
 class InstrumentedProducer(TracerMixin, Producer):
     _send_signature = inspect.signature(Producer.send)
+
     def send(self, *args, **kwargs):
         with self._create_span() as span:
             args, kwargs = self._before_send(span, *args, **kwargs)
@@ -151,14 +166,18 @@ class InstrumentedProducer(TracerMixin, Producer):
 
             @wraps(callback)
             def wrapper(_response, message_id, *args, **kwargs):
-                with self._tracer.start_as_current_span("callback", callback_context) as span:
+                with self._tracer.start_as_current_span(
+                    "callback", callback_context
+                ) as span:
                     self._after_send(message_id, span)
                     return callback(*args, **kwargs)
 
             super().send_async(content, wrapper, *args, **kwargs)
+
     send_async.__doc__ = Producer.send_async.__doc__
 
-    def _after_send(self, message, span):
+    @staticmethod
+    def _after_send(message, span):
         _enrich_span_with_message_id(span, message)
         return message
 
@@ -170,16 +189,22 @@ class InstrumentedProducer(TracerMixin, Producer):
         propagator.inject(properties)
 
         bound_arguments.arguments[PROPERTIES_KEY] = properties
-        _enrich_span(span, self.topic(), operation=MessagingOperationValues.RECEIVE, **bound_arguments.arguments)
+        _enrich_span(
+            span,
+            self.topic(),
+            operation=MessagingOperationValues.RECEIVE,
+            **bound_arguments.arguments,
+        )
         return bound_arguments.args[1:], bound_arguments.kwargs
 
     def _create_span(self):
         return self._tracer.start_as_current_span(
-            name=_get_span_name("send", self.topic()), kind=trace.SpanKind.PRODUCER
+            name=_get_span_name("send", self.topic()),
+            kind=trace.SpanKind.PRODUCER,
         )
 
 
-class InstrumentedMessage(SpanMixin, Message):
+class InstrumentedMessage(Message, SpanMixin):
     pass
 
 
@@ -190,13 +215,17 @@ class InstrumentedConsumer(TracerMixin, Consumer):
         if self._last_message:
             self._last_message._end_span()
         with self._tracer.start_as_current_span(
-                "recv", end_on_exit=True, kind=trace.SpanKind.CONSUMER
+            "recv", end_on_exit=True, kind=trace.SpanKind.CONSUMER
         ):
             message: InstrumentedMessage = super().receive(*args, **kwargs)
             context = propagate.extract(message.properties())
-            span = self._tracer.start_span(f"{self.topic()} process", context=context)
-            _enrich_span(span, self.topic(), operation=MessagingOperationValues.PROCESS)
-            message._set_current_span(span)
+            span = self._tracer.start_span(
+                f"{self.topic()} process", context=context
+            )
+            _enrich_span(
+                span, self.topic(), operation=MessagingOperationValues.PROCESS
+            )
+            message._set_current_span(span)  # pylint: disable=no-member
 
             return message
 
@@ -223,6 +252,12 @@ class PulsarInstrumentor(BaseInstrumentor):
     """An instrumentor for confluent kafka module
     See `BaseInstrumentor`
     """
+
+    _original_pulsar_producer = None
+    _original_pulsar_client = None
+    _original_pulsar_consumer = None
+    _original_pulsar_message = None
+    _tracer = None
 
     def instrumentation_dependencies(self) -> Collection[str]:
         return _instruments

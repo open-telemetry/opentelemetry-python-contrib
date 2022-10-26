@@ -1,6 +1,7 @@
 from typing import Optional
 
 import pulsar
+
 from opentelemetry.semconv.trace import (
     MessagingDestinationKindValues,
     MessagingOperationValues,
@@ -9,11 +10,11 @@ from opentelemetry.semconv.trace import (
 
 
 def _enrich_span(
-        span,
-        topic,
-        operation: Optional[MessagingOperationValues] = None,
-        partition_key=None,
-        **_kwargs
+    span,
+    topic,
+    operation: Optional[MessagingOperationValues] = None,
+    partition_key=None,
+    **_kwargs,
 ):
     if not span.is_recording():
         return
@@ -22,7 +23,9 @@ def _enrich_span(
     span.set_attribute(SpanAttributes.MESSAGING_DESTINATION, topic)
 
     if partition_key:
-        span.set_attribute(SpanAttributes.MESSAGING_KAFKA_MESSAGE_KEY, partition_key)
+        span.set_attribute(
+            SpanAttributes.MESSAGING_KAFKA_MESSAGE_KEY, partition_key
+        )
 
     span.set_attribute(
         SpanAttributes.MESSAGING_DESTINATION_KIND,
@@ -48,7 +51,9 @@ def _enrich_span_with_message_id(span, message: pulsar.MessageId):
         message.entry_id(),
     )
 
-    span.set_attribute(SpanAttributes.MESSAGING_KAFKA_PARTITION, message.partition())
+    span.set_attribute(
+        SpanAttributes.MESSAGING_KAFKA_PARTITION, message.partition()
+    )
 
 
 def _get_span_name(operation: str, topic: str):

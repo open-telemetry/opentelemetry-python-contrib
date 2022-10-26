@@ -12,16 +12,16 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-# pylint: disable=no-name-in-module
+# pylint: disable=no-name-in-module,import-outside-toplevel
 
 from unittest import TestCase
 
 from opentelemetry.instrumentation.pulsar import (
-    PulsarInstrumentor,
     InstrumentedClient,
-    InstrumentedProducer,
     InstrumentedConsumer,
     InstrumentedMessage,
+    InstrumentedProducer,
+    PulsarInstrumentor,
 )
 
 
@@ -30,7 +30,7 @@ class TestPulsar(TestCase):
         instrumentation = PulsarInstrumentor()
         instrumentation.instrument()
 
-        from pulsar import Consumer, Producer, Client, Message
+        from pulsar import Client, Consumer, Message, Producer
 
         client = Client("pulsar+ssl://localhost")
 
