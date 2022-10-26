@@ -105,6 +105,7 @@ from wrapt import wrap_function_wrapper as _w
 from opentelemetry.instrumentation.instrumentor import BaseInstrumentor
 from opentelemetry.instrumentation.sqlalchemy.engine import (
     EngineTracer,
+    EngineTracerOptions,
     _get_tracer,
     _wrap_connect,
     _wrap_create_async_engine,
@@ -131,16 +132,36 @@ class SQLAlchemyInstrumentor(BaseInstrumentor):
                 ``engine``: a SQLAlchemy engine instance
                 ``engines``: a list of SQLAlchemy engine instances
                 ``tracer_provider``: a TracerProvider, defaults to global
+                ``enable_commenter``: a bool to enable the sql commenter
+                ``commenter_options``: a dictionary of options to pass to the sql commenter if enabled
+                ``before_cursor_execute_callback``: An optional callback invoked on `before_cursor_execute` event. Invoked with Span and the event arguments.
+                ``after_cursor_execute_callback``: An optional callback invoked on `after_cursor_execute` event. Invoked with Span and the event arguments.
+                ``handle_error_callback``: An optional callback invoked on `handle_error` event. Invoked with Span and the event arguments.
 
         Returns:
             An instrumented engine if passed in as an argument or list of instrumented engines, None otherwise.
         """
         tracer_provider = kwargs.get("tracer_provider")
-        _w("sqlalchemy", "create_engine", _wrap_create_engine(tracer_provider))
+        engine_tracer_options = EngineTracerOptions(
+            enable_commenter=kwargs.get("enable_commenter", False),
+            commenter_options=kwargs.get("commenter_options", {}),
+            before_cursor_execute_callback=kwargs.get(
+                "before_cursor_execute_callback"
+            ),
+            after_cursor_execute_callback=kwargs.get(
+                "after_cursor_execute_callback"
+            ),
+            handle_error_callback=kwargs.get("handle_error_callback"),
+        )
+        _w(
+            "sqlalchemy",
+            "create_engine",
+            _wrap_create_engine(engine_tracer_options, tracer_provider),
+        )
         _w(
             "sqlalchemy.engine",
             "create_engine",
-            _wrap_create_engine(tracer_provider),
+            _wrap_create_engine(engine_tracer_options, tracer_provider),
         )
         _w(
             "sqlalchemy.engine.base",
@@ -151,24 +172,22 @@ class SQLAlchemyInstrumentor(BaseInstrumentor):
             _w(
                 "sqlalchemy.ext.asyncio",
                 "create_async_engine",
-                _wrap_create_async_engine(tracer_provider),
+                _wrap_create_async_engine(
+                    engine_tracer_options, tracer_provider
+                ),
             )
         if kwargs.get("engine") is not None:
             return EngineTracer(
                 _get_tracer(tracer_provider),
                 kwargs.get("engine"),
-                kwargs.get("enable_commenter", False),
-                kwargs.get("commenter_options", {}),
+                engine_tracer_options,
             )
         if kwargs.get("engines") is not None and isinstance(
             kwargs.get("engines"), Sequence
         ):
             return [
                 EngineTracer(
-                    _get_tracer(tracer_provider),
-                    engine,
-                    kwargs.get("enable_commenter", False),
-                    kwargs.get("commenter_options", {}),
+                    _get_tracer(tracer_provider), engine, engine_tracer_options
                 )
                 for engine in kwargs.get("engines")
             ]
