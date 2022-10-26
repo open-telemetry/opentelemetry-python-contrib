@@ -7,6 +7,8 @@ PROTO_VERSION=v1.3.2
 SRC_DIR=opentelemetry/exporter/prometheus_remote_write/gen/
 DST_DIR=../src/opentelemetry/exporter/prometheus_remote_write/gen/
 
+#TODO:
+# Check that black & protoc are installed properly
 echo "Creating our destination directory"
 mkdir -p ${SRC_DIR}/gogoproto
 
@@ -50,3 +52,6 @@ rm -rf protobuf prometheus
 # Used libprotoc 3.21.1 & protoc 21.7
 echo "Compiling proto files to Python"
 protoc -I .  --python_out=../src ${SRC_DIR}/gogoproto/gogo.proto ${SRC_DIR}/remote.proto ${SRC_DIR}/types.proto
+
+echo "Running formatting on the generated files"
+../../../scripts/eachdist.py format --path $PWD/..
