@@ -63,6 +63,7 @@ Usage
         client.close()
 """
 import contextlib
+import inspect
 from functools import wraps
 from typing import Collection, Optional
 
@@ -84,6 +85,7 @@ from .utils import (
 )
 from .version import __version__
 
+MESSAGE_LISTENER_ARGUMENT = 'message_listener'
 PROPERTIES_KEY = "properties"
 
 
@@ -107,7 +109,13 @@ class SpanMixin:
                 self._current_span = None
 
 class InstrumentedClient(TracerMixin, Client):
-    def subscribe(self, topic, *args, message_listener=None, **kwargs):
+    _subscribe_signature = inspect.signature(Client.subscribe)
+
+    def subscribe(self, topic, *args, **kwargs):
+        bound_arguments = self._subscribe_signature.bind(self, topic, *args, **kwargs)
+        bound_arguments.apply_defaults()
+
+        message_listener = bound_arguments.arguments[MESSAGE_LISTENER_ARGUMENT]
         wrapper = message_listener
         if message_listener:
             @wraps(message_listener)
@@ -120,21 +128,25 @@ class InstrumentedClient(TracerMixin, Client):
                 with trace.use_span(span, True):
                     return message_listener(consumer, message, *args, **kwargs)
 
-        return super().subscribe(topic, *args, message_listener=wrapper, **kwargs)
+        bound_arguments.arguments[MESSAGE_LISTENER_ARGUMENT] = wrapper
+        # no need of self
+        args = bound_arguments.args[1:]
+        return super().subscribe(*args, **bound_arguments.kwargs)
 
 
 class InstrumentedProducer(TracerMixin, Producer):
+    _send_signature = inspect.signature(Producer.send)
     def send(self, *args, **kwargs):
         with self._create_span() as span:
-            self._before_send(span, kwargs)
-            message: pulsar.MessageId = super(InstrumentedProducer, self).send(*args, **kwargs)
+            args, kwargs = self._before_send(span, *args, **kwargs)
+            message: pulsar.MessageId = super().send(*args, **kwargs)
             return self._after_send(message, span)
 
     send.__doc__ = Producer.send.__doc__
 
     def send_async(self, content, callback, *args, **kwargs):
         with self._create_span() as span:
-            self._before_send(span, kwargs)
+            self._before_send(span, content, callback, *args, **kwargs)
             callback_context = span.get_span_context()
 
             @wraps(callback)
@@ -150,11 +162,16 @@ class InstrumentedProducer(TracerMixin, Producer):
         _enrich_span_with_message_id(span, message)
         return message
 
-    def _before_send(self, span, kwargs):
-        properties = kwargs.pop(PROPERTIES_KEY, {}) or {}
+    def _before_send(self, span, *args, **kwargs):
+        bound_arguments = self._send_signature.bind(self, *args, **kwargs)
+        bound_arguments.apply_defaults()
+
+        properties = bound_arguments.arguments[PROPERTIES_KEY] or {}
         propagator.inject(properties)
-        kwargs[PROPERTIES_KEY] = properties
-        _enrich_span(span, self.topic(), operation=MessagingOperationValues.RECEIVE, **kwargs)
+
+        bound_arguments.arguments[PROPERTIES_KEY] = properties
+        _enrich_span(span, self.topic(), operation=MessagingOperationValues.RECEIVE, **bound_arguments.arguments)
+        return bound_arguments.args[1:], bound_arguments.kwargs
 
     def _create_span(self):
         return self._tracer.start_as_current_span(
