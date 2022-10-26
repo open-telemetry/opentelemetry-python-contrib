@@ -183,10 +183,17 @@ class CeleryInstrumentor(BaseInstrumentor):
         task = utils.retrieve_task_from_sender(kwargs)
         task_id = utils.retrieve_task_id_from_message(kwargs)
 
-        if task is None or task_id is None:
+        if task_id is None:
             return
 
-        operation_name = f"{_TASK_APPLY_ASYNC}/{task.name}"
+        if task is None:
+            # task is an anonymous task send using send_task or using canvas workflow
+            # Signatures() to send to a task not in the current processes dependency
+            # tree
+            task_name = kwargs.get("sender", "unknown")
+        else:
+            task_name = task.name
+        operation_name = f"{_TASK_APPLY_ASYNC}/{task_name}"
         span = self._tracer.start_span(
             operation_name, kind=trace.SpanKind.PRODUCER
         )
@@ -195,7 +202,7 @@ class CeleryInstrumentor(BaseInstrumentor):
         if span.is_recording():
             span.set_attribute(_TASK_TAG_KEY, _TASK_APPLY_ASYNC)
             span.set_attribute(SpanAttributes.MESSAGING_MESSAGE_ID, task_id)
-            span.set_attribute(_TASK_NAME_KEY, task.name)
+            span.set_attribute(_TASK_NAME_KEY, task_name)
             utils.set_attributes_from_context(span, kwargs)
 
         activation = trace.use_span(span, end_on_exit=True)
