@@ -249,7 +249,7 @@ class InstrumentedConsumer(TracerMixin, Consumer):
 
 
 class PulsarInstrumentor(BaseInstrumentor):
-    """An instrumentor for confluent kafka module
+    """An instrumentor for pulsar module
     See `BaseInstrumentor`
     """
 
