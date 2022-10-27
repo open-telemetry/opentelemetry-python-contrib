@@ -13,16 +13,32 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   ([#1250](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/1250))
 
 
+
 ### Added
 
+- Add metric instrumentation for tornado
+  ([#1252](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/1252))
 - `opentelemetry-instrumentation-django` Fixed bug where auto-instrumentation fails when django is installed and settings are not configured.
   ([#1369](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/1369))
 - `opentelemetry-instrumentation-system-metrics` add supports to collect system thread count. ([#1339](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/1339))
 - `opentelemetry-exporter-richconsole` Fixing RichConsoleExpoter to allow multiple traces, fixing duplicate spans and include resources ([#1336](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/1336))
+- `opentelemetry-instrumentation-asgi` Add support for regular expression matching and sanitization of HTTP headers.
+  ([#1333](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/1333))
+- `opentelemetry-instrumentation-asgi` metrics record target attribute (FastAPI only)
+  ([#1323](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/1323))
+- `opentelemetry-instrumentation-wsgi` Add support for regular expression matching and sanitization of HTTP headers.
+  ([#1402](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/1402))
+
+### Fixed
+
+- Fix bug in Falcon instrumentation
+  ([#1377](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/1377))
+- `opentelemetry-instrumentation-asgi` Fix keys() in class ASGIGetter so it decodes the keys before returning them.
+  ([#1333](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/1333))
+- `opentelemetry-instrumentation-asgi` Make ASGIGetter.get() compare all keys in a case insensitive manner.
+  ([#1333](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/1333))
 
 ## [1.13.0-0.34b0](https://github.com/open-telemetry/opentelemetry-python/releases/tag/v1.13.0-0.34b0) - 2022-09-26
-
-
 
 - `opentelemetry-instrumentation-asyncpg` Fix high cardinality in the span name
   ([#1324](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/1324))
@@ -42,7 +58,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   ([#1253](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/1253))
 - Add metric instrumentation in starlette
   ([#1327](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/1327))
-
 
 ### Fixed
 
