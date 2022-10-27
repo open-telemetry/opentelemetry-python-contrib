@@ -2,23 +2,34 @@ from email.policy import default
 from logging import getLogger
 from time import time_ns
 from timeit import default_timer
-from urllib import response
+from typing import Collection
+
+from opentelemetry.util.http import parse_excluded_urls, get_excluded_urls
 import cherrypy
+from opentelemetry.instrumentation.cherrypy.package import _instruments
 from opentelemetry.instrumentation.instrumentor import BaseInstrumentor
 from opentelemetry.instrumentation.utils import _start_internal_or_server_span
 import opentelemetry.instrumentation.wsgi as otel_wsgi
-from opentelemetry import trace
+from opentelemetry.instrumentation.propagators import (
+    get_global_response_propagator,
+)
+from opentelemetry import trace, context
 from opentelemetry.semconv.trace import SpanAttributes
 from opentelemetry.instrumentation.falcon.version import __version__
+from opentelemetry.metrics import get_meter
 
 
 _logger = getLogger(__name__)
+_excluded_urls_from_env = get_excluded_urls("CHERRYPY")
 
 class CherryPyInstrumentor(BaseInstrumentor):
     """An instrumentor for FastAPI
 
     See `BaseInstrumentor`
     """
+
+    def instrumentation_dependencies(self) -> Collection[str]:
+        return _instruments
 
     def _instrument(self, **kwargs):
         self._original_cherrypy_application = cherrypy._cptree.Application
@@ -34,7 +45,7 @@ class _InstrumentedCherryPyApplication(cherrypy._cptree.Application):
         meter_provider = kwargs.pop('metr_provider', None)
         self._otel_tracer = trace.get_tracer(__name__, __version__, tracer_provider)
         otel_meter = get_meter(__name__, __version__, meter_provider)
-        self.duration_hostogram = otel_meter.create_histogram(
+        self.duration_histogram = otel_meter.create_histogram(
             name="http.server.duration",
             unit="ms",
             description="measures the duration of the inbound HTTP request",
@@ -46,13 +57,14 @@ class _InstrumentedCherryPyApplication(cherrypy._cptree.Application):
         )
         self.request_hook = kwargs.pop('request_hook', None)
         self.response_hook = kwargs.pop('response_hook', None)
-        # self._otel_excluded_urls = get_excluded_urls("")
+        excluded_urls = kwargs.pop('excluded_urls', None)
+        self._otel_excluded_urls = (_excluded_urls_from_env if excluded_urls is None else parse_excluded_urls(excluded_urls))
         self._is_instrumented_by_opentelemetry = True
         super().__init__(*args, **kwargs)
         
     def __call__(self, environ, start_response):
-        # if self._otel_ecluded_urls.url_disabled(environ.get('PATH_INFO', '/')):
-        #     return super().__call__(environ, start_response)
+        if self._otel_excluded_urls.url_disabled(environ.get('PATH_INFO', '/')):
+            return super().__call__(environ, start_response)
 
         if not self._is_instrumented_by_opentelemetry:
             return super().__call__(environ, start_response)
@@ -88,6 +100,10 @@ class _InstrumentedCherryPyApplication(cherrypy._cptree.Application):
         activation.__enter__()
 
         def _start_response(status, response_headers, *args, **kwargs):
+            propagator = get_global_response_propagator()
+            if propagator:
+                propagator.inject(response_headers, setter=otel_wsgi.default_response_propagation_setter)
+            
             if span:
                 otel_wsgi.add_response_attributes(span, status, response_headers)
                 status_code = otel_wsgi._parse_status_code(status)
@@ -117,6 +133,8 @@ class _InstrumentedCherryPyApplication(cherrypy._cptree.Application):
                     exc,
                     getattr(exc, "__traceback__", None),
                 )
+            if token is not None:
+                context.detach(token)
             duration = max(round((default_timer() - start) * 1000), 0)
             self.duration_histogram.record(duration, duration_attrs)
             self.active_requests_counter.add(-1, active_requests_count_attrs)
