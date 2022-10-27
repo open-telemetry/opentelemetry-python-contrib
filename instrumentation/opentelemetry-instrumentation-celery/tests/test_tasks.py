@@ -60,7 +60,9 @@ class TestCeleryInstrumentation(TestBase):
             },
         )
 
-        self.assertEqual(producer.name, "apply_async/tests.celery_test_tasks.task_add")
+        self.assertEqual(
+            producer.name, "apply_async/tests.celery_test_tasks.task_add"
+        )
         self.assertEqual(producer.kind, SpanKind.PRODUCER)
         self.assertSpanHasAttributes(
             producer,
