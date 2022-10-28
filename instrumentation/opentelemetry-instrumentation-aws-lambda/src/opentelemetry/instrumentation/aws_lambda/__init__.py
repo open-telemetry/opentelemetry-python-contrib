@@ -269,7 +269,7 @@ def _instrument(
             # Assumes we are using the OpenTelemetry SDK implementation of the
             # `MeterProvider`.
             _meter_provider.force_flush(flush_timeout)
-        except Exception:
+        except Exception: # pylint: disable=broad-except
             logger.error(
                 "MeterProvider was missing `force_flush` method. This is necessary in case of a Lambda freeze and would exist in the OTel SDK implementation."
             )
