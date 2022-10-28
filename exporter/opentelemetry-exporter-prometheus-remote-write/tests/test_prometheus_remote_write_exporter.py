@@ -20,7 +20,7 @@ import pytest
 from opentelemetry.exporter.prometheus_remote_write import (
     PrometheusRemoteWriteMetricsExporter,
 )
-from opentelemetry.exporter.prometheus_remote_write.gen.types_pb2 import (
+from opentelemetry.exporter.prometheus_remote_write.gen.types_pb2 import (  # pylint: disable=E0611
     TimeSeries,
 )
 from opentelemetry.sdk.metrics.export import (
@@ -95,13 +95,11 @@ def test_parse_histogram_dp(prom_rw):
         assert (dp.bucket_counts[pos], timestamp) == label_sample_pairs[pos][1]
 
     # Last two are the sum & total count
-    pos += 1
-    assert ("__name__", f"{name}_sum") in label_sample_pairs[pos][0]
-    assert (dp.sum, timestamp) == label_sample_pairs[pos][1]
+    assert ("__name__", f"{name}_sum") in label_sample_pairs[-2][0]
+    assert (dp.sum, timestamp) == label_sample_pairs[-2][1]
 
-    pos += 1
-    assert ("__name__", f"{name}_count") in label_sample_pairs[pos][0]
-    assert (dp.count, timestamp) == label_sample_pairs[pos][1]
+    assert ("__name__", f"{name}_count") in label_sample_pairs[-1][0]
+    assert (dp.count, timestamp) == label_sample_pairs[-1][1]
 
 
 @pytest.mark.parametrize(
@@ -253,7 +251,6 @@ class TestValidation(unittest.TestCase):
 # Ensures export is successful with valid export_records and config
 @patch("requests.post")
 def test_valid_export(mock_post, prom_rw, metric):
-    metric = metric
     mock_post.return_value.configure_mock(**{"status_code": 200})
 
     # Assumed a "None" for Scope or Resource aren't valid, so build them here

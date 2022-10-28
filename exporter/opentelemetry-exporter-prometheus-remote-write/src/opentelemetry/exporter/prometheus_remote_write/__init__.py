@@ -21,10 +21,10 @@ from typing import Dict, Sequence
 import requests
 import snappy
 
-from opentelemetry.exporter.prometheus_remote_write.gen.remote_pb2 import (
+from opentelemetry.exporter.prometheus_remote_write.gen.remote_pb2 import (  # pylint: disable=no-name-in-module
     WriteRequest,
 )
-from opentelemetry.exporter.prometheus_remote_write.gen.types_pb2 import (
+from opentelemetry.exporter.prometheus_remote_write.gen.types_pb2 import (  # pylint: disable=no-name-in-module
     Label,
     Sample,
     TimeSeries,
@@ -124,7 +124,9 @@ class PrometheusRemoteWriteMetricsExporter(MetricExporter):
                     raise ValueError(
                         "basic_auth cannot contain password and password_file"
                     )
-                with open(basic_auth["password_file"]) as file:
+                with open(  # pylint: disable=unspecified-encoding
+                    basic_auth["password_file"]
+                ) as file:
                     basic_auth["password"] = file.readline().strip()
             elif "password" not in basic_auth:
                 raise ValueError("password required in basic_auth")
@@ -183,6 +185,7 @@ class PrometheusRemoteWriteMetricsExporter(MetricExporter):
         self,
         metrics_data: MetricsData,
         timeout_millis: float = 10_000,
+        **kwargs,
     ) -> MetricExportResult:
         if not metrics_data:
             return MetricExportResult.SUCCESS
@@ -245,9 +248,13 @@ class PrometheusRemoteWriteMetricsExporter(MetricExporter):
                 for attrs, sample in dp_result:
                     sample_sets[attrs].append(sample)
         else:
-            logger.warn("Unsupported Metric Type: %s", type(metric.data))
+            logger.warning("Unsupported Metric Type: %s", type(metric.data))
             return []
+        return self._convert_to_timeseries(sample_sets, resource_labels)
 
+    def _convert_to_timeseries(
+        self, sample_sets: Sequence[tuple], resource_labels: Sequence
+    ) -> Sequence[TimeSeries]:
         timeseries = []
         for labels, samples in sample_sets.items():
             ts = TimeSeries()
@@ -259,7 +266,8 @@ class PrometheusRemoteWriteMetricsExporter(MetricExporter):
             timeseries.append(ts)
         return timeseries
 
-    def _sample(self, value: int, timestamp: int) -> Sample:
+    @staticmethod
+    def _sample(value: int, timestamp: int) -> Sample:
         sample = Sample()
         sample.value = value
         sample.timestamp = timestamp
@@ -271,7 +279,8 @@ class PrometheusRemoteWriteMetricsExporter(MetricExporter):
         label.value = value
         return label
 
-    def _sanitize_string(self, string: str, type_: str) -> str:
+    @staticmethod
+    def _sanitize_string(string: str, type_: str) -> str:
         # I Think Prometheus requires names to NOT start with a number this
         # would not catch that, but do cover the other cases. The naming rules
         # don't explicit say this, but the supplied regex implies it.
@@ -294,7 +303,7 @@ class PrometheusRemoteWriteMetricsExporter(MetricExporter):
 
         sample_attr_pairs = []
 
-        base_attrs = [(n, v) for n, v in data_point.attributes.items()]
+        base_attrs = list(data_point.attributes.items())
         timestamp = data_point.time_unix_nano // 1_000_000
 
         def handle_bucket(value, bound=None, name_override=None):
@@ -339,8 +348,8 @@ class PrometheusRemoteWriteMetricsExporter(MetricExporter):
         sample = (data_point.value, (data_point.time_unix_nano // 1_000_000))
         return attrs, sample
 
-    # pylint: disable=no-member,no-self-use
-    def _build_message(self, timeseries: Sequence[TimeSeries]) -> bytes:
+    @staticmethod
+    def _build_message(timeseries: Sequence[TimeSeries]) -> bytes:
         write_request = WriteRequest()
         write_request.timeseries.extend(timeseries)
         serialized_message = write_request.SerializeToString()

@@ -27,16 +27,19 @@ def metric(request):
         type_ = request.param
     else:
         type_ = random.choice(["gauge", "sum"])
+
     if type_ == "gauge":
         return metric_util._generate_gauge(
             "test.gauge", random.randint(0, 100)
         )
-    elif type_ == "sum":
+    if type_ == "sum":
         return metric_util._generate_sum(
             "test.sum", random.randint(0, 9_999_999_999)
         )
-    elif type_ == "histogram":
+    if type_ == "histogram":
         return _generate_histogram("test_histogram")
+
+    raise ValueError(f"Unsupported metric type '{type_}'.")
 
 
 def _generate_histogram(name):
