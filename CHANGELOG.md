@@ -7,6 +7,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased](https://github.com/open-telemetry/opentelemetry-python/compare/v1.13.0-0.34b0...HEAD)
 
+### Deprecated
+
+- `opentelemetry-distro` Deprecate `otlp_proto_grpc` and `otlp_proto_http` in favor of using
+  `OTEL_EXPORTER_OTLP_TRACES_PROTOCOL` as according to specifications
+  ([#1250](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/1250))
 
 ### Added
 
@@ -18,10 +23,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Manual Instrumentation in Falcon
   ([#1365](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/1365))
 - `opentelemetry-exporter-richconsole` Fixing RichConsoleExpoter to allow multiple traces, fixing duplicate spans and include resources ([#1336](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/1336))
-- `opentelemetry-instrumentation-asgi` Add support for regular expression matching of HTTP headers.
+- `opentelemetry-instrumentation-asgi` Add support for regular expression matching and sanitization of HTTP headers.
   ([#1333](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/1333))
 - `opentelemetry-instrumentation-asgi` metrics record target attribute (FastAPI only)
   ([#1323](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/1323))
+- `opentelemetry-instrumentation-wsgi` Add support for regular expression matching and sanitization of HTTP headers.
+  ([#1402](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/1402))
 
 ### Fixed
 
