@@ -62,10 +62,10 @@ def _make_future_done_callback(span, rpc_info):
 class OpenTelemetryClientInterceptor(
     grpcext.UnaryClientInterceptor, grpcext.StreamClientInterceptor
 ):
-    def __init__(self, tracer, filter_=None):
+    def __init__(self, tracer, filter_=None, request_hook=None):
         self._tracer = tracer
         self._filter = filter_
-
+        self.request_hook = request_hook
     def _start_span(self, method, **kwargs):
         service, meth = method.lstrip("/").split("/", 1)
         attributes = {
