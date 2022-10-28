@@ -85,7 +85,12 @@ else:
 if DJANGO_3_0:
     from django.core.handlers.asgi import ASGIRequest
 else:
-    ASGIRequest = None
+    try:
+        # Channel package also provides AsgiRequests, that can be used in Django2
+        from channels.http import AsgiRequest
+        ASGIRequest = AsgiRequest
+    except ImportError:
+        ASGIRequest = None
 
 # try/except block exclusive for optional ASGI imports.
 try:
