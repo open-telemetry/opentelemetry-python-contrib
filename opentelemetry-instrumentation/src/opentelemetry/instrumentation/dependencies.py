@@ -59,7 +59,7 @@ def check_dependency_conflicts(dep: str) -> Optional[DependencyConflict]:
     return None
 
 
-def merge_dependency_conflicts_exceptions(
+def merge_dependency_conflicts(
     conflicts: Collection[DependencyConflict],
 ) -> DependencyConflict:
     return DependencyConflict(
@@ -85,6 +85,6 @@ def get_dependency_conflicts(
             if len(successful_checks) > 0:
                 return None
             failed_checks = [check for check in checks if check is not None]
-            return merge_dependency_conflicts_exceptions(failed_checks)
+            return merge_dependency_conflicts(failed_checks)
         return check_dependency_conflicts(dep)
     return None
