@@ -164,9 +164,7 @@ services ``GRPCTestServer`` and ``GRPCHealthServer``.
 """
 import os
 from typing import Callable, Collection, List, Union
-from logging import getLogger
-from . import _client
-from . import _server
+
 import grpc  # pylint:disable=import-self
 from wrapt import wrap_function_wrapper as _wrap
 
@@ -185,23 +183,6 @@ from opentelemetry.instrumentation.utils import unwrap
 # pylint:disable=import-outside-toplevel
 # pylint:disable=import-self
 # pylint:disable=unused-argument
-
-_logger = getLogger(__name__)
-
-class _InstrumentedServer(grpc._server):
-    _tracer_provider = None,
-    _request_hook = None,
-    _response_hook = None,
-
-    def __init__(self, *args, **kwargs) -> None:
-        super().__init__(*args, **kwargs)
-
-        self._is_instrumented_by_opentelemetry = True
-        tracer_provider = _InstrumentedServer._tracer_provider,
-        request_hook = _InstrumentedServer._request_hook,
-        response_hook = _InstrumentedServer._response_hook,
-
-
 
 class GrpcInstrumentorServer(BaseInstrumentor):
     """
@@ -223,15 +204,12 @@ class GrpcInstrumentorServer(BaseInstrumentor):
 
     # pylint:disable=attribute-defined-outside-init, redefined-outer-name
 
-    def __init__(self, 
-    filter_=None,
-    request_hook=None,
-    response_hook=None,
-    tracer_provider = None,
+    def __init__(
+        self, 
+        filter_=None,
+        response_hook=None,
     ):
-        self._request_hook = request_hook
         self._response_hook = response_hook
-        self._tracer_provider = tracer_provider
 
         excluded_service_filter = _excluded_service_filter()
         if excluded_service_filter is not None:
@@ -246,16 +224,11 @@ class GrpcInstrumentorServer(BaseInstrumentor):
 
     def _instrument(self, **kwargs):
         self._original_func = grpc.server
-        request_hook = kwargs.get("request_hook")
-        response_hook = kwargs.get("response_hook")
-        if callable(request_hook):
-            _InstrumentedServer._request_hook = request_hook
-        if callable(response_hook):
-            _InstrumentedServer._response_hook = response_hook
         tracer_provider = kwargs.get("tracer_provider")
-        _InstrumentedServer._tracer_provider = tracer_provider
+        response_hook = kwargs.get("response_hook")
+        if callable(response_hook):
+            self._response_hook = response_hook
 
-        grpc._server = _InstrumentedServer
 
         def server(*args, **kwargs):
             if "interceptors" in kwargs:
@@ -263,15 +236,17 @@ class GrpcInstrumentorServer(BaseInstrumentor):
                 kwargs["interceptors"].insert(
                     0,
                     server_interceptor(
-                        tracer_provider=tracer_provider, filter_=self._filter
+                        tracer_provider=tracer_provider, 
+                        filter_=self._filter,
+                        response_hook=response_hook
                     ),
-                    request_hook=self._request_hook,
-                    response_hook=self._response_hook,
                 )
             else:
                 kwargs["interceptors"] = [
                     server_interceptor(
-                        tracer_provider=tracer_provider, filter_=self._filter
+                        tracer_provider=tracer_provider, 
+                        filter_=self._filter,
+                        response_hook=response_hook
                     )
                 ]
             return self._original_func(*args, **kwargs)
@@ -280,59 +255,7 @@ class GrpcInstrumentorServer(BaseInstrumentor):
 
     def _uninstrument(self, **kwargs):
         grpc.server = self._original_func
-        _InstrumentedServer._tracer_provider = None
-        _InstrumentedServer._request_hook = None
-        _InstrumentedServer._response_hook = None
-    
-    @staticmethod
-    def instrument_server(
-        server:grpc.server,
-        tracer_provider = None,
-        request_hook = None,
-        response_hook = None
-    ): 
-        if not hasattr(server, "_is_instrumented_by_opentelemetry"):
-            server._is_instrumented_by_opentelemetry = False
-        
-        if not server._is_instrumented_by_opentelemetry:
-            excluded_services = (
-                _parse_services(_excluded_service_filter)
-                if excluded_services is not None
-                else _excluded_service_filter
-            )
-            tracer_provider=tracer_provider,
-            request_hook=request_hook,
-            response_hook=response_hook
-            
-        else:
-            _logger.warning(
-                "Attempting to instrumenet grpc server while already instrumented"
-            )
-    
-    @staticmethod
-    def uninstrument_server(server):
-        if hasattr(server, "_original_grpc_server"):
-            server = server._original_grpc_server
-            del server._original_grpc_server
-            server._is_instrumented_by_opentelemetry = False
-        else:
-            _logger.warning(
-                "Attempting to instrument grpc server while already instrumented"
-            )
 
-
-class _InstrumentedClient(grpc.client):
-    _tracer_provider = None
-    _request_hook = None,
-    _response_hook = None
-
-    def __init__(self, *args, **kwargs) -> None:
-        super().__init__(*args, **kwargs)
-
-        self._is_instrumented_by_opentelemetry = True
-        request_hook = _InstrumentedClient._request_hook
-        response_hook = _InstrumentedClient._response_hook
-        tracer_provider = _InstrumentedClient._tracer_provider
 
 class GrpcInstrumentorClient(BaseInstrumentor):
     """
@@ -353,15 +276,12 @@ class GrpcInstrumentorClient(BaseInstrumentor):
 
     """
 
-    def __init__(self, 
+    def __init__(
+    self, 
     filter_=None, 
     request_hook=None,
-    response_hook=None,
-    tracer_provider =None,
     ):
         self._request_hook = request_hook
-        self._response_hook = response_hook
-        self._tracer_provider = tracer_provider
 
         excluded_service_filter = _excluded_service_filter()
         if excluded_service_filter is not None:
@@ -391,18 +311,10 @@ class GrpcInstrumentorClient(BaseInstrumentor):
         return _instruments
 
     def _instrument(self, **kwargs):
-        self._original_client = grpc._client
-        requset_hook = kwargs.get("request_hook")
-        response_hook = kwargs.get("response_hook")
-        if callable(requset_hook):
-            _InstrumentedClient._request_hook = requset_hook
-        if callable(response_hook):
-            _InstrumentedServer._response_hook = response_hook
-        tracer_provider = kwargs.get("tracer_provider")
-        _InstrumentedClient._tracer_provider = tracer_provider
+        request_hook = kwargs.get("request_hook")
+        if callable(request_hook):
+            self._request_hook = request_hook
         
-        grpc._client = _InstrumentedClient
-
         for ctype in self._which_channel(kwargs):
             _wrap(
                 "grpc",
@@ -411,45 +323,9 @@ class GrpcInstrumentorClient(BaseInstrumentor):
             )
 
     def _uninstrument(self, **kwargs):
-        grpc._client = self._original_client
-        _InstrumentedClient._request_hook = None
-        _InstrumentedClient._response_hook = None
-        _InstrumentedClient._tracer_provider = None
         for ctype in self._which_channel(kwargs):
             unwrap(grpc, ctype)
-        
-    @staticmethod
-    def instrument_client(
-        client:grpc._client,
-        tracer_provider = None,
-        request_hook = None,
-        response_hook = None,
-    ):
-        if not hasattr(client, "_is_instrumented_by_opentelemetry"):
-            client._is_instrumented_by_opentelemetry = False
-        
-        if not client._is_instrumented_by_opentelemetry:
-            excluded_services = (
-                _parse_services(_excluded_service_filter)
-                if excluded_services is not None
-                else _excluded_service_filter
-            )
-            tracer_provider=tracer_provider
-            request_hook=request_hook
-            response_hook=response_hook
-        else:
-            _logger.warning("Attempting to unstrument grpc client while already instrumented")
-        
-    @staticmethod
-    def uninstrument_client(client:grpc._client):
-        if hasattr(client, "_original_grpc_client"):
-            client = client._original_grpc_client
-            del client._original_grpc_client
-            client._is_instrumented_by_opentelemetry = False
-        else:
-            _logger.warning(
-                "Attempting to uninstrument grpc client while already instrumented"
-            )
+   
     def wrapper_fn(self, original_func, instance, args, kwargs):
         channel = original_func(*args, **kwargs)
         tracer_provider = kwargs.get("tracer_provider")
@@ -459,7 +335,6 @@ class GrpcInstrumentorClient(BaseInstrumentor):
                 tracer_provider=tracer_provider,
                 filter_=self._filter,
                 request_hook=self._request_hook,
-                response_hook=self._response_hook
             ),
         )
     
