@@ -40,6 +40,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   ([#1333](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/1333))
 - `opentelemetry-instrumentation-asgi` Make ASGIGetter.get() compare all keys in a case insensitive manner.
   ([#1333](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/1333))
+- `opentelemetry-instrumentation-psycopg2` Add support for psycopg2-binary library 
+  ([#1422](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/1422))
+
 
 ## [1.13.0-0.34b0](https://github.com/open-telemetry/opentelemetry-python/releases/tag/v1.13.0-0.34b0) - 2022-09-26
 
