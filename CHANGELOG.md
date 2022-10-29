@@ -28,6 +28,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   ([#1402](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/1402))
 - `opentelemetry-instrumentation-botocore` Add support for SNS `publish` and `publish_batch`.
   ([#1409](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/1409))
+- `opentelemetry-instrumentation-pyramid` Add support for regular expression matching and sanitization of HTTP headers.
+  ([#1414](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/1414))
 
 ### Fixed
 
