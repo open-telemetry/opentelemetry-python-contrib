@@ -86,5 +86,7 @@ def get_dependency_conflicts(
                 return None
             failed_checks = [check for check in checks if check is not None]
             return merge_dependency_conflicts(failed_checks)
-        return check_dependency_conflicts(dep)
+        conflict = check_dependency_conflicts(dep)
+        if conflict:
+            return conflict
     return None
