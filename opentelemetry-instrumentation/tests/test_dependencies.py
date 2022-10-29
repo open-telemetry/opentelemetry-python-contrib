@@ -41,7 +41,7 @@ class TestDependencyConflicts(TestBase):
             'DependencyConflict: requested: "this-package-does-not-exist" but found: "None"',
         )
 
-    def test_get_dependency_conflicts_multiple_not_installed(self):
+    def test_get_dependency_conflicts_multiple_possible_dependencies_not_installed(self):
         conflict = get_dependency_conflicts(
             [("this-package-does-not-exist", "this-package-also-does-not-exist")]
         )
@@ -52,7 +52,7 @@ class TestDependencyConflicts(TestBase):
             'DependencyConflict: requested: "this-package-does-not-exist or this-package-also-does-not-exist" but found: "None"',
         )
 
-    def test_get_dependency_conflicts_multiple_possible_dependencies(self):
+    def test_get_dependency_conflicts_multiple_possible_dependencies_one_installed(self):
         conflict = get_dependency_conflicts([("this-package-does-not-exist", "pytest")])
         self.assertIsNone(conflict)
 
