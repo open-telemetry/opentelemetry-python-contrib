@@ -334,7 +334,7 @@ class GrpcInstrumentorClient(BaseInstrumentor):
             client_interceptor(
                 tracer_provider=tracer_provider,
                 filter_=self._filter,
-                request_hook=self._request_hook,
+                request_hook=self._request_hook
             ),
         )
     
