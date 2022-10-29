@@ -229,7 +229,6 @@ class GrpcInstrumentorServer(BaseInstrumentor):
         if callable(response_hook):
             self._response_hook = response_hook
 
-
         def server(*args, **kwargs):
             if "interceptors" in kwargs:
                 # add our interceptor as the first
@@ -335,7 +334,7 @@ class GrpcInstrumentorClient(BaseInstrumentor):
                 tracer_provider=tracer_provider,
                 filter_=self._filter,
                 request_hook=self._request_hook
-            ),
+            )
         )
     
 
