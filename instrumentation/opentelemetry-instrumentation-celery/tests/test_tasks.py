@@ -86,8 +86,8 @@ class TestCelerySignatureTask(TestBase):
         def start_app(*args, **kwargs):
             # Add an additional task that will not be registered with parent thread
             @app.task
-            def hidden_task(x):
-                return x * 2
+            def hidden_task(num_a):
+                return num_a * 2
 
             self._worker = app.Worker(app=app, pool="solo", concurrency=1)
             return self._worker.start(*args, **kwargs)
@@ -105,9 +105,6 @@ class TestCelerySignatureTask(TestBase):
     def test_hidden_task(self):
         # no-op since already instrumented
         CeleryInstrumentor().instrument()
-        import ipdb
-
-        ipdb.set_trace()
 
         res = app.signature("app.hidden_task", (2,)).apply_async()
         while not res.ready():
@@ -116,6 +113,7 @@ class TestCelerySignatureTask(TestBase):
         spans = self.sorted_spans(self.memory_exporter.get_finished_spans())
         self.assertEqual(len(spans), 1)
 
-        producer = spans
+        producer = spans[0]
 
         self.assertEqual(producer.name, "apply_async/app.hidden_task")
+        self.assertEqual(producer.kind, SpanKind.PRODUCER)
