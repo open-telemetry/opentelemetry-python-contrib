@@ -67,7 +67,9 @@ def main():
             instruments = (name,)
 
         instruments = [
-            ', '.join(instrument) if isinstance(instrument, tuple) else instrument
+            ", ".join(instrument)
+            if isinstance(instrument, tuple)
+            else instrument
             for instrument in instruments
         ]
 

@@ -59,12 +59,16 @@ def check_dependency_conflicts(dep: str) -> Optional[DependencyConflict]:
     return None
 
 
-def merge_dependency_conflicts_exceptions(conflicts: Collection[DependencyConflict]):
+def merge_dependency_conflicts_exceptions(
+    conflicts: Collection[DependencyConflict],
+):
     return DependencyConflict(
         required=" or ".join(
             [conflict.required for conflict in conflicts if conflict.required]
         ),
-        found=" and ".join([conflict.found for conflict in conflicts if conflict.found])
+        found=" and ".join(
+            [conflict.found for conflict in conflicts if conflict.found]
+        )
         or None,
     )
 
@@ -74,7 +78,9 @@ def get_dependency_conflicts(
 ) -> Optional[DependencyConflict]:
     for dep in deps:
         if isinstance(dep, tuple):
-            checks = [check_dependency_conflicts(dep_option) for dep_option in dep]
+            checks = [
+                check_dependency_conflicts(dep_option) for dep_option in dep
+            ]
             successful_checks = [check for check in checks if check is None]
             if len(successful_checks) > 0:
                 return None
