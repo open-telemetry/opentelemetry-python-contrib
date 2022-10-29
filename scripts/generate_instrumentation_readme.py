@@ -66,6 +66,11 @@ def main():
         if not instruments:
             instruments = (name,)
 
+        instruments = [
+            ', '.join(instrument) if isinstance(instrument, tuple) else instrument
+            for instrument in instruments
+        ]
+
         metric_column = "Yes" if supports_metrics else "No"
 
         table.append(
