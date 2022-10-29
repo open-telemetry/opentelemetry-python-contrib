@@ -41,6 +41,21 @@ class TestDependencyConflicts(TestBase):
             'DependencyConflict: requested: "this-package-does-not-exist" but found: "None"',
         )
 
+    def test_get_dependency_conflicts_multiple_not_installed(self):
+        conflict = get_dependency_conflicts(
+            [("this-package-does-not-exist", "this-package-also-does-not-exist")]
+        )
+        self.assertTrue(conflict is not None)
+        self.assertTrue(isinstance(conflict, DependencyConflict))
+        self.assertEqual(
+            str(conflict),
+            'DependencyConflict: requested: "this-package-does-not-exist or this-package-also-does-not-exist" but found: "None"',
+        )
+
+    def test_get_dependency_conflicts_multiple_possible_dependencies(self):
+        conflict = get_dependency_conflicts([("this-package-does-not-exist", "pytest")])
+        self.assertIsNone(conflict)
+
     def test_get_dependency_conflicts_mismatched_version(self):
         conflict = get_dependency_conflicts(["pytest == 5000"])
         self.assertTrue(conflict is not None)
@@ -54,9 +69,7 @@ class TestDependencyConflicts(TestBase):
         def mock_requires(extras=()):
             if "instruments" in extras:
                 return [
-                    pkg_resources.Requirement(
-                        'test-pkg ~= 1.0; extra == "instruments"'
-                    )
+                    pkg_resources.Requirement('test-pkg ~= 1.0; extra == "instruments"')
                 ]
             return []
 
