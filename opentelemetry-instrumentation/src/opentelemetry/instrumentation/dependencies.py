@@ -61,7 +61,7 @@ def check_dependency_conflicts(dep: str) -> Optional[DependencyConflict]:
 
 def merge_dependency_conflicts_exceptions(
     conflicts: Collection[DependencyConflict],
-):
+) -> DependencyConflict:
     return DependencyConflict(
         required=" or ".join(
             [conflict.required for conflict in conflicts if conflict.required]
