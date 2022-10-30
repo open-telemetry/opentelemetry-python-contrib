@@ -31,6 +31,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   ([#1413](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/1413))
 - `opentelemetry-instrumentation-pyramid` Add support for regular expression matching and sanitization of HTTP headers.
   ([#1414](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/1414))
+- Add a test for mysql using NoOpTracerProvider
+  ([#1423](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/1423))
 
 ### Fixed
 
