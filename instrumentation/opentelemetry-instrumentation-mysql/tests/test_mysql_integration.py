@@ -17,11 +17,11 @@ from unittest.mock import Mock, patch
 import mysql.connector
 
 import opentelemetry.instrumentation.mysql
+from opentelemetry import trace as trace_api
 from opentelemetry.instrumentation.mysql import MySQLInstrumentor
 from opentelemetry.sdk import resources
-from opentelemetry.test.test_base import TestBase
-from opentelemetry import trace as trace_api
 from opentelemetry.test.globals_test import reset_trace_globals
+from opentelemetry.test.test_base import TestBase
 
 
 def mock_connect(*args, **kwargs):
