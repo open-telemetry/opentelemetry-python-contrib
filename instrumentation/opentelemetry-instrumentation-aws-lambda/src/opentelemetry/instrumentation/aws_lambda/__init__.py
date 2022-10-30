@@ -46,6 +46,7 @@ API
 The `instrument` method accepts the following keyword args:
 
 tracer_provider (TracerProvider) - an optional tracer provider
+meter_provider (MeterProvider) - an optional meter provider
 event_context_extractor (Callable) - a function that returns an OTel Trace
     Context given the Lambda Event the AWS Lambda was invoked with
     this function signature is: def event_context_extractor(lambda_event: Any) -> Context
@@ -77,6 +78,11 @@ from opentelemetry.instrumentation.aws_lambda.package import _instruments
 from opentelemetry.instrumentation.aws_lambda.version import __version__
 from opentelemetry.instrumentation.instrumentor import BaseInstrumentor
 from opentelemetry.instrumentation.utils import unwrap
+from opentelemetry.metrics._internal import (
+    MeterProvider,
+    get_meter,
+    get_meter_provider,
+)
 from opentelemetry.propagate import get_global_textmap
 from opentelemetry.propagators.aws.aws_xray_propagator import (
     TRACE_HEADER_KEY,
@@ -177,6 +183,7 @@ def _instrument(
     flush_timeout,
     event_context_extractor: Callable[[Any], Context],
     tracer_provider: TracerProvider = None,
+    meter_provider: MeterProvider = None,
 ):
     def _instrumented_lambda_handler_call(
         call_wrapped, instance, args, kwargs
@@ -244,6 +251,28 @@ def _instrument(
                 "TracerProvider was missing `force_flush` method. This is necessary in case of a Lambda freeze and would exist in the OTel SDK implementation."
             )
 
+        meter = get_meter(__name__, __version__, meter_provider)
+        meter.create_histogram(
+            name="http.client.duration",
+            unit="ms",
+            description="measures the duration of the outbound HTTP request",
+        )
+        meter.create_up_down_counter(
+            name="http.server.active_requests",
+            unit="requests",
+            description="measures the number of concurrent HTTP requests those are currently in flight",
+        )
+
+        _meter_provider = meter_provider or get_meter_provider()
+        try:
+            # NOTE: `force_flush` before function quit in case of Lambda freeze.
+            # Assumes we are using the OpenTelemetry SDK implementation of the
+            # `MeterProvider`.
+            _meter_provider.force_flush(flush_timeout)
+        except Exception: # pylint: disable=broad-except
+            logger.error(
+                "MeterProvider was missing `force_flush` method. This is necessary in case of a Lambda freeze and would exist in the OTel SDK implementation."
+            )
         return result
 
     wrap_function_wrapper(
@@ -298,6 +327,7 @@ class AwsLambdaInstrumentor(BaseInstrumentor):
                 "event_context_extractor", _default_event_context_extractor
             ),
             tracer_provider=kwargs.get("tracer_provider"),
+            meter_provider=kwargs.get("meter_provider"),
         )
 
     def _uninstrument(self, **kwargs):
