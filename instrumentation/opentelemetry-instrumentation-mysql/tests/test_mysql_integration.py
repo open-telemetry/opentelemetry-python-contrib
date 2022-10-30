@@ -107,7 +107,7 @@ class TestMysqlIntegration(TestBase):
 
     @patch("mysql.connector.connect", new=mock_connect)
     # pylint: disable=unused-argument
-    def test_instrument_connection_No_Op(self):
+    def test_instrument_connection_no_op_tracer_provider(self):
         reset_trace_globals()
         tracer_provider = trace_api.NoOpTracerProvider()
         trace_api.set_tracer_provider(tracer_provider)
