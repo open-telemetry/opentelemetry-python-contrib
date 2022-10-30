@@ -20,6 +20,8 @@ import opentelemetry.instrumentation.mysql
 from opentelemetry.instrumentation.mysql import MySQLInstrumentor
 from opentelemetry.sdk import resources
 from opentelemetry.test.test_base import TestBase
+from opentelemetry import trace as trace_api
+from opentelemetry.test.globals_test import reset_trace_globals
 
 
 def mock_connect(*args, **kwargs):
@@ -102,6 +104,22 @@ class TestMysqlIntegration(TestBase):
 
         spans_list = self.memory_exporter.get_finished_spans()
         self.assertEqual(len(spans_list), 1)
+
+    @patch("mysql.connector.connect", new=mock_connect)
+    # pylint: disable=unused-argument
+    def test_instrument_connection_No_Op(self):
+        reset_trace_globals()
+        tracer_provider = trace_api.NoOpTracerProvider()
+        trace_api.set_tracer_provider(tracer_provider)
+
+        MySQLInstrumentor().instrument()
+        cnx = mysql.connector.connect(database="test")
+        query = "SELECT * FROM test"
+        cursor = cnx.cursor()
+        cursor.execute(query)
+
+        spans_list = self.memory_exporter.get_finished_spans()
+        self.assertEqual(len(spans_list), 0)
 
     @patch("mysql.connector.connect", new=mock_connect)
     # pylint: disable=unused-argument
