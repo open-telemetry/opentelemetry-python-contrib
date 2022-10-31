@@ -184,7 +184,6 @@ from opentelemetry.instrumentation.utils import unwrap
 # pylint:disable=import-self
 # pylint:disable=unused-argument
 
-
 class GrpcInstrumentorServer(BaseInstrumentor):
     """
     Globally instrument the grpc server.
@@ -205,7 +204,15 @@ class GrpcInstrumentorServer(BaseInstrumentor):
 
     # pylint:disable=attribute-defined-outside-init, redefined-outer-name
 
-    def __init__(self, filter_=None):
+    def __init__(
+        self, 
+        filter_=None,
+        response_hook=None,
+        request_hook=None,
+    ):  
+        self._request_hook = request_hook
+        self._response_hook = response_hook
+
         excluded_service_filter = _excluded_service_filter()
         if excluded_service_filter is not None:
             if filter_ is None:
@@ -220,6 +227,9 @@ class GrpcInstrumentorServer(BaseInstrumentor):
     def _instrument(self, **kwargs):
         self._original_func = grpc.server
         tracer_provider = kwargs.get("tracer_provider")
+        response_hook = kwargs.get("response_hook")
+        if callable(response_hook):
+            self._response_hook = response_hook
 
         def server(*args, **kwargs):
             if "interceptors" in kwargs:
@@ -227,13 +237,17 @@ class GrpcInstrumentorServer(BaseInstrumentor):
                 kwargs["interceptors"].insert(
                     0,
                     server_interceptor(
-                        tracer_provider=tracer_provider, filter_=self._filter
+                        tracer_provider=tracer_provider, 
+                        filter_=self._filter,
+                        response_hook=response_hook
                     ),
                 )
             else:
                 kwargs["interceptors"] = [
                     server_interceptor(
-                        tracer_provider=tracer_provider, filter_=self._filter
+                        tracer_provider=tracer_provider, 
+                        filter_=self._filter,
+                        response_hook=response_hook
                     )
                 ]
             return self._original_func(*args, **kwargs)
@@ -263,7 +277,15 @@ class GrpcInstrumentorClient(BaseInstrumentor):
 
     """
 
-    def __init__(self, filter_=None):
+    def __init__(
+    self, 
+    filter_=None, 
+    request_hook=None,
+    response_hook=None,
+    ):  
+        self._request_hook = request_hook
+        self._response_hook = response_hook
+
         excluded_service_filter = _excluded_service_filter()
         if excluded_service_filter is not None:
             if filter_ is None:
@@ -292,6 +314,10 @@ class GrpcInstrumentorClient(BaseInstrumentor):
         return _instruments
 
     def _instrument(self, **kwargs):
+        request_hook = kwargs.get("request_hook")
+        if callable(request_hook):
+            self._request_hook = request_hook
+        
         for ctype in self._which_channel(kwargs):
             _wrap(
                 "grpc",
@@ -302,7 +328,7 @@ class GrpcInstrumentorClient(BaseInstrumentor):
     def _uninstrument(self, **kwargs):
         for ctype in self._which_channel(kwargs):
             unwrap(grpc, ctype)
-
+   
     def wrapper_fn(self, original_func, instance, args, kwargs):
         channel = original_func(*args, **kwargs)
         tracer_provider = kwargs.get("tracer_provider")
@@ -311,11 +337,12 @@ class GrpcInstrumentorClient(BaseInstrumentor):
             client_interceptor(
                 tracer_provider=tracer_provider,
                 filter_=self._filter,
-            ),
+                request_hook=self._request_hook
+            )
         )
+    
 
-
-def client_interceptor(tracer_provider=None, filter_=None):
+def client_interceptor(tracer_provider=None, filter_=None, request_hook=None):
     """Create a gRPC client channel interceptor.
 
     Args:
@@ -332,10 +359,14 @@ def client_interceptor(tracer_provider=None, filter_=None):
 
     tracer = trace.get_tracer(__name__, __version__, tracer_provider)
 
-    return _client.OpenTelemetryClientInterceptor(tracer, filter_=filter_)
+    return _client.OpenTelemetryClientInterceptor(
+        tracer, 
+        filter_=filter_,
+        request_hook=request_hook
+    )
 
 
-def server_interceptor(tracer_provider=None, filter_=None):
+def server_interceptor(tracer_provider=None, filter_=None, response_hook=None):
     """Create a gRPC server interceptor.
 
     Args:
@@ -352,7 +383,11 @@ def server_interceptor(tracer_provider=None, filter_=None):
 
     tracer = trace.get_tracer(__name__, __version__, tracer_provider)
 
-    return _server.OpenTelemetryServerInterceptor(tracer, filter_=filter_)
+    return _server.OpenTelemetryServerInterceptor(
+        tracer, 
+        filter_=filter_,
+        response_hook=response_hook
+    )
 
 
 def _excluded_service_filter() -> Union[Callable[[object], bool], None]:
