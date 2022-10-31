@@ -266,7 +266,10 @@ class OpenTelemetryServerInterceptor(grpc.ServerInterceptor):
     def intercept_service(self, continuation, handler_call_details):
         if self._filter is not None and not self._filter(handler_call_details):
             return continuation(handler_call_details)
-
+        
+        if self.response_hook is not None and not self.response_hook(handler_call_details):
+            return continuation(handler_call_details)
+    
         def telemetry_wrapper(behavior, request_streaming, response_streaming):
             def telemetry_interceptor(request_or_iterator, context):
 

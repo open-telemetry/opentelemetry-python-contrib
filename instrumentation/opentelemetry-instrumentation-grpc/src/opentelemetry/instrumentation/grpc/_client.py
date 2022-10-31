@@ -66,6 +66,7 @@ class OpenTelemetryClientInterceptor(
         self._tracer = tracer
         self._filter = filter_
         self.request_hook = request_hook
+
     def _start_span(self, method, **kwargs):
         service, meth = method.lstrip("/").split("/", 1)
         attributes = {
@@ -151,6 +152,8 @@ class OpenTelemetryClientInterceptor(
     def intercept_unary(self, request, metadata, client_info, invoker):
         if self._filter is not None and not self._filter(client_info):
             return invoker(request, metadata)
+        if self.request_hook is not None and self.request_hook(client_info):
+            return invoker(request, metadata)
         return self._intercept(request, metadata, client_info, invoker)
 
     # For RPCs that stream responses, the result can be a generator. To record
@@ -193,7 +196,10 @@ class OpenTelemetryClientInterceptor(
 
         if self._filter is not None and not self._filter(client_info):
             return invoker(request_or_iterator, metadata)
-
+            
+        if self.request_hook is not None and not self.request_hook(client_info):
+            return invoker(request_or_iterator, metadata)
+        
         if client_info.is_server_stream:
             return self._intercept_server_stream(
                 request_or_iterator, metadata, client_info, invoker

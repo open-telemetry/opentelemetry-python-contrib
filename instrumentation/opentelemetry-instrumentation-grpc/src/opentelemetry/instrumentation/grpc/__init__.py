@@ -208,7 +208,9 @@ class GrpcInstrumentorServer(BaseInstrumentor):
         self, 
         filter_=None,
         response_hook=None,
-    ):
+        request_hook=None,
+    ):  
+        self._request_hook = request_hook
         self._response_hook = response_hook
 
         excluded_service_filter = _excluded_service_filter()
@@ -279,8 +281,10 @@ class GrpcInstrumentorClient(BaseInstrumentor):
     self, 
     filter_=None, 
     request_hook=None,
-    ):
+    response_hook=None,
+    ):  
         self._request_hook = request_hook
+        self._response_hook = response_hook
 
         excluded_service_filter = _excluded_service_filter()
         if excluded_service_filter is not None:
