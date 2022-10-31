@@ -7,6 +7,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased](https://github.com/open-telemetry/opentelemetry-python/compare/v1.13.0-0.34b0...HEAD)
 
+### Deprecated
+
+- `opentelemetry-distro` Deprecate `otlp_proto_grpc` and `otlp_proto_http` in favor of using
+  `OTEL_EXPORTER_OTLP_TRACES_PROTOCOL` as according to specifications
+  ([#1250](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/1250))
 
 ### Added
 
@@ -22,6 +27,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   ([#1323](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/1323))
 - `opentelemetry-instrumentation-wsgi` Add support for regular expression matching and sanitization of HTTP headers.
   ([#1402](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/1402))
+- `opentelemetry-instrumentation-flask` Add support for regular expression matching and sanitization of HTTP headers.
+  ([#1413](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/1413))
+- `opentelemetry-instrumentation-pyramid` Add support for regular expression matching and sanitization of HTTP headers.
+  ([#1414](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/1414))
+- Add metric exporter for Prometheus Remote Write
+  ([#1359](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/1359))
 
 ### Fixed
 
@@ -52,6 +63,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   ([#1253](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/1253))
 - Add metric instrumentation in starlette
   ([#1327](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/1327))
+
 
 ### Fixed
 
