@@ -6,10 +6,8 @@ OpenTelemetry Prometheus Remote Write Exporter
 .. |pypi| image:: https://badge.fury.io/py/opentelemetry-exporter-prometheus-remote-write.svg
    :target: https://pypi.org/project/opentelemetry-exporter-prometheus-remote-write/
 
-This package contains an exporter to send `OTLP`_ metrics from the
-`OpenTelemetry Python SDK`_ directly to a `Prometheus Remote Write integrated backend`_
-(such as Cortex or Thanos) without having to run an instance of the
-Prometheus server.
+This package contains an exporter to send metrics from the OpenTelemetry Python SDK directly to a Prometheus Remote Write integrated backend
+(such as Cortex or Thanos) without having to run an instance of the Prometheus server.
 
 
 Installation
