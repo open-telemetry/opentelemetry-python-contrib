@@ -337,7 +337,7 @@ class GrpcInstrumentorClient(BaseInstrumentor):
             client_interceptor(
                 tracer_provider=tracer_provider,
                 filter_=self._filter,
-                request_hook=self._request_hook
+                request_hook=self._request_hook,
             )
         )
     
@@ -362,7 +362,7 @@ def client_interceptor(tracer_provider=None, filter_=None, request_hook=None):
     return _client.OpenTelemetryClientInterceptor(
         tracer, 
         filter_=filter_,
-        request_hook=request_hook
+        request_hook=request_hook,
     )
 
 
@@ -386,7 +386,7 @@ def server_interceptor(tracer_provider=None, filter_=None, response_hook=None):
     return _server.OpenTelemetryServerInterceptor(
         tracer, 
         filter_=filter_,
-        response_hook=response_hook
+        response_hook=response_hook,
     )
 
 
