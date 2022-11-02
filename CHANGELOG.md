@@ -29,10 +29,20 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   ([#1323](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/1323))
 - `opentelemetry-instrumentation-wsgi` Add support for regular expression matching and sanitization of HTTP headers.
   ([#1402](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/1402))
+- Add support for py3.11
+  ([#1415](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/1415))
+- `opentelemetry-instrumentation-django` Add support for regular expression matching and sanitization of HTTP headers.
+  ([#1411](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/1411))
+- `opentelemetry-instrumentation-falcon` Add support for regular expression matching and sanitization of HTTP headers.
+  ([#1412](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/1412))
 - `opentelemetry-instrumentation-flask` Add support for regular expression matching and sanitization of HTTP headers.
   ([#1413](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/1413))
 - `opentelemetry-instrumentation-pyramid` Add support for regular expression matching and sanitization of HTTP headers.
   ([#1414](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/1414))
+- `opentelemetry-instrumentation-grpc` Add support for grpc.aio Clients and Servers
+  ([#1245](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/1245))
+- Add metric exporter for Prometheus Remote Write
+  ([#1359](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/1359))
 
 ### Fixed
 
@@ -42,6 +52,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   ([#1333](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/1333))
 - `opentelemetry-instrumentation-asgi` Make ASGIGetter.get() compare all keys in a case insensitive manner.
   ([#1333](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/1333))
+- Use resp.text instead of resp.body for Falcon 3 to avoid a deprecation warning.
+  ([#1412](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/1412))
 
 ## [1.13.0-0.34b0](https://github.com/open-telemetry/opentelemetry-python/releases/tag/v1.13.0-0.34b0) - 2022-09-26
 
@@ -63,6 +75,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   ([#1253](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/1253))
 - Add metric instrumentation in starlette
   ([#1327](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/1327))
+
 
 ### Fixed
 
