@@ -15,6 +15,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- Capture common HTTP attributes from API Gateway proxy events in `opentelemetry-instrumentation-aws-lambda`
+  ([#1233](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/1233))
 - Add metric instrumentation for tornado
   ([#1252](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/1252))
 - `opentelemetry-instrumentation-django` Fixed bug where auto-instrumentation fails when django is installed and settings are not configured.
@@ -27,10 +29,18 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   ([#1323](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/1323))
 - `opentelemetry-instrumentation-wsgi` Add support for regular expression matching and sanitization of HTTP headers.
   ([#1402](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/1402))
+- Add support for py3.11
+  ([#1415](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/1415))
+- `opentelemetry-instrumentation-django` Add support for regular expression matching and sanitization of HTTP headers.
+  ([#1411](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/1411))
+- `opentelemetry-instrumentation-falcon` Add support for regular expression matching and sanitization of HTTP headers.
+  ([#1412](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/1412))
 - `opentelemetry-instrumentation-flask` Add support for regular expression matching and sanitization of HTTP headers.
   ([#1413](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/1413))
 - `opentelemetry-instrumentation-pyramid` Add support for regular expression matching and sanitization of HTTP headers.
   ([#1414](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/1414))
+- `opentelemetry-instrumentation-grpc` Add support for grpc.aio Clients and Servers
+  ([#1245](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/1245))
 - Add metric exporter for Prometheus Remote Write
   ([#1359](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/1359))
 
@@ -44,6 +54,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   ([#1333](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/1333))
 - `opentelemetry-instrumentation-celery` Add support for anonymous tasks.
   ([#1407](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/1407)
+- Use resp.text instead of resp.body for Falcon 3 to avoid a deprecation warning.
+  ([#1412](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/1412))
 
 ## [1.13.0-0.34b0](https://github.com/open-telemetry/opentelemetry-python/releases/tag/v1.13.0-0.34b0) - 2022-09-26
 
@@ -52,7 +64,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
-- `opentelemetry-instrumentation-grpc` add supports to filter requests to instrument. ([#1241](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/1241))
+- `opentelemetry-instrumentation-grpc` add supports to filter requests to instrument. 
+  ([#1241](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/1241))
 - Flask sqlalchemy psycopg2 integration
   ([#1224](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/1224))
 - Add metric instrumentation in Falcon
