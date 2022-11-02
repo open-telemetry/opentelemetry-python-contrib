@@ -106,14 +106,23 @@ class TestCelerySignatureTask(TestBase):
         # no-op since already instrumented
         CeleryInstrumentor().instrument()
 
-        res = app.signature("app.hidden_task", (2,)).apply_async()
+        res = app.signature("tests.test_tasks.hidden_task", (2,)).apply_async()
         while not res.ready():
             time.sleep(0.05)
 
         spans = self.sorted_spans(self.memory_exporter.get_finished_spans())
-        self.assertEqual(len(spans), 1)
+        self.assertEqual(len(spans), 2)
 
-        producer = spans[0]
+        consumer, producer = spans
 
-        self.assertEqual(producer.name, "apply_async/app.hidden_task")
+        self.assertEqual(consumer.name, "run/tests.test_tasks.hidden_task")
+        self.assertEqual(consumer.kind, SpanKind.CONSUMER)
+
+        self.assertEqual(
+            producer.name, "apply_async/tests.test_tasks.hidden_task"
+        )
         self.assertEqual(producer.kind, SpanKind.PRODUCER)
+
+        self.assertNotEqual(consumer.parent, producer.context)
+        self.assertEqual(consumer.parent.span_id, producer.context.span_id)
+        self.assertEqual(consumer.context.trace_id, producer.context.trace_id)
