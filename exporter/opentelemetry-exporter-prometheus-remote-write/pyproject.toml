@@ -2,10 +2,11 @@
 requires = ["hatchling"]
 build-backend = "hatchling.build"
 
+
 [project]
-name = "opentelemetry-exporter-datadog"
+name = "opentelemetry-exporter-prometheus-remote-write"
 dynamic = ["version"]
-description = "Datadog Span Exporter for OpenTelemetry"
+description = "Prometheus Remote Write Metrics Exporter for OpenTelemetry"
 readme = "README.rst"
 license = "Apache-2.0"
 requires-python = ">=3.7"
@@ -24,20 +25,21 @@ classifiers = [
   "Programming Language :: Python :: 3.10",
 ]
 dependencies = [
-  "ddtrace>=0.34.0,<0.47.0",
+  "protobuf ~= 4.21",
+  "requests ~= 2.28",
   "opentelemetry-api ~= 1.12",
   "opentelemetry-sdk ~= 1.12",
-  "opentelemetry-semantic-conventions == 0.30b0",
+  "python-snappy ~= 0.6",
 ]
 
 [project.optional-dependencies]
 test = []
 
 [project.urls]
-Homepage = "https://github.com/open-telemetry/opentelemetry-python-contrib/tree/main/exporter/opentelemetry-exporter-datadog"
+Homepage = "https://github.com/open-telemetry/opentelemetry-python-contrib/tree/main/exporter/opentelemetry-exporter-prometheus-remote-write"
 
 [tool.hatch.version]
-path = "src/opentelemetry/exporter/datadog/version.py"
+path = "src/opentelemetry/exporter/prometheus_remote_write/version.py"
 
 [tool.hatch.build.targets.sdist]
 include = [
