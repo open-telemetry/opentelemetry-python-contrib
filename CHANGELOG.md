@@ -9,7 +9,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
-- Fix bug in Urllib instrumentation
+- Fix bug in Urllib instrumentation - add status code to span attributes only if the status code is not None. 
   ([#1430](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/1430))
 
 ## Version 1.14.0/0.35b0 (2022-11-03)
