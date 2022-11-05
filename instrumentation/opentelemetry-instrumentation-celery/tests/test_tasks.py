@@ -35,6 +35,7 @@ class TestCeleryInstrumentation(TestBase):
         super().tearDown()
         self._worker.stop()
         self._thread.join()
+        CeleryInstrumentor().uninstrument()
 
     def test_task(self):
         CeleryInstrumentor().instrument()
@@ -101,6 +102,7 @@ class TestCelerySignatureTask(TestBase):
         super().tearDown()
         self._worker.stop()
         self._thread.join()
+        CeleryInstrumentor().uninstrument()
 
     def test_hidden_task(self):
         # no-op since already instrumented
@@ -109,7 +111,6 @@ class TestCelerySignatureTask(TestBase):
         res = app.signature("tests.test_tasks.hidden_task", (2,)).apply_async()
         while not res.ready():
             time.sleep(0.05)
-
         spans = self.sorted_spans(self.memory_exporter.get_finished_spans())
         self.assertEqual(len(spans), 2)
 
