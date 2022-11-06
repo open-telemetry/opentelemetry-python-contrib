@@ -124,9 +124,7 @@ _RequestHookT = typing.Optional[
 _ResponseHookT = typing.Optional[
     typing.Callable[[Span, redis.connection.Connection, Any], None]
 ]
-_NameCallbackT = typing.Optional[
-    typing.Callable[[str], str]
-]
+_NameCallbackT = typing.Optional[typing.Callable[[str], str]]
 
 _REDIS_ASYNCIO_VERSION = (4, 2, 0)
 if redis.VERSION >= _REDIS_ASYNCIO_VERSION:

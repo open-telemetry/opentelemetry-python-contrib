@@ -161,8 +161,6 @@ class TestRedis(TestBase):
             tracer_provider=self.tracer_provider, name_callback=name_callback
         )
 
-        test_value = "test_value"
-
         with mock.patch.object(redis_client, "connection"):
             redis_client.get("key")
 
