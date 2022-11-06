@@ -146,3 +146,29 @@ class TestRedis(TestBase):
 
         span = spans[0]
         self.assertEqual(span.attributes.get(custom_attribute_name), "GET")
+
+    def test_name_callback(self):
+        redis_client = redis.Redis()
+        # connection = redis.connection.Connection()
+        # redis_client.connection = connection
+
+        def name_callback(span_name):
+            span_name = span_name + " Redis"
+            return span_name
+
+        RedisInstrumentor().uninstrument()
+        RedisInstrumentor().instrument(
+            tracer_provider=self.tracer_provider, name_callback=name_callback
+        )
+
+        test_value = "test_value"
+
+        with mock.patch.object(redis_client, "connection"):
+            redis_client.get("key")
+
+        spans = self.memory_exporter.get_finished_spans()
+        self.assertEqual(len(spans), 1)
+
+        span = spans[0]
+        print(span.name)
+        self.assertEqual(span.name, "GET Redis")

@@ -64,6 +64,9 @@ this function signature is:  def request_hook(span: Span, instance: redis.connec
 response_hook (Callable) - a function with extra user-defined logic to be performed after performing the request
 this function signature is: def response_hook(span: Span, instance: redis.connection.Connection, response) -> None
 
+name_callback - a function to mangle with the name of the reported span
+this function signature is: def name_callback(span_name_in: str) -> str
+
 for example:
 
 .. code: python
@@ -79,8 +82,12 @@ for example:
         if span and span.is_recording():
             span.set_attribute("custom_user_attribute_from_response_hook", "some-value")
 
+    def name_callback(span_name):
+        span_name + " Redis"
+        return span_name
+
     # Instrument redis with hooks
-    RedisInstrumentor().instrument(request_hook=request_hook, response_hook=response_hook)
+    RedisInstrumentor().instrument(request_hook=request_hook, response_hook=response_hook, name_callback=name_callback)
 
     # This will report a span with the default settings and the custom attributes added from the hooks
     client = redis.StrictRedis(host="localhost", port=6379)
@@ -117,6 +124,9 @@ _RequestHookT = typing.Optional[
 _ResponseHookT = typing.Optional[
     typing.Callable[[Span, redis.connection.Connection, Any], None]
 ]
+_NameCallbackT = typing.Optional[
+    typing.Callable[[str], str]
+]
 
 _REDIS_ASYNCIO_VERSION = (4, 2, 0)
 if redis.VERSION >= _REDIS_ASYNCIO_VERSION:
@@ -139,6 +149,7 @@ def _instrument(
     tracer,
     request_hook: _RequestHookT = None,
     response_hook: _ResponseHookT = None,
+    name_callback: _NameCallbackT = None,
 ):
     def _traced_execute_command(func, instance, args, kwargs):
         query = _format_command_args(args)
@@ -147,6 +158,10 @@ def _instrument(
             name = args[0]
         else:
             name = instance.connection_pool.connection_kwargs.get("db", 0)
+
+        if name_callback is not None and callable(name_callback):
+            name = name_callback(name)
+
         with tracer.start_as_current_span(
             name, kind=trace.SpanKind.CLIENT
         ) as span:
@@ -181,6 +196,10 @@ def _instrument(
                     for c in command_stack
                 ]
             )
+
+            if name_callback is not None and callable(name_callback):
+                span_name = name_callback(span_name)
+
         except (AttributeError, IndexError):
             command_stack = []
             resource = ""
@@ -282,6 +301,7 @@ class RedisInstrumentor(BaseInstrumentor):
             tracer,
             request_hook=kwargs.get("request_hook"),
             response_hook=kwargs.get("response_hook"),
+            name_callback=kwargs.get("name_callback"),
         )
 
     def _uninstrument(self, **kwargs):
