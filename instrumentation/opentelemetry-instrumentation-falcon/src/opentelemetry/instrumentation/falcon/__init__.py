@@ -529,34 +529,59 @@ class FalconInstrumentor(BaseInstrumentor):
     ):
         if not hasattr(app, "_is_instrumented_by_opentelemetry"):
 
-            class FalconAPI(_InstrumentedFalconAPI):
-                def __init__(self, *args, **kwargs):
-                    for attribute in app.__slots__:
-                        setattr(self, attribute, getattr(app, attribute, None))
-                    self._otel_excluded_urls = (
-                        excluded_urls
-                        if excluded_urls is not None
-                        else get_excluded_urls("FALCON")
-                    )
-                    self._otel_tracer = trace.get_tracer(
-                        __name__, __version__, tracer_provider
-                    )
-                    self._otel_meter = get_meter(
-                        __name__, __version__, meter_provider
-                    )
-                    self.duration_histogram = self._otel_meter.create_histogram(
-                        name="http.server.duration",
-                        unit="ms",
-                        description="measures the duration of the inbound HTTP request",
-                    )
-                    self.active_requests_counter = self._otel_meter.create_up_down_counter(
-                        name="http.server.active_requests",
-                        unit="requests",
-                        description="measures the number of concurrent HTTP requests that are currently in-flight",
-                    )
-                    self._is_instrumented_by_opentelemetry = False
+            try:
+                app._otel_excluded_urls = (
+                    excluded_urls
+                    if excluded_urls is not None
+                    else get_excluded_urls("FALCON")
+                )
+                app._otel_tracer = trace.get_tracer(
+                    __name__, __version__, tracer_provider
+                )
+                app._otel_meter = get_meter(
+                    __name__, __version__, meter_provider
+                )
+                app.duration_histogram = app._otel_meter.create_histogram(
+                    name="http.server.duration",
+                    unit="ms",
+                    description="measures the duration of the inbound HTTP request",
+                )
+                app.active_requests_counter = app._otel_meter.create_up_down_counter(
+                    name="http.server.active_requests",
+                    unit="requests",
+                    description="measures the number of concurrent HTTP requests that are currently in-flight",
+                )
+                app._is_instrumented_by_opentelemetry = False
+            except AttributeError:
+                
+                class FalconAPI(_InstrumentedFalconAPI):
+                    def __init__(self, *args, **kwargs):
+                        for attribute in app.__slots__:
+                            setattr(self, attribute, getattr(app, attribute, None))
+                        self._otel_excluded_urls = (
+                            excluded_urls
+                            if excluded_urls is not None
+                            else get_excluded_urls("FALCON")
+                        )
+                        self._otel_tracer = trace.get_tracer(
+                            __name__, __version__, tracer_provider
+                        )
+                        self._otel_meter = get_meter(
+                            __name__, __version__, meter_provider
+                        )
+                        self.duration_histogram = self._otel_meter.create_histogram(
+                            name="http.server.duration",
+                            unit="ms",
+                            description="measures the duration of the inbound HTTP request",
+                        )
+                        self.active_requests_counter = self._otel_meter.create_up_down_counter(
+                            name="http.server.active_requests",
+                            unit="requests",
+                            description="measures the number of concurrent HTTP requests that are currently in-flight",
+                        )
+                        self._is_instrumented_by_opentelemetry = False
 
-            app = FalconAPI()
+                app = FalconAPI()
 
         if not getattr(app, "_is_instrumented_by_opentelemetry", False):
             trace_middleware = _TraceMiddleware(
