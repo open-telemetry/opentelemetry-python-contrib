@@ -599,11 +599,13 @@ class FalconInstrumentor(BaseInstrumentor):
                 )
                 app._is_instrumented_by_opentelemetry = False
             except AttributeError:
-                
+
                 class FalconAPI(_InstrumentedFalconAPI):
                     def __init__(self, *args, **kwargs):
                         for attribute in app.__slots__:
-                            setattr(self, attribute, getattr(app, attribute, None))
+                            setattr(
+                                self, attribute, getattr(app, attribute, None)
+                            )
                         self._otel_excluded_urls = (
                             excluded_urls
                             if excluded_urls is not None

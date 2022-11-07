@@ -407,6 +407,26 @@ class TestFalconManualInstrumentation(TestFalconInstrumentation):
                         if isinstance(point, HistogramDataPoint):
                             self.assertEqual(point.count, 1)
 
+    def test_falcon_attribute_validity(self):
+        import falcon
+        _parsed_falcon_version = package_version.parse(falcon.__version__)
+        if _parsed_falcon_version < package_version.parse("3.0.0"):
+            # Falcon 1 and Falcon 2
+
+            class MyAPI(falcon.API):
+                class_var = "class_var"
+
+            self.app = MyAPI()
+        else:
+            # Falcon 3
+            class MyAPP(falcon.App):
+                class_var = "class_var"
+
+            self.app = MyAPP()
+        
+        self.app = FalconInstrumentor.instrument_app(self.app)
+        self.assertEqual(self.app.class_var, "class_var")
+
 
 class TestFalconInstrumentationWithTracerProvider(TestBase):
     def setUp(self):
