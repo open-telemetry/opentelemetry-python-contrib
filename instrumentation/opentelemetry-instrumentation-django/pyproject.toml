@@ -39,6 +39,9 @@ asgi = [
 instruments = [
   "django >= 1.10",
 ]
+channels = [
+  "channels ",
+]
 test = [
   "opentelemetry-instrumentation-django[instruments]",
   "opentelemetry-test-utils == 0.36b0.dev",

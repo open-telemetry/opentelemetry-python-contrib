@@ -385,6 +385,74 @@ class TestMiddlewareAsgi(SimpleTestCase, TestBase):
         self.memory_exporter.clear()
 
 
+@pytest.mark.skipif(
+    DJANGO_3_1, reason="Specific test for Django2 + Asgi"
+)
+class TestMiddlewareAsgi2(SimpleTestCase, TestBase):
+    @classmethod
+    def setUpClass(cls):
+        conf.settings.configure(ROOT_URLCONF=modules[__name__])
+        super().setUpClass()
+
+    def setUp(self):
+        super().setUp()
+        setup_test_environment()
+        _django_instrumentor.instrument()
+        self.env_patch = patch.dict(
+            "os.environ",
+            {
+                "OTEL_PYTHON_DJANGO_EXCLUDED_URLS": "http://testserver/excluded_arg/123,excluded_noarg",
+                "OTEL_PYTHON_DJANGO_TRACED_REQUEST_ATTRS": "path_info,content_type,non_existing_variable",
+            },
+        )
+        self.env_patch.start()
+        self.exclude_patch = patch(
+            "opentelemetry.instrumentation.django.middleware.otel_middleware._DjangoMiddleware._excluded_urls",
+            get_excluded_urls("DJANGO"),
+        )
+        self.traced_patch = patch(
+            "opentelemetry.instrumentation.django.middleware.otel_middleware._DjangoMiddleware._traced_request_attrs",
+            get_traced_request_attrs("DJANGO"),
+        )
+        self.exclude_patch.start()
+        self.traced_patch.start()
+
+    def tearDown(self):
+        super().tearDown()
+        self.env_patch.stop()
+        self.exclude_patch.stop()
+        self.traced_patch.stop()
+        teardown_test_environment()
+        _django_instrumentor.uninstrument()
+
+    @classmethod
+    def tearDownClass(cls):
+        super().tearDownClass()
+        conf.settings = conf.LazySettings()
+
+    async def test_traced_get(self):
+        await self.async_client.get("/traced/")
+
+        spans = self.memory_exporter.get_finished_spans()
+        self.assertEqual(len(spans), 1)
+
+        span = spans[0]
+
+        self.assertEqual(span.name, "^traced/")
+        self.assertEqual(span.kind, SpanKind.SERVER)
+        self.assertEqual(span.status.status_code, StatusCode.UNSET)
+        self.assertEqual(span.attributes[SpanAttributes.HTTP_METHOD], "GET")
+        self.assertEqual(
+            span.attributes[SpanAttributes.HTTP_URL],
+            "http://127.0.0.1/traced/",
+        )
+        self.assertEqual(
+            span.attributes[SpanAttributes.HTTP_ROUTE], "^traced/"
+        )
+        self.assertEqual(span.attributes[SpanAttributes.HTTP_SCHEME], "http")
+        self.assertEqual(span.attributes[SpanAttributes.HTTP_STATUS_CODE], 200)
+
+
 class TestMiddlewareAsgiWithTracerProvider(SimpleTestCase, TestBase):
     @classmethod
     def setUpClass(cls):
