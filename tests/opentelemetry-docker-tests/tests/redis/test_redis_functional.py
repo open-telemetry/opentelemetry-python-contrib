@@ -37,7 +37,7 @@ class TestRedisInstrument(TestBase):
     def _check_span(self, span, name):
         self.assertEqual(span.name, name)
         self.assertIs(span.status.status_code, trace.StatusCode.UNSET)
-        self.assertIn(span.attributes.get(SpanAttributes.DB_REDIS_DATABASE_INDEX), list(range(0, 16)))
+        self.assertIs(span.attributes.get(SpanAttributes.DB_REDIS_DATABASE_INDEX), 0)
         self.assertEqual(
             span.attributes[SpanAttributes.NET_PEER_NAME], "localhost"
         )
@@ -209,7 +209,7 @@ class TestAsyncRedisInstrument(TestBase):
     def _check_span(self, span, name):
         self.assertEqual(span.name, name)
         self.assertIs(span.status.status_code, trace.StatusCode.UNSET)
-        self.assertIn(span.attributes.get(SpanAttributes.DB_REDIS_DATABASE_INDEX), list(range(0, 16)))
+        self.assertIs(span.attributes.get(SpanAttributes.DB_REDIS_DATABASE_INDEX), 0)
         self.assertEqual(
             span.attributes[SpanAttributes.NET_PEER_NAME], "localhost"
         )
