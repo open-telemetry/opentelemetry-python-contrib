@@ -293,26 +293,20 @@ class ConfluentKafkaInstrumentor(BaseInstrumentor):
 
     @staticmethod
     def wrap_produce(func, instance, tracer, args, kwargs):
-        topic = kwargs.get("topic")
-        if not topic:
-            topic = args[0]
+        headers = KafkaPropertiesExtractor.extract_produce_headers(args, kwargs)
+        if headers is None:
+            headers = []
+            kwargs["headers"] = headers
+
+        topic = KafkaPropertiesExtractor.extract_produce_topic(args, kwargs)
 
         span_name = _get_span_name("send", topic)
         with tracer.start_as_current_span(
             name=span_name, kind=trace.SpanKind.PRODUCER
         ) as span:
-            headers = KafkaPropertiesExtractor.extract_produce_headers(
-                args, kwargs
-            )
-            if headers is None:
-                headers = []
-                kwargs["headers"] = headers
-
-            topic = KafkaPropertiesExtractor.extract_produce_topic(args)
             _enrich_span(
                 span,
                 topic,
-                operation=MessagingOperationValues.RECEIVE,
             )  # Replace
             propagate.inject(
                 headers,
