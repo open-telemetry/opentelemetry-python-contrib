@@ -272,6 +272,7 @@ def _instrument(
             lambda_event, event_context_extractor
         )
 
+        span_kind = None
         try:
             if lambda_event["Records"][0]["eventSource"] in {
                 "aws:sqs",
