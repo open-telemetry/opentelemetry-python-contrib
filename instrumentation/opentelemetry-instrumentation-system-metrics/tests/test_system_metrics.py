@@ -61,6 +61,9 @@ class TestSystemMetrics(TestBase):
         )
         self._patch_net_connections.start()
 
+        # Reset the singleton class on each test run
+        SystemMetricsInstrumentor._instance = None
+
     def tearDown(self):
         super().tearDown()
         self._patch_net_connections.stop()
@@ -94,6 +97,36 @@ class TestSystemMetrics(TestBase):
             "system.network.io",
             "system.network.connections",
             "system.thread_count",
+            f"runtime.{self.implementation}.memory",
+            f"runtime.{self.implementation}.cpu_time",
+            f"runtime.{self.implementation}.gc_count",
+        ]
+
+        for observer in metric_names:
+            self.assertIn(observer, observer_names)
+            observer_names.remove(observer)
+
+    def test_runtime_metrics_instrument(self):
+
+        runtime_config = {
+            f"runtime.memory": ["rss", "vms"],
+            f"runtime.cpu.time": ["user", "system"],
+            f"runtime.gc_count": None,
+        }
+
+        reader = InMemoryMetricReader()
+        meter_provider = MeterProvider(metric_readers=[reader])
+        runtime_metrics = SystemMetricsInstrumentor(config=runtime_config)
+        runtime_metrics.instrument(meter_provider=meter_provider)
+
+        metric_names = []
+        for resource_metrics in reader.get_metrics_data().resource_metrics:
+            for scope_metrics in resource_metrics.scope_metrics:
+                for metric in scope_metrics.metrics:
+                    metric_names.append(metric.name)
+        self.assertEqual(len(metric_names), 3)
+
+        observer_names = [
             f"runtime.{self.implementation}.memory",
             f"runtime.{self.implementation}.cpu_time",
             f"runtime.{self.implementation}.gc_count",
