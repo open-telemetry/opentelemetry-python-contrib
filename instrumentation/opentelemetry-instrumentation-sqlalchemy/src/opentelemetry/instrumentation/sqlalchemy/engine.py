@@ -55,7 +55,9 @@ def _wrap_create_async_engine(tracer_provider=None, enable_commenter=False):
         object that will listen to SQLAlchemy events.
         """
         engine = func(*args, **kwargs)
-        EngineTracer(_get_tracer(tracer_provider), engine.sync_engine, enable_commenter)
+        EngineTracer(
+            _get_tracer(tracer_provider), engine.sync_engine, enable_commenter
+        )
         return engine
 
     return _wrap_create_async_engine_internal
