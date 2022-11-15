@@ -137,7 +137,11 @@ class SQLAlchemyInstrumentor(BaseInstrumentor):
         """
         tracer_provider = kwargs.get("tracer_provider")
         enable_commenter = kwargs.get("enable_commenter", False)
-        _w("sqlalchemy", "create_engine", _wrap_create_engine(tracer_provider, enable_commenter))
+        _w(
+            "sqlalchemy",
+            "create_engine",
+            _wrap_create_engine(tracer_provider, enable_commenter),
+        )
         _w(
             "sqlalchemy.engine",
             "create_engine",
