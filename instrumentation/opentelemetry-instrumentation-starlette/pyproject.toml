@@ -22,13 +22,14 @@ classifiers = [
   "Programming Language :: Python :: 3.8",
   "Programming Language :: Python :: 3.9",
   "Programming Language :: Python :: 3.10",
+  "Programming Language :: Python :: 3.11",
 ]
 dependencies = [
   "opentelemetry-api ~= 1.12",
-  "opentelemetry-instrumentation == 0.34b0",
-  "opentelemetry-instrumentation-asgi == 0.34b0",
-  "opentelemetry-semantic-conventions == 0.34b0",
-  "opentelemetry-util-http == 0.34b0",
+  "opentelemetry-instrumentation == 0.36b0.dev",
+  "opentelemetry-instrumentation-asgi == 0.36b0.dev",
+  "opentelemetry-semantic-conventions == 0.36b0.dev",
+  "opentelemetry-util-http == 0.36b0.dev",
 ]
 
 [project.optional-dependencies]
@@ -37,8 +38,9 @@ instruments = [
 ]
 test = [
   "opentelemetry-instrumentation-starlette[instruments]",
-  "opentelemetry-test-utils == 0.34b0",
-  "requests ~= 2.23.0", # needed for testclient
+  "opentelemetry-test-utils == 0.36b0.dev",
+  "requests ~= 2.23", # needed for testclient
+  "httpx ~= 0.22", # needed for testclient
 ]
 
 [project.entry-points.opentelemetry_instrumentor]
