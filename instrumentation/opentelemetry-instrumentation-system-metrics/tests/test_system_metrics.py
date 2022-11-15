@@ -109,9 +109,9 @@ class TestSystemMetrics(TestBase):
     def test_runtime_metrics_instrument(self):
 
         runtime_config = {
-            f"runtime.memory": ["rss", "vms"],
-            f"runtime.cpu.time": ["user", "system"],
-            f"runtime.gc_count": None,
+            "runtime.memory": ["rss", "vms"],
+            "runtime.cpu.time": ["user", "system"],
+            "runtime.gc_count": None,
         }
 
         reader = InMemoryMetricReader()
