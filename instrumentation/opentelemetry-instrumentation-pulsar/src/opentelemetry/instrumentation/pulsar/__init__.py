@@ -69,14 +69,13 @@ from typing import Collection, Optional
 
 import pulsar
 import wrapt
-from pulsar import Client, Consumer, Message, Producer
-
-from opentelemetry import propagate, trace
 from opentelemetry.instrumentation.instrumentor import BaseInstrumentor
 from opentelemetry.instrumentation.utils import propagator, unwrap
 from opentelemetry.semconv.trace import MessagingOperationValues
 from opentelemetry.trace import Span, SpanKind, Tracer
+from pulsar import Client, Consumer, Message, Producer
 
+from opentelemetry import propagate, trace
 from .package import _instruments
 from .utils import (
     _enrich_span,
@@ -90,14 +89,14 @@ MESSAGE_LISTENER_ARGUMENT = "message_listener"
 PROPERTIES_KEY = "properties"
 
 
-class TracerMixin:
+class _TracerMixin:
     _tracer: Tracer
 
     def _set_tracer(self, tracer):
         self._tracer = tracer
 
 
-class SpanMixin:
+class _SpanMixin:
     _current_span: Optional[Span] = None
 
     def _set_current_span(self, current_span):
@@ -110,7 +109,7 @@ class SpanMixin:
                 self._current_span = None
 
 
-class InstrumentedClient(TracerMixin, Client):
+class _InstrumentedClient(_TracerMixin, Client):
     _subscribe_signature = inspect.signature(Client.subscribe)
 
     def subscribe(self, topic, *args, **kwargs):
@@ -125,7 +124,7 @@ class InstrumentedClient(TracerMixin, Client):
 
             @wraps(message_listener)
             def wrapper(  # pylint: disable=function-redefined
-                consumer, message: InstrumentedMessage, *args, **kwargs
+                    consumer, message: _InstrumentedMessage, *args, **kwargs
             ):
                 ctx = propagator.extract(message.properties())
                 span = self._tracer.start_span(
@@ -148,7 +147,7 @@ class InstrumentedClient(TracerMixin, Client):
         return super().subscribe(*args, **bound_arguments.kwargs)
 
 
-class InstrumentedProducer(TracerMixin, Producer):
+class _InstrumentedProducer(_TracerMixin, Producer):
     _send_signature = inspect.signature(Producer.send)
 
     def send(self, *args, **kwargs):
@@ -204,20 +203,20 @@ class InstrumentedProducer(TracerMixin, Producer):
         )
 
 
-class InstrumentedMessage(Message, SpanMixin):
+class _InstrumentedMessage(Message, _SpanMixin):
     pass
 
 
-class InstrumentedConsumer(TracerMixin, Consumer):
-    _last_message: InstrumentedMessage = None
+class _InstrumentedConsumer(_TracerMixin, Consumer):
+    _last_message: _InstrumentedMessage = None
 
     def receive(self, *args, **kwargs):
         if self._last_message:
             self._last_message._end_span()
         with self._tracer.start_as_current_span(
-            "recv", end_on_exit=True, kind=trace.SpanKind.CONSUMER
+                "recv", end_on_exit=True, kind=trace.SpanKind.CONSUMER
         ):
-            message: InstrumentedMessage = super().receive(*args, **kwargs)
+            message: _InstrumentedMessage = super().receive(*args, **kwargs)
             context = propagate.extract(message.properties())
             span = self._tracer.start_span(
                 f"{self.topic()} process", context=context
@@ -229,19 +228,19 @@ class InstrumentedConsumer(TracerMixin, Consumer):
 
             return message
 
-    def acknowledge(self, message: InstrumentedMessage):
+    def acknowledge(self, message: _InstrumentedMessage):
         message._end_span()
         super().acknowledge(message)
 
     acknowledge.__doc__ = Consumer.acknowledge.__doc__
 
-    def negative_acknowledge(self, message: InstrumentedMessage):
+    def negative_acknowledge(self, message: _InstrumentedMessage):
         message._end_span()
         super().negative_acknowledge(message)
 
     negative_acknowledge.__doc__ = Consumer.negative_acknowledge.__doc__
 
-    def acknowledge_cumulative(self, message: InstrumentedMessage):
+    def acknowledge_cumulative(self, message: _InstrumentedMessage):
         message._end_span()
         super().acknowledge_cumulative(message)
 
@@ -268,10 +267,10 @@ class PulsarInstrumentor(BaseInstrumentor):
         self._original_pulsar_consumer = pulsar.Consumer
         self._original_pulsar_message = pulsar.Message
 
-        pulsar.Client = InstrumentedClient
-        pulsar.Producer = InstrumentedProducer
-        pulsar.Consumer = InstrumentedConsumer
-        pulsar.Message = InstrumentedMessage
+        pulsar.Client = _InstrumentedClient
+        pulsar.Producer = _InstrumentedProducer
+        pulsar.Consumer = _InstrumentedConsumer
+        pulsar.Message = _InstrumentedMessage
 
         tracer_provider = kwargs.get("tracer_provider")
         tracer = trace.get_tracer(
@@ -284,9 +283,9 @@ class PulsarInstrumentor(BaseInstrumentor):
             wrapped(*args, **kwargs)
             self._set_tracer(tracer)
 
-        wrapt.wrap_function_wrapper(InstrumentedClient, "__init__", init)
-        wrapt.wrap_function_wrapper(InstrumentedConsumer, "__init__", init)
-        wrapt.wrap_function_wrapper(InstrumentedProducer, "__init__", init)
+        wrapt.wrap_function_wrapper(_InstrumentedClient, "__init__", init)
+        wrapt.wrap_function_wrapper(_InstrumentedConsumer, "__init__", init)
+        wrapt.wrap_function_wrapper(_InstrumentedProducer, "__init__", init)
 
     def _uninstrument(self, **kwargs):
         pulsar.Client = self._original_pulsar_client
@@ -294,6 +293,9 @@ class PulsarInstrumentor(BaseInstrumentor):
         pulsar.Consumer = self._original_pulsar_consumer
         pulsar.Message = self._original_pulsar_message
 
-        unwrap(InstrumentedClient, "__init__")
-        unwrap(InstrumentedConsumer, "__init__")
-        unwrap(InstrumentedProducer, "__init__")
+        unwrap(_InstrumentedClient, "__init__")
+        unwrap(_InstrumentedConsumer, "__init__")
+        unwrap(_InstrumentedProducer, "__init__")
+
+
+__all__ = (PulsarInstrumentor,)

@@ -17,11 +17,11 @@
 from unittest import TestCase
 
 from opentelemetry.instrumentation.pulsar import (
-    InstrumentedClient,
-    InstrumentedConsumer,
-    InstrumentedMessage,
-    InstrumentedProducer,
     PulsarInstrumentor,
+    _InstrumentedClient,
+    _InstrumentedConsumer,
+    _InstrumentedMessage,
+    _InstrumentedProducer,
 )
 
 
@@ -34,13 +34,13 @@ class TestPulsar(TestCase):
 
         client = Client("pulsar+ssl://localhost")
 
-        self.assertEqual(client.__class__, InstrumentedClient)
+        self.assertEqual(client.__class__, _InstrumentedClient)
         producer = Producer()
 
-        self.assertEqual(producer.__class__, InstrumentedProducer)
+        self.assertEqual(producer.__class__, _InstrumentedProducer)
 
         consumer = Consumer()
-        self.assertEqual(consumer.__class__, InstrumentedConsumer)
+        self.assertEqual(consumer.__class__, _InstrumentedConsumer)
 
         message = Message()
-        self.assertEqual(message.__class__, InstrumentedMessage)
+        self.assertEqual(message.__class__, _InstrumentedMessage)
