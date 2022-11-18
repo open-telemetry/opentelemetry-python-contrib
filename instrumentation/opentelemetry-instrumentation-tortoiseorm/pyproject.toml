@@ -33,6 +33,7 @@ dependencies = [
 [project.optional-dependencies]
 instruments = [
   "tortoise-orm >= 0.19.2",
+  "pydantic >= 1.10.2"
 ]
 test = [
   "opentelemetry-instrumentation-tortoiseorm[instruments]",
