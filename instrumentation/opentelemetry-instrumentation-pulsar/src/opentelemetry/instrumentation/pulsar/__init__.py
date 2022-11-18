@@ -124,7 +124,7 @@ class _InstrumentedClient(_TracerMixin, Client):
 
             @wraps(message_listener)
             def wrapper(  # pylint: disable=function-redefined
-                    consumer, message: _InstrumentedMessage, *args, **kwargs
+                    consumer, message: "_InstrumentedMessage", *args, **kwargs
             ):
                 ctx = propagator.extract(message.properties())
                 span = self._tracer.start_span(
@@ -298,4 +298,4 @@ class PulsarInstrumentor(BaseInstrumentor):
         unwrap(_InstrumentedProducer, "__init__")
 
 
-__all__ = (PulsarInstrumentor,)
+__all__ = ("PulsarInstrumentor",)
