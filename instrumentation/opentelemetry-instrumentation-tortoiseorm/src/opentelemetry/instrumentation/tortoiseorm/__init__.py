@@ -94,6 +94,7 @@ class TortoiseORMInstrumentor(BaseInstrumentor):
             None
         """
         tracer_provider = kwargs.get("tracer_provider")
+        # pylint: disable=attribute-defined-outside-init
         self._tracer = trace.get_tracer(__name__, __version__, tracer_provider)
         self.capture_parameters = kwargs.get("capture_parameters", False)
         if TORTOISE_SQLITE_SUPPORT:
@@ -187,7 +188,7 @@ class TortoiseORMInstrumentor(BaseInstrumentor):
             unwrap(
                 tortoise.backends.mysql.client.MySQLClient, "execute_script"
             )
-        if self.TORTOISE_POSTGRES_SUPPORT:
+        if TORTOISE_POSTGRES_SUPPORT:
             unwrap(
                 tortoise.backends.asyncpg.client.AsyncpgDBClient,
                 "execute_query",
@@ -289,7 +290,7 @@ class TortoiseORMInstrumentor(BaseInstrumentor):
     async def _from_queryset(self, func, modelcls, args, kwargs):
 
         exception = None
-        name = "pydantic.{0}".format(func.__name__)
+        name = f"pydantic.{func.__name__}"
 
         with self._tracer.start_as_current_span(
             name, kind=SpanKind.INTERNAL
