@@ -32,7 +32,7 @@ dependencies = [
 
 [project.optional-dependencies]
 instruments = [
-  "tortoise-orm >= 0.19.2",
+  "tortoise-orm >= 0.17.0",
   "pydantic >= 1.10.2"
 ]
 test = [
