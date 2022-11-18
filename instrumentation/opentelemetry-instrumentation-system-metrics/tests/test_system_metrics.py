@@ -69,6 +69,24 @@ class TestSystemMetrics(TestBase):
         self._patch_net_connections.stop()
         SystemMetricsInstrumentor().uninstrument()
 
+    def test_system_metrics_instrumentor_initialization(self):
+
+        try:
+            SystemMetricsInstrumentor()
+            SystemMetricsInstrumentor(config={})
+        except Exception as error:  # pylint: disable=broad-except
+            self.fail(f"Unexpected exception {error} raised")
+
+        SystemMetricsInstrumentor._instance = None
+
+        try:
+            SystemMetricsInstrumentor(config={})
+            SystemMetricsInstrumentor()
+        except Exception as error:  # pylint: disable=broad-except
+            self.fail(f"Unexpected exception {error} raised")
+
+        SystemMetricsInstrumentor().instrument()
+
     def test_system_metrics_instrument(self):
         reader = InMemoryMetricReader()
         meter_provider = MeterProvider(metric_readers=[reader])
