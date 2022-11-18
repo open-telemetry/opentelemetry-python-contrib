@@ -7,10 +7,34 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## Unreleased
 
+- Add metric instrumentation for tornado
+  ([#1252](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/1252))
+
+### Added
+
+- `opentelemetry-instrumentation-pymysql` Add tests for commit() and rollback().
+  ([#1424](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/1424))
+- `opentelemetry-instrumentation-fastapi` Add support for regular expression matching and sanitization of HTTP headers.
+  ([#1403](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/1403))
+- `opentelemetry-instrumentation-botocore` add support for `messaging.*` in the sqs extension.
+  ([#1350](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/1350))
+- `opentelemetry-instrumentation-starlette` Add support for regular expression matching and sanitization of HTTP headers.
+  ([#1404](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/1404))
+- Strip leading comments from SQL queries when generating the span name.
+  ([#1434](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/1434))
+
 ### Fixed
 
-- Fix bug in Urllib instrumentation - add status code to span attributes only if the status code is not None. 
+- Fix bug in Urllib instrumentation - add status code to span attributes only if the status code is not None.
   ([#1430](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/1430))
+- `opentelemetry-instrumentation-aiohttp-client` Allow overriding of status in response hook.
+  ([#1394](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/1394))
+- `opentelemetry-instrumentation-pymysql` Fix dbapi connection instrument wrapper has no _sock member.
+  ([#1424](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/1424))
+- `opentelemetry-instrumentation-dbapi` Fix the check for the connection already being instrumented in instrument_connection().
+  ([#1424](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/1424))
+- Remove db.name attribute from Redis instrumentation
+  ([#1427](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/1427))
 
 ## Version 1.14.0/0.35b0 (2022-11-03)
 
@@ -71,7 +95,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
-- `opentelemetry-instrumentation-grpc` add supports to filter requests to instrument. 
+- `opentelemetry-instrumentation-grpc` add supports to filter requests to instrument.
   ([#1241](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/1241))
 - Flask sqlalchemy psycopg2 integration
   ([#1224](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/1224))
@@ -89,6 +113,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- `opentelemetry-instrumentation-kafka-python`: wait for metadata
+  ([#1260](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/1260))
 - `opentelemetry-instrumentation-boto3sqs` Make propagation compatible with other SQS instrumentations, add 'messaging.url' span attribute, and fix missing package dependencies.
   ([#1234](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/1234))
 - `opentelemetry-instrumentation-pymongo` Change span names to not contain queries but only database name and command name
