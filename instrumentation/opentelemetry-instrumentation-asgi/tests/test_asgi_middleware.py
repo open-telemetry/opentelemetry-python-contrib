@@ -591,8 +591,15 @@ class TestAsgiApplication(AsgiTestBase):
         class TestRoute:
             path_format = expected_target
 
-        self.scope["route"] = TestRoute()
-        app = otel_asgi.OpenTelemetryMiddleware(simple_asgi)
+        async def target_asgi(scope, receive, send):
+            assert isinstance(scope, dict)
+            if scope["type"] == "http":
+                await http_app(scope, receive, send)
+                scope["route"] = TestRoute()
+            else:
+                raise ValueError("websockets not supported")
+
+        app = otel_asgi.OpenTelemetryMiddleware(target_asgi)
         self.seed_app(app)
         self.send_default_request()
 
