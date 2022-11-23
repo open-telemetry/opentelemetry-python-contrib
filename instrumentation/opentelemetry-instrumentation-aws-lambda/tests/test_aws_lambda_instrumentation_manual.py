@@ -59,7 +59,9 @@ MOCK_XRAY_TRACE_ID_STR = f"{MOCK_XRAY_TRACE_ID:x}"
 MOCK_XRAY_PARENT_SPAN_ID = 0x3328B8445A6DBAD2
 MOCK_XRAY_TRACE_CONTEXT_COMMON = f"Root={TRACE_ID_VERSION}-{MOCK_XRAY_TRACE_ID_STR[:TRACE_ID_FIRST_PART_LENGTH]}-{MOCK_XRAY_TRACE_ID_STR[TRACE_ID_FIRST_PART_LENGTH:]};Parent={MOCK_XRAY_PARENT_SPAN_ID:x}"
 MOCK_XRAY_TRACE_CONTEXT_SAMPLED = f"{MOCK_XRAY_TRACE_CONTEXT_COMMON};Sampled=1"
-MOCK_XRAY_TRACE_CONTEXT_NOT_SAMPLED = f"{MOCK_XRAY_TRACE_CONTEXT_COMMON};Sampled=0"
+MOCK_XRAY_TRACE_CONTEXT_NOT_SAMPLED = (
+    f"{MOCK_XRAY_TRACE_CONTEXT_COMMON};Sampled=0"
+)
 
 # See more:
 # https://www.w3.org/TR/trace-context/#examples-of-http-traceparent-headers
@@ -146,7 +148,9 @@ class TestAwsLambdaInstrumentor(TestBase):
         )
 
         parent_context = span.parent
-        self.assertEqual(parent_context.trace_id, span.get_span_context().trace_id)
+        self.assertEqual(
+            parent_context.trace_id, span.get_span_context().trace_id
+        )
         self.assertEqual(parent_context.span_id, MOCK_XRAY_PARENT_SPAN_ID)
         self.assertTrue(parent_context.is_remote)
 
@@ -256,10 +260,14 @@ class TestAwsLambdaInstrumentor(TestBase):
             assert spans
             self.assertEqual(len(spans), 1)
             span = spans[0]
-            self.assertEqual(span.get_span_context().trace_id, t.expected_traceid)
+            self.assertEqual(
+                span.get_span_context().trace_id, t.expected_traceid
+            )
 
             parent_context = span.parent
-            self.assertEqual(parent_context.trace_id, span.get_span_context().trace_id)
+            self.assertEqual(
+                parent_context.trace_id, span.get_span_context().trace_id
+            )
             self.assertEqual(parent_context.span_id, t.expected_parentid)
             self.assertEqual(
                 len(parent_context.trace_state), t.expected_trace_state_len

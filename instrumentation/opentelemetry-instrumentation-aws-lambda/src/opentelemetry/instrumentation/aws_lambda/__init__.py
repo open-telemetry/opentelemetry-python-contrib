@@ -168,7 +168,9 @@ def _determine_parent_context(
 
     if (
         parent_context
-        and get_current_span(parent_context).get_span_context().trace_flags.sampled
+        and get_current_span(parent_context)
+        .get_span_context()
+        .trace_flags.sampled
     ):
         return parent_context
 
@@ -180,13 +182,17 @@ def _determine_parent_context(
     return parent_context
 
 
-def _set_api_gateway_v1_proxy_attributes(lambda_event: Any, span: Span) -> Span:
+def _set_api_gateway_v1_proxy_attributes(
+    lambda_event: Any, span: Span
+) -> Span:
     """Sets HTTP attributes for REST APIs and v1 HTTP APIs
 
     More info:
     https://docs.aws.amazon.com/apigateway/latest/developerguide/set-up-lambda-proxy-integrations.html#api-gateway-simple-proxy-for-lambda-input-format
     """
-    span.set_attribute(SpanAttributes.HTTP_METHOD, lambda_event.get("httpMethod"))
+    span.set_attribute(
+        SpanAttributes.HTTP_METHOD, lambda_event.get("httpMethod")
+    )
     span.set_attribute(SpanAttributes.HTTP_ROUTE, lambda_event.get("resource"))
 
     if lambda_event.get("headers"):
@@ -208,12 +214,16 @@ def _set_api_gateway_v1_proxy_attributes(lambda_event: Any, span: Span) -> Span:
             f"{lambda_event.get('resource')}?{urlencode(lambda_event.get('queryStringParameters'))}",
         )
     else:
-        span.set_attribute(SpanAttributes.HTTP_TARGET, lambda_event.get("resource"))
+        span.set_attribute(
+            SpanAttributes.HTTP_TARGET, lambda_event.get("resource")
+        )
 
     return span
 
 
-def _set_api_gateway_v2_proxy_attributes(lambda_event: Any, span: Span) -> Span:
+def _set_api_gateway_v2_proxy_attributes(
+    lambda_event: Any, span: Span
+) -> Span:
     """Sets HTTP attributes for v2 HTTP APIs
 
     More info:
@@ -260,13 +270,19 @@ def _instrument(
     tracer_provider: TracerProvider = None,
     disable_aws_context_propagation: bool = False,
 ):
-    def _instrumented_lambda_handler_call(call_wrapped, instance, args, kwargs):
-        orig_handler_name = ".".join([wrapped_module_name, wrapped_function_name])
+    def _instrumented_lambda_handler_call(
+        call_wrapped, instance, args, kwargs
+    ):
+        orig_handler_name = ".".join(
+            [wrapped_module_name, wrapped_function_name]
+        )
 
         lambda_event = args[0]
 
         parent_context = _determine_parent_context(
-            lambda_event, event_context_extractor, disable_aws_context_propagation
+            lambda_event,
+            event_context_extractor,
+            disable_aws_context_propagation,
         )
 
         span_kind = None
