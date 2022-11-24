@@ -24,6 +24,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   ([#1350](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/1350))
 - `opentelemetry-instrumentation-starlette` Add support for regular expression matching and sanitization of HTTP headers.
   ([#1404](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/1404))
+- `opentelemetry-instrumentation-botocore` Add support for SNS `publish` and `publish_batch`.
+  ([#1409](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/1409))
 - Strip leading comments from SQL queries when generating the span name.
   ([#1434](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/1434))
 
