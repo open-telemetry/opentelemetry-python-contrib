@@ -106,6 +106,7 @@ class CommandTracer(monitoring.CommandListener):
         request_hook: RequestHookT = dummy_callback,
         response_hook: ResponseHookT = dummy_callback,
         failed_hook: FailedHookT = dummy_callback,
+        capture_parameters: bool = False,
     ):
         self._tracer = tracer
         self._span_dict = {}
@@ -113,6 +114,7 @@ class CommandTracer(monitoring.CommandListener):
         self.start_hook = request_hook
         self.success_hook = response_hook
         self.failed_hook = failed_hook
+        self.capture_parameters = capture_parameters
 
     def started(self, event: monitoring.CommandStartedEvent):
         """Method to handle a pymongo CommandStartedEvent"""
@@ -120,11 +122,11 @@ class CommandTracer(monitoring.CommandListener):
             _SUPPRESS_INSTRUMENTATION_KEY
         ):
             return
-        command = event.command.get(event.command_name, "")
+        command = event.command.get('documents', "")
         name = event.database_name
         name += "." + event.command_name
         statement = event.command_name
-        if command:
+        if command and self.capture_parameters:
             statement += " " + str(command)
 
         try:
@@ -223,6 +225,7 @@ class PymongoInstrumentor(BaseInstrumentor):
         request_hook = kwargs.get("request_hook", dummy_callback)
         response_hook = kwargs.get("response_hook", dummy_callback)
         failed_hook = kwargs.get("failed_hook", dummy_callback)
+        capture_parameters = kwargs.get("capture_parameters")
         # Create and register a CommandTracer only the first time
         if self._commandtracer_instance is None:
             tracer = get_tracer(__name__, __version__, tracer_provider)
@@ -232,6 +235,7 @@ class PymongoInstrumentor(BaseInstrumentor):
                 request_hook=request_hook,
                 response_hook=response_hook,
                 failed_hook=failed_hook,
+                capture_parameters=capture_parameters,
             )
             monitoring.register(self._commandtracer_instance)
         # If already created, just enable it
