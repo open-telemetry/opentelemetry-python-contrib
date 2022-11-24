@@ -16,14 +16,6 @@ import logging
 import pytest
 from sqlalchemy import create_engine
 
-from opentelemetry.instrumentation.sqlalchemy.engine import (
-    EngineTracer,
-    _get_tracer,
-    _wrap_connect,
-    _wrap_create_async_engine,
-    _wrap_create_engine,
-)
-
 from opentelemetry import context
 from opentelemetry.instrumentation.sqlalchemy import SQLAlchemyInstrumentor
 from opentelemetry.test.test_base import TestBase
@@ -63,16 +55,6 @@ class TestSqlalchemyInstrumentationWithSQLCommenter(TestBase):
             self.caplog.records[-2].getMessage(),
             r"SELECT  1 /\*db_driver='(.*)',traceparent='\d{1,2}-[a-zA-Z0-9_]{32}-[a-zA-Z0-9_]{16}-\d{1,2}'\*/;",
         )
-
-    def test_sqlcommenter_disabled_with_external_engine(self):
-        SQLAlchemyInstrumentor().instrument()
-        engine = create_engine("sqlite:///:memory:")
-        EngineTracer(
-            _get_tracer(self.tracer_provider), engine, enable_commenter=True
-        )
-        cnx = engine.connect()
-        cnx.execute("SELECT 1;").fetchall()
-        self.assertEqual(self.caplog.records[-2].getMessage(), "SELECT 1;")
 
     def test_sqlcommenter_flask_integration(self):
         engine = create_engine("sqlite:///:memory:")
