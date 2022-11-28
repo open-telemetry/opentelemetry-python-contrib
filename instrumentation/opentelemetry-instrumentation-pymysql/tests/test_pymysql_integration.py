@@ -24,6 +24,10 @@ from opentelemetry.test.test_base import TestBase
 
 def mock_connect(*args, **kwargs):
     class MockConnection:
+
+        def __init__(self, *args, **kwargs):
+            super().__init__()
+
         def cursor(self):
             # pylint: disable=no-self-use
             return Mock()
