@@ -7,8 +7,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## Unreleased
 
+- `opentelemetry-instrumentation-tortoiseorm` Initial release
+  ([#685](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/685))
 - Add metric instrumentation for tornado
   ([#1252](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/1252))
+- `opentelemetry-instrumentation-aws-lambda` Add option to disable aws context propagation
+  ([#1466](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/1466))
 
 ### Added
 
@@ -20,6 +24,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   ([#1350](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/1350))
 - `opentelemetry-instrumentation-starlette` Add support for regular expression matching and sanitization of HTTP headers.
   ([#1404](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/1404))
+- `opentelemetry-instrumentation-botocore` Add support for SNS `publish` and `publish_batch`.
+  ([#1409](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/1409))
 - Strip leading comments from SQL queries when generating the span name.
   ([#1434](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/1434))
 
@@ -35,6 +41,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   ([#1424](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/1424))
 - Remove db.name attribute from Redis instrumentation
   ([#1427](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/1427))
+- Add grpc.aio instrumentation to package entry points
+  ([#1442](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/1442))
 
 ## Version 1.14.0/0.35b0 (2022-11-03)
 
