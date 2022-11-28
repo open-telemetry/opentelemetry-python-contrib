@@ -29,6 +29,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Strip leading comments from SQL queries when generating the span name.
   ([#1434](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/1434))
 - `opentelemetry-instrumentation-confluent-kafka` Add support for the latest versions of the library.
+  ([#1468](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/1468))
 
 ### Fixed
 
