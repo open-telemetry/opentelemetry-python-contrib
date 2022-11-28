@@ -1,4 +1,3 @@
-from email.policy import default
 from logging import getLogger
 from time import time_ns
 from timeit import default_timer
@@ -15,7 +14,7 @@ from opentelemetry.instrumentation.propagators import (
 )
 from opentelemetry import trace, context
 from opentelemetry.semconv.trace import SpanAttributes
-from opentelemetry.instrumentation.falcon.version import __version__
+from opentelemetry.instrumentation.cherrypy.version import __version__
 from opentelemetry.metrics import get_meter
 
 
