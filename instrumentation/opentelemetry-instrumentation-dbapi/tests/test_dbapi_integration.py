@@ -365,11 +365,12 @@ def mock_connect(*args, **kwargs):
 
 
 class MockConnectionWithAttributes:
-    def __init__(self, database, server_port, server_host, user):
-        self.database = database
-        self.server_port = server_port
-        self.server_host = server_host
-        self.user = user
+    def __init__(self, *args, **kwargs):
+        super().__init__()
+        self.database = kwargs.get("database")
+        self.server_host = kwargs.get("server_host")
+        self.server_port = kwargs.get("server_port")
+        self.user = kwargs.get("user")
 
     # pylint: disable=no-self-use
     def cursor(self):
