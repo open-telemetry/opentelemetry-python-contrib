@@ -22,12 +22,13 @@ classifiers = [
   "Programming Language :: Python :: 3.8",
   "Programming Language :: Python :: 3.9",
   "Programming Language :: Python :: 3.10",
+  "Programming Language :: Python :: 3.11",
 ]
 dependencies = [
   "opentelemetry-api ~= 1.12",
-  "opentelemetry-instrumentation == 0.34b0",
+  "opentelemetry-instrumentation == 0.36b0.dev",
   "opentelemetry-sdk ~= 1.12",
-  "opentelemetry-semantic-conventions == 0.34b0",
+  "opentelemetry-semantic-conventions == 0.36b0.dev",
   "wrapt >= 1.0.0, < 2.0.0",
 ]
 
@@ -38,13 +39,15 @@ instruments = [
 test = [
   "opentelemetry-instrumentation-grpc[instruments]",
   "opentelemetry-sdk ~= 1.12",
-  "opentelemetry-test-utils == 0.34b0",
+  "opentelemetry-test-utils == 0.36b0.dev",
   "protobuf ~= 3.13",
 ]
 
 [project.entry-points.opentelemetry_instrumentor]
 grpc_client = "opentelemetry.instrumentation.grpc:GrpcInstrumentorClient"
 grpc_server = "opentelemetry.instrumentation.grpc:GrpcInstrumentorServer"
+grpc_aio_client = "opentelemetry.instrumentation.grpc:GrpcAioInstrumentorClient"
+grpc_aio_server = "opentelemetry.instrumentation.grpc:GrpcAioInstrumentorServer"
 
 [project.urls]
 Homepage = "https://github.com/open-telemetry/opentelemetry-python-contrib/tree/main/instrumentation/opentelemetry-instrumentation-grpc"
