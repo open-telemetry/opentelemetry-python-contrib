@@ -284,7 +284,7 @@ class DatabaseApiIntegration:
         """Add object proxy to connection object."""
         connection = connect_method(*args, **kwargs)
         self.get_connection_attributes(connection)
-        return get_traced_connection_proxy(connection, self)
+        return get_traced_connection_proxy(connection, self, *args, **kwargs)
 
     def get_connection_attributes(self, connection):
         # Populate span fields using connection
