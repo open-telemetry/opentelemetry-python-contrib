@@ -64,11 +64,11 @@ for example:
         event_context_extractor=custom_event_context_extractor
     )
 """
-
 import logging
 import os
 from importlib import import_module
 from typing import Any, Callable, Collection
+from urllib.parse import urlencode
 
 from wrapt import wrap_function_wrapper
 
@@ -85,6 +85,7 @@ from opentelemetry.propagators.aws.aws_xray_propagator import (
 from opentelemetry.semconv.resource import ResourceAttributes
 from opentelemetry.semconv.trace import SpanAttributes
 from opentelemetry.trace import (
+    Span,
     SpanKind,
     TracerProvider,
     get_tracer,
@@ -133,7 +134,9 @@ def _default_event_context_extractor(lambda_event: Any) -> Context:
 
 
 def _determine_parent_context(
-    lambda_event: Any, event_context_extractor: Callable[[Any], Context]
+    lambda_event: Any,
+    event_context_extractor: Callable[[Any], Context],
+    disable_aws_context_propagation: bool = False,
 ) -> Context:
     """Determine the parent context for the current Lambda invocation.
 
@@ -143,17 +146,25 @@ def _determine_parent_context(
     Args:
         lambda_event: user-defined, so it could be anything, but this
             method counts it being a map with a 'headers' key
+        event_context_extractor: a method which takes the Lambda
+            Event as input and extracts an OTel Context from it. By default,
+            the context is extracted from the HTTP headers of an API Gateway
+            request.
+        disable_aws_context_propagation: By default, this instrumentation
+            will try to read the context from the `_X_AMZN_TRACE_ID` environment
+            variable set by Lambda, set this to `True` to disable this behavior.
     Returns:
         A Context with configuration found in the carrier.
     """
     parent_context = None
 
-    xray_env_var = os.environ.get(_X_AMZN_TRACE_ID)
+    if not disable_aws_context_propagation:
+        xray_env_var = os.environ.get(_X_AMZN_TRACE_ID)
 
-    if xray_env_var:
-        parent_context = AwsXRayPropagator().extract(
-            {TRACE_HEADER_KEY: xray_env_var}
-        )
+        if xray_env_var:
+            parent_context = AwsXRayPropagator().extract(
+                {TRACE_HEADER_KEY: xray_env_var}
+            )
 
     if (
         parent_context
@@ -171,12 +182,93 @@ def _determine_parent_context(
     return parent_context
 
 
+def _set_api_gateway_v1_proxy_attributes(
+    lambda_event: Any, span: Span
+) -> Span:
+    """Sets HTTP attributes for REST APIs and v1 HTTP APIs
+
+    More info:
+    https://docs.aws.amazon.com/apigateway/latest/developerguide/set-up-lambda-proxy-integrations.html#api-gateway-simple-proxy-for-lambda-input-format
+    """
+    span.set_attribute(
+        SpanAttributes.HTTP_METHOD, lambda_event.get("httpMethod")
+    )
+    span.set_attribute(SpanAttributes.HTTP_ROUTE, lambda_event.get("resource"))
+
+    if lambda_event.get("headers"):
+        span.set_attribute(
+            SpanAttributes.HTTP_USER_AGENT,
+            lambda_event["headers"].get("User-Agent"),
+        )
+        span.set_attribute(
+            SpanAttributes.HTTP_SCHEME,
+            lambda_event["headers"].get("X-Forwarded-Proto"),
+        )
+        span.set_attribute(
+            SpanAttributes.NET_HOST_NAME, lambda_event["headers"].get("Host")
+        )
+
+    if lambda_event.get("queryStringParameters"):
+        span.set_attribute(
+            SpanAttributes.HTTP_TARGET,
+            f"{lambda_event.get('resource')}?{urlencode(lambda_event.get('queryStringParameters'))}",
+        )
+    else:
+        span.set_attribute(
+            SpanAttributes.HTTP_TARGET, lambda_event.get("resource")
+        )
+
+    return span
+
+
+def _set_api_gateway_v2_proxy_attributes(
+    lambda_event: Any, span: Span
+) -> Span:
+    """Sets HTTP attributes for v2 HTTP APIs
+
+    More info:
+    https://docs.aws.amazon.com/apigateway/latest/developerguide/http-api-develop-integrations-lambda.html
+    """
+    span.set_attribute(
+        SpanAttributes.NET_HOST_NAME,
+        lambda_event["requestContext"].get("domainName"),
+    )
+
+    if lambda_event["requestContext"].get("http"):
+        span.set_attribute(
+            SpanAttributes.HTTP_METHOD,
+            lambda_event["requestContext"]["http"].get("method"),
+        )
+        span.set_attribute(
+            SpanAttributes.HTTP_USER_AGENT,
+            lambda_event["requestContext"]["http"].get("userAgent"),
+        )
+        span.set_attribute(
+            SpanAttributes.HTTP_ROUTE,
+            lambda_event["requestContext"]["http"].get("path"),
+        )
+
+        if lambda_event.get("rawQueryString"):
+            span.set_attribute(
+                SpanAttributes.HTTP_TARGET,
+                f"{lambda_event['requestContext']['http'].get('path')}?{lambda_event.get('rawQueryString')}",
+            )
+        else:
+            span.set_attribute(
+                SpanAttributes.HTTP_TARGET,
+                lambda_event["requestContext"]["http"].get("path"),
+            )
+
+    return span
+
+
 def _instrument(
     wrapped_module_name,
     wrapped_function_name,
     flush_timeout,
     event_context_extractor: Callable[[Any], Context],
     tracer_provider: TracerProvider = None,
+    disable_aws_context_propagation: bool = False,
 ):
     def _instrumented_lambda_handler_call(
         call_wrapped, instance, args, kwargs
@@ -188,7 +280,9 @@ def _instrument(
         lambda_event = args[0]
 
         parent_context = _determine_parent_context(
-            lambda_event, event_context_extractor
+            lambda_event,
+            event_context_extractor,
+            disable_aws_context_propagation,
         )
 
         span_kind = None
@@ -233,6 +327,23 @@ def _instrument(
 
             result = call_wrapped(*args, **kwargs)
 
+            # If the request came from an API Gateway, extract http attributes from the event
+            # https://github.com/open-telemetry/opentelemetry-specification/blob/main/specification/trace/semantic_conventions/instrumentation/aws-lambda.md#api-gateway
+            # https://github.com/open-telemetry/opentelemetry-specification/blob/main/specification/trace/semantic_conventions/http.md#http-server-semantic-conventions
+            if lambda_event and lambda_event.get("requestContext"):
+                span.set_attribute(SpanAttributes.FAAS_TRIGGER, "http")
+
+                if lambda_event.get("version") == "2.0":
+                    _set_api_gateway_v2_proxy_attributes(lambda_event, span)
+                else:
+                    _set_api_gateway_v1_proxy_attributes(lambda_event, span)
+
+                if isinstance(result, dict) and result.get("statusCode"):
+                    span.set_attribute(
+                        SpanAttributes.HTTP_STATUS_CODE,
+                        result.get("statusCode"),
+                    )
+
         _tracer_provider = tracer_provider or get_tracer_provider()
         try:
             # NOTE: `force_flush` before function quit in case of Lambda freeze.
@@ -270,6 +381,9 @@ class AwsLambdaInstrumentor(BaseInstrumentor):
                     Event as input and extracts an OTel Context from it. By default,
                     the context is extracted from the HTTP headers of an API Gateway
                     request.
+                ``disable_aws_context_propagation``: By default, this instrumentation
+                    will try to read the context from the `_X_AMZN_TRACE_ID` environment
+                    variable set by Lambda, set this to `True` to disable this behavior.
         """
         lambda_handler = os.environ.get(ORIG_HANDLER, os.environ.get(_HANDLER))
         # pylint: disable=attribute-defined-outside-init
@@ -279,11 +393,12 @@ class AwsLambdaInstrumentor(BaseInstrumentor):
         ) = lambda_handler.rsplit(".", 1)
 
         flush_timeout_env = os.environ.get(
-            OTEL_INSTRUMENTATION_AWS_LAMBDA_FLUSH_TIMEOUT, ""
+            OTEL_INSTRUMENTATION_AWS_LAMBDA_FLUSH_TIMEOUT, None
         )
         flush_timeout = 30000
         try:
-            flush_timeout = int(flush_timeout_env)
+            if flush_timeout_env is not None:
+                flush_timeout = int(flush_timeout_env)
         except ValueError:
             logger.warning(
                 "Could not convert OTEL_INSTRUMENTATION_AWS_LAMBDA_FLUSH_TIMEOUT value %s to int",
@@ -298,6 +413,9 @@ class AwsLambdaInstrumentor(BaseInstrumentor):
                 "event_context_extractor", _default_event_context_extractor
             ),
             tracer_provider=kwargs.get("tracer_provider"),
+            disable_aws_context_propagation=kwargs.get(
+                "disable_aws_context_propagation", False
+            ),
         )
 
     def _uninstrument(self, **kwargs):

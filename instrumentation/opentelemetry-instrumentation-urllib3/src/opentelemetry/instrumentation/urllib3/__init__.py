@@ -86,6 +86,7 @@ from opentelemetry.instrumentation.utils import (
 )
 from opentelemetry.metrics import Histogram, get_meter
 from opentelemetry.propagate import inject
+from opentelemetry.semconv.metrics import MetricInstruments
 from opentelemetry.semconv.trace import SpanAttributes
 from opentelemetry.trace import Span, SpanKind, Tracer, get_tracer
 from opentelemetry.trace.status import Status
@@ -117,6 +118,7 @@ _ResponseHookT = typing.Optional[
 _URL_OPEN_ARG_TO_INDEX_MAPPING = {
     "method": 0,
     "url": 1,
+    "body": 2,
 }
 
 
@@ -142,17 +144,17 @@ class URLLib3Instrumentor(BaseInstrumentor):
         meter = get_meter(__name__, __version__, meter_provider)
 
         duration_histogram = meter.create_histogram(
-            name="http.client.duration",
+            name=MetricInstruments.HTTP_CLIENT_DURATION,
             unit="ms",
             description="measures the duration outbound HTTP requests",
         )
         request_size_histogram = meter.create_histogram(
-            name="http.client.request.size",
+            name=MetricInstruments.HTTP_CLIENT_REQUEST_SIZE,
             unit="By",
             description="measures the size of HTTP request messages (compressed)",
         )
         response_size_histogram = meter.create_histogram(
-            name="http.client.response.size",
+            name=MetricInstruments.HTTP_CLIENT_RESPONSE_SIZE,
             unit="By",
             description="measures the size of HTTP response messages (compressed)",
         )
