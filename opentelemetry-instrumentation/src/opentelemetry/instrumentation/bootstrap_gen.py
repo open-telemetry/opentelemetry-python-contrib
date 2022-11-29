@@ -54,7 +54,7 @@ libraries = {
     },
     "cherrypy": {
         "library": "cherrypy >= 1.0",
-        "instrumentation": "opentelemetry-instrumentation-cherrypy==0.34b0",
+        "instrumentation": "opentelemetry-instrumentation-cherrypy==0.36b0.dev",
     },
     "confluent-kafka": {
         "library": "confluent-kafka ~= 1.8.2",
