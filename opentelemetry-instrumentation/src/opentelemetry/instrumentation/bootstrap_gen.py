@@ -106,7 +106,7 @@ libraries = {
     },
     "pulsar-client": {
         "library": "pulsar-client ~= 2.8",
-        "instrumentation": "opentelemetry-instrumentation-pulsar==0.34b0",
+        "instrumentation": "opentelemetry-instrumentation-pulsar==0.36b0.dev",
     },
     "pymemcache": {
         "library": "pymemcache >= 1.3.5, < 4",

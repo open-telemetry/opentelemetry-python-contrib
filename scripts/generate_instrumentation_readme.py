@@ -44,11 +44,13 @@ def main():
         src_dir = os.path.join(
             instrumentation_path, "src", "opentelemetry", "instrumentation"
         )
+        excluded_folders = {"__pycache__"}
         src_pkgs = [
             f
             for f in os.listdir(src_dir)
-            if os.path.isdir(os.path.join(src_dir, f))
+            if os.path.isdir(os.path.join(src_dir, f)) and f not in excluded_folders
         ]
+        print(src_pkgs)
         assert len(src_pkgs) == 1
         name = src_pkgs[0]
 
