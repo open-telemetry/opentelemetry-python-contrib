@@ -278,6 +278,8 @@ def _instrument(
     tracer_provider: TracerProvider = None,
     disable_aws_context_propagation: bool = False,
     meter_provider: MeterProvider = None,
+    request_hook: Callable[[Span, Any, Any], None] = None,
+    response_hook: Callable[[Span, Any, Any], None] = None,
 ):
     def _instrumented_lambda_handler_call(  # noqa pylint: disable=too-many-branches
         call_wrapped, instance, args, kwargs
@@ -322,6 +324,7 @@ def _instrument(
         ) as span:
             if span.is_recording():
                 lambda_context = args[1]
+
                 # NOTE: The specs mention an exception here, allowing the
                 # `ResourceAttributes.FAAS_ID` attribute to be set as a span
                 # attribute instead of a resource attribute.
@@ -337,7 +340,24 @@ def _instrument(
                     lambda_context.aws_request_id,
                 )
 
-            result = call_wrapped(*args, **kwargs)
+                if callable(request_hook):
+                    try:
+                        request_hook(span, lambda_event, lambda_context)
+                    except Exception:  # pylint: disable=broad-except
+                        logger.warning("Failed executing request_hook")
+
+            lambda_error = None
+            try:
+                result = call_wrapped(*args, **kwargs)
+            except Exception as err:
+                lambda_error = err
+                raise err
+            finally:
+                if callable(response_hook):
+                    try:
+                        response_hook(span, result, lambda_error)
+                    except Exception:  # pylint: disable=broad-except
+                        logger.warning("Failed executing response hook")
 
             # If the request came from an API Gateway, extract http attributes from the event
             # https://github.com/open-telemetry/opentelemetry-specification/blob/main/specification/trace/semantic_conventions/instrumentation/aws-lambda.md#api-gateway
@@ -454,6 +474,8 @@ class AwsLambdaInstrumentor(BaseInstrumentor):
             tracer_provider=kwargs.get("tracer_provider"),
             disable_aws_context_propagation=disable_aws_context_propagation,
             meter_provider=kwargs.get("meter_provider"),
+            request_hook=kwargs.get("request_hook"),
+            response_hook=kwargs.get("response_hook"),
         )
 
     def _uninstrument(self, **kwargs):

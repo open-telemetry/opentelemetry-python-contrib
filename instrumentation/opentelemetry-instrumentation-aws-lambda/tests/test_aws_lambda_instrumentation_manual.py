@@ -11,6 +11,7 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
+import json
 import os
 from dataclasses import dataclass
 from importlib import import_module
@@ -422,3 +423,35 @@ class TestAwsLambdaInstrumentor(TestBase):
         spans = self.memory_exporter.get_finished_spans()
         assert spans is not None
         self.assertEqual(len(spans), 0)
+
+    def test_request_hook(self):
+        lambda_event_attribute = "lambda.event"
+        lambda_event = {"abcd": 1234}
+
+        def request_hook(span, event, _context):
+            span.set_attribute(lambda_event_attribute, json.dumps(event))
+
+        test_env_patch = mock.patch.dict(
+            "os.environ",
+            {
+                **os.environ,
+                _X_AMZN_TRACE_ID: MOCK_XRAY_TRACE_CONTEXT_SAMPLED,
+            },
+        )
+        test_env_patch.start()
+        AwsLambdaInstrumentor().instrument(request_hook=request_hook)
+
+        mock_execute_lambda(lambda_event)
+
+        spans = self.memory_exporter.get_finished_spans()
+        assert spans
+        self.assertEqual(len(spans), 1)
+        span = spans[0]
+        self.assertSpanHasAttributes(
+            span,
+            {
+                lambda_event_attribute: json.dumps(lambda_event),
+            },
+        )
+
+        test_env_patch.stop()
