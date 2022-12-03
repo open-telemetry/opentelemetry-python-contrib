@@ -617,7 +617,7 @@ class TestAsgiApplication(AsgiTestBase):
                                 expected_target,
                             )
                             assertions += 1
-        self.assertEqual(assertions, 2)
+        self.assertEqual(assertions, 1)
 
     def test_no_metric_for_websockets(self):
         self.scope = {
