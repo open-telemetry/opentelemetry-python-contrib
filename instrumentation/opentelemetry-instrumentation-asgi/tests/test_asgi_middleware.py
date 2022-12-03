@@ -608,14 +608,10 @@ class TestAsgiApplication(AsgiTestBase):
         for resource_metric in metrics_list.resource_metrics:
             for scope_metrics in resource_metric.scope_metrics:
                 for metric in scope_metrics.metrics:
+                    if metric.name != "http.server.duration":
+                        continue
                     for point in metric.data.data_points:
                         if isinstance(point, HistogramDataPoint):
-                            self.assertEqual(
-                                point.attributes["http.target"],
-                                expected_target,
-                            )
-                            assertions += 1
-                        elif isinstance(point, NumberDataPoint):
                             self.assertEqual(
                                 point.attributes["http.target"],
                                 expected_target,
