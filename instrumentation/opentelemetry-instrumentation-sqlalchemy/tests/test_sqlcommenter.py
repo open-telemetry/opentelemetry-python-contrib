@@ -83,11 +83,10 @@ class TestSqlalchemyInstrumentationWithSQLCommenter(TestBase):
             tracer_provider=self.tracer_provider,
             enable_commenter=True,
         )
-
         from sqlalchemy import create_engine  # pylint: disable-all
+
         engine = create_engine("sqlite:///:memory:")
         cnx = engine.connect()
-
         cnx.execute("SELECT 1;").fetchall()
         self.assertRegex(
             self.caplog.records[-2].getMessage(),
@@ -99,10 +98,9 @@ class TestSqlalchemyInstrumentationWithSQLCommenter(TestBase):
             tracer_provider=self.tracer_provider,
             enable_commenter=False,
         )
-
         from sqlalchemy import create_engine  # pylint: disable-all
+
         engine = create_engine("sqlite:///:memory:")
         cnx = engine.connect()
-
         cnx.execute("SELECT 1;").fetchall()
         self.assertEqual(self.caplog.records[-2].getMessage(), "SELECT 1;")
