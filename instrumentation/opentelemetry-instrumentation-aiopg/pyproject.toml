@@ -33,7 +33,7 @@ dependencies = [
 
 [project.optional-dependencies]
 instruments = [
-  "aiopg >= 0.13.0, < 1.3.0",
+  "aiopg >= 0.13.0, <= 1.4.0",
 ]
 test = [
   "opentelemetry-instrumentation-aiopg[instruments]",
