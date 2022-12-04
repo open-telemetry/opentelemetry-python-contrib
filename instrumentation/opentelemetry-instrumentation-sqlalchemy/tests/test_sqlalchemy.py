@@ -227,3 +227,93 @@ class TestSqlalchemyInstrumentation(TestBase):
             )
 
         asyncio.get_event_loop().run_until_complete(run())
+
+    def test_cursor_execute_callbacks(self):
+        engine = create_engine("sqlite:///:memory:")
+
+        def simple_hook_before(
+            span, conn, cursor, statement, params, context, executemany
+        ):
+            span.set_attribute("simple_hook.before_is_executed", True)
+
+        def simple_hook_after(
+            span, conn, cursor, statement, params, context, executemany
+        ):
+            span.set_attribute("simple_hook.after_is_executed", True)
+
+        SQLAlchemyInstrumentor().instrument(
+            engine=engine,
+            tracer_provider=self.tracer_provider,
+            before_cursor_execute_callback=simple_hook_before,
+            after_cursor_execute_callback=simple_hook_after,
+        )
+        cnx = engine.connect()
+        cnx.execute("SELECT	1 + 1;").fetchall()
+        spans = self.memory_exporter.get_finished_spans()
+
+        self.assertEqual(len(spans), 2)
+        # first span - the connection to the db
+        self.assertEqual(spans[0].name, "connect")
+        self.assertEqual(spans[0].kind, trace.SpanKind.CLIENT)
+        # second span - the query itself
+        self.assertEqual(spans[1].name, "SELECT :memory:")
+        self.assertEqual(spans[1].kind, trace.SpanKind.CLIENT)
+        # check if callbacks are called
+        self.assertEqual(
+            spans[1].attributes.get("simple_hook.before_is_executed"), True
+        )
+        self.assertEqual(
+            spans[1].attributes.get("simple_hook.after_is_executed"), True
+        )
+
+    def test_after_cursor_execute_callback(self):
+        engine = create_engine("sqlite:///:memory:")
+
+        def simple_hook(
+            span, conn, cursor, statement, params, context, executemany
+        ):
+            span.set_attribute("simple_hook.executed", True)
+
+        SQLAlchemyInstrumentor().instrument(
+            engine=engine,
+            tracer_provider=self.tracer_provider,
+            after_cursor_execute_callback=simple_hook,
+        )
+        cnx = engine.connect()
+        cnx.execute("SELECT	1 + 1;").fetchall()
+        spans = self.memory_exporter.get_finished_spans()
+
+        self.assertEqual(len(spans), 2)
+        # first span - the connection to the db
+        self.assertEqual(spans[0].name, "connect")
+        self.assertEqual(spans[0].kind, trace.SpanKind.CLIENT)
+        # second span - the query itself
+        self.assertEqual(spans[1].name, "SELECT :memory:")
+        self.assertEqual(spans[1].kind, trace.SpanKind.CLIENT)
+        # check if callback called
+        self.assertEqual(spans[1].attributes.get("simple_hook.executed"), True)
+
+    def test_handle_error_callback(self):
+        engine = create_engine("sqlite:///:memory:")
+
+        def simple_hook(span, context):
+            raise Exception(f"handled: {context.statement}")
+
+        SQLAlchemyInstrumentor().instrument(
+            engine=engine,
+            tracer_provider=self.tracer_provider,
+            handle_error_callback=simple_hook,
+        )
+        cnx = engine.connect()
+
+        # Execute a bogus query and check if callback is called and has captured the context correctly
+        try:
+            cnx.execute("I shall fail").fetchall()
+        except Exception as err:
+            self.assertEqual(str(err), "handled: I shall fail")
+
+        spans = self.memory_exporter.get_finished_spans()
+        self.assertEqual(len(spans), 1)
+        # first span - the connection to the db
+        self.assertEqual(spans[0].name, "connect")
+        self.assertEqual(spans[0].kind, trace.SpanKind.CLIENT)

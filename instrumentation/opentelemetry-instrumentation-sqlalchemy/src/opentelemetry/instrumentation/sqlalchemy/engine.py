@@ -13,7 +13,10 @@
 # limitations under the License.
 import os
 import re
+from typing import Any, Callable, Optional, TypedDict
 
+from sqlalchemy.engine import ExceptionContext, ExecutionContext
+from sqlalchemy.engine.base import Connection
 from sqlalchemy.event import listen  # pylint: disable=no-name-in-module
 
 from opentelemetry import trace
@@ -24,6 +27,7 @@ from opentelemetry.instrumentation.sqlalchemy.version import __version__
 from opentelemetry.instrumentation.sqlcommenter_utils import _add_sql_comment
 from opentelemetry.instrumentation.utils import _get_opentelemetry_values
 from opentelemetry.semconv.trace import NetTransportValues, SpanAttributes
+from opentelemetry.trace.span import Span
 from opentelemetry.trace.status import Status, StatusCode
 
 
@@ -49,27 +53,61 @@ def _get_tracer(tracer_provider=None):
     )
 
 
-def _wrap_create_async_engine(tracer_provider=None):
+class EngineTracerOptions(TypedDict):
+    enable_commenter: bool
+    commenter_options: dict[str, Any]
+    before_cursor_execute_callback: Callable[
+        [Span, Connection, Any, str, Any, Optional[ExecutionContext], bool],
+        None,
+    ]
+    after_cursor_execute_callback: Callable[
+        [
+            Optional[Span],
+            Connection,
+            Any,
+            str,
+            Any,
+            Optional[ExecutionContext],
+            bool,
+        ],
+        None,
+    ]
+    handle_error_callback: Callable[[Optional[Span], ExceptionContext], None]
+
+
+def _wrap_create_async_engine(
+    engine_tracer_options: EngineTracerOptions,
+    tracer_provider=None,
+):
     # pylint: disable=unused-argument
     def _wrap_create_async_engine_internal(func, module, args, kwargs):
         """Trace the SQLAlchemy engine, creating an `EngineTracer`
         object that will listen to SQLAlchemy events.
         """
         engine = func(*args, **kwargs)
-        EngineTracer(_get_tracer(tracer_provider), engine.sync_engine)
+        EngineTracer(
+            _get_tracer(tracer_provider),
+            engine.sync_engine,
+            engine_tracer_options,
+        )
         return engine
 
     return _wrap_create_async_engine_internal
 
 
-def _wrap_create_engine(tracer_provider=None):
+def _wrap_create_engine(
+    engine_tracer_options: EngineTracerOptions,
+    tracer_provider=None,
+):
     # pylint: disable=unused-argument
     def _wrap_create_engine_internal(func, module, args, kwargs):
         """Trace the SQLAlchemy engine, creating an `EngineTracer`
         object that will listen to SQLAlchemy events.
         """
         engine = func(*args, **kwargs)
-        EngineTracer(_get_tracer(tracer_provider), engine)
+        EngineTracer(
+            _get_tracer(tracer_provider), engine, engine_tracer_options
+        )
         return engine
 
     return _wrap_create_engine_internal
@@ -93,21 +131,29 @@ def _wrap_connect(tracer_provider=None):
 
 
 class EngineTracer:
-    def __init__(
-        self, tracer, engine, enable_commenter=True, commenter_options=None
-    ):
+    def __init__(self, tracer, engine, options: EngineTracerOptions):
         self.tracer = tracer
         self.engine = engine
         self.vendor = _normalize_vendor(engine.name)
-        self.enable_commenter = enable_commenter
-        self.commenter_options = commenter_options if commenter_options else {}
         self._leading_comment_remover = re.compile(r"^/\*.*?\*/")
 
+        self.enable_commenter = options["enable_commenter"]
+        self.commenter_options = options["commenter_options"]
+        self.before_cursor_execute_callback = options[
+            "before_cursor_execute_callback"
+        ]
+        self.after_cursor_execute_callback = options[
+            "after_cursor_execute_callback"
+        ]
+        self.handle_error_callback = options["handle_error_callback"]
         listen(
-            engine, "before_cursor_execute", self._before_cur_exec, retval=True
+            self.engine,
+            "before_cursor_execute",
+            self._before_cur_exec,
+            retval=True,
         )
-        listen(engine, "after_cursor_execute", _after_cur_exec)
-        listen(engine, "handle_error", _handle_error)
+        listen(self.engine, "after_cursor_execute", self._after_cur_exec)
+        listen(self.engine, "handle_error", self._handle_error)
 
     def _operation_name(self, db_name, statement):
         parts = []
@@ -165,33 +211,46 @@ class EngineTracer:
 
                 statement = _add_sql_comment(statement, **commenter_data)
 
+            if self.before_cursor_execute_callback is not None:
+                self.before_cursor_execute_callback(
+                    span, conn, cursor, statement, params, context, executemany
+                )
+
         context._otel_span = span
 
         return statement, params
 
+    # pylint: disable=unused-argument
+    def _after_cur_exec(
+        self, conn, cursor, statement, params, context, executemany
+    ):
+        span = getattr(context, "_otel_span", None)
+        if span is None:
+            return
 
-# pylint: disable=unused-argument
-def _after_cur_exec(conn, cursor, statement, params, context, executemany):
-    span = getattr(context, "_otel_span", None)
-    if span is None:
-        return
-
-    span.end()
-
-
-def _handle_error(context):
-    span = getattr(context.execution_context, "_otel_span", None)
-    if span is None:
-        return
-
-    if span.is_recording():
-        span.set_status(
-            Status(
-                StatusCode.ERROR,
-                str(context.original_exception),
+        if self.after_cursor_execute_callback is not None:
+            self.after_cursor_execute_callback(
+                span, conn, cursor, statement, params, context, executemany
             )
-        )
-    span.end()
+
+        span.end()
+
+    def _handle_error(self, context):
+        span = getattr(context.execution_context, "_otel_span", None)
+        if span is None:
+            return
+
+        if self.handle_error_callback is not None:
+            self.handle_error_callback(span, context)
+
+        if span.is_recording():
+            span.set_status(
+                Status(
+                    StatusCode.ERROR,
+                    str(context.original_exception),
+                )
+            )
+        span.end()
 
 
 def _get_attributes_from_url(url):
