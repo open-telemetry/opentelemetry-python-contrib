@@ -19,7 +19,6 @@ from unittest.mock import MagicMock
 import aiopg
 from aiopg.utils import (  # pylint: disable=no-name-in-module
     _ContextManager,
-    _PoolAcquireContextManager,
 )
 
 import opentelemetry.instrumentation.aiopg
@@ -611,3 +610,16 @@ class AiopgMock:
     async def create_pool(self, *args, **kwargs):
         self.create_pool_call_count += 1
         return AiopgPoolMock()
+
+
+class _PoolAcquireContextManager(_ContextManager):
+    __slots__ = ("_coro", "_obj", "_pool")
+
+    def __init__(self, coro, pool):
+        super().__init__(coro)
+        self._pool = pool
+
+    async def __aexit__(self, exc_type, exc, tb):
+        await self._pool.release(self._obj)
+        self._pool = None
+        self._obj = None
