@@ -17,15 +17,14 @@ from unittest import mock
 from unittest.mock import MagicMock
 
 import aiopg
-from aiopg.utils import (  # pylint: disable=no-name-in-module
-    _ContextManager,
-)
+from aiopg.utils import _ContextManager  # pylint: disable=no-name-in-module
 
 import opentelemetry.instrumentation.aiopg
 from opentelemetry import trace as trace_api
 from opentelemetry.instrumentation.aiopg import AiopgInstrumentor, wrappers
 from opentelemetry.instrumentation.aiopg.aiopg_integration import (
     AiopgIntegration,
+    _PoolAcquireContextManager,
 )
 from opentelemetry.sdk import resources
 from opentelemetry.semconv.trace import SpanAttributes
@@ -610,16 +609,3 @@ class AiopgMock:
     async def create_pool(self, *args, **kwargs):
         self.create_pool_call_count += 1
         return AiopgPoolMock()
-
-
-class _PoolAcquireContextManager(_ContextManager):
-    __slots__ = ("_coro", "_obj", "_pool")
-
-    def __init__(self, coro, pool):
-        super().__init__(coro)
-        self._pool = pool
-
-    async def __aexit__(self, exc_type, exc, tb):
-        await self._pool.release(self._obj)
-        self._pool = None
-        self._obj = None

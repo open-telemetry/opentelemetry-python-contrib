@@ -1,7 +1,7 @@
 import typing
 
 import wrapt
-from aiopg.utils import _ContextManager, _PoolAcquireContextManager
+from aiopg.utils import _ContextManager
 
 from opentelemetry.instrumentation.dbapi import (
     CursorTracer,
@@ -150,3 +150,25 @@ def get_traced_cursor_proxy(cursor, db_api_integration, *args, **kwargs):
             return result
 
     return AsyncCursorTracerProxy(cursor, *args, **kwargs)
+
+
+class _PoolContextManager(_ContextManager):
+    __slots__ = ()
+
+    async def __aexit__(self, exc_type, exc, tb):
+        self._obj.close()
+        await self._obj.wait_closed()
+        self._obj = None
+
+
+class _PoolAcquireContextManager(_ContextManager):
+    __slots__ = ("_coro", "_obj", "_pool")
+
+    def __init__(self, coro, pool):
+        super().__init__(coro)
+        self._pool = pool
+
+    async def __aexit__(self, exc_type, exc, tb):
+        await self._pool.release(self._obj)
+        self._pool = None
+        self._obj = None
