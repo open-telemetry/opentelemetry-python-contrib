@@ -3,9 +3,9 @@ requires = ["hatchling"]
 build-backend = "hatchling.build"
 
 [project]
-name = "opentelemetry-instrumentation-fastapi"
+name = "opentelemetry-instrumentation-tortoiseorm"
 dynamic = ["version"]
-description = "OpenTelemetry FastAPI Instrumentation"
+description = "OpenTelemetry Instrumentation for Tortoise ORM"
 readme = "README.rst"
 license = "Apache-2.0"
 requires-python = ">=3.7"
@@ -27,30 +27,27 @@ classifiers = [
 dependencies = [
   "opentelemetry-api ~= 1.12",
   "opentelemetry-instrumentation == 0.36b0.dev",
-  "opentelemetry-instrumentation-asgi == 0.36b0.dev",
   "opentelemetry-semantic-conventions == 0.36b0.dev",
-  "opentelemetry-util-http == 0.36b0.dev",
 ]
 
 [project.optional-dependencies]
 instruments = [
-  "fastapi ~= 0.58",
+  "tortoise-orm >= 0.17.0",
+  "pydantic >= 1.10.2"
 ]
 test = [
-  "opentelemetry-instrumentation-fastapi[instruments]",
+  "opentelemetry-instrumentation-tortoiseorm[instruments]",
   "opentelemetry-test-utils == 0.36b0.dev",
-  "requests ~= 2.23", # needed for testclient
-  "httpx ~= 0.22", # needed for testclient
 ]
 
 [project.entry-points.opentelemetry_instrumentor]
-fastapi = "opentelemetry.instrumentation.fastapi:FastAPIInstrumentor"
+tortoiseorm = "opentelemetry.instrumentation.tortoiseorm:TortoiseORMInstrumentor"
 
 [project.urls]
-Homepage = "https://github.com/open-telemetry/opentelemetry-python-contrib/tree/main/instrumentation/opentelemetry-instrumentation-fastapi"
+Homepage = "https://github.com/open-telemetry/opentelemetry-python-contrib/tree/main/instrumentation/opentelemetry-instrumentation-tortoiseorm"
 
 [tool.hatch.version]
-path = "src/opentelemetry/instrumentation/fastapi/version.py"
+path = "src/opentelemetry/instrumentation/tortoiseorm/version.py"
 
 [tool.hatch.build.targets.sdist]
 include = [
