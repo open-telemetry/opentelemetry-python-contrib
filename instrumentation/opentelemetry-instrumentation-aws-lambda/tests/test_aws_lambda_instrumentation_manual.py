@@ -431,14 +431,6 @@ class TestAwsLambdaInstrumentor(TestBase):
         def request_hook(span, event, _context):
             span.set_attribute(lambda_event_attribute, json.dumps(event))
 
-        test_env_patch = mock.patch.dict(
-            "os.environ",
-            {
-                **os.environ,
-                _X_AMZN_TRACE_ID: MOCK_XRAY_TRACE_CONTEXT_SAMPLED,
-            },
-        )
-        test_env_patch.start()
         AwsLambdaInstrumentor().instrument(request_hook=request_hook)
 
         mock_execute_lambda(lambda_event)
@@ -454,4 +446,23 @@ class TestAwsLambdaInstrumentor(TestBase):
             },
         )
 
-        test_env_patch.stop()
+    def test_response_hook(self):
+        lambda_response_attribute = "lambda.response"
+
+        def response_hook(span, result, error):
+            assert error is None
+            span.set_attribute(lambda_response_attribute, result)
+
+        AwsLambdaInstrumentor().instrument(response_hook=response_hook)
+        mock_execute_lambda()
+
+        spans = self.memory_exporter.get_finished_spans()
+        assert spans
+        self.assertEqual(len(spans), 1)
+        span = spans[0]
+        self.assertSpanHasAttributes(
+            span,
+            {
+                lambda_response_attribute: "200 ok",
+            },
+        )

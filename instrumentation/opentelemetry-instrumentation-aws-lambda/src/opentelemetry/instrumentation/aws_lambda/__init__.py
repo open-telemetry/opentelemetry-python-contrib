@@ -270,6 +270,16 @@ def _set_api_gateway_v2_proxy_attributes(
     return span
 
 
+def _safe_execute_hook(hook_func, *args):
+    if not callable(hook_func):
+        return
+
+    try:
+        hook_func(*args)
+    except Exception:  # pylint: disable=broad-except
+        logger.warning("Failed executing hook")
+
+
 def _instrument(
     wrapped_module_name,
     wrapped_function_name,
@@ -339,12 +349,7 @@ def _instrument(
                     SpanAttributes.FAAS_EXECUTION,
                     lambda_context.aws_request_id,
                 )
-
-                if callable(request_hook):
-                    try:
-                        request_hook(span, lambda_event, lambda_context)
-                    except Exception:  # pylint: disable=broad-except
-                        logger.warning("Failed executing request_hook")
+                _safe_execute_hook(request_hook, span, lambda_event, lambda_context)
 
             lambda_error = None
             try:
@@ -353,11 +358,7 @@ def _instrument(
                 lambda_error = err
                 raise err
             finally:
-                if callable(response_hook):
-                    try:
-                        response_hook(span, result, lambda_error)
-                    except Exception:  # pylint: disable=broad-except
-                        logger.warning("Failed executing response hook")
+                _safe_execute_hook(response_hook, span, result, lambda_error)
 
             # If the request came from an API Gateway, extract http attributes from the event
             # https://github.com/open-telemetry/opentelemetry-specification/blob/main/specification/trace/semantic_conventions/instrumentation/aws-lambda.md#api-gateway
