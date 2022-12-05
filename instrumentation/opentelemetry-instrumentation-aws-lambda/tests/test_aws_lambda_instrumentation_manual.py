@@ -424,7 +424,8 @@ class TestAwsLambdaInstrumentor(TestBase):
         assert spans is not None
         self.assertEqual(len(spans), 0)
 
-    def test_request_hook(self):
+
+    def test_successful_request_hook(self):
         lambda_event_attribute = "lambda.event"
         lambda_event = {"abcd": 1234}
 
@@ -448,10 +449,11 @@ class TestAwsLambdaInstrumentor(TestBase):
 
     def test_response_hook(self):
         lambda_response_attribute = "lambda.response"
+        lambda_error_attribute = "lambda.has_error"
 
         def response_hook(span, result, error):
-            assert error is None
             span.set_attribute(lambda_response_attribute, result)
+            span.set_attribute(lambda_error_attribute, error is not None)
 
         AwsLambdaInstrumentor().instrument(response_hook=response_hook)
         mock_execute_lambda()
@@ -464,5 +466,25 @@ class TestAwsLambdaInstrumentor(TestBase):
             span,
             {
                 lambda_response_attribute: "200 ok",
+                lambda_error_attribute: False,
             },
         )
+
+    def test_erroneous_hooks_dont_break_instrumentation(self):
+        def request_hook(_span, _event, _context):
+            raise Exception("an error occurred!")
+
+        def response_hook(_span, _result, _error):
+            raise Exception("an error occurred!")
+
+        AwsLambdaInstrumentor().instrument(
+            request_hook=request_hook, response_hook=response_hook
+        )
+
+        mock_execute_lambda()
+
+        spans = self.memory_exporter.get_finished_spans()
+        assert spans
+        self.assertEqual(len(spans), 1)
+        span = spans[0]
+        self.assertEqual(span.name, os.environ[_HANDLER])

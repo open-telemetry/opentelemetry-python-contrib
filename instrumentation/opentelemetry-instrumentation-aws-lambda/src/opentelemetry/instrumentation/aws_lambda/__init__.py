@@ -349,7 +349,9 @@ def _instrument(
                     SpanAttributes.FAAS_EXECUTION,
                     lambda_context.aws_request_id,
                 )
-                _safe_execute_hook(request_hook, span, lambda_event, lambda_context)
+                _safe_execute_hook(
+                    request_hook, span, lambda_event, lambda_context
+                )
 
             lambda_error = None
             try:
