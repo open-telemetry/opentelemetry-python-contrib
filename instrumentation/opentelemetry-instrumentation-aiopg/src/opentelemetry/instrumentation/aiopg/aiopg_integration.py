@@ -196,7 +196,7 @@ class _ContextManager(Coroutine):
         self._obj = await self._coro
         return self._obj
 
-    async def __aexit__(self, exc_type, exc, tb):
+    async def __aexit__(self, exc_type, exc, t_b):
         try:
             if asyncio.iscoroutinefunction(self._obj.close):
                 await self._obj.close()
