@@ -1,5 +1,6 @@
 import asyncio
 import typing
+from collections.abc import Coroutine
 
 import wrapt
 
@@ -7,7 +8,6 @@ from opentelemetry.instrumentation.dbapi import (
     CursorTracer,
     DatabaseApiIntegration,
 )
-from collections.abc import Coroutine
 from opentelemetry.trace import SpanKind
 
 

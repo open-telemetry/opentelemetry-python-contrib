@@ -38,8 +38,8 @@ import wrapt
 from opentelemetry.instrumentation.aiopg.aiopg_integration import (
     AiopgIntegration,
     AsyncProxyObject,
-    _PoolContextManager,
     _ContextManager,
+    _PoolContextManager,
     get_traced_connection_proxy,
 )
 from opentelemetry.instrumentation.aiopg.version import __version__
