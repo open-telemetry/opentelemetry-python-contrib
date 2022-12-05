@@ -34,12 +34,12 @@ import typing
 
 import aiopg
 import wrapt
-from aiopg.utils import _ContextManager  # pylint: disable=no-name-in-module
 
 from opentelemetry.instrumentation.aiopg.aiopg_integration import (
     AiopgIntegration,
     AsyncProxyObject,
     _PoolContextManager,
+    _ContextManager,
     get_traced_connection_proxy,
 )
 from opentelemetry.instrumentation.aiopg.version import __version__

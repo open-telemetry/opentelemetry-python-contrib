@@ -24,6 +24,7 @@ from opentelemetry import trace as trace_api
 from opentelemetry.instrumentation.aiopg import AiopgInstrumentor, wrappers
 from opentelemetry.instrumentation.aiopg.aiopg_integration import (
     AiopgIntegration,
+    _ContextManager,
     _PoolAcquireContextManager,
 )
 from opentelemetry.sdk import resources
