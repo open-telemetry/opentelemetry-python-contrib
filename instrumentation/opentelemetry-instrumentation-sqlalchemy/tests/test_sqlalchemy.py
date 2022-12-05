@@ -246,9 +246,10 @@ class TestSqlalchemyInstrumentation(TestBase):
         self.assertEqual(spans[1].name, "SELECT :memory:")
         self.assertEqual(spans[1].kind, trace.SpanKind.CLIENT)
 
+        self.memory_exporter.clear()
         SQLAlchemyInstrumentor().uninstrument()
         engine2 = create_engine("sqlite:///:memory:")
         cnx2 = engine2.connect()
         cnx2.execute("SELECT	2 + 2;").fetchall()
         spans = self.memory_exporter.get_finished_spans()
-        self.assertEqual(len(spans), 2)
+        self.assertEqual(len(spans), 0)
