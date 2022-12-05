@@ -64,7 +64,31 @@ for example:
         event_context_extractor=custom_event_context_extractor
     )
 
----
+request_hook (Callable) - hook for adding custom attributes before lambda starts handling the request.
+    Function signature is : def request_hook(span: Span, lambda_event: Any, lambda_context: Any) -> None
+    for example:
+
+.. code:: python
+
+    from opentelemetry.instrumentation.aws_lambda import AwsLambdaInstrumentor
+
+    def request_hook(span, lambda_event, lambda_context):
+        span.set_attribute('lambda_event_attribute', json.dumps(lambda_event))
+
+    AwsLambdaInstrumentor().instrument(request_hook=request_hook)
+
+response_hook (Callable) - hook for adding custom attributes before lambda returns the response.
+    Function signature is : def request_hook(span: Span, lambda_result: Any, lambda_error: Any) -> None
+    for example:
+
+.. code:: python
+
+    from opentelemetry.instrumentation.aws_lambda import AwsLambdaInstrumentor
+
+    def response_hook(span, lambda_result, lambda_error):
+        span.set_attribute('lambda_result_attribute', json.dumps(lambda_result))
+
+    AwsLambdaInstrumentor().instrument(response_hook=response_hook)
 """
 
 import logging
@@ -334,7 +358,6 @@ def _instrument(
         ) as span:
             if span.is_recording():
                 lambda_context = args[1]
-
                 # NOTE: The specs mention an exception here, allowing the
                 # `ResourceAttributes.FAAS_ID` attribute to be set as a span
                 # attribute instead of a resource attribute.
