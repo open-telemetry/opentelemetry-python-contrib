@@ -17,7 +17,6 @@ from unittest import mock
 from unittest.mock import MagicMock
 
 import aiopg
-from aiopg.utils import _ContextManager  # pylint: disable=no-name-in-module
 
 import opentelemetry.instrumentation.aiopg
 from opentelemetry import trace as trace_api
