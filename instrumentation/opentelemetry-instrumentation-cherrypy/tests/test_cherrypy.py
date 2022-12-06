@@ -14,14 +14,17 @@
 #
 from timeit import default_timer
 from unittest.mock import Mock, patch
+import unittest
 
 import pytest
+import os
 from cherrypy import __version__ as _cherrypy_verison
 import cherrypy
 from cherrypy.test import helper
 from packaging import version as package_version
 
 from opentelemetry import trace
+from opentelemetry.test.globals_test import reset_trace_globals
 from opentelemetry.instrumentation.cherrypy import CherryPyInstrumentor
 from opentelemetry.instrumentation.propagators import (
     TraceResponsePropagator,
@@ -44,6 +47,9 @@ from opentelemetry.trace import StatusCode
 from opentelemetry.util.http import (
     OTEL_INSTRUMENTATION_HTTP_CAPTURE_HEADERS_SERVER_REQUEST,
     OTEL_INSTRUMENTATION_HTTP_CAPTURE_HEADERS_SERVER_RESPONSE,
+    _active_requests_count_attrs,
+    _duration_attrs,
+    get_excluded_urls,
 )
 
 
@@ -62,11 +68,16 @@ class TestCherryPyBase(TestBase, helper.CPWebCase):
         self.env_patch = patch.dict(
             "os.environ",
             {
-                "OTEL_PYTHON_CHERRYPY_EXCLUDED_URLS": "ping",
+                "OTEL_PYTHON_CHERRYPY_EXCLUDED_URLS": "exclude,healthzz",
                 "OTEL_PYTHON_CHERRYPY_TRACED_REQUEST_ATTRS": "query_string",
             },
         )
         self.env_patch.start()
+        self.exclude_patch = patch(
+            "opentelemetry.instrumentation.cherrypy._excluded_urls_from_env",
+            get_excluded_urls("CHERRYPY"),
+        )
+        self.exclude_patch.start()
 
         CherryPyInstrumentor().instrument(
             request_hook=getattr(self, "request_hook", None),
@@ -90,8 +101,8 @@ class TestCherryPyBase(TestBase, helper.CPWebCase):
                 return {"user": username}
             
             @cherrypy.expose
-            def exclude(self, param):
-                return {"message": param}
+            def exclude(self):
+                return "excluded route"
             
             @cherrypy.expose
             def healthzz(self):
@@ -100,17 +111,25 @@ class TestCherryPyBase(TestBase, helper.CPWebCase):
             @cherrypy.expose
             def error(self):
                 raise cherrypy.HTTPError(500, 'error')
+            
+            @cherrypy.expose
+            def check_header(self):
+                cherrypy.response.headers["custom-test-header-1"]="test-header-value-1"
+                cherrypy.response.headers["custom-test-header-2"]="test-header-value-2"
+                content = {"message": "hello world"}
+                return content
 
         return cherrypy.tree.mount(CherryPyApp())
 
     def tearDown(self):
         super().tearDown()
+        self.exclude_patch.stop()
         with self.disable_logging():
             CherryPyInstrumentor().uninstrument()
         self.env_patch.stop()
     
 
-class TestCherryPyInstrumentation(TestCherryPyBase, WsgiTestBase):
+class TestCherryPyAutoInstrumentation(TestCherryPyBase, WsgiTestBase):
     def test_get(self):
         self._test_method("GET")
 
@@ -212,7 +231,7 @@ class TestCherryPyInstrumentation(TestCherryPyBase, WsgiTestBase):
         self.memory_exporter.clear()
 
     def test_uninstrument(self):
-        self.call(method="GET", url="/healthzz")
+        self.call(method="GET", url="/hello")
         spans = self.memory_exporter.get_finished_spans()
         self.assertEqual(len(spans), 1)
 
@@ -222,6 +241,14 @@ class TestCherryPyInstrumentation(TestCherryPyBase, WsgiTestBase):
         self.setup_server()
         spans = self.memory_exporter.get_finished_spans()
         self.assertEqual(len(spans), 0)
+    
+    def test_exclude_lists(self):
+        self.call(method="GET", url="/exclude")
+        span_list = self.memory_exporter.get_finished_spans()
+        self.assertEqual(len(span_list), 0)
+        self.call(method="GET", url="/healthzz")
+        span_list = self.memory_exporter.get_finished_spans()
+        self.assertEqual(len(span_list), 0)
 
     def test_cherrypy_metrics(self):
         self.setup_server()
@@ -286,8 +313,6 @@ class TestCherryPyInstrumentation(TestCherryPyBase, WsgiTestBase):
                     self.assertEqual(point.count, 1)
                     self.assertAlmostEqual(duration, point.sum, delta=30)
                 if isinstance(point, NumberDataPoint):
-                    print(expected_requests_count_attributes)
-                    print(dict(point.attributes))
                     self.assertDictEqual(
                         expected_requests_count_attributes,
                         dict(point.attributes),
@@ -309,6 +334,180 @@ class TestCherryPyInstrumentation(TestCherryPyBase, WsgiTestBase):
                     self.assertAlmostEqual(duration, point.sum, delta=30)
                 if isinstance(point, NumberDataPoint):
                     self.assertEqual(point.value, 0)
+
+
+class TestCherryPyCustomHeaders(TestBase, helper.CPWebCase):
+
+    def setUp(self):
+        super().setUp()
+        self.env_patch = patch.dict(
+            "os.environ",
+            {
+                OTEL_INSTRUMENTATION_HTTP_CAPTURE_HEADERS_SERVER_REQUEST: "Custom-Test-Header-1,Custom-Test-Header-2,Custom-Test-Header-3",
+                OTEL_INSTRUMENTATION_HTTP_CAPTURE_HEADERS_SERVER_RESPONSE: "Custom-Test-Header-1,Custom-Test-Header-2,Custom-Test-Header-3",
+            },
+        )
+        self.env_patch.start()
+        CherryPyInstrumentor().instrument()
+
     
+    def call(self, *args, **kwargs):
+        self.setup_server()
+        return self.getPage(*args, **kwargs)
     
+    @staticmethod
+    def setup_server():
+        class CherryPyApp(object):
+            
+            @cherrypy.expose
+            def check_header(self):
+                cherrypy.response.headers["custom-test-header-1"]="test-header-value-1"
+                cherrypy.response.headers["custom-test-header-2"]="test-header-value-2"
+                content = {"message": "hello world"}
+                return content
+
+        return cherrypy.tree.mount(CherryPyApp())
+
+    def tearDown(self):
+        super().tearDown()
+        with self.disable_logging():
+            CherryPyInstrumentor().uninstrument()
+        self.env_patch.stop()
+
+    def test_http_custom_request_headers_in_span_attributes(self):
+        expected = {
+            "http.request.header.custom_test_header_1": (
+                "test-header-value-1",
+            ),
+            "http.request.header.custom_test_header_2": (
+                "test-header-value-2",
+            ),
+        }
+        resp = self.call(
+            url="/check_header",
+            headers=[
+                ("custom-test-header-1","test-header-value-1"),
+                ("custom-test-header-2","test-header-value-2"),
+            ],
+        )
+        self.assertEqual('200 OK', resp[0])
+        span_list = self.memory_exporter.get_finished_spans()
+        self.assertEqual(len(span_list), 1)
+
+        server_span = [
+            span for span in span_list if span.kind == trace.SpanKind.SERVER
+        ][0]
+
+        self.assertSpanHasAttributes(server_span, expected)
     
+    def test_http_custom_request_headers_not_in_span_attributes(self):
+        not_expected = {
+            "http.request.header.custom_test_header_3": (
+                "test-header-value-3",
+            ),
+        }
+        resp = self.call(
+            url="/check_header",
+            headers=[
+                ("custom-test-header-1","test-header-value-1"),
+                ("custom-test-header-2","test-header-value-2"),
+            ],
+        )
+        self.assertEqual('200 OK', resp[0])
+        span_list = self.memory_exporter.get_finished_spans()
+        self.assertEqual(len(span_list), 1)
+
+        server_span = [
+            span for span in span_list if span.kind == trace.SpanKind.SERVER
+        ][0]
+
+        for key, _ in not_expected.items():
+            self.assertNotIn(key, server_span.attributes)
+
+    def test_http_custom_response_headers_in_span_attributes(self):
+        expected = {
+            "http.response.header.custom_test_header_1": (
+                "test-header-value-1",
+            ),
+            "http.response.header.custom_test_header_2": (
+                "test-header-value-2",
+            ),
+        }
+        resp = self.call(url="/check_header")
+        self.assertEqual('200 OK', resp[0])
+        span_list = self.memory_exporter.get_finished_spans()
+        self.assertEqual(len(span_list), 1)
+
+        server_span = [
+            span for span in span_list if span.kind == trace.SpanKind.SERVER
+        ][0]
+        self.assertSpanHasAttributes(server_span, expected)
+
+    def test_http_custom_response_headers_not_in_span_attributes(self):
+        not_expected = {
+            "http.response.header.custom_test_header_3": (
+                "test-header-value-3",
+            ),
+        }
+        resp = self.call(url="/check_header")
+        self.assertEqual('200 OK', resp[0])
+        span_list = self.memory_exporter.get_finished_spans()
+        self.assertEqual(len(span_list), 1)
+
+        server_span = [
+            span for span in span_list if span.kind == trace.SpanKind.SERVER
+        ][0]
+
+        for key, _ in not_expected.items():
+            self.assertNotIn(key, server_span.attributes)
+
+class TestNonRecordingSpanWithCustomHeaders(TestBase, helper.CPWebCase):
+    def setUp(self):
+        super().setUp()
+        self.env_patch = patch.dict(
+            "os.environ",
+            {
+                OTEL_INSTRUMENTATION_HTTP_CAPTURE_HEADERS_SERVER_REQUEST: "Custom-Test-Header-1,Custom-Test-Header-2,Custom-Test-Header-3",
+            },
+        )
+        self.env_patch.start()
+
+        reset_trace_globals()
+        tracer_provider = trace.NoOpTracerProvider()
+        trace.set_tracer_provider(tracer_provider=tracer_provider)
+
+        self._instrumentor = CherryPyInstrumentor()
+        self._instrumentor.instrument()
+
+    def call(self, *args, **kwargs):
+        self.setup_server()
+        return self.getPage(*args, **kwargs)
+    
+    @staticmethod
+    def setup_server():
+        class CherryPyApp(object):
+
+            @cherrypy.expose
+            def check_header(self):
+                content = {"message": "hello world"}
+                return content
+
+        return cherrypy.tree.mount(CherryPyApp())
+
+    def tearDown(self):
+        super().tearDown()
+        with self.disable_logging():
+            CherryPyInstrumentor().uninstrument()
+        self.env_patch.stop()
+
+    def test_custom_header_not_present_in_non_recording_span(self):
+        resp = self.call(
+            url="/check_header",
+            headers=[
+                ("custom-test-header-1","test-header-value-1"),
+            ],
+        )
+        self.assertEqual('200 OK', resp[0])
+        span_list = self.memory_exporter.get_finished_spans()
+        self.assertEqual(len(span_list), 0)
+
