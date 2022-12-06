@@ -49,27 +49,29 @@ def _get_tracer(tracer_provider=None):
     )
 
 
-def _wrap_create_async_engine(tracer_provider=None):
+def _wrap_create_async_engine(tracer_provider=None, enable_commenter=False):
     # pylint: disable=unused-argument
     def _wrap_create_async_engine_internal(func, module, args, kwargs):
         """Trace the SQLAlchemy engine, creating an `EngineTracer`
         object that will listen to SQLAlchemy events.
         """
         engine = func(*args, **kwargs)
-        EngineTracer(_get_tracer(tracer_provider), engine.sync_engine)
+        EngineTracer(
+            _get_tracer(tracer_provider), engine.sync_engine, enable_commenter
+        )
         return engine
 
     return _wrap_create_async_engine_internal
 
 
-def _wrap_create_engine(tracer_provider=None):
+def _wrap_create_engine(tracer_provider=None, enable_commenter=False):
     # pylint: disable=unused-argument
     def _wrap_create_engine_internal(func, module, args, kwargs):
         """Trace the SQLAlchemy engine, creating an `EngineTracer`
         object that will listen to SQLAlchemy events.
         """
         engine = func(*args, **kwargs)
-        EngineTracer(_get_tracer(tracer_provider), engine)
+        EngineTracer(_get_tracer(tracer_provider), engine, enable_commenter)
         return engine
 
     return _wrap_create_engine_internal
@@ -94,7 +96,7 @@ def _wrap_connect(tracer_provider=None):
 
 class EngineTracer:
     def __init__(
-        self, tracer, engine, enable_commenter=True, commenter_options=None
+        self, tracer, engine, enable_commenter=False, commenter_options=None
     ):
         self.tracer = tracer
         self.engine = engine
