@@ -3,11 +3,11 @@ from time import time_ns
 from timeit import default_timer
 from typing import Collection
 
-from opentelemetry.util.http import parse_excluded_urls, get_excluded_urls
+from opentelemetry.util.http import parse_excluded_urls, get_excluded_urls, get_traced_request_attrs
 import cherrypy
 from opentelemetry.instrumentation.cherrypy.package import _instruments
 from opentelemetry.instrumentation.instrumentor import BaseInstrumentor
-from opentelemetry.instrumentation.utils import _start_internal_or_server_span
+from opentelemetry.instrumentation.utils import _start_internal_or_server_span, extract_attributes_from_object
 import opentelemetry.instrumentation.wsgi as otel_wsgi
 from opentelemetry.instrumentation.propagators import (
     get_global_response_propagator,
@@ -66,6 +66,7 @@ class _InstrumentedCherryPyApplication(cherrypy._cptree.Application):
             if excluded_urls is None
             else parse_excluded_urls(excluded_urls)
         )
+        self._traced_request_attrs = get_traced_request_attrs("CHERRYPY")
         self._is_instrumented_by_opentelemetry = True
         super().__init__(*args, **kwargs)
 
@@ -96,6 +97,9 @@ class _InstrumentedCherryPyApplication(cherrypy._cptree.Application):
         self.active_requests_counter.add(1, active_requests_count_attrs)
 
         if span.is_recording():
+            attributes = extract_attributes_from_object(
+                environ, self._traced_request_attrs, attributes
+            )
             for key, value in attributes.items():
                 span.set_attribute(key, value)
             if span.is_recording() and span.kind == trace.SpanKind.SERVER:
