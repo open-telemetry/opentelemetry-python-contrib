@@ -39,6 +39,7 @@ dependencies = [
     "opentelemetry-instrumentation-boto3sqs==0.36b0.dev",
     "opentelemetry-instrumentation-botocore==0.36b0.dev",
     "opentelemetry-instrumentation-celery==0.36b0.dev",
+    "opentelemetry-instrumentation-cherrypy==0.36b0.dev",
     "opentelemetry-instrumentation-confluent-kafka==0.36b0.dev",
     "opentelemetry-instrumentation-dbapi==0.36b0.dev",
     "opentelemetry-instrumentation-django==0.36b0.dev",
