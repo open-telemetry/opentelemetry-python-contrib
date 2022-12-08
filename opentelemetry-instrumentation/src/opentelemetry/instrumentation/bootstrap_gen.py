@@ -53,7 +53,7 @@ libraries = {
         "instrumentation": "opentelemetry-instrumentation-celery==0.36b0.dev",
     },
     "confluent-kafka": {
-        "library": "confluent-kafka ~= 1.8.2",
+        "library": "confluent-kafka >= 1.8.2, < 2.0.0",
         "instrumentation": "opentelemetry-instrumentation-confluent-kafka==0.36b0.dev",
     },
     "django": {
