@@ -31,8 +31,8 @@ dependencies = [
 [project.optional-dependencies]
 test = []
 
-[project.entry-points.opentelemetry_id_generator]
-xray = "ope:AwsXRayIdGenerator"
+[project.entry-points.opentelemetry_resource_detector]
+xray = "opentelemetry.resource.detector.kubernetes:KubernetesResourceDetector"
 
 [project.urls]
 Homepage = "https://github.com/open-telemetry/opentelemetry-python-contrib/tree/main/resources/opentelemetry-resource-detector-kubernetes"
