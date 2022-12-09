@@ -119,59 +119,78 @@ class _InstrumentedClient(_TracerMixin, Client):
         bound_arguments.apply_defaults()
 
         message_listener = bound_arguments.arguments[MESSAGE_LISTENER_ARGUMENT]
-        wrapper = message_listener
         if message_listener:
-
-            @wraps(message_listener)
-            def wrapper(  # pylint: disable=function-redefined
-                    consumer, message: "_InstrumentedMessage", *args, **kwargs
-            ):
-                ctx = propagator.extract(message.properties())
-                span = self._tracer.start_span(
-                    f"{topic} process", ctx, SpanKind.CONSUMER
-                )
-                _enrich_span(
-                    span,
-                    topic,
-                    MessagingOperationValues.RECEIVE,
-                    message.partition_key(),
-                )
-                _enrich_span_with_message(span, message)
-                message._set_current_span(span)
-                with trace.use_span(span, True):
-                    return message_listener(consumer, message, *args, **kwargs)
-
-        bound_arguments.arguments[MESSAGE_LISTENER_ARGUMENT] = wrapper
+            bound_arguments.arguments[
+                MESSAGE_LISTENER_ARGUMENT
+            ] = wrap_message_listener(topic, self._tracer, message_listener)
         # no need of self
         args = bound_arguments.args[1:]
         return super().subscribe(*args, **bound_arguments.kwargs)
 
 
+def wrap_message_listener(topic, tracer, message_listener):
+    @wraps(message_listener)
+    def wrapper(  # pylint: disable=function-redefined
+            consumer, message: "_InstrumentedMessage", *args, **kwargs
+    ):
+        ctx = propagator.extract(message.properties())
+        span = tracer.start_span(f"receive {topic}", ctx, SpanKind.CONSUMER)
+        _enrich_span(
+            span,
+            topic,
+            MessagingOperationValues.RECEIVE,
+            message.partition_key(),
+        )
+        _enrich_span_with_message(span, message)
+        message._set_current_span(span)
+        with trace.use_span(span, True):
+            return message_listener(consumer, message, *args, **kwargs)
+
+    return wrapper
+
+
 class _InstrumentedProducer(_TracerMixin, Producer):
     _send_signature = inspect.signature(Producer.send)
+    _send_async_signature = inspect.signature(Producer.send_async)
 
     def send(self, *args, **kwargs):
         with self._create_span() as span:
-            args, kwargs = self._before_send(span, *args, **kwargs)
+            args, kwargs = self._before_send(
+                self._send_signature, span, *args, **kwargs
+            )
             message: pulsar.MessageId = super().send(*args, **kwargs)
             return self._after_send(message, span)
 
     send.__doc__ = Producer.send.__doc__
 
     def send_async(self, content, callback, *args, **kwargs):
-        with self._create_span() as span:
-            self._before_send(span, content, callback, *args, **kwargs)
-            callback_context = span.get_span_context()
+        with self._create_span("send_async") as span:
+            args, kwargs = self._before_send(
+                self._send_async_signature,
+                span,
+                content,
+                callback,
+                *args,
+                **kwargs,
+            )
+            # As this is an async code, it is better not to rely on thread locals for span acquisition.
+            carrier = {}
+            propagator.inject(carrier)
+            wrapper = self._wrap_send_async_callback(callback, carrier)
 
-            @wraps(callback)
-            def wrapper(_response, message_id, *args, **kwargs):
-                with self._tracer.start_as_current_span(
+            super().send_async(content, wrapper, *args[2:], **kwargs)
+
+    def _wrap_send_async_callback(self, callback, context_carrier):
+        @wraps(callback)
+        def wrapper(_response, message_id, *args, **kwargs):
+            callback_context = propagator.extract(context_carrier)
+            with self._tracer.start_as_current_span(
                     "callback", callback_context
-                ) as span:
-                    self._after_send(message_id, span)
-                    return callback(*args, **kwargs)
+            ) as span:
+                self._after_send(message_id, span)
+                return callback(_response, message_id, *args, **kwargs)
 
-            super().send_async(content, wrapper, *args, **kwargs)
+        return wrapper
 
     send_async.__doc__ = Producer.send_async.__doc__
 
@@ -180,8 +199,8 @@ class _InstrumentedProducer(_TracerMixin, Producer):
         _enrich_span_with_message_id(span, message)
         return message
 
-    def _before_send(self, span, *args, **kwargs):
-        bound_arguments = self._send_signature.bind(self, *args, **kwargs)
+    def _before_send(self, signature, span, *args, **kwargs):
+        bound_arguments = signature.bind(self, *args, **kwargs)
         bound_arguments.apply_defaults()
 
         properties = bound_arguments.arguments[PROPERTIES_KEY] or {}
@@ -196,9 +215,9 @@ class _InstrumentedProducer(_TracerMixin, Producer):
         )
         return bound_arguments.args[1:], bound_arguments.kwargs
 
-    def _create_span(self):
+    def _create_span(self, operation="send"):
         return self._tracer.start_as_current_span(
-            name=_get_span_name("send", self.topic()),
+            name=_get_span_name(operation, self.topic()),
             kind=trace.SpanKind.PRODUCER,
         )
 
@@ -214,7 +233,7 @@ class _InstrumentedConsumer(_TracerMixin, Consumer):
         if self._last_message:
             self._last_message._end_span()
         with self._tracer.start_as_current_span(
-                "recv", end_on_exit=True, kind=trace.SpanKind.CONSUMER
+                "recv", end_on_exit=False, kind=trace.SpanKind.CONSUMER
         ):
             message: _InstrumentedMessage = super().receive(*args, **kwargs)
             context = propagate.extract(message.properties())
@@ -225,6 +244,7 @@ class _InstrumentedConsumer(_TracerMixin, Consumer):
                 span, self.topic(), operation=MessagingOperationValues.PROCESS
             )
             message._set_current_span(span)  # pylint: disable=no-member
+            self._last_message = message
 
             return message
 
