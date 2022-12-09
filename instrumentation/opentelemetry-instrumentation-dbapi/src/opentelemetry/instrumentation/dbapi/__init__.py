@@ -284,7 +284,7 @@ class DatabaseApiIntegration:
         """Add object proxy to connection object."""
         connection = connect_method(*args, **kwargs)
         self.get_connection_attributes(connection)
-        return get_traced_connection_proxy(connection, self)
+        return get_traced_connection_proxy(connection, self, *args, **kwargs)
 
     def get_connection_attributes(self, connection):
         # Populate span fields using connection
@@ -329,7 +329,8 @@ def get_traced_connection_proxy(
 ):
     # pylint: disable=abstract-method
     class TracedConnectionProxy(type(connection), _TracedConnectionProxy):
-        def __init__(self, connection):
+        def __init__(self, connection, *args, **kwargs):
+            super().__init__(*args, **kwargs)
             self._connection = connection
 
         def __getattr__(self, name):
@@ -356,7 +357,7 @@ def get_traced_connection_proxy(
         def close(self):
             self._connection.close()
 
-    return TracedConnectionProxy(connection)
+    return TracedConnectionProxy(connection, *args, **kwargs)
 
 
 class CursorTracer:
