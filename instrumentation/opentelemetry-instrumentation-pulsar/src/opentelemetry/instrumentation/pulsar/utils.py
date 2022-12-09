@@ -70,4 +70,4 @@ def _enrich_span_with_message_id(span, message: pulsar.MessageId):
 
 
 def _get_span_name(operation: str, topic: str):
-    return f"{topic} {operation}"
+    return f"{operation} {topic}"
