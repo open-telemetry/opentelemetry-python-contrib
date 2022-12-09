@@ -30,7 +30,7 @@ dependencies = [
 
 [project.optional-dependencies]
 instruments = [
-  "pulsar-client ~= 2.8",
+  "pulsar-client >= 2.8",
 ]
 test = [
   "opentelemetry-instrumentation-pulsar[instruments]",
