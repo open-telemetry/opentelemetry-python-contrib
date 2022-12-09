@@ -47,7 +47,8 @@ def get_instrumentation_packages():
         src_pkgs = [
             f
             for f in os.listdir(src_dir)
-            if os.path.isdir(os.path.join(src_dir, f)) and f not in excluded_folders
+            if os.path.isdir(os.path.join(src_dir, f))
+               and f not in excluded_folders
         ]
         assert len(src_pkgs) == 1
         name = src_pkgs[0]

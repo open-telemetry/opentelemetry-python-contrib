@@ -48,7 +48,8 @@ def main():
         src_pkgs = [
             f
             for f in os.listdir(src_dir)
-            if os.path.isdir(os.path.join(src_dir, f)) and f not in excluded_folders
+            if os.path.isdir(os.path.join(src_dir, f))
+               and f not in excluded_folders
         ]
         print(src_pkgs)
         assert len(src_pkgs) == 1
