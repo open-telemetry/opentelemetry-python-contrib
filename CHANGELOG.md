@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## Unreleased
 
+## Version 1.15.0/0.36b0 (2022-12-10)
+
 - Add uninstrument test for sqlalchemy
   ([#1471](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/1471))
 - `opentelemetry-instrumentation-tortoiseorm` Initial release
@@ -30,6 +32,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   ([#1409](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/1409))
 - Strip leading comments from SQL queries when generating the span name.
   ([#1434](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/1434))
+- `opentelemetry-instrumentation-confluent-kafka` Add support for the latest versions of the library.
+  ([#1468](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/1468))
 
 ### Fixed
 
@@ -47,6 +51,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   ([#1461](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/1461))
 - Add grpc.aio instrumentation to package entry points
   ([#1442](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/1442))
+- Fix a bug in SQLAlchemy instrumentation - support disabling enable_commenter variable
+  ([#1440](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/1440))
 
 ## Version 1.14.0/0.35b0 (2022-11-03)
 
