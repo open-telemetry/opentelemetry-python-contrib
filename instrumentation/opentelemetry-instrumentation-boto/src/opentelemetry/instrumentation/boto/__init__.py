@@ -178,8 +178,6 @@ class BotoInstrumentor(BaseInstrumentor):
         )
 
     def _patched_auth_request(self, original_func, instance, args, kwargs):
-        operation_name = None
-
         frame = currentframe().f_back
         operation_name = None
         while frame:
