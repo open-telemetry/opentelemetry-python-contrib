@@ -136,11 +136,16 @@ class SQLAlchemyInstrumentor(BaseInstrumentor):
             An instrumented engine if passed in as an argument or list of instrumented engines, None otherwise.
         """
         tracer_provider = kwargs.get("tracer_provider")
-        _w("sqlalchemy", "create_engine", _wrap_create_engine(tracer_provider))
+        enable_commenter = kwargs.get("enable_commenter", False)
+        _w(
+            "sqlalchemy",
+            "create_engine",
+            _wrap_create_engine(tracer_provider, enable_commenter),
+        )
         _w(
             "sqlalchemy.engine",
             "create_engine",
-            _wrap_create_engine(tracer_provider),
+            _wrap_create_engine(tracer_provider, enable_commenter),
         )
         _w(
             "sqlalchemy.engine.base",
@@ -151,7 +156,7 @@ class SQLAlchemyInstrumentor(BaseInstrumentor):
             _w(
                 "sqlalchemy.ext.asyncio",
                 "create_async_engine",
-                _wrap_create_async_engine(tracer_provider),
+                _wrap_create_async_engine(tracer_provider, enable_commenter),
             )
         if kwargs.get("engine") is not None:
             return EngineTracer(

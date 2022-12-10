@@ -33,6 +33,7 @@ following metrics are configured:
         "system.network.errors": ["transmit", "receive"],
         "system.network.io": ["transmit", "receive"],
         "system.network.connections": ["family", "type"],
+        "system.thread_count": None
         "runtime.memory": ["rss", "vms"],
         "runtime.cpu.time": ["user", "system"],
     }
@@ -71,12 +72,13 @@ API
 
 import gc
 import os
+import threading
 from platform import python_implementation
 from typing import Collection, Dict, Iterable, List, Optional
 
 import psutil
 
-# FIXME Remove this pyling disabling line when Github issue is cleared
+# FIXME Remove this pylint disabling line when Github issue is cleared
 # pylint: disable=no-name-in-module
 from opentelemetry.instrumentation.instrumentor import BaseInstrumentor
 from opentelemetry.instrumentation.system_metrics.package import _instruments
@@ -99,6 +101,7 @@ _DEFAULT_CONFIG = {
     "system.network.errors": ["transmit", "receive"],
     "system.network.io": ["transmit", "receive"],
     "system.network.connections": ["family", "type"],
+    "system.thread_count": None,
     "runtime.memory": ["rss", "vms"],
     "runtime.cpu.time": ["user", "system"],
     "runtime.gc_count": None,
@@ -141,6 +144,8 @@ class SystemMetricsInstrumentor(BaseInstrumentor):
         self._system_network_errors_labels = self._labels.copy()
         self._system_network_io_labels = self._labels.copy()
         self._system_network_connections_labels = self._labels.copy()
+
+        self._system_thread_count_labels = self._labels.copy()
 
         self._runtime_memory_labels = self._labels.copy()
         self._runtime_cpu_time_labels = self._labels.copy()
@@ -311,6 +316,13 @@ class SystemMetricsInstrumentor(BaseInstrumentor):
                 unit="connections",
             )
 
+        if "system.thread_count" in self._config:
+            self._meter.create_observable_gauge(
+                name="system.thread_count",
+                callbacks=[self._get_system_thread_count],
+                description="System active threads count",
+            )
+
         if "runtime.memory" in self._config:
             self._meter.create_observable_counter(
                 name=f"runtime.{self._python_implementation}.memory",
@@ -420,7 +432,9 @@ class SystemMetricsInstrumentor(BaseInstrumentor):
             if hasattr(system_swap, metric):
                 self._system_swap_utilization_labels["state"] = metric
                 yield Observation(
-                    getattr(system_swap, metric) / system_swap.total,
+                    getattr(system_swap, metric) / system_swap.total
+                    if system_swap.total
+                    else 0,
                     self._system_swap_utilization_labels.copy(),
                 )
 
@@ -590,6 +604,14 @@ class SystemMetricsInstrumentor(BaseInstrumentor):
                 connection_counter["counter"],
                 connection_counter["labels"],
             )
+
+    def _get_system_thread_count(
+        self, options: CallbackOptions
+    ) -> Iterable[Observation]:
+        """Observer callback for active thread count"""
+        yield Observation(
+            threading.active_count(), self._system_thread_count_labels
+        )
 
     def _get_runtime_memory(
         self, options: CallbackOptions

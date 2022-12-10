@@ -27,27 +27,32 @@ context, reviewing PRs, and helping those get merged. Buddies will not be availa
 
 ## Development
 
-To quickly get up and running, you can use the `scripts/eachdist.py` tool that
-ships with this project. First create a virtualenv and activate it.
-Then run `python scripts/eachdist.py develop` to install all required packages
-as well as the project's packages themselves (in `--editable` mode).
-You can then run `scripts/eachdist.py test` to test everything or
-`scripts/eachdist.py lint` to lint everything (fixing anything that is auto-fixable).
+This project uses [tox](https://tox.readthedocs.io) to automate
+some aspects of development, including testing against multiple Python versions.
+To install `tox`, run:
 
-Additionally, this project uses [`tox`](https://tox.readthedocs.io) to automate some aspects
-of development, including testing against multiple Python versions.
+```console
+$ pip install tox==3.27.1
+```
 
-You can run:
+You can run `tox` with the following arguments:
 
 - `tox` to run all existing tox commands, including unit tests for all packages
   under multiple Python versions
-- `tox -e py37-test-flask` to e.g. run the Flask tests under a specific
+- `tox -e docs` to regenerate the API docs
+- `tox -e py37-test-instrumentation-aiopg` to e.g. run the aiopg instrumentation unit tests under a specific
   Python version
+- `tox -e spellcheck` to run a spellcheck on all the code
 - `tox -e lint` to run lint checks on all code
-- `tox -e spellcheck` to run spell check on the code
+
+`black` and `isort` are executed when `tox -e lint` is run. The reported errors can be tedious to fix manually.
+An easier way to do so is:
+
+1. Run `.tox/lint/bin/black .`
+2. Run `.tox/lint/bin/isort .`
 
 See
-[`tox.ini`](https://github.com/open-telemetry/opentelemetry-python-contrib/blob/main/tox.ini)
+[`tox.ini`](https://github.com/open-telemetry/opentelemetry-python/blob/main/tox.ini)
 for more detail on available tox commands.
 
 ### Benchmarks
@@ -98,7 +103,7 @@ Run tests:
 
 ```sh
 # make sure you have all supported versions of Python installed
-$ pip install tox  # only first time.
+$ pip install tox==3.27.1  # only first time.
 $ tox  # execute in the root of the repository
 ```
 
@@ -157,7 +162,7 @@ For a deeper discussion, see: https://github.com/open-telemetry/opentelemetry-sp
 ## Running Tests Locally
 
 1. Go to your Contrib repo directory. `git clone git@github.com:open-telemetry/opentelemetry-python-contrib.git && cd opentelemetry-python-contrib`.
-2. Make sure you have `tox` installed. `pip install tox`.
+2. Make sure you have `tox` installed. `pip install tox==3.27.1`.
 3. Run `tox` without any arguments to run tests for all the packages. Read more about [tox](https://tox.readthedocs.io/en/latest/).
 
 ### Testing against a different Core repo branch/commit
@@ -185,8 +190,8 @@ Below is a checklist of things to be mindful of when implementing a new instrume
   - The instrumentation should follow the semantic conventions defined [here](https://github.com/open-telemetry/opentelemetry-specification/tree/main/semantic_conventions)
 - Extends from [BaseInstrumentor](https://github.com/open-telemetry/opentelemetry-python-contrib/blob/main/opentelemetry-instrumentation/src/opentelemetry/instrumentation/instrumentor.py#L26)
 - Supports auto-instrumentation
-  - Add an entry point (ex. https://github.com/open-telemetry/opentelemetry-python-contrib/blob/main/instrumentation/opentelemetry-instrumentation-requests/setup.cfg#L56)
-  - Run `python scripts/setup.py` followed by `python scripts/generate_instrumentation_bootstrap.py` after adding a new instrumentation package.
+  - Add an entry point (ex. https://github.com/open-telemetry/opentelemetry-python-contrib/blob/f045c43affff6ff1af8fa2f7514a4fdaca97dacf/instrumentation/opentelemetry-instrumentation-requests/pyproject.toml#L44)
+  - Run `python scripts/generate_instrumentation_bootstrap.py` after adding a new instrumentation package.
 - Functionality that is common amongst other instrumentation and can be abstracted [here](https://github.com/open-telemetry/opentelemetry-python-contrib/tree/main/opentelemetry-instrumentation/src/opentelemetry/instrumentation)
 - Request/response [hooks](https://github.com/open-telemetry/opentelemetry-python-contrib/issues/408) for http instrumentations
 - `suppress_instrumentation` functionality

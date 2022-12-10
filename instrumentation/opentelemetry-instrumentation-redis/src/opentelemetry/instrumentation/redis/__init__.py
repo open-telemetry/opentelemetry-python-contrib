@@ -142,7 +142,6 @@ def _instrument(
 ):
     def _traced_execute_command(func, instance, args, kwargs):
         query = _format_command_args(args)
-        name = ""
         if len(args) > 0 and args[0]:
             name = args[0]
         else:

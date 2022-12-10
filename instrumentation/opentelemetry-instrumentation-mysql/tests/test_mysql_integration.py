@@ -17,6 +17,7 @@ from unittest.mock import Mock, patch
 import mysql.connector
 
 import opentelemetry.instrumentation.mysql
+from opentelemetry import trace as trace_api
 from opentelemetry.instrumentation.mysql import MySQLInstrumentor
 from opentelemetry.sdk import resources
 from opentelemetry.test.test_base import TestBase
@@ -31,6 +32,15 @@ def mock_connect(*args, **kwargs):
     return MockConnection()
 
 
+def connect_and_execute_query():
+    cnx = mysql.connector.connect(database="test")
+    cursor = cnx.cursor()
+    query = "SELECT * FROM test"
+    cursor.execute(query)
+
+    return cnx, query
+
+
 class TestMysqlIntegration(TestBase):
     def tearDown(self):
         super().tearDown()
@@ -42,10 +52,7 @@ class TestMysqlIntegration(TestBase):
     def test_instrumentor(self):
         MySQLInstrumentor().instrument()
 
-        cnx = mysql.connector.connect(database="test")
-        cursor = cnx.cursor()
-        query = "SELECT * FROM test"
-        cursor.execute(query)
+        connect_and_execute_query()
 
         spans_list = self.memory_exporter.get_finished_spans()
         self.assertEqual(len(spans_list), 1)
@@ -59,10 +66,7 @@ class TestMysqlIntegration(TestBase):
         # check that no spans are generated after uninstrumen
         MySQLInstrumentor().uninstrument()
 
-        cnx = mysql.connector.connect(database="test")
-        cursor = cnx.cursor()
-        query = "SELECT * FROM test"
-        cursor.execute(query)
+        connect_and_execute_query()
 
         spans_list = self.memory_exporter.get_finished_spans()
         self.assertEqual(len(spans_list), 1)
@@ -74,10 +78,7 @@ class TestMysqlIntegration(TestBase):
         tracer_provider, exporter = result
 
         MySQLInstrumentor().instrument(tracer_provider=tracer_provider)
-        cnx = mysql.connector.connect(database="test")
-        cursor = cnx.cursor()
-        query = "SELECT * FROM test"
-        cursor.execute(query)
+        connect_and_execute_query()
 
         span_list = exporter.get_finished_spans()
         self.assertEqual(len(span_list), 1)
@@ -88,10 +89,7 @@ class TestMysqlIntegration(TestBase):
     @patch("mysql.connector.connect", new=mock_connect)
     # pylint: disable=unused-argument
     def test_instrument_connection(self):
-        cnx = mysql.connector.connect(database="test")
-        query = "SELECT * FROM test"
-        cursor = cnx.cursor()
-        cursor.execute(query)
+        cnx, query = connect_and_execute_query()
 
         spans_list = self.memory_exporter.get_finished_spans()
         self.assertEqual(len(spans_list), 0)
@@ -104,13 +102,19 @@ class TestMysqlIntegration(TestBase):
         self.assertEqual(len(spans_list), 1)
 
     @patch("mysql.connector.connect", new=mock_connect)
+    def test_instrument_connection_no_op_tracer_provider(self):
+        tracer_provider = trace_api.NoOpTracerProvider()
+        MySQLInstrumentor().instrument(tracer_provider=tracer_provider)
+        connect_and_execute_query()
+
+        spans_list = self.memory_exporter.get_finished_spans()
+        self.assertEqual(len(spans_list), 0)
+
+    @patch("mysql.connector.connect", new=mock_connect)
     # pylint: disable=unused-argument
     def test_uninstrument_connection(self):
         MySQLInstrumentor().instrument()
-        cnx = mysql.connector.connect(database="test")
-        query = "SELECT * FROM test"
-        cursor = cnx.cursor()
-        cursor.execute(query)
+        cnx, query = connect_and_execute_query()
 
         spans_list = self.memory_exporter.get_finished_spans()
         self.assertEqual(len(spans_list), 1)
