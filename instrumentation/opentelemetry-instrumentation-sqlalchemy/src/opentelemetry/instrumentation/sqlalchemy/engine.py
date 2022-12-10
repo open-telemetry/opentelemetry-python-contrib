@@ -11,14 +11,19 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-
-from threading import local
+import os
+import re
 
 from sqlalchemy.event import listen  # pylint: disable=no-name-in-module
 
 from opentelemetry import trace
+from opentelemetry.instrumentation.sqlalchemy.package import (
+    _instrumenting_module_name,
+)
 from opentelemetry.instrumentation.sqlalchemy.version import __version__
-from opentelemetry.semconv.trace import SpanAttributes
+from opentelemetry.instrumentation.sqlcommenter_utils import _add_sql_comment
+from opentelemetry.instrumentation.utils import _get_opentelemetry_values
+from opentelemetry.semconv.trace import NetTransportValues, SpanAttributes
 from opentelemetry.trace.status import Status, StatusCode
 
 
@@ -36,43 +41,75 @@ def _normalize_vendor(vendor):
     return vendor
 
 
-def _get_tracer(engine, tracer_provider=None):
+def _get_tracer(tracer_provider=None):
     return trace.get_tracer(
-        _normalize_vendor(engine.name),
+        _instrumenting_module_name,
         __version__,
         tracer_provider=tracer_provider,
     )
 
 
-# pylint: disable=unused-argument
-def _wrap_create_engine(func, module, args, kwargs):
-    """Trace the SQLAlchemy engine, creating an `EngineTracer`
-    object that will listen to SQLAlchemy events.
-    """
-    engine = func(*args, **kwargs)
-    EngineTracer(_get_tracer(engine), engine)
-    return engine
+def _wrap_create_async_engine(tracer_provider=None, enable_commenter=False):
+    # pylint: disable=unused-argument
+    def _wrap_create_async_engine_internal(func, module, args, kwargs):
+        """Trace the SQLAlchemy engine, creating an `EngineTracer`
+        object that will listen to SQLAlchemy events.
+        """
+        engine = func(*args, **kwargs)
+        EngineTracer(
+            _get_tracer(tracer_provider), engine.sync_engine, enable_commenter
+        )
+        return engine
+
+    return _wrap_create_async_engine_internal
+
+
+def _wrap_create_engine(tracer_provider=None, enable_commenter=False):
+    # pylint: disable=unused-argument
+    def _wrap_create_engine_internal(func, module, args, kwargs):
+        """Trace the SQLAlchemy engine, creating an `EngineTracer`
+        object that will listen to SQLAlchemy events.
+        """
+        engine = func(*args, **kwargs)
+        EngineTracer(_get_tracer(tracer_provider), engine, enable_commenter)
+        return engine
+
+    return _wrap_create_engine_internal
+
+
+def _wrap_connect(tracer_provider=None):
+    tracer = trace.get_tracer(
+        _instrumenting_module_name,
+        __version__,
+        tracer_provider=tracer_provider,
+    )
+
+    # pylint: disable=unused-argument
+    def _wrap_connect_internal(func, module, args, kwargs):
+        with tracer.start_as_current_span(
+            "connect", kind=trace.SpanKind.CLIENT
+        ):
+            return func(*args, **kwargs)
+
+    return _wrap_connect_internal
 
 
 class EngineTracer:
-    def __init__(self, tracer, engine):
+    def __init__(
+        self, tracer, engine, enable_commenter=False, commenter_options=None
+    ):
         self.tracer = tracer
         self.engine = engine
         self.vendor = _normalize_vendor(engine.name)
-        self.cursor_mapping = {}
-        self.local = local()
+        self.enable_commenter = enable_commenter
+        self.commenter_options = commenter_options if commenter_options else {}
+        self._leading_comment_remover = re.compile(r"^/\*.*?\*/")
 
-        listen(engine, "before_cursor_execute", self._before_cur_exec)
-        listen(engine, "after_cursor_execute", self._after_cur_exec)
-        listen(engine, "handle_error", self._handle_error)
-
-    @property
-    def current_thread_span(self):
-        return getattr(self.local, "current_span", None)
-
-    @current_thread_span.setter
-    def current_thread_span(self, span):
-        setattr(self.local, "current_span", span)
+        listen(
+            engine, "before_cursor_execute", self._before_cur_exec, retval=True
+        )
+        listen(engine, "after_cursor_execute", _after_cur_exec)
+        listen(engine, "handle_error", _handle_error)
 
     def _operation_name(self, db_name, statement):
         parts = []
@@ -82,7 +119,10 @@ class EngineTracer:
             # use cases and uses the SQL statement in span name correctly as per the spec.
             # For some very special cases it might not record the correct statement if the SQL
             # dialect is too weird but in any case it shouldn't break anything.
-            parts.append(statement.split()[0])
+            # Strip leading comments so we get the operation name.
+            parts.append(
+                self._leading_comment_remover.sub("", statement).split()[0]
+            )
         if db_name:
             parts.append(db_name)
         if not parts:
@@ -90,7 +130,9 @@ class EngineTracer:
         return " ".join(parts)
 
     # pylint: disable=unused-argument
-    def _before_cur_exec(self, conn, cursor, statement, *args):
+    def _before_cur_exec(
+        self, conn, cursor, statement, params, context, executemany
+    ):
         attrs, found = _get_attributes_from_url(conn.engine.url)
         if not found:
             attrs = _get_attributes_from_cursor(self.vendor, cursor, attrs)
@@ -100,42 +142,58 @@ class EngineTracer:
             self._operation_name(db_name, statement),
             kind=trace.SpanKind.CLIENT,
         )
-        self.current_thread_span = self.cursor_mapping[cursor] = span
         with trace.use_span(span, end_on_exit=False):
             if span.is_recording():
                 span.set_attribute(SpanAttributes.DB_STATEMENT, statement)
                 span.set_attribute(SpanAttributes.DB_SYSTEM, self.vendor)
                 for key, value in attrs.items():
                     span.set_attribute(key, value)
-
-    # pylint: disable=unused-argument
-    def _after_cur_exec(self, conn, cursor, statement, *args):
-        span = self.cursor_mapping.get(cursor, None)
-        if span is None:
-            return
-
-        span.end()
-        self._cleanup(cursor)
-
-    def _handle_error(self, context):
-        span = self.current_thread_span
-        if span is None:
-            return
-
-        try:
-            if span.is_recording():
-                span.set_status(
-                    Status(StatusCode.ERROR, str(context.original_exception),)
+            if self.enable_commenter:
+                commenter_data = dict(
+                    db_driver=conn.engine.driver,
+                    # Driver/framework centric information.
+                    db_framework=f"sqlalchemy:{__version__}",
                 )
-        finally:
-            span.end()
-            self._cleanup(context.cursor)
 
-    def _cleanup(self, cursor):
-        try:
-            del self.cursor_mapping[cursor]
-        except KeyError:
-            pass
+                if self.commenter_options.get("opentelemetry_values", True):
+                    commenter_data.update(**_get_opentelemetry_values())
+
+                # Filter down to just the requested attributes.
+                commenter_data = {
+                    k: v
+                    for k, v in commenter_data.items()
+                    if self.commenter_options.get(k, True)
+                }
+
+                statement = _add_sql_comment(statement, **commenter_data)
+
+        context._otel_span = span
+
+        return statement, params
+
+
+# pylint: disable=unused-argument
+def _after_cur_exec(conn, cursor, statement, params, context, executemany):
+    span = getattr(context, "_otel_span", None)
+    if span is None:
+        return
+
+    span.end()
+
+
+def _handle_error(context):
+    span = getattr(context.execution_context, "_otel_span", None)
+    if span is None:
+        return
+
+    if span.is_recording():
+        span.set_status(
+            Status(
+                StatusCode.ERROR,
+                str(context.original_exception),
+            )
+        )
+    span.end()
 
 
 def _get_attributes_from_url(url):
@@ -155,14 +213,25 @@ def _get_attributes_from_url(url):
 def _get_attributes_from_cursor(vendor, cursor, attrs):
     """Attempt to set db connection attributes by introspecting the cursor."""
     if vendor == "postgresql":
-        # pylint: disable=import-outside-toplevel
-        from psycopg2.extensions import parse_dsn
+        info = getattr(getattr(cursor, "connection", None), "info", None)
+        if not info:
+            return attrs
 
-        if hasattr(cursor, "connection") and hasattr(cursor.connection, "dsn"):
-            dsn = getattr(cursor.connection, "dsn", None)
-            if dsn:
-                data = parse_dsn(dsn)
-                attrs[SpanAttributes.DB_NAME] = data.get("dbname")
-                attrs[SpanAttributes.NET_PEER_NAME] = data.get("host")
-                attrs[SpanAttributes.NET_PEER_PORT] = int(data.get("port"))
+        attrs[SpanAttributes.DB_NAME] = info.dbname
+        is_unix_socket = info.host and info.host.startswith("/")
+
+        if is_unix_socket:
+            attrs[SpanAttributes.NET_TRANSPORT] = NetTransportValues.UNIX.value
+            if info.port:
+                # postgresql enforces this pattern on all socket names
+                attrs[SpanAttributes.NET_PEER_NAME] = os.path.join(
+                    info.host, f".s.PGSQL.{info.port}"
+                )
+        else:
+            attrs[
+                SpanAttributes.NET_TRANSPORT
+            ] = NetTransportValues.IP_TCP.value
+            attrs[SpanAttributes.NET_PEER_NAME] = info.host
+            if info.port:
+                attrs[SpanAttributes.NET_PEER_PORT] = int(info.port)
     return attrs

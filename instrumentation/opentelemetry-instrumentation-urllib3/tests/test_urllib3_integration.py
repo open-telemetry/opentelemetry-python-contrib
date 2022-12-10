@@ -11,7 +11,7 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-
+import json
 import typing
 from unittest import mock
 
@@ -20,10 +20,10 @@ import urllib3
 import urllib3.exceptions
 
 from opentelemetry import context, trace
-from opentelemetry.instrumentation.urllib3 import (
-    _SUPPRESS_HTTP_INSTRUMENTATION_KEY,
-    URLLib3Instrumentor,
-)
+
+# FIXME: fix the importing of this private attribute when the location of the _SUPPRESS_HTTP_INSTRUMENTATION_KEY is defined.
+from opentelemetry.context import _SUPPRESS_HTTP_INSTRUMENTATION_KEY
+from opentelemetry.instrumentation.urllib3 import URLLib3Instrumentor
 from opentelemetry.instrumentation.utils import _SUPPRESS_INSTRUMENTATION_KEY
 from opentelemetry.propagate import get_global_textmap, set_global_textmap
 from opentelemetry.semconv.trace import SpanAttributes
@@ -45,6 +45,7 @@ class TestURLLib3Instrumentor(TestBase):
         httpretty.enable(allow_net_connect=False)
         httpretty.register_uri(httpretty.GET, self.HTTP_URL, body="Hello!")
         httpretty.register_uri(httpretty.GET, self.HTTPS_URL, body="Hello!")
+        httpretty.register_uri(httpretty.POST, self.HTTP_URL, body="Hello!")
 
     def tearDown(self):
         super().tearDown()
@@ -167,7 +168,7 @@ class TestURLLib3Instrumentor(TestBase):
         # instrument again to avoid warning message on tearDown
         URLLib3Instrumentor().instrument()
 
-    def test_suppress_instrumntation(self):
+    def test_suppress_instrumentation(self):
         suppression_keys = (
             _SUPPRESS_HTTP_INSTRUMENTATION_KEY,
             _SUPPRESS_INSTRUMENTATION_KEY,
@@ -244,44 +245,6 @@ class TestURLLib3Instrumentor(TestBase):
         # expect only a single span (retries are ignored)
         self.assert_exception_span(self.HTTP_URL)
 
-    def test_span_name_callback(self):
-        def span_name_callback(method, url, headers):
-            self.assertEqual("GET", method)
-            self.assertEqual(self.HTTP_URL, url)
-            self.assertEqual({"key": "value"}, headers)
-
-            return "test_span_name"
-
-        URLLib3Instrumentor().uninstrument()
-        URLLib3Instrumentor().instrument(span_name=span_name_callback)
-
-        response = self.perform_request(
-            self.HTTP_URL, headers={"key": "value"}
-        )
-        self.assertEqual(b"Hello!", response.data)
-
-        span = self.assert_span()
-        self.assertEqual("test_span_name", span.name)
-
-    def test_span_name_callback_invalid(self):
-        invalid_span_names = (None, 123, "")
-
-        for span_name in invalid_span_names:
-            self.memory_exporter.clear()
-
-            # pylint: disable=unused-argument
-            def span_name_callback(method, url, headers):
-                return span_name  # pylint: disable=cell-var-from-loop
-
-            URLLib3Instrumentor().uninstrument()
-            URLLib3Instrumentor().instrument(span_name=span_name_callback)
-            with self.subTest(span_name=span_name):
-                response = self.perform_request(self.HTTP_URL)
-                self.assertEqual(b"Hello!", response.data)
-
-                span = self.assert_span()
-                self.assertEqual("HTTP GET", span.name)
-
     def test_url_filter(self):
         def url_filter(url):
             return url.split("?")[0]
@@ -297,3 +260,73 @@ class TestURLLib3Instrumentor(TestBase):
 
         response = self.perform_request(url)
         self.assert_success_span(response, self.HTTP_URL)
+
+    def test_hooks(self):
+        def request_hook(span, request, body, headers):
+            span.update_name("name set from hook")
+
+        def response_hook(span, request, response):
+            span.set_attribute("response_hook_attr", "value")
+
+        URLLib3Instrumentor().uninstrument()
+        URLLib3Instrumentor().instrument(
+            request_hook=request_hook, response_hook=response_hook
+        )
+        response = self.perform_request(self.HTTP_URL)
+        self.assertEqual(b"Hello!", response.data)
+
+        span = self.assert_span()
+
+        self.assertEqual(span.name, "name set from hook")
+        self.assertIn("response_hook_attr", span.attributes)
+        self.assertEqual(span.attributes["response_hook_attr"], "value")
+
+    def test_request_hook_params(self):
+        def request_hook(span, request, headers, body):
+            span.set_attribute("request_hook_headers", json.dumps(headers))
+            span.set_attribute("request_hook_body", body)
+
+        URLLib3Instrumentor().uninstrument()
+        URLLib3Instrumentor().instrument(
+            request_hook=request_hook,
+        )
+
+        headers = {"header1": "value1", "header2": "value2"}
+        body = "param1=1&param2=2"
+
+        pool = urllib3.HTTPConnectionPool("httpbin.org")
+        response = pool.request(
+            "POST", "/status/200", body=body, headers=headers
+        )
+
+        self.assertEqual(b"Hello!", response.data)
+
+        span = self.assert_span()
+
+        self.assertIn("request_hook_headers", span.attributes)
+        self.assertEqual(
+            span.attributes["request_hook_headers"], json.dumps(headers)
+        )
+        self.assertIn("request_hook_body", span.attributes)
+        self.assertEqual(span.attributes["request_hook_body"], body)
+
+    def test_request_positional_body(self):
+        def request_hook(span, request, headers, body):
+            span.set_attribute("request_hook_body", body)
+
+        URLLib3Instrumentor().uninstrument()
+        URLLib3Instrumentor().instrument(
+            request_hook=request_hook,
+        )
+
+        body = "param1=1&param2=2"
+
+        pool = urllib3.HTTPConnectionPool("httpbin.org")
+        response = pool.urlopen("POST", "/status/200", body)
+
+        self.assertEqual(b"Hello!", response.data)
+
+        span = self.assert_span()
+
+        self.assertIn("request_hook_body", span.attributes)
+        self.assertEqual(span.attributes["request_hook_body"], body)

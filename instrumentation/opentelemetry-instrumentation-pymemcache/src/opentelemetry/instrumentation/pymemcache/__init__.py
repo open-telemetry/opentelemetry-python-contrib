@@ -41,18 +41,13 @@ import logging
 from typing import Collection
 
 import pymemcache
-from wrapt import ObjectProxy
 from wrapt import wrap_function_wrapper as _wrap
 
 from opentelemetry.instrumentation.instrumentor import BaseInstrumentor
 from opentelemetry.instrumentation.pymemcache.package import _instruments
 from opentelemetry.instrumentation.pymemcache.version import __version__
 from opentelemetry.instrumentation.utils import unwrap
-from opentelemetry.semconv.trace import (
-    DbSystemValues,
-    NetTransportValues,
-    SpanAttributes,
-)
+from opentelemetry.semconv.trace import NetTransportValues, SpanAttributes
 from opentelemetry.trace import SpanKind, get_tracer
 
 logger = logging.getLogger(__name__)
@@ -119,7 +114,7 @@ def _wrap_cmd(tracer, cmd, wrapped, instance, args, kwargs):
                 else:
                     vals = _get_query_string(args[0])
 
-                query = "{}{}{}".format(cmd, " " if vals else "", vals)
+                query = f"{cmd}{' ' if vals else ''}{vals}"
                 span.set_attribute(SpanAttributes.DB_STATEMENT, query)
 
                 _set_connection_attributes(span, instance)
@@ -193,10 +188,10 @@ class PymemcacheInstrumentor(BaseInstrumentor):
         for cmd in COMMANDS:
             _wrap(
                 "pymemcache.client.base",
-                "Client.{}".format(cmd),
+                f"Client.{cmd}",
                 _wrap_cmd(tracer, cmd),
             )
 
     def _uninstrument(self, **kwargs):
         for command in COMMANDS:
-            unwrap(pymemcache.client.base.Client, "{}".format(command))
+            unwrap(pymemcache.client.base.Client, f"{command}")

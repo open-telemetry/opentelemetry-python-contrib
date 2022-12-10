@@ -12,8 +12,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import unittest
-
 import pytest
 from sqlalchemy.exc import OperationalError
 
@@ -40,8 +38,9 @@ class SQLiteTestCase(SQLAlchemyTestMixin):
                 conn.execute(stmt).fetchall()
 
         spans = self.memory_exporter.get_finished_spans()
-        self.assertEqual(len(spans), 1)
-        span = spans[0]
+        # one span for the connection and one span for the query
+        self.assertEqual(len(spans), 2)
+        span = spans[1]
         # span fields
         self.assertEqual(span.name, "SELECT :memory:")
         self.assertEqual(
@@ -54,7 +53,8 @@ class SQLiteTestCase(SQLAlchemyTestMixin):
         self.assertTrue((span.end_time - span.start_time) > 0)
         # check the error
         self.assertIs(
-            span.status.status_code, trace.StatusCode.ERROR,
+            span.status.status_code,
+            trace.StatusCode.ERROR,
         )
         self.assertEqual(
             span.status.description, "no such table: a_wrong_table"

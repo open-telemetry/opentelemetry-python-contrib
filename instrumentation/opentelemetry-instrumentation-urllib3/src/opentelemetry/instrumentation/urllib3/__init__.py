@@ -21,24 +21,44 @@ Usage
 .. code-block:: python
 
     import urllib3
-    import urllib3.util
     from opentelemetry.instrumentation.urllib3 import URLLib3Instrumentor
 
     def strip_query_params(url: str) -> str:
         return url.split("?")[0]
 
-    def span_name_callback(method: str, url: str, headers):
-        return urllib3.util.Url(url).path
-
     URLLib3Instrumentor().instrument(
         # Remove all query params from the URL attribute on the span.
         url_filter=strip_query_params,
-        # Use the URL's path as the span name.
-        span_name_or_callback=span_name_callback
     )
 
     http = urllib3.PoolManager()
     response = http.request("GET", "https://www.example.org/")
+
+Configuration
+-------------
+
+Request/Response hooks
+**********************
+
+The urllib3 instrumentation supports extending tracing behavior with the help of
+request and response hooks. These are functions that are called back by the instrumentation
+right after a Span is created for a request and right before the span is finished processing a response respectively.
+The hooks can be configured as follows:
+
+.. code:: python
+
+    # `request` is an instance of urllib3.connectionpool.HTTPConnectionPool
+    def request_hook(span, request):
+        pass
+
+    # `request` is an instance of urllib3.connectionpool.HTTPConnectionPool
+    # `response` is an instance of urllib3.response.HTTPResponse
+    def response_hook(span, request, response):
+        pass
+
+    URLLib3Instrumentor.instrument(
+        request_hook=request_hook, response_hook=response_hook)
+    )
 
 API
 ---
@@ -46,12 +66,16 @@ API
 
 import contextlib
 import typing
+from timeit import default_timer
 from typing import Collection
 
 import urllib3.connectionpool
 import wrapt
 
 from opentelemetry import context
+
+# FIXME: fix the importing of this private attribute when the location of the _SUPPRESS_HTTP_INSTRUMENTATION_KEY is defined.
+from opentelemetry.context import _SUPPRESS_HTTP_INSTRUMENTATION_KEY
 from opentelemetry.instrumentation.instrumentor import BaseInstrumentor
 from opentelemetry.instrumentation.urllib3.package import _instruments
 from opentelemetry.instrumentation.urllib3.version import __version__
@@ -60,25 +84,41 @@ from opentelemetry.instrumentation.utils import (
     http_status_to_status_code,
     unwrap,
 )
+from opentelemetry.metrics import Histogram, get_meter
 from opentelemetry.propagate import inject
+from opentelemetry.semconv.metrics import MetricInstruments
 from opentelemetry.semconv.trace import SpanAttributes
-from opentelemetry.trace import Span, SpanKind, get_tracer
+from opentelemetry.trace import Span, SpanKind, Tracer, get_tracer
 from opentelemetry.trace.status import Status
-
-# A key to a context variable to avoid creating duplicate spans when instrumenting
-# both, Session.request and Session.send, since Session.request calls into Session.send
-_SUPPRESS_HTTP_INSTRUMENTATION_KEY = context.create_key(
-    "suppress_http_instrumentation"
-)
+from opentelemetry.util.http.httplib import set_ip_on_next_http_connection
 
 _UrlFilterT = typing.Optional[typing.Callable[[str], str]]
-_SpanNameT = typing.Optional[
-    typing.Union[typing.Callable[[str, str, typing.Mapping], str], str]
+_RequestHookT = typing.Optional[
+    typing.Callable[
+        [
+            Span,
+            urllib3.connectionpool.HTTPConnectionPool,
+            typing.Dict,
+            typing.Optional[str],
+        ],
+        None,
+    ]
+]
+_ResponseHookT = typing.Optional[
+    typing.Callable[
+        [
+            Span,
+            urllib3.connectionpool.HTTPConnectionPool,
+            urllib3.response.HTTPResponse,
+        ],
+        None,
+    ]
 ]
 
 _URL_OPEN_ARG_TO_INDEX_MAPPING = {
     "method": 0,
     "url": 1,
+    "body": 2,
 }
 
 
@@ -92,15 +132,40 @@ class URLLib3Instrumentor(BaseInstrumentor):
         Args:
             **kwargs: Optional arguments
                 ``tracer_provider``: a TracerProvider, defaults to global.
-                ``span_name_or_callback``: Override the default span name.
+                ``request_hook``: An optional callback that is invoked right after a span is created.
+                ``response_hook``: An optional callback which is invoked right before the span is finished processing a response.
                 ``url_filter``: A callback to process the requested URL prior
                     to adding it as a span attribute.
         """
         tracer_provider = kwargs.get("tracer_provider")
         tracer = get_tracer(__name__, __version__, tracer_provider)
+
+        meter_provider = kwargs.get("meter_provider")
+        meter = get_meter(__name__, __version__, meter_provider)
+
+        duration_histogram = meter.create_histogram(
+            name=MetricInstruments.HTTP_CLIENT_DURATION,
+            unit="ms",
+            description="measures the duration outbound HTTP requests",
+        )
+        request_size_histogram = meter.create_histogram(
+            name=MetricInstruments.HTTP_CLIENT_REQUEST_SIZE,
+            unit="By",
+            description="measures the size of HTTP request messages (compressed)",
+        )
+        response_size_histogram = meter.create_histogram(
+            name=MetricInstruments.HTTP_CLIENT_RESPONSE_SIZE,
+            unit="By",
+            description="measures the size of HTTP response messages (compressed)",
+        )
+
         _instrument(
             tracer,
-            span_name_or_callback=kwargs.get("span_name"),
+            duration_histogram,
+            request_size_histogram,
+            response_size_histogram,
+            request_hook=kwargs.get("request_hook"),
+            response_hook=kwargs.get("response_hook"),
             url_filter=kwargs.get("url_filter"),
         )
 
@@ -109,8 +174,12 @@ class URLLib3Instrumentor(BaseInstrumentor):
 
 
 def _instrument(
-    tracer,
-    span_name_or_callback: _SpanNameT = None,
+    tracer: Tracer,
+    duration_histogram: Histogram,
+    request_size_histogram: Histogram,
+    response_size_histogram: Histogram,
+    request_hook: _RequestHookT = None,
+    response_hook: _ResponseHookT = None,
     url_filter: _UrlFilterT = None,
 ):
     def instrumented_urlopen(wrapped, instance, args, kwargs):
@@ -120,8 +189,9 @@ def _instrument(
         method = _get_url_open_arg("method", args, kwargs).upper()
         url = _get_url(instance, args, kwargs, url_filter)
         headers = _prepare_headers(kwargs)
+        body = _get_url_open_arg("body", args, kwargs)
 
-        span_name = _get_span_name(span_name_or_callback, method, url, headers)
+        span_name = f"HTTP {method.strip()}"
         span_attributes = {
             SpanAttributes.HTTP_METHOD: method,
             SpanAttributes.HTTP_URL: url,
@@ -129,13 +199,36 @@ def _instrument(
 
         with tracer.start_as_current_span(
             span_name, kind=SpanKind.CLIENT, attributes=span_attributes
-        ) as span:
+        ) as span, set_ip_on_next_http_connection(span):
+            if callable(request_hook):
+                request_hook(span, instance, headers, body)
             inject(headers)
 
             with _suppress_further_instrumentation():
+                start_time = default_timer()
                 response = wrapped(*args, **kwargs)
+                elapsed_time = round((default_timer() - start_time) * 1000)
 
             _apply_response(span, response)
+            if callable(response_hook):
+                response_hook(span, instance, response)
+
+            request_size = 0 if body is None else len(body)
+            response_size = int(response.headers.get("Content-Length", 0))
+            metric_attributes = _create_metric_attributes(
+                instance, response, method
+            )
+
+            duration_histogram.record(
+                elapsed_time, attributes=metric_attributes
+            )
+            request_size_histogram.record(
+                request_size, attributes=metric_attributes
+            )
+            response_size_histogram.record(
+                response_size, attributes=metric_attributes
+            )
+
             return response
 
     wrapt.wrap_function_wrapper(
@@ -195,20 +288,6 @@ def _prepare_headers(urlopen_kwargs: typing.Dict) -> typing.Dict:
     return headers
 
 
-def _get_span_name(
-    span_name_or_callback, method: str, url: str, headers: typing.Mapping
-):
-    span_name = None
-    if callable(span_name_or_callback):
-        span_name = span_name_or_callback(method, url, headers)
-    elif isinstance(span_name_or_callback, str):
-        span_name = span_name_or_callback
-
-    if not span_name or not isinstance(span_name, str):
-        span_name = "HTTP {}".format(method.strip())
-    return span_name
-
-
 def _apply_response(span: Span, response: urllib3.response.HTTPResponse):
     if not span.is_recording():
         return
@@ -222,6 +301,29 @@ def _is_instrumentation_suppressed() -> bool:
         context.get_value(_SUPPRESS_INSTRUMENTATION_KEY)
         or context.get_value(_SUPPRESS_HTTP_INSTRUMENTATION_KEY)
     )
+
+
+def _create_metric_attributes(
+    instance: urllib3.connectionpool.HTTPConnectionPool,
+    response: urllib3.response.HTTPResponse,
+    method: str,
+) -> dict:
+    metric_attributes = {
+        SpanAttributes.HTTP_METHOD: method,
+        SpanAttributes.HTTP_HOST: instance.host,
+        SpanAttributes.HTTP_SCHEME: instance.scheme,
+        SpanAttributes.HTTP_STATUS_CODE: response.status,
+        SpanAttributes.NET_PEER_NAME: instance.host,
+        SpanAttributes.NET_PEER_PORT: instance.port,
+    }
+
+    version = getattr(response, "version")
+    if version:
+        metric_attributes[SpanAttributes.HTTP_FLAVOR] = (
+            "1.1" if version == 11 else "1.0"
+        )
+
+    return metric_attributes
 
 
 @contextlib.contextmanager

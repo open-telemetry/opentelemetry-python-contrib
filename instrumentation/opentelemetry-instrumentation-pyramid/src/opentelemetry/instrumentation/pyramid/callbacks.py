@@ -13,9 +13,11 @@
 # limitations under the License.
 
 from logging import getLogger
+from time import time_ns
+from timeit import default_timer
 
 from pyramid.events import BeforeTraversal
-from pyramid.httpexceptions import HTTPException
+from pyramid.httpexceptions import HTTPException, HTTPServerError
 from pyramid.settings import asbool
 from pyramid.tweens import EXCVIEW
 
@@ -25,9 +27,10 @@ from opentelemetry.instrumentation.propagators import (
     get_global_response_propagator,
 )
 from opentelemetry.instrumentation.pyramid.version import __version__
-from opentelemetry.propagate import extract
+from opentelemetry.instrumentation.utils import _start_internal_or_server_span
+from opentelemetry.metrics import get_meter
+from opentelemetry.semconv.metrics import MetricInstruments
 from opentelemetry.semconv.trace import SpanAttributes
-from opentelemetry.util._time import _time_ns
 from opentelemetry.util.http import get_excluded_urls
 
 TWEEN_NAME = "opentelemetry.instrumentation.pyramid.trace_tween_factory"
@@ -81,10 +84,6 @@ def _before_traversal(event):
         return
 
     start_time = request_environ.get(_ENVIRON_STARTTIME_KEY)
-
-    token = context.attach(
-        extract(request_environ, getter=otel_wsgi.wsgi_getter)
-    )
     tracer = trace.get_tracer(__name__, __version__)
 
     if request.matched_route:
@@ -92,8 +91,12 @@ def _before_traversal(event):
     else:
         span_name = otel_wsgi.get_default_span_name(request_environ)
 
-    span = tracer.start_span(
-        span_name, kind=trace.SpanKind.SERVER, start_time=start_time,
+    span, token = _start_internal_or_server_span(
+        tracer=tracer,
+        span_name=span_name,
+        start_time=start_time,
+        context_carrier=request_environ,
+        context_getter=otel_wsgi.wsgi_getter,
     )
 
     if span.is_recording():
@@ -104,17 +107,38 @@ def _before_traversal(event):
             ] = request.matched_route.pattern
         for key, value in attributes.items():
             span.set_attribute(key, value)
+        if span.kind == trace.SpanKind.SERVER:
+            custom_attributes = (
+                otel_wsgi.collect_custom_request_headers_attributes(
+                    request_environ
+                )
+            )
+            if len(custom_attributes) > 0:
+                span.set_attributes(custom_attributes)
 
     activation = trace.use_span(span, end_on_exit=True)
     activation.__enter__()  # pylint: disable=E1101
     request_environ[_ENVIRON_ACTIVATION_KEY] = activation
     request_environ[_ENVIRON_SPAN_KEY] = span
-    request_environ[_ENVIRON_TOKEN] = token
+    if token:
+        request_environ[_ENVIRON_TOKEN] = token
 
 
 def trace_tween_factory(handler, registry):
+    # pylint: disable=too-many-statements
     settings = registry.settings
     enabled = asbool(settings.get(SETTING_TRACE_ENABLED, True))
+    meter = get_meter(__name__, __version__)
+    duration_histogram = meter.create_histogram(
+        name=MetricInstruments.HTTP_SERVER_DURATION,
+        unit="ms",
+        description="measures the duration of the inbound HTTP request",
+    )
+    active_requests_counter = meter.create_up_down_counter(
+        name=MetricInstruments.HTTP_SERVER_ACTIVE_REQUESTS,
+        unit="requests",
+        description="measures the number of concurrent HTTP requests that are currently in-flight",
+    )
 
     if not enabled:
         # If disabled, make a tween that signals to the
@@ -126,28 +150,54 @@ def trace_tween_factory(handler, registry):
         return disabled_tween
 
     # make a request tracing function
+    # pylint: disable=too-many-branches
     def trace_tween(request):
-        # pylint: disable=E1101
+        # pylint: disable=E1101, too-many-locals
         if _excluded_urls.url_disabled(request.url):
             request.environ[_ENVIRON_ENABLED_KEY] = False
             # short-circuit when we don't want to trace anything
             return handler(request)
 
+        attributes = otel_wsgi.collect_request_attributes(request.environ)
+
         request.environ[_ENVIRON_ENABLED_KEY] = True
-        request.environ[_ENVIRON_STARTTIME_KEY] = _time_ns()
+        request.environ[_ENVIRON_STARTTIME_KEY] = time_ns()
+        active_requests_count_attrs = (
+            otel_wsgi._parse_active_request_count_attrs(attributes)
+        )
+        duration_attrs = otel_wsgi._parse_duration_attrs(attributes)
+
+        start = default_timer()
+        active_requests_counter.add(1, active_requests_count_attrs)
+
+        response = None
+        status = None
 
         try:
             response = handler(request)
-            response_or_exception = response
         except HTTPException as exc:
             # If the exception is a pyramid HTTPException,
             # that's still valuable information that isn't necessarily
             # a 500. For instance, HTTPFound is a 302.
             # As described in docs, Pyramid exceptions are all valid
             # response types
-            response_or_exception = exc
+            response = exc
+            raise
+        except BaseException:
+            # In the case that a non-HTTPException is bubbled up we
+            # should infer a internal server error and raise
+            status = "500 InternalServerError"
             raise
         finally:
+            duration = max(round((default_timer() - start) * 1000), 0)
+            status = getattr(response, "status", status)
+            status_code = otel_wsgi._parse_status_code(status)
+            if status_code is not None:
+                duration_attrs[
+                    SpanAttributes.HTTP_STATUS_CODE
+                ] = otel_wsgi._parse_status_code(status)
+            duration_histogram.record(duration, duration_attrs)
+            active_requests_counter.add(-1, active_requests_count_attrs)
             span = request.environ.get(_ENVIRON_SPAN_KEY)
             enabled = request.environ.get(_ENVIRON_ENABLED_KEY)
             if not span and enabled:
@@ -157,28 +207,43 @@ def trace_tween_factory(handler, registry):
                     "PyramidInstrumentor().instrument_config(config) is called"
                 )
             elif enabled:
-                otel_wsgi.add_response_attributes(
-                    span,
-                    response_or_exception.status,
-                    response_or_exception.headers,
-                )
+
+                if status is not None:
+                    otel_wsgi.add_response_attributes(
+                        span,
+                        status,
+                        getattr(response, "headerlist", None),
+                    )
+
+                if span.is_recording() and span.kind == trace.SpanKind.SERVER:
+                    custom_attributes = (
+                        otel_wsgi.collect_custom_response_headers_attributes(
+                            getattr(response, "headerlist", None)
+                        )
+                    )
+                    if len(custom_attributes) > 0:
+                        span.set_attributes(custom_attributes)
 
                 propagator = get_global_response_propagator()
-                if propagator:
+                if propagator and hasattr(response, "headers"):
                     propagator.inject(response.headers)
 
                 activation = request.environ.get(_ENVIRON_ACTIVATION_KEY)
 
-                if isinstance(response_or_exception, HTTPException):
+                # Only considering HTTPServerError
+                # to make sure 200, 300 and 400 exceptions are not reported as error
+                if isinstance(response, HTTPServerError):
                     activation.__exit__(
-                        type(response_or_exception),
-                        response_or_exception,
-                        getattr(response_or_exception, "__traceback__", None),
+                        type(response),
+                        response,
+                        getattr(response, "__traceback__", None),
                     )
                 else:
                     activation.__exit__(None, None, None)
 
-                context.detach(request.environ.get(_ENVIRON_TOKEN))
+                env_token = request.environ.get(_ENVIRON_TOKEN, None)
+                if env_token is not None:
+                    context.detach(env_token)
 
         return response
 

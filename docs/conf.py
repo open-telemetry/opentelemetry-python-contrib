@@ -24,9 +24,7 @@ from django.conf import settings
 
 settings.configure()
 
-source_dirs = [
-    os.path.abspath("../opentelemetry-instrumentation/src/"),
-]
+source_dirs = []
 
 exp = "../exporter"
 exp_dirs = [
@@ -42,6 +40,13 @@ instr_dirs = [
     if isdir(join(instr, f))
 ]
 
+prop = "../propagator"
+prop_dirs = [
+    os.path.abspath("/".join([prop, f, "src"]))
+    for f in listdir(prop)
+    if isdir(join(prop, f))
+]
+
 sdk_ext = "../sdk-extension"
 sdk_ext_dirs = [
     os.path.abspath("/".join(["../sdk-extension", f, "src"]))
@@ -49,7 +54,7 @@ sdk_ext_dirs = [
     if isdir(join(sdk_ext, f))
 ]
 
-sys.path[:0] = source_dirs + exp_dirs + instr_dirs + sdk_ext_dirs
+sys.path[:0] = exp_dirs + instr_dirs + sdk_ext_dirs + prop_dirs
 
 # -- Project information -----------------------------------------------------
 
@@ -124,12 +129,22 @@ def getlistcfg(strval):
 if "class_references" in mcfg:
     class_references = getlistcfg(mcfg["class_references"])
     for class_reference in class_references:
-        nitpick_ignore.append(("py:class", class_reference,))
+        nitpick_ignore.append(
+            (
+                "py:class",
+                class_reference,
+            )
+        )
 
 if "anys" in mcfg:
     anys = getlistcfg(mcfg["anys"])
     for _any in anys:
-        nitpick_ignore.append(("any", _any,))
+        nitpick_ignore.append(
+            (
+                "any",
+                _any,
+            )
+        )
 
 # Add any paths that contain templates here, relative to this directory.
 templates_path = ["_templates"]
@@ -168,13 +183,11 @@ scm_raw_web = "https://raw.githubusercontent.com/" + REPO + branch
 scm_web = "https://github.com/" + REPO + "blob/" + branch
 
 # Store variables in the epilogue so they are globally available.
-rst_epilog = """
-.. |SCM_WEB| replace:: {s}
-.. |SCM_RAW_WEB| replace:: {sr}
-.. |SCM_BRANCH| replace:: {b}
-""".format(
-    s=scm_web, sr=scm_raw_web, b=branch
-)
+rst_epilog = f"""
+.. |SCM_WEB| replace:: {scm_web}
+.. |SCM_RAW_WEB| replace:: {scm_raw_web}
+.. |SCM_BRANCH| replace:: {branch}
+"""
 
 # used to have links to repo files
 extlinks = {

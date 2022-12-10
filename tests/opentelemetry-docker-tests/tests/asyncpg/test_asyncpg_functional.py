@@ -21,14 +21,11 @@ def async_call(coro):
 
 
 class TestFunctionalAsyncPG(TestBase):
-    @classmethod
-    def setUpClass(cls):
-        super().setUpClass()
-        cls._connection = None
-        cls._cursor = None
-        cls._tracer = cls.tracer_provider.get_tracer(__name__)
-        AsyncPGInstrumentor().instrument(tracer_provider=cls.tracer_provider)
-        cls._connection = async_call(
+    def setUp(self):
+        super().setUp()
+        self._tracer = self.tracer_provider.get_tracer(__name__)
+        AsyncPGInstrumentor().instrument(tracer_provider=self.tracer_provider)
+        self._connection = async_call(
             asyncpg.connect(
                 database=POSTGRES_DB_NAME,
                 user=POSTGRES_USER,
@@ -38,9 +35,9 @@ class TestFunctionalAsyncPG(TestBase):
             )
         )
 
-    @classmethod
-    def tearDownClass(cls):
+    def tearDown(self):
         AsyncPGInstrumentor().uninstrument()
+        super().tearDown()
 
     def check_span(self, span):
         self.assertEqual(
@@ -65,7 +62,7 @@ class TestFunctionalAsyncPG(TestBase):
         self.assertEqual(len(spans), 1)
         self.assertIs(StatusCode.UNSET, spans[0].status.status_code)
         self.check_span(spans[0])
-        self.assertEqual(spans[0].name, "SELECT 42;")
+        self.assertEqual(spans[0].name, "SELECT")
         self.assertEqual(
             spans[0].attributes[SpanAttributes.DB_STATEMENT], "SELECT 42;"
         )
@@ -75,8 +72,38 @@ class TestFunctionalAsyncPG(TestBase):
         spans = self.memory_exporter.get_finished_spans()
         self.assertEqual(len(spans), 1)
         self.check_span(spans[0])
+        self.assertEqual(spans[0].name, "SELECT")
         self.assertEqual(
             spans[0].attributes[SpanAttributes.DB_STATEMENT], "SELECT 42;"
+        )
+
+    def test_instrumented_remove_comments(self, *_, **__):
+        async_call(self._connection.fetch("/* leading comment */ SELECT 42;"))
+        async_call(
+            self._connection.fetch(
+                "/* leading comment */ SELECT 42; /* trailing comment */"
+            )
+        )
+        async_call(self._connection.fetch("SELECT 42; /* trailing comment */"))
+        spans = self.memory_exporter.get_finished_spans()
+        self.assertEqual(len(spans), 3)
+        self.check_span(spans[0])
+        self.assertEqual(spans[0].name, "SELECT")
+        self.assertEqual(
+            spans[0].attributes[SpanAttributes.DB_STATEMENT],
+            "/* leading comment */ SELECT 42;",
+        )
+        self.check_span(spans[1])
+        self.assertEqual(spans[1].name, "SELECT")
+        self.assertEqual(
+            spans[1].attributes[SpanAttributes.DB_STATEMENT],
+            "/* leading comment */ SELECT 42; /* trailing comment */",
+        )
+        self.check_span(spans[2])
+        self.assertEqual(spans[2].name, "SELECT")
+        self.assertEqual(
+            spans[2].attributes[SpanAttributes.DB_STATEMENT],
+            "SELECT 42; /* trailing comment */",
         )
 
     def test_instrumented_transaction_method(self, *_, **__):
@@ -148,16 +175,13 @@ class TestFunctionalAsyncPG(TestBase):
 
 
 class TestFunctionalAsyncPG_CaptureParameters(TestBase):
-    @classmethod
-    def setUpClass(cls):
-        super().setUpClass()
-        cls._connection = None
-        cls._cursor = None
-        cls._tracer = cls.tracer_provider.get_tracer(__name__)
+    def setUp(self):
+        super().setUp()
+        self._tracer = self.tracer_provider.get_tracer(__name__)
         AsyncPGInstrumentor(capture_parameters=True).instrument(
-            tracer_provider=cls.tracer_provider
+            tracer_provider=self.tracer_provider
         )
-        cls._connection = async_call(
+        self._connection = async_call(
             asyncpg.connect(
                 database=POSTGRES_DB_NAME,
                 user=POSTGRES_USER,
@@ -167,9 +191,9 @@ class TestFunctionalAsyncPG_CaptureParameters(TestBase):
             )
         )
 
-    @classmethod
-    def tearDownClass(cls):
+    def tearDown(self):
         AsyncPGInstrumentor().uninstrument()
+        super().tearDown()
 
     def check_span(self, span):
         self.assertEqual(
@@ -195,7 +219,7 @@ class TestFunctionalAsyncPG_CaptureParameters(TestBase):
         self.assertIs(StatusCode.UNSET, spans[0].status.status_code)
 
         self.check_span(spans[0])
-        self.assertEqual(spans[0].name, "SELECT $1;")
+        self.assertEqual(spans[0].name, "SELECT")
         self.assertEqual(
             spans[0].attributes[SpanAttributes.DB_STATEMENT], "SELECT $1;"
         )
@@ -209,6 +233,7 @@ class TestFunctionalAsyncPG_CaptureParameters(TestBase):
         self.assertEqual(len(spans), 1)
 
         self.check_span(spans[0])
+        self.assertEqual(spans[0].name, "SELECT")
         self.assertEqual(
             spans[0].attributes[SpanAttributes.DB_STATEMENT], "SELECT $1;"
         )

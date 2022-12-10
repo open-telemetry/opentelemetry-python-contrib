@@ -18,7 +18,7 @@ from tests.protobuf import (  # pylint: disable=no-name-in-module
 )
 
 import opentelemetry.instrumentation.grpc
-from opentelemetry import trace
+from opentelemetry import context, trace
 from opentelemetry.instrumentation.grpc import GrpcInstrumentorClient
 from opentelemetry.instrumentation.grpc._client import (
     OpenTelemetryClientInterceptor,
@@ -26,6 +26,7 @@ from opentelemetry.instrumentation.grpc._client import (
 from opentelemetry.instrumentation.grpc.grpcext._interceptor import (
     _UnaryClientInfo,
 )
+from opentelemetry.instrumentation.utils import _SUPPRESS_INSTRUMENTATION_KEY
 from opentelemetry.propagate import get_global_textmap, set_global_textmap
 from opentelemetry.semconv.trace import SpanAttributes
 from opentelemetry.test.mock_textmap import MockTextMapPropagator
@@ -36,6 +37,7 @@ from ._client import (
     client_streaming_method,
     server_streaming_method,
     simple_method,
+    simple_method_future,
 )
 from ._server import create_test_server
 from .protobuf.test_server_pb2 import Request
@@ -100,6 +102,20 @@ class TestClientProto(TestBase):
         self.server.stop(None)
         self.channel.close()
 
+    def test_unary_unary_future(self):
+        simple_method_future(self._stub).result()
+        spans = self.memory_exporter.get_finished_spans()
+        self.assertEqual(len(spans), 1)
+        span = spans[0]
+
+        self.assertEqual(span.name, "/GRPCTestServer/SimpleMethod")
+        self.assertIs(span.kind, trace.SpanKind.CLIENT)
+
+        # Check version and name in span's instrumentation info
+        self.assertEqualSpanInstrumentationInfo(
+            span, opentelemetry.instrumentation.grpc
+        )
+
     def test_unary_unary(self):
         simple_method(self._stub)
         spans = self.memory_exporter.get_finished_spans()
@@ -110,11 +126,11 @@ class TestClientProto(TestBase):
         self.assertIs(span.kind, trace.SpanKind.CLIENT)
 
         # Check version and name in span's instrumentation info
-        self.check_span_instrumentation_info(
+        self.assertEqualSpanInstrumentationInfo(
             span, opentelemetry.instrumentation.grpc
         )
 
-        self.assert_span_has_attributes(
+        self.assertSpanHasAttributes(
             span,
             {
                 SpanAttributes.RPC_METHOD: "SimpleMethod",
@@ -136,11 +152,11 @@ class TestClientProto(TestBase):
         self.assertIs(span.kind, trace.SpanKind.CLIENT)
 
         # Check version and name in span's instrumentation info
-        self.check_span_instrumentation_info(
+        self.assertEqualSpanInstrumentationInfo(
             span, opentelemetry.instrumentation.grpc
         )
 
-        self.assert_span_has_attributes(
+        self.assertSpanHasAttributes(
             span,
             {
                 SpanAttributes.RPC_METHOD: "ServerStreamingMethod",
@@ -162,11 +178,11 @@ class TestClientProto(TestBase):
         self.assertIs(span.kind, trace.SpanKind.CLIENT)
 
         # Check version and name in span's instrumentation info
-        self.check_span_instrumentation_info(
+        self.assertEqualSpanInstrumentationInfo(
             span, opentelemetry.instrumentation.grpc
         )
 
-        self.assert_span_has_attributes(
+        self.assertSpanHasAttributes(
             span,
             {
                 SpanAttributes.RPC_METHOD: "ClientStreamingMethod",
@@ -190,11 +206,11 @@ class TestClientProto(TestBase):
         self.assertIs(span.kind, trace.SpanKind.CLIENT)
 
         # Check version and name in span's instrumentation info
-        self.check_span_instrumentation_info(
+        self.assertEqualSpanInstrumentationInfo(
             span, opentelemetry.instrumentation.grpc
         )
 
-        self.assert_span_has_attributes(
+        self.assertSpanHasAttributes(
             span,
             {
                 SpanAttributes.RPC_METHOD: "BidirectionalStreamingMethod",
@@ -214,7 +230,8 @@ class TestClientProto(TestBase):
         self.assertEqual(len(spans), 1)
         span = spans[0]
         self.assertIs(
-            span.status.status_code, trace.StatusCode.ERROR,
+            span.status.status_code,
+            trace.StatusCode.ERROR,
         )
 
     def test_error_stream_unary(self):
@@ -225,7 +242,8 @@ class TestClientProto(TestBase):
         self.assertEqual(len(spans), 1)
         span = spans[0]
         self.assertIs(
-            span.status.status_code, trace.StatusCode.ERROR,
+            span.status.status_code,
+            trace.StatusCode.ERROR,
         )
 
     def test_error_unary_stream(self):
@@ -236,7 +254,8 @@ class TestClientProto(TestBase):
         self.assertEqual(len(spans), 1)
         span = spans[0]
         self.assertIs(
-            span.status.status_code, trace.StatusCode.ERROR,
+            span.status.status_code,
+            trace.StatusCode.ERROR,
         )
 
     def test_error_stream_stream(self):
@@ -247,7 +266,8 @@ class TestClientProto(TestBase):
         self.assertEqual(len(spans), 1)
         span = spans[0]
         self.assertIs(
-            span.status.status_code, trace.StatusCode.ERROR,
+            span.status.status_code,
+            trace.StatusCode.ERROR,
         )
 
     def test_client_interceptor_trace_context_propagation(
@@ -257,9 +277,7 @@ class TestClientProto(TestBase):
         previous_propagator = get_global_textmap()
         try:
             set_global_textmap(MockTextMapPropagator())
-            interceptor = OpenTelemetryClientInterceptor(
-                trace._DefaultTracer()
-            )
+            interceptor = OpenTelemetryClientInterceptor(trace.NoOpTracer())
 
             carrier = tuple()
 
@@ -286,3 +304,47 @@ class TestClientProto(TestBase):
 
         finally:
             set_global_textmap(previous_propagator)
+
+    def test_unary_unary_with_suppress_key(self):
+        token = context.attach(
+            context.set_value(_SUPPRESS_INSTRUMENTATION_KEY, True)
+        )
+        try:
+            simple_method(self._stub)
+            spans = self.memory_exporter.get_finished_spans()
+        finally:
+            context.detach(token)
+        self.assertEqual(len(spans), 0)
+
+    def test_unary_stream_with_suppress_key(self):
+        token = context.attach(
+            context.set_value(_SUPPRESS_INSTRUMENTATION_KEY, True)
+        )
+        try:
+            server_streaming_method(self._stub)
+            spans = self.memory_exporter.get_finished_spans()
+        finally:
+            context.detach(token)
+        self.assertEqual(len(spans), 0)
+
+    def test_stream_unary_with_suppress_key(self):
+        token = context.attach(
+            context.set_value(_SUPPRESS_INSTRUMENTATION_KEY, True)
+        )
+        try:
+            client_streaming_method(self._stub)
+            spans = self.memory_exporter.get_finished_spans()
+        finally:
+            context.detach(token)
+        self.assertEqual(len(spans), 0)
+
+    def test_stream_stream_with_suppress_key(self):
+        token = context.attach(
+            context.set_value(_SUPPRESS_INSTRUMENTATION_KEY, True)
+        )
+        try:
+            bidirectional_streaming_method(self._stub)
+            spans = self.memory_exporter.get_finished_spans()
+        finally:
+            context.detach(token)
+        self.assertEqual(len(spans), 0)

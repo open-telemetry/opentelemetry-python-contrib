@@ -24,7 +24,6 @@ from opentelemetry.instrumentation.propagators import (
 )
 from opentelemetry.instrumentation.pyramid import PyramidInstrumentor
 from opentelemetry.semconv.trace import SpanAttributes
-from opentelemetry.test.test_base import TestBase
 from opentelemetry.test.wsgitestutil import WsgiTestBase
 from opentelemetry.util.http import get_excluded_urls
 
@@ -48,7 +47,7 @@ def expected_attributes(override_attributes):
     return default_attributes
 
 
-class TestProgrammatic(InstrumentationTest, TestBase, WsgiTestBase):
+class TestProgrammatic(InstrumentationTest, WsgiTestBase):
     def setUp(self):
         super().setUp()
         config = Configurator()
@@ -112,19 +111,8 @@ class TestProgrammatic(InstrumentationTest, TestBase, WsgiTestBase):
         set_global_response_propagator(TraceResponsePropagator())
 
         response = self.client.get("/hello/500")
-        headers = response.headers
-        span = self.memory_exporter.get_finished_spans()[0]
-
-        self.assertIn("traceresponse", headers)
-        self.assertEqual(
-            headers["access-control-expose-headers"], "traceresponse",
-        )
-        self.assertEqual(
-            headers["traceresponse"],
-            "00-{0}-{1}-01".format(
-                trace.format_trace_id(span.get_span_context().trace_id),
-                trace.format_span_id(span.get_span_context().span_id),
-            ),
+        self.assertTraceResponseHeaderMatchesSpan(
+            response.headers, self.memory_exporter.get_finished_spans()[0]
         )
 
         set_global_response_propagator(orig)
@@ -172,6 +160,24 @@ class TestProgrammatic(InstrumentationTest, TestBase, WsgiTestBase):
         resp = self.client.get("/hello/500")
         self.assertEqual(500, resp.status_code)
         resp.close()
+        span_list = self.memory_exporter.get_finished_spans()
+        self.assertEqual(len(span_list), 1)
+        self.assertEqual(span_list[0].name, "/hello/{helloid}")
+        self.assertEqual(span_list[0].kind, trace.SpanKind.SERVER)
+        self.assertEqual(span_list[0].attributes, expected_attrs)
+
+    def test_internal_exception(self):
+        expected_attrs = expected_attributes(
+            {
+                SpanAttributes.HTTP_TARGET: "/hello/900",
+                SpanAttributes.HTTP_ROUTE: "/hello/{helloid}",
+                SpanAttributes.HTTP_STATUS_CODE: 500,
+            }
+        )
+        with self.assertRaises(NotImplementedError):
+            resp = self.client.get("/hello/900")
+            resp.close()
+
         span_list = self.memory_exporter.get_finished_spans()
         self.assertEqual(len(span_list), 1)
         self.assertEqual(span_list[0].name, "/hello/{helloid}")

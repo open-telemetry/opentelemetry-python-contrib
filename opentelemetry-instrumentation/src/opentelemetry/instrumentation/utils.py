@@ -12,17 +12,24 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import urllib.parse
+from re import escape, sub
 from typing import Dict, Sequence
 
 from wrapt import ObjectProxy
 
-from opentelemetry.context import create_key
-from opentelemetry.trace import StatusCode
+from opentelemetry import context, trace
 
-# FIXME This is a temporary location for the suppress instrumentation key.
-# Once the decision around how to suppress instrumentation is made in the
-# spec, this key should be moved accordingly.
-_SUPPRESS_INSTRUMENTATION_KEY = create_key("suppress_instrumentation")
+# pylint: disable=unused-import
+# pylint: disable=E0611
+from opentelemetry.context import _SUPPRESS_INSTRUMENTATION_KEY  # noqa: F401
+from opentelemetry.propagate import extract
+from opentelemetry.trace import StatusCode
+from opentelemetry.trace.propagation.tracecontext import (
+    TraceContextTextMapPropagator,
+)
+
+propagator = TraceContextTextMapPropagator()
 
 
 def extract_attributes_from_object(
@@ -39,7 +46,9 @@ def extract_attributes_from_object(
 
 
 def http_status_to_status_code(
-    status: int, allow_redirect: bool = True
+    status: int,
+    allow_redirect: bool = True,
+    server_span: bool = False,
 ) -> StatusCode:
     """Converts an HTTP status code to an OpenTelemetry canonical status code
 
@@ -47,11 +56,16 @@ def http_status_to_status_code(
         status (int): HTTP status code
     """
     # See: https://github.com/open-telemetry/opentelemetry-specification/blob/main/specification/trace/semantic_conventions/http.md#status
+    if not isinstance(status, int):
+        return StatusCode.UNSET
+
     if status < 100:
         return StatusCode.ERROR
     if status <= 299:
         return StatusCode.UNSET
     if status <= 399 and allow_redirect:
+        return StatusCode.UNSET
+    if status <= 499 and server_span:
         return StatusCode.UNSET
     return StatusCode.ERROR
 
@@ -66,3 +80,75 @@ def unwrap(obj, attr: str):
     func = getattr(obj, attr, None)
     if func and isinstance(func, ObjectProxy) and hasattr(func, "__wrapped__"):
         setattr(obj, attr, func.__wrapped__)
+
+
+def _start_internal_or_server_span(
+    tracer,
+    span_name,
+    start_time,
+    context_carrier,
+    context_getter,
+    attributes=None,
+):
+    """Returns internal or server span along with the token which can be used by caller to reset context
+
+
+    Args:
+        tracer : tracer in use by given instrumentation library
+        name (string): name of the span
+        start_time : start time of the span
+        context_carrier : object which contains values that are
+            used to construct a Context. This object
+            must be paired with an appropriate getter
+            which understands how to extract a value from it.
+        context_getter : an object which contains a get function that can retrieve zero
+            or more values from the carrier and a keys function that can get all the keys
+            from carrier.
+    """
+
+    token = ctx = span_kind = None
+    if trace.get_current_span() is trace.INVALID_SPAN:
+        ctx = extract(context_carrier, getter=context_getter)
+        token = context.attach(ctx)
+        span_kind = trace.SpanKind.SERVER
+    else:
+        ctx = context.get_current()
+        span_kind = trace.SpanKind.INTERNAL
+    span = tracer.start_span(
+        name=span_name,
+        context=ctx,
+        kind=span_kind,
+        start_time=start_time,
+        attributes=attributes,
+    )
+    return span, token
+
+
+def _url_quote(s) -> str:  # pylint: disable=invalid-name
+    if not isinstance(s, (str, bytes)):
+        return s
+    quoted = urllib.parse.quote(s)
+    # Since SQL uses '%' as a keyword, '%' is a by-product of url quoting
+    # e.g. foo,bar --> foo%2Cbar
+    # thus in our quoting, we need to escape it too to finally give
+    #      foo,bar --> foo%%2Cbar
+    return quoted.replace("%", "%%")
+
+
+def _get_opentelemetry_values() -> dict:
+    """
+    Return the OpenTelemetry Trace and Span IDs if Span ID is set in the
+    OpenTelemetry execution context.
+    """
+    # Insert the W3C TraceContext generated
+    _headers = {}
+    propagator.inject(_headers)
+    return _headers
+
+
+def _python_path_without_directory(python_path, directory, path_separator):
+    return sub(
+        rf"{escape(directory)}{path_separator}(?!$)",
+        "",
+        python_path,
+    )

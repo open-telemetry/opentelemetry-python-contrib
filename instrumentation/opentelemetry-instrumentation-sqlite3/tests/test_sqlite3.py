@@ -13,6 +13,7 @@
 # limitations under the License.
 
 import sqlite3
+from sqlite3 import dbapi2
 
 from opentelemetry import trace as trace_api
 from opentelemetry.instrumentation.sqlite3 import SQLite3Instrumentor
@@ -20,25 +21,30 @@ from opentelemetry.test.test_base import TestBase
 
 
 class TestSQLite3(TestBase):
-    @classmethod
-    def setUpClass(cls):
-        super().setUpClass()
-        cls._connection = None
-        cls._cursor = None
-        cls._tracer = cls.tracer_provider.get_tracer(__name__)
-        SQLite3Instrumentor().instrument(tracer_provider=cls.tracer_provider)
-        cls._connection = sqlite3.connect(":memory:")
-        cls._cursor = cls._connection.cursor()
+    def setUp(self):
+        super().setUp()
+        SQLite3Instrumentor().instrument(tracer_provider=self.tracer_provider)
+        self._tracer = self.tracer_provider.get_tracer(__name__)
+        self._connection = sqlite3.connect(":memory:")
+        self._cursor = self._connection.cursor()
+        self._connection2 = dbapi2.connect(":memory:")
+        self._cursor2 = self._connection2.cursor()
 
-    @classmethod
-    def tearDownClass(cls):
-        if cls._cursor:
-            cls._cursor.close()
-        if cls._connection:
-            cls._connection.close()
+    def tearDown(self):
+        super().tearDown()
+        if self._cursor:
+            self._cursor.close()
+        if self._connection:
+            self._connection.close()
+        if self._cursor2:
+            self._cursor2.close()
+        if self._connection2:
+            self._connection2.close()
+        SQLite3Instrumentor().uninstrument()
 
     def validate_spans(self, span_name):
         spans = self.memory_exporter.get_finished_spans()
+        self.memory_exporter.clear()
         self.assertEqual(len(spans), 2)
         for span in spans:
             if span.name == "rootSpan":
@@ -55,6 +61,12 @@ class TestSQLite3(TestBase):
         self.assertIs(child_span.parent, root_span.get_span_context())
         self.assertIs(child_span.kind, trace_api.SpanKind.CLIENT)
 
+    def _create_tables(self):
+        stmt = "CREATE TABLE IF NOT EXISTS test (id integer)"
+        self._cursor.execute(stmt)
+        self._cursor2.execute(stmt)
+        self.memory_exporter.clear()
+
     def test_execute(self):
         """Should create a child span for execute method"""
         stmt = "CREATE TABLE IF NOT EXISTS test (id integer)"
@@ -62,12 +74,23 @@ class TestSQLite3(TestBase):
             self._cursor.execute(stmt)
         self.validate_spans("CREATE")
 
+        with self._tracer.start_as_current_span("rootSpan"):
+            self._cursor2.execute(stmt)
+        self.validate_spans("CREATE")
+
     def test_executemany(self):
         """Should create a child span for executemany"""
+        self._create_tables()
+
+        # real spans for executemany
         stmt = "INSERT INTO test (id) VALUES (?)"
+        data = [("1",), ("2",), ("3",)]
         with self._tracer.start_as_current_span("rootSpan"):
-            data = [("1",), ("2",), ("3",)]
             self._cursor.executemany(stmt, data)
+        self.validate_spans("INSERT")
+
+        with self._tracer.start_as_current_span("rootSpan"):
+            self._cursor2.executemany(stmt, data)
         self.validate_spans("INSERT")
 
     def test_callproc(self):

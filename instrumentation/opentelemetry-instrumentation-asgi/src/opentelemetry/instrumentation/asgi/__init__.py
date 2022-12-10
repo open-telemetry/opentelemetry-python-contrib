@@ -11,31 +11,226 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
+# pylint: disable=too-many-locals
 
 """
 The opentelemetry-instrumentation-asgi package provides an ASGI middleware that can be used
-on any ASGI framework (such as Django-channels / Quart) to track requests
-timing through OpenTelemetry.
+on any ASGI framework (such as Django-channels / Quart) to track request timing through OpenTelemetry.
+
+Usage (Quart)
+-------------
+
+.. code-block:: python
+
+    from quart import Quart
+    from opentelemetry.instrumentation.asgi import OpenTelemetryMiddleware
+
+    app = Quart(__name__)
+    app.asgi_app = OpenTelemetryMiddleware(app.asgi_app)
+
+    @app.route("/")
+    async def hello():
+        return "Hello!"
+
+    if __name__ == "__main__":
+        app.run(debug=True)
+
+
+Usage (Django 3.0)
+------------------
+
+Modify the application's ``asgi.py`` file as shown below.
+
+.. code-block:: python
+
+    import os
+    from django.core.asgi import get_asgi_application
+    from opentelemetry.instrumentation.asgi import OpenTelemetryMiddleware
+
+    os.environ.setdefault('DJANGO_SETTINGS_MODULE', 'asgi_example.settings')
+
+    application = get_asgi_application()
+    application = OpenTelemetryMiddleware(application)
+
+
+Usage (Raw ASGI)
+----------------
+
+.. code-block:: python
+
+    from opentelemetry.instrumentation.asgi import OpenTelemetryMiddleware
+
+    app = ...  # An ASGI application.
+    app = OpenTelemetryMiddleware(app)
+
+
+Configuration
+-------------
+
+Request/Response hooks
+**********************
+
+This instrumentation supports request and response hooks. These are functions that get called
+right after a span is created for a request and right before the span is finished for the response.
+
+- The server request hook is passed a server span and ASGI scope object for every incoming request.
+- The client request hook is called with the internal span and an ASGI scope when the method ``receive`` is called.
+- The client response hook is called with the internal span and an ASGI event when the method ``send`` is called.
+
+For example,
+
+.. code-block:: python
+
+    def server_request_hook(span: Span, scope: dict):
+        if span and span.is_recording():
+            span.set_attribute("custom_user_attribute_from_request_hook", "some-value")
+
+    def client_request_hook(span: Span, scope: dict):
+        if span and span.is_recording():
+            span.set_attribute("custom_user_attribute_from_client_request_hook", "some-value")
+
+    def client_response_hook(span: Span, message: dict):
+        if span and span.is_recording():
+            span.set_attribute("custom_user_attribute_from_response_hook", "some-value")
+
+   OpenTelemetryMiddleware().(application, server_request_hook=server_request_hook, client_request_hook=client_request_hook, client_response_hook=client_response_hook)
+
+Capture HTTP request and response headers
+*****************************************
+You can configure the agent to capture specified HTTP headers as span attributes, according to the
+`semantic convention <https://github.com/open-telemetry/opentelemetry-specification/blob/main/specification/trace/semantic_conventions/http.md#http-request-and-response-headers>`_.
+
+Request headers
+***************
+To capture HTTP request headers as span attributes, set the environment variable
+``OTEL_INSTRUMENTATION_HTTP_CAPTURE_HEADERS_SERVER_REQUEST`` to a comma delimited list of HTTP header names.
+
+For example,
+::
+
+    export OTEL_INSTRUMENTATION_HTTP_CAPTURE_HEADERS_SERVER_REQUEST="content-type,custom_request_header"
+
+will extract ``content-type`` and ``custom_request_header`` from the request headers and add them as span attributes.
+
+Request header names in ASGI are case-insensitive. So, giving the header name as ``CUStom-Header`` in the environment
+variable will capture the header named ``custom-header``.
+
+Regular expressions may also be used to match multiple headers that correspond to the given pattern.  For example:
+::
+
+    export OTEL_INSTRUMENTATION_HTTP_CAPTURE_HEADERS_SERVER_REQUEST="Accept.*,X-.*"
+
+Would match all request headers that start with ``Accept`` and ``X-``.
+
+To capture all request headers, set ``OTEL_INSTRUMENTATION_HTTP_CAPTURE_HEADERS_SERVER_REQUEST`` to ``".*"``.
+::
+
+    export OTEL_INSTRUMENTATION_HTTP_CAPTURE_HEADERS_SERVER_REQUEST=".*"
+
+The name of the added span attribute will follow the format ``http.request.header.<header_name>`` where ``<header_name>``
+is the normalized HTTP header name (lowercase, with ``-`` replaced by ``_``). The value of the attribute will be a
+single item list containing all the header values.
+
+For example:
+``http.request.header.custom_request_header = ["<value1>,<value2>"]``
+
+Response headers
+****************
+To capture HTTP response headers as span attributes, set the environment variable
+``OTEL_INSTRUMENTATION_HTTP_CAPTURE_HEADERS_SERVER_RESPONSE`` to a comma delimited list of HTTP header names.
+
+For example,
+::
+
+    export OTEL_INSTRUMENTATION_HTTP_CAPTURE_HEADERS_SERVER_RESPONSE="content-type,custom_response_header"
+
+will extract ``content-type`` and ``custom_response_header`` from the response headers and add them as span attributes.
+
+Response header names in ASGI are case-insensitive. So, giving the header name as ``CUStom-Header`` in the environment
+variable will capture the header named ``custom-header``.
+
+Regular expressions may also be used to match multiple headers that correspond to the given pattern.  For example:
+::
+
+    export OTEL_INSTRUMENTATION_HTTP_CAPTURE_HEADERS_SERVER_RESPONSE="Content.*,X-.*"
+
+Would match all response headers that start with ``Content`` and ``X-``.
+
+To capture all response headers, set ``OTEL_INSTRUMENTATION_HTTP_CAPTURE_HEADERS_SERVER_RESPONSE`` to ``".*"``.
+::
+
+    export OTEL_INSTRUMENTATION_HTTP_CAPTURE_HEADERS_SERVER_RESPONSE=".*"
+
+The name of the added span attribute will follow the format ``http.response.header.<header_name>`` where ``<header_name>``
+is the normalized HTTP header name (lowercase, with ``-`` replaced by ``_``). The value of the attribute will be a
+single item list containing all the header values.
+
+For example:
+``http.response.header.custom_response_header = ["<value1>,<value2>"]``
+
+Sanitizing headers
+******************
+In order to prevent storing sensitive data such as personally identifiable information (PII), session keys, passwords,
+etc, set the environment variable ``OTEL_INSTRUMENTATION_HTTP_CAPTURE_HEADERS_SANITIZE_FIELDS``
+to a comma delimited list of HTTP header names to be sanitized.  Regexes may be used, and all header names will be
+matched in a case-insensitive manner.
+
+For example,
+::
+
+    export OTEL_INSTRUMENTATION_HTTP_CAPTURE_HEADERS_SANITIZE_FIELDS=".*session.*,set-cookie"
+
+will replace the value of headers such as ``session-id`` and ``set-cookie`` with ``[REDACTED]`` in the span.
+
+Note:
+    The environment variable names used to capture HTTP headers are still experimental, and thus are subject to change.
+
+API
+---
 """
 
 import typing
 import urllib
 from functools import wraps
+from timeit import default_timer
 from typing import Tuple
 
 from asgiref.compatibility import guarantee_single_callable
 
 from opentelemetry import context, trace
 from opentelemetry.instrumentation.asgi.version import __version__  # noqa
-from opentelemetry.instrumentation.utils import http_status_to_status_code
-from opentelemetry.propagate import extract
-from opentelemetry.propagators.textmap import Getter
+from opentelemetry.instrumentation.propagators import (
+    get_global_response_propagator,
+)
+from opentelemetry.instrumentation.utils import (
+    _start_internal_or_server_span,
+    http_status_to_status_code,
+)
+from opentelemetry.metrics import get_meter
+from opentelemetry.propagators.textmap import Getter, Setter
+from opentelemetry.semconv.metrics import MetricInstruments
 from opentelemetry.semconv.trace import SpanAttributes
+from opentelemetry.trace import Span, set_span_in_context
 from opentelemetry.trace.status import Status, StatusCode
-from opentelemetry.util.http import remove_url_credentials
+from opentelemetry.util.http import (
+    OTEL_INSTRUMENTATION_HTTP_CAPTURE_HEADERS_SANITIZE_FIELDS,
+    OTEL_INSTRUMENTATION_HTTP_CAPTURE_HEADERS_SERVER_REQUEST,
+    OTEL_INSTRUMENTATION_HTTP_CAPTURE_HEADERS_SERVER_RESPONSE,
+    SanitizeValue,
+    _parse_active_request_count_attrs,
+    _parse_duration_attrs,
+    get_custom_headers,
+    normalise_request_header_name,
+    normalise_response_header_name,
+    remove_url_credentials,
+)
+
+_ServerRequestHookT = typing.Optional[typing.Callable[[Span, dict], None]]
+_ClientRequestHookT = typing.Optional[typing.Callable[[Span, dict], None]]
+_ClientResponseHookT = typing.Optional[typing.Callable[[Span, dict], None]]
 
 
-class ASGIGetter(Getter):
+class ASGIGetter(Getter[dict]):
     def get(
         self, carrier: dict, key: str
     ) -> typing.Optional[typing.List[str]]:
@@ -53,22 +248,46 @@ class ASGIGetter(Getter):
         if not headers:
             return None
 
-        # asgi header keys are in lower case
+        # ASGI header keys are in lower case
         key = key.lower()
         decoded = [
             _value.decode("utf8")
             for (_key, _value) in headers
-            if _key.decode("utf8") == key
+            if _key.decode("utf8").lower() == key
         ]
         if not decoded:
             return None
         return decoded
 
     def keys(self, carrier: dict) -> typing.List[str]:
-        return list(carrier.keys())
+        return [_key.decode("utf8") for (_key, _value) in carrier]
 
 
 asgi_getter = ASGIGetter()
+
+
+class ASGISetter(Setter[dict]):
+    def set(
+        self, carrier: dict, key: str, value: str
+    ) -> None:  # pylint: disable=no-self-use
+        """Sets response header values on an ASGI scope according to `the spec <https://asgi.readthedocs.io/en/latest/specs/www.html#response-start-send-event>`_.
+
+        Args:
+            carrier: ASGI scope object
+            key: response header name to set
+            value: response header value
+        Returns:
+            None
+        """
+        headers = carrier.get("headers")
+        if not headers:
+            headers = []
+            carrier["headers"] = headers
+
+        headers.append([key.lower().encode(), value.encode()])
+
+
+asgi_setter = ASGISetter()
 
 
 def collect_request_attributes(scope):
@@ -79,7 +298,7 @@ def collect_request_attributes(scope):
     if query_string and http_url:
         if isinstance(query_string, bytes):
             query_string = query_string.decode("utf8")
-        http_url = http_url + ("?" + urllib.parse.unquote(query_string))
+        http_url += "?" + urllib.parse.unquote(query_string)
 
     result = {
         SpanAttributes.HTTP_SCHEME: scope.get("scheme"),
@@ -112,11 +331,61 @@ def collect_request_attributes(scope):
     return result
 
 
+def collect_custom_request_headers_attributes(scope):
+    """returns custom HTTP request headers to be added into SERVER span as span attributes
+    Refer specification https://github.com/open-telemetry/opentelemetry-specification/blob/main/specification/trace/semantic_conventions/http.md#http-request-and-response-headers"""
+
+    sanitize = SanitizeValue(
+        get_custom_headers(
+            OTEL_INSTRUMENTATION_HTTP_CAPTURE_HEADERS_SANITIZE_FIELDS
+        )
+    )
+
+    # Decode headers before processing.
+    headers = {
+        _key.decode("utf8"): _value.decode("utf8")
+        for (_key, _value) in scope.get("headers")
+    }
+
+    return sanitize.sanitize_header_values(
+        headers,
+        get_custom_headers(
+            OTEL_INSTRUMENTATION_HTTP_CAPTURE_HEADERS_SERVER_REQUEST
+        ),
+        normalise_request_header_name,
+    )
+
+
+def collect_custom_response_headers_attributes(message):
+    """returns custom HTTP response headers to be added into SERVER span as span attributes
+    Refer specification https://github.com/open-telemetry/opentelemetry-specification/blob/main/specification/trace/semantic_conventions/http.md#http-request-and-response-headers"""
+
+    sanitize = SanitizeValue(
+        get_custom_headers(
+            OTEL_INSTRUMENTATION_HTTP_CAPTURE_HEADERS_SANITIZE_FIELDS
+        )
+    )
+
+    # Decode headers before processing.
+    headers = {
+        _key.decode("utf8"): _value.decode("utf8")
+        for (_key, _value) in message.get("headers")
+    }
+
+    return sanitize.sanitize_header_values(
+        headers,
+        get_custom_headers(
+            OTEL_INSTRUMENTATION_HTTP_CAPTURE_HEADERS_SERVER_RESPONSE
+        ),
+        normalise_response_header_name,
+    )
+
+
 def get_host_port_url_tuple(scope):
     """Returns (host, port, full_url) tuple."""
     server = scope.get("server") or ["0.0.0.0", 80]
     port = server[1]
-    server_host = server[0] + (":" + str(port) if port != 80 else "")
+    server_host = server[0] + (":" + str(port) if str(port) != "80" else "")
     full_path = scope.get("root_path", "") + scope.get("path", "")
     http_url = scope.get("scheme", "http") + "://" + server_host + full_path
     return server_host, port, http_url
@@ -137,23 +406,50 @@ def set_status_code(span, status_code):
         )
     else:
         span.set_attribute(SpanAttributes.HTTP_STATUS_CODE, status_code)
-        span.set_status(Status(http_status_to_status_code(status_code)))
+        span.set_status(
+            Status(http_status_to_status_code(status_code, server_span=True))
+        )
 
 
 def get_default_span_details(scope: dict) -> Tuple[str, dict]:
-    """Default implementation for span_details_callback
-
+    """Default implementation for get_default_span_details
     Args:
-        scope: the asgi scope dictionary
-
+        scope: the ASGI scope dictionary
     Returns:
         a tuple of the span name, and any attributes to attach to the span.
     """
-    span_name = scope.get("path", "").strip() or "HTTP {}".format(
-        scope.get("method", "").strip()
+    span_name = (
+        scope.get("path", "").strip()
+        or f"HTTP {scope.get('method', '').strip()}"
     )
 
     return span_name, {}
+
+
+def _collect_target_attribute(
+    scope: typing.Dict[str, typing.Any]
+) -> typing.Optional[str]:
+    """
+    Returns the target path as defined by the Semantic Conventions.
+
+    This value is suitable to use in metrics as it should replace concrete
+    values with a parameterized name. Example: /api/users/{user_id}
+
+    Refer to the specification
+    https://github.com/open-telemetry/opentelemetry-specification/blob/main/specification/metrics/semantic_conventions/http-metrics.md#parameterized-attributes
+
+    Note: this function requires specific code for each framework, as there's no
+    standard attribute to use.
+    """
+    # FastAPI
+    root_path = scope.get("root_path", "")
+
+    route = scope.get("route")
+    path_format = getattr(route, "path_format", None)
+    if path_format:
+        return f"{root_path}{path_format}"
+
+    return None
 
 
 class OpenTelemetryMiddleware:
@@ -164,33 +460,62 @@ class OpenTelemetryMiddleware:
 
     Args:
         app: The ASGI application callable to forward requests to.
-        span_details_callback: Callback which should return a string
-            and a tuple, representing the desired span name and a
-            dictionary with any additional span attributes to set.
-            Optional: Defaults to get_default_span_details.
+        default_span_details: Callback which should return a string and a tuple, representing the desired default span name and a
+                      dictionary with any additional span attributes to set.
+                      Optional: Defaults to get_default_span_details.
+        server_request_hook: Optional callback which is called with the server span and ASGI
+                      scope object for every incoming request.
+        client_request_hook: Optional callback which is called with the internal span and an ASGI
+                      scope which is sent as a dictionary for when the method receive is called.
+        client_response_hook: Optional callback which is called with the internal span and an ASGI
+                      event which is sent as a dictionary for when the method send is called.
         tracer_provider: The optional tracer provider to use. If omitted
             the current globally configured one is used.
     """
 
+    # pylint: disable=too-many-branches
     def __init__(
         self,
         app,
         excluded_urls=None,
-        span_details_callback=None,
+        default_span_details=None,
+        server_request_hook: _ServerRequestHookT = None,
+        client_request_hook: _ClientRequestHookT = None,
+        client_response_hook: _ClientResponseHookT = None,
         tracer_provider=None,
+        meter_provider=None,
+        meter=None,
     ):
         self.app = guarantee_single_callable(app)
         self.tracer = trace.get_tracer(__name__, __version__, tracer_provider)
-        self.span_details_callback = (
-            span_details_callback or get_default_span_details
+        self.meter = (
+            get_meter(__name__, __version__, meter_provider)
+            if meter is None
+            else meter
+        )
+        self.duration_histogram = self.meter.create_histogram(
+            name=MetricInstruments.HTTP_SERVER_DURATION,
+            unit="ms",
+            description="measures the duration of the inbound HTTP request",
+        )
+        self.active_requests_counter = self.meter.create_up_down_counter(
+            name=MetricInstruments.HTTP_SERVER_ACTIVE_REQUESTS,
+            unit="requests",
+            description="measures the number of concurrent HTTP requests that are currently in-flight",
         )
         self.excluded_urls = excluded_urls
+        self.default_span_details = (
+            default_span_details or get_default_span_details
+        )
+        self.server_request_hook = server_request_hook
+        self.client_request_hook = client_request_hook
+        self.client_response_hook = client_response_hook
 
     async def __call__(self, scope, receive, send):
         """The ASGI application
 
         Args:
-            scope: A ASGI environment.
+            scope: An ASGI environment.
             receive: An awaitable callable yielding dictionaries
             send: An awaitable callable taking a single dictionary as argument.
         """
@@ -201,47 +526,131 @@ class OpenTelemetryMiddleware:
         if self.excluded_urls and self.excluded_urls.url_disabled(url):
             return await self.app(scope, receive, send)
 
-        token = context.attach(extract(scope, getter=asgi_getter))
-        span_name, additional_attributes = self.span_details_callback(scope)
+        span_name, additional_attributes = self.default_span_details(scope)
 
+        span, token = _start_internal_or_server_span(
+            tracer=self.tracer,
+            span_name=span_name,
+            start_time=None,
+            context_carrier=scope,
+            context_getter=asgi_getter,
+        )
+        attributes = collect_request_attributes(scope)
+        attributes.update(additional_attributes)
+        active_requests_count_attrs = _parse_active_request_count_attrs(
+            attributes
+        )
+        duration_attrs = _parse_duration_attrs(attributes)
+
+        if scope["type"] == "http":
+            self.active_requests_counter.add(1, active_requests_count_attrs)
         try:
-            with self.tracer.start_as_current_span(
-                span_name, kind=trace.SpanKind.SERVER,
-            ) as span:
-                if span.is_recording():
-                    attributes = collect_request_attributes(scope)
-                    attributes.update(additional_attributes)
+            with trace.use_span(span, end_on_exit=True) as current_span:
+                if current_span.is_recording():
                     for key, value in attributes.items():
-                        span.set_attribute(key, value)
+                        current_span.set_attribute(key, value)
 
-                @wraps(receive)
-                async def wrapped_receive():
-                    with self.tracer.start_as_current_span(
-                        " ".join((span_name, scope["type"], "receive"))
-                    ) as receive_span:
-                        message = await receive()
-                        if receive_span.is_recording():
-                            if message["type"] == "websocket.receive":
-                                set_status_code(receive_span, 200)
-                            receive_span.set_attribute("type", message["type"])
-                    return message
+                    if current_span.kind == trace.SpanKind.SERVER:
+                        custom_attributes = (
+                            collect_custom_request_headers_attributes(scope)
+                        )
+                        if len(custom_attributes) > 0:
+                            current_span.set_attributes(custom_attributes)
 
-                @wraps(send)
-                async def wrapped_send(message):
-                    with self.tracer.start_as_current_span(
-                        " ".join((span_name, scope["type"], "send"))
-                    ) as send_span:
-                        if send_span.is_recording():
-                            if message["type"] == "http.response.start":
-                                status_code = message["status"]
-                                set_status_code(span, status_code)
-                                set_status_code(send_span, status_code)
-                            elif message["type"] == "websocket.send":
-                                set_status_code(span, 200)
-                                set_status_code(send_span, 200)
-                            send_span.set_attribute("type", message["type"])
-                        await send(message)
+                if callable(self.server_request_hook):
+                    self.server_request_hook(current_span, scope)
 
-                await self.app(scope, wrapped_receive, wrapped_send)
+                otel_receive = self._get_otel_receive(
+                    span_name, scope, receive
+                )
+
+                otel_send = self._get_otel_send(
+                    current_span,
+                    span_name,
+                    scope,
+                    send,
+                    duration_attrs,
+                )
+                start = default_timer()
+
+                await self.app(scope, otel_receive, otel_send)
         finally:
-            context.detach(token)
+            if scope["type"] == "http":
+                target = _collect_target_attribute(scope)
+                if target:
+                    duration_attrs[SpanAttributes.HTTP_TARGET] = target
+                duration = max(round((default_timer() - start) * 1000), 0)
+                self.duration_histogram.record(duration, duration_attrs)
+                self.active_requests_counter.add(
+                    -1, active_requests_count_attrs
+                )
+            if token:
+                context.detach(token)
+
+    # pylint: enable=too-many-branches
+
+    def _get_otel_receive(self, server_span_name, scope, receive):
+        @wraps(receive)
+        async def otel_receive():
+            with self.tracer.start_as_current_span(
+                " ".join((server_span_name, scope["type"], "receive"))
+            ) as receive_span:
+                if callable(self.client_request_hook):
+                    self.client_request_hook(receive_span, scope)
+                message = await receive()
+                if receive_span.is_recording():
+                    if message["type"] == "websocket.receive":
+                        set_status_code(receive_span, 200)
+                    receive_span.set_attribute("type", message["type"])
+            return message
+
+        return otel_receive
+
+    def _get_otel_send(
+        self, server_span, server_span_name, scope, send, duration_attrs
+    ):
+        @wraps(send)
+        async def otel_send(message):
+            with self.tracer.start_as_current_span(
+                " ".join((server_span_name, scope["type"], "send"))
+            ) as send_span:
+                if callable(self.client_response_hook):
+                    self.client_response_hook(send_span, message)
+                if send_span.is_recording():
+                    if message["type"] == "http.response.start":
+                        status_code = message["status"]
+                        duration_attrs[
+                            SpanAttributes.HTTP_STATUS_CODE
+                        ] = status_code
+                        set_status_code(server_span, status_code)
+                        set_status_code(send_span, status_code)
+                    elif message["type"] == "websocket.send":
+                        set_status_code(server_span, 200)
+                        set_status_code(send_span, 200)
+                    send_span.set_attribute("type", message["type"])
+                    if (
+                        server_span.is_recording()
+                        and server_span.kind == trace.SpanKind.SERVER
+                        and "headers" in message
+                    ):
+                        custom_response_attributes = (
+                            collect_custom_response_headers_attributes(message)
+                        )
+                        if len(custom_response_attributes) > 0:
+                            server_span.set_attributes(
+                                custom_response_attributes
+                            )
+
+                propagator = get_global_response_propagator()
+                if propagator:
+                    propagator.inject(
+                        message,
+                        context=set_span_in_context(
+                            server_span, trace.context_api.Context()
+                        ),
+                        setter=asgi_setter,
+                    )
+
+                await send(message)
+
+        return otel_send

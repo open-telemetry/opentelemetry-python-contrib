@@ -30,8 +30,14 @@ from opentelemetry.instrumentation.tornado import (
 )
 from opentelemetry.semconv.trace import SpanAttributes
 from opentelemetry.test.test_base import TestBase
+from opentelemetry.test.wsgitestutil import WsgiTestBase
 from opentelemetry.trace import SpanKind
-from opentelemetry.util.http import get_excluded_urls, get_traced_request_attrs
+from opentelemetry.util.http import (
+    OTEL_INSTRUMENTATION_HTTP_CAPTURE_HEADERS_SERVER_REQUEST,
+    OTEL_INSTRUMENTATION_HTTP_CAPTURE_HEADERS_SERVER_RESPONSE,
+    get_excluded_urls,
+    get_traced_request_attrs,
+)
 
 from .tornado_test_app import (
     AsyncHandler,
@@ -49,12 +55,12 @@ class TornadoTest(AsyncHTTPTestCase, TestBase):
         return app
 
     def setUp(self):
+        super().setUp()
         TornadoInstrumentor().instrument(
             server_request_hook=getattr(self, "server_request_hook", None),
             client_request_hook=getattr(self, "client_request_hook", None),
             client_response_hook=getattr(self, "client_response_hook", None),
         )
-        super().setUp()
         # pylint: disable=protected-access
         self.env_patch = patch.dict(
             "os.environ",
@@ -104,13 +110,13 @@ class TestTornadoInstrumentor(TornadoTest):
 
     def test_patch_applied_only_once(self):
         tracer = trace.get_tracer(__name__)
-        self.assertTrue(patch_handler_class(tracer, AsyncHandler))
-        self.assertFalse(patch_handler_class(tracer, AsyncHandler))
-        self.assertFalse(patch_handler_class(tracer, AsyncHandler))
+        self.assertTrue(patch_handler_class(tracer, {}, AsyncHandler))
+        self.assertFalse(patch_handler_class(tracer, {}, AsyncHandler))
+        self.assertFalse(patch_handler_class(tracer, {}, AsyncHandler))
         unpatch_handler_class(AsyncHandler)
 
 
-class TestTornadoInstrumentation(TornadoTest):
+class TestTornadoInstrumentation(TornadoTest, WsgiTestBase):
     def test_http_calls(self):
         methods = ["GET", "POST", "PUT", "PATCH", "DELETE", "HEAD", "OPTIONS"]
         for method in methods:
@@ -135,7 +141,7 @@ class TestTornadoInstrumentation(TornadoTest):
         self.assertEqual(server.parent.span_id, client.context.span_id)
         self.assertEqual(server.context.trace_id, client.context.trace_id)
         self.assertEqual(server.kind, SpanKind.SERVER)
-        self.assert_span_has_attributes(
+        self.assertSpanHasAttributes(
             server,
             {
                 SpanAttributes.HTTP_METHOD: method,
@@ -143,8 +149,9 @@ class TestTornadoInstrumentation(TornadoTest):
                 SpanAttributes.HTTP_HOST: "127.0.0.1:"
                 + str(self.get_http_port()),
                 SpanAttributes.HTTP_TARGET: "/",
-                SpanAttributes.NET_PEER_IP: "127.0.0.1",
+                SpanAttributes.HTTP_CLIENT_IP: "127.0.0.1",
                 SpanAttributes.HTTP_STATUS_CODE: 201,
+                "tornado.handler": "tests.tornado_test_app.MainHandler",
             },
         )
 
@@ -152,7 +159,7 @@ class TestTornadoInstrumentation(TornadoTest):
         self.assertFalse(client.context.is_remote)
         self.assertIsNone(client.parent)
         self.assertEqual(client.kind, SpanKind.CLIENT)
-        self.assert_span_has_attributes(
+        self.assertSpanHasAttributes(
             client,
             {
                 SpanAttributes.HTTP_URL: self.get_url("/"),
@@ -185,15 +192,19 @@ class TestTornadoInstrumentation(TornadoTest):
     def _test_async_handler(self, url, handler_name):
         response = self.fetch(url)
         self.assertEqual(response.code, 201)
-        spans = self.memory_exporter.get_finished_spans()
+        spans = self.get_finished_spans()
         self.assertEqual(len(spans), 5)
 
-        sub2, sub1, sub_wrapper, server, client = self.sorted_spans(spans)
+        client = spans.by_name("GET")
+        server = spans.by_name(handler_name + ".get")
+        sub_wrapper = spans.by_name("sub-task-wrapper")
 
+        sub2 = spans.by_name("sub-task-2")
         self.assertEqual(sub2.name, "sub-task-2")
         self.assertEqual(sub2.parent, sub_wrapper.context)
         self.assertEqual(sub2.context.trace_id, client.context.trace_id)
 
+        sub1 = spans.by_name("sub-task-1")
         self.assertEqual(sub1.name, "sub-task-1")
         self.assertEqual(sub1.parent, sub_wrapper.context)
         self.assertEqual(sub1.context.trace_id, client.context.trace_id)
@@ -208,7 +219,7 @@ class TestTornadoInstrumentation(TornadoTest):
         self.assertEqual(server.parent.span_id, client.context.span_id)
         self.assertEqual(server.context.trace_id, client.context.trace_id)
         self.assertEqual(server.kind, SpanKind.SERVER)
-        self.assert_span_has_attributes(
+        self.assertSpanHasAttributes(
             server,
             {
                 SpanAttributes.HTTP_METHOD: "GET",
@@ -216,7 +227,7 @@ class TestTornadoInstrumentation(TornadoTest):
                 SpanAttributes.HTTP_HOST: "127.0.0.1:"
                 + str(self.get_http_port()),
                 SpanAttributes.HTTP_TARGET: url,
-                SpanAttributes.NET_PEER_IP: "127.0.0.1",
+                SpanAttributes.HTTP_CLIENT_IP: "127.0.0.1",
                 SpanAttributes.HTTP_STATUS_CODE: 201,
             },
         )
@@ -225,7 +236,7 @@ class TestTornadoInstrumentation(TornadoTest):
         self.assertFalse(client.context.is_remote)
         self.assertIsNone(client.parent)
         self.assertEqual(client.kind, SpanKind.CLIENT)
-        self.assert_span_has_attributes(
+        self.assertSpanHasAttributes(
             client,
             {
                 SpanAttributes.HTTP_URL: self.get_url(url),
@@ -238,13 +249,15 @@ class TestTornadoInstrumentation(TornadoTest):
         response = self.fetch("/error")
         self.assertEqual(response.code, 500)
 
-        spans = self.sorted_spans(self.memory_exporter.get_finished_spans())
+        spans = self.get_finished_spans()
         self.assertEqual(len(spans), 2)
-        server, client = spans
+
+        client = spans.by_name("GET")
+        server = spans.by_name("BadHandler.get")
 
         self.assertEqual(server.name, "BadHandler.get")
         self.assertEqual(server.kind, SpanKind.SERVER)
-        self.assert_span_has_attributes(
+        self.assertSpanHasAttributes(
             server,
             {
                 SpanAttributes.HTTP_METHOD: "GET",
@@ -252,14 +265,15 @@ class TestTornadoInstrumentation(TornadoTest):
                 SpanAttributes.HTTP_HOST: "127.0.0.1:"
                 + str(self.get_http_port()),
                 SpanAttributes.HTTP_TARGET: "/error",
-                SpanAttributes.NET_PEER_IP: "127.0.0.1",
+                SpanAttributes.HTTP_CLIENT_IP: "127.0.0.1",
                 SpanAttributes.HTTP_STATUS_CODE: 500,
+                "tornado.handler": "tests.tornado_test_app.BadHandler",
             },
         )
 
         self.assertEqual(client.name, "GET")
         self.assertEqual(client.kind, SpanKind.CLIENT)
-        self.assert_span_has_attributes(
+        self.assertSpanHasAttributes(
             client,
             {
                 SpanAttributes.HTTP_URL: self.get_url("/error"),
@@ -278,7 +292,7 @@ class TestTornadoInstrumentation(TornadoTest):
 
         self.assertEqual(server.name, "ErrorHandler.get")
         self.assertEqual(server.kind, SpanKind.SERVER)
-        self.assert_span_has_attributes(
+        self.assertSpanHasAttributes(
             server,
             {
                 SpanAttributes.HTTP_METHOD: "GET",
@@ -286,19 +300,55 @@ class TestTornadoInstrumentation(TornadoTest):
                 SpanAttributes.HTTP_HOST: "127.0.0.1:"
                 + str(self.get_http_port()),
                 SpanAttributes.HTTP_TARGET: "/missing-url",
-                SpanAttributes.NET_PEER_IP: "127.0.0.1",
+                SpanAttributes.HTTP_CLIENT_IP: "127.0.0.1",
                 SpanAttributes.HTTP_STATUS_CODE: 404,
+                "tornado.handler": "tornado.web.ErrorHandler",
             },
         )
 
         self.assertEqual(client.name, "GET")
         self.assertEqual(client.kind, SpanKind.CLIENT)
-        self.assert_span_has_attributes(
+        self.assertSpanHasAttributes(
             client,
             {
                 SpanAttributes.HTTP_URL: self.get_url("/missing-url"),
                 SpanAttributes.HTTP_METHOD: "GET",
                 SpanAttributes.HTTP_STATUS_CODE: 404,
+            },
+        )
+
+    def test_http_error(self):
+        response = self.fetch("/raise_403")
+        self.assertEqual(response.code, 403)
+
+        spans = self.sorted_spans(self.memory_exporter.get_finished_spans())
+        self.assertEqual(len(spans), 2)
+        server, client = spans
+
+        self.assertEqual(server.name, "RaiseHTTPErrorHandler.get")
+        self.assertEqual(server.kind, SpanKind.SERVER)
+        self.assertSpanHasAttributes(
+            server,
+            {
+                SpanAttributes.HTTP_METHOD: "GET",
+                SpanAttributes.HTTP_SCHEME: "http",
+                SpanAttributes.HTTP_HOST: "127.0.0.1:"
+                + str(self.get_http_port()),
+                SpanAttributes.HTTP_TARGET: "/raise_403",
+                SpanAttributes.HTTP_CLIENT_IP: "127.0.0.1",
+                SpanAttributes.HTTP_STATUS_CODE: 403,
+                "tornado.handler": "tests.tornado_test_app.RaiseHTTPErrorHandler",
+            },
+        )
+
+        self.assertEqual(client.name, "GET")
+        self.assertEqual(client.kind, SpanKind.CLIENT)
+        self.assertSpanHasAttributes(
+            client,
+            {
+                SpanAttributes.HTTP_URL: self.get_url("/raise_403"),
+                SpanAttributes.HTTP_METHOD: "GET",
+                SpanAttributes.HTTP_STATUS_CODE: 403,
             },
         )
 
@@ -322,7 +372,7 @@ class TestTornadoInstrumentation(TornadoTest):
         self.assertEqual(server.parent.span_id, client.context.span_id)
         self.assertEqual(server.context.trace_id, client.context.trace_id)
         self.assertEqual(server.kind, SpanKind.SERVER)
-        self.assert_span_has_attributes(
+        self.assertSpanHasAttributes(
             server,
             {
                 SpanAttributes.HTTP_METHOD: "GET",
@@ -330,8 +380,9 @@ class TestTornadoInstrumentation(TornadoTest):
                 SpanAttributes.HTTP_HOST: "127.0.0.1:"
                 + str(self.get_http_port()),
                 SpanAttributes.HTTP_TARGET: "/dyna",
-                SpanAttributes.NET_PEER_IP: "127.0.0.1",
+                SpanAttributes.HTTP_CLIENT_IP: "127.0.0.1",
                 SpanAttributes.HTTP_STATUS_CODE: 202,
+                "tornado.handler": "tests.tornado_test_app.DynamicHandler",
             },
         )
 
@@ -339,7 +390,7 @@ class TestTornadoInstrumentation(TornadoTest):
         self.assertFalse(client.context.is_remote)
         self.assertIsNone(client.parent)
         self.assertEqual(client.kind, SpanKind.CLIENT)
-        self.assert_span_has_attributes(
+        self.assertSpanHasAttributes(
             client,
             {
                 SpanAttributes.HTTP_URL: self.get_url("/dyna"),
@@ -363,7 +414,7 @@ class TestTornadoInstrumentation(TornadoTest):
         self.assertEqual(server.parent.span_id, client.context.span_id)
         self.assertEqual(server.context.trace_id, client.context.trace_id)
         self.assertEqual(server.kind, SpanKind.SERVER)
-        self.assert_span_has_attributes(
+        self.assertSpanHasAttributes(
             server,
             {
                 SpanAttributes.HTTP_METHOD: "GET",
@@ -371,8 +422,9 @@ class TestTornadoInstrumentation(TornadoTest):
                 SpanAttributes.HTTP_HOST: "127.0.0.1:"
                 + str(self.get_http_port()),
                 SpanAttributes.HTTP_TARGET: "/on_finish",
-                SpanAttributes.NET_PEER_IP: "127.0.0.1",
+                SpanAttributes.HTTP_CLIENT_IP: "127.0.0.1",
                 SpanAttributes.HTTP_STATUS_CODE: 200,
+                "tornado.handler": "tests.tornado_test_app.FinishedHandler",
             },
         )
 
@@ -380,7 +432,7 @@ class TestTornadoInstrumentation(TornadoTest):
         self.assertFalse(client.context.is_remote)
         self.assertIsNone(client.parent)
         self.assertEqual(client.kind, SpanKind.CLIENT)
-        self.assert_span_has_attributes(
+        self.assertSpanHasAttributes(
             client,
             {
                 SpanAttributes.HTTP_URL: self.get_url("/on_finish"),
@@ -406,7 +458,7 @@ class TestTornadoInstrumentation(TornadoTest):
             client = spans[0]
             self.assertEqual(client.name, "GET")
             self.assertEqual(client.kind, SpanKind.CLIENT)
-            self.assert_span_has_attributes(
+            self.assertSpanHasAttributes(
                 client,
                 {
                     SpanAttributes.HTTP_URL: self.get_url(path),
@@ -425,7 +477,7 @@ class TestTornadoInstrumentation(TornadoTest):
         self.assertEqual(len(spans), 2)
         server_span = spans[0]
         self.assertEqual(server_span.kind, SpanKind.SERVER)
-        self.assert_span_has_attributes(
+        self.assertSpanHasAttributes(
             server_span, {"uri": "/pong?q=abc&b=123", "query": "q=abc&b=123"}
         )
         self.memory_exporter.clear()
@@ -435,23 +487,10 @@ class TestTornadoInstrumentation(TornadoTest):
         set_global_response_propagator(TraceResponsePropagator())
 
         response = self.fetch("/")
-        headers = response.headers
 
         spans = self.sorted_spans(self.memory_exporter.get_finished_spans())
         self.assertEqual(len(spans), 3)
-        server_span = spans[1]
-
-        self.assertIn("traceresponse", headers)
-        self.assertEqual(
-            headers["access-control-expose-headers"], "traceresponse",
-        )
-        self.assertEqual(
-            headers["traceresponse"],
-            "00-{0}-{1}-01".format(
-                trace.format_trace_id(server_span.get_span_context().trace_id),
-                trace.format_span_id(server_span.get_span_context().span_id),
-            ),
-        )
+        self.assertTraceResponseHeaderMatchesSpan(response.headers, spans[1])
 
         self.memory_exporter.clear()
         set_global_response_propagator(orig)
@@ -468,7 +507,7 @@ class TestTornadoInstrumentation(TornadoTest):
 
         self.assertEqual(client.name, "GET")
         self.assertEqual(client.kind, SpanKind.CLIENT)
-        self.assert_span_has_attributes(
+        self.assertSpanHasAttributes(
             client,
             {
                 SpanAttributes.HTTP_URL: "http://httpbin.org/status/200",
@@ -478,6 +517,30 @@ class TestTornadoInstrumentation(TornadoTest):
         )
 
         self.memory_exporter.clear()
+
+
+class TestTornadoInstrumentationWithXHeaders(TornadoTest):
+    def get_httpserver_options(self):
+        return {"xheaders": True}
+
+    def test_xheaders(self):
+        response = self.fetch("/", headers={"X-Forwarded-For": "12.34.56.78"})
+        self.assertEqual(response.code, 201)
+        spans = self.get_finished_spans()
+        self.assertSpanHasAttributes(
+            spans.by_name("MainHandler.get"),
+            {
+                SpanAttributes.HTTP_METHOD: "GET",
+                SpanAttributes.HTTP_SCHEME: "http",
+                SpanAttributes.HTTP_HOST: "127.0.0.1:"
+                + str(self.get_http_port()),
+                SpanAttributes.HTTP_TARGET: "/",
+                SpanAttributes.HTTP_CLIENT_IP: "12.34.56.78",
+                SpanAttributes.HTTP_STATUS_CODE: 201,
+                SpanAttributes.NET_PEER_IP: "127.0.0.1",
+                "tornado.handler": "tests.tornado_test_app.MainHandler",
+            },
+        )
 
 
 class TornadoHookTest(TornadoTest):
@@ -505,7 +568,7 @@ class TornadoHookTest(TornadoTest):
         def client_request_hook(span, request):
             span.update_name("name from client hook")
 
-        def client_response_hook(span, request):
+        def client_response_hook(span, response):
             span.set_attribute("attr-from-hook", "value")
 
         self._server_request_hook = server_request_hook
@@ -520,15 +583,13 @@ class TornadoHookTest(TornadoTest):
         server_span = spans[1]
         self.assertEqual(server_span.kind, SpanKind.SERVER)
         self.assertEqual(server_span.name, "name from server hook")
-        self.assert_span_has_attributes(server_span, {"uri": "/"})
+        self.assertSpanHasAttributes(server_span, {"uri": "/"})
         self.memory_exporter.clear()
 
         client_span = spans[2]
         self.assertEqual(client_span.kind, SpanKind.CLIENT)
         self.assertEqual(client_span.name, "name from client hook")
-        self.assert_span_has_attributes(
-            client_span, {"attr-from-hook": "value"}
-        )
+        self.assertSpanHasAttributes(client_span, {"attr-from-hook": "value"})
 
         self.memory_exporter.clear()
 
@@ -553,3 +614,152 @@ class TestTornadoUninstrument(TornadoTest):
         self.assertEqual(len(spans), 1)
         manual = spans[0]
         self.assertEqual(manual.name, "manual")
+
+
+class TestTornadoWrappedWithOtherFramework(TornadoTest):
+    def get_app(self):
+        tracer = trace.get_tracer(__name__)
+        app = make_app(tracer)
+
+        def middleware(request):
+            """Wraps the request with a server span"""
+            with tracer.start_as_current_span(
+                "test", kind=trace.SpanKind.SERVER
+            ):
+                app(request)
+
+        return middleware
+
+    def test_mark_span_internal_in_presence_of_another_span(self):
+        response = self.fetch("/")
+        self.assertEqual(response.code, 201)
+        spans = self.sorted_spans(self.memory_exporter.get_finished_spans())
+        self.assertEqual(len(spans), 4)
+
+        tornado_handler_span = spans[1]
+        self.assertEqual(trace.SpanKind.INTERNAL, tornado_handler_span.kind)
+
+        test_span = spans[2]
+        self.assertEqual(trace.SpanKind.SERVER, test_span.kind)
+        self.assertEqual(
+            test_span.context.span_id, tornado_handler_span.parent.span_id
+        )
+
+
+class TestTornadoCustomRequestResponseHeadersAddedWithServerSpan(TornadoTest):
+    @patch.dict(
+        "os.environ",
+        {
+            OTEL_INSTRUMENTATION_HTTP_CAPTURE_HEADERS_SERVER_REQUEST: "Custom-Test-Header-1,Custom-Test-Header-2,Custom-Test-Header-3"
+        },
+    )
+    def test_custom_request_headers_added_in_server_span(self):
+        headers = {
+            "Custom-Test-Header-1": "Test Value 1",
+            "Custom-Test-Header-2": "TestValue2,TestValue3",
+        }
+        response = self.fetch("/", headers=headers)
+        self.assertEqual(response.code, 201)
+        _, tornado_span, _ = self.sorted_spans(
+            self.memory_exporter.get_finished_spans()
+        )
+        expected = {
+            "http.request.header.custom_test_header_1": ("Test Value 1",),
+            "http.request.header.custom_test_header_2": (
+                "TestValue2,TestValue3",
+            ),
+        }
+        self.assertEqual(tornado_span.kind, trace.SpanKind.SERVER)
+        self.assertSpanHasAttributes(tornado_span, expected)
+
+    @patch.dict(
+        "os.environ",
+        {
+            OTEL_INSTRUMENTATION_HTTP_CAPTURE_HEADERS_SERVER_RESPONSE: "content-type,content-length,my-custom-header,invalid-header"
+        },
+    )
+    def test_custom_response_headers_added_in_server_span(self):
+        response = self.fetch("/test_custom_response_headers")
+        self.assertEqual(response.code, 200)
+        tornado_span, _ = self.sorted_spans(
+            self.memory_exporter.get_finished_spans()
+        )
+        expected = {
+            "http.response.header.content_type": (
+                "text/plain; charset=utf-8",
+            ),
+            "http.response.header.content_length": ("0",),
+            "http.response.header.my_custom_header": (
+                "my-custom-value-1,my-custom-header-2",
+            ),
+        }
+        self.assertEqual(tornado_span.kind, trace.SpanKind.SERVER)
+        self.assertSpanHasAttributes(tornado_span, expected)
+
+
+class TestTornadoCustomRequestResponseHeadersNotAddedWithInternalSpan(
+    TornadoTest
+):
+    def get_app(self):
+        tracer = trace.get_tracer(__name__)
+        app = make_app(tracer)
+
+        def middleware(request):
+            """Wraps the request with a server span"""
+            with tracer.start_as_current_span(
+                "test", kind=trace.SpanKind.SERVER
+            ):
+                app(request)
+
+        return middleware
+
+    @patch.dict(
+        "os.environ",
+        {
+            OTEL_INSTRUMENTATION_HTTP_CAPTURE_HEADERS_SERVER_REQUEST: "Custom-Test-Header-1,Custom-Test-Header-2,Custom-Test-Header-3"
+        },
+    )
+    def test_custom_request_headers_not_added_in_internal_span(self):
+        headers = {
+            "Custom-Test-Header-1": "Test Value 1",
+            "Custom-Test-Header-2": "TestValue2,TestValue3",
+        }
+        response = self.fetch("/", headers=headers)
+        self.assertEqual(response.code, 201)
+        _, tornado_span, _, _ = self.sorted_spans(
+            self.memory_exporter.get_finished_spans()
+        )
+        not_expected = {
+            "http.request.header.custom_test_header_1": ("Test Value 1",),
+            "http.request.header.custom_test_header_2": (
+                "TestValue2,TestValue3",
+            ),
+        }
+        self.assertEqual(tornado_span.kind, trace.SpanKind.INTERNAL)
+        for key, _ in not_expected.items():
+            self.assertNotIn(key, tornado_span.attributes)
+
+    @patch.dict(
+        "os.environ",
+        {
+            OTEL_INSTRUMENTATION_HTTP_CAPTURE_HEADERS_SERVER_RESPONSE: "content-type,content-length,my-custom-header,invalid-header"
+        },
+    )
+    def test_custom_response_headers_not_added_in_internal_span(self):
+        response = self.fetch("/test_custom_response_headers")
+        self.assertEqual(response.code, 200)
+        tornado_span, _, _ = self.sorted_spans(
+            self.memory_exporter.get_finished_spans()
+        )
+        not_expected = {
+            "http.response.header.content_type": (
+                "text/plain; charset=utf-8",
+            ),
+            "http.response.header.content_length": ("0",),
+            "http.response.header.my_custom_header": (
+                "my-custom-value-1,my-custom-header-2",
+            ),
+        }
+        self.assertEqual(tornado_span.kind, trace.SpanKind.INTERNAL)
+        for key, _ in not_expected.items():
+            self.assertNotIn(key, tornado_span.attributes)

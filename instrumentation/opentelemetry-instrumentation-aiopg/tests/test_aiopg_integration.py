@@ -68,7 +68,7 @@ class TestAiopgInstrumentor(TestBase):
         span = spans_list[0]
 
         # Check version and name in span's instrumentation info
-        self.check_span_instrumentation_info(
+        self.assertEqualSpanInstrumentationInfo(
             span, opentelemetry.instrumentation.aiopg
         )
 
@@ -97,7 +97,7 @@ class TestAiopgInstrumentor(TestBase):
                     span = spans_list[0]
 
                     # Check version and name in span's instrumentation info
-                    self.check_span_instrumentation_info(
+                    self.assertEqualSpanInstrumentationInfo(
                         span, opentelemetry.instrumentation.aiopg
                     )
 
@@ -118,7 +118,7 @@ class TestAiopgInstrumentor(TestBase):
         span = spans_list[0]
 
         # Check version and name in span's instrumentation info
-        self.check_span_instrumentation_info(
+        self.assertEqualSpanInstrumentationInfo(
             span, opentelemetry.instrumentation.aiopg
         )
 
@@ -149,7 +149,7 @@ class TestAiopgInstrumentor(TestBase):
                         span = spans_list[0]
 
                         # Check version and name in span's instrumentation info
-                        self.check_span_instrumentation_info(
+                        self.assertEqualSpanInstrumentationInfo(
                             span, opentelemetry.instrumentation.aiopg
                         )
 
@@ -200,6 +200,23 @@ class TestAiopgInstrumentor(TestBase):
         spans_list = self.memory_exporter.get_finished_spans()
         self.assertEqual(len(spans_list), 0)
 
+        cnx = AiopgInstrumentor().instrument_connection(cnx)
+        cursor = async_call(cnx.cursor())
+        async_call(cursor.execute(query))
+
+        spans_list = self.memory_exporter.get_finished_spans()
+        self.assertEqual(len(spans_list), 1)
+
+    def test_instrument_connection_after_instrument(self):
+        cnx = async_call(aiopg.connect(database="test"))
+        query = "SELECT * FROM test"
+        cursor = async_call(cnx.cursor())
+        async_call(cursor.execute(query))
+
+        spans_list = self.memory_exporter.get_finished_spans()
+        self.assertEqual(len(spans_list), 0)
+
+        AiopgInstrumentor().instrument()
         cnx = AiopgInstrumentor().instrument_connection(cnx)
         cursor = async_call(cnx.cursor())
         async_call(cursor.execute(query))
@@ -490,6 +507,7 @@ class MockPool:
         self.server_host = server_host
         self.user = user
 
+    # pylint: disable=no-self-use
     async def release(self, conn):
         return conn
 
@@ -525,11 +543,11 @@ class MockConnection:
             database, server_port, server_host, user
         )
 
-    # pylint: disable=no-self-use
     def cursor(self):
         coro = self._cursor()
         return _ContextManager(coro)  # pylint: disable=no-value-for-parameter
 
+    # pylint: disable=no-self-use
     async def _cursor(self):
         return MockCursor()
 
@@ -568,6 +586,7 @@ class AiopgConnectionMock:
 
 
 class AiopgPoolMock:
+    # pylint: disable=no-self-use
     async def release(self, conn):
         return conn
 
@@ -575,6 +594,7 @@ class AiopgPoolMock:
         coro = self._acquire()
         return _PoolAcquireContextManager(coro, self)
 
+    # pylint: disable=no-self-use
     async def _acquire(self):
         return AiopgConnectionMock()
 

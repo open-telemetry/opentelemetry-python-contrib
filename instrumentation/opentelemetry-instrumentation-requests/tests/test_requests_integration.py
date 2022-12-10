@@ -17,9 +17,14 @@ from unittest import mock
 
 import httpretty
 import requests
+from requests.adapters import BaseAdapter
+from requests.models import Response
 
 import opentelemetry.instrumentation.requests
 from opentelemetry import context, trace
+
+# FIXME: fix the importing of this private attribute when the location of the _SUPPRESS_HTTP_INSTRUMENTATION_KEY is defined.
+from opentelemetry.context import _SUPPRESS_HTTP_INSTRUMENTATION_KEY
 from opentelemetry.instrumentation.requests import RequestsInstrumentor
 from opentelemetry.instrumentation.utils import _SUPPRESS_INSTRUMENTATION_KEY
 from opentelemetry.propagate import get_global_textmap, set_global_textmap
@@ -28,6 +33,24 @@ from opentelemetry.semconv.trace import SpanAttributes
 from opentelemetry.test.mock_textmap import MockTextMapPropagator
 from opentelemetry.test.test_base import TestBase
 from opentelemetry.trace import StatusCode
+from opentelemetry.util.http import get_excluded_urls
+
+
+class TransportMock:
+    def read(self, *args, **kwargs):
+        pass
+
+
+class MyAdapter(BaseAdapter):
+    def __init__(self, response):
+        super().__init__()
+        self._response = response
+
+    def send(self, *args, **kwargs):  # pylint:disable=signature-differs
+        return self._response
+
+    def close(self):
+        pass
 
 
 class InvalidResponseObjectException(Exception):
@@ -38,12 +61,28 @@ class InvalidResponseObjectException(Exception):
 
 class RequestsIntegrationTestBase(abc.ABC):
     # pylint: disable=no-member
+    # pylint: disable=too-many-public-methods
 
     URL = "http://httpbin.org/status/200"
 
     # pylint: disable=invalid-name
     def setUp(self):
         super().setUp()
+
+        self.env_patch = mock.patch.dict(
+            "os.environ",
+            {
+                "OTEL_PYTHON_REQUESTS_EXCLUDED_URLS": "http://localhost/env_excluded_arg/123,env_excluded_noarg"
+            },
+        )
+        self.env_patch.start()
+
+        self.exclude_patch = mock.patch(
+            "opentelemetry.instrumentation.requests._excluded_urls_from_env",
+            get_excluded_urls("REQUESTS"),
+        )
+        self.exclude_patch.start()
+
         RequestsInstrumentor().instrument()
         httpretty.enable()
         httpretty.register_uri(httpretty.GET, self.URL, body="Hello!")
@@ -51,6 +90,7 @@ class RequestsIntegrationTestBase(abc.ABC):
     # pylint: disable=invalid-name
     def tearDown(self):
         super().tearDown()
+        self.env_patch.stop()
         RequestsInstrumentor().uninstrument()
         httpretty.disable()
 
@@ -89,7 +129,7 @@ class RequestsIntegrationTestBase(abc.ABC):
 
         self.assertIs(span.status.status_code, trace.StatusCode.UNSET)
 
-        self.check_span_instrumentation_info(
+        self.assertEqualSpanInstrumentationInfo(
             span, opentelemetry.instrumentation.requests
         )
 
@@ -104,6 +144,36 @@ class RequestsIntegrationTestBase(abc.ABC):
         span = self.assert_span()
 
         self.assertEqual(span.name, "GET" + self.URL)
+
+    def test_excluded_urls_explicit(self):
+        url_404 = "http://httpbin.org/status/404"
+        httpretty.register_uri(
+            httpretty.GET,
+            url_404,
+            status=404,
+        )
+
+        RequestsInstrumentor().uninstrument()
+        RequestsInstrumentor().instrument(excluded_urls=".*/404")
+        self.perform_request(self.URL)
+        self.perform_request(url_404)
+
+        self.assert_span(num_spans=1)
+
+    def test_excluded_urls_from_env(self):
+        url = "http://localhost/env_excluded_arg/123"
+        httpretty.register_uri(
+            httpretty.GET,
+            url,
+            status=200,
+        )
+
+        RequestsInstrumentor().uninstrument()
+        RequestsInstrumentor().instrument()
+        self.perform_request(self.URL)
+        self.perform_request(url)
+
+        self.assert_span(num_spans=1)
 
     def test_name_callback_default(self):
         def name_callback(method, url):
@@ -120,7 +190,9 @@ class RequestsIntegrationTestBase(abc.ABC):
     def test_not_foundbasic(self):
         url_404 = "http://httpbin.org/status/404"
         httpretty.register_uri(
-            httpretty.GET, url_404, status=404,
+            httpretty.GET,
+            url_404,
+            status=404,
         )
         result = self.perform_request(url_404)
         self.assertEqual(result.status_code, 404)
@@ -132,7 +204,8 @@ class RequestsIntegrationTestBase(abc.ABC):
         )
 
         self.assertIs(
-            span.status.status_code, trace.StatusCode.ERROR,
+            span.status.status_code,
+            trace.StatusCode.ERROR,
         )
 
     def test_uninstrument(self):
@@ -176,11 +249,23 @@ class RequestsIntegrationTestBase(abc.ABC):
 
         self.assert_span(num_spans=0)
 
+    def test_suppress_http_instrumentation(self):
+        token = context.attach(
+            context.set_value(_SUPPRESS_HTTP_INSTRUMENTATION_KEY, True)
+        )
+        try:
+            result = self.perform_request(self.URL)
+            self.assertEqual(result.text, "Hello!")
+        finally:
+            context.detach(token)
+
+        self.assert_span(num_spans=0)
+
     def test_not_recording(self):
         with mock.patch("opentelemetry.trace.INVALID_SPAN") as mock_span:
             RequestsInstrumentor().uninstrument()
             RequestsInstrumentor().instrument(
-                tracer_provider=trace._DefaultTracerProvider()
+                tracer_provider=trace.NoOpTracerProvider()
             )
             mock_span.is_recording.return_value = False
             result = self.perform_request(self.URL)
@@ -224,7 +309,8 @@ class RequestsIntegrationTestBase(abc.ABC):
             )
 
         RequestsInstrumentor().instrument(
-            tracer_provider=self.tracer_provider, span_callback=span_callback,
+            tracer_provider=self.tracer_provider,
+            span_callback=span_callback,
         )
 
         result = self.perform_request(self.URL)
@@ -335,6 +421,26 @@ class RequestsIntegrationTestBase(abc.ABC):
         span = self.assert_span()
         self.assertEqual(span.status.status_code, StatusCode.ERROR)
 
+    def test_adapter_with_custom_response(self):
+        response = Response()
+        response.status_code = 210
+        response.reason = "hello adapter"
+        response.raw = TransportMock()
+
+        session = requests.Session()
+        session.mount(self.URL, MyAdapter(response))
+
+        self.perform_request(self.URL, session)
+        span = self.assert_span()
+        self.assertEqual(
+            span.attributes,
+            {
+                "http.method": "GET",
+                "http.url": self.URL,
+                "http.status_code": 210,
+            },
+        )
+
 
 class TestRequestsIntegration(RequestsIntegrationTestBase, TestBase):
     @staticmethod
@@ -381,3 +487,47 @@ class TestRequestsIntegrationPreparedRequest(
         request = requests.Request("GET", url)
         prepared_request = session.prepare_request(request)
         return session.send(prepared_request)
+
+
+class TestRequestsIntergrationMetric(TestBase):
+    URL = "http://examplehost:8000/status/200"
+
+    def setUp(self):
+        super().setUp()
+        RequestsInstrumentor().instrument(meter_provider=self.meter_provider)
+
+        httpretty.enable()
+        httpretty.register_uri(httpretty.GET, self.URL, body="Hello!")
+
+    def tearDown(self):
+        super().tearDown()
+        RequestsInstrumentor().uninstrument()
+        httpretty.disable()
+
+    @staticmethod
+    def perform_request(url: str) -> requests.Response:
+        return requests.get(url)
+
+    def test_basic_metric_success(self):
+        self.perform_request(self.URL)
+
+        expected_attributes = {
+            "http.status_code": 200,
+            "http.host": "examplehost",
+            "net.peer.port": 8000,
+            "net.peer.name": "examplehost",
+            "http.method": "GET",
+            "http.flavor": "1.1",
+            "http.scheme": "http",
+        }
+
+        for (
+            resource_metrics
+        ) in self.memory_metrics_reader.get_metrics_data().resource_metrics:
+            for scope_metrics in resource_metrics.scope_metrics:
+                for metric in scope_metrics.metrics:
+                    for data_point in metric.data.data_points:
+                        self.assertDictEqual(
+                            expected_attributes, dict(data_point.attributes)
+                        )
+                        self.assertEqual(data_point.count, 1)

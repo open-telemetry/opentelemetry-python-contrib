@@ -12,6 +12,4 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-__version__ = "0.23.dev0"
-
-_instruments = tuple()
+__version__ = "0.37b0.dev"

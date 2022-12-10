@@ -20,11 +20,20 @@ from urllib.parse import urlsplit
 
 import opentelemetry.instrumentation.wsgi as otel_wsgi
 from opentelemetry import trace as trace_api
+from opentelemetry.sdk.metrics.export import (
+    HistogramDataPoint,
+    NumberDataPoint,
+)
 from opentelemetry.sdk.resources import Resource
 from opentelemetry.semconv.trace import SpanAttributes
 from opentelemetry.test.test_base import TestBase
 from opentelemetry.test.wsgitestutil import WsgiTestBase
 from opentelemetry.trace import StatusCode
+from opentelemetry.util.http import (
+    OTEL_INSTRUMENTATION_HTTP_CAPTURE_HEADERS_SANITIZE_FIELDS,
+    OTEL_INSTRUMENTATION_HTTP_CAPTURE_HEADERS_SERVER_REQUEST,
+    OTEL_INSTRUMENTATION_HTTP_CAPTURE_HEADERS_SERVER_RESPONSE,
+)
 
 
 class Response:
@@ -80,6 +89,38 @@ def error_wsgi(environ, start_response):
 def error_wsgi_unhandled(environ, start_response):
     assert isinstance(environ, dict)
     raise ValueError
+
+
+def wsgi_with_custom_response_headers(environ, start_response):
+    assert isinstance(environ, dict)
+    start_response(
+        "200 OK",
+        [
+            ("content-type", "text/plain; charset=utf-8"),
+            ("content-length", "100"),
+            ("my-custom-header", "my-custom-value-1,my-custom-header-2"),
+            (
+                "my-custom-regex-header-1",
+                "my-custom-regex-value-1,my-custom-regex-value-2",
+            ),
+            (
+                "My-Custom-Regex-Header-2",
+                "my-custom-regex-value-3,my-custom-regex-value-4",
+            ),
+            ("My-Secret-Header", "My Secret Value"),
+        ],
+    )
+    return [b"*"]
+
+
+_expected_metric_names = [
+    "http.server.active_requests",
+    "http.server.duration",
+]
+_recommended_attrs = {
+    "http.server.active_requests": otel_wsgi._active_requests_count_attrs,
+    "http.server.duration": otel_wsgi._duration_attrs,
+}
 
 
 class TestWsgiApplication(WsgiTestBase):
@@ -209,8 +250,39 @@ class TestWsgiApplication(WsgiTestBase):
         span_list = self.memory_exporter.get_finished_spans()
         self.assertEqual(len(span_list), 1)
         self.assertEqual(
-            span_list[0].status.status_code, StatusCode.ERROR,
+            span_list[0].status.status_code,
+            StatusCode.ERROR,
         )
+
+    def test_wsgi_metrics(self):
+        app = otel_wsgi.OpenTelemetryMiddleware(error_wsgi_unhandled)
+        self.assertRaises(ValueError, app, self.environ, self.start_response)
+        self.assertRaises(ValueError, app, self.environ, self.start_response)
+        self.assertRaises(ValueError, app, self.environ, self.start_response)
+        metrics_list = self.memory_metrics_reader.get_metrics_data()
+        number_data_point_seen = False
+        histogram_data_point_seen = False
+
+        self.assertTrue(len(metrics_list.resource_metrics) != 0)
+        for resource_metric in metrics_list.resource_metrics:
+            self.assertTrue(len(resource_metric.scope_metrics) != 0)
+            for scope_metric in resource_metric.scope_metrics:
+                self.assertTrue(len(scope_metric.metrics) != 0)
+                for metric in scope_metric.metrics:
+                    self.assertIn(metric.name, _expected_metric_names)
+                    data_points = list(metric.data.data_points)
+                    self.assertEqual(len(data_points), 1)
+                    for point in data_points:
+                        if isinstance(point, HistogramDataPoint):
+                            self.assertEqual(point.count, 3)
+                            histogram_data_point_seen = True
+                        if isinstance(point, NumberDataPoint):
+                            number_data_point_seen = True
+                        for attr in point.attributes:
+                            self.assertIn(
+                                attr, _recommended_attrs[metric.name]
+                            )
+        self.assertTrue(number_data_point_seen and histogram_data_point_seen)
 
     def test_default_span_name_missing_request_method(self):
         """Test that default span_names with missing request method."""
@@ -411,6 +483,193 @@ class TestWsgiMiddlewareWithTracerProvider(WsgiTestBase):
         )
         response = app(self.environ, self.start_response)
         self.validate_response(response, exporter)
+
+
+class TestWsgiMiddlewareWrappedWithAnotherFramework(WsgiTestBase):
+    def test_mark_span_internal_in_presence_of_span_from_other_framework(self):
+        tracer_provider, exporter = TestBase.create_tracer_provider()
+        tracer = tracer_provider.get_tracer(__name__)
+
+        with tracer.start_as_current_span(
+            "test", kind=trace_api.SpanKind.SERVER
+        ) as parent_span:
+            app = otel_wsgi.OpenTelemetryMiddleware(
+                simple_wsgi, tracer_provider=tracer_provider
+            )
+            response = app(self.environ, self.start_response)
+            while True:
+                try:
+                    value = next(response)
+                    self.assertEqual(value, b"*")
+                except StopIteration:
+                    break
+
+            span_list = exporter.get_finished_spans()
+
+            self.assertEqual(trace_api.SpanKind.INTERNAL, span_list[0].kind)
+            self.assertEqual(trace_api.SpanKind.SERVER, parent_span.kind)
+
+            # internal span should be child of the parent span we have provided
+            self.assertEqual(
+                parent_span.context.span_id, span_list[0].parent.span_id
+            )
+
+
+class TestAdditionOfCustomRequestResponseHeaders(WsgiTestBase):
+    def setUp(self):
+        super().setUp()
+        self.tracer = self.tracer_provider.get_tracer(__name__)
+
+    def iterate_response(self, response):
+        while True:
+            try:
+                value = next(response)
+                self.assertEqual(value, b"*")
+            except StopIteration:
+                break
+
+    @mock.patch.dict(
+        "os.environ",
+        {
+            OTEL_INSTRUMENTATION_HTTP_CAPTURE_HEADERS_SANITIZE_FIELDS: ".*my-secret.*",
+            OTEL_INSTRUMENTATION_HTTP_CAPTURE_HEADERS_SERVER_REQUEST: "Custom-Test-Header-1,Custom-Test-Header-2,Custom-Test-Header-3,Regex-Test-Header-.*,Regex-Invalid-Test-Header-.*,.*my-secret.*",
+        },
+    )
+    def test_custom_request_headers_non_recording_span(self):
+        try:
+            tracer_provider = trace_api.NoOpTracerProvider()
+            self.environ.update(
+                {
+                    "HTTP_CUSTOM_TEST_HEADER_1": "Test Value 2",
+                    "HTTP_CUSTOM_TEST_HEADER_2": "TestValue2,TestValue3",
+                    "HTTP_REGEX_TEST_HEADER_1": "Regex Test Value 1",
+                    "HTTP_REGEX_TEST_HEADER_2": "RegexTestValue2,RegexTestValue3",
+                    "HTTP_MY_SECRET_HEADER": "My Secret Value",
+                }
+            )
+            app = otel_wsgi.OpenTelemetryMiddleware(
+                simple_wsgi, tracer_provider=tracer_provider
+            )
+            response = app(self.environ, self.start_response)
+            self.iterate_response(response)
+        except Exception as exc:  # pylint: disable=W0703
+            self.fail(f"Exception raised with NonRecordingSpan {exc}")
+
+    @mock.patch.dict(
+        "os.environ",
+        {
+            OTEL_INSTRUMENTATION_HTTP_CAPTURE_HEADERS_SANITIZE_FIELDS: ".*my-secret.*",
+            OTEL_INSTRUMENTATION_HTTP_CAPTURE_HEADERS_SERVER_REQUEST: "Custom-Test-Header-1,Custom-Test-Header-2,Custom-Test-Header-3,Regex-Test-Header-.*,Regex-Invalid-Test-Header-.*,.*my-secret.*",
+        },
+    )
+    def test_custom_request_headers_added_in_server_span(self):
+        self.environ.update(
+            {
+                "HTTP_CUSTOM_TEST_HEADER_1": "Test Value 1",
+                "HTTP_CUSTOM_TEST_HEADER_2": "TestValue2,TestValue3",
+                "HTTP_REGEX_TEST_HEADER_1": "Regex Test Value 1",
+                "HTTP_REGEX_TEST_HEADER_2": "RegexTestValue2,RegexTestValue3",
+                "HTTP_MY_SECRET_HEADER": "My Secret Value",
+            }
+        )
+        app = otel_wsgi.OpenTelemetryMiddleware(simple_wsgi)
+        response = app(self.environ, self.start_response)
+        self.iterate_response(response)
+        span = self.memory_exporter.get_finished_spans()[0]
+        expected = {
+            "http.request.header.custom_test_header_1": ("Test Value 1",),
+            "http.request.header.custom_test_header_2": (
+                "TestValue2,TestValue3",
+            ),
+            "http.request.header.regex_test_header_1": ("Regex Test Value 1",),
+            "http.request.header.regex_test_header_2": (
+                "RegexTestValue2,RegexTestValue3",
+            ),
+            "http.request.header.my_secret_header": ("[REDACTED]",),
+        }
+        self.assertSpanHasAttributes(span, expected)
+
+    @mock.patch.dict(
+        "os.environ",
+        {
+            OTEL_INSTRUMENTATION_HTTP_CAPTURE_HEADERS_SERVER_REQUEST: "Custom-Test-Header-1"
+        },
+    )
+    def test_custom_request_headers_not_added_in_internal_span(self):
+        self.environ.update(
+            {
+                "HTTP_CUSTOM_TEST_HEADER_1": "Test Value 1",
+            }
+        )
+
+        with self.tracer.start_as_current_span(
+            "test", kind=trace_api.SpanKind.SERVER
+        ):
+            app = otel_wsgi.OpenTelemetryMiddleware(simple_wsgi)
+            response = app(self.environ, self.start_response)
+            self.iterate_response(response)
+            span = self.memory_exporter.get_finished_spans()[0]
+            not_expected = {
+                "http.request.header.custom_test_header_1": ("Test Value 1",),
+            }
+            for key, _ in not_expected.items():
+                self.assertNotIn(key, span.attributes)
+
+    @mock.patch.dict(
+        "os.environ",
+        {
+            OTEL_INSTRUMENTATION_HTTP_CAPTURE_HEADERS_SANITIZE_FIELDS: ".*my-secret.*",
+            OTEL_INSTRUMENTATION_HTTP_CAPTURE_HEADERS_SERVER_RESPONSE: "content-type,content-length,my-custom-header,invalid-header,my-custom-regex-header-.*,invalid-regex-header-.*,.*my-secret.*",
+        },
+    )
+    def test_custom_response_headers_added_in_server_span(self):
+        app = otel_wsgi.OpenTelemetryMiddleware(
+            wsgi_with_custom_response_headers
+        )
+        response = app(self.environ, self.start_response)
+        self.iterate_response(response)
+        span = self.memory_exporter.get_finished_spans()[0]
+        expected = {
+            "http.response.header.content_type": (
+                "text/plain; charset=utf-8",
+            ),
+            "http.response.header.content_length": ("100",),
+            "http.response.header.my_custom_header": (
+                "my-custom-value-1,my-custom-header-2",
+            ),
+            "http.response.header.my_custom_regex_header_1": (
+                "my-custom-regex-value-1,my-custom-regex-value-2",
+            ),
+            "http.response.header.my_custom_regex_header_2": (
+                "my-custom-regex-value-3,my-custom-regex-value-4",
+            ),
+            "http.response.header.my_secret_header": ("[REDACTED]",),
+        }
+        self.assertSpanHasAttributes(span, expected)
+
+    @mock.patch.dict(
+        "os.environ",
+        {
+            OTEL_INSTRUMENTATION_HTTP_CAPTURE_HEADERS_SERVER_RESPONSE: "my-custom-header"
+        },
+    )
+    def test_custom_response_headers_not_added_in_internal_span(self):
+        with self.tracer.start_as_current_span(
+            "test", kind=trace_api.SpanKind.INTERNAL
+        ):
+            app = otel_wsgi.OpenTelemetryMiddleware(
+                wsgi_with_custom_response_headers
+            )
+            response = app(self.environ, self.start_response)
+            self.iterate_response(response)
+            span = self.memory_exporter.get_finished_spans()[0]
+            not_expected = {
+                "http.response.header.my_custom_header": (
+                    "my-custom-value-1,my-custom-header-2",
+                ),
+            }
+            for key, _ in not_expected.items():
+                self.assertNotIn(key, span.attributes)
 
 
 if __name__ == "__main__":

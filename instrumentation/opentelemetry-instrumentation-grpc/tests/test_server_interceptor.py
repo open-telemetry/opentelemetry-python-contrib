@@ -64,14 +64,16 @@ class Servicer(GRPCTestServerServicer):
     # pylint:disable=C0103
     def SimpleMethod(self, request, context):
         return Response(
-            server_id=request.client_id, response_data=request.request_data,
+            server_id=request.client_id,
+            response_data=request.request_data,
         )
 
     # pylint:disable=C0103
     def ServerStreamingMethod(self, request, context):
         for data in ("one", "two", "three"):
             yield Response(
-                server_id=request.client_id, response_data=data,
+                server_id=request.client_id,
+                response_data=data,
             )
 
 
@@ -84,13 +86,14 @@ class TestOpenTelemetryServerInterceptor(TestBase):
         grpc_server_instrumentor.instrument()
         with futures.ThreadPoolExecutor(max_workers=1) as executor:
             server = grpc.server(
-                executor, options=(("grpc.so_reuseport", 0),),
+                executor,
+                options=(("grpc.so_reuseport", 0),),
             )
 
             server.add_generic_rpc_handlers((UnaryUnaryRpcHandler(handler),))
 
             port = server.add_insecure_port("[::]:0")
-            channel = grpc.insecure_channel("localhost:{:d}".format(port))
+            channel = grpc.insecure_channel(f"localhost:{port:d}")
 
             rpc_call = "TestServicer/handler"
             try:
@@ -106,12 +109,12 @@ class TestOpenTelemetryServerInterceptor(TestBase):
             self.assertIs(span.kind, trace.SpanKind.SERVER)
 
             # Check version and name in span's instrumentation info
-            self.check_span_instrumentation_info(
+            self.assertEqualSpanInstrumentationInfo(
                 span, opentelemetry.instrumentation.grpc
             )
 
             # Check attributes
-            self.assert_span_has_attributes(
+            self.assertSpanHasAttributes(
                 span,
                 {
                     SpanAttributes.NET_PEER_IP: "[::1]",
@@ -136,13 +139,14 @@ class TestOpenTelemetryServerInterceptor(TestBase):
         grpc_server_instrumentor.uninstrument()
         with futures.ThreadPoolExecutor(max_workers=1) as executor:
             server = grpc.server(
-                executor, options=(("grpc.so_reuseport", 0),),
+                executor,
+                options=(("grpc.so_reuseport", 0),),
             )
 
             server.add_generic_rpc_handlers((UnaryUnaryRpcHandler(handler),))
 
             port = server.add_insecure_port("[::]:0")
-            channel = grpc.insecure_channel("localhost:{:d}".format(port))
+            channel = grpc.insecure_channel(f"localhost:{port:d}")
 
             rpc_call = "TestServicer/test"
             try:
@@ -168,7 +172,7 @@ class TestOpenTelemetryServerInterceptor(TestBase):
             )
             add_GRPCTestServerServicer_to_server(Servicer(), server)
             port = server.add_insecure_port("[::]:0")
-            channel = grpc.insecure_channel("localhost:{:d}".format(port))
+            channel = grpc.insecure_channel(f"localhost:{port:d}")
 
             rpc_call = "/GRPCTestServer/SimpleMethod"
             request = Request(client_id=1, request_data="test")
@@ -187,12 +191,12 @@ class TestOpenTelemetryServerInterceptor(TestBase):
         self.assertIs(span.kind, trace.SpanKind.SERVER)
 
         # Check version and name in span's instrumentation info
-        self.check_span_instrumentation_info(
+        self.assertEqualSpanInstrumentationInfo(
             span, opentelemetry.instrumentation.grpc
         )
 
         # Check attributes
-        self.assert_span_has_attributes(
+        self.assertSpanHasAttributes(
             span,
             {
                 SpanAttributes.NET_PEER_IP: "[::1]",
@@ -236,7 +240,7 @@ class TestOpenTelemetryServerInterceptor(TestBase):
             )
             add_GRPCTestServerServicer_to_server(TwoSpanServicer(), server)
             port = server.add_insecure_port("[::]:0")
-            channel = grpc.insecure_channel("localhost:{:d}".format(port))
+            channel = grpc.insecure_channel(f"localhost:{port:d}")
 
             # setup the RPC
             rpc_call = "/GRPCTestServer/SimpleMethod"
@@ -257,12 +261,12 @@ class TestOpenTelemetryServerInterceptor(TestBase):
         self.assertIs(parent_span.kind, trace.SpanKind.SERVER)
 
         # Check version and name in span's instrumentation info
-        self.check_span_instrumentation_info(
+        self.assertEqualSpanInstrumentationInfo(
             parent_span, opentelemetry.instrumentation.grpc
         )
 
         # Check attributes
-        self.assert_span_has_attributes(
+        self.assertSpanHasAttributes(
             parent_span,
             {
                 SpanAttributes.NET_PEER_IP: "[::1]",
@@ -297,7 +301,7 @@ class TestOpenTelemetryServerInterceptor(TestBase):
             )
             add_GRPCTestServerServicer_to_server(Servicer(), server)
             port = server.add_insecure_port("[::]:0")
-            channel = grpc.insecure_channel("localhost:{:d}".format(port))
+            channel = grpc.insecure_channel(f"localhost:{port:d}")
 
             # setup the RPC
             rpc_call = "/GRPCTestServer/ServerStreamingMethod"
@@ -317,12 +321,12 @@ class TestOpenTelemetryServerInterceptor(TestBase):
         self.assertIs(span.kind, trace.SpanKind.SERVER)
 
         # Check version and name in span's instrumentation info
-        self.check_span_instrumentation_info(
+        self.assertEqualSpanInstrumentationInfo(
             span, opentelemetry.instrumentation.grpc
         )
 
         # Check attributes
-        self.assert_span_has_attributes(
+        self.assertSpanHasAttributes(
             span,
             {
                 SpanAttributes.NET_PEER_IP: "[::1]",
@@ -351,7 +355,8 @@ class TestOpenTelemetryServerInterceptor(TestBase):
 
                 for data in ("one", "two", "three"):
                     yield Response(
-                        server_id=request.client_id, response_data=data,
+                        server_id=request.client_id,
+                        response_data=data,
                     )
 
         # Intercept gRPC calls...
@@ -365,7 +370,7 @@ class TestOpenTelemetryServerInterceptor(TestBase):
             )
             add_GRPCTestServerServicer_to_server(TwoSpanServicer(), server)
             port = server.add_insecure_port("[::]:0")
-            channel = grpc.insecure_channel("localhost:{:d}".format(port))
+            channel = grpc.insecure_channel(f"localhost:{port:d}")
 
             # setup the RPC
             rpc_call = "/GRPCTestServer/ServerStreamingMethod"
@@ -386,12 +391,12 @@ class TestOpenTelemetryServerInterceptor(TestBase):
         self.assertIs(parent_span.kind, trace.SpanKind.SERVER)
 
         # Check version and name in span's instrumentation info
-        self.check_span_instrumentation_info(
+        self.assertEqualSpanInstrumentationInfo(
             parent_span, opentelemetry.instrumentation.grpc
         )
 
         # Check attributes
-        self.assert_span_has_attributes(
+        self.assertSpanHasAttributes(
             parent_span,
             {
                 SpanAttributes.NET_PEER_IP: "[::1]",
@@ -433,7 +438,7 @@ class TestOpenTelemetryServerInterceptor(TestBase):
             server.add_generic_rpc_handlers((UnaryUnaryRpcHandler(handler),))
 
             port = server.add_insecure_port("[::]:0")
-            channel = grpc.insecure_channel("localhost:{:d}".format(port))
+            channel = grpc.insecure_channel(f"localhost:{port:d}")
 
             active_span_before_call = trace.get_current_span()
             try:
@@ -469,7 +474,7 @@ class TestOpenTelemetryServerInterceptor(TestBase):
             server.add_generic_rpc_handlers((UnaryUnaryRpcHandler(handler),))
 
             port = server.add_insecure_port("[::]:0")
-            channel = grpc.insecure_channel("localhost:{:d}".format(port))
+            channel = grpc.insecure_channel(f"localhost:{port:d}")
 
             try:
                 server.start()
@@ -490,7 +495,7 @@ class TestOpenTelemetryServerInterceptor(TestBase):
             self.assertIsNone(span2.parent)
 
             # check attributes
-            self.assert_span_has_attributes(
+            self.assertSpanHasAttributes(
                 span,
                 {
                     SpanAttributes.NET_PEER_IP: "[::1]",
@@ -533,7 +538,7 @@ class TestOpenTelemetryServerInterceptor(TestBase):
             server.add_generic_rpc_handlers((UnaryUnaryRpcHandler(handler),))
 
             port = server.add_insecure_port("[::]:0")
-            channel = grpc.insecure_channel("localhost:{:d}".format(port))
+            channel = grpc.insecure_channel(f"localhost:{port:d}")
 
             try:
                 server.start()
@@ -562,7 +567,7 @@ class TestOpenTelemetryServerInterceptor(TestBase):
             self.assertIsNone(span2.parent)
 
             # check attributes
-            self.assert_span_has_attributes(
+            self.assertSpanHasAttributes(
                 span,
                 {
                     SpanAttributes.NET_PEER_IP: "[::1]",
@@ -599,7 +604,7 @@ class TestOpenTelemetryServerInterceptor(TestBase):
             server.add_generic_rpc_handlers((UnaryUnaryRpcHandler(handler),))
 
             port = server.add_insecure_port("[::]:0")
-            channel = grpc.insecure_channel("localhost:{:d}".format(port))
+            channel = grpc.insecure_channel(f"localhost:{port:d}")
 
             rpc_call = "TestServicer/handler"
 
@@ -617,7 +622,7 @@ class TestOpenTelemetryServerInterceptor(TestBase):
         self.assertIs(span.kind, trace.SpanKind.SERVER)
 
         # Check version and name in span's instrumentation info
-        self.check_span_instrumentation_info(
+        self.assertEqualSpanInstrumentationInfo(
             span, opentelemetry.instrumentation.grpc
         )
 
@@ -625,13 +630,11 @@ class TestOpenTelemetryServerInterceptor(TestBase):
         self.assertEqual(span.status.status_code, StatusCode.ERROR)
         self.assertEqual(
             span.status.description,
-            "{}:{}".format(
-                grpc.StatusCode.FAILED_PRECONDITION, failure_message
-            ),
+            f"{grpc.StatusCode.FAILED_PRECONDITION}:{failure_message}",
         )
 
         # Check attributes
-        self.assert_span_has_attributes(
+        self.assertSpanHasAttributes(
             span,
             {
                 SpanAttributes.NET_PEER_IP: "[::1]",

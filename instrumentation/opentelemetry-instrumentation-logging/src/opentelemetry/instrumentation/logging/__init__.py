@@ -47,13 +47,17 @@ LEVELS = {
 
 
 class LoggingInstrumentor(BaseInstrumentor):  # pylint: disable=empty-docstring
-    __doc__ = """An instrumentor for stdlib logging module.
+    __doc__ = f"""An instrumentor for stdlib logging module.
 
     This instrumentor injects tracing context into logging records and optionally sets the global logging format to the following:
 
     .. code-block::
 
-        {default_logging_format}
+        {DEFAULT_LOGGING_FORMAT}
+
+        def log_hook(span: Span, record: LogRecord):
+                if span and span.is_recording():
+                    record.custom_user_attribute_from_log_hook = "some-value"
 
     Args:
         tracer_provider: Tracer provider instance that can be used to fetch a tracer.
@@ -66,32 +70,42 @@ class LoggingInstrumentor(BaseInstrumentor):  # pylint: disable=empty-docstring
             logging.WARN
             logging.ERROR
             logging.FATAL
+        log_hook: execute custom logic when record is created
 
     See `BaseInstrumentor`
-    """.format(
-        default_logging_format=DEFAULT_LOGGING_FORMAT
-    )
+    """
 
     _old_factory = None
+    _log_hook = None
 
     def instrumentation_dependencies(self) -> Collection[str]:
         return _instruments
 
     def _instrument(self, **kwargs):
-        service_name = ""
-        provider = kwargs.get("tracer_provider", None) or get_tracer_provider()
-        resource = provider.resource if provider else None
-        if resource:
-            service_name = resource.attributes.get("service.name")
 
+        provider = kwargs.get("tracer_provider", None) or get_tracer_provider()
         old_factory = logging.getLogRecordFactory()
         LoggingInstrumentor._old_factory = old_factory
+        LoggingInstrumentor._log_hook = kwargs.get("log_hook", None)
+
+        service_name = None
 
         def record_factory(*args, **kwargs):
             record = old_factory(*args, **kwargs)
 
             record.otelSpanID = "0"
             record.otelTraceID = "0"
+
+            nonlocal service_name
+            if service_name is None:
+                resource = getattr(provider, "resource", None)
+                if resource:
+                    service_name = (
+                        resource.attributes.get("service.name") or ""
+                    )
+                else:
+                    service_name = ""
+
             record.otelServiceName = service_name
 
             span = get_current_span()
@@ -100,6 +114,14 @@ class LoggingInstrumentor(BaseInstrumentor):  # pylint: disable=empty-docstring
                 if ctx != INVALID_SPAN_CONTEXT:
                     record.otelSpanID = format(ctx.span_id, "016x")
                     record.otelTraceID = format(ctx.trace_id, "032x")
+                    if callable(LoggingInstrumentor._log_hook):
+                        try:
+                            LoggingInstrumentor._log_hook(  # pylint: disable=E1102
+                                span, record
+                            )
+                        except Exception:  # pylint: disable=W0703
+                            pass
+
             return record
 
         logging.setLogRecordFactory(record_factory)

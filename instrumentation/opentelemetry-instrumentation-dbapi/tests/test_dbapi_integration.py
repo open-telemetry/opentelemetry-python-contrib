@@ -16,6 +16,7 @@
 import logging
 from unittest import mock
 
+from opentelemetry import context
 from opentelemetry import trace as trace_api
 from opentelemetry.instrumentation import dbapi
 from opentelemetry.sdk import resources
@@ -87,11 +88,17 @@ class TestDBApiIntegration(TestBase):
         query"""
         )
         cursor.execute("tab\tseparated query")
+        cursor.execute("/* leading comment */ query")
+        cursor.execute("/* leading comment */ query /* trailing comment */")
+        cursor.execute("query /* trailing comment */")
         spans_list = self.memory_exporter.get_finished_spans()
-        self.assertEqual(len(spans_list), 3)
+        self.assertEqual(len(spans_list), 6)
         self.assertEqual(spans_list[0].name, "Test")
         self.assertEqual(spans_list[1].name, "multi")
         self.assertEqual(spans_list[2].name, "tab")
+        self.assertEqual(spans_list[3].name, "query")
+        self.assertEqual(spans_list[4].name, "query")
+        self.assertEqual(spans_list[5].name, "query")
 
     def test_span_succeeded_with_capture_of_statement_parameters(self):
         connection_props = {
@@ -228,6 +235,64 @@ class TestDBApiIntegration(TestBase):
             span.attributes[SpanAttributes.DB_STATEMENT], "Test query"
         )
 
+    def test_executemany_comment(self):
+
+        connect_module = mock.MagicMock()
+        connect_module.__version__ = mock.MagicMock()
+        connect_module.__libpq_version__ = 123
+        connect_module.apilevel = 123
+        connect_module.threadsafety = 123
+        connect_module.paramstyle = "test"
+
+        db_integration = dbapi.DatabaseApiIntegration(
+            "testname",
+            "testcomponent",
+            enable_commenter=True,
+            commenter_options={"db_driver": False, "dbapi_level": False},
+            connect_module=connect_module,
+        )
+        mock_connection = db_integration.wrapped_connection(
+            mock_connect, {}, {}
+        )
+        cursor = mock_connection.cursor()
+        cursor.executemany("Select 1;")
+        self.assertRegex(
+            cursor.query,
+            r"Select 1 /\*dbapi_threadsafety=123,driver_paramstyle='test',libpq_version=123,traceparent='\d{1,2}-[a-zA-Z0-9_]{32}-[a-zA-Z0-9_]{16}-\d{1,2}'\*/;",
+        )
+
+    def test_executemany_flask_integration_comment(self):
+
+        connect_module = mock.MagicMock()
+        connect_module.__version__ = mock.MagicMock()
+        connect_module.__libpq_version__ = 123
+        connect_module.apilevel = 123
+        connect_module.threadsafety = 123
+        connect_module.paramstyle = "test"
+
+        db_integration = dbapi.DatabaseApiIntegration(
+            "testname",
+            "testcomponent",
+            enable_commenter=True,
+            commenter_options={"db_driver": False, "dbapi_level": False},
+            connect_module=connect_module,
+        )
+        current_context = context.get_current()
+        sqlcommenter_context = context.set_value(
+            "SQLCOMMENTER_ORM_TAGS_AND_VALUES", {"flask": 1}, current_context
+        )
+        context.attach(sqlcommenter_context)
+
+        mock_connection = db_integration.wrapped_connection(
+            mock_connect, {}, {}
+        )
+        cursor = mock_connection.cursor()
+        cursor.executemany("Select 1;")
+        self.assertRegex(
+            cursor.query,
+            r"Select 1 /\*dbapi_threadsafety=123,driver_paramstyle='test',flask=1,libpq_version=123,traceparent='\d{1,2}-[a-zA-Z0-9_]{32}-[a-zA-Z0-9_]{16}-\d{1,2}'\*/;",
+        )
+
     def test_callproc(self):
         db_integration = dbapi.DatabaseApiIntegration(
             "testname", "testcomponent"
@@ -247,14 +312,14 @@ class TestDBApiIntegration(TestBase):
 
     @mock.patch("opentelemetry.instrumentation.dbapi")
     def test_wrap_connect(self, mock_dbapi):
-        dbapi.wrap_connect(self.tracer, mock_dbapi, "connect", "-")
+        dbapi.wrap_connect(self.tracer, MockConnectionEmpty(), "connect", "-")
         connection = mock_dbapi.connect()
         self.assertEqual(mock_dbapi.connect.call_count, 1)
-        self.assertIsInstance(connection.__wrapped__, mock.Mock)
+        self.assertIsInstance(connection._connection, mock.Mock)
 
     @mock.patch("opentelemetry.instrumentation.dbapi")
     def test_unwrap_connect(self, mock_dbapi):
-        dbapi.wrap_connect(self.tracer, mock_dbapi, "connect", "-")
+        dbapi.wrap_connect(self.tracer, MockConnectionEmpty(), "connect", "-")
         connection = mock_dbapi.connect()
         self.assertEqual(mock_dbapi.connect.call_count, 1)
 
@@ -264,19 +329,21 @@ class TestDBApiIntegration(TestBase):
         self.assertIsInstance(connection, mock.Mock)
 
     def test_instrument_connection(self):
-        connection = mock.Mock()
+        connection = MockConnectionEmpty()
         # Avoid get_attributes failing because can't concatenate mock
+        # pylint: disable=attribute-defined-outside-init
         connection.database = "-"
         connection2 = dbapi.instrument_connection(self.tracer, connection, "-")
-        self.assertIs(connection2.__wrapped__, connection)
+        self.assertIs(connection2._connection, connection)
 
     def test_uninstrument_connection(self):
-        connection = mock.Mock()
+        connection = MockConnectionEmpty()
         # Set connection.database to avoid a failure because mock can't
         # be concatenated
+        # pylint: disable=attribute-defined-outside-init
         connection.database = "-"
         connection2 = dbapi.instrument_connection(self.tracer, connection, "-")
-        self.assertIs(connection2.__wrapped__, connection)
+        self.assertIs(connection2._connection, connection)
 
         connection3 = dbapi.uninstrument_connection(connection2)
         self.assertIs(connection3, connection)
@@ -292,10 +359,12 @@ def mock_connect(*args, **kwargs):
     server_host = kwargs.get("server_host")
     server_port = kwargs.get("server_port")
     user = kwargs.get("user")
-    return MockConnection(database, server_port, server_host, user)
+    return MockConnectionWithAttributes(
+        database, server_port, server_host, user
+    )
 
 
-class MockConnection:
+class MockConnectionWithAttributes:
     def __init__(self, database, server_port, server_host, user):
         self.database = database
         self.server_port = server_port
@@ -308,6 +377,10 @@ class MockConnection:
 
 
 class MockCursor:
+    def __init__(self) -> None:
+        self.query = ""
+        self.params = None
+
     # pylint: disable=unused-argument, no-self-use
     def execute(self, query, params=None, throw_exception=False):
         if throw_exception:
@@ -317,8 +390,14 @@ class MockCursor:
     def executemany(self, query, params=None, throw_exception=False):
         if throw_exception:
             raise Exception("Test Exception")
+        self.query = query
+        self.params = params
 
     # pylint: disable=unused-argument, no-self-use
     def callproc(self, query, params=None, throw_exception=False):
         if throw_exception:
             raise Exception("Test Exception")
+
+
+class MockConnectionEmpty:
+    pass

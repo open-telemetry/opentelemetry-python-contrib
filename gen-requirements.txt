@@ -1,6 +1,10 @@
 -c dev-requirements.txt
 astor==0.8.1
 jinja2~=2.7
+markupsafe==2.0.1
 isort
 black
-
+requests
+tomli
+tomli_w
+hatch

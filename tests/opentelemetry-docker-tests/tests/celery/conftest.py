@@ -26,9 +26,9 @@ from opentelemetry.sdk.trace.export.in_memory_span_exporter import (
 
 REDIS_HOST = os.getenv("REDIS_HOST", "localhost")
 REDIS_PORT = int(os.getenv("REDIS_PORT ", "6379"))
-REDIS_URL = "redis://{host}:{port}".format(host=REDIS_HOST, port=REDIS_PORT)
-BROKER_URL = "{redis}/{db}".format(redis=REDIS_URL, db=0)
-BACKEND_URL = "{redis}/{db}".format(redis=REDIS_URL, db=1)
+REDIS_URL = f"redis://{REDIS_HOST}:{REDIS_PORT}"
+BROKER_URL = f"{REDIS_URL}/0"
+BACKEND_URL = f"{REDIS_URL}/1"
 
 
 @pytest.fixture(scope="session")
@@ -70,7 +70,7 @@ def instrument(tracer_provider, memory_exporter):
     CeleryInstrumentor().uninstrument()
 
 
-@pytest.fixture(scope="session")
+@pytest.fixture(scope="function")
 def tracer_provider(memory_exporter):
     original_tracer_provider = trace_api.get_tracer_provider()
 
@@ -86,7 +86,7 @@ def tracer_provider(memory_exporter):
     trace_api.set_tracer_provider(original_tracer_provider)
 
 
-@pytest.fixture(scope="session")
+@pytest.fixture(scope="function")
 def memory_exporter():
     memory_exporter = InMemorySpanExporter()
     return memory_exporter

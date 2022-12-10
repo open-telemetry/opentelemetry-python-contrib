@@ -35,7 +35,7 @@ from opentelemetry.test.test_base import TestBase
 def assert_span_http_status_code(span, code):
     """Assert on the span's 'http.status_code' tag"""
     tag = span.attributes[SpanAttributes.HTTP_STATUS_CODE]
-    assert tag == code, "%r != %r" % (tag, code)
+    assert tag == code, f"{tag} != {code}"
 
 
 class TestBotoInstrumentor(TestBase):
@@ -147,7 +147,7 @@ class TestBotoInstrumentor(TestBase):
         self.assertEqual(span.attributes["aws.operation"], "head_bucket")
         self.assertEqual(span.name, "s3.command")
 
-        # Checking for resource incase of error
+        # Checking for resource in case of error
         try:
             s3.get_bucket("big_bucket")
         except Exception:  # pylint: disable=broad-except

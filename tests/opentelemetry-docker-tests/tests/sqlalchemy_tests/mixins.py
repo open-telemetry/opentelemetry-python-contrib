@@ -16,7 +16,7 @@ import contextlib
 import logging
 import threading
 
-from sqlalchemy import Column, Integer, String, create_engine, insert
+from sqlalchemy import Column, Integer, String, create_engine
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.orm import close_all_sessions, scoped_session, sessionmaker
 
@@ -113,7 +113,7 @@ class SQLAlchemyTestMixin(TestBase):
 
     def _check_span(self, span, name):
         if self.SQL_DB:
-            name = "{0} {1}".format(name, self.SQL_DB)
+            name = f"{name} {self.SQL_DB}"
         self.assertEqual(span.name, name)
         self.assertEqual(
             span.attributes.get(SpanAttributes.DB_NAME), self.SQL_DB
@@ -128,8 +128,9 @@ class SQLAlchemyTestMixin(TestBase):
         self.session.commit()
 
         spans = self.memory_exporter.get_finished_spans()
-        self.assertEqual(len(spans), 1)
-        span = spans[0]
+        # one span for the connection and one for the query
+        self.assertEqual(len(spans), 2)
+        span = spans[1]
         stmt = "INSERT INTO players (id, name) VALUES "
         if span.attributes.get(SpanAttributes.DB_SYSTEM) == "sqlite":
             stmt += "(?, ?)"
@@ -148,8 +149,9 @@ class SQLAlchemyTestMixin(TestBase):
         self.assertEqual(len(out), 0)
 
         spans = self.memory_exporter.get_finished_spans()
-        self.assertEqual(len(spans), 1)
-        span = spans[0]
+        # one span for the connection and one for the query
+        self.assertEqual(len(spans), 2)
+        span = spans[1]
         stmt = "SELECT players.id AS players_id, players.name AS players_name \nFROM players \nWHERE players.name = "
         if span.attributes.get(SpanAttributes.DB_SYSTEM) == "sqlite":
             stmt += "?"
@@ -170,8 +172,9 @@ class SQLAlchemyTestMixin(TestBase):
             self.assertEqual(len(rows), 0)
 
         spans = self.memory_exporter.get_finished_spans()
-        self.assertEqual(len(spans), 1)
-        span = spans[0]
+        # one span for the connection and one for the query
+        self.assertEqual(len(spans), 2)
+        span = spans[1]
         self._check_span(span, "SELECT")
         self.assertEqual(
             span.attributes.get(SpanAttributes.DB_STATEMENT),
@@ -190,8 +193,9 @@ class SQLAlchemyTestMixin(TestBase):
                 self.assertEqual(len(rows), 0)
 
         spans = self.memory_exporter.get_finished_spans()
-        self.assertEqual(len(spans), 2)
-        child_span, parent_span = spans
+        # one span for the connection and two for the queries
+        self.assertEqual(len(spans), 3)
+        _, child_span, parent_span = spans
 
         # confirm the parenting
         self.assertIsNone(parent_span.parent)
@@ -242,4 +246,10 @@ class SQLAlchemyTestMixin(TestBase):
                 close_all_sessions()
 
         spans = self.memory_exporter.get_finished_spans()
-        self.assertEqual(len(spans), 5)
+
+        # SQLAlchemy 1.4 uses the `execute_values` extension of the psycopg2 dialect to
+        # batch inserts together which means `insert_players` only generates one span.
+        # See https://docs.sqlalchemy.org/en/14/changelog/migration_14.html#orm-batch-inserts-with-psycopg2-now-batch-statements-with-returning-in-most-cases
+        self.assertEqual(
+            len(spans), 8 if self.VENDOR not in ["postgresql"] else 6
+        )

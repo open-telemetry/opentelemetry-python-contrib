@@ -32,12 +32,42 @@ Usage
     req = request.Request('https://postman-echo.com/post', method="POST")
     r = request.urlopen(req)
 
+Configuration
+-------------
+
+Request/Response hooks
+**********************
+
+The urllib instrumentation supports extending tracing behavior with the help of
+request and response hooks. These are functions that are called back by the instrumentation
+right after a Span is created for a request and right before the span is finished processing a response respectively.
+The hooks can be configured as follows:
+
+..code:: python
+
+    # `request_obj` is an instance of urllib.request.Request
+    def request_hook(span, request_obj):
+        pass
+
+    # `request_obj` is an instance of urllib.request.Request
+    # `response` is an instance of http.client.HTTPResponse
+    def response_hook(span, request_obj, response)
+        pass
+
+    URLLibInstrumentor.instrument(
+        request_hook=request_hook, response_hook=response_hook)
+    )
+
 API
 ---
 """
 
 import functools
 import types
+import typing
+
+# from urllib import response
+from http import client
 from typing import Collection
 from urllib.request import (  # pylint: disable=no-name-in-module,import-error
     OpenerDirector,
@@ -45,6 +75,9 @@ from urllib.request import (  # pylint: disable=no-name-in-module,import-error
 )
 
 from opentelemetry import context
+
+# FIXME: fix the importing of this private attribute when the location of the _SUPPRESS_HTTP_INSTRUMENTATION_KEY is defined.
+from opentelemetry.context import _SUPPRESS_HTTP_INSTRUMENTATION_KEY
 from opentelemetry.instrumentation.instrumentor import BaseInstrumentor
 from opentelemetry.instrumentation.urllib.package import _instruments
 from opentelemetry.instrumentation.urllib.version import __version__
@@ -54,15 +87,14 @@ from opentelemetry.instrumentation.utils import (
 )
 from opentelemetry.propagate import inject
 from opentelemetry.semconv.trace import SpanAttributes
-from opentelemetry.trace import SpanKind, get_tracer
+from opentelemetry.trace import Span, SpanKind, get_tracer
 from opentelemetry.trace.status import Status
 from opentelemetry.util.http import remove_url_credentials
 
-# A key to a context variable to avoid creating duplicate spans when instrumenting
-# both, Session.request and Session.send, since Session.request calls into Session.send
-_SUPPRESS_HTTP_INSTRUMENTATION_KEY = context.create_key(
-    "suppress_http_instrumentation"
-)
+_RequestHookT = typing.Optional[typing.Callable[[Span, Request], None]]
+_ResponseHookT = typing.Optional[
+    typing.Callable[[Span, Request, client.HTTPResponse], None]
+]
 
 
 class URLLibInstrumentor(BaseInstrumentor):
@@ -79,18 +111,15 @@ class URLLibInstrumentor(BaseInstrumentor):
         Args:
             **kwargs: Optional arguments
                 ``tracer_provider``: a TracerProvider, defaults to global
-                ``span_callback``: An optional callback invoked before returning the http response.
-                 Invoked with Span and http.client.HTTPResponse
-                ``name_callback``: Callback which calculates a generic span name for an
-                    outgoing HTTP request based on the method and url.
-                    Optional: Defaults to get_default_span_name.
+                ``request_hook``: An optional callback invoked that is invoked right after a span is created.
+                ``response_hook``: An optional callback which is invoked right before the span is finished processing a response
         """
         tracer_provider = kwargs.get("tracer_provider")
         tracer = get_tracer(__name__, __version__, tracer_provider)
         _instrument(
             tracer,
-            span_callback=kwargs.get("span_callback"),
-            name_callback=kwargs.get("name_callback"),
+            request_hook=kwargs.get("request_hook"),
+            response_hook=kwargs.get("response_hook"),
         )
 
     def _uninstrument(self, **kwargs):
@@ -103,12 +132,11 @@ class URLLibInstrumentor(BaseInstrumentor):
         _uninstrument_from(opener, restore_as_bound_func=True)
 
 
-def get_default_span_name(method):
-    """Default implementation for name_callback, returns HTTP {method_name}."""
-    return "HTTP {}".format(method).strip()
-
-
-def _instrument(tracer, span_callback=None, name_callback=None):
+def _instrument(
+    tracer,
+    request_hook: _RequestHookT = None,
+    response_hook: _ResponseHookT = None,
+):
     """Enables tracing of all requests calls that go through
     :code:`urllib.Client._make_request`"""
 
@@ -143,11 +171,7 @@ def _instrument(tracer, span_callback=None, name_callback=None):
         method = request.get_method().upper()
         url = request.full_url
 
-        span_name = ""
-        if name_callback is not None:
-            span_name = name_callback(method, url)
-        if not span_name or not isinstance(span_name, str):
-            span_name = get_default_span_name(method)
+        span_name = f"HTTP {method}".strip()
 
         url = remove_url_credentials(url)
 
@@ -157,12 +181,11 @@ def _instrument(tracer, span_callback=None, name_callback=None):
         }
 
         with tracer.start_as_current_span(
-            span_name, kind=SpanKind.CLIENT
+            span_name, kind=SpanKind.CLIENT, attributes=labels
         ) as span:
             exception = None
-            if span.is_recording():
-                span.set_attribute(SpanAttributes.HTTP_METHOD, method)
-                span.set_attribute(SpanAttributes.HTTP_URL, url)
+            if callable(request_hook):
+                request_hook(span, request)
 
             headers = get_or_create_headers()
             inject(headers)
@@ -183,18 +206,18 @@ def _instrument(tracer, span_callback=None, name_callback=None):
                 code_ = result.getcode()
                 labels[SpanAttributes.HTTP_STATUS_CODE] = str(code_)
 
-                if span.is_recording():
+                if span.is_recording() and code_ is not None:
                     span.set_attribute(SpanAttributes.HTTP_STATUS_CODE, code_)
                     span.set_status(Status(http_status_to_status_code(code_)))
 
                 ver_ = str(getattr(result, "version", ""))
                 if ver_:
-                    labels[SpanAttributes.HTTP_FLAVOR] = "{}.{}".format(
-                        ver_[:1], ver_[:-1]
-                    )
+                    labels[
+                        SpanAttributes.HTTP_FLAVOR
+                    ] = f"{ver_[:1]}.{ver_[:-1]}"
 
-            if span_callback is not None:
-                span_callback(span, result)
+            if callable(response_hook):
+                response_hook(span, request, result)
 
             if exception is not None:
                 raise exception.with_traceback(exception.__traceback__)
@@ -217,7 +240,9 @@ def _uninstrument_from(instr_root, restore_as_bound_func=False):
     instr_func_name = "open"
     instr_func = getattr(instr_root, instr_func_name)
     if not getattr(
-        instr_func, "opentelemetry_instrumentation_urllib_applied", False,
+        instr_func,
+        "opentelemetry_instrumentation_urllib_applied",
+        False,
     ):
         return
 

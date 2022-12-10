@@ -13,7 +13,6 @@
 # limitations under the License.
 
 import os
-import unittest
 
 import pytest
 from sqlalchemy.exc import ProgrammingError
@@ -70,8 +69,9 @@ class MssqlConnectorTestCase(SQLAlchemyTestMixin):
                 conn.execute("SELECT * FROM a_wrong_table").fetchall()
 
         spans = self.memory_exporter.get_finished_spans()
-        self.assertEqual(len(spans), 1)
-        span = spans[0]
+        # one span for the connection and one for the query
+        self.assertEqual(len(spans), 2)
+        span = spans[1]
         # span fields
         self.assertEqual(span.name, "SELECT opentelemetry-tests")
         self.assertEqual(
@@ -85,7 +85,8 @@ class MssqlConnectorTestCase(SQLAlchemyTestMixin):
         self.assertTrue(span.end_time - span.start_time > 0)
         # check the error
         self.assertIs(
-            span.status.status_code, trace.StatusCode.ERROR,
+            span.status.status_code,
+            trace.StatusCode.ERROR,
         )
         self.assertIn("a_wrong_table", span.status.description)
 
@@ -96,9 +97,9 @@ class MssqlConnectorTestCase(SQLAlchemyTestMixin):
         self.session.commit()
 
         spans = self.memory_exporter.get_finished_spans()
-        # identity insert on before the insert, insert, and identity insert off after the insert
-        self.assertEqual(len(spans), 3)
-        span = spans[1]
+        # connect, identity insert on before the insert, insert, and identity insert off after the insert
+        self.assertEqual(len(spans), 4)
+        span = spans[2]
         self._check_span(span, "INSERT")
         self.assertIn(
             "INSERT INTO players",

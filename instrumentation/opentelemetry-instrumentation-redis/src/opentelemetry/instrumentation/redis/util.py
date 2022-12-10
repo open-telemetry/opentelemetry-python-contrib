@@ -23,12 +23,11 @@ from opentelemetry.semconv.trace import (
 
 
 def _extract_conn_attributes(conn_kwargs):
-    """ Transform redis conn info into dict """
+    """Transform redis conn info into dict"""
     attributes = {
         SpanAttributes.DB_SYSTEM: DbSystemValues.REDIS.value,
     }
     db = conn_kwargs.get("db", 0)
-    attributes[SpanAttributes.DB_NAME] = db
     attributes[SpanAttributes.DB_REDIS_DATABASE_INDEX] = db
     try:
         attributes[SpanAttributes.NET_PEER_NAME] = conn_kwargs.get(
@@ -64,7 +63,7 @@ def _format_command_args(args):
 
         if length + len(cmd) > cmd_max_len:
             prefix = cmd[: cmd_max_len - length]
-            out.append("%s%s" % (prefix, value_too_long_mark))
+            out.append(f"{prefix}{value_too_long_mark}")
             break
 
         out.append(cmd)

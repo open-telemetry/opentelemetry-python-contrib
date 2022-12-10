@@ -68,6 +68,7 @@ class MockConnection:
 
 class TestPostgresqlIntegration(TestBase):
     def setUp(self):
+        super().setUp()
         self.cursor_mock = mock.patch(
             "opentelemetry.instrumentation.psycopg2.pg_cursor", MockCursor
         )
@@ -100,7 +101,7 @@ class TestPostgresqlIntegration(TestBase):
         span = spans_list[0]
 
         # Check version and name in span's instrumentation info
-        self.check_span_instrumentation_info(
+        self.assertEqualSpanInstrumentationInfo(
             span, opentelemetry.instrumentation.psycopg2
         )
 
@@ -114,6 +115,32 @@ class TestPostgresqlIntegration(TestBase):
 
         spans_list = self.memory_exporter.get_finished_spans()
         self.assertEqual(len(spans_list), 1)
+
+    def test_span_name(self):
+        Psycopg2Instrumentor().instrument()
+
+        cnx = psycopg2.connect(database="test")
+
+        cursor = cnx.cursor()
+
+        cursor.execute("Test query", ("param1Value", False))
+        cursor.execute(
+            """multi
+        line
+        query"""
+        )
+        cursor.execute("tab\tseparated query")
+        cursor.execute("/* leading comment */ query")
+        cursor.execute("/* leading comment */ query /* trailing comment */")
+        cursor.execute("query /* trailing comment */")
+        spans_list = self.memory_exporter.get_finished_spans()
+        self.assertEqual(len(spans_list), 6)
+        self.assertEqual(spans_list[0].name, "Test")
+        self.assertEqual(spans_list[1].name, "multi")
+        self.assertEqual(spans_list[2].name, "tab")
+        self.assertEqual(spans_list[3].name, "query")
+        self.assertEqual(spans_list[4].name, "query")
+        self.assertEqual(spans_list[5].name, "query")
 
     # pylint: disable=unused-argument
     def test_not_recording(self):
@@ -172,7 +199,25 @@ class TestPostgresqlIntegration(TestBase):
         self.assertEqual(len(spans_list), 1)
 
     # pylint: disable=unused-argument
-    def test_uninstrument_connection(self):
+    def test_instrument_connection_with_instrument(self):
+        cnx = psycopg2.connect(database="test")
+        query = "SELECT * FROM test"
+        cursor = cnx.cursor()
+        cursor.execute(query)
+
+        spans_list = self.memory_exporter.get_finished_spans()
+        self.assertEqual(len(spans_list), 0)
+
+        Psycopg2Instrumentor().instrument()
+        cnx = Psycopg2Instrumentor().instrument_connection(cnx)
+        cursor = cnx.cursor()
+        cursor.execute(query)
+
+        spans_list = self.memory_exporter.get_finished_spans()
+        self.assertEqual(len(spans_list), 1)
+
+    # pylint: disable=unused-argument
+    def test_uninstrument_connection_with_instrument(self):
         Psycopg2Instrumentor().instrument()
         cnx = psycopg2.connect(database="test")
         query = "SELECT * FROM test"
@@ -188,3 +233,41 @@ class TestPostgresqlIntegration(TestBase):
 
         spans_list = self.memory_exporter.get_finished_spans()
         self.assertEqual(len(spans_list), 1)
+
+    # pylint: disable=unused-argument
+    def test_uninstrument_connection_with_instrument_connection(self):
+        cnx = psycopg2.connect(database="test")
+        Psycopg2Instrumentor().instrument_connection(cnx)
+        query = "SELECT * FROM test"
+        cursor = cnx.cursor()
+        cursor.execute(query)
+
+        spans_list = self.memory_exporter.get_finished_spans()
+        self.assertEqual(len(spans_list), 1)
+
+        cnx = Psycopg2Instrumentor().uninstrument_connection(cnx)
+        cursor = cnx.cursor()
+        cursor.execute(query)
+
+        spans_list = self.memory_exporter.get_finished_spans()
+        self.assertEqual(len(spans_list), 1)
+
+    @mock.patch("opentelemetry.instrumentation.dbapi.wrap_connect")
+    def test_sqlcommenter_enabled(self, event_mocked):
+        cnx = psycopg2.connect(database="test")
+        Psycopg2Instrumentor().instrument(enable_commenter=True)
+        query = "SELECT * FROM test"
+        cursor = cnx.cursor()
+        cursor.execute(query)
+        kwargs = event_mocked.call_args[1]
+        self.assertEqual(kwargs["enable_commenter"], True)
+
+    @mock.patch("opentelemetry.instrumentation.dbapi.wrap_connect")
+    def test_sqlcommenter_disabled(self, event_mocked):
+        cnx = psycopg2.connect(database="test")
+        Psycopg2Instrumentor().instrument()
+        query = "SELECT * FROM test"
+        cursor = cnx.cursor()
+        cursor.execute(query)
+        kwargs = event_mocked.call_args[1]
+        self.assertEqual(kwargs["enable_commenter"], False)
