@@ -39,6 +39,7 @@ API
 
 import functools
 import logging
+import re
 import typing
 
 import wrapt
@@ -79,6 +80,9 @@ def trace_integration(
         tracer_provider: The :class:`opentelemetry.trace.TracerProvider` to
             use. If omitted the current configured one is used.
         capture_parameters: Configure if db.statement.parameters should be captured.
+        enable_commenter: Flag to enable/disable sqlcommenter.
+        db_api_integration_factory: The `DatabaseApiIntegration` to use. If none is passed the
+            default one is used.
     """
     wrap_connect(
         __name__,
@@ -121,6 +125,8 @@ def wrap_connect(
             use. If omitted the current configured one is used.
         capture_parameters: Configure if db.statement.parameters should be captured.
         enable_commenter: Flag to enable/disable sqlcommenter.
+        db_api_integration_factory: The `DatabaseApiIntegration` to use. If none is passed the
+            default one is used.
         commenter_options: Configurations for tags to be appended at the sql query.
 
     """
@@ -197,7 +203,7 @@ def instrument_connection(
     Returns:
         An instrumented connection.
     """
-    if isinstance(connection, wrapt.ObjectProxy):
+    if isinstance(connection, _TracedConnectionProxy):
         _logger.warning("Connection already instrumented")
         return connection
 
@@ -331,6 +337,14 @@ def get_traced_connection_proxy(
                 object.__getattribute__(self, "_connection"), name
             )
 
+        def __getattribute__(self, name):
+            if object.__getattribute__(self, name):
+                return object.__getattribute__(self, name)
+
+            return object.__getattribute__(
+                object.__getattribute__(self, "_connection"), name
+            )
+
         def cursor(self, *args, **kwargs):
             return get_traced_cursor_proxy(
                 self._connection.cursor(*args, **kwargs), db_api_integration
@@ -355,6 +369,7 @@ class CursorTracer:
             else {}
         )
         self._connect_module = self._db_api_integration.connect_module
+        self._leading_comment_remover = re.compile(r"^/\*.*?\*/")
 
     def _populate_span(
         self,
@@ -384,7 +399,8 @@ class CursorTracer:
 
     def get_operation_name(self, cursor, args):  # pylint: disable=no-self-use
         if args and isinstance(args[0], str):
-            return args[0].split()[0]
+            # Strip leading comments so we get the operation name.
+            return self._leading_comment_remover.sub("", args[0]).split()[0]
         return ""
 
     def get_statement(self, cursor, args):  # pylint: disable=no-self-use

@@ -12,6 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 import os
+import re
 
 from sqlalchemy.event import listen  # pylint: disable=no-name-in-module
 
@@ -48,27 +49,29 @@ def _get_tracer(tracer_provider=None):
     )
 
 
-def _wrap_create_async_engine(tracer_provider=None):
+def _wrap_create_async_engine(tracer_provider=None, enable_commenter=False):
     # pylint: disable=unused-argument
     def _wrap_create_async_engine_internal(func, module, args, kwargs):
         """Trace the SQLAlchemy engine, creating an `EngineTracer`
         object that will listen to SQLAlchemy events.
         """
         engine = func(*args, **kwargs)
-        EngineTracer(_get_tracer(tracer_provider), engine.sync_engine)
+        EngineTracer(
+            _get_tracer(tracer_provider), engine.sync_engine, enable_commenter
+        )
         return engine
 
     return _wrap_create_async_engine_internal
 
 
-def _wrap_create_engine(tracer_provider=None):
+def _wrap_create_engine(tracer_provider=None, enable_commenter=False):
     # pylint: disable=unused-argument
     def _wrap_create_engine_internal(func, module, args, kwargs):
         """Trace the SQLAlchemy engine, creating an `EngineTracer`
         object that will listen to SQLAlchemy events.
         """
         engine = func(*args, **kwargs)
-        EngineTracer(_get_tracer(tracer_provider), engine)
+        EngineTracer(_get_tracer(tracer_provider), engine, enable_commenter)
         return engine
 
     return _wrap_create_engine_internal
@@ -93,13 +96,14 @@ def _wrap_connect(tracer_provider=None):
 
 class EngineTracer:
     def __init__(
-        self, tracer, engine, enable_commenter=True, commenter_options=None
+        self, tracer, engine, enable_commenter=False, commenter_options=None
     ):
         self.tracer = tracer
         self.engine = engine
         self.vendor = _normalize_vendor(engine.name)
         self.enable_commenter = enable_commenter
         self.commenter_options = commenter_options if commenter_options else {}
+        self._leading_comment_remover = re.compile(r"^/\*.*?\*/")
 
         listen(
             engine, "before_cursor_execute", self._before_cur_exec, retval=True
@@ -115,7 +119,10 @@ class EngineTracer:
             # use cases and uses the SQL statement in span name correctly as per the spec.
             # For some very special cases it might not record the correct statement if the SQL
             # dialect is too weird but in any case it shouldn't break anything.
-            parts.append(statement.split()[0])
+            # Strip leading comments so we get the operation name.
+            parts.append(
+                self._leading_comment_remover.sub("", statement).split()[0]
+            )
         if db_name:
             parts.append(db_name)
         if not parts:

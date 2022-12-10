@@ -591,8 +591,15 @@ class TestAsgiApplication(AsgiTestBase):
         class TestRoute:
             path_format = expected_target
 
-        self.scope["route"] = TestRoute()
-        app = otel_asgi.OpenTelemetryMiddleware(simple_asgi)
+        async def target_asgi(scope, receive, send):
+            assert isinstance(scope, dict)
+            if scope["type"] == "http":
+                await http_app(scope, receive, send)
+                scope["route"] = TestRoute()
+            else:
+                raise ValueError("websockets not supported")
+
+        app = otel_asgi.OpenTelemetryMiddleware(target_asgi)
         self.seed_app(app)
         self.send_default_request()
 
@@ -601,6 +608,8 @@ class TestAsgiApplication(AsgiTestBase):
         for resource_metric in metrics_list.resource_metrics:
             for scope_metrics in resource_metric.scope_metrics:
                 for metric in scope_metrics.metrics:
+                    if metric.name != "http.server.duration":
+                        continue
                     for point in metric.data.data_points:
                         if isinstance(point, HistogramDataPoint):
                             self.assertEqual(
@@ -608,13 +617,7 @@ class TestAsgiApplication(AsgiTestBase):
                                 expected_target,
                             )
                             assertions += 1
-                        elif isinstance(point, NumberDataPoint):
-                            self.assertEqual(
-                                point.attributes["http.target"],
-                                expected_target,
-                            )
-                            assertions += 1
-        self.assertEqual(assertions, 2)
+        self.assertEqual(assertions, 1)
 
     def test_no_metric_for_websockets(self):
         self.scope = {

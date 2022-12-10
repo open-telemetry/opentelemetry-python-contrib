@@ -42,15 +42,27 @@ class TestSqlalchemyInstrumentation(TestBase):
         )
         cnx = engine.connect()
         cnx.execute("SELECT	1 + 1;").fetchall()
+        cnx.execute("/* leading comment */ SELECT	1 + 1;").fetchall()
+        cnx.execute(
+            "/* leading comment */ SELECT	1 + 1; /* trailing comment */"
+        ).fetchall()
+        cnx.execute("SELECT	1 + 1; /* trailing comment */").fetchall()
         spans = self.memory_exporter.get_finished_spans()
 
-        self.assertEqual(len(spans), 2)
+        self.assertEqual(len(spans), 5)
         # first span - the connection to the db
         self.assertEqual(spans[0].name, "connect")
         self.assertEqual(spans[0].kind, trace.SpanKind.CLIENT)
         # second span - the query itself
         self.assertEqual(spans[1].name, "SELECT :memory:")
         self.assertEqual(spans[1].kind, trace.SpanKind.CLIENT)
+        # spans for queries with comments
+        self.assertEqual(spans[2].name, "SELECT :memory:")
+        self.assertEqual(spans[2].kind, trace.SpanKind.CLIENT)
+        self.assertEqual(spans[3].name, "SELECT :memory:")
+        self.assertEqual(spans[3].kind, trace.SpanKind.CLIENT)
+        self.assertEqual(spans[4].name, "SELECT :memory:")
+        self.assertEqual(spans[4].kind, trace.SpanKind.CLIENT)
 
     def test_instrument_two_engines(self):
         engine_1 = create_engine("sqlite:///:memory:")
@@ -215,3 +227,29 @@ class TestSqlalchemyInstrumentation(TestBase):
             )
 
         asyncio.get_event_loop().run_until_complete(run())
+
+    def test_uninstrument(self):
+        engine = create_engine("sqlite:///:memory:")
+        SQLAlchemyInstrumentor().instrument(
+            engine=engine,
+            tracer_provider=self.tracer_provider,
+        )
+        cnx = engine.connect()
+        cnx.execute("SELECT	1 + 1;").fetchall()
+        spans = self.memory_exporter.get_finished_spans()
+
+        self.assertEqual(len(spans), 2)
+        # first span - the connection to the db
+        self.assertEqual(spans[0].name, "connect")
+        self.assertEqual(spans[0].kind, trace.SpanKind.CLIENT)
+        # second span - the query itself
+        self.assertEqual(spans[1].name, "SELECT :memory:")
+        self.assertEqual(spans[1].kind, trace.SpanKind.CLIENT)
+
+        self.memory_exporter.clear()
+        SQLAlchemyInstrumentor().uninstrument()
+        engine2 = create_engine("sqlite:///:memory:")
+        cnx2 = engine2.connect()
+        cnx2.execute("SELECT	2 + 2;").fetchall()
+        spans = self.memory_exporter.get_finished_spans()
+        self.assertEqual(len(spans), 0)
