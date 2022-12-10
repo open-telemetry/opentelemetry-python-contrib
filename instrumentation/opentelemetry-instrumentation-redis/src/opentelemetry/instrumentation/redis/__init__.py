@@ -124,7 +124,7 @@ if redis.VERSION >= _REDIS_ASYNCIO_VERSION:
     import redis.asyncio
 
 _REDIS_CLUSTER_VERSION = (4, 1, 0)
-_REDIS_ASYNCIO_CLUSTER_VERSION = (4, 3, 0)
+_REDIS_ASYNCIO_CLUSTER_VERSION = (4, 3, 2)
 
 
 def _set_connection_attributes(span, conn):
@@ -144,7 +144,6 @@ def _instrument(
 ):
     def _traced_execute_command(func, instance, args, kwargs):
         query = _format_command_args(args)
-        name = ""
         if len(args) > 0 and args[0]:
             name = args[0]
         else:

@@ -1,9 +1,17 @@
 [flake8]
 ignore =
-  E501  # line too long, defer to black
-  W503  # allow line breaks before binary ops
-  W504  # allow line breaks after binary ops
-  E203  # allow whitespace before ':' (https://github.com/psf/black#slices) 
+  # line too long, defer to black
+  E501
+
+  # allow line breaks before binary ops
+  W503
+
+  # allow line breaks after binary ops
+  W504
+
+  # allow whitespace before ':' (https://github.com/psf/black#slices)
+  E203
+
 exclude =
   .bzr
   .git
@@ -16,8 +24,10 @@ exclude =
   target
   __pycache__
   exporter/opentelemetry-exporter-jaeger/src/opentelemetry/exporter/jaeger/gen/
+  exporter/opentelemetry-exporter-prometheus-remote-write/src/opentelemetry/exporter/prometheus_remote_write/gen/
   exporter/opentelemetry-exporter-jaeger/build/*
   docs/examples/opentelemetry-example-app/src/opentelemetry_example_app/grpc/gen/
   docs/examples/opentelemetry-example-app/build/*
   opentelemetry-proto/build/*
   opentelemetry-proto/src/opentelemetry/proto/
+  scripts/*

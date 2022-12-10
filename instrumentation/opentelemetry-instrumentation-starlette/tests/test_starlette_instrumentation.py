@@ -13,6 +13,7 @@
 # limitations under the License.
 
 import unittest
+from timeit import default_timer
 from unittest.mock import patch
 
 from starlette import applications
@@ -22,6 +23,10 @@ from starlette.testclient import TestClient
 from starlette.websockets import WebSocket
 
 import opentelemetry.instrumentation.starlette as otel_starlette
+from opentelemetry.sdk.metrics.export import (
+    HistogramDataPoint,
+    NumberDataPoint,
+)
 from opentelemetry.sdk.resources import Resource
 from opentelemetry.semconv.trace import SpanAttributes
 from opentelemetry.test.globals_test import reset_trace_globals
@@ -33,10 +38,22 @@ from opentelemetry.trace import (
     set_tracer_provider,
 )
 from opentelemetry.util.http import (
+    OTEL_INSTRUMENTATION_HTTP_CAPTURE_HEADERS_SANITIZE_FIELDS,
     OTEL_INSTRUMENTATION_HTTP_CAPTURE_HEADERS_SERVER_REQUEST,
     OTEL_INSTRUMENTATION_HTTP_CAPTURE_HEADERS_SERVER_RESPONSE,
+    _active_requests_count_attrs,
+    _duration_attrs,
     get_excluded_urls,
 )
+
+_expected_metric_names = [
+    "http.server.active_requests",
+    "http.server.duration",
+]
+_recommended_attrs = {
+    "http.server.active_requests": _active_requests_count_attrs,
+    "http.server.duration": _duration_attrs,
+}
 
 
 class TestStarletteManualInstrumentation(TestBase):
@@ -95,10 +112,113 @@ class TestStarletteManualInstrumentation(TestBase):
         )
 
     def test_starlette_excluded_urls(self):
-        """Ensure that givem starlette routes are excluded."""
+        """Ensure that given starlette routes are excluded."""
         self._client.get("/healthzz")
         spans = self.memory_exporter.get_finished_spans()
         self.assertEqual(len(spans), 0)
+
+    def test_starlette_metrics(self):
+        self._client.get("/foobar")
+        self._client.get("/foobar")
+        self._client.get("/foobar")
+        metrics_list = self.memory_metrics_reader.get_metrics_data()
+        number_data_point_seen = False
+        histogram_data_point_seen = False
+        self.assertTrue(len(metrics_list.resource_metrics) == 1)
+        for resource_metric in metrics_list.resource_metrics:
+            self.assertTrue(len(resource_metric.scope_metrics) == 1)
+            for scope_metric in resource_metric.scope_metrics:
+                self.assertTrue(len(scope_metric.metrics) == 2)
+                for metric in scope_metric.metrics:
+                    self.assertIn(metric.name, _expected_metric_names)
+                    data_points = list(metric.data.data_points)
+                    self.assertEqual(len(data_points), 1)
+                    for point in data_points:
+                        if isinstance(point, HistogramDataPoint):
+                            self.assertEqual(point.count, 3)
+                            histogram_data_point_seen = True
+                        if isinstance(point, NumberDataPoint):
+                            number_data_point_seen = True
+                        for attr in point.attributes:
+                            self.assertIn(
+                                attr, _recommended_attrs[metric.name]
+                            )
+        self.assertTrue(number_data_point_seen and histogram_data_point_seen)
+
+    def test_basic_post_request_metric_success(self):
+        start = default_timer()
+        expected_duration_attributes = {
+            "http.flavor": "1.1",
+            "http.host": "testserver",
+            "http.method": "POST",
+            "http.scheme": "http",
+            "http.server_name": "testserver",
+            "http.status_code": 405,
+            "net.host.port": 80,
+        }
+        expected_requests_count_attributes = {
+            "http.flavor": "1.1",
+            "http.host": "testserver",
+            "http.method": "POST",
+            "http.scheme": "http",
+            "http.server_name": "testserver",
+        }
+        self._client.post("/foobar")
+        duration = max(round((default_timer() - start) * 1000), 0)
+        metrics_list = self.memory_metrics_reader.get_metrics_data()
+        for metric in (
+            metrics_list.resource_metrics[0].scope_metrics[0].metrics
+        ):
+            for point in list(metric.data.data_points):
+                if isinstance(point, HistogramDataPoint):
+                    self.assertEqual(point.count, 1)
+                    self.assertAlmostEqual(duration, point.sum, delta=30)
+                    self.assertDictEqual(
+                        dict(point.attributes), expected_duration_attributes
+                    )
+                if isinstance(point, NumberDataPoint):
+                    self.assertDictEqual(
+                        expected_requests_count_attributes,
+                        dict(point.attributes),
+                    )
+                    self.assertEqual(point.value, 0)
+
+    def test_metric_for_uninstrment_app_method(self):
+        self._client.get("/foobar")
+        # uninstrumenting the existing client app
+        self._instrumentor.uninstrument_app(self._app)
+        self._client.get("/foobar")
+        self._client.get("/foobar")
+        metrics_list = self.memory_metrics_reader.get_metrics_data()
+        for metric in (
+            metrics_list.resource_metrics[0].scope_metrics[0].metrics
+        ):
+            for point in list(metric.data.data_points):
+                if isinstance(point, HistogramDataPoint):
+                    self.assertEqual(point.count, 1)
+                if isinstance(point, NumberDataPoint):
+                    self.assertEqual(point.value, 0)
+
+    def test_metric_uninstrument_inherited_by_base(self):
+        # instrumenting class and creating app to send request
+        self._instrumentor.instrument()
+        app = self._create_starlette_app()
+        client = TestClient(app)
+        client.get("/foobar")
+        # calling uninstrument and checking for telemetry data
+        self._instrumentor.uninstrument()
+        client.get("/foobar")
+        client.get("/foobar")
+        client.get("/foobar")
+        metrics_list = self.memory_metrics_reader.get_metrics_data()
+        for metric in (
+            metrics_list.resource_metrics[0].scope_metrics[0].metrics
+        ):
+            for point in list(metric.data.data_points):
+                if isinstance(point, HistogramDataPoint):
+                    self.assertEqual(point.count, 1)
+                if isinstance(point, NumberDataPoint):
+                    self.assertEqual(point.value, 0)
 
     @staticmethod
     def _create_starlette_app():
@@ -265,21 +385,12 @@ class TestBaseWithCustomHeaders(TestBase):
 
     def setUp(self):
         super().setUp()
-        self.env_patch = patch.dict(
-            "os.environ",
-            {
-                OTEL_INSTRUMENTATION_HTTP_CAPTURE_HEADERS_SERVER_REQUEST: "Custom-Test-Header-1,Custom-Test-Header-2,Custom-Test-Header-3",
-                OTEL_INSTRUMENTATION_HTTP_CAPTURE_HEADERS_SERVER_RESPONSE: "Custom-Test-Header-1,Custom-Test-Header-2,Custom-Test-Header-3",
-            },
-        )
-        self.env_patch.start()
         self._instrumentor = otel_starlette.StarletteInstrumentor()
         self._app = self.create_app()
         self._client = TestClient(self._app)
 
     def tearDown(self) -> None:
         super().tearDown()
-        self.env_patch.stop()
         with self.disable_logging():
             self._instrumentor.uninstrument()
 
@@ -294,6 +405,9 @@ class TestBaseWithCustomHeaders(TestBase):
                 headers={
                     "custom-test-header-1": "test-header-value-1",
                     "custom-test-header-2": "test-header-value-2",
+                    "my-custom-regex-header-1": "my-custom-regex-value-1,my-custom-regex-value-2",
+                    "My-Custom-Regex-Header-2": "my-custom-regex-value-3,my-custom-regex-value-4",
+                    "my-secret-header": "my-secret-value",
                 },
             )
 
@@ -307,6 +421,15 @@ class TestBaseWithCustomHeaders(TestBase):
                         "headers": [
                             (b"custom-test-header-1", b"test-header-value-1"),
                             (b"custom-test-header-2", b"test-header-value-2"),
+                            (
+                                b"my-custom-regex-header-1",
+                                b"my-custom-regex-value-1,my-custom-regex-value-2",
+                            ),
+                            (
+                                b"My-Custom-Regex-Header-2",
+                                b"my-custom-regex-value-3,my-custom-regex-value-4",
+                            ),
+                            (b"my-secret-header", b"my-secret-value"),
                         ],
                     }
                 )
@@ -318,6 +441,14 @@ class TestBaseWithCustomHeaders(TestBase):
         return app
 
 
+@patch.dict(
+    "os.environ",
+    {
+        OTEL_INSTRUMENTATION_HTTP_CAPTURE_HEADERS_SANITIZE_FIELDS: ".*my-secret.*",
+        OTEL_INSTRUMENTATION_HTTP_CAPTURE_HEADERS_SERVER_REQUEST: "Custom-Test-Header-1,Custom-Test-Header-2,Custom-Test-Header-3,Regex-Test-Header-.*,Regex-Invalid-Test-Header-.*,.*my-secret.*",
+        OTEL_INSTRUMENTATION_HTTP_CAPTURE_HEADERS_SERVER_RESPONSE: "Custom-Test-Header-1,Custom-Test-Header-2,Custom-Test-Header-3,my-custom-regex-header-.*,invalid-regex-header-.*,.*my-secret.*",
+    },
+)
 class TestHTTPAppWithCustomHeaders(TestBaseWithCustomHeaders):
     def test_custom_request_headers_in_span_attributes(self):
         expected = {
@@ -327,12 +458,20 @@ class TestHTTPAppWithCustomHeaders(TestBaseWithCustomHeaders):
             "http.request.header.custom_test_header_2": (
                 "test-header-value-2",
             ),
+            "http.request.header.regex_test_header_1": ("Regex Test Value 1",),
+            "http.request.header.regex_test_header_2": (
+                "RegexTestValue2,RegexTestValue3",
+            ),
+            "http.request.header.my_secret_header": ("[REDACTED]",),
         }
         resp = self._client.get(
             "/foobar",
             headers={
                 "custom-test-header-1": "test-header-value-1",
                 "custom-test-header-2": "test-header-value-2",
+                "Regex-Test-Header-1": "Regex Test Value 1",
+                "regex-test-header-2": "RegexTestValue2,RegexTestValue3",
+                "My-Secret-Header": "My Secret Value",
             },
         )
         self.assertEqual(200, resp.status_code)
@@ -345,6 +484,13 @@ class TestHTTPAppWithCustomHeaders(TestBaseWithCustomHeaders):
 
         self.assertSpanHasAttributes(server_span, expected)
 
+    @patch.dict(
+        "os.environ",
+        {
+            OTEL_INSTRUMENTATION_HTTP_CAPTURE_HEADERS_SANITIZE_FIELDS: ".*my-secret.*",
+            OTEL_INSTRUMENTATION_HTTP_CAPTURE_HEADERS_SERVER_REQUEST: "Custom-Test-Header-1,Custom-Test-Header-2,Custom-Test-Header-3,Regex-Test-Header-.*,Regex-Invalid-Test-Header-.*,.*my-secret.*",
+        },
+    )
     def test_custom_request_headers_not_in_span_attributes(self):
         not_expected = {
             "http.request.header.custom_test_header_3": (
@@ -356,6 +502,9 @@ class TestHTTPAppWithCustomHeaders(TestBaseWithCustomHeaders):
             headers={
                 "custom-test-header-1": "test-header-value-1",
                 "custom-test-header-2": "test-header-value-2",
+                "Regex-Test-Header-1": "Regex Test Value 1",
+                "regex-test-header-2": "RegexTestValue2,RegexTestValue3",
+                "My-Secret-Header": "My Secret Value",
             },
         )
         self.assertEqual(200, resp.status_code)
@@ -377,6 +526,13 @@ class TestHTTPAppWithCustomHeaders(TestBaseWithCustomHeaders):
             "http.response.header.custom_test_header_2": (
                 "test-header-value-2",
             ),
+            "http.response.header.my_custom_regex_header_1": (
+                "my-custom-regex-value-1,my-custom-regex-value-2",
+            ),
+            "http.response.header.my_custom_regex_header_2": (
+                "my-custom-regex-value-3,my-custom-regex-value-4",
+            ),
+            "http.response.header.my_secret_header": ("[REDACTED]",),
         }
         resp = self._client.get("/foobar")
         self.assertEqual(200, resp.status_code)
@@ -408,6 +564,14 @@ class TestHTTPAppWithCustomHeaders(TestBaseWithCustomHeaders):
             self.assertNotIn(key, server_span.attributes)
 
 
+@patch.dict(
+    "os.environ",
+    {
+        OTEL_INSTRUMENTATION_HTTP_CAPTURE_HEADERS_SANITIZE_FIELDS: ".*my-secret.*",
+        OTEL_INSTRUMENTATION_HTTP_CAPTURE_HEADERS_SERVER_REQUEST: "Custom-Test-Header-1,Custom-Test-Header-2,Custom-Test-Header-3,Regex-Test-Header-.*,Regex-Invalid-Test-Header-.*,.*my-secret.*",
+        OTEL_INSTRUMENTATION_HTTP_CAPTURE_HEADERS_SERVER_RESPONSE: "Custom-Test-Header-1,Custom-Test-Header-2,Custom-Test-Header-3,my-custom-regex-header-.*,invalid-regex-header-.*,.*my-secret.*",
+    },
+)
 class TestWebSocketAppWithCustomHeaders(TestBaseWithCustomHeaders):
     def test_custom_request_headers_in_span_attributes(self):
         expected = {
@@ -417,12 +581,20 @@ class TestWebSocketAppWithCustomHeaders(TestBaseWithCustomHeaders):
             "http.request.header.custom_test_header_2": (
                 "test-header-value-2",
             ),
+            "http.request.header.regex_test_header_1": ("Regex Test Value 1",),
+            "http.request.header.regex_test_header_2": (
+                "RegexTestValue2,RegexTestValue3",
+            ),
+            "http.request.header.my_secret_header": ("[REDACTED]",),
         }
         with self._client.websocket_connect(
             "/foobar_web",
             headers={
                 "custom-test-header-1": "test-header-value-1",
                 "custom-test-header-2": "test-header-value-2",
+                "Regex-Test-Header-1": "Regex Test Value 1",
+                "regex-test-header-2": "RegexTestValue2,RegexTestValue3",
+                "My-Secret-Header": "My Secret Value",
             },
         ) as websocket:
             data = websocket.receive_json()
@@ -447,6 +619,9 @@ class TestWebSocketAppWithCustomHeaders(TestBaseWithCustomHeaders):
             headers={
                 "custom-test-header-1": "test-header-value-1",
                 "custom-test-header-2": "test-header-value-2",
+                "Regex-Test-Header-1": "Regex Test Value 1",
+                "regex-test-header-2": "RegexTestValue2,RegexTestValue3",
+                "My-Secret-Header": "My Secret Value",
             },
         ) as websocket:
             data = websocket.receive_json()
@@ -470,6 +645,13 @@ class TestWebSocketAppWithCustomHeaders(TestBaseWithCustomHeaders):
             "http.response.header.custom_test_header_2": (
                 "test-header-value-2",
             ),
+            "http.response.header.my_custom_regex_header_1": (
+                "my-custom-regex-value-1,my-custom-regex-value-2",
+            ),
+            "http.response.header.my_custom_regex_header_2": (
+                "my-custom-regex-value-3,my-custom-regex-value-4",
+            ),
+            "http.response.header.my_secret_header": ("[REDACTED]",),
         }
         with self._client.websocket_connect("/foobar_web") as websocket:
             data = websocket.receive_json()
@@ -505,6 +687,14 @@ class TestWebSocketAppWithCustomHeaders(TestBaseWithCustomHeaders):
             self.assertNotIn(key, server_span.attributes)
 
 
+@patch.dict(
+    "os.environ",
+    {
+        OTEL_INSTRUMENTATION_HTTP_CAPTURE_HEADERS_SANITIZE_FIELDS: ".*my-secret.*",
+        OTEL_INSTRUMENTATION_HTTP_CAPTURE_HEADERS_SERVER_REQUEST: "Custom-Test-Header-1,Custom-Test-Header-2,Custom-Test-Header-3,Regex-Test-Header-.*,Regex-Invalid-Test-Header-.*,.*my-secret.*",
+        OTEL_INSTRUMENTATION_HTTP_CAPTURE_HEADERS_SERVER_RESPONSE: "Custom-Test-Header-1,Custom-Test-Header-2,Custom-Test-Header-3,my-custom-regex-header-.*,invalid-regex-header-.*,.*my-secret.*",
+    },
+)
 class TestNonRecordingSpanWithCustomHeaders(TestBaseWithCustomHeaders):
     def setUp(self):
         super().setUp()
