@@ -15,6 +15,7 @@
 # pylint: disable=E0611
 
 from sys import modules
+from timeit import default_timer
 from unittest.mock import Mock, patch
 
 from django import VERSION, conf
@@ -32,6 +33,10 @@ from opentelemetry.instrumentation.propagators import (
     set_global_response_propagator,
 )
 from opentelemetry.sdk import resources
+from opentelemetry.sdk.metrics.export import (
+    HistogramDataPoint,
+    NumberDataPoint,
+)
 from opentelemetry.sdk.trace import Span
 from opentelemetry.sdk.trace.id_generator import RandomIdGenerator
 from opentelemetry.semconv.trace import SpanAttributes
@@ -43,8 +48,11 @@ from opentelemetry.trace import (
     format_trace_id,
 )
 from opentelemetry.util.http import (
+    OTEL_INSTRUMENTATION_HTTP_CAPTURE_HEADERS_SANITIZE_FIELDS,
     OTEL_INSTRUMENTATION_HTTP_CAPTURE_HEADERS_SERVER_REQUEST,
     OTEL_INSTRUMENTATION_HTTP_CAPTURE_HEADERS_SERVER_RESPONSE,
+    _active_requests_count_attrs,
+    _duration_attrs,
     get_excluded_urls,
     get_traced_request_attrs,
 )
@@ -406,6 +414,64 @@ class TestMiddleware(WsgiTestBase):
         )
         self.memory_exporter.clear()
 
+    # pylint: disable=too-many-locals
+    def test_wsgi_metrics(self):
+        _expected_metric_names = [
+            "http.server.active_requests",
+            "http.server.duration",
+        ]
+        _recommended_attrs = {
+            "http.server.active_requests": _active_requests_count_attrs,
+            "http.server.duration": _duration_attrs,
+        }
+        start = default_timer()
+        for _ in range(3):
+            response = Client().get("/span_name/1234/")
+            self.assertEqual(response.status_code, 200)
+        duration = max(round((default_timer() - start) * 1000), 0)
+        metrics_list = self.memory_metrics_reader.get_metrics_data()
+        number_data_point_seen = False
+        histrogram_data_point_seen = False
+
+        self.assertTrue(len(metrics_list.resource_metrics) != 0)
+        for resource_metric in metrics_list.resource_metrics:
+            self.assertTrue(len(resource_metric.scope_metrics) != 0)
+            for scope_metric in resource_metric.scope_metrics:
+                self.assertTrue(len(scope_metric.metrics) != 0)
+                for metric in scope_metric.metrics:
+                    self.assertIn(metric.name, _expected_metric_names)
+                    data_points = list(metric.data.data_points)
+                    self.assertEqual(len(data_points), 1)
+                    for point in data_points:
+                        if isinstance(point, HistogramDataPoint):
+                            self.assertEqual(point.count, 3)
+                            histrogram_data_point_seen = True
+                            self.assertAlmostEqual(
+                                duration, point.sum, delta=100
+                            )
+                        if isinstance(point, NumberDataPoint):
+                            number_data_point_seen = True
+                            self.assertEqual(point.value, 0)
+                        for attr in point.attributes:
+                            self.assertIn(
+                                attr, _recommended_attrs[metric.name]
+                            )
+        self.assertTrue(histrogram_data_point_seen and number_data_point_seen)
+
+    def test_wsgi_metrics_unistrument(self):
+        Client().get("/span_name/1234/")
+        _django_instrumentor.uninstrument()
+        Client().get("/span_name/1234/")
+        metrics_list = self.memory_metrics_reader.get_metrics_data()
+        for resource_metric in metrics_list.resource_metrics:
+            for scope_metric in resource_metric.scope_metrics:
+                for metric in scope_metric.metrics:
+                    for point in list(metric.data.data_points):
+                        if isinstance(point, HistogramDataPoint):
+                            self.assertEqual(1, point.count)
+                        if isinstance(point, NumberDataPoint):
+                            self.assertEqual(0, point.value)
+
 
 class TestMiddlewareWithTracerProvider(WsgiTestBase):
     @classmethod
@@ -465,6 +531,14 @@ class TestMiddlewareWithTracerProvider(WsgiTestBase):
             )
 
 
+@patch.dict(
+    "os.environ",
+    {
+        OTEL_INSTRUMENTATION_HTTP_CAPTURE_HEADERS_SANITIZE_FIELDS: ".*my-secret.*",
+        OTEL_INSTRUMENTATION_HTTP_CAPTURE_HEADERS_SERVER_REQUEST: "Custom-Test-Header-1,Custom-Test-Header-2,Custom-Test-Header-3,Regex-Test-Header-.*,Regex-Invalid-Test-Header-.*,.*my-secret.*",
+        OTEL_INSTRUMENTATION_HTTP_CAPTURE_HEADERS_SERVER_RESPONSE: "Custom-Test-Header-1,Custom-Test-Header-2,Custom-Test-Header-3,my-custom-regex-header-.*,invalid-regex-header-.*,.*my-secret.*",
+    },
+)
 class TestMiddlewareWsgiWithCustomHeaders(WsgiTestBase):
     @classmethod
     def setUpClass(cls):
@@ -477,18 +551,9 @@ class TestMiddlewareWsgiWithCustomHeaders(WsgiTestBase):
         tracer_provider, exporter = self.create_tracer_provider()
         self.exporter = exporter
         _django_instrumentor.instrument(tracer_provider=tracer_provider)
-        self.env_patch = patch.dict(
-            "os.environ",
-            {
-                OTEL_INSTRUMENTATION_HTTP_CAPTURE_HEADERS_SERVER_REQUEST: "Custom-Test-Header-1,Custom-Test-Header-2,Custom-Test-Header-3",
-                OTEL_INSTRUMENTATION_HTTP_CAPTURE_HEADERS_SERVER_RESPONSE: "Custom-Test-Header-1,Custom-Test-Header-2,Custom-Test-Header-3",
-            },
-        )
-        self.env_patch.start()
 
     def tearDown(self):
         super().tearDown()
-        self.env_patch.stop()
         teardown_test_environment()
         _django_instrumentor.uninstrument()
 
@@ -505,10 +570,18 @@ class TestMiddlewareWsgiWithCustomHeaders(WsgiTestBase):
             "http.request.header.custom_test_header_2": (
                 "test-header-value-2",
             ),
+            "http.request.header.regex_test_header_1": ("Regex Test Value 1",),
+            "http.request.header.regex_test_header_2": (
+                "RegexTestValue2,RegexTestValue3",
+            ),
+            "http.request.header.my_secret_header": ("[REDACTED]",),
         }
         Client(
             HTTP_CUSTOM_TEST_HEADER_1="test-header-value-1",
             HTTP_CUSTOM_TEST_HEADER_2="test-header-value-2",
+            HTTP_REGEX_TEST_HEADER_1="Regex Test Value 1",
+            HTTP_REGEX_TEST_HEADER_2="RegexTestValue2,RegexTestValue3",
+            HTTP_MY_SECRET_HEADER="My Secret Value",
         ).get("/traced/")
         spans = self.exporter.get_finished_spans()
         self.assertEqual(len(spans), 1)
@@ -542,6 +615,13 @@ class TestMiddlewareWsgiWithCustomHeaders(WsgiTestBase):
             "http.response.header.custom_test_header_2": (
                 "test-header-value-2",
             ),
+            "http.response.header.my_custom_regex_header_1": (
+                "my-custom-regex-value-1,my-custom-regex-value-2",
+            ),
+            "http.response.header.my_custom_regex_header_2": (
+                "my-custom-regex-value-3,my-custom-regex-value-4",
+            ),
+            "http.response.header.my_secret_header": ("[REDACTED]",),
         }
         Client().get("/traced_custom_header/")
         spans = self.exporter.get_finished_spans()

@@ -6,35 +6,35 @@ on:
     - 'release/*'
   pull_request:
 env:
-  CORE_REPO_SHA: c09f2076a1878c6d58b78d3895485ef5559f30f7
+  CORE_REPO_SHA: 042d7a7921e25936decd95addf4fb1d30afb88e2
 
 jobs:
   build:
     env:
       # We use these variables to convert between tox and GHA version literals
-      py36: 3.6
       py37: 3.7
       py38: 3.8
       py39: 3.9
       py310: "3.10"
-      pypy3: pypy3
+      py311: "3.11"
+      pypy3: "pypy3.7"
       RUN_MATRIX_COMBINATION: ${{ matrix.python-version }}-${{ matrix.package }}-${{ matrix.os }}
     runs-on: ${{ matrix.os }}
     strategy:
       fail-fast: false  # ensures the entire test matrix is run, even if one permutation fails
       matrix:
-        python-version: [ py36, py37, py38, py39, py310, pypy3 ]
+        python-version: [ py37, py38, py39, py310, py311, pypy3 ]
         package: ["instrumentation", "distro", "exporter", "sdkextension", "propagator"]
         os: [ ubuntu-20.04 ]
     steps:
       - name: Checkout Contrib Repo @ SHA - ${{ github.sha }}
         uses: actions/checkout@v2
       - name: Set up Python ${{ env[matrix.python-version] }}
-        uses: actions/setup-python@v2
+        uses: actions/setup-python@v4
         with:
           python-version: ${{ env[matrix.python-version] }}
       - name: Install tox
-        run: pip install -U tox-factor
+        run: pip install tox==3.27.1 tox-factor
       - name: Cache tox environment
         # Preserves .tox directory between runs for faster installs
         uses: actions/cache@v1
@@ -96,7 +96,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        tox-environment: [ "docker-tests", "lint", "docs", "generate" ]
+        tox-environment: [ "docker-tests", "spellcheck", "lint", "docs", "generate" ]
     name: ${{ matrix.tox-environment }}
     runs-on: ubuntu-20.04
     steps:
@@ -107,7 +107,7 @@ jobs:
         with:
           python-version: 3.9
       - name: Install tox
-        run: pip install -U tox
+        run: pip install tox==3.27.1
       - name: Install libsnappy-dev
         if: ${{ matrix.tox-environment == 'lint' }}
         run: sudo apt-get install -y libsnappy-dev

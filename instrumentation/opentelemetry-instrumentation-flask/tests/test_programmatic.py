@@ -12,6 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+from timeit import default_timer
 from unittest.mock import Mock, patch
 
 from flask import Flask, request
@@ -23,11 +24,24 @@ from opentelemetry.instrumentation.propagators import (
     get_global_response_propagator,
     set_global_response_propagator,
 )
-from opentelemetry.instrumentation.wsgi import OpenTelemetryMiddleware
+from opentelemetry.instrumentation.wsgi import (
+    OpenTelemetryMiddleware,
+    _active_requests_count_attrs,
+    _duration_attrs,
+)
+from opentelemetry.sdk.metrics.export import (
+    HistogramDataPoint,
+    NumberDataPoint,
+)
 from opentelemetry.sdk.resources import Resource
 from opentelemetry.semconv.trace import SpanAttributes
 from opentelemetry.test.wsgitestutil import WsgiTestBase
-from opentelemetry.util.http import get_excluded_urls
+from opentelemetry.util.http import (
+    OTEL_INSTRUMENTATION_HTTP_CAPTURE_HEADERS_SANITIZE_FIELDS,
+    OTEL_INSTRUMENTATION_HTTP_CAPTURE_HEADERS_SERVER_REQUEST,
+    OTEL_INSTRUMENTATION_HTTP_CAPTURE_HEADERS_SERVER_RESPONSE,
+    get_excluded_urls,
+)
 
 # pylint: disable=import-error
 from .base_test import InstrumentationTest
@@ -47,6 +61,16 @@ def expected_attributes(override_attributes):
     for key, val in override_attributes.items():
         default_attributes[key] = val
     return default_attributes
+
+
+_expected_metric_names = [
+    "http.server.active_requests",
+    "http.server.duration",
+]
+_recommended_attrs = {
+    "http.server.active_requests": _active_requests_count_attrs,
+    "http.server.duration": _duration_attrs,
+}
 
 
 class TestProgrammatic(InstrumentationTest, WsgiTestBase):
@@ -250,6 +274,106 @@ class TestProgrammatic(InstrumentationTest, WsgiTestBase):
         span_list = self.memory_exporter.get_finished_spans()
         self.assertEqual(len(span_list), 1)
 
+    def test_flask_metrics(self):
+        start = default_timer()
+        self.client.get("/hello/123")
+        self.client.get("/hello/321")
+        self.client.get("/hello/756")
+        duration = max(round((default_timer() - start) * 1000), 0)
+        metrics_list = self.memory_metrics_reader.get_metrics_data()
+        number_data_point_seen = False
+        histogram_data_point_seen = False
+        self.assertTrue(len(metrics_list.resource_metrics) != 0)
+        for resource_metric in metrics_list.resource_metrics:
+            self.assertTrue(len(resource_metric.scope_metrics) != 0)
+            for scope_metric in resource_metric.scope_metrics:
+                self.assertTrue(len(scope_metric.metrics) != 0)
+                for metric in scope_metric.metrics:
+                    self.assertIn(metric.name, _expected_metric_names)
+                    data_points = list(metric.data.data_points)
+                    self.assertEqual(len(data_points), 1)
+                    for point in data_points:
+                        if isinstance(point, HistogramDataPoint):
+                            self.assertEqual(point.count, 3)
+                            self.assertAlmostEqual(
+                                duration, point.sum, delta=10
+                            )
+                            histogram_data_point_seen = True
+                        if isinstance(point, NumberDataPoint):
+                            number_data_point_seen = True
+                        for attr in point.attributes:
+                            self.assertIn(
+                                attr, _recommended_attrs[metric.name]
+                            )
+        self.assertTrue(number_data_point_seen and histogram_data_point_seen)
+
+    def test_flask_metric_values(self):
+        start = default_timer()
+        self.client.post("/hello/756")
+        self.client.post("/hello/756")
+        self.client.post("/hello/756")
+        duration = max(round((default_timer() - start) * 1000), 0)
+        metrics_list = self.memory_metrics_reader.get_metrics_data()
+        for resource_metric in metrics_list.resource_metrics:
+            for scope_metric in resource_metric.scope_metrics:
+                for metric in scope_metric.metrics:
+                    for point in list(metric.data.data_points):
+                        if isinstance(point, HistogramDataPoint):
+                            self.assertEqual(point.count, 3)
+                            self.assertAlmostEqual(
+                                duration, point.sum, delta=10
+                            )
+                        if isinstance(point, NumberDataPoint):
+                            self.assertEqual(point.value, 0)
+
+    def test_basic_metric_success(self):
+        self.client.get("/hello/756")
+        expected_duration_attributes = {
+            "http.method": "GET",
+            "http.host": "localhost",
+            "http.scheme": "http",
+            "http.flavor": "1.1",
+            "http.server_name": "localhost",
+            "net.host.port": 80,
+            "http.status_code": 200,
+        }
+        expected_requests_count_attributes = {
+            "http.method": "GET",
+            "http.host": "localhost",
+            "http.scheme": "http",
+            "http.flavor": "1.1",
+            "http.server_name": "localhost",
+        }
+        metrics_list = self.memory_metrics_reader.get_metrics_data()
+        for resource_metric in metrics_list.resource_metrics:
+            for scope_metrics in resource_metric.scope_metrics:
+                for metric in scope_metrics.metrics:
+                    for point in list(metric.data.data_points):
+                        if isinstance(point, HistogramDataPoint):
+                            self.assertDictEqual(
+                                expected_duration_attributes,
+                                dict(point.attributes),
+                            )
+                            self.assertEqual(point.count, 1)
+                        elif isinstance(point, NumberDataPoint):
+                            self.assertDictEqual(
+                                expected_requests_count_attributes,
+                                dict(point.attributes),
+                            )
+                            self.assertEqual(point.value, 0)
+
+    def test_metric_uninstrument(self):
+        self.client.delete("/hello/756")
+        FlaskInstrumentor().uninstrument_app(self.app)
+        self.client.delete("/hello/756")
+        metrics_list = self.memory_metrics_reader.get_metrics_data()
+        for resource_metric in metrics_list.resource_metrics:
+            for scope_metric in resource_metric.scope_metrics:
+                for metric in scope_metric.metrics:
+                    for point in list(metric.data.data_points):
+                        if isinstance(point, HistogramDataPoint):
+                            self.assertEqual(point.count, 1)
+
 
 class TestProgrammaticHooks(InstrumentationTest, WsgiTestBase):
     def setUp(self):
@@ -439,18 +563,18 @@ class TestProgrammaticWrappedWithOtherFramework(
         )
 
 
+@patch.dict(
+    "os.environ",
+    {
+        OTEL_INSTRUMENTATION_HTTP_CAPTURE_HEADERS_SANITIZE_FIELDS: ".*my-secret.*",
+        OTEL_INSTRUMENTATION_HTTP_CAPTURE_HEADERS_SERVER_REQUEST: "Custom-Test-Header-1,Custom-Test-Header-2,Custom-Test-Header-3,Regex-Test-Header-.*,Regex-Invalid-Test-Header-.*,.*my-secret.*",
+        OTEL_INSTRUMENTATION_HTTP_CAPTURE_HEADERS_SERVER_RESPONSE: "content-type,content-length,my-custom-header,invalid-header,my-custom-regex-header-.*,invalid-regex-header-.*,.*my-secret.*",
+    },
+)
 class TestCustomRequestResponseHeaders(InstrumentationTest, WsgiTestBase):
     def setUp(self):
         super().setUp()
 
-        self.env_patch = patch.dict(
-            "os.environ",
-            {
-                "OTEL_INSTRUMENTATION_HTTP_CAPTURE_HEADERS_SERVER_REQUEST": "Custom-Test-Header-1,Custom-Test-Header-2,Custom-Test-Header-3",
-                "OTEL_INSTRUMENTATION_HTTP_CAPTURE_HEADERS_SERVER_RESPONSE": "content-type,content-length,my-custom-header,invalid-header",
-            },
-        )
-        self.env_patch.start()
         self.app = Flask(__name__)
         FlaskInstrumentor().instrument_app(self.app)
 
@@ -458,7 +582,6 @@ class TestCustomRequestResponseHeaders(InstrumentationTest, WsgiTestBase):
 
     def tearDown(self):
         super().tearDown()
-        self.env_patch.stop()
         with self.disable_logging():
             FlaskInstrumentor().uninstrument_app(self.app)
 
@@ -466,6 +589,9 @@ class TestCustomRequestResponseHeaders(InstrumentationTest, WsgiTestBase):
         headers = {
             "Custom-Test-Header-1": "Test Value 1",
             "Custom-Test-Header-2": "TestValue2,TestValue3",
+            "Regex-Test-Header-1": "Regex Test Value 1",
+            "regex-test-header-2": "RegexTestValue2,RegexTestValue3",
+            "My-Secret-Header": "My Secret Value",
         }
         resp = self.client.get("/hello/123", headers=headers)
         self.assertEqual(200, resp.status_code)
@@ -475,6 +601,11 @@ class TestCustomRequestResponseHeaders(InstrumentationTest, WsgiTestBase):
             "http.request.header.custom_test_header_2": (
                 "TestValue2,TestValue3",
             ),
+            "http.request.header.regex_test_header_1": ("Regex Test Value 1",),
+            "http.request.header.regex_test_header_2": (
+                "RegexTestValue2,RegexTestValue3",
+            ),
+            "http.request.header.my_secret_header": ("[REDACTED]",),
         }
         self.assertEqual(span.kind, trace.SpanKind.SERVER)
         self.assertSpanHasAttributes(span, expected)
@@ -485,6 +616,9 @@ class TestCustomRequestResponseHeaders(InstrumentationTest, WsgiTestBase):
             headers = {
                 "Custom-Test-Header-1": "Test Value 1",
                 "Custom-Test-Header-2": "TestValue2,TestValue3",
+                "Regex-Test-Header-1": "Regex Test Value 1",
+                "regex-test-header-2": "RegexTestValue2,RegexTestValue3",
+                "My-Secret-Header": "My Secret Value",
             }
             resp = self.client.get("/hello/123", headers=headers)
             self.assertEqual(200, resp.status_code)
@@ -494,6 +628,13 @@ class TestCustomRequestResponseHeaders(InstrumentationTest, WsgiTestBase):
                 "http.request.header.custom_test_header_2": (
                     "TestValue2,TestValue3",
                 ),
+                "http.request.header.regex_test_header_1": (
+                    "Regex Test Value 1",
+                ),
+                "http.request.header.regex_test_header_2": (
+                    "RegexTestValue2,RegexTestValue3",
+                ),
+                "http.request.header.my_secret_header": ("[REDACTED]",),
             }
             self.assertEqual(span.kind, trace.SpanKind.INTERNAL)
             for key, _ in not_expected.items():
@@ -511,6 +652,13 @@ class TestCustomRequestResponseHeaders(InstrumentationTest, WsgiTestBase):
             "http.response.header.my_custom_header": (
                 "my-custom-value-1,my-custom-header-2",
             ),
+            "http.response.header.my_custom_regex_header_1": (
+                "my-custom-regex-value-1,my-custom-regex-value-2",
+            ),
+            "http.response.header.my_custom_regex_header_2": (
+                "my-custom-regex-value-3,my-custom-regex-value-4",
+            ),
+            "http.response.header.my_secret_header": ("[REDACTED]",),
         }
         self.assertEqual(span.kind, trace.SpanKind.SERVER)
         self.assertSpanHasAttributes(span, expected)
@@ -529,6 +677,13 @@ class TestCustomRequestResponseHeaders(InstrumentationTest, WsgiTestBase):
                 "http.response.header.my_custom_header": (
                     "my-custom-value-1,my-custom-header-2",
                 ),
+                "http.response.header.my_custom_regex_header_1": (
+                    "my-custom-regex-value-1,my-custom-regex-value-2",
+                ),
+                "http.response.header.my_custom_regex_header_2": (
+                    "my-custom-regex-value-3,my-custom-regex-value-4",
+                ),
+                "http.response.header.my_secret_header": ("[REDACTED]",),
             }
             self.assertEqual(span.kind, trace.SpanKind.INTERNAL)
             for key, _ in not_expected.items():

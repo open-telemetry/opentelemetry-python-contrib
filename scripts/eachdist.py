@@ -83,7 +83,7 @@ def parse_args(args=None):
         commands according to `format` and `--all`.
 
         Target paths are initially all Python distribution root paths
-        (as determined by the existence of setup.py, etc. files).
+        (as determined by the existence of pyproject.toml, etc. files).
         They are then augmented according to the section of the
         `PROJECT_ROOT/eachdist.ini` config file specified by the `--mode` option.
 
@@ -282,7 +282,7 @@ def find_targets_unordered(rootpath):
             continue
         if any(
             (subdir / marker).exists()
-            for marker in ("setup.py", "pyproject.toml")
+            for marker in ("pyproject.toml",)
         ):
             yield subdir
         else:
@@ -518,18 +518,19 @@ def lint_args(args):
 
     runsubprocess(
         args.dry_run,
-        ("black", ".") + (("--diff", "--check") if args.check_only else ()),
+        ("black", "--config", f"{rootdir}/pyproject.toml", ".")
+        + (("--diff", "--check") if args.check_only else ()),
         cwd=rootdir,
         check=True,
     )
     runsubprocess(
         args.dry_run,
-        ("isort", ".")
+        ("isort", "--settings-path", f"{rootdir}/.isort.cfg", ".")
         + (("--diff", "--check-only") if args.check_only else ()),
         cwd=rootdir,
         check=True,
     )
-    runsubprocess(args.dry_run, ("flake8", rootdir), check=True)
+    runsubprocess(args.dry_run, ("flake8", "--config", f"{rootdir}/.flake8", rootdir), check=True)
     execute_args(
         parse_subargs(
             args, ("exec", "pylint {}", "--all", "--mode", "lintroots")
@@ -550,7 +551,7 @@ def update_changelog(path, version, new_entry):
             text = changelog.read()
             if f"## [{version}]" in text:
                 raise AttributeError(
-                    f"{path} already contans version {version}"
+                    f"{path} already contains version {version}"
                 )
         with open(path, encoding="utf-8") as changelog:
             for line in changelog:
@@ -644,9 +645,9 @@ def update_dependencies(targets, version, packages):
 
         update_files(
             targets,
-            "setup.cfg",
+            "pyproject.toml",
             fr"({package_name}.*)==(.*)",
-            r"\1== " + version,
+            r"\1== " + version + '",',
         )
 
 
@@ -717,13 +718,16 @@ def format_args(args):
     format_dir = str(find_projectroot())
     if args.path:
         format_dir = os.path.join(format_dir, args.path)
-
+    root_dir = str(find_projectroot())
     runsubprocess(
-        args.dry_run, ("black", "."), cwd=format_dir, check=True,
+        args.dry_run,
+        ("black", "--config", f"{root_dir}/pyproject.toml", "."),
+        cwd=format_dir,
+        check=True,
     )
     runsubprocess(
         args.dry_run,
-        ("isort", "--profile", "black", "."),
+        ("isort", "--settings-path", f"{root_dir}/.isort.cfg", "--profile", "black", "."),
         cwd=format_dir,
         check=True,
     )

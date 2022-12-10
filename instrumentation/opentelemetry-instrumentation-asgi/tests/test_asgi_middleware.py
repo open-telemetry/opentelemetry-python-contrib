@@ -12,8 +12,11 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+# pylint: disable=too-many-lines
+
 import sys
 import unittest
+from timeit import default_timer
 from unittest import mock
 
 import opentelemetry.instrumentation.asgi as otel_asgi
@@ -24,6 +27,10 @@ from opentelemetry.instrumentation.propagators import (
     set_global_response_propagator,
 )
 from opentelemetry.sdk import resources
+from opentelemetry.sdk.metrics.export import (
+    HistogramDataPoint,
+    NumberDataPoint,
+)
 from opentelemetry.semconv.trace import SpanAttributes
 from opentelemetry.test.asgitestutil import (
     AsgiTestBase,
@@ -32,9 +39,18 @@ from opentelemetry.test.asgitestutil import (
 from opentelemetry.test.test_base import TestBase
 from opentelemetry.trace import SpanKind, format_span_id, format_trace_id
 from opentelemetry.util.http import (
-    OTEL_INSTRUMENTATION_HTTP_CAPTURE_HEADERS_SERVER_REQUEST,
-    OTEL_INSTRUMENTATION_HTTP_CAPTURE_HEADERS_SERVER_RESPONSE,
+    _active_requests_count_attrs,
+    _duration_attrs,
 )
+
+_expected_metric_names = [
+    "http.server.active_requests",
+    "http.server.duration",
+]
+_recommended_attrs = {
+    "http.server.active_requests": _active_requests_count_attrs,
+    "http.server.duration": _duration_attrs,
+}
 
 
 async def http_app(scope, receive, send):
@@ -57,47 +73,6 @@ async def websocket_app(scope, receive, send):
         message = await receive()
         if message.get("type") == "websocket.connect":
             await send({"type": "websocket.accept"})
-
-        if message.get("type") == "websocket.receive":
-            if message.get("text") == "ping":
-                await send({"type": "websocket.send", "text": "pong"})
-
-        if message.get("type") == "websocket.disconnect":
-            break
-
-
-async def http_app_with_custom_headers(scope, receive, send):
-    message = await receive()
-    assert scope["type"] == "http"
-    if message.get("type") == "http.request":
-        await send(
-            {
-                "type": "http.response.start",
-                "status": 200,
-                "headers": [
-                    (b"Content-Type", b"text/plain"),
-                    (b"custom-test-header-1", b"test-header-value-1"),
-                    (b"custom-test-header-2", b"test-header-value-2"),
-                ],
-            }
-        )
-    await send({"type": "http.response.body", "body": b"*"})
-
-
-async def websocket_app_with_custom_headers(scope, receive, send):
-    assert scope["type"] == "websocket"
-    while True:
-        message = await receive()
-        if message.get("type") == "websocket.connect":
-            await send(
-                {
-                    "type": "websocket.accept",
-                    "headers": [
-                        (b"custom-test-header-1", b"test-header-value-1"),
-                        (b"custom-test-header-2", b"test-header-value-2"),
-                    ],
-                }
-            )
 
         if message.get("type") == "websocket.receive":
             if message.get("text") == "ping":
@@ -283,6 +258,20 @@ class TestAsgiApplication(AsgiTestBase):
             self.assertEqual(
                 span.resource.attributes["service-test-key"], "value"
             )
+
+    def test_no_op_tracer_provider_otel_asgi(self):
+        app = otel_asgi.OpenTelemetryMiddleware(
+            simple_asgi, tracer_provider=trace_api.NoOpTracerProvider()
+        )
+        self.seed_app(app)
+        self.send_default_request()
+
+        response_start, response_body, *_ = self.get_all_output()
+        self.assertEqual(response_body["body"], b"*")
+        self.assertEqual(response_start["status"], 200)
+
+        span_list = self.memory_exporter.get_finished_spans()
+        self.assertEqual(len(span_list), 0)
 
     def test_behavior_with_scope_server_as_none(self):
         """Test that middleware is ok when server is none in scope."""
@@ -523,6 +512,135 @@ class TestAsgiApplication(AsgiTestBase):
             outputs, modifiers=[update_expected_hook_results]
         )
 
+    def test_asgi_metrics(self):
+        app = otel_asgi.OpenTelemetryMiddleware(simple_asgi)
+        self.seed_app(app)
+        self.send_default_request()
+        self.seed_app(app)
+        self.send_default_request()
+        self.seed_app(app)
+        self.send_default_request()
+        metrics_list = self.memory_metrics_reader.get_metrics_data()
+        number_data_point_seen = False
+        histogram_data_point_seen = False
+        self.assertTrue(len(metrics_list.resource_metrics) != 0)
+        for resource_metric in metrics_list.resource_metrics:
+            self.assertTrue(len(resource_metric.scope_metrics) != 0)
+            for scope_metric in resource_metric.scope_metrics:
+                self.assertTrue(len(scope_metric.metrics) != 0)
+                for metric in scope_metric.metrics:
+                    self.assertIn(metric.name, _expected_metric_names)
+                    data_points = list(metric.data.data_points)
+                    self.assertEqual(len(data_points), 1)
+                    for point in data_points:
+                        if isinstance(point, HistogramDataPoint):
+                            self.assertEqual(point.count, 3)
+                            histogram_data_point_seen = True
+                        if isinstance(point, NumberDataPoint):
+                            number_data_point_seen = True
+                        for attr in point.attributes:
+                            self.assertIn(
+                                attr, _recommended_attrs[metric.name]
+                            )
+        self.assertTrue(number_data_point_seen and histogram_data_point_seen)
+
+    def test_basic_metric_success(self):
+        app = otel_asgi.OpenTelemetryMiddleware(simple_asgi)
+        self.seed_app(app)
+        start = default_timer()
+        self.send_default_request()
+        duration = max(round((default_timer() - start) * 1000), 0)
+        expected_duration_attributes = {
+            "http.method": "GET",
+            "http.host": "127.0.0.1",
+            "http.scheme": "http",
+            "http.flavor": "1.0",
+            "net.host.port": 80,
+            "http.status_code": 200,
+        }
+        expected_requests_count_attributes = {
+            "http.method": "GET",
+            "http.host": "127.0.0.1",
+            "http.scheme": "http",
+            "http.flavor": "1.0",
+        }
+        metrics_list = self.memory_metrics_reader.get_metrics_data()
+        for resource_metric in metrics_list.resource_metrics:
+            for scope_metrics in resource_metric.scope_metrics:
+                for metric in scope_metrics.metrics:
+                    for point in list(metric.data.data_points):
+                        if isinstance(point, HistogramDataPoint):
+                            self.assertDictEqual(
+                                expected_duration_attributes,
+                                dict(point.attributes),
+                            )
+                            self.assertEqual(point.count, 1)
+                            self.assertAlmostEqual(
+                                duration, point.sum, delta=5
+                            )
+                        elif isinstance(point, NumberDataPoint):
+                            self.assertDictEqual(
+                                expected_requests_count_attributes,
+                                dict(point.attributes),
+                            )
+                            self.assertEqual(point.value, 0)
+
+    def test_metric_target_attribute(self):
+        expected_target = "/api/user/{id}"
+
+        class TestRoute:
+            path_format = expected_target
+
+        async def target_asgi(scope, receive, send):
+            assert isinstance(scope, dict)
+            if scope["type"] == "http":
+                await http_app(scope, receive, send)
+                scope["route"] = TestRoute()
+            else:
+                raise ValueError("websockets not supported")
+
+        app = otel_asgi.OpenTelemetryMiddleware(target_asgi)
+        self.seed_app(app)
+        self.send_default_request()
+
+        metrics_list = self.memory_metrics_reader.get_metrics_data()
+        assertions = 0
+        for resource_metric in metrics_list.resource_metrics:
+            for scope_metrics in resource_metric.scope_metrics:
+                for metric in scope_metrics.metrics:
+                    if metric.name != "http.server.duration":
+                        continue
+                    for point in metric.data.data_points:
+                        if isinstance(point, HistogramDataPoint):
+                            self.assertEqual(
+                                point.attributes["http.target"],
+                                expected_target,
+                            )
+                            assertions += 1
+        self.assertEqual(assertions, 1)
+
+    def test_no_metric_for_websockets(self):
+        self.scope = {
+            "type": "websocket",
+            "http_version": "1.1",
+            "scheme": "ws",
+            "path": "/",
+            "query_string": b"",
+            "headers": [],
+            "client": ("127.0.0.1", 32767),
+            "server": ("127.0.0.1", 80),
+        }
+        app = otel_asgi.OpenTelemetryMiddleware(simple_asgi)
+        self.seed_app(app)
+        self.send_input({"type": "websocket.connect"})
+        self.send_input({"type": "websocket.receive", "text": "ping"})
+        self.send_input({"type": "websocket.disconnect"})
+        self.get_all_output()
+        metrics_list = self.memory_metrics_reader.get_metrics_data()
+        self.assertEqual(
+            len(metrics_list.resource_metrics[0].scope_metrics), 0
+        )
+
 
 class TestAsgiAttributes(unittest.TestCase):
     def setUp(self):
@@ -594,6 +712,37 @@ class TestAsgiAttributes(unittest.TestCase):
             attrs[SpanAttributes.HTTP_URL], "http://httpbin.org/status/200"
         )
 
+    def test_collect_target_attribute_missing(self):
+        self.assertIsNone(otel_asgi._collect_target_attribute(self.scope))
+
+    def test_collect_target_attribute_fastapi(self):
+        class TestRoute:
+            path_format = "/api/users/{user_id}"
+
+        self.scope["route"] = TestRoute()
+        self.assertEqual(
+            otel_asgi._collect_target_attribute(self.scope),
+            "/api/users/{user_id}",
+        )
+
+    def test_collect_target_attribute_fastapi_mounted(self):
+        class TestRoute:
+            path_format = "/users/{user_id}"
+
+        self.scope["route"] = TestRoute()
+        self.scope["root_path"] = "/api/v2"
+        self.assertEqual(
+            otel_asgi._collect_target_attribute(self.scope),
+            "/api/v2/users/{user_id}",
+        )
+
+    def test_collect_target_attribute_fastapi_starlette_invalid(self):
+        self.scope["route"] = object()
+        self.assertIsNone(
+            otel_asgi._collect_target_attribute(self.scope),
+            "HTTP_TARGET values is not None",
+        )
+
 
 class TestWrappedApplication(AsgiTestBase):
     def test_mark_span_internal_in_presence_of_span_from_other_framework(self):
@@ -626,238 +775,6 @@ class TestWrappedApplication(AsgiTestBase):
         self.assertEqual(
             span_list[4].context.span_id, span_list[3].parent.span_id
         )
-
-
-@mock.patch.dict(
-    "os.environ",
-    {
-        OTEL_INSTRUMENTATION_HTTP_CAPTURE_HEADERS_SERVER_REQUEST: "Custom-Test-Header-1,Custom-Test-Header-2,Custom-Test-Header-3",
-        OTEL_INSTRUMENTATION_HTTP_CAPTURE_HEADERS_SERVER_RESPONSE: "Custom-Test-Header-1,Custom-Test-Header-2,Custom-Test-Header-3",
-    },
-)
-class TestCustomHeaders(AsgiTestBase, TestBase):
-    def setUp(self):
-        super().setUp()
-        self.tracer_provider, self.exporter = TestBase.create_tracer_provider()
-        self.tracer = self.tracer_provider.get_tracer(__name__)
-        self.app = otel_asgi.OpenTelemetryMiddleware(
-            simple_asgi, tracer_provider=self.tracer_provider
-        )
-
-    def test_http_custom_request_headers_in_span_attributes(self):
-        self.scope["headers"].extend(
-            [
-                (b"custom-test-header-1", b"test-header-value-1"),
-                (b"custom-test-header-2", b"test-header-value-2"),
-            ]
-        )
-        self.seed_app(self.app)
-        self.send_default_request()
-        self.get_all_output()
-        span_list = self.exporter.get_finished_spans()
-        expected = {
-            "http.request.header.custom_test_header_1": (
-                "test-header-value-1",
-            ),
-            "http.request.header.custom_test_header_2": (
-                "test-header-value-2",
-            ),
-        }
-        for span in span_list:
-            if span.kind == SpanKind.SERVER:
-                self.assertSpanHasAttributes(span, expected)
-
-    def test_http_custom_request_headers_not_in_span_attributes(self):
-        self.scope["headers"].extend(
-            [
-                (b"custom-test-header-1", b"test-header-value-1"),
-            ]
-        )
-        self.seed_app(self.app)
-        self.send_default_request()
-        self.get_all_output()
-        span_list = self.exporter.get_finished_spans()
-        expected = {
-            "http.request.header.custom_test_header_1": (
-                "test-header-value-1",
-            ),
-        }
-        not_expected = {
-            "http.request.header.custom_test_header_2": (
-                "test-header-value-2",
-            ),
-        }
-        for span in span_list:
-            if span.kind == SpanKind.SERVER:
-                self.assertSpanHasAttributes(span, expected)
-                for key, _ in not_expected.items():
-                    self.assertNotIn(key, span.attributes)
-
-    def test_http_custom_response_headers_in_span_attributes(self):
-        self.app = otel_asgi.OpenTelemetryMiddleware(
-            http_app_with_custom_headers, tracer_provider=self.tracer_provider
-        )
-        self.seed_app(self.app)
-        self.send_default_request()
-        self.get_all_output()
-        span_list = self.exporter.get_finished_spans()
-        expected = {
-            "http.response.header.custom_test_header_1": (
-                "test-header-value-1",
-            ),
-            "http.response.header.custom_test_header_2": (
-                "test-header-value-2",
-            ),
-        }
-        for span in span_list:
-            if span.kind == SpanKind.SERVER:
-                self.assertSpanHasAttributes(span, expected)
-
-    def test_http_custom_response_headers_not_in_span_attributes(self):
-        self.app = otel_asgi.OpenTelemetryMiddleware(
-            http_app_with_custom_headers, tracer_provider=self.tracer_provider
-        )
-        self.seed_app(self.app)
-        self.send_default_request()
-        self.get_all_output()
-        span_list = self.exporter.get_finished_spans()
-        not_expected = {
-            "http.response.header.custom_test_header_3": (
-                "test-header-value-3",
-            ),
-        }
-        for span in span_list:
-            if span.kind == SpanKind.SERVER:
-                for key, _ in not_expected.items():
-                    self.assertNotIn(key, span.attributes)
-
-    def test_websocket_custom_request_headers_in_span_attributes(self):
-        self.scope = {
-            "type": "websocket",
-            "http_version": "1.1",
-            "scheme": "ws",
-            "path": "/",
-            "query_string": b"",
-            "headers": [
-                (b"custom-test-header-1", b"test-header-value-1"),
-                (b"custom-test-header-2", b"test-header-value-2"),
-            ],
-            "client": ("127.0.0.1", 32767),
-            "server": ("127.0.0.1", 80),
-        }
-        self.seed_app(self.app)
-        self.send_input({"type": "websocket.connect"})
-        self.send_input({"type": "websocket.receive", "text": "ping"})
-        self.send_input({"type": "websocket.disconnect"})
-
-        self.get_all_output()
-        span_list = self.exporter.get_finished_spans()
-        expected = {
-            "http.request.header.custom_test_header_1": (
-                "test-header-value-1",
-            ),
-            "http.request.header.custom_test_header_2": (
-                "test-header-value-2",
-            ),
-        }
-        for span in span_list:
-            if span.kind == SpanKind.SERVER:
-                self.assertSpanHasAttributes(span, expected)
-
-    def test_websocket_custom_request_headers_not_in_span_attributes(self):
-        self.scope = {
-            "type": "websocket",
-            "http_version": "1.1",
-            "scheme": "ws",
-            "path": "/",
-            "query_string": b"",
-            "headers": [
-                (b"Custom-Test-Header-1", b"test-header-value-1"),
-                (b"Custom-Test-Header-2", b"test-header-value-2"),
-            ],
-            "client": ("127.0.0.1", 32767),
-            "server": ("127.0.0.1", 80),
-        }
-        self.seed_app(self.app)
-        self.send_input({"type": "websocket.connect"})
-        self.send_input({"type": "websocket.receive", "text": "ping"})
-        self.send_input({"type": "websocket.disconnect"})
-
-        self.get_all_output()
-        span_list = self.exporter.get_finished_spans()
-        not_expected = {
-            "http.request.header.custom_test_header_3": (
-                "test-header-value-3",
-            ),
-        }
-        for span in span_list:
-            if span.kind == SpanKind.SERVER:
-                for key, _ in not_expected.items():
-                    self.assertNotIn(key, span.attributes)
-
-    def test_websocket_custom_response_headers_in_span_attributes(self):
-        self.scope = {
-            "type": "websocket",
-            "http_version": "1.1",
-            "scheme": "ws",
-            "path": "/",
-            "query_string": b"",
-            "headers": [],
-            "client": ("127.0.0.1", 32767),
-            "server": ("127.0.0.1", 80),
-        }
-        self.app = otel_asgi.OpenTelemetryMiddleware(
-            websocket_app_with_custom_headers,
-            tracer_provider=self.tracer_provider,
-        )
-        self.seed_app(self.app)
-        self.send_input({"type": "websocket.connect"})
-        self.send_input({"type": "websocket.receive", "text": "ping"})
-        self.send_input({"type": "websocket.disconnect"})
-        self.get_all_output()
-        span_list = self.exporter.get_finished_spans()
-        expected = {
-            "http.response.header.custom_test_header_1": (
-                "test-header-value-1",
-            ),
-            "http.response.header.custom_test_header_2": (
-                "test-header-value-2",
-            ),
-        }
-        for span in span_list:
-            if span.kind == SpanKind.SERVER:
-                self.assertSpanHasAttributes(span, expected)
-
-    def test_websocket_custom_response_headers_not_in_span_attributes(self):
-        self.scope = {
-            "type": "websocket",
-            "http_version": "1.1",
-            "scheme": "ws",
-            "path": "/",
-            "query_string": b"",
-            "headers": [],
-            "client": ("127.0.0.1", 32767),
-            "server": ("127.0.0.1", 80),
-        }
-        self.app = otel_asgi.OpenTelemetryMiddleware(
-            websocket_app_with_custom_headers,
-            tracer_provider=self.tracer_provider,
-        )
-        self.seed_app(self.app)
-        self.send_input({"type": "websocket.connect"})
-        self.send_input({"type": "websocket.receive", "text": "ping"})
-        self.send_input({"type": "websocket.disconnect"})
-        self.get_all_output()
-        span_list = self.exporter.get_finished_spans()
-        not_expected = {
-            "http.response.header.custom_test_header_3": (
-                "test-header-value-3",
-            ),
-        }
-        for span in span_list:
-            if span.kind == SpanKind.SERVER:
-                for key, _ in not_expected.items():
-                    self.assertNotIn(key, span.attributes)
 
 
 if __name__ == "__main__":

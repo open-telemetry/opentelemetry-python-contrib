@@ -22,6 +22,49 @@ instrumentation via the following code:
 
 .. _sqlalchemy: https://pypi.org/project/sqlalchemy/
 
+SQLCOMMENTER
+****************************************
+You can optionally configure SQLAlchemy instrumentation to enable sqlcommenter which enriches
+the query with contextual information.
+
+Usage
+-----
+
+.. code:: python
+
+    from opentelemetry.instrumentation.sqlalchemy import SQLAlchemyInstrumentor
+
+    SQLAlchemyInstrumentor().instrument(enable_commenter=True, commenter_options={})
+
+
+For example,
+::
+
+    Invoking engine.execute("select * from auth_users") will lead to sql query "select * from auth_users" but when SQLCommenter is enabled
+    the query will get appended with some configurable tags like "select * from auth_users /*tag=value*/;"
+
+SQLCommenter Configurations
+***************************
+We can configure the tags to be appended to the sqlquery log by adding configuration inside commenter_options(default:{}) keyword
+
+db_driver = True(Default) or False
+
+For example,
+::
+Enabling this flag will add any underlying driver like psycopg2 /*db_driver='psycopg2'*/
+
+db_framework = True(Default) or False
+
+For example,
+::
+Enabling this flag will add db_framework and it's version /*db_framework='sqlalchemy:0.41b0'*/
+
+opentelemetry_values = True(Default) or False
+
+For example,
+::
+Enabling this flag will add traceparent values /*traceparent='00-03afa25236b8cd948fa853d67038ac79-405ff022e8247c46-01'*/
+
 Usage
 -----
 .. code:: python
@@ -93,11 +136,16 @@ class SQLAlchemyInstrumentor(BaseInstrumentor):
             An instrumented engine if passed in as an argument or list of instrumented engines, None otherwise.
         """
         tracer_provider = kwargs.get("tracer_provider")
-        _w("sqlalchemy", "create_engine", _wrap_create_engine(tracer_provider))
+        enable_commenter = kwargs.get("enable_commenter", False)
+        _w(
+            "sqlalchemy",
+            "create_engine",
+            _wrap_create_engine(tracer_provider, enable_commenter),
+        )
         _w(
             "sqlalchemy.engine",
             "create_engine",
-            _wrap_create_engine(tracer_provider),
+            _wrap_create_engine(tracer_provider, enable_commenter),
         )
         _w(
             "sqlalchemy.engine.base",
@@ -108,13 +156,14 @@ class SQLAlchemyInstrumentor(BaseInstrumentor):
             _w(
                 "sqlalchemy.ext.asyncio",
                 "create_async_engine",
-                _wrap_create_async_engine(tracer_provider),
+                _wrap_create_async_engine(tracer_provider, enable_commenter),
             )
         if kwargs.get("engine") is not None:
             return EngineTracer(
                 _get_tracer(tracer_provider),
                 kwargs.get("engine"),
                 kwargs.get("enable_commenter", False),
+                kwargs.get("commenter_options", {}),
             )
         if kwargs.get("engines") is not None and isinstance(
             kwargs.get("engines"), Sequence
@@ -124,6 +173,7 @@ class SQLAlchemyInstrumentor(BaseInstrumentor):
                     _get_tracer(tracer_provider),
                     engine,
                     kwargs.get("enable_commenter", False),
+                    kwargs.get("commenter_options", {}),
                 )
                 for engine in kwargs.get("engines")
             ]

@@ -16,6 +16,7 @@
 import logging
 from unittest import mock
 
+from opentelemetry import context
 from opentelemetry import trace as trace_api
 from opentelemetry.instrumentation import dbapi
 from opentelemetry.sdk import resources
@@ -87,11 +88,17 @@ class TestDBApiIntegration(TestBase):
         query"""
         )
         cursor.execute("tab\tseparated query")
+        cursor.execute("/* leading comment */ query")
+        cursor.execute("/* leading comment */ query /* trailing comment */")
+        cursor.execute("query /* trailing comment */")
         spans_list = self.memory_exporter.get_finished_spans()
-        self.assertEqual(len(spans_list), 3)
+        self.assertEqual(len(spans_list), 6)
         self.assertEqual(spans_list[0].name, "Test")
         self.assertEqual(spans_list[1].name, "multi")
         self.assertEqual(spans_list[2].name, "tab")
+        self.assertEqual(spans_list[3].name, "query")
+        self.assertEqual(spans_list[4].name, "query")
+        self.assertEqual(spans_list[5].name, "query")
 
     def test_span_succeeded_with_capture_of_statement_parameters(self):
         connection_props = {
@@ -252,6 +259,38 @@ class TestDBApiIntegration(TestBase):
         self.assertRegex(
             cursor.query,
             r"Select 1 /\*dbapi_threadsafety=123,driver_paramstyle='test',libpq_version=123,traceparent='\d{1,2}-[a-zA-Z0-9_]{32}-[a-zA-Z0-9_]{16}-\d{1,2}'\*/;",
+        )
+
+    def test_executemany_flask_integration_comment(self):
+
+        connect_module = mock.MagicMock()
+        connect_module.__version__ = mock.MagicMock()
+        connect_module.__libpq_version__ = 123
+        connect_module.apilevel = 123
+        connect_module.threadsafety = 123
+        connect_module.paramstyle = "test"
+
+        db_integration = dbapi.DatabaseApiIntegration(
+            "testname",
+            "testcomponent",
+            enable_commenter=True,
+            commenter_options={"db_driver": False, "dbapi_level": False},
+            connect_module=connect_module,
+        )
+        current_context = context.get_current()
+        sqlcommenter_context = context.set_value(
+            "SQLCOMMENTER_ORM_TAGS_AND_VALUES", {"flask": 1}, current_context
+        )
+        context.attach(sqlcommenter_context)
+
+        mock_connection = db_integration.wrapped_connection(
+            mock_connect, {}, {}
+        )
+        cursor = mock_connection.cursor()
+        cursor.executemany("Select 1;")
+        self.assertRegex(
+            cursor.query,
+            r"Select 1 /\*dbapi_threadsafety=123,driver_paramstyle='test',flask=1,libpq_version=123,traceparent='\d{1,2}-[a-zA-Z0-9_]{32}-[a-zA-Z0-9_]{16}-\d{1,2}'\*/;",
         )
 
     def test_callproc(self):

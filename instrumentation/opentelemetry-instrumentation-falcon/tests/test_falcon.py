@@ -12,6 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 #
+from timeit import default_timer
 from unittest.mock import Mock, patch
 
 import pytest
@@ -26,17 +27,35 @@ from opentelemetry.instrumentation.propagators import (
     get_global_response_propagator,
     set_global_response_propagator,
 )
+from opentelemetry.instrumentation.wsgi import (
+    _active_requests_count_attrs,
+    _duration_attrs,
+)
+from opentelemetry.sdk.metrics.export import (
+    HistogramDataPoint,
+    NumberDataPoint,
+)
 from opentelemetry.sdk.resources import Resource
 from opentelemetry.semconv.trace import SpanAttributes
 from opentelemetry.test.test_base import TestBase
 from opentelemetry.test.wsgitestutil import WsgiTestBase
 from opentelemetry.trace import StatusCode
 from opentelemetry.util.http import (
+    OTEL_INSTRUMENTATION_HTTP_CAPTURE_HEADERS_SANITIZE_FIELDS,
     OTEL_INSTRUMENTATION_HTTP_CAPTURE_HEADERS_SERVER_REQUEST,
     OTEL_INSTRUMENTATION_HTTP_CAPTURE_HEADERS_SERVER_RESPONSE,
 )
 
 from .app import make_app
+
+_expected_metric_names = [
+    "http.server.active_requests",
+    "http.server.duration",
+]
+_recommended_attrs = {
+    "http.server.active_requests": _active_requests_count_attrs,
+    "http.server.duration": _duration_attrs,
+}
 
 
 class TestFalconBase(TestBase):
@@ -242,6 +261,99 @@ class TestFalconInstrumentation(TestFalconBase, WsgiTestBase):
             self.assertFalse(mock_span.set_attribute.called)
             self.assertFalse(mock_span.set_status.called)
 
+    def test_uninstrument_after_instrument(self):
+        self.client().simulate_get(path="/hello")
+        spans = self.memory_exporter.get_finished_spans()
+        self.assertEqual(len(spans), 1)
+
+        FalconInstrumentor().uninstrument()
+        self.memory_exporter.clear()
+
+        self.client().simulate_get(path="/hello")
+        spans = self.memory_exporter.get_finished_spans()
+        self.assertEqual(len(spans), 0)
+
+    def test_falcon_metrics(self):
+        self.client().simulate_get("/hello/756")
+        self.client().simulate_get("/hello/756")
+        self.client().simulate_get("/hello/756")
+        metrics_list = self.memory_metrics_reader.get_metrics_data()
+        number_data_point_seen = False
+        histogram_data_point_seen = False
+        self.assertTrue(len(metrics_list.resource_metrics) != 0)
+        for resource_metric in metrics_list.resource_metrics:
+            self.assertTrue(len(resource_metric.scope_metrics) != 0)
+            for scope_metric in resource_metric.scope_metrics:
+                self.assertTrue(len(scope_metric.metrics) != 0)
+                for metric in scope_metric.metrics:
+                    self.assertIn(metric.name, _expected_metric_names)
+                    data_points = list(metric.data.data_points)
+                    self.assertEqual(len(data_points), 1)
+                    for point in data_points:
+                        if isinstance(point, HistogramDataPoint):
+                            self.assertEqual(point.count, 3)
+                            histogram_data_point_seen = True
+                        if isinstance(point, NumberDataPoint):
+                            number_data_point_seen = True
+                        for attr in point.attributes:
+                            self.assertIn(
+                                attr, _recommended_attrs[metric.name]
+                            )
+        self.assertTrue(number_data_point_seen and histogram_data_point_seen)
+
+    def test_falcon_metric_values(self):
+        expected_duration_attributes = {
+            "http.method": "GET",
+            "http.host": "falconframework.org",
+            "http.scheme": "http",
+            "http.flavor": "1.1",
+            "http.server_name": "falconframework.org",
+            "net.host.port": 80,
+            "http.status_code": 404,
+        }
+        expected_requests_count_attributes = {
+            "http.method": "GET",
+            "http.host": "falconframework.org",
+            "http.scheme": "http",
+            "http.flavor": "1.1",
+            "http.server_name": "falconframework.org",
+        }
+        start = default_timer()
+        self.client().simulate_get("/hello/756")
+        duration = max(round((default_timer() - start) * 1000), 0)
+        metrics_list = self.memory_metrics_reader.get_metrics_data()
+        for resource_metric in metrics_list.resource_metrics:
+            for scope_metric in resource_metric.scope_metrics:
+                for metric in scope_metric.metrics:
+                    for point in list(metric.data.data_points):
+                        if isinstance(point, HistogramDataPoint):
+                            self.assertDictEqual(
+                                expected_duration_attributes,
+                                dict(point.attributes),
+                            )
+                            self.assertEqual(point.count, 1)
+                            self.assertAlmostEqual(
+                                duration, point.sum, delta=10
+                            )
+                        if isinstance(point, NumberDataPoint):
+                            self.assertDictEqual(
+                                expected_requests_count_attributes,
+                                dict(point.attributes),
+                            )
+                            self.assertEqual(point.value, 0)
+
+    def test_metric_uninstrument(self):
+        self.client().simulate_request(method="POST", path="/hello/756")
+        FalconInstrumentor().uninstrument()
+        self.client().simulate_request(method="POST", path="/hello/756")
+        metrics_list = self.memory_metrics_reader.get_metrics_data()
+        for resource_metric in metrics_list.resource_metrics:
+            for scope_metric in resource_metric.scope_metrics:
+                for metric in scope_metric.metrics:
+                    for point in list(metric.data.data_points):
+                        if isinstance(point, HistogramDataPoint):
+                            self.assertEqual(point.count, 1)
+
 
 class TestFalconInstrumentationWithTracerProvider(TestBase):
     def setUp(self):
@@ -310,8 +422,9 @@ class TestFalconInstrumentationWrappedWithOtherFramework(TestFalconBase):
 @patch.dict(
     "os.environ",
     {
-        OTEL_INSTRUMENTATION_HTTP_CAPTURE_HEADERS_SERVER_REQUEST: "Custom-Test-Header-1,Custom-Test-Header-2,invalid-header",
-        OTEL_INSTRUMENTATION_HTTP_CAPTURE_HEADERS_SERVER_RESPONSE: "content-type,content-length,my-custom-header,invalid-header",
+        OTEL_INSTRUMENTATION_HTTP_CAPTURE_HEADERS_SANITIZE_FIELDS: ".*my-secret.*",
+        OTEL_INSTRUMENTATION_HTTP_CAPTURE_HEADERS_SERVER_REQUEST: "Custom-Test-Header-1,Custom-Test-Header-2,invalid-header,Regex-Test-Header-.*,Regex-Invalid-Test-Header-.*,.*my-secret.*",
+        OTEL_INSTRUMENTATION_HTTP_CAPTURE_HEADERS_SERVER_RESPONSE: "content-type,content-length,my-custom-header,invalid-header,my-custom-regex-header-.*,invalid-regex-header-.*,.*my-secret.*",
     },
 )
 class TestCustomRequestResponseHeaders(TestFalconBase):
@@ -320,6 +433,9 @@ class TestCustomRequestResponseHeaders(TestFalconBase):
             "Custom-Test-Header-1": "Test Value 1",
             "Custom-Test-Header-2": "TestValue2,TestValue3",
             "Custom-Test-Header-3": "TestValue4",
+            "Regex-Test-Header-1": "Regex Test Value 1",
+            "regex-test-header-2": "RegexTestValue2,RegexTestValue3",
+            "My-Secret-Header": "My Secret Value",
         }
         self.client().simulate_request(
             method="GET", path="/hello", headers=headers
@@ -332,6 +448,11 @@ class TestCustomRequestResponseHeaders(TestFalconBase):
             "http.request.header.custom_test_header_2": (
                 "TestValue2,TestValue3",
             ),
+            "http.request.header.regex_test_header_1": ("Regex Test Value 1",),
+            "http.request.header.regex_test_header_2": (
+                "RegexTestValue2,RegexTestValue3",
+            ),
+            "http.request.header.my_secret_header": ("[REDACTED]",),
         }
         not_expected = {
             "http.request.header.custom_test_header_3": ("TestValue4",),
@@ -348,6 +469,9 @@ class TestCustomRequestResponseHeaders(TestFalconBase):
             headers = {
                 "Custom-Test-Header-1": "Test Value 1",
                 "Custom-Test-Header-2": "TestValue2,TestValue3",
+                "Regex-Test-Header-1": "Regex Test Value 1",
+                "regex-test-header-2": "RegexTestValue2,RegexTestValue3",
+                "My-Secret-Header": "My Secret Value",
             }
             self.client().simulate_request(
                 method="GET", path="/hello", headers=headers
@@ -359,6 +483,13 @@ class TestCustomRequestResponseHeaders(TestFalconBase):
                 "http.request.header.custom_test_header_2": (
                     "TestValue2,TestValue3",
                 ),
+                "http.request.header.regex_test_header_1": (
+                    "Regex Test Value 1",
+                ),
+                "http.request.header.regex_test_header_2": (
+                    "RegexTestValue2,RegexTestValue3",
+                ),
+                "http.request.header.my_secret_header": ("[REDACTED]",),
             }
             self.assertEqual(span.kind, trace.SpanKind.INTERNAL)
             for key, _ in not_expected.items():
@@ -383,6 +514,13 @@ class TestCustomRequestResponseHeaders(TestFalconBase):
             "http.response.header.my_custom_header": (
                 "my-custom-value-1,my-custom-header-2",
             ),
+            "http.response.header.my_custom_regex_header_1": (
+                "my-custom-regex-value-1,my-custom-regex-value-2",
+            ),
+            "http.response.header.my_custom_regex_header_2": (
+                "my-custom-regex-value-3,my-custom-regex-value-4",
+            ),
+            "http.response.header.my_secret_header": ("[REDACTED]",),
         }
         not_expected = {
             "http.response.header.dont_capture_me": ("test-value",)
@@ -413,6 +551,13 @@ class TestCustomRequestResponseHeaders(TestFalconBase):
                 "http.response.header.my_custom_header": (
                     "my-custom-value-1,my-custom-header-2",
                 ),
+                "http.response.header.my_custom_regex_header_1": (
+                    "my-custom-regex-value-1,my-custom-regex-value-2",
+                ),
+                "http.response.header.my_custom_regex_header_2": (
+                    "my-custom-regex-value-3,my-custom-regex-value-4",
+                ),
+                "http.response.header.my_secret_header": ("[REDACTED]",),
             }
             self.assertEqual(span.kind, trace.SpanKind.INTERNAL)
             for key, _ in not_expected.items():

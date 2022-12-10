@@ -94,8 +94,9 @@ Configuration
 
 Exclude lists
 *************
-To exclude certain URLs from being tracked, set the environment variable ``OTEL_PYTHON_DJANGO_EXCLUDED_URLS``
-(or ``OTEL_PYTHON_EXCLUDED_URLS`` as fallback) with comma delimited regexes representing which URLs to exclude.
+To exclude certain URLs from tracking, set the environment variable ``OTEL_PYTHON_DJANGO_EXCLUDED_URLS``
+(or ``OTEL_PYTHON_EXCLUDED_URLS`` to cover all instrumentations) to a string of comma delimited regexes that match the
+URLs.
 
 For example,
 
@@ -107,8 +108,8 @@ will exclude requests such as ``https://site/client/123/info`` and ``https://sit
 
 Request attributes
 ********************
-To extract certain attributes from Django's request object and use them as span attributes, set the environment variable ``OTEL_PYTHON_DJANGO_TRACED_REQUEST_ATTRS`` to a comma
-delimited list of request attribute names.
+To extract attributes from Django's request object and use them as span attributes, set the environment variable
+``OTEL_PYTHON_DJANGO_TRACED_REQUEST_ATTRS`` to a comma delimited list of request attribute names.
 
 For example,
 
@@ -116,14 +117,15 @@ For example,
 
     export OTEL_PYTHON_DJANGO_TRACED_REQUEST_ATTRS='path_info,content_type'
 
-will extract path_info and content_type attributes from every traced request and add them as span attritbues.
+will extract the ``path_info`` and ``content_type`` attributes from every traced request and add them as span attributes.
 
 Django Request object reference: https://docs.djangoproject.com/en/3.1/ref/request-response/#attributes
 
 Request and Response hooks
 ***************************
-The instrumentation supports specifying request and response hooks. These are functions that get called back by the instrumentation right after a Span is created for a request
-and right before the span is finished while processing a response. The hooks can be configured as follows:
+This instrumentation supports request and response hooks. These are functions that get called
+right after a span is created for a request and right before the span is finished for the response.
+The hooks can be configured as follows:
 
 .. code:: python
 
@@ -140,49 +142,93 @@ Django Response object: https://docs.djangoproject.com/en/3.1/ref/request-respon
 
 Capture HTTP request and response headers
 *****************************************
-You can configure the agent to capture predefined HTTP headers as span attributes, according to the `semantic convention <https://github.com/open-telemetry/opentelemetry-specification/blob/main/specification/trace/semantic_conventions/http.md#http-request-and-response-headers>`_.
+You can configure the agent to capture specified HTTP headers as span attributes, according to the
+`semantic convention <https://github.com/open-telemetry/opentelemetry-specification/blob/main/specification/trace/semantic_conventions/http.md#http-request-and-response-headers>`_.
 
 Request headers
 ***************
-To capture predefined HTTP request headers as span attributes, set the environment variable ``OTEL_INSTRUMENTATION_HTTP_CAPTURE_HEADERS_SERVER_REQUEST``
-to a comma-separated list of HTTP header names.
+To capture HTTP request headers as span attributes, set the environment variable
+``OTEL_INSTRUMENTATION_HTTP_CAPTURE_HEADERS_SERVER_REQUEST`` to a comma delimited list of HTTP header names.
 
 For example,
 ::
 
-    export OTEL_INSTRUMENTATION_HTTP_CAPTURE_HEADERS_SERVER_REQUEST="content_type,custom_request_header"
+    export OTEL_INSTRUMENTATION_HTTP_CAPTURE_HEADERS_SERVER_REQUEST="content-type,custom_request_header"
 
-will extract content_type and custom_request_header from request headers and add them as span attributes.
+will extract ``content-type`` and ``custom_request_header`` from the request headers and add them as span attributes.
 
-It is recommended that you should give the correct names of the headers to be captured in the environment variable.
-Request header names in django are case insensitive. So, giving header name as ``CUStom_Header`` in environment variable will be able capture header with name ``custom-header``.
+Request header names in Django are case-insensitive. So, giving the header name as ``CUStom-Header`` in the environment
+variable will capture the header named ``custom-header``.
 
-The name of the added span attribute will follow the format ``http.request.header.<header_name>`` where ``<header_name>`` being the normalized HTTP header name (lowercase, with - characters replaced by _ ).
-The value of the attribute will be single item list containing all the header values.
+Regular expressions may also be used to match multiple headers that correspond to the given pattern.  For example:
+::
 
-Example of the added span attribute,
+    export OTEL_INSTRUMENTATION_HTTP_CAPTURE_HEADERS_SERVER_REQUEST="Accept.*,X-.*"
+
+Would match all request headers that start with ``Accept`` and ``X-``.
+
+To capture all request headers, set ``OTEL_INSTRUMENTATION_HTTP_CAPTURE_HEADERS_SERVER_REQUEST`` to ``".*"``.
+::
+
+    export OTEL_INSTRUMENTATION_HTTP_CAPTURE_HEADERS_SERVER_REQUEST=".*"
+
+The name of the added span attribute will follow the format ``http.request.header.<header_name>`` where ``<header_name>``
+is the normalized HTTP header name (lowercase, with ``-`` replaced by ``_``). The value of the attribute will be a
+single item list containing all the header values.
+
+For example:
 ``http.request.header.custom_request_header = ["<value1>,<value2>"]``
 
 Response headers
 ****************
-To capture predefined HTTP response headers as span attributes, set the environment variable ``OTEL_INSTRUMENTATION_HTTP_CAPTURE_HEADERS_SERVER_RESPONSE``
-to a comma-separated list of HTTP header names.
+To capture HTTP response headers as span attributes, set the environment variable
+``OTEL_INSTRUMENTATION_HTTP_CAPTURE_HEADERS_SERVER_RESPONSE`` to a comma delimited list of HTTP header names.
 
 For example,
 ::
 
-    export OTEL_INSTRUMENTATION_HTTP_CAPTURE_HEADERS_SERVER_RESPONSE="content_type,custom_response_header"
+    export OTEL_INSTRUMENTATION_HTTP_CAPTURE_HEADERS_SERVER_RESPONSE="content-type,custom_response_header"
 
-will extract content_type and custom_response_header from response headers and add them as span attributes.
+will extract ``content-type`` and ``custom_response_header`` from the response headers and add them as span attributes.
 
-It is recommended that you should give the correct names of the headers to be captured in the environment variable.
-Response header names captured in django are case insensitive. So, giving header name as ``CUStomHeader`` in environment variable will be able capture header with name ``customheader``.
+Response header names in Django are case-insensitive. So, giving the header name as ``CUStom-Header`` in the environment
+variable will capture the header named ``custom-header``.
 
-The name of the added span attribute will follow the format ``http.response.header.<header_name>`` where ``<header_name>`` being the normalized HTTP header name (lowercase, with - characters replaced by _ ).
-The value of the attribute will be single item list containing all the header values.
+Regular expressions may also be used to match multiple headers that correspond to the given pattern.  For example:
+::
 
-Example of the added span attribute,
+    export OTEL_INSTRUMENTATION_HTTP_CAPTURE_HEADERS_SERVER_RESPONSE="Content.*,X-.*"
+
+Would match all response headers that start with ``Content`` and ``X-``.
+
+To capture all response headers, set ``OTEL_INSTRUMENTATION_HTTP_CAPTURE_HEADERS_SERVER_RESPONSE`` to ``".*"``.
+::
+
+    export OTEL_INSTRUMENTATION_HTTP_CAPTURE_HEADERS_SERVER_RESPONSE=".*"
+
+The name of the added span attribute will follow the format ``http.response.header.<header_name>`` where ``<header_name>``
+is the normalized HTTP header name (lowercase, with ``-`` replaced by ``_``). The value of the attribute will be a
+single item list containing all the header values.
+
+For example:
 ``http.response.header.custom_response_header = ["<value1>,<value2>"]``
+
+Sanitizing headers
+******************
+In order to prevent storing sensitive data such as personally identifiable information (PII), session keys, passwords,
+etc, set the environment variable ``OTEL_INSTRUMENTATION_HTTP_CAPTURE_HEADERS_SANITIZE_FIELDS``
+to a comma delimited list of HTTP header names to be sanitized.  Regexes may be used, and all header names will be
+matched in a case-insensitive manner.
+
+For example,
+::
+
+    export OTEL_INSTRUMENTATION_HTTP_CAPTURE_HEADERS_SANITIZE_FIELDS=".*session.*,set-cookie"
+
+will replace the value of headers such as ``session-id`` and ``set-cookie`` with ``[REDACTED]`` in the span.
+
+Note:
+    The environment variable names used to capture HTTP headers are still experimental, and thus are subject to change.
 
 API
 ---
@@ -195,6 +241,7 @@ from typing import Collection
 
 from django import VERSION as django_version
 from django.conf import settings
+from django.core.exceptions import ImproperlyConfigured
 
 from opentelemetry.instrumentation.django.environment_variables import (
     OTEL_PYTHON_DJANGO_INSTRUMENT,
@@ -205,6 +252,8 @@ from opentelemetry.instrumentation.django.middleware.otel_middleware import (
 from opentelemetry.instrumentation.django.package import _instruments
 from opentelemetry.instrumentation.django.version import __version__
 from opentelemetry.instrumentation.instrumentor import BaseInstrumentor
+from opentelemetry.metrics import get_meter
+from opentelemetry.semconv.metrics import MetricInstruments
 from opentelemetry.trace import get_tracer
 
 DJANGO_2_0 = django_version >= (2, 0)
@@ -244,19 +293,29 @@ class DjangoInstrumentor(BaseInstrumentor):
             return
 
         tracer_provider = kwargs.get("tracer_provider")
+        meter_provider = kwargs.get("meter_provider")
         tracer = get_tracer(
             __name__,
             __version__,
             tracer_provider=tracer_provider,
         )
-
+        meter = get_meter(__name__, __version__, meter_provider=meter_provider)
         _DjangoMiddleware._tracer = tracer
-
+        _DjangoMiddleware._meter = meter
         _DjangoMiddleware._otel_request_hook = kwargs.pop("request_hook", None)
         _DjangoMiddleware._otel_response_hook = kwargs.pop(
             "response_hook", None
         )
-
+        _DjangoMiddleware._duration_histogram = meter.create_histogram(
+            name=MetricInstruments.HTTP_SERVER_DURATION,
+            unit="ms",
+            description="measures the duration of the inbound http request",
+        )
+        _DjangoMiddleware._active_request_counter = meter.create_up_down_counter(
+            name=MetricInstruments.HTTP_SERVER_ACTIVE_REQUESTS,
+            unit="requests",
+            description="measures the number of concurrent HTTP requests those are currently in flight",
+        )
         # This can not be solved, but is an inherent problem of this approach:
         # the order of middleware entries matters, and here you have no control
         # on that:
@@ -264,7 +323,23 @@ class DjangoInstrumentor(BaseInstrumentor):
         # https://docs.djangoproject.com/en/3.0/ref/middleware/#middleware-ordering
 
         _middleware_setting = _get_django_middleware_setting()
-        settings_middleware = getattr(settings, _middleware_setting, [])
+        settings_middleware = []
+        try:
+            settings_middleware = getattr(settings, _middleware_setting, [])
+        except ImproperlyConfigured as exception:
+            _logger.debug(
+                "DJANGO_SETTINGS_MODULE environment variable not configured. Defaulting to empty settings: %s",
+                exception,
+            )
+            settings.configure()
+            settings_middleware = getattr(settings, _middleware_setting, [])
+        except ModuleNotFoundError as exception:
+            _logger.debug(
+                "DJANGO_SETTINGS_MODULE points to a non-existent module. Defaulting to empty settings: %s",
+                exception,
+            )
+            settings.configure()
+            settings_middleware = getattr(settings, _middleware_setting, [])
 
         # Django allows to specify middlewares as a tuple, so we convert this tuple to a
         # list, otherwise we wouldn't be able to call append/remove

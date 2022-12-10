@@ -36,8 +36,9 @@ Configuration
 
 Exclude lists
 *************
-To exclude certain URLs from being tracked, set the environment variable ``OTEL_PYTHON_STARLETTE_EXCLUDED_URLS``
-(or ``OTEL_PYTHON_EXCLUDED_URLS`` as fallback) with comma delimited regexes representing which URLs to exclude.
+To exclude certain URLs from tracking, set the environment variable ``OTEL_PYTHON_STARLETTE_EXCLUDED_URLS``
+(or ``OTEL_PYTHON_EXCLUDED_URLS`` to cover all instrumentations) to a string of comma delimited regexes that match the
+URLs.
 
 For example,
 
@@ -50,9 +51,14 @@ will exclude requests such as ``https://site/client/123/info`` and ``https://sit
 Request/Response hooks
 **********************
 
-Utilize request/response hooks to execute custom logic to be performed before/after performing a request. The server request hook takes in a server span and ASGI
-scope object for every incoming request. The client request hook is called with the internal span and an ASGI scope which is sent as a dictionary for when the method recieve is called.
-The client response hook is called with the internal span and an ASGI event which is sent as a dictionary for when the method send is called.
+This instrumentation supports request and response hooks. These are functions that get called
+right after a span is created for a request and right before the span is finished for the response.
+
+- The server request hook is passed a server span and ASGI scope object for every incoming request.
+- The client request hook is called with the internal span and an ASGI scope when the method ``receive`` is called.
+- The client response hook is called with the internal span and an ASGI event when the method ``send`` is called.
+
+For example,
 
 .. code-block:: python
 
@@ -70,54 +76,93 @@ The client response hook is called with the internal span and an ASGI event whic
 
 Capture HTTP request and response headers
 *****************************************
-You can configure the agent to capture predefined HTTP headers as span attributes, according to the `semantic convention <https://github.com/open-telemetry/opentelemetry-specification/blob/main/specification/trace/semantic_conventions/http.md#http-request-and-response-headers>`_.
+You can configure the agent to capture specified HTTP headers as span attributes, according to the
+`semantic convention <https://github.com/open-telemetry/opentelemetry-specification/blob/main/specification/trace/semantic_conventions/http.md#http-request-and-response-headers>`_.
 
 Request headers
 ***************
-To capture predefined HTTP request headers as span attributes, set the environment variable ``OTEL_INSTRUMENTATION_HTTP_CAPTURE_HEADERS_SERVER_REQUEST``
-to a comma-separated list of HTTP header names.
+To capture HTTP request headers as span attributes, set the environment variable
+``OTEL_INSTRUMENTATION_HTTP_CAPTURE_HEADERS_SERVER_REQUEST`` to a comma delimited list of HTTP header names.
 
 For example,
-
 ::
 
     export OTEL_INSTRUMENTATION_HTTP_CAPTURE_HEADERS_SERVER_REQUEST="content-type,custom_request_header"
 
-will extract ``content-type`` and ``custom_request_header`` from request headers and add them as span attributes.
+will extract ``content-type`` and ``custom_request_header`` from the request headers and add them as span attributes.
 
-It is recommended that you should give the correct names of the headers to be captured in the environment variable.
-Request header names in starlette are case insensitive. So, giving header name as ``CUStom-Header`` in environment variable will be able capture header with name ``custom-header``.
+Request header names in Starlette are case-insensitive. So, giving the header name as ``CUStom-Header`` in the
+environment variable will capture the header named ``custom-header``.
 
-The name of the added span attribute will follow the format ``http.request.header.<header_name>`` where ``<header_name>`` being the normalized HTTP header name (lowercase, with - characters replaced by _ ).
-The value of the attribute will be single item list containing all the header values.
+Regular expressions may also be used to match multiple headers that correspond to the given pattern.  For example:
+::
 
-Example of the added span attribute,
+    export OTEL_INSTRUMENTATION_HTTP_CAPTURE_HEADERS_SERVER_REQUEST="Accept.*,X-.*"
+
+Would match all request headers that start with ``Accept`` and ``X-``.
+
+Additionally, the special keyword ``all`` can be used to capture all request headers.
+::
+
+    export OTEL_INSTRUMENTATION_HTTP_CAPTURE_HEADERS_SERVER_REQUEST="all"
+
+The name of the added span attribute will follow the format ``http.request.header.<header_name>`` where ``<header_name>``
+is the normalized HTTP header name (lowercase, with ``-`` replaced by ``_``). The value of the attribute will be a
+single item list containing all the header values.
+
+For example:
 ``http.request.header.custom_request_header = ["<value1>,<value2>"]``
 
 Response headers
 ****************
-To capture predefined HTTP response headers as span attributes, set the environment variable ``OTEL_INSTRUMENTATION_HTTP_CAPTURE_HEADERS_SERVER_RESPONSE``
-to a comma-separated list of HTTP header names.
+To capture HTTP response headers as span attributes, set the environment variable
+``OTEL_INSTRUMENTATION_HTTP_CAPTURE_HEADERS_SERVER_RESPONSE`` to a comma delimited list of HTTP header names.
 
 For example,
-
 ::
 
     export OTEL_INSTRUMENTATION_HTTP_CAPTURE_HEADERS_SERVER_RESPONSE="content-type,custom_response_header"
 
-will extract ``content-type`` and ``custom_response_header`` from response headers and add them as span attributes.
+will extract ``content-type`` and ``custom_response_header`` from the response headers and add them as span attributes.
 
-It is recommended that you should give the correct names of the headers to be captured in the environment variable.
-Response header names captured in starlette are case insensitive. So, giving header name as ``CUStomHeader`` in environment variable will be able capture header with name ``customheader``.
+Response header names in Starlette are case-insensitive. So, giving the header name as ``CUStom-Header`` in the
+environment variable will capture the header named ``custom-header``.
 
-The name of the added span attribute will follow the format ``http.response.header.<header_name>`` where ``<header_name>`` being the normalized HTTP header name (lowercase, with - characters replaced by _ ).
-The value of the attribute will be single item list containing all the header values.
+Regular expressions may also be used to match multiple headers that correspond to the given pattern.  For example:
+::
 
-Example of the added span attribute,
+    export OTEL_INSTRUMENTATION_HTTP_CAPTURE_HEADERS_SERVER_RESPONSE="Content.*,X-.*"
+
+Would match all response headers that start with ``Content`` and ``X-``.
+
+Additionally, the special keyword ``all`` can be used to capture all response headers.
+::
+
+    export OTEL_INSTRUMENTATION_HTTP_CAPTURE_HEADERS_SERVER_RESPONSE="all"
+
+The name of the added span attribute will follow the format ``http.response.header.<header_name>`` where ``<header_name>``
+is the normalized HTTP header name (lowercase, with ``-`` replaced by ``_``). The value of the attribute will be a
+single item list containing all the header values.
+
+For example:
 ``http.response.header.custom_response_header = ["<value1>,<value2>"]``
 
+Sanitizing headers
+******************
+In order to prevent storing sensitive data such as personally identifiable information (PII), session keys, passwords,
+etc, set the environment variable ``OTEL_INSTRUMENTATION_HTTP_CAPTURE_HEADERS_SANITIZE_FIELDS``
+to a comma delimited list of HTTP header names to be sanitized.  Regexes may be used, and all header names will be
+matched in a case-insensitive manner.
+
+For example,
+::
+
+    export OTEL_INSTRUMENTATION_HTTP_CAPTURE_HEADERS_SANITIZE_FIELDS=".*session.*,set-cookie"
+
+will replace the value of headers such as ``session-id`` and ``set-cookie`` with ``[REDACTED]`` in the span.
+
 Note:
-    Environment variable names to capture http headers are still experimental, and thus are subject to change.
+    The environment variable names used to capture HTTP headers are still experimental, and thus are subject to change.
 
 API
 ---
@@ -131,6 +176,8 @@ from starlette.routing import Match
 from opentelemetry.instrumentation.asgi import OpenTelemetryMiddleware
 from opentelemetry.instrumentation.asgi.package import _instruments
 from opentelemetry.instrumentation.instrumentor import BaseInstrumentor
+from opentelemetry.instrumentation.starlette.version import __version__
+from opentelemetry.metrics import get_meter
 from opentelemetry.semconv.trace import SpanAttributes
 from opentelemetry.trace import Span
 from opentelemetry.util.http import get_excluded_urls
@@ -156,9 +203,11 @@ class StarletteInstrumentor(BaseInstrumentor):
         server_request_hook: _ServerRequestHookT = None,
         client_request_hook: _ClientRequestHookT = None,
         client_response_hook: _ClientResponseHookT = None,
+        meter_provider=None,
         tracer_provider=None,
     ):
         """Instrument an uninstrumented Starlette application."""
+        meter = get_meter(__name__, __version__, meter_provider)
         if not getattr(app, "is_instrumented_by_opentelemetry", False):
             app.add_middleware(
                 OpenTelemetryMiddleware,
@@ -168,8 +217,23 @@ class StarletteInstrumentor(BaseInstrumentor):
                 client_request_hook=client_request_hook,
                 client_response_hook=client_response_hook,
                 tracer_provider=tracer_provider,
+                meter=meter,
             )
             app.is_instrumented_by_opentelemetry = True
+
+            # adding apps to set for uninstrumenting
+            if app not in _InstrumentedStarlette._instrumented_starlette_apps:
+                _InstrumentedStarlette._instrumented_starlette_apps.add(app)
+
+    @staticmethod
+    def uninstrument_app(app: applications.Starlette):
+        app.user_middleware = [
+            x
+            for x in app.user_middleware
+            if x.cls is not OpenTelemetryMiddleware
+        ]
+        app.middleware_stack = app.build_middleware_stack()
+        app._is_instrumented_by_opentelemetry = False
 
     def instrumentation_dependencies(self) -> Collection[str]:
         return _instruments
@@ -186,20 +250,32 @@ class StarletteInstrumentor(BaseInstrumentor):
         _InstrumentedStarlette._client_response_hook = kwargs.get(
             "client_response_hook"
         )
+        _InstrumentedStarlette._meter_provider = kwargs.get("_meter_provider")
+
         applications.Starlette = _InstrumentedStarlette
 
     def _uninstrument(self, **kwargs):
+
+        """uninstrumenting all created apps by user"""
+        for instance in _InstrumentedStarlette._instrumented_starlette_apps:
+            self.uninstrument_app(instance)
+        _InstrumentedStarlette._instrumented_starlette_apps.clear()
         applications.Starlette = self._original_starlette
 
 
 class _InstrumentedStarlette(applications.Starlette):
     _tracer_provider = None
+    _meter_provider = None
     _server_request_hook: _ServerRequestHookT = None
     _client_request_hook: _ClientRequestHookT = None
     _client_response_hook: _ClientResponseHookT = None
+    _instrumented_starlette_apps = set()
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
+        meter = get_meter(
+            __name__, __version__, _InstrumentedStarlette._meter_provider
+        )
         self.add_middleware(
             OpenTelemetryMiddleware,
             excluded_urls=_excluded_urls,
@@ -208,7 +284,14 @@ class _InstrumentedStarlette(applications.Starlette):
             client_request_hook=_InstrumentedStarlette._client_request_hook,
             client_response_hook=_InstrumentedStarlette._client_response_hook,
             tracer_provider=_InstrumentedStarlette._tracer_provider,
+            meter=meter,
         )
+        self._is_instrumented_by_opentelemetry = True
+        # adding apps to set for uninstrumenting
+        _InstrumentedStarlette._instrumented_starlette_apps.add(self)
+
+    def __del__(self):
+        _InstrumentedStarlette._instrumented_starlette_apps.remove(self)
 
 
 def _get_route_details(scope):
