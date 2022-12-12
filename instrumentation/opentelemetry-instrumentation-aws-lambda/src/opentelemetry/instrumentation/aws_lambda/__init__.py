@@ -377,6 +377,7 @@ def _instrument(
                 )
 
             lambda_error = None
+            result = None
             try:
                 result = call_wrapped(*args, **kwargs)
             except Exception as err:
