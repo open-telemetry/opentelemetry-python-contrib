@@ -296,12 +296,13 @@ def _set_api_gateway_v2_proxy_attributes(
 
 def _safe_execute_hook(hook_func, *args):
     if not callable(hook_func):
+        logger.warning("hook function isn't callable")
         return
 
     try:
         hook_func(*args)
-    except Exception:  # pylint: disable=broad-except
-        logger.warning("Failed executing hook")
+    except Exception as e:  # pylint: disable=broad-except
+        logger.warning("Failed executing hook: %s", e)
 
 
 def _instrument(
