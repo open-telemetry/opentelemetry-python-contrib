@@ -222,7 +222,7 @@ class TestBotoInstrumentor(TestBase):
         self.memory_exporter.clear()
         BotoInstrumentor().uninstrument()
 
-        s3.create_bucket("cheese")
+        s3.get_bucket("cheese")
         spans = self.memory_exporter.get_finished_spans()
         self.assertEqual(len(spans), 0)
 
