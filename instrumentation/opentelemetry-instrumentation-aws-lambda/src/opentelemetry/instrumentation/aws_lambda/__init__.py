@@ -301,8 +301,8 @@ def _safe_execute_hook(hook_func, *args):
 
     try:
         hook_func(*args)
-    except Exception as e:  # pylint: disable=broad-except
-        logger.warning("Failed executing hook: %s", e)
+    except Exception as err:  # pylint: disable=broad-except
+        logger.warning("Failed executing hook: %s", err)
 
 
 def _instrument(
