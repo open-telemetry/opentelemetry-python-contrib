@@ -37,7 +37,7 @@ class KubernetesResourceDetector(ResourceDetector):
                 "KUBERNETES_SERVICE_HOST"
             ) and not os.environ.get("KUBERNETES_SERVICE_PORT") and not os.environ.get("KUBERNETES_SERVICE_PORT_HTTPS"):
                 raise RuntimeError(
-                    "Missing Kubernetes default enviroment values therefore process is not on kubernetes."
+                    "Missing Kubernetes default environment values therefore process is not on kubernetes."
                 )
 
             pod_id = ""
