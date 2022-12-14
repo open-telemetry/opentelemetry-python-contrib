@@ -9,6 +9,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## Version 1.15.0/0.36b0 (2022-12-10)
 
+- Add uninstrument test for celery
+  ([#1490](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/1490))
 - Add uninstrument test for sqlalchemy
   ([#1471](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/1471))
 - `opentelemetry-instrumentation-tortoiseorm` Initial release
