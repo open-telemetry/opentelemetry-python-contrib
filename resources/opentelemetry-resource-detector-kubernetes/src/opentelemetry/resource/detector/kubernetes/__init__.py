@@ -59,7 +59,8 @@ class KubernetesResourceDetector(ResourceDetector):
             return Resource(
                 {
                     ResourceAttributes.CONTAINER_NAME: socket.gethostname(),
-                    ResourceAttributes.CONTAINER_ID: pod_id,
+                    ResourceAttributes.K8S_POD_UID: pod_id,
+
                 }
             )
         # pylint: disable=broad-except
