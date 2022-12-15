@@ -46,7 +46,7 @@ _expected_metric_names = [
 ]
 _recommended_attrs = {
     "http.server.active_requests": _active_requests_count_attrs,
-    "http.server.duration": _duration_attrs,
+    "http.server.duration": {*_duration_attrs, SpanAttributes.HTTP_TARGET},
 }
 
 
@@ -218,6 +218,7 @@ class TestFastAPIManualInstrumentation(TestBase):
             "http.server_name": "testserver",
             "net.host.port": 80,
             "http.status_code": 200,
+            "http.target": "/foobar",
         }
         expected_requests_count_attributes = {
             "http.method": "GET",

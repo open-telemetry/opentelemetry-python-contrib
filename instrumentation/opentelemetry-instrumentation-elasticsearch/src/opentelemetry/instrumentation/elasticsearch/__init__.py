@@ -130,7 +130,7 @@ class ElasticsearchInstrumentor(BaseInstrumentor):
 
     def _instrument(self, **kwargs):
         """
-        Instruments elasticsearch module
+        Instruments Elasticsearch module
         """
         tracer_provider = kwargs.get("tracer_provider")
         tracer = get_tracer(__name__, __version__, tracer_provider)
