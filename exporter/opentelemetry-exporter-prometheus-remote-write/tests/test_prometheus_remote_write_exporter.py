@@ -11,14 +11,15 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-
+import os
 import unittest
+from unittest import mock
 from unittest.mock import patch
 
 import pytest
 
 from opentelemetry.exporter.prometheus_remote_write import (
-    PrometheusRemoteWriteMetricsExporter,
+    AWSPrometheusSignV4, PrometheusRemoteWriteMetricsExporter,
 )
 from opentelemetry.exporter.prometheus_remote_write.gen.types_pb2 import (  # pylint: disable=E0611
     TimeSeries,
@@ -56,7 +57,6 @@ def test_regex_invalid(prom_rw):
 
 
 def test_parse_data_point(prom_rw):
-
     attrs = {"Foo": "Bar", "Baz": 42}
     timestamp = 1641946016139533244
     value = 242.42
@@ -307,3 +307,21 @@ def test_build_headers(prom_rw):
     assert headers["Content-Type"] == "application/x-protobuf"
     assert headers["X-Prometheus-Remote-Write-Version"] == "0.1.0"
     assert headers["Custom Header"] == "test_header"
+
+
+class TestAWSPrometheusSignV4:
+    @patch('opentelemetry.exporter.prometheus_remote_write.AWSPrometheusSignV4._get_date_header')
+    def test_sign_v4(self, mock__get_date_header):
+        mock__get_date_header.return_value = "20221216T093018Z", "20221216"
+        with mock.patch.dict(os.environ, {'AWS_ACCESS_KEY_ID': 'access', 'AWS_SECRET_ACCESS_KEY': 'secret',
+                                          "AWS_SESSION_TOKEN": "token", "AWS_DEFAULT_REGION": "eu-west-3"}):
+            aws_prometheus_sign_v4 = AWSPrometheusSignV4(endpoint="https://aps-workspaces.eu-west-1.amazonaws.com"
+                                                                  "/workspaces/ws-test/api/v1/remote_write")
+            payload = str.encode("test_data_prometheus", "utf-8")
+            assert {'Authorization': 'AWS4-HMAC-SHA256 '
+                                     'Credential=access/20221216/eu-west-3/aps/aws4_request, '
+                                     'SignedHeaders=host;x-amz-content-sha256;x-amz-date;x-amz-security-token, '
+                                     'Signature=c21ba6ad7fced74c7f12b719ab6c4e2f7f831c14cf74f6eed1d17596c9a6fde9',
+                    'X-Amz-Content-SHA256': '45183b2044b6e67cdb1979c50dde80965cd76dcea8e924a5e5d4e95d365b282a',
+                    'X-Amz-Date': '20221216T093018Z',
+                    'X-Amz-Security-Token': 'token'} == aws_prometheus_sign_v4.sign_v4(payload)
