@@ -67,25 +67,14 @@ class KubernetesResourceDetectorTest(unittest.TestCase):
 452 565 0:166 /sysrq-trigger /bogusPodIdThatShouldNotBeOneSetBecauseTheFirstOneWasPicked
 """,
     )
-    def test_simple_detector(
-        self,
-        mock_open_function,
-        mock_socket_gethostname
-    ):
+    def test_simple_detector(self, mock_open_function, mock_socket_gethostname):
         actual = KubernetesResourceDetector().detect()
-        self.assertDictEqual(
-            actual.attributes.copy(), OrderedDict(MockKubernetesResourceAttributes)
-        )
+        self.assertDictEqual(actual.attributes.copy(), OrderedDict(MockKubernetesResourceAttributes))
     
-    def test_without_container(
-        self
-    ):
+    def test_without_container(self):
         actual = KubernetesResourceDetector().detect()
         self.assertEqual(Resource.get_empty() , actual)
     
-    
-    def test_with_error(
-        self,
-    ):
+    def test_with_error(self):
         with self.assertRaises(RuntimeError):
             KubernetesResourceDetector(raise_on_error=True).detect()

@@ -1,5 +1,5 @@
-OpenTelemetry Python - A K8's Container Detector module
-========================================
+OpenTelemetry Python - Resource detector kubernetes
+====================================================
 
 .. automodule:: opentelemetry.resource.detector.kubernetes
     :members:

@@ -1,0 +1,50 @@
+OpenTelemetry Propagator for AWS X-Ray Service
+==============================================
+
+|pypi|
+
+.. |pypi| image:: TODO
+   :target: TODO
+
+
+This library provides container property detection features which can help
+correlate different spans and traces across different systems.
+
+Installation
+------------
+
+::
+
+    pip install opentelemetry-resource-detector-{infra}
+
+**NOTE**: Above `infra` can be your infra application name 
+like `kubernetes` for k8's , `container` for docker etc..
+Usage
+----------------------------
+
+Below is the give example for `opentelemetry-resource-detector-kubernetes`
+
+.. code-block:: python
+
+    import opentelemetry.trace as trace
+    from opentelemetry.sdk.trace import TracerProvider
+    from opentelemetry.resource.detector.kubernetes import (
+        KubernetesResourceDetector,
+    )
+    from opentelemetry.sdk.resources import get_aggregated_resources
+
+    trace.set_tracer_provider(
+        TracerProvider(
+            resource=get_aggregated_resources(
+                [
+                    KubernetesResourceDetector(),
+                ]
+            ),
+        )
+    )
+
+
+References
+----------
+
+* `OpenTelemetry Project <https://opentelemetry.io/>`_

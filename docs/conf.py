@@ -54,7 +54,15 @@ sdk_ext_dirs = [
     if isdir(join(sdk_ext, f))
 ]
 
-sys.path[:0] = exp_dirs + instr_dirs + sdk_ext_dirs + prop_dirs
+resource_ext = "../resource"
+resource_ext_dirs = [
+    os.path.abspath("/".join(["../resource", f, "src"]))
+    for f in listdir(resource_ext)
+    if isdir(join(resource_ext, f))
+]
+
+
+sys.path[:0] = exp_dirs + instr_dirs + sdk_ext_dirs + prop_dirs + resource_ext_dirs
 
 # -- Project information -----------------------------------------------------
 

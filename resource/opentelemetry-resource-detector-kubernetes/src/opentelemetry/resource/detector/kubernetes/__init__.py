@@ -33,9 +33,11 @@ class KubernetesResourceDetector(ResourceDetector):
 
     def detect(self) -> "Resource":
         try:
-            if not os.environ.get(
-                "KUBERNETES_SERVICE_HOST"
-            ) and not os.environ.get("KUBERNETES_SERVICE_PORT") and not os.environ.get("KUBERNETES_SERVICE_PORT_HTTPS"):
+            if (
+                not os.environ.get("KUBERNETES_SERVICE_HOST") 
+                and not os.environ.get("KUBERNETES_SERVICE_PORT") 
+                and not os.environ.get("KUBERNETES_SERVICE_PORT_HTTPS")
+            ):
                 raise RuntimeError(
                     "Missing Kubernetes default environment values therefore process is not on kubernetes."
                 )
@@ -48,19 +50,19 @@ class KubernetesResourceDetector(ResourceDetector):
                     for raw_line in container_info_file.readlines():
                         line = raw_line.strip()
                         # Subsequent IDs should be the same, exit if found one
-                        if len(line) > _POD_ID_LENGTH and 'pods' in line:
-                            pod_id = line.split('pods/')[1][:_POD_ID_LENGTH]
+                        if len(line) > _POD_ID_LENGTH and "pods" in line:
+                            pod_id = line.split("pods/")[1][:_POD_ID_LENGTH]
                             break
             except FileNotFoundError as exception:
                 logger.warning(
-                    "Failed to get pod ID on kubernetes container: %s.", exception
+                    "Failed to get pod ID on kubernetes container: %s.", 
+                    exception,
                 )
 
             return Resource(
                 {
                     ResourceAttributes.CONTAINER_NAME: socket.gethostname(),
                     ResourceAttributes.K8S_POD_UID: pod_id,
-
                 }
             )
         # pylint: disable=broad-except
