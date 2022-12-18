@@ -7,6 +7,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## Unreleased
 
+## Fixed
+
+- Fix aiopg instrumentation to work with aiopg < 2.0.0
+  ([#1473](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/1473))
+
 ## Version 1.15.0/0.36b0 (2022-12-10)
 
 - Add uninstrument test for sqlalchemy
@@ -37,8 +42,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
-- Fix aiopg instrumentation to work with aiopg <= 1.4.0
-  ([#1473](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/1473))
 - Fix bug in Urllib instrumentation - add status code to span attributes only if the status code is not None.
   ([#1430](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/1430))
 - `opentelemetry-instrumentation-aiohttp-client` Allow overriding of status in response hook.
