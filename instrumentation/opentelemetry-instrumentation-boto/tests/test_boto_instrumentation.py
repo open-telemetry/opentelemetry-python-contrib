@@ -210,6 +210,22 @@ class TestBotoInstrumentor(TestBase):
         assert spans
         self.assertEqual(len(spans), 1)
 
+    @mock_s3_deprecated
+    def test_uninstrument(self):
+        s3 = boto.s3.connect_to_region("us-east-1")
+        # Get the created bucket
+        s3.create_bucket("cheese")
+        spans = self.memory_exporter.get_finished_spans()
+        assert spans
+        self.assertEqual(len(spans), 1)
+
+        self.memory_exporter.clear()
+        BotoInstrumentor().uninstrument()
+
+        s3.get_bucket("cheese")
+        spans = self.memory_exporter.get_finished_spans()
+        self.assertEqual(len(spans), 0)
+
     @mock_lambda_deprecated
     def test_lambda_client(self):
         lamb = boto.awslambda.connect_to_region("us-east-2")
