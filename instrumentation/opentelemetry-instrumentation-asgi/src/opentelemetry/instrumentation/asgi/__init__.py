@@ -193,7 +193,7 @@ import typing
 import urllib
 from functools import wraps
 from timeit import default_timer
-from typing import Tuple
+from typing import Tuple, List, Dict
 
 from asgiref.compatibility import guarantee_single_callable
 
@@ -277,19 +277,23 @@ class ASGIGetter(Getter[dict]):
             if isinstance(key, bytes):
                     returnable.append(key.decode("utf8"))
             elif isinstance(key, str):
-                    returnable.append(key)            
+                    returnable.append(key)    
+
+        def append_dict_keys(key, val):
+                #append our current key
+                append_keys(_key)
+                
+                #append all keys within the dict
+                for x in self.keys(_val):
+                    append_keys(x)                    
 
         #carrier is a dict, so iterate over .items()
         for _key, _val in carrier.items():
             
             #if we have another dict, lets make a recursive call
             if isinstance(_val, Dict):
-                #append our current key
-                append_keys(_key)
-                
-                #append all keys within the dict
-                for x in self.keys(_val):
-                    append_keys(x)
+
+                append_dict_keys(_key, _val)
                     
             # if we have a list, lets iter over that. List can contain tuples(headers) dicts and string so lets approach them all as well
             elif isinstance(_val, List):
@@ -301,11 +305,9 @@ class ASGIGetter(Getter[dict]):
                    
                     #check for the dict   
                     elif isinstance(list_key, Dict):
-                        append_keys(_key)
                         
-                        #append all keys within the dict
-                        for x in self.keys(_val):
-                            append_keys(x)
+                        append_dict_keys(_key, _val)
+
                     else:
                         append_keys(list_key)
                     
