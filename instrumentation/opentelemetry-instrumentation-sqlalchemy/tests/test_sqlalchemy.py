@@ -253,3 +253,13 @@ class TestSqlalchemyInstrumentation(TestBase):
         cnx2.execute("SELECT	2 + 2;").fetchall()
         spans = self.memory_exporter.get_finished_spans()
         self.assertEqual(len(spans), 0)
+
+    def test_no_op_tracer_provider(self):
+        engine = create_engine("sqlite:///:memory:")
+        SQLAlchemyInstrumentor().instrument(
+            engine=engine,
+            tracer_provider=trace.NoOpTracerProvider,
+        )
+        engine.connect()
+        spans = self.memory_exporter.get_finished_spans()
+        self.assertEqual(len(spans), 0)
