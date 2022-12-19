@@ -23,6 +23,7 @@ from opentelemetry.instrumentation.pymongo import (
 from opentelemetry.instrumentation.utils import _SUPPRESS_INSTRUMENTATION_KEY
 from opentelemetry.semconv.trace import SpanAttributes
 from opentelemetry.test.test_base import TestBase
+from pymongo import MongoClient
 
 
 class TestPymongo(TestBase):
@@ -32,6 +33,16 @@ class TestPymongo(TestBase):
         self.start_callback = mock.MagicMock()
         self.success_callback = mock.MagicMock()
         self.failed_callback = mock.MagicMock()
+        PymongoInstrumentor()._uninstrument = self.custom_uninstrument
+
+    def tearDown(self):
+        super().tearDown()
+        if PymongoInstrumentor().is_instrumented_by_opentelemetry:
+            PymongoInstrumentor().uninstrument()
+
+    def custom_uninstrument(self):
+        PymongoInstrumentor()._commandtracer_instance.is_enabled = False
+        PymongoInstrumentor()._commandtracer_instance = None
 
     def test_pymongo_instrumentor(self):
         mock_register = mock.Mock()
@@ -189,6 +200,20 @@ class TestPymongo(TestBase):
         self.assertEqual(len(spans_list), 1)
         span = spans_list[0]
         self.assertEqual(span.name, "database_name.command_name")
+
+    def test_uninstrument(self):
+        PymongoInstrumentor().instrument()
+        PymongoInstrumentor().uninstrument()
+
+        client = MongoClient()
+        db = client["MongoDB_Database"]
+        collection = db["MongoDB_Collection"]
+
+        record = {"name": "John", "address": "Highway 37"}
+        collection.find_one(record)
+
+        spans_list = self.memory_exporter.get_finished_spans()
+        self.assertEqual(len(spans_list), 0)
 
 
 class MockCommand:
