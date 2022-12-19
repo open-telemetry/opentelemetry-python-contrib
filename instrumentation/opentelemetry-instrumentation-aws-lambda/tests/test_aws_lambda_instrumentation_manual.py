@@ -379,3 +379,19 @@ class TestAwsLambdaInstrumentor(TestBase):
                 SpanAttributes.HTTP_USER_AGENT: "agent",
             },
         )
+
+    def test_uninstrument(self):
+        AwsLambdaInstrumentor().instrument()
+
+        mock_execute_lambda(MOCK_LAMBDA_API_GATEWAY_HTTP_API_EVENT)
+
+        spans = self.memory_exporter.get_finished_spans()
+        self.assertEqual(len(spans), 1)
+
+        self.memory_exporter.clear()
+        AwsLambdaInstrumentor().uninstrument()
+
+        mock_execute_lambda(MOCK_LAMBDA_API_GATEWAY_HTTP_API_EVENT)
+        spans = self.memory_exporter.get_finished_spans()
+        self.assertEqual(len(spans), 0)
+
