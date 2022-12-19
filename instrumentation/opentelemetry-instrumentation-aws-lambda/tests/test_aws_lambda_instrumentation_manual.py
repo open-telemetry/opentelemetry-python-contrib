@@ -394,4 +394,3 @@ class TestAwsLambdaInstrumentor(TestBase):
         mock_execute_lambda(MOCK_LAMBDA_API_GATEWAY_HTTP_API_EVENT)
         spans = self.memory_exporter.get_finished_spans()
         self.assertEqual(len(spans), 0)
-
