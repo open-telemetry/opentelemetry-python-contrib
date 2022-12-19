@@ -13,15 +13,14 @@
 # limitations under the License.
 
 import unittest
-import os
 from collections import OrderedDict
 from unittest.mock import mock_open, patch
 
-from opentelemetry.resource.detector.kubernetes import KubernetesResourceDetector
-from opentelemetry.sdk.resources import Resource
-from opentelemetry.semconv.resource import (
-    ResourceAttributes,
+from opentelemetry.resource.detector.kubernetes import (
+    KubernetesResourceDetector,
 )
+from opentelemetry.sdk.resources import Resource
+from opentelemetry.semconv.resource import ResourceAttributes
 
 MockKubernetesResourceAttributes = {
     ResourceAttributes.CONTAINER_NAME: "mock-container-name",
@@ -30,7 +29,6 @@ MockKubernetesResourceAttributes = {
 
 
 class KubernetesResourceDetectorTest(unittest.TestCase):
-    
     @patch(
         "socket.gethostname",
         return_value=f"{MockKubernetesResourceAttributes[ResourceAttributes.CONTAINER_NAME]}",
@@ -38,12 +36,12 @@ class KubernetesResourceDetectorTest(unittest.TestCase):
     @patch.dict(
         "os.environ",
         {
-            'KUBERNETES_SERVICE_HOST':"host",
-            'KUBERNETES_SERVICE_PORT':'443',
-            'KUBERNETES_SERVICE_PORT_HTTPS':"https"
+            "KUBERNETES_SERVICE_HOST": "host",
+            "KUBERNETES_SERVICE_PORT": "443",
+            "KUBERNETES_SERVICE_PORT_HTTPS": "https",
         },
-        clear=True
-    ) 
+        clear=True,
+    )
     @patch(
         "builtins.open",
         new_callable=mock_open,
@@ -67,14 +65,19 @@ class KubernetesResourceDetectorTest(unittest.TestCase):
 452 565 0:166 /sysrq-trigger /bogusPodIdThatShouldNotBeOneSetBecauseTheFirstOneWasPicked
 """,
     )
-    def test_simple_detector(self, mock_open_function, mock_socket_gethostname):
+    def test_simple_detector(
+        self, mock_open_function, mock_socket_gethostname
+    ):
         actual = KubernetesResourceDetector().detect()
-        self.assertDictEqual(actual.attributes.copy(), OrderedDict(MockKubernetesResourceAttributes))
-    
+        self.assertDictEqual(
+            actual.attributes.copy(),
+            OrderedDict(MockKubernetesResourceAttributes),
+        )
+
     def test_without_container(self):
         actual = KubernetesResourceDetector().detect()
-        self.assertEqual(Resource.get_empty() , actual)
-    
+        self.assertEqual(Resource.get_empty(), actual)
+
     def test_with_error(self):
         with self.assertRaises(RuntimeError):
             KubernetesResourceDetector(raise_on_error=True).detect()

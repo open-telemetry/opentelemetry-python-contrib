@@ -62,7 +62,9 @@ resource_ext_dirs = [
 ]
 
 
-sys.path[:0] = exp_dirs + instr_dirs + sdk_ext_dirs + prop_dirs + resource_ext_dirs
+sys.path[:0] = (
+    exp_dirs + instr_dirs + sdk_ext_dirs + prop_dirs + resource_ext_dirs
+)
 
 # -- Project information -----------------------------------------------------
 

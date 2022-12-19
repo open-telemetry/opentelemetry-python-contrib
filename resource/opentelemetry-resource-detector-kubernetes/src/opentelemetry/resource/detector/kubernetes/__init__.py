@@ -17,9 +17,7 @@ import os
 import socket
 
 from opentelemetry.sdk.resources import Resource, ResourceDetector
-from opentelemetry.semconv.resource import (
-    ResourceAttributes,
-)
+from opentelemetry.semconv.resource import ResourceAttributes
 
 logger = logging.getLogger(__name__)
 
@@ -34,8 +32,8 @@ class KubernetesResourceDetector(ResourceDetector):
     def detect(self) -> "Resource":
         try:
             if (
-                not os.environ.get("KUBERNETES_SERVICE_HOST") 
-                and not os.environ.get("KUBERNETES_SERVICE_PORT") 
+                not os.environ.get("KUBERNETES_SERVICE_HOST")
+                and not os.environ.get("KUBERNETES_SERVICE_PORT")
                 and not os.environ.get("KUBERNETES_SERVICE_PORT_HTTPS")
             ):
                 raise RuntimeError(
@@ -55,7 +53,7 @@ class KubernetesResourceDetector(ResourceDetector):
                             break
             except FileNotFoundError as exception:
                 logger.warning(
-                    "Failed to get pod ID on kubernetes container: %s.", 
+                    "Failed to get pod ID on kubernetes container: %s.",
                     exception,
                 )
 
