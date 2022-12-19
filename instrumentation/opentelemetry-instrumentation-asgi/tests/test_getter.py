@@ -48,3 +48,28 @@ class TestASGIGetter(TestCase):
         getter = ASGIGetter()
         keys = getter.keys({})
         self.assertEqual(keys, [])
+        
+    def test_populated_keys(self):
+        getter = ASGIGetter()
+        header = {
+            "type": "http.response.start",
+            "status": 200,
+            "headers": [
+                (b"Content-Type", b"text/plain"),
+                (b"custom-test-header-1", b"test-header-value-1"),
+                (b"custom-test-header-2", b"test-header-value-2"),
+                (
+                    b"my-custom-regex-header-1",
+                    b"my-custom-regex-value-1,my-custom-regex-value-2",
+                ),
+                (
+                    b"My-Custom-Regex-Header-2",
+                    b"my-custom-regex-value-3,my-custom-regex-value-4",
+                ),
+                (b"my-secret-header", b"my-secret-value"),
+            ],
+            }
+        
+        expected_val = ['type','status','Content-Type', 'custom-test-header-1', 'custom-test-header-2', 'my-custom-regex-header-1', 'My-Custom-Regex-Header-2', 'my-secret-header']
+        keys = getter.keys(header)
+        self.assertEqual(keys, expected_val)
