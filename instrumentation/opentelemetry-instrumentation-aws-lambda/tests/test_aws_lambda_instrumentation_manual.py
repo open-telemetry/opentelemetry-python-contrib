@@ -241,7 +241,7 @@ class TestAwsLambdaInstrumentor(TestBase):
                 xray_traceid=MOCK_XRAY_TRACE_CONTEXT_SAMPLED,
             ),
             TestCase(
-                name="no_custom_extractor_xray_disable_aws_propagatio_via_env_var",
+                name="no_custom_extractor_xray_disable_aws_propagation_via_env_var",
                 custom_extractor=None,
                 context={
                     "headers": {

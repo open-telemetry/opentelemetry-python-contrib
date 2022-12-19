@@ -415,7 +415,7 @@ class AwsLambdaInstrumentor(BaseInstrumentor):
             "disable_aws_context_propagation", False
         ) or os.getenv(
             OTEL_LAMBDA_DISABLE_AWS_CONTEXT_PROPAGATION, "False"
-        ).lower() in (
+        ).strip().lower() in (
             "true",
             "1",
             "t",
