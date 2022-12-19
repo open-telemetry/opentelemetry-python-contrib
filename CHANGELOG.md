@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## Unreleased
 
+- `opentelemetry-instrumentation-aws-lambda` Adds an option to configure `disable_aws_context_propagation` by
+  environment variable: `OTEL_LAMBDA_DISABLE_AWS_CONTEXT_PROPAGATION`
+  ([#](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/))
+
 ## Version 1.15.0/0.36b0 (2022-12-10)
 
 - Add uninstrument test for sqlalchemy

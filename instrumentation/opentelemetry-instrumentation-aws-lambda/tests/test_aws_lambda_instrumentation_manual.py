@@ -27,6 +27,7 @@ from opentelemetry.instrumentation.aws_lambda import (
     _HANDLER,
     _X_AMZN_TRACE_ID,
     OTEL_INSTRUMENTATION_AWS_LAMBDA_FLUSH_TIMEOUT,
+    OTEL_LAMBDA_DISABLE_AWS_CONTEXT_PROPAGATION,
     AwsLambdaInstrumentor,
 )
 from opentelemetry.propagate import get_global_textmap
@@ -168,6 +169,7 @@ class TestAwsLambdaInstrumentor(TestBase):
             expected_state_value: str = None
             expected_trace_state_len: int = 0
             disable_aws_context_propagation: bool = False
+            disable_aws_context_propagation_envvar: str = ""
 
         def custom_event_context_extractor(lambda_event):
             return get_global_textmap().extract(lambda_event["foo"]["headers"])
@@ -238,6 +240,23 @@ class TestAwsLambdaInstrumentor(TestBase):
                 expected_state_value=MOCK_W3C_TRACE_STATE_VALUE,
                 xray_traceid=MOCK_XRAY_TRACE_CONTEXT_SAMPLED,
             ),
+            TestCase(
+                name="no_custom_extractor_xray_disable_aws_propagatio_via_env_var",
+                custom_extractor=None,
+                context={
+                    "headers": {
+                        TraceContextTextMapPropagator._TRACEPARENT_HEADER_NAME: MOCK_W3C_TRACE_CONTEXT_SAMPLED,
+                        TraceContextTextMapPropagator._TRACESTATE_HEADER_NAME: f"{MOCK_W3C_TRACE_STATE_KEY}={MOCK_W3C_TRACE_STATE_VALUE},foo=1,bar=2",
+                    }
+                },
+                disable_aws_context_propagation=False,
+                disable_aws_context_propagation_envvar="true",
+                expected_traceid=MOCK_W3C_TRACE_ID,
+                expected_parentid=MOCK_W3C_PARENT_SPAN_ID,
+                expected_trace_state_len=3,
+                expected_state_value=MOCK_W3C_TRACE_STATE_VALUE,
+                xray_traceid=MOCK_XRAY_TRACE_CONTEXT_SAMPLED,
+            ),
         ]
         for test in tests:
             test_env_patch = mock.patch.dict(
@@ -246,6 +265,7 @@ class TestAwsLambdaInstrumentor(TestBase):
                     **os.environ,
                     # NOT Active Tracing
                     _X_AMZN_TRACE_ID: test.xray_traceid,
+                    OTEL_LAMBDA_DISABLE_AWS_CONTEXT_PROPAGATION: test.disable_aws_context_propagation_envvar,
                     # NOT using the X-Ray Propagator
                     OTEL_PROPAGATORS: "tracecontext",
                 },
