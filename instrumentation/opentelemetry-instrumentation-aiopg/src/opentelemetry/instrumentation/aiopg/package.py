@@ -13,4 +13,4 @@
 # limitations under the License.
 
 
-_instruments = ("aiopg >= 0.13.0, < 1.3.0",)
+_instruments = ("aiopg >= 0.13.0, < 2.0.0",)
