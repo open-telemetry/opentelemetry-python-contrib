@@ -46,6 +46,7 @@ this function signature is:  def response_hook(span: Span, event: CommandSucceed
 failed_hook (Callable) -
 a function with extra user-defined logic to be performed after the query returns with a failed response
 this function signature is:  def failed_hook(span: Span, event: CommandFailedEvent) -> None
+capture_statement (bool) - an optional value to enable capturing the database statement that is being executed
 
 for example:
 
@@ -106,7 +107,7 @@ class CommandTracer(monitoring.CommandListener):
         request_hook: RequestHookT = dummy_callback,
         response_hook: ResponseHookT = dummy_callback,
         failed_hook: FailedHookT = dummy_callback,
-        capture_parameters: bool = False,
+        capture_statement: bool = False,
     ):
         self._tracer = tracer
         self._span_dict = {}
@@ -114,7 +115,7 @@ class CommandTracer(monitoring.CommandListener):
         self.start_hook = request_hook
         self.success_hook = response_hook
         self.failed_hook = failed_hook
-        self.capture_parameters = capture_parameters
+        self.capture_statement = capture_statement
 
     def started(self, event: monitoring.CommandStartedEvent):
         """Method to handle a pymongo CommandStartedEvent"""
@@ -122,11 +123,11 @@ class CommandTracer(monitoring.CommandListener):
             _SUPPRESS_INSTRUMENTATION_KEY
         ):
             return
-        command = event.command.get('documents', "")
-        name = event.database_name
-        name += "." + event.command_name
-        statement = event.command_name
-        if command and self.capture_parameters:
+        command_name = event.command_name
+        name = event.database_name + "." + command_name
+        statement = command_name
+        command = _get_command_by_command_name(command_name, event)
+        if command and self.capture_statement:
             statement += " " + str(command)
 
         try:
@@ -194,6 +195,17 @@ class CommandTracer(monitoring.CommandListener):
         return self._span_dict.pop(_get_span_dict_key(event), None)
 
 
+def _get_command_by_command_name(command_name, event):
+    mapping = {
+        'insert': 'documents',
+        'delete': 'deletes',
+        'update': 'updates',
+        'find': 'filter'
+    }
+
+    return event.command.get(mapping.get(command_name), "")
+
+
 def _get_span_dict_key(event):
     if event.connection_id is not None:
         return event.request_id, event.connection_id
@@ -225,7 +237,7 @@ class PymongoInstrumentor(BaseInstrumentor):
         request_hook = kwargs.get("request_hook", dummy_callback)
         response_hook = kwargs.get("response_hook", dummy_callback)
         failed_hook = kwargs.get("failed_hook", dummy_callback)
-        capture_parameters = kwargs.get("capture_parameters")
+        capture_statement = kwargs.get("capture_statement")
         # Create and register a CommandTracer only the first time
         if self._commandtracer_instance is None:
             tracer = get_tracer(__name__, __version__, tracer_provider)
@@ -235,7 +247,7 @@ class PymongoInstrumentor(BaseInstrumentor):
                 request_hook=request_hook,
                 response_hook=response_hook,
                 failed_hook=failed_hook,
-                capture_parameters=capture_parameters,
+                capture_statement=capture_statement,
             )
             monitoring.register(self._commandtracer_instance)
         # If already created, just enable it
