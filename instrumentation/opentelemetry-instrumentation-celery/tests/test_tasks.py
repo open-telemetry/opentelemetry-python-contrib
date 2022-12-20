@@ -33,6 +33,7 @@ class TestCeleryInstrumentation(TestBase):
 
     def tearDown(self):
         super().tearDown()
+        CeleryInstrumentor().uninstrument()
         self._worker.stop()
         self._thread.join()
 
@@ -40,7 +41,11 @@ class TestCeleryInstrumentation(TestBase):
         CeleryInstrumentor().instrument()
 
         result = task_add.delay(1, 2)
+
+        timeout = time.time() + 60 * 1  # 1 minutes from now
         while not result.ready():
+            if time.time() > timeout:
+                break
             time.sleep(0.05)
 
         spans = self.sorted_spans(self.memory_exporter.get_finished_spans())
@@ -77,3 +82,18 @@ class TestCeleryInstrumentation(TestBase):
         self.assertNotEqual(consumer.parent, producer.context)
         self.assertEqual(consumer.parent.span_id, producer.context.span_id)
         self.assertEqual(consumer.context.trace_id, producer.context.trace_id)
+
+    def test_uninstrument(self):
+        CeleryInstrumentor().instrument()
+        CeleryInstrumentor().uninstrument()
+
+        result = task_add.delay(1, 2)
+
+        timeout = time.time() + 60 * 1  # 1 minutes from now
+        while not result.ready():
+            if time.time() > timeout:
+                break
+            time.sleep(0.05)
+
+        spans = self.memory_exporter.get_finished_spans()
+        self.assertEqual(len(spans), 0)
