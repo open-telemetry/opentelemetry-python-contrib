@@ -261,6 +261,6 @@ class TestSqlalchemyInstrumentation(TestBase):
             tracer_provider=trace.NoOpTracerProvider,
         )
         cnx = engine.connect()
-        cnx.execute("SELECT	1 + 1;").fetchall()
+        cnx.execute("SELECT 1 + 1;").fetchall()
         spans = self.memory_exporter.get_finished_spans()
         self.assertEqual(len(spans), 0)
