@@ -70,7 +70,8 @@ class TestFunctionalPymongo(TestBase):
             pymongo_span.attributes[SpanAttributes.NET_PEER_PORT], MONGODB_PORT
         )
         self.assertEqual(
-            pymongo_span.attributes[SpanAttributes.DB_STATEMENT], expected_db_statement
+            pymongo_span.attributes[SpanAttributes.DB_STATEMENT],
+            expected_db_statement
         )
 
     def test_insert(self):

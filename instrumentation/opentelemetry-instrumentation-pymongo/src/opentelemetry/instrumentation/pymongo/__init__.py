@@ -200,7 +200,7 @@ def _get_command_by_command_name(command_name, event):
         "insert": "documents",
         "delete": "deletes",
         "update": "updates",
-        "find": "filter"
+        "find": "filter",
     }
 
     return event.command.get(command_mapping.get(command_name), "")

@@ -53,7 +53,7 @@ class TestPymongo(TestBase):
             command,
             "find",
             connection_id=("test.com", "1234"),
-            request_id="test_request_id"
+            request_id="test_request_id",
         )
         command_tracer.started(event=mock_event)
         # the memory exporter can't be used here because the span isn't ended
@@ -65,6 +65,9 @@ class TestPymongo(TestBase):
         self.assertEqual(span.attributes[SpanAttributes.DB_SYSTEM], "mongodb")
         self.assertEqual(
             span.attributes[SpanAttributes.DB_NAME], "database_name"
+        )
+        self.assertEqual(
+            span.attributes[SpanAttributes.DB_STATEMENT], "find"
         )
         self.assertEqual(
             span.attributes[SpanAttributes.NET_PEER_NAME], "test.com"
@@ -193,7 +196,7 @@ class TestPymongo(TestBase):
 
 class MockEvent:
     def __init__(
-            self, command, command_name="", connection_id=None, request_id=""
+        self, command, command_name="", connection_id=None, request_id=""
     ):
         self.command = command
         self.command_name = command_name
