@@ -83,7 +83,9 @@ from opentelemetry import context
 from opentelemetry.instrumentation.instrumentor import BaseInstrumentor
 from opentelemetry.instrumentation.pymongo.package import _instruments
 from opentelemetry.instrumentation.pymongo.version import __version__
-from opentelemetry.instrumentation.pymongo.utils import COMMAND_TO_ATTRIBUTE_MAPPING
+from opentelemetry.instrumentation.pymongo.utils import (
+    COMMAND_TO_ATTRIBUTE_MAPPING,
+)
 from opentelemetry.instrumentation.utils import _SUPPRESS_INSTRUMENTATION_KEY
 from opentelemetry.semconv.trace import DbSystemValues, SpanAttributes
 from opentelemetry.trace import SpanKind, get_tracer
