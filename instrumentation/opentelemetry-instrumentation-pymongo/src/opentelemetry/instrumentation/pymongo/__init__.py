@@ -83,6 +83,7 @@ from opentelemetry import context
 from opentelemetry.instrumentation.instrumentor import BaseInstrumentor
 from opentelemetry.instrumentation.pymongo.package import _instruments
 from opentelemetry.instrumentation.pymongo.version import __version__
+from opentelemetry.instrumentation.pymongo.utils import COMMAND_TO_ATTRIBUTE_MAPPING
 from opentelemetry.instrumentation.utils import _SUPPRESS_INSTRUMENTATION_KEY
 from opentelemetry.semconv.trace import DbSystemValues, SpanAttributes
 from opentelemetry.trace import SpanKind, get_tracer
@@ -124,14 +125,11 @@ class CommandTracer(monitoring.CommandListener):
         ):
             return
         command_name = event.command_name
-        name = event.database_name + "." + command_name
-        statement = command_name
-        command = _get_command_by_command_name(command_name, event)
-        if command and self.capture_statement:
-            statement += " " + str(command)
+        span_name = event.database_name + "." + command_name
+        statement = self._get_statement_by_command_name(command_name)
 
         try:
-            span = self._tracer.start_span(name, kind=SpanKind.CLIENT)
+            span = self._tracer.start_span(span_name, kind=SpanKind.CLIENT)
             if span.is_recording():
                 span.set_attribute(
                     SpanAttributes.DB_SYSTEM, DbSystemValues.MONGODB.value
@@ -194,16 +192,13 @@ class CommandTracer(monitoring.CommandListener):
     def _pop_span(self, event):
         return self._span_dict.pop(_get_span_dict_key(event), None)
 
-
-def _get_command_by_command_name(command_name, event):
-    command_mapping = {
-        "insert": "documents",
-        "delete": "deletes",
-        "update": "updates",
-        "find": "filter",
-    }
-
-    return event.command.get(command_mapping.get(command_name), "")
+    def _get_statement_by_command_name(self, command_name, event):
+        statement = command_name
+        command_attribute = COMMAND_TO_ATTRIBUTE_MAPPING.get(command_name)
+        command = event.command.get(command_attribute)
+        if command and self.capture_statement:
+            statement += " " + str(command)
+        return statement
 
 
 def _get_span_dict_key(event):

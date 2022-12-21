@@ -71,7 +71,7 @@ class TestFunctionalPymongo(TestBase):
         )
         self.assertEqual(
             pymongo_span.attributes[SpanAttributes.DB_STATEMENT],
-            expected_db_statement
+            expected_db_statement,
         )
 
     def test_insert(self):

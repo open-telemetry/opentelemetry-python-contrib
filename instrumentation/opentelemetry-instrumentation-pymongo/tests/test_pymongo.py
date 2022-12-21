@@ -66,9 +66,7 @@ class TestPymongo(TestBase):
         self.assertEqual(
             span.attributes[SpanAttributes.DB_NAME], "database_name"
         )
-        self.assertEqual(
-            span.attributes[SpanAttributes.DB_STATEMENT], "find"
-        )
+        self.assertEqual(span.attributes[SpanAttributes.DB_STATEMENT], "find")
         self.assertEqual(
             span.attributes[SpanAttributes.NET_PEER_NAME], "test.com"
         )
