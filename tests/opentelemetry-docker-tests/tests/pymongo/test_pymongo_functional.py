@@ -81,8 +81,10 @@ class TestFunctionalPymongo(TestBase):
             )
             insert_result_id = insert_result.inserted_id
 
-        expected_db_statement = f"insert [{{'name': 'testName', 'value': 'testValue', '_id': " \
-                                f"ObjectId('{insert_result_id}')}}]"
+        expected_db_statement = (
+            f"insert [{{'name': 'testName', 'value': 'testValue', '_id': "
+            f"ObjectId('{insert_result_id}')}}]"
+        )
         self.validate_spans(expected_db_statement)
 
     def test_update(self):
@@ -92,8 +94,10 @@ class TestFunctionalPymongo(TestBase):
                 {"name": "testName"}, {"$set": {"value": "someOtherValue"}}
             )
 
-        expected_db_statement = "update [SON([('q', {'name': 'testName'}), ('u', " \
-                                "{'$set': {'value': 'someOtherValue'}}), ('multi', False), ('upsert', False)])]"
+        expected_db_statement = (
+            "update [SON([('q', {'name': 'testName'}), ('u', "
+            "{'$set': {'value': 'someOtherValue'}}), ('multi', False), ('upsert', False)])]"
+        )
         self.validate_spans(expected_db_statement)
 
     def test_find(self):
@@ -109,7 +113,9 @@ class TestFunctionalPymongo(TestBase):
         with self._tracer.start_as_current_span("rootSpan"):
             self._collection.delete_one({"name": "testName"})
 
-        expected_db_statement = "delete [SON([('q', {'name': 'testName'}), ('limit', 1)])]"
+        expected_db_statement = (
+            "delete [SON([('q', {'name': 'testName'}), ('limit', 1)])]"
+        )
         self.validate_spans(expected_db_statement)
 
     def test_find_without_capture_statement(self):

@@ -196,14 +196,14 @@ class CommandTracer(monitoring.CommandListener):
 
 
 def _get_command_by_command_name(command_name, event):
-    mapping = {
-        'insert': 'documents',
-        'delete': 'deletes',
-        'update': 'updates',
-        'find': 'filter'
+    command_mapping = {
+        "insert": "documents",
+        "delete": "deletes",
+        "update": "updates",
+        "find": "filter"
     }
 
-    return event.command.get(mapping.get(command_name), "")
+    return event.command.get(command_mapping.get(command_name), "")
 
 
 def _get_span_dict_key(event):

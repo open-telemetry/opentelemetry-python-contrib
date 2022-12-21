@@ -50,7 +50,10 @@ class TestPymongo(TestBase):
             self.tracer, request_hook=self.start_callback
         )
         mock_event = MockEvent(
-            command, "find", connection_id=("test.com", "1234"), request_id="test_request_id"
+            command,
+            "find",
+            connection_id=("test.com", "1234"),
+            request_id="test_request_id"
         )
         command_tracer.started(event=mock_event)
         # the memory exporter can't be used here because the span isn't ended
@@ -146,8 +149,12 @@ class TestPymongo(TestBase):
         self.failed_callback.assert_called_once()
 
     def test_multiple_commands(self):
-        first_mock_event = MockEvent({}, connection_id=("firstUrl", "123"), request_id="first")
-        second_mock_event = MockEvent({}, connection_id=("secondUrl", "456"), request_id="second")
+        first_mock_event = MockEvent(
+            {}, connection_id=("firstUrl", "123"), request_id="first"
+        )
+        second_mock_event = MockEvent(
+            {}, connection_id=("secondUrl", "456"), request_id="second"
+        )
         command_tracer = CommandTracer(self.tracer)
         command_tracer.started(event=first_mock_event)
         command_tracer.started(event=second_mock_event)
@@ -185,7 +192,9 @@ class TestPymongo(TestBase):
         self.assertEqual(span.name, "database_name.find")
 
 class MockEvent:
-    def __init__(self, command, command_name="", connection_id=None, request_id=""):
+    def __init__(
+            self, command, command_name="", connection_id=None, request_id=""
+    ):
         self.command = command
         self.command_name = command_name
         self.connection_id = connection_id
