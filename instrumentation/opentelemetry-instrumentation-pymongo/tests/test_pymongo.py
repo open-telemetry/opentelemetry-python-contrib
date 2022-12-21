@@ -43,17 +43,14 @@ class TestPymongo(TestBase):
         self.assertTrue(mock_register.called)
 
     def test_started(self):
-        command = {
-            "filter": "123",
+        command_attrs = {
+            "command_name": "find",
         }
         command_tracer = CommandTracer(
             self.tracer, request_hook=self.start_callback
         )
         mock_event = MockEvent(
-            command,
-            "find",
-            connection_id=("test.com", "1234"),
-            request_id="test_request_id",
+            command_attrs, ("test.com", "1234"), "test_request_id"
         )
         command_tracer.started(event=mock_event)
         # the memory exporter can't be used here because the span isn't ended
@@ -61,12 +58,14 @@ class TestPymongo(TestBase):
         # pylint: disable=protected-access
         span = command_tracer._pop_span(mock_event)
         self.assertIs(span.kind, trace_api.SpanKind.CLIENT)
-        self.assertEqual(span.name, "database_name.find")
+        self.assertEqual(span.name, "database_name.command_name")
         self.assertEqual(span.attributes[SpanAttributes.DB_SYSTEM], "mongodb")
         self.assertEqual(
             span.attributes[SpanAttributes.DB_NAME], "database_name"
         )
-        self.assertEqual(span.attributes[SpanAttributes.DB_STATEMENT], "find")
+        self.assertEqual(
+            span.attributes[SpanAttributes.DB_STATEMENT], "command_name"
+        )
         self.assertEqual(
             span.attributes[SpanAttributes.NET_PEER_NAME], "test.com"
         )
@@ -110,6 +109,9 @@ class TestPymongo(TestBase):
         mock_span.is_recording.return_value = True
         mock_tracer.start_span.return_value = mock_span
         mock_event = MockEvent({})
+        mock_event.command.get = mock.Mock()
+        mock_event.command.get.return_value = "dummy"
+
         token = context.attach(
             context.set_value(_SUPPRESS_INSTRUMENTATION_KEY, True)
         )
@@ -121,10 +123,10 @@ class TestPymongo(TestBase):
         finally:
             context.detach(token)
 
-        # if suppression key is set, CommandTracer methods return immediately, so span.set_attribute
-        # and span.set_status are not invoked.
-        self.assertFalse(mock_span.set_attribute.called)
-        self.assertFalse(mock_span.set_status.called)
+        # if suppression key is set, CommandTracer methods return immediately, so command.get is not invoked.
+        self.assertFalse(
+            mock_event.command.get.called  # pylint: disable=no-member
+        )
 
     def test_failed(self):
         mock_event = MockEvent({})
@@ -150,12 +152,8 @@ class TestPymongo(TestBase):
         self.failed_callback.assert_called_once()
 
     def test_multiple_commands(self):
-        first_mock_event = MockEvent(
-            {}, connection_id=("firstUrl", "123"), request_id="first"
-        )
-        second_mock_event = MockEvent(
-            {}, connection_id=("secondUrl", "456"), request_id="second"
-        )
+        first_mock_event = MockEvent({}, ("firstUrl", "123"), "first")
+        second_mock_event = MockEvent({}, ("secondUrl", "456"), "second")
         command_tracer = CommandTracer(self.tracer)
         command_tracer.started(event=first_mock_event)
         command_tracer.started(event=second_mock_event)
@@ -177,10 +175,10 @@ class TestPymongo(TestBase):
         )
 
     def test_int_command(self):
-        command = {
-            "filter": 123,
+        command_attrs = {
+            "command_name": 123,
         }
-        mock_event = MockEvent(command, "find")
+        mock_event = MockEvent(command_attrs)
 
         command_tracer = CommandTracer(self.tracer)
         command_tracer.started(event=mock_event)
@@ -190,14 +188,20 @@ class TestPymongo(TestBase):
 
         self.assertEqual(len(spans_list), 1)
         span = spans_list[0]
-        self.assertEqual(span.name, "database_name.find")
+        self.assertEqual(span.name, "database_name.command_name")
+
+
+class MockCommand:
+    def __init__(self, command_attrs):
+        self.command_attrs = command_attrs
+
+    def get(self, key, default=""):
+        return self.command_attrs.get(key, default)
+
 
 class MockEvent:
-    def __init__(
-        self, command, command_name="", connection_id=None, request_id=""
-    ):
-        self.command = command
-        self.command_name = command_name
+    def __init__(self, command_attrs, connection_id=None, request_id=""):
+        self.command = MockCommand(command_attrs)
         self.connection_id = connection_id
         self.request_id = request_id
 
