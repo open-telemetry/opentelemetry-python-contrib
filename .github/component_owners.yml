@@ -34,3 +34,6 @@ components:
 
   instrumentation/opentelemetry-instrumentation-tortoiseorm:
     - tonybaloney
+
+  instrumentation/opentelemetry-instrumentation-tornado:
+    - shalevr
