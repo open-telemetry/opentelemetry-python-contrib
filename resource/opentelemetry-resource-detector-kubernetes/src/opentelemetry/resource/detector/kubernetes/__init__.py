@@ -22,6 +22,37 @@ from opentelemetry.semconv.resource import ResourceAttributes
 logger = logging.getLogger(__name__)
 
 _POD_ID_LENGTH = 36
+_CONTAINER_ID_LENGTH = 64
+
+def get_kubenertes_pod_uid_v1():
+    pod_id = None
+    with open(
+        "/proc/self/mountinfo", encoding="utf8"
+    ) as container_info_file:
+        for raw_line in container_info_file.readlines():
+            line = raw_line.strip()
+            # Subsequent IDs should be the same, exit if found one
+            if len(line) > _POD_ID_LENGTH and "pods" in line:
+                pod_id = line.split("pods/")[1][:_POD_ID_LENGTH]
+                break
+    return pod_id
+
+def get_kubenertes_pod_uid_v2():
+    pod_id = None
+    with open(
+        "/proc/self/cgroup", encoding="utf8"
+    ) as container_info_file:
+        for raw_line in container_info_file.readlines():
+            line = raw_line.strip()
+            # Subsequent IDs should be the same, exit if found one
+            if len(line) > _CONTAINER_ID_LENGTH:
+                line_info = line.split("/")
+                if len(line_info) > 2 and line_info[-2][:3] == 'pod' and len(line_info[-2]) == _POD_ID_LENGTH + 3:
+                    pod_id = line_info[-2][3:]
+                else:
+                    pod_id = line_info[-2]
+                break
+    return pod_id
 
 
 class KubernetesResourceDetector(ResourceDetector):
@@ -40,29 +71,26 @@ class KubernetesResourceDetector(ResourceDetector):
                     "Missing Kubernetes default environment values therefore process is not on kubernetes."
                 )
 
-            pod_id = ""
+            pod_resource = Resource(
+                {
+                    ResourceAttributes.CONTAINER_NAME: socket.gethostname(),
+                }
+            )
             try:
-                with open(
-                    "/proc/self/mountinfo", encoding="utf8"
-                ) as container_info_file:
-                    for raw_line in container_info_file.readlines():
-                        line = raw_line.strip()
-                        # Subsequent IDs should be the same, exit if found one
-                        if len(line) > _POD_ID_LENGTH and "pods" in line:
-                            pod_id = line.split("pods/")[1][:_POD_ID_LENGTH]
-                            break
+                pod_uid = get_kubenertes_pod_uid_v1() and get_kubenertes_pod_uid_v2()
+                pod_resource = pod_resource.merge(Resource(
+                {
+                    ResourceAttributes.K8S_POD_UID: pod_uid,
+                }
+            ))
             except FileNotFoundError as exception:
                 logger.warning(
                     "Failed to get pod ID on kubernetes container: %s.",
                     exception,
                 )
 
-            return Resource(
-                {
-                    ResourceAttributes.CONTAINER_NAME: socket.gethostname(),
-                    ResourceAttributes.K8S_POD_UID: pod_id,
-                }
-            )
+            return pod_resource
+
         # pylint: disable=broad-except
         except Exception as exception:
             if self.raise_on_error:
