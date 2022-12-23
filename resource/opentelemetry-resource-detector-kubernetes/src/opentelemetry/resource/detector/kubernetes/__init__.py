@@ -24,6 +24,20 @@ logger = logging.getLogger(__name__)
 _POD_ID_LENGTH = 36
 _CONTAINER_ID_LENGTH = 64
 
+
+def _get_k8s_cred_value():
+    try:
+        with open(
+            "/var/run/secrets/kubernetes.io/serviceaccount/token",
+            encoding="utf8",
+        ) as token_file:
+            return "Bearer " + token_file.read()
+    # pylint: disable=broad-except
+    except Exception as exception:
+        logger.error("Failed to get k8s token: %s", exception)
+        raise exception
+
+
 def get_kubenertes_pod_uid_v1():
     pod_id = None
     with open(
@@ -32,7 +46,7 @@ def get_kubenertes_pod_uid_v1():
         for raw_line in container_info_file.readlines():
             line = raw_line.strip()
             # Subsequent IDs should be the same, exit if found one
-            if len(line) > _POD_ID_LENGTH and "pods" in line:
+            if len(line) > _POD_ID_LENGTH and "pods/" in line:
                 pod_id = line.split("pods/")[1][:_POD_ID_LENGTH]
                 break
     return pod_id
