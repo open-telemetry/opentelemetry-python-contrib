@@ -77,7 +77,3 @@ class KubernetesResourceDetectorTest(unittest.TestCase):
     def test_without_container(self):
         actual = KubernetesResourceDetector().detect()
         self.assertEqual(Resource.get_empty(), actual)
-
-    def test_with_error(self):
-        with self.assertRaises(RuntimeError):
-            KubernetesResourceDetector(raise_on_error=True).detect()

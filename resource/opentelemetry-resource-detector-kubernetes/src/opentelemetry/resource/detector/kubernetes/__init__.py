@@ -25,19 +25,6 @@ _POD_ID_LENGTH = 36
 _CONTAINER_ID_LENGTH = 64
 
 
-def _get_k8s_cred_value():
-    try:
-        with open(
-            "/var/run/secrets/kubernetes.io/serviceaccount/token",
-            encoding="utf8",
-        ) as token_file:
-            return "Bearer " + token_file.read()
-    # pylint: disable=broad-except
-    except Exception as exception:
-        logger.error("Failed to get k8s token: %s", exception)
-        raise exception
-
-
 def get_kubenertes_pod_uid_v1():
     pod_id = None
     with open(
@@ -76,15 +63,6 @@ class KubernetesResourceDetector(ResourceDetector):
 
     def detect(self) -> "Resource":
         try:
-            if (
-                not os.environ.get("KUBERNETES_SERVICE_HOST")
-                and not os.environ.get("KUBERNETES_SERVICE_PORT")
-                and not os.environ.get("KUBERNETES_SERVICE_PORT_HTTPS")
-            ):
-                raise RuntimeError(
-                    "Missing Kubernetes default environment values therefore process is not on kubernetes."
-                )
-
             pod_resource = Resource(
                 {
                     ResourceAttributes.CONTAINER_NAME: socket.gethostname(),
