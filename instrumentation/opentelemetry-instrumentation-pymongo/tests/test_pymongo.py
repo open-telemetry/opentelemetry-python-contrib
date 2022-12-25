@@ -14,7 +14,7 @@
 
 from unittest import mock
 
-from opentelemetry import context, trace
+from opentelemetry import context
 from opentelemetry import trace as trace_api
 from opentelemetry.instrumentation.pymongo import (
     CommandTracer,
@@ -193,7 +193,7 @@ class TestPymongo(TestBase):
     def test_no_op_tracer(self):
         mock_event = MockEvent({})
 
-        tracer = trace.NoOpTracer()
+        tracer = trace_api.NoOpTracer()
         command_tracer = CommandTracer(tracer)
         command_tracer.started(event=mock_event)
         command_tracer.succeeded(event=mock_event)
