@@ -14,7 +14,7 @@
 
 from unittest import mock
 
-from opentelemetry import context
+from opentelemetry import context, trace
 from opentelemetry import trace as trace_api
 from opentelemetry.instrumentation.pymongo import (
     CommandTracer,
@@ -189,6 +189,17 @@ class TestPymongo(TestBase):
         self.assertEqual(len(spans_list), 1)
         span = spans_list[0]
         self.assertEqual(span.name, "database_name.command_name")
+
+    def test_no_op_tracer(self):
+        mock_event = MockEvent({})
+
+        tracer = trace.NoOpTracer()
+        command_tracer = CommandTracer(tracer)
+        command_tracer.started(event=mock_event)
+        command_tracer.succeeded(event=mock_event)
+
+        spans_list = self.memory_exporter.get_finished_spans()
+        self.assertEqual(len(spans_list), 0)
 
 
 class MockCommand:
