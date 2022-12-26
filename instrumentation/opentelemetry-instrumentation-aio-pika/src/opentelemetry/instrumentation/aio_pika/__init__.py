@@ -13,7 +13,7 @@
 # limitations under the License.
 
 """
-Instrument `aio_pika` to trace RabbitMQ applications.
+Instrument aio_pika to trace RabbitMQ applications.
 
 Usage
 -----
