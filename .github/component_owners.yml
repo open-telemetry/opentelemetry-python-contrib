@@ -40,3 +40,6 @@ components:
 
   instrumentation/opentelemetry-instrumentation-tornado:
     - shalevr
+
+  instrumentation/opentelemetry-instrumentation-urllib3:
+    - shalevr
