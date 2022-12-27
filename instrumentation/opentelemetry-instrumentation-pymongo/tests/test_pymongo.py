@@ -190,6 +190,17 @@ class TestPymongo(TestBase):
         span = spans_list[0]
         self.assertEqual(span.name, "database_name.command_name")
 
+    def test_no_op_tracer(self):
+        mock_event = MockEvent({})
+
+        tracer = trace_api.NoOpTracer()
+        command_tracer = CommandTracer(tracer)
+        command_tracer.started(event=mock_event)
+        command_tracer.succeeded(event=mock_event)
+
+        spans_list = self.memory_exporter.get_finished_spans()
+        self.assertEqual(len(spans_list), 0)
+
 
 class MockCommand:
     def __init__(self, command_attrs):
