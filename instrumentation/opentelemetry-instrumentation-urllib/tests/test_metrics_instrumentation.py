@@ -13,7 +13,6 @@
 # limitations under the License.
 
 
-import urllib
 from timeit import default_timer
 from typing import Optional, Union
 from urllib import request
@@ -24,12 +23,12 @@ import httpretty
 from opentelemetry.instrumentation.urllib import (  # pylint: disable=no-name-in-module,import-error
     URLLibInstrumentor,
 )
-from opentelemetry.semconv.metrics import MetricInstruments
 from opentelemetry.sdk.metrics._internal.point import Metric
 from opentelemetry.sdk.metrics.export import (
     HistogramDataPoint,
     NumberDataPoint,
 )
+from opentelemetry.semconv.metrics import MetricInstruments
 from opentelemetry.test.test_base import TestBase
 
 
@@ -111,138 +110,137 @@ class TestRequestsIntegration(TestBase):
 
     def test_basic_metric(self):
         start_time = default_timer()
-        result = urllib.request.urlopen(self.URL)
-        client_duration_estimated = (default_timer() - start_time) * 1000
+        with request.urlopen(self.URL) as result:
+            client_duration_estimated = (default_timer() - start_time) * 1000
 
-        metrics = self.get_sorted_metrics()
-        self.assertEqual(len(metrics), 3)
+            metrics = self.get_sorted_metrics()
+            self.assertEqual(len(metrics), 3)
 
-        (
-            client_duration,
-            client_request_size,
-            client_response_size,
-        ) = metrics[:3]
+            (
+                client_duration,
+                client_request_size,
+                client_response_size,
+            ) = metrics[:3]
 
-        self.assertEqual(
-            client_duration.name, MetricInstruments.HTTP_CLIENT_DURATION
-        )
-        self.assert_metric_expected(
-            client_duration,
-            client_duration_estimated,
-            {
-                "http.status_code": str(result.code),
-                "http.method": "GET",
-                "http.url": str(result.url),
-                "http.flavor": "1.1",
-            },
-            est_delta=200,
-        )
+            self.assertEqual(
+                client_duration.name, MetricInstruments.HTTP_CLIENT_DURATION
+            )
+            self.assert_metric_expected(
+                client_duration,
+                client_duration_estimated,
+                {
+                    "http.status_code": str(result.code),
+                    "http.method": "GET",
+                    "http.url": str(result.url),
+                    "http.flavor": "1.1",
+                },
+                est_delta=200,
+            )
 
-        # net.peer.name
+            # net.peer.name
 
-        self.assertEqual(
-            client_request_size.name,
-            MetricInstruments.HTTP_CLIENT_REQUEST_SIZE,
-        )
-        self.assert_metric_expected(
-            client_request_size,
-            0,
-            {
-                "http.status_code": str(result.code),
-                "http.method": "GET",
-                "http.url": str(result.url),
-                "http.flavor": "1.1",
-            },
-        )
+            self.assertEqual(
+                client_request_size.name,
+                MetricInstruments.HTTP_CLIENT_REQUEST_SIZE,
+            )
+            self.assert_metric_expected(
+                client_request_size,
+                0,
+                {
+                    "http.status_code": str(result.code),
+                    "http.method": "GET",
+                    "http.url": str(result.url),
+                    "http.flavor": "1.1",
+                },
+            )
 
-        self.assertEqual(
-            client_response_size.name,
-            MetricInstruments.HTTP_CLIENT_RESPONSE_SIZE,
-        )
-        self.assert_metric_expected(
-            client_response_size,
-            result.length,
-            {
-                "http.status_code": str(result.code),
-                "http.method": "GET",
-                "http.url": str(result.url),
-                "http.flavor": "1.1",
-            },
-        )
+            self.assertEqual(
+                client_response_size.name,
+                MetricInstruments.HTTP_CLIENT_RESPONSE_SIZE,
+            )
+            self.assert_metric_expected(
+                client_response_size,
+                result.length,
+                {
+                    "http.status_code": str(result.code),
+                    "http.method": "GET",
+                    "http.url": str(result.url),
+                    "http.flavor": "1.1",
+                },
+            )
 
     def test_basic_metric_request_not_empty(self):
         data = {"header1": "value1", "header2": "value2"}
-        data_encoded = urllib.parse.urlencode(data).encode()
+        data_encoded = urlencode(data).encode()
 
         start_time = default_timer()
-        result = urllib.request.urlopen(self.URL_POST, data=data_encoded)
-        client_duration_estimated = (default_timer() - start_time) * 1000
+        with request.urlopen(self.URL_POST, data=data_encoded) as result:
+            client_duration_estimated = (default_timer() - start_time) * 1000
 
-        metrics = self.get_sorted_metrics()
-        self.assertEqual(len(metrics), 3)
+            metrics = self.get_sorted_metrics()
+            self.assertEqual(len(metrics), 3)
 
-        (
-            client_duration,
-            client_request_size,
-            client_response_size,
-        ) = metrics[:3]
+            (
+                client_duration,
+                client_request_size,
+                client_response_size,
+            ) = metrics[:3]
 
-        self.assertEqual(
-            client_duration.name, MetricInstruments.HTTP_CLIENT_DURATION
-        )
-        self.assert_metric_expected(
-            client_duration,
-            client_duration_estimated,
-            {
-                "http.status_code": str(result.code),
-                "http.method": "POST",
-                "http.url": str(result.url),
-                "http.flavor": "1.1",
-            },
-            est_delta=200,
-        )
+            self.assertEqual(
+                client_duration.name, MetricInstruments.HTTP_CLIENT_DURATION
+            )
+            self.assert_metric_expected(
+                client_duration,
+                client_duration_estimated,
+                {
+                    "http.status_code": str(result.code),
+                    "http.method": "POST",
+                    "http.url": str(result.url),
+                    "http.flavor": "1.1",
+                },
+                est_delta=200,
+            )
 
-        self.assertEqual(
-            client_request_size.name,
-            MetricInstruments.HTTP_CLIENT_REQUEST_SIZE,
-        )
-        self.assert_metric_expected(
-            client_request_size,
-            len(data_encoded),
-            {
-                "http.status_code": str(result.code),
-                "http.method": "POST",
-                "http.url": str(result.url),
-                "http.flavor": "1.1",
-            },
-        )
+            self.assertEqual(
+                client_request_size.name,
+                MetricInstruments.HTTP_CLIENT_REQUEST_SIZE,
+            )
+            self.assert_metric_expected(
+                client_request_size,
+                len(data_encoded),
+                {
+                    "http.status_code": str(result.code),
+                    "http.method": "POST",
+                    "http.url": str(result.url),
+                    "http.flavor": "1.1",
+                },
+            )
 
-        self.assertEqual(
-            client_response_size.name,
-            MetricInstruments.HTTP_CLIENT_RESPONSE_SIZE,
-        )
-        self.assert_metric_expected(
-            client_response_size,
-            result.length,
-            {
-                "http.status_code": str(result.code),
-                "http.method": "POST",
-                "http.url": str(result.url),
-                "http.flavor": "1.1",
-            },
-        )
+            self.assertEqual(
+                client_response_size.name,
+                MetricInstruments.HTTP_CLIENT_RESPONSE_SIZE,
+            )
+            self.assert_metric_expected(
+                client_response_size,
+                result.length,
+                {
+                    "http.status_code": str(result.code),
+                    "http.method": "POST",
+                    "http.url": str(result.url),
+                    "http.flavor": "1.1",
+                },
+            )
 
     def test_metric_uninstrument(self):
-        urllib.request.urlopen(self.URL)
-        metrics = self.get_sorted_metrics()
-        self.assertEqual(len(metrics), 3)
+        with request.urlopen(self.URL):
+            metrics = self.get_sorted_metrics()
+            self.assertEqual(len(metrics), 3)
 
-        URLLibInstrumentor().uninstrument()
-        urllib.request.urlopen(self.URL)
+            URLLibInstrumentor().uninstrument()
+            with request.urlopen(self.URL):
+                metrics = self.get_sorted_metrics()
+                self.assertEqual(len(metrics), 3)
 
-        metrics = self.get_sorted_metrics()
-        self.assertEqual(len(metrics), 3)
-
-        for metric in metrics:
-            for point in list(metric.data.data_points):
-                self.assertEqual(point.count, 1)
+                for metric in metrics:
+                    for point in list(metric.data.data_points):
+                        self.assertEqual(point.count, 1)
