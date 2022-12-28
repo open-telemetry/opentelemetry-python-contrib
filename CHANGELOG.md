@@ -7,6 +7,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## Unreleased
 
+- Add metric instrumentation for urllib
+  ([#1553](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/1553))
+
 ## Fixed
 
 - Fix aiopg instrumentation to work with aiopg < 2.0.0
