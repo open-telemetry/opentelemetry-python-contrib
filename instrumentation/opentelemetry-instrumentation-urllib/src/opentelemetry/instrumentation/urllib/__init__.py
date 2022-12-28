@@ -63,7 +63,6 @@ API
 import functools
 import types
 import typing
-
 from http import client
 from timeit import default_timer
 from typing import Collection, Dict
@@ -84,8 +83,8 @@ from opentelemetry.instrumentation.utils import (
     http_status_to_status_code,
 )
 from opentelemetry.metrics import Histogram, get_meter
-from opentelemetry.semconv.metrics import MetricInstruments
 from opentelemetry.propagate import inject
+from opentelemetry.semconv.metrics import MetricInstruments
 from opentelemetry.semconv.trace import SpanAttributes
 from opentelemetry.trace import Span, SpanKind, get_tracer
 from opentelemetry.trace.status import Status

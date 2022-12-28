@@ -14,17 +14,17 @@
 
 
 import urllib
-from urllib import request
-from urllib.parse import urlencode
 from timeit import default_timer
 from typing import Optional, Union
+from urllib import request
+from urllib.parse import urlencode
 
 import httpretty
-from opentelemetry.semconv.metrics import MetricInstruments
 
 from opentelemetry.instrumentation.urllib import (  # pylint: disable=no-name-in-module,import-error
     URLLibInstrumentor,
 )
+from opentelemetry.semconv.metrics import MetricInstruments
 from opentelemetry.sdk.metrics._internal.point import Metric
 from opentelemetry.sdk.metrics.export import (
     HistogramDataPoint,
