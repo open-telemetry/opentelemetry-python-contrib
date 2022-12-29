@@ -1,5 +1,8 @@
 components:
-  
+
+  docs/instrumentation:
+    - nemoshlag
+
   instrumentation/opentelemetry-instrumentation-aio-pika:
     - ofek1weiss
 
@@ -34,3 +37,9 @@ components:
 
   instrumentation/opentelemetry-instrumentation-tortoiseorm:
     - tonybaloney
+
+  instrumentation/opentelemetry-instrumentation-tornado:
+    - shalevr
+
+  instrumentation/opentelemetry-instrumentation-urllib3:
+    - shalevr
