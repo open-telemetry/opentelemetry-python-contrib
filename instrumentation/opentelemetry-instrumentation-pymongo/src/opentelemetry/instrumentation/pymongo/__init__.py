@@ -137,7 +137,8 @@ class CommandTracer(monitoring.CommandListener):
                 span.set_attribute(SpanAttributes.DB_NAME, event.database_name)
                 span.set_attribute(SpanAttributes.DB_STATEMENT, statement)
                 if collection:
-                    span.set_attribute(SpanAttributes.DB_MONGODB_COLLECTION, collection)
+                    span.set_attribute(
+                        SpanAttributes.DB_MONGODB_COLLECTION, collection)
                 if event.connection_id is not None:
                     span.set_attribute(
                         SpanAttributes.NET_PEER_NAME, event.connection_id[0]

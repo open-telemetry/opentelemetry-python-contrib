@@ -253,4 +253,3 @@ class TestSqlalchemyInstrumentation(TestBase):
         cnx2.execute("SELECT	2 + 2;").fetchall()
         spans = self.memory_exporter.get_finished_spans()
         self.assertEqual(len(spans), 0)
-
