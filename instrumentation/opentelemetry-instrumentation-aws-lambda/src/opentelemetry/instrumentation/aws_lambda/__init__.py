@@ -101,6 +101,9 @@ ORIG_HANDLER = "ORIG_HANDLER"
 OTEL_INSTRUMENTATION_AWS_LAMBDA_FLUSH_TIMEOUT = (
     "OTEL_INSTRUMENTATION_AWS_LAMBDA_FLUSH_TIMEOUT"
 )
+OTEL_LAMBDA_DISABLE_AWS_CONTEXT_PROPAGATION = (
+    "OTEL_LAMBDA_DISABLE_AWS_CONTEXT_PROPAGATION"
+)
 
 
 def _default_event_context_extractor(lambda_event: Any) -> Context:
@@ -287,9 +290,12 @@ def _instrument(
 
         span_kind = None
         try:
-            if lambda_event["Records"][0]["eventSource"] in set(
-                ["aws:sqs", "aws:s3", "aws:sns", "aws:dynamodb"]
-            ):
+            if lambda_event["Records"][0]["eventSource"] in {
+                "aws:sqs",
+                "aws:s3",
+                "aws:sns",
+                "aws:dynamodb",
+            }:
                 # See more:
                 # https://docs.aws.amazon.com/lambda/latest/dg/with-sqs.html
                 # https://docs.aws.amazon.com/lambda/latest/dg/with-sns.html
@@ -405,6 +411,16 @@ class AwsLambdaInstrumentor(BaseInstrumentor):
                 flush_timeout_env,
             )
 
+        disable_aws_context_propagation = kwargs.get(
+            "disable_aws_context_propagation", False
+        ) or os.getenv(
+            OTEL_LAMBDA_DISABLE_AWS_CONTEXT_PROPAGATION, "False"
+        ).strip().lower() in (
+            "true",
+            "1",
+            "t",
+        )
+
         _instrument(
             self._wrapped_module_name,
             self._wrapped_function_name,
@@ -413,9 +429,7 @@ class AwsLambdaInstrumentor(BaseInstrumentor):
                 "event_context_extractor", _default_event_context_extractor
             ),
             tracer_provider=kwargs.get("tracer_provider"),
-            disable_aws_context_propagation=kwargs.get(
-                "disable_aws_context_propagation", False
-            ),
+            disable_aws_context_propagation=disable_aws_context_propagation,
         )
 
     def _uninstrument(self, **kwargs):
