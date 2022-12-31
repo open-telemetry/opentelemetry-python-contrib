@@ -14,3 +14,4 @@
 
 
 _instruments = ("redis >= 2.6",)
+_supports_metrics = True
