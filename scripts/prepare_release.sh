@@ -23,7 +23,7 @@ git push origin release/${VERSION}
 ./scripts/generate_instrumentation_bootstrap.py
 rc=$?
 if [ $rc != 0 ]; then
-    echo "::set-output name=version_updated::0"
+    echo "version_updated=0" >> $GITHUB_OUTPUT
     exit 0
 fi
 
