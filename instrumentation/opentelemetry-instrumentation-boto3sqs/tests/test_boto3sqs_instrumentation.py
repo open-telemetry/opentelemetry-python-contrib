@@ -311,3 +311,27 @@ class TestBoto3SQSInstrumentation(TestBase):
             self.assertEqual(attrs["span_id"], link.context.span_id)
 
             self.memory_exporter.clear()
+
+    def test_uninstrument(self):
+        mock_response = {
+            "MessageId": "123456789",
+        }
+
+        with self._mocked_endpoint(mock_response):
+            self._client.send_message(
+                QueueUrl=self._queue_url,
+                MessageBody="test",
+            )
+
+            spans = self.get_finished_spans()
+            self.assertEqual(1, len(spans))
+
+            self.memory_exporter.clear()
+            Boto3SQSInstrumentor().uninstrument()
+
+            self._client.send_message(
+                QueueUrl=self._queue_url,
+                MessageBody="test",
+            )
+            spans = self.get_finished_spans()
+            self.assertEqual(0, len(spans))
