@@ -16,13 +16,13 @@
 Usage
 -----
 
-* Start broker backend
+Start broker backend
 
 ::
 
     docker run -p 5672:5672 rabbitmq
 
-* Run instrumented actor
+Run instrumented actor
 
 .. code-block:: python
 
