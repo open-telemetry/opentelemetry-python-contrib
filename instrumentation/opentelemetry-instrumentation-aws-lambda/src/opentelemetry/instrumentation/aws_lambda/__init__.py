@@ -13,7 +13,7 @@
 # limitations under the License.
 
 """
-The opentelemetry-instrumentation-aws-lambda package provides an `Instrumentor`
+The opentelemetry-instrumentation-aws-lambda package provides an Instrumentor
 to traces calls within a Python AWS Lambda function.
 
 Usage
@@ -26,7 +26,6 @@ Usage
     import boto3
     from opentelemetry.instrumentation.botocore import AwsBotocoreInstrumentor
     from opentelemetry.instrumentation.aws_lambda import AwsLambdaInstrumentor
-
 
     # Enable instrumentation
     AwsBotocoreInstrumentor().instrument()
@@ -47,8 +46,8 @@ The `instrument` method accepts the following keyword args:
 
 tracer_provider (TracerProvider) - an optional tracer provider
 event_context_extractor (Callable) - a function that returns an OTel Trace
-    Context given the Lambda Event the AWS Lambda was invoked with
-    this function signature is: def event_context_extractor(lambda_event: Any) -> Context
+Context given the Lambda Event the AWS Lambda was invoked with
+this function signature is: def event_context_extractor(lambda_event: Any) -> Context
 for example:
 
 .. code:: python
@@ -63,7 +62,10 @@ for example:
     AwsLambdaInstrumentor().instrument(
         event_context_extractor=custom_event_context_extractor
     )
+
+---
 """
+
 import logging
 import os
 from importlib import import_module
@@ -101,6 +103,9 @@ ORIG_HANDLER = "ORIG_HANDLER"
 OTEL_INSTRUMENTATION_AWS_LAMBDA_FLUSH_TIMEOUT = (
     "OTEL_INSTRUMENTATION_AWS_LAMBDA_FLUSH_TIMEOUT"
 )
+OTEL_LAMBDA_DISABLE_AWS_CONTEXT_PROPAGATION = (
+    "OTEL_LAMBDA_DISABLE_AWS_CONTEXT_PROPAGATION"
+)
 
 
 def _default_event_context_extractor(lambda_event: Any) -> Context:
@@ -134,7 +139,9 @@ def _default_event_context_extractor(lambda_event: Any) -> Context:
 
 
 def _determine_parent_context(
-    lambda_event: Any, event_context_extractor: Callable[[Any], Context]
+    lambda_event: Any,
+    event_context_extractor: Callable[[Any], Context],
+    disable_aws_context_propagation: bool = False,
 ) -> Context:
     """Determine the parent context for the current Lambda invocation.
 
@@ -144,17 +151,25 @@ def _determine_parent_context(
     Args:
         lambda_event: user-defined, so it could be anything, but this
             method counts it being a map with a 'headers' key
+        event_context_extractor: a method which takes the Lambda
+            Event as input and extracts an OTel Context from it. By default,
+            the context is extracted from the HTTP headers of an API Gateway
+            request.
+        disable_aws_context_propagation: By default, this instrumentation
+            will try to read the context from the `_X_AMZN_TRACE_ID` environment
+            variable set by Lambda, set this to `True` to disable this behavior.
     Returns:
         A Context with configuration found in the carrier.
     """
     parent_context = None
 
-    xray_env_var = os.environ.get(_X_AMZN_TRACE_ID)
+    if not disable_aws_context_propagation:
+        xray_env_var = os.environ.get(_X_AMZN_TRACE_ID)
 
-    if xray_env_var:
-        parent_context = AwsXRayPropagator().extract(
-            {TRACE_HEADER_KEY: xray_env_var}
-        )
+        if xray_env_var:
+            parent_context = AwsXRayPropagator().extract(
+                {TRACE_HEADER_KEY: xray_env_var}
+            )
 
     if (
         parent_context
@@ -258,6 +273,7 @@ def _instrument(
     flush_timeout,
     event_context_extractor: Callable[[Any], Context],
     tracer_provider: TracerProvider = None,
+    disable_aws_context_propagation: bool = False,
 ):
     def _instrumented_lambda_handler_call(
         call_wrapped, instance, args, kwargs
@@ -269,14 +285,19 @@ def _instrument(
         lambda_event = args[0]
 
         parent_context = _determine_parent_context(
-            lambda_event, event_context_extractor
+            lambda_event,
+            event_context_extractor,
+            disable_aws_context_propagation,
         )
 
         span_kind = None
         try:
-            if lambda_event["Records"][0]["eventSource"] in set(
-                ["aws:sqs", "aws:s3", "aws:sns", "aws:dynamodb"]
-            ):
+            if lambda_event["Records"][0]["eventSource"] in {
+                "aws:sqs",
+                "aws:s3",
+                "aws:sns",
+                "aws:dynamodb",
+            }:
                 # See more:
                 # https://docs.aws.amazon.com/lambda/latest/dg/with-sqs.html
                 # https://docs.aws.amazon.com/lambda/latest/dg/with-sns.html
@@ -368,6 +389,9 @@ class AwsLambdaInstrumentor(BaseInstrumentor):
                     Event as input and extracts an OTel Context from it. By default,
                     the context is extracted from the HTTP headers of an API Gateway
                     request.
+                ``disable_aws_context_propagation``: By default, this instrumentation
+                    will try to read the context from the `_X_AMZN_TRACE_ID` environment
+                    variable set by Lambda, set this to `True` to disable this behavior.
         """
         lambda_handler = os.environ.get(ORIG_HANDLER, os.environ.get(_HANDLER))
         # pylint: disable=attribute-defined-outside-init
@@ -377,16 +401,27 @@ class AwsLambdaInstrumentor(BaseInstrumentor):
         ) = lambda_handler.rsplit(".", 1)
 
         flush_timeout_env = os.environ.get(
-            OTEL_INSTRUMENTATION_AWS_LAMBDA_FLUSH_TIMEOUT, ""
+            OTEL_INSTRUMENTATION_AWS_LAMBDA_FLUSH_TIMEOUT, None
         )
         flush_timeout = 30000
         try:
-            flush_timeout = int(flush_timeout_env)
+            if flush_timeout_env is not None:
+                flush_timeout = int(flush_timeout_env)
         except ValueError:
             logger.warning(
                 "Could not convert OTEL_INSTRUMENTATION_AWS_LAMBDA_FLUSH_TIMEOUT value %s to int",
                 flush_timeout_env,
             )
+
+        disable_aws_context_propagation = kwargs.get(
+            "disable_aws_context_propagation", False
+        ) or os.getenv(
+            OTEL_LAMBDA_DISABLE_AWS_CONTEXT_PROPAGATION, "False"
+        ).strip().lower() in (
+            "true",
+            "1",
+            "t",
+        )
 
         _instrument(
             self._wrapped_module_name,
@@ -396,6 +431,7 @@ class AwsLambdaInstrumentor(BaseInstrumentor):
                 "event_context_extractor", _default_event_context_extractor
             ),
             tracer_provider=kwargs.get("tracer_provider"),
+            disable_aws_context_propagation=disable_aws_context_propagation,
         )
 
     def _uninstrument(self, **kwargs):

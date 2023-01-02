@@ -102,3 +102,19 @@ class TestRemouladeInstrumentation(TestBase):
             producer_spans[1], {"remoulade.retry_count": 2}
         )
         self.assertEqual(producer_spans[3].name, "remoulade/send")
+
+    def test_uninstrument(self):
+        RemouladeInstrumentor().instrument()
+
+        actor_div.send(2, 3)
+
+        spans = self.memory_exporter.get_finished_spans()
+        self.assertEqual(len(spans), 2)
+
+        self.memory_exporter.clear()
+        RemouladeInstrumentor().uninstrument()
+
+        actor_div.send(2, 3)
+
+        spans = self.memory_exporter.get_finished_spans()
+        self.assertEqual(len(spans), 0)
