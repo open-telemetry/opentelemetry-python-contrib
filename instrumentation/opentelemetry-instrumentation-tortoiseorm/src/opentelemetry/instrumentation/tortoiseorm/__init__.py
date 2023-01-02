@@ -13,7 +13,7 @@
 # limitations under the License.
 
 """
-Instrument `tortoise-orm`_ to report SQL queries.
+Instrument tortoise-orm to report SQL queries.
 
 Usage
 -----
