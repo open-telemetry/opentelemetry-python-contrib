@@ -424,7 +424,6 @@ class TestAwsLambdaInstrumentor(TestBase):
         assert spans is not None
         self.assertEqual(len(spans), 0)
 
-
     def test_successful_request_hook(self):
         lambda_event_attribute = "lambda.event"
         lambda_event = {"abcd": 1234}
