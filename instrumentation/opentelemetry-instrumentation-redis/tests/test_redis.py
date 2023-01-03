@@ -15,7 +15,7 @@ from unittest import mock
 
 import redis
 
-from opentelemetry import trace as trace_api
+from opentelemetry import trace
 from opentelemetry.instrumentation.redis import RedisInstrumentor
 from opentelemetry.test.test_base import TestBase
 from opentelemetry.trace import SpanKind
@@ -150,7 +150,7 @@ class TestRedis(TestBase):
 
     def test_no_op_tracer_provider(self):
         RedisInstrumentor().uninstrument()
-        tracer_provider = trace_api.NoOpTracerProvider
+        tracer_provider = trace.NoOpTracerProvider
         RedisInstrumentor().instrument(tracer_provider=tracer_provider)
 
         redis_client = redis.Redis()
