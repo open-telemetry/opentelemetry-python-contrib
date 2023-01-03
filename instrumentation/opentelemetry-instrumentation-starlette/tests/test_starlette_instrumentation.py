@@ -333,7 +333,6 @@ class TestAutoInstrumentation(TestStarletteManualInstrumentation):
         self.assertEqual(len(spans), 0)
 
 
-
 class TestAutoInstrumentationHooks(TestStarletteManualInstrumentationHooks):
     """
     Test the auto-instrumented variant for request and response hooks
