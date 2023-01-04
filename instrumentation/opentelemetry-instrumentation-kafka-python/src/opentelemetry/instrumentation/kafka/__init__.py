@@ -42,8 +42,7 @@ this function signature is:
 def produce_hook(span: Span, args, kwargs)
 consume_hook (Callable) - a function with extra user-defined logic to be performed after consuming a message
 this function signature is:
-def consume
-_hook(span: Span, record: kafka.record.ABCRecord, args, kwargs)
+def consume_hook(span: Span, record: kafka.record.ABCRecord, args, kwargs)
 for example:
 
 .. code: python
