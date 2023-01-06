@@ -6,7 +6,7 @@ on:
     - 'release/*'
   pull_request:
 env:
-  CORE_REPO_SHA: 042d7a7921e25936decd95addf4fb1d30afb88e2
+  CORE_REPO_SHA: af83ef151fae90a2bd96224add771e9bb20c33df
 
 jobs:
   build:
@@ -18,33 +18,36 @@ jobs:
       py310: "3.10"
       py311: "3.11"
       pypy3: "pypy3.7"
-      RUN_MATRIX_COMBINATION: ${{ matrix.python-version }}-${{ matrix.package }}-${{ matrix.os }}
+      RUN_MATRIX_COMBINATION: ${{ matrix.python-version }}-${{ matrix.package }}-${{
+        matrix.os }}
     runs-on: ${{ matrix.os }}
     strategy:
       fail-fast: false  # ensures the entire test matrix is run, even if one permutation fails
       matrix:
-        python-version: [ py37, py38, py39, py310, py311, pypy3 ]
+        python-version: [py37, py38, py39, py310, py311, pypy3]
         package: ["instrumentation", "distro", "exporter", "sdkextension", "propagator"]
-        os: [ ubuntu-20.04 ]
+        os: [ubuntu-20.04]
     steps:
-      - name: Checkout Contrib Repo @ SHA - ${{ github.sha }}
-        uses: actions/checkout@v2
-      - name: Set up Python ${{ env[matrix.python-version] }}
-        uses: actions/setup-python@v4
-        with:
-          python-version: ${{ env[matrix.python-version] }}
-      - name: Install tox
-        run: pip install tox==3.27.1 tox-factor
-      - name: Cache tox environment
+    - name: Checkout Contrib Repo @ SHA - ${{ github.sha }}
+      uses: actions/checkout@v2
+    - name: Set up Python ${{ env[matrix.python-version] }}
+      uses: actions/setup-python@v4
+      with:
+        python-version: ${{ env[matrix.python-version] }}
+    - name: Install tox
+      run: pip install tox==3.27.1 tox-factor
+    - name: Cache tox environment
         # Preserves .tox directory between runs for faster installs
-        uses: actions/cache@v1
-        with:
-          path: |
-            .tox
-            ~/.cache/pip
-          key: v7-build-tox-cache-${{ env.RUN_MATRIX_COMBINATION }}-${{ hashFiles('tox.ini', 'gen-requirements.txt', 'dev-requirements.txt') }}
-      - name: run tox
-        run: tox -f ${{ matrix.python-version }}-${{ matrix.package }} -- --benchmark-json=${{ env.RUN_MATRIX_COMBINATION }}-benchmark.json
+      uses: actions/cache@v1
+      with:
+        path: |
+          .tox
+          ~/.cache/pip
+        key: v7-build-tox-cache-${{ env.RUN_MATRIX_COMBINATION }}-${{ hashFiles('tox.ini',
+          'gen-requirements.txt', 'dev-requirements.txt') }}
+    - name: run tox
+      run: tox -f ${{ matrix.python-version }}-${{ matrix.package }} -- --benchmark-json=${{
+        env.RUN_MATRIX_COMBINATION }}-benchmark.json
   #     - name: Find and merge ${{ matrix.package }} benchmarks
   #       # TODO: Add at least one benchmark to every package type to remove this (#249)
   #       if: matrix.package == 'sdkextension' || matrix.package == 'propagator'
@@ -96,31 +99,34 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        tox-environment: [ "docker-tests", "spellcheck", "lint", "docs", "generate" ]
+        tox-environment: ["docker-tests", "spellcheck", "lint", "docs", "generate"]
     name: ${{ matrix.tox-environment }}
     runs-on: ubuntu-20.04
     steps:
-      - name: Checkout Contrib Repo @ SHA - ${{ github.sha }}
-        uses: actions/checkout@v2
-      - name: Set up Python 3.9
-        uses: actions/setup-python@v2
-        with:
-          python-version: 3.9
-      - name: Install tox
-        run: pip install tox==3.27.1
-      - name: Install libsnappy-dev
-        if: ${{ matrix.tox-environment == 'lint' }}
-        run: sudo apt-get install -y libsnappy-dev
-      - name: Cache tox environment
+    - name: Checkout Contrib Repo @ SHA - ${{ github.sha }}
+      uses: actions/checkout@v2
+    - name: Set up Python 3.9
+      uses: actions/setup-python@v2
+      with:
+        python-version: 3.9
+    - name: Install tox
+      run: pip install tox==3.27.1
+    - name: Install libsnappy-dev
+      if: ${{ matrix.tox-environment == 'lint' }}
+      run: sudo apt-get install -y libsnappy-dev
+    - name: Cache tox environment
         # Preserves .tox directory between runs for faster installs
-        uses: actions/cache@v1
-        with:
-          path: |
-            .tox
-            ~/.cache/pip
-          key: v7-misc-tox-cache-${{ matrix.tox-environment }}-${{ hashFiles('tox.ini', 'dev-requirements.txt', 'gen-requirements.txt', 'docs-requirements.txt') }}
-      - name: run tox
-        run: tox -e ${{ matrix.tox-environment }}
-      - name: Ensure generated code is up to date
-        if: matrix.tox-environment == 'generate'
-        run: git diff --exit-code || (echo 'Generated code is out of date, please run "tox -e generate" and commit the changes in this PR.' && exit 1)
+      uses: actions/cache@v1
+      with:
+        path: |
+          .tox
+          ~/.cache/pip
+        key: v7-misc-tox-cache-${{ matrix.tox-environment }}-${{ hashFiles('tox.ini',
+          'dev-requirements.txt', 'gen-requirements.txt', 'docs-requirements.txt')
+          }}
+    - name: run tox
+      run: tox -e ${{ matrix.tox-environment }}
+    - name: Ensure generated code is up to date
+      if: matrix.tox-environment == 'generate'
+      run: git diff --exit-code || (echo 'Generated code is out of date, please run
+        "tox -e generate" and commit the changes in this PR.' && exit 1)
