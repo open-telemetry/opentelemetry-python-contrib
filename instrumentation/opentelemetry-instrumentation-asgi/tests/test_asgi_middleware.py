@@ -641,6 +641,28 @@ class TestAsgiApplication(AsgiTestBase):
             len(metrics_list.resource_metrics[0].scope_metrics), 0
         )
 
+    def test_failed_instrumentation_errors_propagate(self):
+        """Regression test to catch unbound local error that was occurring previously"""
+        class ExpectedException(Exception):
+            pass
+
+        def server_request_hook(span, scope):
+            raise ExpectedException("Instrumentation Error")
+
+        app = otel_asgi.OpenTelemetryMiddleware(
+            simple_asgi,
+            server_request_hook=server_request_hook,
+        )
+        self.seed_app(app)
+
+        with self.assertRaises(ExpectedException):
+            self.send_default_request()
+            self.get_all_output()
+
+        # The request is awaited in the teardown and so the error will be raised there
+        # We can prevent this by removing the communicator
+        self.communicator = None
+
 
 class TestAsgiAttributes(unittest.TestCase):
     def setUp(self):
