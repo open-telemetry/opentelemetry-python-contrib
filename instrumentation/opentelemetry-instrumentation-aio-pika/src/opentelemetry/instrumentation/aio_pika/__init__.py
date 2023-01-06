@@ -11,19 +11,19 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
+
 """
-Instrument `aio_pika` to trace RabbitMQ applications.
+Instrument aio_pika to trace RabbitMQ applications.
 
 Usage
 -----
-
-* Start broker backend
+Start broker backend
 
 .. code-block:: python
 
     docker run -p 5672:5672 rabbitmq
 
-* Run instrumented task
+Run instrumented task
 
 .. code-block:: python
 
@@ -42,9 +42,7 @@ Usage
             queue = await channel.declare_queue("hello")
             await channel.default_exchange.publish(
                 Message(b"Hello World!"),
-                routing_key=queue.name,
-            )
-
+                routing_key=queue.name)
 
     if __name__ == "__main__":
         asyncio.run(main())

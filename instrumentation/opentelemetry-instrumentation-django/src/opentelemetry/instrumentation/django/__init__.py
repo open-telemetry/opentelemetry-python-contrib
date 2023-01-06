@@ -135,7 +135,7 @@ The hooks can be configured as follows:
     def response_hook(span, request, response):
         pass
 
-    DjangoInstrumentation().instrument(request_hook=request_hook, response_hook=response_hook)
+    DjangoInstrumentor().instrument(request_hook=request_hook, response_hook=response_hook)
 
 Django Request object: https://docs.djangoproject.com/en/3.1/ref/request-response/#httprequest-objects
 Django Response object: https://docs.djangoproject.com/en/3.1/ref/request-response/#httpresponse-objects
