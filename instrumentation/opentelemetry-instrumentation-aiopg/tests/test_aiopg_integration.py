@@ -17,16 +17,14 @@ from unittest import mock
 from unittest.mock import MagicMock
 
 import aiopg
-from aiopg.utils import (  # pylint: disable=no-name-in-module
-    _ContextManager,
-    _PoolAcquireContextManager,
-)
 
 import opentelemetry.instrumentation.aiopg
 from opentelemetry import trace as trace_api
 from opentelemetry.instrumentation.aiopg import AiopgInstrumentor, wrappers
 from opentelemetry.instrumentation.aiopg.aiopg_integration import (
     AiopgIntegration,
+    _ContextManager,
+    _PoolAcquireContextManager,
 )
 from opentelemetry.sdk import resources
 from opentelemetry.semconv.trace import SpanAttributes

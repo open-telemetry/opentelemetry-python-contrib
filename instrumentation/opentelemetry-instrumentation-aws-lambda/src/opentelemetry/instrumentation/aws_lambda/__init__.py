@@ -13,7 +13,7 @@
 # limitations under the License.
 
 """
-The opentelemetry-instrumentation-aws-lambda package provides an `Instrumentor`
+The opentelemetry-instrumentation-aws-lambda package provides an Instrumentor
 to traces calls within a Python AWS Lambda function.
 
 Usage
@@ -26,7 +26,6 @@ Usage
     import boto3
     from opentelemetry.instrumentation.botocore import AwsBotocoreInstrumentor
     from opentelemetry.instrumentation.aws_lambda import AwsLambdaInstrumentor
-
 
     # Enable instrumentation
     AwsBotocoreInstrumentor().instrument()
@@ -47,8 +46,8 @@ The `instrument` method accepts the following keyword args:
 
 tracer_provider (TracerProvider) - an optional tracer provider
 event_context_extractor (Callable) - a function that returns an OTel Trace
-    Context given the Lambda Event the AWS Lambda was invoked with
-    this function signature is: def event_context_extractor(lambda_event: Any) -> Context
+Context given the Lambda Event the AWS Lambda was invoked with
+this function signature is: def event_context_extractor(lambda_event: Any) -> Context
 for example:
 
 .. code:: python
@@ -63,7 +62,10 @@ for example:
     AwsLambdaInstrumentor().instrument(
         event_context_extractor=custom_event_context_extractor
     )
+
+---
 """
+
 import logging
 import os
 from importlib import import_module
@@ -100,6 +102,9 @@ _X_AMZN_TRACE_ID = "_X_AMZN_TRACE_ID"
 ORIG_HANDLER = "ORIG_HANDLER"
 OTEL_INSTRUMENTATION_AWS_LAMBDA_FLUSH_TIMEOUT = (
     "OTEL_INSTRUMENTATION_AWS_LAMBDA_FLUSH_TIMEOUT"
+)
+OTEL_LAMBDA_DISABLE_AWS_CONTEXT_PROPAGATION = (
+    "OTEL_LAMBDA_DISABLE_AWS_CONTEXT_PROPAGATION"
 )
 
 
@@ -408,6 +413,16 @@ class AwsLambdaInstrumentor(BaseInstrumentor):
                 flush_timeout_env,
             )
 
+        disable_aws_context_propagation = kwargs.get(
+            "disable_aws_context_propagation", False
+        ) or os.getenv(
+            OTEL_LAMBDA_DISABLE_AWS_CONTEXT_PROPAGATION, "False"
+        ).strip().lower() in (
+            "true",
+            "1",
+            "t",
+        )
+
         _instrument(
             self._wrapped_module_name,
             self._wrapped_function_name,
@@ -416,9 +431,7 @@ class AwsLambdaInstrumentor(BaseInstrumentor):
                 "event_context_extractor", _default_event_context_extractor
             ),
             tracer_provider=kwargs.get("tracer_provider"),
-            disable_aws_context_propagation=kwargs.get(
-                "disable_aws_context_propagation", False
-            ),
+            disable_aws_context_propagation=disable_aws_context_propagation,
         )
 
     def _uninstrument(self, **kwargs):

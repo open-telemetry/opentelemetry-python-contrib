@@ -20,4 +20,4 @@ References
 ----------
 
 * `OpenTelemetry Project <https://opentelemetry.io/>`_
-* `Example using opentelemetry-distro <https://opentelemetry-python.readthedocs.io/en/latest/examples/distro/README.html>`_
+* `Example using opentelemetry-distro <https://opentelemetry.io/docs/instrumentation/python/distro/>`_
