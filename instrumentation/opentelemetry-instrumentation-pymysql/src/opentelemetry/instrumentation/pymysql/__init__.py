@@ -49,6 +49,10 @@ from opentelemetry.instrumentation.instrumentor import BaseInstrumentor
 from opentelemetry.instrumentation.pymysql.package import _instruments
 from opentelemetry.instrumentation.pymysql.version import __version__
 
+from opentelemetry.metrics import get_meter
+from opentelemetry.semconv.metrics import MetricInstruments
+
+
 _CONNECTION_ATTRIBUTES = {
     "database": "db",
     "port": "port",
@@ -68,6 +72,22 @@ class PyMySQLInstrumentor(BaseInstrumentor):
         """
         tracer_provider = kwargs.get("tracer_provider")
 
+        meter_provider = kwargs.get("meter_provider")
+        meter = get_meter(__name__, __version__, meter_provider)
+
+        createtime_histogram = meter.create_histogram(
+            name=MetricInstruments.db.client.connections.create_time,
+            description="The time it took to create a new connection",
+            unit="ms",
+        )
+
+        pending_requests_updowncounter = meter.create_up_down_counter(
+            name=MetricInstruments.db.client.connections.pending_requests,
+            description="The number of pending requests for an open connection, cumulative for the entire pool.",
+            unit="requests",
+        )
+
+
         dbapi.wrap_connect(
             __name__,
             pymysql,
@@ -76,6 +96,8 @@ class PyMySQLInstrumentor(BaseInstrumentor):
             _CONNECTION_ATTRIBUTES,
             version=__version__,
             tracer_provider=tracer_provider,
+            createtime_histogram=createtime_histogram,
+            pending_requests_updowncounter=pending_requests_updowncounter,
         )
 
     def _uninstrument(self, **kwargs):
@@ -95,6 +117,27 @@ class PyMySQLInstrumentor(BaseInstrumentor):
             An instrumented connection.
         """
 
+        meter = get_meter(__name__, __version__, PyMySQLInstrumentor.meter_provider)
+
+        createtime_histogram = meter.create_histogram(
+            name=MetricInstruments.db.client.connections.create_time,
+            description="The time it took to create a new connection",
+            unit="ms",
+        )
+
+        pending_requests_updowncounter = meter.create_up_down_counter(
+            name=MetricInstruments.db.client.connections.pending_requests,
+            description="The number of pending requests for an open connection, cumulative for the entire pool.",
+            unit="requests",
+        )
+
+        connectionusage_updowncounter = meter.create_up_down_counter(
+            name=MetricInstruments.db.client.connections.usage,
+            description="The number of connections that are currently in state described by the state attribute",
+            unit="connections",
+        )
+
+
         return dbapi.instrument_connection(
             __name__,
             connection,
@@ -102,6 +145,9 @@ class PyMySQLInstrumentor(BaseInstrumentor):
             _CONNECTION_ATTRIBUTES,
             version=__version__,
             tracer_provider=tracer_provider,
+            createtime_histogram=createtime_histogram,
+            pending_requests_updowncounter=pending_requests_updowncounter,
+            connectionusage_updowncounter=connectionusage_updowncounter,
         )
 
     @staticmethod
