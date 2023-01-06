@@ -52,7 +52,6 @@ from opentelemetry.instrumentation.boto.package import _instruments
 from opentelemetry.instrumentation.boto.version import __version__
 from opentelemetry.instrumentation.instrumentor import BaseInstrumentor
 from opentelemetry.instrumentation.utils import unwrap
-from opentelemetry.sdk.trace import Resource
 from opentelemetry.semconv.trace import SpanAttributes
 from opentelemetry.trace import SpanKind, get_tracer
 
@@ -87,7 +86,7 @@ class BotoInstrumentor(BaseInstrumentor):
     def _instrument(self, **kwargs):
         # AWSQueryConnection and AWSAuthConnection are two different classes
         # called by different services for connection.
-        # For exemple EC2 uses AWSQueryConnection and S3 uses
+        # For example EC2 uses AWSQueryConnection and S3 uses
         # AWSAuthConnection
 
         # pylint: disable=attribute-defined-outside-init
@@ -124,7 +123,8 @@ class BotoInstrumentor(BaseInstrumentor):
         endpoint_name = getattr(instance, "host").split(".")[0]
 
         with self._tracer.start_as_current_span(
-            "{}.command".format(endpoint_name), kind=SpanKind.CONSUMER,
+            f"{endpoint_name}.command",
+            kind=SpanKind.CONSUMER,
         ) as span:
             span.set_attribute("endpoint", endpoint_name)
             if args:
@@ -136,7 +136,11 @@ class BotoInstrumentor(BaseInstrumentor):
 
             if span.is_recording():
                 add_span_arg_tags(
-                    span, endpoint_name, args, args_name, traced_args,
+                    span,
+                    endpoint_name,
+                    args,
+                    args_name,
+                    traced_args,
                 )
 
                 # Obtaining region name
@@ -174,8 +178,6 @@ class BotoInstrumentor(BaseInstrumentor):
         )
 
     def _patched_auth_request(self, original_func, instance, args, kwargs):
-        operation_name = None
-
         frame = currentframe().f_back
         operation_name = None
         while frame:
@@ -236,11 +238,11 @@ def add_span_arg_tags(span, aws_service, args, args_names, args_traced):
     # Do not trace `Key Management Service` or `Secure Token Service` API calls
     # over concerns of security leaks.
     if aws_service not in {"kms", "sts"}:
-        tags = dict(
-            (name, value)
+        tags = {
+            name: value
             for (name, value) in zip(args_names, args)
             if name in args_traced
-        )
+        }
         tags = flatten_dict(tags)
 
         for param_key, value in tags.items():

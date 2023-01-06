@@ -1,0 +1,17 @@
+# This action assigns and requires approval from owners of components for
+# PRs that are open against those components. Components are defined as
+# individual paths within this repository.
+name: 'Component Owners'
+
+on:
+  pull_request_target:
+
+jobs:
+  run_self:
+    runs-on: ubuntu-latest
+    name: Auto Assign Owners
+    # Don't fail tests if this workflow fails. Some pending issues:
+    # - https://github.com/dyladan/component-owners/issues/8
+    continue-on-error: true
+    steps:
+      - uses: dyladan/component-owners@main

@@ -34,11 +34,11 @@ API
 ---
 """
 
+import re
 from typing import Collection
 
 import asyncpg
 import wrapt
-from asyncpg import exceptions
 
 from opentelemetry import trace
 from opentelemetry.instrumentation.asyncpg.package import _instruments
@@ -100,6 +100,7 @@ class AsyncPGInstrumentor(BaseInstrumentor):
         super().__init__()
         self.capture_parameters = capture_parameters
         self._tracer = None
+        self._leading_comment_remover = re.compile(r"^/\*.*?\*/")
 
     def instrumentation_dependencies(self) -> Collection[str]:
         return _instruments
@@ -134,6 +135,12 @@ class AsyncPGInstrumentor(BaseInstrumentor):
         exception = None
         params = getattr(instance, "_params", {})
         name = args[0] if args[0] else params.get("database", "postgresql")
+
+        try:
+            # Strip leading comments so we get the operation name.
+            name = self._leading_comment_remover.sub("", name).split()[0]
+        except IndexError:
+            name = ""
 
         with self._tracer.start_as_current_span(
             name, kind=SpanKind.CLIENT

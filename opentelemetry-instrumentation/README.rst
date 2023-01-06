@@ -16,6 +16,14 @@ Installation
 
 This package provides a couple of commands that help automatically instruments a program:
 
+.. note::
+    You need to install a distro package to get auto instrumentation working. The ``opentelemetry-distro``
+    package contains the default distro and automatically configures some of the common options for users.
+    For more info about ``opentelemetry-distro`` check `here <https://opentelemetry-python.readthedocs.io/en/latest/examples/distro/README.html>`__
+    ::
+
+        pip install opentelemetry-distro[otlp]
+
 
 opentelemetry-bootstrap
 -----------------------
@@ -43,30 +51,35 @@ and when possible, apply automatic tracing instrumentation on them. This means y
 will get automatic distributed tracing for free without having to make any code changes
 at all. This will also configure a global tracer and tracing exporter without you having to
 make any code changes. By default, the instrument command will use the OTLP exporter but
-this can be overriden when needed.
+this can be overridden when needed.
 
 The command supports the following configuration options as CLI arguments and environment vars:
 
 
-* ``--trace-exporter`` or ``OTEL_TRACE_EXPORTER``
+* ``--traces_exporter`` or ``OTEL_TRACES_EXPORTER``
+* ``--metrics_exporter`` or ``OTEL_METRICS_EXPORTER``
 
 Used to specify which trace exporter to use. Can be set to one or more of the well-known exporter
 names (see below).
 
     - Defaults to `otlp`.
-    - Can be set to `none` to disable automatic tracer initialization. 
+    - Can be set to `none` to disable automatic tracer initialization.
 
-You can pass multiple values to configure multiple exporters e.g, ``zipkin,prometheus`` 
+You can pass multiple values to configure multiple exporters e.g, ``zipkin,prometheus``
 
 Well known trace exporter names:
 
-    - jaeger
+    - jaeger_proto
+    - jaeger_thrift
     - opencensus
+    - zipkin_json
+    - zipkin_proto
     - otlp
-    - otlp_proto_grpc_span
-    - zipkin
+    - otlp_proto_grpc (`deprecated`)
+    - otlp_proto_http (`deprecated`)
 
-``otlp`` is an alias for ``otlp_proto_grpc_span``.
+Note: The default transport protocol for ``otlp`` is gRPC.
+HTTP is currently supported for traces only, and should be set using ``OTEL_EXPORTER_OTLP_TRACES_PROTOCOL=http/protobuf``
 
 * ``--id-generator`` or ``OTEL_PYTHON_ID_GENERATOR``
 
@@ -84,24 +97,24 @@ e.g OTEL_PYTHON_DISABLED_INSTRUMENTATIONS = "requests,django"
 
 
 Examples
-^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+^^^^^^^^
 
 ::
 
-    opentelemetry-instrument --trace-exporter otlp flask run --port=3000
+    opentelemetry-instrument --traces_exporter otlp flask run --port=3000
 
-The above command will pass ``--trace-exporter otlp`` to the instrument command and ``--port=3000`` to ``flask run``.
+The above command will pass ``--traces_exporter otlp`` to the instrument command and ``--port=3000`` to ``flask run``.
 
 ::
 
-    opentelemetry-instrument --trace-exporter zipkin,otlp celery -A tasks worker --loglevel=info
+    opentelemetry-instrument --traces_exporter zipkin_json,otlp celery -A tasks worker --loglevel=info
 
 The above command will configure global trace provider, attach zipkin and otlp exporters to it and then
-start celery with the rest of the arguments. 
+start celery with the rest of the arguments.
 
 ::
 
-    opentelemetry-instrument --ids-generator random flask run --port=3000
+    opentelemetry-instrument --id_generator random flask run --port=3000
 
 The above command will configure the global trace provider to use the Random IDs Generator, and then
 pass ``--port=3000`` to ``flask run``.

@@ -23,6 +23,7 @@ Implementation of the service-side open-telemetry interceptor.
 
 import logging
 from contextlib import contextmanager
+from urllib.parse import unquote
 
 import grpc
 
@@ -114,6 +115,9 @@ class _OpenTelemetryServicerContext(grpc.ServicerContext):
     def set_trailing_metadata(self, *args, **kwargs):
         return self._servicer_context.set_trailing_metadata(*args, **kwargs)
 
+    def trailing_metadata(self):
+        return self._servicer_context.trailing_metadata()
+
     def abort(self, code, details):
         self.code = code
         self.details = details
@@ -123,7 +127,7 @@ class _OpenTelemetryServicerContext(grpc.ServicerContext):
         self._active_span.set_status(
             Status(
                 status_code=StatusCode.ERROR,
-                description="{}:{}".format(code, details),
+                description=f"{code}:{details}",
             )
         )
         return self._servicer_context.abort(code, details)
@@ -142,7 +146,7 @@ class _OpenTelemetryServicerContext(grpc.ServicerContext):
             self._active_span.set_status(
                 Status(
                     status_code=StatusCode.ERROR,
-                    description="{}:{}".format(code, details),
+                    description=f"{code}:{details}",
                 )
             )
         return self._servicer_context.set_code(code)
@@ -153,7 +157,7 @@ class _OpenTelemetryServicerContext(grpc.ServicerContext):
             self._active_span.set_status(
                 Status(
                     status_code=StatusCode.ERROR,
-                    description="{}:{}".format(self.code, details),
+                    description=f"{self.code}:{details}",
                 )
             )
         return self._servicer_context.set_details(details)
@@ -169,9 +173,10 @@ class OpenTelemetryServerInterceptor(grpc.ServerInterceptor):
     Usage::
 
         tracer = some OpenTelemetry tracer
+        filter = filters.negate(filters.method_name("service.Foo"))
 
         interceptors = [
-            OpenTelemetryServerInterceptor(tracer),
+            OpenTelemetryServerInterceptor(tracer, filter),
         ]
 
         server = grpc.server(
@@ -180,8 +185,9 @@ class OpenTelemetryServerInterceptor(grpc.ServerInterceptor):
 
     """
 
-    def __init__(self, tracer):
+    def __init__(self, tracer, filter_=None):
         self._tracer = tracer
+        self._filter = filter_
 
     @contextmanager
     def _set_remote_context(self, servicer_context):
@@ -234,6 +240,7 @@ class OpenTelemetryServerInterceptor(grpc.ServerInterceptor):
             ip, port = (
                 context.peer().split(",")[0].split(":", 1)[1].rsplit(":", 1)
             )
+            ip = unquote(ip)
             attributes.update(
                 {
                     SpanAttributes.NET_PEER_IP: ip,
@@ -256,6 +263,9 @@ class OpenTelemetryServerInterceptor(grpc.ServerInterceptor):
         )
 
     def intercept_service(self, continuation, handler_call_details):
+        if self._filter is not None and not self._filter(handler_call_details):
+            return continuation(handler_call_details)
+
         def telemetry_wrapper(behavior, request_streaming, response_streaming):
             def telemetry_interceptor(request_or_iterator, context):
 

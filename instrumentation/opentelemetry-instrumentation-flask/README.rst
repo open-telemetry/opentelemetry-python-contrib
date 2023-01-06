@@ -16,24 +16,9 @@ Installation
 
     pip install opentelemetry-instrumentation-flask
 
-Configuration
--------------
-
-Exclude lists
-*************
-To exclude certain URLs from being tracked, set the environment variable ``OTEL_PYTHON_FLASK_EXCLUDED_URLS`` with comma delimited regexes representing which URLs to exclude.
-
-For example,
-
-::
-
-    export OTEL_PYTHON_FLASK_EXCLUDED_URLS="client/.*/info,healthcheck"
-
-will exclude requests such as ``https://site/client/123/info`` and ``https://site/xyz/healthcheck``.
-
 References
 ----------
 
-* `OpenTelemetry Flask Instrumentation <https://opentelemetry-python-contrib.readthedocs.io/en/stable/instrumentation/flask/flask.html>`_
+* `OpenTelemetry Flask Instrumentation <https://opentelemetry-python-contrib.readthedocs.io/en/latest/instrumentation/flask/flask.html>`_
 * `OpenTelemetry Project <https://opentelemetry.io/>`_
 * `OpenTelemetry Python Examples <https://github.com/open-telemetry/opentelemetry-python/tree/main/docs/examples>`_

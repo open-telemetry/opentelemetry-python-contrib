@@ -13,4 +13,6 @@
 # limitations under the License.
 
 
-_instruments = ("tornado >= 6.0",)
+_instruments = ("tornado >= 5.1.1",)
+
+_supports_metrics = True

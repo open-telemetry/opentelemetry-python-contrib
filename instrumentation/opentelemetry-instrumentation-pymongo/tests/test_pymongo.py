@@ -14,11 +14,13 @@
 
 from unittest import mock
 
+from opentelemetry import context
 from opentelemetry import trace as trace_api
 from opentelemetry.instrumentation.pymongo import (
     CommandTracer,
     PymongoInstrumentor,
 )
+from opentelemetry.instrumentation.utils import _SUPPRESS_INSTRUMENTATION_KEY
 from opentelemetry.semconv.trace import SpanAttributes
 from opentelemetry.test.test_base import TestBase
 
@@ -27,6 +29,9 @@ class TestPymongo(TestBase):
     def setUp(self):
         super().setUp()
         self.tracer = self.tracer_provider.get_tracer(__name__)
+        self.start_callback = mock.MagicMock()
+        self.success_callback = mock.MagicMock()
+        self.failed_callback = mock.MagicMock()
 
     def test_pymongo_instrumentor(self):
         mock_register = mock.Mock()
@@ -35,14 +40,15 @@ class TestPymongo(TestBase):
         )
         with patch:
             PymongoInstrumentor().instrument()
-
         self.assertTrue(mock_register.called)
 
     def test_started(self):
         command_attrs = {
             "command_name": "find",
         }
-        command_tracer = CommandTracer(self.tracer)
+        command_tracer = CommandTracer(
+            self.tracer, request_hook=self.start_callback
+        )
         mock_event = MockEvent(
             command_attrs, ("test.com", "1234"), "test_request_id"
         )
@@ -52,7 +58,7 @@ class TestPymongo(TestBase):
         # pylint: disable=protected-access
         span = command_tracer._pop_span(mock_event)
         self.assertIs(span.kind, trace_api.SpanKind.CLIENT)
-        self.assertEqual(span.name, "command_name.find")
+        self.assertEqual(span.name, "database_name.command_name")
         self.assertEqual(span.attributes[SpanAttributes.DB_SYSTEM], "mongodb")
         self.assertEqual(
             span.attributes[SpanAttributes.DB_NAME], "database_name"
@@ -64,10 +70,15 @@ class TestPymongo(TestBase):
             span.attributes[SpanAttributes.NET_PEER_NAME], "test.com"
         )
         self.assertEqual(span.attributes[SpanAttributes.NET_PEER_PORT], "1234")
+        self.start_callback.assert_called_once_with(span, mock_event)
 
     def test_succeeded(self):
         mock_event = MockEvent({})
-        command_tracer = CommandTracer(self.tracer)
+        command_tracer = CommandTracer(
+            self.tracer,
+            request_hook=self.start_callback,
+            response_hook=self.success_callback,
+        )
         command_tracer.started(event=mock_event)
         command_tracer.succeeded(event=mock_event)
         spans_list = self.memory_exporter.get_finished_spans()
@@ -75,6 +86,8 @@ class TestPymongo(TestBase):
         span = spans_list[0]
         self.assertIs(span.status.status_code, trace_api.StatusCode.UNSET)
         self.assertIsNotNone(span.end_time)
+        self.start_callback.assert_called_once()
+        self.success_callback.assert_called_once()
 
     def test_not_recording(self):
         mock_tracer = mock.Mock()
@@ -90,9 +103,38 @@ class TestPymongo(TestBase):
         self.assertFalse(mock_span.set_attribute.called)
         self.assertFalse(mock_span.set_status.called)
 
+    def test_suppression_key(self):
+        mock_tracer = mock.Mock()
+        mock_span = mock.Mock()
+        mock_span.is_recording.return_value = True
+        mock_tracer.start_span.return_value = mock_span
+        mock_event = MockEvent({})
+        mock_event.command.get = mock.Mock()
+        mock_event.command.get.return_value = "dummy"
+
+        token = context.attach(
+            context.set_value(_SUPPRESS_INSTRUMENTATION_KEY, True)
+        )
+
+        try:
+            command_tracer = CommandTracer(mock_tracer)
+            command_tracer.started(event=mock_event)
+            command_tracer.succeeded(event=mock_event)
+        finally:
+            context.detach(token)
+
+        # if suppression key is set, CommandTracer methods return immediately, so command.get is not invoked.
+        self.assertFalse(
+            mock_event.command.get.called  # pylint: disable=no-member
+        )
+
     def test_failed(self):
         mock_event = MockEvent({})
-        command_tracer = CommandTracer(self.tracer)
+        command_tracer = CommandTracer(
+            self.tracer,
+            request_hook=self.start_callback,
+            failed_hook=self.failed_callback,
+        )
         command_tracer.started(event=mock_event)
         command_tracer.failed(event=mock_event)
 
@@ -101,10 +143,13 @@ class TestPymongo(TestBase):
         span = spans_list[0]
 
         self.assertIs(
-            span.status.status_code, trace_api.StatusCode.ERROR,
+            span.status.status_code,
+            trace_api.StatusCode.ERROR,
         )
         self.assertEqual(span.status.description, "failure")
         self.assertIsNotNone(span.end_time)
+        self.start_callback.assert_called_once()
+        self.failed_callback.assert_called_once()
 
     def test_multiple_commands(self):
         first_mock_event = MockEvent({}, ("firstUrl", "123"), "first")
@@ -121,10 +166,12 @@ class TestPymongo(TestBase):
         second_span = spans_list[1]
 
         self.assertIs(
-            first_span.status.status_code, trace_api.StatusCode.UNSET,
+            first_span.status.status_code,
+            trace_api.StatusCode.UNSET,
         )
         self.assertIs(
-            second_span.status.status_code, trace_api.StatusCode.ERROR,
+            second_span.status.status_code,
+            trace_api.StatusCode.ERROR,
         )
 
     def test_int_command(self):
@@ -141,8 +188,18 @@ class TestPymongo(TestBase):
 
         self.assertEqual(len(spans_list), 1)
         span = spans_list[0]
+        self.assertEqual(span.name, "database_name.command_name")
 
-        self.assertEqual(span.name, "command_name.123")
+    def test_no_op_tracer(self):
+        mock_event = MockEvent({})
+
+        tracer = trace_api.NoOpTracer()
+        command_tracer = CommandTracer(tracer)
+        command_tracer.started(event=mock_event)
+        command_tracer.succeeded(event=mock_event)
+
+        spans_list = self.memory_exporter.get_finished_spans()
+        self.assertEqual(len(spans_list), 0)
 
 
 class MockCommand:

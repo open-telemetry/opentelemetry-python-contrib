@@ -23,10 +23,7 @@ Explicitly instrumenting a single client session:
 .. code:: python
 
     import aiohttp
-    from opentelemetry.instrumentation.aiohttp_client import (
-        create_trace_config,
-        url_path_span_name
-    )
+    from opentelemetry.instrumentation.aiohttp_client import create_trace_config
     import yarl
 
     def strip_query_params(url: yarl.URL) -> str:
@@ -35,8 +32,6 @@ Explicitly instrumenting a single client session:
     async with aiohttp.ClientSession(trace_configs=[create_trace_config(
             # Remove all query params from the URL attribute on the span.
             url_filter=strip_query_params,
-            # Use the URL's path as the span name.
-            span_name=url_path_span_name
     )]) as session:
         async with session.get(url) as response:
             await response.text()
@@ -58,6 +53,29 @@ Instrumenting all client sessions:
         async with session.get(url) as response:
             await response.text()
 
+Configuration
+-------------
+
+Request/Response hooks
+**********************
+
+Utilize request/response hooks to execute custom logic to be performed before/after performing a request.
+
+.. code-block:: python
+
+   def request_hook(span: Span, params: aiohttp.TraceRequestStartParams):
+      if span and span.is_recording():
+            span.set_attribute("custom_user_attribute_from_request_hook", "some-value")
+
+   def response_hook(span: Span, params: typing.Union[
+                aiohttp.TraceRequestEndParams,
+                aiohttp.TraceRequestExceptionParams,
+            ]):
+        if span and span.is_recording():
+            span.set_attribute("custom_user_attribute_from_response_hook", "some-value")
+
+   AioHttpClientInstrumentor().instrument(request_hook=request_hook, response_hook=response_hook)
+
 API
 ---
 """
@@ -68,6 +86,7 @@ from typing import Collection
 
 import aiohttp
 import wrapt
+import yarl
 
 from opentelemetry import context as context_api
 from opentelemetry import trace
@@ -75,38 +94,38 @@ from opentelemetry.instrumentation.aiohttp_client.package import _instruments
 from opentelemetry.instrumentation.aiohttp_client.version import __version__
 from opentelemetry.instrumentation.instrumentor import BaseInstrumentor
 from opentelemetry.instrumentation.utils import (
+    _SUPPRESS_INSTRUMENTATION_KEY,
     http_status_to_status_code,
     unwrap,
 )
 from opentelemetry.propagate import inject
 from opentelemetry.semconv.trace import SpanAttributes
-from opentelemetry.trace import SpanKind, TracerProvider, get_tracer
+from opentelemetry.trace import Span, SpanKind, TracerProvider, get_tracer
 from opentelemetry.trace.status import Status, StatusCode
+from opentelemetry.util.http import remove_url_credentials
 
-_UrlFilterT = typing.Optional[typing.Callable[[str], str]]
-_SpanNameT = typing.Optional[
-    typing.Union[typing.Callable[[aiohttp.TraceRequestStartParams], str], str]
+_UrlFilterT = typing.Optional[typing.Callable[[yarl.URL], str]]
+_RequestHookT = typing.Optional[
+    typing.Callable[[Span, aiohttp.TraceRequestStartParams], None]
 ]
-
-
-def url_path_span_name(params: aiohttp.TraceRequestStartParams) -> str:
-    """Extract a span name from the request URL path.
-
-    A simple callable to extract the path portion of the requested URL
-    for use as the span name.
-
-    :param aiohttp.TraceRequestStartParams params: Parameters describing
-        the traced request.
-
-    :return: The URL path.
-    :rtype: str
-    """
-    return params.url.path
+_ResponseHookT = typing.Optional[
+    typing.Callable[
+        [
+            Span,
+            typing.Union[
+                aiohttp.TraceRequestEndParams,
+                aiohttp.TraceRequestExceptionParams,
+            ],
+        ],
+        None,
+    ]
+]
 
 
 def create_trace_config(
     url_filter: _UrlFilterT = None,
-    span_name: _SpanNameT = None,
+    request_hook: _RequestHookT = None,
+    response_hook: _ResponseHookT = None,
     tracer_provider: TracerProvider = None,
 ) -> aiohttp.TraceConfig:
     """Create an aiohttp-compatible trace configuration.
@@ -132,15 +151,16 @@ def create_trace_config(
         it as a span attribute. This can be useful to remove sensitive data
         such as API keys or user personal information.
 
-    :param str span_name: Override the default span name.
+    :param Callable request_hook: Optional callback that can modify span name and request params.
+    :param Callable response_hook: Optional callback that can modify span name and response params.
     :param tracer_provider: optional TracerProvider from which to get a Tracer
 
     :return: An object suitable for use with :py:class:`aiohttp.ClientSession`.
     :rtype: :py:class:`aiohttp.TraceConfig`
     """
     # `aiohttp.TraceRequestStartParams` resolves to `aiohttp.tracing.TraceRequestStartParams`
-    # which doesn't exist in the aiottp intersphinx inventory.
-    # Explicitly specify the type for the `span_name` param and rtype to work
+    # which doesn't exist in the aiohttp intersphinx inventory.
+    # Explicitly specify the type for the `request_hook` and `response_hook` param and rtype to work
     # around this issue.
 
     tracer = get_tracer(__name__, __version__, tracer_provider)
@@ -154,33 +174,29 @@ def create_trace_config(
         trace_config_ctx: types.SimpleNamespace,
         params: aiohttp.TraceRequestStartParams,
     ):
-        if context_api.get_value("suppress_instrumentation"):
+        if context_api.get_value(_SUPPRESS_INSTRUMENTATION_KEY):
             trace_config_ctx.span = None
             return
 
         http_method = params.method.upper()
-        if trace_config_ctx.span_name is None:
-            request_span_name = "HTTP {}".format(http_method)
-        elif callable(trace_config_ctx.span_name):
-            request_span_name = str(trace_config_ctx.span_name(params))
-        else:
-            request_span_name = str(trace_config_ctx.span_name)
-
-        trace_config_ctx.span = trace_config_ctx.tracer.start_span(
-            request_span_name, kind=SpanKind.CLIENT,
+        request_span_name = f"HTTP {http_method}"
+        request_url = (
+            remove_url_credentials(trace_config_ctx.url_filter(params.url))
+            if callable(trace_config_ctx.url_filter)
+            else remove_url_credentials(str(params.url))
         )
 
-        if trace_config_ctx.span.is_recording():
-            attributes = {
-                SpanAttributes.HTTP_METHOD: http_method,
-                SpanAttributes.HTTP_URL: trace_config_ctx.url_filter(
-                    params.url
-                )
-                if callable(trace_config_ctx.url_filter)
-                else str(params.url),
-            }
-            for key, value in attributes.items():
-                trace_config_ctx.span.set_attribute(key, value)
+        span_attributes = {
+            SpanAttributes.HTTP_METHOD: http_method,
+            SpanAttributes.HTTP_URL: request_url,
+        }
+
+        trace_config_ctx.span = trace_config_ctx.tracer.start_span(
+            request_span_name, kind=SpanKind.CLIENT, attributes=span_attributes
+        )
+
+        if callable(request_hook):
+            request_hook(trace_config_ctx.span, params)
 
         trace_config_ctx.token = context_api.attach(
             trace.set_span_in_context(trace_config_ctx.span)
@@ -195,6 +211,9 @@ def create_trace_config(
     ):
         if trace_config_ctx.span is None:
             return
+
+        if callable(response_hook):
+            response_hook(trace_config_ctx.span, params)
 
         if trace_config_ctx.span.is_recording():
             trace_config_ctx.span.set_status(
@@ -216,12 +235,16 @@ def create_trace_config(
         if trace_config_ctx.span.is_recording() and params.exception:
             trace_config_ctx.span.set_status(Status(StatusCode.ERROR))
             trace_config_ctx.span.record_exception(params.exception)
+
+        if callable(response_hook):
+            response_hook(trace_config_ctx.span, params)
+
         _end_trace(trace_config_ctx)
 
     def _trace_config_ctx_factory(**kwargs):
         kwargs.setdefault("trace_request_ctx", {})
         return types.SimpleNamespace(
-            span_name=span_name, tracer=tracer, url_filter=url_filter, **kwargs
+            tracer=tracer, url_filter=url_filter, **kwargs
         )
 
     trace_config = aiohttp.TraceConfig(
@@ -238,29 +261,38 @@ def create_trace_config(
 def _instrument(
     tracer_provider: TracerProvider = None,
     url_filter: _UrlFilterT = None,
-    span_name: _SpanNameT = None,
+    request_hook: _RequestHookT = None,
+    response_hook: _ResponseHookT = None,
+    trace_configs: typing.Optional[
+        typing.Sequence[aiohttp.TraceConfig]
+    ] = None,
 ):
     """Enables tracing of all ClientSessions
 
     When a ClientSession gets created a TraceConfig is automatically added to
     the session's trace_configs.
     """
+
+    trace_configs = trace_configs or ()
+
     # pylint:disable=unused-argument
     def instrumented_init(wrapped, instance, args, kwargs):
-        if context_api.get_value("suppress_instrumentation"):
+        if context_api.get_value(_SUPPRESS_INSTRUMENTATION_KEY):
             return wrapped(*args, **kwargs)
 
-        trace_configs = list(kwargs.get("trace_configs") or ())
+        client_trace_configs = list(kwargs.get("trace_configs", ()))
+        client_trace_configs.extend(trace_configs)
 
         trace_config = create_trace_config(
             url_filter=url_filter,
-            span_name=span_name,
+            request_hook=request_hook,
+            response_hook=response_hook,
             tracer_provider=tracer_provider,
         )
-        trace_config.opentelemetry_aiohttp_instrumented = True
-        trace_configs.append(trace_config)
+        trace_config._is_instrumented_by_opentelemetry = True
+        client_trace_configs.append(trace_config)
 
-        kwargs["trace_configs"] = trace_configs
+        kwargs["trace_configs"] = client_trace_configs
         return wrapped(*args, **kwargs)
 
     wrapt.wrap_function_wrapper(
@@ -280,7 +312,7 @@ def _uninstrument_session(client_session: aiohttp.ClientSession):
     client_session._trace_configs = [
         trace_config
         for trace_config in trace_configs
-        if not hasattr(trace_config, "opentelemetry_aiohttp_instrumented")
+        if not hasattr(trace_config, "_is_instrumented_by_opentelemetry")
     ]
 
 
@@ -302,12 +334,17 @@ class AioHttpClientInstrumentor(BaseInstrumentor):
                 ``url_filter``: A callback to process the requested URL prior to adding
                     it as a span attribute. This can be useful to remove sensitive data
                     such as API keys or user personal information.
-                ``span_name``: Override the default span name.
+                ``request_hook``: An optional callback that is invoked right after a span is created.
+                ``response_hook``: An optional callback which is invoked right before the span is finished processing a response.
+                ``trace_configs``: An optional list of aiohttp.TraceConfig items, allowing customize enrichment of spans
+                 based on aiohttp events (see specification: https://docs.aiohttp.org/en/stable/tracing_reference.html)
         """
         _instrument(
             tracer_provider=kwargs.get("tracer_provider"),
             url_filter=kwargs.get("url_filter"),
-            span_name=kwargs.get("span_name"),
+            request_hook=kwargs.get("request_hook"),
+            response_hook=kwargs.get("response_hook"),
+            trace_configs=kwargs.get("trace_configs"),
         )
 
     def _uninstrument(self, **kwargs):

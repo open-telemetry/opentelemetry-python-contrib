@@ -18,6 +18,7 @@ import time
 import mysql.connector
 import psycopg2
 import pymongo
+import pyodbc
 import redis
 
 MONGODB_COLLECTION_NAME = "test"
@@ -36,6 +37,11 @@ POSTGRES_PORT = int(os.getenv("POSTGRESQL_PORT", "5432"))
 POSTGRES_USER = os.getenv("POSTGRESQL_USER", "testuser")
 REDIS_HOST = os.getenv("REDIS_HOST", "localhost")
 REDIS_PORT = int(os.getenv("REDIS_PORT ", "6379"))
+MSSQL_DB_NAME = os.getenv("MSSQL_DB_NAME", "opentelemetry-tests")
+MSSQL_HOST = os.getenv("MSSQL_HOST", "localhost")
+MSSQL_PORT = int(os.getenv("MSSQL_PORT", "1433"))
+MSSQL_USER = os.getenv("MSSQL_USER", "sa")
+MSSQL_PASSWORD = os.getenv("MSSQL_PASSWORD", "yourStrong(!)Password")
 RETRY_COUNT = 8
 RETRY_INTERVAL = 5  # Seconds
 
@@ -58,7 +64,7 @@ def retryable(func):
                     ex,
                 )
             time.sleep(RETRY_INTERVAL)
-        raise Exception("waiting for {} failed".format(func.__name__))
+        raise Exception(f"waiting for {func.__name__} failed")
 
     return wrapper
 
@@ -104,12 +110,37 @@ def check_redis_connection():
     connection.hgetall("*")
 
 
+def new_mssql_connection() -> pyodbc.Connection:
+    connection = pyodbc.connect(
+        f"DRIVER={{ODBC Driver 17 for SQL Server}};SERVER={MSSQL_HOST},"
+        f"{MSSQL_PORT};DATABASE=master;UID={MSSQL_USER};"
+        f"PWD={MSSQL_PASSWORD}",
+        autocommit=True,
+    )
+    return connection
+
+
+@retryable
+def check_mssql_connection():
+    conn = new_mssql_connection()
+    conn.close()
+
+
+def setup_mssql_db():
+    conn = new_mssql_connection()
+    cur = conn.cursor()
+    cur.execute(f"CREATE DATABASE [{MSSQL_DB_NAME}]")
+    conn.close()
+
+
 def check_docker_services_availability():
     # Check if Docker services accept connections
     check_pymongo_connection()
     check_mysql_connection()
     check_postgres_connection()
     check_redis_connection()
+    check_mssql_connection()
+    setup_mssql_db()
 
 
 check_docker_services_availability()

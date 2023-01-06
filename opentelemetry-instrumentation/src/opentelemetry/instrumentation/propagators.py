@@ -16,7 +16,7 @@
 This module implements experimental propagators to inject trace context
 into response carriers. This is useful for server side frameworks that start traces
 when server requests and want to share the trace context with the client so the
-client can add it's spans to the same trace.
+client can add its spans to the same trace.
 
 This is part of an upcoming W3C spec and will eventually make it to the Otel spec.
 
@@ -26,7 +26,7 @@ https://w3c.github.io/trace-context/#trace-context-http-response-headers-format
 import typing
 from abc import ABC, abstractmethod
 
-import opentelemetry.trace as trace
+from opentelemetry import trace
 from opentelemetry.context.context import Context
 from opentelemetry.propagators import textmap
 from opentelemetry.trace import format_span_id, format_trace_id
@@ -54,7 +54,7 @@ class DictHeaderSetter(Setter):
     def set(self, carrier, key, value):  # pylint: disable=no-self-use
         old_value = carrier.get(key, "")
         if old_value:
-            value = "{0}, {1}".format(old_value, value)
+            value = f"{old_value}, {value}"
         carrier[key] = value
 
 
@@ -115,12 +115,10 @@ class TraceResponsePropagator(ResponsePropagator):
         setter.set(
             carrier,
             header_name,
-            "00-{trace_id}-{span_id}-{:02x}".format(
-                span_context.trace_flags,
-                trace_id=format_trace_id(span_context.trace_id),
-                span_id=format_span_id(span_context.span_id),
-            ),
+            f"00-{format_trace_id(span_context.trace_id)}-{format_span_id(span_context.span_id)}-{span_context.trace_flags:02x}",
         )
         setter.set(
-            carrier, _HTTP_HEADER_ACCESS_CONTROL_EXPOSE_HEADERS, header_name,
+            carrier,
+            _HTTP_HEADER_ACCESS_CONTROL_EXPOSE_HEADERS,
+            header_name,
         )

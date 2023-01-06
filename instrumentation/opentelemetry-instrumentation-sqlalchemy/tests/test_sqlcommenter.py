@@ -1,0 +1,106 @@
+# Copyright The OpenTelemetry Authors
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+import logging
+
+import pytest
+from sqlalchemy import create_engine
+
+from opentelemetry import context
+from opentelemetry.instrumentation.sqlalchemy import SQLAlchemyInstrumentor
+from opentelemetry.test.test_base import TestBase
+
+
+class TestSqlalchemyInstrumentationWithSQLCommenter(TestBase):
+    @pytest.fixture(autouse=True)
+    def inject_fixtures(self, caplog):
+        self.caplog = caplog  # pylint: disable=attribute-defined-outside-init
+
+    def tearDown(self):
+        super().tearDown()
+        SQLAlchemyInstrumentor().uninstrument()
+
+    def test_sqlcommenter_disabled(self):
+        logging.getLogger("sqlalchemy.engine").setLevel(logging.INFO)
+        engine = create_engine("sqlite:///:memory:", echo=True)
+        SQLAlchemyInstrumentor().instrument(
+            engine=engine, tracer_provider=self.tracer_provider
+        )
+        cnx = engine.connect()
+        cnx.execute("SELECT 1;").fetchall()
+
+        self.assertEqual(self.caplog.records[-2].getMessage(), "SELECT 1;")
+
+    def test_sqlcommenter_enabled(self):
+        engine = create_engine("sqlite:///:memory:")
+        SQLAlchemyInstrumentor().instrument(
+            engine=engine,
+            tracer_provider=self.tracer_provider,
+            enable_commenter=True,
+            commenter_options={"db_framework": False},
+        )
+        cnx = engine.connect()
+        cnx.execute("SELECT  1;").fetchall()
+        self.assertRegex(
+            self.caplog.records[-2].getMessage(),
+            r"SELECT  1 /\*db_driver='(.*)',traceparent='\d{1,2}-[a-zA-Z0-9_]{32}-[a-zA-Z0-9_]{16}-\d{1,2}'\*/;",
+        )
+
+    def test_sqlcommenter_flask_integration(self):
+        engine = create_engine("sqlite:///:memory:")
+        SQLAlchemyInstrumentor().instrument(
+            engine=engine,
+            tracer_provider=self.tracer_provider,
+            enable_commenter=True,
+            commenter_options={"db_framework": False},
+        )
+        cnx = engine.connect()
+
+        current_context = context.get_current()
+        sqlcommenter_context = context.set_value(
+            "SQLCOMMENTER_ORM_TAGS_AND_VALUES", {"flask": 1}, current_context
+        )
+        context.attach(sqlcommenter_context)
+
+        cnx.execute("SELECT  1;").fetchall()
+        self.assertRegex(
+            self.caplog.records[-2].getMessage(),
+            r"SELECT  1 /\*db_driver='(.*)',flask=1,traceparent='\d{1,2}-[a-zA-Z0-9_]{32}-[a-zA-Z0-9_]{16}-\d{1,2}'\*/;",
+        )
+
+    def test_sqlcommenter_enabled_create_engine_after_instrumentation(self):
+        SQLAlchemyInstrumentor().instrument(
+            tracer_provider=self.tracer_provider,
+            enable_commenter=True,
+        )
+        from sqlalchemy import create_engine  # pylint: disable-all
+
+        engine = create_engine("sqlite:///:memory:")
+        cnx = engine.connect()
+        cnx.execute("SELECT 1;").fetchall()
+        self.assertRegex(
+            self.caplog.records[-2].getMessage(),
+            r"SELECT 1 /\*db_driver='(.*)',traceparent='\d{1,2}-[a-zA-Z0-9_]{32}-[a-zA-Z0-9_]{16}-\d{1,2}'\*/;",
+        )
+
+    def test_sqlcommenter_disabled_create_engine_after_instrumentation(self):
+        SQLAlchemyInstrumentor().instrument(
+            tracer_provider=self.tracer_provider,
+            enable_commenter=False,
+        )
+        from sqlalchemy import create_engine  # pylint: disable-all
+
+        engine = create_engine("sqlite:///:memory:")
+        cnx = engine.connect()
+        cnx.execute("SELECT 1;").fetchall()
+        self.assertEqual(self.caplog.records[-2].getMessage(), "SELECT 1;")

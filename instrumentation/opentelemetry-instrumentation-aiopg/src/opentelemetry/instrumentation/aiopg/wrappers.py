@@ -34,10 +34,12 @@ import typing
 
 import aiopg
 import wrapt
-from aiopg.utils import _ContextManager, _PoolContextManager
 
 from opentelemetry.instrumentation.aiopg.aiopg_integration import (
     AiopgIntegration,
+    AsyncProxyObject,
+    _ContextManager,
+    _PoolContextManager,
     get_traced_connection_proxy,
 )
 from opentelemetry.instrumentation.aiopg.version import __version__
@@ -108,7 +110,7 @@ def wrap_connect(
             version=version,
             tracer_provider=tracer_provider,
         )
-        return _ContextManager(
+        return _ContextManager(  # pylint: disable=no-value-for-parameter
             db_integration.wrapped_connection(wrapped, args, kwargs)
         )
 
@@ -150,6 +152,10 @@ def instrument_connection(
     Returns:
         An instrumented connection.
     """
+    if isinstance(connection, AsyncProxyObject):
+        logger.warning("Connection already instrumented")
+        return connection
+
     db_integration = AiopgIntegration(
         name,
         database_system,
@@ -170,7 +176,7 @@ def uninstrument_connection(connection):
     Returns:
         An uninstrumented connection.
     """
-    if isinstance(connection, wrapt.ObjectProxy):
+    if isinstance(connection, AsyncProxyObject):
         return connection.__wrapped__
 
     logger.warning("Connection is not instrumented")

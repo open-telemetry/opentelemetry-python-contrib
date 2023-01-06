@@ -79,12 +79,13 @@ class TestServer(test_server_pb2_grpc.GRPCTestServerServicer):
 
 
 def create_test_server(port):
+    # pylint: disable=consider-using-with
     server = grpc.server(futures.ThreadPoolExecutor(max_workers=1))
 
     test_server_pb2_grpc.add_GRPCTestServerServicer_to_server(
         TestServer(), server
     )
 
-    server.add_insecure_port("localhost:{}".format(port))
+    server.add_insecure_port(f"localhost:{port}")
 
     return server

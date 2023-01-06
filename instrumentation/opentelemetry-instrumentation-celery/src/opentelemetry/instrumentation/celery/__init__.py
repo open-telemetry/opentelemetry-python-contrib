@@ -47,6 +47,14 @@ Usage
 
     add.delay(42, 50)
 
+Setting up tracing
+------------------
+
+When tracing a celery worker process, tracing and instrumention both must be initialized after the celery worker
+process is initialized. This is required for any tracing components that might use threading to work correctly
+such as the BatchSpanProcessor. Celery provides a signal called ``worker_process_init`` that can be used to
+accomplish this as shown in the example above.
+
 API
 ---
 """
@@ -136,7 +144,7 @@ class CeleryInstrumentor(BaseInstrumentor):
 
         logger.debug("prerun signal start task_id=%s", task_id)
 
-        operation_name = "{0}/{1}".format(_TASK_RUN, task.name)
+        operation_name = f"{_TASK_RUN}/{task.name}"
         span = self._tracer.start_span(
             operation_name, context=tracectx, kind=trace.SpanKind.CONSUMER
         )
@@ -178,7 +186,7 @@ class CeleryInstrumentor(BaseInstrumentor):
         if task is None or task_id is None:
             return
 
-        operation_name = "{0}/{1}".format(_TASK_APPLY_ASYNC, task.name)
+        operation_name = f"{_TASK_APPLY_ASYNC}/{task.name}"
         span = self._tracer.start_span(
             operation_name, kind=trace.SpanKind.PRODUCER
         )

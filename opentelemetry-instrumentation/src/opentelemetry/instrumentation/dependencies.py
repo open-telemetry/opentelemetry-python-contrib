@@ -1,11 +1,15 @@
+from logging import getLogger
 from typing import Collection, Optional
 
 from pkg_resources import (
     Distribution,
     DistributionNotFound,
+    RequirementParseError,
     VersionConflict,
     get_distribution,
 )
+
+logger = getLogger(__name__)
 
 
 class DependencyConflict:
@@ -17,20 +21,25 @@ class DependencyConflict:
         self.found = found
 
     def __str__(self):
-        return 'DependencyConflict: requested: "{0}" but found: "{1}"'.format(
-            self.required, self.found
-        )
+        return f'DependencyConflict: requested: "{self.required}" but found: "{self.found}"'
 
 
 def get_dist_dependency_conflicts(
     dist: Distribution,
 ) -> Optional[DependencyConflict]:
-    deps = [
-        dep
-        for dep in dist.requires(("instruments",))
-        if dep not in dist.requires()
-    ]
-    return get_dependency_conflicts(deps)
+    main_deps = dist.requires()
+    instrumentation_deps = []
+    for dep in dist.requires(("instruments",)):
+        if dep not in main_deps:
+            # we set marker to none so string representation of the dependency looks like
+            #    requests ~= 1.0
+            # instead of
+            #    requests ~= 1.0; extra = "instruments"
+            # which does not work with `get_distribution()`
+            dep.marker = None
+            instrumentation_deps.append(str(dep))
+
+    return get_dependency_conflicts(instrumentation_deps)
 
 
 def get_dependency_conflicts(
@@ -38,9 +47,16 @@ def get_dependency_conflicts(
 ) -> Optional[DependencyConflict]:
     for dep in deps:
         try:
-            get_distribution(str(dep))
+            get_distribution(dep)
         except VersionConflict as exc:
             return DependencyConflict(dep, exc.dist)
         except DistributionNotFound:
+            return DependencyConflict(dep)
+        except RequirementParseError as exc:
+            logger.warning(
+                'error parsing dependency, reporting as a conflict: "%s" - %s',
+                dep,
+                exc,
+            )
             return DependencyConflict(dep)
     return None

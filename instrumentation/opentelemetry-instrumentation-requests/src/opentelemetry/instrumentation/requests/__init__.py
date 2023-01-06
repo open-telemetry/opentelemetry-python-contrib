@@ -22,12 +22,27 @@ Usage
 .. code-block:: python
 
     import requests
-    import opentelemetry.instrumentation.requests
+    from opentelemetry.instrumentation.requests import RequestsInstrumentor
 
-    # You can optionally pass a custom TracerProvider to
-    # RequestsInstrumentor.instrument()
-    opentelemetry.instrumentation.requests.RequestsInstrumentor().instrument()
+    # You can optionally pass a custom TracerProvider to instrument().
+    RequestsInstrumentor().instrument()
     response = requests.get(url="https://www.example.org/")
+
+Configuration
+-------------
+
+Exclude lists
+*************
+To exclude certain URLs from being tracked, set the environment variable ``OTEL_PYTHON_REQUESTS_EXCLUDED_URLS``
+(or ``OTEL_PYTHON_EXCLUDED_URLS`` as fallback) with comma delimited regexes representing which URLs to exclude.
+
+For example,
+
+::
+
+    export OTEL_PYTHON_REQUESTS_EXCLUDED_URLS="client/.*/info,healthcheck"
+
+will exclude requests such as ``https://site/client/123/info`` and ``https://site/xyz/healthcheck``.
 
 API
 ---
@@ -35,30 +50,51 @@ API
 
 import functools
 import types
-from typing import Collection
+from timeit import default_timer
+from typing import Callable, Collection, Iterable, Optional
+from urllib.parse import urlparse
 
 from requests.models import Response
 from requests.sessions import Session
 from requests.structures import CaseInsensitiveDict
 
 from opentelemetry import context
+
+# FIXME: fix the importing of this private attribute when the location of the _SUPPRESS_HTTP_INSTRUMENTATION_KEY is defined.
+from opentelemetry.context import _SUPPRESS_HTTP_INSTRUMENTATION_KEY
 from opentelemetry.instrumentation.instrumentor import BaseInstrumentor
 from opentelemetry.instrumentation.requests.package import _instruments
 from opentelemetry.instrumentation.requests.version import __version__
-from opentelemetry.instrumentation.utils import http_status_to_status_code
+from opentelemetry.instrumentation.utils import (
+    _SUPPRESS_INSTRUMENTATION_KEY,
+    http_status_to_status_code,
+)
+from opentelemetry.metrics import Histogram, get_meter
 from opentelemetry.propagate import inject
+from opentelemetry.semconv.metrics import MetricInstruments
 from opentelemetry.semconv.trace import SpanAttributes
-from opentelemetry.trace import SpanKind, get_tracer
+from opentelemetry.trace import SpanKind, Tracer, get_tracer
+from opentelemetry.trace.span import Span
 from opentelemetry.trace.status import Status
+from opentelemetry.util.http import (
+    get_excluded_urls,
+    parse_excluded_urls,
+    remove_url_credentials,
+)
+from opentelemetry.util.http.httplib import set_ip_on_next_http_connection
 
-# A key to a context variable to avoid creating duplicate spans when instrumenting
-# both, Session.request and Session.send, since Session.request calls into Session.send
-_SUPPRESS_HTTP_INSTRUMENTATION_KEY = "suppress_http_instrumentation"
+_excluded_urls_from_env = get_excluded_urls("REQUESTS")
 
 
 # pylint: disable=unused-argument
 # pylint: disable=R0915
-def _instrument(tracer, span_callback=None, name_callback=None):
+def _instrument(
+    tracer: Tracer,
+    duration_histogram: Histogram,
+    span_callback: Optional[Callable[[Span, Response], str]] = None,
+    name_callback: Optional[Callable[[str, str], str]] = None,
+    excluded_urls: Iterable[str] = None,
+):
     """Enables tracing of all requests calls that go through
     :code:`requests.session.Session.request` (this includes
     :code:`requests.get`, etc.)."""
@@ -75,6 +111,9 @@ def _instrument(tracer, span_callback=None, name_callback=None):
 
     @functools.wraps(wrapped_request)
     def instrumented_request(self, method, url, *args, **kwargs):
+        if excluded_urls and excluded_urls.url_disabled(url):
+            return wrapped_request(self, method, url, *args, **kwargs)
+
         def get_or_create_headers():
             headers = kwargs.get("headers")
             if headers is None:
@@ -92,6 +131,9 @@ def _instrument(tracer, span_callback=None, name_callback=None):
 
     @functools.wraps(wrapped_send)
     def instrumented_send(self, request, **kwargs):
+        if excluded_urls and excluded_urls.url_disabled(request.url):
+            return wrapped_send(self, request, **kwargs)
+
         def get_or_create_headers():
             request.headers = (
                 request.headers
@@ -107,12 +149,13 @@ def _instrument(tracer, span_callback=None, name_callback=None):
             request.method, request.url, call_wrapped, get_or_create_headers
         )
 
+    # pylint: disable-msg=too-many-locals,too-many-branches
     def _instrumented_requests_call(
         method: str, url: str, call_wrapped, get_or_create_headers
     ):
-        if context.get_value("suppress_instrumentation") or context.get_value(
-            _SUPPRESS_HTTP_INSTRUMENTATION_KEY
-        ):
+        if context.get_value(
+            _SUPPRESS_INSTRUMENTATION_KEY
+        ) or context.get_value(_SUPPRESS_HTTP_INSTRUMENTATION_KEY):
             return call_wrapped()
 
         # See
@@ -124,17 +167,34 @@ def _instrument(tracer, span_callback=None, name_callback=None):
         if not span_name or not isinstance(span_name, str):
             span_name = get_default_span_name(method)
 
-        labels = {}
-        labels[SpanAttributes.HTTP_METHOD] = method
-        labels[SpanAttributes.HTTP_URL] = url
+        url = remove_url_credentials(url)
+
+        span_attributes = {
+            SpanAttributes.HTTP_METHOD: method,
+            SpanAttributes.HTTP_URL: url,
+        }
+
+        metric_labels = {
+            SpanAttributes.HTTP_METHOD: method,
+        }
+
+        try:
+            parsed_url = urlparse(url)
+            metric_labels[SpanAttributes.HTTP_SCHEME] = parsed_url.scheme
+            if parsed_url.hostname:
+                metric_labels[SpanAttributes.HTTP_HOST] = parsed_url.hostname
+                metric_labels[
+                    SpanAttributes.NET_PEER_NAME
+                ] = parsed_url.hostname
+            if parsed_url.port:
+                metric_labels[SpanAttributes.NET_PEER_PORT] = parsed_url.port
+        except ValueError:
+            pass
 
         with tracer.start_as_current_span(
-            span_name, kind=SpanKind.CLIENT
-        ) as span:
+            span_name, kind=SpanKind.CLIENT, attributes=span_attributes
+        ) as span, set_ip_on_next_http_connection(span):
             exception = None
-            if span.is_recording():
-                span.set_attribute(SpanAttributes.HTTP_METHOD, method)
-                span.set_attribute(SpanAttributes.HTTP_URL, url)
 
             headers = get_or_create_headers()
             inject(headers)
@@ -142,12 +202,18 @@ def _instrument(tracer, span_callback=None, name_callback=None):
             token = context.attach(
                 context.set_value(_SUPPRESS_HTTP_INSTRUMENTATION_KEY, True)
             )
+
+            start_time = default_timer()
+
             try:
                 result = call_wrapped()  # *** PROCEED
             except Exception as exc:  # pylint: disable=W0703
                 exception = exc
                 result = getattr(exc, "response", None)
             finally:
+                elapsed_time = max(
+                    round((default_timer() - start_time) * 1000), 0
+                )
                 context.detach(token)
 
             if isinstance(result, Response):
@@ -158,17 +224,22 @@ def _instrument(tracer, span_callback=None, name_callback=None):
                     span.set_status(
                         Status(http_status_to_status_code(result.status_code))
                     )
-                labels[SpanAttributes.HTTP_STATUS_CODE] = str(
-                    result.status_code
-                )
-                if result.raw and result.raw.version:
-                    labels[SpanAttributes.HTTP_FLAVOR] = (
-                        str(result.raw.version)[:1]
-                        + "."
-                        + str(result.raw.version)[:-1]
-                    )
+
+                metric_labels[
+                    SpanAttributes.HTTP_STATUS_CODE
+                ] = result.status_code
+
+                if result.raw is not None:
+                    version = getattr(result.raw, "version", None)
+                    if version:
+                        metric_labels[SpanAttributes.HTTP_FLAVOR] = (
+                            "1.1" if version == 11 else "1.0"
+                        )
+
             if span_callback is not None:
                 span_callback(span, result)
+
+            duration_histogram.record(elapsed_time, attributes=metric_labels)
 
             if exception is not None:
                 raise exception.with_traceback(exception.__traceback__)
@@ -207,7 +278,7 @@ def _uninstrument_from(instr_root, restore_as_bound_func=False):
 
 def get_default_span_name(method):
     """Default implementation for name_callback, returns HTTP {method_name}."""
-    return "HTTP {}".format(method).strip()
+    return f"HTTP {method.strip()}"
 
 
 class RequestsInstrumentor(BaseInstrumentor):
@@ -228,13 +299,31 @@ class RequestsInstrumentor(BaseInstrumentor):
                 ``name_callback``: Callback which calculates a generic span name for an
                     outgoing HTTP request based on the method and url.
                     Optional: Defaults to get_default_span_name.
+                ``excluded_urls``: A string containing a comma-delimited
+                    list of regexes used to exclude URLs from tracking
         """
         tracer_provider = kwargs.get("tracer_provider")
         tracer = get_tracer(__name__, __version__, tracer_provider)
+        excluded_urls = kwargs.get("excluded_urls")
+        meter_provider = kwargs.get("meter_provider")
+        meter = get_meter(
+            __name__,
+            __version__,
+            meter_provider,
+        )
+        duration_histogram = meter.create_histogram(
+            name=MetricInstruments.HTTP_CLIENT_DURATION,
+            unit="ms",
+            description="measures the duration of the outbound HTTP request",
+        )
         _instrument(
             tracer,
+            duration_histogram,
             span_callback=kwargs.get("span_callback"),
             name_callback=kwargs.get("name_callback"),
+            excluded_urls=_excluded_urls_from_env
+            if excluded_urls is None
+            else parse_excluded_urls(excluded_urls),
         )
 
     def _uninstrument(self, **kwargs):

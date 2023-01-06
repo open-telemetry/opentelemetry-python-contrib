@@ -30,30 +30,25 @@ POSTGRES_USER = os.getenv("POSTGRESQL_USER", "testuser")
 
 
 class TestFunctionalPsycopg(TestBase):
-    @classmethod
-    def setUpClass(cls):
-        super().setUpClass()
-        cls._connection = None
-        cls._cursor = None
-        cls._tracer = cls.tracer_provider.get_tracer(__name__)
-        Psycopg2Instrumentor().instrument(tracer_provider=cls.tracer_provider)
-        cls._connection = psycopg2.connect(
+    def setUp(self):
+        super().setUp()
+        self._tracer = self.tracer_provider.get_tracer(__name__)
+        Psycopg2Instrumentor().instrument(tracer_provider=self.tracer_provider)
+        self._connection = psycopg2.connect(
             dbname=POSTGRES_DB_NAME,
             user=POSTGRES_USER,
             password=POSTGRES_PASSWORD,
             host=POSTGRES_HOST,
             port=POSTGRES_PORT,
         )
-        cls._connection.set_session(autocommit=True)
-        cls._cursor = cls._connection.cursor()
+        self._connection.set_session(autocommit=True)
+        self._cursor = self._connection.cursor()
 
-    @classmethod
-    def tearDownClass(cls):
-        if cls._cursor:
-            cls._cursor.close()
-        if cls._connection:
-            cls._connection.close()
+    def tearDown(self):
+        self._cursor.close()
+        self._connection.close()
         Psycopg2Instrumentor().uninstrument()
+        super().tearDown()
 
     def validate_spans(self, span_name):
         spans = self.memory_exporter.get_finished_spans()
@@ -139,6 +134,31 @@ class TestFunctionalPsycopg(TestBase):
         with self._tracer.start_as_current_span("rootSpan"):
             self._cursor.execute(stmt)
         self.validate_spans("CREATE")
+
+        self._cursor.execute(
+            sql.SQL("SELECT FROM {table} where {field}='{value}'").format(
+                table=sql.Identifier("users"),
+                field=sql.Identifier("name"),
+                value=sql.Identifier("abc"),
+            )
+        )
+
+        spans = self.memory_exporter.get_finished_spans()
+        span = spans[2]
+        self.assertEqual(span.name, "SELECT")
+        self.assertEqual(
+            span.attributes[SpanAttributes.DB_STATEMENT],
+            'SELECT FROM "users" where "name"=\'"abc"\'',
+        )
+
+    def test_commenter_enabled(self):
+
+        stmt = "CREATE TABLE IF NOT EXISTS users (id integer, name varchar)"
+        with self._tracer.start_as_current_span("rootSpan"):
+            self._cursor.execute(stmt)
+        self.validate_spans("CREATE")
+        Psycopg2Instrumentor().uninstrument()
+        Psycopg2Instrumentor().instrument(enable_commenter=True)
 
         self._cursor.execute(
             sql.SQL("SELECT FROM {table} where {field}='{value}'").format(
