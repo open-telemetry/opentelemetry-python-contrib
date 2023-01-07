@@ -25,6 +25,7 @@ asyncpg>=0.12.0
 boto~=2.0
 botocore~=1.0
 celery>=4.0
+elasticsearch>=2.0,<9.0
 flask~=2.0
 falcon~=2.0
 grpcio~=1.27
