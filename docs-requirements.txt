@@ -29,6 +29,7 @@ elasticsearch>=2.0,<9.0
 flask~=2.0
 falcon~=2.0
 grpcio~=1.27
+kafka-python>=2.0,<3.0
 mysql-connector-python~=8.0
 psutil>=5
 pika>=0.12.0
