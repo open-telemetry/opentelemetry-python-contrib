@@ -225,9 +225,9 @@ def _instrument(
                         SpanAttributes.HTTP_FLAVOR
                     ] = f"{ver_[:1]}.{ver_[:-1]}"
 
-                _record_histograms(
-                    histograms, labels, request, result, elapsed_time
-                )
+            _record_histograms(
+                histograms, labels, request, result, elapsed_time
+            )
 
             if callable(response_hook):
                 response_hook(span, request, result)
@@ -300,7 +300,8 @@ def _record_histograms(
         request_size, attributes=metric_attributes
     )
 
-    response_size = int(response.headers.get("Content-Length", 0))
-    histograms[MetricInstruments.HTTP_CLIENT_RESPONSE_SIZE].record(
-        response_size, attributes=metric_attributes
-    )
+    if response is not None:
+        response_size = int(response.headers.get("Content-Length", 0))
+        histograms[MetricInstruments.HTTP_CLIENT_RESPONSE_SIZE].record(
+            response_size, attributes=metric_attributes
+        )
