@@ -12,14 +12,12 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-
 """
 This library allows tracing HTTP requests made by the
-`urllib https://docs.python.org/3/library/urllib.html>`_ library.
+`urllib <https://docs.python.org/3/library/urllib>`_ library.
 
 Usage
 -----
-
 .. code-block:: python
 
     from urllib import request
@@ -43,7 +41,7 @@ request and response hooks. These are functions that are called back by the inst
 right after a Span is created for a request and right before the span is finished processing a response respectively.
 The hooks can be configured as follows:
 
-..code:: python
+.. code:: python
 
     # `request_obj` is an instance of urllib.request.Request
     def request_hook(span, request_obj):
