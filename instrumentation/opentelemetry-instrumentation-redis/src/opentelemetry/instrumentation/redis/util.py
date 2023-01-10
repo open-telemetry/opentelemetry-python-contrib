@@ -48,25 +48,29 @@ def _extract_conn_attributes(conn_kwargs):
     return attributes
 
 
-def _format_command_args(args):
-    """Format command arguments and trim them as needed"""
-    value_max_len = 100
-    value_too_long_mark = "..."
-    cmd_max_len = 1000
-    length = 0
-    out = []
-    for arg in args:
-        cmd = str(arg)
+def _format_command_args(args, sanitize_query):
+    """Format and sanitize command arguments, and trim them as needed"""
+    if sanitize_query:
+        # Sanitized query format: "COMMAND ? ?"
+        out = [str(args[0])] + ["?"] * (len(args) - 1)
+    else:
+        value_max_len = 100
+        value_too_long_mark = "..."
+        cmd_max_len = 1000
+        length = 0
+        out = []
+        for arg in args:
+            cmd = str(arg)
 
-        if len(cmd) > value_max_len:
-            cmd = cmd[:value_max_len] + value_too_long_mark
+            if len(cmd) > value_max_len:
+                cmd = cmd[:value_max_len] + value_too_long_mark
 
-        if length + len(cmd) > cmd_max_len:
-            prefix = cmd[: cmd_max_len - length]
-            out.append(f"{prefix}{value_too_long_mark}")
-            break
+            if length + len(cmd) > cmd_max_len:
+                prefix = cmd[: cmd_max_len - length]
+                out.append(f"{prefix}{value_too_long_mark}")
+                break
 
-        out.append(cmd)
-        length += len(cmd)
+            out.append(cmd)
+            length += len(cmd)
 
     return " ".join(out)
