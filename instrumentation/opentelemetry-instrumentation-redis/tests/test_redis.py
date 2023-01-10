@@ -148,6 +148,29 @@ class TestRedis(TestBase):
         span = spans[0]
         self.assertEqual(span.attributes.get(custom_attribute_name), "GET")
 
+    def test_db_statement_serializer(self):
+        redis_client = redis.Redis()
+        connection = redis.connection.Connection()
+        redis_client.connection = connection
+
+        def db_statement_serializer(args):
+            query = [str(args[0])] + ["?"] * (len(args) - 1)
+            return " ".join(query)
+
+        RedisInstrumentor().uninstrument()
+        RedisInstrumentor().instrument(
+            tracer_provider=self.tracer_provider, db_statement_serializer=db_statement_serializer
+        )
+
+        with mock.patch.object(redis_client, "connection"):
+            redis_client.get("key")
+
+        spans = self.memory_exporter.get_finished_spans()
+        self.assertEqual(len(spans), 1)
+
+        span = spans[0]
+        self.assertEqual(span.attributes.get("db.statement"), "GET ?")
+
     def test_no_op_tracer_provider(self):
         RedisInstrumentor().uninstrument()
         tracer_provider = trace.NoOpTracerProvider

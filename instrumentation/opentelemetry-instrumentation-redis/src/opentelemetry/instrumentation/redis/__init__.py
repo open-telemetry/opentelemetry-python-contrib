@@ -64,6 +64,9 @@ this function signature is:  def request_hook(span: Span, instance: redis.connec
 response_hook (Callable) - a function with extra user-defined logic to be performed after performing the request
 this function signature is: def response_hook(span: Span, instance: redis.connection.Connection, response) -> None
 
+db_statement_serializer (Callable) - a function with extra user-defined logic to sanitize the Redis query
+this function signature is: def db_statement_serializer(arguments) -> String
+
 for example:
 
 .. code: python
@@ -79,8 +82,13 @@ for example:
         if span and span.is_recording():
             span.set_attribute("custom_user_attribute_from_response_hook", "some-value")
 
+    def db_statement_serializer(args):
+        # Sanitized query format: "QUERY_TYPE ? ?"
+        query = [str(args[0])] + ["?"] * (len(args) - 1)
+        return " ".join(query)
+
     # Instrument redis with hooks
-    RedisInstrumentor().instrument(request_hook=request_hook, response_hook=response_hook)
+    RedisInstrumentor().instrument(request_hook=request_hook, response_hook=response_hook, db_statement_serializer=db_statement_serializer)
 
     # This will report a span with the default settings and the custom attributes added from the hooks
     client = redis.StrictRedis(host="localhost", port=6379)
@@ -117,6 +125,9 @@ _RequestHookT = typing.Optional[
 _ResponseHookT = typing.Optional[
     typing.Callable[[Span, redis.connection.Connection, Any], None]
 ]
+_DbStatementSerializerT = typing.Optional[
+    typing.Callable[[Any], str]
+]
 
 _REDIS_ASYNCIO_VERSION = (4, 2, 0)
 if redis.VERSION >= _REDIS_ASYNCIO_VERSION:
@@ -139,9 +150,14 @@ def _instrument(
     tracer,
     request_hook: _RequestHookT = None,
     response_hook: _ResponseHookT = None,
+    db_statement_serializer: _DbStatementSerializerT = None,
 ):
     def _traced_execute_command(func, instance, args, kwargs):
-        query = _format_command_args(args)
+        if callable(db_statement_serializer):
+            query = db_statement_serializer(args)
+        else:
+            query = _format_command_args(args)
+
         if len(args) > 0 and args[0]:
             name = args[0]
         else:
@@ -281,6 +297,7 @@ class RedisInstrumentor(BaseInstrumentor):
             tracer,
             request_hook=kwargs.get("request_hook"),
             response_hook=kwargs.get("response_hook"),
+            db_statement_serializer=kwargs.get("db_statement_serializer"),
         )
 
     def _uninstrument(self, **kwargs):
