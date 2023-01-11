@@ -7,6 +7,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## Unreleased
 
+### Added
+
+- `opentelemetry-instrumentation-celery` Record exceptions as events on the span.
+  ([#1573](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/1573))
+
 ## Fixed
 
 - Fix aiopg instrumentation to work with aiopg < 2.0.0
