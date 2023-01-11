@@ -193,7 +193,7 @@ import typing
 import urllib
 from functools import wraps
 from timeit import default_timer
-from typing import Tuple
+from typing import Tuple, List, Dict
 
 from asgiref.compatibility import guarantee_single_callable
 
@@ -260,7 +260,62 @@ class ASGIGetter(Getter[dict]):
         return decoded
 
     def keys(self, carrier: dict) -> typing.List[str]:
-        return [_key.decode("utf8") for (_key, _value) in carrier]
+    
+        """
+        In most examples of propogators, they attempt to get a header key with .get() but when that fails they seem to 
+        want to search all keys within carrier.  There is not a prescribed structure for carrier in the specs 
+        https://github.com/open-telemetry/opentelemetry-specification/blob/main/specification/context/api-propagators.md
+        So we need to evaluate the carrier and peer into any child lists or dicts within carrier and return all of the keys
+        """
+        
+        
+        #define the  default empty list
+        returnable = []
+
+        #internal function that appends keys
+        def append_keys(key):
+            if isinstance(key, bytes):
+                    returnable.append(key.decode("utf8"))
+            elif isinstance(key, str):
+                    returnable.append(key)    
+
+        def append_dict_keys(key, val):
+                #append our current key
+                append_keys(_key)
+                
+                #append all keys within the dict
+                for x in self.keys(_val):
+                    append_keys(x)                    
+
+        #carrier is a dict, so iterate over .items()
+        for _key, _val in carrier.items():
+            
+            #if we have another dict, lets make a recursive call
+            if isinstance(_val, Dict):
+
+                append_dict_keys(_key, _val)
+                    
+            # if we have a list, lets iter over that. List can contain tuples(headers) dicts and string so lets approach them all as well
+            elif isinstance(_val, List):
+                for list_key in _val:
+                    
+                    #Check for the Tuple
+                    if isinstance(list_key, Tuple):
+                        append_keys(list_key[0])
+                   
+                    #check for the dict   
+                    elif isinstance(list_key, Dict):
+                        
+                        append_dict_keys(_key, _val)
+
+                    else:
+                        append_keys(list_key)
+                    
+            #finally, if our key was just a string, append that
+            else:
+                append_keys(_key) 
+
+        return returnable
 
 
 asgi_getter = ASGIGetter()
