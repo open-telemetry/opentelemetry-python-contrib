@@ -7,10 +7,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## Unreleased
 
+### Added
+
 - Add metric instrumentation for urllib
   ([#1553](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/1553))
+- `opentelemetry/sdk/extension/aws` Implement [`aws.ecs.*`](https://github.com/open-telemetry/opentelemetry-specification/blob/main/specification/resource/semantic_conventions/cloud_provider/aws/ecs.md) and [`aws.logs.*`](https://opentelemetry.io/docs/reference/specification/resource/semantic_conventions/cloud_provider/aws/logs/) resource attributes in the `AwsEcsResourceDetector` detector when the ECS Metadata v4 is available
+  ([#1212](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/1212))
 
-## Fixed
+### Fixed
 
 - Fix aiopg instrumentation to work with aiopg < 2.0.0
   ([#1473](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/1473))
