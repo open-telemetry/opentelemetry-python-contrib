@@ -111,6 +111,13 @@ class TestCeleryInstrumentation(TestBase):
             },
         )
         self.assertEqual(consumer.status.status_code, StatusCode.ERROR)
+        self.assertEqual(len(consumer.events), 1)
+        event = consumer.events[0]
+        self.assertEqual(event.name, "exception")
+        self.assertEqual(
+            event.attributes[SpanAttributes.EXCEPTION_TYPE], "ExceptionInfo"
+        )
+        self.assertIn(SpanAttributes.EXCEPTION_MESSAGE, event.attributes)
 
         self.assertEqual(
             producer.name, "apply_async/tests.celery_test_tasks.task_error"
@@ -126,6 +133,7 @@ class TestCeleryInstrumentation(TestBase):
             },
         )
         self.assertEqual(producer.status.status_code, StatusCode.UNSET)
+        self.assertEqual(len(producer.events), 0)
 
         self.assertNotEqual(consumer.parent, producer.context)
         self.assertEqual(consumer.parent.span_id, producer.context.span_id)
