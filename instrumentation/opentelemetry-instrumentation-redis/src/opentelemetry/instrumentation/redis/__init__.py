@@ -173,7 +173,9 @@ def _instrument(
             )
 
             cmds = [
-                _format_command_args(c.args if hasattr(c, "args") else c[0], sanitize_query)
+                _format_command_args(
+                    c.args if hasattr(c, "args") else c[0], sanitize_query
+                )
                 for c in command_stack
             ]
             resource = "\n".join(cmds)
