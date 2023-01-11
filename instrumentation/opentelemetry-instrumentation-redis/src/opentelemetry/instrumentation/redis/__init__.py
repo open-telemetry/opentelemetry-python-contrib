@@ -64,7 +64,7 @@ this function signature is:  def request_hook(span: Span, instance: redis.connec
 response_hook (Callable) - a function with extra user-defined logic to be performed after performing the request
 this function signature is: def response_hook(span: Span, instance: redis.connection.Connection, response) -> None
 
-sanitize_query True(Default) or False - enable the Redis query sanization
+sanitize_query (Boolean) - default True, enable the Redis query sanitization
 
 for example:
 
