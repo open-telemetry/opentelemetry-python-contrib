@@ -141,7 +141,7 @@ def _get_logs_resource(metadata_container):
                     logs_region = aws_region_match.group(1)
 
                 else:
-                    logger.warning("Cannot parse AWS account out of ECS ARN")
+                    logger.warning("Cannot parse AWS region out of ECS ARN")
 
             # We need to retrieve the account it from some other ARN to create the
             # log-group and log-stream ARNs
