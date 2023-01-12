@@ -333,7 +333,7 @@ class TestURLLib3Instrumentor(TestBase):
 
     def test_no_op_tracer_provider(self):
         URLLib3Instrumentor().uninstrument()
-        tracer_provider = trace.NoOpTracerProvider
+        tracer_provider = trace.NoOpTracerProvider()
         URLLib3Instrumentor().instrument(tracer_provider=tracer_provider)
 
         response = self.perform_request(self.HTTP_URL)
