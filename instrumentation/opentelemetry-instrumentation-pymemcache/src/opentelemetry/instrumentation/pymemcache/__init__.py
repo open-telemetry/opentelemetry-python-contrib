@@ -105,7 +105,9 @@ def _with_tracer_wrapper(func):
             if hasattr(wrapped, "__wrapped__"):
                 return wrapped(*args, **kwargs)
 
-            return func(tracer, cmd, sanitize_query, wrapped, instance, args, kwargs)
+            return func(
+                tracer, cmd, sanitize_query, wrapped, instance, args, kwargs
+            )
 
         return wrapper
 
