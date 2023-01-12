@@ -11,15 +11,18 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - `opentelemetry-instrumentation-redis` Add `sanitize_query` config option to allow query sanitization. Enabled by default.
   ([#1572](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/1572))
+- `opentelemetry/sdk/extension/aws` Implement [`aws.ecs.*`](https://github.com/open-telemetry/opentelemetry-specification/blob/main/specification/resource/semantic_conventions/cloud_provider/aws/ecs.md) and [`aws.logs.*`](https://opentelemetry.io/docs/reference/specification/resource/semantic_conventions/cloud_provider/aws/logs/) resource attributes in the `AwsEcsResourceDetector` detector when the ECS Metadata v4 is available
+  ([#1212](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/1212))
 
-## Fixed
+### Fixed
 
 - Fix aiopg instrumentation to work with aiopg < 2.0.0
   ([#1473](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/1473))
 - `opentelemetry-instrumentation-aws-lambda` Adds an option to configure `disable_aws_context_propagation` by
   environment variable: `OTEL_LAMBDA_DISABLE_AWS_CONTEXT_PROPAGATION`
   ([#1507](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/1507))
-
+- Fix pymongo to collect the property DB_MONGODB_COLLECTION
+  ([#1555](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/1555))
 
 ## Version 1.15.0/0.36b0 (2022-12-10)
 
