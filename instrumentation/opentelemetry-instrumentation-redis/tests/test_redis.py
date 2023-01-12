@@ -150,7 +150,7 @@ class TestRedis(TestBase):
 
     def test_no_op_tracer_provider(self):
         RedisInstrumentor().uninstrument()
-        tracer_provider = trace.NoOpTracerProvider
+        tracer_provider = trace.NoOpTracerProvider()
         RedisInstrumentor().instrument(tracer_provider=tracer_provider)
 
         redis_client = redis.Redis()

@@ -351,7 +351,7 @@ class RequestsIntegrationTestBase(abc.ABC):
 
     def test_no_op_tracer_provider(self):
         URLLibInstrumentor().uninstrument()
-        tracer_provider = trace.NoOpTracerProvider
+        tracer_provider = trace.NoOpTracerProvider()
         URLLibInstrumentor().instrument(tracer_provider=tracer_provider)
 
         result = self.perform_request(self.URL)
