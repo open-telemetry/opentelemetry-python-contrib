@@ -349,6 +349,15 @@ class RequestsIntegrationTestBase(abc.ABC):
         self.assertIn("response_hook_attr", span.attributes)
         self.assertEqual(span.attributes["response_hook_attr"], "value")
 
+    def test_no_op_tracer_provider(self):
+        URLLibInstrumentor().uninstrument()
+        tracer_provider = trace.NoOpTracerProvider
+        URLLibInstrumentor().instrument(tracer_provider=tracer_provider)
+
+        result = self.perform_request(self.URL)
+        self.assertEqual(result.read(), b"Hello!")
+        self.assert_span(num_spans=0)
+
 
 class TestRequestsIntegration(RequestsIntegrationTestBase, TestBase):
     @staticmethod
