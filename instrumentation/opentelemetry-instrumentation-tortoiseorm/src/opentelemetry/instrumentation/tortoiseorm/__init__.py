@@ -300,7 +300,7 @@ class TortoiseORMInstrumentor(BaseInstrumentor):
 
                 model_config = getattr(modelcls, "Config", None)
                 if model_config:
-                    model_title = getattr(modelcls.Config, "title")
+                    model_title = getattr(modelcls.Config, "title", modelcls.__name__)
                     if model_title:
                         span_attributes["pydantic.model"] = model_title
 
