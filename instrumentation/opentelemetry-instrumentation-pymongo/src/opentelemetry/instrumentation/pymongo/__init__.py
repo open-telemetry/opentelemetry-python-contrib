@@ -127,7 +127,7 @@ class CommandTracer(monitoring.CommandListener):
         ):
             return
         command_name = event.command_name
-        span_name = event.database_name + "." + command_name
+        span_name = f"{event.database_name}.{command_name}"
         statement = self._get_statement_by_command_name(command_name, event)
 
         try:
