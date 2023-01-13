@@ -77,7 +77,7 @@ class KubernetesResourceDetectorTest(unittest.TestCase):
 452 565 0:166 /sysrq-trigger /bogusPodIdThatShouldNotBeOneSetBecauseTheFirstOneWasPicked
 """,
     )
-    def test_get_kubenertes_pod_uid_v1(self, mock_open):
+    def test_get_kubenertes_pod_uid_v1(self, mock_open_func):
         actual_pod_uid = get_kubenertes_pod_uid_v1()
         self.assertEqual(
             actual_pod_uid,
@@ -104,7 +104,7 @@ class KubernetesResourceDetectorTest(unittest.TestCase):
 0::/kubepods/besteffort/pod{MockKubernetesResourceAttributes[ResourceAttributes.K8S_POD_UID]}/bogusPodIdThatShouldNotBeOneSetBecauseTheFirstOneWasPicked
 """,
     )
-    def test_get_kubenertes_pod_uid_v2(self, mock_open):
+    def test_get_kubenertes_pod_uid_v2(self, mock_open_func):
         actual_pod_uid = get_kubenertes_pod_uid_v2()
         self.assertEqual(
             actual_pod_uid,

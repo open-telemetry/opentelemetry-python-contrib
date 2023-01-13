@@ -1,5 +1,5 @@
-OpenTelemetry Resources for container-detectors
-==============================================
+OpenTelemetry Resources for container-detectors-kubernetes
+==========================================================
 
 |pypi|
 
