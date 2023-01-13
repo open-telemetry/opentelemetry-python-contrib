@@ -15,6 +15,7 @@
 import unittest
 from collections import OrderedDict
 from unittest.mock import mock_open, patch
+import pytest
 
 from opentelemetry.resource.detector.kubernetes import (
     KubernetesResourceDetector,
@@ -25,17 +26,12 @@ from opentelemetry.sdk.resources import Resource
 from opentelemetry.semconv.resource import ResourceAttributes
 
 MockKubernetesResourceAttributes = {
-    ResourceAttributes.CONTAINER_NAME: "mock-container-name",
     ResourceAttributes.K8S_POD_UID: "ecc2f8af-7742-4087-aeb1-4601bf25e1df",
 }
 
 
 
 class KubernetesResourceDetectorTest(unittest.TestCase):
-    @patch(
-        "socket.gethostname",
-        return_value=f"{MockKubernetesResourceAttributes[ResourceAttributes.CONTAINER_NAME]}",
-    )
     @patch(
         "opentelemetry.resource.detector.kubernetes.get_kubenertes_pod_uid_v1",
          return_value=f"{MockKubernetesResourceAttributes[ResourceAttributes.K8S_POD_UID]}",
@@ -45,23 +41,22 @@ class KubernetesResourceDetectorTest(unittest.TestCase):
          return_value=f"{MockKubernetesResourceAttributes[ResourceAttributes.K8S_POD_UID]}",
     )
     def test_simple_detector(
-        self,mock_get_hostname, mock_get_kubenertes_pod_uid_v1, mock_get_kubenertes_pod_uid_v2
+        self, mock_get_kubenertes_pod_uid_v1, mock_get_kubenertes_pod_uid_v2
     ):
         actual = KubernetesResourceDetector().detect()
         self.assertEqual(
             actual.attributes[ResourceAttributes.K8S_POD_UID],
             MockKubernetesResourceAttributes[ResourceAttributes.K8S_POD_UID]
         )
-        self.assertEqual(
-            actual.attributes[ResourceAttributes.CONTAINER_NAME],
-            MockKubernetesResourceAttributes[ResourceAttributes.CONTAINER_NAME]
-        )
 
-    def test_without_container(self):
+    @patch(
+        "opentelemetry.resource.detector.kubernetes.get_kubenertes_pod_uid_v1",
+        side_effect=Exception('Test')
+    )
+    def test_without_container(
+        self, mock_get_kubenertes_pod_uid_v1):
         actual = KubernetesResourceDetector().detect()
-        expected = Resource.get_empty()
-
-        self.assertEqual(actual.attributes, expected.attributes)
+        self.assertEqual(Resource.get_empty(), actual)
     
     @patch(
         "builtins.open",

@@ -69,7 +69,6 @@ class KubernetesResourceDetector(ResourceDetector):
                 pod_resource = pod_resource.merge(Resource(
                 {
                     ResourceAttributes.K8S_POD_UID: pod_uid,
-                    ResourceAttributes.CONTAINER_NAME: socket.gethostname(),
                 }
             ))
             except FileNotFoundError as exception:
