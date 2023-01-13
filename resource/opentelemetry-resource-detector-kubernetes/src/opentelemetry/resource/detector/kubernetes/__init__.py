@@ -33,8 +33,8 @@ def get_kubenertes_pod_uid_v1():
         for raw_line in container_info_file.readlines():
             line = raw_line.strip()
             # Subsequent IDs should be the same, exit if found one
-            if len(line) > _POD_ID_LENGTH and "pods/" in line:
-                pod_id = line.split("pods/")[1][:_POD_ID_LENGTH]
+            if len(line) > _POD_ID_LENGTH and "/pods/" in line:
+                pod_id = line.split("/pods/")[1][:_POD_ID_LENGTH]
                 break
     return pod_id
 
@@ -49,7 +49,7 @@ def get_kubenertes_pod_uid_v2():
             if len(line) > _CONTAINER_ID_LENGTH:
                 line_info = line.split("/")
                 if len(line_info) > 2 and line_info[-2][:3] == 'pod' and len(line_info[-2]) == _POD_ID_LENGTH + 3:
-                    pod_id = line_info[-2][3:]
+                    pod_id = line_info[-2][3:3+_POD_ID_LENGTH]
                 else:
                     pod_id = line_info[-2]
                 break
@@ -63,16 +63,13 @@ class KubernetesResourceDetector(ResourceDetector):
 
     def detect(self) -> "Resource":
         try:
-            pod_resource = Resource(
-                {
-                    ResourceAttributes.CONTAINER_NAME: socket.gethostname(),
-                }
-            )
+            pod_resource = Resource.get_empty()
             try:
                 pod_uid = get_kubenertes_pod_uid_v1() and get_kubenertes_pod_uid_v2()
                 pod_resource = pod_resource.merge(Resource(
                 {
                     ResourceAttributes.K8S_POD_UID: pod_uid,
+                    ResourceAttributes.CONTAINER_NAME: socket.gethostname(),
                 }
             ))
             except FileNotFoundError as exception:

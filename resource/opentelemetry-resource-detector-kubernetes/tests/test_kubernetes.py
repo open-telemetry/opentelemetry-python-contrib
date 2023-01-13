@@ -18,6 +18,8 @@ from unittest.mock import mock_open, patch
 
 from opentelemetry.resource.detector.kubernetes import (
     KubernetesResourceDetector,
+    get_kubenertes_pod_uid_v1,
+    get_kubenertes_pod_uid_v2
 )
 from opentelemetry.sdk.resources import Resource
 from opentelemetry.semconv.resource import ResourceAttributes
@@ -28,20 +30,37 @@ MockKubernetesResourceAttributes = {
 }
 
 
+
 class KubernetesResourceDetectorTest(unittest.TestCase):
     @patch(
         "socket.gethostname",
         return_value=f"{MockKubernetesResourceAttributes[ResourceAttributes.CONTAINER_NAME]}",
     )
-    @patch.dict(
-        "os.environ",
-        {
-            "KUBERNETES_SERVICE_HOST": "host",
-            "KUBERNETES_SERVICE_PORT": "443",
-            "KUBERNETES_SERVICE_PORT_HTTPS": "https",
-        },
-        clear=True,
+    @patch(
+        "opentelemetry.resource.detector.kubernetes.get_kubenertes_pod_uid_v1",
+         return_value=f"{MockKubernetesResourceAttributes[ResourceAttributes.K8S_POD_UID]}",
     )
+    @patch(
+        "opentelemetry.resource.detector.kubernetes.get_kubenertes_pod_uid_v2",
+         return_value=f"{MockKubernetesResourceAttributes[ResourceAttributes.K8S_POD_UID]}",
+    )
+    def test_simple_detector(
+        self,mock_get_hostname, mock_get_kubenertes_pod_uid_v1, mock_get_kubenertes_pod_uid_v2
+    ):
+        actual = KubernetesResourceDetector().detect()
+        self.assertEqual(
+            actual.attributes[ResourceAttributes.K8S_POD_UID],
+            MockKubernetesResourceAttributes[ResourceAttributes.K8S_POD_UID]
+        )
+        self.assertEqual(
+            actual.attributes[ResourceAttributes.CONTAINER_NAME],
+            MockKubernetesResourceAttributes[ResourceAttributes.CONTAINER_NAME]
+        )
+
+    def test_without_container(self):
+        actual = KubernetesResourceDetector().detect()
+        self.assertEqual(Resource.get_empty(), actual)
+    
     @patch(
         "builtins.open",
         new_callable=mock_open,
@@ -65,15 +84,42 @@ class KubernetesResourceDetectorTest(unittest.TestCase):
 452 565 0:166 /sysrq-trigger /bogusPodIdThatShouldNotBeOneSetBecauseTheFirstOneWasPicked
 """,
     )
-    def test_simple_detector(
-        self, mock_open_function, mock_socket_gethostname
+    def test_get_kubenertes_pod_uid_v1(
+        self, mock_open
     ):
-        actual = KubernetesResourceDetector().detect()
-        self.assertDictEqual(
-            actual.attributes.copy(),
-            OrderedDict(MockKubernetesResourceAttributes),
+        actual_pod_uid = get_kubenertes_pod_uid_v1()
+        self.assertEqual(
+            actual_pod_uid, 
+            MockKubernetesResourceAttributes[ResourceAttributes.K8S_POD_UID]
         )
+    
+    @patch(
+        "builtins.open",
+        new_callable=mock_open,
+        read_data=f"""14:name=systemd:/docker/c24aa3879860ee981d29f0492aef1e39c45d7c7fcdff7bd2050047d0bd390311/kubepods/besteffort/pod{MockKubernetesResourceAttributes[ResourceAttributes.K8S_POD_UID]}/bogusPodIdThatShouldNotBeOneSetBecauseTheFirstOneWasPicked
+13:rdma:/kubepods/besteffort/pod{MockKubernetesResourceAttributes[ResourceAttributes.K8S_POD_UID]}/bogusPodIdThatShouldNotBeOneSetBecauseTheFirstOneWasPicked
+12:pids:/docker/c24aa3879860ee981d29f0492aef1e39c45d7c7fcdff7bd2050047d0bd390311/kubepods/besteffort/pod{MockKubernetesResourceAttributes[ResourceAttributes.K8S_POD_UID]}/bogusPodIdThatShouldNotBeOneSetBecauseTheFirstOneWasPicked
+11:hugetlb:/docker/c24aa3879860ee981d29f0492aef1e39c45d7c7fcdff7bd2050047d0bd390311/kubepods/besteffort/pod{MockKubernetesResourceAttributes[ResourceAttributes.K8S_POD_UID]}/bogusPodIdThatShouldNotBeOneSetBecauseTheFirstOneWasPicked
+10:net_prio:/docker/c24aa3879860ee981d29f0492aef1e39c45d7c7fcdff7bd2050047d0bd390311/kubepods/besteffort/pod{MockKubernetesResourceAttributes[ResourceAttributes.K8S_POD_UID]}/bogusPodIdThatShouldNotBeOneSetBecauseTheFirstOneWasPicked
+9:perf_event:/docker/c24aa3879860ee981d29f0492aef1e39c45d7c7fcdff7bd2050047d0bd390311/kubepods/besteffort/pod{MockKubernetesResourceAttributes[ResourceAttributes.K8S_POD_UID]}/bogusPodIdThatShouldNotBeOneSetBecauseTheFirstOneWasPicked
+8:net_cls:/docker/c24aa3879860ee981d29f0492aef1e39c45d7c7fcdff7bd2050047d0bd390311/kubepods/besteffort/pod{MockKubernetesResourceAttributes[ResourceAttributes.K8S_POD_UID]}/bogusPodIdThatShouldNotBeOneSetBecauseTheFirstOneWasPicked
+7:freezer:/docker/c24aa3879860ee981d29f0492aef1e39c45d7c7fcdff7bd2050047d0bd390311/kubepods/besteffort/pod{MockKubernetesResourceAttributes[ResourceAttributes.K8S_POD_UID]}/bogusPodIdThatShouldNotBeOneSetBecauseTheFirstOneWasPicked
+6:devices:/docker/c24aa3879860ee981d29f0492aef1e39c45d7c7fcdff7bd2050047d0bd390311/kubepods/besteffort/pod{MockKubernetesResourceAttributes[ResourceAttributes.K8S_POD_UID]}/bogusPodIdThatShouldNotBeOneSetBecauseTheFirstOneWasPicked
+5:memory:/docker/c24aa3879860ee981d29f0492aef1e39c45d7c7fcdff7bd2050047d0bd390311/kubepods/besteffort/pod{MockKubernetesResourceAttributes[ResourceAttributes.K8S_POD_UID]}/bogusPodIdThatShouldNotBeOneSetBecauseTheFirstOneWasPicked
+4:blkio:/docker/c24aa3879860ee981d29f0492aef1e39c45d7c7fcdff7bd2050047d0bd390311/kubepods/besteffort/pod{MockKubernetesResourceAttributes[ResourceAttributes.K8S_POD_UID]}/bogusPodIdThatShouldNotBeOneSetBecauseTheFirstOneWasPicked
+3:cpuacct:/docker/c24aa3879860ee981d29f0492aef1e39c45d7c7fcdff7bd2050047d0bd390311/kubepods/besteffort/pod{MockKubernetesResourceAttributes[ResourceAttributes.K8S_POD_UID]}/bogusPodIdThatShouldNotBeOneSetBecauseTheFirstOneWasPicked
+2:cpu:/docker/c24aa3879860ee981d29f0492aef1e39c45d7c7fcdff7bd2050047d0bd390311/kubepods/besteffort/pod{MockKubernetesResourceAttributes[ResourceAttributes.K8S_POD_UID]}/bogusPodIdThatShouldNotBeOneSetBecauseTheFirstOneWasPicked
+1:cpuset:/docker/c24aa3879860ee981d29f0492aef1e39c45d7c7fcdff7bd2050047d0bd390311/kubepods/besteffort/pod{MockKubernetesResourceAttributes[ResourceAttributes.K8S_POD_UID]}/bogusPodIdThatShouldNotBeOneSetBecauseTheFirstOneWasPicked
+0::/kubepods/besteffort/pod{MockKubernetesResourceAttributes[ResourceAttributes.K8S_POD_UID]}/bogusPodIdThatShouldNotBeOneSetBecauseTheFirstOneWasPicked
+""",
+    )
+    def test_get_kubenertes_pod_uid_v2(
+        self, mock_open
+    ):
+        actual_pod_uid = get_kubenertes_pod_uid_v2()
+        self.assertEqual(
+            actual_pod_uid, 
+            MockKubernetesResourceAttributes[ResourceAttributes.K8S_POD_UID]
+        )
+    
 
-    def test_without_container(self):
-        actual = KubernetesResourceDetector().detect()
-        self.assertEqual(Resource.get_empty(), actual)
