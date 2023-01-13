@@ -59,7 +59,9 @@ class KubernetesResourceDetectorTest(unittest.TestCase):
 
     def test_without_container(self):
         actual = KubernetesResourceDetector().detect()
-        self.assertEqual(Resource.get_empty(), actual)
+        expected = Resource.get_empty()
+
+        self.assertEqual(actual.attributes, expected.attributes)
     
     @patch(
         "builtins.open",
