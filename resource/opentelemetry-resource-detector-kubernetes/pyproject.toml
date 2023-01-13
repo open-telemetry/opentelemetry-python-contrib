@@ -35,7 +35,7 @@ test = []
 kubernetes = "opentelemetry.resource.detector.kubernetes:KubernetesResourceDetector"
 
 [project.urls]
-Homepage = "https://github.com/open-telemetry/opentelemetry-python-contrib/tree/main/resources/opentelemetry-resource-detector-kubernetes"
+Homepage = "https://github.com/open-telemetry/opentelemetry-python-contrib/tree/main/resource/opentelemetry-resource-detector-kubernetes"
 
 [tool.hatch.version]
 path = "src/opentelemetry/resource/detector/kubernetes/version.py"

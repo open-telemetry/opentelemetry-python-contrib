@@ -1,4 +1,4 @@
-OpenTelemetry Propagator for AWS X-Ray Service
+OpenTelemetry Resources for container-detectors
 ==============================================
 
 |pypi|
@@ -15,11 +15,8 @@ Installation
 
 ::
 
-    pip install opentelemetry-resource-detector-{infra}
+    pip install opentelemetry-resource-detector-kubernetes
 
-**NOTE**: Above `infra` can be your infra application name 
-like `kubernetes` for k8's , `container` for docker etc..
-Usage
 ----------------------------
 
 Below is the give example for `opentelemetry-resource-detector-kubernetes`
