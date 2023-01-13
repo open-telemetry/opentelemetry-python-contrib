@@ -13,8 +13,6 @@
 # limitations under the License.
 
 import logging
-import os
-import socket
 
 from opentelemetry.sdk.resources import Resource, ResourceDetector
 from opentelemetry.semconv.resource import ResourceAttributes
@@ -27,9 +25,7 @@ _CONTAINER_ID_LENGTH = 64
 
 def get_kubenertes_pod_uid_v1():
     pod_id = None
-    with open(
-        "/proc/self/mountinfo", encoding="utf8"
-    ) as container_info_file:
+    with open("/proc/self/mountinfo", encoding="utf8") as container_info_file:
         for raw_line in container_info_file.readlines():
             line = raw_line.strip()
             # Subsequent IDs should be the same, exit if found one
@@ -38,18 +34,21 @@ def get_kubenertes_pod_uid_v1():
                 break
     return pod_id
 
+
 def get_kubenertes_pod_uid_v2():
     pod_id = None
-    with open(
-        "/proc/self/cgroup", encoding="utf8"
-    ) as container_info_file:
+    with open("/proc/self/cgroup", encoding="utf8") as container_info_file:
         for raw_line in container_info_file.readlines():
             line = raw_line.strip()
             # Subsequent IDs should be the same, exit if found one
             if len(line) > _CONTAINER_ID_LENGTH:
                 line_info = line.split("/")
-                if len(line_info) > 2 and line_info[-2][:3] == 'pod' and len(line_info[-2]) == _POD_ID_LENGTH + 3:
-                    pod_id = line_info[-2][3:3+_POD_ID_LENGTH]
+                if (
+                    len(line_info) > 2
+                    and line_info[-2][:3] == "pod"
+                    and len(line_info[-2]) == _POD_ID_LENGTH + 3
+                ):
+                    pod_id = line_info[-2][3 : 3 + _POD_ID_LENGTH]
                 else:
                     pod_id = line_info[-2]
                 break
@@ -65,12 +64,16 @@ class KubernetesResourceDetector(ResourceDetector):
         try:
             pod_resource = Resource.get_empty()
             try:
-                pod_uid = get_kubenertes_pod_uid_v1() and get_kubenertes_pod_uid_v2()
-                pod_resource = pod_resource.merge(Resource(
-                {
-                    ResourceAttributes.K8S_POD_UID: pod_uid,
-                }
-            ))
+                pod_uid = (
+                    get_kubenertes_pod_uid_v1() and get_kubenertes_pod_uid_v2()
+                )
+                pod_resource = pod_resource.merge(
+                    Resource(
+                        {
+                            ResourceAttributes.K8S_POD_UID: pod_uid,
+                        }
+                    )
+                )
             except FileNotFoundError as exception:
                 logger.warning(
                     "Failed to get pod ID on kubernetes container: %s.",

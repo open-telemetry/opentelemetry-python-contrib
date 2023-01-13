@@ -13,14 +13,12 @@
 # limitations under the License.
 
 import unittest
-from collections import OrderedDict
 from unittest.mock import mock_open, patch
-import pytest
 
 from opentelemetry.resource.detector.kubernetes import (
     KubernetesResourceDetector,
     get_kubenertes_pod_uid_v1,
-    get_kubenertes_pod_uid_v2
+    get_kubenertes_pod_uid_v2,
 )
 from opentelemetry.sdk.resources import Resource
 from opentelemetry.semconv.resource import ResourceAttributes
@@ -30,15 +28,14 @@ MockKubernetesResourceAttributes = {
 }
 
 
-
 class KubernetesResourceDetectorTest(unittest.TestCase):
     @patch(
         "opentelemetry.resource.detector.kubernetes.get_kubenertes_pod_uid_v1",
-         return_value=f"{MockKubernetesResourceAttributes[ResourceAttributes.K8S_POD_UID]}",
+        return_value=f"{MockKubernetesResourceAttributes[ResourceAttributes.K8S_POD_UID]}",
     )
     @patch(
         "opentelemetry.resource.detector.kubernetes.get_kubenertes_pod_uid_v2",
-         return_value=f"{MockKubernetesResourceAttributes[ResourceAttributes.K8S_POD_UID]}",
+        return_value=f"{MockKubernetesResourceAttributes[ResourceAttributes.K8S_POD_UID]}",
     )
     def test_simple_detector(
         self, mock_get_kubenertes_pod_uid_v1, mock_get_kubenertes_pod_uid_v2
@@ -46,18 +43,17 @@ class KubernetesResourceDetectorTest(unittest.TestCase):
         actual = KubernetesResourceDetector().detect()
         self.assertEqual(
             actual.attributes[ResourceAttributes.K8S_POD_UID],
-            MockKubernetesResourceAttributes[ResourceAttributes.K8S_POD_UID]
+            MockKubernetesResourceAttributes[ResourceAttributes.K8S_POD_UID],
         )
 
     @patch(
         "opentelemetry.resource.detector.kubernetes.get_kubenertes_pod_uid_v1",
-        side_effect=Exception('Test')
+        side_effect=Exception("Test"),
     )
-    def test_without_container(
-        self, mock_get_kubenertes_pod_uid_v1):
+    def test_without_container(self, mock_get_kubenertes_pod_uid_v1):
         actual = KubernetesResourceDetector().detect()
         self.assertEqual(Resource.get_empty(), actual)
-    
+
     @patch(
         "builtins.open",
         new_callable=mock_open,
@@ -81,15 +77,13 @@ class KubernetesResourceDetectorTest(unittest.TestCase):
 452 565 0:166 /sysrq-trigger /bogusPodIdThatShouldNotBeOneSetBecauseTheFirstOneWasPicked
 """,
     )
-    def test_get_kubenertes_pod_uid_v1(
-        self, mock_open
-    ):
+    def test_get_kubenertes_pod_uid_v1(self, mock_open):
         actual_pod_uid = get_kubenertes_pod_uid_v1()
         self.assertEqual(
-            actual_pod_uid, 
-            MockKubernetesResourceAttributes[ResourceAttributes.K8S_POD_UID]
+            actual_pod_uid,
+            MockKubernetesResourceAttributes[ResourceAttributes.K8S_POD_UID],
         )
-    
+
     @patch(
         "builtins.open",
         new_callable=mock_open,
@@ -110,13 +104,9 @@ class KubernetesResourceDetectorTest(unittest.TestCase):
 0::/kubepods/besteffort/pod{MockKubernetesResourceAttributes[ResourceAttributes.K8S_POD_UID]}/bogusPodIdThatShouldNotBeOneSetBecauseTheFirstOneWasPicked
 """,
     )
-    def test_get_kubenertes_pod_uid_v2(
-        self, mock_open
-    ):
+    def test_get_kubenertes_pod_uid_v2(self, mock_open):
         actual_pod_uid = get_kubenertes_pod_uid_v2()
         self.assertEqual(
-            actual_pod_uid, 
-            MockKubernetesResourceAttributes[ResourceAttributes.K8S_POD_UID]
+            actual_pod_uid,
+            MockKubernetesResourceAttributes[ResourceAttributes.K8S_POD_UID],
         )
-    
-
