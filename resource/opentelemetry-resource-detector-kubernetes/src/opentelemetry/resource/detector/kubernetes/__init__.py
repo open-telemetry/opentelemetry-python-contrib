@@ -67,13 +67,14 @@ class KubernetesResourceDetector(ResourceDetector):
                 pod_uid = (
                     get_kubenertes_pod_uid_v1() and get_kubenertes_pod_uid_v2()
                 )
-                pod_resource = pod_resource.merge(
-                    Resource(
-                        {
-                            ResourceAttributes.K8S_POD_UID: pod_uid,
-                        }
+                if pod_uid:
+                    pod_resource = pod_resource.merge(
+                        Resource(
+                            {
+                                ResourceAttributes.K8S_POD_UID: pod_uid,
+                            }
+                        )
                     )
-                )
             except FileNotFoundError as exception:
                 logger.warning(
                     "Failed to get pod ID on kubernetes container: %s.",
