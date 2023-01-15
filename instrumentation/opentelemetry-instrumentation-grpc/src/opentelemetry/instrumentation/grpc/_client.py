@@ -47,6 +47,7 @@ _carrier_setter = _CarrierSetter()
 
 
 def _unary_done_callback(span):
+
     def callback(response_future):
         with trace.use_span(span, end_on_exit=True):
             code = response_future.code()
@@ -71,14 +72,37 @@ def _unary_done_callback(span):
 
 
 class _BaseClientInterceptor:
+    """Base for client interceptors.
+
+    Supplies convenient functions which are required by all four client
+    interceptors.
+    """
 
     def __init__(self, tracer, filter_=None):
+        """Initializes the base for client interceptors.
+
+        Args:
+            tracer: The tracer to use for tracing.
+            filter_: An optional filter to filter specific requests to be
+                instrumented.
+        """
         self._tracer = tracer
         self._filter = filter_
 
     @staticmethod
     def propagate_trace_in_details(client_call_details):
-        """Propagates """
+        """Propagates the trace into the metadata of the call.
+        
+        Args:
+            client_call_details: The original
+                :py:class:`~grpc.ClientCallDetails`, describing the outgoing
+                RPC.
+
+        Returns:
+            An adapted version of the original
+            :py:class:`~grpc.ClientCallDetails`, describing the outgoing RPC,
+            whereby the metadata contains the trace ID.
+        """
         metadata = client_call_details.metadata
         if not metadata:
             mutable_metadata = OrderedDict()
@@ -92,7 +116,8 @@ class _BaseClientInterceptor:
             client_call_details.method,
             client_call_details.timeout,
             metadata,
-            # credentials, wait_for_ready, compression
+            # credentials, wait_for_ready, and compression, depending on
+            # grpc-version
             *client_call_details[3:]
         )
 
@@ -121,6 +146,21 @@ class _BaseClientInterceptor:
         span.record_exception(exc)
 
     def _start_span(self, method, **kwargs):
+        """Context manager for creating a new span and set it as the current
+        span in the tracer's context.
+
+        Exiting the context manager will call the span's end method, as well as
+        return the current span to its previous value by returning to the
+        previous context.
+
+        Args:
+            method: The method name of the RPC.
+            **kwargs: Further keyword arguments, passed through to
+                :py:meth:`~opentelemetry.trace.Tracer.start_as_current_span`.
+
+        Yields:
+            The newly-created span.
+        """
         service, meth = method.lstrip("/").split("/", 1)
         attributes = {
             SpanAttributes.RPC_SYSTEM: RpcSystemValues.GRPC.value,
@@ -137,6 +177,22 @@ class _BaseClientInterceptor:
         )
 
     def _wrap_unary_response(self, span, continuation):
+        """Wraps a unary-response-RPC to record a possible exception.
+
+        Args:
+            span: The active span.
+            continuation: A callable which is created by:
+
+                .. code-block:: python
+
+                functools.partial(
+                    continuation, client_call_details, request_or_iterator
+                )
+
+        Returns:
+            The response if the RPC is called synchonously, or the
+            :py:class:`~grpc.Future` if the RPC is called asnchronously.
+        """
         response_future = None
         try:
             response_future = continuation()
@@ -157,6 +213,19 @@ class _BaseClientInterceptor:
         return response_future
 
     def _wrap_stream_response(self, span, call):
+        """Wraps a stream-response-RPC to record a possible exception.
+
+        Args:
+            span: The active span.
+            call: The response iterator which is created by:
+
+                .. code-block:: python
+
+                continuation(client_call_details, request_or_iterator)
+
+        Returns:
+            The response iterator.
+        """
         try:
             yield from call
         except Exception as exc:
@@ -164,7 +233,6 @@ class _BaseClientInterceptor:
             raise exc
         finally:
             span.end()
-
 
     def tracing_skipped(
         self,
