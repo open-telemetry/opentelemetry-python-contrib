@@ -92,7 +92,7 @@ class _BaseClientInterceptor:
     @staticmethod
     def propagate_trace_in_details(client_call_details):
         """Propagates the trace into the metadata of the call.
-        
+
         Args:
             client_call_details: The original
                 :py:class:`~grpc.ClientCallDetails`, describing the outgoing
@@ -243,7 +243,7 @@ class _BaseClientInterceptor:
         Args:
             client_call_details: A :py:class:`~grpc.ClientCallDetails`-object,
                 describing the outgoing RPC.
-        
+
         Returns:
             True if:
 
@@ -268,7 +268,7 @@ class _BaseClientInterceptor:
         Args:
             client_call_details: A :py:class:`~grpc.ClientCallDetails`-object,
                 describing the outgoing RPC.
-        
+
         Returns:
             True if no filter is set or the :py:class:`~grpc.ClientCallDetails`
             matches a set filter, False otherwise.
