@@ -119,6 +119,8 @@ class SQLAlchemyInstrumentor(BaseInstrumentor):
     See `BaseInstrumentor`
     """
 
+    engines = []
+
     def instrumentation_dependencies(self) -> Collection[str]:
         return _instruments
 
@@ -170,7 +172,7 @@ class SQLAlchemyInstrumentor(BaseInstrumentor):
                 )
             )
             return self.engines[0]
-        elif kwargs.get("engines") is not None and isinstance(
+        if kwargs.get("engines") is not None and isinstance(
             kwargs.get("engines"), Sequence
         ):
             self.engines = [

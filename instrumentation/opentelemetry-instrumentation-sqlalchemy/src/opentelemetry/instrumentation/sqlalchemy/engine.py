@@ -14,10 +14,10 @@
 import os
 import re
 
-from sqlalchemy.event import (
+from sqlalchemy.event import (  # pylint: disable=no-name-in-module
     listen,
     remove,
-)  # pylint: disable=no-name-in-module
+)
 
 from opentelemetry import trace
 from opentelemetry.instrumentation.sqlalchemy.package import (
