@@ -3,7 +3,7 @@
 | --------------- | ------------------ | --------------- |
 | [opentelemetry-instrumentation-aio-pika](./opentelemetry-instrumentation-aio-pika) | aio_pika ~= 7.2.0 | No
 | [opentelemetry-instrumentation-aiohttp-client](./opentelemetry-instrumentation-aiohttp-client) | aiohttp ~= 3.0 | No
-| [opentelemetry-instrumentation-aiopg](./opentelemetry-instrumentation-aiopg) | aiopg >= 0.13.0, < 1.3.0 | No
+| [opentelemetry-instrumentation-aiopg](./opentelemetry-instrumentation-aiopg) | aiopg >= 0.13.0, < 2.0.0 | No
 | [opentelemetry-instrumentation-asgi](./opentelemetry-instrumentation-asgi) | asgiref ~= 3.0 | No
 | [opentelemetry-instrumentation-asyncpg](./opentelemetry-instrumentation-asyncpg) | asyncpg >= 0.12.0 | No
 | [opentelemetry-instrumentation-aws-lambda](./opentelemetry-instrumentation-aws-lambda) | aws_lambda | No
@@ -40,6 +40,6 @@
 | [opentelemetry-instrumentation-system-metrics](./opentelemetry-instrumentation-system-metrics) | psutil >= 5 | No
 | [opentelemetry-instrumentation-tornado](./opentelemetry-instrumentation-tornado) | tornado >= 5.1.1 | Yes
 | [opentelemetry-instrumentation-tortoiseorm](./opentelemetry-instrumentation-tortoiseorm) | tortoise-orm >= 0.17.0 | No
-| [opentelemetry-instrumentation-urllib](./opentelemetry-instrumentation-urllib) | urllib | No
+| [opentelemetry-instrumentation-urllib](./opentelemetry-instrumentation-urllib) | urllib | Yes
 | [opentelemetry-instrumentation-urllib3](./opentelemetry-instrumentation-urllib3) | urllib3 >= 1.0.0, < 2.0.0 | Yes
 | [opentelemetry-instrumentation-wsgi](./opentelemetry-instrumentation-wsgi) | wsgi | Yes

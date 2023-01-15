@@ -414,6 +414,18 @@ class TestMiddleware(WsgiTestBase):
         )
         self.memory_exporter.clear()
 
+    def test_uninstrument(self):
+        Client().get("/route/2020/template/")
+        spans = self.memory_exporter.get_finished_spans()
+        self.assertEqual(len(spans), 1)
+
+        self.memory_exporter.clear()
+        _django_instrumentor.uninstrument()
+
+        Client().get("/route/2020/template/")
+        spans = self.memory_exporter.get_finished_spans()
+        self.assertEqual(len(spans), 0)
+
     # pylint: disable=too-many-locals
     def test_wsgi_metrics(self):
         _expected_metric_names = [

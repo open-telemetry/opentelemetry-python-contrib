@@ -12,14 +12,12 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-
 """
 This library allows tracing HTTP requests made by the
-`urllib https://docs.python.org/3/library/urllib.html>`_ library.
+`urllib <https://docs.python.org/3/library/urllib>`_ library.
 
 Usage
 -----
-
 .. code-block:: python
 
     from urllib import request
@@ -43,7 +41,7 @@ request and response hooks. These are functions that are called back by the inst
 right after a Span is created for a request and right before the span is finished processing a response respectively.
 The hooks can be configured as follows:
 
-..code:: python
+.. code:: python
 
     # `request_obj` is an instance of urllib.request.Request
     def request_hook(span, request_obj):
@@ -65,10 +63,9 @@ API
 import functools
 import types
 import typing
-
-# from urllib import response
 from http import client
-from typing import Collection
+from timeit import default_timer
+from typing import Collection, Dict
 from urllib.request import (  # pylint: disable=no-name-in-module,import-error
     OpenerDirector,
     Request,
@@ -85,7 +82,9 @@ from opentelemetry.instrumentation.utils import (
     _SUPPRESS_INSTRUMENTATION_KEY,
     http_status_to_status_code,
 )
+from opentelemetry.metrics import Histogram, get_meter
 from opentelemetry.propagate import inject
+from opentelemetry.semconv.metrics import MetricInstruments
 from opentelemetry.semconv.trace import SpanAttributes
 from opentelemetry.trace import Span, SpanKind, get_tracer
 from opentelemetry.trace.status import Status
@@ -116,8 +115,15 @@ class URLLibInstrumentor(BaseInstrumentor):
         """
         tracer_provider = kwargs.get("tracer_provider")
         tracer = get_tracer(__name__, __version__, tracer_provider)
+
+        meter_provider = kwargs.get("meter_provider")
+        meter = get_meter(__name__, __version__, meter_provider)
+
+        histograms = _create_client_histograms(meter)
+
         _instrument(
             tracer,
+            histograms,
             request_hook=kwargs.get("request_hook"),
             response_hook=kwargs.get("response_hook"),
         )
@@ -134,6 +140,7 @@ class URLLibInstrumentor(BaseInstrumentor):
 
 def _instrument(
     tracer,
+    histograms: Dict[str, Histogram],
     request_hook: _RequestHookT = None,
     response_hook: _ResponseHookT = None,
 ):
@@ -194,11 +201,13 @@ def _instrument(
                 context.set_value(_SUPPRESS_HTTP_INSTRUMENTATION_KEY, True)
             )
             try:
+                start_time = default_timer()
                 result = call_wrapped()  # *** PROCEED
             except Exception as exc:  # pylint: disable=W0703
                 exception = exc
                 result = getattr(exc, "file", None)
             finally:
+                elapsed_time = round((default_timer() - start_time) * 1000)
                 context.detach(token)
 
             if result is not None:
@@ -215,6 +224,10 @@ def _instrument(
                     labels[
                         SpanAttributes.HTTP_FLAVOR
                     ] = f"{ver_[:1]}.{ver_[:-1]}"
+
+            _record_histograms(
+                histograms, labels, request, result, elapsed_time
+            )
 
             if callable(response_hook):
                 response_hook(span, request, result)
@@ -250,3 +263,45 @@ def _uninstrument_from(instr_root, restore_as_bound_func=False):
     if restore_as_bound_func:
         original = types.MethodType(original, instr_root)
     setattr(instr_root, instr_func_name, original)
+
+
+def _create_client_histograms(meter) -> Dict[str, Histogram]:
+    histograms = {
+        MetricInstruments.HTTP_CLIENT_DURATION: meter.create_histogram(
+            name=MetricInstruments.HTTP_CLIENT_DURATION,
+            unit="ms",
+            description="measures the duration outbound HTTP requests",
+        ),
+        MetricInstruments.HTTP_CLIENT_REQUEST_SIZE: meter.create_histogram(
+            name=MetricInstruments.HTTP_CLIENT_REQUEST_SIZE,
+            unit="By",
+            description="measures the size of HTTP request messages (compressed)",
+        ),
+        MetricInstruments.HTTP_CLIENT_RESPONSE_SIZE: meter.create_histogram(
+            name=MetricInstruments.HTTP_CLIENT_RESPONSE_SIZE,
+            unit="By",
+            description="measures the size of HTTP response messages (compressed)",
+        ),
+    }
+
+    return histograms
+
+
+def _record_histograms(
+    histograms, metric_attributes, request, response, elapsed_time
+):
+    histograms[MetricInstruments.HTTP_CLIENT_DURATION].record(
+        elapsed_time, attributes=metric_attributes
+    )
+
+    data = getattr(request, "data", None)
+    request_size = 0 if data is None else len(data)
+    histograms[MetricInstruments.HTTP_CLIENT_REQUEST_SIZE].record(
+        request_size, attributes=metric_attributes
+    )
+
+    if response is not None:
+        response_size = int(response.headers.get("Content-Length", 0))
+        histograms[MetricInstruments.HTTP_CLIENT_RESPONSE_SIZE].record(
+            response_size, attributes=metric_attributes
+        )
