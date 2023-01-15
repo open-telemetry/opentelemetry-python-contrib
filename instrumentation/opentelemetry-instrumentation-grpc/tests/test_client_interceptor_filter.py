@@ -24,10 +24,8 @@ import opentelemetry.instrumentation.grpc
 from opentelemetry import context, trace
 from opentelemetry.instrumentation.grpc import GrpcInstrumentorClient, filters
 from opentelemetry.instrumentation.grpc._client import (
-    OpenTelemetryClientInterceptor,
-)
-from opentelemetry.instrumentation.grpc.grpcext._interceptor import (
-    _UnaryClientInfo,
+    UnaryUnaryClientInterceptor, StreamUnaryClientInterceptor,
+    UnaryStreamClientInterceptor, StreamStreamClientInterceptor
 )
 from opentelemetry.instrumentation.utils import _SUPPRESS_INSTRUMENTATION_KEY
 from opentelemetry.propagate import get_global_textmap, set_global_textmap
@@ -43,6 +41,7 @@ from ._client import (
     simple_method_future,
 )
 from ._server import create_test_server
+from . test_client_interceptor import RecordingInterceptor
 from .protobuf.test_server_pb2 import Request
 
 
@@ -202,30 +201,25 @@ class TestClientProtoFilterMethodName(TestBase):
         previous_propagator = get_global_textmap()
         try:
             set_global_textmap(MockTextMapPropagator())
-            interceptor = OpenTelemetryClientInterceptor(trace.NoOpTracer())
+            interceptor = UnaryUnaryClientInterceptor(trace.NoOpTracer())
 
-            carrier = tuple()
+            recording_interceptor = RecordingInterceptor()
+            interceptors = [interceptor, recording_interceptor]
 
-            def invoker(request, metadata):
-                nonlocal carrier
-                carrier = metadata
-                return {}
-
-            request = Request(client_id=1, request_data="data")
-            interceptor.intercept_unary(
-                request,
-                {},
-                _UnaryClientInfo(
-                    full_method="/GRPCTestServer/SimpleMethod", timeout=None
-                ),
-                invoker=invoker,
+            channel = grpc.intercept_channel(
+                grpc.insecure_channel("localhost:25565"),
+                *interceptors
             )
 
-            assert len(carrier) == 2
-            assert carrier[0][0] == "mock-traceid"
-            assert carrier[0][1] == "0"
-            assert carrier[1][0] == "mock-spanid"
-            assert carrier[1][1] == "0"
+            stub = test_server_pb2_grpc.GRPCTestServerStub(channel)
+            simple_method(stub)
+
+            metadata = recording_interceptor.recorded_details.metadata
+            assert len(metadata) == 2
+            assert metadata[0][0] == "mock-traceid"
+            assert metadata[0][1] == "0"
+            assert metadata[1][0] == "mock-spanid"
+            assert metadata[1][1] == "0"
 
         finally:
             set_global_textmap(previous_propagator)
@@ -346,30 +340,25 @@ class TestClientProtoFilterMethodPrefix(TestBase):
         previous_propagator = get_global_textmap()
         try:
             set_global_textmap(MockTextMapPropagator())
-            interceptor = OpenTelemetryClientInterceptor(trace.NoOpTracer())
+            interceptor = UnaryUnaryClientInterceptor(trace.NoOpTracer())
 
-            carrier = tuple()
+            recording_interceptor = RecordingInterceptor()
+            interceptors = [interceptor, recording_interceptor]
 
-            def invoker(request, metadata):
-                nonlocal carrier
-                carrier = metadata
-                return {}
-
-            request = Request(client_id=1, request_data="data")
-            interceptor.intercept_unary(
-                request,
-                {},
-                _UnaryClientInfo(
-                    full_method="/GRPCTestServer/SimpleMethod", timeout=None
-                ),
-                invoker=invoker,
+            channel = grpc.intercept_channel(
+                grpc.insecure_channel("localhost:25565"),
+                *interceptors
             )
 
-            assert len(carrier) == 2
-            assert carrier[0][0] == "mock-traceid"
-            assert carrier[0][1] == "0"
-            assert carrier[1][0] == "mock-spanid"
-            assert carrier[1][1] == "0"
+            stub = test_server_pb2_grpc.GRPCTestServerStub(channel)
+            simple_method(stub)
+
+            metadata = recording_interceptor.recorded_details.metadata
+            assert len(metadata) == 2
+            assert metadata[0][0] == "mock-traceid"
+            assert metadata[0][1] == "0"
+            assert metadata[1][0] == "mock-spanid"
+            assert metadata[1][1] == "0"
 
         finally:
             set_global_textmap(previous_propagator)
@@ -609,30 +598,25 @@ class TestClientProtoFilterByEnvAndOption(TestBase):
         previous_propagator = get_global_textmap()
         try:
             set_global_textmap(MockTextMapPropagator())
-            interceptor = OpenTelemetryClientInterceptor(trace.NoOpTracer())
+            interceptor = UnaryUnaryClientInterceptor(trace.NoOpTracer())
 
-            carrier = tuple()
+            recording_interceptor = RecordingInterceptor()
+            interceptors = [interceptor, recording_interceptor]
 
-            def invoker(request, metadata):
-                nonlocal carrier
-                carrier = metadata
-                return {}
-
-            request = Request(client_id=1, request_data="data")
-            interceptor.intercept_unary(
-                request,
-                {},
-                _UnaryClientInfo(
-                    full_method="/GRPCTestServer/SimpleMethod", timeout=None
-                ),
-                invoker=invoker,
+            channel = grpc.intercept_channel(
+                grpc.insecure_channel("localhost:25565"),
+                *interceptors
             )
 
-            assert len(carrier) == 2
-            assert carrier[0][0] == "mock-traceid"
-            assert carrier[0][1] == "0"
-            assert carrier[1][0] == "mock-spanid"
-            assert carrier[1][1] == "0"
+            stub = test_server_pb2_grpc.GRPCTestServerStub(channel)
+            simple_method(stub)
+
+            metadata = recording_interceptor.recorded_details.metadata
+            assert len(metadata) == 2
+            assert metadata[0][0] == "mock-traceid"
+            assert metadata[0][1] == "0"
+            assert metadata[1][0] == "mock-spanid"
+            assert metadata[1][1] == "0"
 
         finally:
             set_global_textmap(previous_propagator)
