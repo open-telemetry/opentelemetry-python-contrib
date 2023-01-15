@@ -285,7 +285,6 @@ from opentelemetry.instrumentation.grpc.filters import (
     negate,
     service_name,
 )
-from opentelemetry.instrumentation.grpc.grpcext import intercept_channel
 from opentelemetry.instrumentation.grpc.package import _instruments
 from opentelemetry.instrumentation.grpc.version import __version__
 from opentelemetry.instrumentation.instrumentor import BaseInstrumentor
@@ -469,11 +468,10 @@ class GrpcInstrumentorClient(BaseInstrumentor):
     def wrapper_fn(self, original_func, instance, args, kwargs):
         channel = original_func(*args, **kwargs)
         tracer_provider = kwargs.get("tracer_provider")
-        return intercept_channel(
+        return grpc.intercept_channel(
             channel,
-            client_interceptor(
-                tracer_provider=tracer_provider,
-                filter_=self._filter,
+            *client_interceptors(
+                tracer_provider=tracer_provider, filter_=self._filter
             ),
         )
 
@@ -541,7 +539,7 @@ class GrpcAioInstrumentorClient(BaseInstrumentor):
         grpc.aio.secure_channel = self._original_secure
 
 
-def client_interceptor(tracer_provider=None, filter_=None):
+def client_interceptors(tracer_provider=None, filter_=None):
     """Create a gRPC client channel interceptor.
 
     Args:
@@ -558,7 +556,12 @@ def client_interceptor(tracer_provider=None, filter_=None):
 
     tracer = trace.get_tracer(__name__, __version__, tracer_provider)
 
-    return _client.OpenTelemetryClientInterceptor(tracer, filter_=filter_)
+    return [
+        _client.UnaryUnaryClientInterceptor(tracer, filter_=filter_),
+        _client.UnaryStreamClientInterceptor(tracer, filter_=filter_),
+        _client.StreamUnaryClientInterceptor(tracer, filter_=filter_),
+        _client.StreamStreamClientInterceptor(tracer, filter_=filter_),
+    ]
 
 
 def server_interceptor(tracer_provider=None, filter_=None):
