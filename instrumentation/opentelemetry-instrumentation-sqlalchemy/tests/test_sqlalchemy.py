@@ -248,6 +248,7 @@ class TestSqlalchemyInstrumentation(TestBase):
 
         self.memory_exporter.clear()
         SQLAlchemyInstrumentor().uninstrument()
+        cnx.execute("SELECT	1 + 1;").fetchall()
         engine2 = create_engine("sqlite:///:memory:")
         cnx2 = engine2.connect()
         cnx2.execute("SELECT	2 + 2;").fetchall()

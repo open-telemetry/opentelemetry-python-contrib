@@ -14,7 +14,10 @@
 import os
 import re
 
-from sqlalchemy.event import listen  # pylint: disable=no-name-in-module
+from sqlalchemy.event import (
+    listen,
+    remove,
+)  # pylint: disable=no-name-in-module
 
 from opentelemetry import trace
 from opentelemetry.instrumentation.sqlalchemy.package import (
@@ -110,6 +113,11 @@ class EngineTracer:
         )
         listen(engine, "after_cursor_execute", _after_cur_exec)
         listen(engine, "handle_error", _handle_error)
+
+    def remove_event_listeners(self):
+        remove(self.engine, "before_cursor_execute", self._before_cur_exec)
+        remove(self.engine, "after_cursor_execute", _after_cur_exec)
+        remove(self.engine, "handle_error", _handle_error)
 
     def _operation_name(self, db_name, statement):
         parts = []
