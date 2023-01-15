@@ -59,6 +59,18 @@ Usage Client
         logging.basicConfig()
         run()
 
+You can also add the interceptors manually, rather than using
+:py:class:`~opentelemetry.instrumentation.grpc.GrpcInstrumentorClient`:
+
+.. code-block:: python
+
+    from opentelemetry.instrumentation.grpc import client_interceptors
+
+    channel = grpc.intercept_channel(
+        grpc.insecure_channel("localhost:50051"),
+        *client_interceptors()
+    )
+
 Usage Server
 ------------
 .. code-block:: python
@@ -540,7 +552,7 @@ class GrpcAioInstrumentorClient(BaseInstrumentor):
 
 
 def client_interceptors(tracer_provider=None, filter_=None):
-    """Create a gRPC client channel interceptor.
+    """Create gRPC client channel interceptors.
 
     Args:
         tracer: The tracer to use to create client-side spans.
@@ -550,7 +562,7 @@ def client_interceptors(tracer_provider=None, filter_=None):
                  all requests.
 
     Returns:
-        An invocation-side interceptor object.
+        A list of invocation-side interceptor objects.
     """
     from . import _client
 
