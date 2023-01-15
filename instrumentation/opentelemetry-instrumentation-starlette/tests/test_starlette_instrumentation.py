@@ -320,6 +320,18 @@ class TestAutoInstrumentation(TestStarletteManualInstrumentation):
             self.assertEqual(span.resource.attributes["key1"], "value1")
             self.assertEqual(span.resource.attributes["key2"], "value2")
 
+    def test_uninstrument(self):
+        self._client.get("/foobar")
+        spans = self.memory_exporter.get_finished_spans()
+        self.assertEqual(len(spans), 3)
+
+        self.memory_exporter.clear()
+        self._instrumentor.uninstrument()
+
+        self._client.get("/foobar")
+        spans = self.memory_exporter.get_finished_spans()
+        self.assertEqual(len(spans), 0)
+
 
 class TestAutoInstrumentationHooks(TestStarletteManualInstrumentationHooks):
     """
