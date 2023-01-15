@@ -9,13 +9,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- grpc instrumentation uses official grpc.*ClientInterceptor-interfaces
+  ([#1583](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/1583))
 - `opentelemetry/sdk/extension/aws` Implement [`aws.ecs.*`](https://github.com/open-telemetry/opentelemetry-specification/blob/main/specification/resource/semantic_conventions/cloud_provider/aws/ecs.md) and [`aws.logs.*`](https://opentelemetry.io/docs/reference/specification/resource/semantic_conventions/cloud_provider/aws/logs/) resource attributes in the `AwsEcsResourceDetector` detector when the ECS Metadata v4 is available
   ([#1212](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/1212))
 
 ### Fixed
 
-- Fix grpc instrumentation to use official grpc.*ClientInterceptor-interfaces
-  ([#1583](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/1583))
 - Fix aiopg instrumentation to work with aiopg < 2.0.0
   ([#1473](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/1473))
 - `opentelemetry-instrumentation-aws-lambda` Adds an option to configure `disable_aws_context_propagation` by
@@ -25,6 +25,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   ([#1555](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/1555))
 - `opentelemetry-instrumentation-asgi` Fix keys() in class ASGIGetter to correctly fetch values from carrier headers.
   ([#1435](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/1435))
+
 
 ## Version 1.15.0/0.36b0 (2022-12-10)
 
@@ -145,6 +146,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Add metric instrumentation in starlette
   ([#1327](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/1327))
 
+
 ### Fixed
 
 - `opentelemetry-instrumentation-kafka-python`: wait for metadata
@@ -157,12 +159,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   ([#1208](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/1208))
 - `opentelemetry-instrumentation-aiohttp-client` Fix producing additional spans with each newly created ClientSession
 - ([#1246](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/1246))
-- Add _is_opentelemetry_instrumented check in_InstrumentedFastAPI class
+- Add _is_opentelemetry_instrumented check in _InstrumentedFastAPI class
   ([#1313](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/1313))
 - Fix uninstrumentation of existing app instances in FastAPI
   ([#1258](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/1258))
 - Fix uninstrumentation of existing app instances in falcon
-  ([#1341]<https://github.com/open-telemetry/opentelemetry-python-contrib/pull/1341)>
+  ([#1341]https://github.com/open-telemetry/opentelemetry-python-contrib/pull/1341)
 
 ## Version 1.12.0/0.33b0 (2022-08-08)
 
@@ -176,7 +178,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   ([#1203](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/1203))
 
 ### Added
-
 - `opentelemetry-instrumentation-redis` add support to instrument RedisCluster clients
   ([#1177](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/1177))
 - `opentelemetry-instrumentation-sqlalchemy` Added span for the connection phase ([#1133](https://github.com/open-telemetry/opentelemetry-python-contrib/issues/1133))
@@ -189,11 +190,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [1.12.0rc2-0.32b0](https://github.com/open-telemetry/opentelemetry-python/releases/tag/v1.12.0rc2-0.32b0) - 2022-07-01
 
+
 - Pyramid: Only categorize 500s server exceptions as errors
   ([#1037](https://github.com/open-telemetry/opentelemetry-python-contrib/issues/1037))
 
 ### Fixed
-
 - Fix bug in system metrics by checking their configuration
   ([#1129](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/1129))
 - Adding escape call to fix [auto-instrumentation not producing spans on Windows](https://github.com/open-telemetry/opentelemetry-python/issues/2703).
@@ -206,8 +207,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - fixed typo in `system.network.io` metric configuration
   ([#1135](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/1135))
 
-### Added
 
+### Added
 - `opentelemetry-instrumentation-aiohttp-client` Add support for optional custom trace_configs argument.
   ([1079](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/1079))
 - `opentelemetry-instrumentation-sqlalchemy` add support to instrument multiple engines
@@ -231,10 +232,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Integrated sqlcommenter plugin into opentelemetry-instrumentation-django
   ([#896](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/896))
 
+
 ## Version 1.12.0rc1/0.31b0 (2022-05-17)
 
 ### Fixed
-
 - `opentelemetry-instrumentation-aiohttp-client` make span attributes available to sampler
   ([#1072](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/1072))
 - `opentelemetry-instrumentation-aws-lambda` Fixed an issue - in some rare cases (API GW proxy integration test)
@@ -247,7 +248,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - `opentelemetry-sdk-extension-aws` change timeout for AWS EC2 and EKS metadata requests from 1000 seconds and 2000 seconds to 1 second
 
 ### Added
-
 - `opentelemetry-instrument` and `opentelemetry-bootstrap` now include a `--version` flag
   ([#1065](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/1065))
 - `opentelemetry-instrumentation-redis` now instruments asynchronous Redis clients, if the installed redis-py includes async support (>=4.2.0).
@@ -255,22 +255,21 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - `opentelemetry-instrumentation-boto3sqs` added AWS's SQS instrumentation.
   ([#1081](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/1081))
 
+
 ## Version 1.11.1/0.30b1 (2022-04-21)
 
 ### Added
-
 - `opentelemetry-instrumentation-starlette` Capture custom request/response headers in span attributes
   ([#1046](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/1046))
 
 ### Fixed
-
 - Prune autoinstrumentation sitecustomize module directory from PYTHONPATH immediately
   ([#1066](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/1066))
+
 
 ## Version 1.11.0/0.30b0 (2022-04-18)
 
 ### Fixed
-
 - `opentelemetry-instrumentation-pyramid` Fixed which package is the correct caller in _traced_init.
   ([#830](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/830))
 - `opentelemetry-instrumentation-tornado` Fix Tornado errors mapping to 500
@@ -304,6 +303,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   ([#1012](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/1012))
 - `opentelemetry-instrumentation-pyramid` Pyramid: Capture custom request/response headers in span attributes
   ([#1022](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/1022))
+
 
 ## Version 1.10.0/0.29b0 (2022-03-10)
 
@@ -357,6 +357,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## Version 1.9.0/0.28b0 (2022-01-26)
 
+
 ### Added
 
 - `opentelemetry-instrumentation-pyramid` Pyramid: Conditionally create SERVER spans
@@ -394,6 +395,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - `opentelemetry-instrumentation-aiohttp-client` aiohttp: Remove `span_name` from docs
   ([#857](https://github.com/open-telemetry/opentelemetry-python-contrib/issues/857))
+
 
 ## Version 1.8.0/0.27b0 (2021-12-17)
 
@@ -469,14 +471,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   ([#755](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/755))
 
 ### Added
-
 - `opentelemetry-instrumentation-pika` Add `publish_hook` and `consume_hook` callbacks passed as arguments to the instrument method
   ([#763](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/763))
+
 
 ## Version 1.6.1/0.25b1 (2021-10-18)
 
 ### Changed
-
 - `opentelemetry-util-http` no longer contains an instrumentation entrypoint and will not be loaded
   automatically by the auto instrumentor.
   ([#745](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/745))
@@ -490,9 +491,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   ([#760](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/760))
 
 ## Version 1.6.0/0.25b0 (2021-10-13)
-
 ### Added
-
 - `opentelemetry-sdk-extension-aws` Release AWS Python SDK Extension as 1.0.0
   ([#667](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/667))
 - `opentelemetry-instrumentation-urllib3`, `opentelemetry-instrumentation-requests`
@@ -519,7 +518,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   ([#391](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/391))
 
 ### Changed
-
 - `opentelemetry-instrumentation-flask` Fix `RuntimeError: Working outside of request context`
   ([#734](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/734))
 - `opentelemetry-propagators-aws-xray` Rename `AwsXRayFormat` to `AwsXRayPropagator`
@@ -550,7 +548,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## Version 1.5.0/0.24b0 (2021-08-26)
 
 ### Added
-
 - `opentelemetry-sdk-extension-aws` Add AWS resource detectors to extension package
   ([#586](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/586))
 - `opentelemetry-instrumentation-asgi`, `opentelemetry-instrumentation-aiohttp-client`, `openetelemetry-instrumentation-fastapi`,
@@ -569,12 +566,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## Version 1.4.0/0.23b0 (2021-07-21)
 
 ### Removed
-
 - Move `opentelemetry-instrumentation` to the core repo.
   ([#595](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/595))
 
 ### Changed
-
 - `opentelemetry-instrumentation-falcon` added support for Falcon 3.
   ([#607](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/607))
 - `opentelemetry-instrumentation-tornado` properly instrument work done in tornado on_finish method.
@@ -622,14 +617,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   ([#568](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/568))
 
 ### Added
-
 - `opentelemetry-instrumentation-httpx` Add `httpx` instrumentation
   ([#461](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/461))
 
 ## Version 1.3.0/0.22b0 (2021-06-01)
 
 ### Changed
-
 - `opentelemetry-bootstrap` not longer forcibly removes and re-installs libraries and their instrumentations.
   This means running bootstrap will not auto-upgrade existing dependencies and as a result not cause dependency
   conflicts.
@@ -646,7 +639,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   ([#488](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/488))
 
 ### Added
-
 - `opentelemetry-instrumentation-botocore` now supports
   context propagation for lambda invoke via Payload embedded headers.
   ([#458](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/458))
@@ -656,7 +648,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## Version 1.2.0/0.21b0 (2021-05-11)
 
 ### Changed
-
 - Instrumentation packages don't specify the libraries they instrument as dependencies
   anymore. Instead, they verify the correct version of libraries are installed at runtime.
   ([#475](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/475))
@@ -1106,7 +1097,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - `opentelemetry-ext-boto` Initial release
 - `opentelemetry-ext-botocore` Initial release
 - `opentelemetry-ext-system-metrics` Initial release
-  (<https://github.com/open-telemetry/opentelemetry-python/pull/652>)
+  (https://github.com/open-telemetry/opentelemetry-python/pull/652)
 
 ## Version 0.8b0 (2020-05-27)
 
