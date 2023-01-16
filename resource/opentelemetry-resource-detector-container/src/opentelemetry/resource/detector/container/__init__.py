@@ -30,18 +30,22 @@ class ContainerResourceDetector(ResourceDetector):
 
     def detect(self) -> "Resource":
         try:
-            container_id = self._get_container_id_v1() or self._get_container_id_v2()
+            container_id = (
+                self._get_container_id_v1() or self._get_container_id_v2()
+            )
             resource = Resource.get_empty()
             if container_id:
-                resource = resource.merge(Resource(
-                    {
-                        ResourceAttributes.CONTAINER_ID: container_id
-                    }
-                ))
+                resource = resource.merge(
+                    Resource({ResourceAttributes.CONTAINER_ID: container_id})
+                )
             return resource
 
         except Exception as exception:
-            logger.warning("%s Resource Detection failed silently: %s", self.__class__.__name__, exception)
+            logger.warning(
+                "%s Resource Detection failed silently: %s",
+                self.__class__.__name__,
+                exception
+            )
             if self.raise_on_error:
                 raise exception
             return Resource.get_empty()
@@ -72,7 +76,11 @@ class ContainerResourceDetector(ResourceDetector):
                 for raw_line in container_info_file.readlines():
                     line = raw_line.strip()
                     if "hostname" in line:
-                        container_id_list = [id for id in line.split("/") if len(id) == CONTAINER_ID_LENGTH]
+                        container_id_list = [
+                            id
+                            for id in line.split("/")
+                            if len(id) == CONTAINER_ID_LENGTH
+                        ]
                         if len(container_id_list) > 0:
                             container_id = container_id_list[0]
                             break
