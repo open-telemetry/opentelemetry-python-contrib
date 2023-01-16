@@ -7,8 +7,9 @@ OpenTelemetry Resources for container-detectors-kubernetes
    :target: TODO
 
 
-This library provides container property detection features which can help
-correlate different spans and traces across different systems.
+This library provides k8s pod property (k8s.id) detection features 
+which can help in identifying the problems in app - infra correlation 
+for apps running on k8s
 
 Installation
 ------------

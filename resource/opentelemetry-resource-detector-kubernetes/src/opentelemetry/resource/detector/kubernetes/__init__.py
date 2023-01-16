@@ -18,40 +18,51 @@ from opentelemetry.sdk.resources import Resource, ResourceDetector
 from opentelemetry.semconv.resource import ResourceAttributes
 
 logger = logging.getLogger(__name__)
-
+DEFAULT_CGROUP_V1_PATH = "/proc/self/mountinfo"
+DEFAULT_CGROUP_V2_PATH = "/proc/self/cgroup"
 _POD_ID_LENGTH = 36
 _CONTAINER_ID_LENGTH = 64
 
 
 def get_kubenertes_pod_uid_v1():
     pod_id = None
-    with open("/proc/self/mountinfo", encoding="utf8") as container_info_file:
-        for raw_line in container_info_file.readlines():
-            line = raw_line.strip()
-            # Subsequent IDs should be the same, exit if found one
-            if len(line) > _POD_ID_LENGTH and "/pods/" in line:
-                pod_id = line.split("/pods/")[1][:_POD_ID_LENGTH]
-                break
+    try:
+        with open(
+            DEFAULT_CGROUP_V1_PATH, encoding="utf8"
+        ) as container_info_file:
+            for raw_line in container_info_file.readlines():
+                line = raw_line.strip()
+                # Subsequent IDs should be the same, exit if found one
+                if len(line) > _POD_ID_LENGTH and "/pods/" in line:
+                    pod_id = line.split("/pods/")[1][:_POD_ID_LENGTH]
+                    break
+    except FileNotFoundError as exception:
+        logger.warning("Failed to get k8 id. Exception: %s}", exception)
     return pod_id
 
 
 def get_kubenertes_pod_uid_v2():
     pod_id = None
-    with open("/proc/self/cgroup", encoding="utf8") as container_info_file:
-        for raw_line in container_info_file.readlines():
-            line = raw_line.strip()
-            # Subsequent IDs should be the same, exit if found one
-            if len(line) > _CONTAINER_ID_LENGTH:
-                line_info = line.split("/")
-                if (
-                    len(line_info) > 2
-                    and line_info[-2][:3] == "pod"
-                    and len(line_info[-2]) == _POD_ID_LENGTH + 3
-                ):
-                    pod_id = line_info[-2][3 : 3 + _POD_ID_LENGTH]
-                else:
-                    pod_id = line_info[-2]
-                break
+    try:
+        with open(
+            DEFAULT_CGROUP_V2_PATH, encoding="utf8"
+        ) as container_info_file:
+            for raw_line in container_info_file.readlines():
+                line = raw_line.strip()
+                # Subsequent IDs should be the same, exit if found one
+                if len(line) > _CONTAINER_ID_LENGTH:
+                    line_info = line.split("/")
+                    if (
+                        len(line_info) > 2
+                        and line_info[-2][:3] == "pod"
+                        and len(line_info[-2]) == _POD_ID_LENGTH + 3
+                    ):
+                        pod_id = line_info[-2][3 : 3 + _POD_ID_LENGTH]
+                    else:
+                        pod_id = line_info[-2]
+                    break
+    except FileNotFoundError as exception:
+        logger.warning("Failed to get k8 id. Exception: %s}", exception)
     return pod_id
 
 
@@ -63,24 +74,17 @@ class KubernetesResourceDetector(ResourceDetector):
     def detect(self) -> "Resource":
         try:
             pod_resource = Resource.get_empty()
-            try:
-                pod_uid = (
-                    get_kubenertes_pod_uid_v1() and get_kubenertes_pod_uid_v2()
-                )
-                if pod_uid:
-                    pod_resource = pod_resource.merge(
-                        Resource(
-                            {
-                                ResourceAttributes.K8S_POD_UID: pod_uid,
-                            }
-                        )
+            pod_uid = (
+                get_kubenertes_pod_uid_v1() or get_kubenertes_pod_uid_v2()
+            )
+            if pod_uid:
+                pod_resource = pod_resource.merge(
+                    Resource(
+                        {
+                            ResourceAttributes.K8S_POD_UID: pod_uid,
+                        }
                     )
-            except FileNotFoundError as exception:
-                logger.warning(
-                    "Failed to get pod ID on kubernetes container: %s.",
-                    exception,
                 )
-
             return pod_resource
 
         # pylint: disable=broad-except
@@ -88,5 +92,8 @@ class KubernetesResourceDetector(ResourceDetector):
             if self.raise_on_error:
                 raise exception
 
-            logger.warning("%s failed: %s", self.__class__.__name__, exception)
+            logger.warning(
+                "Failed to get pod ID on kubernetes cluster: %s.",
+                exception,
+            )
             return Resource.get_empty()

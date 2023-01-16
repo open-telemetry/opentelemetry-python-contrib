@@ -12,23 +12,30 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import unittest
 from unittest.mock import mock_open, patch
 
+from opentelemetry import trace as trace_api
 from opentelemetry.resource.detector.kubernetes import (
     KubernetesResourceDetector,
     get_kubenertes_pod_uid_v1,
     get_kubenertes_pod_uid_v2,
 )
-from opentelemetry.sdk.resources import Resource
+from opentelemetry.sdk.resources import Resource, get_aggregated_resources
 from opentelemetry.semconv.resource import ResourceAttributes
+from opentelemetry.test.wsgitestutil import WsgiTestBase
 
 MockKubernetesResourceAttributes = {
     ResourceAttributes.K8S_POD_UID: "ecc2f8af-7742-4087-aeb1-4601bf25e1df",
 }
 
 
-class KubernetesResourceDetectorTest(unittest.TestCase):
+def simple_wsgi(environ, start_response):
+    assert isinstance(environ, dict)
+    start_response("200 OK", [("Content-Type", "text/plain")])
+    return b"*"
+
+
+class KubernetesResourceDetectorTest(WsgiTestBase):
     @patch(
         "opentelemetry.resource.detector.kubernetes.get_kubenertes_pod_uid_v1",
         return_value=f"{MockKubernetesResourceAttributes[ResourceAttributes.K8S_POD_UID]}",
@@ -50,7 +57,7 @@ class KubernetesResourceDetectorTest(unittest.TestCase):
         "opentelemetry.resource.detector.kubernetes.get_kubenertes_pod_uid_v1",
         side_effect=Exception("Test"),
     )
-    def test_without_container(self, mock_get_kubenertes_pod_uid_v1):
+    def test_without_k8s_pod(self, mock_get_kubenertes_pod_uid_v1):
         actual = KubernetesResourceDetector().detect()
         self.assertEqual(Resource.get_empty(), actual)
 
@@ -108,5 +115,92 @@ class KubernetesResourceDetectorTest(unittest.TestCase):
         actual_pod_uid = get_kubenertes_pod_uid_v2()
         self.assertEqual(
             actual_pod_uid,
+            MockKubernetesResourceAttributes[ResourceAttributes.K8S_POD_UID],
+        )
+
+    @patch(
+        "opentelemetry.resource.detector.kubernetes.get_kubenertes_pod_uid_v1",
+        return_value=f"{MockKubernetesResourceAttributes[ResourceAttributes.K8S_POD_UID]}",
+    )
+    @patch(
+        "opentelemetry.resource.detector.kubernetes.get_kubenertes_pod_uid_v2",
+        return_value=f"{MockKubernetesResourceAttributes[ResourceAttributes.K8S_POD_UID]}",
+    )
+    def test_k8_id_as_span_attribute(
+        self, mock_get_kubenertes_pod_uid_v1, mock_get_kubenertes_pod_uid_v2
+    ):
+        tracer_provider, exporter = self.create_tracer_provider(
+            resource=get_aggregated_resources([KubernetesResourceDetector()])
+        )
+        tracer = tracer_provider.get_tracer(__name__)
+
+        with tracer.start_as_current_span(
+            "test", kind=trace_api.SpanKind.SERVER
+        ) as _:
+            response = simple_wsgi(self.environ, self.start_response)
+            self.assertEqual(response, b"*")
+        span_list = exporter.get_finished_spans()
+        self.assertEqual(
+            span_list[0].resource.attributes["k8s.pod.uid"],
+            MockKubernetesResourceAttributes[ResourceAttributes.K8S_POD_UID],
+        )
+
+    def test_k8_without_container_as_span_attribute(self):
+        tracer_provider, exporter = self.create_tracer_provider(
+            resource=get_aggregated_resources([KubernetesResourceDetector()])
+        )
+        tracer = tracer_provider.get_tracer(__name__)
+
+        with tracer.start_as_current_span(
+            "Test", kind=trace_api.SpanKind.SERVER
+        ) as _:
+            response = simple_wsgi(self.environ, self.start_response)
+            self.assertEqual(response, b"*")
+        span_list = exporter.get_finished_spans()
+        self.assertTrue("k8s.pod.uid" not in span_list[0].resource.attributes)
+
+    @patch(
+        "opentelemetry.resource.detector.kubernetes.get_kubenertes_pod_uid_v1",
+        return_value=f"{MockKubernetesResourceAttributes[ResourceAttributes.K8S_POD_UID]}",
+    )
+    def test_k8_id_as_span_attribute_with_mountinfo_v1(
+        self, mock_get_kubenertes_pod_uid_v1
+    ):
+        tracer_provider, exporter = self.create_tracer_provider(
+            resource=get_aggregated_resources([KubernetesResourceDetector()])
+        )
+        tracer = tracer_provider.get_tracer(__name__)
+
+        with tracer.start_as_current_span(
+            "Test", kind=trace_api.SpanKind.SERVER
+        ) as _:
+            response = simple_wsgi(self.environ, self.start_response)
+            self.assertEqual(response, b"*")
+        span_list = exporter.get_finished_spans()
+        self.assertEqual(
+            span_list[0].resource.attributes["k8s.pod.uid"],
+            MockKubernetesResourceAttributes[ResourceAttributes.K8S_POD_UID],
+        )
+
+    @patch(
+        "opentelemetry.resource.detector.kubernetes.get_kubenertes_pod_uid_v2",
+        return_value=f"{MockKubernetesResourceAttributes[ResourceAttributes.K8S_POD_UID]}",
+    )
+    def test_k8_id_as_span_attribute_with_cgroup_v2(
+        self, mock_get_kubenertes_pod_uid_v2
+    ):
+        tracer_provider, exporter = self.create_tracer_provider(
+            resource=get_aggregated_resources([KubernetesResourceDetector()])
+        )
+        tracer = tracer_provider.get_tracer(__name__)
+
+        with tracer.start_as_current_span(
+            "Test", kind=trace_api.SpanKind.SERVER
+        ) as _:
+            response = simple_wsgi(self.environ, self.start_response)
+            self.assertEqual(response, b"*")
+        span_list = exporter.get_finished_spans()
+        self.assertEqual(
+            span_list[0].resource.attributes["k8s.pod.uid"],
             MockKubernetesResourceAttributes[ResourceAttributes.K8S_POD_UID],
         )
