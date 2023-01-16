@@ -7,7 +7,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## Unreleased
 
-## Fixed
+### Added
+
+- `opentelemetry-instrumentation-boto3sqs` Added support for contuing the spans under the parent context instead of adding the parent context as a link
+  ([#1538](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/1538))
+
+### Fixed
 
 - Fix aiopg instrumentation to work with aiopg < 2.0.0
   ([#1473](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/1473))
