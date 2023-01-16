@@ -28,6 +28,7 @@ app.config_from_object(Config)
 def task_add(num_a, num_b):
     return num_a + num_b
 
+
 @app.task
 def task_error():
     raise Exception("Test exception")

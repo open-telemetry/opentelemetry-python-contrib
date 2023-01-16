@@ -99,7 +99,9 @@ class TestCeleryInstrumentation(TestBase):
 
         consumer, producer = spans
 
-        self.assertEqual(consumer.name, "run/tests.celery_test_tasks.task_error")
+        self.assertEqual(
+            consumer.name, "run/tests.celery_test_tasks.task_error"
+        )
         self.assertEqual(consumer.kind, SpanKind.CONSUMER)
         self.assertSpanHasAttributes(
             consumer,
