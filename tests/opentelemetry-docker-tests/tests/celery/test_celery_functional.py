@@ -249,6 +249,7 @@ def test_fn_task_delay(celery_app, memory_exporter):
         run_span.attributes.get("celery.task_name")
         == "test_celery_functional.fn_task_parameters"
     )
+    assert len(run_span.events) == 0
 
 
 def test_fn_exception(celery_app, memory_exporter):
@@ -275,6 +276,11 @@ def test_fn_exception(celery_app, memory_exporter):
         == "test_celery_functional.fn_exception"
     )
     assert span.status.status_code == StatusCode.ERROR
+    assert len(span.events) == 1
+    event = span.events[0]
+    assert event.name == "exception"
+    assert event.attributes[SpanAttributes.EXCEPTION_TYPE] == "ExceptionInfo"
+    assert SpanAttributes.EXCEPTION_MESSAGE in event.attributes
     assert (
         span.attributes.get(SpanAttributes.MESSAGING_MESSAGE_ID)
         == result.task_id
