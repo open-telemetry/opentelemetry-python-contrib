@@ -258,7 +258,7 @@ class TestSqlalchemyInstrumentation(TestBase):
         engine = create_engine("sqlite:///:memory:")
         SQLAlchemyInstrumentor().instrument(
             engine=engine,
-            tracer_provider=trace.NoOpTracerProvider,
+            tracer_provider=trace.NoOpTracerProvider(),
         )
         cnx = engine.connect()
         cnx.execute("SELECT 1 + 1;").fetchall()
