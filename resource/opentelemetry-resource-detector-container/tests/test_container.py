@@ -112,9 +112,7 @@ class ContainerResourceDetectorTest(WsgiTestBase):
         ],
     )
     def test_container_id_detect_from_mount_info(
-        self,
-        mock_get_container_id_v1,
-        mock_get_container_id_v2
+        self, mock_get_container_id_v1, mock_get_container_id_v2
     ):
         actual = ContainerResourceDetector().detect()
         self.assertDictEqual(
