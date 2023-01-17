@@ -19,7 +19,9 @@ import argparse
 import requests
 from ruamel.yaml import YAML
 
-API_URL = "https://api.github.com/repos/open-telemetry/opentelemetry-python/commits/"
+API_URL = (
+    "https://api.github.com/repos/open-telemetry/opentelemetry-python/commits/"
+)
 WORKFLOW_FILE = ".github/workflows/test.yml"
 
 
