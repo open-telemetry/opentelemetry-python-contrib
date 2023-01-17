@@ -19,6 +19,7 @@ from opentelemetry.resource.detector.kubernetes import (
     KubernetesResourceDetector,
     get_kubenertes_pod_uid_v1,
     get_kubenertes_pod_uid_v2,
+    is_container_on_kubernetes,
 )
 from opentelemetry.sdk.resources import Resource, get_aggregated_resources
 from opentelemetry.semconv.resource import ResourceAttributes
@@ -44,8 +45,15 @@ class KubernetesResourceDetectorTest(WsgiTestBase):
         "opentelemetry.resource.detector.kubernetes.get_kubenertes_pod_uid_v2",
         return_value=f"{MockKubernetesResourceAttributes[ResourceAttributes.K8S_POD_UID]}",
     )
+    @patch(
+        "opentelemetry.resource.detector.kubernetes.is_container_on_kubernetes",
+        return_value=True,
+    )
     def test_simple_detector(
-        self, mock_get_kubenertes_pod_uid_v1, mock_get_kubenertes_pod_uid_v2
+        self,
+        mock_get_kubenertes_pod_uid_v1,
+        mock_get_kubenertes_pod_uid_v2,
+        mock_is_container_on_kubernetes,
     ):
         actual = KubernetesResourceDetector().detect()
         self.assertEqual(
@@ -84,7 +92,13 @@ class KubernetesResourceDetectorTest(WsgiTestBase):
 452 565 0:166 /sysrq-trigger /bogusPodIdThatShouldNotBeOneSetBecauseTheFirstOneWasPicked
 """,
     )
-    def test_get_kubenertes_pod_uid_v1(self, mock_open_func):
+    @patch(
+        "opentelemetry.resource.detector.kubernetes.is_container_on_kubernetes",
+        return_value=True,
+    )
+    def test_get_kubenertes_pod_uid_v1(
+        self, mock_open_func, mock_is_container_on_kubernetes
+    ):
         actual_pod_uid = get_kubenertes_pod_uid_v1()
         self.assertEqual(
             actual_pod_uid,
@@ -111,7 +125,13 @@ class KubernetesResourceDetectorTest(WsgiTestBase):
 0::/kubepods/besteffort/pod{MockKubernetesResourceAttributes[ResourceAttributes.K8S_POD_UID]}/bogusPodIdThatShouldNotBeOneSetBecauseTheFirstOneWasPicked
 """,
     )
-    def test_get_kubenertes_pod_uid_v2(self, mock_open_func):
+    @patch(
+        "opentelemetry.resource.detector.kubernetes.is_container_on_kubernetes",
+        return_value=True,
+    )
+    def test_get_kubenertes_pod_uid_v2(
+        self, mock_open_func, mock_is_container_on_kubernetes
+    ):
         actual_pod_uid = get_kubenertes_pod_uid_v2()
         self.assertEqual(
             actual_pod_uid,
@@ -126,8 +146,15 @@ class KubernetesResourceDetectorTest(WsgiTestBase):
         "opentelemetry.resource.detector.kubernetes.get_kubenertes_pod_uid_v2",
         return_value=f"{MockKubernetesResourceAttributes[ResourceAttributes.K8S_POD_UID]}",
     )
+    @patch(
+        "opentelemetry.resource.detector.kubernetes.is_container_on_kubernetes",
+        return_value=True,
+    )
     def test_k8_id_as_span_attribute(
-        self, mock_get_kubenertes_pod_uid_v1, mock_get_kubenertes_pod_uid_v2
+        self,
+        mock_get_kubenertes_pod_uid_v1,
+        mock_get_kubenertes_pod_uid_v2,
+        mock_is_container_on_kubernetes,
     ):
         tracer_provider, exporter = self.create_tracer_provider(
             resource=get_aggregated_resources([KubernetesResourceDetector()])
@@ -163,8 +190,12 @@ class KubernetesResourceDetectorTest(WsgiTestBase):
         "opentelemetry.resource.detector.kubernetes.get_kubenertes_pod_uid_v1",
         return_value=f"{MockKubernetesResourceAttributes[ResourceAttributes.K8S_POD_UID]}",
     )
+    @patch(
+        "opentelemetry.resource.detector.kubernetes.is_container_on_kubernetes",
+        return_value=True,
+    )
     def test_k8_id_as_span_attribute_with_mountinfo_v1(
-        self, mock_get_kubenertes_pod_uid_v1
+        self, mock_get_kubenertes_pod_uid_v1, mock_is_container_on_kubernetes
     ):
         tracer_provider, exporter = self.create_tracer_provider(
             resource=get_aggregated_resources([KubernetesResourceDetector()])
@@ -186,8 +217,12 @@ class KubernetesResourceDetectorTest(WsgiTestBase):
         "opentelemetry.resource.detector.kubernetes.get_kubenertes_pod_uid_v2",
         return_value=f"{MockKubernetesResourceAttributes[ResourceAttributes.K8S_POD_UID]}",
     )
+    @patch(
+        "opentelemetry.resource.detector.kubernetes.is_container_on_kubernetes",
+        return_value=True,
+    )
     def test_k8_id_as_span_attribute_with_cgroup_v2(
-        self, mock_get_kubenertes_pod_uid_v2
+        self, mock_get_kubenertes_pod_uid_v2, mock_is_container_on_kubernetes
     ):
         tracer_provider, exporter = self.create_tracer_provider(
             resource=get_aggregated_resources([KubernetesResourceDetector()])
@@ -204,3 +239,19 @@ class KubernetesResourceDetectorTest(WsgiTestBase):
             span_list[0].resource.attributes["k8s.pod.uid"],
             MockKubernetesResourceAttributes[ResourceAttributes.K8S_POD_UID],
         )
+
+    @patch(
+        "builtins.open",
+        new_callable=mock_open,
+        read_data="""# Kubernetes-managed hosts file (host network).
+127.0.0.1       localhost
+::1     localhost ip6-localhost ip6-loopback
+fe00::0 ip6-localnet
+ff00::0 ip6-mcastprefix
+ff02::1 ip6-allnodes
+ff02::2 ip6-allrouters
+""",
+    )
+    def test_is_container_on_kubernetes(self, mock_open_func):
+        patch_response = is_container_on_kubernetes()
+        self.assertTrue(patch_response)

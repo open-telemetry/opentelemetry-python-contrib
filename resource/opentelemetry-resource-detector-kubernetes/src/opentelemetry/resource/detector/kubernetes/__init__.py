@@ -13,6 +13,7 @@
 # limitations under the License.
 
 import logging
+import os
 
 from opentelemetry.sdk.resources import Resource, ResourceDetector
 from opentelemetry.semconv.resource import ResourceAttributes
@@ -20,8 +21,19 @@ from opentelemetry.semconv.resource import ResourceAttributes
 logger = logging.getLogger(__name__)
 DEFAULT_CGROUP_V1_PATH = "/proc/self/mountinfo"
 DEFAULT_CGROUP_V2_PATH = "/proc/self/cgroup"
+KUBERNETES_SECRET_PATH = "/var/run/secrets/kubernetes.io"
 _POD_ID_LENGTH = 36
 _CONTAINER_ID_LENGTH = 64
+
+
+def is_container_on_kubernetes() -> bool:
+    # Kubernetes manages the /etc/hosts file inside the pods' containers,
+    # using a distinctive header, see https://github.com/kubernetes/kubernetes/commit/fd72938dd569bd041f11a76eecfe9b8b4bcf5ae8
+    with open("/etc/hosts", "r", encoding="utf8") as hosts_file:
+        first_line = hosts_file.readline()
+        return "Kubernetes" in first_line or os.path.exists(
+            KUBERNETES_SECRET_PATH
+        )
 
 
 def get_kubenertes_pod_uid_v1():
@@ -74,16 +86,21 @@ class KubernetesResourceDetector(ResourceDetector):
     def detect(self) -> "Resource":
         try:
             pod_resource = Resource.get_empty()
-            pod_uid = (
-                get_kubenertes_pod_uid_v1() or get_kubenertes_pod_uid_v2()
-            )
-            if pod_uid:
-                pod_resource = pod_resource.merge(
-                    Resource(
-                        {
-                            ResourceAttributes.K8S_POD_UID: pod_uid,
-                        }
+            if is_container_on_kubernetes():
+                pod_uid = (
+                    get_kubenertes_pod_uid_v1() or get_kubenertes_pod_uid_v2()
+                )
+                if pod_uid:
+                    pod_resource = pod_resource.merge(
+                        Resource(
+                            {
+                                ResourceAttributes.K8S_POD_UID: pod_uid,
+                            }
+                        )
                     )
+            else:
+                logger.warning(
+                    "Could not confirm process is running on kubernetes cluster."
                 )
             return pod_resource
 
