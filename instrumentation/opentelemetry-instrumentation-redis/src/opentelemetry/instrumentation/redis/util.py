@@ -57,7 +57,10 @@ def _format_command_args(args, sanitize_query):
         out = [str(args[0])] + ["?"] * (len(args) - 1)
         out_str = " ".join(out)
         if len(out_str) > cmd_max_len:
-            out_str = out_str[:cmd_max_len - len(value_too_long_mark)] + value_too_long_mark
+            out_str = (
+                out_str[: cmd_max_len - len(value_too_long_mark)]
+                + value_too_long_mark
+            )
         return out_str
     else:
         value_max_len = 100
