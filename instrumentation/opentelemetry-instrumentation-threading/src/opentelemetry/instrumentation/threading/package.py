@@ -13,6 +13,6 @@
 # limitations under the License.
 
 #To-do : what is the actual version of threading?
-_instruments = ("threading >= 1.0, < 3.0",)
+#_instruments = ("threading >= 1.0, < 3.0",)
 
 _supports_metrics = True

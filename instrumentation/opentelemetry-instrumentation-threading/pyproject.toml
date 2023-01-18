@@ -29,10 +29,6 @@ dependencies = [
   "opentelemetry-instrumentation == 0.37b0.dev",
 ]
 
-[project.optional-dependencies]
-instruments = [
-  "Threading >= 1.0, < 3.0",
-]
 test = [
   "opentelemetry-instrumentation-threading[instruments]",
   "markupsafe==2.0.1",
