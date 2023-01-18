@@ -11,13 +11,17 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-
+import hashlib
+import hmac
 import logging
 import re
 from collections import defaultdict
+from datetime import datetime
 from itertools import chain
-from typing import Dict, Sequence
+from typing import Dict, Sequence, Any, Tuple
+from urllib.parse import urlparse
 
+import boto3 as boto3
 import requests
 import snappy
 
@@ -79,6 +83,7 @@ class PrometheusRemoteWriteMetricsExporter(MetricExporter):
         resources_as_labels: bool = True,
         preferred_temporality: Dict[type, AggregationTemporality] = None,
         preferred_aggregation: Dict = None,
+        aws_prometheus: bool = False
     ):
         self.endpoint = endpoint
         self.basic_auth = basic_auth
@@ -87,6 +92,10 @@ class PrometheusRemoteWriteMetricsExporter(MetricExporter):
         self.tls_config = tls_config
         self.proxies = proxies
         self.resources_as_labels = resources_as_labels
+        self.aws_prometheus = aws_prometheus
+
+        if aws_prometheus:
+            self.aws_prometheus_sign_v4 = AWSPrometheusSignV4(endpoint)
 
         if not preferred_temporality:
             preferred_temporality = {
@@ -390,6 +399,9 @@ class PrometheusRemoteWriteMetricsExporter(MetricExporter):
                     self.tls_config["key_file"],
                 )
         try:
+            if self.aws_prometheus:
+                headers_sign = self.aws_prometheus_sign_v4.sign_v4(payload=message)
+                headers.update(headers_sign)
             response = requests.post(
                 self.endpoint,
                 data=message,
@@ -412,3 +424,118 @@ class PrometheusRemoteWriteMetricsExporter(MetricExporter):
 
     def shutdown(self, timeout_millis: float = 30_000, **kwargs) -> None:
         pass
+
+
+class AWSPrometheusSignV4:
+    ALGORITHM = "AWS4-HMAC-SHA256"
+    METHOD = "POST"
+    SERVICE = "aps"
+
+    def __init__(self, endpoint):
+        session = boto3.Session()
+        self.creds = session.get_credentials()
+        self.region_name = session.region_name
+
+        # AWS Credentials
+        if self.creds.access_key is None or self.creds.secret_key is None or self.creds.token is None:
+            raise RuntimeError("No access key/secret key/token available.")
+
+        parsed_uri = urlparse(endpoint)
+        self.host = parsed_uri.netloc
+        self.canonical_uri = parsed_uri.path if parsed_uri.path else '/'
+        self.canonical_querystring = parsed_uri.query
+
+    @staticmethod
+    def _sign(key: bytes, msg: str) -> bytes:
+        return hmac.new(key, msg.encode("utf-8"), hashlib.sha256).digest()
+
+    @staticmethod
+    def _get_date_header() -> Tuple[str, str]:
+        # Create a date for headers and the credential string
+        utcnow = datetime.utcnow()
+        amzdate = utcnow.strftime("%Y%m%dT%H%M%SZ")
+        datestamp = utcnow.strftime("%Y%m%d")
+        return amzdate, datestamp
+
+    @staticmethod
+    def _sanitize_prefix(prefix: str) -> str:
+        if not prefix.startswith("/"):
+            prefix = f"/{prefix}"
+        return prefix
+
+    def _get_signature_key(self, key: str, datestamp: str) -> bytes:
+        k_date = AWSPrometheusSignV4._sign(("AWS4" + key).encode("utf-8"), datestamp)
+        k_region = AWSPrometheusSignV4._sign(k_date, self.region_name)
+        k_service = AWSPrometheusSignV4._sign(k_region, AWSPrometheusSignV4.SERVICE)
+        k_signing = AWSPrometheusSignV4._sign(k_service, "aws4_request")
+        return k_signing
+
+    def _get_canonical_request(self, payload_hash: str, x_amz_date: str) -> Tuple[str, str]:
+        signed_headers = "host;x-amz-content-sha256;x-amz-date;x-amz-security-token"
+        canonical_headers = (
+            f"host:{self.host}\n"
+            f"x-amz-content-sha256:{payload_hash}\n"
+            f"x-amz-date:{x_amz_date}\n"
+            f"x-amz-security-token:{self.creds.token}\n"
+        )
+
+        return (
+            signed_headers,
+            f"{AWSPrometheusSignV4.METHOD}\n"
+            f"{self.canonical_uri}\n"
+            f"{self.canonical_querystring}\n"
+            f"{canonical_headers}\n"
+            f"{signed_headers}\n"
+            f"{payload_hash}",
+        )
+
+    def _get_authorization_header(
+            self,
+            x_amz_date: str,
+            datestamp: str,
+            canonical_request: str,
+            signed_headers: str,
+    ) -> str:
+        """
+        Create Authorization header
+        """
+
+        # Sign string
+        credential_scope = f"{datestamp}/{self.region_name}/{AWSPrometheusSignV4.SERVICE}/aws4_request"
+        string_to_sign = (
+            f"{AWSPrometheusSignV4.ALGORITHM}\n"
+            f"{x_amz_date}\n"
+            f"{credential_scope}\n"
+            f"{hashlib.sha256(canonical_request.encode('utf-8')).hexdigest()}"
+        )
+
+        # Compute signature
+        signing_key = self._get_signature_key(self.creds.secret_key, datestamp)
+        signature = hmac.new(signing_key, string_to_sign.encode("utf-8"), hashlib.sha256).hexdigest()
+
+        # Create authorization header
+        return (
+            f"{AWSPrometheusSignV4.ALGORITHM} Credential={self.creds.access_key}/{credential_scope}, "
+            f"SignedHeaders={signed_headers}, Signature={signature}"
+        )
+
+    def sign_v4(
+            self,
+            payload: bytes,
+    ) -> dict[str, str]:
+        """
+        Create SigV4 header
+        """
+        x_amz_date, datestamp = AWSPrometheusSignV4._get_date_header()
+
+        # payload hash
+        payload_hash = hashlib.sha256(payload).hexdigest()
+        signed_headers, canonical_request = self._get_canonical_request(payload_hash, x_amz_date)
+        authorization_header = self._get_authorization_header(x_amz_date, datestamp, canonical_request, signed_headers)
+
+        return {
+            "X-Amz-Date": x_amz_date,
+            "X-Amz-Security-Token": self.creds.token,
+            "X-Amz-Content-SHA256": payload_hash,
+            "Authorization": authorization_header,
+        }
