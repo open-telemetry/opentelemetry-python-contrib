@@ -39,8 +39,8 @@ Usage
     FlaskInstrumentor().instrument(enable_commenter=True, commenter_options={})
 
 For example, FlaskInstrumentor when used with SQLAlchemyInstrumentor or Psycopg2Instrumentor,
-invoking `cursor.execute("select * from auth_users")` will lead to sql query
-`select * from auth_users` but when SQLCommenter is enabled the query will get appended with
+invoking ``cursor.execute("select * from auth_users")`` will lead to sql query
+``select * from auth_users`` but when SQLCommenter is enabled the query will get appended with
 some configurable tags like:
 
 .. code:: sql
