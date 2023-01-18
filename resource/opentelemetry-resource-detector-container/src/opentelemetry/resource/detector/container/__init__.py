@@ -82,7 +82,7 @@ class ContainerResourceDetector(ResourceDetector):
             logger.warning(
                 "%s Resource Detection failed silently: %s",
                 self.__class__.__name__,
-                exception
+                exception,
             )
             if self.raise_on_error:
                 raise exception
