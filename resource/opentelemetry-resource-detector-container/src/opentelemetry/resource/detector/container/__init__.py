@@ -24,21 +24,21 @@ CONTAINER_ID_LENGTH = 64
 
 
 def _get_container_id_v1():
-        container_id = None
-        try:
-            with open(
-                DEFAULT_CGROUP_V1_PATH, encoding="utf8"
-            ) as container_info_file:
-                for raw_line in container_info_file.readlines():
-                    line = raw_line.strip()
-                    if len(line) > CONTAINER_ID_LENGTH:
-                        container_id = line[-CONTAINER_ID_LENGTH:]
-                        break
-        except FileNotFoundError as exception:
-            logger.warning(
-                f"Failed to get container id. Exception: {exception}"
-            )
-        return container_id
+    container_id = None
+    try:
+        with open(
+            DEFAULT_CGROUP_V1_PATH, encoding="utf8"
+        ) as container_info_file:
+            for raw_line in container_info_file.readlines():
+                line = raw_line.strip()
+                if len(line) > CONTAINER_ID_LENGTH:
+                    container_id = line[-CONTAINER_ID_LENGTH:]
+                    break
+    except FileNotFoundError as exception:
+        logger.warning(
+            f"Failed to get container id. Exception: {exception}"
+        )
+    return container_id
 
 
 def _get_container_id_v2():
@@ -73,9 +73,7 @@ class ContainerResourceDetector(ResourceDetector):
 
     def detect(self) -> "Resource":
         try:
-            container_id = (
-                _get_container_id_v1() or _get_container_id_v2()
-            )
+            container_id = _get_container_id_v1() or _get_container_id_v2()
             resource = Resource.get_empty()
             if container_id:
                 resource = resource.merge(
