@@ -61,7 +61,7 @@ class ContainerResourceDetectorTest(WsgiTestBase):
         )
 
     @patch(
-        "opentelemetry.resource.detector.container.ContainerResourceDetector._get_container_id_v1",
+        "opentelemetry.resource.detector.container._get_container_id_v1",
         return_value=MockContainerResourceAttributes[
             ResourceAttributes.CONTAINER_ID
         ],
@@ -90,7 +90,7 @@ class ContainerResourceDetectorTest(WsgiTestBase):
         )
 
     @patch(
-        "opentelemetry.resource.detector.container.ContainerResourceDetector._get_container_id_v1",
+        "opentelemetry.resource.detector.container._get_container_id_v1",
         return_value=MockContainerResourceAttributes[
             ResourceAttributes.CONTAINER_ID
         ],
@@ -102,11 +102,11 @@ class ContainerResourceDetectorTest(WsgiTestBase):
         )
 
     @patch(
-        "opentelemetry.resource.detector.container.ContainerResourceDetector._get_container_id_v1",
+        "opentelemetry.resource.detector.container._get_container_id_v1",
         return_value=None,
     )
     @patch(
-        "opentelemetry.resource.detector.container.ContainerResourceDetector._get_container_id_v2",
+        "opentelemetry.resource.detector.container._get_container_id_v2",
         return_value=MockContainerResourceAttributes[
             ResourceAttributes.CONTAINER_ID
         ],
