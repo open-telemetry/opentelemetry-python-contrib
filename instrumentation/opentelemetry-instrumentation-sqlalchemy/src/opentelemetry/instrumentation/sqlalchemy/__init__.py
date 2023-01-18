@@ -119,8 +119,6 @@ class SQLAlchemyInstrumentor(BaseInstrumentor):
     See `BaseInstrumentor`
     """
 
-    engines = []
-
     def instrumentation_dependencies(self) -> Collection[str]:
         return _instruments
 
@@ -160,22 +158,17 @@ class SQLAlchemyInstrumentor(BaseInstrumentor):
                 "create_async_engine",
                 _wrap_create_async_engine(tracer_provider, enable_commenter),
             )
-
-        self.engines = []
         if kwargs.get("engine") is not None:
-            self.engines.append(
-                EngineTracer(
-                    _get_tracer(tracer_provider),
-                    kwargs.get("engine"),
-                    kwargs.get("enable_commenter", False),
-                    kwargs.get("commenter_options", {}),
-                )
+            return EngineTracer(
+                _get_tracer(tracer_provider),
+                kwargs.get("engine"),
+                kwargs.get("enable_commenter", False),
+                kwargs.get("commenter_options", {}),
             )
-            return self.engines[0]
         if kwargs.get("engines") is not None and isinstance(
             kwargs.get("engines"), Sequence
         ):
-            self.engines = [
+            return [
                 EngineTracer(
                     _get_tracer(tracer_provider),
                     engine,
@@ -184,7 +177,6 @@ class SQLAlchemyInstrumentor(BaseInstrumentor):
                 )
                 for engine in kwargs.get("engines")
             ]
-            return self.engines
 
         return None
 
@@ -194,5 +186,4 @@ class SQLAlchemyInstrumentor(BaseInstrumentor):
         unwrap(Engine, "connect")
         if parse_version(sqlalchemy.__version__).release >= (1, 4):
             unwrap(sqlalchemy.ext.asyncio, "create_async_engine")
-        for engine in self.engines:
-            engine.remove_event_listeners()
+        EngineTracer.remove_all_event_listeners()

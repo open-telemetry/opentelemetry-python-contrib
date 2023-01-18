@@ -255,6 +255,25 @@ class TestSqlalchemyInstrumentation(TestBase):
         spans = self.memory_exporter.get_finished_spans()
         self.assertEqual(len(spans), 0)
 
+    def test_uninstrument_without_engine(self):
+        SQLAlchemyInstrumentor().instrument(
+            tracer_provider=self.tracer_provider
+        )
+        from sqlalchemy import create_engine
+
+        engine = create_engine("sqlite:///:memory:")
+
+        cnx = engine.connect()
+        cnx.execute("SELECT	1 + 1;").fetchall()
+        spans = self.memory_exporter.get_finished_spans()
+        self.assertEqual(len(spans), 2)
+
+        self.memory_exporter.clear()
+        SQLAlchemyInstrumentor().uninstrument()
+        cnx.execute("SELECT	1 + 1;").fetchall()
+        spans = self.memory_exporter.get_finished_spans()
+        self.assertEqual(len(spans), 0)
+
     def test_no_op_tracer_provider(self):
         engine = create_engine("sqlite:///:memory:")
         SQLAlchemyInstrumentor().instrument(
