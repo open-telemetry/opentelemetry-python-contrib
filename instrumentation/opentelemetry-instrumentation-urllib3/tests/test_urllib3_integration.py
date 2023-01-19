@@ -330,3 +330,12 @@ class TestURLLib3Instrumentor(TestBase):
 
         self.assertIn("request_hook_body", span.attributes)
         self.assertEqual(span.attributes["request_hook_body"], body)
+
+    def test_no_op_tracer_provider(self):
+        URLLib3Instrumentor().uninstrument()
+        tracer_provider = trace.NoOpTracerProvider()
+        URLLib3Instrumentor().instrument(tracer_provider=tracer_provider)
+
+        response = self.perform_request(self.HTTP_URL)
+        self.assertEqual(b"Hello!", response.data)
+        self.assert_span(num_spans=0)
