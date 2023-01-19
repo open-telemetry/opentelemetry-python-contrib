@@ -34,23 +34,38 @@ class TestThreadingInstrumentor(TestBase):
 
         self.tracer = get_tracer(__name__)
 
-    #def tearDown(self):
-        #super().tearDown()
-        #ThreadingInstrumentor().uninstrument()
+    def tearDown(self):
+        super().tearDown()
+        ThreadingInstrumentor().uninstrument()
 
     def test_thread_with_root(self):
-        with self.tracer.start_As_current_span("root"):
-            t1 = threading.Thread.start_func()
-            self.assertEqual(t1.__dict__, "")
+        mock_wrap_start = mock.Mock()
 
-        spans = self.memory_exporter.get_finished_spans()
-        self.assertEqual(len(spans), 3)
+        mock_threading = mock.Mock()
 
-        #pylint:disable = unbalanced-tuple-unpacking
-        render, template, root = spans[:3]
-        self.assertIs(render.parent, root.get_span_context())
-        self.assertIs(template.parent, root.get_span_context())
-        self.assertIsNone(root.parent)
+        wrap_start_result = 'wrap start result'
+
+        mock_wrap_start.return_value = wrap_start_result
+
+        mock_start_func = mock.Mock()
+
+        mock_start_func.__name__ = 'start'
+
+        setattr(mock_threading.Thread, 'start', mock_start_func)
+
+        patch_wrap_start = mock.patch(
+            'opentelemetry.instrumentation.threading.wrap_threading_start',
+            mock_wrap_start)
+
+        patch_threading = mock.patch(
+            'opentelemetry.instrumentation.threading', mock_threading)
+
+        with patch_wrap_start,   \
+                patch_threading:
+                ThreadingInstrumentor()
+
+        self.assertEqual(
+            getattr(mock_threading.Thread, 'start'), wrap_start_result)
 
 
 

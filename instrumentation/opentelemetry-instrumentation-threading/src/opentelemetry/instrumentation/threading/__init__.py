@@ -20,7 +20,7 @@ from typing import Collection
 
 from opentelemetry.instrumentation.instrumentor import BaseInstrumentor
 
-#from opentelemetry.instrumentation.threading.package import _instruments
+from opentelemetry.instrumentation.threading.package import _instruments
 from opentelemetry.instrumentation.threading.version import __version__
 
 from opentelemetry.trace import (
@@ -37,16 +37,24 @@ DEFAULT_THREAD_NAME = "thread"
 
 class ThreadingInstrumentor(BaseInstrumentor):  # pylint: disable=empty-docstring
     
-    # def instrumentation_dependencies(self) -> Collection[str]:
-    #     return _instruments
+    start_func = None
+
+    def instrumentation_dependencies(self) -> Collection[str]:
+        return _instruments
 
     def _instrument(self, **kwargs):
 
         tracer_provider = kwargs.get("tracer_provider", None) or get_tracer_provider()
         tracer = get_tracer(__name__, __version__, tracer_provider)
         start_func = getattr(threading.Thread, "start")
+        self.start_func = start_func
         setattr(
             threading.Thread, start_func.__name__, wrap_threading_start(start_func, tracer)
+        )
+
+    def _uninstrument(self, **kwargs):
+        setattr(
+            threading.Thread, self.start_func.__name__, self.start_func
         )
 
 def wrap_threading_start(start_func, tracer):
