@@ -23,49 +23,61 @@ from opentelemetry.instrumentation.threading import ThreadingInstrumentor
 from opentelemetry.test.test_base import TestBase
 from opentelemetry.trace import get_tracer
 
-#TEST_DIR = os.path.dirname(os.path.realpath(__file__))
-#TEST_DIR = os.path.join(TEST_DIR, "templates")
-
 
 class TestThreadingInstrumentor(TestBase):
-    def setUp(self):
-        super().setUp()
-        ThreadingInstrumentor().instrument()
+    # def setUp(self):
+    #     super().setUp()
+    #     ThreadingInstrumentor().instrument()
 
-        self.tracer = get_tracer(__name__)
+    #     self.tracer = get_tracer(__name__)
 
     def tearDown(self):
         super().tearDown()
         ThreadingInstrumentor().uninstrument()
 
     def test_thread_with_root(self):
+        # Initialized the mock function for
+        # opentelemetry.instrumentation.threading.wrap_threading_start
         mock_wrap_start = mock.Mock()
 
+        # Initialized the mock function for
+        # threading library imported in 
+        # opentelemetry.instrumentation.threading 
         mock_threading = mock.Mock()
 
+        #Sets variable for the return value for 
+        # opentelemetry.instrumentation.threading.wrap_threading_start
         wrap_start_result = 'wrap start result'
 
+        #Sets return value for 
+        # opentelemetry.instrumentation.threading.wrap_threading_start
         mock_wrap_start.return_value = wrap_start_result
 
+        #Initializes the mock function for threading.start
         mock_start_func = mock.Mock()
 
+        #sets the name of the mock(threading.start) function
         mock_start_func.__name__ = 'start'
-
+        
+        #monkeypatches the mock_threading modules start function to the previoulyy created
+        #mock of start function
         setattr(mock_threading.Thread, 'start', mock_start_func)
 
+        #patches the opentelemetry.instrumentation.threading.wrap_threading_start
         patch_wrap_start = mock.patch(
             'opentelemetry.instrumentation.threading.wrap_threading_start',
             mock_wrap_start)
-
+        # patches the opentelemetry.instrumentation.threading.threading
         patch_threading = mock.patch(
-            'opentelemetry.instrumentation.threading', mock_threading)
+        'opentelemetry.instrumentation.threading', mock_threading)
+        
+        #using the above two patches created, it calls the threadingInstrumentor class
+        with patch_wrap_start, patch_threading:
+            ThreadingInstrumentor().instrument()
+        print("********************************")
+        # print(mock_threading.Thread.start())
 
-        with patch_wrap_start,   \
-                patch_threading:
-                ThreadingInstrumentor()
-
+        #checks if mock_wrap_start was called
+        self.assertFalse(mock_wrap_start.called)
         self.assertEqual(
             getattr(mock_threading.Thread, 'start'), wrap_start_result)
-
-
-
