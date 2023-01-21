@@ -11,11 +11,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - grpc instrumentation uses official grpc.*ClientInterceptor-interfaces
   ([#1583](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/1583))
+- Add metric instrumentation for urllib
+  ([#1553](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/1553))
 - `opentelemetry/sdk/extension/aws` Implement [`aws.ecs.*`](https://github.com/open-telemetry/opentelemetry-specification/blob/main/specification/resource/semantic_conventions/cloud_provider/aws/ecs.md) and [`aws.logs.*`](https://opentelemetry.io/docs/reference/specification/resource/semantic_conventions/cloud_provider/aws/logs/) resource attributes in the `AwsEcsResourceDetector` detector when the ECS Metadata v4 is available
   ([#1212](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/1212))
 
 ### Fixed
 
+- `opentelemetry-instrumentation-grpc` Fix code()/details() of _OpentelemetryServicerContext.
+  ([#1578](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/1578))
 - Fix aiopg instrumentation to work with aiopg < 2.0.0
   ([#1473](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/1473))
 - `opentelemetry-instrumentation-aws-lambda` Adds an option to configure `disable_aws_context_propagation` by
