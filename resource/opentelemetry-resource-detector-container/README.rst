@@ -22,12 +22,15 @@ Installation
 Below is the give example for `opentelemetry-resource-detector-kubernetes`
 
 .. code-block:: python
+
     import opentelemetry.trace as trace
     from opentelemetry.sdk.trace import TracerProvider
     from opentelemetry.resource.detector.container import (
         ContainerResourceDetector,
     )
     from opentelemetry.sdk.resources import get_aggregated_resources
+
+
     trace.set_tracer_provider(
         TracerProvider(
             resource=get_aggregated_resources(
@@ -37,6 +40,7 @@ Below is the give example for `opentelemetry-resource-detector-kubernetes`
             ),
         )
     )
+
 References
 ----------
 
