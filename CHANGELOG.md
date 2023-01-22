@@ -9,11 +9,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- Add metric instrumentation for urllib
+  ([#1553](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/1553))
 - `opentelemetry/sdk/extension/aws` Implement [`aws.ecs.*`](https://github.com/open-telemetry/opentelemetry-specification/blob/main/specification/resource/semantic_conventions/cloud_provider/aws/ecs.md) and [`aws.logs.*`](https://opentelemetry.io/docs/reference/specification/resource/semantic_conventions/cloud_provider/aws/logs/) resource attributes in the `AwsEcsResourceDetector` detector when the ECS Metadata v4 is available
   ([#1212](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/1212))
 
 ### Fixed
 
+- `opentelemetry-instrumentation-grpc` Fix code()/details() of _OpentelemetryServicerContext.
+  ([#1578](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/1578))
 - Fix aiopg instrumentation to work with aiopg < 2.0.0
   ([#1473](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/1473))
 - `opentelemetry-instrumentation-aws-lambda` Adds an option to configure `disable_aws_context_propagation` by
@@ -21,6 +25,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   ([#1507](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/1507))
 - Fix pymongo to collect the property DB_MONGODB_COLLECTION
   ([#1555](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/1555))
+- `opentelemetry-instrumentation-asgi` Fix keys() in class ASGIGetter to correctly fetch values from carrier headers.
+  ([#1435](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/1435))
 - mongo db - fix db statement capturing
   ([#1512](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/1512))
 
