@@ -135,11 +135,16 @@ class ElasticsearchInstrumentor(BaseInstrumentor):
         tracer = get_tracer(__name__, __version__, tracer_provider)
         request_hook = kwargs.get("request_hook")
         response_hook = kwargs.get("response_hook")
+        sanitize_query = kwargs.get("sanitize_query", True)
         _wrap(
             elasticsearch,
             "Transport.perform_request",
             _wrap_perform_request(
-                tracer, self._span_name_prefix, request_hook, response_hook
+                tracer,
+                sanitize_query,
+                self._span_name_prefix,
+                request_hook,
+                response_hook,
             ),
         )
 
@@ -154,7 +159,11 @@ _regex_search_url = re.compile(r"/([^/]+)/_search[/]?")
 
 
 def _wrap_perform_request(
-    tracer, span_name_prefix, request_hook=None, response_hook=None
+    tracer,
+    sanitize_query,
+    span_name_prefix,
+    request_hook=None,
+    response_hook=None,
 ):
     # pylint: disable=R0912,R0914
     def wrapper(wrapped, _, args, kwargs):
@@ -214,7 +223,10 @@ def _wrap_perform_request(
                 if method:
                     attributes["elasticsearch.method"] = method
                 if body:
-                    attributes[SpanAttributes.DB_STATEMENT] = str(body)
+                    statement = str(body)
+                    if sanitize_query:
+                        statement = "sanitized"
+                    attributes[SpanAttributes.DB_STATEMENT] = statement
                 if params:
                     attributes["elasticsearch.params"] = str(params)
                 if doc_id:

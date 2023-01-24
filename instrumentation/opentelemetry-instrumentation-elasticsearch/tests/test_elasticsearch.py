@@ -42,7 +42,6 @@ elif major_version == 5:
 else:
     from . import helpers_es2 as helpers  # pylint: disable=no-name-in-module
 
-
 Article = helpers.Article
 
 
@@ -50,10 +49,26 @@ Article = helpers.Article
     "elasticsearch.connection.http_urllib3.Urllib3HttpConnection.perform_request"
 )
 class TestElasticsearchIntegration(TestBase):
+    search_attributes = {
+        SpanAttributes.DB_SYSTEM: "elasticsearch",
+        "elasticsearch.url": "/test-index/_search",
+        "elasticsearch.method": helpers.dsl_search_method,
+        "elasticsearch.target": "test-index",
+        SpanAttributes.DB_STATEMENT: str(
+            {"query": {"bool": {"filter": [{"term": {"author": "testing"}}]}}}
+        ),
+    }
+
+    create_attributes = {
+        SpanAttributes.DB_SYSTEM: "elasticsearch",
+        "elasticsearch.url": "/test-index",
+        "elasticsearch.method": "HEAD",
+    }
+
     def setUp(self):
         super().setUp()
         self.tracer = self.tracer_provider.get_tracer(__name__)
-        ElasticsearchInstrumentor().instrument()
+        ElasticsearchInstrumentor().instrument(sanitize_query=False)
 
     def tearDown(self):
         super().tearDown()
@@ -241,21 +256,34 @@ class TestElasticsearchIntegration(TestBase):
         self.assertIsNotNone(span.end_time)
         self.assertEqual(
             span.attributes,
-            {
-                SpanAttributes.DB_SYSTEM: "elasticsearch",
-                "elasticsearch.url": "/test-index/_search",
-                "elasticsearch.method": helpers.dsl_search_method,
-                "elasticsearch.target": "test-index",
-                SpanAttributes.DB_STATEMENT: str(
-                    {
-                        "query": {
-                            "bool": {
-                                "filter": [{"term": {"author": "testing"}}]
-                            }
-                        }
-                    }
-                ),
-            },
+            self.search_attributes,
+        )
+
+    def test_dsl_search_sanitized(self, request_mock):
+        # Reset instrumentation to use sanitized query (default)
+        ElasticsearchInstrumentor().uninstrument()
+        ElasticsearchInstrumentor().instrument()
+
+        # update expected attributes to match sanitized query
+        sanitized_search_attributes = self.search_attributes.copy()
+        sanitized_search_attributes.update(
+            {SpanAttributes.DB_STATEMENT: "sanitized"}
+        )
+
+        request_mock.return_value = (1, {}, '{"hits": {"hits": []}}')
+        client = Elasticsearch()
+        search = Search(using=client, index="test-index").filter(
+            "term", author="testing"
+        )
+        search.execute()
+        spans = self.get_finished_spans()
+        span = spans[0]
+        self.assertEqual(1, len(spans))
+        self.assertEqual(span.name, "Elasticsearch/<target>/_search")
+        self.assertIsNotNone(span.end_time)
+        self.assertEqual(
+            span.attributes,
+            sanitized_search_attributes,
         )
 
     def test_dsl_create(self, request_mock):
@@ -270,11 +298,7 @@ class TestElasticsearchIntegration(TestBase):
 
         self.assertEqual(
             span1.attributes,
-            {
-                SpanAttributes.DB_SYSTEM: "elasticsearch",
-                "elasticsearch.url": "/test-index",
-                "elasticsearch.method": "HEAD",
-            },
+            self.create_attributes,
         )
 
         attributes = {
@@ -286,6 +310,24 @@ class TestElasticsearchIntegration(TestBase):
         self.assertEqual(
             literal_eval(span2.attributes[SpanAttributes.DB_STATEMENT]),
             helpers.dsl_create_statement,
+        )
+
+    def test_dsl_create_sanitized(self, request_mock):
+        # Reset instrumentation to explicitly use sanitized query
+        ElasticsearchInstrumentor().uninstrument()
+        ElasticsearchInstrumentor().instrument(sanitize_query=True)
+
+        request_mock.return_value = (1, {}, {})
+        client = Elasticsearch()
+        Article.init(using=client)
+
+        spans = self.get_finished_spans()
+        self.assertEqual(2, len(spans))
+        span = spans.by_attr(key="elasticsearch.method", value="HEAD")
+
+        self.assertEqual(
+            span.attributes,
+            self.create_attributes,
         )
 
     def test_dsl_index(self, request_mock):
@@ -323,7 +365,6 @@ class TestElasticsearchIntegration(TestBase):
         request_hook_kwargs_attribute = "request_hook.kwargs"
 
         def request_hook(span, method, url, kwargs):
-
             attributes = {
                 request_hook_method_attribute: method,
                 request_hook_url_attribute: url,
