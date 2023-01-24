@@ -46,6 +46,7 @@ this function signature is:  def response_hook(span: Span, event: CommandSucceed
 failed_hook (Callable) -
 a function with extra user-defined logic to be performed after the query returns with a failed response
 this function signature is:  def failed_hook(span: Span, event: CommandFailedEvent) -> None
+capture_statement (bool) - an optional value to enable capturing the database statement that is being executed
 
 for example:
 
@@ -81,6 +82,9 @@ from pymongo import monitoring
 from opentelemetry import context
 from opentelemetry.instrumentation.instrumentor import BaseInstrumentor
 from opentelemetry.instrumentation.pymongo.package import _instruments
+from opentelemetry.instrumentation.pymongo.utils import (
+    COMMAND_TO_ATTRIBUTE_MAPPING,
+)
 from opentelemetry.instrumentation.pymongo.version import __version__
 from opentelemetry.instrumentation.utils import _SUPPRESS_INSTRUMENTATION_KEY
 from opentelemetry.semconv.trace import DbSystemValues, SpanAttributes
@@ -106,6 +110,7 @@ class CommandTracer(monitoring.CommandListener):
         request_hook: RequestHookT = dummy_callback,
         response_hook: ResponseHookT = dummy_callback,
         failed_hook: FailedHookT = dummy_callback,
+        capture_statement: bool = False,
     ):
         self._tracer = tracer
         self._span_dict = {}
@@ -113,6 +118,7 @@ class CommandTracer(monitoring.CommandListener):
         self.start_hook = request_hook
         self.success_hook = response_hook
         self.failed_hook = failed_hook
+        self.capture_statement = capture_statement
 
     def started(self, event: monitoring.CommandStartedEvent):
         """Method to handle a pymongo CommandStartedEvent"""
@@ -120,16 +126,13 @@ class CommandTracer(monitoring.CommandListener):
             _SUPPRESS_INSTRUMENTATION_KEY
         ):
             return
-        command = event.command.get(event.command_name, "")
-        name = event.database_name
-        name += "." + event.command_name
-        statement = event.command_name
-        if command:
-            statement += " " + str(command)
+        command_name = event.command_name
+        span_name = f"{event.database_name}.{command_name}"
+        statement = self._get_statement_by_command_name(command_name, event)
         collection = event.command.get(event.command_name)
 
         try:
-            span = self._tracer.start_span(name, kind=SpanKind.CLIENT)
+            span = self._tracer.start_span(span_name, kind=SpanKind.CLIENT)
             if span.is_recording():
                 span.set_attribute(
                     SpanAttributes.DB_SYSTEM, DbSystemValues.MONGODB.value
@@ -196,6 +199,14 @@ class CommandTracer(monitoring.CommandListener):
     def _pop_span(self, event):
         return self._span_dict.pop(_get_span_dict_key(event), None)
 
+    def _get_statement_by_command_name(self, command_name, event):
+        statement = command_name
+        command_attribute = COMMAND_TO_ATTRIBUTE_MAPPING.get(command_name)
+        command = event.command.get(command_attribute)
+        if command and self.capture_statement:
+            statement += " " + str(command)
+        return statement
+
 
 def _get_span_dict_key(event):
     if event.connection_id is not None:
@@ -228,6 +239,7 @@ class PymongoInstrumentor(BaseInstrumentor):
         request_hook = kwargs.get("request_hook", dummy_callback)
         response_hook = kwargs.get("response_hook", dummy_callback)
         failed_hook = kwargs.get("failed_hook", dummy_callback)
+        capture_statement = kwargs.get("capture_statement")
         # Create and register a CommandTracer only the first time
         if self._commandtracer_instance is None:
             tracer = get_tracer(__name__, __version__, tracer_provider)
@@ -237,6 +249,7 @@ class PymongoInstrumentor(BaseInstrumentor):
                 request_hook=request_hook,
                 response_hook=response_hook,
                 failed_hook=failed_hook,
+                capture_statement=capture_statement,
             )
             monitoring.register(self._commandtracer_instance)
         # If already created, just enable it
