@@ -47,15 +47,15 @@ API
 
 The `instrument` method accepts the following keyword args:
 
-tracer_provider (TracerProvider) - an optional tracer provider
-request_hook (Callable) - a function with extra user-defined logic to be performed before performing the request
-this function signature is:  def request_hook(span: Span, service_name: str, operation_name: str, api_params: dict) -> None
-response_hook (Callable) - a function with extra user-defined logic to be performed after performing the request
-this function signature is:  def request_hook(span: Span, service_name: str, operation_name: str, result: dict) -> None
+* tracer_provider (TracerProvider) - an optional tracer provider
+* request_hook (Callable) - a function with extra user-defined logic to be performed before performing the request.
+  This function signature is:  def request_hook(span: Span, service_name: str, operation_name: str, api_params: dict) -> None
+* response_hook (Callable) - a function with extra user-defined logic to be performed after performing the request.
+  This function signature is:  def request_hook(span: Span, service_name: str, operation_name: str, result: dict) -> None
 
 for example:
 
-.. code: python
+.. code:: python
 
     from opentelemetry.instrumentation.botocore import BotocoreInstrumentor
     import botocore
@@ -103,7 +103,7 @@ from opentelemetry.instrumentation.utils import (
 )
 from opentelemetry.propagate import inject
 from opentelemetry.semconv.trace import SpanAttributes
-from opentelemetry.trace import get_tracer
+from opentelemetry.trace import Tracer, get_tracer
 from opentelemetry.trace.span import Span
 
 logger = logging.getLogger(__name__)
@@ -161,7 +161,7 @@ class BotocoreInstrumentor(BaseInstrumentor):
         if context_api.get_value(_SUPPRESS_INSTRUMENTATION_KEY):
             return original_func(*args, **kwargs)
 
-        call_context = _determine_call_context(instance, args)
+        call_context = _determine_call_context(instance, args, self._tracer)
         if call_context is None:
             return original_func(*args, **kwargs)
 
@@ -262,10 +262,10 @@ def _apply_response_attributes(span: Span, result):
 
 
 def _determine_call_context(
-    client: BaseClient, args: Tuple[str, Dict[str, Any]]
+    client: BaseClient, args: Tuple[str, Dict[str, Any]], tracer: Tracer
 ) -> Optional[_AwsSdkCallContext]:
     try:
-        call_context = _AwsSdkCallContext(client, args)
+        call_context = _AwsSdkCallContext(client, args, tracer)
 
         logger.debug(
             "AWS SDK invocation: %s %s",
