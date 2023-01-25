@@ -153,6 +153,12 @@ class TestRedis(TestBase):
         connection = redis.connection.Connection()
         redis_client.connection = connection
 
+        RedisInstrumentor().uninstrument()
+        RedisInstrumentor().instrument(
+            tracer_provider=self.tracer_provider,
+            sanitize_query=True,
+        )
+
         with mock.patch.object(redis_client, "connection"):
             redis_client.set("key", "value")
 
@@ -166,12 +172,6 @@ class TestRedis(TestBase):
         redis_client = redis.Redis()
         connection = redis.connection.Connection()
         redis_client.connection = connection
-
-        RedisInstrumentor().uninstrument()
-        RedisInstrumentor().instrument(
-            tracer_provider=self.tracer_provider,
-            sanitize_query=False,
-        )
 
         with mock.patch.object(redis_client, "connection"):
             redis_client.set("key", "value")

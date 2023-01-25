@@ -28,9 +28,7 @@ class TestRedisInstrument(TestBase):
         super().setUp()
         self.redis_client = redis.Redis(port=6379)
         self.redis_client.flushall()
-        RedisInstrumentor().instrument(
-            tracer_provider=self.tracer_provider, sanitize_query=False
-        )
+        RedisInstrumentor().instrument(tracer_provider=self.tracer_provider)
 
     def tearDown(self):
         RedisInstrumentor().uninstrument()
@@ -49,7 +47,9 @@ class TestRedisInstrument(TestBase):
 
     def test_long_command_sanitized(self):
         RedisInstrumentor().uninstrument()
-        RedisInstrumentor().instrument(tracer_provider=self.tracer_provider)
+        RedisInstrumentor().instrument(
+            tracer_provider=self.tracer_provider, sanitize_query=True
+        )
 
         self.redis_client.mget(*range(2000))
 
@@ -84,7 +84,9 @@ class TestRedisInstrument(TestBase):
 
     def test_basics_sanitized(self):
         RedisInstrumentor().uninstrument()
-        RedisInstrumentor().instrument(tracer_provider=self.tracer_provider)
+        RedisInstrumentor().instrument(
+            tracer_provider=self.tracer_provider, sanitize_query=True
+        )
 
         self.assertIsNone(self.redis_client.get("cheese"))
         spans = self.memory_exporter.get_finished_spans()
@@ -109,7 +111,9 @@ class TestRedisInstrument(TestBase):
 
     def test_pipeline_traced_sanitized(self):
         RedisInstrumentor().uninstrument()
-        RedisInstrumentor().instrument(tracer_provider=self.tracer_provider)
+        RedisInstrumentor().instrument(
+            tracer_provider=self.tracer_provider, sanitize_query=True
+        )
 
         with self.redis_client.pipeline(transaction=False) as pipeline:
             pipeline.set("blah", 32)
@@ -146,7 +150,9 @@ class TestRedisInstrument(TestBase):
 
     def test_pipeline_immediate_sanitized(self):
         RedisInstrumentor().uninstrument()
-        RedisInstrumentor().instrument(tracer_provider=self.tracer_provider)
+        RedisInstrumentor().instrument(
+            tracer_provider=self.tracer_provider, sanitize_query=True
+        )
 
         with self.redis_client.pipeline() as pipeline:
             pipeline.set("a", 1)
@@ -207,9 +213,7 @@ class TestRedisClusterInstrument(TestBase):
             host="localhost", port=7000
         )
         self.redis_client.flushall()
-        RedisInstrumentor().instrument(
-            tracer_provider=self.tracer_provider, sanitize_query=False
-        )
+        RedisInstrumentor().instrument(tracer_provider=self.tracer_provider)
 
     def tearDown(self):
         super().tearDown()
@@ -278,9 +282,7 @@ class TestAsyncRedisInstrument(TestBase):
         super().setUp()
         self.redis_client = redis.asyncio.Redis(port=6379)
         async_call(self.redis_client.flushall())
-        RedisInstrumentor().instrument(
-            tracer_provider=self.tracer_provider, sanitize_query=False
-        )
+        RedisInstrumentor().instrument(tracer_provider=self.tracer_provider)
 
     def tearDown(self):
         RedisInstrumentor().uninstrument()
@@ -393,9 +395,7 @@ class TestAsyncRedisClusterInstrument(TestBase):
             host="localhost", port=7000
         )
         async_call(self.redis_client.flushall())
-        RedisInstrumentor().instrument(
-            tracer_provider=self.tracer_provider, sanitize_query=False
-        )
+        RedisInstrumentor().instrument(tracer_provider=self.tracer_provider)
 
     def tearDown(self):
         super().tearDown()
@@ -464,9 +464,7 @@ class TestRedisDBIndexInstrument(TestBase):
         super().setUp()
         self.redis_client = redis.Redis(port=6379, db=10)
         self.redis_client.flushall()
-        RedisInstrumentor().instrument(
-            tracer_provider=self.tracer_provider, sanitize_query=False
-        )
+        RedisInstrumentor().instrument(tracer_provider=self.tracer_provider)
 
     def tearDown(self):
         RedisInstrumentor().uninstrument()
