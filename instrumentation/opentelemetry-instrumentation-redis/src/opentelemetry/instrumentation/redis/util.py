@@ -62,22 +62,22 @@ def _format_command_args(args, sanitize_query):
                 + value_too_long_mark
             )
         return out_str
-    else:
-        value_max_len = 100
-        length = 0
-        out = []
-        for arg in args:
-            cmd = str(arg)
 
-            if len(cmd) > value_max_len:
-                cmd = cmd[:value_max_len] + value_too_long_mark
+    value_max_len = 100
+    length = 0
+    out = []
+    for arg in args:
+        cmd = str(arg)
 
-            if length + len(cmd) > cmd_max_len:
-                prefix = cmd[: cmd_max_len - length]
-                out.append(f"{prefix}{value_too_long_mark}")
-                break
+        if len(cmd) > value_max_len:
+            cmd = cmd[:value_max_len] + value_too_long_mark
 
-            out.append(cmd)
-            length += len(cmd)
+        if length + len(cmd) > cmd_max_len:
+            prefix = cmd[: cmd_max_len - length]
+            out.append(f"{prefix}{value_too_long_mark}")
+            break
 
-        return " ".join(out)
+        out.append(cmd)
+        length += len(cmd)
+
+    return " ".join(out)
