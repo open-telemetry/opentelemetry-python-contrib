@@ -12,7 +12,9 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-
-_instruments = tuple()
-
-_supports_metrics = True
+COMMAND_TO_ATTRIBUTE_MAPPING = {
+    "insert": "documents",
+    "delete": "deletes",
+    "update": "updates",
+    "find": "filter",
+}
