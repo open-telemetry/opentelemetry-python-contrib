@@ -43,7 +43,7 @@ invoking ``cursor.execute("select * from auth_users")`` will lead to sql query
 ``select * from auth_users`` but when SQLCommenter is enabled the query will get appended with
 some configurable tags like:
 
-.. code:: sql
+.. code::
 
     select * from auth_users /*metrics=value*/;"
 
