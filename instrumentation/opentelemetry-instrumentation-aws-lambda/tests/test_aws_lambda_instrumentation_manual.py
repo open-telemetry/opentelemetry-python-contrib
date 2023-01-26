@@ -38,7 +38,7 @@ from opentelemetry.propagators.aws.aws_xray_propagator import (
 from opentelemetry.semconv.resource import ResourceAttributes
 from opentelemetry.semconv.trace import SpanAttributes
 from opentelemetry.test.test_base import TestBase
-from opentelemetry.trace import SpanKind, NoOpTracerProvider
+from opentelemetry.trace import NoOpTracerProvider, SpanKind
 from opentelemetry.trace.propagation.tracecontext import (
     TraceContextTextMapPropagator,
 )
