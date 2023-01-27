@@ -14,9 +14,13 @@
 
 # pylint: disable=empty-docstring,no-value-for-parameter,no-member,no-name-in-module
 
+from concurrent.futures import thread
 import threading # pylint: disable=import-self
 from os import environ
 from typing import Collection
+from opentelemetry import context
+from wrapt import wrap_function_wrapper as _wrap
+
 
 from opentelemetry.instrumentation.instrumentor import BaseInstrumentor
 
@@ -35,6 +39,45 @@ from opentelemetry.trace import (
 ATTRIBUTE_THREAD_NAME = "currentthread.name"
 DEFAULT_THREAD_NAME = "thread"
 
+def _with_tracer_wrapper(func):
+    """Helper for providing tracer for wrapper functions."""
+
+    def _with_tracer(tracer):
+        def wrapper(wrapped, instance, args, kwargs):
+            return func(tracer, wrapped, instance, args, kwargs)
+
+        return wrapper
+
+    return _with_tracer
+
+def _wrap_target(ctx, target_func, tracer):
+    """Helper for providing tracer for wrapper functions."""
+    context.attach(ctx)
+    with tracer.start_as_current_span(
+        "threading.Thread.target",
+        kind=SpanKind.INTERNAL,
+    ) as span:
+        if span.is_recording():
+            span.set_attribute(ATTRIBUTE_THREAD_NAME, target_func.__name__)
+    return target_func
+
+@_with_tracer_wrapper
+def _wrap_thread(tracer, wrapped, instance, args, kwargs):
+    """Wrap `Threading.thread`"""
+
+    target_func = kwargs.get("target")
+    
+    with tracer.start_as_current_span(
+        "threading.Thread",
+        kind=SpanKind.INTERNAL,
+    ) as span:
+        if span.is_recording():
+            ctx = context.get_current()
+            # _wrap(target, "Thread", _wrap_target(tracer))
+            kwargs["target"] = _wrap_target(ctx, target_func, tracer)
+            span.set_attribute(ATTRIBUTE_THREAD_NAME, wrapped.__name__)
+        return wrapped(*args, **kwargs)
+
 class ThreadingInstrumentor(BaseInstrumentor):  # pylint: disable=empty-docstring
     
     start_func = None
@@ -42,35 +85,17 @@ class ThreadingInstrumentor(BaseInstrumentor):  # pylint: disable=empty-docstrin
     def instrumentation_dependencies(self) -> Collection[str]:
         return _instruments
 
-    def _instrument(self, **kwargs):
+
+    def _instrument(self, *args,  **kwargs):
 
         tracer_provider = kwargs.get("tracer_provider", None) or get_tracer_provider()
+
         tracer = get_tracer(__name__, __version__, tracer_provider)
-        start_func = getattr(threading.Thread, "start")
-        self.start_func = start_func
-        setattr(
-            threading.Thread, start_func.__name__, wrap_threading_start(start_func, tracer)
-        )
-
-    def _uninstrument(self, **kwargs):
-        setattr(
-            threading.Thread, self.start_func.__name__, self.start_func
-        )
-
-def wrap_threading_start(start_func, tracer):
-    """Wrap the start function from thread. Put the tracer information in the 
-    threading object.
-    """
- 
-    def call(self):
-        with tracer.start_as_current_span(
-            "thread.start",
-            kind=SpanKind.INTERNAL,
-        ) as span:
-                if span.is_recording():
-                    thread_name = start_func.__name__ or DEFAULT_THREAD_NAME
-                    span.setr_attribute(ATTRIBUTE_THREAD_NAME, thread_name)
-            
-        return start_func(self)
+        _wrap(threading, "Thread", _wrap_thread(tracer))
         
-    return call
+        
+    def _uninstrument(self, **kwargs):
+        
+        setattr(
+            threading.Thread, self.join_func.__name__, self.join_func
+        )
