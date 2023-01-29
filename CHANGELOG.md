@@ -7,6 +7,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## Unreleased
 
+- Support aio-pika v8
+  ([#1605](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/1605))
+
 ### Added
 
 - Add metric instrumentation for urllib
