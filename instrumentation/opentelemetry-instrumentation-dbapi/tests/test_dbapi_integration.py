@@ -219,6 +219,20 @@ class TestDBApiIntegration(TestBase):
         self.assertEqual(span.resource.attributes["db-resource-key"], "value")
         self.assertIs(span.status.status_code, trace_api.StatusCode.ERROR)
 
+    def test_no_op_tracer_provider(self):
+        db_integration = dbapi.DatabaseApiIntegration(
+            self.tracer, "testcomponent",
+            tracer_provider=trace_api.NoOpTracerProvider()
+        )
+
+        mock_connection = db_integration.wrapped_connection(
+            mock_connect, {}, {}
+        )
+        cursor = mock_connection.cursor()
+        cursor.executemany("Test query")
+        spans_list = self.memory_exporter.get_finished_spans()
+        self.assertEqual(len(spans_list), 0)
+
     def test_executemany(self):
         db_integration = dbapi.DatabaseApiIntegration(
             "testname", "testcomponent"
