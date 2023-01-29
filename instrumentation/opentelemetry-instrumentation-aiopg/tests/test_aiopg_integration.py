@@ -224,7 +224,9 @@ class TestAiopgInstrumentor(TestBase):
 
     def test_no_op_tracer_provider(self):
         cnx = async_call(aiopg.connect(database="test"))
-        AiopgInstrumentor().instrument_connection(cnx, tracer_provider=trace_api.NoOpTracerProvider())
+        AiopgInstrumentor().instrument_connection(
+            cnx, tracer_provider=trace_api.NoOpTracerProvider()
+        )
 
         cursor = async_call(cnx.cursor())
         query = "SELECT * FROM test"
