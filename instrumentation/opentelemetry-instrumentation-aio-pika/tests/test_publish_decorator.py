@@ -15,7 +15,8 @@ import asyncio
 from typing import Type
 from unittest import TestCase, mock
 
-from aio_pika import Exchange, RobustExchange
+from aio_pika import Exchange, RobustExchange, __version__
+from packaging import version
 
 from opentelemetry.instrumentation.aio_pika.publish_decorator import (
     PublishDecorator,
@@ -54,7 +55,10 @@ class TestInstrumentedExchange(TestCase):
         asyncio.set_event_loop(self.loop)
 
     def test_get_publish_span(self):
-        exchange = Exchange(CONNECTION, CHANNEL, EXCHANGE_NAME)
+        if version.parse(__version__) >= version.parse("8.0.0"):
+            exchange = Exchange(CHANNEL, EXCHANGE_NAME)
+        else:
+            exchange = Exchange(CONNECTION, CHANNEL, EXCHANGE_NAME)
         tracer = mock.MagicMock()
         PublishDecorator(tracer, exchange)._get_publish_span(
             MESSAGE, ROUTING_KEY

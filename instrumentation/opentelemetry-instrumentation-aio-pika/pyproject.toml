@@ -31,7 +31,7 @@ dependencies = [
 
 [project.optional-dependencies]
 instruments = [
-  "aio_pika ~= 7.2.0",
+  "aio_pika ~= 8.3.0",
 ]
 test = [
   "opentelemetry-instrumentation-aio-pika[instruments]",
