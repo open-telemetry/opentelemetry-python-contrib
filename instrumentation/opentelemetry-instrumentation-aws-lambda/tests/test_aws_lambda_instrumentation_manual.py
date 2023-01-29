@@ -420,6 +420,6 @@ class TestAwsLambdaInstrumentor(TestBase):
         AwsLambdaInstrumentor().instrument(tracer_provider=tracer_provider)
 
         mock_execute_lambda(MOCK_LAMBDA_API_GATEWAY_HTTP_API_EVENT)
-
         spans = self.memory_exporter.get_finished_spans()
+        assert spans is not None
         self.assertEqual(len(spans), 0)
