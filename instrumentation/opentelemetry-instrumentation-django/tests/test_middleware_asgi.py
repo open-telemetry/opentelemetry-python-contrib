@@ -36,6 +36,7 @@ from opentelemetry.sdk.trace import Span
 from opentelemetry.sdk.trace.id_generator import RandomIdGenerator
 from opentelemetry.semconv.trace import SpanAttributes
 from opentelemetry.test.test_base import TestBase
+from opentelemetry import trace as trace_api
 from opentelemetry.trace import (
     SpanKind,
     StatusCode,
@@ -423,6 +424,14 @@ class TestMiddlewareAsgiWithTracerProvider(SimpleTestCase, TestBase):
         self.assertEqual(
             span.resource.attributes["resource-key"], "resource-value"
         )
+
+    async def test_no_op_tracer_provider(self):
+        _django_instrumentor.uninstrument()
+        _django_instrumentor.instrument(tracer_provider=trace_api.NoOpTracerProvider)
+
+        await self.async_client.post("/traced/")
+        spans = self.exporter.get_finished_spans()
+        self.assertEqual(len(spans), 0)
 
 
 @patch.dict(
