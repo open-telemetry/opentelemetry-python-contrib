@@ -484,6 +484,16 @@ class TestWsgiMiddlewareWithTracerProvider(WsgiTestBase):
         response = app(self.environ, self.start_response)
         self.validate_response(response, exporter)
 
+    def test_no_op_tracer_provider(self):
+        app = otel_wsgi.OpenTelemetryMiddleware(
+            simple_wsgi, tracer_provider=trace_api.NoOpTracerProvider
+        )
+
+        response = app(self.environ, self.start_response)
+        next(response)
+        span_list = self.memory_exporter.get_finished_spans()
+        self.assertEqual(len(span_list), 0)
+
 
 class TestWsgiMiddlewareWrappedWithAnotherFramework(WsgiTestBase):
     def test_mark_span_internal_in_presence_of_span_from_other_framework(self):
