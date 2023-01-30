@@ -486,11 +486,16 @@ class TestWsgiMiddlewareWithTracerProvider(WsgiTestBase):
 
     def test_no_op_tracer_provider(self):
         app = otel_wsgi.OpenTelemetryMiddleware(
-            simple_wsgi, tracer_provider=trace_api.NoOpTracerProvider
+            simple_wsgi, tracer_provider=trace_api.NoOpTracerProvider()
         )
 
         response = app(self.environ, self.start_response)
-        next(response)
+        while True:
+            try:
+                value = next(response)
+                self.assertEqual(value, b"*")
+            except StopIteration:
+                break
         span_list = self.memory_exporter.get_finished_spans()
         self.assertEqual(len(span_list), 0)
 
