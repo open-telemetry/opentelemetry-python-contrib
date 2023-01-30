@@ -38,38 +38,43 @@ Usage
 
     FlaskInstrumentor().instrument(enable_commenter=True, commenter_options={})
 
+For example, FlaskInstrumentor when used with SQLAlchemyInstrumentor or Psycopg2Instrumentor,
+invoking ``cursor.execute("select * from auth_users")`` will lead to sql query
+``select * from auth_users`` but when SQLCommenter is enabled the query will get appended with
+some configurable tags like:
 
-For example,
-::
+.. code::
 
-   FlaskInstrumentor when used with SQLAlchemyInstrumentor or Psycopg2Instrumentor, invoking cursor.execute("select * from auth_users")
-   will lead to sql query "select * from auth_users" but when SQLCommenter is enabled
-   the query will get appended with some configurable tags like "select * from auth_users /*metrics=value*/;"
+    select * from auth_users /*metrics=value*/;"
 
-    Inorder for the commenter to append flask related tags to sql queries, the commenter needs to enabled on
-    the respective  SQLAlchemyInstrumentor or Psycopg2Instrumentor framework too.
+Inorder for the commenter to append flask related tags to sql queries, the commenter needs
+to enabled on the respective SQLAlchemyInstrumentor or Psycopg2Instrumentor framework too.
 
 SQLCommenter Configurations
 ***************************
-We can configure the tags to be appended to the sqlquery log by adding configuration inside commenter_options(default:{}) keyword
+We can configure the tags to be appended to the sqlquery log by adding configuration
+inside ``commenter_options={}`` dict.
 
-framework = True(Default) or False
+For example, enabling this flag will add flask and it's version which
+is ``/*flask%%3A2.9.3*/`` to the SQL query as a comment (default is True):
 
-For example,
-::
-Enabling this flag will add flask and it's version which is /*flask%%3A2.9.3*/
+.. code:: python
 
-route = True(Default) or False
+    framework = True
 
-For example,
-::
-Enabling this flag will add route uri /*route='/home'*/
+For example, enabling this flag will add route uri ``/*route='/home'*/``
+to the SQL query as a comment (default is True):
 
-controller = True(Default) or False
+.. code:: python
 
-For example,
-::
-Enabling this flag will add controller name /*controller='home_view'*/
+    route = True
+
+For example, enabling this flag will add controller name ``/*controller='home_view'*/``
+to the SQL query as a comment (default is True):
+
+.. code:: python
+
+    controller = True
 
 Usage
 -----
