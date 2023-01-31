@@ -381,7 +381,7 @@ def _instrument(
                     _meter_provider.force_flush(rem)
                 except Exception:  # pylint: disable=broad-except
                     logger.exception(
-                        f"MeterProvider failed to flush traces"
+                        f"MeterProvider failed to flush metrics"
                     )
         else:
             logger.warning(
