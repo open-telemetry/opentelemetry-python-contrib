@@ -22,6 +22,7 @@ import elasticsearch.exceptions
 from elasticsearch import Elasticsearch
 from elasticsearch_dsl import Search
 
+from opentelemetry import trace as trace_api
 import opentelemetry.instrumentation.elasticsearch
 from opentelemetry import trace
 from opentelemetry.instrumentation.elasticsearch import (
@@ -413,3 +414,18 @@ class TestElasticsearchIntegration(TestBase):
             json.dumps(response_payload),
             spans[0].attributes[response_attribute_name],
         )
+
+    def test_no_op_tracer_provider(self, request_mock):
+        ElasticsearchInstrumentor().uninstrument()
+        ElasticsearchInstrumentor().instrument(tracer_provider=trace_api.NoOpTracerProvider())
+
+        request_mock.return_value = (
+            1,
+            {},
+            '{"found": false, "timed_out": true, "took": 7}',
+        )
+        es = Elasticsearch()
+        es.get(index="test-index", doc_type="_doc", id=1)
+
+        spans_list = self.get_finished_spans()
+        self.assertEqual(len(spans_list), 0)
