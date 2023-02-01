@@ -102,7 +102,6 @@ Emeritus Approvers:
 
 - [Hector Hernandez](https://github.com/hectorhdzg), Microsoft
 - [Yusuke Tsutsumi](https://github.com/toumorokoshi), Google
-- [Owais Lone](https://github.com/owais), Splunk
 - [Nathaniel Ruiz Nowell](https://github.com/NathanielRN), AWS
 - [Ashutosh Goel](https://github.com/ashu658), Cisco
 
@@ -117,6 +116,7 @@ Maintainers ([@open-telemetry/python-maintainers](https://github.com/orgs/open-t
 Emeritus Maintainers:
 
 - [Alex Boten](https://github.com/codeboten), Lightstep
+- [Owais Lone](https://github.com/owais), Splunk
 
 *Find more about the maintainer role in [community repository](https://github.com/open-telemetry/community/blob/main/community-membership.md#maintainer).*
 
