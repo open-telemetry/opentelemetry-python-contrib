@@ -96,6 +96,8 @@ from opentelemetry.instrumentation.utils import unwrap
 from opentelemetry.semconv.trace import SpanAttributes
 from opentelemetry.trace import SpanKind, get_tracer
 
+from .utils import sanitize_body
+
 logger = getLogger(__name__)
 
 
@@ -225,7 +227,7 @@ def _wrap_perform_request(
                 if body:
                     statement = str(body)
                     if sanitize_query:
-                        statement = "sanitized"
+                        statement = sanitize_body(body)
                     attributes[SpanAttributes.DB_STATEMENT] = statement
                 if params:
                     attributes["elasticsearch.params"] = str(params)
