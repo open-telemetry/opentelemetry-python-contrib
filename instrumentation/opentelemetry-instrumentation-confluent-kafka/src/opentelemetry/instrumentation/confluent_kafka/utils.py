@@ -60,7 +60,12 @@ class KafkaContextSetter(textmap.Setter):
 
         if value:
             value = value.encode()
-        carrier.append((key, value))
+
+        if isinstance(carrier, list):
+            carrier.append((key, value))
+
+        if isinstance(carrier, dict):
+            carrier[key] = value
 
 
 _kafka_getter = KafkaContextGetter()
