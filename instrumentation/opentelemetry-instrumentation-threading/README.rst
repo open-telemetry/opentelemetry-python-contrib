@@ -3,7 +3,6 @@ OpenTelemetry Threading Instrumentation
 
 |pypi|
 
-# To-Do : Whats is the image for opentelemetry-instrumentation-threading?
 .. |pypi| image:: https://badge.fury.io/py/opentelemetry-instrumentation-threading.svg
    :target: https://pypi.org/project/opentelemetry-instrumentation-threading/
 
