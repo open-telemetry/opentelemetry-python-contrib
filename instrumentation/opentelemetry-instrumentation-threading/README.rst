@@ -1,5 +1,5 @@
-OpenTelemetry Threading Tracing
-===========================
+OpenTelemetry Threading Instrumentation
+=======================================
 
 |pypi|
 
