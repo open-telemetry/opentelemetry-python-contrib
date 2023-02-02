@@ -50,3 +50,14 @@ class TestThreadingInstrumentor(TestBase):
         self.assertIs(target.parent, thread.get_span_context())
         self.assertIs(thread.parent, root.get_span_context())
         self.assertIsNone(root.parent)
+
+    def test_uninstrumented(self):
+        ThreadingInstrumentor().uninstrument()
+
+        t1 = threading.Thread(target=self.print_square, args=(10))
+        t1.start()
+        t1.join()
+        spans = self.memory_exporter.get_finished_spans()
+        self.assertEqual(len(spans), 0)
+
+        ThreadingInstrumentor().instrument()

@@ -20,7 +20,7 @@ from os import environ
 from typing import Collection
 from opentelemetry import context
 from wrapt import wrap_function_wrapper as _wrap
-
+from opentelemetry.instrumentation.utils import unwrap
 
 from opentelemetry.instrumentation.instrumentor import BaseInstrumentor
 
@@ -38,6 +38,8 @@ from opentelemetry.trace import (
 
 ATTRIBUTE_THREAD_NAME = "currentthread.name"
 DEFAULT_THREAD_NAME = "thread"
+ATTRIBUTE_TARGET_NAME = "currenttarget.name"
+DEFAULT_TARGET_NAME = "None"
 
 def _with_tracer_wrapper(func):
     """Helper for providing tracer for wrapper functions."""
@@ -58,7 +60,7 @@ def _wrap_target(ctx, target_func, tracer):
         kind=SpanKind.INTERNAL,
     ) as span:
         if span.is_recording():
-            span.set_attribute(ATTRIBUTE_THREAD_NAME, target_func.__name__)
+            span.set_attribute(ATTRIBUTE_TARGET_NAME, target_func.__name__)
     return target_func
 
 @_with_tracer_wrapper
@@ -73,7 +75,6 @@ def _wrap_thread(tracer, wrapped, instance, args, kwargs):
     ) as span:
         if span.is_recording():
             ctx = context.get_current()
-            # _wrap(target, "Thread", _wrap_target(tracer))
             kwargs["target"] = _wrap_target(ctx, target_func, tracer)
             span.set_attribute(ATTRIBUTE_THREAD_NAME, wrapped.__name__)
         return wrapped(*args, **kwargs)
@@ -95,7 +96,5 @@ class ThreadingInstrumentor(BaseInstrumentor):  # pylint: disable=empty-docstrin
         
         
     def _uninstrument(self, **kwargs):
+        unwrap(threading, "Thread")
         
-        setattr(
-            threading.Thread, self.join_func.__name__, self.join_func
-        )

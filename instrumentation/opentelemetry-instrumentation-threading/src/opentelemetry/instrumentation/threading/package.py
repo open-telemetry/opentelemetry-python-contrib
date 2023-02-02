@@ -14,4 +14,4 @@
 
 _instruments = ()
 
-_supports_metrics = True
+_supports_metrics = False
