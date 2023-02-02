@@ -255,9 +255,11 @@ from opentelemetry.instrumentation.instrumentor import BaseInstrumentor
 from opentelemetry.metrics import get_meter
 from opentelemetry.semconv.metrics import MetricInstruments
 from opentelemetry.trace import get_tracer
+from opentelemetry.util.http import get_excluded_urls, parse_excluded_urls
 
 DJANGO_2_0 = django_version >= (2, 0)
 
+_excluded_urls_from_env = get_excluded_urls("DJANGO")
 _logger = getLogger(__name__)
 
 
@@ -294,6 +296,7 @@ class DjangoInstrumentor(BaseInstrumentor):
 
         tracer_provider = kwargs.get("tracer_provider")
         meter_provider = kwargs.get("meter_provider")
+        _excluded_urls = kwargs.get("excluded_urls")
         tracer = get_tracer(
             __name__,
             __version__,
@@ -302,6 +305,11 @@ class DjangoInstrumentor(BaseInstrumentor):
         meter = get_meter(__name__, __version__, meter_provider=meter_provider)
         _DjangoMiddleware._tracer = tracer
         _DjangoMiddleware._meter = meter
+        _DjangoMiddleware._excluded_urls = (
+            _excluded_urls_from_env
+            if _excluded_urls is None
+            else parse_excluded_urls(_excluded_urls)
+        )
         _DjangoMiddleware._otel_request_hook = kwargs.pop("request_hook", None)
         _DjangoMiddleware._otel_response_hook = kwargs.pop(
             "response_hook", None
