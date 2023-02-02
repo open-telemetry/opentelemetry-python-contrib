@@ -15,9 +15,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   ([#1212](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/1212))
 - `opentelemetry-instrumentation-aio-pika` Support `aio_pika` 8.x
   ([#1481](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/1481))
+- `opentelemetry-instrumentation-aws-lambda` Flush `MeterProvider` at end of function invocation.
+  ([#1613](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/1613))
+- Fix aiohttp bug with unset `trace_configs`
+  ([#1592](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/1592))
 
 ### Fixed
 
+- Fix SQLAlchemy uninstrumentation
+  ([#1581](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/1581))
 - `opentelemetry-instrumentation-grpc` Fix code()/details() of _OpentelemetryServicerContext.
   ([#1578](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/1578))
 - Fix aiopg instrumentation to work with aiopg < 2.0.0
@@ -29,7 +35,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   ([#1555](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/1555))
 - `opentelemetry-instrumentation-asgi` Fix keys() in class ASGIGetter to correctly fetch values from carrier headers.
   ([#1435](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/1435))
-
+- mongo db - fix db statement capturing
+  ([#1512](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/1512))
 
 ## Version 1.15.0/0.36b0 (2022-12-10)
 
