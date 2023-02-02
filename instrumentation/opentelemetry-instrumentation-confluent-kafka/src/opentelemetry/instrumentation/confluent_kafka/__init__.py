@@ -120,7 +120,6 @@ from .version import __version__
 
 
 class AutoInstrumentedProducer(Producer):
-
     # This method is deliberately implemented in order to allow wrapt to wrap this function
     def produce(
         self, topic, value=None, *args, **kwargs
