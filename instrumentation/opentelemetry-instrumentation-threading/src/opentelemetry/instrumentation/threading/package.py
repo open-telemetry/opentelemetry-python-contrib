@@ -12,7 +12,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-#To-do : what is the actual version of threading?
 _instruments = ()
 
 _supports_metrics = True
