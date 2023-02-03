@@ -217,7 +217,6 @@ class TestOpenTelemetryServerInterceptor(TestBase):
         class TwoSpanServicer(GRPCTestServerServicer):
             # pylint:disable=C0103
             def SimpleMethod(self, request, context):
-
                 # create another span
                 tracer = trace.get_tracer(__name__)
                 with tracer.start_as_current_span("child") as child:
@@ -347,7 +346,6 @@ class TestOpenTelemetryServerInterceptor(TestBase):
         class TwoSpanServicer(GRPCTestServerServicer):
             # pylint:disable=C0103
             def ServerStreamingMethod(self, request, context):
-
                 # create another span
                 tracer = trace.get_tracer(__name__)
                 with tracer.start_as_current_span("child") as child:

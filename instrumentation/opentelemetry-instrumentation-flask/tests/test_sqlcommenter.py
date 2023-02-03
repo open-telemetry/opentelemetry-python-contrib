@@ -36,7 +36,6 @@ class TestSQLCommenter(InstrumentationTest, WsgiTestBase):
             FlaskInstrumentor().uninstrument()
 
     def test_sqlcommenter_enabled_default(self):
-
         self.app = flask.Flask(__name__)
         self.app.route("/sqlcommenter")(self._sqlcommenter_endpoint)
         client = Client(self.app, Response)
