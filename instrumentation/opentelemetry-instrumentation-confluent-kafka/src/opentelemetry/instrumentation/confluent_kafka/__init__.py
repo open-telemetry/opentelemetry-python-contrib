@@ -103,11 +103,11 @@ import confluent_kafka
 import wrapt
 from confluent_kafka import Consumer, Producer
 
-from opentelemetry import context, propagate, trace
+from opentelemetry import propagate, trace
 from opentelemetry.instrumentation.instrumentor import BaseInstrumentor
 from opentelemetry.instrumentation.utils import unwrap
 from opentelemetry.semconv.trace import MessagingOperationValues
-from opentelemetry.trace import Link, SpanKind, Tracer
+from opentelemetry.trace import Tracer
 
 from .package import _instruments
 from .utils import (
@@ -325,39 +325,27 @@ class ConfluentKafkaInstrumentor(BaseInstrumentor):
 
     @staticmethod
     def wrap_poll(func, instance, tracer, args, kwargs):
-        if instance._current_consume_span:
-            context.detach(instance._current_context_token)
-            instance._current_context_token = None
-            instance._current_consume_span.end()
-            instance._current_consume_span = None
-
-        with tracer.start_as_current_span(
-            "recv", end_on_exit=True, kind=trace.SpanKind.CONSUMER
-        ):
-            record = func(*args, **kwargs)
-            if record:
-                links = []
-                ctx = propagate.extract(record.headers(), getter=_kafka_getter)
-                if ctx:
-                    for item in ctx.values():
-                        if hasattr(item, "get_span_context"):
-                            links.append(Link(context=item.get_span_context()))
-
-                instance._current_consume_span = tracer.start_span(
-                    name=f"{record.topic()} process",
-                    links=links,
-                    kind=SpanKind.CONSUMER,
-                )
-
+        record = func(*args, **kwargs)
+        if record:
+            ctx = propagate.extract(record.headers(), getter=_kafka_getter)
+            span_name = _get_span_name("recv", record.topic())
+            with tracer.start_as_current_span(
+                span_name,
+                end_on_exit=True,
+                kind=trace.SpanKind.CONSUMER,
+                context=ctx,
+            ) as current_consume_span:
                 _enrich_span(
-                    instance._current_consume_span,
+                    current_consume_span,
                     record.topic(),
                     record.partition(),
                     record.offset(),
                     operation=MessagingOperationValues.PROCESS,
                 )
-        instance._current_context_token = context.attach(
-            trace.set_span_in_context(instance._current_consume_span)
-        )
 
-        return record
+                propagate.inject(
+                    record.headers(),
+                    setter=_kafka_setter,
+                )
+            return record
+        return None
