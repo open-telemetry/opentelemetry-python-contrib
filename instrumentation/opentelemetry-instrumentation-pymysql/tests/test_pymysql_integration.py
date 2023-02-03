@@ -20,7 +20,9 @@ import opentelemetry.instrumentation.pymysql
 from opentelemetry.instrumentation.pymysql import PyMySQLInstrumentor
 from opentelemetry.sdk import resources
 from opentelemetry.test.test_base import TestBase
-
+from opentelemetry.metrics import get_meter
+from opentelemetry.semconv.metrics import MetricInstruments
+from opentelemetry.sdk.metrics.export import HistogramDataPoint
 
 def mock_connect(*args, **kwargs):
     class MockConnection:
@@ -32,6 +34,9 @@ def mock_connect(*args, **kwargs):
 
 
 class TestPyMysqlIntegration(TestBase):
+    def setUp(self):
+        self.meter = get_meter(__name__)
+        
     def tearDown(self):
         super().tearDown()
         with self.disable_logging():
@@ -123,3 +128,42 @@ class TestPyMysqlIntegration(TestBase):
 
         spans_list = self.memory_exporter.get_finished_spans()
         self.assertEqual(len(spans_list), 1)
+
+    def test_createtime_histogram(self):
+        createtime_histogram = self.meter.create_histogram(
+            name=MetricInstruments.db.client.connections.create_time,
+            description="The time it took to create a new connection",
+            unit="ms",
+        )
+        
+        data = createtime_histogram.checkpoint().popitem()[1]
+        self.assertIsInstance(data, HistogramDataPoint)
+        self.assertIsNotNone(data.value.sum)
+        self.assertIsNotNone(data.value.count)
+        
+    def test_pending_requests_updowncounter(self):
+        pending_requests_updowncounter = self.meter.create_up_down_counter(
+            name=MetricInstruments.db.client.connections.pending_requests,
+            description="The number of pending requests for an open connection, cumulative for the entire pool.",
+            unit="requests",
+        )
+        data = pending_requests_updowncounter.checkpoint().popitem()[1]
+        self.assertIsNotNone(data.value)
+
+    def test_connectionusage_updowncounter(self):
+        connectionusage_updowncounter = self.meter.create_up_down_counter(
+            name=MetricInstruments.db.client.connections.usage,
+            description="The number of connections that are currently in state described by the state attribute",
+            unit="connections",
+        )
+        self.assertIsNotNone(connectionusage_updowncounter)
+        self.connectionusage_updowncounter.add()
+        self.assertEqual(self.connectionusage_updowncounter.count, 1)
+
+        self.connectionusage_updowncounter.add()
+        self.assertEqual(self.connectionusage_updowncounter.count, 2)
+
+        self.connectionusage_updowncounter.subtract()
+        self.assertEqual(self.connectionusage_updowncounter.count, 1)
+
+
