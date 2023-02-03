@@ -91,6 +91,7 @@ urlpatterns = [
 _django_instrumentor = DjangoInstrumentor()
 
 
+# pylint: disable=too-many-public-methods
 class TestMiddleware(WsgiTestBase):
     @classmethod
     def setUpClass(cls):
