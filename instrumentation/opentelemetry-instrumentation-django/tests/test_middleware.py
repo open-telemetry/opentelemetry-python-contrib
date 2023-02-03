@@ -285,6 +285,18 @@ class TestMiddleware(WsgiTestBase):
         span_list = self.memory_exporter.get_finished_spans()
         self.assertEqual(len(span_list), 1)
 
+    def test_exclude_lists_through_instrument(self):
+        _django_instrumentor.uninstrument()
+        _django_instrumentor.instrument(excluded_urls="excluded_explicit")
+        client = Client()
+        client.get("/excluded_explicit")
+        span_list = self.memory_exporter.get_finished_spans()
+        self.assertEqual(len(span_list), 0)
+
+        client.get("/excluded_arg/123")
+        span_list = self.memory_exporter.get_finished_spans()
+        self.assertEqual(len(span_list), 1)
+
     def test_span_name(self):
         # test no query_string
         Client().get("/span_name/1234/")
