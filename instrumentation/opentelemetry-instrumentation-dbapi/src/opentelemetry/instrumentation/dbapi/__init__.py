@@ -41,6 +41,7 @@ import functools
 import logging
 import re
 import typing
+import time
 
 import wrapt
 
@@ -53,9 +54,15 @@ from opentelemetry.instrumentation.utils import (
 )
 from opentelemetry.semconv.trace import SpanAttributes
 from opentelemetry.trace import SpanKind, TracerProvider, get_tracer
+from opentelemetry import metrics
+from opentelemetry.sdk.metrics import MeterProvider
 
 _logger = logging.getLogger(__name__)
 
+meter = MeterProvider().get_meter(__name__)
+start_time = time.time()
+end_time = time.time()
+elapsed_time = end_time - start_time
 
 def trace_integration(
     connect_module: typing.Callable[..., typing.Any],
@@ -275,6 +282,29 @@ class DatabaseApiIntegration:
         self.database = ""
         self.connect_module = connect_module
 
+    def wrapped_cursor_execute(self,wrapped, instance, args, kwargs):
+        with get_tracer(__name__).start_as_current_span(
+            "db.query",
+            #instance:db.client.connections.usage
+            kind=SpanKind.CLIENT,
+            attributes={
+                SpanAttributes.DB_SYSTEM: self.database_system,
+                SpanAttributes.DB_STATEMENT: args[0],
+                SpanAttributes.DB_INSTANCE: self.connection_attributes["database"],
+                SpanAttributes.NET_PEER_NAME: self.connection_attributes["host"],
+            },
+        )as span:
+            result = wrapped(*args, **kwargs)
+            span.set_attribute("db.rowcount", result.rowcount)
+            
+        attributes = {
+            SpanAttributes.DB_SYSTEM: self.database_system,
+            SpanAttributes.DB_STATEMENT: args[0],
+            SpanAttributes.DB_INSTANCE: self.connection_attributes["database"],
+            SpanAttributes.NET_PEER_NAME: self.connection_attributes["host"],
+        }
+        return result,attributes
+
     def wrapped_connection(
         self,
         connect_method: typing.Callable[..., typing.Any],
@@ -318,6 +348,39 @@ class DatabaseApiIntegration:
         port = self.connection_props.get("port")
         if port is not None:
             self.span_attributes[SpanAttributes.NET_PEER_PORT] = port
+
+database_api_integration = DatabaseApiIntegration(
+    database_system="MySQL",
+    connection_attributes={"database": "mydb", "host": "localhost"}
+)          
+
+usetime_histogram = meter.create_histogram(
+    name="db.client.connection.use_time",
+    description="The time between borrowing a connection and returning it to the pool.",
+    unit="ms",
+)
+
+create_time_histogram = meter.create_histogram(
+    name="connections.create_time",
+    description="Time taken to create a connection",
+    unit="ms",
+    #value_recorder=ValueRecorder,
+)
+
+pending_requests_updowncounter = meter.create_up_down_counter(
+    name="db.client.connections.pending_requests",
+    description="The number of pending requests for an open connection, cumulative for the entire pool.",
+    unit="requests",
+    value_type=int,
+)
+
+attributes =  database_api_integration.wrapped_cursor_execute(wrapped=None, instance=None, args=None, kwargs=None)
+
+usetime_histogram.record(elapsed_time,attributes=attributes)
+create_time_histogram.record(elapsed_time,attributes=attributes)
+
+pending_requests_updowncounter.add(1)
+pending_requests_updowncounter.subtract(1)
 
 
 class _TracedConnectionProxy:

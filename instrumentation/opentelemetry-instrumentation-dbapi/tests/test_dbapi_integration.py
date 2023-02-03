@@ -23,6 +23,9 @@ from opentelemetry.sdk import resources
 from opentelemetry.semconv.trace import SpanAttributes
 from opentelemetry.test.test_base import TestBase
 
+from opentelemetry import metrics
+from opentelemetry.sdk.metrics import MeterProvider
+
 
 class TestDBApiIntegration(TestBase):
     def setUp(self):
@@ -352,6 +355,62 @@ class TestDBApiIntegration(TestBase):
             connection4 = dbapi.uninstrument_connection(connection)
         self.assertIs(connection4, connection)
 
+    def test_wrapped_cursor_execute(self):
+        
+        instance = None
+        args = ('SELECT * FROM users',)
+        kwargs = {}
+       
+        mock_cursor = mock()
+        mock_cursor.execute.return_value = None
+        
+        database_api_integration = dbapi.DatabaseApiIntegration(
+            database_system="MySQL",
+            connection_attributes={"database": "mydb", "host": "localhost"}
+        )
+        
+        result, attributes = database_api_integration.wrapped_cursor_execute(mock_cursor, instance, args, kwargs)
+        
+        self.assertIsNotNone(result)
+        self.assertIn('db.system', attributes)
+        self.assertEqual(attributes['db.system'], "MySQL")
+        self.assertIn('db.statement', attributes)
+        self.assertEqual(attributes['db.statement'], "SELECT * FROM users")
+        self.assertIn('db.instance', attributes)
+        self.assertEqual(attributes['db.instance'], "mydb")
+        self.assertIn('net.peer.name', attributes)
+        self.assertEqual(attributes['net.peer.name'], "localhost")
+        # Assert that the mock cursor was called with the expected arguments
+        mock_cursor.execute.assert_called_with(*args, **kwargs)
+
+
+def test_metrics(self):
+        meter = MeterProvider().get_meter(__name__)
+        start_time = time.time()
+        end_time = time.time()
+        elapsed_time = end_time - start_time
+
+        database_api_integration = dbapi.DatabaseApiIntegration(
+            database_system="MySQL",
+            connection_attributes={"database": "mydb", "host": "localhost"}
+        )
+
+        usetime_histogram = meter.create_histogram(
+            name="db.client.connection.use_time",
+            description="The time between borrowing a connection and returning it to the pool.",
+            unit="ms",
+        )
+
+        create_time_histogram = meter.create_histogram(
+            name="db.client.connections.create_time",
+            description="Time taken to create a connection",
+            unit="ms",
+        )
+
+        attributes =  database_api_integration.wrapped_cursor_execute(wrapped=None, instance=None, args=None, kwargs=None)
+
+        usetime_histogram.record(elapsed_time, attributes=attributes)
+        create_time_histogram.record(elapsed_time, attributes=attributes)
 
 # pylint: disable=unused-argument
 def mock_connect(*args, **kwargs):
