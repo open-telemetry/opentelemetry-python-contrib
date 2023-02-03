@@ -34,7 +34,6 @@ from opentelemetry.test.test_base import TestBase
 
 
 class TestURLLib3Instrumentor(TestBase):
-
     HTTP_URL = "http://httpbin.org/status/200"
     HTTPS_URL = "https://httpbin.org/status/200"
 

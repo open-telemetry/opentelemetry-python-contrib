@@ -198,7 +198,7 @@ def get_base_estimators(packages: List[str]) -> Dict[str, Type[BaseEstimator]]:
     for package_name in packages:
         lib = import_module(package_name)
         package_dir = os.path.dirname(lib.__file__)
-        for (_, module_name, _) in iter_modules([package_dir]):
+        for _, module_name, _ in iter_modules([package_dir]):
             # import the module and iterate through its attributes
             try:
                 module = import_module(package_name + "." + module_name)
