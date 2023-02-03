@@ -288,7 +288,6 @@ class DjangoInstrumentor(BaseInstrumentor):
         return _instruments
 
     def _instrument(self, **kwargs):
-
         # FIXME this is probably a pattern that will show up in the rest of the
         # ext. Find a better way of implementing this.
         if environ.get(OTEL_PYTHON_DJANGO_INSTRUMENT) == "False":
