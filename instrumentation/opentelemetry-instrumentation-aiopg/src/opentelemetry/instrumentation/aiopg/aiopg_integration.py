@@ -127,7 +127,6 @@ def get_traced_cursor_proxy(cursor, db_api_integration, *args, **kwargs):
 
     # pylint: disable=abstract-method
     class AsyncCursorTracerProxy(AsyncProxyObject):
-
         # pylint: disable=unused-argument
         def __init__(self, cursor, *args, **kwargs):
             super().__init__(cursor)

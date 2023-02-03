@@ -152,7 +152,9 @@ class CommandTracer(monitoring.CommandListener):
                     )
             try:
                 self.start_hook(span, event)
-            except Exception as hook_exception:  # noqa pylint: disable=broad-except
+            except (
+                Exception  # noqa pylint: disable=broad-except
+            ) as hook_exception:  # noqa pylint: disable=broad-except
                 _LOG.exception(hook_exception)
 
             # Add Span to dictionary
@@ -175,7 +177,9 @@ class CommandTracer(monitoring.CommandListener):
         if span.is_recording():
             try:
                 self.success_hook(span, event)
-            except Exception as hook_exception:  # noqa pylint: disable=broad-except
+            except (
+                Exception  # noqa pylint: disable=broad-except
+            ) as hook_exception:  # noqa pylint: disable=broad-except
                 _LOG.exception(hook_exception)
         span.end()
 
@@ -192,7 +196,9 @@ class CommandTracer(monitoring.CommandListener):
             span.set_status(Status(StatusCode.ERROR, event.failure))
             try:
                 self.failed_hook(span, event)
-            except Exception as hook_exception:  # noqa pylint: disable=broad-except
+            except (
+                Exception  # noqa pylint: disable=broad-except
+            ) as hook_exception:  # noqa pylint: disable=broad-except
                 _LOG.exception(hook_exception)
         span.end()
 

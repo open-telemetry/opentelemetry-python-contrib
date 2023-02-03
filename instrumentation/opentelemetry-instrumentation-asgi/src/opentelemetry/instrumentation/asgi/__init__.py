@@ -334,7 +334,8 @@ def collect_request_attributes(scope):
 
 def collect_custom_request_headers_attributes(scope):
     """returns custom HTTP request headers to be added into SERVER span as span attributes
-    Refer specification https://github.com/open-telemetry/opentelemetry-specification/blob/main/specification/trace/semantic_conventions/http.md#http-request-and-response-headers"""
+    Refer specification https://github.com/open-telemetry/opentelemetry-specification/blob/main/specification/trace/semantic_conventions/http.md#http-request-and-response-headers
+    """
 
     sanitize = SanitizeValue(
         get_custom_headers(
@@ -359,7 +360,8 @@ def collect_custom_request_headers_attributes(scope):
 
 def collect_custom_response_headers_attributes(message):
     """returns custom HTTP response headers to be added into SERVER span as span attributes
-    Refer specification https://github.com/open-telemetry/opentelemetry-specification/blob/main/specification/trace/semantic_conventions/http.md#http-request-and-response-headers"""
+    Refer specification https://github.com/open-telemetry/opentelemetry-specification/blob/main/specification/trace/semantic_conventions/http.md#http-request-and-response-headers
+    """
 
     sanitize = SanitizeValue(
         get_custom_headers(
