@@ -95,7 +95,6 @@ class OTTracePropagator(TextMapPropagator):
             baggage = get_all(context) or {}
 
             for key in getter.keys(carrier):
-
                 if not key.startswith(OT_BAGGAGE_PREFIX):
                     continue
 
@@ -114,7 +113,6 @@ class OTTracePropagator(TextMapPropagator):
         context: Optional[Context] = None,
         setter: Setter[CarrierT] = default_setter,
     ) -> None:
-
         span_context = get_current_span(context).get_span_context()
 
         if span_context.trace_id == INVALID_TRACE_ID:
@@ -142,7 +140,6 @@ class OTTracePropagator(TextMapPropagator):
             return
 
         for header_name, header_value in baggage.items():
-
             if (
                 _valid_header_name.fullmatch(header_name) is None
                 or _valid_header_value.fullmatch(header_value) is None
