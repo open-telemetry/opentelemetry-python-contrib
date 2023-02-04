@@ -81,10 +81,7 @@ from opentelemetry.instrumentation.aws_lambda.package import _instruments
 from opentelemetry.instrumentation.aws_lambda.version import __version__
 from opentelemetry.instrumentation.instrumentor import BaseInstrumentor
 from opentelemetry.instrumentation.utils import unwrap
-from opentelemetry.metrics import (
-    MeterProvider,
-    get_meter_provider,
-)
+from opentelemetry.metrics import MeterProvider, get_meter_provider
 from opentelemetry.propagate import get_global_textmap
 from opentelemetry.propagators.aws.aws_xray_propagator import (
     TRACE_HEADER_KEY,
@@ -282,7 +279,7 @@ def _instrument(
     disable_aws_context_propagation: bool = False,
     meter_provider: MeterProvider = None,
 ):
-    def _instrumented_lambda_handler_call(
+    def _instrumented_lambda_handler_call(  # noqa pylint: disable=too-many-branches
         call_wrapped, instance, args, kwargs
     ):
         orig_handler_name = ".".join(
@@ -366,23 +363,21 @@ def _instrument(
                 # NOTE: `force_flush` before function quit in case of Lambda freeze.
                 _tracer_provider.force_flush(flush_timeout)
             except Exception:  # pylint: disable=broad-except
-                logger.exception(
-                    f"TracerProvider failed to flush traces"
-                )
+                logger.exception("TracerProvider failed to flush traces")
         else:
-            logger.warning("TracerProvider was missing `force_flush` method. This is necessary in case of a Lambda freeze and would exist in the OTel SDK implementation.")
+            logger.warning(
+                "TracerProvider was missing `force_flush` method. This is necessary in case of a Lambda freeze and would exist in the OTel SDK implementation."
+            )
 
         _meter_provider = meter_provider or get_meter_provider()
         if hasattr(_meter_provider, "force_flush"):
-            rem = flush_timeout - (time.time()-now)*1000
+            rem = flush_timeout - (time.time() - now) * 1000
             if rem > 0:
                 try:
                     # NOTE: `force_flush` before function quit in case of Lambda freeze.
                     _meter_provider.force_flush(rem)
                 except Exception:  # pylint: disable=broad-except
-                    logger.exception(
-                        f"MeterProvider failed to flush metrics"
-                    )
+                    logger.exception("MeterProvider failed to flush metrics")
         else:
             logger.warning(
                 "MeterProvider was missing `force_flush` method. This is necessary in case of a Lambda freeze and would exist in the OTel SDK implementation."

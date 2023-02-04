@@ -212,7 +212,6 @@ def _wrap_perform_request(
             op_name,
             kind=SpanKind.CLIENT,
         ) as span:
-
             if callable(request_hook):
                 request_hook(span, method, url, kwargs)
 
