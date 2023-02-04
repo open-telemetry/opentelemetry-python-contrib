@@ -9,6 +9,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- `opentelemetry-instrumentation-redis` Add `sanitize_query` config option to allow query sanitization.  ([#1572](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/1572))
+- `opentelemetry-instrumentation-celery` Record exceptions as events on the span.
+  ([#1573](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/1573))
 - Add metric instrumentation for urllib
   ([#1553](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/1553))
 - `opentelemetry/sdk/extension/aws` Implement [`aws.ecs.*`](https://github.com/open-telemetry/opentelemetry-specification/blob/main/specification/resource/semantic_conventions/cloud_provider/aws/ecs.md) and [`aws.logs.*`](https://opentelemetry.io/docs/reference/specification/resource/semantic_conventions/cloud_provider/aws/logs/) resource attributes in the `AwsEcsResourceDetector` detector when the ECS Metadata v4 is available
@@ -19,6 +22,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   ([#1613](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/1613))
 - Fix aiohttp bug with unset `trace_configs`
   ([#1592](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/1592))
+- Fix aiohttp bug with unset `trace_configs`
+  ([#1592](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/1592))
+- `opentelemetry-instrumentation-django` Allow explicit `excluded_urls` configuration through `instrument()`
+  ([#1618](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/1618))
 
 ### Fixed
 
