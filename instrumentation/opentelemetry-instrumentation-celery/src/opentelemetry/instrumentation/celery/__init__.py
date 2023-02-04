@@ -250,6 +250,7 @@ class CeleryInstrumentor(BaseInstrumentor):
 
         if ex is not None:
             status_kwargs["description"] = str(ex)
+            span.record_exception(ex)
         span.set_status(Status(**status_kwargs))
 
     @staticmethod

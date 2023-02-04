@@ -34,11 +34,9 @@ from opentelemetry.trace.propagation import get_current_span
 
 
 class TestOTTracePropagator(TestCase):
-
     ot_trace_propagator = OTTracePropagator()
 
     def carrier_inject(self, trace_id, span_id, is_remote, trace_flags):
-
         carrier = {}
 
         self.ot_trace_propagator.inject(

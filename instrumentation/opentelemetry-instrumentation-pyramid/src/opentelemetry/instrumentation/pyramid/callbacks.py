@@ -207,7 +207,6 @@ def trace_tween_factory(handler, registry):
                     "PyramidInstrumentor().instrument_config(config) is called"
                 )
             elif enabled:
-
                 if status is not None:
                     otel_wsgi.add_response_attributes(
                         span,

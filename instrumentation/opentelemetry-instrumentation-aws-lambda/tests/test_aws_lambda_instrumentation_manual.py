@@ -302,7 +302,6 @@ class TestAwsLambdaInstrumentor(TestBase):
             test_env_patch.stop()
 
     def test_lambda_no_error_with_invalid_flush_timeout(self):
-
         test_env_patch = mock.patch.dict(
             "os.environ",
             {

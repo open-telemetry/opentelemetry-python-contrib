@@ -425,7 +425,6 @@ class AsyncOpenTelemetryTransport(httpx.AsyncBaseTransport):
 
 
 class _InstrumentedClient(httpx.Client):
-
     _tracer_provider = None
     _request_hook = None
     _response_hook = None
@@ -445,7 +444,6 @@ class _InstrumentedClient(httpx.Client):
 
 
 class _InstrumentedAsyncClient(httpx.AsyncClient):
-
     _tracer_provider = None
     _request_hook = None
     _response_hook = None

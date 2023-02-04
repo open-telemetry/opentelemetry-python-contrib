@@ -291,7 +291,8 @@ def setifnotnone(dic, key, value):
 
 def collect_request_attributes(environ):
     """Collects HTTP request attributes from the PEP3333-conforming
-    WSGI environ and returns a dictionary to be used as span creation attributes."""
+    WSGI environ and returns a dictionary to be used as span creation attributes.
+    """
 
     result = {
         SpanAttributes.HTTP_METHOD: environ.get("REQUEST_METHOD"),
@@ -340,7 +341,8 @@ def collect_request_attributes(environ):
 def collect_custom_request_headers_attributes(environ):
     """Returns custom HTTP request headers which are configured by the user
     from the PEP3333-conforming WSGI environ to be used as span creation attributes as described
-    in the specification https://github.com/open-telemetry/opentelemetry-specification/blob/main/specification/trace/semantic_conventions/http.md#http-request-and-response-headers"""
+    in the specification https://github.com/open-telemetry/opentelemetry-specification/blob/main/specification/trace/semantic_conventions/http.md#http-request-and-response-headers
+    """
 
     sanitize = SanitizeValue(
         get_custom_headers(
@@ -366,7 +368,8 @@ def collect_custom_request_headers_attributes(environ):
 def collect_custom_response_headers_attributes(response_headers):
     """Returns custom HTTP response headers which are configured by the user from the
     PEP3333-conforming WSGI environ as described in the specification
-    https://github.com/open-telemetry/opentelemetry-specification/blob/main/specification/trace/semantic_conventions/http.md#http-request-and-response-headers"""
+    https://github.com/open-telemetry/opentelemetry-specification/blob/main/specification/trace/semantic_conventions/http.md#http-request-and-response-headers
+    """
 
     sanitize = SanitizeValue(
         get_custom_headers(
@@ -414,7 +417,8 @@ def add_response_attributes(
     span, start_response_status, response_headers
 ):  # pylint: disable=unused-argument
     """Adds HTTP response attributes to span using the arguments
-    passed to a PEP3333-conforming start_response callable."""
+    passed to a PEP3333-conforming start_response callable.
+    """
     if not span.is_recording():
         return
     status_code, _ = start_response_status.split(" ", 1)

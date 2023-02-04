@@ -204,7 +204,6 @@ def _wrap_next(
     consume_hook: ConsumeHookT,
 ) -> Callable:
     def _traced_next(func, instance, args, kwargs):
-
         record = func(*args, **kwargs)
 
         if record:

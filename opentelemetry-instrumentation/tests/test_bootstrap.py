@@ -30,7 +30,6 @@ def sample_packages(packages, rate):
 
 
 class TestBootstrap(TestCase):
-
     installed_libraries = {}
     installed_instrumentations = {}
 

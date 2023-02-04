@@ -71,7 +71,9 @@ def main():
         root_path, "opentelemetry-contrib-instrumentations", "pyproject.toml"
     )
 
-    deps = [f"{pkg}=={version}" for pkg, version in dependencies]
+    deps = [
+        f"{pkg.strip()}=={version.strip()}" for pkg, version in dependencies
+    ]
     with open(pyproject_toml_path, "rb") as file:
         pyproject_toml = tomli.load(file)
 

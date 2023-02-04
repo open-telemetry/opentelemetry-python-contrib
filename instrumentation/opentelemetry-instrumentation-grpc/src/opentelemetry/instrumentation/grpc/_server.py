@@ -69,8 +69,8 @@ class _OpenTelemetryServicerContext(grpc.ServicerContext):
     def __init__(self, servicer_context, active_span):
         self._servicer_context = servicer_context
         self._active_span = active_span
-        self.code = grpc.StatusCode.OK
-        self.details = None
+        self._code = grpc.StatusCode.OK
+        self._details = None
         super().__init__()
 
     def __getattr__(self, attr):
@@ -119,8 +119,8 @@ class _OpenTelemetryServicerContext(grpc.ServicerContext):
         return self._servicer_context.trailing_metadata()
 
     def abort(self, code, details):
-        self.code = code
-        self.details = details
+        self._code = code
+        self._details = details
         self._active_span.set_attribute(
             SpanAttributes.RPC_GRPC_STATUS_CODE, code.value[0]
         )
@@ -135,10 +135,25 @@ class _OpenTelemetryServicerContext(grpc.ServicerContext):
     def abort_with_status(self, status):
         return self._servicer_context.abort_with_status(status)
 
+    def code(self):
+        if not hasattr(self._servicer_context, "code"):
+            raise RuntimeError(
+                "code() is not supported with the installed version of grpcio"
+            )
+        return self._servicer_context.code()
+
+    def details(self):
+        if not hasattr(self._servicer_context, "details"):
+            raise RuntimeError(
+                "details() is not supported with the installed version of "
+                "grpcio"
+            )
+        return self._servicer_context.details()
+
     def set_code(self, code):
-        self.code = code
+        self._code = code
         # use details if we already have it, otherwise the status description
-        details = self.details or code.value[1]
+        details = self._details or code.value[1]
         self._active_span.set_attribute(
             SpanAttributes.RPC_GRPC_STATUS_CODE, code.value[0]
         )
@@ -152,12 +167,12 @@ class _OpenTelemetryServicerContext(grpc.ServicerContext):
         return self._servicer_context.set_code(code)
 
     def set_details(self, details):
-        self.details = details
-        if self.code != grpc.StatusCode.OK:
+        self._details = details
+        if self._code != grpc.StatusCode.OK:
             self._active_span.set_status(
                 Status(
                     status_code=StatusCode.ERROR,
-                    description=f"{self.code}:{details}",
+                    description=f"{self._code}:{details}",
                 )
             )
         return self._servicer_context.set_details(details)
@@ -206,7 +221,6 @@ class OpenTelemetryServerInterceptor(grpc.ServerInterceptor):
     def _start_span(
         self, handler_call_details, context, set_status_on_exception=False
     ):
-
         # standard attributes
         attributes = {
             SpanAttributes.RPC_SYSTEM: "grpc",
@@ -268,7 +282,6 @@ class OpenTelemetryServerInterceptor(grpc.ServerInterceptor):
 
         def telemetry_wrapper(behavior, request_streaming, response_streaming):
             def telemetry_interceptor(request_or_iterator, context):
-
                 # handle streaming responses specially
                 if response_streaming:
                     return self._intercept_server_stream(
@@ -312,7 +325,6 @@ class OpenTelemetryServerInterceptor(grpc.ServerInterceptor):
     def _intercept_server_stream(
         self, behavior, handler_call_details, request_or_iterator, context
     ):
-
         with self._set_remote_context(context):
             with self._start_span(
                 handler_call_details, context, set_status_on_exception=False

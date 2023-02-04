@@ -91,6 +91,7 @@ urlpatterns = [
 _django_instrumentor = DjangoInstrumentor()
 
 
+# pylint: disable=too-many-public-methods
 class TestMiddleware(WsgiTestBase):
     @classmethod
     def setUpClass(cls):
@@ -285,6 +286,18 @@ class TestMiddleware(WsgiTestBase):
         span_list = self.memory_exporter.get_finished_spans()
         self.assertEqual(len(span_list), 1)
 
+    def test_exclude_lists_through_instrument(self):
+        _django_instrumentor.uninstrument()
+        _django_instrumentor.instrument(excluded_urls="excluded_explicit")
+        client = Client()
+        client.get("/excluded_explicit")
+        span_list = self.memory_exporter.get_finished_spans()
+        self.assertEqual(len(span_list), 0)
+
+        client.get("/excluded_arg/123")
+        span_list = self.memory_exporter.get_finished_spans()
+        self.assertEqual(len(span_list), 1)
+
     def test_span_name(self):
         # test no query_string
         Client().get("/span_name/1234/")
@@ -413,6 +426,18 @@ class TestMiddleware(WsgiTestBase):
             self.memory_exporter.get_finished_spans()[0],
         )
         self.memory_exporter.clear()
+
+    def test_uninstrument(self):
+        Client().get("/route/2020/template/")
+        spans = self.memory_exporter.get_finished_spans()
+        self.assertEqual(len(spans), 1)
+
+        self.memory_exporter.clear()
+        _django_instrumentor.uninstrument()
+
+        Client().get("/route/2020/template/")
+        spans = self.memory_exporter.get_finished_spans()
+        self.assertEqual(len(spans), 0)
 
     # pylint: disable=too-many-locals
     def test_wsgi_metrics(self):

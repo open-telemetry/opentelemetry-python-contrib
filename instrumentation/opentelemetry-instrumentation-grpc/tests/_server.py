@@ -46,7 +46,6 @@ class TestServer(test_server_pb2_grpc.GRPCTestServerServicer):
 
     def ServerStreamingMethod(self, request, context):
         if request.request_data == "error":
-
             context.abort(
                 code=grpc.StatusCode.INVALID_ARGUMENT,
                 details="server stream error",

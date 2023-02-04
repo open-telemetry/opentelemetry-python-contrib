@@ -260,7 +260,6 @@ class TortoiseORMInstrumentor(BaseInstrumentor):
         return span_attributes
 
     async def _do_execute(self, func, instance, args, kwargs):
-
         exception = None
         name = args[0].split()[0]
 
@@ -288,7 +287,6 @@ class TortoiseORMInstrumentor(BaseInstrumentor):
         return result
 
     async def _from_queryset(self, func, modelcls, args, kwargs):
-
         exception = None
         name = f"pydantic.{func.__name__}"
 

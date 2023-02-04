@@ -127,7 +127,6 @@ def _wrap_cmd(tracer, cmd, wrapped, instance, args, kwargs):
 
 
 def _get_query_string(arg):
-
     """Return the query values given the first argument to a pymemcache command.
 
     If there are multiple query values, they are joined together

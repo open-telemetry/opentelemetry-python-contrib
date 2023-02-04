@@ -56,7 +56,6 @@ def test_regex_invalid(prom_rw):
 
 
 def test_parse_data_point(prom_rw):
-
     attrs = {"Foo": "Bar", "Baz": 42}
     timestamp = 1641946016139533244
     value = 242.42

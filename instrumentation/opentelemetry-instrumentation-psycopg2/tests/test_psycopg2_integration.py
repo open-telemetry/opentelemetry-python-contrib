@@ -24,7 +24,6 @@ from opentelemetry.test.test_base import TestBase
 
 
 class MockCursor:
-
     execute = mock.MagicMock(spec=types.MethodType)
     execute.__name__ = "execute"
 
@@ -47,7 +46,6 @@ class MockCursor:
 
 
 class MockConnection:
-
     commit = mock.MagicMock(spec=types.MethodType)
     commit.__name__ = "commit"
 

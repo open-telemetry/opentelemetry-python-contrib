@@ -186,3 +186,4 @@ class SQLAlchemyInstrumentor(BaseInstrumentor):
         unwrap(Engine, "connect")
         if parse_version(sqlalchemy.__version__).release >= (1, 4):
             unwrap(sqlalchemy.ext.asyncio, "create_async_engine")
+        EngineTracer.remove_all_event_listeners()

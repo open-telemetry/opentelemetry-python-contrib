@@ -119,7 +119,6 @@ class BotoInstrumentor(BaseInstrumentor):
         args,
         kwargs,
     ):
-
         endpoint_name = getattr(instance, "host").split(".")[0]
 
         with self._tracer.start_as_current_span(
@@ -166,7 +165,6 @@ class BotoInstrumentor(BaseInstrumentor):
             return result
 
     def _patched_query_request(self, original_func, instance, args, kwargs):
-
         return self._common_request(
             ("operation_name", "params", "path", "verb"),
             ["operation_name", "params", "path"],

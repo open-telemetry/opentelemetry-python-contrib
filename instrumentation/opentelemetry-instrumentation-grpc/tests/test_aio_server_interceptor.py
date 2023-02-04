@@ -205,7 +205,6 @@ class TestOpenTelemetryAioServerInterceptor(TestBase, IsolatedAsyncioTestCase):
         class TwoSpanServicer(GRPCTestServerServicer):
             # pylint:disable=C0103
             async def SimpleMethod(self, request, context):
-
                 # create another span
                 tracer = trace.get_tracer(__name__)
                 with tracer.start_as_current_span("child") as child:
