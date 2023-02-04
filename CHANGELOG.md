@@ -22,8 +22,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   ([#1613](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/1613))
 - Fix aiohttp bug with unset `trace_configs`
   ([#1592](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/1592))
-- Fix aiohttp bug with unset `trace_configs`
-  ([#1592](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/1592))
 - `opentelemetry-instrumentation-django` Allow explicit `excluded_urls` configuration through `instrument()`
   ([#1618](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/1618))
 
