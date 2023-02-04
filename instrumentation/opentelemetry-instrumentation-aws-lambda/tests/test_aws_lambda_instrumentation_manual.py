@@ -38,7 +38,7 @@ from opentelemetry.propagators.aws.aws_xray_propagator import (
 from opentelemetry.semconv.resource import ResourceAttributes
 from opentelemetry.semconv.trace import SpanAttributes
 from opentelemetry.test.test_base import TestBase
-from opentelemetry.trace import SpanKind
+from opentelemetry.trace import NoOpTracerProvider, SpanKind
 from opentelemetry.trace.propagation.tracecontext import (
     TraceContextTextMapPropagator,
 )
@@ -412,4 +412,13 @@ class TestAwsLambdaInstrumentor(TestBase):
 
         mock_execute_lambda(MOCK_LAMBDA_API_GATEWAY_HTTP_API_EVENT)
         spans = self.memory_exporter.get_finished_spans()
+        self.assertEqual(len(spans), 0)
+
+    def test_no_op_tracer_provider(self):
+        tracer_provider = NoOpTracerProvider()
+        AwsLambdaInstrumentor().instrument(tracer_provider=tracer_provider)
+
+        mock_execute_lambda(MOCK_LAMBDA_API_GATEWAY_HTTP_API_EVENT)
+        spans = self.memory_exporter.get_finished_spans()
+        assert spans is not None
         self.assertEqual(len(spans), 0)
