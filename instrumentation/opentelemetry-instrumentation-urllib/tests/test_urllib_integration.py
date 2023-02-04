@@ -157,7 +157,6 @@ class RequestsIntegrationTestBase(abc.ABC):
 
     @patch("http.client.HTTPResponse.getcode", new=mock_get_code)
     def test_response_code_none(self):
-
         result = self.perform_request(self.URL)
 
         self.assertEqual(result.read(), b"Hello!")
@@ -290,7 +289,6 @@ class RequestsIntegrationTestBase(abc.ABC):
         self.assertIs(span.resource, resource)
 
     def test_requests_exception_with_response(self, *_, **__):
-
         with self.assertRaises(HTTPError):
             self.perform_request("http://httpbin.org/status/500")
 
@@ -348,6 +346,15 @@ class RequestsIntegrationTestBase(abc.ABC):
         self.assertEqual(span.name, "name set from hook")
         self.assertIn("response_hook_attr", span.attributes)
         self.assertEqual(span.attributes["response_hook_attr"], "value")
+
+    def test_no_op_tracer_provider(self):
+        URLLibInstrumentor().uninstrument()
+        tracer_provider = trace.NoOpTracerProvider()
+        URLLibInstrumentor().instrument(tracer_provider=tracer_provider)
+
+        result = self.perform_request(self.URL)
+        self.assertEqual(result.read(), b"Hello!")
+        self.assert_span(num_spans=0)
 
 
 class TestRequestsIntegration(RequestsIntegrationTestBase, TestBase):

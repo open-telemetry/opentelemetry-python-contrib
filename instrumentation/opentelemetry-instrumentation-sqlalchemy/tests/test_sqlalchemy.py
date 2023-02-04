@@ -248,8 +248,48 @@ class TestSqlalchemyInstrumentation(TestBase):
 
         self.memory_exporter.clear()
         SQLAlchemyInstrumentor().uninstrument()
+        cnx.execute("SELECT	1 + 1;").fetchall()
         engine2 = create_engine("sqlite:///:memory:")
         cnx2 = engine2.connect()
         cnx2.execute("SELECT	2 + 2;").fetchall()
+        spans = self.memory_exporter.get_finished_spans()
+        self.assertEqual(len(spans), 0)
+
+        SQLAlchemyInstrumentor().instrument(
+            engine=engine,
+            tracer_provider=self.tracer_provider,
+        )
+        cnx = engine.connect()
+        cnx.execute("SELECT	1 + 1;").fetchall()
+        spans = self.memory_exporter.get_finished_spans()
+        self.assertEqual(len(spans), 2)
+
+    def test_uninstrument_without_engine(self):
+        SQLAlchemyInstrumentor().instrument(
+            tracer_provider=self.tracer_provider
+        )
+        from sqlalchemy import create_engine
+
+        engine = create_engine("sqlite:///:memory:")
+
+        cnx = engine.connect()
+        cnx.execute("SELECT	1 + 1;").fetchall()
+        spans = self.memory_exporter.get_finished_spans()
+        self.assertEqual(len(spans), 2)
+
+        self.memory_exporter.clear()
+        SQLAlchemyInstrumentor().uninstrument()
+        cnx.execute("SELECT	1 + 1;").fetchall()
+        spans = self.memory_exporter.get_finished_spans()
+        self.assertEqual(len(spans), 0)
+
+    def test_no_op_tracer_provider(self):
+        engine = create_engine("sqlite:///:memory:")
+        SQLAlchemyInstrumentor().instrument(
+            engine=engine,
+            tracer_provider=trace.NoOpTracerProvider(),
+        )
+        cnx = engine.connect()
+        cnx.execute("SELECT 1 + 1;").fetchall()
         spans = self.memory_exporter.get_finished_spans()
         self.assertEqual(len(spans), 0)
