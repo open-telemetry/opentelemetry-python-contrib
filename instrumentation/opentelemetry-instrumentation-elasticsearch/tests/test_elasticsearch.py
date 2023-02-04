@@ -323,7 +323,6 @@ class TestElasticsearchIntegration(TestBase):
         request_hook_kwargs_attribute = "request_hook.kwargs"
 
         def request_hook(span, method, url, kwargs):
-
             attributes = {
                 request_hook_method_attribute: method,
                 request_hook_url_attribute: url,
