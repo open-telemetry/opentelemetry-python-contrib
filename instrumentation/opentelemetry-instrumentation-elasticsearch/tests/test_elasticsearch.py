@@ -22,9 +22,9 @@ import elasticsearch.exceptions
 from elasticsearch import Elasticsearch
 from elasticsearch_dsl import Search
 
-from opentelemetry import trace as trace_api
 import opentelemetry.instrumentation.elasticsearch
 from opentelemetry import trace
+from opentelemetry import trace as trace_api
 from opentelemetry.instrumentation.elasticsearch import (
     ElasticsearchInstrumentor,
 )
