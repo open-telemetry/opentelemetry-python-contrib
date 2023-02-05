@@ -437,14 +437,15 @@ class TestAioHttpClientInstrumentor(TestBase):
 
     def test_no_op_tracer_provider(self):
         AioHttpClientInstrumentor().uninstrument()
-        AioHttpClientInstrumentor().instrument(tracer_provider=trace_api.NoOpTracerProvider())
+        AioHttpClientInstrumentor().instrument(
+            tracer_provider=trace_api.NoOpTracerProvider()
+        )
 
         host, port = run_with_test_server(
             self.get_default_request(), self.URL, self.default_handler
         )
         spans_list = self.memory_exporter.get_finished_spans()
         self.assertEqual(len(spans_list), 0)
-
 
     def test_uninstrument(self):
         AioHttpClientInstrumentor().uninstrument()
