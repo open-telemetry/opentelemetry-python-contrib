@@ -187,7 +187,6 @@ class TestBotoInstrumentor(TestBase):
 
     @mock_lambda_deprecated
     def test_unpatch(self):
-
         lamb = boto.awslambda.connect_to_region("us-east-2")
 
         BotoInstrumentor().uninstrument()

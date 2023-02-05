@@ -251,7 +251,6 @@ class TestDBApiIntegration(TestBase):
         )
 
     def test_executemany_comment(self):
-
         connect_module = mock.MagicMock()
         connect_module.__version__ = mock.MagicMock()
         connect_module.__libpq_version__ = 123
@@ -277,7 +276,6 @@ class TestDBApiIntegration(TestBase):
         )
 
     def test_executemany_flask_integration_comment(self):
-
         connect_module = mock.MagicMock()
         connect_module.__version__ = mock.MagicMock()
         connect_module.__libpq_version__ = 123

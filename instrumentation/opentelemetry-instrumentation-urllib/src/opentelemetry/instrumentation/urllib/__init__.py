@@ -151,7 +151,6 @@ def _instrument(
 
     @functools.wraps(opener_open)
     def instrumented_open(opener, fullurl, data=None, timeout=None):
-
         if isinstance(fullurl, str):
             request_ = Request(fullurl, data)
         else:
@@ -211,7 +210,6 @@ def _instrument(
                 context.detach(token)
 
             if result is not None:
-
                 code_ = result.getcode()
                 labels[SpanAttributes.HTTP_STATUS_CODE] = str(code_)
 
@@ -249,7 +247,6 @@ def _uninstrument():
 
 
 def _uninstrument_from(instr_root, restore_as_bound_func=False):
-
     instr_func_name = "open"
     instr_func = getattr(instr_root, instr_func_name)
     if not getattr(

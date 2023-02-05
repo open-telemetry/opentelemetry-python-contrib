@@ -152,7 +152,6 @@ class TestFunctionalPsycopg(TestBase):
         )
 
     def test_commenter_enabled(self):
-
         stmt = "CREATE TABLE IF NOT EXISTS users (id integer, name varchar)"
         with self._tracer.start_as_current_span("rootSpan"):
             self._cursor.execute(stmt)
