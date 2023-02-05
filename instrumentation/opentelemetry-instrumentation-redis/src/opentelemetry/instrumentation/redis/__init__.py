@@ -64,6 +64,8 @@ this function signature is:  def request_hook(span: Span, instance: redis.connec
 response_hook (Callable) - a function with extra user-defined logic to be performed after performing the request
 this function signature is: def response_hook(span: Span, instance: redis.connection.Connection, response) -> None
 
+sanitize_query (Boolean) - default False, enable the Redis query sanitization
+
 for example:
 
 .. code: python
@@ -139,9 +141,11 @@ def _instrument(
     tracer,
     request_hook: _RequestHookT = None,
     response_hook: _ResponseHookT = None,
+    sanitize_query: bool = False,
 ):
     def _traced_execute_command(func, instance, args, kwargs):
-        query = _format_command_args(args)
+        query = _format_command_args(args, sanitize_query)
+
         if len(args) > 0 and args[0]:
             name = args[0]
         else:
@@ -169,7 +173,9 @@ def _instrument(
             )
 
             cmds = [
-                _format_command_args(c.args if hasattr(c, "args") else c[0])
+                _format_command_args(
+                    c.args if hasattr(c, "args") else c[0], sanitize_query
+                )
                 for c in command_stack
             ]
             resource = "\n".join(cmds)
@@ -281,6 +287,7 @@ class RedisInstrumentor(BaseInstrumentor):
             tracer,
             request_hook=kwargs.get("request_hook"),
             response_hook=kwargs.get("response_hook"),
+            sanitize_query=kwargs.get("sanitize_query", False),
         )
 
     def _uninstrument(self, **kwargs):

@@ -456,7 +456,6 @@ def _wrapped_teardown_request(
 
 
 class _InstrumentedFlask(flask.Flask):
-
     _excluded_urls = None
     _tracer_provider = None
     _request_hook = None
