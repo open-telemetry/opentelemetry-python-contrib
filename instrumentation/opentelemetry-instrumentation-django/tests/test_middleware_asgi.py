@@ -427,7 +427,9 @@ class TestMiddlewareAsgiWithTracerProvider(SimpleTestCase, TestBase):
 
     async def test_no_op_tracer_provider(self):
         _django_instrumentor.uninstrument()
-        _django_instrumentor.instrument(tracer_provider=trace_api.NoOpTracerProvider)
+        _django_instrumentor.instrument(
+            tracer_provider=trace_api.NoOpTracerProvider()
+        )
 
         await self.async_client.post("/traced/")
         spans = self.exporter.get_finished_spans()
