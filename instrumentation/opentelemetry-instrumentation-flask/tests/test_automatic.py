@@ -82,7 +82,9 @@ class TestAutomatic(InstrumentationTest, WsgiTestBase):
 
     def test_no_op_tracer_provider(self):
         FlaskInstrumentor().uninstrument()
-        FlaskInstrumentor().instrument(tracer_provider=trace_api.NoOpTracerProvider())
+        FlaskInstrumentor().instrument(
+            tracer_provider=trace_api.NoOpTracerProvider()
+        )
 
         self.app = flask.Flask(__name__)
         self.app.route("/hello/<int:helloid>")(self._hello_endpoint)
