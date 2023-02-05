@@ -280,7 +280,7 @@ def _instrument(
         if context_api.get_value(_SUPPRESS_INSTRUMENTATION_KEY):
             return wrapped(*args, **kwargs)
 
-        client_trace_configs = list(kwargs.get("trace_configs", ()))
+        client_trace_configs = list(kwargs.get("trace_configs") or [])
         client_trace_configs.extend(trace_configs)
 
         trace_config = create_trace_config(
