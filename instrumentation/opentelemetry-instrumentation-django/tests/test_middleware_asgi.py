@@ -22,6 +22,7 @@ from django import VERSION, conf
 from django.http import HttpRequest, HttpResponse
 from django.test import SimpleTestCase
 from django.test.utils import setup_test_environment, teardown_test_environment
+
 from opentelemetry import trace as trace_api
 from opentelemetry.instrumentation.django import (
     DjangoInstrumentor,
