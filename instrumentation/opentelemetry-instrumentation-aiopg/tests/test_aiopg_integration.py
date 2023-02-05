@@ -222,6 +222,19 @@ class TestAiopgInstrumentor(TestBase):
         spans_list = self.memory_exporter.get_finished_spans()
         self.assertEqual(len(spans_list), 1)
 
+    def test_no_op_tracer_provider(self):
+        cnx = async_call(aiopg.connect(database="test"))
+        AiopgInstrumentor().instrument_connection(
+            cnx, tracer_provider=trace_api.NoOpTracerProvider()
+        )
+
+        cursor = async_call(cnx.cursor())
+        query = "SELECT * FROM test"
+        async_call(cursor.execute(query))
+
+        spans_list = self.memory_exporter.get_finished_spans()
+        self.assertEqual(len(spans_list), 0)
+
     def test_custom_tracer_provider_instrument_connection(self):
         resource = resources.Resource.create(
             {"service.name": "db-test-service"}

@@ -255,7 +255,6 @@ class StarletteInstrumentor(BaseInstrumentor):
         applications.Starlette = _InstrumentedStarlette
 
     def _uninstrument(self, **kwargs):
-
         """uninstrumenting all created apps by user"""
         for instance in _InstrumentedStarlette._instrumented_starlette_apps:
             self.uninstrument_app(instance)
