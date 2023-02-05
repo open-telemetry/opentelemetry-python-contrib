@@ -416,7 +416,9 @@ class TestElasticsearchIntegration(TestBase):
 
     def test_no_op_tracer_provider(self, request_mock):
         ElasticsearchInstrumentor().uninstrument()
-        ElasticsearchInstrumentor().instrument(tracer_provider=trace_api.NoOpTracerProvider())
+        ElasticsearchInstrumentor().instrument(
+            tracer_provider=trace_api.NoOpTracerProvider()
+        )
 
         request_mock.return_value = (
             1,
