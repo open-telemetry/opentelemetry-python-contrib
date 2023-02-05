@@ -221,8 +221,9 @@ class TestDBApiIntegration(TestBase):
 
     def test_no_op_tracer_provider(self):
         db_integration = dbapi.DatabaseApiIntegration(
-            self.tracer, "testcomponent",
-            tracer_provider=trace_api.NoOpTracerProvider()
+            self.tracer,
+            "testcomponent",
+            tracer_provider=trace_api.NoOpTracerProvider(),
         )
 
         mock_connection = db_integration.wrapped_connection(
