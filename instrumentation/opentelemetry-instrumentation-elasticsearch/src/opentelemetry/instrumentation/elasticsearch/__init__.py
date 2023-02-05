@@ -44,6 +44,7 @@ environment variable or by passing the prefix as an argument to the instrumentor
 
 The instrument() method accepts the following keyword args:
 tracer_provider (TracerProvider) - an optional tracer provider
+sanitize_query (bool) - an optional query sanitization flag
 request_hook (Callable) - a function with extra user-defined logic to be performed before performing the request
 this function signature is:
 def request_hook(span: Span, method: str, url: str, kwargs)
@@ -137,7 +138,7 @@ class ElasticsearchInstrumentor(BaseInstrumentor):
         tracer = get_tracer(__name__, __version__, tracer_provider)
         request_hook = kwargs.get("request_hook")
         response_hook = kwargs.get("response_hook")
-        sanitize_query = kwargs.get("sanitize_query", True)
+        sanitize_query = kwargs.get("sanitize_query", False)
         _wrap(
             elasticsearch,
             "Transport.perform_request",

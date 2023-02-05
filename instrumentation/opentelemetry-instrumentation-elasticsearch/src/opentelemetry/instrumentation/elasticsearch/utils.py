@@ -24,6 +24,7 @@ sanitized_keys = (
 sanitized_value = "?"
 
 
+# pylint: disable=C0103
 def _flatten_dict(d, parent_key=""):
     items = []
     for k, v in d.items():

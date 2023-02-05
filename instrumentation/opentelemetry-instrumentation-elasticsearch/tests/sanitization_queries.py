@@ -45,7 +45,11 @@ filter_query = {
 }
 
 interval_query_sanitized = {
-    "query": {"intervals": {"my_text": {"all_of": {"ordered": True, "intervals": "?"}}}}
+    "query": {
+        "intervals": {
+            "my_text": {"all_of": {"ordered": True, "intervals": "?"}}
+        }
+    }
 }
 match_query_sanitized = {"query": {"match": {"message": {"query": "?"}}}}
 filter_query_sanitized = {
