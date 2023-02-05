@@ -418,14 +418,15 @@ class TestElasticsearchIntegration(TestBase):
         ElasticsearchInstrumentor().instrument(
             tracer_provider=trace.NoOpTracerProvider()
         )
-
+        response_payload = '{"found": false, "timed_out": true, "took": 7}'
         request_mock.return_value = (
             1,
             {},
-            '{"found": false, "timed_out": true, "took": 7}',
+            response_payload,
         )
         es = Elasticsearch()
-        es.get(index="test-index", doc_type="_doc", id=1)
+        res = es.get(index="test-index", doc_type="_doc", id=1)
+        self.assertEqual(res.get('found'), json.loads(response_payload).get('found'))
 
         spans_list = self.get_finished_spans()
         self.assertEqual(len(spans_list), 0)
