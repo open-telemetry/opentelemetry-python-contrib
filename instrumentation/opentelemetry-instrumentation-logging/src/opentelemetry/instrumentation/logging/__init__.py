@@ -82,7 +82,6 @@ class LoggingInstrumentor(BaseInstrumentor):  # pylint: disable=empty-docstring
         return _instruments
 
     def _instrument(self, **kwargs):
-
         provider = kwargs.get("tracer_provider", None) or get_tracer_provider()
         old_factory = logging.getLogRecordFactory()
         LoggingInstrumentor._old_factory = old_factory

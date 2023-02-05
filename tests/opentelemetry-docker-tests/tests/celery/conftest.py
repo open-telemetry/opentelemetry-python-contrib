@@ -47,6 +47,7 @@ def celery_worker_parameters():
 @pytest.fixture(autouse=True)
 def patch_celery_app(celery_app, celery_worker):
     """Patch task decorator on app fixture to reload worker"""
+
     # See https://github.com/celery/celery/issues/3642
     def wrap_task(fn):
         @wraps(fn)

@@ -148,6 +148,40 @@ class TestRedis(TestBase):
         span = spans[0]
         self.assertEqual(span.attributes.get(custom_attribute_name), "GET")
 
+    def test_query_sanitizer_enabled(self):
+        redis_client = redis.Redis()
+        connection = redis.connection.Connection()
+        redis_client.connection = connection
+
+        RedisInstrumentor().uninstrument()
+        RedisInstrumentor().instrument(
+            tracer_provider=self.tracer_provider,
+            sanitize_query=True,
+        )
+
+        with mock.patch.object(redis_client, "connection"):
+            redis_client.set("key", "value")
+
+        spans = self.memory_exporter.get_finished_spans()
+        self.assertEqual(len(spans), 1)
+
+        span = spans[0]
+        self.assertEqual(span.attributes.get("db.statement"), "SET ? ?")
+
+    def test_query_sanitizer_disabled(self):
+        redis_client = redis.Redis()
+        connection = redis.connection.Connection()
+        redis_client.connection = connection
+
+        with mock.patch.object(redis_client, "connection"):
+            redis_client.set("key", "value")
+
+        spans = self.memory_exporter.get_finished_spans()
+        self.assertEqual(len(spans), 1)
+
+        span = spans[0]
+        self.assertEqual(span.attributes.get("db.statement"), "SET key value")
+
     def test_no_op_tracer_provider(self):
         RedisInstrumentor().uninstrument()
         tracer_provider = trace.NoOpTracerProvider()
