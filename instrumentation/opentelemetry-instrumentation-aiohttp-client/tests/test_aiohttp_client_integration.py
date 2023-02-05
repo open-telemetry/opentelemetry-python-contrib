@@ -441,7 +441,7 @@ class TestAioHttpClientInstrumentor(TestBase):
             tracer_provider=trace_api.NoOpTracerProvider()
         )
 
-        host, port = run_with_test_server(
+        run_with_test_server(
             self.get_default_request(), self.URL, self.default_handler
         )
         spans_list = self.memory_exporter.get_finished_spans()
