@@ -24,7 +24,6 @@ from elasticsearch_dsl import Search
 
 import opentelemetry.instrumentation.elasticsearch
 from opentelemetry import trace
-from opentelemetry import trace as trace_api
 from opentelemetry.instrumentation.elasticsearch import (
     ElasticsearchInstrumentor,
 )
@@ -417,7 +416,7 @@ class TestElasticsearchIntegration(TestBase):
     def test_no_op_tracer_provider(self, request_mock):
         ElasticsearchInstrumentor().uninstrument()
         ElasticsearchInstrumentor().instrument(
-            tracer_provider=trace_api.NoOpTracerProvider()
+            tracer_provider=trace.NoOpTracerProvider()
         )
 
         request_mock.return_value = (
