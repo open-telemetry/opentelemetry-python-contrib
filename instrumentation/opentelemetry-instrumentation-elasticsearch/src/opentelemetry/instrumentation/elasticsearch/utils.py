@@ -52,7 +52,7 @@ def _unflatten_dict(d):
 def sanitize_body(body) -> str:
     flatten_body = _flatten_dict(body)
 
-    for key in flatten_body.keys():
+    for key in flatten_body:
         if key.endswith(sanitized_keys):
             flatten_body[key] = sanitized_value
 
