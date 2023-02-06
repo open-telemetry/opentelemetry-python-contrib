@@ -24,7 +24,7 @@ from opentelemetry.semconv.trace import (
 )
 from opentelemetry.trace import Span, SpanKind, Tracer
 
-_DEFAULT_ATTRIBUTES = {SpanAttributes.MESSAGING_SYSTEM: 'rabbitmq'}
+_DEFAULT_ATTRIBUTES = {SpanAttributes.MESSAGING_SYSTEM: "rabbitmq"}
 
 
 class SpanBuilder:
@@ -49,18 +49,30 @@ class SpanBuilder:
         self._attributes[SpanAttributes.MESSAGING_DESTINATION] = destination
 
     def set_channel(self, channel: AbstractChannel):
-        url = channel.connection.connection.url
-        self._attributes.update({
-            SpanAttributes.NET_PEER_NAME: url.host,
-            SpanAttributes.NET_PEER_PORT: url.port
-        })
+        connection = channel.connection
+        if getattr(connection, "connection", None):
+            # aio_rmq 7
+            url = connection.connection.url
+        else:
+            # aio_rmq 8
+            url = connection.url
+        self._attributes.update(
+            {
+                SpanAttributes.NET_PEER_NAME: url.host,
+                SpanAttributes.NET_PEER_PORT: url.port,
+            }
+        )
 
     def set_message(self, message: AbstractMessage):
         properties = message.properties
         if properties.message_id:
-            self._attributes[SpanAttributes.MESSAGING_MESSAGE_ID] = properties.message_id
+            self._attributes[
+                SpanAttributes.MESSAGING_MESSAGE_ID
+            ] = properties.message_id
         if properties.correlation_id:
-            self._attributes[SpanAttributes.MESSAGING_CONVERSATION_ID] = properties.correlation_id
+            self._attributes[
+                SpanAttributes.MESSAGING_CONVERSATION_ID
+            ] = properties.correlation_id
 
     def build(self) -> Optional[Span]:
         if not is_instrumentation_enabled():
@@ -69,9 +81,11 @@ class SpanBuilder:
             self._attributes[SpanAttributes.MESSAGING_OPERATION] = self._operation.value
         else:
             self._attributes[SpanAttributes.MESSAGING_TEMP_DESTINATION] = True
-        span = self._tracer.start_span(self._generate_span_name(), kind=self._kind, attributes=self._attributes)
+        span = self._tracer.start_span(
+            self._generate_span_name(), kind=self._kind, attributes=self._attributes
+        )
         return span
 
     def _generate_span_name(self) -> str:
-        operation_value = self._operation.value if self._operation else 'send'
-        return f'{self._destination} {operation_value}'
+        operation_value = self._operation.value if self._operation else "send"
+        return f"{self._destination} {operation_value}"

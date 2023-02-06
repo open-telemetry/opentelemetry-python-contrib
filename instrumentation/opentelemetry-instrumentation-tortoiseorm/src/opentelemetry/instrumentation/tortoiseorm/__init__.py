@@ -291,14 +291,19 @@ class TortoiseORMInstrumentor(BaseInstrumentor):
         name = f"pydantic.{func.__name__}"
 
         with self._tracer.start_as_current_span(
-            name, kind=SpanKind.INTERNAL
+            name,
+            kind=SpanKind.INTERNAL,
         ) as span:
             if span.is_recording():
                 span_attributes = {}
 
                 model_config = getattr(modelcls, "Config", None)
                 if model_config:
-                    model_title = getattr(modelcls.Config, "title")
+                    model_title = getattr(
+                        modelcls.Config,
+                        "title",
+                        modelcls.__name__,
+                    )
                     if model_title:
                         span_attributes["pydantic.model"] = model_title
 
