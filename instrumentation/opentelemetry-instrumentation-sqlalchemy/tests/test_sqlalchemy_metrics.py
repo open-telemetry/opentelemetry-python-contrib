@@ -12,18 +12,19 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+from typing import Optional, Sequence
+
 import sqlalchemy
 from sqlalchemy.pool import QueuePool
 
 from opentelemetry.instrumentation.sqlalchemy import SQLAlchemyInstrumentor
-from opentelemetry.test.test_base import TestBase
-from typing import Optional, Sequence
 from opentelemetry.sdk.metrics._internal.point import Metric
 from opentelemetry.sdk.metrics.export import (
+    DataPointT,
     HistogramDataPoint,
     NumberDataPoint,
-    DataPointT,
 )
+from opentelemetry.test.test_base import TestBase
 
 
 class TestSqlalchemyMetricsInstrumentation(TestBase):
@@ -73,6 +74,7 @@ class TestSqlalchemyMetricsInstrumentation(TestBase):
                 expected_data_point, metric.data.data_points, est_value_delta
             )
 
+    # pylint: disable=unidiomatic-typecheck
     @staticmethod
     def is_data_points_equal(
         expected_data_point: DataPointT,
@@ -111,9 +113,7 @@ class TestSqlalchemyMetricsInstrumentation(TestBase):
 
         self.assertTrue(
             is_data_point_exist,
-            msg="data point {} does not exist".format(
-                expected_data_point.to_json()
-            ),
+            msg=f"Data point {expected_data_point} does not exist",
         )
 
     @staticmethod
@@ -125,7 +125,7 @@ class TestSqlalchemyMetricsInstrumentation(TestBase):
             time_unix_nano=0,
         )
 
-    def assert_metrics_used_idle_as_expected(self, pool_name, idle, used):
+    def assert_pool_idle_used_expected(self, pool_name, idle, used):
         metrics = self.get_sorted_metrics()
         self.assertEqual(len(metrics), 1)
         self.assert_metric_expected(
@@ -144,7 +144,7 @@ class TestSqlalchemyMetricsInstrumentation(TestBase):
 
     def test_metrics_one_connection(self):
         pool_name = "pool_test_name"
-        self.engine = sqlalchemy.create_engine(
+        engine = sqlalchemy.create_engine(
             "sqlite:///:memory:",
             pool_size=5,
             poolclass=QueuePool,
@@ -154,19 +154,19 @@ class TestSqlalchemyMetricsInstrumentation(TestBase):
         metrics = self.get_sorted_metrics()
         self.assertEqual(len(metrics), 0)
 
-        with self.engine.connect():
-            self.assert_metrics_used_idle_as_expected(
+        with engine.connect():
+            self.assert_pool_idle_used_expected(
                 pool_name=pool_name, idle=0, used=1
             )
 
         # After the connection is closed
-        self.assert_metrics_used_idle_as_expected(
+        self.assert_pool_idle_used_expected(
             pool_name=pool_name, idle=1, used=0
         )
 
     def test_metrics_without_pool_name(self):
         pool_name = ""
-        self.engine = sqlalchemy.create_engine(
+        engine = sqlalchemy.create_engine(
             "sqlite:///:memory:",
             pool_size=5,
             poolclass=QueuePool,
@@ -175,19 +175,19 @@ class TestSqlalchemyMetricsInstrumentation(TestBase):
         metrics = self.get_sorted_metrics()
         self.assertEqual(len(metrics), 0)
 
-        with self.engine.connect():
-            self.assert_metrics_used_idle_as_expected(
+        with engine.connect():
+            self.assert_pool_idle_used_expected(
                 pool_name=pool_name, idle=0, used=1
             )
 
         # After the connection is closed
-        self.assert_metrics_used_idle_as_expected(
+        self.assert_pool_idle_used_expected(
             pool_name=pool_name, idle=1, used=0
         )
 
     def test_metrics_two_connections(self):
         pool_name = "pool_test_name"
-        self.engine = sqlalchemy.create_engine(
+        engine = sqlalchemy.create_engine(
             "sqlite:///:memory:",
             pool_size=5,
             poolclass=QueuePool,
@@ -197,23 +197,19 @@ class TestSqlalchemyMetricsInstrumentation(TestBase):
         metrics = self.get_sorted_metrics()
         self.assertEqual(len(metrics), 0)
 
-        with self.engine.connect():
-            with self.engine.connect():
-                self.assert_metrics_used_idle_as_expected(
-                    pool_name, idle=0, used=2
-                )
+        with engine.connect():
+            with engine.connect():
+                self.assert_pool_idle_used_expected(pool_name, idle=0, used=2)
 
             # After the first connection is closed
-            self.assert_metrics_used_idle_as_expected(
-                pool_name, idle=1, used=1
-            )
+            self.assert_pool_idle_used_expected(pool_name, idle=1, used=1)
 
         # After the two connections are closed
-        self.assert_metrics_used_idle_as_expected(pool_name, idle=2, used=0)
+        self.assert_pool_idle_used_expected(pool_name, idle=2, used=0)
 
     def test_metrics_connections(self):
         pool_name = "pool_test_name"
-        self.engine = sqlalchemy.create_engine(
+        engine = sqlalchemy.create_engine(
             "sqlite:///:memory:",
             pool_size=5,
             poolclass=QueuePool,
@@ -223,36 +219,36 @@ class TestSqlalchemyMetricsInstrumentation(TestBase):
         metrics = self.get_sorted_metrics()
         self.assertEqual(len(metrics), 0)
 
-        with self.engine.connect():
-            with self.engine.connect():
-                self.assert_metrics_used_idle_as_expected(
+        with engine.connect():
+            with engine.connect():
+                self.assert_pool_idle_used_expected(
                     pool_name=pool_name, idle=0, used=2
                 )
 
             # After the first connection is closed
-            self.assert_metrics_used_idle_as_expected(
+            self.assert_pool_idle_used_expected(
                 pool_name=pool_name, idle=1, used=1
             )
 
             # Resume from idle to used
-            with self.engine.connect():
-                self.assert_metrics_used_idle_as_expected(
+            with engine.connect():
+                self.assert_pool_idle_used_expected(
                     pool_name=pool_name, idle=0, used=2
                 )
 
         # After the two connections are closed
-        self.assert_metrics_used_idle_as_expected(
+        self.assert_pool_idle_used_expected(
             pool_name=pool_name, idle=2, used=0
         )
 
     def test_metric_uninstrument(self):
         SQLAlchemyInstrumentor().uninstrument()
-        self.engine = sqlalchemy.create_engine(
+        engine = sqlalchemy.create_engine(
             "sqlite:///:memory:",
             poolclass=QueuePool,
         )
 
-        self.engine.connect()
+        engine.connect()
 
         metrics = self.get_sorted_metrics()
         self.assertEqual(len(metrics), 0)

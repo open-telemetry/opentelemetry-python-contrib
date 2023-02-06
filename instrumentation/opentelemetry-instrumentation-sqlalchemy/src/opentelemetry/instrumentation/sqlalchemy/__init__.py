@@ -102,10 +102,6 @@ from packaging.version import parse as parse_version
 from sqlalchemy.engine.base import Engine
 from wrapt import wrap_function_wrapper as _w
 
-from opentelemetry.metrics import Histogram, get_meter
-from opentelemetry.trace import get_tracer
-from opentelemetry.semconv.metrics import MetricInstruments
-
 from opentelemetry.instrumentation.instrumentor import BaseInstrumentor
 from opentelemetry.instrumentation.sqlalchemy.engine import (
     EngineTracer,
@@ -113,9 +109,11 @@ from opentelemetry.instrumentation.sqlalchemy.engine import (
     _wrap_create_async_engine,
     _wrap_create_engine,
 )
-from opentelemetry.instrumentation.sqlalchemy.version import __version__
 from opentelemetry.instrumentation.sqlalchemy.package import _instruments
+from opentelemetry.instrumentation.sqlalchemy.version import __version__
 from opentelemetry.instrumentation.utils import unwrap
+from opentelemetry.metrics import get_meter
+from opentelemetry.trace import get_tracer
 
 
 class SQLAlchemyInstrumentor(BaseInstrumentor):
