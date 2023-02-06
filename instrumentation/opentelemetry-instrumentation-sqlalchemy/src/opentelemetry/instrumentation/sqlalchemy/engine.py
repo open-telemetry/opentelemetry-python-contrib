@@ -70,8 +70,7 @@ def _wrap_create_engine(tracer, connections_usage, enable_commenter=False):
     return _wrap_create_engine_internal
 
 
-def _wrap_connect(tracer, connections_usage):
-
+def _wrap_connect(tracer):
     # pylint: disable=unused-argument
     def _wrap_connect_internal(func, module, args, kwargs):
         with tracer.start_as_current_span(

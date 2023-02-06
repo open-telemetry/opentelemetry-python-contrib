@@ -8,7 +8,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## Unreleased
 
 ### Added
-
+- Add metrics instrumentation for sqlalchemy
+  ([#1645](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/1645))
 - `opentelemetry-instrumentation-redis` Add `sanitize_query` config option to allow query sanitization.  ([#1572](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/1572))
 - `opentelemetry-instrumentation-celery` Record exceptions as events on the span.
   ([#1573](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/1573))

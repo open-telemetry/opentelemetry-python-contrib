@@ -15,3 +15,5 @@
 _instrumenting_module_name = "opentelemetry.instrumentation.sqlalchemy"
 
 _instruments = ("sqlalchemy",)
+
+_supports_metrics = True

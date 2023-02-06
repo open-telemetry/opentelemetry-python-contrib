@@ -146,7 +146,7 @@ class SQLAlchemyInstrumentor(BaseInstrumentor):
         meter = get_meter(__name__, __version__, meter_provider)
 
         connections_usage = meter.create_up_down_counter(
-            name=MetricInstruments.DB_CLIENT_CONNECTIONS_USAGE,
+            name="db.client.connections.usage",
             unit="connections",
             description="The number of connections that are currently in state described by the state attribute.",
         )
@@ -166,7 +166,7 @@ class SQLAlchemyInstrumentor(BaseInstrumentor):
         _w(
             "sqlalchemy.engine.base",
             "Engine.connect",
-            _wrap_connect(tracer, connections_usage),
+            _wrap_connect(tracer),
         )
         if parse_version(sqlalchemy.__version__).release >= (1, 4):
             _w(

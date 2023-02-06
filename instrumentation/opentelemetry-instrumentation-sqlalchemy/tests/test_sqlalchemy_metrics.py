@@ -12,7 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from sqlalchemy import create_engine
+import sqlalchemy
 from sqlalchemy.pool import QueuePool
 
 from opentelemetry.instrumentation.sqlalchemy import SQLAlchemyInstrumentor
@@ -27,6 +27,12 @@ from opentelemetry.sdk.metrics.export import (
 
 
 class TestSqlalchemyMetricsInstrumentation(TestBase):
+    def setUp(self):
+        super().setUp()
+        SQLAlchemyInstrumentor().instrument(
+            tracer_provider=self.tracer_provider,
+        )
+
     def tearDown(self):
         super().tearDown()
         SQLAlchemyInstrumentor().uninstrument()
@@ -138,17 +144,13 @@ class TestSqlalchemyMetricsInstrumentation(TestBase):
 
     def test_metrics_one_connection(self):
         pool_name = "pool_test_name"
-        self.engine = create_engine(
+        self.engine = sqlalchemy.create_engine(
             "sqlite:///:memory:",
             pool_size=5,
             poolclass=QueuePool,
             pool_logging_name=pool_name,
         )
 
-        SQLAlchemyInstrumentor().instrument(
-            engine=self.engine,
-            tracer_provider=self.tracer_provider,
-        )
         metrics = self.get_sorted_metrics()
         self.assertEqual(len(metrics), 0)
 
@@ -164,16 +166,12 @@ class TestSqlalchemyMetricsInstrumentation(TestBase):
 
     def test_metrics_without_pool_name(self):
         pool_name = ""
-        self.engine = create_engine(
+        self.engine = sqlalchemy.create_engine(
             "sqlite:///:memory:",
             pool_size=5,
             poolclass=QueuePool,
         )
 
-        SQLAlchemyInstrumentor().instrument(
-            engine=self.engine,
-            tracer_provider=self.tracer_provider,
-        )
         metrics = self.get_sorted_metrics()
         self.assertEqual(len(metrics), 0)
 
@@ -189,17 +187,13 @@ class TestSqlalchemyMetricsInstrumentation(TestBase):
 
     def test_metrics_two_connections(self):
         pool_name = "pool_test_name"
-        self.engine = create_engine(
+        self.engine = sqlalchemy.create_engine(
             "sqlite:///:memory:",
             pool_size=5,
             poolclass=QueuePool,
             pool_logging_name=pool_name,
         )
 
-        SQLAlchemyInstrumentor().instrument(
-            engine=self.engine,
-            tracer_provider=self.tracer_provider,
-        )
         metrics = self.get_sorted_metrics()
         self.assertEqual(len(metrics), 0)
 
@@ -219,17 +213,13 @@ class TestSqlalchemyMetricsInstrumentation(TestBase):
 
     def test_metrics_connections(self):
         pool_name = "pool_test_name"
-        self.engine = create_engine(
+        self.engine = sqlalchemy.create_engine(
             "sqlite:///:memory:",
             pool_size=5,
             poolclass=QueuePool,
             pool_logging_name=pool_name,
         )
 
-        SQLAlchemyInstrumentor().instrument(
-            engine=self.engine,
-            tracer_provider=self.tracer_provider,
-        )
         metrics = self.get_sorted_metrics()
         self.assertEqual(len(metrics), 0)
 
@@ -254,3 +244,15 @@ class TestSqlalchemyMetricsInstrumentation(TestBase):
         self.assert_metrics_used_idle_as_expected(
             pool_name=pool_name, idle=2, used=0
         )
+
+    def test_metric_uninstrument(self):
+        SQLAlchemyInstrumentor().uninstrument()
+        self.engine = sqlalchemy.create_engine(
+            "sqlite:///:memory:",
+            poolclass=QueuePool,
+        )
+
+        self.engine.connect()
+
+        metrics = self.get_sorted_metrics()
+        self.assertEqual(len(metrics), 0)
