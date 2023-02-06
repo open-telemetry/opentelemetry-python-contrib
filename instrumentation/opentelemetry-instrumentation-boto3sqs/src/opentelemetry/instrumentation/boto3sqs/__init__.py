@@ -199,11 +199,15 @@ class Boto3SQSInstrumentor(BaseInstrumentor):
         links = []
         ctx = propagate.extract(message_attributes, getter=boto3sqs_getter)
         parent_span_ctx = trace.get_current_span(ctx).get_span_context()
+        applied_ctx = None
         if parent_span_ctx.is_valid:
-            links.append(Link(context=parent_span_ctx))
+            if self.continue_on_parent_trace:
+                applied_ctx = ctx
+            else:
+                links.append(Link(context=parent_span_ctx))
 
         span = self._tracer.start_span(
-            name=f"{queue_name} process", links=links, kind=SpanKind.CONSUMER
+            name=f"{queue_name} process", links=links, kind=SpanKind.CONSUMER, context=applied_ctx
         )
         with trace.use_span(span):
             message_id = message.get("MessageId")
@@ -425,6 +429,8 @@ class Boto3SQSInstrumentor(BaseInstrumentor):
             __name__, __version__, self._tracer_provider
         )
         self._wrap_client_creation()
+
+        self.continue_on_parent_trace = bool(kwargs.get('continue_on_parent_trace', False))
 
         for client_cls in botocore.client.BaseClient.__subclasses__():
             self._decorate_sqs(client_cls)

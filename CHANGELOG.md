@@ -9,7 +9,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
-- `opentelemetry-instrumentation-redis` Add `sanitize_query` config option to allow query sanitization.  ([#1572](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/1572))
+- `opentelemetry-instrumentation-boto3sqs` Added support for contuing the spans under the parent context instead of adding the parent context as a link
+  ([#1538](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/1538))
+- `opentelemetry-instrumentation-redis` Add `sanitize_query` config option to allow query sanitization.
+  ([#1572](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/1572))
 - `opentelemetry-instrumentation-celery` Record exceptions as events on the span.
   ([#1573](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/1573))
 - Add metric instrumentation for urllib
