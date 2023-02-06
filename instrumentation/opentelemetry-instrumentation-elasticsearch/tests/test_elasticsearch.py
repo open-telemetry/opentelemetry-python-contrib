@@ -33,7 +33,7 @@ from opentelemetry.semconv.trace import SpanAttributes
 from opentelemetry.test.test_base import TestBase
 from opentelemetry.trace import StatusCode
 
-from . import sanitization_queries as queries
+from . import sanitization_queries  # pylint: disable=no-name-in-module
 
 major_version = elasticsearch.VERSION[0]
 
@@ -323,7 +323,6 @@ class TestElasticsearchIntegration(TestBase):
         # Reset instrumentation to explicitly use sanitized query
         ElasticsearchInstrumentor().uninstrument()
         ElasticsearchInstrumentor().instrument(sanitize_query=True)
-
         request_mock.return_value = (1, {}, {})
         client = Elasticsearch()
         Article.init(using=client)
@@ -466,14 +465,14 @@ class TestElasticsearchIntegration(TestBase):
 
     def test_body_sanitization(self, _):
         self.assertEqual(
-            sanitize_body(queries.interval_query),
-            str(queries.interval_query_sanitized),
+            sanitize_body(sanitization_queries.interval_query),
+            str(sanitization_queries.interval_query_sanitized),
         )
         self.assertEqual(
-            sanitize_body(queries.match_query),
-            str(queries.match_query_sanitized),
+            sanitize_body(sanitization_queries.match_query),
+            str(sanitization_queries.match_query_sanitized),
         )
         self.assertEqual(
-            sanitize_body(queries.filter_query),
-            str(queries.filter_query_sanitized),
+            sanitize_body(sanitization_queries.filter_query),
+            str(sanitization_queries.filter_query_sanitized),
         )
