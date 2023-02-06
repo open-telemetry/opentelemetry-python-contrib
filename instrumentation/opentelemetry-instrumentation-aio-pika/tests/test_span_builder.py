@@ -21,6 +21,6 @@ class TestBuilder(TestCase):
     def test_build(self):
         builder = SpanBuilder(get_tracer(__name__))
         builder.set_as_consumer()
-        builder.set_destination('destination')
+        builder.set_destination("destination")
         span = builder.build()
         self.assertTrue(isinstance(span, Span))

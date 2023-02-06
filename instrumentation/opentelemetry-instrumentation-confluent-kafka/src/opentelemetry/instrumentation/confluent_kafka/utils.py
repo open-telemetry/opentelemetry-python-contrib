@@ -73,7 +73,6 @@ def _enrich_span(
     offset: Optional[int] = None,
     operation: Optional[MessagingOperationValues] = None,
 ):
-
     if not span.is_recording():
         return
 
