@@ -426,7 +426,9 @@ class TestElasticsearchIntegration(TestBase):
         )
         es = Elasticsearch()
         res = es.get(index="test-index", doc_type="_doc", id=1)
-        self.assertEqual(res.get('found'), json.loads(response_payload).get('found'))
+        self.assertEqual(
+            res.get("found"), json.loads(response_payload).get("found")
+        )
 
         spans_list = self.get_finished_spans()
         self.assertEqual(len(spans_list), 0)
