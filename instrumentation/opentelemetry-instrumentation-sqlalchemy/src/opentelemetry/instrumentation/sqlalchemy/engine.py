@@ -113,64 +113,44 @@ class EngineTracer:
         self._register_event_listener(engine, "checkin", self._pool_checkin)
         self._register_event_listener(engine, "checkout", self._pool_checkout)
 
-    def _pool_connect(self, _dbapi_connection, _connection_record):
+    def _get_pool_name(self):
+        return self.engine.pool.logging_name or ""
+
+    def _add_idle_to_connection_usage(self, value):
         self.connections_usage.add(
-            1,
+            value,
             attributes={
                 "pool.name": self._get_pool_name(),
                 "state": "idle",
             },
         )
 
-    def _pool_close(self, _dbapi_connection, _connection_record):
+    def _add_used_to_connection_usage(self, value):
         self.connections_usage.add(
-            -1,
-            attributes={
-                "pool.name": self._get_pool_name(),
-                "state": "idle",
-            },
-        )
-
-    # Called when a connection returns to the pool.
-    def _pool_checkin(self, _dbapi_connection, _connection_record):
-        self.connections_usage.add(
-            -1,
+            value,
             attributes={
                 "pool.name": self._get_pool_name(),
                 "state": "used",
             },
         )
 
-        self.connections_usage.add(
-            1,
-            attributes={
-                "pool.name": self._get_pool_name(),
-                "state": "idle",
-            },
-        )
+    def _pool_connect(self, _dbapi_connection, _connection_record):
+        self._add_idle_to_connection_usage(1)
+
+    def _pool_close(self, _dbapi_connection, _connection_record):
+        self._add_idle_to_connection_usage(-1)
+
+    # Called when a connection returns to the pool.
+    def _pool_checkin(self, _dbapi_connection, _connection_record):
+        self._add_used_to_connection_usage(-1)
+        self._add_idle_to_connection_usage(1)
 
     # Called when a connection is retrieved from the Pool.
     def _pool_checkout(
         self, _dbapi_connection, _connection_record, _connection_proxy
     ):
-        self.connections_usage.add(
-            -1,
-            attributes={
-                "pool.name": self._get_pool_name(),
-                "state": "idle",
-            },
-        )
-
-        self.connections_usage.add(
-            1,
-            attributes={
-                "pool.name": self._get_pool_name(),
-                "state": "used",
-            },
-        )
-
-    def _get_pool_name(self):
-        return self.engine.pool.logging_name
+        self._add_idle_to_connection_usage(-1)
+        self._add_used_to_connection_usage(1)
 
     @classmethod
     def _register_event_listener(cls, target, identifier, func, *args, **kw):
