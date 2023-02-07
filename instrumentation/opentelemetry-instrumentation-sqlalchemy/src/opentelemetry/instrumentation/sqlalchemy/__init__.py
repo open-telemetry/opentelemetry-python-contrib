@@ -113,6 +113,7 @@ from opentelemetry.instrumentation.sqlalchemy.package import _instruments
 from opentelemetry.instrumentation.sqlalchemy.version import __version__
 from opentelemetry.instrumentation.utils import unwrap
 from opentelemetry.metrics import get_meter
+from opentelemetry.semconv.metrics import MetricInstruments
 from opentelemetry.trace import get_tracer
 
 
@@ -144,7 +145,7 @@ class SQLAlchemyInstrumentor(BaseInstrumentor):
         meter = get_meter(__name__, __version__, meter_provider)
 
         connections_usage = meter.create_up_down_counter(
-            name="db.client.connections.usage",
+            name=MetricInstruments.DB_CLIENT_CONNECTIONS_USAGE,
             unit="connections",
             description="The number of connections that are currently in state described by the state attribute.",
         )
