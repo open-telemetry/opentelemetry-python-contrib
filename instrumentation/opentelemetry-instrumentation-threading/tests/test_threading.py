@@ -35,18 +35,24 @@ class TestThreadingInstrumentor(TestBase):
         super().tearDown()
         # ThreadingInstrumentor().uninstrument()
     def print_square(self, num):
-        print("Square: {}" .format(num * num))
+        with self.tracer.start_as_current_span("target"):
+            print("Square: {}" .format(num * num))
 
     def test_thread_with_root(self):
+        t1 = threading.Thread(target=self.print_square, args=(10))
+
         with self.tracer.start_as_current_span("root"):
-            t1 = threading.Thread(target=self.print_square, args=(10))
             t1.start()
             t1.join()
 
         spans = self.memory_exporter.get_finished_spans()
-        self.assertEqual(len(spans), 3)
+        print(spans[0].__dict__)
+        print(spans[1].__dict__)
+        print(spans[2].__dict__)
+        self.assertEqual(len(spans), 2)
 
         target, thread, root = spans[:3]
+        
         self.assertIs(target.parent, thread.get_span_context())
         self.assertIs(thread.parent, root.get_span_context())
         self.assertIsNone(root.parent)
