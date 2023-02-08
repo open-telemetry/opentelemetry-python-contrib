@@ -43,6 +43,7 @@ tornado>=5.1.1
 tortoise-orm>=0.17.0
 ddtrace>=0.34.0
 httpx>=0.18.0
+confluent-kafka~=1.9.2
 
 # indirect dependency pins
 markupsafe==2.0.1
