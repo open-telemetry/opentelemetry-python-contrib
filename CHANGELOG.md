@@ -29,6 +29,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- Fix TortoiseORM instrumentation `AttributeError: type object 'Config' has no attribute 'title'`
+  ([#1575](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/1575))
 - Fix SQLAlchemy uninstrumentation
   ([#1581](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/1581))
 - `opentelemetry-instrumentation-grpc` Fix code()/details() of _OpentelemetryServicerContext.
