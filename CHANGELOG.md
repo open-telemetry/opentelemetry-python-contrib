@@ -26,7 +26,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   ([#1618](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/1618))
 
 ### Fixed
-
+- Fix Flask instrumentation to only close the span if it was created by the same thread. `ValueError: generator already executing` ([#1654](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/1654))
 - Fix TortoiseORM instrumentation `AttributeError: type object 'Config' has no attribute 'title'`
   ([#1575](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/1575))
 - Fix SQLAlchemy uninstrumentation
