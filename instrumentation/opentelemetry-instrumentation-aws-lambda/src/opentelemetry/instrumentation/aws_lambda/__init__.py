@@ -71,7 +71,7 @@ import logging
 import os
 import time
 from importlib import import_module
-from typing import Any, Callable, Collection
+from typing import Any, Callable, Collection, Optional, Sequence
 from urllib.parse import urlencode
 
 from wrapt import wrap_function_wrapper
@@ -90,9 +90,11 @@ from opentelemetry.propagators.aws.aws_xray_propagator import (
 from opentelemetry.semconv.resource import ResourceAttributes
 from opentelemetry.semconv.trace import SpanAttributes
 from opentelemetry.trace import (
+    Link,
     Span,
     SpanKind,
     TracerProvider,
+    get_current_span,
     get_tracer,
     get_tracer_provider,
 )
@@ -149,7 +151,7 @@ def _determine_parent_context(
     """Determine the parent context for the current Lambda invocation.
 
     See more:
-    https://github.com/open-telemetry/opentelemetry-specification/blob/main/specification/trace/semantic_conventions/instrumentation/aws-lambda.md#determining-the-parent-of-a-span
+    https://github.com/open-telemetry/opentelemetry-specification/blob/main/specification/trace/semantic_conventions/instrumentation/aws-lambda.md
 
     Args:
         lambda_event: user-defined, so it could be anything, but this
@@ -166,28 +168,45 @@ def _determine_parent_context(
     """
     parent_context = None
 
-    if not disable_aws_context_propagation:
-        xray_env_var = os.environ.get(_X_AMZN_TRACE_ID)
-
-        if xray_env_var:
-            parent_context = AwsXRayPropagator().extract(
-                {TRACE_HEADER_KEY: xray_env_var}
-            )
-
-    if (
-        parent_context
-        and get_current_span(parent_context)
-        .get_span_context()
-        .trace_flags.sampled
-    ):
-        return parent_context
-
     if event_context_extractor:
         parent_context = event_context_extractor(lambda_event)
     else:
         parent_context = _default_event_context_extractor(lambda_event)
 
     return parent_context
+
+
+def _determine_links(
+    disable_aws_context_propagation: bool = False,
+) -> Optional[Sequence[Link]]:
+    """Determine if a Link should be added to the Span based on the
+    environment variable `_X_AMZN_TRACE_ID`.
+
+
+    See more:
+    https://github.com/open-telemetry/opentelemetry-specification/blob/main/specification/trace/semantic_conventions/instrumentation/aws-lambda.md
+
+    Args:
+        disable_aws_context_propagation: By default, this instrumentation
+            will try to read the context from the `_X_AMZN_TRACE_ID` environment
+            variable set by Lambda, set this to `True` to disable this behavior.
+    Returns:
+        A Link or None
+    """
+    env_context = None
+    links = None
+
+    if not disable_aws_context_propagation:
+        xray_env_var = os.environ.get(_X_AMZN_TRACE_ID)
+
+        if xray_env_var:
+            env_context = AwsXRayPropagator().extract(
+                {TRACE_HEADER_KEY: xray_env_var}
+            )
+
+            links = [Link(get_current_span(env_context).get_span_context())]
+
+    return links
 
 
 def _set_api_gateway_v1_proxy_attributes(
@@ -294,6 +313,8 @@ def _instrument(
             disable_aws_context_propagation,
         )
 
+        links = _determine_links(disable_aws_context_propagation)
+
         span_kind = None
         try:
             if lambda_event["Records"][0]["eventSource"] in {
@@ -319,6 +340,7 @@ def _instrument(
             name=orig_handler_name,
             context=parent_context,
             kind=span_kind,
+            links=links,
         ) as span:
             if span.is_recording():
                 lambda_context = args[1]
