@@ -230,8 +230,8 @@ def uninstrument_connection(connection):
     Returns:
         An uninstrumented connection.
     """
-    if isinstance(connection, _TracedConnectionProxy):
-        return connection._connection
+    if isinstance(connection, wrapt.ObjectProxy):
+        return connection.__wrapped__
 
     _logger.warning("Connection is not instrumented")
     return connection
@@ -320,22 +320,14 @@ class DatabaseApiIntegration:
             self.span_attributes[SpanAttributes.NET_PEER_PORT] = port
 
 
-class _TracedConnectionProxy:
-    pass
-
-
 def get_traced_connection_proxy(
     connection, db_api_integration, *args, **kwargs
 ):
     # pylint: disable=abstract-method
-    class TracedConnectionProxy(type(connection), _TracedConnectionProxy):
-        def __init__(self, connection):
-            self._connection = connection
-
-        def __getattr__(self, name):
-            return object.__getattribute__(
-                object.__getattribute__(self, "_connection"), name
-            )
+    class TracedConnectionProxy(wrapt.ObjectProxy):
+        # pylint: disable=unused-argument
+        def __init__(self, connection, *args, **kwargs):
+            wrapt.ObjectProxy.__init__(self, connection)
 
         def __getattribute__(self, name):
             if object.__getattribute__(self, name):
@@ -347,16 +339,17 @@ def get_traced_connection_proxy(
 
         def cursor(self, *args, **kwargs):
             return get_traced_cursor_proxy(
-                self._connection.cursor(*args, **kwargs), db_api_integration
+                self.__wrapped__.cursor(*args, **kwargs), db_api_integration
             )
 
-        # For some reason this is necessary as trying to access the close
-        # method of self._connection via __getattr__ leads to unexplained
-        # errors.
-        def close(self):
-            self._connection.close()
+        def __enter__(self):
+            self.__wrapped__.__enter__()
+            return self
 
-    return TracedConnectionProxy(connection)
+        def __exit__(self, *args, **kwargs):
+            self.__wrapped__.__exit__(*args, **kwargs)
+
+    return TracedConnectionProxy(connection, *args, **kwargs)
 
 
 class CursorTracer:

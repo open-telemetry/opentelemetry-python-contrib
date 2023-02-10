@@ -12,7 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from unittest.mock import Mock, patch
+from unittest import mock
 
 import mysql.connector
 
@@ -47,9 +47,9 @@ class TestMysqlIntegration(TestBase):
         with self.disable_logging():
             MySQLInstrumentor().uninstrument()
 
-    @patch("mysql.connector.connect", new=mock_connect)
+    @mock.patch("mysql.connector.connect")
     # pylint: disable=unused-argument
-    def test_instrumentor(self):
+    def test_instrumentor(self, mock_connect):
         MySQLInstrumentor().instrument()
 
         connect_and_execute_query()
@@ -71,8 +71,9 @@ class TestMysqlIntegration(TestBase):
         spans_list = self.memory_exporter.get_finished_spans()
         self.assertEqual(len(spans_list), 1)
 
-    @patch("mysql.connector.connect", new=mock_connect)
-    def test_custom_tracer_provider(self):
+    @mock.patch("mysql.connector.connect")
+    # pylint: disable=unused-argument
+    def test_custom_tracer_provider(self, mock_connect):
         resource = resources.Resource.create({})
         result = self.create_tracer_provider(resource=resource)
         tracer_provider, exporter = result
@@ -86,7 +87,7 @@ class TestMysqlIntegration(TestBase):
 
         self.assertIs(span.resource, resource)
 
-    @patch("mysql.connector.connect", new=mock_connect)
+    @mock.patch("mysql.connector.connect")
     # pylint: disable=unused-argument
     def test_instrument_connection(self):
         cnx, query = connect_and_execute_query()
@@ -112,7 +113,7 @@ class TestMysqlIntegration(TestBase):
 
     @patch("mysql.connector.connect", new=mock_connect)
     # pylint: disable=unused-argument
-    def test_uninstrument_connection(self):
+    def test_uninstrument_connection(self, mock_connect):
         MySQLInstrumentor().instrument()
         cnx, query = connect_and_execute_query()
 
