@@ -400,7 +400,6 @@ class TestTornadoInstrumentation(TornadoTest, WsgiTestBase):
         )
 
     def test_handler_on_finish(self):
-
         response = self.fetch("/on_finish")
         self.assertEqual(response.code, 200)
 

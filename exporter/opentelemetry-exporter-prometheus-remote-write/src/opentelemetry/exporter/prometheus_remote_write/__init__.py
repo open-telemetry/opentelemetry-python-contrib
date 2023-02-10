@@ -300,7 +300,6 @@ class PrometheusRemoteWriteMetricsExporter(MetricExporter):
         return sanitized
 
     def _parse_histogram_data_point(self, data_point, name):
-
         sample_attr_pairs = []
 
         base_attrs = list(data_point.attributes.items())
@@ -341,7 +340,6 @@ class PrometheusRemoteWriteMetricsExporter(MetricExporter):
         return sample_attr_pairs
 
     def _parse_data_point(self, data_point, name=None):
-
         attrs = tuple(data_point.attributes.items()) + (
             ("__name__", self._sanitize_string(name, "name")),
         )
