@@ -46,7 +46,7 @@ meter = metrics.get_meter(__name__)
 
 # Callback to gather cpu usage
 def get_cpu_usage_callback(observer):
-    for (number, percent) in enumerate(psutil.cpu_percent(percpu=True)):
+    for number, percent in enumerate(psutil.cpu_percent(percpu=True)):
         labels = {"cpu_number": str(number)}
         yield Observation(percent, labels)
 
