@@ -23,7 +23,6 @@ from opentelemetry.test.test_base import TestBase
 from opentelemetry.trace import SpanKind, get_tracer
 
 
-
 class TestThreadingInstrumentor(TestBase):
     def setUp(self):
         super().setUp()
@@ -46,15 +45,11 @@ class TestThreadingInstrumentor(TestBase):
             t1.join()
 
         spans = self.memory_exporter.get_finished_spans()
-        print(spans[0].__dict__)
-        print(spans[1].__dict__)
-        print(spans[2].__dict__)
         self.assertEqual(len(spans), 2)
 
-        target, thread, root = spans[:3]
+        target, root = spans[:2]
         
-        self.assertIs(target.parent, thread.get_span_context())
-        self.assertIs(thread.parent, root.get_span_context())
+        self.assertIs(target.parent, root.get_span_context())
         self.assertIsNone(root.parent)
 
     def test_uninstrumented(self):

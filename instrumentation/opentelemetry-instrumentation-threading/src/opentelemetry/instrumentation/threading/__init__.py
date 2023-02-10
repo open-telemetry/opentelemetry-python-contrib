@@ -91,6 +91,8 @@ class _InstrumentedThread(threading.Thread):
     def run(self):
         parent_span = self._parent_span or get_current_span()
         trace.set_span_in_context(parent_span)
+        ctx = trace.set_span_in_context(parent_span)
+        context.attach(ctx)
         super().run()
 
 class ThreadingInstrumentor(BaseInstrumentor):  # pylint: disable=empty-docstring
