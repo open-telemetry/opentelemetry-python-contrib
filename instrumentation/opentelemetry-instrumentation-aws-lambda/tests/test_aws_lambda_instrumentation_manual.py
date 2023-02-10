@@ -27,7 +27,6 @@ from opentelemetry.instrumentation.aws_lambda import (
     _HANDLER,
     _X_AMZN_TRACE_ID,
     OTEL_INSTRUMENTATION_AWS_LAMBDA_FLUSH_TIMEOUT,
-    OTEL_LAMBDA_DISABLE_AWS_CONTEXT_PROPAGATION,
     AwsLambdaInstrumentor,
 )
 from opentelemetry.propagate import get_global_textmap
@@ -247,22 +246,19 @@ class TestAwsLambdaInstrumentor(TestBase):
             context: Dict
             expected_link_trace_id: int
             xray_traceid: str
-            disable_aws_context_propagation: bool = False
-            disable_aws_context_propagation_envvar: str = ""
 
         tests = [
             TestCase(
-                name="enabled_aws_context_propagation",
+                name="valid_xray_trace",
                 context={},
                 expected_link_trace_id=MOCK_XRAY_TRACE_ID,
-                xray_traceid=MOCK_XRAY_TRACE_CONTEXT_NOT_SAMPLED,
+                xray_traceid=MOCK_XRAY_TRACE_CONTEXT_SAMPLED,
             ),
             TestCase(
-                name="disable_aws_context_propagation",
+                name="invalid_xray_trace",
                 context={},
                 expected_link_trace_id=None,
-                xray_traceid=MOCK_XRAY_TRACE_CONTEXT_NOT_SAMPLED,
-                disable_aws_context_propagation=True,
+                xray_traceid=f"0",
             ),
         ]
         for test in tests:
@@ -272,15 +268,12 @@ class TestAwsLambdaInstrumentor(TestBase):
                     **os.environ,
                     # NOT Active Tracing
                     _X_AMZN_TRACE_ID: test.xray_traceid,
-                    OTEL_LAMBDA_DISABLE_AWS_CONTEXT_PROPAGATION: test.disable_aws_context_propagation_envvar,
                     # NOT using the X-Ray Propagator
                     OTEL_PROPAGATORS: "tracecontext",
                 },
             )
             test_env_patch.start()
-            AwsLambdaInstrumentor().instrument(
-                disable_aws_context_propagation=test.disable_aws_context_propagation,
-            )
+            AwsLambdaInstrumentor().instrument()
             mock_execute_lambda(test.context)
             spans = self.memory_exporter.get_finished_spans()
             assert spans
