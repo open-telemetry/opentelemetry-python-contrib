@@ -78,6 +78,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   ([#1592](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/1592))
 - `opentelemetry-instrumentation-django` Allow explicit `excluded_urls` configuration through `instrument()`
   ([#1618](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/1618))
+- `opentelemetry-instrumentation-aws-lambda` Use env var `_X_AMZN_TRACE_ID` as a
+  Span Link instead of parent
+  ([#1657](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/1657))
 
 ### Fixed
 
