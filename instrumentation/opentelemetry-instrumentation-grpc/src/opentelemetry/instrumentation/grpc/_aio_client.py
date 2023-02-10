@@ -18,14 +18,11 @@ from collections import OrderedDict
 import grpc
 from grpc.aio import ClientCallDetails
 
-from opentelemetry import context
-from opentelemetry.instrumentation.grpc._client import (
-    OpenTelemetryClientInterceptor,
-    _carrier_setter,
-)
+from opentelemetry import context, trace
+from opentelemetry.instrumentation.grpc._client import _carrier_setter
 from opentelemetry.instrumentation.utils import _SUPPRESS_INSTRUMENTATION_KEY
 from opentelemetry.propagate import inject
-from opentelemetry.semconv.trace import SpanAttributes
+from opentelemetry.semconv.trace import RpcSystemValues, SpanAttributes
 from opentelemetry.trace.status import Status, StatusCode
 
 
@@ -49,7 +46,12 @@ def _unary_done_callback(span, code, details):
     return callback
 
 
-class _BaseAioClientInterceptor(OpenTelemetryClientInterceptor):
+class _BaseAioClientInterceptor:
+
+    def __init__(self, tracer, filter_=None):
+        self._tracer = tracer
+        self._filter = filter_
+
     @staticmethod
     def propagate_trace_in_details(client_call_details):
         metadata = client_call_details.metadata
@@ -97,6 +99,22 @@ class _BaseAioClientInterceptor(OpenTelemetryClientInterceptor):
             end_on_exit=False,
             record_exception=False,
             set_status_on_exception=False,
+        )
+
+    def _start_span(self, method, **kwargs):
+        service, meth = method.lstrip("/").split("/", 1)
+        attributes = {
+            SpanAttributes.RPC_SYSTEM: RpcSystemValues.GRPC.value,
+            SpanAttributes.RPC_SERVICE: service,
+            SpanAttributes.RPC_METHOD: meth,
+            SpanAttributes.RPC_GRPC_STATUS_CODE: grpc.StatusCode.OK.value[0],
+        }
+
+        return self._tracer.start_as_current_span(
+            name=method,
+            kind=trace.SpanKind.CLIENT,
+            attributes=attributes,
+            **kwargs,
         )
 
     async def _wrap_unary_response(self, continuation, span):

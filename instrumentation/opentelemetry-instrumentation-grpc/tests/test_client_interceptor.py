@@ -20,12 +20,7 @@ from tests.protobuf import (  # pylint: disable=no-name-in-module
 import opentelemetry.instrumentation.grpc
 from opentelemetry import context, trace
 from opentelemetry.instrumentation.grpc import GrpcInstrumentorClient
-from opentelemetry.instrumentation.grpc._client import (
-    OpenTelemetryClientInterceptor,
-)
-from opentelemetry.instrumentation.grpc.grpcext._interceptor import (
-    _UnaryClientInfo,
-)
+from opentelemetry.instrumentation.grpc._client import UnaryUnaryClientInterceptor
 from opentelemetry.instrumentation.utils import _SUPPRESS_INSTRUMENTATION_KEY
 from opentelemetry.propagate import get_global_textmap, set_global_textmap
 from opentelemetry.semconv.trace import SpanAttributes
@@ -82,6 +77,16 @@ class Interceptor(
         continuation, client_call_details, request_or_iterator
     ):
         return continuation(client_call_details, request_or_iterator)
+
+
+class RecordingInterceptor(grpc.UnaryUnaryClientInterceptor):
+    recorded_details = None
+
+    def intercept_unary_unary(
+        self, continuation, client_call_details, request
+    ):
+        self.recorded_details = client_call_details
+        return continuation(client_call_details, request)
 
 
 class TestClientProto(TestBase):
@@ -277,30 +282,25 @@ class TestClientProto(TestBase):
         previous_propagator = get_global_textmap()
         try:
             set_global_textmap(MockTextMapPropagator())
-            interceptor = OpenTelemetryClientInterceptor(trace.NoOpTracer())
+            interceptor = UnaryUnaryClientInterceptor(trace.NoOpTracer())
 
-            carrier = tuple()
+            recording_interceptor = RecordingInterceptor()
+            interceptors = [interceptor, recording_interceptor]
 
-            def invoker(request, metadata):
-                nonlocal carrier
-                carrier = metadata
-                return {}
-
-            request = Request(client_id=1, request_data="data")
-            interceptor.intercept_unary(
-                request,
-                {},
-                _UnaryClientInfo(
-                    full_method="/GRPCTestServer/SimpleMethod", timeout=None
-                ),
-                invoker=invoker,
+            channel = grpc.intercept_channel(
+                grpc.insecure_channel("localhost:25565"),
+                *interceptors
             )
 
-            assert len(carrier) == 2
-            assert carrier[0][0] == "mock-traceid"
-            assert carrier[0][1] == "0"
-            assert carrier[1][0] == "mock-spanid"
-            assert carrier[1][1] == "0"
+            stub = test_server_pb2_grpc.GRPCTestServerStub(channel)
+            simple_method(stub)
+
+            metadata = recording_interceptor.recorded_details.metadata
+            assert len(metadata) == 2
+            assert metadata[0][0] == "mock-traceid"
+            assert metadata[0][1] == "0"
+            assert metadata[1][0] == "mock-spanid"
+            assert metadata[1][1] == "0"
 
         finally:
             set_global_textmap(previous_propagator)
