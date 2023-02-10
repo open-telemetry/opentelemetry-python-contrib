@@ -39,7 +39,7 @@ class TestThreadingInstrumentor(TestBase):
             print("Square: {}" .format(num * num))
 
     def test_thread_with_root(self):
-        t1 = threading.Thread(target=self.print_square, args=(10))
+        t1 = threading.Thread(target=self.print_square, args=(10,))
 
         with self.tracer.start_as_current_span("root"):
             t1.start()
@@ -60,10 +60,10 @@ class TestThreadingInstrumentor(TestBase):
     def test_uninstrumented(self):
         ThreadingInstrumentor().uninstrument()
 
-        t1 = threading.Thread(target=self.print_square, args=(10))
+        t1 = threading.Thread(target=self.print_square, args=(10,))
         t1.start()
         t1.join()
         spans = self.memory_exporter.get_finished_spans()
-        self.assertEqual(len(spans), 0)
+        self.assertEqual(len(spans), 1)
 
         ThreadingInstrumentor().instrument()
