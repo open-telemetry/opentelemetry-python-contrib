@@ -10,6 +10,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Added
 
 - `opentelemetry-instrumentation-redis` Add `sanitize_query` config option to allow query sanitization.  ([#1572](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/1572))
+- `opentelemetry-instrumentation-elasticsearch` Add optional db.statement query sanitization. 
+  ([#1598](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/1598))
 - `opentelemetry-instrumentation-celery` Record exceptions as events on the span.
   ([#1573](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/1573))
 - Add metric instrumentation for urllib
@@ -27,6 +29,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- Fix TortoiseORM instrumentation `AttributeError: type object 'Config' has no attribute 'title'`
+  ([#1575](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/1575))
 - Fix SQLAlchemy uninstrumentation
   ([#1581](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/1581))
 - `opentelemetry-instrumentation-grpc` Fix code()/details() of _OpentelemetryServicerContext.

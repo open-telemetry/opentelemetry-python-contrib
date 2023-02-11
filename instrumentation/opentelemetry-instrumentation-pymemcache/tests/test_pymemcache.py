@@ -509,6 +509,19 @@ class PymemcacheClientTestCase(
 
         PymemcacheInstrumentor().instrument()
 
+    def test_no_op_tracer_provider(self):
+        PymemcacheInstrumentor().uninstrument()
+        tracer_provider = trace_api.NoOpTracerProvider()
+        PymemcacheInstrumentor().instrument(tracer_provider=tracer_provider)
+
+        client = self.make_client([b"STORED\r\n"])
+        result = client.set(b"key", b"value", noreply=False)
+        self.assertTrue(result)
+
+        spans = self.memory_exporter.get_finished_spans()
+        assert spans is not None
+        self.assertEqual(len(spans), 0)
+
 
 class PymemcacheHashClientTestCase(TestBase):
     """Tests for a patched pymemcache.client.hash.HashClient."""
