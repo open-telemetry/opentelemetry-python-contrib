@@ -35,11 +35,15 @@ import boto3
 import botocore.client
 from wrapt import wrap_function_wrapper
 
-from opentelemetry import context, propagate, trace
+from opentelemetry import context, trace
 from opentelemetry.instrumentation.instrumentor import BaseInstrumentor
 from opentelemetry.instrumentation.utils import (
     _SUPPRESS_INSTRUMENTATION_KEY,
     unwrap,
+)
+from opentelemetry.propagators.aws.aws_xray_propagator import (
+    TRACE_HEADER_KEY,
+    AwsXRayPropagator,
 )
 from opentelemetry.propagators.textmap import CarrierT, Getter, Setter
 from opentelemetry.semconv.trace import (
@@ -197,7 +201,11 @@ class Boto3SQSInstrumentor(BaseInstrumentor):
     ) -> None:
         message_attributes = message.get("MessageAttributes", {})
         links = []
-        ctx = propagate.extract(message_attributes, getter=boto3sqs_getter)
+        print(message_attributes)
+        ctx = AwsXRayPropagator().extract(
+            message_attributes, getter=boto3sqs_getter
+        )
+        print(ctx)
         parent_span_ctx = trace.get_current_span(ctx).get_span_context()
         if parent_span_ctx.is_valid:
             links.append(Link(context=parent_span_ctx))
@@ -233,7 +241,7 @@ class Boto3SQSInstrumentor(BaseInstrumentor):
             ) as span:
                 Boto3SQSInstrumentor._enrich_span(span, queue_name, queue_url)
                 attributes = kwargs.pop("MessageAttributes", {})
-                propagate.inject(attributes, setter=boto3sqs_setter)
+                AwsXRayPropagator().inject(attributes, setter=boto3sqs_setter)
                 retval = wrapped(*args, MessageAttributes=attributes, **kwargs)
                 message_id = retval.get("MessageId")
                 if message_id:
@@ -273,7 +281,7 @@ class Boto3SQSInstrumentor(BaseInstrumentor):
                 with trace.use_span(span):
                     if "MessageAttributes" not in entry:
                         entry["MessageAttributes"] = {}
-                    propagate.inject(
+                    AwsXRayPropagator().inject(
                         entry["MessageAttributes"], setter=boto3sqs_setter
                     )
             retval = wrapped(*args, **kwargs)
@@ -299,7 +307,7 @@ class Boto3SQSInstrumentor(BaseInstrumentor):
             queue_url = kwargs.get("QueueUrl")
             message_attribute_names = kwargs.pop("MessageAttributeNames", [])
             message_attribute_names.extend(
-                propagate.get_global_textmap().fields
+                [TRACE_HEADER_KEY]
             )
             queue_name = Boto3SQSInstrumentor._extract_queue_name_from_url(
                 queue_url

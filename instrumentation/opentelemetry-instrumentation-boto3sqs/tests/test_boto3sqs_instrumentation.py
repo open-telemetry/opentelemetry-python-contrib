@@ -27,6 +27,9 @@ from opentelemetry.instrumentation.boto3sqs import (
     Boto3SQSInstrumentor,
     Boto3SQSSetter,
 )
+from opentelemetry.propagators.aws.aws_xray_propagator import (
+    TRACE_HEADER_KEY,
+)
 from opentelemetry.semconv.trace import (
     MessagingDestinationKindValues,
     MessagingOperationValues,
@@ -166,7 +169,7 @@ class TestBoto3SQSInstrumentation(TestBase):
             yield
 
     def _assert_injected_span(self, msg_attrs: Dict[str, Any], span: Span):
-        trace_parent = msg_attrs["traceparent"]["StringValue"]
+        trace_parent = msg_attrs[TRACE_HEADER_KEY]["StringValue"]
         ctx = span.get_span_context()
         self.assertEqual(
             self._to_trace_parent(ctx.trace_id, ctx.span_id),
@@ -183,7 +186,9 @@ class TestBoto3SQSInstrumentation(TestBase):
 
     @staticmethod
     def _to_trace_parent(trace_id: int, span_id: int) -> str:
-        return f"00-{format_trace_id(trace_id)}-{format_span_id(span_id)}-01".lower()
+        formated_trace_id = format_trace_id(trace_id)
+        formated_trace_id = formated_trace_id[:8] + '-' + formated_trace_id[8:]
+        return f"root=1-{formated_trace_id};parent={format_span_id(span_id)};sampled=1".lower()
 
     def _get_only_span(self):
         spans = self.get_finished_spans()
@@ -202,10 +207,10 @@ class TestBoto3SQSInstrumentation(TestBase):
             "MessageAttributes": {},
         }
 
-    def _add_trace_parent(
+    def _add_xray_parent(
         self, message: Dict[str, Any], trace_id: int, span_id: int
     ):
-        message["MessageAttributes"]["traceparent"] = {
+        message["MessageAttributes"][TRACE_HEADER_KEY] = {
             "StringValue": self._to_trace_parent(trace_id, span_id),
             "DataType": "String",
         }
@@ -252,7 +257,7 @@ class TestBoto3SQSInstrumentation(TestBase):
             message = self._make_message(
                 msg_id, f"hello {msg_id}", attrs["receipt"]
             )
-            self._add_trace_parent(
+            self._add_xray_parent(
                 message, attrs["trace_id"], attrs["span_id"]
             )
             mock_response["Messages"].append(message)
@@ -265,7 +270,7 @@ class TestBoto3SQSInstrumentation(TestBase):
                 MessageAttributeNames=message_attr_names,
             )
 
-        self.assertIn("traceparent", message_attr_names)
+        self.assertIn(TRACE_HEADER_KEY, message_attr_names)
 
         # receive span
         span = self._get_only_span()
