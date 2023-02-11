@@ -742,7 +742,6 @@ class TestSystemMetrics(TestBase):
 
     @mock.patch("psutil.Process.memory_info")
     def test_runtime_memory(self, mock_process_memory_info):
-
         PMem = namedtuple("PMem", ["rss", "vms"])
 
         mock_process_memory_info.configure_mock(
@@ -757,7 +756,6 @@ class TestSystemMetrics(TestBase):
 
     @mock.patch("psutil.Process.cpu_times")
     def test_runtime_cpu_time(self, mock_process_cpu_times):
-
         PCPUTimes = namedtuple("PCPUTimes", ["user", "system"])
 
         mock_process_cpu_times.configure_mock(
@@ -772,7 +770,6 @@ class TestSystemMetrics(TestBase):
 
     @mock.patch("gc.get_count")
     def test_runtime_get_count(self, mock_gc_get_count):
-
         mock_gc_get_count.configure_mock(**{"return_value": (1, 2, 3)})
 
         expected = [

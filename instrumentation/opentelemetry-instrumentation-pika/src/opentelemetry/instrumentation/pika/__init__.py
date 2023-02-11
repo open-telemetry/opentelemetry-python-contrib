@@ -12,7 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 """
-Instrument `pika` to trace RabbitMQ applications.
+Instrument pika to trace RabbitMQ applications.
 
 Usage
 -----
@@ -63,7 +63,7 @@ Usage
     PikaInstrumentor.instrument_channel(channel, tracer_provider=tracer_provider)
 
 * PikaInstrumentor also supports instrumenting with hooks that will be called when producing or consuming a message.
-  The hooks should be of type `Callable[[Span, bytes, BasicProperties], None]`
+  The hooks should be of type "Callable[[Span, bytes, BasicProperties], None]"
   where the first parameter is the span, the second parameter is the message body
   and the third parameter is the message properties
 

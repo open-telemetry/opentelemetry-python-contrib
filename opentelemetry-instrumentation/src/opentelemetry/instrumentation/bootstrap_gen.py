@@ -17,7 +17,7 @@
 
 libraries = {
     "aio_pika": {
-        "library": "aio_pika ~= 7.2.0",
+        "library": "aio_pika >= 7.2.0, < 9.0.0",
         "instrumentation": "opentelemetry-instrumentation-aio-pika==0.37b0.dev",
     },
     "aiohttp": {
@@ -25,7 +25,7 @@ libraries = {
         "instrumentation": "opentelemetry-instrumentation-aiohttp-client==0.37b0.dev",
     },
     "aiopg": {
-        "library": "aiopg >= 0.13.0, < 1.3.0",
+        "library": "aiopg >= 0.13.0, < 2.0.0",
         "instrumentation": "opentelemetry-instrumentation-aiopg==0.37b0.dev",
     },
     "asgiref": {

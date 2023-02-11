@@ -17,16 +17,14 @@ from unittest import mock
 from unittest.mock import MagicMock
 
 import aiopg
-from aiopg.utils import (  # pylint: disable=no-name-in-module
-    _ContextManager,
-    _PoolAcquireContextManager,
-)
 
 import opentelemetry.instrumentation.aiopg
 from opentelemetry import trace as trace_api
 from opentelemetry.instrumentation.aiopg import AiopgInstrumentor, wrappers
 from opentelemetry.instrumentation.aiopg.aiopg_integration import (
     AiopgIntegration,
+    _ContextManager,
+    _PoolAcquireContextManager,
 )
 from opentelemetry.sdk import resources
 from opentelemetry.semconv.trace import SpanAttributes
@@ -223,6 +221,19 @@ class TestAiopgInstrumentor(TestBase):
 
         spans_list = self.memory_exporter.get_finished_spans()
         self.assertEqual(len(spans_list), 1)
+
+    def test_no_op_tracer_provider(self):
+        cnx = async_call(aiopg.connect(database="test"))
+        AiopgInstrumentor().instrument_connection(
+            cnx, tracer_provider=trace_api.NoOpTracerProvider()
+        )
+
+        cursor = async_call(cnx.cursor())
+        query = "SELECT * FROM test"
+        async_call(cursor.execute(query))
+
+        spans_list = self.memory_exporter.get_finished_spans()
+        self.assertEqual(len(spans_list), 0)
 
     def test_custom_tracer_provider_instrument_connection(self):
         resource = resources.Resource.create(

@@ -46,7 +46,6 @@ class BaseInstrumentor(ABC):
     _is_instrumented_by_opentelemetry = False
 
     def __new__(cls, *args, **kwargs):
-
         if cls._instance is None:
             cls._instance = object.__new__(cls)
 
