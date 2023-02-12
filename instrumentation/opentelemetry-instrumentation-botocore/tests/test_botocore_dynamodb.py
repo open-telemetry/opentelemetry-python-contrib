@@ -560,6 +560,7 @@ class TestDynamoDbExtension(TestBase):
             ],
         )
 
+    # pylint: disable=expression-not-assigned
     def test_db_statement_sanitization(self):
         sanitized_value = {"?": "?"}
         self.assertEqual(
