@@ -20,6 +20,7 @@ from moto import mock_dynamodb2  # pylint: disable=import-error
 
 from opentelemetry.instrumentation.botocore import BotocoreInstrumentor
 from opentelemetry.instrumentation.botocore.extensions.dynamodb import (
+    _conv_params_to_sanitized_str,
     _DynamoDbExtension,
 )
 from opentelemetry.semconv.trace import SpanAttributes
@@ -27,6 +28,60 @@ from opentelemetry.test.test_base import TestBase
 from opentelemetry.trace.span import Span
 
 # pylint: disable=too-many-public-methods
+
+default_table_name = "test_table"
+
+# General dynamoDB queries
+key_value_query = {"Key": {"username": "johndoe"}}
+
+secondary_index_query = {
+    "IndexName": "email-index",
+    "KeyConditionExpression": "email = :email",
+    "ExpressionAttributeValues": {":email": "johndoe@example.com"},
+}
+
+scan_query = {
+    "FilterExpression": "age >= :age",
+    "ExpressionAttributeValues": {":age": 25},
+}
+
+projection_expression_query = {
+    "KeyConditionExpression": "username = :username",
+    "ExpressionAttributeValues": {":username": "johndoe"},
+    "ProjectionExpression": "username, email",
+}
+
+# Instrumentation tests queries
+delete_query = {
+    "TableName": default_table_name,
+    "Key": {"id": {"S": "1"}},
+    "ReturnConsumedCapacity": "TOTAL",
+    "ReturnItemCollectionMetrics": "SIZE",
+}
+
+get_query = {
+    "TableName": default_table_name,
+    "Key": {"id": {"S": "1"}},
+    "ConsistentRead": True,
+    "AttributesToGet": ["id"],
+    "ProjectionExpression": "1,2",
+    "ReturnConsumedCapacity": "TOTAL",
+}
+
+put_query = {
+    "TableName": default_table_name,
+    "Item": {"id": {"S": "1"}},
+    "ReturnConsumedCapacity": "TOTAL",
+    "ReturnItemCollectionMetrics": "SIZE",
+}
+
+update_query = {
+    "TableName": default_table_name,
+    "Key": {"id": {"S": "123"}},
+    "AttributeUpdates": {"id": {"Value": {"S": "456"}, "Action": "PUT"}},
+    "ReturnConsumedCapacity": "TOTAL",
+    "ReturnItemCollectionMetrics": "SIZE",
+}
 
 
 class TestDynamoDbExtension(TestBase):
@@ -101,6 +156,8 @@ class TestDynamoDbExtension(TestBase):
         span = spans[0]
 
         self.assertEqual("dynamodb", span.attributes[SpanAttributes.DB_SYSTEM])
+        self.assertIn(SpanAttributes.DB_STATEMENT, span.attributes)
+        self.assertNotIn(SpanAttributes.DB_STATEMENT + ".sanitized", span.attributes)
         self.assertEqual(
             operation, span.attributes[SpanAttributes.DB_OPERATION]
         )
@@ -270,14 +327,11 @@ class TestDynamoDbExtension(TestBase):
 
     @mock_dynamodb2
     def test_delete_item(self):
+        BotocoreInstrumentor().uninstrument()
+        BotocoreInstrumentor().instrument(sanitize_query=True)
         self._create_prepared_table()
 
-        self.client.delete_item(
-            TableName=self.default_table_name,
-            Key={"id": {"S": "1"}},
-            ReturnConsumedCapacity="TOTAL",
-            ReturnItemCollectionMetrics="SIZE",
-        )
+        self.client.delete_item(**delete_query)
 
         span = self.assert_span("DeleteItem")
         self.assert_table_names(span, self.default_table_name)
@@ -317,22 +371,21 @@ class TestDynamoDbExtension(TestBase):
 
     @mock_dynamodb2
     def test_get_item(self):
+        # Reset instrumentation to use sanitized query
+        BotocoreInstrumentor().uninstrument()
+        BotocoreInstrumentor().instrument(sanitize_query=True)
+
         self._create_prepared_table()
-
-        self.client.get_item(
-            TableName=self.default_table_name,
-            Key={"id": {"S": "1"}},
-            ConsistentRead=True,
-            AttributesToGet=["id"],
-            ProjectionExpression="1,2",
-            ReturnConsumedCapacity="TOTAL",
-        )
-
+        self.client.get_item(**get_query)
         span = self.assert_span("GetItem")
         self.assert_table_names(span, self.default_table_name)
         self.assert_consistent_read(span, True)
         self.assert_projection(span, "1,2")
         self.assert_consumed_capacity(span, self.default_table_name)
+        self.assertEqual(
+            span.attributes[SpanAttributes.DB_STATEMENT],
+            _conv_params_to_sanitized_str(get_query),
+        )
 
     @mock_dynamodb2
     def test_list_tables(self):
@@ -355,17 +408,16 @@ class TestDynamoDbExtension(TestBase):
     def test_put_item(self):
         table = "test_table"
         self._create_prepared_table(TableName=table)
-
-        self.client.put_item(
-            TableName=table,
-            Item={"id": {"S": "1"}, "idl": {"S": "2"}, "idg": {"S": "3"}},
-            ReturnConsumedCapacity="TOTAL",
-            ReturnItemCollectionMetrics="SIZE",
-        )
+        self.client.put_item(**put_query)
 
         span = self.assert_span("PutItem")
         self.assert_table_names(span, table)
         self.assert_consumed_capacity(span, table)
+        self.assertEqual(
+            span.attributes[SpanAttributes.DB_STATEMENT],
+            str(put_query),
+        )
+
         # moto does not seem to return these:
         # self.assert_item_coll_metrics(span)
 
@@ -448,17 +500,18 @@ class TestDynamoDbExtension(TestBase):
     def test_update_item(self):
         self._create_prepared_table()
 
-        self.client.update_item(
-            TableName=self.default_table_name,
-            Key={"id": {"S": "123"}},
-            AttributeUpdates={"id": {"Value": {"S": "456"}, "Action": "PUT"}},
-            ReturnConsumedCapacity="TOTAL",
-            ReturnItemCollectionMetrics="SIZE",
-        )
+        # Reset instrumentation to use sanitized query
+        BotocoreInstrumentor().uninstrument()
+        BotocoreInstrumentor().instrument(sanitize_query=True)
 
+        self.client.update_item(**update_query)
         span = self.assert_span("UpdateItem")
         self.assert_table_names(span, self.default_table_name)
         self.assert_consumed_capacity(span, self.default_table_name)
+        self.assertEqual(
+            span.attributes[SpanAttributes.DB_STATEMENT],
+            _conv_params_to_sanitized_str(update_query),
+        )
         # moto does not seem to return these:
         # self.assert_item_coll_metrics(span)
 
@@ -503,4 +556,34 @@ class TestDynamoDbExtension(TestBase):
             span.attributes[
                 SpanAttributes.AWS_DYNAMODB_GLOBAL_SECONDARY_INDEX_UPDATES
             ],
+        )
+
+    def test_db_statement_sanitization(self):
+        sanitized_value = {"?": "?"}
+        self.assertEqual(
+            _conv_params_to_sanitized_str(key_value_query),
+            str({"Key": sanitized_value})
+        ),
+        self.assertEqual(
+            _conv_params_to_sanitized_str(secondary_index_query),
+            str(
+                {
+                    "IndexName": "email-index",
+                    "KeyConditionExpression": sanitized_value,
+                    "ExpressionAttributeValues": sanitized_value,
+                }
+            )
+        ),
+        self.assertEqual(
+            _conv_params_to_sanitized_str(scan_query),
+            str(
+                {
+                    "FilterExpression": sanitized_value,
+                    "ExpressionAttributeValues": sanitized_value,
+                }
+            )
+        ),
+        self.assertNotEqual(
+            _conv_params_to_sanitized_str(projection_expression_query),
+            projection_expression_query
         )
