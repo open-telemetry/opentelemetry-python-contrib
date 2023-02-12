@@ -66,7 +66,7 @@ for example:
     def response_hook(span, service_name, operation_name, result):
         # response hook logic
 
-    sanitize_query (bool) - an optional query sanitization flag, default is True
+    sanitize_query (bool) - an optional query sanitization flag, default is False
 
     # Instrument Botocore with hooks
     BotocoreInstrumentor().instrument(request_hook=request_hook, response_hook=response_hook)
