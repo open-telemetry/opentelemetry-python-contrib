@@ -157,7 +157,9 @@ class TestDynamoDbExtension(TestBase):
 
         self.assertEqual("dynamodb", span.attributes[SpanAttributes.DB_SYSTEM])
         self.assertIn(SpanAttributes.DB_STATEMENT, span.attributes)
-        self.assertNotIn(SpanAttributes.DB_STATEMENT + ".sanitized", span.attributes)
+        self.assertNotIn(
+            SpanAttributes.DB_STATEMENT + ".sanitized", span.attributes
+        )
         self.assertEqual(
             operation, span.attributes[SpanAttributes.DB_OPERATION]
         )
@@ -562,7 +564,7 @@ class TestDynamoDbExtension(TestBase):
         sanitized_value = {"?": "?"}
         self.assertEqual(
             _conv_params_to_sanitized_str(key_value_query),
-            str({"Key": sanitized_value})
+            str({"Key": sanitized_value}),
         ),
         self.assertEqual(
             _conv_params_to_sanitized_str(secondary_index_query),
@@ -572,7 +574,7 @@ class TestDynamoDbExtension(TestBase):
                     "KeyConditionExpression": sanitized_value,
                     "ExpressionAttributeValues": sanitized_value,
                 }
-            )
+            ),
         ),
         self.assertEqual(
             _conv_params_to_sanitized_str(scan_query),
@@ -581,9 +583,9 @@ class TestDynamoDbExtension(TestBase):
                     "FilterExpression": sanitized_value,
                     "ExpressionAttributeValues": sanitized_value,
                 }
-            )
+            ),
         ),
         self.assertNotEqual(
             _conv_params_to_sanitized_str(projection_expression_query),
-            projection_expression_query
+            projection_expression_query,
         )
