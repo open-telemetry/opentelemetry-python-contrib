@@ -66,6 +66,8 @@ for example:
     def response_hook(span, service_name, operation_name, result):
         # response hook logic
 
+    sanitize_query (bool) - an optional query sanitization flag, default is True
+
     # Instrument Botocore with hooks
     BotocoreInstrumentor().instrument(request_hook=request_hook, response_hook=response_hook)
 
@@ -76,6 +78,9 @@ for example:
     )
     ec2 = self.session.create_client("ec2", region_name="us-west-2")
     ec2.describe_instances()
+
+    # Instrument Botocore with query sanitization enabled (sanitizing dynamoDB queries)
+    BotocoreInstrumentor().instrument(sanitize_query=True)
 """
 
 import logging
@@ -139,6 +144,7 @@ class BotocoreInstrumentor(BaseInstrumentor):
 
         self.request_hook = kwargs.get("request_hook")
         self.response_hook = kwargs.get("response_hook")
+        self.sanitize_query = kwargs.get("sanitize_query", False)
 
         wrap_function_wrapper(
             "botocore.client",
@@ -178,6 +184,16 @@ class BotocoreInstrumentor(BaseInstrumentor):
         }
 
         _safe_invoke(extension.extract_attributes, attributes)
+        if self.sanitize_query and SpanAttributes.DB_STATEMENT in attributes:
+            attributes.update(
+                {
+                    SpanAttributes.DB_STATEMENT: attributes.get(
+                        SpanAttributes.DB_STATEMENT + ".sanitized"
+                    )
+                }
+            )
+
+        attributes.pop(SpanAttributes.DB_STATEMENT + ".sanitized", None)
 
         with self._tracer.start_as_current_span(
             call_context.span_name,

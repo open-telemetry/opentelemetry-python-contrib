@@ -62,6 +62,26 @@ def _conv_val_to_len(value) -> Optional[int]:
     return len(value) if value is not None else None
 
 
+_sanitized_keys = (
+    "Item",
+    "Key",
+    "KeyConditionExpression",
+    "ExpressionAttributeValues",
+    "FilterExpression",
+)
+_sanitized_value = {"?": "?"}
+
+
+# pylint: disable=C0103
+def _conv_params_to_sanitized_str(params) -> str:
+    p = params.copy()
+    for key in p:
+        if key in _sanitized_keys:
+            p[key] = _sanitized_value
+
+    return str(p)
+
+
 ################################################################################
 # common request attributes
 ################################################################################
@@ -354,6 +374,12 @@ class _DynamoDbExtension(_AwsSdkExtension):
     def extract_attributes(self, attributes: _AttributeMapT):
         attributes[SpanAttributes.DB_SYSTEM] = DbSystemValues.DYNAMODB.value
         attributes[SpanAttributes.DB_OPERATION] = self._call_context.operation
+        attributes[SpanAttributes.DB_STATEMENT] = str(
+            self._call_context.params
+        )
+        attributes[
+            SpanAttributes.DB_STATEMENT + ".sanitized"
+        ] = _conv_params_to_sanitized_str(self._call_context.params)
         attributes[SpanAttributes.NET_PEER_NAME] = self._get_peer_name()
 
         if self._op is None:
