@@ -16,6 +16,7 @@ import flask
 from werkzeug.test import Client
 from werkzeug.wrappers import Response
 
+from opentelemetry import trace as trace_api
 from opentelemetry.instrumentation.flask import FlaskInstrumentor
 from opentelemetry.test.wsgitestutil import WsgiTestBase
 
@@ -78,3 +79,18 @@ class TestAutomatic(InstrumentationTest, WsgiTestBase):
         self.assertEqual([b"Hello: 456"], list(resp.response))
         span_list = self.memory_exporter.get_finished_spans()
         self.assertEqual(len(span_list), 1)
+
+    def test_no_op_tracer_provider(self):
+        FlaskInstrumentor().uninstrument()
+        FlaskInstrumentor().instrument(
+            tracer_provider=trace_api.NoOpTracerProvider()
+        )
+
+        self.app = flask.Flask(__name__)
+        self.app.route("/hello/<int:helloid>")(self._hello_endpoint)
+        # pylint: disable=attribute-defined-outside-init
+        self.client = Client(self.app, Response)
+        self.client.get("/hello/123")
+
+        span_list = self.memory_exporter.get_finished_spans()
+        self.assertEqual(len(span_list), 0)
