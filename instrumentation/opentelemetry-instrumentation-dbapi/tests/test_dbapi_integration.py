@@ -325,14 +325,14 @@ class TestDBApiIntegration(TestBase):
 
     @mock.patch("opentelemetry.instrumentation.dbapi")
     def test_wrap_connect(self, mock_dbapi):
-        dbapi.wrap_connect(self.tracer, MockConnectionEmpty(), "connect", "-")
+        dbapi.wrap_connect(self.tracer, mock_dbapi, "connect", "-")
         connection = mock_dbapi.connect()
         self.assertEqual(mock_dbapi.connect.call_count, 1)
-        self.assertIsInstance(connection._connection, mock.Mock)
+        self.assertIsInstance(connection.__wrapped__, mock.Mock)
 
     @mock.patch("opentelemetry.instrumentation.dbapi")
     def test_unwrap_connect(self, mock_dbapi):
-        dbapi.wrap_connect(self.tracer, MockConnectionEmpty(), "connect", "-")
+        dbapi.wrap_connect(self.tracer, mock_dbapi, "connect", "-")
         connection = mock_dbapi.connect()
         self.assertEqual(mock_dbapi.connect.call_count, 1)
 
@@ -342,21 +342,19 @@ class TestDBApiIntegration(TestBase):
         self.assertIsInstance(connection, mock.Mock)
 
     def test_instrument_connection(self):
-        connection = MockConnectionEmpty()
+        connection = mock.Mock()
         # Avoid get_attributes failing because can't concatenate mock
-        # pylint: disable=attribute-defined-outside-init
         connection.database = "-"
         connection2 = dbapi.instrument_connection(self.tracer, connection, "-")
-        self.assertIs(connection2._connection, connection)
+        self.assertIs(connection2.__wrapped__, connection)
 
     def test_uninstrument_connection(self):
-        connection = MockConnectionEmpty()
+        connection = mock.Mock()
         # Set connection.database to avoid a failure because mock can't
         # be concatenated
-        # pylint: disable=attribute-defined-outside-init
         connection.database = "-"
         connection2 = dbapi.instrument_connection(self.tracer, connection, "-")
-        self.assertIs(connection2._connection, connection)
+        self.assertIs(connection2.__wrapped__, connection)
 
         connection3 = dbapi.uninstrument_connection(connection2)
         self.assertIs(connection3, connection)
@@ -372,12 +370,10 @@ def mock_connect(*args, **kwargs):
     server_host = kwargs.get("server_host")
     server_port = kwargs.get("server_port")
     user = kwargs.get("user")
-    return MockConnectionWithAttributes(
-        database, server_port, server_host, user
-    )
+    return MockConnection(database, server_port, server_host, user)
 
 
-class MockConnectionWithAttributes:
+class MockConnection:
     def __init__(self, database, server_port, server_host, user):
         self.database = database
         self.server_port = server_port
@@ -410,7 +406,3 @@ class MockCursor:
     def callproc(self, query, params=None, throw_exception=False):
         if throw_exception:
             raise Exception("Test Exception")
-
-
-class MockConnectionEmpty:
-    pass
