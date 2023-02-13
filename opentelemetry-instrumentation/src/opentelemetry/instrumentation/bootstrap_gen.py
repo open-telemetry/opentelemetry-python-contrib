@@ -69,7 +69,7 @@ libraries = {
         "instrumentation": "opentelemetry-instrumentation-falcon==0.37b0.dev",
     },
     "fastapi": {
-        "library": "fastapi ~= 0.58",
+        "library": "fastapi <= 0.90.1",
         "instrumentation": "opentelemetry-instrumentation-fastapi==0.37b0.dev",
     },
     "flask": {
