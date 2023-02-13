@@ -221,7 +221,6 @@ class OpenTelemetryServerInterceptor(grpc.ServerInterceptor):
     def _start_span(
         self, handler_call_details, context, set_status_on_exception=False
     ):
-
         # standard attributes
         attributes = {
             SpanAttributes.RPC_SYSTEM: "grpc",
@@ -283,7 +282,6 @@ class OpenTelemetryServerInterceptor(grpc.ServerInterceptor):
 
         def telemetry_wrapper(behavior, request_streaming, response_streaming):
             def telemetry_interceptor(request_or_iterator, context):
-
                 # handle streaming responses specially
                 if response_streaming:
                     return self._intercept_server_stream(
@@ -327,7 +325,6 @@ class OpenTelemetryServerInterceptor(grpc.ServerInterceptor):
     def _intercept_server_stream(
         self, behavior, handler_call_details, request_or_iterator, context
     ):
-
         with self._set_remote_context(context):
             with self._start_span(
                 handler_call_details, context, set_status_on_exception=False
