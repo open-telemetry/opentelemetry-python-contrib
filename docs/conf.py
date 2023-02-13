@@ -146,6 +146,16 @@ if "anys" in mcfg:
             )
         )
 
+if "obj" in mcfg:
+    objs = getlistcfg(mcfg["obj"])
+    for _obj in objs:
+        nitpick_ignore.append(
+            (
+                "py:obj",
+                _obj,
+            )
+        )
+
 # Add any paths that contain templates here, relative to this directory.
 templates_path = ["_templates"]
 
