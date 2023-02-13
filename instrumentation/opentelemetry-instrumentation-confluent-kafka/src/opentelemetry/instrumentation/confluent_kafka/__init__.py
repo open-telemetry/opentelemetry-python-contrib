@@ -173,6 +173,9 @@ class ProxiedConsumer(Consumer):
     def committed(self, partitions, timeout=-1):
         return self._consumer.committed(partitions, timeout)
 
+    def commit(self, *args, **kwargs):
+        return self._consumer.commit(*args, **kwargs)
+
     def consume(
         self, num_messages=1, *args, **kwargs
     ):  # pylint: disable=keyword-arg-before-vararg
