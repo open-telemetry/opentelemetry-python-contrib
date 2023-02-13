@@ -120,7 +120,6 @@ from .version import __version__
 
 
 class AutoInstrumentedProducer(Producer):
-
     # This method is deliberately implemented in order to allow wrapt to wrap this function
     def produce(
         self, topic, value=None, *args, **kwargs
@@ -173,6 +172,9 @@ class ProxiedConsumer(Consumer):
 
     def committed(self, partitions, timeout=-1):
         return self._consumer.committed(partitions, timeout)
+
+    def commit(self, *args, **kwargs):
+        return self._consumer.commit(*args, **kwargs)
 
     def consume(
         self, num_messages=1, *args, **kwargs

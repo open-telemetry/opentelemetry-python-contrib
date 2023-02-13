@@ -13,7 +13,7 @@
 # limitations under the License.
 
 """
-Instrument `tortoise-orm`_ to report SQL queries.
+Instrument tortoise-orm to report SQL queries.
 
 Usage
 -----
@@ -260,7 +260,6 @@ class TortoiseORMInstrumentor(BaseInstrumentor):
         return span_attributes
 
     async def _do_execute(self, func, instance, args, kwargs):
-
         exception = None
         name = args[0].split()[0]
 
@@ -288,19 +287,23 @@ class TortoiseORMInstrumentor(BaseInstrumentor):
         return result
 
     async def _from_queryset(self, func, modelcls, args, kwargs):
-
         exception = None
         name = f"pydantic.{func.__name__}"
 
         with self._tracer.start_as_current_span(
-            name, kind=SpanKind.INTERNAL
+            name,
+            kind=SpanKind.INTERNAL,
         ) as span:
             if span.is_recording():
                 span_attributes = {}
 
                 model_config = getattr(modelcls, "Config", None)
                 if model_config:
-                    model_title = getattr(modelcls.Config, "title")
+                    model_title = getattr(
+                        modelcls.Config,
+                        "title",
+                        modelcls.__name__,
+                    )
                     if model_title:
                         span_attributes["pydantic.model"] = model_title
 
