@@ -14,7 +14,10 @@
 import os
 import re
 
-from sqlalchemy.event import listen  # pylint: disable=no-name-in-module
+from sqlalchemy.event import (  # pylint: disable=no-name-in-module
+    listen,
+    remove,
+)
 
 from opentelemetry import trace
 from opentelemetry.instrumentation.sqlalchemy.package import (
@@ -95,6 +98,8 @@ def _wrap_connect(tracer_provider=None):
 
 
 class EngineTracer:
+    _remove_event_listener_params = []
+
     def __init__(
         self, tracer, engine, enable_commenter=False, commenter_options=None
     ):
@@ -105,11 +110,24 @@ class EngineTracer:
         self.commenter_options = commenter_options if commenter_options else {}
         self._leading_comment_remover = re.compile(r"^/\*.*?\*/")
 
-        listen(
+        self._register_event_listener(
             engine, "before_cursor_execute", self._before_cur_exec, retval=True
         )
-        listen(engine, "after_cursor_execute", _after_cur_exec)
-        listen(engine, "handle_error", _handle_error)
+        self._register_event_listener(
+            engine, "after_cursor_execute", _after_cur_exec
+        )
+        self._register_event_listener(engine, "handle_error", _handle_error)
+
+    @classmethod
+    def _register_event_listener(cls, target, identifier, func, *args, **kw):
+        listen(target, identifier, func, *args, **kw)
+        cls._remove_event_listener_params.append((target, identifier, func))
+
+    @classmethod
+    def remove_all_event_listeners(cls):
+        for remove_params in cls._remove_event_listener_params:
+            remove(*remove_params)
+        cls._remove_event_listener_params.clear()
 
     def _operation_name(self, db_name, statement):
         parts = []
