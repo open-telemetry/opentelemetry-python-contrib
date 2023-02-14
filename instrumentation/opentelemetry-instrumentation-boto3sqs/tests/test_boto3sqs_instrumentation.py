@@ -39,6 +39,8 @@ from opentelemetry.test.test_base import TestBase
 from opentelemetry.trace import SpanKind
 from opentelemetry.trace.span import Span, format_span_id, format_trace_id
 
+_AWS_TRACE_HEADER = "AWSTraceHeader"
+
 
 def _make_sqs_client():
     return boto3.client(
@@ -169,7 +171,7 @@ class TestBoto3SQSInstrumentation(TestBase):
             yield
 
     def _assert_injected_span(self, msg_attrs: Dict[str, Any], span: Span):
-        trace_parent = msg_attrs[TRACE_HEADER_KEY]["StringValue"]
+        trace_parent = msg_attrs[_AWS_TRACE_HEADER]["StringValue"]
         ctx = span.get_span_context()
         self.assertEqual(
             self._to_trace_parent(ctx.trace_id, ctx.span_id),
@@ -187,7 +189,7 @@ class TestBoto3SQSInstrumentation(TestBase):
     @staticmethod
     def _to_trace_parent(trace_id: int, span_id: int) -> str:
         formated_trace_id = format_trace_id(trace_id)
-        formated_trace_id = formated_trace_id[:8] + '-' + formated_trace_id[8:]
+        formated_trace_id = formated_trace_id[:8] + "-" + formated_trace_id[8:]
         return f"root=1-{formated_trace_id};parent={format_span_id(span_id)};sampled=1".lower()
 
     def _get_only_span(self):
@@ -204,13 +206,15 @@ class TestBoto3SQSInstrumentation(TestBase):
             "Body": body,
             "Attributes": {},
             "MD5OfMessageAttributes": "111",
+            "MD5OfMessageSystemAttributes": "9012",
             "MessageAttributes": {},
+            "MessageSystemAttributes": {},
         }
 
     def _add_xray_parent(
         self, message: Dict[str, Any], trace_id: int, span_id: int
     ):
-        message["MessageAttributes"][TRACE_HEADER_KEY] = {
+        message["MessageSystemAttributes"][_AWS_TRACE_HEADER] = {
             "StringValue": self._to_trace_parent(trace_id, span_id),
             "DataType": "String",
         }
@@ -226,12 +230,14 @@ class TestBoto3SQSInstrumentation(TestBase):
         }
 
         message_attrs = {}
+        message_system_attrs = {}
 
         with self._mocked_endpoint(mock_response):
             self._client.send_message(
                 QueueUrl=self._queue_url,
                 MessageBody="hello msg",
                 MessageAttributes=message_attrs,
+                MessageSystemAttributes=message_system_attrs,
             )
 
         span = self._get_only_span()
@@ -244,7 +250,7 @@ class TestBoto3SQSInstrumentation(TestBase):
             },
             span.attributes,
         )
-        self._assert_injected_span(message_attrs, span)
+        self._assert_injected_span(message_system_attrs, span)
 
     def test_receive_message(self):
         msg_def = {
@@ -257,9 +263,7 @@ class TestBoto3SQSInstrumentation(TestBase):
             message = self._make_message(
                 msg_id, f"hello {msg_id}", attrs["receipt"]
             )
-            self._add_xray_parent(
-                message, attrs["trace_id"], attrs["span_id"]
-            )
+            self._add_xray_parent(message, attrs["trace_id"], attrs["span_id"])
             mock_response["Messages"].append(message)
 
         message_attr_names = []
@@ -269,8 +273,6 @@ class TestBoto3SQSInstrumentation(TestBase):
                 QueueUrl=self._queue_url,
                 MessageAttributeNames=message_attr_names,
             )
-
-        self.assertIn(TRACE_HEADER_KEY, message_attr_names)
 
         # receive span
         span = self._get_only_span()

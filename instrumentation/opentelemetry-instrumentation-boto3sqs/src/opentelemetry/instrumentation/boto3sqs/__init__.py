@@ -60,9 +60,14 @@ _logger = logging.getLogger(__name__)
 
 _IS_SQS_INSTRUMENTED_ATTRIBUTE = "_otel_boto3sqs_instrumented"
 
+_AWS_TRACE_HEADER = "AWSTraceHeader"
+
 
 class Boto3SQSGetter(Getter[CarrierT]):
     def get(self, carrier: CarrierT, key: str) -> Optional[List[str]]:
+        if key == TRACE_HEADER_KEY:
+            key = _AWS_TRACE_HEADER
+
         msg_attr = carrier.get(key)
         if not isinstance(msg_attr, Mapping):
             return None
@@ -81,6 +86,9 @@ class Boto3SQSSetter(Setter[CarrierT]):
     def set(self, carrier: CarrierT, key: str, value: str) -> None:
         # This is a limitation defined by AWS for SQS MessageAttributes size
         if len(carrier.items()) < 10:
+            if key == TRACE_HEADER_KEY:
+                key = _AWS_TRACE_HEADER
+
             carrier[key] = {
                 "StringValue": value,
                 "DataType": "String",
@@ -199,13 +207,12 @@ class Boto3SQSInstrumentor(BaseInstrumentor):
         receipt_handle: str,
         message: Dict[str, Any],
     ) -> None:
-        message_attributes = message.get("MessageAttributes", {})
+        message_system_attributes = message.get("MessageSystemAttributes", {})
         links = []
-        print(message_attributes)
         ctx = AwsXRayPropagator().extract(
-            message_attributes, getter=boto3sqs_getter
+            message_system_attributes, getter=boto3sqs_getter
         )
-        print(ctx)
+
         parent_span_ctx = trace.get_current_span(ctx).get_span_context()
         if parent_span_ctx.is_valid:
             links.append(Link(context=parent_span_ctx))
@@ -240,9 +247,11 @@ class Boto3SQSInstrumentor(BaseInstrumentor):
                 end_on_exit=True,
             ) as span:
                 Boto3SQSInstrumentor._enrich_span(span, queue_name, queue_url)
-                attributes = kwargs.pop("MessageAttributes", {})
+                attributes = kwargs.pop("MessageSystemAttributes", {})
                 AwsXRayPropagator().inject(attributes, setter=boto3sqs_setter)
-                retval = wrapped(*args, MessageAttributes=attributes, **kwargs)
+                retval = wrapped(
+                    *args, MessageSystemAttributes=attributes, **kwargs
+                )
                 message_id = retval.get("MessageId")
                 if message_id:
                     if span.is_recording():
@@ -279,10 +288,11 @@ class Boto3SQSInstrumentor(BaseInstrumentor):
                     span, queue_name, queue_url, conversation_id=entry_id
                 )
                 with trace.use_span(span):
-                    if "MessageAttributes" not in entry:
-                        entry["MessageAttributes"] = {}
+                    if "MessageSystemAttributes" not in entry:
+                        entry["MessageSystemAttributes"] = {}
                     AwsXRayPropagator().inject(
-                        entry["MessageAttributes"], setter=boto3sqs_setter
+                        entry["MessageSystemAttributes"],
+                        setter=boto3sqs_setter,
                     )
             retval = wrapped(*args, **kwargs)
             for successful_messages in retval["Successful"]:
@@ -305,10 +315,9 @@ class Boto3SQSInstrumentor(BaseInstrumentor):
     def _wrap_receive_message(self, sqs_class: type) -> None:
         def receive_message_wrapper(wrapped, instance, args, kwargs):
             queue_url = kwargs.get("QueueUrl")
-            message_attribute_names = kwargs.pop("MessageAttributeNames", [])
-            message_attribute_names.extend(
-                [TRACE_HEADER_KEY]
-            )
+            attribute_names = kwargs.pop("AttributeNames", [])
+            attribute_names.extend(_AWS_TRACE_HEADER)
+
             queue_name = Boto3SQSInstrumentor._extract_queue_name_from_url(
                 queue_url
             )
@@ -325,7 +334,7 @@ class Boto3SQSInstrumentor(BaseInstrumentor):
                 )
                 retval = wrapped(
                     *args,
-                    MessageAttributeNames=message_attribute_names,
+                    AttributeNames=attribute_names,
                     **kwargs,
                 )
                 messages = retval.get("Messages", [])
