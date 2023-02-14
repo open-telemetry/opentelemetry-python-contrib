@@ -59,7 +59,7 @@ class PymemcacheClientTestCase(
 
     def setUp(self):
         super().setUp()
-        PymemcacheInstrumentor().instrument(sanitize_query=False)
+        PymemcacheInstrumentor().instrument()
 
         # pylint: disable=protected-access
         self.tracer = get_tracer(__name__)
@@ -524,7 +524,7 @@ class PymemcacheClientTestCase(
 
     def test_sanitize_query(self):
         PymemcacheInstrumentor().uninstrument()
-        PymemcacheInstrumentor().instrument()
+        PymemcacheInstrumentor().instrument(sanitize_query=True)
 
         client = self.make_client([b"STORED\r\n"])
         result = client.set(b"key", b"value", noreply=False)
@@ -540,7 +540,7 @@ class PymemcacheHashClientTestCase(TestBase):
 
     def setUp(self):
         super().setUp()
-        PymemcacheInstrumentor().instrument(sanitize_query=False)
+        PymemcacheInstrumentor().instrument()
 
         # pylint: disable=protected-access
         self.tracer = get_tracer(__name__)

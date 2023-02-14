@@ -33,7 +33,7 @@ API
 The `instrument` method accepts the following keyword args:
 
 tracer_provider (TracerProvider) - an optional tracer provider
-sanitize_query (Boolean) - default True, enable the pymemcache query sanitization
+sanitize_query (Boolean) - default False, an optional boolean to enable the pymemcache query sanitization
 
 for example:
 
@@ -41,8 +41,8 @@ for example:
 
     from opentelemetry.instrumentation.pymemcache import PymemcacheInstrumentor
 
-    # Instrument pymemcache without query sanitization
-    PymemcacheInstrumentor().instrument(sanitize_query=False)
+    # Instrument pymemcache with query sanitization
+    PymemcacheInstrumentor().instrument(sanitize_query=True)
 
 """
 # pylint: disable=no-value-for-parameter
@@ -194,7 +194,7 @@ class PymemcacheInstrumentor(BaseInstrumentor):
 
     def _instrument(self, **kwargs):
         tracer_provider = kwargs.get("tracer_provider")
-        sanitize_query = kwargs.get("sanitize_query", True)
+        sanitize_query = kwargs.get("sanitize_query", False)
         tracer = get_tracer(__name__, __version__, tracer_provider)
 
         for cmd in COMMANDS:
