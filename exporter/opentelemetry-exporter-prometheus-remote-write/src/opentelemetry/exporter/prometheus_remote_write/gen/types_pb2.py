@@ -28,7 +28,6 @@ _builder.BuildTopDescriptorsAndMessages(
     globals(),
 )
 if _descriptor._USE_C_DESCRIPTORS == False:
-
     DESCRIPTOR._options = None
     DESCRIPTOR._serialized_options = b"Z\006prompb"
     _EXEMPLAR.fields_by_name["labels"]._options = None

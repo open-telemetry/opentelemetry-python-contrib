@@ -13,7 +13,7 @@
 # limitations under the License.
 
 """
-Instrument `kafka-python` to report instrumentation-kafka produced and consumed messages
+Instrument kafka-python to report instrumentation-kafka produced and consumed messages
 
 Usage
 -----
@@ -30,24 +30,21 @@ Usage
     producer = KafkaProducer(bootstrap_servers=['localhost:9092'])
     producer.send('my-topic', b'raw_bytes')
 
-
     # report a span of type consumer with the default settings
-    consumer = KafkaConsumer('my-topic',
-                             group_id='my-group',
-                             bootstrap_servers=['localhost:9092'])
+    consumer = KafkaConsumer('my-topic', group_id='my-group', bootstrap_servers=['localhost:9092'])
     for message in consumer:
-        # process message
+    # process message
 
-The `_instrument` method accepts the following keyword args:
+The _instrument() method accepts the following keyword args:
 tracer_provider (TracerProvider) - an optional tracer provider
 produce_hook (Callable) - a function with extra user-defined logic to be performed before sending the message
-                          this function signature is:
-                          def produce_hook(span: Span, args, kwargs)
+this function signature is:
+def produce_hook(span: Span, args, kwargs)
 consume_hook (Callable) - a function with extra user-defined logic to be performed after consuming a message
-                          this function signature is:
-                          def consume
-                          _hook(span: Span, record: kafka.record.ABCRecord, args, kwargs)
+this function signature is:
+def consume_hook(span: Span, record: kafka.record.ABCRecord, args, kwargs)
 for example:
+
 .. code: python
     from opentelemetry.instrumentation.kafka import KafkaInstrumentor
     from kafka import KafkaProducer, KafkaConsumer

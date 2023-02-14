@@ -17,7 +17,7 @@
 
 libraries = {
     "aio_pika": {
-        "library": "aio_pika ~= 7.2.0",
+        "library": "aio_pika >= 7.2.0, < 9.0.0",
         "instrumentation": "opentelemetry-instrumentation-aio-pika==0.37b0.dev",
     },
     "aiohttp": {
@@ -69,7 +69,7 @@ libraries = {
         "instrumentation": "opentelemetry-instrumentation-falcon==0.37b0.dev",
     },
     "fastapi": {
-        "library": "fastapi ~= 0.58",
+        "library": "fastapi <= 0.90.1",
         "instrumentation": "opentelemetry-instrumentation-fastapi==0.37b0.dev",
     },
     "flask": {
