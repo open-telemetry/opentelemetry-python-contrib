@@ -9,7 +9,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
-- `opentelemetry-instrumentation-redis` Add `sanitize_query` config option to allow query sanitization.  ([#1572](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/1572))
+- `opentelemetry-instrumentation-redis` Add `sanitize_query` config option to allow query sanitization.
+  ([#1572](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/1572))
 - `opentelemetry-instrumentation-elasticsearch` Add optional db.statement query sanitization. 
   ([#1598](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/1598))
 - `opentelemetry-instrumentation-celery` Record exceptions as events on the span.
@@ -18,6 +19,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   ([#1553](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/1553))
 - `opentelemetry/sdk/extension/aws` Implement [`aws.ecs.*`](https://github.com/open-telemetry/opentelemetry-specification/blob/main/specification/resource/semantic_conventions/cloud_provider/aws/ecs.md) and [`aws.logs.*`](https://opentelemetry.io/docs/reference/specification/resource/semantic_conventions/cloud_provider/aws/logs/) resource attributes in the `AwsEcsResourceDetector` detector when the ECS Metadata v4 is available
   ([#1212](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/1212))
+- `opentelemetry-instrumentation-botocore` Add enhanced support for SQS
+  ([#1599](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/1599))
 - `opentelemetry-instrumentation-aio-pika` Support `aio_pika` 8.x
   ([#1481](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/1481))
 - `opentelemetry-instrumentation-aws-lambda` Flush `MeterProvider` at end of function invocation.

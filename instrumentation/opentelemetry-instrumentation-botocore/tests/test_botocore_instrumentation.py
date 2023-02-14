@@ -185,27 +185,6 @@ class TestBotocoreInstrumentor(TestBase):
             "SQS", "ListQueues", request_id=_REQUEST_ID_REGEX_MATCH
         )
 
-    @mock_sqs
-    def test_sqs_send_message(self):
-        sqs = self._make_client("sqs")
-        test_queue_name = "test_queue_name"
-
-        response = sqs.create_queue(QueueName=test_queue_name)
-        self.assert_span(
-            "SQS", "CreateQueue", request_id=_REQUEST_ID_REGEX_MATCH
-        )
-        self.memory_exporter.clear()
-
-        queue_url = response["QueueUrl"]
-        sqs.send_message(QueueUrl=queue_url, MessageBody="Test SQS MESSAGE!")
-
-        self.assert_span(
-            "SQS",
-            "SendMessage",
-            request_id=_REQUEST_ID_REGEX_MATCH,
-            attributes={"aws.queue_url": queue_url},
-        )
-
     @mock_kinesis
     def test_kinesis_client(self):
         kinesis = self._make_client("kinesis")

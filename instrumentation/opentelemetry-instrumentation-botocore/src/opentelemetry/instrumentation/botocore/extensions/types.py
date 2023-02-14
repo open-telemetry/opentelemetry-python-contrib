@@ -15,7 +15,7 @@
 import logging
 from typing import Any, Dict, Optional, Tuple
 
-from opentelemetry.trace import SpanKind
+from opentelemetry.trace import SpanKind, Tracer
 from opentelemetry.trace.span import Span
 from opentelemetry.util.types import AttributeValue
 
@@ -46,7 +46,12 @@ class _AwsSdkCallContext:
         span_kind: the kind used to create the span.
     """
 
-    def __init__(self, client: _BotoClientT, args: Tuple[str, Dict[str, Any]]):
+    def __init__(
+        self,
+        client: _BotoClientT,
+        args: Tuple[str, Dict[str, Any]],
+        tracer: Tracer,
+    ):
         operation = args[0]
         try:
             params = args[1]
@@ -57,6 +62,7 @@ class _AwsSdkCallContext:
         boto_meta = client.meta
         service_model = boto_meta.service_model
 
+        self.tracer = tracer
         self.service = service_model.service_name.lower()  # type: str
         self.operation = operation  # type: str
         self.params = params  # type: Dict[str, Any]

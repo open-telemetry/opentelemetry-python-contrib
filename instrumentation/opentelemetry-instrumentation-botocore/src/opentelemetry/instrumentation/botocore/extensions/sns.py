@@ -14,10 +14,10 @@
 
 import abc
 import inspect
-from typing import Any, Dict, MutableMapping, Optional, Tuple
+from typing import Dict, Optional, Tuple
 
 from opentelemetry.instrumentation.botocore.extensions._messaging import (
-    inject_propagation_context,
+    inject_span_into_message,
 )
 from opentelemetry.instrumentation.botocore.extensions.types import (
     _AttributeMapT,
@@ -112,13 +112,7 @@ class _OpPublish(_SnsOperation):
 
     @classmethod
     def before_service_call(cls, call_context: _AwsSdkCallContext, span: Span):
-        cls._inject_span_into_entry(call_context.params)
-
-    @classmethod
-    def _inject_span_into_entry(cls, entry: MutableMapping[str, Any]):
-        entry["MessageAttributes"] = inject_propagation_context(
-            entry.get("MessageAttributes")
-        )
+        inject_span_into_message(call_context.params)
 
 
 class _OpPublishBatch(_OpPublish):
@@ -131,8 +125,10 @@ class _OpPublishBatch(_OpPublish):
 
     @classmethod
     def before_service_call(cls, call_context: _AwsSdkCallContext, span: Span):
-        for entry in call_context.params.get("PublishBatchRequestEntries", ()):
-            cls._inject_span_into_entry(entry)
+        for entry in (
+            call_context.params.get("PublishBatchRequestEntries") or ()
+        ):
+            inject_span_into_message(entry)
 
 
 ################################################################################
