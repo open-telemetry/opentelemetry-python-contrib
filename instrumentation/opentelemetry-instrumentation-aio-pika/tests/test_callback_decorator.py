@@ -14,7 +14,7 @@
 import asyncio
 from unittest import TestCase, mock, skipIf
 
-from aio_pika import Queue, version_info
+from aio_pika import Queue
 
 from opentelemetry.instrumentation.aio_pika.callback_decorator import (
     CallbackDecorator,
@@ -23,6 +23,7 @@ from opentelemetry.semconv.trace import SpanAttributes
 from opentelemetry.trace import SpanKind, get_tracer
 
 from .consts import (
+    AIOPIKA_VERSION_INFO,
     CHANNEL_7,
     CHANNEL_8,
     CORRELATION_ID,
@@ -36,7 +37,7 @@ from .consts import (
 )
 
 
-@skipIf(version_info >= (8, 0), "Only for aio_pika 7")
+@skipIf(AIOPIKA_VERSION_INFO >= (8, 0), "Only for aio_pika 7")
 class TestInstrumentedQueueAioRmq7(TestCase):
     EXPECTED_ATTRIBUTES = {
         SpanAttributes.MESSAGING_SYSTEM: MESSAGING_SYSTEM,
@@ -76,7 +77,7 @@ class TestInstrumentedQueueAioRmq7(TestCase):
         callback.assert_called_once_with(MESSAGE)
 
 
-@skipIf(version_info <= (8, 0), "Only for aio_pika 8")
+@skipIf(AIOPIKA_VERSION_INFO <= (8, 0), "Only for aio_pika 8")
 class TestInstrumentedQueueAioRmq8(TestCase):
     EXPECTED_ATTRIBUTES = {
         SpanAttributes.MESSAGING_SYSTEM: MESSAGING_SYSTEM,
