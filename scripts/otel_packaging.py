@@ -14,6 +14,7 @@
 
 import os
 import subprocess
+from subprocess import CalledProcessError
 
 import tomli
 
@@ -28,12 +29,18 @@ def get_instrumentation_packages():
         if not os.path.isdir(pkg_path):
             continue
 
-        version = subprocess.check_output(
-            "hatch version",
-            shell=True,
-            cwd=pkg_path,
-            universal_newlines=True,
-        )
+        try:
+            version = subprocess.check_output(
+                "hatch version",
+                shell=True,
+                cwd=pkg_path,
+                universal_newlines=True,
+            )
+        except CalledProcessError as exc:
+            print(f"Could not get hatch version from path {pkg_path}")
+            print(exc.output)
+            raise exc
+
         pyproject_toml_path = os.path.join(pkg_path, "pyproject.toml")
 
         with open(pyproject_toml_path, "rb") as file:
