@@ -34,10 +34,32 @@ class TestThreadingInstrumentor(TestBase):
         super().tearDown()
         # ThreadingInstrumentor().uninstrument()
     def print_square(self, num):
-        with self.tracer.start_as_current_span("target"):
+        with self.tracer.start_as_current_span("square"):
             print("Square: {}" .format(num * num))
 
-    def test_thread_with_root(self):
+    def print_cube(self, num):
+        with self.tracer.start_as_current_span("cube"):
+            print("Cube: {}" .format(num * num * num))
+
+    def print_square_with_thread(self, num):
+        with self.tracer.start_as_current_span("square"):
+            t2 = threading.Thread(target=self.print_cube, args=(10,))
+            print("Square: {}" .format(num * num))
+            t2.start()
+            t2.join()
+
+    def calculate(self, num):
+        with self.tracer.start_as_current_span("calculate"):
+            t1 = threading.Thread(target=self.print_square, args=(num,))
+            t2 = threading.Thread(target=self.print_cube, args=(num,))
+            t1.start()
+            t1.join()
+            
+            t2.start()
+            t2.join()
+
+
+    def test_without_thread_nesting(self):
         t1 = threading.Thread(target=self.print_square, args=(10,))
 
         with self.tracer.start_as_current_span("root"):
@@ -50,6 +72,42 @@ class TestThreadingInstrumentor(TestBase):
         target, root = spans[:2]
         
         self.assertIs(target.parent, root.get_span_context())
+        self.assertIsNone(root.parent)
+
+    def test_with_thread_nesting(self):
+        t1 = threading.Thread(target=self.print_square_with_thread, args=(10,))
+
+
+        with self.tracer.start_as_current_span("root"):
+            t1.start()
+            t1.join()
+
+        spans = self.memory_exporter.get_finished_spans()
+
+        self.assertEqual(len(spans), 3)
+
+        cube, square, root = spans[:3]
+        
+        self.assertIs(cube.parent, square.get_span_context())
+        self.assertIs(square.parent, root.get_span_context())
+        self.assertIsNone(root.parent)
+
+    def test_with_thread_multi_nesting(self):
+        t1 = threading.Thread(target=self.calculate, args=(10,))
+
+        with self.tracer.start_as_current_span("root"):
+            t1.start()
+            t1.join()
+
+        spans = self.memory_exporter.get_finished_spans()
+        
+        self.assertEqual(len(spans), 4)
+
+        cube, square, calculate, root = spans[:4]
+        
+        self.assertIs(cube.parent, calculate.get_span_context())
+        self.assertIs(square.parent, calculate.get_span_context())
+        self.assertIs(calculate.parent, root.get_span_context())
         self.assertIsNone(root.parent)
 
     def test_uninstrumented(self):
