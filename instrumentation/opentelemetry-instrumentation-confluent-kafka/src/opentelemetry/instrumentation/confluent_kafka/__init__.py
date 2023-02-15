@@ -13,12 +13,12 @@
 # limitations under the License.
 
 """
-Instrument `confluent-kafka-python` to report instrumentation-confluent-kafka produced and consumed messages
+Instrument confluent-kafka-python to report instrumentation-confluent-kafka produced and consumed messages
 
 Usage
 -----
 
-..code:: python
+.. code-block:: python
 
     from opentelemetry.instrumentation.confluent_kafka import ConfluentKafkaInstrumentor
     from confluent_kafka import Producer, Consumer
@@ -30,12 +30,10 @@ Usage
     conf1 = {'bootstrap.servers': "localhost:9092"}
     producer = Producer(conf1)
     producer.produce('my-topic',b'raw_bytes')
-
-    conf2 = {'bootstrap.servers': "localhost:9092",
-        'group.id': "foo",
-        'auto.offset.reset': 'smallest'}
+    conf2 = {'bootstrap.servers': "localhost:9092", 'group.id': "foo", 'auto.offset.reset': 'smallest'}
     # report a span of type consumer with the default settings
     consumer = Consumer(conf2)
+
     def basic_consume_loop(consumer, topics):
         try:
             consumer.subscribe(topics)
@@ -43,11 +41,10 @@ Usage
             while running:
                 msg = consumer.poll(timeout=1.0)
                 if msg is None: continue
-
                 if msg.error():
                     if msg.error().code() == KafkaError._PARTITION_EOF:
                         # End of partition event
-                        sys.stderr.write(f"{msg.topic()} [{msg.partition()}] reached end at offset {msg.offset()}}\n")
+                        sys.stderr.write(f"{msg.topic() [{msg.partition()}] reached end at offset {msg.offset()}}")
                     elif msg.error():
                         raise KafkaException(msg.error())
                 else:
@@ -57,19 +54,26 @@ Usage
             consumer.close()
 
     basic_consume_loop(consumer, "my-topic")
+    ---
 
+The _instrument method accepts the following keyword args:
+  tracer_provider (TracerProvider) - an optional tracer provider
 
-The `_instrument` method accepts the following keyword args:
-tracer_provider (TracerProvider) - an optional tracer provider
-instrument_producer (Callable) - a function with extra user-defined logic to be performed before sending the message
-                          this function signature is:
-                          def instrument_producer(producer: Producer, tracer_provider=None)
-instrument_consumer (Callable) - a function with extra user-defined logic to be performed after consuming a message
-                          this function signature is:
-                          def instrument_consumer(consumer: Consumer, tracer_provider=None)
-for example:
-.. code: python
+  instrument_producer (Callable) - a function with extra user-defined logic to be performed before sending the message
+    this function signature is:
+
+  def instrument_producer(producer: Producer, tracer_provider=None)
+
+    instrument_consumer (Callable) - a function with extra user-defined logic to be performed after consuming a message
+        this function signature is:
+
+  def instrument_consumer(consumer: Consumer, tracer_provider=None)
+    for example:
+
+.. code:: python
+
     from opentelemetry.instrumentation.confluent_kafka import ConfluentKafkaInstrumentor
+
     from confluent_kafka import Producer, Consumer
 
     inst = ConfluentKafkaInstrumentor()
@@ -85,15 +89,12 @@ for example:
     p = inst.instrument_producer(p, tracer_provider)
     c = inst.instrument_consumer(c, tracer_provider=tracer_provider)
 
-
     # Using kafka as normal now will automatically generate spans,
     # including user custom attributes added from the hooks
     conf = {'bootstrap.servers': "localhost:9092"}
     p.produce('my-topic',b'raw_bytes')
     msg = c.poll()
 
-
-API
 ___
 """
 from typing import Collection
@@ -172,6 +173,9 @@ class ProxiedConsumer(Consumer):
 
     def committed(self, partitions, timeout=-1):
         return self._consumer.committed(partitions, timeout)
+
+    def commit(self, *args, **kwargs):
+        return self._consumer.commit(*args, **kwargs)
 
     def consume(
         self, num_messages=1, *args, **kwargs
