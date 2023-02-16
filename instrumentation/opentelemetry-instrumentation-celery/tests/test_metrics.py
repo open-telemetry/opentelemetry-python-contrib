@@ -17,8 +17,9 @@ from .celery_test_tasks import task_add, app
 class TestMetrics(TestBase):
     def setUp(self):
         super().setUp()
-        self._worker = app.Worker(app=app, pool="solo", concurrency=1,
-                                  hostname='celery@akochavi')
+        self._worker = app.Worker(
+            app=app, pool="solo", concurrency=1, hostname="celery@akochavi"
+        )
         self._thread = threading.Thread(target=self._worker.start)
         self._thread.daemon = True
         self._thread.start()
@@ -95,15 +96,13 @@ class TestMetrics(TestBase):
 
         task_runtime = metrics[0]
         print(task_runtime)
-        self.assertEqual(
-            task_runtime.name, "flower.task.runtime.seconds"
-        )
+        self.assertEqual(task_runtime.name, "flower.task.runtime.seconds")
         self.assert_metric_expected(
             task_runtime,
             task_runtime_estimated,
             {
-                'task': 'tests.celery_test_tasks.task_add',
-                'worker': 'celery@akochavi',
+                "task": "tests.celery_test_tasks.task_add",
+                "worker": "celery@akochavi",
             },
             est_delta=200,
         )

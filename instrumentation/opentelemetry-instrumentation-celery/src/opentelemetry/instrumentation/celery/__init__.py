@@ -191,10 +191,7 @@ class CeleryInstrumentor(BaseInstrumentor):
         activation.__exit__(None, None, None)
         utils.detach_span(task, task_id)
         self.update_task_start_time(task_id)
-        labels = {
-            'task': task.name,
-            'worker': task.request.hostname
-        }
+        labels = {"task": task.name, "worker": task.request.hostname}
         self._record_histograms(task_id, labels)
 
     def _trace_before_publish(self, *args, **kwargs):
@@ -291,13 +288,18 @@ class CeleryInstrumentor(BaseInstrumentor):
 
     def update_task_start_time(self, task_id):
         cur_time = default_timer()
-        elapsed_time = cur_time - self.task_id_to_start_time[
-            task_id] if task_id in self.task_id_to_start_time else cur_time
+        elapsed_time = (
+            cur_time - self.task_id_to_start_time[task_id]
+            if task_id in self.task_id_to_start_time
+            else cur_time
+        )
         self.task_id_to_start_time[task_id] = elapsed_time
 
     def _record_histograms(self, task_id, metric_attributes):
         self.metrics["flower.task.runtime.seconds"].record(
-            self.task_id_to_start_time.get(task_id), attributes=metric_attributes)
+            self.task_id_to_start_time.get(task_id),
+            attributes=metric_attributes,
+        )
 
     def create_celery_metrics(self, meter) -> None:
         self.metrics = {
