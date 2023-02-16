@@ -32,7 +32,7 @@ class TestThreadingInstrumentor(TestBase):
 
     def tearDown(self):
         super().tearDown()
-        # ThreadingInstrumentor().uninstrument()
+        ThreadingInstrumentor().uninstrument()
     def print_square(self, num):
         with self.tracer.start_as_current_span("square"):
             print("Square: {}" .format(num * num))
