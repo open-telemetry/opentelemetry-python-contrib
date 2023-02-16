@@ -91,6 +91,7 @@ urlpatterns = [
 _django_instrumentor = DjangoInstrumentor()
 
 
+# pylint: disable=too-many-public-methods
 class TestMiddleware(WsgiTestBase):
     @classmethod
     def setUpClass(cls):
@@ -282,6 +283,18 @@ class TestMiddleware(WsgiTestBase):
         self.assertEqual(len(span_list), 1)
 
         client.get("/excluded_noarg2/")
+        span_list = self.memory_exporter.get_finished_spans()
+        self.assertEqual(len(span_list), 1)
+
+    def test_exclude_lists_through_instrument(self):
+        _django_instrumentor.uninstrument()
+        _django_instrumentor.instrument(excluded_urls="excluded_explicit")
+        client = Client()
+        client.get("/excluded_explicit")
+        span_list = self.memory_exporter.get_finished_spans()
+        self.assertEqual(len(span_list), 0)
+
+        client.get("/excluded_arg/123")
         span_list = self.memory_exporter.get_finished_spans()
         self.assertEqual(len(span_list), 1)
 

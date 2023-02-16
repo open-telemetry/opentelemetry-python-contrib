@@ -29,7 +29,6 @@ _logger = getLogger(__name__)
 
 
 def run() -> None:
-
     parser = ArgumentParser(
         description="""
         opentelemetry-instrument automatically instruments a Python
@@ -57,9 +56,7 @@ def run() -> None:
         environment_variable_module = entry_point.load()
 
         for attribute in dir(environment_variable_module):
-
             if attribute.startswith("OTEL_"):
-
                 argument = sub(r"OTEL_(PYTHON_)?", "", attribute).lower()
 
                 parser.add_argument(
@@ -88,7 +85,6 @@ def run() -> None:
     ).items():
         value = getattr(args, argument)
         if value is not None:
-
             environ[otel_environment_variable] = value
 
     python_path = environ.get("PYTHONPATH")

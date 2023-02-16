@@ -219,6 +219,21 @@ class TestDBApiIntegration(TestBase):
         self.assertEqual(span.resource.attributes["db-resource-key"], "value")
         self.assertIs(span.status.status_code, trace_api.StatusCode.ERROR)
 
+    def test_no_op_tracer_provider(self):
+        db_integration = dbapi.DatabaseApiIntegration(
+            self.tracer,
+            "testcomponent",
+            tracer_provider=trace_api.NoOpTracerProvider(),
+        )
+
+        mock_connection = db_integration.wrapped_connection(
+            mock_connect, {}, {}
+        )
+        cursor = mock_connection.cursor()
+        cursor.executemany("Test query")
+        spans_list = self.memory_exporter.get_finished_spans()
+        self.assertEqual(len(spans_list), 0)
+
     def test_executemany(self):
         db_integration = dbapi.DatabaseApiIntegration(
             "testname", "testcomponent"
@@ -236,7 +251,6 @@ class TestDBApiIntegration(TestBase):
         )
 
     def test_executemany_comment(self):
-
         connect_module = mock.MagicMock()
         connect_module.__version__ = mock.MagicMock()
         connect_module.__libpq_version__ = 123
@@ -262,7 +276,6 @@ class TestDBApiIntegration(TestBase):
         )
 
     def test_executemany_flask_integration_comment(self):
-
         connect_module = mock.MagicMock()
         connect_module.__version__ = mock.MagicMock()
         connect_module.__libpq_version__ = 123
@@ -312,14 +325,14 @@ class TestDBApiIntegration(TestBase):
 
     @mock.patch("opentelemetry.instrumentation.dbapi")
     def test_wrap_connect(self, mock_dbapi):
-        dbapi.wrap_connect(self.tracer, MockConnectionEmpty(), "connect", "-")
+        dbapi.wrap_connect(self.tracer, mock_dbapi, "connect", "-")
         connection = mock_dbapi.connect()
         self.assertEqual(mock_dbapi.connect.call_count, 1)
-        self.assertIsInstance(connection._connection, mock.Mock)
+        self.assertIsInstance(connection.__wrapped__, mock.Mock)
 
     @mock.patch("opentelemetry.instrumentation.dbapi")
     def test_unwrap_connect(self, mock_dbapi):
-        dbapi.wrap_connect(self.tracer, MockConnectionEmpty(), "connect", "-")
+        dbapi.wrap_connect(self.tracer, mock_dbapi, "connect", "-")
         connection = mock_dbapi.connect()
         self.assertEqual(mock_dbapi.connect.call_count, 1)
 
@@ -329,21 +342,19 @@ class TestDBApiIntegration(TestBase):
         self.assertIsInstance(connection, mock.Mock)
 
     def test_instrument_connection(self):
-        connection = MockConnectionEmpty()
+        connection = mock.Mock()
         # Avoid get_attributes failing because can't concatenate mock
-        # pylint: disable=attribute-defined-outside-init
         connection.database = "-"
         connection2 = dbapi.instrument_connection(self.tracer, connection, "-")
-        self.assertIs(connection2._connection, connection)
+        self.assertIs(connection2.__wrapped__, connection)
 
     def test_uninstrument_connection(self):
-        connection = MockConnectionEmpty()
+        connection = mock.Mock()
         # Set connection.database to avoid a failure because mock can't
         # be concatenated
-        # pylint: disable=attribute-defined-outside-init
         connection.database = "-"
         connection2 = dbapi.instrument_connection(self.tracer, connection, "-")
-        self.assertIs(connection2._connection, connection)
+        self.assertIs(connection2.__wrapped__, connection)
 
         connection3 = dbapi.uninstrument_connection(connection2)
         self.assertIs(connection3, connection)
@@ -359,12 +370,10 @@ def mock_connect(*args, **kwargs):
     server_host = kwargs.get("server_host")
     server_port = kwargs.get("server_port")
     user = kwargs.get("user")
-    return MockConnectionWithAttributes(
-        database, server_port, server_host, user
-    )
+    return MockConnection(database, server_port, server_host, user)
 
 
-class MockConnectionWithAttributes:
+class MockConnection:
     def __init__(self, database, server_port, server_host, user):
         self.database = database
         self.server_port = server_port
@@ -397,7 +406,3 @@ class MockCursor:
     def callproc(self, query, params=None, throw_exception=False):
         if throw_exception:
             raise Exception("Test Exception")
-
-
-class MockConnectionEmpty:
-    pass
