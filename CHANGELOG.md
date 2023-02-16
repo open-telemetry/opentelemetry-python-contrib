@@ -8,7 +8,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## Unreleased
 
 - Add metric instrumentation for celery
-  ([#1679](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/1679/files))
+  ([#1679](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/1679))
 
 ### Added
 

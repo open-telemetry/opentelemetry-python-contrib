@@ -30,7 +30,6 @@ class TestMetrics(TestBase):
         self._thread.join()
 
     def get_metrics(self):
-        CeleryInstrumentor().instrument()
         result = task_add.delay(1, 2)
 
         timeout = time.time() + 60 * 1  # 1 minutes from now
@@ -38,7 +37,6 @@ class TestMetrics(TestBase):
             if time.time() > timeout:
                 break
             time.sleep(0.05)
-        CeleryInstrumentor().uninstrument()
         resource_metrics = (
             self.memory_metrics_reader.get_metrics_data().resource_metrics
         )
@@ -88,10 +86,12 @@ class TestMetrics(TestBase):
             )
 
     def test_basic_metric(self):
+        CeleryInstrumentor().instrument()
         start_time = default_timer()
         task_runtime_estimated = (default_timer() - start_time) * 1000
 
         metrics = self.get_metrics()
+        CeleryInstrumentor().uninstrument()
         self.assertEqual(len(metrics), 1)
 
         task_runtime = metrics[0]
@@ -106,3 +106,16 @@ class TestMetrics(TestBase):
             },
             est_delta=200,
         )
+
+    def test_metric_uninstrument(self):
+        CeleryInstrumentor().instrument()
+        metrics = self.get_metrics()
+        self.assertEqual(len(metrics), 1)
+        CeleryInstrumentor().uninstrument()
+
+        metrics = self.get_metrics()
+        self.assertEqual(len(metrics), 1)
+
+        for metric in metrics:
+            for point in list(metric.data.data_points):
+                self.assertEqual(point.count, 1)
