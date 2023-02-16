@@ -29,6 +29,8 @@ dependencies = [
   "opentelemetry-instrumentation == 0.37b0.dev",
 ]
 
+[project.optional-dependencies]
+instruments = []
 test = [
   "opentelemetry-instrumentation-threading[instruments]",
   "opentelemetry-test-utils == 0.37b0.dev",
