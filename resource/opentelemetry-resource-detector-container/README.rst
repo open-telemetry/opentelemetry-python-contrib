@@ -15,7 +15,7 @@ Installation
 
 ::
 
-    pip install opentelemetry-resource-detector-containerß
+    pip install opentelemetry-resource-detector-container
 
 ---------------------------
 
