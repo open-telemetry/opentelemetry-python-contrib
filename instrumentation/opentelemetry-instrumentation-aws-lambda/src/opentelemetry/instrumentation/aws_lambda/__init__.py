@@ -174,7 +174,7 @@ def _determine_links() -> Optional[Sequence[Link]]:
 
 
     See more:
-    https://github.com/open-telemetry/opentelemetry-specification/blob/main/specification/trace/semantic_conventions/instrumentation/aws-lambda.md
+    https://github.com/open-telemetry/opentelemetry-specification/blob/main/specification/trace/semantic_conventions/instrumentation/aws-lambda.md#aws-x-ray-environment-span-link
 
     Returns:
         A Link or None
