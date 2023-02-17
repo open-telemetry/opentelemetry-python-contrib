@@ -30,6 +30,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - `opentelemetry-instrumentation-logging` Add `otelTraceSampled` to instrumetation-logging
   ([#1773](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/1773))
 
+### Changed
+
+- `opentelemetry-instrumentation-botocore` now uses the AWS X-Ray propagator by
+  default
+  ([#1741](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/1741))
 
 ### Fixed
 
