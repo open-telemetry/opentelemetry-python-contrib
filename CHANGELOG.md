@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## Unreleased
 
+## Version 1.16.0/0.37b0 (2023-02-15)
+
 ### Added
 
 - Add metrics instrumentation for sqlalchemy
