@@ -179,7 +179,6 @@ def _determine_links() -> Optional[Sequence[Link]]:
     Returns:
         A Link or None
     """
-    env_context = None
     links = None
 
     xray_env_var = os.environ.get(_X_AMZN_TRACE_ID)
