@@ -24,6 +24,7 @@ from opentelemetry.instrumentation.confluent_kafka import (
     ProxiedProducer,
 )
 from opentelemetry.instrumentation.confluent_kafka.utils import (
+    KafkaContextGetter,
     KafkaContextSetter,
 )
 
@@ -89,3 +90,17 @@ class TestConfluentKafka(TestCase):
         carrier_list = [("key1", "val1")]
         context_setter.set(carrier_list, "key2", "val2")
         self.assertTrue(("key2", "val2".encode()) in carrier_list)
+
+    def test_context_getter(self) -> None:
+        context_setter = KafkaContextSetter()
+        context_getter = KafkaContextGetter()
+
+        carrier_dict = {}
+        context_setter.set(carrier_dict, "key1", "val1")
+        self.assertEqual(context_getter.get(carrier_dict, "key1"), ["val1"])
+        self.assertEqual(["key1"], context_getter.keys(carrier_dict))
+
+        carrier_list = []
+        context_setter.set(carrier_list, "key1", "val1")
+        self.assertEqual(context_getter.get(carrier_list, "key1"), ["val1"])
+        self.assertEqual(["key1"], context_getter.keys(carrier_list))

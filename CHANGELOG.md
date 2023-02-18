@@ -16,6 +16,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - Fix Flask instrumentation to only close the span if it was created by the same thread.
   ([#1654](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/1654))
+- Fix confluent-kafka instrumentation by allowing Producer headers to be dict or list
+  ([#1655](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/1655))
 
 ## Version 1.16.0/0.37b0 (2023-02-17)
 
@@ -61,8 +63,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   ([#1512](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/1512))
 - Add commit method for ConfluentKafkaInstrumentor's ProxiedConsumer
   ([#1656](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/1656))
-- Fix confluent-kafka instrumentation by allowing Producer headers to be dict or list
-  ([#1655](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/1655))
 
 ## Version 1.15.0/0.36b0 (2022-12-10)
 
