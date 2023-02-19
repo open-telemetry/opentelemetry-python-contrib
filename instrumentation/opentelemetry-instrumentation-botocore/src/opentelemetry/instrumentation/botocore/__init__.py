@@ -167,7 +167,8 @@ class BotocoreInstrumentor(BaseInstrumentor):
         if context_api.get_value(_SUPPRESS_INSTRUMENTATION_KEY):
             return original_func(*args, **kwargs)
 
-        call_context = _determine_call_context(instance, args)
+        call_context = _determine_call_context(instance, args + (
+            {"instrumentationConfiguration": {"sanitizeDynamoDBQuery": self.sanitize_query}},))
         if call_context is None:
             return original_func(*args, **kwargs)
 
@@ -196,9 +197,9 @@ class BotocoreInstrumentor(BaseInstrumentor):
         attributes.pop(SpanAttributes.DB_STATEMENT + ".sanitized", None)
 
         with self._tracer.start_as_current_span(
-            call_context.span_name,
-            kind=call_context.span_kind,
-            attributes=attributes,
+                call_context.span_name,
+                kind=call_context.span_kind,
+                attributes=attributes,
         ) as span:
             _safe_invoke(extension.before_service_call, span)
             self._call_request_hook(span, call_context)
@@ -237,7 +238,7 @@ class BotocoreInstrumentor(BaseInstrumentor):
         )
 
     def _call_response_hook(
-        self, span: Span, call_context: _AwsSdkCallContext, result
+            self, span: Span, call_context: _AwsSdkCallContext, result
     ):
         if not callable(self.response_hook):
             return
@@ -259,9 +260,9 @@ def _apply_response_attributes(span: Span, result):
         headers = metadata.get("HTTPHeaders")
         if headers is not None:
             request_id = (
-                headers.get("x-amzn-RequestId")
-                or headers.get("x-amz-request-id")
-                or headers.get("x-amz-id-2")
+                    headers.get("x-amzn-RequestId")
+                    or headers.get("x-amz-request-id")
+                    or headers.get("x-amz-id-2")
             )
     if request_id:
         # TODO: update when semantic conventions exist
@@ -278,9 +279,10 @@ def _apply_response_attributes(span: Span, result):
 
 
 def _determine_call_context(
-    client: BaseClient, args: Tuple[str, Dict[str, Any]]
+        client: BaseClient, args: Tuple[str, Dict[str, Any]]
 ) -> Optional[_AwsSdkCallContext]:
     try:
+        print("go", client._client_config)
         call_context = _AwsSdkCallContext(client, args)
 
         logger.debug(

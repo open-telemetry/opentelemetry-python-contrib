@@ -44,6 +44,7 @@ class _AwsSdkCallContext:
         api_version: the API version of the called AWS service.
         span_name: the name used to create the span.
         span_kind: the kind used to create the span.
+        configuration: a dict of additional configuration for the AWS service call.
     """
 
     def __init__(self, client: _BotoClientT, args: Tuple[str, Dict[str, Any]]):
@@ -54,12 +55,19 @@ class _AwsSdkCallContext:
             _logger.warning("Could not get request params.")
             params = {}
 
+        try:
+            configurations = args[2]
+        except (IndexError, TypeError):
+            _logger.warning("Could not get request configurations.")
+            configurations = {}
+
         boto_meta = client.meta
         service_model = boto_meta.service_model
 
         self.service = service_model.service_name.lower()  # type: str
         self.operation = operation  # type: str
         self.params = params  # type: Dict[str, Any]
+        self.configuration = configurations  # type: Dict[str, Any]
 
         # 'operation' and 'service' are essential for instrumentation.
         # for all other attributes we extract them defensively. All of them should
