@@ -12,7 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 """
-Instrument boto3sqs to trace SQS applications.
+Instrument `boto3sqs`_ to trace SQS applications.
 
 .. _boto3sqs: https://boto3.amazonaws.com/v1/documentation/api/latest/reference/services/sqs.html
 
@@ -102,9 +102,9 @@ class Boto3SQSInstrumentor(BaseInstrumentor):
         """
         Since the classic way to process SQS messages is using a `for` loop, without a well defined scope like a
         callback - we are doing something similar to the instrumentaiton of Kafka-python and instrumenting the
-        '__iter__' functions and the '__getitem__' functions to set the span context of the addressed message. Since
+        `__iter__` functions and the `__getitem__` functions to set the span context of the addressed message. Since
         the return value from an 'SQS.ReceiveMessage' returns a builtin list, we cannot wrap it and change all of the
-        calls for 'list.__iter__' and 'list.__getitem__' - therefore we use ContextableList. It is bound to the
+        calls for `list.__iter__` and `list.__getitem__` - therefore we use ContextableList. It is bound to the
         received_messages_spans dict
         """
 
