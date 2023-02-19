@@ -138,28 +138,22 @@ async def middleware(request, handler):
     if (
         context.get_value("suppress_instrumentation")
         or context.get_value(_SUPPRESS_HTTP_INSTRUMENTATION_KEY)
-        or _excluded_urls.url_disabled(request.url)
+        or _excluded_urls.url_disabled(request.url.path)
     ):
         return await handler(request)
 
-    token = context.attach(extract(request, getter=getter))
     span_name, additional_attributes = get_default_span_details(request)
 
     with tracer.start_as_current_span(
         span_name,
         kind=trace.SpanKind.SERVER,
     ) as span:
-        if span.is_recording():
-            attributes = collect_request_attributes(request)
-            attributes.update(additional_attributes)
-            for key, value in attributes.items():
-                span.set_attribute(key, value)
-            try:
-                resp = await handler(request)
-                set_status_code(span, resp.status)
-            finally:
-                context.detach(token)
-            return resp
+        attributes = collect_request_attributes(request)
+        attributes.update(additional_attributes)
+        span.setattributes(attributes)
+        resp = await handler(request)
+        set_status_code(span, resp.status)
+        return resp
 
 
 class _InstrumentedApplication(web.Application):
