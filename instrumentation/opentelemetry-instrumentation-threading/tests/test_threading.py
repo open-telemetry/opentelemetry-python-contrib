@@ -75,6 +75,11 @@ class TestThreadingInstrumentor(TestBase):
         self.assertIsNone(root.parent)
 
     def test_with_thread_nesting(self):
+       #
+       #  Following scenario is tested.
+       #  threadA -> methodA -> threadB -> methodB
+       #
+
         square_thread = threading.Thread(target=self.print_square_with_thread, args=(10,))
 
 
@@ -93,6 +98,12 @@ class TestThreadingInstrumentor(TestBase):
         self.assertIsNone(root.parent)
 
     def test_with_thread_multi_nesting(self):
+       #
+       # Following scenario is tested.
+       #                         / threadB -> methodB
+       #    threadA -> methodA ->
+       #                        \ threadC -> methodC
+       #
         calculate_thread = threading.Thread(target=self.calculate, args=(10,))
 
         with self.tracer.start_as_current_span("root"):
