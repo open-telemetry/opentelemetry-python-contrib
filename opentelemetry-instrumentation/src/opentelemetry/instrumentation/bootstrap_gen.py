@@ -172,4 +172,5 @@ default_instrumentations = [
     "opentelemetry-instrumentation-sqlite3==0.38b0.dev",
     "opentelemetry-instrumentation-urllib==0.38b0.dev",
     "opentelemetry-instrumentation-wsgi==0.38b0.dev",
+    "opentelemetry-instrumentation-threading==0.38b0.dev",
 ]
