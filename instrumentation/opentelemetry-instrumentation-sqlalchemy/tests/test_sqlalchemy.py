@@ -161,8 +161,12 @@ class TestSqlalchemyInstrumentation(TestBase):
         self.assertEqual(len(spans), 2)
         # first span - the connection to the db
         self.assertEqual(spans[0].name, "connect")
-        self.assertEqual(spans[0].attributes[SpanAttributes.DB_NAME], ":memory:")
-        self.assertEqual(spans[0].attributes[SpanAttributes.DB_SYSTEM], "sqlite")
+        self.assertEqual(
+            spans[0].attributes[SpanAttributes.DB_NAME], ":memory:"
+        )
+        self.assertEqual(
+            spans[0].attributes[SpanAttributes.DB_SYSTEM], "sqlite"
+        )
         self.assertEqual(spans[0].kind, trace.SpanKind.CLIENT)
         # second span - the query
         self.assertEqual(spans[1].name, "SELECT :memory:")
@@ -221,8 +225,12 @@ class TestSqlalchemyInstrumentation(TestBase):
             self.assertEqual(len(spans), 2)
             # first span - the connection to the db
             self.assertEqual(spans[0].name, "connect")
-            self.assertEqual(spans[0].attributes[SpanAttributes.DB_NAME], ":memory:")
-            self.assertEqual(spans[0].attributes[SpanAttributes.DB_SYSTEM], "sqlite")
+            self.assertEqual(
+                spans[0].attributes[SpanAttributes.DB_NAME], ":memory:"
+            )
+            self.assertEqual(
+                spans[0].attributes[SpanAttributes.DB_SYSTEM], "sqlite"
+            )
             self.assertEqual(spans[0].kind, trace.SpanKind.CLIENT)
             # second span - the query
             self.assertEqual(spans[1].name, "SELECT :memory:")
