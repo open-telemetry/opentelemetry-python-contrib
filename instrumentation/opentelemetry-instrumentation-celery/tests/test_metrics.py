@@ -1,17 +1,17 @@
-import time
 import threading
+import time
 from timeit import default_timer
-from typing import Union, Optional
+from typing import Optional, Union
 
+from opentelemetry.instrumentation.celery import CeleryInstrumentor
 from opentelemetry.sdk.metrics._internal.point import Metric
 from opentelemetry.sdk.metrics.export import (
     HistogramDataPoint,
     NumberDataPoint,
 )
 from opentelemetry.test.test_base import TestBase
-from opentelemetry.instrumentation.celery import CeleryInstrumentor
 
-from .celery_test_tasks import task_add, app
+from .celery_test_tasks import app, task_add
 
 
 class TestMetrics(TestBase):
