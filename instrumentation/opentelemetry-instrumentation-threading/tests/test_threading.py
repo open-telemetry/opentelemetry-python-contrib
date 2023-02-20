@@ -43,28 +43,28 @@ class TestThreadingInstrumentor(TestBase):
 
     def print_square_with_thread(self, num):
         with self.tracer.start_as_current_span("square"):
-            t2 = threading.Thread(target=self.print_cube, args=(10,))
+            cube_thread = threading.Thread(target=self.print_cube, args=(10,))
             print("Square: {}" .format(num * num))
-            t2.start()
-            t2.join()
+            cube_thread.start()
+            cube_thread.join()
 
     def calculate(self, num):
         with self.tracer.start_as_current_span("calculate"):
-            t1 = threading.Thread(target=self.print_square, args=(num,))
-            t2 = threading.Thread(target=self.print_cube, args=(num,))
-            t1.start()
-            t1.join()
+            square_thread = threading.Thread(target=self.print_square, args=(num,))
+            cube_thread = threading.Thread(target=self.print_cube, args=(num,))
+            square_thread.start()
+            square_thread.join()
             
-            t2.start()
-            t2.join()
+            cube_thread.start()
+            cube_thread.join()
 
 
     def test_without_thread_nesting(self):
-        t1 = threading.Thread(target=self.print_square, args=(10,))
+        square_thread = threading.Thread(target=self.print_square, args=(10,))
 
         with self.tracer.start_as_current_span("root"):
-            t1.start()
-            t1.join()
+            square_thread.start()
+            square_thread.join()
 
         spans = self.memory_exporter.get_finished_spans()
         self.assertEqual(len(spans), 2)
@@ -75,12 +75,12 @@ class TestThreadingInstrumentor(TestBase):
         self.assertIsNone(root.parent)
 
     def test_with_thread_nesting(self):
-        t1 = threading.Thread(target=self.print_square_with_thread, args=(10,))
+        square_thread = threading.Thread(target=self.print_square_with_thread, args=(10,))
 
 
         with self.tracer.start_as_current_span("root"):
-            t1.start()
-            t1.join()
+            square_thread.start()
+            square_thread.join()
 
         spans = self.memory_exporter.get_finished_spans()
 
@@ -93,11 +93,11 @@ class TestThreadingInstrumentor(TestBase):
         self.assertIsNone(root.parent)
 
     def test_with_thread_multi_nesting(self):
-        t1 = threading.Thread(target=self.calculate, args=(10,))
+        calculate_thread = threading.Thread(target=self.calculate, args=(10,))
 
         with self.tracer.start_as_current_span("root"):
-            t1.start()
-            t1.join()
+            calculate_thread.start()
+            calculate_thread.join()
 
         spans = self.memory_exporter.get_finished_spans()
         
@@ -113,9 +113,9 @@ class TestThreadingInstrumentor(TestBase):
     def test_uninstrumented(self):
         ThreadingInstrumentor().uninstrument()
 
-        t1 = threading.Thread(target=self.print_square, args=(10,))
-        t1.start()
-        t1.join()
+        square_thread = threading.Thread(target=self.print_square, args=(10,))
+        square_thread.start()
+        square_thread.join()
         spans = self.memory_exporter.get_finished_spans()
         self.assertEqual(len(spans), 1)
 
