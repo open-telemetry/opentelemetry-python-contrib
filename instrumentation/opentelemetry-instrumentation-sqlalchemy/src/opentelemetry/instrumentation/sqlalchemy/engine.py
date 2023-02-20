@@ -75,7 +75,13 @@ def _wrap_connect(tracer):
     def _wrap_connect_internal(func, module, args, kwargs):
         with tracer.start_as_current_span(
             "connect", kind=trace.SpanKind.CLIENT
-        ):
+        ) as span:
+            if span.is_recording():
+                attrs, _ = _get_attributes_from_url(module.url)
+                span.set_attributes(attrs)
+                span.set_attribute(
+                    SpanAttributes.DB_SYSTEM, _normalize_vendor(module.name)
+                )
             return func(*args, **kwargs)
 
     return _wrap_connect_internal
