@@ -16,17 +16,17 @@ Instrument `boto3sqs`_ to trace SQS applications.
 
 .. _boto3sqs: https://boto3.amazonaws.com/v1/documentation/api/latest/reference/services/sqs.html
 
-
 Usage
 -----
 
-.. code:: python
+.. code-block:: python
 
     import boto3
     from opentelemetry.instrumentation.boto3sqs import Boto3SQSInstrumentor
 
-
     Boto3SQSInstrumentor().instrument()
+
+---
 """
 import logging
 from typing import Any, Collection, Dict, Generator, List, Mapping, Optional

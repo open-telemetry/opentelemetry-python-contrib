@@ -7,6 +7,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## Unreleased
 
+- Add connection attributes to sqlalchemy connect span
+  ([#1608](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/1608))
+
+## Version 1.16.0/0.37b0 (2023-02-17)
+
 ### Added
 
 - Support `aio_pika` 9.x (([#1670](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/1670])

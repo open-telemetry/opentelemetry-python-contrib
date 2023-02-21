@@ -132,7 +132,7 @@ def getlistcfg(strval):
     ]
 
 
-ignore_categories = ["py-class", "py-func", "py-exc", "any"]
+ignore_categories = ["py-class", "py-func", "py-exc", "py-obj", "any"]
 
 for category in ignore_categories:
     if category in mcfg:
