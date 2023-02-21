@@ -21,6 +21,7 @@ from moto import mock_dynamodb2  # pylint: disable=import-error
 from opentelemetry.instrumentation.botocore import BotocoreInstrumentor
 from opentelemetry.instrumentation.botocore.extensions.dynamodb import (
     _conv_params_to_sanitized_str,
+    _db_statement_operations,
     _DynamoDbExtension,
 )
 from opentelemetry.semconv.trace import SpanAttributes
@@ -156,10 +157,6 @@ class TestDynamoDbExtension(TestBase):
         span = spans[0]
 
         self.assertEqual("dynamodb", span.attributes[SpanAttributes.DB_SYSTEM])
-        self.assertIn(SpanAttributes.DB_STATEMENT, span.attributes)
-        self.assertNotIn(
-            SpanAttributes.DB_STATEMENT + ".sanitized", span.attributes
-        )
         self.assertEqual(
             operation, span.attributes[SpanAttributes.DB_OPERATION]
         )
@@ -167,6 +164,8 @@ class TestDynamoDbExtension(TestBase):
             "dynamodb.us-west-2.amazonaws.com",
             span.attributes[SpanAttributes.NET_PEER_NAME],
         )
+        if operation in _db_statement_operations:
+            self.assertIn(SpanAttributes.DB_STATEMENT, span.attributes)
         return span
 
     def assert_table_names(self, span: Span, *table_names):
@@ -330,7 +329,7 @@ class TestDynamoDbExtension(TestBase):
     @mock_dynamodb2
     def test_delete_item(self):
         BotocoreInstrumentor().uninstrument()
-        BotocoreInstrumentor().instrument(sanitize_query=True)
+        BotocoreInstrumentor().instrument(dynamodb_sanitize_query=True)
         self._create_prepared_table()
 
         self.client.delete_item(**delete_query)
@@ -375,7 +374,7 @@ class TestDynamoDbExtension(TestBase):
     def test_get_item(self):
         # Reset instrumentation to use sanitized query
         BotocoreInstrumentor().uninstrument()
-        BotocoreInstrumentor().instrument(sanitize_query=True)
+        BotocoreInstrumentor().instrument(dynamodb_sanitize_query=True)
 
         self._create_prepared_table()
         self.client.get_item(**get_query)
@@ -504,7 +503,7 @@ class TestDynamoDbExtension(TestBase):
 
         # Reset instrumentation to use sanitized query
         BotocoreInstrumentor().uninstrument()
-        BotocoreInstrumentor().instrument(sanitize_query=True)
+        BotocoreInstrumentor().instrument(dynamodb_sanitize_query=True)
 
         self.client.update_item(**update_query)
         span = self.assert_span("UpdateItem")

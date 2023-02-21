@@ -79,8 +79,8 @@ for example:
     ec2 = self.session.create_client("ec2", region_name="us-west-2")
     ec2.describe_instances()
 
-    # Instrument Botocore with query sanitization enabled (sanitizing dynamoDB queries)
-    BotocoreInstrumentor().instrument(sanitize_query=True)
+    # Instrument Botocore with dynamoDB sanitization enabled - default is False
+    BotocoreInstrumentor().instrument(dynamodb_sanitize_query=True)
 """
 
 import logging
@@ -122,6 +122,17 @@ def _patched_endpoint_prepare_request(wrapped, instance, args, kwargs):
     return wrapped(*args, **kwargs)
 
 
+class ExtensionsConfiguration:
+    def __init__(self, **kwargs):
+        dynamodb_sanitize_query = kwargs.get("dynamodb_sanitize_query", False)
+        self.dynamodb_configuration = {
+            "sanitize_query": dynamodb_sanitize_query
+        }
+
+    def get_dynamodb_configuration(self):
+        return self.dynamodb_configuration
+
+
 class BotocoreInstrumentor(BaseInstrumentor):
     """An instrumentor for Botocore.
 
@@ -144,7 +155,7 @@ class BotocoreInstrumentor(BaseInstrumentor):
 
         self.request_hook = kwargs.get("request_hook")
         self.response_hook = kwargs.get("response_hook")
-        self.sanitize_query = kwargs.get("sanitize_query", False)
+        self.configuration = ExtensionsConfiguration(**kwargs)
 
         wrap_function_wrapper(
             "botocore.client",
@@ -167,8 +178,9 @@ class BotocoreInstrumentor(BaseInstrumentor):
         if context_api.get_value(_SUPPRESS_INSTRUMENTATION_KEY):
             return original_func(*args, **kwargs)
 
-        call_context = _determine_call_context(instance, args + (
-            {"instrumentationConfiguration": {"sanitizeDynamoDBQuery": self.sanitize_query}},))
+        call_context = _determine_call_context(
+            instance, args + (self.configuration,)
+        )
         if call_context is None:
             return original_func(*args, **kwargs)
 
@@ -185,21 +197,11 @@ class BotocoreInstrumentor(BaseInstrumentor):
         }
 
         _safe_invoke(extension.extract_attributes, attributes)
-        if self.sanitize_query and SpanAttributes.DB_STATEMENT in attributes:
-            attributes.update(
-                {
-                    SpanAttributes.DB_STATEMENT: attributes.get(
-                        SpanAttributes.DB_STATEMENT + ".sanitized"
-                    )
-                }
-            )
-
-        attributes.pop(SpanAttributes.DB_STATEMENT + ".sanitized", None)
 
         with self._tracer.start_as_current_span(
-                call_context.span_name,
-                kind=call_context.span_kind,
-                attributes=attributes,
+            call_context.span_name,
+            kind=call_context.span_kind,
+            attributes=attributes,
         ) as span:
             _safe_invoke(extension.before_service_call, span)
             self._call_request_hook(span, call_context)
@@ -282,7 +284,6 @@ def _determine_call_context(
         client: BaseClient, args: Tuple[str, Dict[str, Any]]
 ) -> Optional[_AwsSdkCallContext]:
     try:
-        print("go", client._client_config)
         call_context = _AwsSdkCallContext(client, args)
 
         logger.debug(

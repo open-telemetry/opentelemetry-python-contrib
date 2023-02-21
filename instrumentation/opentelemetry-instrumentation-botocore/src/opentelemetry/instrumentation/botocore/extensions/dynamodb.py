@@ -62,6 +62,17 @@ def _conv_val_to_len(value) -> Optional[int]:
     return len(value) if value is not None else None
 
 
+_db_statement_operations = {
+    "BatchGetItem",
+    "BatchWriteItem",
+    "DeleteItem",
+    "GetItem",
+    "PutItem",
+    "Query",
+    "Scan",
+    "UpdateItem",
+}
+
 _sanitized_keys = (
     "Item",
     "Key",
@@ -88,7 +99,6 @@ def _conv_params_to_sanitized_str(params) -> str:
 
 _REQ_TABLE_NAME = ("TableName", _conv_val_to_single_attr_tuple)
 _REQ_REQITEMS_TABLE_NAMES = ("RequestItems", _conv_dict_to_key_tuple)
-
 
 _REQ_GLOBAL_SEC_INDEXES = ("GlobalSecondaryIndexes", _conv_list_to_json_list)
 _REQ_LOCAL_SEC_INDEXES = ("LocalSecondaryIndexes", _conv_list_to_json_list)
@@ -370,17 +380,24 @@ class _DynamoDbExtension(_AwsSdkExtension):
     def __init__(self, call_context: _AwsSdkCallContext):
         super().__init__(call_context)
         self._op = _OPERATION_MAPPING.get(call_context.operation)
+        self._configuration = (
+            call_context.configuration.get_dynamodb_configuration()
+        )
 
     def extract_attributes(self, attributes: _AttributeMapT):
         attributes[SpanAttributes.DB_SYSTEM] = DbSystemValues.DYNAMODB.value
         attributes[SpanAttributes.DB_OPERATION] = self._call_context.operation
-        attributes[SpanAttributes.DB_STATEMENT] = str(
-            self._call_context.params
-        )
-        attributes[
-            SpanAttributes.DB_STATEMENT + ".sanitized"
-        ] = _conv_params_to_sanitized_str(self._call_context.params)
         attributes[SpanAttributes.NET_PEER_NAME] = self._get_peer_name()
+
+        if self._call_context.operation in _db_statement_operations:
+            attributes[SpanAttributes.DB_STATEMENT] = str(
+                self._call_context.params
+            )
+
+            if self._configuration.get("sanitize_query"):
+                attributes[
+                    SpanAttributes.DB_STATEMENT
+                ] = _conv_params_to_sanitized_str(self._call_context.params)
 
         if self._op is None:
             return
