@@ -262,9 +262,9 @@ def _apply_response_attributes(span: Span, result):
         headers = metadata.get("HTTPHeaders")
         if headers is not None:
             request_id = (
-                    headers.get("x-amzn-RequestId")
-                    or headers.get("x-amz-request-id")
-                    or headers.get("x-amz-id-2")
+                headers.get("x-amzn-RequestId")
+                or headers.get("x-amz-request-id")
+                or headers.get("x-amz-id-2")
             )
     if request_id:
         # TODO: update when semantic conventions exist
@@ -281,7 +281,7 @@ def _apply_response_attributes(span: Span, result):
 
 
 def _determine_call_context(
-        client: BaseClient, args: Tuple[str, Dict[str, Any]]
+    client: BaseClient, args: Tuple[str, Dict[str, Any]]
 ) -> Optional[_AwsSdkCallContext]:
     try:
         call_context = _AwsSdkCallContext(client, args)
