@@ -66,7 +66,7 @@ for example:
     def response_hook(span, service_name, operation_name, result):
         # response hook logic
 
-    sanitize_query (bool) - an optional query sanitization flag, default is False
+    dynamodb_sanitize_query (bool) - an optional dynamodb query sanitization flag, default is False
 
     # Instrument Botocore with hooks
     BotocoreInstrumentor().instrument(request_hook=request_hook, response_hook=response_hook)
@@ -240,7 +240,7 @@ class BotocoreInstrumentor(BaseInstrumentor):
         )
 
     def _call_response_hook(
-            self, span: Span, call_context: _AwsSdkCallContext, result
+        self, span: Span, call_context: _AwsSdkCallContext, result
     ):
         if not callable(self.response_hook):
             return
