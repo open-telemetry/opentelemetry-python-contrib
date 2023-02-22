@@ -179,7 +179,9 @@ class BotocoreInstrumentor(BaseInstrumentor):
             return original_func(*args, **kwargs)
 
         call_context = _determine_call_context(
-            instance, args, self.configuration,
+            instance,
+            args,
+            self.configuration,
         )
         if call_context is None:
             return original_func(*args, **kwargs)
@@ -281,7 +283,9 @@ def _apply_response_attributes(span: Span, result):
 
 
 def _determine_call_context(
-    client: BaseClient, args: Tuple[str, Dict[str, Any]], configuration: _ExtensionsConfiguration
+    client: BaseClient,
+    args: Tuple[str, Dict[str, Any]],
+    configuration: _ExtensionsConfiguration,
 ) -> Optional[_AwsSdkCallContext]:
     try:
         call_context = _AwsSdkCallContext(client, args, configuration)

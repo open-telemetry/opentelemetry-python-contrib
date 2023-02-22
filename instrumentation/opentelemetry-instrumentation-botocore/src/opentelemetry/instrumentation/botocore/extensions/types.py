@@ -45,7 +45,12 @@ class _AwsSdkCallContext:
         configuration: a class represents additional configuration for botocore extensions.
     """
 
-    def __init__(self, client: _BotoClientT, args: Tuple[str, Dict[str, Any]], configuration):
+    def __init__(
+        self,
+        client: _BotoClientT,
+        args: Tuple[str, Dict[str, Any]],
+        configuration,
+    ):
         operation = args[0]
         try:
             params = args[1]
