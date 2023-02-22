@@ -7,8 +7,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## Unreleased
 
+### Added
+
 - Add connection attributes to sqlalchemy connect span
   ([#1608](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/1608))
+
+### Fixed
+
+- Fix Flask instrumentation to only close the span if it was created by the same thread.
+  ([#1654](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/1654))
 
 ## Version 1.16.0/0.37b0 (2023-02-17)
 
@@ -16,7 +23,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - Support `aio_pika` 9.x (([#1670](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/1670])
 - `opentelemetry-instrumentation-redis` Add `sanitize_query` config option to allow query sanitization.  ([#1572](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/1572))
-- `opentelemetry-instrumentation-elasticsearch` Add optional db.statement query sanitization. 
+- `opentelemetry-instrumentation-elasticsearch` Add optional db.statement query sanitization.
   ([#1598](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/1598))
 - `opentelemetry-instrumentation-celery` Record exceptions as events on the span.
   ([#1573](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/1573))
