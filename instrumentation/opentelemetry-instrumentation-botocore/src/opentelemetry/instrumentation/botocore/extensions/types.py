@@ -45,7 +45,7 @@ class _AwsSdkCallContext:
         configuration: a class represents additional configuration for botocore extensions.
     """
 
-    def __init__(self, client: _BotoClientT, args: Tuple[str, Dict[str, Any]]):
+    def __init__(self, client: _BotoClientT, args: Tuple[str, Dict[str, Any]], configuration):
         operation = args[0]
         try:
             params = args[1]
@@ -53,19 +53,13 @@ class _AwsSdkCallContext:
             _logger.warning("Could not get request params.")
             params = {}
 
-        try:
-            configurations = args[2]
-        except (IndexError, TypeError):
-            _logger.warning("Could not get request configurations.")
-            configurations = None
-
         boto_meta = client.meta
         service_model = boto_meta.service_model
 
         self.service = service_model.service_name.lower()  # type: str
         self.operation = operation  # type: str
         self.params = params  # type: Dict[str, Any]
-        self.configuration = configurations
+        self.configuration = configuration
 
         # 'operation' and 'service' are essential for instrumentation.
         # for all other attributes we extract them defensively. All of them should
