@@ -70,7 +70,6 @@ class TestSystemMetrics(TestBase):
         SystemMetricsInstrumentor().uninstrument()
 
     def test_system_metrics_instrumentor_initialization(self):
-
         try:
             SystemMetricsInstrumentor()
             SystemMetricsInstrumentor(config={})
@@ -125,7 +124,6 @@ class TestSystemMetrics(TestBase):
             observer_names.remove(observer)
 
     def test_runtime_metrics_instrument(self):
-
         runtime_config = {
             "runtime.memory": ["rss", "vms"],
             "runtime.cpu.time": ["user", "system"],
