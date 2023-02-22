@@ -305,7 +305,7 @@ def _safe_execute_hook(hook_func, *args):
         logger.warning("Failed executing hook: %s", err)
 
 
-def _instrument(
+def _instrument(  # noqa pylint: disable=too-many-statements
     wrapped_module_name,
     wrapped_function_name,
     flush_timeout,
@@ -316,7 +316,7 @@ def _instrument(
     request_hook: Callable[[Span, Any, Any], None] = None,
     response_hook: Callable[[Span, Any, Any], None] = None,
 ):
-    def _instrumented_lambda_handler_call(  # noqa pylint: disable=too-many-branches
+    def _instrumented_lambda_handler_call(  # noqa pylint: disable=too-many-branches, too-many-locals, too-many-statements
         call_wrapped, instance, args, kwargs
     ):
         orig_handler_name = ".".join(
