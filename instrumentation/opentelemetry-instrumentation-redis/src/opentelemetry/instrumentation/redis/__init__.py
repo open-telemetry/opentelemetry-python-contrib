@@ -88,6 +88,22 @@ for example:
     client = redis.StrictRedis(host="localhost", port=6379)
     client.get("my-key")
 
+Configuration
+-------------
+
+Query sanitization
+******************
+To enable query sanitization with an environment variable, set
+``OTEL_PYTHON_INSTRUMENTATION_SANITIZE_REDIS`` to "true".
+
+For example,
+
+::
+
+    export OTEL_PYTHON_INSTRUMENTATION_SANITIZE_REDIS="true"
+
+will result in traced queries like "SET ? ?".
+
 API
 ---
 """
