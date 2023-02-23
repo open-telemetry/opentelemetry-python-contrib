@@ -311,7 +311,9 @@ class RedisInstrumentor(BaseInstrumentor):
                 "sanitize_query",
                 environ.get(
                     OTEL_PYTHON_INSTRUMENTATION_SANITIZE_REDIS, "false"
-                ).lower().strip()
+                )
+                .lower()
+                .strip()
                 == "true",
             ),
         )
