@@ -15,7 +15,7 @@ import asyncio
 from typing import Type
 from unittest import TestCase, mock, skipIf
 
-from aio_pika import Exchange, RobustExchange, version_info
+from aio_pika import Exchange, RobustExchange
 
 from opentelemetry.instrumentation.aio_pika.publish_decorator import (
     PublishDecorator,
@@ -24,6 +24,7 @@ from opentelemetry.semconv.trace import SpanAttributes
 from opentelemetry.trace import SpanKind, get_tracer
 
 from .consts import (
+    AIOPIKA_VERSION_INFO,
     CHANNEL_7,
     CHANNEL_8,
     CONNECTION_7,
@@ -39,7 +40,7 @@ from .consts import (
 )
 
 
-@skipIf(version_info >= (8, 0), "Only for aio_pika 7")
+@skipIf(AIOPIKA_VERSION_INFO >= (8, 0), "Only for aio_pika 7")
 class TestInstrumentedExchangeAioRmq7(TestCase):
     EXPECTED_ATTRIBUTES = {
         SpanAttributes.MESSAGING_SYSTEM: MESSAGING_SYSTEM,
@@ -92,7 +93,7 @@ class TestInstrumentedExchangeAioRmq7(TestCase):
         self._test_publish(RobustExchange)
 
 
-@skipIf(version_info <= (8, 0), "Only for aio_pika 8")
+@skipIf(AIOPIKA_VERSION_INFO <= (8, 0), "Only for aio_pika 8")
 class TestInstrumentedExchangeAioRmq8(TestCase):
     EXPECTED_ATTRIBUTES = {
         SpanAttributes.MESSAGING_SYSTEM: MESSAGING_SYSTEM,
