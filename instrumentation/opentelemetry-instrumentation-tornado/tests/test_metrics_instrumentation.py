@@ -18,10 +18,12 @@ from timeit import default_timer
 from opentelemetry.instrumentation.tornado import TornadoInstrumentor
 from opentelemetry.sdk.metrics.export import HistogramDataPoint
 
-from .test_instrumentation import TornadoTest
+from .test_instrumentation import (  # pylint: disable=no-name-in-module,import-error
+    TornadoTest,
+)
 
 
-class TestTornadoInstrumentor(TornadoTest):
+class TestTornadoMetricsInstrumentation(TornadoTest):
     # Return Sequence with one histogram
     def create_histogram_data_points(self, sum_data_point, attributes):
         return [
@@ -168,10 +170,10 @@ class TestTornadoInstrumentor(TornadoTest):
         TornadoInstrumentor().uninstrument()
         self.fetch("/")
 
-        metrics_list = self.memory_metrics_reader.get_metrics_data()
-        for resource_metric in metrics_list.resource_metrics:
-            for scope_metric in resource_metric.scope_metrics:
-                for metric in scope_metric.metrics:
-                    for point in list(metric.data.data_points):
-                        if isinstance(point, HistogramDataPoint):
-                            self.assertEqual(point.count, 1)
+        metrics = self.get_sorted_metrics()
+        self.assertEqual(len(metrics), 7)
+
+        for metric in metrics:
+            for point in list(metric.data.data_points):
+                if isinstance(point, HistogramDataPoint):
+                    self.assertEqual(point.count, 1)

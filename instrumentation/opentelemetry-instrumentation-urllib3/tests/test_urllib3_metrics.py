@@ -23,7 +23,7 @@ from opentelemetry.test.httptest import HttpTestBase
 from opentelemetry.test.test_base import TestBase
 
 
-class TestURLLib3InstrumentorMetric(HttpTestBase, TestBase):
+class TestUrllib3MetricsInstrumentation(HttpTestBase, TestBase):
     def setUp(self):
         super().setUp()
         self.assert_ip = self.server.server_address[0]
