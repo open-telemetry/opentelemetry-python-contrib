@@ -176,7 +176,8 @@ class TestRedis(TestBase):
         RedisInstrumentor().uninstrument()
 
         env_patch = mock.patch.dict(
-            "os.environ", {"OTEL_PYTHON_INSTRUMENTATION_SANITIZE_REDIS": "true"}
+            "os.environ",
+            {"OTEL_PYTHON_INSTRUMENTATION_SANITIZE_REDIS": "true"},
         )
         env_patch.start()
         RedisInstrumentor().instrument(

@@ -122,7 +122,7 @@ from opentelemetry.instrumentation.redis.util import (
     _format_command_args,
 )
 from opentelemetry.instrumentation.redis.environment_variables import (
-    OTEL_PYTHON_INSTRUMENTATION_SANITIZE_REDIS
+    OTEL_PYTHON_INSTRUMENTATION_SANITIZE_REDIS,
 )
 from opentelemetry.instrumentation.redis.version import __version__
 from opentelemetry.instrumentation.utils import unwrap
@@ -309,9 +309,11 @@ class RedisInstrumentor(BaseInstrumentor):
             response_hook=kwargs.get("response_hook"),
             sanitize_query=kwargs.get(
                 "sanitize_query",
-                environ.get(OTEL_PYTHON_INSTRUMENTATION_SANITIZE_REDIS, "false").lower().strip()
+                environ.get(
+                    OTEL_PYTHON_INSTRUMENTATION_SANITIZE_REDIS, "false"
+                ).lower().strip()
                 == "true",
-            )
+            ),
         )
 
     def _uninstrument(self, **kwargs):
