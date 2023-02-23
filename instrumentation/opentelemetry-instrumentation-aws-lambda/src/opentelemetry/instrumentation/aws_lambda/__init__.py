@@ -190,7 +190,7 @@ def _determine_links() -> Optional[Sequence[Link]]:
 
         span_context = get_current_span(env_context).get_span_context()
         if span_context.is_valid:
-            links = [Link(span_context)]
+            links = [Link(span_context, {"source": "x-ray-env"})]
 
     return links
 

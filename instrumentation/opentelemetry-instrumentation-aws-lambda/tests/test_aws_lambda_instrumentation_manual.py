@@ -252,12 +252,14 @@ class TestAwsLambdaInstrumentor(TestBase):
                 name="valid_xray_trace",
                 context={},
                 expected_link_trace_id=MOCK_XRAY_TRACE_ID,
+                expected_link_attributes={"source": "x-ray-env"},
                 xray_traceid=MOCK_XRAY_TRACE_CONTEXT_SAMPLED,
             ),
             TestCase(
                 name="invalid_xray_trace",
                 context={},
                 expected_link_trace_id=None,
+                expected_link_attributes={},
                 xray_traceid=f"0",
             ),
         ]
@@ -286,6 +288,9 @@ class TestAwsLambdaInstrumentor(TestBase):
                 link = span.links[0]
                 self.assertEqual(
                     link.context.trace_id, test.expected_link_trace_id
+                )
+                self.assertEqual(
+                    link.attributes, test.expected_link_attributes
                 )
 
             self.memory_exporter.clear()
