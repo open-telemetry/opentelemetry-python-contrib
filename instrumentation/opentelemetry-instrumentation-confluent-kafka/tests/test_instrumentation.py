@@ -58,3 +58,18 @@ class TestConfluentKafka(TestCase):
 
         consumer = instrumentation.uninstrument_consumer(consumer)
         self.assertEqual(consumer.__class__, Consumer)
+
+    def test_consumer_commit_method_exists(self) -> None:
+        instrumentation = ConfluentKafkaInstrumentor()
+
+        consumer = Consumer(
+            {
+                "bootstrap.servers": "localhost:29092",
+                "group.id": "mygroup",
+                "auto.offset.reset": "earliest",
+            }
+        )
+
+        consumer = instrumentation.instrument_consumer(consumer)
+        self.assertEqual(consumer.__class__, ProxiedConsumer)
+        self.assertTrue(hasattr(consumer, "commit"))
