@@ -107,8 +107,8 @@ will result in traced queries like "SET ? ?".
 API
 ---
 """
-from os import environ
 import typing
+from os import environ
 from typing import Any, Collection
 
 import redis
@@ -116,13 +116,13 @@ from wrapt import wrap_function_wrapper
 
 from opentelemetry import trace
 from opentelemetry.instrumentation.instrumentor import BaseInstrumentor
+from opentelemetry.instrumentation.redis.environment_variables import (
+    OTEL_PYTHON_INSTRUMENTATION_SANITIZE_REDIS,
+)
 from opentelemetry.instrumentation.redis.package import _instruments
 from opentelemetry.instrumentation.redis.util import (
     _extract_conn_attributes,
     _format_command_args,
-)
-from opentelemetry.instrumentation.redis.environment_variables import (
-    OTEL_PYTHON_INSTRUMENTATION_SANITIZE_REDIS,
 )
 from opentelemetry.instrumentation.redis.version import __version__
 from opentelemetry.instrumentation.utils import unwrap
