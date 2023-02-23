@@ -22,7 +22,6 @@ from .test_instrumentation import TornadoTest
 
 
 class TestTornadoInstrumentor(TornadoTest):
-
     # Return Sequence with one histogram
     def create_histogram_data_points(self, sum_data_point, attributes):
         return [
