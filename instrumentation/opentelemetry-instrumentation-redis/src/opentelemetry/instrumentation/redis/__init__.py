@@ -309,7 +309,7 @@ class RedisInstrumentor(BaseInstrumentor):
             response_hook=kwargs.get("response_hook"),
             sanitize_query=kwargs.get(
                 "sanitize_query",
-                environ.get(OTEL_PYTHON_INSTRUMENTATION_SANITIZE_REDIS, "false").lower()
+                environ.get(OTEL_PYTHON_INSTRUMENTATION_SANITIZE_REDIS, "false").lower().strip()
                 == "true",
             )
         )
