@@ -239,7 +239,6 @@ API
 ---
 """
 from logging import getLogger
-from threading import get_ident
 from time import time_ns
 from timeit import default_timer
 from typing import Collection
@@ -265,7 +264,7 @@ _logger = getLogger(__name__)
 _ENVIRON_STARTTIME_KEY = "opentelemetry-flask.starttime_key"
 _ENVIRON_SPAN_KEY = "opentelemetry-flask.span_key"
 _ENVIRON_ACTIVATION_KEY = "opentelemetry-flask.activation_key"
-_ENVIRON_THREAD_ID_KEY = "opentelemetry-flask.thread_id_key"
+_ENVIRON_REQUEST_ID_KEY = "opentelemetry-flask.request_id_key"
 _ENVIRON_TOKEN = "opentelemetry-flask.token"
 
 _excluded_urls_from_env = get_excluded_urls("FLASK")
@@ -399,7 +398,7 @@ def _wrapped_before_request(
         activation = trace.use_span(span, end_on_exit=True)
         activation.__enter__()  # pylint: disable=E1101
         flask_request_environ[_ENVIRON_ACTIVATION_KEY] = activation
-        flask_request_environ[_ENVIRON_THREAD_ID_KEY] = get_ident()
+        flask_request_environ[_ENVIRON_REQUEST_ID_KEY] = id(flask.request)
         flask_request_environ[_ENVIRON_SPAN_KEY] = span
         flask_request_environ[_ENVIRON_TOKEN] = token
 
@@ -439,8 +438,8 @@ def _wrapped_teardown_request(
             return
 
         activation = flask.request.environ.get(_ENVIRON_ACTIVATION_KEY)
-        thread_id = flask.request.environ.get(_ENVIRON_THREAD_ID_KEY)
-        if not activation or thread_id != get_ident():
+        request_id = flask.request.environ.get(_ENVIRON_REQUEST_ID_KEY)
+        if not activation or request_id != id(flask.request):
             # This request didn't start a span, maybe because it was created in
             # a way that doesn't run `before_request`, like when it is created
             # with `app.test_request_context`.
