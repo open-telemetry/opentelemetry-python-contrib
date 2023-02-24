@@ -30,4 +30,4 @@ services:
   sample_app:
     build:
       context: ../
-      dockerfile: ./examples/Dockerfile
+      dockerfile: ./example/Dockerfile
