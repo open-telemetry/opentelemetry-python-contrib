@@ -264,7 +264,7 @@ _logger = getLogger(__name__)
 _ENVIRON_STARTTIME_KEY = "opentelemetry-flask.starttime_key"
 _ENVIRON_SPAN_KEY = "opentelemetry-flask.span_key"
 _ENVIRON_ACTIVATION_KEY = "opentelemetry-flask.activation_key"
-_ENVIRON_REQUEST_ID_KEY = "opentelemetry-flask.request_id_key"
+_ENVIRON_REQCTX_ID_KEY = "opentelemetry-flask.reqctx_id_key"
 _ENVIRON_TOKEN = "opentelemetry-flask.token"
 
 _excluded_urls_from_env = get_excluded_urls("FLASK")
@@ -398,7 +398,7 @@ def _wrapped_before_request(
         activation = trace.use_span(span, end_on_exit=True)
         activation.__enter__()  # pylint: disable=E1101
         flask_request_environ[_ENVIRON_ACTIVATION_KEY] = activation
-        flask_request_environ[_ENVIRON_REQUEST_ID_KEY] = id(flask.request)
+        flask_request_environ[_ENVIRON_REQCTX_ID_KEY] = id(flask.request_ctx)
         flask_request_environ[_ENVIRON_SPAN_KEY] = span
         flask_request_environ[_ENVIRON_TOKEN] = token
 
@@ -438,13 +438,19 @@ def _wrapped_teardown_request(
             return
 
         activation = flask.request.environ.get(_ENVIRON_ACTIVATION_KEY)
-        request_id = flask.request.environ.get(_ENVIRON_REQUEST_ID_KEY)
-        if not activation or request_id != id(flask.request):
+
+        original_reqctx_id = flask.request.environ.get(_ENVIRON_REQCTX_ID_KEY)
+        current_reqctx_id = id(flask.request_ctx)
+        if not activation or original_reqctx_id != current_reqctx_id:
             # This request didn't start a span, maybe because it was created in
             # a way that doesn't run `before_request`, like when it is created
             # with `app.test_request_context`.
             #
-            # Similarly, check the thread_id against the current thread to ensure
+            # Similarly, check that the id(request) matches the current id(request)
+            # to ensure tear down only happens if they match. This situation can arise
+            # TODO
+            #
+            # Similarly, check the id(request) against the current thread to ensure
             # tear down only happens on the original thread. This situation can
             # arise if the original thread handling the request spawn children
             # threads and then uses something like copy_current_request_context
