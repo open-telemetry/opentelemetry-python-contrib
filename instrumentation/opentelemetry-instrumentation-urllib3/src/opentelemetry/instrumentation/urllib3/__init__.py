@@ -64,7 +64,9 @@ API
 ---
 """
 
+import collections.abc
 import contextlib
+import io
 import typing
 from timeit import default_timer
 from typing import Collection
@@ -213,8 +215,9 @@ def _instrument(
             if callable(response_hook):
                 response_hook(span, instance, response)
 
-            request_size = 0 if body is None else len(body)
+            request_size = _get_body_size(body)
             response_size = int(response.headers.get("Content-Length", 0))
+
             metric_attributes = _create_metric_attributes(
                 instance, response, method
             )
@@ -222,9 +225,10 @@ def _instrument(
             duration_histogram.record(
                 elapsed_time, attributes=metric_attributes
             )
-            request_size_histogram.record(
-                request_size, attributes=metric_attributes
-            )
+            if request_size is not None:
+                request_size_histogram.record(
+                    request_size, attributes=metric_attributes
+                )
             response_size_histogram.record(
                 response_size, attributes=metric_attributes
             )
@@ -266,6 +270,16 @@ def _get_url(
     if url_filter:
         return url_filter(url)
     return url
+
+
+def _get_body_size(body: object) -> typing.Optional[int]:
+    if body is None:
+        return 0
+    if isinstance(body, collections.abc.Sized):
+        return len(body)
+    if isinstance(body, io.BytesIO):
+        return body.getbuffer().nbytes
+    return None
 
 
 def _should_append_port(scheme: str, port: typing.Optional[int]) -> bool:
