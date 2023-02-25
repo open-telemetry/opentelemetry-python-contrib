@@ -12,8 +12,10 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import io
 from timeit import default_timer
 
+import httpretty
 import urllib3
 import urllib3.exceptions
 from urllib3.request import encode_multipart_formdata
@@ -23,181 +25,238 @@ from opentelemetry.test.httptest import HttpTestBase
 from opentelemetry.test.test_base import TestBase
 
 
-class TestUrllib3MetricsInstrumentation(HttpTestBase, TestBase):
+class TestURLLib3InstrumentorMetric(HttpTestBase, TestBase):
+    HTTP_URL = "http://httpbin.org/status/200"
+
     def setUp(self):
         super().setUp()
-        self.assert_ip = self.server.server_address[0]
-        self.assert_port = self.server.server_address[1]
-        self.http_host = ":".join(map(str, self.server.server_address[:2]))
-        self.http_url_base = "http://" + self.http_host
-        self.http_url = self.http_url_base + "/status/200"
-        URLLib3Instrumentor().instrument(meter_provider=self.meter_provider)
+        URLLib3Instrumentor().instrument()
+        httpretty.enable(allow_net_connect=False)
+        httpretty.register_uri(httpretty.GET, self.HTTP_URL, body="Hello!")
+        httpretty.register_uri(httpretty.POST, self.HTTP_URL, body="Hello!")
+        self.pool = urllib3.PoolManager()
 
     def tearDown(self):
         super().tearDown()
+        self.pool.clear()
         URLLib3Instrumentor().uninstrument()
 
-    # Return Sequence with one histogram
-    def create_histogram_data_points(self, sum_data_point, attributes):
-        return [
-            self.create_histogram_data_point(
-                sum_data_point, 1, sum_data_point, sum_data_point, attributes
-            )
-        ]
+        httpretty.disable()
+        httpretty.reset()
 
-    def test_basic_metric_check_client_size_get(self):
-        with urllib3.PoolManager() as pool:
-            start_time = default_timer()
-            response = pool.request("GET", self.http_url)
-            client_duration_estimated = (default_timer() - start_time) * 1000
+    def test_basic_metrics(self):
+        start_time = default_timer()
+        response = self.pool.request("GET", self.HTTP_URL)
+        client_duration_estimated = (default_timer() - start_time) * 1000
 
-            metrics = self.get_sorted_metrics()
+        metrics = self.get_sorted_metrics()
 
-            (
-                client_duration,
-                client_request_size,
-                client_response_size,
-            ) = metrics
+        (
+            client_duration,
+            client_request_size,
+            client_response_size,
+        ) = metrics
 
-            self.assertEqual(client_duration.name, "http.client.duration")
-            self.assert_metric_expected(
-                client_duration,
-                self.create_histogram_data_points(
-                    client_duration_estimated,
+        self.assertEqual(client_duration.name, "http.client.duration")
+        self.assert_metric_expected(
+            client_duration,
+            [
+                self.create_histogram_data_point(
+                    count=1,
+                    sum_data_point=client_duration_estimated,
+                    max_data_point=client_duration_estimated,
+                    min_data_point=client_duration_estimated,
                     attributes={
-                        "http.status_code": 200,
-                        "http.host": self.assert_ip,
+                        "http.flavor": "1.1",
+                        "http.host": "httpbin.org",
                         "http.method": "GET",
-                        "http.flavor": "1.1",
                         "http.scheme": "http",
-                        "net.peer.name": self.assert_ip,
-                        "net.peer.port": self.assert_port,
-                    },
-                ),
-                est_value_delta=200,
-            )
-
-            self.assertEqual(
-                client_request_size.name, "http.client.request.size"
-            )
-            self.assert_metric_expected(
-                client_request_size,
-                self.create_histogram_data_points(
-                    0,
-                    attributes={
                         "http.status_code": 200,
-                        "http.host": self.assert_ip,
-                        "http.method": "GET",
-                        "http.flavor": "1.1",
-                        "http.scheme": "http",
-                        "net.peer.name": self.assert_ip,
-                        "net.peer.port": self.assert_port,
+                        "net.peer.name": "httpbin.org",
+                        "net.peer.port": 80,
                     },
-                ),
-            )
+                )
+            ],
+            est_value_delta=200,
+        )
 
-            self.assertEqual(
-                client_response_size.name, "http.client.response.size"
-            )
-            self.assert_metric_expected(
-                client_response_size,
-                self.create_histogram_data_points(
-                    len(response.data),
+        self.assertEqual(client_request_size.name, "http.client.request.size")
+        self.assert_metric_expected(
+            client_request_size,
+            [
+                self.create_histogram_data_point(
+                    count=1,
+                    sum_data_point=0,
+                    max_data_point=0,
+                    min_data_point=0,
                     attributes={
+                        "http.flavor": "1.1",
+                        "http.host": "httpbin.org",
+                        "http.method": "GET",
+                        "http.scheme": "http",
                         "http.status_code": 200,
-                        "http.host": self.assert_ip,
+                        "net.peer.name": "httpbin.org",
+                        "net.peer.port": 80,
+                    },
+                )
+            ],
+        )
+
+        expected_size = len(response.data)
+        self.assertEqual(
+            client_response_size.name, "http.client.response.size"
+        )
+        self.assert_metric_expected(
+            client_response_size,
+            [
+                self.create_histogram_data_point(
+                    count=1,
+                    sum_data_point=expected_size,
+                    max_data_point=expected_size,
+                    min_data_point=expected_size,
+                    attributes={
+                        "http.flavor": "1.1",
+                        "http.host": "httpbin.org",
                         "http.method": "GET",
-                        "http.flavor": "1.1",
                         "http.scheme": "http",
-                        "net.peer.name": self.assert_ip,
-                        "net.peer.port": self.assert_port,
+                        "http.status_code": 200,
+                        "net.peer.name": "httpbin.org",
+                        "net.peer.port": 80,
                     },
-                ),
-            )
+                )
+            ],
+        )
 
-    def test_basic_metric_check_client_size_post(self):
-        with urllib3.PoolManager() as pool:
-            start_time = default_timer()
-            data_fields = {"data": "test"}
-            response = pool.request("POST", self.http_url, fields=data_fields)
-            client_duration_estimated = (default_timer() - start_time) * 1000
-            body = encode_multipart_formdata(data_fields)[0]
+    def test_str_request_body_size_metrics(self):
+        self.pool.request("POST", self.HTTP_URL, body="foobar")
 
-            metrics = self.get_sorted_metrics()
+        metrics = self.get_sorted_metrics()
+        (_, client_request_size, _) = metrics
 
-            (
-                client_duration,
-                client_request_size,
-                client_response_size,
-            ) = metrics
-
-            self.assertEqual(client_duration.name, "http.client.duration")
-            self.assert_metric_expected(
-                client_duration,
-                self.create_histogram_data_points(
-                    client_duration_estimated,
+        self.assertEqual(client_request_size.name, "http.client.request.size")
+        self.assert_metric_expected(
+            client_request_size,
+            [
+                self.create_histogram_data_point(
+                    count=1,
+                    sum_data_point=6,
+                    max_data_point=6,
+                    min_data_point=6,
                     attributes={
-                        "http.status_code": 501,
-                        "http.host": self.assert_ip,
-                        "http.method": "POST",
                         "http.flavor": "1.1",
+                        "http.host": "httpbin.org",
+                        "http.method": "POST",
                         "http.scheme": "http",
-                        "net.peer.name": self.assert_ip,
-                        "net.peer.port": self.assert_port,
+                        "http.status_code": 200,
+                        "net.peer.name": "httpbin.org",
+                        "net.peer.port": 80,
                     },
-                ),
-                est_value_delta=200,
-            )
+                )
+            ],
+        )
 
-            self.assertEqual(
-                client_request_size.name, "http.client.request.size"
-            )
-            client_request_size_expected = len(body)
-            self.assert_metric_expected(
-                client_request_size,
-                self.create_histogram_data_points(
-                    client_request_size_expected,
-                    attributes={
-                        "http.status_code": 501,
-                        "http.host": self.assert_ip,
-                        "http.method": "POST",
-                        "http.flavor": "1.1",
-                        "http.scheme": "http",
-                        "net.peer.name": self.assert_ip,
-                        "net.peer.port": self.assert_port,
-                    },
-                ),
-            )
+    def test_bytes_request_body_size_metrics(self):
+        self.pool.request("POST", self.HTTP_URL, body=b"foobar")
 
-            self.assertEqual(
-                client_response_size.name, "http.client.response.size"
-            )
-            client_response_size_expected = len(response.data)
-            self.assert_metric_expected(
-                client_response_size,
-                self.create_histogram_data_points(
-                    client_response_size_expected,
+        metrics = self.get_sorted_metrics()
+        (_, client_request_size, _) = metrics
+
+        self.assertEqual(client_request_size.name, "http.client.request.size")
+        self.assert_metric_expected(
+            client_request_size,
+            [
+                self.create_histogram_data_point(
+                    count=1,
+                    sum_data_point=6,
+                    max_data_point=6,
+                    min_data_point=6,
                     attributes={
-                        "http.status_code": 501,
-                        "http.host": self.assert_ip,
-                        "http.method": "POST",
                         "http.flavor": "1.1",
+                        "http.host": "httpbin.org",
+                        "http.method": "POST",
                         "http.scheme": "http",
-                        "net.peer.name": self.assert_ip,
-                        "net.peer.port": self.assert_port,
+                        "http.status_code": 200,
+                        "net.peer.name": "httpbin.org",
+                        "net.peer.port": 80,
                     },
-                ),
-            )
+                )
+            ],
+        )
+
+    def test_fields_request_body_size_metrics(self):
+        self.pool.request("POST", self.HTTP_URL, fields={"foo": "bar"})
+
+        metrics = self.get_sorted_metrics()
+        (_, client_request_size, _) = metrics
+
+        self.assertEqual(client_request_size.name, "http.client.request.size")
+        expected_value = len(encode_multipart_formdata({"foo": "bar"})[0])
+        self.assert_metric_expected(
+            client_request_size,
+            [
+                self.create_histogram_data_point(
+                    count=1,
+                    sum_data_point=expected_value,
+                    max_data_point=expected_value,
+                    min_data_point=expected_value,
+                    attributes={
+                        "http.flavor": "1.1",
+                        "http.host": "httpbin.org",
+                        "http.method": "POST",
+                        "http.scheme": "http",
+                        "http.status_code": 200,
+                        "net.peer.name": "httpbin.org",
+                        "net.peer.port": 80,
+                    },
+                )
+            ],
+        )
+
+    def test_bytesio_request_body_size_metrics(self):
+        self.pool.request("POST", self.HTTP_URL, body=io.BytesIO(b"foobar"))
+
+        metrics = self.get_sorted_metrics()
+        (_, client_request_size, _) = metrics
+
+        self.assertEqual(client_request_size.name, "http.client.request.size")
+        self.assert_metric_expected(
+            client_request_size,
+            [
+                self.create_histogram_data_point(
+                    count=1,
+                    sum_data_point=6,
+                    max_data_point=6,
+                    min_data_point=6,
+                    attributes={
+                        "http.flavor": "1.1",
+                        "http.host": "httpbin.org",
+                        "http.method": "POST",
+                        "http.scheme": "http",
+                        "http.status_code": 200,
+                        "net.peer.name": "httpbin.org",
+                        "net.peer.port": 80,
+                    },
+                )
+            ],
+        )
+
+    def test_generator_request_body_size_metrics(self):
+        self.pool.request(
+            "POST", self.HTTP_URL, body=(b for b in (b"foo", b"bar"))
+        )
+
+        metrics = self.get_sorted_metrics()
+        self.assertEqual(len(metrics), 2)
+        self.assertNotIn("http.client.request.size", [m.name for m in metrics])
 
     def test_metric_uninstrument(self):
-        with urllib3.PoolManager() as pool:
-            pool.request("GET", self.http_url)
-            URLLib3Instrumentor().uninstrument()
-            pool.request("GET", self.http_url)
+        self.pool.request("GET", self.HTTP_URL)
+        URLLib3Instrumentor().uninstrument()
+        self.pool.request("GET", self.HTTP_URL)
 
-            metrics = self.get_sorted_metrics()
-            self.assertEqual(len(metrics), 3)
+        metrics = self.get_sorted_metrics()
+        self.assertEqual(len(metrics), 3)
 
-            for metric in metrics:
-                for point in list(metric.data.data_points):
-                    self.assertEqual(point.count, 1)
+        for metric in metrics:
+            for point in list(metric.data.data_points):
+                self.assertEqual(point.count, 1)
