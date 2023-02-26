@@ -6,6 +6,6 @@ WORKDIR /code
 COPY . .
 
 RUN pip install -e .
-RUN pip install -r ./examples/requirements.txt
+RUN pip install -r ./example/requirements.txt
 
-CMD ["python", "./examples/sampleapp.py"]
+CMD ["python", "./example/sampleapp.py"]

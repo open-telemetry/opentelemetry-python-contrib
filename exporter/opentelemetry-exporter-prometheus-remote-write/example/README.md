@@ -14,7 +14,7 @@ data
 *Users do not need to install Python as the app will be run in the Docker Container*
 
 ## Instructions
-1. Run `docker-compose up -d` in the the `examples/` directory
+1. Run `docker-compose up -d` in the the `example/` directory
 
 The `-d` flag causes all services to run in detached mode and frees up your
 terminal session. This also causes no logs to show up. Users can attach themselves to the service's logs manually using `docker logs ${CONTAINER_ID} --follow`
@@ -39,4 +39,4 @@ terminal session. This also causes no logs to show up. Users can attach themselv
    * Click the refresh button and data should show up on the graph
 
 6. Shutdown the services when finished
-   * Run `docker-compose down` in the examples directory
+   * Run `docker-compose down` in the example directory
