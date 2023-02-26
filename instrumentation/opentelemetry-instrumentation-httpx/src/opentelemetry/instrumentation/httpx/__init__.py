@@ -388,7 +388,7 @@ class AsyncOpenTelemetryTransport(httpx.AsyncBaseTransport):
         self._request_hook = request_hook
         self._response_hook = response_hook
 
-    async def __aenter__(self: A) -> A:  # Use generics for subclass support.
+    async def __aenter__(self) -> "AsyncOpenTelemetryTransport":
         await self._transport.__aenter__()
         return self
 
