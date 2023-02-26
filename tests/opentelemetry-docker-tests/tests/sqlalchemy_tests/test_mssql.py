@@ -71,6 +71,7 @@ class MssqlConnectorTestCase(SQLAlchemyTestMixin):
         spans = self.memory_exporter.get_finished_spans()
         # one span for the connection and one for the query
         self.assertEqual(len(spans), 2)
+        self.check_meta(spans[0])
         span = spans[1]
         # span fields
         self.assertEqual(span.name, "SELECT opentelemetry-tests")
@@ -99,6 +100,7 @@ class MssqlConnectorTestCase(SQLAlchemyTestMixin):
         spans = self.memory_exporter.get_finished_spans()
         # connect, identity insert on before the insert, insert, and identity insert off after the insert
         self.assertEqual(len(spans), 4)
+        self.check_meta(spans[0])
         span = spans[2]
         self._check_span(span, "INSERT")
         self.assertIn(

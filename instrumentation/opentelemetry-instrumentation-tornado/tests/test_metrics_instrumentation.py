@@ -15,97 +15,23 @@
 
 from timeit import default_timer
 
-from tornado.testing import AsyncHTTPTestCase
-
-from opentelemetry import trace
 from opentelemetry.instrumentation.tornado import TornadoInstrumentor
-from opentelemetry.sdk.metrics.export import (
-    HistogramDataPoint,
-    NumberDataPoint,
+from opentelemetry.sdk.metrics.export import HistogramDataPoint
+
+from .test_instrumentation import (  # pylint: disable=no-name-in-module,import-error
+    TornadoTest,
 )
-from opentelemetry.test.test_base import TestBase
-
-from .tornado_test_app import make_app
 
 
-class TornadoTest(AsyncHTTPTestCase, TestBase):
-    # pylint:disable=no-self-use
-    def get_app(self):
-        tracer = trace.get_tracer(__name__)
-        app = make_app(tracer)
-        return app
-
-    def get_sorted_metrics(self):
-        resource_metrics = (
-            self.memory_metrics_reader.get_metrics_data().resource_metrics
-        )
-        for metrics in resource_metrics:
-            for scope_metrics in metrics.scope_metrics:
-                all_metrics = list(scope_metrics.metrics)
-                return self.sorted_metrics(all_metrics)
-
-    @staticmethod
-    def sorted_metrics(metrics):
-        """
-        Sorts metrics by metric name.
-        """
-        return sorted(
-            metrics,
-            key=lambda m: m.name,
-        )
-
-    def assert_metric_expected(
-        self, metric, expected_value, expected_attributes
-    ):
-        data_point = next(iter(metric.data.data_points))
-
-        if isinstance(data_point, HistogramDataPoint):
-            self.assertEqual(
-                data_point.sum,
-                expected_value,
+class TestTornadoMetricsInstrumentation(TornadoTest):
+    # Return Sequence with one histogram
+    def create_histogram_data_points(self, sum_data_point, attributes):
+        return [
+            self.create_histogram_data_point(
+                sum_data_point, 1, sum_data_point, sum_data_point, attributes
             )
-        elif isinstance(data_point, NumberDataPoint):
-            self.assertEqual(
-                data_point.value,
-                expected_value,
-            )
+        ]
 
-        self.assertDictEqual(
-            expected_attributes,
-            dict(data_point.attributes),
-        )
-
-    def assert_duration_metric_expected(
-        self, metric, duration_estimated, expected_attributes
-    ):
-        data_point = next(iter(metric.data.data_points))
-
-        self.assertAlmostEqual(
-            data_point.sum,
-            duration_estimated,
-            delta=200,
-        )
-
-        self.assertDictEqual(
-            expected_attributes,
-            dict(data_point.attributes),
-        )
-
-    def setUp(self):
-        super().setUp()
-        TornadoInstrumentor().instrument(
-            server_request_hook=getattr(self, "server_request_hook", None),
-            client_request_hook=getattr(self, "client_request_hook", None),
-            client_response_hook=getattr(self, "client_response_hook", None),
-            meter_provider=self.meter_provider,
-        )
-
-    def tearDown(self):
-        TornadoInstrumentor().uninstrument()
-        super().tearDown()
-
-
-class TestTornadoInstrumentor(TornadoTest):
     def test_basic_metrics(self):
         start_time = default_timer()
         response = self.fetch("/")
@@ -132,42 +58,51 @@ class TestTornadoInstrumentor(TornadoTest):
         )
         self.assert_metric_expected(
             server_active_request,
-            0,
-            {
-                "http.method": "GET",
-                "http.flavor": "HTTP/1.1",
-                "http.scheme": "http",
-                "http.target": "/",
-                "http.host": response.request.headers["host"],
-            },
+            [
+                self.create_number_data_point(
+                    0,
+                    attributes={
+                        "http.method": "GET",
+                        "http.flavor": "HTTP/1.1",
+                        "http.scheme": "http",
+                        "http.target": "/",
+                        "http.host": response.request.headers["host"],
+                    },
+                ),
+            ],
         )
 
         self.assertEqual(server_duration.name, "http.server.duration")
-        self.assert_duration_metric_expected(
+        self.assert_metric_expected(
             server_duration,
-            client_duration_estimated,
-            {
-                "http.status_code": response.code,
-                "http.method": "GET",
-                "http.flavor": "HTTP/1.1",
-                "http.scheme": "http",
-                "http.target": "/",
-                "http.host": response.request.headers["host"],
-            },
+            self.create_histogram_data_points(
+                client_duration_estimated,
+                attributes={
+                    "http.method": "GET",
+                    "http.flavor": "HTTP/1.1",
+                    "http.scheme": "http",
+                    "http.target": "/",
+                    "http.host": response.request.headers["host"],
+                    "http.status_code": response.code,
+                },
+            ),
+            est_value_delta=200,
         )
 
         self.assertEqual(server_request_size.name, "http.server.request.size")
         self.assert_metric_expected(
             server_request_size,
-            0,
-            {
-                "http.status_code": 200,
-                "http.method": "GET",
-                "http.flavor": "HTTP/1.1",
-                "http.scheme": "http",
-                "http.target": "/",
-                "http.host": response.request.headers["host"],
-            },
+            self.create_histogram_data_points(
+                0,
+                attributes={
+                    "http.status_code": 200,
+                    "http.method": "GET",
+                    "http.flavor": "HTTP/1.1",
+                    "http.scheme": "http",
+                    "http.target": "/",
+                    "http.host": response.request.headers["host"],
+                },
+            ),
         )
 
         self.assertEqual(
@@ -175,37 +110,44 @@ class TestTornadoInstrumentor(TornadoTest):
         )
         self.assert_metric_expected(
             server_response_size,
-            len(response.body),
-            {
-                "http.status_code": response.code,
-                "http.method": "GET",
-                "http.flavor": "HTTP/1.1",
-                "http.scheme": "http",
-                "http.target": "/",
-                "http.host": response.request.headers["host"],
-            },
+            self.create_histogram_data_points(
+                len(response.body),
+                attributes={
+                    "http.status_code": response.code,
+                    "http.method": "GET",
+                    "http.flavor": "HTTP/1.1",
+                    "http.scheme": "http",
+                    "http.target": "/",
+                    "http.host": response.request.headers["host"],
+                },
+            ),
         )
 
         self.assertEqual(client_duration.name, "http.client.duration")
-        self.assert_duration_metric_expected(
+        self.assert_metric_expected(
             client_duration,
-            client_duration_estimated,
-            {
-                "http.status_code": response.code,
-                "http.method": "GET",
-                "http.url": response.effective_url,
-            },
+            self.create_histogram_data_points(
+                client_duration_estimated,
+                attributes={
+                    "http.status_code": response.code,
+                    "http.method": "GET",
+                    "http.url": response.effective_url,
+                },
+            ),
+            est_value_delta=200,
         )
 
         self.assertEqual(client_request_size.name, "http.client.request.size")
         self.assert_metric_expected(
             client_request_size,
-            0,
-            {
-                "http.status_code": response.code,
-                "http.method": "GET",
-                "http.url": response.effective_url,
-            },
+            self.create_histogram_data_points(
+                0,
+                attributes={
+                    "http.status_code": response.code,
+                    "http.method": "GET",
+                    "http.url": response.effective_url,
+                },
+            ),
         )
 
         self.assertEqual(
@@ -213,12 +155,14 @@ class TestTornadoInstrumentor(TornadoTest):
         )
         self.assert_metric_expected(
             client_response_size,
-            len(response.body),
-            {
-                "http.status_code": response.code,
-                "http.method": "GET",
-                "http.url": response.effective_url,
-            },
+            self.create_histogram_data_points(
+                len(response.body),
+                attributes={
+                    "http.status_code": response.code,
+                    "http.method": "GET",
+                    "http.url": response.effective_url,
+                },
+            ),
         )
 
     def test_metric_uninstrument(self):
@@ -226,10 +170,10 @@ class TestTornadoInstrumentor(TornadoTest):
         TornadoInstrumentor().uninstrument()
         self.fetch("/")
 
-        metrics_list = self.memory_metrics_reader.get_metrics_data()
-        for resource_metric in metrics_list.resource_metrics:
-            for scope_metric in resource_metric.scope_metrics:
-                for metric in scope_metric.metrics:
-                    for point in list(metric.data.data_points):
-                        if isinstance(point, HistogramDataPoint):
-                            self.assertEqual(point.count, 1)
+        metrics = self.get_sorted_metrics()
+        self.assertEqual(len(metrics), 7)
+
+        for metric in metrics:
+            for point in list(metric.data.data_points):
+                if isinstance(point, HistogramDataPoint):
+                    self.assertEqual(point.count, 1)
