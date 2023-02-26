@@ -88,10 +88,27 @@ for example:
     client = redis.StrictRedis(host="localhost", port=6379)
     client.get("my-key")
 
+Configuration
+-------------
+
+Query sanitization
+******************
+To enable query sanitization with an environment variable, set
+``OTEL_PYTHON_INSTRUMENTATION_SANITIZE_REDIS`` to "true".
+
+For example,
+
+::
+
+    export OTEL_PYTHON_INSTRUMENTATION_SANITIZE_REDIS="true"
+
+will result in traced queries like "SET ? ?".
+
 API
 ---
 """
 import typing
+from os import environ
 from typing import Any, Collection
 
 import redis
@@ -99,6 +116,9 @@ from wrapt import wrap_function_wrapper
 
 from opentelemetry import trace
 from opentelemetry.instrumentation.instrumentor import BaseInstrumentor
+from opentelemetry.instrumentation.redis.environment_variables import (
+    OTEL_PYTHON_INSTRUMENTATION_SANITIZE_REDIS,
+)
 from opentelemetry.instrumentation.redis.package import _instruments
 from opentelemetry.instrumentation.redis.util import (
     _extract_conn_attributes,
@@ -287,7 +307,15 @@ class RedisInstrumentor(BaseInstrumentor):
             tracer,
             request_hook=kwargs.get("request_hook"),
             response_hook=kwargs.get("response_hook"),
-            sanitize_query=kwargs.get("sanitize_query", False),
+            sanitize_query=kwargs.get(
+                "sanitize_query",
+                environ.get(
+                    OTEL_PYTHON_INSTRUMENTATION_SANITIZE_REDIS, "false"
+                )
+                .lower()
+                .strip()
+                == "true",
+            ),
         )
 
     def _uninstrument(self, **kwargs):
