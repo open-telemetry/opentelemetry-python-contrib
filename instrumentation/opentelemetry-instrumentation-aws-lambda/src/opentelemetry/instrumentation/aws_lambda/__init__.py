@@ -24,11 +24,11 @@ Usage
     # Copy this snippet into an AWS Lambda function
 
     import boto3
-    from opentelemetry.instrumentation.botocore import AwsBotocoreInstrumentor
+    from opentelemetry.instrumentation.botocore import BotocoreInstrumentor
     from opentelemetry.instrumentation.aws_lambda import AwsLambdaInstrumentor
 
     # Enable instrumentation
-    AwsBotocoreInstrumentor().instrument()
+    BotocoreInstrumentor().instrument()
     AwsLambdaInstrumentor().instrument()
 
     # Lambda function
