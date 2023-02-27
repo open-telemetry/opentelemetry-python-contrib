@@ -12,6 +12,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-_instruments = ("sqlalchemy",)
-
-_supports_metrics = True
+OTEL_PYTHON_INSTRUMENTATION_SANITIZE_REDIS = (
+    "OTEL_PYTHON_INSTRUMENTATION_SANITIZE_REDIS"
+)
