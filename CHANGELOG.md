@@ -7,10 +7,18 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## Unreleased
 
+- Add metrics instrumentation for sqlalchemy
+  ([#1645](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/1645))
+
+- Fix exception in Urllib3 when dealing with filelike body.
+  ([#1399](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/1399))
+
 ### Added
 
 - Add connection attributes to sqlalchemy connect span
   ([#1608](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/1608))
+- Add support for enabling Redis sanitization from environment variable
+  ([#1690](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/1690))
 
 ### Fixed
 
