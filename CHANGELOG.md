@@ -7,6 +7,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## Unreleased
 
+- Add metrics instrumentation for sqlalchemy
+  ([#1645](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/1645))
+
 - Fix exception in Urllib3 when dealing with filelike body.
   ([#1399](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/1399))
 

@@ -46,3 +46,6 @@ components:
 
   instrumentation/opentelemetry-instrumentation-urllib3:
     - shalevr
+
+  instrumentation/opentelemetry-instrumentation-sqlalchemy:
+    - shalevr
