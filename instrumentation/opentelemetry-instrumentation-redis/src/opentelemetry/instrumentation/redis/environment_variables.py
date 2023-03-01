@@ -12,22 +12,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-version: "3.8"
-
-services:
-  cortex:
-    image: quay.io/cortexproject/cortex:v1.5.0
-    command:
-      - -config.file=./config/cortex-config.yml
-    volumes:
-      - ./cortex-config.yml:/config/cortex-config.yml:ro
-    ports:
-      - 9009:9009
-  grafana:
-    image: grafana/grafana:latest
-    ports:
-      - 3000:3000
-  sample_app:
-    build:
-      context: ../
-      dockerfile: ./example/Dockerfile
+OTEL_PYTHON_INSTRUMENTATION_SANITIZE_REDIS = (
+    "OTEL_PYTHON_INSTRUMENTATION_SANITIZE_REDIS"
+)

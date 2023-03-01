@@ -105,13 +105,16 @@ from wrapt import wrap_function_wrapper as _w
 from opentelemetry.instrumentation.instrumentor import BaseInstrumentor
 from opentelemetry.instrumentation.sqlalchemy.engine import (
     EngineTracer,
-    _get_tracer,
     _wrap_connect,
     _wrap_create_async_engine,
     _wrap_create_engine,
 )
 from opentelemetry.instrumentation.sqlalchemy.package import _instruments
+from opentelemetry.instrumentation.sqlalchemy.version import __version__
 from opentelemetry.instrumentation.utils import unwrap
+from opentelemetry.metrics import get_meter
+from opentelemetry.semconv.metrics import MetricInstruments
+from opentelemetry.trace import get_tracer
 
 
 class SQLAlchemyInstrumentor(BaseInstrumentor):
@@ -136,32 +139,47 @@ class SQLAlchemyInstrumentor(BaseInstrumentor):
             An instrumented engine if passed in as an argument or list of instrumented engines, None otherwise.
         """
         tracer_provider = kwargs.get("tracer_provider")
+        tracer = get_tracer(__name__, __version__, tracer_provider)
+
+        meter_provider = kwargs.get("meter_provider")
+        meter = get_meter(__name__, __version__, meter_provider)
+
+        connections_usage = meter.create_up_down_counter(
+            name=MetricInstruments.DB_CLIENT_CONNECTIONS_USAGE,
+            unit="connections",
+            description="The number of connections that are currently in state described by the state attribute.",
+        )
+
         enable_commenter = kwargs.get("enable_commenter", False)
+
         _w(
             "sqlalchemy",
             "create_engine",
-            _wrap_create_engine(tracer_provider, enable_commenter),
+            _wrap_create_engine(tracer, connections_usage, enable_commenter),
         )
         _w(
             "sqlalchemy.engine",
             "create_engine",
-            _wrap_create_engine(tracer_provider, enable_commenter),
+            _wrap_create_engine(tracer, connections_usage, enable_commenter),
         )
         _w(
             "sqlalchemy.engine.base",
             "Engine.connect",
-            _wrap_connect(tracer_provider),
+            _wrap_connect(tracer),
         )
         if parse_version(sqlalchemy.__version__).release >= (1, 4):
             _w(
                 "sqlalchemy.ext.asyncio",
                 "create_async_engine",
-                _wrap_create_async_engine(tracer_provider, enable_commenter),
+                _wrap_create_async_engine(
+                    tracer, connections_usage, enable_commenter
+                ),
             )
         if kwargs.get("engine") is not None:
             return EngineTracer(
-                _get_tracer(tracer_provider),
+                tracer,
                 kwargs.get("engine"),
+                connections_usage,
                 kwargs.get("enable_commenter", False),
                 kwargs.get("commenter_options", {}),
             )
@@ -170,8 +188,9 @@ class SQLAlchemyInstrumentor(BaseInstrumentor):
         ):
             return [
                 EngineTracer(
-                    _get_tracer(tracer_provider),
+                    tracer,
                     engine,
+                    connections_usage,
                     kwargs.get("enable_commenter", False),
                     kwargs.get("commenter_options", {}),
                 )
