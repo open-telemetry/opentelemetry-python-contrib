@@ -134,6 +134,7 @@ class SQLAlchemyInstrumentor(BaseInstrumentor):
                 ``engine``: a SQLAlchemy engine instance
                 ``engines``: a list of SQLAlchemy engine instances
                 ``tracer_provider``: a TracerProvider, defaults to global
+                ``sanitize_query``: bool to enable/disable query sanitization, defaults to False
 
         Returns:
             An instrumented engine if passed in as an argument or list of instrumented engines, None otherwise.
@@ -151,16 +152,22 @@ class SQLAlchemyInstrumentor(BaseInstrumentor):
         )
 
         enable_commenter = kwargs.get("enable_commenter", False)
+        sanitize_query = kwargs.get("sanitize_query", False)
+        commenter_options = kwargs.get("commenter_options", {})
 
         _w(
             "sqlalchemy",
             "create_engine",
-            _wrap_create_engine(tracer, connections_usage, enable_commenter),
+            _wrap_create_engine(
+                tracer, connections_usage, sanitize_query, enable_commenter
+            ),
         )
         _w(
             "sqlalchemy.engine",
             "create_engine",
-            _wrap_create_engine(tracer, connections_usage, enable_commenter),
+            _wrap_create_engine(
+                tracer, connections_usage, sanitize_query, enable_commenter
+            ),
         )
         _w(
             "sqlalchemy.engine.base",
@@ -180,8 +187,9 @@ class SQLAlchemyInstrumentor(BaseInstrumentor):
                 tracer,
                 kwargs.get("engine"),
                 connections_usage,
-                kwargs.get("enable_commenter", False),
-                kwargs.get("commenter_options", {}),
+                sanitize_query,
+                enable_commenter,
+                commenter_options,
             )
         if kwargs.get("engines") is not None and isinstance(
             kwargs.get("engines"), Sequence
@@ -191,8 +199,9 @@ class SQLAlchemyInstrumentor(BaseInstrumentor):
                     tracer,
                     engine,
                     connections_usage,
-                    kwargs.get("enable_commenter", False),
-                    kwargs.get("commenter_options", {}),
+                    sanitize_query,
+                    enable_commenter,
+                    commenter_options,
                 )
                 for engine in kwargs.get("engines")
             ]

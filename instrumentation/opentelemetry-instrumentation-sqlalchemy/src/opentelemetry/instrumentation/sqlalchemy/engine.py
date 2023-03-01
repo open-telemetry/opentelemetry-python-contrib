@@ -27,6 +27,16 @@ from opentelemetry.semconv.trace import NetTransportValues, SpanAttributes
 from opentelemetry.trace.status import Status, StatusCode
 
 
+def _sanitize_query(query):
+    """Remove query content, replace with sanitization symbol.
+    For example `SELECT * FROM table` will sanitize to SELECT ? ?`
+    """
+    sanitize_symbol = " ?"
+    if query and query.split():
+        return query.split()[0] + sanitize_symbol + sanitize_symbol
+    return ""
+
+
 def _normalize_vendor(vendor):
     """Return a canonical name for a type of database."""
     if not vendor:
@@ -42,7 +52,7 @@ def _normalize_vendor(vendor):
 
 
 def _wrap_create_async_engine(
-    tracer, connections_usage, enable_commenter=False
+    tracer, connections_usage, sanitize_query, enable_commenter=False
 ):
     # pylint: disable=unused-argument
     def _wrap_create_async_engine_internal(func, module, args, kwargs):
@@ -51,20 +61,28 @@ def _wrap_create_async_engine(
         """
         engine = func(*args, **kwargs)
         EngineTracer(
-            tracer, engine.sync_engine, connections_usage, enable_commenter
+            tracer,
+            engine.sync_engine,
+            connections_usage,
+            sanitize_query,
+            enable_commenter,
         )
         return engine
 
     return _wrap_create_async_engine_internal
 
 
-def _wrap_create_engine(tracer, connections_usage, enable_commenter=False):
+def _wrap_create_engine(
+    tracer, connections_usage, sanitize_query, enable_commenter=False
+):
     def _wrap_create_engine_internal(func, _module, args, kwargs):
         """Trace the SQLAlchemy engine, creating an `EngineTracer`
         object that will listen to SQLAlchemy events.
         """
         engine = func(*args, **kwargs)
-        EngineTracer(tracer, engine, connections_usage, enable_commenter)
+        EngineTracer(
+            tracer, engine, connections_usage, sanitize_query, enable_commenter
+        )
         return engine
 
     return _wrap_create_engine_internal
@@ -95,6 +113,7 @@ class EngineTracer:
         tracer,
         engine,
         connections_usage,
+        sanitize_query=False,
         enable_commenter=False,
         commenter_options=None,
     ):
@@ -104,6 +123,7 @@ class EngineTracer:
         self.vendor = _normalize_vendor(engine.name)
         self.enable_commenter = enable_commenter
         self.commenter_options = commenter_options if commenter_options else {}
+        self.sanitize_query = sanitize_query
         self._leading_comment_remover = re.compile(r"^/\*.*?\*/")
 
         self._register_event_listener(
@@ -200,8 +220,12 @@ class EngineTracer:
         )
         with trace.use_span(span, end_on_exit=False):
             if span.is_recording():
-                span.set_attribute(SpanAttributes.DB_STATEMENT, statement)
                 span.set_attribute(SpanAttributes.DB_SYSTEM, self.vendor)
+                span.set_attribute(SpanAttributes.DB_STATEMENT, statement)
+                if self.sanitize_query:
+                    span.set_attribute(
+                        SpanAttributes.DB_STATEMENT, _sanitize_query(statement)
+                    )
                 for key, value in attrs.items():
                     span.set_attribute(key, value)
             if self.enable_commenter:

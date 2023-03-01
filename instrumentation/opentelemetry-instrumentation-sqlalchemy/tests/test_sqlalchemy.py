@@ -42,12 +42,16 @@ class TestSqlalchemyInstrumentation(TestBase):
             tracer_provider=self.tracer_provider,
         )
         cnx = engine.connect()
-        cnx.execute("SELECT	1 + 1;").fetchall()
-        cnx.execute("/* leading comment */ SELECT	1 + 1;").fetchall()
-        cnx.execute(
+        select_no_comment = "SELECT\t1 + 1;"
+        select_leading_comment = "/* leading comment */ SELECT	1 + 1;"
+        select_trailing_comment = "SELECT	1 + 1; /* trailing comment */"
+        select_leading_and_trailing_comment = (
             "/* leading comment */ SELECT	1 + 1; /* trailing comment */"
-        ).fetchall()
-        cnx.execute("SELECT	1 + 1; /* trailing comment */").fetchall()
+        )
+        cnx.execute(select_no_comment).fetchall()
+        cnx.execute(select_leading_comment).fetchall()
+        cnx.execute(select_leading_and_trailing_comment).fetchall()
+        cnx.execute(select_trailing_comment).fetchall()
         spans = self.memory_exporter.get_finished_spans()
 
         self.assertEqual(len(spans), 5)
@@ -57,13 +61,28 @@ class TestSqlalchemyInstrumentation(TestBase):
         # second span - the query itself
         self.assertEqual(spans[1].name, "SELECT :memory:")
         self.assertEqual(spans[1].kind, trace.SpanKind.CLIENT)
+        self.assertEqual(
+            spans[1].attributes[SpanAttributes.DB_STATEMENT], select_no_comment
+        )
         # spans for queries with comments
         self.assertEqual(spans[2].name, "SELECT :memory:")
         self.assertEqual(spans[2].kind, trace.SpanKind.CLIENT)
+        self.assertEqual(
+            spans[2].attributes[SpanAttributes.DB_STATEMENT],
+            select_leading_comment,
+        )
         self.assertEqual(spans[3].name, "SELECT :memory:")
         self.assertEqual(spans[3].kind, trace.SpanKind.CLIENT)
+        self.assertEqual(
+            spans[3].attributes[SpanAttributes.DB_STATEMENT],
+            select_leading_and_trailing_comment,
+        )
         self.assertEqual(spans[4].name, "SELECT :memory:")
         self.assertEqual(spans[4].kind, trace.SpanKind.CLIENT)
+        self.assertEqual(
+            spans[4].attributes[SpanAttributes.DB_STATEMENT],
+            select_trailing_comment,
+        )
 
     def test_instrument_two_engines(self):
         engine_1 = create_engine("sqlite:///:memory:")
@@ -164,6 +183,7 @@ class TestSqlalchemyInstrumentation(TestBase):
         self.assertEqual(
             spans[0].attributes[SpanAttributes.DB_NAME], ":memory:"
         )
+
         self.assertEqual(
             spans[0].attributes[SpanAttributes.DB_SYSTEM], "sqlite"
         )
@@ -174,6 +194,22 @@ class TestSqlalchemyInstrumentation(TestBase):
         self.assertEqual(
             spans[1].instrumentation_scope.name,
             "opentelemetry.instrumentation.sqlalchemy",
+        )
+
+    def test_sanitize_db_statement(self):
+        SQLAlchemyInstrumentor().instrument(sanitize_query=True)
+        from sqlalchemy import create_engine  # pylint: disable-all
+
+        engine = create_engine("sqlite:///:memory:")
+        cnx = engine.connect()
+        cnx.execute("SELECT	1 + 1;").fetchall()
+        spans = self.memory_exporter.get_finished_spans()
+
+        self.assertEqual(len(spans), 2)
+
+        self.assertEqual(
+            spans[1].attributes[SpanAttributes.DB_STATEMENT],
+            "SELECT ? ?",
         )
 
     def test_custom_tracer_provider(self):
