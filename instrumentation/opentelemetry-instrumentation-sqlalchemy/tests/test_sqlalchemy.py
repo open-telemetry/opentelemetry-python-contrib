@@ -169,7 +169,9 @@ class TestSqlalchemyInstrumentation(TestBase):
             self.assertFalse(mock_span.set_status.called)
 
     def test_create_engine_wrapper(self):
-        SQLAlchemyInstrumentor().instrument()
+        SQLAlchemyInstrumentor().instrument(
+            sanitize_query=True
+        )  # verify no side effects
         from sqlalchemy import create_engine  # pylint: disable-all
 
         engine = create_engine("sqlite:///:memory:")
