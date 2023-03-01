@@ -134,7 +134,7 @@ class SQLAlchemyInstrumentor(BaseInstrumentor):
                 ``engine``: a SQLAlchemy engine instance
                 ``engines``: a list of SQLAlchemy engine instances
                 ``tracer_provider``: a TracerProvider, defaults to global
-                ``sanitize_query``: bool to enable/disable query sanitization, defaults to False
+                ``sanitize_query``: bool to enable/disable db.statement query sanitization, defaults to False
 
         Returns:
             An instrumented engine if passed in as an argument or list of instrumented engines, None otherwise.
