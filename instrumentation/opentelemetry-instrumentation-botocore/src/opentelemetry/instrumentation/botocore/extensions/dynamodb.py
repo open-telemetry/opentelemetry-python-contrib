@@ -84,13 +84,13 @@ _sanitized_value = {"?": "?"}
 
 
 # pylint: disable=C0103
-def _conv_params_to_sanitized_str(params) -> str:
+def _conv_params_to_sanitized_json_str(params) -> str:
     p = params.copy()
     for key in p:
         if key in _sanitized_keys:
             p[key] = _sanitized_value
 
-    return str(p)
+    return _conv_dict_to_json_str(p)
 
 
 ################################################################################
@@ -112,7 +112,6 @@ _REQ_ATTRS_TO_GET = ("AttributesToGet", None)
 _REQ_LIMIT = ("Limit", None)
 _REQ_SELECT = ("Select", None)
 _REQ_INDEX_NAME = ("IndexName", None)
-
 
 ################################################################################
 # common response attributes
@@ -390,14 +389,16 @@ class _DynamoDbExtension(_AwsSdkExtension):
         attributes[SpanAttributes.NET_PEER_NAME] = self._get_peer_name()
 
         if self._call_context.operation in _db_statement_operations:
-            attributes[SpanAttributes.DB_STATEMENT] = str(
+            attributes[SpanAttributes.DB_STATEMENT] = _conv_dict_to_json_str(
                 self._call_context.params
             )
 
             if self._configuration.get("sanitize_query"):
                 attributes[
                     SpanAttributes.DB_STATEMENT
-                ] = _conv_params_to_sanitized_str(self._call_context.params)
+                ] = _conv_params_to_sanitized_json_str(
+                    self._call_context.params
+                )
 
         if self._op is None:
             return
