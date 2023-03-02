@@ -20,7 +20,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Add support for enabling Redis sanitization from environment variable
   ([#1690](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/1690))
 - `opentelemetry-instrumentation-threading` Add instrumentation for python threading module
-   ([#1582](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/1582))****
+   ([#1582](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/1582))
 
 
 ### Fixed
