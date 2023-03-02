@@ -18,21 +18,21 @@ from opentelemetry.sdk.resources import Resource, ResourceDetector
 from opentelemetry.semconv.resource import ResourceAttributes
 
 logger = logging.getLogger(__name__)
-DEFAULT_CGROUP_V1_PATH = "/proc/self/cgroup"
-DEFAULT_CGROUP_V2_PATH = "/proc/self/mountinfo"
-CONTAINER_ID_LENGTH = 64
+_DEFAULT_CGROUP_V1_PATH = "/proc/self/cgroup"
+_DEFAULT_CGROUP_V2_PATH = "/proc/self/mountinfo"
+_CONTAINER_ID_LENGTH = 64
 
 
 def _get_container_id_v1():
     container_id = None
     try:
         with open(
-            DEFAULT_CGROUP_V1_PATH, encoding="utf8"
+            _DEFAULT_CGROUP_V1_PATH, encoding="utf8"
         ) as container_info_file:
             for raw_line in container_info_file.readlines():
                 line = raw_line.strip()
-                if len(line) > CONTAINER_ID_LENGTH:
-                    container_id = line[-CONTAINER_ID_LENGTH:]
+                if len(line) > _CONTAINER_ID_LENGTH:
+                    container_id = line[-_CONTAINER_ID_LENGTH:]
                     break
     except FileNotFoundError as exception:
         logger.warning("Failed to get container id. Exception: %s", exception)
@@ -43,15 +43,15 @@ def _get_container_id_v2():
     container_id = None
     try:
         with open(
-            DEFAULT_CGROUP_V2_PATH, encoding="utf8"
+            _DEFAULT_CGROUP_V2_PATH, encoding="utf8"
         ) as container_info_file:
             for raw_line in container_info_file.readlines():
                 line = raw_line.strip()
                 if "hostname" in line:
                     container_id_list = [
-                        id
-                        for id in line.split("/")
-                        if len(id) == CONTAINER_ID_LENGTH
+                        id_
+                        for id_ in line.split("/")
+                        if len(id_) == _CONTAINER_ID_LENGTH
                     ]
                     if len(container_id_list) > 0:
                         container_id = container_id_list[0]
@@ -62,6 +62,10 @@ def _get_container_id_v2():
     return container_id
 
 
+def _get_container_id():
+    return _get_container_id_v1() or _get_container_id_v2()
+
+
 class ContainerResourceDetector(ResourceDetector):
     """Detects container.id only available when app is running inside the
     docker container and return it in a Resource
@@ -69,7 +73,7 @@ class ContainerResourceDetector(ResourceDetector):
 
     def detect(self) -> "Resource":
         try:
-            container_id = _get_container_id_v1() or _get_container_id_v2()
+            container_id = _get_container_id()
             resource = Resource.get_empty()
             if container_id:
                 resource = resource.merge(

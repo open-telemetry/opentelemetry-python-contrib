@@ -61,7 +61,7 @@ class ContainerResourceDetectorTest(WsgiTestBase):
         )
 
     @patch(
-        "opentelemetry.resource.detector.container._get_container_id_v1",
+        "opentelemetry.resource.detector.container._get_container_id",
         return_value=MockContainerResourceAttributes[
             ResourceAttributes.CONTAINER_ID
         ],
@@ -90,12 +90,12 @@ class ContainerResourceDetectorTest(WsgiTestBase):
         )
 
     @patch(
-        "opentelemetry.resource.detector.container._get_container_id_v1",
+        "opentelemetry.resource.detector.container._get_container_id",
         return_value=MockContainerResourceAttributes[
             ResourceAttributes.CONTAINER_ID
         ],
     )
-    def test_container_id_detect_from_cgroup(self, mock_get_container_id_v1):
+    def test_container_id_detect_from_cgroup(self, mock_get_container_id):
         actual = ContainerResourceDetector().detect()
         self.assertDictEqual(
             actual.attributes.copy(), MockContainerResourceAttributes

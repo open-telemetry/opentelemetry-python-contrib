@@ -18,7 +18,7 @@ Installation
 
 ---------------------------
 
-Below is the give example for `opentelemetry-resource-detector-kubernetes`
+Usage example for `opentelemetry-resource-detector-container`
 
 .. code-block:: python
 
