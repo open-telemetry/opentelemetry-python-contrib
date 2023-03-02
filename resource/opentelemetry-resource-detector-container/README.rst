@@ -7,8 +7,7 @@ OpenTelemetry Resource detectors for containers
    :target: TODO
 
 
-This library provides container property (container.id) detection features which can help
-in identifying the problems in app - infra correlation for apps running on containers i.e. docker
+This library provides custom resource detector for container platforms
 
 Installation
 ------------
