@@ -15,6 +15,7 @@
 import logging
 
 from celery import registry  # pylint: disable=no-name-in-module
+from celery.backends.amqp import Exchange, Queue  # pylint: disable=no-name-in-module
 
 from opentelemetry.semconv.trace import SpanAttributes
 
@@ -106,6 +107,10 @@ def set_attributes_from_context(span, context):
                 if declare.exchange.type == "topic":
                     value = "topic"
                     break
+
+        # Serialize Celery AMQP-classes to the standard types
+        if isinstance(value, Exchange) or isinstance(value, Queue):
+            value = value.name
 
         # set attribute name if not set specially for a key
         if attribute_name is None:

@@ -13,6 +13,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Fix exception in Urllib3 when dealing with filelike body.
   ([#1399](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/1399))
 
+- Fix opentelemetry-instrumentation-celery warnings when using kombu.Exchange and kombu.Queue
+  ([#1195](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/1196))
+
 ### Added
 
 - Add connection attributes to sqlalchemy connect span
