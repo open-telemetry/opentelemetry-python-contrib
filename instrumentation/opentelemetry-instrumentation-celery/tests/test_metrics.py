@@ -31,16 +31,7 @@ class TestMetrics(TestBase):
             if time.time() > timeout:
                 break
             time.sleep(0.05)
-        resource_metrics = (
-            self.memory_metrics_reader.get_metrics_data().resource_metrics
-        )
-
-        all_metrics = []
-        for metrics in resource_metrics:
-            for scope_metrics in metrics.scope_metrics:
-                all_metrics.extend(scope_metrics.metrics)
-
-        return all_metrics
+        return self.get_sorted_metrics()
 
     def test_basic_metric(self):
         CeleryInstrumentor().instrument()
