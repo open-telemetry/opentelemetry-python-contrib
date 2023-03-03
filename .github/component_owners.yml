@@ -6,6 +6,9 @@ components:
   instrumentation/opentelemetry-instrumentation-aio-pika:
     - ofek1weiss
 
+  instrumentation/opentelemetry-instrumentation-aiobotocore:
+    - dacevedo12
+
   instrumentation/opentelemetry-instrumentation-boto3sqs:
     - oxeye-nikolay
     - nikosokolik

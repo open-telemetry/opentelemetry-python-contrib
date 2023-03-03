@@ -28,7 +28,7 @@ Usage
 .. code:: python
 
     from opentelemetry.instrumentation.botocore import BotocoreInstrumentor
-    import botocore
+    import botocore.session
 
 
     # Instrument Botocore
@@ -39,7 +39,7 @@ Usage
     session.set_credentials(
         access_key="access-key", secret_key="secret-key"
     )
-    ec2 = self.session.create_client("ec2", region_name="us-west-2")
+    ec2 = session.create_client("ec2", region_name="us-west-2")
     ec2.describe_instances()
 
 API
@@ -55,10 +55,10 @@ this function signature is:  def request_hook(span: Span, service_name: str, ope
 
 for example:
 
-.. code: python
+.. code:: python
 
     from opentelemetry.instrumentation.botocore import BotocoreInstrumentor
-    import botocore
+    import botocore.session
 
     def request_hook(span, service_name, operation_name, api_params):
         # request hook logic
@@ -74,12 +74,13 @@ for example:
     session.set_credentials(
         access_key="access-key", secret_key="secret-key"
     )
-    ec2 = self.session.create_client("ec2", region_name="us-west-2")
+    ec2 = session.create_client("ec2", region_name="us-west-2")
     ec2.describe_instances()
 """
 
 import logging
-from typing import Any, Callable, Collection, Dict, Optional, Tuple
+from contextlib import contextmanager
+from typing import Any, Callable, Collection, Dict, Iterator, Optional, Tuple
 
 from botocore.client import BaseClient
 from botocore.endpoint import Endpoint
@@ -131,14 +132,16 @@ class BotocoreInstrumentor(BaseInstrumentor):
     def instrumentation_dependencies(self) -> Collection[str]:
         return _instruments
 
-    def _instrument(self, **kwargs):
+    def _init_instrument(self, tracer_name, tracer_version, **kwargs):
         # pylint: disable=attribute-defined-outside-init
         self._tracer = get_tracer(
-            __name__, __version__, kwargs.get("tracer_provider")
+            tracer_name, tracer_version, kwargs.get("tracer_provider")
         )
-
         self.request_hook = kwargs.get("request_hook")
         self.response_hook = kwargs.get("response_hook")
+
+    def _instrument(self, **kwargs):
+        self._init_instrument(__name__, __version__, **kwargs)
 
         wrap_function_wrapper(
             "botocore.client",
@@ -156,57 +159,13 @@ class BotocoreInstrumentor(BaseInstrumentor):
         unwrap(BaseClient, "_make_api_call")
         unwrap(Endpoint, "prepare_request")
 
-    # pylint: disable=too-many-branches
     def _patched_api_call(self, original_func, instance, args, kwargs):
-        if context_api.get_value(_SUPPRESS_INSTRUMENTATION_KEY):
-            return original_func(*args, **kwargs)
+        with _trace_api_call(self, instance, args) as trace_context:
+            if trace_context is None:
+                return original_func(*args, **kwargs)
 
-        call_context = _determine_call_context(instance, args)
-        if call_context is None:
-            return original_func(*args, **kwargs)
-
-        extension = _find_extension(call_context)
-        if not extension.should_trace_service_call():
-            return original_func(*args, **kwargs)
-
-        attributes = {
-            SpanAttributes.RPC_SYSTEM: "aws-api",
-            SpanAttributes.RPC_SERVICE: call_context.service_id,
-            SpanAttributes.RPC_METHOD: call_context.operation,
-            # TODO: update when semantic conventions exist
-            "aws.region": call_context.region,
-        }
-
-        _safe_invoke(extension.extract_attributes, attributes)
-
-        with self._tracer.start_as_current_span(
-            call_context.span_name,
-            kind=call_context.span_kind,
-            attributes=attributes,
-        ) as span:
-            _safe_invoke(extension.before_service_call, span)
-            self._call_request_hook(span, call_context)
-
-            token = context_api.attach(
-                context_api.set_value(_SUPPRESS_HTTP_INSTRUMENTATION_KEY, True)
-            )
-
-            result = None
-            try:
-                result = original_func(*args, **kwargs)
-            except ClientError as error:
-                result = getattr(error, "response", None)
-                _apply_response_attributes(span, result)
-                _safe_invoke(extension.on_error, span, error)
-                raise
-            else:
-                _apply_response_attributes(span, result)
-                _safe_invoke(extension.on_success, span, result)
-            finally:
-                context_api.detach(token)
-                _safe_invoke(extension.after_service_call)
-
-                self._call_response_hook(span, call_context, result)
+            result = original_func(*args, **kwargs)
+            trace_context["result"] = result
 
             return result
 
@@ -228,6 +187,65 @@ class BotocoreInstrumentor(BaseInstrumentor):
         self.response_hook(
             span, call_context.service, call_context.operation, result
         )
+
+
+@contextmanager
+def _trace_api_call(
+    instrumentor, instance, args
+) -> Iterator[Optional[Dict[str, Any]]]:
+    if context_api.get_value(_SUPPRESS_INSTRUMENTATION_KEY):
+        yield
+        return
+
+    call_context = _determine_call_context(instance, args)
+    if call_context is None:
+        yield
+        return
+
+    extension = _find_extension(call_context)
+    if not extension.should_trace_service_call():
+        yield
+        return
+
+    attributes = {
+        SpanAttributes.RPC_SYSTEM: "aws-api",
+        SpanAttributes.RPC_SERVICE: call_context.service_id,
+        SpanAttributes.RPC_METHOD: call_context.operation,
+        # TODO: update when semantic conventions exist
+        "aws.region": call_context.region,
+    }
+
+    _safe_invoke(extension.extract_attributes, attributes)
+
+    with instrumentor._tracer.start_as_current_span(
+        call_context.span_name,
+        kind=call_context.span_kind,
+        attributes=attributes,
+    ) as span:
+        _safe_invoke(extension.before_service_call, span)
+        instrumentor._call_request_hook(span, call_context)
+
+        token = context_api.attach(
+            context_api.set_value(_SUPPRESS_HTTP_INSTRUMENTATION_KEY, True)
+        )
+        trace_context = {}
+        result = None
+
+        try:
+            yield trace_context
+            result = trace_context["result"]
+        except ClientError as error:
+            result = getattr(error, "response", None)
+            _apply_response_attributes(span, result)
+            _safe_invoke(extension.on_error, span, error)
+            raise
+        else:
+            _apply_response_attributes(span, result)
+            _safe_invoke(extension.on_success, span, result)
+        finally:
+            context_api.detach(token)
+            _safe_invoke(extension.after_service_call)
+            instrumentor._call_response_hook(span, call_context, result)
 
 
 def _apply_response_attributes(span: Span, result):

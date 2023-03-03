@@ -20,6 +20,10 @@ libraries = {
         "library": "aio_pika >= 7.2.0, < 10.0.0",
         "instrumentation": "opentelemetry-instrumentation-aio-pika==0.39b0.dev",
     },
+    "aiobotocore": {
+        "library": "aiobotocore ~= 2.0",
+        "instrumentation": "opentelemetry-instrumentation-aiobotocore==0.39b0.dev",
+    },
     "aiohttp": {
         "library": "aiohttp ~= 3.0",
         "instrumentation": "opentelemetry-instrumentation-aiohttp-client==0.39b0.dev",
