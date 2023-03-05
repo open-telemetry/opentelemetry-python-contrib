@@ -114,7 +114,6 @@ class TestFastAPIManualInstrumentation(TestBase):
         self.assertEqual(len(spans), 3)
 
         self._instrumentor.uninstrument_app(self._app)
-        print(self._app.user_middleware[0].cls)
         self.assertFalse(
             isinstance(
                 self._app.user_middleware[0].cls, OpenTelemetryMiddleware
