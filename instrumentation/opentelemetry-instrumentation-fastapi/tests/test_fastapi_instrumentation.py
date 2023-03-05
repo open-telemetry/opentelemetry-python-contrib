@@ -19,6 +19,7 @@ from unittest.mock import patch
 import fastapi
 from fastapi.responses import JSONResponse
 from fastapi.testclient import TestClient
+from fastapi.middleware.httpsredirect import HTTPSRedirectMiddleware
 
 import opentelemetry.instrumentation.fastapi as otel_fastapi
 from opentelemetry import trace
@@ -87,6 +88,7 @@ class TestFastAPIManualInstrumentation(TestBase):
         self.exclude_patch.start()
         self._instrumentor = otel_fastapi.FastAPIInstrumentor()
         self._app = self._create_app()
+        self._app.add_middleware(HTTPSRedirectMiddleware)
         self._client = TestClient(self._app)
 
     def tearDown(self):
@@ -110,10 +112,7 @@ class TestFastAPIManualInstrumentation(TestBase):
         self._client.get("/foobar")
         spans = self.memory_exporter.get_finished_spans()
         self.assertEqual(len(spans), 3)
-        # pylint: disable=import-outside-toplevel
-        from fastapi.middleware.httpsredirect import HTTPSRedirectMiddleware
 
-        self._app.add_middleware(HTTPSRedirectMiddleware)
         self._instrumentor.uninstrument_app(self._app)
         print(self._app.user_middleware[0].cls)
         self.assertFalse(
@@ -212,18 +211,18 @@ class TestFastAPIManualInstrumentation(TestBase):
         duration = max(round((default_timer() - start) * 1000), 0)
         expected_duration_attributes = {
             "http.method": "GET",
-            "http.host": "testserver",
-            "http.scheme": "http",
+            "http.host": "testserver:443",
+            "http.scheme": "https",
             "http.flavor": "1.1",
             "http.server_name": "testserver",
-            "net.host.port": 80,
+            "net.host.port": 443,
             "http.status_code": 200,
             "http.target": "/foobar",
         }
         expected_requests_count_attributes = {
             "http.method": "GET",
-            "http.host": "testserver",
-            "http.scheme": "http",
+            "http.host": "testserver:443",
+            "http.scheme": "https",
             "http.flavor": "1.1",
             "http.server_name": "testserver",
         }
