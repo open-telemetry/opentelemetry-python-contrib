@@ -572,13 +572,14 @@ class TestDynamoDbExtension(TestBase):
                 "IndexName": "email-index",
                 "KeyConditionExpression": sanitized_value,
                 "ExpressionAttributeValues": sanitized_value,
-            })
+            },
+        )
         self.assertEqual(
             _conv_params_to_sanitized_str(scan_query),
             {
                 "FilterExpression": sanitized_value,
                 "ExpressionAttributeValues": sanitized_value,
-            }
+            },
         ),
         self.assertNotEqual(
             _conv_params_to_sanitized_str(projection_expression_query),
