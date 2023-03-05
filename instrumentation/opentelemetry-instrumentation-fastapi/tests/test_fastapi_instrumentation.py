@@ -17,9 +17,9 @@ from timeit import default_timer
 from unittest.mock import patch
 
 import fastapi
+from fastapi.middleware.httpsredirect import HTTPSRedirectMiddleware
 from fastapi.responses import JSONResponse
 from fastapi.testclient import TestClient
-from fastapi.middleware.httpsredirect import HTTPSRedirectMiddleware
 
 import opentelemetry.instrumentation.fastapi as otel_fastapi
 from opentelemetry import trace
