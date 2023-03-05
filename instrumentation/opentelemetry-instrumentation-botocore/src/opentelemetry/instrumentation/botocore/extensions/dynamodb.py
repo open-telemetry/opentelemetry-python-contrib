@@ -84,13 +84,12 @@ _sanitized_value = {"?": "?"}
 
 
 # pylint: disable=C0103
-def _conv_params_to_sanitized_json_str(params) -> str:
+def _conv_params_to_sanitized_str(params) -> str:
     p = params.copy()
     for key in p:
         if key in _sanitized_keys:
             p[key] = _sanitized_value
-
-    return _conv_dict_to_json_str(p)
+    return p
 
 
 ################################################################################
@@ -388,17 +387,17 @@ class _DynamoDbExtension(_AwsSdkExtension):
         attributes[SpanAttributes.DB_OPERATION] = self._call_context.operation
         attributes[SpanAttributes.NET_PEER_NAME] = self._get_peer_name()
 
-        if self._call_context.operation in _db_statement_operations:
-            attributes[SpanAttributes.DB_STATEMENT] = _conv_dict_to_json_str(
-                self._call_context.params
-            )
-
+        if (
+            self._call_context.operation in _db_statement_operations
+            and self._call_context.params
+        ):
+            params = self._call_context.params
             if self._configuration.get("sanitize_query"):
-                attributes[
-                    SpanAttributes.DB_STATEMENT
-                ] = _conv_params_to_sanitized_json_str(
-                    self._call_context.params
-                )
+                params = _conv_params_to_sanitized_str(params)
+
+            attributes[SpanAttributes.DB_STATEMENT] = _conv_dict_to_json_str(
+                params
+            )
 
         if self._op is None:
             return

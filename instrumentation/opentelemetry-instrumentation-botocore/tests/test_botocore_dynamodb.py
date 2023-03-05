@@ -20,7 +20,7 @@ from moto import mock_dynamodb2  # pylint: disable=import-error
 
 from opentelemetry.instrumentation.botocore import BotocoreInstrumentor
 from opentelemetry.instrumentation.botocore.extensions.dynamodb import (
-    _conv_params_to_sanitized_json_str,
+    _conv_params_to_sanitized_str,
     _db_statement_operations,
     _DynamoDbExtension,
 )
@@ -385,7 +385,7 @@ class TestDynamoDbExtension(TestBase):
         self.assert_consumed_capacity(span, self.default_table_name)
         self.assertEqual(
             span.attributes[SpanAttributes.DB_STATEMENT],
-            _conv_params_to_sanitized_json_str(get_query),
+            json.dumps(_conv_params_to_sanitized_str(get_query)),
         )
 
     @mock_dynamodb2
@@ -511,7 +511,7 @@ class TestDynamoDbExtension(TestBase):
         self.assert_consumed_capacity(span, self.default_table_name)
         self.assertEqual(
             span.attributes[SpanAttributes.DB_STATEMENT],
-            _conv_params_to_sanitized_json_str(update_query),
+            json.dumps(_conv_params_to_sanitized_str(update_query)),
         )
         # moto does not seem to return these:
         # self.assert_item_coll_metrics(span)
@@ -563,29 +563,24 @@ class TestDynamoDbExtension(TestBase):
     def test_db_statement_sanitization(self):
         sanitized_value = {"?": "?"}
         self.assertEqual(
-            _conv_params_to_sanitized_json_str(key_value_query),
-            json.dumps({"Key": sanitized_value}),
+            _conv_params_to_sanitized_str(key_value_query),
+            {"Key": sanitized_value},
         ),
         self.assertEqual(
-            _conv_params_to_sanitized_json_str(secondary_index_query),
-            json.dumps(
-                {
-                    "IndexName": "email-index",
-                    "KeyConditionExpression": sanitized_value,
-                    "ExpressionAttributeValues": sanitized_value,
-                }
-            ),
-        ),
+            _conv_params_to_sanitized_str(secondary_index_query),
+            {
+                "IndexName": "email-index",
+                "KeyConditionExpression": sanitized_value,
+                "ExpressionAttributeValues": sanitized_value,
+            })
         self.assertEqual(
-            _conv_params_to_sanitized_json_str(scan_query),
-            json.dumps(
-                {
-                    "FilterExpression": sanitized_value,
-                    "ExpressionAttributeValues": sanitized_value,
-                }
-            ),
+            _conv_params_to_sanitized_str(scan_query),
+            {
+                "FilterExpression": sanitized_value,
+                "ExpressionAttributeValues": sanitized_value,
+            }
         ),
         self.assertNotEqual(
-            _conv_params_to_sanitized_json_str(projection_expression_query),
-            json.dumps(projection_expression_query),
+            _conv_params_to_sanitized_str(projection_expression_query),
+            projection_expression_query,
         )
