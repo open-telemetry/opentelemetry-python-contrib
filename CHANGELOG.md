@@ -12,6 +12,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - Fix exception in Urllib3 when dealing with filelike body.
   ([#1399](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/1399))
+- Fix confluent-kafka instrumentation to create spans only after record is received while polling
+  ([#1678](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/1678))
 
 ### Added
 
