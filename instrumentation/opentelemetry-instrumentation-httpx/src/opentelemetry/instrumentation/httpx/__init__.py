@@ -162,6 +162,7 @@ API
 """
 import logging
 import typing
+from types import TracebackType
 
 import httpx
 
@@ -293,6 +294,18 @@ class SyncOpenTelemetryTransport(httpx.BaseTransport):
         self._request_hook = request_hook
         self._response_hook = response_hook
 
+    def __enter__(self) -> "SyncOpenTelemetryTransport":
+        self._transport.__enter__()
+        return self
+
+    def __exit__(
+        self,
+        exc_type: typing.Optional[typing.Type[BaseException]] = None,
+        exc_value: typing.Optional[BaseException] = None,
+        traceback: typing.Optional[TracebackType] = None,
+    ) -> None:
+        self._transport.__exit__(exc_type, exc_value, traceback)
+
     def handle_request(
         self,
         *args,
@@ -343,6 +356,9 @@ class SyncOpenTelemetryTransport(httpx.BaseTransport):
 
         return response
 
+    def close(self) -> None:
+        self._transport.close()
+
 
 class AsyncOpenTelemetryTransport(httpx.AsyncBaseTransport):
     """Async transport class that will trace all requests made with a client.
@@ -371,6 +387,18 @@ class AsyncOpenTelemetryTransport(httpx.AsyncBaseTransport):
         )
         self._request_hook = request_hook
         self._response_hook = response_hook
+
+    async def __aenter__(self) -> "AsyncOpenTelemetryTransport":
+        await self._transport.__aenter__()
+        return self
+
+    async def __aexit__(
+        self,
+        exc_type: typing.Optional[typing.Type[BaseException]] = None,
+        exc_value: typing.Optional[BaseException] = None,
+        traceback: typing.Optional[TracebackType] = None,
+    ) -> None:
+        await self._transport.__aexit__(exc_type, exc_value, traceback)
 
     async def handle_async_request(
         self, *args, **kwargs
@@ -422,6 +450,9 @@ class AsyncOpenTelemetryTransport(httpx.AsyncBaseTransport):
                 )
 
         return response
+
+    async def aclose(self) -> None:
+        await self._transport.aclose()
 
 
 class _InstrumentedClient(httpx.Client):
