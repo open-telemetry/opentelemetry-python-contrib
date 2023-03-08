@@ -13,6 +13,6 @@
 # limitations under the License.
 
 
-_instruments = ("fastapi <= 0.90.1",)
+_instruments = ("fastapi ~= 0.58",)
 
 _supports_metrics = True
