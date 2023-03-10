@@ -46,6 +46,7 @@ dependencies = [
     "opentelemetry-instrumentation-falcon==0.39b0.dev",
     "opentelemetry-instrumentation-fastapi==0.39b0.dev",
     "opentelemetry-instrumentation-flask==0.39b0.dev",
+    "opentelemetry-instrumentation-graphql-core==0.39b0.dev",
     "opentelemetry-instrumentation-grpc==0.39b0.dev",
     "opentelemetry-instrumentation-httpx==0.39b0.dev",
     "opentelemetry-instrumentation-jinja2==0.39b0.dev",

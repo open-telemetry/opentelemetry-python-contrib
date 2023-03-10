@@ -7,6 +7,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## Unreleased
 
+### Added
+
+- `opentelemetry-instrumentation-graphql-core` Initial release
+  ([#1719](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/1719))
+
 ## Version 1.17.0/0.38b0 (2023-03-22)
 
 ### Added

@@ -76,6 +76,10 @@ libraries = {
         "library": "flask >= 1.0, < 3.0",
         "instrumentation": "opentelemetry-instrumentation-flask==0.39b0.dev",
     },
+    "graphql-core": {
+        "library": "graphql-core ~= 3.0",
+        "instrumentation": "opentelemetry-instrumentation-graphql-core==0.39b0.dev",
+    },
     "grpcio": {
         "library": "grpcio ~= 1.27",
         "instrumentation": "opentelemetry-instrumentation-grpc==0.39b0.dev",
