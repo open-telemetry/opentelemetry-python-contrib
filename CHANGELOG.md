@@ -22,6 +22,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   ([#1608](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/1608))
 - Add support for enabling Redis sanitization from environment variable
   ([#1690](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/1690))
+- `opentelemetry-instrumentation-threading` Add instrumentation for python threading module
+   ([#1582](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/1582))
+
 
 ### Fixed
 
@@ -29,6 +32,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   ([#1654](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/1654))
 - `opentelemetry-instrumentation-system-metrics` Fix initialization of the instrumentation class when configuration is provided
   ([#1438](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/1439))
+
 
 ## Version 1.16.0/0.37b0 (2023-02-17)
 
