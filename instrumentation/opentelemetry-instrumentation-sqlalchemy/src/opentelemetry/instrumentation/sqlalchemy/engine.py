@@ -33,7 +33,7 @@ def _sanitize_query(query):
     """
     sanitize_symbol = " ?"
     if query and query.split():
-        return query.split()[0] + sanitize_symbol + sanitize_symbol
+        return query.split()[0] + sanitize_symbol + " FROM" + sanitize_symbol
     return ""
 
 

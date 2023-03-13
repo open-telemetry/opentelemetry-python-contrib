@@ -21,7 +21,7 @@ from opentelemetry.test.test_base import TestBase
 
 class TestSQLAlchemyEngine(TestBase):
     def test_sql_query_sanitization(self):
-        sanitized = "SELECT ? ?"
+        sanitized = "SELECT ? FROM ?"
         select1 = "SELECT * FROM users WHERE name = 'John'"
         select2 = "SELECT  * FROM users WHERE name = 'John'"
         select3 = "SELECT\t*\tFROM\tusers\tWHERE\tname\t=\t'John'"

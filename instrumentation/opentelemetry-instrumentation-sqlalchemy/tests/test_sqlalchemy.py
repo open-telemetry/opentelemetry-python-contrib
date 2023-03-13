@@ -211,7 +211,7 @@ class TestSqlalchemyInstrumentation(TestBase):
 
         self.assertEqual(
             spans[1].attributes[SpanAttributes.DB_STATEMENT],
-            "SELECT ? ?",
+            "SELECT ? FROM ?",
         )
 
     def test_custom_tracer_provider(self):
