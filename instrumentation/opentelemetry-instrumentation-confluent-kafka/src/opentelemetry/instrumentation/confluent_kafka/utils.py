@@ -41,16 +41,26 @@ class KafkaContextGetter(textmap.Getter):
     def get(self, carrier: textmap.CarrierT, key: str) -> Optional[List[str]]:
         if carrier is None:
             return None
-        for item_key, value in carrier:
+
+        carrier_items = carrier
+        if isinstance(carrier, dict):
+            carrier_items = carrier.items()
+
+        for item_key, value in carrier_items:
             if item_key == key:
                 if value is not None:
                     return [value.decode()]
+
         return None
 
     def keys(self, carrier: textmap.CarrierT) -> List[str]:
         if carrier is None:
             return []
-        return [key for (key, value) in carrier]
+
+        carrier_items = carrier
+        if isinstance(carrier, dict):
+            carrier_items = carrier.items()
+        return [key for (key, value) in carrier_items]
 
 
 class KafkaContextSetter(textmap.Setter):
@@ -60,7 +70,12 @@ class KafkaContextSetter(textmap.Setter):
 
         if value:
             value = value.encode()
-        carrier.append((key, value))
+
+        if isinstance(carrier, list):
+            carrier.append((key, value))
+
+        if isinstance(carrier, dict):
+            carrier[key] = value
 
 
 _kafka_getter = KafkaContextGetter()

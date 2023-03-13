@@ -7,28 +7,27 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## Unreleased
 
-- Add metrics instrumentation for sqlalchemy
-  ([#1645](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/1645))
-
-- Fix exception in Urllib3 when dealing with filelike body.
-  ([#1399](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/1399))
-
-- Fix httpx resource warnings
-  ([#1695](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/1695))
-
 ### Added
 
 - Add connection attributes to sqlalchemy connect span
   ([#1608](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/1608))
 - Add support for enabling Redis sanitization from environment variable
   ([#1690](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/1690))
+- Add metrics instrumentation for sqlalchemy
+  ([#1645](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/1645))
 
 ### Fixed
 
 - Fix Flask instrumentation to only close the span if it was created by the same thread.
   ([#1654](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/1654))
+- Fix confluent-kafka instrumentation by allowing Producer headers to be dict or list
+  ([#1655](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/1655))
 - `opentelemetry-instrumentation-system-metrics` Fix initialization of the instrumentation class when configuration is provided
   ([#1438](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/1439))
+- Fix exception in Urllib3 when dealing with filelike body.
+  ([#1399](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/1399))
+- Fix httpx resource warnings
+  ([#1695](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/1695))
 
 ## Version 1.16.0/0.37b0 (2023-02-17)
 
