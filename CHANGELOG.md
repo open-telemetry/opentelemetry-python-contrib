@@ -20,6 +20,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- Fix aws sdk span name
+  ([#3582](https://github.com/open-telemetry/opentelemetry-go-contrib/issues/3521))
 - Fix Flask instrumentation to only close the span if it was created by the same thread.
   ([#1654](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/1654))
 - Fix confluent-kafka instrumentation by allowing Producer headers to be dict or list
