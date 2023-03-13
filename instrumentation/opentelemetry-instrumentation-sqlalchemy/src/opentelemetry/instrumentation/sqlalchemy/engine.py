@@ -29,7 +29,7 @@ from opentelemetry.trace.status import Status, StatusCode
 
 def _sanitize_query(query):
     """Remove query content, replace with sanitization symbol.
-    For example `SELECT * FROM table` will sanitize to SELECT ? ?`
+    For example `SELECT * FROM table` will sanitize to SELECT ? FROM ?`
     """
     sanitize_symbol = " ?"
     if query and query.split():
