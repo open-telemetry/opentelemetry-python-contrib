@@ -239,6 +239,7 @@ API
 ---
 """
 from logging import getLogger
+from packaging import version as package_version
 from time import time_ns
 from timeit import default_timer
 from typing import Collection
@@ -269,6 +270,13 @@ _ENVIRON_TOKEN = "opentelemetry-flask.token"
 
 _excluded_urls_from_env = get_excluded_urls("FLASK")
 
+if package_version.parse(flask.__version__) >= package_version.parse("2.2.0"):
+    def _request_ctx_id() -> int:
+        # return id(flask.globals.request_ctx)
+        return id(flask.globals.request_ctx._get_current_object())
+else:
+    def _request_ctx_id() -> int:
+        return id(flask._request_ctx_stack.top)
 
 def get_default_span_name():
     try:
@@ -398,7 +406,7 @@ def _wrapped_before_request(
         activation = trace.use_span(span, end_on_exit=True)
         activation.__enter__()  # pylint: disable=E1101
         flask_request_environ[_ENVIRON_ACTIVATION_KEY] = activation
-        flask_request_environ[_ENVIRON_REQCTX_ID_KEY] = id(flask._request_ctx_stack.top)
+        flask_request_environ[_ENVIRON_REQCTX_ID_KEY] = _request_ctx_id()
         flask_request_environ[_ENVIRON_SPAN_KEY] = span
         flask_request_environ[_ENVIRON_TOKEN] = token
 
@@ -440,7 +448,7 @@ def _wrapped_teardown_request(
         activation = flask.request.environ.get(_ENVIRON_ACTIVATION_KEY)
 
         original_reqctx_id = flask.request.environ.get(_ENVIRON_REQCTX_ID_KEY)
-        current_reqctx_id = id(flask._request_ctx_stack.top)
+        current_reqctx_id = _request_ctx_id()
         if not activation or original_reqctx_id != current_reqctx_id:
             # This request didn't start a span, maybe because it was created in
             # a way that doesn't run `before_request`, like when it is created
