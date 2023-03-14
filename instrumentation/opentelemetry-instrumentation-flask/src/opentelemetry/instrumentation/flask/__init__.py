@@ -397,7 +397,6 @@ def _wrapped_before_request(
 
         activation = trace.use_span(span, end_on_exit=True)
         activation.__enter__()  # pylint: disable=E1101
-        breakpoint()
         flask_request_environ[_ENVIRON_ACTIVATION_KEY] = activation
         flask_request_environ[_ENVIRON_REQCTX_ID_KEY] = id(flask._request_ctx_stack.top)
         flask_request_environ[_ENVIRON_SPAN_KEY] = span
