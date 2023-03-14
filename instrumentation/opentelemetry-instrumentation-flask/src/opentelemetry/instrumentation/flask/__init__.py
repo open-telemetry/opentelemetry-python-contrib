@@ -263,6 +263,9 @@ from opentelemetry.util.http import get_excluded_urls, parse_excluded_urls
 
 _logger = getLogger(__name__)
 
+class _TraceContext(typing.NamedTuple):
+    starttime: int
+
 _ENVIRON_STARTTIME_KEY = "opentelemetry-flask.starttime_key"
 _ENVIRON_SPAN_KEY = "opentelemetry-flask.span_key"
 _ENVIRON_ACTIVATION_KEY = "opentelemetry-flask.activation_key"
@@ -274,9 +277,16 @@ _excluded_urls_from_env = get_excluded_urls("FLASK")
 if package_version.parse(flask.__version__) >= package_version.parse("2.2.0"):
     def _request_ctx_ref() -> weakref.ReferenceType:
         return weakref.ref(flask.globals.request_ctx._get_current_object())
+    def _request_ctx() -> RequestContext:
+        return flask.globals.request_ctx._get_current_object()
 else:
     def _request_ctx_ref() -> int:
         return weakref.ref(flask._request_ctx_stack.top)
+    def _request_ctx() -> RequestContext:
+        return flask._request_ctx_stack.top
+
+def _get_reqctx():
+    return flask._request_ctx_stack.top
 
 def get_default_span_name():
     try:
@@ -405,10 +415,16 @@ def _wrapped_before_request(
 
         activation = trace.use_span(span, end_on_exit=True)
         activation.__enter__()  # pylint: disable=E1101
+
+        reqctx = _get_reqctx()
         flask_request_environ[_ENVIRON_ACTIVATION_KEY] = activation
+
         flask_request_environ[_ENVIRON_REQCTX_REF_KEY] = _request_ctx_ref()
         flask_request_environ[_ENVIRON_SPAN_KEY] = span
         flask_request_environ[_ENVIRON_TOKEN] = token
+
+        reqctx = _get_reqctx()
+        reqctx._test_ref = _request_ctx_ref()
 
         if enable_commenter:
             current_context = context.get_current()
@@ -449,6 +465,9 @@ def _wrapped_teardown_request(
 
         original_reqctx_ref = flask.request.environ.get(_ENVIRON_REQCTX_REF_KEY)
         current_reqctx_ref = _request_ctx_ref()
+        # tear_request FROM the copy_current_Request_context's teardown
+        if 'asdf' in flask.g:
+            breakpoint()
         if not activation or original_reqctx_ref != current_reqctx_ref:
             # This request didn't start a span, maybe because it was created in
             # a way that doesn't run `before_request`, like when it is created
