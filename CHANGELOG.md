@@ -29,6 +29,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Fix httpx resource warnings
   ([#1695](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/1695))
 
+### Changed
+
+- `opentelemetry-instrumentation-requests` Replace `name_callback` and `span_callback` with standard `response_hook` and `request_hook` callbacks
+  ([#670](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/670))
+
 ## Version 1.16.0/0.37b0 (2023-02-17)
 
 ### Added
