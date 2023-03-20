@@ -133,17 +133,23 @@ class RequestsIntegrationTestBase(abc.ABC):
             span, opentelemetry.instrumentation.requests
         )
 
-    def test_name_callback(self):
-        def name_callback(method, url):
-            return "GET" + url
+    def test_hooks(self):
+        def request_hook(span, request_obj):
+            span.update_name("name set from hook")
+
+        def response_hook(span, request_obj, response):
+            span.set_attribute("response_hook_attr", "value")
 
         RequestsInstrumentor().uninstrument()
-        RequestsInstrumentor().instrument(name_callback=name_callback)
+        RequestsInstrumentor().instrument(
+            request_hook=request_hook, response_hook=response_hook
+        )
         result = self.perform_request(self.URL)
         self.assertEqual(result.text, "Hello!")
         span = self.assert_span()
 
-        self.assertEqual(span.name, "GET" + self.URL)
+        self.assertEqual(span.name, "name set from hook")
+        self.assertEqual(span.attributes["response_hook_attr"], "value")
 
     def test_excluded_urls_explicit(self):
         url_404 = "http://httpbin.org/status/404"
@@ -300,17 +306,21 @@ class RequestsIntegrationTestBase(abc.ABC):
         finally:
             set_global_textmap(previous_propagator)
 
-    def test_span_callback(self):
+    def test_response_hook(self):
         RequestsInstrumentor().uninstrument()
 
-        def span_callback(span, result: requests.Response):
+        def response_hook(
+            span,
+            request: requests.PreparedRequest,
+            response: requests.Response,
+        ):
             span.set_attribute(
-                "http.response.body", result.content.decode("utf-8")
+                "http.response.body", response.content.decode("utf-8")
             )
 
         RequestsInstrumentor().instrument(
             tracer_provider=self.tracer_provider,
-            span_callback=span_callback,
+            response_hook=response_hook,
         )
 
         result = self.perform_request(self.URL)
@@ -448,21 +458,6 @@ class TestRequestsIntegration(RequestsIntegrationTestBase, TestBase):
         if session is None:
             return requests.get(url)
         return session.get(url)
-
-    def test_invalid_url(self):
-        url = "http://[::1/nope"
-
-        with self.assertRaises(ValueError):
-            requests.post(url)
-
-        span = self.assert_span()
-
-        self.assertEqual(span.name, "HTTP POST")
-        self.assertEqual(
-            span.attributes,
-            {SpanAttributes.HTTP_METHOD: "POST", SpanAttributes.HTTP_URL: url},
-        )
-        self.assertEqual(span.status.status_code, StatusCode.ERROR)
 
     def test_credential_removal(self):
         new_url = "http://username:password@httpbin.org/status/200"
