@@ -13,4 +13,4 @@
 # limitations under the License.
 
 
-_instruments = ("pulsar-client ~= 2.8",)
+_instruments = ("pulsar-client ~= 3.1",)

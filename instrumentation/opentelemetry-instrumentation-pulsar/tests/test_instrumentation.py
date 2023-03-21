@@ -159,7 +159,7 @@ class TestPulsar(TestBase):
         self.assertEqual(message.__class__, _InstrumentedMessage)
 
     @mock.patch("pulsar.Client.__init__", autospec=True)
-    def _get_client(self, mocked_init):
+    def _get_client(self, mocked_init=None):
         class StoredMessage:
             sent_message = None
 
@@ -167,7 +167,7 @@ class TestPulsar(TestBase):
 
         def _send(message, *_args, **_kwargs):
             stored_message.sent_message = pulsar.Message._wrap(message)
-            return b"\x08\xef/\x10\x00"
+            return pulsar.MessageId.deserialize(b"\x08\xef/\x10\x00")
 
         def _receive(*_args, **_kwargs):
             assert stored_message.sent_message is not None
@@ -193,7 +193,7 @@ class TestPulsar(TestBase):
             inner_self._consumers = []
 
         mocked_init.side_effect = init
-        client = pulsar.Client("a")
+        client = pulsar.Client("pulsar://localhost:6650")
         # This is only required because the message listener wrapping depends on our extended init
         client._set_tracer(self.pulsar_instrumentation._tracer)
         return client, stored_message
