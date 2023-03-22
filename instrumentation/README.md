@@ -26,6 +26,7 @@
 | [opentelemetry-instrumentation-mysql](./opentelemetry-instrumentation-mysql) | mysql-connector-python ~= 8.0 | No
 | [opentelemetry-instrumentation-pika](./opentelemetry-instrumentation-pika) | pika >= 0.12.0 | No
 | [opentelemetry-instrumentation-psycopg2](./opentelemetry-instrumentation-psycopg2) | psycopg2 >= 2.7.3.1 | No
+| [opentelemetry-instrumentation-pulsar](./opentelemetry-instrumentation-pulsar) | pulsar-client ~= 2.8 | No
 | [opentelemetry-instrumentation-pymemcache](./opentelemetry-instrumentation-pymemcache) | pymemcache >= 1.3.5, < 4 | No
 | [opentelemetry-instrumentation-pymongo](./opentelemetry-instrumentation-pymongo) | pymongo >= 3.1, < 5.0 | No
 | [opentelemetry-instrumentation-pymysql](./opentelemetry-instrumentation-pymysql) | PyMySQL < 2 | No
