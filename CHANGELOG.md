@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## Unreleased
 
+## Version 1.17.0/0.38b0 (2023-03-22)
+
 ### Added
 
 - Add connection attributes to sqlalchemy connect span
