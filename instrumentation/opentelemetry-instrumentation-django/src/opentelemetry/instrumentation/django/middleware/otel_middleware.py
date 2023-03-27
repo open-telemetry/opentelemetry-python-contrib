@@ -212,6 +212,7 @@ class _DjangoMiddleware(MiddlewareMixin):
             carrier_getter = wsgi_getter
             collect_request_attributes = wsgi_collect_request_attributes
 
+        attributes = collect_request_attributes(carrier)
         span, token = _start_internal_or_server_span(
             tracer=self._tracer,
             span_name=self._get_span_name(request),
@@ -220,9 +221,9 @@ class _DjangoMiddleware(MiddlewareMixin):
             ),
             context_carrier=carrier,
             context_getter=carrier_getter,
+            attributes=attributes,
         )
 
-        attributes = collect_request_attributes(carrier)
         active_requests_count_attrs = _parse_active_request_count_attrs(
             attributes
         )
