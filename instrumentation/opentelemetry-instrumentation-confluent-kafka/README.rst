@@ -6,7 +6,7 @@ OpenTelemetry confluent-kafka Instrumentation
 .. |pypi| image:: https://badge.fury.io/py/opentelemetry-instrumentation-confluent-kafka.svg
    :target: https://pypi.org/project/opentelemetry-instrumentation-confluent-kafka/
 
-This library allows tracing requests made by the confluent-kafka library.
+This library allows tracing requests made by the confluent-kafka library. This OpenTelemetry library is not written or supported by Confluent.
 
 Installation
 ------------
