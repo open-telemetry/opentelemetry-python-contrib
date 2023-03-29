@@ -108,7 +108,7 @@ from opentelemetry.trace import Span, SpanKind, Tracer, get_tracer
 from opentelemetry.trace.status import Status
 from opentelemetry.util.http import (
     ExcludeList,
-    get_excluded_urls, 
+    get_excluded_urls,
     parse_excluded_urls,
 )
 from opentelemetry.util.http.httplib import set_ip_on_next_http_connection

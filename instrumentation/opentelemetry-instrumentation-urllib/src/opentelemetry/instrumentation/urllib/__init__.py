@@ -104,7 +104,7 @@ from opentelemetry.trace import Span, SpanKind, get_tracer
 from opentelemetry.trace.status import Status
 from opentelemetry.util.http import (
     ExcludeList,
-    get_excluded_urls, 
+    get_excluded_urls,
     parse_excluded_urls,
     remove_url_credentials,
 )
@@ -200,7 +200,7 @@ def _instrument(
             _SUPPRESS_INSTRUMENTATION_KEY
         ) or context.get_value(_SUPPRESS_HTTP_INSTRUMENTATION_KEY):
             return call_wrapped()
-        
+
         url = request.full_url
         if excluded_urls and excluded_urls.url_disabled(url):
             return call_wrapped()
