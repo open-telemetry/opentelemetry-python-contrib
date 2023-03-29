@@ -58,6 +58,7 @@ The hooks can be configured as follows:
 
 Exclude lists
 *************
+
 To exclude certain URLs from being tracked, set the environment variable ``OTEL_PYTHON_URLLIB_EXCLUDED_URLS``
 (or ``OTEL_PYTHON_EXCLUDED_URLS`` as fallback) with comma delimited regexes representing which URLs to exclude.
 
@@ -195,13 +196,13 @@ def _instrument(
     def _instrumented_open_call(
         _, request, call_wrapped, get_or_create_headers
     ):  # pylint: disable=too-many-locals
-        url = request.full_url
-        if excluded_urls and excluded_urls.url_disabled(url):
-            return call_wrapped()
-
         if context.get_value(
             _SUPPRESS_INSTRUMENTATION_KEY
         ) or context.get_value(_SUPPRESS_HTTP_INSTRUMENTATION_KEY):
+            return call_wrapped()
+        
+        url = request.full_url
+        if excluded_urls and excluded_urls.url_disabled(url):
             return call_wrapped()
 
         method = request.get_method().upper()
