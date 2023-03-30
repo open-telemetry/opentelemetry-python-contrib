@@ -324,7 +324,7 @@ class SystemMetricsInstrumentor(BaseInstrumentor):
             )
 
         if "process.runtime.memory" in self._config:
-            self._meter.create_observable_counter(
+            self._meter.create_observable_gauge(
                 name=f"process.runtime.{self._python_implementation}.memory",
                 callbacks=[self._get_runtime_memory],
                 description=f"Runtime {self._python_implementation} memory",
