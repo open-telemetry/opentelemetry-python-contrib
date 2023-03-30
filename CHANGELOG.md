@@ -7,6 +7,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## Unreleased
 
+### Fixed
+
+- Fix `AttributeError` when AWS Lambda handler receives a list event
+  ([#1738](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/1738))
+
 ## Version 1.17.0/0.38b0 (2023-03-22)
 
 ### Added
