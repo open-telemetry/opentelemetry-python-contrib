@@ -750,7 +750,9 @@ class TestSystemMetrics(TestBase):
             _SystemMetricsResult({"type": "rss"}, 1),
             _SystemMetricsResult({"type": "vms"}, 2),
         ]
-        self._test_metrics(f"process.runtime.{self.implementation}.memory", expected)
+        self._test_metrics(
+            f"process.runtime.{self.implementation}.memory", expected
+        )
 
     @mock.patch("psutil.Process.cpu_times")
     def test_runtime_cpu_time(self, mock_process_cpu_times):
@@ -764,7 +766,9 @@ class TestSystemMetrics(TestBase):
             _SystemMetricsResult({"type": "user"}, 1.1),
             _SystemMetricsResult({"type": "system"}, 2.2),
         ]
-        self._test_metrics(f"process.runtime.{self.implementation}.cpu_time", expected)
+        self._test_metrics(
+            f"process.runtime.{self.implementation}.cpu_time", expected
+        )
 
     @mock.patch("gc.get_count")
     def test_runtime_get_count(self, mock_gc_get_count):
@@ -775,4 +779,6 @@ class TestSystemMetrics(TestBase):
             _SystemMetricsResult({"count": "1"}, 2),
             _SystemMetricsResult({"count": "2"}, 3),
         ]
-        self._test_metrics(f"process.runtime.{self.implementation}.gc_count", expected)
+        self._test_metrics(
+            f"process.runtime.{self.implementation}.gc_count", expected
+        )
