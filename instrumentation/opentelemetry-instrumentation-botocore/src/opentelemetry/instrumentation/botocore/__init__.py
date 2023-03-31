@@ -136,7 +136,7 @@ class BotocoreInstrumentor(BaseInstrumentor):
         self.response_hook = kwargs.get("response_hook")
 
         propagator = kwargs.get("propagator")
-        if propagator != None:
+        if propagator is not None:
             self.propagator = propagator
 
         wrap_function_wrapper(
