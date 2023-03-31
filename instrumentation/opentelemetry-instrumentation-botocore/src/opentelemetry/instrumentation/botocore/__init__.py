@@ -157,7 +157,7 @@ class BotocoreInstrumentor(BaseInstrumentor):
 
     # pylint: disable=unused-argument
     def _patched_endpoint_prepare_request(
-        self, wrapped, instance, args, kwargs
+        self, wrapped, instance, *args, **kwargs
     ):
         request = args[0]
         headers = request.headers
