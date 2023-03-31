@@ -7,6 +7,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## Unreleased
 
+### Added
+
+- Add `excluded_urls` functionality to `urllib` and `urllib3` instrumentations
+  ([#1733](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/1733))
+- Make Django request span attributes available for `start_span`. 
+  ([#1730](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/1730))
+
+
 ## Version 1.17.0/0.38b0 (2023-03-22)
 
 ### Added
@@ -17,10 +25,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   ([#1690](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/1690))
 - Add metrics instrumentation for sqlalchemy
   ([#1645](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/1645))
-- Add `excluded_urls` functionality to `urllib` and `urllib3` instrumentations
-  ([#1733](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/1733))
-- Make Django request span attributes available for `start_span`. 
-  ([#1730](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/1730))
 
 ### Fixed
 
