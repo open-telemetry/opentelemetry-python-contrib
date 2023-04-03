@@ -34,8 +34,8 @@ following metrics are configured:
         "system.network.io": ["transmit", "receive"],
         "system.network.connections": ["family", "type"],
         "system.thread_count": None
-        "runtime.memory": ["rss", "vms"],
-        "runtime.cpu.time": ["user", "system"],
+        "process.runtime.memory": ["rss", "vms"],
+        "process.runtime.cpu.time": ["user", "system"],
     }
 
 Usage
@@ -61,8 +61,8 @@ Usage
         "system.memory.usage": ["used", "free", "cached"],
         "system.cpu.time": ["idle", "user", "system", "irq"],
         "system.network.io": ["transmit", "receive"],
-        "runtime.memory": ["rss", "vms"],
-        "runtime.cpu.time": ["user", "system"],
+        "process.runtime.memory": ["rss", "vms"],
+        "process.runtime.cpu.time": ["user", "system"],
     }
     SystemMetricsInstrumentor(config=configuration).instrument()
 
@@ -102,9 +102,9 @@ _DEFAULT_CONFIG = {
     "system.network.io": ["transmit", "receive"],
     "system.network.connections": ["family", "type"],
     "system.thread_count": None,
-    "runtime.memory": ["rss", "vms"],
-    "runtime.cpu.time": ["user", "system"],
-    "runtime.gc_count": None,
+    "process.runtime.memory": ["rss", "vms"],
+    "process.runtime.cpu.time": ["user", "system"],
+    "process.runtime.gc_count": None,
 }
 
 
@@ -323,25 +323,25 @@ class SystemMetricsInstrumentor(BaseInstrumentor):
                 description="System active threads count",
             )
 
-        if "runtime.memory" in self._config:
-            self._meter.create_observable_counter(
-                name=f"runtime.{self._python_implementation}.memory",
+        if "process.runtime.memory" in self._config:
+            self._meter.create_observable_up_down_counter(
+                name=f"process.runtime.{self._python_implementation}.memory",
                 callbacks=[self._get_runtime_memory],
                 description=f"Runtime {self._python_implementation} memory",
                 unit="bytes",
             )
 
-        if "runtime.cpu.time" in self._config:
+        if "process.runtime.cpu.time" in self._config:
             self._meter.create_observable_counter(
-                name=f"runtime.{self._python_implementation}.cpu_time",
+                name=f"process.runtime.{self._python_implementation}.cpu_time",
                 callbacks=[self._get_runtime_cpu_time],
                 description=f"Runtime {self._python_implementation} CPU time",
                 unit="seconds",
             )
 
-        if "runtime.gc_count" in self._config:
+        if "process.runtime.gc_count" in self._config:
             self._meter.create_observable_counter(
-                name=f"runtime.{self._python_implementation}.gc_count",
+                name=f"process.runtime.{self._python_implementation}.gc_count",
                 callbacks=[self._get_runtime_gc_count],
                 description=f"Runtime {self._python_implementation} GC count",
                 unit="bytes",
@@ -618,7 +618,7 @@ class SystemMetricsInstrumentor(BaseInstrumentor):
     ) -> Iterable[Observation]:
         """Observer callback for runtime memory"""
         proc_memory = self._proc.memory_info()
-        for metric in self._config["runtime.memory"]:
+        for metric in self._config["process.runtime.memory"]:
             if hasattr(proc_memory, metric):
                 self._runtime_memory_labels["type"] = metric
                 yield Observation(
@@ -631,7 +631,7 @@ class SystemMetricsInstrumentor(BaseInstrumentor):
     ) -> Iterable[Observation]:
         """Observer callback for runtime CPU time"""
         proc_cpu = self._proc.cpu_times()
-        for metric in self._config["runtime.cpu.time"]:
+        for metric in self._config["process.runtime.cpu.time"]:
             if hasattr(proc_cpu, metric):
                 self._runtime_cpu_time_labels["type"] = metric
                 yield Observation(
