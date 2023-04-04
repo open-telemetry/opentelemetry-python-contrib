@@ -51,7 +51,7 @@ API
 import functools
 import types
 from timeit import default_timer
-from typing import Callable, Collection, Iterable, Optional
+from typing import Callable, Collection, Optional
 from urllib.parse import urlparse
 
 from requests.models import PreparedRequest, Response
@@ -77,6 +77,7 @@ from opentelemetry.trace import SpanKind, Tracer, get_tracer
 from opentelemetry.trace.span import Span
 from opentelemetry.trace.status import Status
 from opentelemetry.util.http import (
+    ExcludeList,
     get_excluded_urls,
     parse_excluded_urls,
     remove_url_credentials,
@@ -96,7 +97,7 @@ def _instrument(
     duration_histogram: Histogram,
     request_hook: _RequestHookT = None,
     response_hook: _ResponseHookT = None,
-    excluded_urls: Iterable[str] = None,
+    excluded_urls: ExcludeList = None,
 ):
     """Enables tracing of all requests calls that go through
     :code:`requests.session.Session.request` (this includes

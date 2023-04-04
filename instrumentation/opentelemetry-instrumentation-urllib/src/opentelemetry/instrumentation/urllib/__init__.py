@@ -56,6 +56,20 @@ The hooks can be configured as follows:
         request_hook=request_hook, response_hook=response_hook)
     )
 
+Exclude lists
+*************
+
+To exclude certain URLs from being tracked, set the environment variable ``OTEL_PYTHON_URLLIB_EXCLUDED_URLS``
+(or ``OTEL_PYTHON_EXCLUDED_URLS`` as fallback) with comma delimited regexes representing which URLs to exclude.
+
+For example,
+
+::
+
+    export OTEL_PYTHON_URLLIB_EXCLUDED_URLS="client/.*/info,healthcheck"
+
+will exclude requests such as ``https://site/client/123/info`` and ``https://site/xyz/healthcheck``.
+
 API
 ---
 """
@@ -88,7 +102,14 @@ from opentelemetry.semconv.metrics import MetricInstruments
 from opentelemetry.semconv.trace import SpanAttributes
 from opentelemetry.trace import Span, SpanKind, get_tracer
 from opentelemetry.trace.status import Status
-from opentelemetry.util.http import remove_url_credentials
+from opentelemetry.util.http import (
+    ExcludeList,
+    get_excluded_urls,
+    parse_excluded_urls,
+    remove_url_credentials,
+)
+
+_excluded_urls_from_env = get_excluded_urls("URLLIB")
 
 _RequestHookT = typing.Optional[typing.Callable[[Span, Request], None]]
 _ResponseHookT = typing.Optional[
@@ -112,10 +133,12 @@ class URLLibInstrumentor(BaseInstrumentor):
                 ``tracer_provider``: a TracerProvider, defaults to global
                 ``request_hook``: An optional callback invoked that is invoked right after a span is created.
                 ``response_hook``: An optional callback which is invoked right before the span is finished processing a response
+                ``excluded_urls``: A string containing a comma-delimited
+                    list of regexes used to exclude URLs from tracking
         """
         tracer_provider = kwargs.get("tracer_provider")
         tracer = get_tracer(__name__, __version__, tracer_provider)
-
+        excluded_urls = kwargs.get("excluded_urls")
         meter_provider = kwargs.get("meter_provider")
         meter = get_meter(__name__, __version__, meter_provider)
 
@@ -126,6 +149,9 @@ class URLLibInstrumentor(BaseInstrumentor):
             histograms,
             request_hook=kwargs.get("request_hook"),
             response_hook=kwargs.get("response_hook"),
+            excluded_urls=_excluded_urls_from_env
+            if excluded_urls is None
+            else parse_excluded_urls(excluded_urls),
         )
 
     def _uninstrument(self, **kwargs):
@@ -143,6 +169,7 @@ def _instrument(
     histograms: Dict[str, Histogram],
     request_hook: _RequestHookT = None,
     response_hook: _ResponseHookT = None,
+    excluded_urls: ExcludeList = None,
 ):
     """Enables tracing of all requests calls that go through
     :code:`urllib.Client._make_request`"""
@@ -174,8 +201,11 @@ def _instrument(
         ) or context.get_value(_SUPPRESS_HTTP_INSTRUMENTATION_KEY):
             return call_wrapped()
 
-        method = request.get_method().upper()
         url = request.full_url
+        if excluded_urls and excluded_urls.url_disabled(url):
+            return call_wrapped()
+
+        method = request.get_method().upper()
 
         span_name = f"HTTP {method}".strip()
 
