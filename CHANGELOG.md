@@ -7,6 +7,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## Unreleased
 
+- `opentelemetry-instrumentation-system-metrics` Add `process.` prefix to `runtime.memory`, `runtime.cpu.time`, and `runtime.gc_count`. Change `runtime.memory` from count to UpDownCounter. ([#1735](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/1735))
+
+### Added
+
+- Add `excluded_urls` functionality to `urllib` and `urllib3` instrumentations
+  ([#1733](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/1733))
+- Make Django request span attributes available for `start_span`. 
+  ([#1730](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/1730))
+
+
 ## Version 1.17.0/0.38b0 (2023-03-22)
 
 - Add request and response hooks for GRPC instrumentation (client only)
