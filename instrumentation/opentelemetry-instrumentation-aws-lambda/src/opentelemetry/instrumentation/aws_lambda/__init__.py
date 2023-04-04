@@ -342,7 +342,9 @@ def _instrument(
             # If the request came from an API Gateway, extract http attributes from the event
             # https://github.com/open-telemetry/opentelemetry-specification/blob/main/specification/trace/semantic_conventions/instrumentation/aws-lambda.md#api-gateway
             # https://github.com/open-telemetry/opentelemetry-specification/blob/main/specification/trace/semantic_conventions/http.md#http-server-semantic-conventions
-            if lambda_event and lambda_event.get("requestContext"):
+            if isinstance(lambda_event, dict) and lambda_event.get(
+                "requestContext"
+            ):
                 span.set_attribute(SpanAttributes.FAAS_TRIGGER, "http")
 
                 if lambda_event.get("version") == "2.0":
