@@ -96,6 +96,10 @@ libraries = {
         "library": "mysql-connector-python ~= 8.0",
         "instrumentation": "opentelemetry-instrumentation-mysql==0.39b0.dev",
     },
+    "mysqlclient": {
+        "library": "mysqlclient < 3",
+        "instrumentation": "opentelemetry-instrumentation-mysqlclient==0.39b0.dev",
+    },
     "pika": {
         "library": "pika >= 0.12.0",
         "instrumentation": "opentelemetry-instrumentation-pika==0.39b0.dev",

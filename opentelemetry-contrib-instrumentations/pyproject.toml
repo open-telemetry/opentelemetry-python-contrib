@@ -52,6 +52,7 @@ dependencies = [
     "opentelemetry-instrumentation-kafka-python==0.39b0.dev",
     "opentelemetry-instrumentation-logging==0.39b0.dev",
     "opentelemetry-instrumentation-mysql==0.39b0.dev",
+    "opentelemetry-instrumentation-mysqlclient==0.39b0.dev",
     "opentelemetry-instrumentation-pika==0.39b0.dev",
     "opentelemetry-instrumentation-psycopg2==0.39b0.dev",
     "opentelemetry-instrumentation-pymemcache==0.39b0.dev",
