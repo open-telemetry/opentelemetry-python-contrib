@@ -7,11 +7,22 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## Unreleased
 
-- Add metrics instrumentation for sqlalchemy
-  ([#1645](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/1645))
+- `opentelemetry-instrumentation-system-metrics` Add `process.` prefix to `runtime.memory`, `runtime.cpu.time`, and `runtime.gc_count`. Change `runtime.memory` from count to UpDownCounter. ([#1735](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/1735))
 
-- Fix exception in Urllib3 when dealing with filelike body.
-  ([#1399](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/1399))
+### Added
+
+- Add `excluded_urls` functionality to `urllib` and `urllib3` instrumentations
+  ([#1733](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/1733))
+- Make Django request span attributes available for `start_span`. 
+  ([#1730](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/1730))
+
+### Fixed
+
+- Fix `AttributeError` when AWS Lambda handler receives a list event
+  ([#1738](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/1738))
+
+
+## Version 1.17.0/0.38b0 (2023-03-22)
 
 ### Added
 
@@ -19,13 +30,26 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   ([#1608](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/1608))
 - Add support for enabling Redis sanitization from environment variable
   ([#1690](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/1690))
+- Add metrics instrumentation for sqlalchemy
+  ([#1645](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/1645))
 
 ### Fixed
 
 - Fix Flask instrumentation to only close the span if it was created by the same thread.
   ([#1654](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/1654))
+- Fix confluent-kafka instrumentation by allowing Producer headers to be dict or list
+  ([#1655](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/1655))
 - `opentelemetry-instrumentation-system-metrics` Fix initialization of the instrumentation class when configuration is provided
   ([#1438](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/1439))
+- Fix exception in Urllib3 when dealing with filelike body.
+  ([#1399](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/1399))
+- Fix httpx resource warnings
+  ([#1695](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/1695))
+
+### Changed
+
+- `opentelemetry-instrumentation-requests` Replace `name_callback` and `span_callback` with standard `response_hook` and `request_hook` callbacks
+  ([#670](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/670))
 
 ## Version 1.16.0/0.37b0 (2023-02-17)
 
