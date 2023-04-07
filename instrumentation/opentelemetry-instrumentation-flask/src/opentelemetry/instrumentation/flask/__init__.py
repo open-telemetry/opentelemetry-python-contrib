@@ -275,7 +275,7 @@ if package_version.parse(flask.__version__) >= package_version.parse("2.2.0"):
     def _request_ctx_ref() -> weakref.ReferenceType:
         return weakref.ref(flask.globals.request_ctx._get_current_object())
 else:
-    def _request_ctx_ref() -> int:
+    def _request_ctx_ref() -> weakref.ReferenceType:
         return weakref.ref(flask._request_ctx_stack.top)
 
 def get_default_span_name():
