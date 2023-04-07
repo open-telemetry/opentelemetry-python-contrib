@@ -37,8 +37,8 @@ class TestCopyContext(InstrumentationTest, WsgiTestBase):
 
     def test_copycontext(self):
         """Test that instrumentation tear down does not blow up
-        when the request thread spawn children threads and the request
-        context is copied to the children threads
+        when the request calls functions where the context has been
+        copied via `flask.copy_current_request_context`
         """
         self.app = flask.Flask(__name__)
         self.app.route("/copy_context")(
