@@ -16,7 +16,7 @@
 | [opentelemetry-instrumentation-django](./opentelemetry-instrumentation-django) | django >= 1.10 | Yes
 | [opentelemetry-instrumentation-elasticsearch](./opentelemetry-instrumentation-elasticsearch) | elasticsearch >= 2.0 | No
 | [opentelemetry-instrumentation-falcon](./opentelemetry-instrumentation-falcon) | falcon >= 1.4.1, < 4.0.0 | Yes
-| [opentelemetry-instrumentation-fastapi](./opentelemetry-instrumentation-fastapi) | fastapi <= 0.90.1 | Yes
+| [opentelemetry-instrumentation-fastapi](./opentelemetry-instrumentation-fastapi) | fastapi ~= 0.58 | Yes
 | [opentelemetry-instrumentation-flask](./opentelemetry-instrumentation-flask) | flask >= 1.0, < 3.0 | Yes
 | [opentelemetry-instrumentation-grpc](./opentelemetry-instrumentation-grpc) | grpcio ~= 1.27 | No
 | [opentelemetry-instrumentation-httpx](./opentelemetry-instrumentation-httpx) | httpx >= 0.18.0 | No
@@ -34,7 +34,7 @@
 | [opentelemetry-instrumentation-remoulade](./opentelemetry-instrumentation-remoulade) | remoulade >= 0.50 | No
 | [opentelemetry-instrumentation-requests](./opentelemetry-instrumentation-requests) | requests ~= 2.0 | Yes
 | [opentelemetry-instrumentation-sklearn](./opentelemetry-instrumentation-sklearn) | scikit-learn ~= 0.24.0 | No
-| [opentelemetry-instrumentation-sqlalchemy](./opentelemetry-instrumentation-sqlalchemy) | sqlalchemy | No
+| [opentelemetry-instrumentation-sqlalchemy](./opentelemetry-instrumentation-sqlalchemy) | sqlalchemy | Yes
 | [opentelemetry-instrumentation-sqlite3](./opentelemetry-instrumentation-sqlite3) | sqlite3 | No
 | [opentelemetry-instrumentation-starlette](./opentelemetry-instrumentation-starlette) | starlette ~= 0.13.0 | Yes
 | [opentelemetry-instrumentation-system-metrics](./opentelemetry-instrumentation-system-metrics) | psutil >= 5 | No

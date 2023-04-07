@@ -38,6 +38,7 @@ from opentelemetry.semconv.trace import SpanAttributes
 from opentelemetry.test.mock_textmap import MockTextMapPropagator
 from opentelemetry.test.test_base import TestBase
 from opentelemetry.trace import StatusCode
+from opentelemetry.util.http import get_excluded_urls
 
 # pylint: disable=too-many-public-methods
 
@@ -52,6 +53,21 @@ class RequestsIntegrationTestBase(abc.ABC):
     # pylint: disable=invalid-name
     def setUp(self):
         super().setUp()
+
+        self.env_patch = mock.patch.dict(
+            "os.environ",
+            {
+                "OTEL_PYTHON_URLLIB_EXCLUDED_URLS": "http://localhost/env_excluded_arg/123,env_excluded_noarg"
+            },
+        )
+        self.env_patch.start()
+
+        self.exclude_patch = mock.patch(
+            "opentelemetry.instrumentation.urllib._excluded_urls_from_env",
+            get_excluded_urls("URLLIB"),
+        )
+        self.exclude_patch.start()
+
         URLLibInstrumentor().instrument()
         httpretty.enable()
         httpretty.register_uri(httpretty.GET, self.URL, body=b"Hello!")
@@ -124,6 +140,36 @@ class RequestsIntegrationTestBase(abc.ABC):
         self.assertEqualSpanInstrumentationInfo(
             span, opentelemetry.instrumentation.urllib
         )
+
+    def test_excluded_urls_explicit(self):
+        url_201 = "http://httpbin.org/status/201"
+        httpretty.register_uri(
+            httpretty.GET,
+            url_201,
+            status=201,
+        )
+
+        URLLibInstrumentor().uninstrument()
+        URLLibInstrumentor().instrument(excluded_urls=".*/201")
+        self.perform_request(self.URL)
+        self.perform_request(url_201)
+
+        self.assert_span(num_spans=1)
+
+    def test_excluded_urls_from_env(self):
+        url = "http://localhost/env_excluded_arg/123"
+        httpretty.register_uri(
+            httpretty.GET,
+            url,
+            status=200,
+        )
+
+        URLLibInstrumentor().uninstrument()
+        URLLibInstrumentor().instrument()
+        self.perform_request(self.URL)
+        self.perform_request(url)
+
+        self.assert_span(num_spans=1)
 
     def test_not_foundbasic(self):
         url_404 = "http://httpbin.org/status/404/"
