@@ -454,15 +454,12 @@ def _wrapped_teardown_request(
             # a way that doesn't run `before_request`, like when it is created
             # with `app.test_request_context`.
             #
-            # Similarly, check that the id(request) matches the current id(request)
-            # to ensure tear down only happens if they match. This situation can arise
-            # TODO
-            #
-            # Similarly, check the id(request) against the current thread to ensure
-            # tear down only happens on the original thread. This situation can
-            # arise if the original thread handling the request spawn children
-            # threads and then uses something like copy_current_request_context
-            # to copy the request context.
+            # Similarly, check that the request_ctx that created the span
+            # matches the current request_ctx, and only tear down if they match.
+            # This situation can arise if the original request_ctx handling
+            # the request calls functions that push new request_ctx's,
+            # like any decorated with `flask.copy_current_request_context`.
+
             return
         if exc is None:
             activation.__exit__(None, None, None)
