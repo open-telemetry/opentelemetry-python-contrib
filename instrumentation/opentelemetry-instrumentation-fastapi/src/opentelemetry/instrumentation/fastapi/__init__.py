@@ -222,7 +222,7 @@ class FastAPIInstrumentor(BaseInstrumentor):
                 excluded_urls = _excluded_urls_from_env
             else:
                 excluded_urls = parse_excluded_urls(excluded_urls)
-            meter = get_meter(__name__, __version__, meter_provider)
+            meter = get_meter(__name__, __version__, meter_provider, schema_url=SpanAttributes.SCHEMA_URL)
 
             app.add_middleware(
                 OpenTelemetryMiddleware,
@@ -295,7 +295,7 @@ class _InstrumentedFastAPI(fastapi.FastAPI):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
         meter = get_meter(
-            __name__, __version__, _InstrumentedFastAPI._meter_provider
+            __name__, __version__, _InstrumentedFastAPI._meter_provider, schema_url=SpanAttributes.SCHEMA_URL
         )
         self.add_middleware(
             OpenTelemetryMiddleware,

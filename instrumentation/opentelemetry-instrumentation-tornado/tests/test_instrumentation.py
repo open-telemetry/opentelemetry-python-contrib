@@ -147,10 +147,10 @@ class TestTornadoInstrumentation(TornadoTest, WsgiTestBase):
             {
                 SpanAttributes.HTTP_METHOD: method,
                 SpanAttributes.HTTP_SCHEME: "http",
-                SpanAttributes.HTTP_HOST: "127.0.0.1:"
-                + str(self.get_http_port()),
+                SpanAttributes.NET_HOST_NAME: "127.0.0.1",
+                SpanAttributes.NET_HOST_PORT: int(self.get_http_port()),
                 SpanAttributes.HTTP_TARGET: "/",
-                SpanAttributes.HTTP_CLIENT_IP: "127.0.0.1",
+                SpanAttributes.NET_SOCK_PEER_ADDR: "127.0.0.1",
                 SpanAttributes.HTTP_STATUS_CODE: 201,
                 "tornado.handler": "tests.tornado_test_app.MainHandler",
             },
@@ -225,10 +225,10 @@ class TestTornadoInstrumentation(TornadoTest, WsgiTestBase):
             {
                 SpanAttributes.HTTP_METHOD: "GET",
                 SpanAttributes.HTTP_SCHEME: "http",
-                SpanAttributes.HTTP_HOST: "127.0.0.1:"
-                + str(self.get_http_port()),
+                SpanAttributes.NET_HOST_NAME: "127.0.0.1",
+                SpanAttributes.NET_HOST_PORT: self.get_http_port(),
                 SpanAttributes.HTTP_TARGET: url,
-                SpanAttributes.HTTP_CLIENT_IP: "127.0.0.1",
+                SpanAttributes.NET_SOCK_PEER_ADDR: "127.0.0.1",
                 SpanAttributes.HTTP_STATUS_CODE: 201,
                 "tornado.handler": f"tests.tornado_test_app.{handler_name}",
             },
@@ -264,10 +264,10 @@ class TestTornadoInstrumentation(TornadoTest, WsgiTestBase):
             {
                 SpanAttributes.HTTP_METHOD: "GET",
                 SpanAttributes.HTTP_SCHEME: "http",
-                SpanAttributes.HTTP_HOST: "127.0.0.1:"
-                + str(self.get_http_port()),
+                SpanAttributes.NET_HOST_NAME: "127.0.0.1",
+                SpanAttributes.NET_HOST_PORT: self.get_http_port(),
                 SpanAttributes.HTTP_TARGET: "/error",
-                SpanAttributes.HTTP_CLIENT_IP: "127.0.0.1",
+                SpanAttributes.NET_SOCK_PEER_ADDR: "127.0.0.1",
                 SpanAttributes.HTTP_STATUS_CODE: 500,
                 "tornado.handler": "tests.tornado_test_app.BadHandler",
             },
@@ -299,10 +299,10 @@ class TestTornadoInstrumentation(TornadoTest, WsgiTestBase):
             {
                 SpanAttributes.HTTP_METHOD: "GET",
                 SpanAttributes.HTTP_SCHEME: "http",
-                SpanAttributes.HTTP_HOST: "127.0.0.1:"
-                + str(self.get_http_port()),
+                SpanAttributes.NET_HOST_NAME: "127.0.0.1",
+                SpanAttributes.NET_HOST_PORT: self.get_http_port(),
                 SpanAttributes.HTTP_TARGET: "/missing-url",
-                SpanAttributes.HTTP_CLIENT_IP: "127.0.0.1",
+                SpanAttributes.NET_SOCK_PEER_ADDR: "127.0.0.1",
                 SpanAttributes.HTTP_STATUS_CODE: 404,
                 "tornado.handler": "tornado.web.ErrorHandler",
             },
@@ -334,10 +334,10 @@ class TestTornadoInstrumentation(TornadoTest, WsgiTestBase):
             {
                 SpanAttributes.HTTP_METHOD: "GET",
                 SpanAttributes.HTTP_SCHEME: "http",
-                SpanAttributes.HTTP_HOST: "127.0.0.1:"
-                + str(self.get_http_port()),
+                SpanAttributes.NET_HOST_NAME: "127.0.0.1",
+                SpanAttributes.NET_HOST_PORT: self.get_http_port(),
                 SpanAttributes.HTTP_TARGET: "/raise_403",
-                SpanAttributes.HTTP_CLIENT_IP: "127.0.0.1",
+                SpanAttributes.NET_SOCK_PEER_ADDR: "127.0.0.1",
                 SpanAttributes.HTTP_STATUS_CODE: 403,
                 "tornado.handler": "tests.tornado_test_app.RaiseHTTPErrorHandler",
             },
@@ -379,10 +379,10 @@ class TestTornadoInstrumentation(TornadoTest, WsgiTestBase):
             {
                 SpanAttributes.HTTP_METHOD: "GET",
                 SpanAttributes.HTTP_SCHEME: "http",
-                SpanAttributes.HTTP_HOST: "127.0.0.1:"
-                + str(self.get_http_port()),
+                SpanAttributes.NET_HOST_NAME: "127.0.0.1",
+                SpanAttributes.NET_HOST_PORT: self.get_http_port(),
                 SpanAttributes.HTTP_TARGET: "/dyna",
-                SpanAttributes.HTTP_CLIENT_IP: "127.0.0.1",
+                SpanAttributes.NET_SOCK_PEER_ADDR: "127.0.0.1",
                 SpanAttributes.HTTP_STATUS_CODE: 202,
                 "tornado.handler": "tests.tornado_test_app.DynamicHandler",
             },
@@ -420,10 +420,10 @@ class TestTornadoInstrumentation(TornadoTest, WsgiTestBase):
             {
                 SpanAttributes.HTTP_METHOD: "GET",
                 SpanAttributes.HTTP_SCHEME: "http",
-                SpanAttributes.HTTP_HOST: "127.0.0.1:"
-                + str(self.get_http_port()),
+                SpanAttributes.NET_HOST_NAME: "127.0.0.1",
+                SpanAttributes.NET_HOST_PORT: self.get_http_port(),
                 SpanAttributes.HTTP_TARGET: "/on_finish",
-                SpanAttributes.HTTP_CLIENT_IP: "127.0.0.1",
+                SpanAttributes.NET_SOCK_PEER_ADDR: "127.0.0.1",
                 SpanAttributes.HTTP_STATUS_CODE: 200,
                 "tornado.handler": "tests.tornado_test_app.FinishedHandler",
             },
@@ -540,12 +540,12 @@ class TestTornadoInstrumentationWithXHeaders(TornadoTest):
             {
                 SpanAttributes.HTTP_METHOD: "GET",
                 SpanAttributes.HTTP_SCHEME: "http",
-                SpanAttributes.HTTP_HOST: "127.0.0.1:"
-                + str(self.get_http_port()),
+                SpanAttributes.NET_HOST_NAME: "127.0.0.1",
+                SpanAttributes.NET_HOST_PORT: self.get_http_port(),
                 SpanAttributes.HTTP_TARGET: "/",
                 SpanAttributes.HTTP_CLIENT_IP: "12.34.56.78",
                 SpanAttributes.HTTP_STATUS_CODE: 201,
-                SpanAttributes.NET_PEER_IP: "127.0.0.1",
+                SpanAttributes.NET_SOCK_PEER_ADDR: "127.0.0.1",
                 "tornado.handler": "tests.tornado_test_app.MainHandler",
             },
         )
@@ -641,17 +641,18 @@ class TestTornadoWrappedWithOtherFramework(TornadoTest):
     def test_mark_span_internal_in_presence_of_another_span(self):
         response = self.fetch("/")
         self.assertEqual(response.code, 201)
-        spans = self.sorted_spans(self.memory_exporter.get_finished_spans())
+        spans = self.memory_exporter.get_finished_spans()
         self.assertEqual(len(spans), 4)
 
-        tornado_handler_span = spans[1]
-        self.assertEqual(trace.SpanKind.INTERNAL, tornado_handler_span.kind)
-
-        test_span = spans[2]
+        test_span = [s for s in spans if s.name == "test"][0]
         self.assertEqual(trace.SpanKind.SERVER, test_span.kind)
-        self.assertEqual(
-            test_span.context.span_id, tornado_handler_span.parent.span_id
-        )
+
+        tornado_handler_span = [
+            s
+            for s in spans
+            if s.parent and s.parent.span_id == test_span.context.span_id
+        ][0]
+        self.assertEqual(trace.SpanKind.INTERNAL, tornado_handler_span.kind)
 
 
 class TestTornadoCustomRequestResponseHeadersAddedWithServerSpan(TornadoTest):
@@ -668,16 +669,15 @@ class TestTornadoCustomRequestResponseHeadersAddedWithServerSpan(TornadoTest):
         }
         response = self.fetch("/", headers=headers)
         self.assertEqual(response.code, 201)
-        _, tornado_span, _ = self.sorted_spans(
-            self.memory_exporter.get_finished_spans()
-        )
+        spans = self.memory_exporter.get_finished_spans()
         expected = {
             "http.request.header.custom_test_header_1": ("Test Value 1",),
             "http.request.header.custom_test_header_2": (
                 "TestValue2,TestValue3",
             ),
         }
-        self.assertEqual(tornado_span.kind, trace.SpanKind.SERVER)
+
+        tornado_span = [s for s in spans if s.kind == trace.SpanKind.SERVER][0]
         self.assertSpanHasAttributes(tornado_span, expected)
 
     @patch.dict(
@@ -756,9 +756,8 @@ class TestTornadoCustomRequestResponseHeadersNotAddedWithInternalSpan(
     def test_custom_response_headers_not_added_in_internal_span(self):
         response = self.fetch("/test_custom_response_headers")
         self.assertEqual(response.code, 200)
-        tornado_span, _, _ = self.sorted_spans(
-            self.memory_exporter.get_finished_spans()
-        )
+        spans = self.memory_exporter.get_finished_spans()
+
         not_expected = {
             "http.response.header.content_type": (
                 "text/plain; charset=utf-8",
@@ -768,6 +767,8 @@ class TestTornadoCustomRequestResponseHeadersNotAddedWithInternalSpan(
                 "my-custom-value-1,my-custom-header-2",
             ),
         }
-        self.assertEqual(tornado_span.kind, trace.SpanKind.INTERNAL)
-        for key, _ in not_expected.items():
-            self.assertNotIn(key, tornado_span.attributes)
+
+        for s in spans:
+            if s.kind == trace.SpanKind.INTERNAL:
+                for key, _ in not_expected.items():
+                    self.assertNotIn(key, s.attributes)

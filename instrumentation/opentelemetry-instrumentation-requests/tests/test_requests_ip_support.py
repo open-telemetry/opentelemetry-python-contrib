@@ -75,6 +75,6 @@ class TestURLLib3InstrumentorWithRealSocket(HttpTestBase, TestBase):
 
         attributes = {
             "http.status_code": 200,
-            "net.peer.ip": self.assert_ip,
+            "net.sock.peer.addr": self.assert_ip,
         }
         self.assertGreaterEqual(span.attributes.items(), attributes.items())

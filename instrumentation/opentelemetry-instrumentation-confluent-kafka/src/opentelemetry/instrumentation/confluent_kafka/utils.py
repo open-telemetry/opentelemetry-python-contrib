@@ -3,7 +3,6 @@ from typing import List, Optional
 
 from opentelemetry.propagators import textmap
 from opentelemetry.semconv.trace import (
-    MessagingDestinationKindValues,
     MessagingOperationValues,
     SpanAttributes,
 )
@@ -92,20 +91,22 @@ def _enrich_span(
         return
 
     span.set_attribute(SpanAttributes.MESSAGING_SYSTEM, "kafka")
-    span.set_attribute(SpanAttributes.MESSAGING_DESTINATION, topic)
+    if operation == MessagingOperationValues.RECEIVE:
+        span.set_attribute(SpanAttributes.MESSAGING_SOURCE_NAME, topic)
+    else:
+        span.set_attribute(SpanAttributes.MESSAGING_DESTINATION_NAME, topic)
 
     if partition:
-        span.set_attribute(SpanAttributes.MESSAGING_KAFKA_PARTITION, partition)
-
-    span.set_attribute(
-        SpanAttributes.MESSAGING_DESTINATION_KIND,
-        MessagingDestinationKindValues.QUEUE.value,
-    )
+        span.set_attribute(
+            SpanAttributes.MESSAGING_KAFKA_DESTINATION_PARTITION, partition
+        )
 
     if operation:
         span.set_attribute(SpanAttributes.MESSAGING_OPERATION, operation.value)
     else:
-        span.set_attribute(SpanAttributes.MESSAGING_TEMP_DESTINATION, True)
+        span.set_attribute(
+            SpanAttributes.MESSAGING_DESTINATION_TEMPORARY, True
+        )
 
     # https://stackoverflow.com/questions/65935155/identify-and-find-specific-message-in-kafka-topic
     # A message within Kafka is uniquely defined by its topic name, topic partition and offset.

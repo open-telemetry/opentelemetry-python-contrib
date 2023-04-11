@@ -508,11 +508,10 @@ class TestRequestsIntergrationMetric(TestBase):
 
         expected_attributes = {
             "http.status_code": 200,
-            "http.host": "examplehost",
-            "net.peer.port": 8000,
             "net.peer.name": "examplehost",
+            "net.peer.port": 8000,
             "http.method": "GET",
-            "http.flavor": "1.1",
+            "net.protocol.version": "1.1",
             "http.scheme": "http",
         }
 

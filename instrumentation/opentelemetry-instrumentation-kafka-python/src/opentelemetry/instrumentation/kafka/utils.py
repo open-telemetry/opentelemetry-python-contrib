@@ -123,14 +123,26 @@ _kafka_setter = KafkaContextSetter()
 
 
 def _enrich_span(
-    span, bootstrap_servers: List[str], topic: str, partition: int
+    span,
+    bootstrap_servers: List[str],
+    topic: str,
+    partition: int,
+    consumer: bool,
 ):
     if span.is_recording():
         span.set_attribute(SpanAttributes.MESSAGING_SYSTEM, "kafka")
-        span.set_attribute(SpanAttributes.MESSAGING_DESTINATION, topic)
-        span.set_attribute(SpanAttributes.MESSAGING_KAFKA_PARTITION, partition)
+        if consumer:
+            span.set_attribute(SpanAttributes.MESSAGING_SOURCE_NAME, topic)
+        else:
+            span.set_attribute(
+                SpanAttributes.MESSAGING_DESTINATION_NAME, topic
+            )
+
         span.set_attribute(
-            SpanAttributes.MESSAGING_URL, json.dumps(bootstrap_servers)
+            SpanAttributes.MESSAGING_KAFKA_DESTINATION_PARTITION, partition
+        )
+        span.set_attribute(
+            SpanAttributes.NET_PEER_NAME, json.dumps(bootstrap_servers)
         )
 
 

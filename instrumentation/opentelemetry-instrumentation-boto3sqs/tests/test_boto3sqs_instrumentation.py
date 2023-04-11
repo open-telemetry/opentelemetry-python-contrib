@@ -28,7 +28,6 @@ from opentelemetry.instrumentation.boto3sqs import (
     Boto3SQSSetter,
 )
 from opentelemetry.semconv.trace import (
-    MessagingDestinationKindValues,
     MessagingOperationValues,
     SpanAttributes,
 )
@@ -138,6 +137,7 @@ class TestBoto3SQSInstrumentation(TestBase):
         self._client = _make_sqs_client()
         self._queue_name = "MyQueue"
         self._queue_url = f"https://sqs.us-east-1.amazonaws.com/123456789012/{self._queue_name}"
+        self._queue_host = "sqs.us-east-1.amazonaws.com"
 
     def tearDown(self):
         super().tearDown()
@@ -176,9 +176,8 @@ class TestBoto3SQSInstrumentation(TestBase):
     def _default_span_attrs(self):
         return {
             SpanAttributes.MESSAGING_SYSTEM: "aws.sqs",
-            SpanAttributes.MESSAGING_DESTINATION: self._queue_name,
-            SpanAttributes.MESSAGING_DESTINATION_KIND: MessagingDestinationKindValues.QUEUE.value,
-            SpanAttributes.MESSAGING_URL: self._queue_url,
+            SpanAttributes.MESSAGING_DESTINATION_NAME: self._queue_name,
+            SpanAttributes.NET_PEER_NAME: self._queue_host,
         }
 
     @staticmethod

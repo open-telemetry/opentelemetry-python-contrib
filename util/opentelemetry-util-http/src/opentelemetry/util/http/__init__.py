@@ -34,21 +34,20 @@ OTEL_INSTRUMENTATION_HTTP_CAPTURE_HEADERS_SERVER_RESPONSE = (
 # List of recommended metrics attributes
 _duration_attrs = {
     SpanAttributes.HTTP_METHOD,
-    SpanAttributes.HTTP_HOST,
+    SpanAttributes.NET_HOST_NAME,
+    SpanAttributes.NET_HOST_PORT,
     SpanAttributes.HTTP_SCHEME,
     SpanAttributes.HTTP_STATUS_CODE,
-    SpanAttributes.HTTP_FLAVOR,
-    SpanAttributes.HTTP_SERVER_NAME,
-    SpanAttributes.NET_HOST_NAME,
+    SpanAttributes.NET_PROTOCOL_NAME,
+    SpanAttributes.NET_PROTOCOL_VERSION,
     SpanAttributes.NET_HOST_PORT,
 }
 
 _active_requests_count_attrs = {
     SpanAttributes.HTTP_METHOD,
-    SpanAttributes.HTTP_HOST,
     SpanAttributes.HTTP_SCHEME,
-    SpanAttributes.HTTP_FLAVOR,
-    SpanAttributes.HTTP_SERVER_NAME,
+    SpanAttributes.NET_HOST_NAME,
+    SpanAttributes.NET_HOST_PORT,
 }
 
 
@@ -195,6 +194,29 @@ def get_custom_headers(env_var: str) -> List[str]:
             for custom_headers in custom_headers.split(",")
         ]
     return custom_headers
+
+
+def parse_http_host(host_port) -> tuple[str, str]:
+    if not host_port:
+        return (None, None)
+
+    creds_end = host_port.find("@") + 1
+    host_end = host_port.find(":", creds_end)
+    if host_end == -1:
+        return (host_port[creds_end:], None)
+
+    return (host_port[creds_end:host_end], host_port[host_end + 1 :])
+
+
+def get_http_protocol_version(protocol_and_version) -> str:
+    if protocol_and_version == "HTTP/1.1":
+        return "1.1"
+    elif protocol_and_version == "HTTP/1.0":
+        return "1.0"
+    elif protocol_and_version == "HTTP/2":
+        return "2"
+    else:
+        return None
 
 
 def _parse_active_request_count_attrs(req_attrs):

@@ -34,12 +34,11 @@ from .pyramid_base_test import InstrumentationTest
 def expected_attributes(override_attributes):
     default_attributes = {
         SpanAttributes.HTTP_METHOD: "GET",
-        SpanAttributes.HTTP_SERVER_NAME: "localhost",
+        SpanAttributes.NET_HOST_NAME: "localhost",
         SpanAttributes.HTTP_SCHEME: "http",
         SpanAttributes.NET_HOST_PORT: 80,
-        SpanAttributes.HTTP_HOST: "localhost",
         SpanAttributes.HTTP_TARGET: "/",
-        SpanAttributes.HTTP_FLAVOR: "1.1",
+        SpanAttributes.NET_PROTOCOL_VERSION: "1.1",
         SpanAttributes.HTTP_STATUS_CODE: 200,
     }
     for key, val in override_attributes.items():
@@ -104,6 +103,7 @@ class TestProgrammatic(InstrumentationTest, WsgiTestBase):
         self.assertEqual(len(span_list), 1)
         self.assertEqual(span_list[0].name, "/hello/{helloid}")
         self.assertEqual(span_list[0].kind, trace.SpanKind.SERVER)
+
         self.assertEqual(span_list[0].attributes, expected_attrs)
 
     def test_response_headers(self):

@@ -143,8 +143,8 @@ class TestAwsLambdaInstrumentor(TestBase):
         self.assertSpanHasAttributes(
             span,
             {
-                ResourceAttributes.FAAS_ID: MOCK_LAMBDA_CONTEXT.invoked_function_arn,
-                SpanAttributes.FAAS_EXECUTION: MOCK_LAMBDA_CONTEXT.aws_request_id,
+                ResourceAttributes.CLOUD_RESOURCE_ID: MOCK_LAMBDA_CONTEXT.invoked_function_arn,
+                SpanAttributes.FAAS_INVOCATION_ID: MOCK_LAMBDA_CONTEXT.aws_request_id,
             },
         )
 
@@ -374,7 +374,7 @@ class TestAwsLambdaInstrumentor(TestBase):
                 SpanAttributes.HTTP_ROUTE: "/{proxy+}",
                 SpanAttributes.HTTP_TARGET: "/{proxy+}?foo=bar",
                 SpanAttributes.NET_HOST_NAME: "1234567890.execute-api.us-east-1.amazonaws.com",
-                SpanAttributes.HTTP_USER_AGENT: "Custom User Agent String",
+                SpanAttributes.USER_AGENT_ORIGINAL: "Custom User Agent String",
                 SpanAttributes.HTTP_SCHEME: "https",
                 SpanAttributes.HTTP_STATUS_CODE: 200,
             },
@@ -395,7 +395,7 @@ class TestAwsLambdaInstrumentor(TestBase):
                 SpanAttributes.HTTP_ROUTE: "/path/to/resource",
                 SpanAttributes.HTTP_TARGET: "/path/to/resource?parameter1=value1&parameter1=value2&parameter2=value",
                 SpanAttributes.NET_HOST_NAME: "id.execute-api.us-east-1.amazonaws.com",
-                SpanAttributes.HTTP_USER_AGENT: "agent",
+                SpanAttributes.USER_AGENT_ORIGINAL: "agent",
             },
         )
 

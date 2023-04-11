@@ -97,15 +97,18 @@ class TestUtils(TestCase):
             any_order=True,
             calls=[
                 mock.call(SpanAttributes.MESSAGING_SYSTEM, "rabbitmq"),
-                mock.call(SpanAttributes.MESSAGING_TEMP_DESTINATION, True),
                 mock.call(
-                    SpanAttributes.MESSAGING_DESTINATION, task_destination
+                    SpanAttributes.MESSAGING_DESTINATION_TEMPORARY, True
+                ),
+                mock.call(
+                    SpanAttributes.MESSAGING_KAFKA_DESTINATION_PARTITION,
+                    task_destination,
                 ),
                 mock.call(
                     SpanAttributes.MESSAGING_MESSAGE_ID, properties.message_id
                 ),
                 mock.call(
-                    SpanAttributes.MESSAGING_CONVERSATION_ID,
+                    SpanAttributes.MESSAGING_MESSAGE_CONVERSATION_ID,
                     properties.correlation_id,
                 ),
                 mock.call(
@@ -145,7 +148,9 @@ class TestUtils(TestCase):
         utils._enrich_span(span, channel, properties, task_destination)
         span.set_attribute.assert_has_calls(
             any_order=True,
-            calls=[mock.call(SpanAttributes.MESSAGING_TEMP_DESTINATION, True)],
+            calls=[
+                mock.call(SpanAttributes.MESSAGING_DESTINATION_TEMPORARY, True)
+            ],
         )
 
     @staticmethod

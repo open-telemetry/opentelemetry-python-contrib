@@ -85,6 +85,7 @@ from opentelemetry.instrumentation.system_metrics.package import _instruments
 from opentelemetry.instrumentation.system_metrics.version import __version__
 from opentelemetry.metrics import CallbackOptions, Observation, get_meter
 from opentelemetry.sdk.util import get_dict_as_key
+from opentelemetry.semconv.trace import SpanAttributes
 
 _DEFAULT_CONFIG = {
     "system.cpu.time": ["idle", "user", "system", "irq"],
@@ -161,6 +162,7 @@ class SystemMetricsInstrumentor(BaseInstrumentor):
             __name__,
             __version__,
             meter_provider,
+            schema_url=SpanAttributes.SCHEMA_URL            
         )
 
         if "system.cpu.time" in self._config:

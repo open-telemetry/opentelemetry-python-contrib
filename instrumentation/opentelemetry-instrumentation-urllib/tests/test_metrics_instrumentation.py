@@ -77,7 +77,7 @@ class TestUrllibMetricsInstrumentation(TestBase):
                         "http.status_code": str(result.code),
                         "http.method": "GET",
                         "http.url": str(result.url),
-                        "http.flavor": "1.1",
+                        "net.protocol.version": "1.1",
                     },
                 ),
                 est_value_delta=200,
@@ -95,7 +95,7 @@ class TestUrllibMetricsInstrumentation(TestBase):
                         "http.status_code": str(result.code),
                         "http.method": "GET",
                         "http.url": str(result.url),
-                        "http.flavor": "1.1",
+                        "net.protocol.version": "1.1",
                     },
                 ),
             )
@@ -112,7 +112,7 @@ class TestUrllibMetricsInstrumentation(TestBase):
                         "http.status_code": str(result.code),
                         "http.method": "GET",
                         "http.url": str(result.url),
-                        "http.flavor": "1.1",
+                        "net.protocol.version": "1.1",
                     },
                 ),
             )
@@ -145,7 +145,7 @@ class TestUrllibMetricsInstrumentation(TestBase):
                         "http.status_code": str(result.code),
                         "http.method": "POST",
                         "http.url": str(result.url),
-                        "http.flavor": "1.1",
+                        "net.protocol.version": "1.1",
                     },
                 ),
                 est_value_delta=200,
@@ -163,7 +163,7 @@ class TestUrllibMetricsInstrumentation(TestBase):
                         "http.status_code": str(result.code),
                         "http.method": "POST",
                         "http.url": str(result.url),
-                        "http.flavor": "1.1",
+                        "net.protocol.version": "1.1",
                     },
                 ),
             )
@@ -180,7 +180,7 @@ class TestUrllibMetricsInstrumentation(TestBase):
                         "http.status_code": str(result.code),
                         "http.method": "POST",
                         "http.url": str(result.url),
-                        "http.flavor": "1.1",
+                        "net.protocol.version": "1.1",
                     },
                 ),
             )

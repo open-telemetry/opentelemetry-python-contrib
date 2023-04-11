@@ -30,6 +30,7 @@ Usage
 """
 import logging
 from typing import Any, Collection, Dict, Generator, List, Mapping, Optional
+from urllib.parse import urlparse
 
 import boto3
 import botocore.client
@@ -43,7 +44,6 @@ from opentelemetry.instrumentation.utils import (
 )
 from opentelemetry.propagators.textmap import CarrierT, Getter, Setter
 from opentelemetry.semconv.trace import (
-    MessagingDestinationKindValues,
     MessagingOperationValues,
     SpanAttributes,
 )
@@ -151,12 +151,11 @@ class Boto3SQSInstrumentor(BaseInstrumentor):
         if not span.is_recording():
             return
         span.set_attribute(SpanAttributes.MESSAGING_SYSTEM, "aws.sqs")
-        span.set_attribute(SpanAttributes.MESSAGING_DESTINATION, queue_name)
         span.set_attribute(
-            SpanAttributes.MESSAGING_DESTINATION_KIND,
-            MessagingDestinationKindValues.QUEUE.value,
+            SpanAttributes.MESSAGING_DESTINATION_NAME, queue_name
         )
-        span.set_attribute(SpanAttributes.MESSAGING_URL, queue_url)
+        queue_host = urlparse(queue_url).hostname
+        span.set_attribute(SpanAttributes.NET_PEER_NAME, queue_host)
 
         if operation:
             span.set_attribute(
@@ -164,7 +163,8 @@ class Boto3SQSInstrumentor(BaseInstrumentor):
             )
         if conversation_id:
             span.set_attribute(
-                SpanAttributes.MESSAGING_CONVERSATION_ID, conversation_id
+                SpanAttributes.MESSAGING_MESSAGE_CONVERSATION_ID,
+                conversation_id,
             )
         if message_id:
             span.set_attribute(SpanAttributes.MESSAGING_MESSAGE_ID, message_id)
@@ -422,7 +422,7 @@ class Boto3SQSInstrumentor(BaseInstrumentor):
             "tracer_provider"
         )
         self._tracer: Tracer = trace.get_tracer(
-            __name__, __version__, self._tracer_provider
+            __name__, __version__, self._tracer_provider, schema_url=SpanAttributes.SCHEMA_URL
         )
         self._wrap_client_creation()
 

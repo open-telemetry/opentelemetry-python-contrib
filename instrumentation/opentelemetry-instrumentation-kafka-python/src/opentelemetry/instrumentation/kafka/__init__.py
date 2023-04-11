@@ -78,7 +78,7 @@ from opentelemetry.instrumentation.kafka.package import _instruments
 from opentelemetry.instrumentation.kafka.utils import _wrap_next, _wrap_send
 from opentelemetry.instrumentation.kafka.version import __version__
 from opentelemetry.instrumentation.utils import unwrap
-
+from opentelemetry.semconv.trace import SpanAttributes
 
 class KafkaInstrumentor(BaseInstrumentor):
     """An instrumentor for kafka module
@@ -102,7 +102,7 @@ class KafkaInstrumentor(BaseInstrumentor):
         consume_hook = kwargs.get("consume_hook")
 
         tracer = trace.get_tracer(
-            __name__, __version__, tracer_provider=tracer_provider
+            __name__, __version__, tracer_provider=tracer_provider, schema_url=SpanAttributes.SCHEMA_URL,
         )
 
         wrap_function_wrapper(

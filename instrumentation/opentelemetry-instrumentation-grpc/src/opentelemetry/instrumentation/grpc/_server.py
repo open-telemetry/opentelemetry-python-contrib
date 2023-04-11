@@ -261,8 +261,8 @@ class OpenTelemetryServerInterceptor(grpc.ServerInterceptor):
                 ip = unquote(ip)
                 attributes.update(
                     {
-                        SpanAttributes.NET_PEER_IP: ip,
-                        SpanAttributes.NET_PEER_PORT: port,
+                        SpanAttributes.NET_SOCK_PEER_ADDR: ip,
+                        SpanAttributes.NET_SOCK_PEER_PORT: port,
                     }
                 )
 

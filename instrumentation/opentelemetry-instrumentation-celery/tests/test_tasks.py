@@ -61,7 +61,7 @@ class TestCeleryInstrumentation(TestBase):
             {
                 "celery.action": "run",
                 "celery.state": "SUCCESS",
-                SpanAttributes.MESSAGING_DESTINATION: "celery",
+                SpanAttributes.MESSAGING_DESTINATION_NAME: "celery",
                 "celery.task_name": "tests.celery_test_tasks.task_add",
             },
         )
@@ -75,8 +75,7 @@ class TestCeleryInstrumentation(TestBase):
             {
                 "celery.action": "apply_async",
                 "celery.task_name": "tests.celery_test_tasks.task_add",
-                SpanAttributes.MESSAGING_DESTINATION_KIND: "queue",
-                SpanAttributes.MESSAGING_DESTINATION: "celery",
+                SpanAttributes.MESSAGING_DESTINATION_NAME: "celery",
             },
         )
 

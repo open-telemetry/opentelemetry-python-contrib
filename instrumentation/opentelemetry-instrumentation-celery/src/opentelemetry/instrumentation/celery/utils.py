@@ -83,7 +83,7 @@ def set_attributes_from_context(span, context):
             routing_key = value.get("routing_key")
             if routing_key is not None:
                 span.set_attribute(
-                    SpanAttributes.MESSAGING_DESTINATION, routing_key
+                    SpanAttributes.MESSAGING_DESTINATION_NAME, routing_key
                 )
             value = str(value)
 
@@ -91,21 +91,14 @@ def set_attributes_from_context(span, context):
             attribute_name = SpanAttributes.MESSAGING_MESSAGE_ID
 
         elif key == "correlation_id":
-            attribute_name = SpanAttributes.MESSAGING_CONVERSATION_ID
+            attribute_name = SpanAttributes.MESSAGING_MESSAGE_CONVERSATION_ID
 
         elif key == "routing_key":
-            attribute_name = SpanAttributes.MESSAGING_DESTINATION
+            attribute_name = SpanAttributes.MESSAGING_DESTINATION_NAME
 
         # according to https://docs.celeryproject.org/en/stable/userguide/routing.html#exchange-types
         elif key == "declare":
-            attribute_name = SpanAttributes.MESSAGING_DESTINATION_KIND
-            for declare in value:
-                if declare.exchange.type == "direct":
-                    value = "queue"
-                    break
-                if declare.exchange.type == "topic":
-                    value = "topic"
-                    break
+            continue
 
         # set attribute name if not set specially for a key
         if attribute_name is None:

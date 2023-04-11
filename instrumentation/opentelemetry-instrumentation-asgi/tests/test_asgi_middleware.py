@@ -179,12 +179,11 @@ class TestAsgiApplication(AsgiTestBase):
                     SpanAttributes.HTTP_METHOD: "GET",
                     SpanAttributes.HTTP_SCHEME: "http",
                     SpanAttributes.NET_HOST_PORT: 80,
-                    SpanAttributes.HTTP_HOST: "127.0.0.1",
-                    SpanAttributes.HTTP_FLAVOR: "1.0",
+                    SpanAttributes.NET_HOST_NAME: "127.0.0.1",
+                    SpanAttributes.NET_PROTOCOL_VERSION: "1.0",
                     SpanAttributes.HTTP_TARGET: "/",
-                    SpanAttributes.HTTP_URL: "http://127.0.0.1/",
-                    SpanAttributes.NET_PEER_IP: "127.0.0.1",
-                    SpanAttributes.NET_PEER_PORT: 32767,
+                    SpanAttributes.NET_SOCK_PEER_ADDR: "127.0.0.1",
+                    SpanAttributes.NET_SOCK_PEER_PORT: 32767,
                     SpanAttributes.HTTP_STATUS_CODE: 200,
                 },
             },
@@ -292,9 +291,8 @@ class TestAsgiApplication(AsgiTestBase):
         def update_expected_server(expected):
             expected[3]["attributes"].update(
                 {
-                    SpanAttributes.HTTP_HOST: "0.0.0.0",
+                    SpanAttributes.NET_HOST_NAME: "0.0.0.0",
                     SpanAttributes.NET_HOST_PORT: 80,
-                    SpanAttributes.HTTP_URL: "http://0.0.0.0/",
                 }
             )
             return expected
@@ -307,12 +305,12 @@ class TestAsgiApplication(AsgiTestBase):
         self.validate_outputs(outputs, modifiers=[update_expected_server])
 
     def test_host_header(self):
-        """Test that host header is converted to http.server_name."""
+        """Test that host header is converted to NET_HOST_NAME."""
         hostname = b"server_name_1"
 
         def update_expected_server(expected):
             expected[3]["attributes"].update(
-                {SpanAttributes.HTTP_SERVER_NAME: hostname.decode("utf8")}
+                {SpanAttributes.NET_HOST_NAME: hostname.decode("utf8")}
             )
             return expected
 
@@ -324,12 +322,12 @@ class TestAsgiApplication(AsgiTestBase):
         self.validate_outputs(outputs, modifiers=[update_expected_server])
 
     def test_user_agent(self):
-        """Test that host header is converted to http.server_name."""
+        """Test that user agent header is converted to user_agent.original."""
         user_agent = b"test-agent"
 
         def update_expected_user_agent(expected):
             expected[3]["attributes"].update(
-                {SpanAttributes.HTTP_USER_AGENT: user_agent.decode("utf8")}
+                {SpanAttributes.USER_AGENT_ORIGINAL: user_agent.decode("utf8")}
             )
             return expected
 
@@ -430,12 +428,13 @@ class TestAsgiApplication(AsgiTestBase):
                 "attributes": {
                     SpanAttributes.HTTP_SCHEME: self.scope["scheme"],
                     SpanAttributes.NET_HOST_PORT: self.scope["server"][1],
-                    SpanAttributes.HTTP_HOST: self.scope["server"][0],
-                    SpanAttributes.HTTP_FLAVOR: self.scope["http_version"],
+                    SpanAttributes.NET_HOST_NAME: self.scope["server"][0],
+                    SpanAttributes.NET_PROTOCOL_VERSION: self.scope[
+                        "http_version"
+                    ],
                     SpanAttributes.HTTP_TARGET: self.scope["path"],
-                    SpanAttributes.HTTP_URL: f'{self.scope["scheme"]}://{self.scope["server"][0]}{self.scope["path"]}',
-                    SpanAttributes.NET_PEER_IP: self.scope["client"][0],
-                    SpanAttributes.NET_PEER_PORT: self.scope["client"][1],
+                    SpanAttributes.NET_SOCK_PEER_ADDR: self.scope["client"][0],
+                    SpanAttributes.NET_SOCK_PEER_PORT: self.scope["client"][1],
                     SpanAttributes.HTTP_STATUS_CODE: 200,
                 },
             },
@@ -566,17 +565,17 @@ class TestAsgiApplication(AsgiTestBase):
         duration = max(round((default_timer() - start) * 1000), 0)
         expected_duration_attributes = {
             "http.method": "GET",
-            "http.host": "127.0.0.1",
+            "net.host.name": "127.0.0.1",
             "http.scheme": "http",
-            "http.flavor": "1.0",
+            "net.protocol.version": "1.0",
             "net.host.port": 80,
             "http.status_code": 200,
         }
         expected_requests_count_attributes = {
             "http.method": "GET",
-            "http.host": "127.0.0.1",
+            "net.host.name": "127.0.0.1",
             "http.scheme": "http",
-            "http.flavor": "1.0",
+            "net.host.port": 80,
         }
         metrics_list = self.memory_metrics_reader.get_metrics_data()
         # pylint: disable=too-many-nested-blocks
@@ -606,10 +605,10 @@ class TestAsgiApplication(AsgiTestBase):
                             self.assertEqual(point.value, 0)
 
     def test_metric_target_attribute(self):
-        expected_target = "/api/user/{id}"
+        expected_route = "/api/user/{id}"
 
         class TestRoute:
-            path_format = expected_target
+            path_format = expected_route
 
         async def target_asgi(scope, receive, send):
             assert isinstance(scope, dict)
@@ -632,8 +631,8 @@ class TestAsgiApplication(AsgiTestBase):
                     for point in metric.data.data_points:
                         if isinstance(point, HistogramDataPoint):
                             self.assertEqual(
-                                point.attributes["http.target"],
-                                expected_target,
+                                point.attributes["http.route"],
+                                expected_route,
                             )
                             assertions += 1
         self.assertEqual(assertions, 3)
@@ -679,38 +678,32 @@ class TestAsgiAttributes(unittest.TestCase):
             attrs,
             {
                 SpanAttributes.HTTP_METHOD: "GET",
-                SpanAttributes.HTTP_HOST: "127.0.0.1",
-                SpanAttributes.HTTP_TARGET: "/",
-                SpanAttributes.HTTP_URL: "http://127.0.0.1/?foo=bar",
+                SpanAttributes.HTTP_TARGET: "/?foo=bar",
                 SpanAttributes.NET_HOST_PORT: 80,
                 SpanAttributes.HTTP_SCHEME: "http",
-                SpanAttributes.HTTP_SERVER_NAME: "test",
-                SpanAttributes.HTTP_FLAVOR: "1.0",
-                SpanAttributes.NET_PEER_IP: "127.0.0.1",
-                SpanAttributes.NET_PEER_PORT: 32767,
+                SpanAttributes.NET_HOST_NAME: "test",
+                SpanAttributes.NET_PROTOCOL_VERSION: "1.0",
+                SpanAttributes.NET_SOCK_PEER_ADDR: "127.0.0.1",
+                SpanAttributes.NET_SOCK_PEER_PORT: 32767,
             },
         )
 
     def test_query_string(self):
         self.scope["query_string"] = b"foo=bar"
         attrs = otel_asgi.collect_request_attributes(self.scope)
-        self.assertEqual(
-            attrs[SpanAttributes.HTTP_URL], "http://127.0.0.1/?foo=bar"
-        )
+        self.assertEqual(attrs[SpanAttributes.NET_HOST_NAME], "127.0.0.1")
+        self.assertEqual(attrs[SpanAttributes.NET_HOST_PORT], 80)
+        self.assertEqual(attrs[SpanAttributes.HTTP_TARGET], "/?foo=bar")
 
     def test_query_string_percent_bytes(self):
         self.scope["query_string"] = b"foo%3Dbar"
         attrs = otel_asgi.collect_request_attributes(self.scope)
-        self.assertEqual(
-            attrs[SpanAttributes.HTTP_URL], "http://127.0.0.1/?foo=bar"
-        )
+        self.assertEqual(attrs[SpanAttributes.HTTP_TARGET], "/?foo=bar")
 
     def test_query_string_percent_str(self):
         self.scope["query_string"] = "foo%3Dbar"
         attrs = otel_asgi.collect_request_attributes(self.scope)
-        self.assertEqual(
-            attrs[SpanAttributes.HTTP_URL], "http://127.0.0.1/?foo=bar"
-        )
+        self.assertEqual(attrs[SpanAttributes.HTTP_TARGET], "/?foo=bar")
 
     def test_response_attributes(self):
         otel_asgi.set_status_code(self.span, 404)
@@ -727,12 +720,13 @@ class TestAsgiAttributes(unittest.TestCase):
         self.scope["server"] = ("username:password@mock", 80)
         self.scope["path"] = "/status/200"
         attrs = otel_asgi.collect_request_attributes(self.scope)
-        self.assertEqual(
-            attrs[SpanAttributes.HTTP_URL], "http://mock/status/200"
-        )
+        self.assertEqual(attrs[SpanAttributes.NET_HOST_NAME], "mock")
+        self.assertEqual(attrs[SpanAttributes.HTTP_TARGET], "/status/200")
+        self.assertEqual(attrs[SpanAttributes.NET_HOST_NAME], "httpbin.org")
+        self.assertEqual(attrs[SpanAttributes.NET_HOST_PORT], 80)
 
     def test_collect_target_attribute_missing(self):
-        self.assertIsNone(otel_asgi._collect_target_attribute(self.scope))
+        self.assertIsNone(otel_asgi._collect_route_attribute(self.scope))
 
     def test_collect_target_attribute_fastapi(self):
         class TestRoute:
@@ -740,7 +734,7 @@ class TestAsgiAttributes(unittest.TestCase):
 
         self.scope["route"] = TestRoute()
         self.assertEqual(
-            otel_asgi._collect_target_attribute(self.scope),
+            otel_asgi._collect_route_attribute(self.scope),
             "/api/users/{user_id}",
         )
 
@@ -751,14 +745,14 @@ class TestAsgiAttributes(unittest.TestCase):
         self.scope["route"] = TestRoute()
         self.scope["root_path"] = "/api/v2"
         self.assertEqual(
-            otel_asgi._collect_target_attribute(self.scope),
+            otel_asgi._collect_route_attribute(self.scope),
             "/api/v2/users/{user_id}",
         )
 
     def test_collect_target_attribute_fastapi_starlette_invalid(self):
         self.scope["route"] = object()
         self.assertIsNone(
-            otel_asgi._collect_target_attribute(self.scope),
+            otel_asgi._collect_route_attribute(self.scope),
             "HTTP_TARGET values is not None",
         )
 

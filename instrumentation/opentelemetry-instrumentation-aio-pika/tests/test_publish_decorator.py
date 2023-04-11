@@ -44,12 +44,12 @@ from .consts import (
 class TestInstrumentedExchangeAioRmq7(TestCase):
     EXPECTED_ATTRIBUTES = {
         SpanAttributes.MESSAGING_SYSTEM: MESSAGING_SYSTEM,
-        SpanAttributes.MESSAGING_DESTINATION: f"{EXCHANGE_NAME},{ROUTING_KEY}",
+        SpanAttributes.MESSAGING_DESTINATION_NAME: f"{EXCHANGE_NAME},{ROUTING_KEY}",
         SpanAttributes.NET_PEER_NAME: SERVER_HOST,
         SpanAttributes.NET_PEER_PORT: SERVER_PORT,
         SpanAttributes.MESSAGING_MESSAGE_ID: MESSAGE_ID,
-        SpanAttributes.MESSAGING_CONVERSATION_ID: CORRELATION_ID,
-        SpanAttributes.MESSAGING_TEMP_DESTINATION: True,
+        SpanAttributes.MESSAGING_MESSAGE_CONVERSATION_ID: CORRELATION_ID,
+        SpanAttributes.MESSAGING_DESTINATION_TEMPORARY: True,
     }
 
     def setUp(self):
@@ -97,12 +97,12 @@ class TestInstrumentedExchangeAioRmq7(TestCase):
 class TestInstrumentedExchangeAioRmq8(TestCase):
     EXPECTED_ATTRIBUTES = {
         SpanAttributes.MESSAGING_SYSTEM: MESSAGING_SYSTEM,
-        SpanAttributes.MESSAGING_DESTINATION: f"{EXCHANGE_NAME},{ROUTING_KEY}",
+        SpanAttributes.MESSAGING_DESTINATION_NAME: f"{EXCHANGE_NAME},{ROUTING_KEY}",
         SpanAttributes.NET_PEER_NAME: SERVER_HOST,
         SpanAttributes.NET_PEER_PORT: SERVER_PORT,
         SpanAttributes.MESSAGING_MESSAGE_ID: MESSAGE_ID,
-        SpanAttributes.MESSAGING_CONVERSATION_ID: CORRELATION_ID,
-        SpanAttributes.MESSAGING_TEMP_DESTINATION: True,
+        SpanAttributes.MESSAGING_MESSAGE_CONVERSATION_ID: CORRELATION_ID,
+        SpanAttributes.MESSAGING_DESTINATION_TEMPORARY: True,
     }
 
     def setUp(self):

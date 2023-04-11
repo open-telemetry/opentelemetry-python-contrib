@@ -158,8 +158,8 @@ class TestMiddleware(WsgiTestBase):
         self.assertEqual(span.status.status_code, StatusCode.UNSET)
         self.assertEqual(span.attributes[SpanAttributes.HTTP_METHOD], "GET")
         self.assertEqual(
-            span.attributes[SpanAttributes.HTTP_URL],
-            "http://testserver/route/2020/template/",
+            span.attributes[SpanAttributes.HTTP_TARGET],
+            "/route/2020/template/",
         )
         if DJANGO_2_2:
             self.assertEqual(
@@ -182,9 +182,10 @@ class TestMiddleware(WsgiTestBase):
         self.assertEqual(span.status.status_code, StatusCode.UNSET)
         self.assertEqual(span.attributes[SpanAttributes.HTTP_METHOD], "GET")
         self.assertEqual(
-            span.attributes[SpanAttributes.HTTP_URL],
-            "http://testserver/traced/",
+            span.attributes[SpanAttributes.HTTP_TARGET],
+            "/traced/",
         )
+
         if DJANGO_2_2:
             self.assertEqual(
                 span.attributes[SpanAttributes.HTTP_ROUTE], "^traced/"
@@ -218,8 +219,8 @@ class TestMiddleware(WsgiTestBase):
         self.assertEqual(span.status.status_code, StatusCode.UNSET)
         self.assertEqual(span.attributes[SpanAttributes.HTTP_METHOD], "POST")
         self.assertEqual(
-            span.attributes[SpanAttributes.HTTP_URL],
-            "http://testserver/traced/",
+            span.attributes[SpanAttributes.HTTP_TARGET],
+            "/traced/",
         )
         if DJANGO_2_2:
             self.assertEqual(
@@ -242,9 +243,10 @@ class TestMiddleware(WsgiTestBase):
         self.assertEqual(span.status.status_code, StatusCode.ERROR)
         self.assertEqual(span.attributes[SpanAttributes.HTTP_METHOD], "GET")
         self.assertEqual(
-            span.attributes[SpanAttributes.HTTP_URL],
-            "http://testserver/error/",
+            span.attributes[SpanAttributes.HTTP_TARGET],
+            "/error/",
         )
+
         if DJANGO_2_2:
             self.assertEqual(
                 span.attributes[SpanAttributes.HTTP_ROUTE], "^error/"

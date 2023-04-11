@@ -50,12 +50,11 @@ from .base_test import InstrumentationTest
 def expected_attributes(override_attributes):
     default_attributes = {
         SpanAttributes.HTTP_METHOD: "GET",
-        SpanAttributes.HTTP_SERVER_NAME: "localhost",
+        SpanAttributes.NET_HOST_NAME: "localhost",
         SpanAttributes.HTTP_SCHEME: "http",
         SpanAttributes.NET_HOST_PORT: 80,
-        SpanAttributes.HTTP_HOST: "localhost",
         SpanAttributes.HTTP_TARGET: "/",
-        SpanAttributes.HTTP_FLAVOR: "1.1",
+        SpanAttributes.NET_PROTOCOL_VERSION: "1.1",
         SpanAttributes.HTTP_STATUS_CODE: 200,
     }
     for key, val in override_attributes.items():
@@ -330,19 +329,17 @@ class TestProgrammatic(InstrumentationTest, WsgiTestBase):
         self.client.get("/hello/756")
         expected_duration_attributes = {
             "http.method": "GET",
-            "http.host": "localhost",
+            "net.host.name": "localhost",
             "http.scheme": "http",
-            "http.flavor": "1.1",
-            "http.server_name": "localhost",
+            "net.protocol.version": "1.1",
             "net.host.port": 80,
             "http.status_code": 200,
         }
         expected_requests_count_attributes = {
             "http.method": "GET",
-            "http.host": "localhost",
+            "net.host.name": "localhost",
+            "net.host.port": 80,
             "http.scheme": "http",
-            "http.flavor": "1.1",
-            "http.server_name": "localhost",
         }
         metrics_list = self.memory_metrics_reader.get_metrics_data()
         for resource_metric in metrics_list.resource_metrics:

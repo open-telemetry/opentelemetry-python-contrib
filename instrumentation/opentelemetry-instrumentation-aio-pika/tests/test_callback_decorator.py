@@ -41,11 +41,11 @@ from .consts import (
 class TestInstrumentedQueueAioRmq7(TestCase):
     EXPECTED_ATTRIBUTES = {
         SpanAttributes.MESSAGING_SYSTEM: MESSAGING_SYSTEM,
-        SpanAttributes.MESSAGING_DESTINATION: EXCHANGE_NAME,
+        SpanAttributes.MESSAGING_SOURCE_NAME: EXCHANGE_NAME,
         SpanAttributes.NET_PEER_NAME: SERVER_HOST,
         SpanAttributes.NET_PEER_PORT: SERVER_PORT,
         SpanAttributes.MESSAGING_MESSAGE_ID: MESSAGE_ID,
-        SpanAttributes.MESSAGING_CONVERSATION_ID: CORRELATION_ID,
+        SpanAttributes.MESSAGING_MESSAGE_CONVERSATION_ID: CORRELATION_ID,
         SpanAttributes.MESSAGING_OPERATION: "receive",
     }
 
@@ -81,11 +81,11 @@ class TestInstrumentedQueueAioRmq7(TestCase):
 class TestInstrumentedQueueAioRmq8(TestCase):
     EXPECTED_ATTRIBUTES = {
         SpanAttributes.MESSAGING_SYSTEM: MESSAGING_SYSTEM,
-        SpanAttributes.MESSAGING_DESTINATION: EXCHANGE_NAME,
+        SpanAttributes.MESSAGING_SOURCE_NAME: EXCHANGE_NAME,
         SpanAttributes.NET_PEER_NAME: SERVER_HOST,
         SpanAttributes.NET_PEER_PORT: SERVER_PORT,
         SpanAttributes.MESSAGING_MESSAGE_ID: MESSAGE_ID,
-        SpanAttributes.MESSAGING_CONVERSATION_ID: CORRELATION_ID,
+        SpanAttributes.MESSAGING_MESSAGE_CONVERSATION_ID: CORRELATION_ID,
         SpanAttributes.MESSAGING_OPERATION: "receive",
     }
 

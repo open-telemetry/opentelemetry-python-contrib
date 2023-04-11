@@ -12,6 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 import logging
+from urllib.parse import urlparse
 
 from opentelemetry.instrumentation.botocore.extensions.types import (
     _AttributeMapT,
@@ -33,11 +34,19 @@ class _SqsExtension(_AwsSdkExtension):
             # TODO: update when semantic conventions exist
             attributes["aws.queue_url"] = queue_url
             attributes[SpanAttributes.MESSAGING_SYSTEM] = "aws.sqs"
-            attributes[SpanAttributes.MESSAGING_URL] = queue_url
+            queue_host = urlparse(queue_url).hostname
+            attributes[SpanAttributes.NET_PEER_NAME] = queue_host
             try:
-                attributes[
-                    SpanAttributes.MESSAGING_DESTINATION
-                ] = queue_url.split("/")[-1]
+                queue_name = queue_url.split("/")[-1]
+                if self._call_context.operation == "ReceiveMessage":
+                    attributes[
+                        SpanAttributes.MESSAGING_SOURCE_NAME
+                    ] = queue_name
+                else:
+                    attributes[
+                        SpanAttributes.MESSAGING_DESTINATION_NAME
+                    ] = queue_name
+
             except IndexError:
                 _logger.error(
                     "Could not extract messaging destination from '%s'",

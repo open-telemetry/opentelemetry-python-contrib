@@ -205,7 +205,7 @@ def _set_api_gateway_v1_proxy_attributes(
     if lambda_event.get("headers"):
         if "User-Agent" in lambda_event["headers"]:
             span.set_attribute(
-                SpanAttributes.HTTP_USER_AGENT,
+                SpanAttributes.USER_AGENT_ORIGINAL,
                 lambda_event["headers"]["User-Agent"],
             )
         if "X-Forwarded-Proto" in lambda_event["headers"]:
@@ -256,7 +256,7 @@ def _set_api_gateway_v2_proxy_attributes(
             )
         if "userAgent" in lambda_event["requestContext"]["http"]:
             span.set_attribute(
-                SpanAttributes.HTTP_USER_AGENT,
+                SpanAttributes.USER_AGENT_ORIGINAL,
                 lambda_event["requestContext"]["http"]["userAgent"],
             )
         if "path" in lambda_event["requestContext"]["http"]:
@@ -321,7 +321,7 @@ def _instrument(
         except (IndexError, KeyError, TypeError):
             span_kind = SpanKind.SERVER
 
-        tracer = get_tracer(__name__, __version__, tracer_provider)
+        tracer = get_tracer(__name__, __version__, tracer_provider, schema_url=SpanAttributes.SCHEMA_URL)
 
         with tracer.start_as_current_span(
             name=orig_handler_name,
@@ -331,17 +331,17 @@ def _instrument(
             if span.is_recording():
                 lambda_context = args[1]
                 # NOTE: The specs mention an exception here, allowing the
-                # `ResourceAttributes.FAAS_ID` attribute to be set as a span
+                # `ResourceAttributes.CLOUD_RESOURCE_ID` attribute to be set as a span
                 # attribute instead of a resource attribute.
                 #
                 # See more:
                 # https://github.com/open-telemetry/opentelemetry-specification/blob/main/specification/trace/semantic_conventions/faas.md#example
                 span.set_attribute(
-                    ResourceAttributes.FAAS_ID,
+                    ResourceAttributes.CLOUD_RESOURCE_ID,
                     lambda_context.invoked_function_arn,
                 )
                 span.set_attribute(
-                    SpanAttributes.FAAS_EXECUTION,
+                    SpanAttributes.FAAS_INVOCATION_ID,
                     lambda_context.aws_request_id,
                 )
 

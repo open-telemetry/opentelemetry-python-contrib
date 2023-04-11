@@ -140,7 +140,7 @@ class ElasticsearchInstrumentor(BaseInstrumentor):
         Instruments Elasticsearch module
         """
         tracer_provider = kwargs.get("tracer_provider")
-        tracer = get_tracer(__name__, __version__, tracer_provider)
+        tracer = get_tracer(__name__, __version__, tracer_provider, schema_url=SpanAttributes.SCHEMA_URL)
         request_hook = kwargs.get("request_hook")
         response_hook = kwargs.get("response_hook")
         if es_transport_split:

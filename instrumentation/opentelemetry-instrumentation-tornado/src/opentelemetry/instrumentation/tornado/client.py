@@ -14,6 +14,7 @@
 
 import functools
 from time import time_ns
+from urllib.parse import urlparse
 
 from tornado.httpclient import HTTPError, HTTPRequest
 
@@ -78,6 +79,7 @@ def fetch_async(
             SpanAttributes.HTTP_URL: remove_url_credentials(request.url),
             SpanAttributes.HTTP_METHOD: request.method,
         }
+
         for key, value in attributes.items():
             span.set_attribute(key, value)
 
@@ -119,7 +121,6 @@ def _finish_tracing_callback(
         status_code = response.code
 
     if status_code is not None:
-        span.set_attribute(SpanAttributes.HTTP_STATUS_CODE, status_code)
         span.set_status(
             Status(
                 status_code=http_status_to_status_code(status_code),
@@ -127,15 +128,17 @@ def _finish_tracing_callback(
             )
         )
 
-    metric_attributes = _create_metric_attributes(response)
+    attributes = _create_metric_attributes(response)
+    if span.is_recording():
+        for key, value in attributes.items():
+            span.set_attribute(key, value)
+
     request_size = int(response.request.headers.get("Content-Length", 0))
     response_size = int(response.headers.get("Content-Length", 0))
 
-    duration_histogram.record(
-        response.request_time, attributes=metric_attributes
-    )
-    request_size_histogram.record(request_size, attributes=metric_attributes)
-    response_size_histogram.record(response_size, attributes=metric_attributes)
+    duration_histogram.record(response.request_time, attributes=attributes)
+    request_size_histogram.record(request_size, attributes=attributes)
+    response_size_histogram.record(response_size, attributes=attributes)
 
     if response_hook:
         response_hook(span, future)
@@ -145,8 +148,13 @@ def _finish_tracing_callback(
 def _create_metric_attributes(response):
     metric_attributes = {
         SpanAttributes.HTTP_STATUS_CODE: response.code,
-        SpanAttributes.HTTP_URL: remove_url_credentials(response.request.url),
         SpanAttributes.HTTP_METHOD: response.request.method,
     }
+
+    parts = urlparse(response.request.url)
+    metric_attributes[SpanAttributes.HTTP_SCHEME] = parts.scheme
+    metric_attributes[SpanAttributes.NET_HOST_NAME] = parts.hostname
+    if parts.port:
+        metric_attributes[SpanAttributes.NET_HOST_PORT] = parts.port
 
     return metric_attributes

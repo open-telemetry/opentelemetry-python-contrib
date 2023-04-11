@@ -205,6 +205,7 @@ import functools
 import typing
 import wsgiref.util as wsgiref_util
 from timeit import default_timer
+from urllib.parse import urlparse
 
 from opentelemetry import context, trace
 from opentelemetry.instrumentation.utils import (
@@ -225,7 +226,7 @@ from opentelemetry.util.http import (
     get_custom_headers,
     normalise_request_header_name,
     normalise_response_header_name,
-    remove_url_credentials,
+    parse_http_host,
 )
 
 _HTTP_VERSION_PREFIX = "HTTP/"
@@ -235,21 +236,18 @@ _CARRIER_KEY_PREFIX_LEN = len(_CARRIER_KEY_PREFIX)
 # List of recommended attributes
 _duration_attrs = [
     SpanAttributes.HTTP_METHOD,
-    SpanAttributes.HTTP_HOST,
     SpanAttributes.HTTP_SCHEME,
     SpanAttributes.HTTP_STATUS_CODE,
-    SpanAttributes.HTTP_FLAVOR,
-    SpanAttributes.HTTP_SERVER_NAME,
     SpanAttributes.NET_HOST_NAME,
     SpanAttributes.NET_HOST_PORT,
+    SpanAttributes.NET_PROTOCOL_VERSION,
 ]
 
 _active_requests_count_attrs = [
     SpanAttributes.HTTP_METHOD,
-    SpanAttributes.HTTP_HOST,
     SpanAttributes.HTTP_SCHEME,
-    SpanAttributes.HTTP_FLAVOR,
-    SpanAttributes.HTTP_SERVER_NAME,
+    SpanAttributes.NET_HOST_NAME,
+    SpanAttributes.NET_HOST_PORT,
 ]
 
 
@@ -284,9 +282,48 @@ class WSGIGetter(Getter[dict]):
 wsgi_getter = WSGIGetter()
 
 
-def setifnotnone(dic, key, value):
-    if value is not None:
+def set_string_attribute(dic, key, value):
+    if value is not None and not value == "":
         dic[key] = value
+        return True
+    return False
+
+
+def set_int_attribute(dic, key, value):
+    if value is not None and not value == "":
+        dic[key] = int(value)
+        return True
+    return False
+
+
+def _parse_target(target, result):
+    if not target:
+        return False
+
+    parts = urlparse(target)
+    set_string_attribute(result, SpanAttributes.HTTP_SCHEME, parts.scheme)
+    if parts.path and not parts.path == "":
+        target = parts.path
+        if parts.query and not parts.query == "":
+            target += "?" + parts.query
+        set_string_attribute(result, SpanAttributes.HTTP_TARGET, target)
+        return True
+
+    return False
+
+
+def _parse_scheme_path_and_query(environ, result):
+    target = environ.get("PATH_INFO")
+    if target is None or target == "":
+        if _parse_target(environ.get("REQUEST_URI"), result) or _parse_target(
+            environ.get("RAW_URI"), result
+        ):
+            return
+
+    query = environ.get("QUERY_STRING")
+    if query and not query == "":
+        target += "?" + query
+    set_string_attribute(result, SpanAttributes.HTTP_TARGET, target)
 
 
 def collect_request_attributes(environ):
@@ -294,46 +331,48 @@ def collect_request_attributes(environ):
     WSGI environ and returns a dictionary to be used as span creation attributes.
     """
 
-    result = {
-        SpanAttributes.HTTP_METHOD: environ.get("REQUEST_METHOD"),
-        SpanAttributes.HTTP_SERVER_NAME: environ.get("SERVER_NAME"),
-        SpanAttributes.HTTP_SCHEME: environ.get("wsgi.url_scheme"),
-    }
+    result = {}
 
-    host_port = environ.get("SERVER_PORT")
-    if host_port is not None and not host_port == "":
-        result.update({SpanAttributes.NET_HOST_PORT: int(host_port)})
-
-    setifnotnone(result, SpanAttributes.HTTP_HOST, environ.get("HTTP_HOST"))
-    target = environ.get("RAW_URI")
-    if target is None:  # Note: `"" or None is None`
-        target = environ.get("REQUEST_URI")
-    if target is not None:
-        result[SpanAttributes.HTTP_TARGET] = target
-    else:
-        result[SpanAttributes.HTTP_URL] = remove_url_credentials(
-            wsgiref_util.request_uri(environ)
-        )
-
-    remote_addr = environ.get("REMOTE_ADDR")
-    if remote_addr:
-        result[SpanAttributes.NET_PEER_IP] = remote_addr
-    remote_host = environ.get("REMOTE_HOST")
-    if remote_host and remote_host != remote_addr:
-        result[SpanAttributes.NET_PEER_NAME] = remote_host
-
-    user_agent = environ.get("HTTP_USER_AGENT")
-    if user_agent is not None and len(user_agent) > 0:
-        result[SpanAttributes.HTTP_USER_AGENT] = user_agent
-
-    setifnotnone(
-        result, SpanAttributes.NET_PEER_PORT, environ.get("REMOTE_PORT")
+    set_string_attribute(
+        result, SpanAttributes.HTTP_METHOD, environ.get("REQUEST_METHOD")
     )
-    flavor = environ.get("SERVER_PROTOCOL", "")
-    if flavor.upper().startswith(_HTTP_VERSION_PREFIX):
-        flavor = flavor[len(_HTTP_VERSION_PREFIX) :]
-    if flavor:
-        result[SpanAttributes.HTTP_FLAVOR] = flavor
+    set_string_attribute(
+        result, SpanAttributes.HTTP_SCHEME, environ.get("wsgi.url_scheme")
+    )
+
+    # following https://peps.python.org/pep-3333/#url-reconstruction + falling back to RAW_URI + REQUEST_URI
+    (host, port) = parse_http_host(environ.get("HTTP_HOST"))
+    set_string_attribute(
+        result,
+        SpanAttributes.NET_HOST_NAME,
+        host or environ.get("SERVER_NAME"),
+    )
+    set_int_attribute(
+        result,
+        SpanAttributes.NET_HOST_PORT,
+        port or environ.get("SERVER_PORT"),
+    )
+
+    _parse_scheme_path_and_query(environ, result)
+
+    set_string_attribute(
+        result,
+        SpanAttributes.USER_AGENT_ORIGINAL,
+        environ.get("HTTP_USER_AGENT"),
+    )
+    set_string_attribute(
+        result, SpanAttributes.NET_SOCK_PEER_NAME, environ.get("REMOTE_ADDR")
+    )
+    set_int_attribute(
+        result, SpanAttributes.NET_SOCK_PEER_PORT, environ.get("REMOTE_PORT")
+    )
+
+    http_version = environ.get("SERVER_PROTOCOL", "")
+    if http_version.upper().startswith(_HTTP_VERSION_PREFIX):
+        http_version = http_version[len(_HTTP_VERSION_PREFIX) :]
+    set_string_attribute(
+        result, SpanAttributes.NET_PROTOCOL_VERSION, http_version
+    )
 
     return result
 
@@ -483,8 +522,8 @@ class OpenTelemetryMiddleware:
         meter_provider=None,
     ):
         self.wsgi = wsgi
-        self.tracer = trace.get_tracer(__name__, __version__, tracer_provider)
-        self.meter = get_meter(__name__, __version__, meter_provider)
+        self.tracer = trace.get_tracer(__name__, __version__, tracer_provider, schema_url=SpanAttributes.SCHEMA_URL)
+        self.meter = get_meter(__name__, __version__, meter_provider, schema_url=SpanAttributes.SCHEMA_URL)
         self.duration_histogram = self.meter.create_histogram(
             name=MetricInstruments.HTTP_SERVER_DURATION,
             unit="ms",

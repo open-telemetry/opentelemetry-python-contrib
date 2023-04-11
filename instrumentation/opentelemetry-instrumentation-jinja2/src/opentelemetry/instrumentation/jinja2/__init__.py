@@ -50,6 +50,7 @@ from opentelemetry.instrumentation.jinja2.package import _instruments
 from opentelemetry.instrumentation.jinja2.version import __version__
 from opentelemetry.instrumentation.utils import unwrap
 from opentelemetry.trace import SpanKind, get_tracer
+from opentelemetry.semconv.trace import SpanAttributes
 
 logger = logging.getLogger(__name__)
 
@@ -130,7 +131,7 @@ class Jinja2Instrumentor(BaseInstrumentor):
 
     def _instrument(self, **kwargs):
         tracer_provider = kwargs.get("tracer_provider")
-        tracer = get_tracer(__name__, __version__, tracer_provider)
+        tracer = get_tracer(__name__, __version__, tracer_provider, schema_url=SpanAttributes.SCHEMA_URL,)
 
         _wrap(jinja2, "environment.Template.render", _wrap_render(tracer))
         _wrap(jinja2, "environment.Template.generate", _wrap_render(tracer))

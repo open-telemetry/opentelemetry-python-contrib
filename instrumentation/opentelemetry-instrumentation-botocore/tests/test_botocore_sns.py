@@ -21,10 +21,7 @@ from botocore.awsrequest import AWSResponse
 from moto import mock_sns
 
 from opentelemetry.instrumentation.botocore import BotocoreInstrumentor
-from opentelemetry.semconv.trace import (
-    MessagingDestinationKindValues,
-    SpanAttributes,
-)
+from opentelemetry.semconv.trace import SpanAttributes
 from opentelemetry.test.test_base import TestBase
 from opentelemetry.trace import SpanKind
 from opentelemetry.trace.span import Span
@@ -111,12 +108,8 @@ class TestSnsExtension(TestBase):
 
         span = self.assert_span(f"{self.topic_name} send")
         self.assertEqual(
-            MessagingDestinationKindValues.TOPIC.value,
-            span.attributes[SpanAttributes.MESSAGING_DESTINATION_KIND],
-        )
-        self.assertEqual(
             self.topic_name,
-            span.attributes[SpanAttributes.MESSAGING_DESTINATION],
+            span.attributes[SpanAttributes.MESSAGING_DESTINATION_NAME],
         )
 
     @mock_sns
@@ -129,7 +122,8 @@ class TestSnsExtension(TestBase):
 
         span = self.assert_span("phone_number send")
         self.assertEqual(
-            phone_number, span.attributes[SpanAttributes.MESSAGING_DESTINATION]
+            phone_number,
+            span.attributes[SpanAttributes.MESSAGING_DESTINATION_NAME],
         )
 
     @mock_sns
@@ -177,12 +171,8 @@ class TestSnsExtension(TestBase):
 
         span = self.assert_span(f"{self.topic_name} send")
         self.assertEqual(
-            MessagingDestinationKindValues.TOPIC.value,
-            span.attributes[SpanAttributes.MESSAGING_DESTINATION_KIND],
-        )
-        self.assertEqual(
             self.topic_name,
-            span.attributes[SpanAttributes.MESSAGING_DESTINATION],
+            span.attributes[SpanAttributes.MESSAGING_DESTINATION_NAME],
         )
 
         self.assert_injected_span(message1_attrs, span)

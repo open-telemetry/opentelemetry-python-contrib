@@ -51,11 +51,14 @@ class TestUtils(unittest.TestCase):
             "44b7f305",
         )
         self.assertEqual(
-            span.attributes.get(SpanAttributes.MESSAGING_CONVERSATION_ID),
+            span.attributes.get(
+                SpanAttributes.MESSAGING_MESSAGE_CONVERSATION_ID
+            ),
             "44b7f305",
         )
         self.assertEqual(
-            span.attributes.get(SpanAttributes.MESSAGING_DESTINATION), "celery"
+            span.attributes.get(SpanAttributes.MESSAGING_DESTINATION_NAME),
+            "celery",
         )
 
         self.assertEqual(

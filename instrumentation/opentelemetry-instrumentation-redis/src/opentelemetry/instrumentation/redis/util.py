@@ -42,7 +42,7 @@ def _extract_conn_attributes(conn_kwargs):
     except KeyError:
         attributes[SpanAttributes.NET_PEER_NAME] = conn_kwargs.get("path", "")
         attributes[
-            SpanAttributes.NET_TRANSPORT
+            SpanAttributes.NET_SOCK_FAMILY
         ] = NetTransportValues.UNIX.value
 
     return attributes

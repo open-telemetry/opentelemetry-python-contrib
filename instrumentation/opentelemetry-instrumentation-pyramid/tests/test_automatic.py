@@ -207,19 +207,17 @@ class TestAutomatic(InstrumentationTest, WsgiTestBase):
         duration = max(round((default_timer() - start) * 1000), 0)
         expected_duration_attributes = {
             "http.method": "GET",
-            "http.host": "localhost",
+            "net.host.name": "localhost",
             "http.scheme": "http",
-            "http.flavor": "1.1",
-            "http.server_name": "localhost",
+            "net.protocol.version": "1.1",
             "net.host.port": 80,
             "http.status_code": 200,
         }
         expected_requests_count_attributes = {
             "http.method": "GET",
-            "http.host": "localhost",
+            "net.host.name": "localhost",
             "http.scheme": "http",
-            "http.flavor": "1.1",
-            "http.server_name": "localhost",
+            "net.host.port": 80,
         }
         metrics_list = self.memory_metrics_reader.get_metrics_data()
         for metric in (

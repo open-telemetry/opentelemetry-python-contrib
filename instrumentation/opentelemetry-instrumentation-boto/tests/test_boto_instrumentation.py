@@ -33,7 +33,7 @@ from opentelemetry.test.test_base import TestBase
 
 
 def assert_span_http_status_code(span, code):
-    """Assert on the span's 'http.status_code' tag"""
+    """Assert on the span's 'http.response.status_code' tag"""
     tag = span.attributes[SpanAttributes.HTTP_STATUS_CODE]
     assert tag == code, f"{tag} != {code}"
 

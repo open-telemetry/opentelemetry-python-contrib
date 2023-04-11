@@ -49,14 +49,14 @@ _expected_metric_names = [
 ]
 _recommended_attrs = {
     "http.server.active_requests": _active_requests_count_attrs,
-    "http.server.duration": {*_duration_attrs, SpanAttributes.HTTP_TARGET},
+    "http.server.duration": {*_duration_attrs, SpanAttributes.HTTP_ROUTE},
     "http.server.response.size": {
         *_duration_attrs,
-        SpanAttributes.HTTP_TARGET,
+        SpanAttributes.HTTP_ROUTE,
     },
     "http.server.request.size": {
         *_duration_attrs,
-        SpanAttributes.HTTP_TARGET,
+        SpanAttributes.HTTP_ROUTE,
     },
 }
 
@@ -163,7 +163,8 @@ class TestFastAPIManualInstrumentation(TestBase):
         # ensure that at least one attribute that is populated by
         # the asgi instrumentation is successfully feeding though.
         self.assertEqual(
-            spans[-1].attributes[SpanAttributes.HTTP_FLAVOR], "1.1"
+            spans[-1].attributes[SpanAttributes.NET_PROTOCOL_VERSION],
+            "1.1",
         )
 
     def test_fastapi_excluded_urls(self):
@@ -220,20 +221,18 @@ class TestFastAPIManualInstrumentation(TestBase):
         duration = max(round((default_timer() - start) * 1000), 0)
         expected_duration_attributes = {
             "http.method": "GET",
-            "http.host": "testserver:443",
-            "http.scheme": "https",
-            "http.flavor": "1.1",
-            "http.server_name": "testserver",
+            "net.host.name": "testserver",
             "net.host.port": 443,
+            "http.scheme": "https",
+            "net.protocol.version": "1.1",
             "http.status_code": 200,
-            "http.target": "/foobar",
+            "http.route": "/foobar",
         }
         expected_requests_count_attributes = {
             "http.method": "GET",
-            "http.host": "testserver:443",
+            "net.host.name": "testserver",
+            "net.host.port": 443,
             "http.scheme": "https",
-            "http.flavor": "1.1",
-            "http.server_name": "testserver",
         }
         metrics_list = self.memory_metrics_reader.get_metrics_data()
         for metric in (

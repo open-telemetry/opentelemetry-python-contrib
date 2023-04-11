@@ -67,12 +67,11 @@ class TestURLLib3InstrumentorMetric(HttpTestBase, TestBase):
                     max_data_point=client_duration_estimated,
                     min_data_point=client_duration_estimated,
                     attributes={
-                        "http.flavor": "1.1",
-                        "http.host": "mock",
+                        "net.protocol.version": "1.1",
+                        "net.peer.name": "mock",
                         "http.method": "GET",
                         "http.scheme": "http",
                         "http.status_code": 200,
-                        "net.peer.name": "mock",
                         "net.peer.port": 80,
                     },
                 )
@@ -90,12 +89,11 @@ class TestURLLib3InstrumentorMetric(HttpTestBase, TestBase):
                     max_data_point=0,
                     min_data_point=0,
                     attributes={
-                        "http.flavor": "1.1",
-                        "http.host": "mock",
+                        "net.protocol.version": "1.1",
+                        "net.peer.name": "mock",
                         "http.method": "GET",
                         "http.scheme": "http",
                         "http.status_code": 200,
-                        "net.peer.name": "mock",
                         "net.peer.port": 80,
                     },
                 )
@@ -115,12 +113,11 @@ class TestURLLib3InstrumentorMetric(HttpTestBase, TestBase):
                     max_data_point=expected_size,
                     min_data_point=expected_size,
                     attributes={
-                        "http.flavor": "1.1",
-                        "http.host": "mock",
+                        "net.protocol.version": "1.1",
+                        "net.peer.name": "mock",
                         "http.method": "GET",
                         "http.scheme": "http",
                         "http.status_code": 200,
-                        "net.peer.name": "mock",
                         "net.peer.port": 80,
                     },
                 )
@@ -143,12 +140,11 @@ class TestURLLib3InstrumentorMetric(HttpTestBase, TestBase):
                     max_data_point=6,
                     min_data_point=6,
                     attributes={
-                        "http.flavor": "1.1",
-                        "http.host": "mock",
+                        "net.protocol.version": "1.1",
+                        "net.peer.name": "mock",
                         "http.method": "POST",
                         "http.scheme": "http",
                         "http.status_code": 200,
-                        "net.peer.name": "mock",
                         "net.peer.port": 80,
                     },
                 )
@@ -171,12 +167,11 @@ class TestURLLib3InstrumentorMetric(HttpTestBase, TestBase):
                     max_data_point=6,
                     min_data_point=6,
                     attributes={
-                        "http.flavor": "1.1",
-                        "http.host": "mock",
+                        "net.protocol.version": "1.1",
+                        "net.peer.name": "mock",
                         "http.method": "POST",
                         "http.scheme": "http",
                         "http.status_code": 200,
-                        "net.peer.name": "mock",
                         "net.peer.port": 80,
                     },
                 )
@@ -200,12 +195,11 @@ class TestURLLib3InstrumentorMetric(HttpTestBase, TestBase):
                     max_data_point=expected_value,
                     min_data_point=expected_value,
                     attributes={
-                        "http.flavor": "1.1",
-                        "http.host": "mock",
+                        "net.protocol.version": "1.1",
+                        "net.peer.name": "mock",
                         "http.method": "POST",
                         "http.scheme": "http",
                         "http.status_code": 200,
-                        "net.peer.name": "mock",
                         "net.peer.port": 80,
                     },
                 )
@@ -228,12 +222,11 @@ class TestURLLib3InstrumentorMetric(HttpTestBase, TestBase):
                     max_data_point=6,
                     min_data_point=6,
                     attributes={
-                        "http.flavor": "1.1",
-                        "http.host": "mock",
+                        "net.protocol.version": "1.1",
+                        "net.peer.name": "mock",
                         "http.method": "POST",
                         "http.scheme": "http",
                         "http.status_code": 200,
-                        "net.peer.name": "mock",
                         "net.peer.port": 80,
                     },
                 )

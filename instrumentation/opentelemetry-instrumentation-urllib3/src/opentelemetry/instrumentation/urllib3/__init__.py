@@ -163,12 +163,12 @@ class URLLib3Instrumentor(BaseInstrumentor):
                     list of regexes used to exclude URLs from tracking
         """
         tracer_provider = kwargs.get("tracer_provider")
-        tracer = get_tracer(__name__, __version__, tracer_provider)
+        tracer = get_tracer(__name__, __version__, tracer_provider, schema_url=SpanAttributes.SCHEMA_URL)
 
         excluded_urls = kwargs.get("excluded_urls")
 
         meter_provider = kwargs.get("meter_provider")
-        meter = get_meter(__name__, __version__, meter_provider)
+        meter = get_meter(__name__, __version__, meter_provider, schema_url=SpanAttributes.SCHEMA_URL)
 
         duration_histogram = meter.create_histogram(
             name=MetricInstruments.HTTP_CLIENT_DURATION,
@@ -356,16 +356,15 @@ def _create_metric_attributes(
 ) -> dict:
     metric_attributes = {
         SpanAttributes.HTTP_METHOD: method,
-        SpanAttributes.HTTP_HOST: instance.host,
+        SpanAttributes.NET_PEER_NAME: instance.host,
         SpanAttributes.HTTP_SCHEME: instance.scheme,
         SpanAttributes.HTTP_STATUS_CODE: response.status,
-        SpanAttributes.NET_PEER_NAME: instance.host,
         SpanAttributes.NET_PEER_PORT: instance.port,
     }
 
     version = getattr(response, "version")
     if version:
-        metric_attributes[SpanAttributes.HTTP_FLAVOR] = (
+        metric_attributes[SpanAttributes.NET_PROTOCOL_VERSION] = (
             "1.1" if version == 11 else "1.0"
         )
 

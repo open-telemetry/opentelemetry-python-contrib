@@ -254,6 +254,7 @@ from opentelemetry.instrumentation.django.version import __version__
 from opentelemetry.instrumentation.instrumentor import BaseInstrumentor
 from opentelemetry.metrics import get_meter
 from opentelemetry.semconv.metrics import MetricInstruments
+from opentelemetry.semconv.trace import SpanAttributes
 from opentelemetry.trace import get_tracer
 from opentelemetry.util.http import get_excluded_urls, parse_excluded_urls
 
@@ -300,8 +301,9 @@ class DjangoInstrumentor(BaseInstrumentor):
             __name__,
             __version__,
             tracer_provider=tracer_provider,
+            schema_url=SpanAttributes.SCHEMA_URL,
         )
-        meter = get_meter(__name__, __version__, meter_provider=meter_provider)
+        meter = get_meter(__name__, __version__, meter_provider=meter_provider, schema_url=SpanAttributes.SCHEMA_URL)
         _DjangoMiddleware._tracer = tracer
         _DjangoMiddleware._meter = meter
         _DjangoMiddleware._excluded_urls = (

@@ -112,7 +112,8 @@ class TestStarletteManualInstrumentation(TestBase):
         # ensure that at least one attribute that is populated by
         # the asgi instrumentation is successfully feeding though.
         self.assertEqual(
-            spans[-1].attributes[SpanAttributes.HTTP_FLAVOR], "1.1"
+            spans[-1].attributes[SpanAttributes.NET_PROTOCOL_VERSION],
+            "1.1",
         )
 
     def test_starlette_excluded_urls(self):
@@ -152,20 +153,18 @@ class TestStarletteManualInstrumentation(TestBase):
     def test_basic_post_request_metric_success(self):
         start = default_timer()
         expected_duration_attributes = {
-            "http.flavor": "1.1",
-            "http.host": "testserver",
+            "net.protocol.version": "1.1",
+            "net.host.name": "testserver",
             "http.method": "POST",
             "http.scheme": "http",
-            "http.server_name": "testserver",
             "http.status_code": 405,
             "net.host.port": 80,
         }
         expected_requests_count_attributes = {
-            "http.flavor": "1.1",
-            "http.host": "testserver",
+            "net.host.name": "testserver",
             "http.method": "POST",
             "http.scheme": "http",
-            "http.server_name": "testserver",
+            "net.host.port": 80,
         }
         response = self._client.post(
             "/foobar",

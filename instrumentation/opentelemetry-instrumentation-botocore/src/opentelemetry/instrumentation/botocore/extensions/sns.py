@@ -24,10 +24,7 @@ from opentelemetry.instrumentation.botocore.extensions.types import (
     _AwsSdkCallContext,
     _AwsSdkExtension,
 )
-from opentelemetry.semconv.trace import (
-    MessagingDestinationKindValues,
-    SpanAttributes,
-)
+from opentelemetry.semconv.trace import SpanAttributes
 from opentelemetry.trace import SpanKind
 from opentelemetry.trace.span import Span
 
@@ -77,9 +74,8 @@ class _OpPublish(_SnsOperation):
             call_context
         )
         attributes[
-            SpanAttributes.MESSAGING_DESTINATION_KIND
-        ] = MessagingDestinationKindValues.TOPIC.value
-        attributes[SpanAttributes.MESSAGING_DESTINATION] = destination_name
+            SpanAttributes.MESSAGING_DESTINATION_NAME
+        ] = destination_name
 
         call_context.span_name = (
             f"{'phone_number' if is_phone_number else destination_name} send"

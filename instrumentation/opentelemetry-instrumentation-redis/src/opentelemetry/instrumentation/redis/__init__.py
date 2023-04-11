@@ -333,7 +333,7 @@ class RedisInstrumentor(BaseInstrumentor):
         """
         tracer_provider = kwargs.get("tracer_provider")
         tracer = trace.get_tracer(
-            __name__, __version__, tracer_provider=tracer_provider
+            __name__, __version__, tracer_provider=tracer_provider, schema_url=SpanAttributes.SCHEMA_URL
         )
         _instrument(
             tracer,

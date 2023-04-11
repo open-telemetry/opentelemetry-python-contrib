@@ -189,9 +189,11 @@ from opentelemetry.util.http import (
     OTEL_INSTRUMENTATION_HTTP_CAPTURE_HEADERS_SERVER_RESPONSE,
     get_custom_headers,
     get_excluded_urls,
+    get_http_protocol_version,
     get_traced_request_attrs,
     normalise_request_header_name,
     normalise_response_header_name,
+    parse_http_host,
 )
 
 from .client import fetch_async  # pylint: disable=E0401
@@ -236,10 +238,10 @@ class TornadoInstrumentor(BaseInstrumentor):
         process lifetime.
         """
         tracer_provider = kwargs.get("tracer_provider")
-        tracer = trace.get_tracer(__name__, __version__, tracer_provider)
+        tracer = trace.get_tracer(__name__, __version__, tracer_provider, schema_url=SpanAttributes.SCHEMA_URL)
 
         meter_provider = kwargs.get("meter_provider")
-        meter = get_meter(__name__, __version__, meter_provider)
+        meter = get_meter(__name__, __version__, meter_provider, schema_url=SpanAttributes.SCHEMA_URL)
 
         client_histograms = _create_client_histograms(meter)
         server_histograms = _create_server_histograms(meter)
@@ -433,12 +435,17 @@ def _get_attributes_from_request(request):
     attrs = {
         SpanAttributes.HTTP_METHOD: request.method,
         SpanAttributes.HTTP_SCHEME: request.protocol,
-        SpanAttributes.HTTP_HOST: request.host,
         SpanAttributes.HTTP_TARGET: request.path,
     }
 
+    host, port_str = parse_http_host(request.host)
+    if host:
+        attrs[SpanAttributes.NET_HOST_NAME] = host
+        if port_str:
+            attrs[SpanAttributes.NET_HOST_PORT] = int(port_str)
+
     if request.remote_ip:
-        # NET_PEER_IP is the address of the network peer
+        # NET_SOCK_PEER_ADDR is the address of the network peer
         # HTTP_CLIENT_IP is the address of the client, which might be different
         # if Tornado is set to trust X-Forwarded-For headers (xheaders=True)
         attrs[SpanAttributes.HTTP_CLIENT_IP] = request.remote_ip
@@ -446,7 +453,7 @@ def _get_attributes_from_request(request):
             request.connection.context, "_orig_remote_ip", None
         ):
             attrs[
-                SpanAttributes.NET_PEER_IP
+                SpanAttributes.NET_SOCK_PEER_ADDR
             ] = request.connection.context._orig_remote_ip
 
     return extract_attributes_from_object(
@@ -612,16 +619,21 @@ def _create_active_requests_attributes(request):
     metric_attributes = {
         SpanAttributes.HTTP_METHOD: request.method,
         SpanAttributes.HTTP_SCHEME: request.protocol,
-        SpanAttributes.HTTP_FLAVOR: request.version,
-        SpanAttributes.HTTP_HOST: request.host,
-        SpanAttributes.HTTP_TARGET: request.path,
     }
 
+    host, port_str = parse_http_host(request.host)
+    if host and host is not "":
+        metric_attributes[SpanAttributes.NET_HOST_NAME] = host
+        if port_str and port_str is not "":
+            metric_attributes[SpanAttributes.NET_HOST_PORT] = int(port_str)
     return metric_attributes
 
 
 def _create_metric_attributes(handler):
     metric_attributes = _create_active_requests_attributes(handler.request)
     metric_attributes[SpanAttributes.HTTP_STATUS_CODE] = handler.get_status()
+    metric_attributes[
+        SpanAttributes.NET_PROTOCOL_VERSION
+    ] = get_http_protocol_version(handler.request.version)
 
     return metric_attributes

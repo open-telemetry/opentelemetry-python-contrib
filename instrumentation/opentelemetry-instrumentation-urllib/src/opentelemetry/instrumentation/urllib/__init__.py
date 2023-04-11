@@ -137,10 +137,9 @@ class URLLibInstrumentor(BaseInstrumentor):
                     list of regexes used to exclude URLs from tracking
         """
         tracer_provider = kwargs.get("tracer_provider")
-        tracer = get_tracer(__name__, __version__, tracer_provider)
-        excluded_urls = kwargs.get("excluded_urls")
+        tracer = get_tracer(__name__, __version__, tracer_provider, schema_url=SpanAttributes.SCHEMA_URL)
         meter_provider = kwargs.get("meter_provider")
-        meter = get_meter(__name__, __version__, meter_provider)
+        meter = get_meter(__name__, __version__, meter_provider, schema_url=SpanAttributes.SCHEMA_URL)
 
         histograms = _create_client_histograms(meter)
 
@@ -250,7 +249,7 @@ def _instrument(
                 ver_ = str(getattr(result, "version", ""))
                 if ver_:
                     labels[
-                        SpanAttributes.HTTP_FLAVOR
+                        SpanAttributes.NET_PROTOCOL_VERSION
                     ] = f"{ver_[:1]}.{ver_[:-1]}"
 
             _record_histograms(

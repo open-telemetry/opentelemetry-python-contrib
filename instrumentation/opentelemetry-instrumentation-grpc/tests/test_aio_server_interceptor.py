@@ -127,7 +127,7 @@ class TestOpenTelemetryAioServerInterceptor(TestBase, IsolatedAsyncioTestCase):
             self.assertSpanHasAttributes(
                 span,
                 {
-                    SpanAttributes.NET_PEER_IP: "[::1]",
+                    SpanAttributes.NET_SOCK_PEER_ADDR: "[::1]",
                     SpanAttributes.NET_PEER_NAME: "localhost",
                     SpanAttributes.RPC_METHOD: "SimpleMethod",
                     SpanAttributes.RPC_SERVICE: "GRPCTestServer",
@@ -186,7 +186,7 @@ class TestOpenTelemetryAioServerInterceptor(TestBase, IsolatedAsyncioTestCase):
         self.assertSpanHasAttributes(
             span,
             {
-                SpanAttributes.NET_PEER_IP: "[::1]",
+                SpanAttributes.NET_SOCK_PEER_ADDR: "[::1]",
                 SpanAttributes.NET_PEER_NAME: "localhost",
                 SpanAttributes.RPC_METHOD: "SimpleMethod",
                 SpanAttributes.RPC_SERVICE: "GRPCTestServer",
@@ -239,7 +239,7 @@ class TestOpenTelemetryAioServerInterceptor(TestBase, IsolatedAsyncioTestCase):
         self.assertSpanHasAttributes(
             parent_span,
             {
-                SpanAttributes.NET_PEER_IP: "[::1]",
+                SpanAttributes.NET_SOCK_PEER_ADDR: "[::1]",
                 SpanAttributes.NET_PEER_NAME: "localhost",
                 SpanAttributes.RPC_METHOD: "SimpleMethod",
                 SpanAttributes.RPC_SERVICE: "GRPCTestServer",
@@ -285,7 +285,7 @@ class TestOpenTelemetryAioServerInterceptor(TestBase, IsolatedAsyncioTestCase):
         self.assertSpanHasAttributes(
             span,
             {
-                SpanAttributes.NET_PEER_IP: "[::1]",
+                SpanAttributes.NET_SOCK_PEER_ADDR: "[::1]",
                 SpanAttributes.NET_PEER_NAME: "localhost",
                 SpanAttributes.RPC_METHOD: "ServerStreamingMethod",
                 SpanAttributes.RPC_SERVICE: "GRPCTestServer",
@@ -340,7 +340,7 @@ class TestOpenTelemetryAioServerInterceptor(TestBase, IsolatedAsyncioTestCase):
         self.assertSpanHasAttributes(
             parent_span,
             {
-                SpanAttributes.NET_PEER_IP: "[::1]",
+                SpanAttributes.NET_SOCK_PEER_ADDR: "[::1]",
                 SpanAttributes.NET_PEER_NAME: "localhost",
                 SpanAttributes.RPC_METHOD: "ServerStreamingMethod",
                 SpanAttributes.RPC_SERVICE: "GRPCTestServer",
@@ -424,7 +424,7 @@ class TestOpenTelemetryAioServerInterceptor(TestBase, IsolatedAsyncioTestCase):
             self.assertSpanHasAttributes(
                 span,
                 {
-                    SpanAttributes.NET_PEER_IP: "[::1]",
+                    SpanAttributes.NET_SOCK_PEER_ADDR: "[::1]",
                     SpanAttributes.NET_PEER_NAME: "localhost",
                     SpanAttributes.RPC_METHOD: "SimpleMethod",
                     SpanAttributes.RPC_SERVICE: "GRPCTestServer",
@@ -485,7 +485,7 @@ class TestOpenTelemetryAioServerInterceptor(TestBase, IsolatedAsyncioTestCase):
             self.assertSpanHasAttributes(
                 span,
                 {
-                    SpanAttributes.NET_PEER_IP: "[::1]",
+                    SpanAttributes.NET_SOCK_PEER_ADDR: "[::1]",
                     SpanAttributes.NET_PEER_NAME: "localhost",
                     SpanAttributes.RPC_METHOD: "SimpleMethod",
                     SpanAttributes.RPC_SERVICE: "GRPCTestServer",
@@ -542,7 +542,7 @@ class TestOpenTelemetryAioServerInterceptor(TestBase, IsolatedAsyncioTestCase):
         self.assertSpanHasAttributes(
             span,
             {
-                SpanAttributes.NET_PEER_IP: "[::1]",
+                SpanAttributes.NET_SOCK_PEER_ADDR: "[::1]",
                 SpanAttributes.NET_PEER_NAME: "localhost",
                 SpanAttributes.RPC_METHOD: "SimpleMethod",
                 SpanAttributes.RPC_SERVICE: "GRPCTestServer",

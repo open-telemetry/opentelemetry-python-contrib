@@ -142,8 +142,8 @@ class TestMiddlewareAsgi(SimpleTestCase, TestBase):
         self.assertEqual(span.status.status_code, StatusCode.UNSET)
         self.assertEqual(span.attributes[SpanAttributes.HTTP_METHOD], "GET")
         self.assertEqual(
-            span.attributes[SpanAttributes.HTTP_URL],
-            "http://127.0.0.1/route/2020/template/",
+            span.attributes[SpanAttributes.HTTP_TARGET],
+            "/route/2020/template/",
         )
         self.assertEqual(
             span.attributes[SpanAttributes.HTTP_ROUTE],
@@ -165,8 +165,8 @@ class TestMiddlewareAsgi(SimpleTestCase, TestBase):
         self.assertEqual(span.status.status_code, StatusCode.UNSET)
         self.assertEqual(span.attributes[SpanAttributes.HTTP_METHOD], "GET")
         self.assertEqual(
-            span.attributes[SpanAttributes.HTTP_URL],
-            "http://127.0.0.1/traced/",
+            span.attributes[SpanAttributes.HTTP_TARGET],
+            "/traced/",
         )
         self.assertEqual(
             span.attributes[SpanAttributes.HTTP_ROUTE], "^traced/"
@@ -200,9 +200,10 @@ class TestMiddlewareAsgi(SimpleTestCase, TestBase):
         self.assertEqual(span.status.status_code, StatusCode.UNSET)
         self.assertEqual(span.attributes[SpanAttributes.HTTP_METHOD], "POST")
         self.assertEqual(
-            span.attributes[SpanAttributes.HTTP_URL],
-            "http://127.0.0.1/traced/",
+            span.attributes[SpanAttributes.HTTP_TARGET],
+            "/traced/",
         )
+
         self.assertEqual(
             span.attributes[SpanAttributes.HTTP_ROUTE], "^traced/"
         )
@@ -223,9 +224,10 @@ class TestMiddlewareAsgi(SimpleTestCase, TestBase):
         self.assertEqual(span.status.status_code, StatusCode.ERROR)
         self.assertEqual(span.attributes[SpanAttributes.HTTP_METHOD], "GET")
         self.assertEqual(
-            span.attributes[SpanAttributes.HTTP_URL],
-            "http://127.0.0.1/error/",
+            span.attributes[SpanAttributes.HTTP_TARGET],
+            "/error/",
         )
+
         self.assertEqual(span.attributes[SpanAttributes.HTTP_ROUTE], "^error/")
         self.assertEqual(span.attributes[SpanAttributes.HTTP_SCHEME], "http")
         self.assertEqual(span.attributes[SpanAttributes.HTTP_STATUS_CODE], 500)

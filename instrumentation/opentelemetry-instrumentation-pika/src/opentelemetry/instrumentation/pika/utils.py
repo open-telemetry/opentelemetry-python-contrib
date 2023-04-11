@@ -169,15 +169,20 @@ def _enrich_span(
     if operation:
         span.set_attribute(SpanAttributes.MESSAGING_OPERATION, operation.value)
     else:
-        span.set_attribute(SpanAttributes.MESSAGING_TEMP_DESTINATION, True)
-    span.set_attribute(SpanAttributes.MESSAGING_DESTINATION, task_destination)
+        span.set_attribute(
+            SpanAttributes.MESSAGING_DESTINATION_TEMPORARY, True
+        )
+    span.set_attribute(
+        SpanAttributes.MESSAGING_KAFKA_DESTINATION_PARTITION, task_destination
+    )
     if properties.message_id:
         span.set_attribute(
             SpanAttributes.MESSAGING_MESSAGE_ID, properties.message_id
         )
     if properties.correlation_id:
         span.set_attribute(
-            SpanAttributes.MESSAGING_CONVERSATION_ID, properties.correlation_id
+            SpanAttributes.MESSAGING_MESSAGE_CONVERSATION_ID,
+            properties.correlation_id,
         )
     if not hasattr(channel.connection, "params"):
         span.set_attribute(

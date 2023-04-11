@@ -46,7 +46,10 @@ class SpanBuilder:
 
     def set_destination(self, destination: str):
         self._destination = destination
-        self._attributes[SpanAttributes.MESSAGING_DESTINATION] = destination
+        if self._kind == SpanKind.PRODUCER:
+            self._attributes[SpanAttributes.MESSAGING_DESTINATION_NAME] = destination
+        else:
+            self._attributes[SpanAttributes.MESSAGING_SOURCE_NAME] = destination
 
     def set_channel(self, channel: AbstractChannel):
         connection = channel.connection
@@ -71,7 +74,7 @@ class SpanBuilder:
             ] = properties.message_id
         if properties.correlation_id:
             self._attributes[
-                SpanAttributes.MESSAGING_CONVERSATION_ID
+                SpanAttributes.MESSAGING_MESSAGE_CONVERSATION_ID
             ] = properties.correlation_id
 
     def build(self) -> Optional[Span]:
@@ -80,7 +83,10 @@ class SpanBuilder:
         if self._operation:
             self._attributes[SpanAttributes.MESSAGING_OPERATION] = self._operation.value
         else:
-            self._attributes[SpanAttributes.MESSAGING_TEMP_DESTINATION] = True
+            if self._kind == SpanKind.PRODUCER:
+                self._attributes[SpanAttributes.MESSAGING_DESTINATION_TEMPORARY] = True
+            else:
+                self._attributes[SpanAttributes.MESSAGING_SOURCE_TEMPORARY] = True
         span = self._tracer.start_span(
             self._generate_span_name(), kind=self._kind, attributes=self._attributes
         )

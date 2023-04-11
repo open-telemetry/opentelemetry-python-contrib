@@ -290,6 +290,7 @@ from opentelemetry.instrumentation.grpc.package import _instruments
 from opentelemetry.instrumentation.grpc.version import __version__
 from opentelemetry.instrumentation.instrumentor import BaseInstrumentor
 from opentelemetry.instrumentation.utils import unwrap
+from opentelemetry.semconv.trace import SpanAttributes
 
 # pylint:disable=import-outside-toplevel
 # pylint:disable=import-self
@@ -576,7 +577,7 @@ def client_interceptor(
     """
     from . import _client
 
-    tracer = trace.get_tracer(__name__, __version__, tracer_provider)
+    tracer = trace.get_tracer(__name__, __version__, tracer_provider, schema_url=SpanAttributes.SCHEMA_URL)
 
     return _client.OpenTelemetryClientInterceptor(
         tracer,
@@ -601,7 +602,7 @@ def server_interceptor(tracer_provider=None, filter_=None):
     """
     from . import _server
 
-    tracer = trace.get_tracer(__name__, __version__, tracer_provider)
+    tracer = trace.get_tracer(__name__, __version__, tracer_provider, schema_url=SpanAttributes.SCHEMA_URL)
 
     return _server.OpenTelemetryServerInterceptor(tracer, filter_=filter_)
 
@@ -619,7 +620,7 @@ def aio_client_interceptors(
     """
     from . import _aio_client
 
-    tracer = trace.get_tracer(__name__, __version__, tracer_provider)
+    tracer = trace.get_tracer(__name__, __version__, tracer_provider, schema_url=SpanAttributes.SCHEMA_URL)
 
     return [
         _aio_client.UnaryUnaryAioClientInterceptor(
@@ -660,7 +661,7 @@ def aio_server_interceptor(tracer_provider=None, filter_=None):
     """
     from . import _aio_server
 
-    tracer = trace.get_tracer(__name__, __version__, tracer_provider)
+    tracer = trace.get_tracer(__name__, __version__, tracer_provider, schema_url=SpanAttributes.SCHEMA_URL)
 
     return _aio_server.OpenTelemetryAioServerInterceptor(
         tracer, filter_=filter_

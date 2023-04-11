@@ -17,6 +17,7 @@ from timeit import default_timer
 
 from opentelemetry.instrumentation.tornado import TornadoInstrumentor
 from opentelemetry.sdk.metrics.export import HistogramDataPoint
+from opentelemetry.util.http import parse_http_host
 
 from .test_instrumentation import (  # pylint: disable=no-name-in-module,import-error
     TornadoTest,
@@ -36,6 +37,7 @@ class TestTornadoMetricsInstrumentation(TornadoTest):
         start_time = default_timer()
         response = self.fetch("/")
         client_duration_estimated = (default_timer() - start_time) * 1000
+        host, port_str = parse_http_host(response.request.headers["host"])
 
         metrics = self.get_sorted_metrics()
         self.assertEqual(len(metrics), 7)
@@ -56,6 +58,7 @@ class TestTornadoMetricsInstrumentation(TornadoTest):
         self.assertEqual(
             server_active_request.name, "http.server.active_requests"
         )
+
         self.assert_metric_expected(
             server_active_request,
             [
@@ -63,10 +66,9 @@ class TestTornadoMetricsInstrumentation(TornadoTest):
                     0,
                     attributes={
                         "http.method": "GET",
-                        "http.flavor": "HTTP/1.1",
                         "http.scheme": "http",
-                        "http.target": "/",
-                        "http.host": response.request.headers["host"],
+                        "net.host.name": host,
+                        "net.host.port": int(port_str),
                     },
                 ),
             ],
@@ -79,10 +81,10 @@ class TestTornadoMetricsInstrumentation(TornadoTest):
                 client_duration_estimated,
                 attributes={
                     "http.method": "GET",
-                    "http.flavor": "HTTP/1.1",
+                    "net.protocol.version": "1.1",
                     "http.scheme": "http",
-                    "http.target": "/",
-                    "http.host": response.request.headers["host"],
+                    "net.host.name": host,
+                    "net.host.port": int(port_str),
                     "http.status_code": response.code,
                 },
             ),
@@ -97,10 +99,10 @@ class TestTornadoMetricsInstrumentation(TornadoTest):
                 attributes={
                     "http.status_code": 200,
                     "http.method": "GET",
-                    "http.flavor": "HTTP/1.1",
                     "http.scheme": "http",
-                    "http.target": "/",
-                    "http.host": response.request.headers["host"],
+                    "net.host.name": host,
+                    "net.host.port": int(port_str),
+                    "net.protocol.version": "1.1",
                 },
             ),
         )
@@ -115,10 +117,10 @@ class TestTornadoMetricsInstrumentation(TornadoTest):
                 attributes={
                     "http.status_code": response.code,
                     "http.method": "GET",
-                    "http.flavor": "HTTP/1.1",
+                    "net.protocol.version": "1.1",
                     "http.scheme": "http",
-                    "http.target": "/",
-                    "http.host": response.request.headers["host"],
+                    "net.host.name": host,
+                    "net.host.port": int(port_str),
                 },
             ),
         )
@@ -130,8 +132,10 @@ class TestTornadoMetricsInstrumentation(TornadoTest):
                 client_duration_estimated,
                 attributes={
                     "http.status_code": response.code,
+                    "http.scheme": "http",
                     "http.method": "GET",
-                    "http.url": response.effective_url,
+                    "net.host.name": host,
+                    "net.host.port": int(port_str),
                 },
             ),
             est_value_delta=200,
@@ -144,8 +148,10 @@ class TestTornadoMetricsInstrumentation(TornadoTest):
                 0,
                 attributes={
                     "http.status_code": response.code,
+                    "http.scheme": "http",
                     "http.method": "GET",
-                    "http.url": response.effective_url,
+                    "net.host.name": host,
+                    "net.host.port": int(port_str),
                 },
             ),
         )
@@ -159,8 +165,10 @@ class TestTornadoMetricsInstrumentation(TornadoTest):
                 len(response.body),
                 attributes={
                     "http.status_code": response.code,
+                    "http.scheme": "http",
                     "http.method": "GET",
-                    "http.url": response.effective_url,
+                    "net.host.name": host,
+                    "net.host.port": int(port_str),
                 },
             ),
         )

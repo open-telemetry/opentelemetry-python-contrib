@@ -222,7 +222,7 @@ from opentelemetry.util.http import (
     get_custom_headers,
     normalise_request_header_name,
     normalise_response_header_name,
-    remove_url_credentials,
+    parse_http_host,
 )
 
 _ServerRequestHookT = typing.Optional[typing.Callable[[Span, dict], None]]
@@ -294,37 +294,48 @@ asgi_setter = ASGISetter()
 def collect_request_attributes(scope):
     """Collects HTTP request attributes from the ASGI scope and returns a
     dictionary to be used as span creation attributes."""
-    server_host, port, http_url = get_host_port_url_tuple(scope)
+
+    schema = scope.get("scheme")
+    result = {
+        SpanAttributes.HTTP_SCHEME: schema,
+        SpanAttributes.NET_PROTOCOL_VERSION: scope.get("http_version"),
+    }
+
+    host = "0.0.0.0"
+    port = 80 if schema == "http" else 443
+    http_host_value_list = asgi_getter.get(scope, "host")
+    if http_host_value_list and len(http_host_value_list) > 0:
+        host, port_str = parse_http_host(http_host_value_list[0])
+        if port_str:
+            port = int(port_str)
+    else:
+        server = scope.get("server")
+        if server:
+            host, _ = parse_http_host(server[0])
+            port = server[1]
+    result[SpanAttributes.NET_HOST_NAME] = host
+    result[SpanAttributes.NET_HOST_PORT] = port
+
+    target = scope.get("path")
     query_string = scope.get("query_string")
-    if query_string and http_url:
+    if query_string:
         if isinstance(query_string, bytes):
             query_string = query_string.decode("utf8")
-        http_url += "?" + urllib.parse.unquote(query_string)
+        query = urllib.parse.unquote(query_string)
+        target += "?" + query
+    result[SpanAttributes.HTTP_TARGET] = target
 
-    result = {
-        SpanAttributes.HTTP_SCHEME: scope.get("scheme"),
-        SpanAttributes.HTTP_HOST: server_host,
-        SpanAttributes.NET_HOST_PORT: port,
-        SpanAttributes.HTTP_FLAVOR: scope.get("http_version"),
-        SpanAttributes.HTTP_TARGET: scope.get("path"),
-        SpanAttributes.HTTP_URL: remove_url_credentials(http_url),
-    }
     http_method = scope.get("method")
     if http_method:
         result[SpanAttributes.HTTP_METHOD] = http_method
 
-    http_host_value_list = asgi_getter.get(scope, "host")
-    if http_host_value_list:
-        result[SpanAttributes.HTTP_SERVER_NAME] = ",".join(
-            http_host_value_list
-        )
     http_user_agent = asgi_getter.get(scope, "user-agent")
     if http_user_agent:
-        result[SpanAttributes.HTTP_USER_AGENT] = http_user_agent[0]
+        result[SpanAttributes.USER_AGENT_ORIGINAL] = http_user_agent[0]
 
     if "client" in scope and scope["client"] is not None:
-        result[SpanAttributes.NET_PEER_IP] = scope.get("client")[0]
-        result[SpanAttributes.NET_PEER_PORT] = scope.get("client")[1]
+        result[SpanAttributes.NET_SOCK_PEER_ADDR] = scope.get("client")[0]
+        result[SpanAttributes.NET_SOCK_PEER_PORT] = scope.get("client")[1]
 
     # remove None values
     result = {k: v for k, v in result.items() if v is not None}
@@ -434,7 +445,7 @@ def get_default_span_details(scope: dict) -> Tuple[str, dict]:
     return method, {}  # http with no path
 
 
-def _collect_target_attribute(
+def _collect_route_attribute(
     scope: typing.Dict[str, typing.Any]
 ) -> typing.Optional[str]:
     """
@@ -495,9 +506,9 @@ class OpenTelemetryMiddleware:
         meter=None,
     ):
         self.app = guarantee_single_callable(app)
-        self.tracer = trace.get_tracer(__name__, __version__, tracer_provider)
+        self.tracer = trace.get_tracer(__name__, __version__, tracer_provider, schema_url=SpanAttributes.SCHEMA_URL)
         self.meter = (
-            get_meter(__name__, __version__, meter_provider)
+            get_meter(__name__, __version__, meter_provider, schema_url=SpanAttributes.SCHEMA_URL)
             if meter is None
             else meter
         )
@@ -596,9 +607,9 @@ class OpenTelemetryMiddleware:
                 await self.app(scope, otel_receive, otel_send)
         finally:
             if scope["type"] == "http":
-                target = _collect_target_attribute(scope)
-                if target:
-                    duration_attrs[SpanAttributes.HTTP_TARGET] = target
+                route = _collect_route_attribute(scope)
+                if route:
+                    duration_attrs[SpanAttributes.HTTP_ROUTE] = route
                 duration = max(round((default_timer() - start) * 1000), 0)
                 self.duration_histogram.record(duration, duration_attrs)
                 self.active_requests_counter.add(

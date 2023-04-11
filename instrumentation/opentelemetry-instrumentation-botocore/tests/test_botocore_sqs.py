@@ -1,3 +1,5 @@
+from urllib.parse import urlparse
+
 import botocore.session
 from moto import mock_sqs
 
@@ -28,6 +30,7 @@ class TestSqsExtension(TestBase):
             QueueName="test_queue_name"
         )
         queue_url = create_queue_result["QueueUrl"]
+        queue_host = urlparse(queue_url).hostname
         response = self.client.send_message(
             QueueUrl=queue_url, MessageBody="content"
         )
@@ -40,10 +43,10 @@ class TestSqsExtension(TestBase):
             span.attributes[SpanAttributes.MESSAGING_SYSTEM], "aws.sqs"
         )
         self.assertEqual(
-            span.attributes[SpanAttributes.MESSAGING_URL], queue_url
+            span.attributes[SpanAttributes.NET_PEER_NAME], queue_host
         )
         self.assertEqual(
-            span.attributes[SpanAttributes.MESSAGING_DESTINATION],
+            span.attributes[SpanAttributes.MESSAGING_DESTINATION_NAME],
             "test_queue_name",
         )
         self.assertEqual(
@@ -57,6 +60,7 @@ class TestSqsExtension(TestBase):
             QueueName="test_queue_name"
         )
         queue_url = create_queue_result["QueueUrl"]
+        queue_host = urlparse(queue_url).hostname
         response = self.client.send_message_batch(
             QueueUrl=queue_url,
             Entries=[
@@ -74,10 +78,10 @@ class TestSqsExtension(TestBase):
             span.attributes[SpanAttributes.MESSAGING_SYSTEM], "aws.sqs"
         )
         self.assertEqual(
-            span.attributes[SpanAttributes.MESSAGING_URL], queue_url
+            span.attributes[SpanAttributes.NET_PEER_NAME], queue_host
         )
         self.assertEqual(
-            span.attributes[SpanAttributes.MESSAGING_DESTINATION],
+            span.attributes[SpanAttributes.MESSAGING_DESTINATION_NAME],
             "test_queue_name",
         )
         self.assertEqual(
@@ -91,6 +95,7 @@ class TestSqsExtension(TestBase):
             QueueName="test_queue_name"
         )
         queue_url = create_queue_result["QueueUrl"]
+        queue_host = urlparse(queue_url).hostname
         self.client.send_message(QueueUrl=queue_url, MessageBody="content")
         message_result = self.client.receive_message(
             QueueUrl=create_queue_result["QueueUrl"]
@@ -105,10 +110,10 @@ class TestSqsExtension(TestBase):
             span.attributes[SpanAttributes.MESSAGING_SYSTEM], "aws.sqs"
         )
         self.assertEqual(
-            span.attributes[SpanAttributes.MESSAGING_URL], queue_url
+            span.attributes[SpanAttributes.NET_PEER_NAME], queue_host
         )
         self.assertEqual(
-            span.attributes[SpanAttributes.MESSAGING_DESTINATION],
+            span.attributes[SpanAttributes.MESSAGING_SOURCE_NAME],
             "test_queue_name",
         )
         self.assertEqual(
@@ -120,7 +125,7 @@ class TestSqsExtension(TestBase):
     def test_sqs_messaging_failed_operation(self):
         with self.assertRaises(Exception):
             self.client.send_message(
-                QueueUrl="non-existing", MessageBody="content"
+                QueueUrl="https://non-existing", MessageBody="content"
             )
 
         spans = self.memory_exporter.get_finished_spans()
@@ -132,5 +137,5 @@ class TestSqsExtension(TestBase):
             span.attributes[SpanAttributes.MESSAGING_SYSTEM], "aws.sqs"
         )
         self.assertEqual(
-            span.attributes[SpanAttributes.MESSAGING_URL], "non-existing"
+            span.attributes[SpanAttributes.NET_PEER_NAME], "non-existing"
         )

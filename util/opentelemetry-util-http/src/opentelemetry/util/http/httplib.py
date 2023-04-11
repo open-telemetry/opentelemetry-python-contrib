@@ -68,7 +68,7 @@ def _remove_nonrecording(spanlist: typing.List[Span]):
 
 
 def trysetip(conn: http.client.HTTPConnection, loglevel=logging.DEBUG) -> bool:
-    """Tries to set the net.peer.ip semantic attribute on the current span from the given
+    """Tries to set the net.sock.peer.addr semantic attribute on the current span from the given
     HttpConnection.
 
     Returns False if the connection is not yet established, False if the IP was captured
@@ -105,7 +105,7 @@ def trysetip(conn: http.client.HTTPConnection, loglevel=logging.DEBUG) -> bool:
         )
     else:
         for span in spanlist:
-            span.set_attribute(SpanAttributes.NET_PEER_IP, ip)
+            span.set_attribute(SpanAttributes.NET_SOCK_PEER_ADDR, ip)
     return True
 
 
