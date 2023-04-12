@@ -5,7 +5,6 @@ from opentelemetry import context, trace
 from opentelemetry.instrumentation.aiohttp_server.package import _instruments
 from opentelemetry.instrumentation.instrumentor import BaseInstrumentor
 from opentelemetry.instrumentation.utils import http_status_to_status_code
-from opentelemetry.propagate import extract
 from opentelemetry.propagators.textmap import Getter
 from opentelemetry.semconv.trace import SpanAttributes
 from opentelemetry.trace.status import Status, StatusCode
@@ -150,7 +149,7 @@ async def middleware(request, handler):
     ) as span:
         attributes = collect_request_attributes(request)
         attributes.update(additional_attributes)
-        span.setattributes(attributes)
+        span.set_attributes(attributes)
         resp = await handler(request)
         set_status_code(span, resp.status)
         return resp
