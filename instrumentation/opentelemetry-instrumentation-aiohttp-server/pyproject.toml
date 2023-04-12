@@ -42,7 +42,7 @@ test = [
 ]
 
 [project.entry-points.opentelemetry_instrumentor]
-aiohttp-client = "opentelemetry.instrumentation.aiohttp_server:AioHttpServerInstrumentor"
+aiohttp-server = "opentelemetry.instrumentation.aiohttp_server:AioHttpServerInstrumentor"
 
 [project.urls]
 Homepage = "https://github.com/open-telemetry/opentelemetry-python-contrib/tree/main/instrumentation/opentelemetry-instrumentation-aiohttp-server"
