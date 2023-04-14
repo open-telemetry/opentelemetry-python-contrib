@@ -150,8 +150,12 @@ async def middleware(request, handler):
         attributes = collect_request_attributes(request)
         attributes.update(additional_attributes)
         span.set_attributes(attributes)
-        resp = await handler(request)
-        set_status_code(span, resp.status)
+        try:
+            resp = await handler(request)
+            set_status_code(span, resp.status)
+        except web.HTTPException as ex:
+            set_status_code(span, ex.status_code)
+            raise
         return resp
 
 
