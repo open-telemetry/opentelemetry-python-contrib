@@ -39,6 +39,8 @@ instruments = [
 ]
 test = [
   "opentelemetry-instrumentation-aiohttp-server[instruments]",
+  "pytest-asyncio",
+  "pytest-aiohttp",
 ]
 
 [project.entry-points.opentelemetry_instrumentor]
