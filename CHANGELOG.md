@@ -8,6 +8,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## Unreleased
 
 - `opentelemetry-instrumentation-system-metrics` Add `process.` prefix to `runtime.memory`, `runtime.cpu.time`, and `runtime.gc_count`. Change `runtime.memory` from count to UpDownCounter. ([#1735](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/1735))
+- Add request and response hooks for GRPC instrumentation (client only)
+  ([#1706](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/1706))
 
 ### Added
 
@@ -23,9 +25,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 
 ## Version 1.17.0/0.38b0 (2023-03-22)
-
-- Add request and response hooks for GRPC instrumentation (client only)
-  ([#1706](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/1706))
 
 ### Added
 
