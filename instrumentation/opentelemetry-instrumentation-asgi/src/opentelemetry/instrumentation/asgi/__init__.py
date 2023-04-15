@@ -421,9 +421,12 @@ def get_default_span_details(scope: dict) -> Tuple[str, dict]:
     Returns:
         a tuple of the span name, and any attributes to attach to the span.
     """
+    if scope.get("type") == "websocket":
+        return f"{scope.get('path', '').strip()}", {}
     span_name = (
-        scope.get("path", "").strip()
-        or f"HTTP {scope.get('method', '').strip()}"
+        f"{scope.get('method', '').strip()} {scope.get('path', '').strip()}"
+        if scope.get("path", "").strip()
+        else f"{scope.get('method', '').strip()}"
     )
 
     return span_name, {}
