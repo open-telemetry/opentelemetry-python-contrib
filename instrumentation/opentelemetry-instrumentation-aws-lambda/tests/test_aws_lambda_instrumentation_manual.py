@@ -399,6 +399,15 @@ class TestAwsLambdaInstrumentor(TestBase):
             },
         )
 
+    def test_lambda_handles_list_event(self):
+        AwsLambdaInstrumentor().instrument()
+
+        mock_execute_lambda([{"message": "test"}])
+
+        spans = self.memory_exporter.get_finished_spans()
+
+        assert spans
+
     def test_uninstrument(self):
         AwsLambdaInstrumentor().instrument()
 
