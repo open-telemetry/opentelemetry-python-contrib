@@ -415,7 +415,8 @@ def set_status_code(span, status_code):
 
 
 def get_default_span_details(scope: dict) -> Tuple[str, dict]:
-    """Default implementation for get_default_span_details
+    """
+    Default span name is the HTTP method and URL path, or just the method.
     https://github.com/open-telemetry/opentelemetry-specification/pull/3165
     https://opentelemetry.io/docs/reference/specification/trace/semantic_conventions/http/#name
     

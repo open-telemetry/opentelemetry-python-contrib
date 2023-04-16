@@ -284,7 +284,6 @@ class TestAsgiApplication(AsgiTestBase):
                     SpanAttributes.HTTP_URL: "http://0.0.0.0/",
                 }
             )
-            # TODO:self possibly update span name to just method
             return expected
 
         self.scope["server"] = None

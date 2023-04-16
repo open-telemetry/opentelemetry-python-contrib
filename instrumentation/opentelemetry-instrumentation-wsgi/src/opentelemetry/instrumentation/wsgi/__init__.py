@@ -441,7 +441,7 @@ def add_response_attributes(
 
 def get_default_span_name(environ):
     """
-    Default implementation for name_callback.
+    Default span name is the HTTP method and URL path, or just the method.
     https://github.com/open-telemetry/opentelemetry-specification/pull/3165
     https://opentelemetry.io/docs/reference/specification/trace/semantic_conventions/http/#name
     

@@ -284,7 +284,6 @@ class TestWsgiApplication(WsgiTestBase):
                             )
         self.assertTrue(number_data_point_seen and histogram_data_point_seen)
 
-    # Question: How often request method can be lost?
     def test_default_span_name_missing_path_info(self):
         """Test that default span_names with missing path info."""
         self.environ.pop("PATH_INFO")
