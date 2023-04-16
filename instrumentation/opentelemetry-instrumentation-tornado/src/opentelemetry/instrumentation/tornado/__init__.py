@@ -454,10 +454,12 @@ def _get_attributes_from_request(request):
     )
 
 
-def _get_operation_name(handler, request):
-    full_class_name = type(handler).__name__
-    class_name = full_class_name.rsplit(".")[-1]
-    return f"{class_name}.{request.method.lower()}"
+def _get_default_span_name(request):
+    path = request.path
+    method = request.method
+    if method and path:
+        return f"{method} {path}"
+    return f"{method}"
 
 
 def _get_full_handler_name(handler):
@@ -468,7 +470,7 @@ def _get_full_handler_name(handler):
 def _start_span(tracer, handler) -> _TraceContext:
     span, token = _start_internal_or_server_span(
         tracer=tracer,
-        span_name=_get_operation_name(handler, handler.request),
+        span_name=_get_default_span_name(handler.request),
         start_time=time_ns(),
         context_carrier=handler.request.headers,
         context_getter=textmap.default_getter,
