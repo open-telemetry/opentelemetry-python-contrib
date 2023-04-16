@@ -440,11 +440,20 @@ def add_response_attributes(
 
 
 def get_default_span_name(environ):
-    """Default implementation for name_callback, returns `{METHOD_NAME}`."""
+    """
+    Default implementation for name_callback.
+    https://github.com/open-telemetry/opentelemetry-specification/pull/3165
+    https://opentelemetry.io/docs/reference/specification/trace/semantic_conventions/http/#name
+    
+    Args:
+        environ: The WSGI environ object.
+    Returns:
+        The span name.
+    """
     method = environ.get("REQUEST_METHOD", "").strip()
-    route = environ.get("PATH_INFO", "").strip()
-    if route:
-        return f"{method} {route}"
+    path = environ.get("PATH_INFO", "").strip()
+    if method and path:
+        return f"{method} {path}"
     return method
 
 
