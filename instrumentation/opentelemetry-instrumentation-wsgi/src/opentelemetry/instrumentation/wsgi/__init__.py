@@ -440,8 +440,12 @@ def add_response_attributes(
 
 
 def get_default_span_name(environ):
-    """Default implementation for name_callback, returns HTTP {METHOD_NAME}."""
-    return f"HTTP {environ.get('REQUEST_METHOD', '')}".strip()
+    """Default implementation for name_callback, returns `{METHOD_NAME}`."""
+    method = environ.get("REQUEST_METHOD", "").strip()
+    route = environ.get("PATH_INFO", "").strip()
+    if route:
+        return f"{method} {route}"
+    return method
 
 
 class OpenTelemetryMiddleware:
