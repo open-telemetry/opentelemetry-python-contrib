@@ -17,6 +17,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   ([#1733](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/1733))
 - Make Django request span attributes available for `start_span`. 
   ([#1730](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/1730))
+- Make ASGI request span attributes available for `start_span`. 
+  ([#1762](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/1762))
 
 ### Fixed
 
