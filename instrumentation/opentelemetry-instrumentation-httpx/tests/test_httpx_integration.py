@@ -142,7 +142,7 @@ class BaseTestCases:
             span = self.assert_span()
 
             self.assertIs(span.kind, trace.SpanKind.CLIENT)
-            self.assertEqual(span.name, "HTTP GET")
+            self.assertEqual(span.name, "GET")
 
             self.assertEqual(
                 span.attributes,
@@ -258,7 +258,7 @@ class BaseTestCases:
 
             span = self.assert_span()
 
-            self.assertEqual(span.name, "HTTP POST")
+            self.assertEqual(span.name, "POST")
             self.assertEqual(
                 span.attributes[SpanAttributes.HTTP_METHOD], "POST"
             )
@@ -350,7 +350,7 @@ class BaseTestCases:
 
             self.assertEqual(result.text, "Hello!")
             span = self.assert_span()
-            self.assertEqual(span.name, "HTTP GET")
+            self.assertEqual(span.name, "GET")
 
         def test_not_recording(self):
             with mock.patch("opentelemetry.trace.INVALID_SPAN") as mock_span:
@@ -444,7 +444,7 @@ class BaseTestCases:
 
             self.assertEqual(result.text, "Hello!")
             span = self.assert_span()
-            self.assertEqual(span.name, "HTTP GET")
+            self.assertEqual(span.name, "GET")
             HTTPXClientInstrumentor().uninstrument()
 
         def test_not_recording(self):

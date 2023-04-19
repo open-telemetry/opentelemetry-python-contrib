@@ -209,7 +209,7 @@ class ResponseInfo(typing.NamedTuple):
 
 
 def _get_default_span_name(method: str) -> str:
-    return f"HTTP {method.strip()}"
+    return method.strip()
 
 
 def _apply_status_code(span: Span, status_code: int) -> None:
