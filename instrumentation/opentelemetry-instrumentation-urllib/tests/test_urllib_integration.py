@@ -124,7 +124,7 @@ class RequestsIntegrationTestBase(abc.ABC):
         span = self.assert_span()
 
         self.assertIs(span.kind, trace.SpanKind.CLIENT)
-        self.assertEqual(span.name, "HTTP GET")
+        self.assertEqual(span.name, "GET")
 
         self.assertEqual(
             span.attributes,
@@ -209,7 +209,7 @@ class RequestsIntegrationTestBase(abc.ABC):
         span = self.assert_span()
 
         self.assertIs(span.kind, trace.SpanKind.CLIENT)
-        self.assertEqual(span.name, "HTTP GET")
+        self.assertEqual(span.name, "GET")
 
         self.assertEqual(
             span.attributes,
