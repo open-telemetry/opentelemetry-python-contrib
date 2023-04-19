@@ -118,7 +118,7 @@ class TestAioHttpIntegration(TestBase):
                 self.assert_spans(
                     [
                         (
-                            "HTTP GET",
+                            "GET",
                             (span_status, None),
                             {
                                 SpanAttributes.HTTP_METHOD: "GET",
@@ -212,7 +212,7 @@ class TestAioHttpIntegration(TestBase):
         self.assert_spans(
             [
                 (
-                    "HTTP GET",
+                    "GET",
                     (StatusCode.UNSET, None),
                     {
                         SpanAttributes.HTTP_METHOD: "GET",
@@ -246,7 +246,7 @@ class TestAioHttpIntegration(TestBase):
             self.assert_spans(
                 [
                     (
-                        "HTTP GET",
+                        "GET",
                         (expected_status, None),
                         {
                             SpanAttributes.HTTP_METHOD: "GET",
@@ -273,7 +273,7 @@ class TestAioHttpIntegration(TestBase):
         self.assert_spans(
             [
                 (
-                    "HTTP GET",
+                    "GET",
                     (StatusCode.ERROR, None),
                     {
                         SpanAttributes.HTTP_METHOD: "GET",
@@ -300,7 +300,7 @@ class TestAioHttpIntegration(TestBase):
         self.assert_spans(
             [
                 (
-                    "HTTP GET",
+                    "GET",
                     (StatusCode.ERROR, None),
                     {
                         SpanAttributes.HTTP_METHOD: "GET",
@@ -329,7 +329,7 @@ class TestAioHttpIntegration(TestBase):
         self.assert_spans(
             [
                 (
-                    "HTTP GET",
+                    "GET",
                     (StatusCode.UNSET, None),
                     {
                         SpanAttributes.HTTP_METHOD: "GET",
@@ -380,6 +380,7 @@ class TestAioHttpClientInstrumentor(TestBase):
             self.get_default_request(), self.URL, self.default_handler
         )
         span = self.assert_spans(1)
+        self.assertEqual("GET", span.name)
         self.assertEqual("GET", span.attributes[SpanAttributes.HTTP_METHOD])
         self.assertEqual(
             f"http://{host}:{port}/test-path",
