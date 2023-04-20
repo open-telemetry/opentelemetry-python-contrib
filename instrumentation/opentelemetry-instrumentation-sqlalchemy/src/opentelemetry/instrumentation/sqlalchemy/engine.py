@@ -165,11 +165,11 @@ class EngineTracer:
 
     @classmethod
     def remove_all_event_listeners(cls):
-        for remove_params in cls._remove_event_listener_params:
+        for (weak_ref_target, identifier, func) in cls._remove_event_listener_params:
             # Remove an event listener only if saved weak reference points to an object
             # which has not been garbage collected
-            if remove_params[0]() is not None:
-                remove(*remove_params)
+            if weak_ref_target is not None:
+                remove(weak_ref_target(), identifier, func)
         cls._remove_event_listener_params.clear()
 
     def _operation_name(self, db_name, statement):
