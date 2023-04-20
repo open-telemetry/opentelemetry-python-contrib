@@ -13,6 +13,7 @@
 # limitations under the License.
 import os
 import re
+import weakref
 
 from sqlalchemy.event import (  # pylint: disable=no-name-in-module
     listen,
@@ -160,12 +161,15 @@ class EngineTracer:
     @classmethod
     def _register_event_listener(cls, target, identifier, func, *args, **kw):
         listen(target, identifier, func, *args, **kw)
-        cls._remove_event_listener_params.append((target, identifier, func))
+        cls._remove_event_listener_params.append((weakref.ref(target), identifier, func))
 
     @classmethod
     def remove_all_event_listeners(cls):
         for remove_params in cls._remove_event_listener_params:
-            remove(*remove_params)
+            # Remove an event listener only if saved weak reference points to an object
+            # which has not been garbage collected
+            if remove_params[0]() is not None:
+                remove(*remove_params)
         cls._remove_event_listener_params.clear()
 
     def _operation_name(self, db_name, statement):
