@@ -25,6 +25,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Fix `None does not implement middleware` error when there are no middlewares registered
   ([#1766](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/1766))
 
+### Changed
+- Update HTTP server/client instrumentation span names to comply with spec
+  ([#1759](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/1759)
+
 ## Version 1.17.0/0.38b0 (2023-03-22)
 
 ### Added
