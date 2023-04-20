@@ -318,11 +318,11 @@ class _InstrumentedFastAPI(fastapi.FastAPI):
 def _get_route_details(scope):
     """
     Function to retrieve Starlette route from scope.
-    
+
     TODO: there is currently no way to retrieve http.route from
     a starlette application from scope.
     See: https://github.com/encode/starlette/pull/804
-    
+
     Args:
         scope: A Starlette scope
     Returns:
@@ -339,7 +339,7 @@ def _get_route_details(scope):
         if match == Match.PARTIAL:
             route = starlette_route.path
     return route
-    
+
 
 def _get_default_span_details(scope):
     """
@@ -355,10 +355,10 @@ def _get_default_span_details(scope):
     attributes = {}
     if route:
         attributes[SpanAttributes.HTTP_ROUTE] = route
-    if method and route: # http
+    if method and route:  # http
         span_name = f"{method} {route}"
-    elif route: # websocket
+    elif route:  # websocket
         span_name = route
-    else: # fallback
+    else:  # fallback
         span_name = method
     return span_name, attributes

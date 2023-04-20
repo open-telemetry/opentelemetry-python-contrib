@@ -419,7 +419,7 @@ def get_default_span_details(scope: dict) -> Tuple[str, dict]:
     Default span name is the HTTP method and URL path, or just the method.
     https://github.com/open-telemetry/opentelemetry-specification/pull/3165
     https://opentelemetry.io/docs/reference/specification/trace/semantic_conventions/http/#name
-    
+
     Args:
         scope: the ASGI scope dictionary
     Returns:
@@ -431,8 +431,8 @@ def get_default_span_details(scope: dict) -> Tuple[str, dict]:
         return f"{method} {path}", {}
     if path:  # websocket
         return path, {}
-    return method, {} # http with no path
-    
+    return method, {}  # http with no path
+
 
 def _collect_target_attribute(
     scope: typing.Dict[str, typing.Any]

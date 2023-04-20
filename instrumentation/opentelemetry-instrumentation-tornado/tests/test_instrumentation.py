@@ -229,7 +229,7 @@ class TestTornadoInstrumentation(TornadoTest, WsgiTestBase):
                 SpanAttributes.HTTP_TARGET: url,
                 SpanAttributes.HTTP_CLIENT_IP: "127.0.0.1",
                 SpanAttributes.HTTP_STATUS_CODE: 201,
-                "tornado.handler": f"tests.tornado_test_app.{handler_name}"
+                "tornado.handler": f"tests.tornado_test_app.{handler_name}",
             },
         )
 
