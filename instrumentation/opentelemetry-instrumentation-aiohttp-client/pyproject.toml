@@ -35,7 +35,6 @@ dependencies = [
 [project.optional-dependencies]
 instruments = [
   "aiohttp ~= 3.0",
-  "yarl == 1.8.2",
 ]
 test = [
   "opentelemetry-instrumentation-aiohttp-client[instruments]",
