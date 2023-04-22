@@ -310,8 +310,10 @@ class TestSqlalchemyInstrumentation(TestBase):
 
     def test_no_memory_leakage_if_engine_diposed(self):
         SQLAlchemyInstrumentor().instrument()
-        import gc, weakref  # pylint: disable=all
-        from sqlalchemy import create_engine  # pylint: disable=all
+        import gc
+        import weakref
+
+        from sqlalchemy import create_engine
 
         callback = mock.Mock()
 
