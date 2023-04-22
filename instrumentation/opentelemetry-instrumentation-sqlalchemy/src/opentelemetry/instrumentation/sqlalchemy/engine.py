@@ -161,11 +161,17 @@ class EngineTracer:
     @classmethod
     def _register_event_listener(cls, target, identifier, func, *args, **kw):
         listen(target, identifier, func, *args, **kw)
-        cls._remove_event_listener_params.append((weakref.ref(target), identifier, func))
+        cls._remove_event_listener_params.append(
+            (weakref.ref(target), identifier, func)
+        )
 
     @classmethod
     def remove_all_event_listeners(cls):
-        for (weak_ref_target, identifier, func) in cls._remove_event_listener_params:
+        for (
+            weak_ref_target,
+            identifier,
+            func,
+        ) in cls._remove_event_listener_params:
             # Remove an event listener only if saved weak reference points to an object
             # which has not been garbage collected
             if weak_ref_target is not None:
