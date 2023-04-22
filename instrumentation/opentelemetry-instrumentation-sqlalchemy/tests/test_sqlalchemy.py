@@ -314,6 +314,7 @@ class TestSqlalchemyInstrumentation(TestBase):
         from sqlalchemy import create_engine  # pylint: disable=all
 
         callback = mock.Mock()
+
         def make_shortlived_engine():
             engine = create_engine("sqlite:///:memory:")
             # Callback will be called if engine is deallocated during garbage
