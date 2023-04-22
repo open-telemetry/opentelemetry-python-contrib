@@ -100,11 +100,11 @@ class EngineTracer:
         commenter_options=None,
     ):
         self.tracer = tracer
-        self.engine = engine
         self.connections_usage = connections_usage
         self.vendor = _normalize_vendor(engine.name)
         self.enable_commenter = enable_commenter
         self.commenter_options = commenter_options if commenter_options else {}
+        self._engine_attrs = _get_attributes_from_engine(engine)
         self._leading_comment_remover = re.compile(r"^/\*.*?\*/")
 
         self._register_event_listener(
@@ -119,14 +119,11 @@ class EngineTracer:
         self._register_event_listener(engine, "checkin", self._pool_checkin)
         self._register_event_listener(engine, "checkout", self._pool_checkout)
 
-    def _get_pool_name(self):
-        return self.engine.pool.logging_name or ""
-
     def _add_idle_to_connection_usage(self, value):
         self.connections_usage.add(
             value,
             attributes={
-                "pool.name": self._get_pool_name(),
+                **self._engine_attrs,
                 "state": "idle",
             },
         )
@@ -135,7 +132,7 @@ class EngineTracer:
         self.connections_usage.add(
             value,
             attributes={
-                "pool.name": self._get_pool_name(),
+                **self._engine_attrs,
                 "state": "used",
             },
         )
@@ -174,7 +171,7 @@ class EngineTracer:
         ) in cls._remove_event_listener_params:
             # Remove an event listener only if saved weak reference points to an object
             # which has not been garbage collected
-            if weak_ref_target is not None:
+            if weak_ref_target() is not None:
                 remove(weak_ref_target(), identifier, func)
         cls._remove_event_listener_params.clear()
 
@@ -300,4 +297,15 @@ def _get_attributes_from_cursor(vendor, cursor, attrs):
             attrs[SpanAttributes.NET_PEER_NAME] = info.host
             if info.port:
                 attrs[SpanAttributes.NET_PEER_PORT] = int(info.port)
+    return attrs
+
+
+def _get_attributes_from_engine(engine):
+    """Set metadata attributes of the database engine"""
+    attrs = {}
+
+    attrs["pool.name"] = getattr(
+        getattr(engine, "pool", None), "logging_name", ""
+    )
+
     return attrs
