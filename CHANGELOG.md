@@ -22,6 +22,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- Fix elasticsearch db.statement attribute to be sanitized by default
+  ([#1758](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/1758))
 - Fix `AttributeError` when AWS Lambda handler receives a list event
   ([#1738](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/1738))
 - Fix `None does not implement middleware` error when there are no middlewares registered
