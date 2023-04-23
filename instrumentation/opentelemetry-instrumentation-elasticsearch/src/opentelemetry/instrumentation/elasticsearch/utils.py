@@ -29,7 +29,8 @@ def _flatten_dict(d, parent_key=""):
     items = []
     for k, v in d.items():
         new_key = parent_key + "." + k if parent_key else k
-        if isinstance(v, dict):
+        # recursive call _flatten_dict for a non-empty dict value
+        if isinstance(v, dict) and v:
             items.extend(_flatten_dict(v, new_key).items())
         else:
             items.append((new_key, v))
