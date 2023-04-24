@@ -19,8 +19,9 @@
 
 """Implementation of the invocation-side open-telemetry interceptor."""
 
+import logging
 from collections import OrderedDict
-from typing import MutableMapping
+from typing import Callable, MutableMapping
 
 import grpc
 
@@ -32,6 +33,8 @@ from opentelemetry.propagate import inject
 from opentelemetry.propagators.textmap import Setter
 from opentelemetry.semconv.trace import SpanAttributes
 from opentelemetry.trace.status import Status, StatusCode
+
+logger = logging.getLogger(__name__)
 
 
 class _CarrierSetter(Setter):
@@ -59,12 +62,27 @@ def _make_future_done_callback(span, rpc_info):
     return callback
 
 
+def _safe_invoke(function: Callable, *args):
+    function_name = "<unknown>"
+    try:
+        function_name = function.__name__
+        function(*args)
+    except Exception as ex:  # pylint:disable=broad-except
+        logger.error(
+            "Error when invoking function '%s'", function_name, exc_info=ex
+        )
+
+
 class OpenTelemetryClientInterceptor(
     grpcext.UnaryClientInterceptor, grpcext.StreamClientInterceptor
 ):
-    def __init__(self, tracer, filter_=None):
+    def __init__(
+        self, tracer, filter_=None, request_hook=None, response_hook=None
+    ):
         self._tracer = tracer
         self._filter = filter_
+        self._request_hook = request_hook
+        self._response_hook = response_hook
 
     def _start_span(self, method, **kwargs):
         service, meth = method.lstrip("/").split("/", 1)
@@ -99,6 +117,8 @@ class OpenTelemetryClientInterceptor(
         if isinstance(result, tuple):
             response = result[0]
         rpc_info.response = response
+        if self._response_hook:
+            self._call_response_hook(span, response)
         span.end()
         return result
 
@@ -127,7 +147,8 @@ class OpenTelemetryClientInterceptor(
                     timeout=client_info.timeout,
                     request=request,
                 )
-
+                if self._request_hook:
+                    self._call_request_hook(span, request)
                 result = invoker(request, metadata)
             except Exception as exc:
                 if isinstance(exc, grpc.RpcError):
@@ -147,6 +168,16 @@ class OpenTelemetryClientInterceptor(
                 if not result:
                     span.end()
         return self._trace_result(span, rpc_info, result)
+
+    def _call_request_hook(self, span, request):
+        if not callable(self._request_hook):
+            return
+        _safe_invoke(self._request_hook, span, request)
+
+    def _call_response_hook(self, span, response):
+        if not callable(self._response_hook):
+            return
+        _safe_invoke(self._response_hook, span, response)
 
     def intercept_unary(self, request, metadata, client_info, invoker):
         if self._filter is not None and not self._filter(client_info):
