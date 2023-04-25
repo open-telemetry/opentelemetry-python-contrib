@@ -94,7 +94,6 @@ from opentelemetry.trace import (
     Span,
     SpanKind,
     TracerProvider,
-    get_current_span,
     get_tracer,
     get_tracer_provider,
 )
