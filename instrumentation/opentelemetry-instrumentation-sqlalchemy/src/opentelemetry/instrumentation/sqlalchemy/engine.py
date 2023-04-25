@@ -306,6 +306,6 @@ def _get_attributes_from_engine(engine):
 
     attrs["pool.name"] = getattr(
         getattr(engine, "pool", None), "logging_name", ""
-    )
+    ) or ""
 
     return attrs
