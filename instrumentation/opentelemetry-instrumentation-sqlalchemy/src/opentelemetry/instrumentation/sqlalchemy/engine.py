@@ -304,8 +304,8 @@ def _get_attributes_from_engine(engine):
     """Set metadata attributes of the database engine"""
     attrs = {}
 
-    attrs["pool.name"] = getattr(
-        getattr(engine, "pool", None), "logging_name", ""
-    ) or ""
+    attrs["pool.name"] = (
+        getattr(getattr(engine, "pool", None), "logging_name", "") or ""
+    )
 
     return attrs
