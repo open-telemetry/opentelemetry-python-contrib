@@ -99,7 +99,9 @@ class TestLoggingInstrumentor(TestBase):
             span_id = format(span.get_span_context().span_id, "016x")
             trace_id = format(span.get_span_context().trace_id, "032x")
             trace_sampled = span.get_span_context().trace_flags.sampled
-            self.assert_trace_context_injected(span_id, trace_id, trace_sampled)
+            self.assert_trace_context_injected(
+                span_id, trace_id, trace_sampled
+            )
 
     def test_trace_context_injection_without_span(self):
         self.assert_trace_context_injected("0", "0", False)
@@ -185,7 +187,9 @@ class TestLoggingInstrumentor(TestBase):
             span_id = format(span.get_span_context().span_id, "016x")
             trace_id = format(span.get_span_context().trace_id, "032x")
             trace_sampled = span.get_span_context().trace_flags.sampled
-            self.assert_trace_context_injected(span_id, trace_id, trace_sampled)
+            self.assert_trace_context_injected(
+                span_id, trace_id, trace_sampled
+            )
 
         LoggingInstrumentor().uninstrument()
 
