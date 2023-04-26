@@ -128,6 +128,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   ([#1434](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/1434))
 - `opentelemetry-instrumentation-confluent-kafka` Add support for the latest versions of the library.
   ([#1468](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/1468))
+- `opentelemetry-resource-detector-kubernetes` Add support resource detection of kubernetes properties.
+  ([#1489](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/1489))
 
 ### Fixed
 
