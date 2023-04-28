@@ -7,23 +7,86 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## Unreleased
 
+- `opentelemetry-instrumentation-system-metrics` Add `process.` prefix to `runtime.memory`, `runtime.cpu.time`, and `runtime.gc_count`. Change `runtime.memory` from count to UpDownCounter. ([#1735](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/1735))
+- Add request and response hooks for GRPC instrumentation (client only)
+  ([#1706](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/1706))
+- `opentelemetry-instrumentation-pymemcache` Update instrumentation to support pymemcache >4
+  ([#1764](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/1764))
+
 ### Added
 
+- Add `excluded_urls` functionality to `urllib` and `urllib3` instrumentations
+  ([#1733](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/1733))
+- Make Django request span attributes available for `start_span`. 
+  ([#1730](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/1730))
+- Make ASGI request span attributes available for `start_span`. 
+  ([#1762](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/1762))
+
+### Fixed
+
+- Fix elasticsearch db.statement attribute to be sanitized by default
+  ([#1758](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/1758))
+- Fix `AttributeError` when AWS Lambda handler receives a list event
+  ([#1738](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/1738))
+- Fix `None does not implement middleware` error when there are no middlewares registered
+  ([#1766](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/1766))
+
+## Version 1.17.0/0.38b0 (2023-03-22)
+
+### Added
+
+- Add connection attributes to sqlalchemy connect span
+  ([#1608](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/1608))
+- Add support for enabling Redis sanitization from environment variable
+  ([#1690](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/1690))
+- Add metrics instrumentation for sqlalchemy
+  ([#1645](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/1645))
+
+### Fixed
+
+- Fix Flask instrumentation to only close the span if it was created by the same thread.
+  ([#1654](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/1654))
+- Fix confluent-kafka instrumentation by allowing Producer headers to be dict or list
+  ([#1655](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/1655))
+- `opentelemetry-instrumentation-system-metrics` Fix initialization of the instrumentation class when configuration is provided
+  ([#1438](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/1439))
+- Fix exception in Urllib3 when dealing with filelike body.
+  ([#1399](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/1399))
+- Fix httpx resource warnings
+  ([#1695](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/1695))
+
+### Changed
+
+- `opentelemetry-instrumentation-requests` Replace `name_callback` and `span_callback` with standard `response_hook` and `request_hook` callbacks
+  ([#670](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/670))
+
+## Version 1.16.0/0.37b0 (2023-02-17)
+
+### Added
+
+- Support `aio_pika` 9.x (([#1670](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/1670])
 - `opentelemetry-instrumentation-redis` Add `sanitize_query` config option to allow query sanitization.  ([#1572](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/1572))
+- `opentelemetry-instrumentation-elasticsearch` Add optional db.statement query sanitization.
+  ([#1598](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/1598))
 - `opentelemetry-instrumentation-celery` Record exceptions as events on the span.
   ([#1573](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/1573))
 - Add metric instrumentation for urllib
   ([#1553](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/1553))
 - `opentelemetry/sdk/extension/aws` Implement [`aws.ecs.*`](https://github.com/open-telemetry/opentelemetry-specification/blob/main/specification/resource/semantic_conventions/cloud_provider/aws/ecs.md) and [`aws.logs.*`](https://opentelemetry.io/docs/reference/specification/resource/semantic_conventions/cloud_provider/aws/logs/) resource attributes in the `AwsEcsResourceDetector` detector when the ECS Metadata v4 is available
   ([#1212](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/1212))
+- `opentelemetry-instrumentation-aio-pika` Support `aio_pika` 8.x
+  ([#1481](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/1481))
 - `opentelemetry-instrumentation-aws-lambda` Flush `MeterProvider` at end of function invocation.
   ([#1613](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/1613))
-- Fix aiohttp bug with unset `trace_configs` ([#1592](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/1592))
+- Fix aiohttp bug with unset `trace_configs`
+  ([#1592](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/1592))
 - `opentelemetry-instrumentation-django` Allow explicit `excluded_urls` configuration through `instrument()`
   ([#1618](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/1618))
 
 ### Fixed
 
+- Fix TortoiseORM instrumentation `AttributeError: type object 'Config' has no attribute 'title'`
+  ([#1575](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/1575))
 - Fix SQLAlchemy uninstrumentation
   ([#1581](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/1581))
 - `opentelemetry-instrumentation-grpc` Fix code()/details() of _OpentelemetryServicerContext.
@@ -39,6 +102,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   ([#1435](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/1435))
 - mongo db - fix db statement capturing
   ([#1512](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/1512))
+- Add commit method for ConfluentKafkaInstrumentor's ProxiedConsumer
+  ([#1656](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/1656))
 
 ## Version 1.15.0/0.36b0 (2022-12-10)
 

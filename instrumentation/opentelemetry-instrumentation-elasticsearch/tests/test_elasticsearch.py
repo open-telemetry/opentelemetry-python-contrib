@@ -11,6 +11,7 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
+
 import json
 import os
 import threading
@@ -27,9 +28,12 @@ from opentelemetry import trace
 from opentelemetry.instrumentation.elasticsearch import (
     ElasticsearchInstrumentor,
 )
+from opentelemetry.instrumentation.elasticsearch.utils import sanitize_body
 from opentelemetry.semconv.trace import SpanAttributes
 from opentelemetry.test.test_base import TestBase
 from opentelemetry.trace import StatusCode
+
+from . import sanitization_queries  # pylint: disable=no-name-in-module
 
 major_version = elasticsearch.VERSION[0]
 
@@ -42,7 +46,6 @@ elif major_version == 5:
 else:
     from . import helpers_es2 as helpers  # pylint: disable=no-name-in-module
 
-
 Article = helpers.Article
 
 
@@ -50,6 +53,20 @@ Article = helpers.Article
     "elasticsearch.connection.http_urllib3.Urllib3HttpConnection.perform_request"
 )
 class TestElasticsearchIntegration(TestBase):
+    search_attributes = {
+        SpanAttributes.DB_SYSTEM: "elasticsearch",
+        "elasticsearch.url": "/test-index/_search",
+        "elasticsearch.method": helpers.dsl_search_method,
+        "elasticsearch.target": "test-index",
+        SpanAttributes.DB_STATEMENT: str({"query": {"bool": {"filter": "?"}}}),
+    }
+
+    create_attributes = {
+        SpanAttributes.DB_SYSTEM: "elasticsearch",
+        "elasticsearch.url": "/test-index",
+        "elasticsearch.method": "HEAD",
+    }
+
     def setUp(self):
         super().setUp()
         self.tracer = self.tracer_provider.get_tracer(__name__)
@@ -241,21 +258,24 @@ class TestElasticsearchIntegration(TestBase):
         self.assertIsNotNone(span.end_time)
         self.assertEqual(
             span.attributes,
-            {
-                SpanAttributes.DB_SYSTEM: "elasticsearch",
-                "elasticsearch.url": "/test-index/_search",
-                "elasticsearch.method": helpers.dsl_search_method,
-                "elasticsearch.target": "test-index",
-                SpanAttributes.DB_STATEMENT: str(
-                    {
-                        "query": {
-                            "bool": {
-                                "filter": [{"term": {"author": "testing"}}]
-                            }
-                        }
-                    }
-                ),
-            },
+            self.search_attributes,
+        )
+
+    def test_dsl_search_sanitized(self, request_mock):
+        request_mock.return_value = (1, {}, '{"hits": {"hits": []}}')
+        client = Elasticsearch()
+        search = Search(using=client, index="test-index").filter(
+            "term", author="testing"
+        )
+        search.execute()
+        spans = self.get_finished_spans()
+        span = spans[0]
+        self.assertEqual(1, len(spans))
+        self.assertEqual(span.name, "Elasticsearch/<target>/_search")
+        self.assertIsNotNone(span.end_time)
+        self.assertEqual(
+            span.attributes,
+            self.search_attributes,
         )
 
     def test_dsl_create(self, request_mock):
@@ -264,17 +284,14 @@ class TestElasticsearchIntegration(TestBase):
         Article.init(using=client)
 
         spans = self.get_finished_spans()
+        assert spans
         self.assertEqual(2, len(spans))
         span1 = spans.by_attr(key="elasticsearch.method", value="HEAD")
         span2 = spans.by_attr(key="elasticsearch.method", value="PUT")
 
         self.assertEqual(
             span1.attributes,
-            {
-                SpanAttributes.DB_SYSTEM: "elasticsearch",
-                "elasticsearch.url": "/test-index",
-                "elasticsearch.method": "HEAD",
-            },
+            self.create_attributes,
         )
 
         attributes = {
@@ -286,6 +303,22 @@ class TestElasticsearchIntegration(TestBase):
         self.assertEqual(
             literal_eval(span2.attributes[SpanAttributes.DB_STATEMENT]),
             helpers.dsl_create_statement,
+        )
+
+    def test_dsl_create_sanitized(self, request_mock):
+        request_mock.return_value = (1, {}, {})
+        client = Elasticsearch()
+        Article.init(using=client)
+
+        spans = self.get_finished_spans()
+        assert spans
+
+        self.assertEqual(2, len(spans))
+        span = spans.by_attr(key="elasticsearch.method", value="HEAD")
+
+        self.assertEqual(
+            span.attributes,
+            self.create_attributes,
         )
 
     def test_dsl_index(self, request_mock):
@@ -411,4 +444,38 @@ class TestElasticsearchIntegration(TestBase):
         self.assertEqual(
             json.dumps(response_payload),
             spans[0].attributes[response_attribute_name],
+        )
+
+    def test_no_op_tracer_provider(self, request_mock):
+        ElasticsearchInstrumentor().uninstrument()
+        ElasticsearchInstrumentor().instrument(
+            tracer_provider=trace.NoOpTracerProvider()
+        )
+        response_payload = '{"found": false, "timed_out": true, "took": 7}'
+        request_mock.return_value = (
+            1,
+            {},
+            response_payload,
+        )
+        es = Elasticsearch()
+        res = es.get(index="test-index", doc_type="_doc", id=1)
+        self.assertEqual(
+            res.get("found"), json.loads(response_payload).get("found")
+        )
+
+        spans_list = self.get_finished_spans()
+        self.assertEqual(len(spans_list), 0)
+
+    def test_body_sanitization(self, _):
+        self.assertEqual(
+            sanitize_body(sanitization_queries.interval_query),
+            str(sanitization_queries.interval_query_sanitized),
+        )
+        self.assertEqual(
+            sanitize_body(sanitization_queries.match_query),
+            str(sanitization_queries.match_query_sanitized),
+        )
+        self.assertEqual(
+            sanitize_body(sanitization_queries.filter_query),
+            str(sanitization_queries.filter_query_sanitized),
         )

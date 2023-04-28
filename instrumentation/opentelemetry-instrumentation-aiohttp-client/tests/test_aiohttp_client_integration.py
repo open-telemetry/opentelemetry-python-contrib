@@ -26,6 +26,7 @@ import yarl
 from pkg_resources import iter_entry_points
 
 from opentelemetry import context
+from opentelemetry import trace as trace_api
 from opentelemetry.instrumentation import aiohttp_client
 from opentelemetry.instrumentation.aiohttp_client import (
     AioHttpClientInstrumentor,
@@ -121,7 +122,7 @@ class TestAioHttpIntegration(TestBase):
                             (span_status, None),
                             {
                                 SpanAttributes.HTTP_METHOD: "GET",
-                                SpanAttributes.HTTP_URL: f"http://{host}:{port}/test-path?query=param#foobar",
+                                SpanAttributes.HTTP_URL: f"http://{host}:{port}/test-path#foobar",
                                 SpanAttributes.HTTP_STATUS_CODE: int(
                                     status_code
                                 ),
@@ -433,6 +434,18 @@ class TestAioHttpClientInstrumentor(TestBase):
 
         run_with_test_server(create_session, self.URL, self.default_handler)
         self.assert_spans(1)
+
+    def test_no_op_tracer_provider(self):
+        AioHttpClientInstrumentor().uninstrument()
+        AioHttpClientInstrumentor().instrument(
+            tracer_provider=trace_api.NoOpTracerProvider()
+        )
+
+        run_with_test_server(
+            self.get_default_request(), self.URL, self.default_handler
+        )
+        spans_list = self.memory_exporter.get_finished_spans()
+        self.assertEqual(len(spans_list), 0)
 
     def test_uninstrument(self):
         AioHttpClientInstrumentor().uninstrument()

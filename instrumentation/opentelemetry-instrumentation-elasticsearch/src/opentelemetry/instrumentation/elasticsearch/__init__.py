@@ -96,6 +96,8 @@ from opentelemetry.instrumentation.utils import unwrap
 from opentelemetry.semconv.trace import SpanAttributes
 from opentelemetry.trace import SpanKind, get_tracer
 
+from .utils import sanitize_body
+
 logger = getLogger(__name__)
 
 
@@ -139,7 +141,10 @@ class ElasticsearchInstrumentor(BaseInstrumentor):
             elasticsearch,
             "Transport.perform_request",
             _wrap_perform_request(
-                tracer, self._span_name_prefix, request_hook, response_hook
+                tracer,
+                self._span_name_prefix,
+                request_hook,
+                response_hook,
             ),
         )
 
@@ -154,7 +159,10 @@ _regex_search_url = re.compile(r"/([^/]+)/_search[/]?")
 
 
 def _wrap_perform_request(
-    tracer, span_name_prefix, request_hook=None, response_hook=None
+    tracer,
+    span_name_prefix,
+    request_hook=None,
+    response_hook=None,
 ):
     # pylint: disable=R0912,R0914
     def wrapper(wrapped, _, args, kwargs):
@@ -213,7 +221,9 @@ def _wrap_perform_request(
                 if method:
                     attributes["elasticsearch.method"] = method
                 if body:
-                    attributes[SpanAttributes.DB_STATEMENT] = str(body)
+                    attributes[SpanAttributes.DB_STATEMENT] = sanitize_body(
+                        body
+                    )
                 if params:
                     attributes["elasticsearch.params"] = str(params)
                 if doc_id:
