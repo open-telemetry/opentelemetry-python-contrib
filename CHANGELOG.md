@@ -21,6 +21,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   ([#1730](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/1730))
 - Make ASGI request span attributes available for `start_span`. 
   ([#1762](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/1762))
+- `opentelemetry-instrumentation-celery` Add support for anonymous tasks.
+  ([#1407](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/1407)
+
 
 ### Fixed
 
