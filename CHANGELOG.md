@@ -21,6 +21,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   ([#1730](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/1730))
 - Make ASGI request span attributes available for `start_span`. 
   ([#1762](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/1762))
+- `opentelemetry-instrumentation-celery` Add support for anonymous tasks.
+  ([#1407](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/1407)
+
 
 ### Fixed
 
@@ -199,8 +202,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   ([#1333](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/1333))
 - `opentelemetry-instrumentation-asgi` Make ASGIGetter.get() compare all keys in a case insensitive manner.
   ([#1333](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/1333))
-- `opentelemetry-instrumentation-celery` Add support for anonymous tasks.
-  ([#1407](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/1407)
 - Use resp.text instead of resp.body for Falcon 3 to avoid a deprecation warning.
   ([#1412](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/1412))
 

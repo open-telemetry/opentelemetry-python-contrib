@@ -83,7 +83,7 @@ class TestCeleryInstrumentation(TestBase):
         self.assertNotEqual(consumer.parent, producer.context)
         self.assertEqual(consumer.parent.span_id, producer.context.span_id)
         self.assertEqual(consumer.context.trace_id, producer.context.trace_id)
-        
+
     def test_uninstrument(self):
         CeleryInstrumentor().instrument()
         CeleryInstrumentor().uninstrument()
@@ -98,6 +98,7 @@ class TestCeleryInstrumentation(TestBase):
 
         spans = self.memory_exporter.get_finished_spans()
         self.assertEqual(len(spans), 0)
+
 
 class TestCelerySignatureTask(TestBase):
     def setUp(self):
