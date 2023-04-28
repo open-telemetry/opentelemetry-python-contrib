@@ -185,6 +185,13 @@ class TestUtils(unittest.TestCase):
         utils.detach_span(fn_task, task_id)
         self.assertEqual(utils.retrieve_span(fn_task, task_id), (None, None))
 
+    def test_optional_task_span_attach(self):
+        task_id = "7c6731af-9533-40c3-83a9-25b58f0d837f"
+        span = trace._Span("name", mock.Mock(spec=trace_api.SpanContext))
+
+        # assert this is is a no-aop
+        self.assertIsNone(utils.attach_span(None, task_id, span))
+
     def test_span_delete_empty(self):
         # ensure detach_span doesn't raise an exception if span is not present
         @self.app.task
