@@ -12,6 +12,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   ([#1706](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/1706))
 - Fix memory leak in SQLAlchemy instrumentation where disposed `Engine` does not get garbage collected
   ([#1761](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/1771)
+- `opentelemetry-instrumentation-pymemcache` Update instrumentation to support pymemcache >4
+  ([#1764](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/1764))
 
 ### Added
 
@@ -19,6 +21,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   ([#1733](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/1733))
 - Make Django request span attributes available for `start_span`. 
   ([#1730](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/1730))
+- Make ASGI request span attributes available for `start_span`. 
+  ([#1762](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/1762))
+- `opentelemetry-instrumentation-celery` Add support for anonymous tasks.
+  ([#1407](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/1407)
+
 
 ### Fixed
 
