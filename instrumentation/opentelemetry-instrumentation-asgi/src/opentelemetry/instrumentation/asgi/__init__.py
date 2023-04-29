@@ -536,15 +536,16 @@ class OpenTelemetryMiddleware:
 
         span_name, additional_attributes = self.default_span_details(scope)
 
+        attributes = collect_request_attributes(scope)
+        attributes.update(additional_attributes)
         span, token = _start_internal_or_server_span(
             tracer=self.tracer,
             span_name=span_name,
             start_time=None,
             context_carrier=scope,
             context_getter=asgi_getter,
+            attributes=attributes,
         )
-        attributes = collect_request_attributes(scope)
-        attributes.update(additional_attributes)
         active_requests_count_attrs = _parse_active_request_count_attrs(
             attributes
         )
