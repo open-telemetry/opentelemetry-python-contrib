@@ -62,6 +62,7 @@ class TestLoggingInstrumentorProxyTracerProvider(TestBase):
             self.assertEqual(record.otelSpanID, "0")
             self.assertEqual(record.otelTraceID, "0")
             self.assertEqual(record.otelServiceName, "")
+            self.assertEqual(record.otelTraceSampled, False)
 
 
 def log_hook(span, record):
@@ -82,7 +83,7 @@ class TestLoggingInstrumentor(TestBase):
         super().tearDown()
         LoggingInstrumentor().uninstrument()
 
-    def assert_trace_context_injected(self, span_id, trace_id):
+    def assert_trace_context_injected(self, span_id, trace_id, trace_sampled):
         with self.caplog.at_level(level=logging.INFO):
             logger = logging.getLogger("test logger")
             logger.info("hello")
@@ -90,16 +91,20 @@ class TestLoggingInstrumentor(TestBase):
             record = self.caplog.records[0]
             self.assertEqual(record.otelSpanID, span_id)
             self.assertEqual(record.otelTraceID, trace_id)
+            self.assertEqual(record.otelTraceSampled, trace_sampled)
             self.assertEqual(record.otelServiceName, "unknown_service")
 
     def test_trace_context_injection(self):
         with self.tracer.start_as_current_span("s1") as span:
             span_id = format(span.get_span_context().span_id, "016x")
             trace_id = format(span.get_span_context().trace_id, "032x")
-            self.assert_trace_context_injected(span_id, trace_id)
+            trace_sampled = span.get_span_context().trace_flags.sampled
+            self.assert_trace_context_injected(
+                span_id, trace_id, trace_sampled
+            )
 
     def test_trace_context_injection_without_span(self):
-        self.assert_trace_context_injected("0", "0")
+        self.assert_trace_context_injected("0", "0", False)
 
     @mock.patch("logging.basicConfig")
     def test_basic_config_called(self, basic_config_mock):
@@ -163,6 +168,7 @@ class TestLoggingInstrumentor(TestBase):
         with self.tracer.start_as_current_span("s1") as span:
             span_id = format(span.get_span_context().span_id, "016x")
             trace_id = format(span.get_span_context().trace_id, "032x")
+            trace_sampled = span.get_span_context().trace_flags.sampled
             with self.caplog.at_level(level=logging.INFO):
                 logger = logging.getLogger("test logger")
                 logger.info("hello")
@@ -171,6 +177,7 @@ class TestLoggingInstrumentor(TestBase):
                 self.assertEqual(record.otelSpanID, span_id)
                 self.assertEqual(record.otelTraceID, trace_id)
                 self.assertEqual(record.otelServiceName, "unknown_service")
+                self.assertEqual(record.otelTraceSampled, trace_sampled)
                 self.assertEqual(
                     record.custom_user_attribute_from_log_hook, "some-value"
                 )
@@ -179,7 +186,10 @@ class TestLoggingInstrumentor(TestBase):
         with self.tracer.start_as_current_span("s1") as span:
             span_id = format(span.get_span_context().span_id, "016x")
             trace_id = format(span.get_span_context().trace_id, "032x")
-            self.assert_trace_context_injected(span_id, trace_id)
+            trace_sampled = span.get_span_context().trace_flags.sampled
+            self.assert_trace_context_injected(
+                span_id, trace_id, trace_sampled
+            )
 
         LoggingInstrumentor().uninstrument()
 
@@ -187,6 +197,7 @@ class TestLoggingInstrumentor(TestBase):
         with self.tracer.start_as_current_span("s1") as span:
             span_id = format(span.get_span_context().span_id, "016x")
             trace_id = format(span.get_span_context().trace_id, "032x")
+            trace_sampled = span.get_span_context().trace_flags.sampled
             with self.caplog.at_level(level=logging.INFO):
                 logger = logging.getLogger("test logger")
                 logger.info("hello")
@@ -195,3 +206,4 @@ class TestLoggingInstrumentor(TestBase):
                 self.assertFalse(hasattr(record, "otelSpanID"))
                 self.assertFalse(hasattr(record, "otelTraceID"))
                 self.assertFalse(hasattr(record, "otelServiceName"))
+                self.assertFalse(hasattr(record, "otelTraceSampled"))
