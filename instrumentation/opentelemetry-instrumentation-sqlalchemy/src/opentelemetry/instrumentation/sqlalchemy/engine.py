@@ -121,12 +121,12 @@ class EngineTracer:
     def _get_pool_name(self):
         if self.engine.pool.logging_name is not None:
             return self.engine.pool.logging_name
-        else:
-            drivername = self.engine.url.drivername or ""
-            host = self.engine.url.host or ""
-            port = self.engine.url.port or ""
-            database = self.engine.url.database or ""
-            return f"{drivername}://{host}:{port}/{database}"
+
+        drivername = self.engine.url.drivername or ""
+        host = self.engine.url.host or ""
+        port = self.engine.url.port or ""
+        database = self.engine.url.database or ""
+        return f"{drivername}://{host}:{port}/{database}"
 
     def _add_idle_to_connection_usage(self, value):
         self.connections_usage.add(
