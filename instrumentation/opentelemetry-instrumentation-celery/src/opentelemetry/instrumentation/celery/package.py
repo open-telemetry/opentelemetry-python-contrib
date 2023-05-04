@@ -14,4 +14,3 @@
 
 
 _instruments = ("celery >= 4.0, < 6.0",)
-_supports_metrics = True
