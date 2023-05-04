@@ -168,7 +168,7 @@ class TestRedis(TestBase):
         span = spans[0]
         self.assertEqual(span.attributes.get("db.statement"), "SET ? ?")
 
-    def test_query_sanitizer_disabled(self):
+    def test_query_sanitizer(self):
         redis_client = redis.Redis()
         connection = redis.connection.Connection()
         redis_client.connection = connection
