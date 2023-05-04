@@ -48,7 +48,7 @@ class TestRedisInstrument(TestBase):
     def test_long_command_sanitized(self):
         RedisInstrumentor().uninstrument()
         RedisInstrumentor().instrument(
-            tracer_provider=self.tracer_provider, sanitize_query=True
+            tracer_provider=self.tracer_provider
         )
 
         self.redis_client.mget(*range(2000))
@@ -75,7 +75,7 @@ class TestRedisInstrument(TestBase):
         self._check_span(span, "MGET")
         self.assertTrue(
             span.attributes.get(SpanAttributes.DB_STATEMENT).startswith(
-                "MGET 0 1 2 3"
+                "MGET ? ? ? ?"
             )
         )
         self.assertTrue(
@@ -85,7 +85,7 @@ class TestRedisInstrument(TestBase):
     def test_basics_sanitized(self):
         RedisInstrumentor().uninstrument()
         RedisInstrumentor().instrument(
-            tracer_provider=self.tracer_provider, sanitize_query=True
+            tracer_provider=self.tracer_provider
         )
 
         self.assertIsNone(self.redis_client.get("cheese"))
@@ -105,14 +105,14 @@ class TestRedisInstrument(TestBase):
         span = spans[0]
         self._check_span(span, "GET")
         self.assertEqual(
-            span.attributes.get(SpanAttributes.DB_STATEMENT), "GET cheese"
+            span.attributes.get(SpanAttributes.DB_STATEMENT), "GET ?"
         )
         self.assertEqual(span.attributes.get("db.redis.args_length"), 2)
 
     def test_pipeline_traced_sanitized(self):
         RedisInstrumentor().uninstrument()
         RedisInstrumentor().instrument(
-            tracer_provider=self.tracer_provider, sanitize_query=True
+            tracer_provider=self.tracer_provider
         )
 
         with self.redis_client.pipeline(transaction=False) as pipeline:
@@ -127,7 +127,7 @@ class TestRedisInstrument(TestBase):
         self._check_span(span, "SET RPUSH HGETALL")
         self.assertEqual(
             span.attributes.get(SpanAttributes.DB_STATEMENT),
-            "SET ? ?\nRPUSH ? ?\nHGETALL ?",
+            "SET ? ?",
         )
         self.assertEqual(span.attributes.get("db.redis.pipeline_length"), 3)
 
@@ -144,14 +144,14 @@ class TestRedisInstrument(TestBase):
         self._check_span(span, "SET RPUSH HGETALL")
         self.assertEqual(
             span.attributes.get(SpanAttributes.DB_STATEMENT),
-            "SET blah 32\nRPUSH foo éé\nHGETALL xxx",
+            "SET ? ? ? ? ? ? ?",
         )
         self.assertEqual(span.attributes.get("db.redis.pipeline_length"), 3)
 
     def test_pipeline_immediate_sanitized(self):
         RedisInstrumentor().uninstrument()
         RedisInstrumentor().instrument(
-            tracer_provider=self.tracer_provider, sanitize_query=True
+            tracer_provider=self.tracer_provider
         )
 
         with self.redis_client.pipeline() as pipeline:
@@ -182,7 +182,7 @@ class TestRedisInstrument(TestBase):
         span = spans[0]
         self._check_span(span, "SET")
         self.assertEqual(
-            span.attributes.get(SpanAttributes.DB_STATEMENT), "SET b 2"
+            span.attributes.get(SpanAttributes.DB_STATEMENT), "SET ? ?"
         )
 
     def test_parent(self):
@@ -230,7 +230,7 @@ class TestRedisClusterInstrument(TestBase):
         span = spans[0]
         self._check_span(span, "GET")
         self.assertEqual(
-            span.attributes.get(SpanAttributes.DB_STATEMENT), "GET cheese"
+            span.attributes.get(SpanAttributes.DB_STATEMENT), "GET ?"
         )
         self.assertEqual(span.attributes.get("db.redis.args_length"), 2)
 
@@ -247,7 +247,7 @@ class TestRedisClusterInstrument(TestBase):
         self._check_span(span, "SET RPUSH HGETALL")
         self.assertEqual(
             span.attributes.get(SpanAttributes.DB_STATEMENT),
-            "SET blah 32\nRPUSH foo éé\nHGETALL xxx",
+            "SET ? ? ? ? ? ? ?",
         )
         self.assertEqual(span.attributes.get("db.redis.pipeline_length"), 3)
 
@@ -308,7 +308,7 @@ class TestAsyncRedisInstrument(TestBase):
         self._check_span(span, "MGET")
         self.assertTrue(
             span.attributes.get(SpanAttributes.DB_STATEMENT).startswith(
-                "MGET 0 1 2 3"
+                "MGET ? ? ? ?"
             )
         )
         self.assertTrue(
@@ -322,7 +322,7 @@ class TestAsyncRedisInstrument(TestBase):
         span = spans[0]
         self._check_span(span, "GET")
         self.assertEqual(
-            span.attributes.get(SpanAttributes.DB_STATEMENT), "GET cheese"
+            span.attributes.get(SpanAttributes.DB_STATEMENT), "GET ?"
         )
         self.assertEqual(span.attributes.get("db.redis.args_length"), 2)
 
@@ -344,7 +344,7 @@ class TestAsyncRedisInstrument(TestBase):
         self._check_span(span, "SET RPUSH HGETALL")
         self.assertEqual(
             span.attributes.get(SpanAttributes.DB_STATEMENT),
-            "SET blah 32\nRPUSH foo éé\nHGETALL xxx",
+            "SET ? ? ? ? ? ? ?",
         )
         self.assertEqual(span.attributes.get("db.redis.pipeline_length"), 3)
 
@@ -364,7 +364,7 @@ class TestAsyncRedisInstrument(TestBase):
         span = spans[0]
         self._check_span(span, "SET")
         self.assertEqual(
-            span.attributes.get(SpanAttributes.DB_STATEMENT), "SET b 2"
+            span.attributes.get(SpanAttributes.DB_STATEMENT), "SET ? ?"
         )
 
     def test_parent(self):
@@ -412,7 +412,7 @@ class TestAsyncRedisClusterInstrument(TestBase):
         span = spans[0]
         self._check_span(span, "GET")
         self.assertEqual(
-            span.attributes.get(SpanAttributes.DB_STATEMENT), "GET cheese"
+            span.attributes.get(SpanAttributes.DB_STATEMENT), "GET ?"
         )
         self.assertEqual(span.attributes.get("db.redis.args_length"), 2)
 
@@ -488,5 +488,5 @@ class TestRedisDBIndexInstrument(TestBase):
         span = spans[0]
         self._check_span(span, "GET")
         self.assertEqual(
-            span.attributes.get(SpanAttributes.DB_STATEMENT), "GET foo"
+            span.attributes.get(SpanAttributes.DB_STATEMENT), "GET ?"
         )
