@@ -23,6 +23,10 @@ from opentelemetry.instrumentation.confluent_kafka import (
     ProxiedConsumer,
     ProxiedProducer,
 )
+from opentelemetry.instrumentation.confluent_kafka.utils import (
+    KafkaContextGetter,
+    KafkaContextSetter,
+)
 
 
 class TestConfluentKafka(TestCase):
@@ -73,3 +77,30 @@ class TestConfluentKafka(TestCase):
         consumer = instrumentation.instrument_consumer(consumer)
         self.assertEqual(consumer.__class__, ProxiedConsumer)
         self.assertTrue(hasattr(consumer, "commit"))
+
+    def test_context_setter(self) -> None:
+        context_setter = KafkaContextSetter()
+
+        carrier_dict = {"key1": "val1"}
+        context_setter.set(carrier_dict, "key2", "val2")
+        self.assertGreaterEqual(
+            carrier_dict.items(), {"key2": "val2".encode()}.items()
+        )
+
+        carrier_list = [("key1", "val1")]
+        context_setter.set(carrier_list, "key2", "val2")
+        self.assertTrue(("key2", "val2".encode()) in carrier_list)
+
+    def test_context_getter(self) -> None:
+        context_setter = KafkaContextSetter()
+        context_getter = KafkaContextGetter()
+
+        carrier_dict = {}
+        context_setter.set(carrier_dict, "key1", "val1")
+        self.assertEqual(context_getter.get(carrier_dict, "key1"), ["val1"])
+        self.assertEqual(["key1"], context_getter.keys(carrier_dict))
+
+        carrier_list = []
+        context_setter.set(carrier_list, "key1", "val1")
+        self.assertEqual(context_getter.get(carrier_list, "key1"), ["val1"])
+        self.assertEqual(["key1"], context_getter.keys(carrier_list))
