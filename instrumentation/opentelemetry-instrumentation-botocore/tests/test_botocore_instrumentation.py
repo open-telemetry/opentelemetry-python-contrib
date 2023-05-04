@@ -196,7 +196,7 @@ class TestBotocoreInstrumentor(TestBase):
         )
         self.memory_exporter.clear()
 
-        queue_url = response["QueueUrl"]
+        queue_url = response.get("QueueUrl")
         sqs.send_message(QueueUrl=queue_url, MessageBody="Test SQS MESSAGE!")
 
         self.assert_span(
