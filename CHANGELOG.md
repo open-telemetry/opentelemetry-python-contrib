@@ -25,6 +25,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   ([#1407](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/1407))
 - `opentelemetry-instrumentation-logging` Add `otelTraceSampled` to instrumetation-logging
   ([#1773](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/1773))
+- Make Flask request span attributes available for `start_span`. 
+  ([#1784](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/1784))
 
 
 ### Fixed
