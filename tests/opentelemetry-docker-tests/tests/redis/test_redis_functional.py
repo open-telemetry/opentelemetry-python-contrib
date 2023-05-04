@@ -47,9 +47,7 @@ class TestRedisInstrument(TestBase):
 
     def test_long_command_sanitized(self):
         RedisInstrumentor().uninstrument()
-        RedisInstrumentor().instrument(
-            tracer_provider=self.tracer_provider
-        )
+        RedisInstrumentor().instrument(tracer_provider=self.tracer_provider)
 
         self.redis_client.mget(*range(2000))
 
@@ -84,9 +82,7 @@ class TestRedisInstrument(TestBase):
 
     def test_basics_sanitized(self):
         RedisInstrumentor().uninstrument()
-        RedisInstrumentor().instrument(
-            tracer_provider=self.tracer_provider
-        )
+        RedisInstrumentor().instrument(tracer_provider=self.tracer_provider)
 
         self.assertIsNone(self.redis_client.get("cheese"))
         spans = self.memory_exporter.get_finished_spans()
@@ -111,9 +107,7 @@ class TestRedisInstrument(TestBase):
 
     def test_pipeline_traced_sanitized(self):
         RedisInstrumentor().uninstrument()
-        RedisInstrumentor().instrument(
-            tracer_provider=self.tracer_provider
-        )
+        RedisInstrumentor().instrument(tracer_provider=self.tracer_provider)
 
         with self.redis_client.pipeline(transaction=False) as pipeline:
             pipeline.set("blah", 32)
@@ -127,7 +121,7 @@ class TestRedisInstrument(TestBase):
         self._check_span(span, "SET RPUSH HGETALL")
         self.assertEqual(
             span.attributes.get(SpanAttributes.DB_STATEMENT),
-            "SET ? ?",
+            "SET ? ?\nRPUSH ? ?\nHGETALL ?",
         )
         self.assertEqual(span.attributes.get("db.redis.pipeline_length"), 3)
 
@@ -150,9 +144,7 @@ class TestRedisInstrument(TestBase):
 
     def test_pipeline_immediate_sanitized(self):
         RedisInstrumentor().uninstrument()
-        RedisInstrumentor().instrument(
-            tracer_provider=self.tracer_provider
-        )
+        RedisInstrumentor().instrument(tracer_provider=self.tracer_provider)
 
         with self.redis_client.pipeline() as pipeline:
             pipeline.set("a", 1)
