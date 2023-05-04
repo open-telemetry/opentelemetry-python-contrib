@@ -144,7 +144,7 @@ class TestRedisInstrument(TestBase):
         self._check_span(span, "SET RPUSH HGETALL")
         self.assertEqual(
             span.attributes.get(SpanAttributes.DB_STATEMENT),
-            "SET ? ? ? ? ? ? ?",
+            "SET ? ?\nRPUSH ? ?\nHGETALL ?",
         )
         self.assertEqual(span.attributes.get("db.redis.pipeline_length"), 3)
 
@@ -247,7 +247,7 @@ class TestRedisClusterInstrument(TestBase):
         self._check_span(span, "SET RPUSH HGETALL")
         self.assertEqual(
             span.attributes.get(SpanAttributes.DB_STATEMENT),
-            "SET ? ? ? ? ? ? ?",
+            "SET ? ?\nRPUSH ? ?\nHGETALL ?",
         )
         self.assertEqual(span.attributes.get("db.redis.pipeline_length"), 3)
 
@@ -344,7 +344,7 @@ class TestAsyncRedisInstrument(TestBase):
         self._check_span(span, "SET RPUSH HGETALL")
         self.assertEqual(
             span.attributes.get(SpanAttributes.DB_STATEMENT),
-            "SET ? ? ? ? ? ? ?",
+            "SET ? ?\nRPUSH ? ?\nHGETALL ?",
         )
         self.assertEqual(span.attributes.get("db.redis.pipeline_length"), 3)
 
@@ -434,7 +434,7 @@ class TestAsyncRedisClusterInstrument(TestBase):
         self._check_span(span, "SET RPUSH HGETALL")
         self.assertEqual(
             span.attributes.get(SpanAttributes.DB_STATEMENT),
-            "SET blah 32\nRPUSH foo éé\nHGETALL xxx",
+            "SET ? ?\nRPUSH ? ?\nHGETALL ?",
         )
         self.assertEqual(span.attributes.get("db.redis.pipeline_length"), 3)
 
