@@ -190,13 +190,18 @@ class TestBotocoreInstrumentor(TestBase):
         sqs = self._make_client("sqs")
         test_queue_name = "test_queue_name"
 
-        response = sqs.create_queue(QueueName=test_queue_name)
+        sqs.create_queue(QueueName=test_queue_name)
         self.assert_span(
             "SQS", "CreateQueue", request_id=_REQUEST_ID_REGEX_MATCH
         )
         self.memory_exporter.clear()
 
+        response = sqs.get_queue_url(
+            QueueName=test_queue_name,
+        )
         queue_url = response["QueueUrl"]
+        self.memory_exporter.clear()
+
         sqs.send_message(QueueUrl=queue_url, MessageBody="Test SQS MESSAGE!")
 
         self.assert_span(
