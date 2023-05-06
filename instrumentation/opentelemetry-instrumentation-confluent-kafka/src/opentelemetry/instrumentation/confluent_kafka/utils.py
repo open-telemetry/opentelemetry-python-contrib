@@ -1,6 +1,8 @@
 from logging import getLogger
 from typing import List, Optional
 
+from opentelemetry import propagate
+from opentelemetry.trace import SpanKind, Link
 from opentelemetry.propagators import textmap
 from opentelemetry.semconv.trace import (
     MessagingDestinationKindValues,
@@ -82,11 +84,11 @@ _kafka_getter = KafkaContextGetter()
 
 
 def _enrich_span(
-    span,
-    topic,
-    partition: Optional[int] = None,
-    offset: Optional[int] = None,
-    operation: Optional[MessagingOperationValues] = None,
+        span,
+        topic,
+        partition: Optional[int] = None,
+        offset: Optional[int] = None,
+        operation: Optional[MessagingOperationValues] = None,
 ):
     if not span.is_recording():
         return
@@ -114,6 +116,18 @@ def _enrich_span(
             SpanAttributes.MESSAGING_MESSAGE_ID,
             f"{topic}.{partition}.{offset}",
         )
+
+
+def _get_links_from_records(records):
+    links = []
+    for record in records:
+        ctx = propagate.extract(record.headers(), getter=_kafka_getter)
+        if ctx:
+            for item in ctx.values():
+                if hasattr(item, "get_span_context"):
+                    links.append(Link(context=item.get_span_context()))
+
+    return links
 
 
 _kafka_setter = KafkaContextSetter()
