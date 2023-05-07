@@ -132,6 +132,8 @@ def attach_span(task, task_id, span, is_publish=False):
     NOTE: We cannot test for this well yet, because we do not run a celery worker,
     and cannot run `task.apply_async()`
     """
+    if task is None:
+        return
     span_dict = getattr(task, CTX_KEY, None)
     if span_dict is None:
         span_dict = {}
