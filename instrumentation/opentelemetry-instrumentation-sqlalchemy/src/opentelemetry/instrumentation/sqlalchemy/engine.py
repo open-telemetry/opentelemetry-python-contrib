@@ -119,18 +119,6 @@ class EngineTracer:
         self._register_event_listener(engine, "checkin", self._pool_checkin)
         self._register_event_listener(engine, "checkout", self._pool_checkout)
 
-    def _get_connection_string(self):
-        drivername = self.engine.url.drivername or ""
-        host = self.engine.url.host or ""
-        port = self.engine.url.port or ""
-        database = self.engine.url.database or ""
-        return f"{drivername}://{host}:{port}/{database}"
-
-    def _get_pool_name(self):
-        if self.engine.pool.logging_name is not None:
-            return self.engine.pool.logging_name
-        return self._get_connection_string()
-
     def _add_idle_to_connection_usage(self, value):
         self.connections_usage.add(
             value,
@@ -312,12 +300,20 @@ def _get_attributes_from_cursor(vendor, cursor, attrs):
     return attrs
 
 
+def _get_connection_string(engine):
+    drivername = engine.url.drivername or ""
+    host = engine.url.host or ""
+    port = engine.url.port or ""
+    database = engine.url.database or ""
+    return f"{drivername}://{host}:{port}/{database}"
+
+
 def _get_attributes_from_engine(engine):
     """Set metadata attributes of the database engine"""
     attrs = {}
 
-    attrs["pool.name"] = (
-        getattr(getattr(engine, "pool", None), "logging_name", "") or ""
-    )
+    attrs["pool.name"] = getattr(
+        getattr(engine, "pool", None), "logging_name", None
+    ) or _get_connection_string(engine)
 
     return attrs
