@@ -47,7 +47,7 @@ def _get_container_id_v2():
         ) as container_info_file:
             for raw_line in container_info_file.readlines():
                 line = raw_line.strip()
-                if "hostname" in line:
+                if "containers" or "hostname" in line:
                     container_id_list = [
                         id_
                         for id_ in line.split("/")
