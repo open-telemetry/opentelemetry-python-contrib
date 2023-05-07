@@ -295,14 +295,17 @@ class CeleryInstrumentor(BaseInstrumentor):
 
     def update_task_start_time(self, task_id):
         cur_time = default_timer()
-        start_time = (
+        task_start_time = (
             cur_time - self.task_id_to_start_time[task_id]
             if task_id in self.task_id_to_start_time
             else cur_time
         )
-        self.task_id_to_start_time[task_id] = start_time
+        self.task_id_to_start_time[task_id] = task_start_time
 
     def _record_histograms(self, task_id, metric_attributes):
+        if task_id is None:
+            return
+
         self.metrics["flower.task.runtime.seconds"].record(
             self.task_id_to_start_time.get(task_id),
             attributes=metric_attributes,
