@@ -15,6 +15,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- Expand sqlalchemy pool.name to follow the semantic conventions
+  ([#1778](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/1778))
 - Add `excluded_urls` functionality to `urllib` and `urllib3` instrumentations
   ([#1733](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/1733))
 - Make Django request span attributes available for `start_span`. 
