@@ -217,9 +217,7 @@ class TestMiddleware(WsgiTestBase):
 
         span = spans[0]
 
-        self.assertEqual(
-            span.name, "empty"
-        )
+        self.assertEqual(span.name, "empty")
 
     def test_traced_post(self):
         Client().post("/traced/")
