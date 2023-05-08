@@ -501,6 +501,11 @@ class OpenTelemetryMiddleware:
             unit="ms",
             description="measures the duration of the inbound HTTP request",
         )
+        self.server_response_size_histogram = self.meter.create_histogram(
+            name=MetricInstruments.HTTP_SERVER_RESPONSE_SIZE,
+            unit="By",
+            description="measures the size of HTTP response messages (compressed).",
+        )
         self.active_requests_counter = self.meter.create_up_down_counter(
             name=MetricInstruments.HTTP_SERVER_ACTIVE_REQUESTS,
             unit="requests",
@@ -615,6 +620,18 @@ class OpenTelemetryMiddleware:
     ):
         @wraps(send)
         async def otel_send(message):
+            if message.get("headers"):
+                headers = {
+                    _key.decode("utf8"): _value.decode("utf8")
+                    for (_key, _value) in message.get("headers")
+                }
+                if headers.get("content-length"):
+                    target = _collect_target_attribute(scope)
+                    if target:
+                        duration_attrs[SpanAttributes.HTTP_TARGET] = target
+                    self.server_response_size_histogram.record(
+                        int(headers.get("content-length")), duration_attrs
+                    )
             with self.tracer.start_as_current_span(
                 " ".join((server_span_name, scope["type"], "send"))
             ) as send_span:
