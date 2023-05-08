@@ -75,6 +75,7 @@ DJANGO_3_0 = VERSION >= (3, 0)
 
 if DJANGO_2_0:
     from django.urls import re_path
+    from django.urls import path
 else:
     from django.conf.urls import url as re_path
 
@@ -87,6 +88,7 @@ urlpatterns = [
     re_path(r"^excluded_noarg/", excluded_noarg),
     re_path(r"^excluded_noarg2/", excluded_noarg2),
     re_path(r"^span_name/([0-9]{4})/$", route_span_name),
+    path("", traced, name="empty"),
 ]
 _django_instrumentor = DjangoInstrumentor()
 
@@ -206,6 +208,18 @@ class TestMiddleware(WsgiTestBase):
             self.assertTrue(mock_span.is_recording.called)
             self.assertFalse(mock_span.set_attribute.called)
             self.assertFalse(mock_span.set_status.called)
+
+    def test_empty_path(self):
+        Client().get("/")
+
+        spans = self.memory_exporter.get_finished_spans()
+        self.assertEqual(len(spans), 1)
+
+        span = spans[0]
+
+        self.assertEqual(
+            span.name, "empty"
+        )
 
     def test_traced_post(self):
         Client().post("/traced/")

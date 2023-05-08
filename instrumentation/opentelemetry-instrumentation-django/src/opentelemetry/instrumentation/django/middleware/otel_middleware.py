@@ -172,7 +172,7 @@ class _DjangoMiddleware(MiddlewareMixin):
             else:
                 match = resolve(request.path)
 
-            if hasattr(match, "route"):
+            if hasattr(match, "route") and match.route:
                 return match.route
 
             # Instead of using `view_name`, better to use `_func_name` as some applications can use similar
