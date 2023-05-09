@@ -518,20 +518,7 @@ class OpenTelemetryMiddleware:
         self.server_request_hook = server_request_hook
         self.client_request_hook = client_request_hook
         self.client_response_hook = client_response_hook
-
-    def send_response_size_metric(self, message, scope, duration_attrs):
-        if message.get("headers"):
-            headers = {
-                _key.decode("utf8"): _value.decode("utf8")
-                for (_key, _value) in message.get("headers")
-            }
-            if headers.get("content-length"):
-                target = _collect_target_attribute(scope)
-                if target:
-                    duration_attrs[SpanAttributes.HTTP_TARGET] = target
-                self.server_response_size_histogram.record(
-                    int(headers.get("content-length")), duration_attrs
-                )
+        self.content_length_header = None
 
     async def __call__(self, scope, receive, send):
         """The ASGI application
@@ -607,6 +594,10 @@ class OpenTelemetryMiddleware:
                 self.active_requests_counter.add(
                     -1, active_requests_count_attrs
                 )
+                if self.content_length_header:
+                    self.server_response_size_histogram.record(
+                        self.content_length_header, duration_attrs
+                    )
             if token:
                 context.detach(token)
 
@@ -634,7 +625,6 @@ class OpenTelemetryMiddleware:
     ):
         @wraps(send)
         async def otel_send(message):
-            self.send_response_size_metric(message, scope, duration_attrs)
             with self.tracer.start_as_current_span(
                 " ".join((server_span_name, scope["type"], "send"))
             ) as send_span:
@@ -674,6 +664,19 @@ class OpenTelemetryMiddleware:
                         ),
                         setter=asgi_setter,
                     )
+
+                if message.get("headers"):
+                    headers = {
+                        _key.decode("utf8"): _value.decode("utf8")
+                        for (_key, _value) in message.get("headers")
+                    }
+                    if headers.get("content-length"):
+                        try:
+                            self.content_length_header = int(
+                                headers["content-length"]
+                            )
+                        except TypeError:
+                            pass
 
                 await send(message)
 
