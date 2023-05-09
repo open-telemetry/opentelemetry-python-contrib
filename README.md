@@ -111,12 +111,12 @@ Maintainers ([@open-telemetry/python-maintainers](https://github.com/orgs/open-t
 
 - [Diego Hurtado](https://github.com/ocelotl), Lightstep
 - [Leighton Chen](https://github.com/lzchen), Microsoft
-- [Srikanth Chekuri](https://github.com/srikanthccv), signoz.io
 
 Emeritus Maintainers:
 
 - [Alex Boten](https://github.com/codeboten), Lightstep
 - [Owais Lone](https://github.com/owais), Splunk
+- [Srikanth Chekuri](https://github.com/srikanthccv), signoz.io
 
 *Find more about the maintainer role in [community repository](https://github.com/open-telemetry/community/blob/main/community-membership.md#maintainer).*
 
