@@ -206,17 +206,17 @@ def _set_api_gateway_v1_proxy_attributes(
         if "User-Agent" in lambda_event["headers"]:
             span.set_attribute(
                 SpanAttributes.HTTP_USER_AGENT,
-                lambda_event["headers"].get("User-Agent"),
+                lambda_event["headers"]["User-Agent"],
             )
         if "X-Forwarded-Proto" in lambda_event["headers"]:
             span.set_attribute(
                 SpanAttributes.HTTP_SCHEME,
-                lambda_event["headers"].get("X-Forwarded-Proto"),
+                lambda_event["headers"]["X-Forwarded-Proto"],
             )
         if "Host" in lambda_event["headers"]:
             span.set_attribute(
                 SpanAttributes.NET_HOST_NAME,
-                lambda_event["headers"].get("Host"),
+                lambda_event["headers"]["Host"],
             )
     if "resource" in lambda_event:
         span.set_attribute(SpanAttributes.HTTP_ROUTE, lambda_event["resource"])
