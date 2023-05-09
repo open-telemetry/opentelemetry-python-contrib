@@ -151,7 +151,7 @@ class CeleryInstrumentor(BaseInstrumentor):
         if task is None or task_id is None:
             return
 
-        self.update_task_start_time(task_id)
+        self.update_task_duration_time(task_id)
         request = task.request
         tracectx = extract(request, getter=celery_getter) or None
 
@@ -190,7 +190,7 @@ class CeleryInstrumentor(BaseInstrumentor):
 
         activation.__exit__(None, None, None)
         utils.detach_span(task, task_id)
-        self.update_task_start_time(task_id)
+        self.update_task_duration_time(task_id)
         labels = {"task": task.name, "worker": task.request.hostname}
         self._record_histograms(task_id, labels)
 
@@ -293,14 +293,14 @@ class CeleryInstrumentor(BaseInstrumentor):
         # something that isn't an `Exception`
         span.set_attribute(_TASK_RETRY_REASON_KEY, str(reason))
 
-    def update_task_start_time(self, task_id):
+    def update_task_duration_time(self, task_id):
         cur_time = default_timer()
-        task_start_time = (
+        task_duration_time_until_now = (
             cur_time - self.task_id_to_start_time[task_id]
             if task_id in self.task_id_to_start_time
             else cur_time
         )
-        self.task_id_to_start_time[task_id] = task_start_time
+        self.task_id_to_start_time[task_id] = task_duration_time_until_now
 
     def _record_histograms(self, task_id, metric_attributes):
         if task_id is None:
