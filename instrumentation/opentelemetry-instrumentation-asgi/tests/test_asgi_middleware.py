@@ -575,6 +575,7 @@ class TestAsgiApplication(AsgiTestBase):
             "http.flavor": "1.0",
         }
         metrics_list = self.memory_metrics_reader.get_metrics_data()
+        # pylint: disable=too-many-nested-blocks
         for resource_metric in metrics_list.resource_metrics:
             for scope_metrics in resource_metric.scope_metrics:
                 for metric in scope_metrics.metrics:
