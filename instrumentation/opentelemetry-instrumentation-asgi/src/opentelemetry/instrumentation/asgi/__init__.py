@@ -519,6 +519,20 @@ class OpenTelemetryMiddleware:
         self.client_request_hook = client_request_hook
         self.client_response_hook = client_response_hook
 
+    def send_response_size_metric(self, message, scope, duration_attrs):
+        if message.get("headers"):
+            headers = {
+                _key.decode("utf8"): _value.decode("utf8")
+                for (_key, _value) in message.get("headers")
+            }
+            if headers.get("content-length"):
+                target = _collect_target_attribute(scope)
+                if target:
+                    duration_attrs[SpanAttributes.HTTP_TARGET] = target
+                self.server_response_size_histogram.record(
+                    int(headers.get("content-length")), duration_attrs
+                )
+
     async def __call__(self, scope, receive, send):
         """The ASGI application
 
@@ -620,18 +634,7 @@ class OpenTelemetryMiddleware:
     ):
         @wraps(send)
         async def otel_send(message):
-            if message.get("headers"):
-                headers = {
-                    _key.decode("utf8"): _value.decode("utf8")
-                    for (_key, _value) in message.get("headers")
-                }
-                if headers.get("content-length"):
-                    target = _collect_target_attribute(scope)
-                    if target:
-                        duration_attrs[SpanAttributes.HTTP_TARGET] = target
-                    self.server_response_size_histogram.record(
-                        int(headers.get("content-length")), duration_attrs
-                    )
+            self.send_response_size_metric(message, scope, duration_attrs)
             with self.tracer.start_as_current_span(
                 " ".join((server_span_name, scope["type"], "send"))
             ) as send_span:
