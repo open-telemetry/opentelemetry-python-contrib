@@ -15,7 +15,8 @@
 import pytest
 import pytest_asyncio
 import aiohttp
-from http import HTTPMethod, HTTPStatus
+from http import HTTPStatus
+from .utils import HTTPMethod
 from pkg_resources import iter_entry_points
 from unittest import mock
 
