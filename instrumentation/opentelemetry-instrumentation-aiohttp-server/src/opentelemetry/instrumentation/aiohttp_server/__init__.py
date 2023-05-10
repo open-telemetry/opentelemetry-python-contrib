@@ -1,12 +1,16 @@
 import urllib
 from aiohttp import web
 from multidict import CIMultiDictProxy
-from opentelemetry import context, trace
+from timeit import default_timer
+
+from opentelemetry import context, trace, metrics
 from opentelemetry.instrumentation.aiohttp_server.package import _instruments
+from opentelemetry.instrumentation.aiohttp_server.version import __version__
 from opentelemetry.instrumentation.instrumentor import BaseInstrumentor
 from opentelemetry.instrumentation.utils import http_status_to_status_code
 from opentelemetry.propagators.textmap import Getter
 from opentelemetry.semconv.trace import SpanAttributes
+from opentelemetry.semconv.metrics import MetricInstruments
 from opentelemetry.trace.status import Status, StatusCode
 from opentelemetry.util.http import get_excluded_urls
 from opentelemetry.util.http import remove_url_credentials
@@ -16,8 +20,45 @@ from typing import Tuple
 
 _SUPPRESS_HTTP_INSTRUMENTATION_KEY = "suppress_http_instrumentation"
 
+_duration_attrs = [
+    SpanAttributes.HTTP_METHOD,
+    SpanAttributes.HTTP_HOST,
+    SpanAttributes.HTTP_SCHEME,
+    SpanAttributes.HTTP_STATUS_CODE,
+    SpanAttributes.HTTP_FLAVOR,
+    SpanAttributes.HTTP_SERVER_NAME,
+    SpanAttributes.NET_HOST_NAME,
+    SpanAttributes.NET_HOST_PORT,
+    SpanAttributes.HTTP_ROUTE,
+]
+
+_active_requests_count_attrs = [
+    SpanAttributes.HTTP_METHOD,
+    SpanAttributes.HTTP_HOST,
+    SpanAttributes.HTTP_SCHEME,
+    SpanAttributes.HTTP_FLAVOR,
+    SpanAttributes.HTTP_SERVER_NAME,
+]
+
 tracer = trace.get_tracer(__name__)
+meter = metrics.get_meter(__name__, __version__)
 _excluded_urls = get_excluded_urls("AIOHTTP_SERVER")
+
+
+def _parse_duration_attrs(req_attrs):
+    duration_attrs = {}
+    for attr_key in _duration_attrs:
+        if req_attrs.get(attr_key) is not None:
+            duration_attrs[attr_key] = req_attrs[attr_key]
+    return duration_attrs
+
+
+def _parse_active_request_count_attrs(req_attrs):
+    active_requests_count_attrs = {}
+    for attr_key in _active_requests_count_attrs:
+        if req_attrs.get(attr_key) is not None:
+            active_requests_count_attrs[attr_key] = req_attrs[attr_key]
+    return active_requests_count_attrs
 
 
 def get_default_span_details(request: web.Request) -> Tuple[str, dict]:
@@ -143,6 +184,22 @@ async def middleware(request, handler):
 
     span_name, additional_attributes = get_default_span_details(request)
 
+    req_attrs = collect_request_attributes(request)
+    duration_attrs = _parse_duration_attrs(req_attrs)
+    active_requests_count_attrs = _parse_active_request_count_attrs(req_attrs)
+
+    duration_histogram = meter.create_histogram(
+        name=MetricInstruments.HTTP_SERVER_DURATION,
+        unit="ms",
+        description="measures the duration of the inbound HTTP request",
+    )
+
+    active_requests_counter = meter.create_up_down_counter(
+        name=MetricInstruments.HTTP_SERVER_ACTIVE_REQUESTS,
+        unit="requests",
+        description="measures the number of concurrent HTTP requests those are currently in flight",
+    )
+
     with tracer.start_as_current_span(
         span_name,
         kind=trace.SpanKind.SERVER,
@@ -150,12 +207,18 @@ async def middleware(request, handler):
         attributes = collect_request_attributes(request)
         attributes.update(additional_attributes)
         span.set_attributes(attributes)
+        start = default_timer()
+        active_requests_counter.add(1, active_requests_count_attrs)
         try:
             resp = await handler(request)
             set_status_code(span, resp.status)
         except web.HTTPException as ex:
             set_status_code(span, ex.status_code)
             raise
+        finally:
+            duration = max(round((default_timer() - start) * 1000), 0)
+            duration_histogram.record(duration, duration_attrs)
+            active_requests_counter.add(-1, active_requests_count_attrs)
         return resp
 
 
