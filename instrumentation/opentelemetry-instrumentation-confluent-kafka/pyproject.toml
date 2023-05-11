@@ -31,7 +31,7 @@ dependencies = [
 
 [project.optional-dependencies]
 instruments = [
-  "confluent-kafka >= 1.8.2, < 2.1.1",
+  "confluent-kafka >= 1.8.2, <= 2.1.1",
 ]
 test = [
   "opentelemetry-instrumentation-confluent-kafka[instruments]",
