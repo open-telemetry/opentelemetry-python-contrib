@@ -12,12 +12,12 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import logging
+from logging import getLogger
 
 from opentelemetry.sdk.resources import Resource, ResourceDetector
 from opentelemetry.semconv.resource import ResourceAttributes
 
-logger = logging.getLogger(__name__)
+logger = getLogger(__name__)
 _DEFAULT_CGROUP_V1_PATH = "/proc/self/cgroup"
 _DEFAULT_CGROUP_V2_PATH = "/proc/self/mountinfo"
 _CONTAINER_ID_LENGTH = 64
