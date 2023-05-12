@@ -14,13 +14,54 @@
 # - be a member of the OpenTelemetry community so that the `component-owners.yml` action to automatically assign CODEOWNERS to PRs works correctly.
 #
 
-
 # For anything not explicitly taken by someone else:
 * @open-telemetry/opentelemetry-python-contrib-approvers
+
+/instrumentation/opentelemetry-instrumentation-aiohttp-client
+/instrumentation/opentelemetry-instrumentation-aiopg
+/instrumentation/opentelemetry-instrumentation-aio-pika
+/instrumentation/opentelemetry-instrumentation-asgi
+/instrumentation/opentelemetry-instrumentation-asyncpg
+/instrumentation/opentelemetry-instrumentation-aws-lambda
+/instrumentation/opentelemetry-instrumentation-boto
+/instrumentation/opentelemetry-instrumentation-boto3sqs
+/instrumentation/opentelemetry-instrumentation-botocore
+/instrumentation/opentelemetry-instrumentation-celery
+/instrumentation/opentelemetry-instrumentation-confluent-kafka
+/instrumentation/opentelemetry-instrumentation-dbapi
+/instrumentation/opentelemetry-instrumentation-django
+/instrumentation/opentelemetry-instrumentation-elasticsearch
+/instrumentation/opentelemetry-instrumentation-falcon
+/instrumentation/opentelemetry-instrumentation-fastapi
+/instrumentation/opentelemetry-instrumentation-flask @ocelotl
+/instrumentation/opentelemetry-instrumentation-grpc
+/instrumentation/opentelemetry-instrumentation-httpx
+/instrumentation/opentelemetry-instrumentation-jinja2 @ocelotl
+/instrumentation/opentelemetry-instrumentation-kafka-python
+/instrumentation/opentelemetry-instrumentation-logging @ocelotl
+/instrumentation/opentelemetry-instrumentation-mysql
+/instrumentation/opentelemetry-instrumentation-pika
+/instrumentation/opentelemetry-instrumentation-psycopg2
+/instrumentation/opentelemetry-instrumentation-pymemcache
+/instrumentation/opentelemetry-instrumentation-pymongo
+/instrumentation/opentelemetry-instrumentation-pymysql
+/instrumentation/opentelemetry-instrumentation-pyramid
+/instrumentation/opentelemetry-instrumentation-redis
+/instrumentation/opentelemetry-instrumentation-remoulade
+/instrumentation/opentelemetry-instrumentation-requests @ocelotl
+/instrumentation/opentelemetry-instrumentation-sklearn
+/instrumentation/opentelemetry-instrumentation-sqlalchemy
+/instrumentation/opentelemetry-instrumentation-sqlite3
+/instrumentation/opentelemetry-instrumentation-starlette
+/instrumentation/opentelemetry-instrumentation-system-metricl
+/instrumentation/opentelemetry-instrumentation-tornado
+/instrumentation/opentelemetry-instrumentation-tortoiseorm
+/instrumentation/opentelemetry-instrumentation-urllib @ocelotl
+/instrumentation/opentelemetry-instrumentation-urllib3 @ocelotl
+/instrumentation/opentelemetry-instrumentation-wsgi
 
 # Learn about CODEOWNERS file format:
 # https://help.github.com/en/articles/about-code-owners
 #
 # Learn about membership in OpenTelemetry community:
 # https://github.com/open-telemetry/community/blob/main/community-membership.md
-#
