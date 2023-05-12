@@ -101,9 +101,7 @@ from opentelemetry.instrumentation.utils import (
     _SUPPRESS_INSTRUMENTATION_KEY,
     unwrap,
 )
-from opentelemetry.propagators.aws.aws_xray_propagator import (
-    AwsXRayPropagator,
-)
+from opentelemetry.propagators.aws.aws_xray_propagator import AwsXRayPropagator
 from opentelemetry.semconv.trace import SpanAttributes
 from opentelemetry.trace import get_tracer
 from opentelemetry.trace.span import Span
