@@ -22,7 +22,7 @@ Usage example for `opentelemetry-resource-detector-container`
 
 .. code-block:: python
 
-    import opentelemetry.trace as trace
+    from opentelemetry import trace
     from opentelemetry.sdk.trace import TracerProvider
     from opentelemetry.resource.detector.container import (
         ContainerResourceDetector,
