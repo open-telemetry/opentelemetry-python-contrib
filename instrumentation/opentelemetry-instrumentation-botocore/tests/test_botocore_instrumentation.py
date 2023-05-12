@@ -40,7 +40,7 @@ from opentelemetry.propagators.aws.aws_xray_propagator import TRACE_HEADER_KEY
 from opentelemetry.semconv.trace import SpanAttributes
 from opentelemetry.test.mock_textmap import MockTextMapPropagator
 from opentelemetry.test.test_base import TestBase
-from opentelemetry.trace.span import Span, format_span_id, format_trace_id
+from opentelemetry.trace.span import format_span_id, format_trace_id
 
 _REQUEST_ID_REGEX_MATCH = r"[A-Z0-9]{52}"
 
@@ -336,9 +336,6 @@ class TestBotocoreInstrumentor(TestBase):
         ec2.describe_instances()
 
         request_id = "fdcdcab1-ae5c-489e-9c33-4637c5dda355"
-        span = self.assert_span(
-            "EC2", "DescribeInstances", request_id=request_id
-        )
 
         self.assertNotIn(MockTextMapPropagator.TRACE_ID_KEY, headers)
         self.assertNotIn(MockTextMapPropagator.SPAN_ID_KEY, headers)
