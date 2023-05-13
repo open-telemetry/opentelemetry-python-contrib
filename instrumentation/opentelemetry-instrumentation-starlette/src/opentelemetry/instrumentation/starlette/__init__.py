@@ -212,7 +212,7 @@ class StarletteInstrumentor(BaseInstrumentor):
             app.add_middleware(
                 OpenTelemetryMiddleware,
                 excluded_urls=_excluded_urls,
-                default_span_details=_get_route_details,
+                default_span_details=_get_default_span_details,
                 server_request_hook=server_request_hook,
                 client_request_hook=client_request_hook,
                 client_response_hook=client_response_hook,
