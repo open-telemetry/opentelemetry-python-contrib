@@ -335,7 +335,6 @@ class TestBotocoreInstrumentor(TestBase):
         )
         ec2.describe_instances()
 
-        request_id = "fdcdcab1-ae5c-489e-9c33-4637c5dda355"
 
         self.assertNotIn(MockTextMapPropagator.TRACE_ID_KEY, headers)
         self.assertNotIn(MockTextMapPropagator.SPAN_ID_KEY, headers)
