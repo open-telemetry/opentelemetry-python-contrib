@@ -335,7 +335,6 @@ class TestBotocoreInstrumentor(TestBase):
         )
         ec2.describe_instances()
 
-
         self.assertNotIn(MockTextMapPropagator.TRACE_ID_KEY, headers)
         self.assertNotIn(MockTextMapPropagator.SPAN_ID_KEY, headers)
 
