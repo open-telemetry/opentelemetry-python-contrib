@@ -129,7 +129,7 @@ libraries = {
         "instrumentation": "opentelemetry-instrumentation-remoulade==0.39b0.dev",
     },
     "requests": {
-        "library": "requests ~= 2.0",
+        "library": "requests <= 2.29.0",
         "instrumentation": "opentelemetry-instrumentation-requests==0.39b0.dev",
     },
     "scikit-learn": {

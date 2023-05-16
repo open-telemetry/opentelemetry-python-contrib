@@ -13,6 +13,6 @@
 # limitations under the License.
 
 
-_instruments = ("requests ~= 2.0",)
+_instruments = ("requests <= 2.29.0",)
 
 _supports_metrics = True
