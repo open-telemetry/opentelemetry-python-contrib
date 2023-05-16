@@ -24,8 +24,6 @@ _logger = logging.getLogger(__name__)
 _BotoClientT = "botocore.client.BaseClient"
 _BotoResultT = Dict[str, Any]
 _BotoClientErrorT = "botocore.exceptions.ClientError"
-
-_OperationParamsT = Dict[str, Any]
 _AttributeMapT = Dict[str, AttributeValue]
 
 
@@ -44,9 +42,15 @@ class _AwsSdkCallContext:
         api_version: the API version of the called AWS service.
         span_name: the name used to create the span.
         span_kind: the kind used to create the span.
+        configuration: a class represents additional configuration for botocore extensions.
     """
 
-    def __init__(self, client: _BotoClientT, args: Tuple[str, Dict[str, Any]]):
+    def __init__(
+        self,
+        client: _BotoClientT,
+        args: Tuple[str, Dict[str, Any]],
+        configuration,
+    ):
         operation = args[0]
         try:
             params = args[1]
@@ -60,6 +64,7 @@ class _AwsSdkCallContext:
         self.service = service_model.service_name.lower()  # type: str
         self.operation = operation  # type: str
         self.params = params  # type: Dict[str, Any]
+        self.configuration = configuration
 
         # 'operation' and 'service' are essential for instrumentation.
         # for all other attributes we extract them defensively. All of them should

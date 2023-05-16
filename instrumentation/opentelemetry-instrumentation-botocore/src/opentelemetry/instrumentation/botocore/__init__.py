@@ -66,6 +66,8 @@ for example:
     def response_hook(span, service_name, operation_name, result):
         # response hook logic
 
+    dynamodb_sanitize_query (bool) - an optional dynamodb query sanitization flag, default is False
+
     # Instrument Botocore with hooks
     BotocoreInstrumentor().instrument(request_hook=request_hook, response_hook=response_hook)
 
@@ -76,6 +78,9 @@ for example:
     )
     ec2 = self.session.create_client("ec2", region_name="us-west-2")
     ec2.describe_instances()
+
+    # Instrument Botocore with dynamoDB sanitization enabled - default is False
+    BotocoreInstrumentor().instrument(dynamodb_sanitize_query=True)
 """
 
 import logging
@@ -117,6 +122,17 @@ def _patched_endpoint_prepare_request(wrapped, instance, args, kwargs):
     return wrapped(*args, **kwargs)
 
 
+class _ExtensionsConfiguration:
+    def __init__(self, **kwargs):
+        dynamodb_sanitize_query = kwargs.get("dynamodb_sanitize_query", False)
+        self.dynamodb_configuration = {
+            "sanitize_query": dynamodb_sanitize_query
+        }
+
+    def get_dynamodb_configuration(self):
+        return self.dynamodb_configuration
+
+
 class BotocoreInstrumentor(BaseInstrumentor):
     """An instrumentor for Botocore.
 
@@ -139,6 +155,7 @@ class BotocoreInstrumentor(BaseInstrumentor):
 
         self.request_hook = kwargs.get("request_hook")
         self.response_hook = kwargs.get("response_hook")
+        self.configuration = _ExtensionsConfiguration(**kwargs)
 
         wrap_function_wrapper(
             "botocore.client",
@@ -161,7 +178,11 @@ class BotocoreInstrumentor(BaseInstrumentor):
         if context_api.get_value(_SUPPRESS_INSTRUMENTATION_KEY):
             return original_func(*args, **kwargs)
 
-        call_context = _determine_call_context(instance, args)
+        call_context = _determine_call_context(
+            instance,
+            args,
+            self.configuration,
+        )
         if call_context is None:
             return original_func(*args, **kwargs)
 
@@ -262,10 +283,12 @@ def _apply_response_attributes(span: Span, result):
 
 
 def _determine_call_context(
-    client: BaseClient, args: Tuple[str, Dict[str, Any]]
+    client: BaseClient,
+    args: Tuple[str, Dict[str, Any]],
+    configuration: _ExtensionsConfiguration,
 ) -> Optional[_AwsSdkCallContext]:
     try:
-        call_context = _AwsSdkCallContext(client, args)
+        call_context = _AwsSdkCallContext(client, args, configuration)
 
         logger.debug(
             "AWS SDK invocation: %s %s",
