@@ -49,3 +49,123 @@ components:
 
   instrumentation/opentelemetry-instrumentation-sqlalchemy:
     - shalevr
+
+  instrumentation/opentelemetry-instrumentation-flask:
+    - ocelotl
+
+  instrumentation/opentelemetry-instrumentation-jinja2:
+    - ocelotl
+
+  instrumentation/opentelemetry-instrumentation-logging:
+    - ocelotl
+
+  instrumentation/opentelemetry-instrumentation-requests:
+    - ocelotl
+
+  instrumentation/opentelemetry-instrumentation-urllib:
+    - ocelotl
+
+  instrumentation/opentelemetry-instrumentation-urllib3:
+    - ocelotl
+
+  CHANGELOG.md:
+    - ocelotl
+
+  .codespellrc:
+    - ocelotl
+
+  CONTRIBUTING.md:
+    - ocelotl
+
+  .coveragerc:
+    - ocelotl
+
+  dev-requirements.txt:
+    - ocelotl
+
+  docs:
+    - ocelotl
+
+  docs-requirements.txt:
+    - ocelotl
+
+  eachdist.ini:
+    - ocelotl
+
+  exporter:
+    - ocelotl
+
+  .flake8:
+    - ocelotl
+
+  gen-requirements.txt:
+    - ocelotl
+
+  .git:
+    - ocelotl
+
+  .github:
+    - ocelotl
+
+  .gitignore:
+    - ocelotl
+
+  .isort.cfg:
+    - ocelotl
+
+  LICENSE:
+    - ocelotl
+
+  LICENSE.Apache:
+    - ocelotl
+
+  LICENSE.BSD3:
+    - ocelotl
+
+  opentelemetry-contrib-instrumentations:
+    - ocelotl
+
+  opentelemetry-distro:
+    - ocelotl
+
+  opentelemetry-instrumentation:
+    - ocelotl
+
+  propagator:
+    - ocelotl
+
+  .pylintrc:
+    - ocelotl
+
+  pyproject.toml:
+    - ocelotl
+
+  pytest.ini:
+    - ocelotl
+
+  README.md:
+    - ocelotl
+
+  .readthedocs.yml:
+    - ocelotl
+
+  RELEASING.md:
+    - ocelotl
+
+  scripts:
+    - ocelotl
+
+  sdk-extension:
+    - ocelotl
+
+  _template:
+    - ocelotl
+
+  tests:
+    - ocelotl
+
+  tox.ini:
+    - ocelotl
+
+  util:
+    - ocelotl
