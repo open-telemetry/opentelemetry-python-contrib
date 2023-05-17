@@ -7,6 +7,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## Unreleased
 
+- `opentelemetry-instrumentation-asgi` Add `http.server.response.size` metric
+  ([#1789](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/1789))
+
 ## Version 1.18.0/0.39b0 (2023-05-10)
 
 - `opentelemetry-instrumentation-system-metrics` Add `process.` prefix to `runtime.memory`, `runtime.cpu.time`, and `runtime.gc_count`. Change `runtime.memory` from count to UpDownCounter. ([#1735](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/1735))
@@ -29,8 +32,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   ([#1407](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/1407))
 - `opentelemetry-instrumentation-logging` Add `otelTraceSampled` to instrumetation-logging
   ([#1773](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/1773))
-- `opentelemetry-instrumentation-asgi` Add `http.server.response.size` metric
-  ([#1789](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/1789))
 
 
 ### Fixed
