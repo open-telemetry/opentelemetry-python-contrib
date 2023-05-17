@@ -1,0 +1,12 @@
+# This file is only used as a way to assign any change to the approvers team
+# except for a change in any of the instrumentations. The actual codeowners
+# of the instrumentations are in .github/component_owners.yml.
+
+# Assigns any change to the approvers team...
+* @open-telemetry/opentelemetry-python-contrib-approvers
+
+# ...except for changes in any instrumentation.
+/instrumentation
+
+# Learn about CODEOWNERS file format:
+# https://help.github.com/en/articles/about-code-owners
