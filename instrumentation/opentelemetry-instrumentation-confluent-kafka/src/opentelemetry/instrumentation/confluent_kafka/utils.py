@@ -96,7 +96,7 @@ def _enrich_span(
     span.set_attribute(SpanAttributes.MESSAGING_SYSTEM, "kafka")
     span.set_attribute(SpanAttributes.MESSAGING_DESTINATION, topic)
 
-    if partition:
+    if partition is not None:
         span.set_attribute(SpanAttributes.MESSAGING_KAFKA_PARTITION, partition)
 
     span.set_attribute(
@@ -111,7 +111,7 @@ def _enrich_span(
 
     # https://stackoverflow.com/questions/65935155/identify-and-find-specific-message-in-kafka-topic
     # A message within Kafka is uniquely defined by its topic name, topic partition and offset.
-    if partition and offset and topic:
+    if partition is not None and offset is not None and topic:
         span.set_attribute(
             SpanAttributes.MESSAGING_MESSAGE_ID,
             f"{topic}.{partition}.{offset}",
