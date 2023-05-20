@@ -14,8 +14,6 @@
 
 # pylint: disable=no-name-in-module
 
-from unittest.mock import patch
-
 from opentelemetry.semconv.trace import SpanAttributes, MessagingDestinationKindValues
 from opentelemetry.test.test_base import TestBase
 from .utils import MockConsumer, MockedMessage
