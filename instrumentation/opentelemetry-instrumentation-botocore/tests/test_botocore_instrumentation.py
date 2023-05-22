@@ -36,9 +36,11 @@ from opentelemetry.context import (
 from opentelemetry.instrumentation.botocore import BotocoreInstrumentor
 from opentelemetry.instrumentation.utils import _SUPPRESS_INSTRUMENTATION_KEY
 from opentelemetry.propagate import get_global_textmap, set_global_textmap
+from opentelemetry.propagators.aws.aws_xray_propagator import TRACE_HEADER_KEY
 from opentelemetry.semconv.trace import SpanAttributes
 from opentelemetry.test.mock_textmap import MockTextMapPropagator
 from opentelemetry.test.test_base import TestBase
+from opentelemetry.trace.span import format_span_id, format_trace_id
 
 _REQUEST_ID_REGEX_MATCH = r"[A-Z0-9]{52}"
 
@@ -225,27 +227,21 @@ class TestBotocoreInstrumentor(TestBase):
     @mock_ec2
     def test_uninstrument_does_not_inject_headers(self):
         headers = {}
-        previous_propagator = get_global_textmap()
-        try:
-            set_global_textmap(MockTextMapPropagator())
 
-            def intercept_headers(**kwargs):
-                headers.update(kwargs["request"].headers)
+        def intercept_headers(**kwargs):
+            headers.update(kwargs["request"].headers)
 
-            ec2 = self._make_client("ec2")
+        ec2 = self._make_client("ec2")
 
-            BotocoreInstrumentor().uninstrument()
+        BotocoreInstrumentor().uninstrument()
 
-            ec2.meta.events.register_first(
-                "before-send.ec2.DescribeInstances", intercept_headers
-            )
-            with self.tracer_provider.get_tracer("test").start_span("parent"):
-                ec2.describe_instances()
+        ec2.meta.events.register_first(
+            "before-send.ec2.DescribeInstances", intercept_headers
+        )
+        with self.tracer_provider.get_tracer("test").start_span("parent"):
+            ec2.describe_instances()
 
-            self.assertNotIn(MockTextMapPropagator.TRACE_ID_KEY, headers)
-            self.assertNotIn(MockTextMapPropagator.SPAN_ID_KEY, headers)
-        finally:
-            set_global_textmap(previous_propagator)
+        self.assertNotIn(TRACE_HEADER_KEY, headers)
 
     @mock_sqs
     def test_double_patch(self):
@@ -306,19 +302,41 @@ class TestBotocoreInstrumentor(TestBase):
                 "EC2", "DescribeInstances", request_id=request_id
             )
 
-            self.assertIn(MockTextMapPropagator.TRACE_ID_KEY, headers)
-            self.assertEqual(
-                str(span.get_span_context().trace_id),
-                headers[MockTextMapPropagator.TRACE_ID_KEY],
+            # only x-ray propagation is used in HTTP requests
+            self.assertIn(TRACE_HEADER_KEY, headers)
+            xray_context = headers[TRACE_HEADER_KEY]
+            formated_trace_id = format_trace_id(
+                span.get_span_context().trace_id
             )
-            self.assertIn(MockTextMapPropagator.SPAN_ID_KEY, headers)
-            self.assertEqual(
-                str(span.get_span_context().span_id),
-                headers[MockTextMapPropagator.SPAN_ID_KEY],
+            formated_trace_id = (
+                formated_trace_id[:8] + "-" + formated_trace_id[8:]
             )
 
+            self.assertEqual(
+                xray_context.lower(),
+                f"root=1-{formated_trace_id};parent={format_span_id(span.get_span_context().span_id)};sampled=1".lower(),
+            )
         finally:
             set_global_textmap(previous_propagator)
+
+    @mock_ec2
+    def test_override_xray_propagator_injects_into_request(self):
+        headers = {}
+
+        def check_headers(**kwargs):
+            nonlocal headers
+            headers = kwargs["request"].headers
+
+        BotocoreInstrumentor().instrument()
+
+        ec2 = self._make_client("ec2")
+        ec2.meta.events.register_first(
+            "before-send.ec2.DescribeInstances", check_headers
+        )
+        ec2.describe_instances()
+
+        self.assertNotIn(MockTextMapPropagator.TRACE_ID_KEY, headers)
+        self.assertNotIn(MockTextMapPropagator.SPAN_ID_KEY, headers)
 
     @mock_xray
     def test_suppress_instrumentation_xray_client(self):
