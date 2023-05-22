@@ -127,6 +127,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- `opentelemetry-resource-detector-container` Add support resource detection of container properties.
+  ([#1584](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/1584))
 - `opentelemetry-instrumentation-pymysql` Add tests for commit() and rollback().
   ([#1424](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/1424))
 - `opentelemetry-instrumentation-fastapi` Add support for regular expression matching and sanitization of HTTP headers.
