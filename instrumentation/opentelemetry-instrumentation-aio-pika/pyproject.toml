@@ -38,6 +38,7 @@ test = [
   "opentelemetry-test-utils == 0.40b0.dev",
   "pytest",
   "wrapt >= 1.0.0, < 2.0.0",
+  "yarl",
 ]
 
 [project.entry-points.opentelemetry_instrumentor]
