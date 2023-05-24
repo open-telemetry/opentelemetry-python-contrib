@@ -124,6 +124,17 @@ Open a pull request against the main `opentelemetry-python-contrib` repo.
   as `work-in-progress`, or mark it as [`draft`](https://github.blog/2019-02-14-introducing-draft-pull-requests/).
 * Make sure CLA is signed and CI is clear.
 
+### How to Get PRs Reviewed
+
+The maintainers and approvers of this repo are not experts in every instrumentation there is here.
+In fact each one of us knows enough about them to only review a few. Unfortunately it can be hard
+to find enough experts in every instrumentation to quickly review every instrumentation PR. The
+instrumentation experts are listed in `.github/component_owners.yml` with their corresponding files
+or directories that they own. The owners listed there will be notified when PRs that modify their
+files are opened.
+
+If you are not getting reviews, please contact the respective owners directly.
+
 ### How to Get PRs Merged
 
 A PR is considered to be **ready to merge** when:
