@@ -40,18 +40,17 @@ class InstrumentationTest:
 
     @staticmethod
     def _copy_context_endpoint():
-
         @flask.copy_current_request_context
         def _extract_header():
-            return flask.request.headers['x-req']
+            return flask.request.headers["x-req"]
 
         # Despite `_extract_header` copying the request context,
         # calling it shouldn't detach the parent Flask span's contextvar
         request_header = _extract_header()
 
         return {
-            'span_name': trace.get_current_span().name,
-            'request_header': request_header
+            "span_name": trace.get_current_span().name,
+            "request_header": request_header,
         }
 
     @staticmethod

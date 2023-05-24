@@ -272,11 +272,15 @@ _ENVIRON_TOKEN = "opentelemetry-flask.token"
 _excluded_urls_from_env = get_excluded_urls("FLASK")
 
 if package_version.parse(flask.__version__) >= package_version.parse("2.2.0"):
+
     def _request_ctx_ref() -> weakref.ReferenceType:
         return weakref.ref(flask.globals.request_ctx._get_current_object())
+
 else:
+
     def _request_ctx_ref() -> weakref.ReferenceType:
         return weakref.ref(flask._request_ctx_stack.top)
+
 
 def get_default_span_name():
     try:
@@ -447,7 +451,9 @@ def _wrapped_teardown_request(
 
         activation = flask.request.environ.get(_ENVIRON_ACTIVATION_KEY)
 
-        original_reqctx_ref = flask.request.environ.get(_ENVIRON_REQCTX_REF_KEY)
+        original_reqctx_ref = flask.request.environ.get(
+            _ENVIRON_REQCTX_REF_KEY
+        )
         current_reqctx_ref = _request_ctx_ref()
         if not activation or original_reqctx_ref != current_reqctx_ref:
             # This request didn't start a span, maybe because it was created in
