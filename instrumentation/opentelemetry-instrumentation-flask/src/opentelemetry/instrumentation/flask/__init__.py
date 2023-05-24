@@ -305,8 +305,8 @@ def _rewrapped_app(
         wrapped_app_environ[_ENVIRON_STARTTIME_KEY] = time_ns()
         start = default_timer()
         attributes = otel_wsgi.collect_request_attributes(wrapped_app_environ)
-        active_requests_count_attrs = otel_wsgi._parse_active_request_count_attrs(
-            attributes
+        active_requests_count_attrs = (
+            otel_wsgi._parse_active_request_count_attrs(attributes)
         )
         duration_attrs = otel_wsgi._parse_duration_attrs(attributes)
         active_requests_counter.add(1, active_requests_count_attrs)
@@ -326,15 +326,20 @@ def _rewrapped_app(
                     )
 
                 if span:
-                    otel_wsgi.add_response_attributes(span, status, response_headers)
+                    otel_wsgi.add_response_attributes(
+                        span, status, response_headers
+                    )
                     status_code = otel_wsgi._parse_status_code(status)
                     if status_code is not None:
-                        duration_attrs[SpanAttributes.HTTP_STATUS_CODE] = status_code
-                    if span.is_recording() and span.kind == trace.SpanKind.SERVER:
-                        custom_attributes = (
-                            otel_wsgi.collect_custom_response_headers_attributes(
-                                response_headers
-                            )
+                        duration_attrs[
+                            SpanAttributes.HTTP_STATUS_CODE
+                        ] = status_code
+                    if (
+                        span.is_recording()
+                        and span.kind == trace.SpanKind.SERVER
+                    ):
+                        custom_attributes = otel_wsgi.collect_custom_response_headers_attributes(
+                            response_headers
                         )
                         if len(custom_attributes) > 0:
                             span.set_attributes(custom_attributes)
@@ -382,16 +387,22 @@ def _wrapped_before_request(
             request_hook(span, flask_request_environ)
 
         if span.is_recording():
-            attributes = otel_wsgi.collect_request_attributes(flask_request_environ)
+            attributes = otel_wsgi.collect_request_attributes(
+                flask_request_environ
+            )
             if flask.request.url_rule:
                 # For 404 that result from no route found, etc, we
                 # don't have a url_rule.
-                attributes[SpanAttributes.HTTP_ROUTE] = flask.request.url_rule.rule
+                attributes[
+                    SpanAttributes.HTTP_ROUTE
+                ] = flask.request.url_rule.rule
             for key, value in attributes.items():
                 span.set_attribute(key, value)
             if span.is_recording() and span.kind == trace.SpanKind.SERVER:
-                custom_attributes = otel_wsgi.collect_custom_request_headers_attributes(
-                    flask_request_environ
+                custom_attributes = (
+                    otel_wsgi.collect_custom_request_headers_attributes(
+                        flask_request_environ
+                    )
                 )
                 if len(custom_attributes) > 0:
                     span.set_attributes(custom_attributes)
@@ -411,7 +422,10 @@ def _wrapped_before_request(
             if flask and flask.request:
                 if commenter_options.get("framework", True):
                     flask_info["framework"] = f"flask:{flask.__version__}"
-                if commenter_options.get("controller", True) and flask.request.endpoint:
+                if (
+                    commenter_options.get("controller", True)
+                    and flask.request.endpoint
+                ):
                     flask_info["controller"] = flask.request.endpoint
                 if (
                     commenter_options.get("route", True)
@@ -437,7 +451,9 @@ def _wrapped_teardown_request(
 
         activation = flask.request.environ.get(_ENVIRON_ACTIVATION_KEY)
 
-        original_reqctx_ref = flask.request.environ.get(_ENVIRON_REQCTX_REF_KEY)
+        original_reqctx_ref = flask.request.environ.get(
+            _ENVIRON_REQCTX_REF_KEY
+        )
         current_reqctx_ref = _request_ctx_ref()
         if not activation or original_reqctx_ref != current_reqctx_ref:
             # This request didn't start a span, maybe because it was created in
@@ -454,7 +470,9 @@ def _wrapped_teardown_request(
         if exc is None:
             activation.__exit__(None, None, None)
         else:
-            activation.__exit__(type(exc), exc, getattr(exc, "__traceback__", None))
+            activation.__exit__(
+                type(exc), exc, getattr(exc, "__traceback__", None)
+            )
 
         if flask.request.environ.get(_ENVIRON_TOKEN, None):
             context.detach(flask.request.environ.get(_ENVIRON_TOKEN))
@@ -477,7 +495,9 @@ class _InstrumentedFlask(flask.Flask):
         self._original_wsgi_app = self.wsgi_app
         self._is_instrumented_by_opentelemetry = True
 
-        meter = get_meter(__name__, __version__, _InstrumentedFlask._meter_provider)
+        meter = get_meter(
+            __name__, __version__, _InstrumentedFlask._meter_provider
+        )
         duration_histogram = meter.create_histogram(
             name=MetricInstruments.HTTP_SERVER_DURATION,
             unit="ms",
@@ -603,7 +623,9 @@ class FlaskInstrumentor(BaseInstrumentor):
                 tracer,
                 excluded_urls=excluded_urls,
                 enable_commenter=enable_commenter,
-                commenter_options=commenter_options if commenter_options else {},
+                commenter_options=commenter_options
+                if commenter_options
+                else {},
             )
             app._before_request = _before_request
             app.before_request(_before_request)
@@ -631,5 +653,6 @@ class FlaskInstrumentor(BaseInstrumentor):
             app._is_instrumented_by_opentelemetry = False
         else:
             _logger.warning(
-                "Attempting to uninstrument Flask " "app while already uninstrumented"
+                "Attempting to uninstrument Flask "
+                "app while already uninstrumented"
             )
