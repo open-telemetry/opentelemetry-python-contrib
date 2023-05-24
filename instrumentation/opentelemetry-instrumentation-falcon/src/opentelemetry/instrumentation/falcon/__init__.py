@@ -428,7 +428,6 @@ class _TraceMiddleware:
 
         resource_name = resource.__class__.__name__
         span.set_attribute("falcon.resource", resource_name)
-        span.update_name(f"{resource_name}.on_{req.method.lower()}")
 
     def process_response(
         self, req, resp, resource, req_succeeded=None
@@ -477,6 +476,12 @@ class _TraceMiddleware:
                 response_headers = resp.headers
 
             if span.is_recording() and span.kind == trace.SpanKind.SERVER:
+                # Check if low-cardinality route is available as per semantic-conventions
+                if req.uri_template:
+                    span.update_name(f'{req.method} {req.uri_template}')
+                else:
+                    span.update_name(f'{req.method}')
+
                 custom_attributes = (
                     otel_wsgi.collect_custom_response_headers_attributes(
                         response_headers.items()
