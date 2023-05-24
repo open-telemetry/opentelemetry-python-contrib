@@ -58,9 +58,7 @@ class TestElasticsearchIntegration(TestBase):
         "elasticsearch.url": "/test-index/_search",
         "elasticsearch.method": helpers.dsl_search_method,
         "elasticsearch.target": "test-index",
-        SpanAttributes.DB_STATEMENT: str(
-            {"query": {"bool": {"filter": [{"term": {"author": "testing"}}]}}}
-        ),
+        SpanAttributes.DB_STATEMENT: str({"query": {"bool": {"filter": "?"}}}),
     }
 
     create_attributes = {
@@ -264,18 +262,6 @@ class TestElasticsearchIntegration(TestBase):
         )
 
     def test_dsl_search_sanitized(self, request_mock):
-        # Reset instrumentation to use sanitized query (default)
-        ElasticsearchInstrumentor().uninstrument()
-        ElasticsearchInstrumentor().instrument(sanitize_query=True)
-
-        # update expected attributes to match sanitized query
-        sanitized_search_attributes = self.search_attributes.copy()
-        sanitized_search_attributes.update(
-            {
-                SpanAttributes.DB_STATEMENT: "{'query': {'bool': {'filter': '?'}}}"
-            }
-        )
-
         request_mock.return_value = (1, {}, '{"hits": {"hits": []}}')
         client = Elasticsearch()
         search = Search(using=client, index="test-index").filter(
@@ -289,7 +275,7 @@ class TestElasticsearchIntegration(TestBase):
         self.assertIsNotNone(span.end_time)
         self.assertEqual(
             span.attributes,
-            sanitized_search_attributes,
+            self.search_attributes,
         )
 
     def test_dsl_create(self, request_mock):
@@ -320,9 +306,6 @@ class TestElasticsearchIntegration(TestBase):
         )
 
     def test_dsl_create_sanitized(self, request_mock):
-        # Reset instrumentation to explicitly use sanitized query
-        ElasticsearchInstrumentor().uninstrument()
-        ElasticsearchInstrumentor().instrument(sanitize_query=True)
         request_mock.return_value = (1, {}, {})
         client = Elasticsearch()
         Article.init(using=client)

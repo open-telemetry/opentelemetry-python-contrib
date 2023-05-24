@@ -13,6 +13,7 @@
 # limitations under the License.
 
 import functools
+import logging
 from collections import OrderedDict
 
 import grpc
@@ -28,8 +29,10 @@ from opentelemetry.propagate import inject
 from opentelemetry.semconv.trace import SpanAttributes
 from opentelemetry.trace.status import Status, StatusCode
 
+logger = logging.getLogger(__name__)
 
-def _unary_done_callback(span, code, details):
+
+def _unary_done_callback(span, code, details, response_hook):
     def callback(call):
         try:
             span.set_attribute(
@@ -43,6 +46,8 @@ def _unary_done_callback(span, code, details):
                         description=details,
                     )
                 )
+            response_hook(span, details)
+
         finally:
             span.end()
 
@@ -110,7 +115,11 @@ class _BaseAioClientInterceptor(OpenTelemetryClientInterceptor):
             code = await call.code()
             details = await call.details()
 
-            call.add_done_callback(_unary_done_callback(span, code, details))
+            call.add_done_callback(
+                _unary_done_callback(
+                    span, code, details, self._call_response_hook
+                )
+            )
 
             return call
         except grpc.aio.AioRpcError as exc:
@@ -120,6 +129,8 @@ class _BaseAioClientInterceptor(OpenTelemetryClientInterceptor):
     async def _wrap_stream_response(self, span, call):
         try:
             async for response in call:
+                if self._response_hook:
+                    self._call_response_hook(span, response)
                 yield response
         except Exception as exc:
             self.add_error_details_to_span(span, exc)
@@ -151,6 +162,9 @@ class UnaryUnaryAioClientInterceptor(
         ) as span:
             new_details = self.propagate_trace_in_details(client_call_details)
 
+            if self._request_hook:
+                self._call_request_hook(span, request)
+
             continuation_with_args = functools.partial(
                 continuation, new_details, request
             )
@@ -175,7 +189,8 @@ class UnaryStreamAioClientInterceptor(
             new_details = self.propagate_trace_in_details(client_call_details)
 
             resp = await continuation(new_details, request)
-
+            if self._request_hook:
+                self._call_request_hook(span, request)
             return self._wrap_stream_response(span, resp)
 
 

@@ -36,6 +36,7 @@ class TestCeleryInstrumentation(TestBase):
         CeleryInstrumentor().uninstrument()
         self._worker.stop()
         self._thread.join()
+        CeleryInstrumentor().uninstrument()
 
     def test_task(self):
         CeleryInstrumentor().instrument()
@@ -97,3 +98,52 @@ class TestCeleryInstrumentation(TestBase):
 
         spans = self.memory_exporter.get_finished_spans()
         self.assertEqual(len(spans), 0)
+
+
+class TestCelerySignatureTask(TestBase):
+    def setUp(self):
+        super().setUp()
+
+        def start_app(*args, **kwargs):
+            # Add an additional task that will not be registered with parent thread
+            @app.task
+            def hidden_task(num_a):
+                return num_a * 2
+
+            self._worker = app.Worker(app=app, pool="solo", concurrency=1)
+            return self._worker.start(*args, **kwargs)
+
+        self._thread = threading.Thread(target=start_app)
+        self._worker = app.Worker(app=app, pool="solo", concurrency=1)
+        self._thread.daemon = True
+        self._thread.start()
+
+    def tearDown(self):
+        super().tearDown()
+        self._worker.stop()
+        self._thread.join()
+        CeleryInstrumentor().uninstrument()
+
+    def test_hidden_task(self):
+        # no-op since already instrumented
+        CeleryInstrumentor().instrument()
+
+        res = app.signature("tests.test_tasks.hidden_task", (2,)).apply_async()
+        while not res.ready():
+            time.sleep(0.05)
+        spans = self.sorted_spans(self.memory_exporter.get_finished_spans())
+        self.assertEqual(len(spans), 2)
+
+        consumer, producer = spans
+
+        self.assertEqual(consumer.name, "run/tests.test_tasks.hidden_task")
+        self.assertEqual(consumer.kind, SpanKind.CONSUMER)
+
+        self.assertEqual(
+            producer.name, "apply_async/tests.test_tasks.hidden_task"
+        )
+        self.assertEqual(producer.kind, SpanKind.PRODUCER)
+
+        self.assertNotEqual(consumer.parent, producer.context)
+        self.assertEqual(consumer.parent.span_id, producer.context.span_id)
+        self.assertEqual(consumer.context.trace_id, producer.context.trace_id)

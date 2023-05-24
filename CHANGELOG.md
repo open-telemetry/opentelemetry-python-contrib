@@ -7,22 +7,45 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## Unreleased
 
+## Version 1.18.0/0.39b0 (2023-05-10)
+
 - `opentelemetry-instrumentation-system-metrics` Add `process.` prefix to `runtime.memory`, `runtime.cpu.time`, and `runtime.gc_count`. Change `runtime.memory` from count to UpDownCounter. ([#1735](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/1735))
+- Add request and response hooks for GRPC instrumentation (client only)
+  ([#1706](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/1706))
+- `opentelemetry-instrumentation-pymemcache` Update instrumentation to support pymemcache >4
+  ([#1764](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/1764))
 
 ### Added
 
+- Expand sqlalchemy pool.name to follow the semantic conventions
+  ([#1778](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/1778))
 - Add `excluded_urls` functionality to `urllib` and `urllib3` instrumentations
   ([#1733](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/1733))
 - Make Django request span attributes available for `start_span`. 
   ([#1730](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/1730))
+- Make ASGI request span attributes available for `start_span`. 
+  ([#1762](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/1762))
+- `opentelemetry-instrumentation-celery` Add support for anonymous tasks.
+  ([#1407](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/1407))
+- `opentelemetry-instrumentation-logging` Add `otelTraceSampled` to instrumetation-logging
+  ([#1773](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/1773))
+
+### Changed
+
+- `opentelemetry-instrumentation-botocore` now uses the AWS X-Ray propagator by
+  default
+  ([#1741](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/1741))
 
 ### Fixed
 
+- Fix elasticsearch db.statement attribute to be sanitized by default
+  ([#1758](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/1758))
 - Fix `AttributeError` when AWS Lambda handler receives a list event
   ([#1738](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/1738))
+- Fix `None does not implement middleware` error when there are no middlewares registered
+  ([#1766](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/1766))
 - Fix Flask instrumentation to only close the span if it was created by the same request context.
   ([#1692](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/1692))
-
 
 ## Version 1.17.0/0.38b0 (2023-03-22)
 
@@ -111,6 +134,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- `opentelemetry-resource-detector-container` Add support resource detection of container properties.
+  ([#1584](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/1584))
 - `opentelemetry-instrumentation-pymysql` Add tests for commit() and rollback().
   ([#1424](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/1424))
 - `opentelemetry-instrumentation-fastapi` Add support for regular expression matching and sanitization of HTTP headers.

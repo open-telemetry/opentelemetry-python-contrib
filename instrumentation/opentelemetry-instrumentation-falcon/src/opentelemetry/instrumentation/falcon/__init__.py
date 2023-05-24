@@ -245,6 +245,9 @@ class _InstrumentedFalconAPI(getattr(falcon, _instrument_app)):
 
         # inject trace middleware
         self._middlewares_list = kwargs.pop("middleware", [])
+        if self._middlewares_list is None:
+            self._middlewares_list = []
+
         tracer_provider = otel_opts.pop("tracer_provider", None)
         meter_provider = otel_opts.pop("meter_provider", None)
         if not isinstance(self._middlewares_list, (list, tuple)):

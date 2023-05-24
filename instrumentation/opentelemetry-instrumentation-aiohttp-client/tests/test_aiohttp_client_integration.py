@@ -122,7 +122,7 @@ class TestAioHttpIntegration(TestBase):
                             (span_status, None),
                             {
                                 SpanAttributes.HTTP_METHOD: "GET",
-                                SpanAttributes.HTTP_URL: f"http://{host}:{port}/test-path?query=param#foobar",
+                                SpanAttributes.HTTP_URL: f"http://{host}:{port}/test-path#foobar",
                                 SpanAttributes.HTTP_STATUS_CODE: int(
                                     status_code
                                 ),
