@@ -238,14 +238,14 @@ Note:
 API
 ---
 """
+import weakref
 from logging import getLogger
-from packaging import version as package_version
 from time import time_ns
 from timeit import default_timer
 from typing import Collection
-import weakref
 
 import flask
+from packaging import version as package_version
 
 import opentelemetry.instrumentation.wsgi as otel_wsgi
 from opentelemetry import context, trace

@@ -12,10 +12,11 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 import flask
-from opentelemetry.instrumentation.flask import FlaskInstrumentor
-from opentelemetry.test.wsgitestutil import WsgiTestBase
 from werkzeug.test import Client
 from werkzeug.wrappers import Response
+
+from opentelemetry.instrumentation.flask import FlaskInstrumentor
+from opentelemetry.test.wsgitestutil import WsgiTestBase
 
 from .base_test import InstrumentationTest
 

@@ -19,8 +19,7 @@ import flask
 from werkzeug.test import Client
 from werkzeug.wrappers import Response
 
-from opentelemetry import context
-from opentelemetry import trace
+from opentelemetry import context, trace
 
 
 class InstrumentationTest:
