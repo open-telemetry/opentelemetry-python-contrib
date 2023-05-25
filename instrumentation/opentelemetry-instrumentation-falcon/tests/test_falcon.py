@@ -205,7 +205,7 @@ class TestFalconInstrumentation(TestFalconBase, WsgiTestBase):
             self.assertEqual(
                 span.attributes[SpanAttributes.NET_PEER_IP], "127.0.0.1"
             )
-    
+
     def test_url_template(self):
         self.client().simulate_get("/user/123")
         spans = self.memory_exporter.get_finished_spans()

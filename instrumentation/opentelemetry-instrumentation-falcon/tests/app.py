@@ -60,10 +60,11 @@ class CustomResponseHeaderResource:
         )
         resp.set_header("my-secret-header", "my-secret-value")
 
+
 class UserResource:
     def on_get(self, req, resp, user_id):
         resp.status = falcon.HTTP_200
-        resp.body = f'Hello user {user_id}'
+        resp.body = f"Hello user {user_id}"
 
 
 def make_app():
@@ -81,6 +82,6 @@ def make_app():
     app.add_route(
         "/test_custom_response_headers", CustomResponseHeaderResource()
     )
-    app.add_route("/user/{user_id}", UserResource()) 
+    app.add_route("/user/{user_id}", UserResource())
 
     return app

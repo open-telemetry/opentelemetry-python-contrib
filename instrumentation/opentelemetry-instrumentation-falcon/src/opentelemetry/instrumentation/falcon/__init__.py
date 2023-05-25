@@ -478,9 +478,9 @@ class _TraceMiddleware:
             if span.is_recording() and span.kind == trace.SpanKind.SERVER:
                 # Check if low-cardinality route is available as per semantic-conventions
                 if req.uri_template:
-                    span.update_name(f'{req.method} {req.uri_template}')
+                    span.update_name(f"{req.method} {req.uri_template}")
                 else:
-                    span.update_name(f'{req.method}')
+                    span.update_name(f"{req.method}")
 
                 custom_attributes = (
                     otel_wsgi.collect_custom_response_headers_attributes(
