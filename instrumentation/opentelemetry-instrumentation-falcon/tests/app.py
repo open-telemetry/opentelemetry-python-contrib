@@ -63,6 +63,7 @@ class CustomResponseHeaderResource:
 
 class UserResource:
     def on_get(self, req, resp, user_id):
+        # pylint: disable=no-member
         resp.status = falcon.HTTP_200
         resp.body = f"Hello user {user_id}"
 
