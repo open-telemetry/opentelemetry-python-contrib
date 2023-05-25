@@ -76,9 +76,7 @@ class InstrumentationTest:
         resp = flask.Response("test response")
         resp.headers["content-type"] = "text/plain; charset=utf-8"
         resp.headers["content-length"] = "13"
-        resp.headers[
-            "my-custom-header"
-        ] = "my-custom-value-1,my-custom-header-2"
+        resp.headers["my-custom-header"] = "my-custom-value-1,my-custom-header-2"
         resp.headers[
             "my-custom-regex-header-1"
         ] = "my-custom-regex-value-1,my-custom-regex-value-2"
@@ -103,9 +101,7 @@ class InstrumentationTest:
         self.app.route("/excluded/<int:helloid>")(self._hello_endpoint)
         self.app.route("/excluded")(excluded_endpoint)
         self.app.route("/excluded2")(excluded2_endpoint)
-        self.app.route("/test_custom_response_headers")(
-            self._custom_response_headers
-        )
+        self.app.route("/test_custom_response_headers")(self._custom_response_headers)
 
         # pylint: disable=attribute-defined-outside-init
         self.client = Client(self.app, Response)
