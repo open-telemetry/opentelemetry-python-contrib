@@ -195,6 +195,7 @@ def _build_span_meta_data_for_pipeline(instance, sanitize_query):
     return command_stack, resource, span_name
 
 
+# pylint: disable=R0915
 def _instrument(
     tracer,
     request_hook: _RequestHookT = None,

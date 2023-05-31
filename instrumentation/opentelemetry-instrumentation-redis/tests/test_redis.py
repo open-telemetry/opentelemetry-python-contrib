@@ -33,9 +33,9 @@ class AsyncMock:
         self.mock = mock.Mock()
 
     async def __call__(self, *args, **kwargs):
-        f = asyncio.Future()
-        f.set_result("random")
-        return f
+        future = asyncio.Future()
+        future.set_result("random")
+        return future
 
     def __getattr__(self, item):
         return AsyncMock()
