@@ -80,6 +80,12 @@ class Servicer(GRPCTestServerServicer):
 
 
 class OpenTelemetryServerInterceptorBase:
+    net_peer_span_attributes = NotImplemented
+
+    @contextlib.contextmanager
+    def server(self):
+        raise NotImplementedError
+
     def test_instrumentor(self):
         def handler(request, context):
             return b""
