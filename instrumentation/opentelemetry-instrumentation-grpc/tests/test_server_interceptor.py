@@ -79,12 +79,24 @@ class Servicer(GRPCTestServerServicer):
             )
 
 
-class OpenTelemetryServerInterceptorBase:
-    net_peer_span_attributes = NotImplemented
+class TestOpenTelemetryServerInterceptor(TestBase):
+    net_peer_span_attributes = {
+        SpanAttributes.NET_PEER_IP: "[::1]",
+        SpanAttributes.NET_PEER_NAME: "localhost",
+    }
 
     @contextlib.contextmanager
-    def server(self):
-        raise NotImplementedError
+    def server(self, max_workers=1, interceptors=None):
+        with futures.ThreadPoolExecutor(max_workers=max_workers) as executor:
+            server = grpc.server(
+                executor,
+                options=(("grpc.so_reuseport", 0),),
+                interceptors=interceptors or [],
+            )
+
+            port = server.add_insecure_port("[::]:0")
+            channel = grpc.insecure_channel(f"localhost:{port:d}")
+            yield server, channel
 
     def test_instrumentor(self):
         def handler(request, context):
@@ -591,32 +603,8 @@ class OpenTelemetryServerInterceptorBase:
         )
 
 
-class TestOpenTelemetryServerInterceptorTcp(
-    TestBase,
-    OpenTelemetryServerInterceptorBase,
-):
-    net_peer_span_attributes = {
-        SpanAttributes.NET_PEER_IP: "[::1]",
-        SpanAttributes.NET_PEER_NAME: "localhost",
-    }
-
-    @contextlib.contextmanager
-    def server(self, max_workers=1, interceptors=None):
-        with futures.ThreadPoolExecutor(max_workers=max_workers) as executor:
-            server = grpc.server(
-                executor,
-                options=(("grpc.so_reuseport", 0),),
-                interceptors=interceptors or [],
-            )
-
-            port = server.add_insecure_port("[::]:0")
-            channel = grpc.insecure_channel(f"localhost:{port:d}")
-            yield server, channel
-
-
 class TestOpenTelemetryServerInterceptorUnix(
-    TestBase,
-    OpenTelemetryServerInterceptorBase,
+    TestOpenTelemetryServerInterceptor,
 ):
     net_peer_span_attributes = {}
 
