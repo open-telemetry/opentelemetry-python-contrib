@@ -15,7 +15,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - `opentelemetry-instrumentation-pymemcache` Update instrumentation to support pymemcache >4
   ([#1764](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/1764))
 - `opentelemetry-instrumentation-confluent-kafka` Add support for higher versions of confluent_kafka
-  ([#15](https://github.com/helios/opentelemetry-python-contrib/pull/15))
+  ([#1815](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/1815))
 
 ### Added
 

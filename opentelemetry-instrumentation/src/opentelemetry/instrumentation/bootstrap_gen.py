@@ -54,7 +54,7 @@ libraries = {
     },
     "confluent-kafka": {
         "library": "confluent-kafka >= 1.8.2, <= 2.1.1",
-        "instrumentation": "opentelemetry-instrumentation-confluent-kafka==0.39b0.dev",
+        "instrumentation": "opentelemetry-instrumentation-confluent-kafka==0.40b0.dev",
     },
     "django": {
         "library": "django >= 1.10",
