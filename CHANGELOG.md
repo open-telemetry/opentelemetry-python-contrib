@@ -13,7 +13,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Add request and response hooks for GRPC instrumentation (client only)
   ([#1706](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/1706))
 - Fix memory leak in SQLAlchemy instrumentation where disposed `Engine` does not get garbage collected
-  ([#1761](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/1771)
+  ([#1771](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/1771)
 - `opentelemetry-instrumentation-pymemcache` Update instrumentation to support pymemcache >4
   ([#1764](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/1764))
 
