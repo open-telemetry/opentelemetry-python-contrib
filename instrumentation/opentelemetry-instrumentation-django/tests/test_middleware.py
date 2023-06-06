@@ -78,6 +78,8 @@ if DJANGO_2_0:
     from django.urls import path
 else:
     from django.conf.urls import url as re_path
+    def path(p, *args, **kwargs):
+      return re_path(r"^%s$" % p, *args, **kwargs)
 
 urlpatterns = [
     re_path(r"^traced/", traced),
