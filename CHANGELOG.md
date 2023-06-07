@@ -7,7 +7,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## Unreleased
 
-### Fixed
 
 - Fix elasticsearch `Transport.perform_request` instrument wrap for elasticsearch >= 8
   ([#1810](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/1810))
