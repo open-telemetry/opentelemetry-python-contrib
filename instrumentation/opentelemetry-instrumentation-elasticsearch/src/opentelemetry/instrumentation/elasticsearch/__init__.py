@@ -100,7 +100,7 @@ from .utils import sanitize_body
 
 # Split of elasticsearch and elastic_transport in 8.0.0+
 # https://www.elastic.co/guide/en/elasticsearch/client/python-api/master/release-notes.html#rn-8-0-0
-es_transport_split = elasticsearch.__version__[0] > 7
+es_transport_split = elasticsearch.VERSION[0] > 7
 if es_transport_split:
     import elastic_transport
 
