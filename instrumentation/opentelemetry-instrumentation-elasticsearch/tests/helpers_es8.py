@@ -12,11 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from elasticsearch_dsl import (
-    Document,
-    Keyword,
-    Text,
-)
+from elasticsearch_dsl import Document, Keyword, Text
 
 
 class Article(Document):
