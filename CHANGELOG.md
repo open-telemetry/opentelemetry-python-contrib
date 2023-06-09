@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## Unreleased
 
+- Fix falcon instrumentation's usage of Span Status to only set the description if the status code is ERROR.
+
 ## Version 1.18.0/0.39b0 (2023-05-10)
 
 - `opentelemetry-instrumentation-system-metrics` Add `process.` prefix to `runtime.memory`, `runtime.cpu.time`, and `runtime.gc_count`. Change `runtime.memory` from count to UpDownCounter. ([#1735](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/1735))
@@ -21,9 +23,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   ([#1778](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/1778))
 - Add `excluded_urls` functionality to `urllib` and `urllib3` instrumentations
   ([#1733](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/1733))
-- Make Django request span attributes available for `start_span`. 
+- Make Django request span attributes available for `start_span`.
   ([#1730](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/1730))
-- Make ASGI request span attributes available for `start_span`. 
+- Make ASGI request span attributes available for `start_span`.
   ([#1762](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/1762))
 - `opentelemetry-instrumentation-celery` Add support for anonymous tasks.
   ([#1407](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/1407))
