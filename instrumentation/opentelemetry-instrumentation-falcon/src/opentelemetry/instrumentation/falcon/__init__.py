@@ -208,7 +208,7 @@ from opentelemetry.instrumentation.utils import (
 from opentelemetry.metrics import get_meter
 from opentelemetry.semconv.metrics import MetricInstruments
 from opentelemetry.semconv.trace import SpanAttributes
-from opentelemetry.trace.status import Status
+from opentelemetry.trace.status import Status, StatusCode
 from opentelemetry.util.http import get_excluded_urls, get_traced_request_attrs
 
 _logger = getLogger(__name__)
@@ -461,12 +461,17 @@ class _TraceMiddleware:
         try:
             status_code = int(status)
             span.set_attribute(SpanAttributes.HTTP_STATUS_CODE, status_code)
+            otel_status_code = http_status_to_status_code(status_code, server_span=True)
+
+            # set the description only when the status code is ERROR
+            otel_status_description = None
+            if otel_status_code is StatusCode.ERROR:
+                otel_status_description = reason
+
             span.set_status(
                 Status(
-                    status_code=http_status_to_status_code(
-                        status_code, server_span=True
-                    ),
-                    description=reason,
+                    status_code=otel_status_code,
+                    description=otel_status_description,
                 )
             )
 
