@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## Unreleased
 
+### Added
+- `opentelemetry-instrumentation-kafka-python` Add instrumentation to `consume` method
+  ([#1786](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/1786))
+
 ## Version 1.18.0/0.39b0 (2023-05-10)
 
 - `opentelemetry-instrumentation-system-metrics` Add `process.` prefix to `runtime.memory`, `runtime.cpu.time`, and `runtime.gc_count`. Change `runtime.memory` from count to UpDownCounter. ([#1735](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/1735))
@@ -29,8 +33,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   ([#1407](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/1407))
 - `opentelemetry-instrumentation-logging` Add `otelTraceSampled` to instrumetation-logging
   ([#1773](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/1773))
-- `opentelemetry-instrumentation-kafka-python` Add instrumentation to `consume` method
-  ([#1786](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/1786))
+
+### Changed
+
+- `opentelemetry-instrumentation-botocore` now uses the AWS X-Ray propagator by
+  default
+  ([#1741](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/1741))
 
 ### Fixed
 
@@ -128,6 +136,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- `opentelemetry-resource-detector-container` Add support resource detection of container properties.
+  ([#1584](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/1584))
 - `opentelemetry-instrumentation-pymysql` Add tests for commit() and rollback().
   ([#1424](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/1424))
 - `opentelemetry-instrumentation-fastapi` Add support for regular expression matching and sanitization of HTTP headers.
