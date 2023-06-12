@@ -116,8 +116,8 @@ class TestMysqlIntegration(TestBase):
         cursor.execute(query)
 
         spans_list = self.memory_exporter.get_finished_spans()
-        self.assertEqual(len(spans_list), 1)
-        
+        self.assertEqual(len(spans_list), 1
+                         
     @patch("mysql.connector.connect", new=mock_connect)
     @patch("opentelemetry.instrumentation.dbapi.wrap_connect")
     # pylint: disable=unused-argument
@@ -140,5 +140,4 @@ class TestMysqlIntegration(TestBase):
         cursor = cnx.cursor()
         cursor.execute(query)
         kwargs = event_mocked.call_args[1]
-
         self.assertEqual(kwargs["enable_commenter"], False)
