@@ -461,7 +461,9 @@ class _TraceMiddleware:
         try:
             status_code = int(status)
             span.set_attribute(SpanAttributes.HTTP_STATUS_CODE, status_code)
-            otel_status_code = http_status_to_status_code(status_code, server_span=True)
+            otel_status_code = http_status_to_status_code(
+                status_code, server_span=True
+            )
 
             # set the description only when the status code is ERROR
             otel_status_description = None
