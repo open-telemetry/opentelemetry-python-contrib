@@ -8,7 +8,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## Unreleased
 
 - Fix falcon instrumentation's usage of Span Status to only set the description if the status code is ERROR.
-
+  ([#1840](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/1840))
 ## Version 1.18.0/0.39b0 (2023-05-10)
 
 - `opentelemetry-instrumentation-system-metrics` Add `process.` prefix to `runtime.memory`, `runtime.cpu.time`, and `runtime.gc_count`. Change `runtime.memory` from count to UpDownCounter. ([#1735](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/1735))
