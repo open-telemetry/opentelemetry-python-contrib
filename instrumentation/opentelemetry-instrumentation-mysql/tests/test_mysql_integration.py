@@ -140,4 +140,5 @@ class TestMysqlIntegration(TestBase):
         cursor = cnx.cursor()
         cursor.execute(query)
         kwargs = event_mocked.call_args[1]
+
         self.assertEqual(kwargs["enable_commenter"], False)
