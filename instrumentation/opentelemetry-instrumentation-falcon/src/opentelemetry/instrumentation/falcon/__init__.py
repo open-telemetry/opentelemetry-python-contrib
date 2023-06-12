@@ -466,14 +466,13 @@ class _TraceMiddleware:
             )
 
             # set the description only when the status code is ERROR
-            otel_status_description = None
-            if otel_status_code is StatusCode.ERROR:
-                otel_status_description = reason
+            if otel_status_code is not StatusCode.ERROR:
+                reason = None
 
             span.set_status(
                 Status(
                     status_code=otel_status_code,
-                    description=otel_status_description,
+                    description=reason,
                 )
             )
 
