@@ -97,7 +97,7 @@ class BaseTestCases:
     class BaseTest(TestBase, metaclass=abc.ABCMeta):
         # pylint: disable=no-member
 
-        URL = "http://httpbin.org/status/200"
+        URL = "http://mock/status/200"
         response_hook = staticmethod(_response_hook)
         request_hook = staticmethod(_request_hook)
         no_update_request_hook = staticmethod(_no_update_request_hook)
@@ -165,7 +165,7 @@ class BaseTestCases:
             self.assert_span(num_spans=2)
 
         def test_not_foundbasic(self):
-            url_404 = "http://httpbin.org/status/404"
+            url_404 = "http://mock/status/404"
 
             with respx.mock:
                 respx.get(url_404).mock(httpx.Response(404))
