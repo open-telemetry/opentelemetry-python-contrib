@@ -49,6 +49,8 @@ depend on `opentelemetry-sdk` or another package that implements the API.
 **Please note** that these libraries are currently in _beta_, and shouldn't
 generally be used in production environments.
 
+Unless explicitly stated otherwise, any instrumentation here for a particular library is not developed or maintained by the authors of such library.
+
 The
 [`instrumentation/`](https://github.com/open-telemetry/opentelemetry-python-contrib/tree/main/instrumentation)
 directory includes OpenTelemetry instrumentation packages, which can be installed
