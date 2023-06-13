@@ -27,8 +27,8 @@ from opentelemetry.test.test_base import TestBase
 
 
 class TestUrllibMetricsInstrumentation(TestBase):
-    URL = "http://httpbin.org/status/200"
-    URL_POST = "http://httpbin.org/post"
+    URL = "http://mock/status/200"
+    URL_POST = "http://mock/post"
 
     def setUp(self):
         super().setUp()
