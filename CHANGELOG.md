@@ -7,6 +7,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## Unreleased
 
+- Instrument all httpx versions >= 0.18. ([#1748](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/1748))
 - `opentelemetry-instrumentation-asgi` Add `http.server.response.size` metric
   ([#1789](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/1789))
 
@@ -41,12 +42,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- Fix redis db.statements to be sanitized by default
+  ([#1778](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/1778))
 - Fix elasticsearch db.statement attribute to be sanitized by default
   ([#1758](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/1758))
 - Fix `AttributeError` when AWS Lambda handler receives a list event
   ([#1738](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/1738))
 - Fix `None does not implement middleware` error when there are no middlewares registered
   ([#1766](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/1766))
+- Fix Flask instrumentation to only close the span if it was created by the same request context.
+  ([#1692](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/1692))
 
 ## Version 1.17.0/0.38b0 (2023-03-22)
 
