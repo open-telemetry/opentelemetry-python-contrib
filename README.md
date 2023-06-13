@@ -95,12 +95,13 @@ Meeting notes are available as a public [Google doc](https://docs.google.com/doc
 Approvers ([@open-telemetry/python-approvers](https://github.com/orgs/open-telemetry/teams/python-approvers)):
 
 - [Aaron Abbott](https://github.com/aabmass), Google
+- [Jeremy Voss](https://github.com/jeremydvoss), Microsoft
 - [Sanket Mehta](https://github.com/sanketmehta28), Cisco
 - [Shalev Roda](https://github.com/shalevr), Cisco
 
 Emeritus Approvers:
 
-- [Hector Hernandez](https://github.com/hectorhdzg), Microsoft
+- [Héctor Hernández](https://github.com/hectorhdzg), Microsoft
 - [Yusuke Tsutsumi](https://github.com/toumorokoshi), Google
 - [Nathaniel Ruiz Nowell](https://github.com/NathanielRN), AWS
 - [Ashutosh Goel](https://github.com/ashu658), Cisco
