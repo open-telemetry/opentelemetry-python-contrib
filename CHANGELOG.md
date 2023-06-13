@@ -46,6 +46,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   ([#1738](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/1738))
 - Fix `None does not implement middleware` error when there are no middlewares registered
   ([#1766](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/1766))
+- Fix Flask instrumentation to only close the span if it was created by the same request context.
+  ([#1692](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/1692))
 
 ## Version 1.17.0/0.38b0 (2023-03-22)
 
