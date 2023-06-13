@@ -59,7 +59,7 @@ def _async_call(coro: typing.Coroutine) -> asyncio.Task:
 def _response_hook(span, request: "RequestInfo", response: "ResponseInfo"):
     span.set_attribute(
         HTTP_RESPONSE_BODY,
-        response[2].read(),
+        b"".join(response[2]),
     )
 
 
@@ -68,7 +68,7 @@ async def _async_response_hook(
 ):
     span.set_attribute(
         HTTP_RESPONSE_BODY,
-        await response[2].aread(),
+        b"".join([part async for part in response[2]]),
     )
 
 
