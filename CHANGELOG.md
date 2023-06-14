@@ -7,6 +7,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## Unreleased
 
+- 'Added Enable_commenter for mysql
+([#1387](https://github.com/open-telemetry/opentelemetry-python-contrib/issues/1387))
+
 ## Version 1.18.0/0.39b0 (2023-05-10)
 
 - `opentelemetry-instrumentation-system-metrics` Add `process.` prefix to `runtime.memory`, `runtime.cpu.time`, and `runtime.gc_count`. Change `runtime.memory` from count to UpDownCounter. ([#1735](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/1735))
@@ -1298,8 +1301,3 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - `opentelemetry-ext-wsgi` Initial release
 - `opentelemetry-ext-http-requests` Initial release
-
-### Added
-
-- 'Added Enable_commenter for mysql
-  ([[#1387](https://github.com/open-telemetry/opentelemetry-python-contrib/issues/1387)])
