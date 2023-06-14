@@ -168,21 +168,10 @@ class TestRedis(TestBase):
         span = spans[0]
         self.assertEqual(span.attributes.get("db.statement"), "SET ? ?")
 
-    def test_query_sanitizer_enabled_env(self):
+    def test_query_sanitizer(self):
         redis_client = redis.Redis()
         connection = redis.connection.Connection()
         redis_client.connection = connection
-
-        RedisInstrumentor().uninstrument()
-
-        env_patch = mock.patch.dict(
-            "os.environ",
-            {"OTEL_PYTHON_INSTRUMENTATION_SANITIZE_REDIS": "true"},
-        )
-        env_patch.start()
-        RedisInstrumentor().instrument(
-            tracer_provider=self.tracer_provider,
-        )
 
         with mock.patch.object(redis_client, "connection"):
             redis_client.set("key", "value")
@@ -192,21 +181,6 @@ class TestRedis(TestBase):
 
         span = spans[0]
         self.assertEqual(span.attributes.get("db.statement"), "SET ? ?")
-        env_patch.stop()
-
-    def test_query_sanitizer_disabled(self):
-        redis_client = redis.Redis()
-        connection = redis.connection.Connection()
-        redis_client.connection = connection
-
-        with mock.patch.object(redis_client, "connection"):
-            redis_client.set("key", "value")
-
-        spans = self.memory_exporter.get_finished_spans()
-        self.assertEqual(len(spans), 1)
-
-        span = spans[0]
-        self.assertEqual(span.attributes.get("db.statement"), "SET key value")
 
     def test_no_op_tracer_provider(self):
         RedisInstrumentor().uninstrument()
