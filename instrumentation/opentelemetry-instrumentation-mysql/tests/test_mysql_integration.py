@@ -118,7 +118,8 @@ class TestMysqlIntegration(TestBase):
         spans_list = self.memory_exporter.get_finished_spans()
         self.assertEqual(len(spans_list), 1)
 
-    @patch("opentelemetry.instrumentation.dbapi.wrap_connect")
+    @mock.patch("mysql.connector.connect", new=mock_connect)
+    @mock.patch("opentelemetry.instrumentation.dbapi.wrap_connect")
     # pylint: disable=unused-argument
     def test_sqlcommenter_enabled(self, event_mocked):
         cnx = mysql.connector.connect(database="test")
@@ -129,7 +130,8 @@ class TestMysqlIntegration(TestBase):
         kwargs = event_mocked.call_args[1]
         self.assertEqual(kwargs["enable_commenter"], True)
 
-    @patch("opentelemetry.instrumentation.dbapi.wrap_connect")
+    @mock.patch("mysql.connector.connect", new=mock_connect)
+    @mock.patch("opentelemetry.instrumentation.dbapi.wrap_connect")
     # pylint: disable=unused-argument
     def test_sqlcommenter_disabled(self, event_mocked):
         cnx = mysql.connector.connect(database="test")
