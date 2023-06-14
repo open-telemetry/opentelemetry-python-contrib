@@ -50,7 +50,7 @@ jobs:
         run: .github/scripts/update-version.sh $STABLE_VERSION $UNSTABLE_VERSION
 
       - name: Set up Python 3.9
-        uses: actions/setup-python@v2
+        uses: actions/setup-python@v4
         with:
           python-version: 3.9
       - name: Install tox
