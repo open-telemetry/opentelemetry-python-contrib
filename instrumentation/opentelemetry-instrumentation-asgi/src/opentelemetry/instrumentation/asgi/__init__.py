@@ -576,15 +576,17 @@ class OpenTelemetryMiddleware:
                     duration_attrs,
                 )
                 start = default_timer()
-
-                await self.app(scope, otel_receive, otel_send)
+                try:
+                    await self.app(scope, otel_receive, otel_send)
+                finally:
+                    if scope["type"] == "http":
+                        target = _collect_target_attribute(scope)
+                        if target:
+                            duration_attrs[SpanAttributes.HTTP_TARGET] = target
+                        duration = max(round((default_timer() - start) * 1000), 0)
+                        self.duration_histogram.record(duration, duration_attrs)
         finally:
             if scope["type"] == "http":
-                target = _collect_target_attribute(scope)
-                if target:
-                    duration_attrs[SpanAttributes.HTTP_TARGET] = target
-                duration = max(round((default_timer() - start) * 1000), 0)
-                self.duration_histogram.record(duration, duration_attrs)
                 self.active_requests_counter.add(
                     -1, active_requests_count_attrs
                 )
