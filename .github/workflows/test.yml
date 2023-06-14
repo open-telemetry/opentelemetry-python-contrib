@@ -37,7 +37,7 @@ jobs:
         run: pip install tox==3.27.1 tox-factor
       - name: Cache tox environment
         # Preserves .tox directory between runs for faster installs
-        uses: actions/cache@v1
+        uses: actions/cache@v3
         with:
           path: |
             .tox
@@ -113,7 +113,7 @@ jobs:
         run: sudo apt-get install -y libsnappy-dev
       - name: Cache tox environment
         # Preserves .tox directory between runs for faster installs
-        uses: actions/cache@v1
+        uses: actions/cache@v3
         with:
           path: |
             .tox
