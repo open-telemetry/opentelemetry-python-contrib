@@ -35,7 +35,7 @@ instruments = [
 ]
 test = [
   "opentelemetry-instrumentation-jinja2[instruments]",
-  "markupsafe==2.0.1",
+  "markupsafe==2.1.3",
   "opentelemetry-test-utils == 0.40b0.dev",
 ]
 
