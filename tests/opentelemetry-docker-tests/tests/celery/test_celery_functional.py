@@ -420,7 +420,7 @@ def test_class_task_exception(celery_app, memory_exporter):
     assert "Task class is failing" in span.status.description
 
 
-def test_class_task_exception_excepted(celery_app, memory_exporter):
+def test_class_task_exception_expected(celery_app, memory_exporter):
     class BaseTask(celery_app.Task):
         throws = (MyException,)
 
