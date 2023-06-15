@@ -39,7 +39,7 @@ instruments = [
 ]
 test = [
   "opentelemetry-instrumentation-flask[instruments]",
-  "markupsafe==2.1.2",
+  "markupsafe==2.1.3",
   "opentelemetry-test-utils == 0.40b0.dev",
 ]
 
