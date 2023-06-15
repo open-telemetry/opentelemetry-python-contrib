@@ -47,7 +47,7 @@ ddtrace>=0.34.0
 httpx>=0.18.0
 
 # indirect dependency pins
-markupsafe==2.0.1
+markupsafe==2.1.3
 itsdangerous==2.0.1
 
 docutils==0.16
