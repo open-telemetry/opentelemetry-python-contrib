@@ -1,6 +1,6 @@
 pylint==2.12.2
 flake8~=3.7
-isort~=5.6
+isort~=5.12
 black>=22.1.0
 httpretty~=1.0
 mypy==0.790
