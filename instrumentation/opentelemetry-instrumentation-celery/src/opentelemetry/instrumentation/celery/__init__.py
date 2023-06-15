@@ -64,6 +64,12 @@ from timeit import default_timer
 from typing import Collection, Iterable
 
 from celery import signals  # pylint: disable=no-name-in-module
+from billiard.einfo import ExceptionInfo
+
+try:
+    from billiard.einfo import ExceptionWithTraceback # pylint: disable=no-name-in-module
+except ImportError:
+    ExceptionWithTraceback = None
 
 from opentelemetry import trace
 from opentelemetry.instrumentation.celery import utils
@@ -271,6 +277,21 @@ class CeleryInstrumentor(BaseInstrumentor):
             return
 
         if ex is not None:
+            # Unwrap the actual exception wrapped by billiard's
+            # `ExceptionInfo` and `ExceptionWithTraceback`.
+            if (
+                isinstance(ex, ExceptionInfo)
+                and ex.exception is not None
+            ):
+                ex = ex.exception
+
+            if (
+                ExceptionWithTraceback is not None
+                and isinstance(ex, ExceptionWithTraceback)
+                and ex.exc is not None
+            ):
+                ex = ex.exc
+
             status_kwargs["description"] = str(ex)
             span.record_exception(ex)
         span.set_status(Status(**status_kwargs))

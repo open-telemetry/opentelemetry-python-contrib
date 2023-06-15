@@ -13,6 +13,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   ([#1889](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/1889))
 - Fixed union typing error not compatible with Python 3.7 introduced in `opentelemetry-util-http`, fix tests introduced by patch related to sanitize method for wsgi
   ([#1913](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/1913))
+- `opentelemetry-instrumentation-celery` Unwrap Celery's `ExceptionInfo` errors and report the actual exception that was raised. ([#1863](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/1863))
 
 ### Added
 

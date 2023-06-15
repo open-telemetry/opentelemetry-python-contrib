@@ -279,7 +279,7 @@ def test_fn_exception(celery_app, memory_exporter):
     assert len(span.events) == 1
     event = span.events[0]
     assert event.name == "exception"
-    assert event.attributes[SpanAttributes.EXCEPTION_TYPE] == "ExceptionInfo"
+    assert event.attributes[SpanAttributes.EXCEPTION_TYPE] == "Exception"
     assert SpanAttributes.EXCEPTION_MESSAGE in event.attributes
     assert (
         span.attributes.get(SpanAttributes.MESSAGING_MESSAGE_ID)
