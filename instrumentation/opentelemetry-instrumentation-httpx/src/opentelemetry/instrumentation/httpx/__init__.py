@@ -25,7 +25,7 @@ When using the instrumentor, all clients will automatically trace requests.
      import httpx
      from opentelemetry.instrumentation.httpx import HTTPXClientInstrumentor
 
-     url = "https://httpbin.org/get"
+     url = "https://some.url/get"
      HTTPXClientInstrumentor().instrument()
 
      with httpx.Client() as client:
@@ -46,7 +46,7 @@ use the `instrument_client` method.
     import httpx
     from opentelemetry.instrumentation.httpx import HTTPXClientInstrumentor
 
-    url = "https://httpbin.org/get"
+    url = "https://some.url/get"
 
     with httpx.Client(transport=telemetry_transport) as client:
         HTTPXClientInstrumentor.instrument_client(client)
@@ -91,7 +91,7 @@ If you don't want to use the instrumentor class, you can use the transport class
         SyncOpenTelemetryTransport,
     )
 
-    url = "https://httpbin.org/get"
+    url = "https://some.url/get"
     transport = httpx.HTTPTransport()
     telemetry_transport = SyncOpenTelemetryTransport(transport)
 

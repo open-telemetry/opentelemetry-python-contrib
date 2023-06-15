@@ -23,6 +23,7 @@ from unittest import mock
 import aiohttp
 import aiohttp.test_utils
 import yarl
+from http_server_mock import HttpServerMock
 from pkg_resources import iter_entry_points
 
 from opentelemetry import context
@@ -313,18 +314,26 @@ class TestAioHttpIntegration(TestBase):
     def test_credential_removal(self):
         trace_configs = [aiohttp_client.create_trace_config()]
 
-        url = "http://username:password@httpbin.org/status/200"
-        with self.subTest(url=url):
+        app = HttpServerMock("test_credential_removal")
 
-            async def do_request(url):
-                async with aiohttp.ClientSession(
-                    trace_configs=trace_configs,
-                ) as session:
-                    async with session.get(url):
-                        pass
+        @app.route("/status/200")
+        def index():
+            return "hello"
 
-            loop = asyncio.get_event_loop()
-            loop.run_until_complete(do_request(url))
+        url = "http://username:password@localhost:5000/status/200"
+
+        with app.run("localhost", 5000):
+            with self.subTest(url=url):
+
+                async def do_request(url):
+                    async with aiohttp.ClientSession(
+                        trace_configs=trace_configs,
+                    ) as session:
+                        async with session.get(url):
+                            pass
+
+                loop = asyncio.get_event_loop()
+                loop.run_until_complete(do_request(url))
 
         self.assert_spans(
             [
@@ -333,7 +342,9 @@ class TestAioHttpIntegration(TestBase):
                     (StatusCode.UNSET, None),
                     {
                         SpanAttributes.HTTP_METHOD: "GET",
-                        SpanAttributes.HTTP_URL: "http://httpbin.org/status/200",
+                        SpanAttributes.HTTP_URL: (
+                            "http://localhost:5000/status/200"
+                        ),
                         SpanAttributes.HTTP_STATUS_CODE: int(HTTPStatus.OK),
                     },
                 )

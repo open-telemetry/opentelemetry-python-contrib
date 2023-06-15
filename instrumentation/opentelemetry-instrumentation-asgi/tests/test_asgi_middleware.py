@@ -705,11 +705,11 @@ class TestAsgiAttributes(unittest.TestCase):
         self.assertEqual(self.span.set_status.call_count, 1)
 
     def test_credential_removal(self):
-        self.scope["server"] = ("username:password@httpbin.org", 80)
+        self.scope["server"] = ("username:password@mock", 80)
         self.scope["path"] = "/status/200"
         attrs = otel_asgi.collect_request_attributes(self.scope)
         self.assertEqual(
-            attrs[SpanAttributes.HTTP_URL], "http://httpbin.org/status/200"
+            attrs[SpanAttributes.HTTP_URL], "http://mock/status/200"
         )
 
     def test_collect_target_attribute_missing(self):
