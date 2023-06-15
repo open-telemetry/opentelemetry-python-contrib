@@ -437,10 +437,10 @@ class TestWsgiAttributes(unittest.TestCase):
         self.span.set_attribute.assert_has_calls(expected, any_order=True)
 
     def test_credential_removal(self):
-        self.environ["HTTP_HOST"] = "username:password@httpbin.com"
+        self.environ["HTTP_HOST"] = "username:password@mock"
         self.environ["PATH_INFO"] = "/status/200"
         expected = {
-            SpanAttributes.HTTP_URL: "http://httpbin.com/status/200",
+            SpanAttributes.HTTP_URL: "http://mock/status/200",
             SpanAttributes.NET_HOST_PORT: 80,
         }
         self.assertGreaterEqual(

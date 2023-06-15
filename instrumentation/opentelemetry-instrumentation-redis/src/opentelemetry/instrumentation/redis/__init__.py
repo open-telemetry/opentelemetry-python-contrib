@@ -64,8 +64,6 @@ this function signature is:  def request_hook(span: Span, instance: redis.connec
 response_hook (Callable) - a function with extra user-defined logic to be performed after performing the request
 this function signature is: def response_hook(span: Span, instance: redis.connection.Connection, response) -> None
 
-sanitize_query (Boolean) - default False, enable the Redis query sanitization
-
 for example:
 
 .. code: python
@@ -88,27 +86,11 @@ for example:
     client = redis.StrictRedis(host="localhost", port=6379)
     client.get("my-key")
 
-Configuration
--------------
-
-Query sanitization
-******************
-To enable query sanitization with an environment variable, set
-``OTEL_PYTHON_INSTRUMENTATION_SANITIZE_REDIS`` to "true".
-
-For example,
-
-::
-
-    export OTEL_PYTHON_INSTRUMENTATION_SANITIZE_REDIS="true"
-
-will result in traced queries like "SET ? ?".
 
 API
 ---
 """
 import typing
-from os import environ
 from typing import Any, Collection
 
 import redis
@@ -116,9 +98,6 @@ from wrapt import wrap_function_wrapper
 
 from opentelemetry import trace
 from opentelemetry.instrumentation.instrumentor import BaseInstrumentor
-from opentelemetry.instrumentation.redis.environment_variables import (
-    OTEL_PYTHON_INSTRUMENTATION_SANITIZE_REDIS,
-)
 from opentelemetry.instrumentation.redis.package import _instruments
 from opentelemetry.instrumentation.redis.util import (
     _extract_conn_attributes,
@@ -165,7 +144,7 @@ def _build_span_name(instance, cmd_args):
     return name
 
 
-def _build_span_meta_data_for_pipeline(instance, sanitize_query):
+def _build_span_meta_data_for_pipeline(instance):
     try:
         command_stack = (
             instance.command_stack
@@ -174,9 +153,7 @@ def _build_span_meta_data_for_pipeline(instance, sanitize_query):
         )
 
         cmds = [
-            _format_command_args(
-                c.args if hasattr(c, "args") else c[0], sanitize_query
-            )
+            _format_command_args(c.args if hasattr(c, "args") else c[0])
             for c in command_stack
         ]
         resource = "\n".join(cmds)
@@ -200,10 +177,9 @@ def _instrument(
     tracer,
     request_hook: _RequestHookT = None,
     response_hook: _ResponseHookT = None,
-    sanitize_query: bool = False,
 ):
     def _traced_execute_command(func, instance, args, kwargs):
-        query = _format_command_args(args, sanitize_query)
+        query = _format_command_args(args)
         name = _build_span_name(instance, args)
 
         with tracer.start_as_current_span(
@@ -225,7 +201,7 @@ def _instrument(
             command_stack,
             resource,
             span_name,
-        ) = _build_span_meta_data_for_pipeline(instance, sanitize_query)
+        ) = _build_span_meta_data_for_pipeline(instance)
 
         with tracer.start_as_current_span(
             span_name, kind=trace.SpanKind.CLIENT
@@ -272,7 +248,7 @@ def _instrument(
         )
 
     async def _async_traced_execute_command(func, instance, args, kwargs):
-        query = _format_command_args(args, sanitize_query)
+        query = _format_command_args(args)
         name = _build_span_name(instance, args)
 
         with tracer.start_as_current_span(
@@ -294,7 +270,7 @@ def _instrument(
             command_stack,
             resource,
             span_name,
-        ) = _build_span_meta_data_for_pipeline(instance, sanitize_query)
+        ) = _build_span_meta_data_for_pipeline(instance)
 
         with tracer.start_as_current_span(
             span_name, kind=trace.SpanKind.CLIENT
@@ -363,15 +339,6 @@ class RedisInstrumentor(BaseInstrumentor):
             tracer,
             request_hook=kwargs.get("request_hook"),
             response_hook=kwargs.get("response_hook"),
-            sanitize_query=kwargs.get(
-                "sanitize_query",
-                environ.get(
-                    OTEL_PYTHON_INSTRUMENTATION_SANITIZE_REDIS, "false"
-                )
-                .lower()
-                .strip()
-                == "true",
-            ),
         )
 
     def _uninstrument(self, **kwargs):
