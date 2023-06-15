@@ -1,0 +1,66 @@
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[project]
+name = "opentelemetry-instrumentation-karapace"
+dynamic = ["version"]
+description = "OpenTelemetry Karapace instrumentation"
+readme = "README.rst"
+license = "Apache-2.0"
+requires-python = ">=3.7"
+authors = [
+  { name = "OpenTelemetry Authors", email = "cncf-opentelemetry-contributors@lists.cncf.io" },
+]
+classifiers = [
+  "Development Status :: 4 - Beta",
+  "Intended Audience :: Developers",
+  "License :: OSI Approved :: Apache Software License",
+  "Programming Language :: Python",
+  "Programming Language :: Python :: 3",
+  "Programming Language :: Python :: 3.7",
+  "Programming Language :: Python :: 3.8",
+  "Programming Language :: Python :: 3.9",
+  "Programming Language :: Python :: 3.10",
+  "Programming Language :: Python :: 3.11",
+]
+dependencies = [
+  "opentelemetry-api ~= 1.12",
+  "opentelemetry-instrumentation",
+  "opentelemetry-sdk",
+  "opentelemetry-semantic-conventions",
+
+  "wrapt >= 1.0.0, < 2.0.0",
+]
+
+[project.optional-dependencies]
+instruments = [
+]
+
+test = [
+  "opentelemetry-instrumentation-karapace[instruments]",
+]
+
+[project.entry-points.opentelemetry_instrumentor]
+karapace = "opentelemetry.instrumentation.karapace:KarapaceInstrumentor"
+
+
+[project.scripts]
+karapace = "opentelemetry.instrumentation.karapace:KarapaceInstrumentor"
+
+[project.urls]
+Homepage = "https://github.com/open-telemetry/opentelemetry-python-contrib/tree/main/instrumentation/opentelemetry-instrumentation-karapace"
+
+[tool.hatch.version]
+path = "src/opentelemetry/instrumentation/karapace/version.py"
+
+[tool.hatch.build.targets.sdist]
+include = [
+  "/src",
+  "/tests",
+]
+[tool.black]
+line-length = 120
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/opentelemetry"]
