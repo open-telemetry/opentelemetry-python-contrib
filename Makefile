@@ -1,5 +1,5 @@
 SHELL := /bin/bash
-PIP_DIRS := $(shell find . -type f '(' -name "pyproject.toml" -o -name "*requirements.txt" -o -name "package.py" ')' -not -path "./_template/*" -exec dirname {} \; | sort -u | egrep  '^./' )
+PIP_DIRS := $(shell find . -type f '(' -name "pyproject.toml" -o -name "*requirements.txt" ')' -not -path "./_template/*" -exec dirname {} \; | sort -u | egrep  '^./' )
 DEPENDABOT_PATH=".github/dependabot.yml"
 
 .PHONY: generate/dependabot
