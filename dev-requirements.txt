@@ -17,4 +17,4 @@ protobuf~=4.23
 markupsafe>=2.0.1
 codespell==2.1.0
 requests==2.31.0
-ruamel.yaml==0.17.21
+ruamel.yaml==0.17.31
