@@ -5,7 +5,7 @@ black>=22.1.0
 httpretty~=1.1
 mypy==0.790
 sphinx
-sphinx-rtd-theme~=0.4
+sphinx-rtd-theme~=1.2
 sphinx-autodoc-typehints
 pytest!=5.2.3
 pytest-cov>=2.8
