@@ -154,9 +154,9 @@ class TestMiddleware(WsgiTestBase):
 
         self.assertEqual(
             span.name,
-            "^route/(?P<year>[0-9]{4})/template/$"
+            "GET ^route/(?P<year>[0-9]{4})/template/$"
             if DJANGO_2_2
-            else "tests.views.traced_template",
+            else "GET",
         )
         self.assertEqual(span.kind, SpanKind.SERVER)
         self.assertEqual(span.status.status_code, StatusCode.UNSET)
@@ -181,9 +181,7 @@ class TestMiddleware(WsgiTestBase):
 
         span = spans[0]
 
-        self.assertEqual(
-            span.name, "^traced/" if DJANGO_2_2 else "tests.views.traced"
-        )
+        self.assertEqual(span.name, "GET ^traced/" if DJANGO_2_2 else "GET")
         self.assertEqual(span.kind, SpanKind.SERVER)
         self.assertEqual(span.status.status_code, StatusCode.UNSET)
         self.assertEqual(span.attributes[SpanAttributes.HTTP_METHOD], "GET")
@@ -229,9 +227,7 @@ class TestMiddleware(WsgiTestBase):
 
         span = spans[0]
 
-        self.assertEqual(
-            span.name, "^traced/" if DJANGO_2_2 else "tests.views.traced"
-        )
+        self.assertEqual(span.name, "POST ^traced/" if DJANGO_2_2 else "POST")
         self.assertEqual(span.kind, SpanKind.SERVER)
         self.assertEqual(span.status.status_code, StatusCode.UNSET)
         self.assertEqual(span.attributes[SpanAttributes.HTTP_METHOD], "POST")
@@ -255,9 +251,7 @@ class TestMiddleware(WsgiTestBase):
 
         span = spans[0]
 
-        self.assertEqual(
-            span.name, "^error/" if DJANGO_2_2 else "tests.views.error"
-        )
+        self.assertEqual(span.name, "GET ^error/" if DJANGO_2_2 else "GET")
         self.assertEqual(span.kind, SpanKind.SERVER)
         self.assertEqual(span.status.status_code, StatusCode.ERROR)
         self.assertEqual(span.attributes[SpanAttributes.HTTP_METHOD], "GET")
@@ -321,9 +315,7 @@ class TestMiddleware(WsgiTestBase):
         span = span_list[0]
         self.assertEqual(
             span.name,
-            "^span_name/([0-9]{4})/$"
-            if DJANGO_2_2
-            else "tests.views.route_span_name",
+            "GET ^span_name/([0-9]{4})/$" if DJANGO_2_2 else "GET",
         )
 
     def test_span_name_for_query_string(self):
@@ -337,9 +329,7 @@ class TestMiddleware(WsgiTestBase):
         span = span_list[0]
         self.assertEqual(
             span.name,
-            "^span_name/([0-9]{4})/$"
-            if DJANGO_2_2
-            else "tests.views.route_span_name",
+            "GET ^span_name/([0-9]{4})/$" if DJANGO_2_2 else "GET",
         )
 
     def test_span_name_404(self):
@@ -348,7 +338,7 @@ class TestMiddleware(WsgiTestBase):
         self.assertEqual(len(span_list), 1)
 
         span = span_list[0]
-        self.assertEqual(span.name, "HTTP GET")
+        self.assertEqual(span.name, "GET")
 
     def test_traced_request_attrs(self):
         Client().get("/span_name/1234/", CONTENT_TYPE="test/ct")
