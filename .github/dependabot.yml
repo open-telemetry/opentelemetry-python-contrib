@@ -55,7 +55,25 @@ updates:
     schedule:
       interval: weekly
 
+  - directory: /instrumentation/opentelemetry-instrumentation-aio-pika/src/opentelemetry/instrumentation/aio_pika
+    package-ecosystem: pip
+    labels:
+      - python
+      - dependencies
+      - Skip Changelog
+    schedule:
+      interval: weekly
+
   - directory: /instrumentation/opentelemetry-instrumentation-aiohttp-client
+    package-ecosystem: pip
+    labels:
+      - python
+      - dependencies
+      - Skip Changelog
+    schedule:
+      interval: weekly
+
+  - directory: /instrumentation/opentelemetry-instrumentation-aiohttp-client/src/opentelemetry/instrumentation/aiohttp_client
     package-ecosystem: pip
     labels:
       - python
@@ -73,7 +91,25 @@ updates:
     schedule:
       interval: weekly
 
+  - directory: /instrumentation/opentelemetry-instrumentation-aiopg/src/opentelemetry/instrumentation/aiopg
+    package-ecosystem: pip
+    labels:
+      - python
+      - dependencies
+      - Skip Changelog
+    schedule:
+      interval: weekly
+
   - directory: /instrumentation/opentelemetry-instrumentation-asgi
+    package-ecosystem: pip
+    labels:
+      - python
+      - dependencies
+      - Skip Changelog
+    schedule:
+      interval: weekly
+
+  - directory: /instrumentation/opentelemetry-instrumentation-asgi/src/opentelemetry/instrumentation/asgi
     package-ecosystem: pip
     labels:
       - python
@@ -91,7 +127,25 @@ updates:
     schedule:
       interval: weekly
 
+  - directory: /instrumentation/opentelemetry-instrumentation-asyncpg/src/opentelemetry/instrumentation/asyncpg
+    package-ecosystem: pip
+    labels:
+      - python
+      - dependencies
+      - Skip Changelog
+    schedule:
+      interval: weekly
+
   - directory: /instrumentation/opentelemetry-instrumentation-aws-lambda
+    package-ecosystem: pip
+    labels:
+      - python
+      - dependencies
+      - Skip Changelog
+    schedule:
+      interval: weekly
+
+  - directory: /instrumentation/opentelemetry-instrumentation-aws-lambda/src/opentelemetry/instrumentation/aws_lambda
     package-ecosystem: pip
     labels:
       - python
@@ -109,7 +163,25 @@ updates:
     schedule:
       interval: weekly
 
+  - directory: /instrumentation/opentelemetry-instrumentation-boto/src/opentelemetry/instrumentation/boto
+    package-ecosystem: pip
+    labels:
+      - python
+      - dependencies
+      - Skip Changelog
+    schedule:
+      interval: weekly
+
   - directory: /instrumentation/opentelemetry-instrumentation-boto3sqs
+    package-ecosystem: pip
+    labels:
+      - python
+      - dependencies
+      - Skip Changelog
+    schedule:
+      interval: weekly
+
+  - directory: /instrumentation/opentelemetry-instrumentation-boto3sqs/src/opentelemetry/instrumentation/boto3sqs
     package-ecosystem: pip
     labels:
       - python
@@ -127,7 +199,25 @@ updates:
     schedule:
       interval: weekly
 
+  - directory: /instrumentation/opentelemetry-instrumentation-botocore/src/opentelemetry/instrumentation/botocore
+    package-ecosystem: pip
+    labels:
+      - python
+      - dependencies
+      - Skip Changelog
+    schedule:
+      interval: weekly
+
   - directory: /instrumentation/opentelemetry-instrumentation-celery
+    package-ecosystem: pip
+    labels:
+      - python
+      - dependencies
+      - Skip Changelog
+    schedule:
+      interval: weekly
+
+  - directory: /instrumentation/opentelemetry-instrumentation-celery/src/opentelemetry/instrumentation/celery
     package-ecosystem: pip
     labels:
       - python
@@ -145,7 +235,25 @@ updates:
     schedule:
       interval: weekly
 
+  - directory: /instrumentation/opentelemetry-instrumentation-confluent-kafka/src/opentelemetry/instrumentation/confluent_kafka
+    package-ecosystem: pip
+    labels:
+      - python
+      - dependencies
+      - Skip Changelog
+    schedule:
+      interval: weekly
+
   - directory: /instrumentation/opentelemetry-instrumentation-dbapi
+    package-ecosystem: pip
+    labels:
+      - python
+      - dependencies
+      - Skip Changelog
+    schedule:
+      interval: weekly
+
+  - directory: /instrumentation/opentelemetry-instrumentation-dbapi/src/opentelemetry/instrumentation/dbapi
     package-ecosystem: pip
     labels:
       - python
@@ -163,7 +271,25 @@ updates:
     schedule:
       interval: weekly
 
+  - directory: /instrumentation/opentelemetry-instrumentation-django/src/opentelemetry/instrumentation/django
+    package-ecosystem: pip
+    labels:
+      - python
+      - dependencies
+      - Skip Changelog
+    schedule:
+      interval: weekly
+
   - directory: /instrumentation/opentelemetry-instrumentation-elasticsearch
+    package-ecosystem: pip
+    labels:
+      - python
+      - dependencies
+      - Skip Changelog
+    schedule:
+      interval: weekly
+
+  - directory: /instrumentation/opentelemetry-instrumentation-elasticsearch/src/opentelemetry/instrumentation/elasticsearch
     package-ecosystem: pip
     labels:
       - python
@@ -181,7 +307,25 @@ updates:
     schedule:
       interval: weekly
 
+  - directory: /instrumentation/opentelemetry-instrumentation-falcon/src/opentelemetry/instrumentation/falcon
+    package-ecosystem: pip
+    labels:
+      - python
+      - dependencies
+      - Skip Changelog
+    schedule:
+      interval: weekly
+
   - directory: /instrumentation/opentelemetry-instrumentation-fastapi
+    package-ecosystem: pip
+    labels:
+      - python
+      - dependencies
+      - Skip Changelog
+    schedule:
+      interval: weekly
+
+  - directory: /instrumentation/opentelemetry-instrumentation-fastapi/src/opentelemetry/instrumentation/fastapi
     package-ecosystem: pip
     labels:
       - python
@@ -199,7 +343,25 @@ updates:
     schedule:
       interval: weekly
 
+  - directory: /instrumentation/opentelemetry-instrumentation-flask/src/opentelemetry/instrumentation/flask
+    package-ecosystem: pip
+    labels:
+      - python
+      - dependencies
+      - Skip Changelog
+    schedule:
+      interval: weekly
+
   - directory: /instrumentation/opentelemetry-instrumentation-grpc
+    package-ecosystem: pip
+    labels:
+      - python
+      - dependencies
+      - Skip Changelog
+    schedule:
+      interval: weekly
+
+  - directory: /instrumentation/opentelemetry-instrumentation-grpc/src/opentelemetry/instrumentation/grpc
     package-ecosystem: pip
     labels:
       - python
@@ -217,7 +379,25 @@ updates:
     schedule:
       interval: weekly
 
+  - directory: /instrumentation/opentelemetry-instrumentation-httpx/src/opentelemetry/instrumentation/httpx
+    package-ecosystem: pip
+    labels:
+      - python
+      - dependencies
+      - Skip Changelog
+    schedule:
+      interval: weekly
+
   - directory: /instrumentation/opentelemetry-instrumentation-jinja2
+    package-ecosystem: pip
+    labels:
+      - python
+      - dependencies
+      - Skip Changelog
+    schedule:
+      interval: weekly
+
+  - directory: /instrumentation/opentelemetry-instrumentation-jinja2/src/opentelemetry/instrumentation/jinja2
     package-ecosystem: pip
     labels:
       - python
@@ -235,7 +415,25 @@ updates:
     schedule:
       interval: weekly
 
+  - directory: /instrumentation/opentelemetry-instrumentation-kafka-python/src/opentelemetry/instrumentation/kafka
+    package-ecosystem: pip
+    labels:
+      - python
+      - dependencies
+      - Skip Changelog
+    schedule:
+      interval: weekly
+
   - directory: /instrumentation/opentelemetry-instrumentation-logging
+    package-ecosystem: pip
+    labels:
+      - python
+      - dependencies
+      - Skip Changelog
+    schedule:
+      interval: weekly
+
+  - directory: /instrumentation/opentelemetry-instrumentation-logging/src/opentelemetry/instrumentation/logging
     package-ecosystem: pip
     labels:
       - python
@@ -253,7 +451,25 @@ updates:
     schedule:
       interval: weekly
 
+  - directory: /instrumentation/opentelemetry-instrumentation-mysql/src/opentelemetry/instrumentation/mysql
+    package-ecosystem: pip
+    labels:
+      - python
+      - dependencies
+      - Skip Changelog
+    schedule:
+      interval: weekly
+
   - directory: /instrumentation/opentelemetry-instrumentation-pika
+    package-ecosystem: pip
+    labels:
+      - python
+      - dependencies
+      - Skip Changelog
+    schedule:
+      interval: weekly
+
+  - directory: /instrumentation/opentelemetry-instrumentation-pika/src/opentelemetry/instrumentation/pika
     package-ecosystem: pip
     labels:
       - python
@@ -271,7 +487,25 @@ updates:
     schedule:
       interval: weekly
 
+  - directory: /instrumentation/opentelemetry-instrumentation-psycopg2/src/opentelemetry/instrumentation/psycopg2
+    package-ecosystem: pip
+    labels:
+      - python
+      - dependencies
+      - Skip Changelog
+    schedule:
+      interval: weekly
+
   - directory: /instrumentation/opentelemetry-instrumentation-pymemcache
+    package-ecosystem: pip
+    labels:
+      - python
+      - dependencies
+      - Skip Changelog
+    schedule:
+      interval: weekly
+
+  - directory: /instrumentation/opentelemetry-instrumentation-pymemcache/src/opentelemetry/instrumentation/pymemcache
     package-ecosystem: pip
     labels:
       - python
@@ -289,7 +523,25 @@ updates:
     schedule:
       interval: weekly
 
+  - directory: /instrumentation/opentelemetry-instrumentation-pymongo/src/opentelemetry/instrumentation/pymongo
+    package-ecosystem: pip
+    labels:
+      - python
+      - dependencies
+      - Skip Changelog
+    schedule:
+      interval: weekly
+
   - directory: /instrumentation/opentelemetry-instrumentation-pymysql
+    package-ecosystem: pip
+    labels:
+      - python
+      - dependencies
+      - Skip Changelog
+    schedule:
+      interval: weekly
+
+  - directory: /instrumentation/opentelemetry-instrumentation-pymysql/src/opentelemetry/instrumentation/pymysql
     package-ecosystem: pip
     labels:
       - python
@@ -307,7 +559,25 @@ updates:
     schedule:
       interval: weekly
 
+  - directory: /instrumentation/opentelemetry-instrumentation-pyramid/src/opentelemetry/instrumentation/pyramid
+    package-ecosystem: pip
+    labels:
+      - python
+      - dependencies
+      - Skip Changelog
+    schedule:
+      interval: weekly
+
   - directory: /instrumentation/opentelemetry-instrumentation-redis
+    package-ecosystem: pip
+    labels:
+      - python
+      - dependencies
+      - Skip Changelog
+    schedule:
+      interval: weekly
+
+  - directory: /instrumentation/opentelemetry-instrumentation-redis/src/opentelemetry/instrumentation/redis
     package-ecosystem: pip
     labels:
       - python
@@ -325,7 +595,25 @@ updates:
     schedule:
       interval: weekly
 
+  - directory: /instrumentation/opentelemetry-instrumentation-remoulade/src/opentelemetry/instrumentation/remoulade
+    package-ecosystem: pip
+    labels:
+      - python
+      - dependencies
+      - Skip Changelog
+    schedule:
+      interval: weekly
+
   - directory: /instrumentation/opentelemetry-instrumentation-requests
+    package-ecosystem: pip
+    labels:
+      - python
+      - dependencies
+      - Skip Changelog
+    schedule:
+      interval: weekly
+
+  - directory: /instrumentation/opentelemetry-instrumentation-requests/src/opentelemetry/instrumentation/requests
     package-ecosystem: pip
     labels:
       - python
@@ -343,7 +631,25 @@ updates:
     schedule:
       interval: weekly
 
+  - directory: /instrumentation/opentelemetry-instrumentation-sklearn/src/opentelemetry/instrumentation/sklearn
+    package-ecosystem: pip
+    labels:
+      - python
+      - dependencies
+      - Skip Changelog
+    schedule:
+      interval: weekly
+
   - directory: /instrumentation/opentelemetry-instrumentation-sqlalchemy
+    package-ecosystem: pip
+    labels:
+      - python
+      - dependencies
+      - Skip Changelog
+    schedule:
+      interval: weekly
+
+  - directory: /instrumentation/opentelemetry-instrumentation-sqlalchemy/src/opentelemetry/instrumentation/sqlalchemy
     package-ecosystem: pip
     labels:
       - python
@@ -361,7 +667,25 @@ updates:
     schedule:
       interval: weekly
 
+  - directory: /instrumentation/opentelemetry-instrumentation-sqlite3/src/opentelemetry/instrumentation/sqlite3
+    package-ecosystem: pip
+    labels:
+      - python
+      - dependencies
+      - Skip Changelog
+    schedule:
+      interval: weekly
+
   - directory: /instrumentation/opentelemetry-instrumentation-starlette
+    package-ecosystem: pip
+    labels:
+      - python
+      - dependencies
+      - Skip Changelog
+    schedule:
+      interval: weekly
+
+  - directory: /instrumentation/opentelemetry-instrumentation-starlette/src/opentelemetry/instrumentation/starlette
     package-ecosystem: pip
     labels:
       - python
@@ -379,7 +703,25 @@ updates:
     schedule:
       interval: weekly
 
+  - directory: /instrumentation/opentelemetry-instrumentation-system-metrics/src/opentelemetry/instrumentation/system_metrics
+    package-ecosystem: pip
+    labels:
+      - python
+      - dependencies
+      - Skip Changelog
+    schedule:
+      interval: weekly
+
   - directory: /instrumentation/opentelemetry-instrumentation-tornado
+    package-ecosystem: pip
+    labels:
+      - python
+      - dependencies
+      - Skip Changelog
+    schedule:
+      interval: weekly
+
+  - directory: /instrumentation/opentelemetry-instrumentation-tornado/src/opentelemetry/instrumentation/tornado
     package-ecosystem: pip
     labels:
       - python
@@ -397,7 +739,25 @@ updates:
     schedule:
       interval: weekly
 
+  - directory: /instrumentation/opentelemetry-instrumentation-tortoiseorm/src/opentelemetry/instrumentation/tortoiseorm
+    package-ecosystem: pip
+    labels:
+      - python
+      - dependencies
+      - Skip Changelog
+    schedule:
+      interval: weekly
+
   - directory: /instrumentation/opentelemetry-instrumentation-urllib
+    package-ecosystem: pip
+    labels:
+      - python
+      - dependencies
+      - Skip Changelog
+    schedule:
+      interval: weekly
+
+  - directory: /instrumentation/opentelemetry-instrumentation-urllib/src/opentelemetry/instrumentation/urllib
     package-ecosystem: pip
     labels:
       - python
@@ -415,7 +775,25 @@ updates:
     schedule:
       interval: weekly
 
+  - directory: /instrumentation/opentelemetry-instrumentation-urllib3/src/opentelemetry/instrumentation/urllib3
+    package-ecosystem: pip
+    labels:
+      - python
+      - dependencies
+      - Skip Changelog
+    schedule:
+      interval: weekly
+
   - directory: /instrumentation/opentelemetry-instrumentation-wsgi
+    package-ecosystem: pip
+    labels:
+      - python
+      - dependencies
+      - Skip Changelog
+    schedule:
+      interval: weekly
+
+  - directory: /instrumentation/opentelemetry-instrumentation-wsgi/src/opentelemetry/instrumentation/wsgi
     package-ecosystem: pip
     labels:
       - python
