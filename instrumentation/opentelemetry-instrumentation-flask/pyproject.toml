@@ -30,6 +30,7 @@ dependencies = [
   "opentelemetry-instrumentation-wsgi == 0.40b0.dev",
   "opentelemetry-semantic-conventions == 0.40b0.dev",
   "opentelemetry-util-http == 0.40b0.dev",
+  "packaging >= 21.0",
 ]
 
 [project.optional-dependencies]
@@ -38,7 +39,7 @@ instruments = [
 ]
 test = [
   "opentelemetry-instrumentation-flask[instruments]",
-  "markupsafe==2.0.1",
+  "markupsafe==2.1.2",
   "opentelemetry-test-utils == 0.40b0.dev",
 ]
 

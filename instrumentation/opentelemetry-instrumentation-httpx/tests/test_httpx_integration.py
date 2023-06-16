@@ -59,7 +59,7 @@ def _async_call(coro: typing.Coroutine) -> asyncio.Task:
 def _response_hook(span, request: "RequestInfo", response: "ResponseInfo"):
     span.set_attribute(
         HTTP_RESPONSE_BODY,
-        response[2].read(),
+        b"".join(response[2]),
     )
 
 
@@ -68,7 +68,7 @@ async def _async_response_hook(
 ):
     span.set_attribute(
         HTTP_RESPONSE_BODY,
-        await response[2].aread(),
+        b"".join([part async for part in response[2]]),
     )
 
 
@@ -97,7 +97,7 @@ class BaseTestCases:
     class BaseTest(TestBase, metaclass=abc.ABCMeta):
         # pylint: disable=no-member
 
-        URL = "http://httpbin.org/status/200"
+        URL = "http://mock/status/200"
         response_hook = staticmethod(_response_hook)
         request_hook = staticmethod(_request_hook)
         no_update_request_hook = staticmethod(_no_update_request_hook)
@@ -142,7 +142,7 @@ class BaseTestCases:
             span = self.assert_span()
 
             self.assertIs(span.kind, trace.SpanKind.CLIENT)
-            self.assertEqual(span.name, "HTTP GET")
+            self.assertEqual(span.name, "GET")
 
             self.assertEqual(
                 span.attributes,
@@ -165,7 +165,7 @@ class BaseTestCases:
             self.assert_span(num_spans=2)
 
         def test_not_foundbasic(self):
-            url_404 = "http://httpbin.org/status/404"
+            url_404 = "http://mock/status/404"
 
             with respx.mock:
                 respx.get(url_404).mock(httpx.Response(404))
@@ -258,7 +258,7 @@ class BaseTestCases:
 
             span = self.assert_span()
 
-            self.assertEqual(span.name, "HTTP POST")
+            self.assertEqual(span.name, "POST")
             self.assertEqual(
                 span.attributes[SpanAttributes.HTTP_METHOD], "POST"
             )
@@ -350,7 +350,7 @@ class BaseTestCases:
 
             self.assertEqual(result.text, "Hello!")
             span = self.assert_span()
-            self.assertEqual(span.name, "HTTP GET")
+            self.assertEqual(span.name, "GET")
 
         def test_not_recording(self):
             with mock.patch("opentelemetry.trace.INVALID_SPAN") as mock_span:
@@ -444,7 +444,7 @@ class BaseTestCases:
 
             self.assertEqual(result.text, "Hello!")
             span = self.assert_span()
-            self.assertEqual(span.name, "HTTP GET")
+            self.assertEqual(span.name, "GET")
             HTTPXClientInstrumentor().uninstrument()
 
         def test_not_recording(self):
