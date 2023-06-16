@@ -9,6 +9,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - 'Added Enable_commenter for mysql
 ([#1387](https://github.com/open-telemetry/opentelemetry-python-contrib/issues/1387))
+- Fix falcon instrumentation's usage of Span Status to only set the description if the status code is ERROR.
+  ([#1840](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/1840))
 - Instrument all httpx versions >= 0.18. ([#1748](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/1748))
 
 ## Version 1.18.0/0.39b0 (2023-05-10)
@@ -25,9 +27,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   ([#1778](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/1778))
 - Add `excluded_urls` functionality to `urllib` and `urllib3` instrumentations
   ([#1733](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/1733))
-- Make Django request span attributes available for `start_span`. 
+- Make Django request span attributes available for `start_span`.
   ([#1730](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/1730))
-- Make ASGI request span attributes available for `start_span`. 
+- Make ASGI request span attributes available for `start_span`.
   ([#1762](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/1762))
 - `opentelemetry-instrumentation-celery` Add support for anonymous tasks.
   ([#1407](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/1407))
