@@ -145,7 +145,7 @@ class TestFalconInstrumentation(TestFalconBase, WsgiTestBase):
         spans = self.memory_exporter.get_finished_spans()
         self.assertEqual(len(spans), 1)
         span = spans[0]
-        self.assertEqual(span.name, "HTTP GET")
+        self.assertEqual(span.name, "GET /does-not-exist")
         self.assertEqual(span.status.status_code, StatusCode.UNSET)
         self.assertSpanHasAttributes(
             span,
