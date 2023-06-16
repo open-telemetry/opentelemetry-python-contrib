@@ -375,27 +375,26 @@ def _wrapped_before_request(
         flask_request_environ = flask.request.environ
         span_name = get_default_span_name()
 
+        attributes = otel_wsgi.collect_request_attributes(
+            flask_request_environ
+        )
+        if flask.request.url_rule:
+            # For 404 that result from no route found, etc, we
+            # don't have a url_rule.
+            attributes[SpanAttributes.HTTP_ROUTE] = flask.request.url_rule.rule
         span, token = _start_internal_or_server_span(
             tracer=tracer,
             span_name=span_name,
             start_time=flask_request_environ.get(_ENVIRON_STARTTIME_KEY),
             context_carrier=flask_request_environ,
             context_getter=otel_wsgi.wsgi_getter,
+            attributes=attributes,
         )
 
         if request_hook:
             request_hook(span, flask_request_environ)
 
         if span.is_recording():
-            attributes = otel_wsgi.collect_request_attributes(
-                flask_request_environ
-            )
-            if flask.request.url_rule:
-                # For 404 that result from no route found, etc, we
-                # don't have a url_rule.
-                attributes[
-                    SpanAttributes.HTTP_ROUTE
-                ] = flask.request.url_rule.rule
             for key, value in attributes.items():
                 span.set_attribute(key, value)
             if span.is_recording() and span.kind == trace.SpanKind.SERVER:
