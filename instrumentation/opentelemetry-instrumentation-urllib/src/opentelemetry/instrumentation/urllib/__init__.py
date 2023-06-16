@@ -207,7 +207,7 @@ def _instrument(
 
         method = request.get_method().upper()
 
-        span_name = f"HTTP {method}".strip()
+        span_name = method.strip()
 
         url = remove_url_credentials(url)
 

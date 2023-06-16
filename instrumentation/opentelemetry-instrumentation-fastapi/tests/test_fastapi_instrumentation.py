@@ -106,7 +106,7 @@ class TestFastAPIManualInstrumentation(TestBase):
         spans = self.memory_exporter.get_finished_spans()
         self.assertEqual(len(spans), 3)
         for span in spans:
-            self.assertIn("/foobar", span.name)
+            self.assertIn("GET /foobar", span.name)
 
     def test_uninstrument_app(self):
         self._client.get("/foobar")
@@ -138,7 +138,7 @@ class TestFastAPIManualInstrumentation(TestBase):
         spans = self.memory_exporter.get_finished_spans()
         self.assertEqual(len(spans), 3)
         for span in spans:
-            self.assertIn("/foobar", span.name)
+            self.assertIn("GET /foobar", span.name)
 
     def test_fastapi_route_attribute_added(self):
         """Ensure that fastapi routes are used as the span name."""
@@ -146,7 +146,7 @@ class TestFastAPIManualInstrumentation(TestBase):
         spans = self.memory_exporter.get_finished_spans()
         self.assertEqual(len(spans), 3)
         for span in spans:
-            self.assertIn("/user/{username}", span.name)
+            self.assertIn("GET /user/{username}", span.name)
         self.assertEqual(
             spans[-1].attributes[SpanAttributes.HTTP_ROUTE], "/user/{username}"
         )
