@@ -151,12 +151,12 @@ class TestAsgiApplication(AsgiTestBase):
         self.assertEqual(len(span_list), 4)
         expected = [
             {
-                "name": "/ http receive",
+                "name": "GET / http receive",
                 "kind": trace_api.SpanKind.INTERNAL,
                 "attributes": {"type": "http.request"},
             },
             {
-                "name": "/ http send",
+                "name": "GET / http send",
                 "kind": trace_api.SpanKind.INTERNAL,
                 "attributes": {
                     SpanAttributes.HTTP_STATUS_CODE: 200,
@@ -164,12 +164,12 @@ class TestAsgiApplication(AsgiTestBase):
                 },
             },
             {
-                "name": "/ http send",
+                "name": "GET / http send",
                 "kind": trace_api.SpanKind.INTERNAL,
                 "attributes": {"type": "http.response.body"},
             },
             {
-                "name": "/",
+                "name": "GET /",
                 "kind": trace_api.SpanKind.SERVER,
                 "attributes": {
                     SpanAttributes.HTTP_METHOD: "GET",
@@ -240,7 +240,7 @@ class TestAsgiApplication(AsgiTestBase):
                     entry["name"] = span_name
                 else:
                     entry["name"] = " ".join(
-                        [span_name] + entry["name"].split(" ")[1:]
+                        [span_name] + entry["name"].split(" ")[2:]
                     )
             return expected
 
@@ -503,9 +503,9 @@ class TestAsgiApplication(AsgiTestBase):
             for entry in expected:
                 if entry["kind"] == trace_api.SpanKind.SERVER:
                     entry["name"] = "name from server hook"
-                elif entry["name"] == "/ http receive":
+                elif entry["name"] == "GET / http receive":
                     entry["name"] = "name from client request hook"
-                elif entry["name"] == "/ http send":
+                elif entry["name"] == "GET / http send":
                     entry["attributes"].update({"attr-from-hook": "value"})
             return expected
 

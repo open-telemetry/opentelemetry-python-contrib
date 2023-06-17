@@ -245,8 +245,16 @@ def _uninstrument_from(instr_root, restore_as_bound_func=False):
 
 
 def get_default_span_name(method):
-    """Default implementation for name_callback, returns HTTP {method_name}."""
-    return f"HTTP {method.strip()}"
+    """
+    Default implementation for name_callback, returns HTTP {method_name}.
+    https://opentelemetry.io/docs/reference/specification/trace/semantic_conventions/http/#name
+
+    Args:
+        method: string representing HTTP method
+    Returns:
+        span name
+    """
+    return method.strip()
 
 
 class RequestsInstrumentor(BaseInstrumentor):

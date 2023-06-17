@@ -415,18 +415,23 @@ def set_status_code(span, status_code):
 
 
 def get_default_span_details(scope: dict) -> Tuple[str, dict]:
-    """Default implementation for get_default_span_details
+    """
+    Default span name is the HTTP method and URL path, or just the method.
+    https://github.com/open-telemetry/opentelemetry-specification/pull/3165
+    https://opentelemetry.io/docs/reference/specification/trace/semantic_conventions/http/#name
+
     Args:
         scope: the ASGI scope dictionary
     Returns:
         a tuple of the span name, and any attributes to attach to the span.
     """
-    span_name = (
-        scope.get("path", "").strip()
-        or f"HTTP {scope.get('method', '').strip()}"
-    )
-
-    return span_name, {}
+    path = scope.get("path", "").strip()
+    method = scope.get("method", "").strip()
+    if method and path:  # http
+        return f"{method} {path}", {}
+    if path:  # websocket
+        return path, {}
+    return method, {}  # http with no path
 
 
 def _collect_target_attribute(
