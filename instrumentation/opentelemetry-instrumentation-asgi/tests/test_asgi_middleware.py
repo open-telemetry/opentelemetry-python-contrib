@@ -142,12 +142,12 @@ class TestAsgiApplication(AsgiTestBase):
         self.assertEqual(len(span_list), 4)
         expected = [
             {
-                "name": "/ http receive",
+                "name": "GET / http receive",
                 "kind": trace_api.SpanKind.INTERNAL,
                 "attributes": {"type": "http.request"},
             },
             {
-                "name": "/ http send",
+                "name": "GET / http send",
                 "kind": trace_api.SpanKind.INTERNAL,
                 "attributes": {
                     SpanAttributes.HTTP_STATUS_CODE: 200,
@@ -155,12 +155,12 @@ class TestAsgiApplication(AsgiTestBase):
                 },
             },
             {
-                "name": "/ http send",
+                "name": "GET / http send",
                 "kind": trace_api.SpanKind.INTERNAL,
                 "attributes": {"type": "http.response.body"},
             },
             {
-                "name": "/",
+                "name": "GET /",
                 "kind": trace_api.SpanKind.SERVER,
                 "attributes": {
                     SpanAttributes.HTTP_METHOD: "GET",
@@ -231,7 +231,7 @@ class TestAsgiApplication(AsgiTestBase):
                     entry["name"] = span_name
                 else:
                     entry["name"] = " ".join(
-                        [span_name] + entry["name"].split(" ")[1:]
+                        [span_name] + entry["name"].split(" ")[2:]
                     )
             return expected
 
@@ -493,9 +493,9 @@ class TestAsgiApplication(AsgiTestBase):
             for entry in expected:
                 if entry["kind"] == trace_api.SpanKind.SERVER:
                     entry["name"] = "name from server hook"
-                elif entry["name"] == "/ http receive":
+                elif entry["name"] == "GET / http receive":
                     entry["name"] = "name from client request hook"
-                elif entry["name"] == "/ http send":
+                elif entry["name"] == "GET / http send":
                     entry["attributes"].update({"attr-from-hook": "value"})
             return expected
 
@@ -705,11 +705,11 @@ class TestAsgiAttributes(unittest.TestCase):
         self.assertEqual(self.span.set_status.call_count, 1)
 
     def test_credential_removal(self):
-        self.scope["server"] = ("username:password@httpbin.org", 80)
+        self.scope["server"] = ("username:password@mock", 80)
         self.scope["path"] = "/status/200"
         attrs = otel_asgi.collect_request_attributes(self.scope)
         self.assertEqual(
-            attrs[SpanAttributes.HTTP_URL], "http://httpbin.org/status/200"
+            attrs[SpanAttributes.HTTP_URL], "http://mock/status/200"
         )
 
     def test_collect_target_attribute_missing(self):
