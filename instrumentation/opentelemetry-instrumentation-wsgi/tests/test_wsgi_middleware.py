@@ -128,7 +128,7 @@ class TestWsgiApplication(WsgiTestBase):
         self,
         response,
         error=None,
-        span_name="HTTP GET",
+        span_name="GET /",
         http_method="GET",
         span_attributes=None,
         response_headers=None,
@@ -284,12 +284,13 @@ class TestWsgiApplication(WsgiTestBase):
                             )
         self.assertTrue(number_data_point_seen and histogram_data_point_seen)
 
-    def test_default_span_name_missing_request_method(self):
-        """Test that default span_names with missing request method."""
-        self.environ.pop("REQUEST_METHOD")
+    def test_default_span_name_missing_path_info(self):
+        """Test that default span_names with missing path info."""
+        self.environ.pop("PATH_INFO")
+        method = self.environ.get("REQUEST_METHOD", "").strip()
         app = otel_wsgi.OpenTelemetryMiddleware(simple_wsgi)
         response = app(self.environ, self.start_response)
-        self.validate_response(response, span_name="HTTP", http_method=None)
+        self.validate_response(response, span_name=method)
 
 
 class TestWsgiAttributes(unittest.TestCase):
@@ -437,10 +438,10 @@ class TestWsgiAttributes(unittest.TestCase):
         self.span.set_attribute.assert_has_calls(expected, any_order=True)
 
     def test_credential_removal(self):
-        self.environ["HTTP_HOST"] = "username:password@httpbin.com"
+        self.environ["HTTP_HOST"] = "username:password@mock"
         self.environ["PATH_INFO"] = "/status/200"
         expected = {
-            SpanAttributes.HTTP_URL: "http://httpbin.com/status/200",
+            SpanAttributes.HTTP_URL: "http://mock/status/200",
             SpanAttributes.NET_HOST_PORT: 80,
         }
         self.assertGreaterEqual(
@@ -455,7 +456,7 @@ class TestWsgiMiddlewareWithTracerProvider(WsgiTestBase):
         response,
         exporter,
         error=None,
-        span_name="HTTP GET",
+        span_name="GET /",
         http_method="GET",
     ):
         while True:
