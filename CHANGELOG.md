@@ -16,6 +16,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Instrument all httpx versions >= 0.18. ([#1748](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/1748))
 - Fix `Invalid type NoneType for attribute X  (opentelemetry-instrumentation-aws-lambda)` error when some attributes do not exist
   ([#1780](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/1780))
+- Add metric instrumentation for celery
+  ([#1679](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/1679))
 - `opentelemetry-instrumentation-asgi` Add `http.server.response.size` metric
   ([#1789](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/1789))
 
@@ -26,6 +28,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   ([#1706](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/1706))
 - `opentelemetry-instrumentation-pymemcache` Update instrumentation to support pymemcache >4
   ([#1764](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/1764))
+- `opentelemetry-instrumentation-confluent-kafka` Add support for higher versions of confluent_kafka
+  ([#1815](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/1815))
 
 ### Added
 
