@@ -7,6 +7,19 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## Unreleased
 
+
+### Added
+
+- Make Flask request span attributes available for `start_span`. 
+  ([#1784](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/1784))
+- Fix falcon instrumentation's usage of Span Status to only set the description if the status code is ERROR.
+  ([#1840](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/1840))
+- Instrument all httpx versions >= 0.18. ([#1748](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/1748))
+- Fix `Invalid type NoneType for attribute X  (opentelemetry-instrumentation-aws-lambda)` error when some attributes do not exist
+  ([#1780](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/1780))
+- Add metric instrumentation for celery
+  ([#1679](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/1679))
+
 ## Version 1.18.0/0.39b0 (2023-05-10)
 
 - `opentelemetry-instrumentation-system-metrics` Add `process.` prefix to `runtime.memory`, `runtime.cpu.time`, and `runtime.gc_count`. Change `runtime.memory` from count to UpDownCounter. ([#1735](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/1735))
@@ -23,9 +36,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   ([#1778](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/1778))
 - Add `excluded_urls` functionality to `urllib` and `urllib3` instrumentations
   ([#1733](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/1733))
-- Make Django request span attributes available for `start_span`. 
+- Make Django request span attributes available for `start_span`.
   ([#1730](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/1730))
-- Make ASGI request span attributes available for `start_span`. 
+- Make ASGI request span attributes available for `start_span`.
   ([#1762](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/1762))
 - `opentelemetry-instrumentation-celery` Add support for anonymous tasks.
   ([#1407](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/1407))
@@ -40,12 +53,20 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- Fix redis db.statements to be sanitized by default
+  ([#1778](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/1778))
 - Fix elasticsearch db.statement attribute to be sanitized by default
   ([#1758](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/1758))
 - Fix `AttributeError` when AWS Lambda handler receives a list event
   ([#1738](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/1738))
 - Fix `None does not implement middleware` error when there are no middlewares registered
   ([#1766](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/1766))
+- Fix Flask instrumentation to only close the span if it was created by the same request context.
+  ([#1692](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/1692))
+
+### Changed
+- Update HTTP server/client instrumentation span names to comply with spec
+  ([#1759](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/1759)
 
 ## Version 1.17.0/0.38b0 (2023-03-22)
 
