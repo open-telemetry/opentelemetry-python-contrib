@@ -18,7 +18,7 @@ using ``MySQLInstrumentor``.
 
 .. _mysql-connector: https://pypi.org/project/mysql-connector/
 
-SQLCOMMENTER
+MYSQLCOMMENTER
 *****************************************
 You can optionally configure Psycopg2 instrumentation to enable sqlcommenter which enriches
 the query with contextual information.
@@ -31,7 +31,7 @@ For example,
 ::
    Invoking cursor.execute("select * from auth_users") will lead to sql query "select * from auth_users" but when SQLCommenter is enabled
    the query will get appended with some configurable tags like "select * from auth_users /*tag=value*/;"
-SQLCommenter Configurations
+MYSQLCommenter Configurations
 ***************************
 We can configure the tags to be appended to the sqlquery log by adding configuration inside commenter_options(default:{}) keyword
 db_driver = True(Default) or False
