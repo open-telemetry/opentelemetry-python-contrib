@@ -672,7 +672,10 @@ class OpenTelemetryMiddleware:
 
                 content_length = asgi_getter.get(message, "content-length")
                 if content_length:
-                    self.content_length_header = int(content_length[0])
+                    try:
+                        self.content_length_header = int(content_length[0])
+                    except ValueError:
+                        pass
 
                 await send(message)
 
