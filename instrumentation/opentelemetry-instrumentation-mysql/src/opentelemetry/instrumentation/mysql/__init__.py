@@ -20,7 +20,7 @@ using ``MySQLInstrumentor``.
 
 MYSQLCOMMENTER
 *****************************************
-You can optionally configure Psycopg2 instrumentation to enable mysqlcommenter which enriches
+You can optionally configure MySQL instrumentation to enable sqlcommenter which enriches
 the query with contextual information.
 Usage
 -----
