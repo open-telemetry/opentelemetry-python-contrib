@@ -670,18 +670,9 @@ class OpenTelemetryMiddleware:
                         setter=asgi_setter,
                     )
 
-                if message.get("headers"):
-                    headers = {
-                        _key.decode("utf8"): _value.decode("utf8")
-                        for (_key, _value) in message.get("headers")
-                    }
-                    if headers.get("content-length"):
-                        try:
-                            self.content_length_header = int(
-                                headers["content-length"]
-                            )
-                        except TypeError:
-                            pass
+                content_length = asgi_getter.get(message, "content-length")
+                if content_length:
+                    self.content_length_header = int(content_length[0])
 
                 await send(message)
 
