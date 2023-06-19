@@ -63,11 +63,13 @@ import logging
 from timeit import default_timer
 from typing import Collection, Iterable
 
-from celery import signals  # pylint: disable=no-name-in-module
 from billiard.einfo import ExceptionInfo
+from celery import signals  # pylint: disable=no-name-in-module
 
 try:
-    from billiard.einfo import ExceptionWithTraceback # pylint: disable=no-name-in-module
+    from billiard.einfo import (  # pylint: disable=no-name-in-module
+        ExceptionWithTraceback,
+    )
 except ImportError:
     ExceptionWithTraceback = None
 
@@ -279,10 +281,7 @@ class CeleryInstrumentor(BaseInstrumentor):
         if ex is not None:
             # Unwrap the actual exception wrapped by billiard's
             # `ExceptionInfo` and `ExceptionWithTraceback`.
-            if (
-                isinstance(ex, ExceptionInfo)
-                and ex.exception is not None
-            ):
+            if isinstance(ex, ExceptionInfo) and ex.exception is not None:
                 ex = ex.exception
 
             if (
