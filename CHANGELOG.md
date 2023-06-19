@@ -7,7 +7,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## Unreleased
 
-- 'Added Enable_commenter for mysql
+- Added Enable_commenter for mysql
 ([#1834](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/1834))
 - Fix falcon instrumentation's usage of Span Status to only set the description if the status code is ERROR.
   ([#1840](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/1840))
