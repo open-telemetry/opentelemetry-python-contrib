@@ -7,11 +7,19 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## Unreleased
 
-- Added Enable_commenter for mysql
-([#1834](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/1834))
+### Added
+
+- Make Flask request span attributes available for `start_span`. 
+  ([#1784](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/1784))
 - Fix falcon instrumentation's usage of Span Status to only set the description if the status code is ERROR.
   ([#1840](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/1840))
 - Instrument all httpx versions >= 0.18. ([#1748](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/1748))
+- Fix `Invalid type NoneType for attribute X  (opentelemetry-instrumentation-aws-lambda)` error when some attributes do not exist
+  ([#1780](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/1780))
+- Add metric instrumentation for celery
+  ([#1679](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/1679))
+- Added Enable_commenter for mysql
+  ([#1834](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/1834))
 
 ## Version 1.18.0/0.39b0 (2023-05-10)
 
@@ -20,6 +28,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   ([#1706](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/1706))
 - `opentelemetry-instrumentation-pymemcache` Update instrumentation to support pymemcache >4
   ([#1764](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/1764))
+- `opentelemetry-instrumentation-confluent-kafka` Add support for higher versions of confluent_kafka
+  ([#1815](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/1815))
 
 ### Added
 
