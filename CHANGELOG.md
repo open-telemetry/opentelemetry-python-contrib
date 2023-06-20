@@ -9,6 +9,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - `opentelemetry-instrumentation-asgi` Add `http.server.request.size` metric
   ([#1867](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/1867))
 
+### Fixed
+
+- Update falcon instrumentation to follow semantic conventions
+  ([#1824](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/1824))
+
 ### Added
 
 - Make Flask request span attributes available for `start_span`. 
