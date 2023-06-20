@@ -60,6 +60,7 @@ API
 """
 
 import logging
+from timeit import default_timer
 from typing import Collection, Iterable
 
 from celery import signals  # pylint: disable=no-name-in-module
@@ -69,6 +70,7 @@ from opentelemetry.instrumentation.celery import utils
 from opentelemetry.instrumentation.celery.package import _instruments
 from opentelemetry.instrumentation.celery.version import __version__
 from opentelemetry.instrumentation.instrumentor import BaseInstrumentor
+from opentelemetry.metrics import get_meter
 from opentelemetry.propagate import extract, inject
 from opentelemetry.propagators.textmap import Getter
 from opentelemetry.semconv.trace import SpanAttributes
@@ -104,6 +106,11 @@ celery_getter = CeleryGetter()
 
 
 class CeleryInstrumentor(BaseInstrumentor):
+    def __init__(self):
+        super().__init__()
+        self.metrics = None
+        self.task_id_to_start_time = {}
+
     def instrumentation_dependencies(self) -> Collection[str]:
         return _instruments
 
@@ -112,6 +119,11 @@ class CeleryInstrumentor(BaseInstrumentor):
 
         # pylint: disable=attribute-defined-outside-init
         self._tracer = trace.get_tracer(__name__, __version__, tracer_provider)
+
+        meter_provider = kwargs.get("meter_provider")
+        meter = get_meter(__name__, __version__, meter_provider)
+
+        self.create_celery_metrics(meter)
 
         signals.task_prerun.connect(self._trace_prerun, weak=False)
         signals.task_postrun.connect(self._trace_postrun, weak=False)
@@ -139,6 +151,7 @@ class CeleryInstrumentor(BaseInstrumentor):
         if task is None or task_id is None:
             return
 
+        self.update_task_duration_time(task_id)
         request = task.request
         tracectx = extract(request, getter=celery_getter) or None
 
@@ -153,8 +166,7 @@ class CeleryInstrumentor(BaseInstrumentor):
         activation.__enter__()  # pylint: disable=E1101
         utils.attach_span(task, task_id, (span, activation))
 
-    @staticmethod
-    def _trace_postrun(*args, **kwargs):
+    def _trace_postrun(self, *args, **kwargs):
         task = utils.retrieve_task(kwargs)
         task_id = utils.retrieve_task_id(kwargs)
 
@@ -178,6 +190,9 @@ class CeleryInstrumentor(BaseInstrumentor):
 
         activation.__exit__(None, None, None)
         utils.detach_span(task, task_id)
+        self.update_task_duration_time(task_id)
+        labels = {"task": task.name, "worker": task.request.hostname}
+        self._record_histograms(task_id, labels)
 
     def _trace_before_publish(self, *args, **kwargs):
         task = utils.retrieve_task_from_sender(kwargs)
@@ -277,3 +292,30 @@ class CeleryInstrumentor(BaseInstrumentor):
         # Use `str(reason)` instead of `reason.message` in case we get
         # something that isn't an `Exception`
         span.set_attribute(_TASK_RETRY_REASON_KEY, str(reason))
+
+    def update_task_duration_time(self, task_id):
+        cur_time = default_timer()
+        task_duration_time_until_now = (
+            cur_time - self.task_id_to_start_time[task_id]
+            if task_id in self.task_id_to_start_time
+            else cur_time
+        )
+        self.task_id_to_start_time[task_id] = task_duration_time_until_now
+
+    def _record_histograms(self, task_id, metric_attributes):
+        if task_id is None:
+            return
+
+        self.metrics["flower.task.runtime.seconds"].record(
+            self.task_id_to_start_time.get(task_id),
+            attributes=metric_attributes,
+        )
+
+    def create_celery_metrics(self, meter) -> None:
+        self.metrics = {
+            "flower.task.runtime.seconds": meter.create_histogram(
+                name="flower.task.runtime.seconds",
+                unit="seconds",
+                description="The time it took to run the task.",
+            )
+        }
