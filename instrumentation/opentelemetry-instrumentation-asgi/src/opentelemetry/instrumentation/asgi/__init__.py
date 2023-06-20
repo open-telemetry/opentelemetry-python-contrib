@@ -609,8 +609,6 @@ class OpenTelemetryMiddleware:
                         self.content_length_header, duration_attrs
                     )
                 request_size = asgi_getter.get(scope, "content-length")
-                print(scope)
-                print(request_size)
                 if request_size:
                     try:
                         self.server_request_size_histogram.record(
