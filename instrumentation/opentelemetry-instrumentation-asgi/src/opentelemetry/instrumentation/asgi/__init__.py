@@ -611,11 +611,13 @@ class OpenTelemetryMiddleware:
                 request_size = asgi_getter.get(scope, "content-length")
                 if request_size:
                     try:
-                        self.server_request_size_histogram.record(
-                            int(request_size[0]), duration_attrs
-                        )
+                        request_size_amount = int(request_size[0])
                     except ValueError:
                         pass
+                    else:
+                        self.server_request_size_histogram.record(
+                            request_size_amount, duration_attrs
+                        )
             if token:
                 context.detach(token)
 
