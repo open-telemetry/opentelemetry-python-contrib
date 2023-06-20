@@ -506,6 +506,11 @@ class OpenTelemetryMiddleware:
             unit="ms",
             description="measures the duration of the inbound HTTP request",
         )
+        self.server_response_size_histogram = self.meter.create_histogram(
+            name=MetricInstruments.HTTP_SERVER_RESPONSE_SIZE,
+            unit="By",
+            description="measures the size of HTTP response messages (compressed).",
+        )
         self.active_requests_counter = self.meter.create_up_down_counter(
             name=MetricInstruments.HTTP_SERVER_ACTIVE_REQUESTS,
             unit="requests",
@@ -518,6 +523,7 @@ class OpenTelemetryMiddleware:
         self.server_request_hook = server_request_hook
         self.client_request_hook = client_request_hook
         self.client_response_hook = client_response_hook
+        self.content_length_header = None
 
     async def __call__(self, scope, receive, send):
         """The ASGI application
@@ -593,6 +599,10 @@ class OpenTelemetryMiddleware:
                 self.active_requests_counter.add(
                     -1, active_requests_count_attrs
                 )
+                if self.content_length_header:
+                    self.server_response_size_histogram.record(
+                        self.content_length_header, duration_attrs
+                    )
             if token:
                 context.detach(token)
 
@@ -659,6 +669,13 @@ class OpenTelemetryMiddleware:
                         ),
                         setter=asgi_setter,
                     )
+
+                content_length = asgi_getter.get(message, "content-length")
+                if content_length:
+                    try:
+                        self.content_length_header = int(content_length[0])
+                    except ValueError:
+                        pass
 
                 await send(message)
 
