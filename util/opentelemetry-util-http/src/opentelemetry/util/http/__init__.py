@@ -136,6 +136,17 @@ def get_excluded_urls(instrumentation: str) -> ExcludeList:
     return parse_excluded_urls(excluded_urls)
 
 
+def get_excluded_paths(instrumentation: str) -> ExcludeList:
+    # Get instrumentation-specific excluded URLs. If not set, retrieve them
+    # from generic variable.
+    excluded_urls = environ.get(
+        _root.format(f"{instrumentation}_EXCLUDED_PATHS"),
+        environ.get(_root.format("EXCLUDED_PATHS"), ""),
+    )
+
+    return parse_excluded_urls(excluded_urls)
+
+
 def parse_excluded_urls(excluded_urls: str) -> ExcludeList:
     """
     Small helper to put an arbitrary url list inside an ExcludeList

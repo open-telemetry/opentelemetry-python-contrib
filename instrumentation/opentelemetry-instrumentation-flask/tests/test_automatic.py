@@ -80,6 +80,33 @@ class TestAutomatic(InstrumentationTest, WsgiTestBase):
         span_list = self.memory_exporter.get_finished_spans()
         self.assertEqual(len(span_list), 1)
 
+    def test_excluded_paths_explicit(self):
+        FlaskInstrumentor().uninstrument()
+        FlaskInstrumentor().instrument(excluded_paths="^/ping$")
+
+        self.app = flask.Flask(__name__)
+        self.app.route("/ping")(self._ping_endpoint)
+        self.app.route("/hello/<int:helloid>")(self._hello_endpoint)
+        client = Client(self.app, Response)
+
+        resp = client.get("/ping")
+        self.assertEqual(200, resp.status_code)
+        self.assertEqual([b"Ping"], list(resp.response))
+        span_list = self.memory_exporter.get_finished_spans()
+        self.assertEqual(len(span_list), 0)
+
+        resp = client.get("/ping?param=test")
+        self.assertEqual(200, resp.status_code)
+        self.assertEqual([b"Ping"], list(resp.response))
+        span_list = self.memory_exporter.get_finished_spans()
+        self.assertEqual(len(span_list), 0)
+
+        resp = client.get("/hello/456")
+        self.assertEqual(200, resp.status_code)
+        self.assertEqual([b"Hello: 456"], list(resp.response))
+        span_list = self.memory_exporter.get_finished_spans()
+        self.assertEqual(len(span_list), 1)
+
     def test_no_op_tracer_provider(self):
         FlaskInstrumentor().uninstrument()
         FlaskInstrumentor().instrument(

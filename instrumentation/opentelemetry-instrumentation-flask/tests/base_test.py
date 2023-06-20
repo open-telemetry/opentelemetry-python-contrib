@@ -24,6 +24,10 @@ from opentelemetry import context, trace
 
 class InstrumentationTest:
     @staticmethod
+    def _ping_endpoint():
+        return "Ping"
+
+    @staticmethod
     def _hello_endpoint(helloid):
         if helloid == 500:
             raise ValueError(":-(")

@@ -100,15 +100,21 @@ Configuration
 
 Exclude lists
 *************
-To exclude certain URLs from tracking, set the environment variable ``OTEL_PYTHON_FLASK_EXCLUDED_URLS``
-(or ``OTEL_PYTHON_EXCLUDED_URLS`` to cover all instrumentations) to a string of comma delimited regexes that match the
-URLs.
+To exclude certain request URLs from tracking, set one of the following the environment variables:
+
+* ``OTEL_PYTHON_FLASK_EXCLUDED_URLS`` - to match the entire URL
+* ``OTEL_PYTHON_EXCLUDED_URLS`` to cover all instrumentations, by URL
+* ``OTEL_PYTHON_FLASK_EXCLUDED_PATHS`` - to match only the path portion of the URL
+
+The setting should be a string of comma delimited regexes that match the
+URL/path.
 
 For example,
 
 ::
 
     export OTEL_PYTHON_FLASK_EXCLUDED_URLS="client/.*/info,healthcheck"
+    export OTEL_PYTHON_FLASK_EXCLUDED_PATHS="^/site/client/.*/info$,^/healthcheck$"
 
 will exclude requests such as ``https://site/client/123/info`` and ``https://site/xyz/healthcheck``.
 
@@ -117,6 +123,7 @@ You can also pass comma delimited regexes directly to the ``instrument_app`` met
 .. code-block:: python
 
     FlaskInstrumentor().instrument_app(app, excluded_urls="client/.*/info,healthcheck")
+    FlaskInstrumentor().instrument_app(app, excluded_paths="^/site/client/.*/info$,^/healthcheck$")
 
 Request/Response hooks
 **********************
@@ -259,7 +266,7 @@ from opentelemetry.instrumentation.utils import _start_internal_or_server_span
 from opentelemetry.metrics import get_meter
 from opentelemetry.semconv.metrics import MetricInstruments
 from opentelemetry.semconv.trace import SpanAttributes
-from opentelemetry.util.http import get_excluded_urls, parse_excluded_urls
+from opentelemetry.util.http import get_excluded_urls, get_excluded_paths, parse_excluded_urls
 
 _logger = getLogger(__name__)
 
@@ -270,6 +277,7 @@ _ENVIRON_REQCTX_REF_KEY = "opentelemetry-flask.reqctx_ref_key"
 _ENVIRON_TOKEN = "opentelemetry-flask.token"
 
 _excluded_urls_from_env = get_excluded_urls("FLASK")
+_excluded_paths_from_env = get_excluded_paths("FLASK")
 
 if package_version.parse(flask.__version__) >= package_version.parse("2.2.0"):
 
@@ -296,6 +304,7 @@ def _rewrapped_app(
     duration_histogram,
     response_hook=None,
     excluded_urls=None,
+    excluded_paths=None,
 ):
     def _wrapped_app(wrapped_app_environ, start_response):
         # We want to measure the time for route matching, etc.
@@ -315,6 +324,9 @@ def _rewrapped_app(
             if flask.request and (
                 excluded_urls is None
                 or not excluded_urls.url_disabled(flask.request.url)
+            ) and (
+                excluded_paths is None
+                or not excluded_paths.url_disabled(flask.request.path)
             ):
                 span = flask.request.environ.get(_ENVIRON_SPAN_KEY)
 
@@ -366,11 +378,14 @@ def _wrapped_before_request(
     request_hook=None,
     tracer=None,
     excluded_urls=None,
+    excluded_paths=None,
     enable_commenter=True,
     commenter_options=None,
 ):
     def _before_request():
         if excluded_urls and excluded_urls.url_disabled(flask.request.url):
+            return
+        if excluded_paths and excluded_paths.url_disabled(flask.request.path):
             return
         flask_request_environ = flask.request.environ
         span_name = get_default_span_name()
@@ -442,10 +457,13 @@ def _wrapped_before_request(
 
 def _wrapped_teardown_request(
     excluded_urls=None,
+    excluded_paths=None,
 ):
     def _teardown_request(exc):
         # pylint: disable=E1101
         if excluded_urls and excluded_urls.url_disabled(flask.request.url):
+            return
+        if excluded_paths and excluded_paths.url_disabled(flask.request.url):
             return
 
         activation = flask.request.environ.get(_ENVIRON_ACTIVATION_KEY)
@@ -481,6 +499,7 @@ def _wrapped_teardown_request(
 
 class _InstrumentedFlask(flask.Flask):
     _excluded_urls = None
+    _excluded_paths = None
     _tracer_provider = None
     _request_hook = None
     _response_hook = None
@@ -514,6 +533,7 @@ class _InstrumentedFlask(flask.Flask):
             duration_histogram,
             _InstrumentedFlask._response_hook,
             excluded_urls=_InstrumentedFlask._excluded_urls,
+            excluded_paths=_InstrumentedFlask._excluded_paths,
         )
 
         tracer = trace.get_tracer(
@@ -524,6 +544,7 @@ class _InstrumentedFlask(flask.Flask):
             _InstrumentedFlask._request_hook,
             tracer,
             excluded_urls=_InstrumentedFlask._excluded_urls,
+            excluded_paths=_InstrumentedFlask._excluded_paths,
             enable_commenter=_InstrumentedFlask._enable_commenter,
             commenter_options=_InstrumentedFlask._commenter_options,
         )
@@ -532,6 +553,7 @@ class _InstrumentedFlask(flask.Flask):
 
         _teardown_request = _wrapped_teardown_request(
             excluded_urls=_InstrumentedFlask._excluded_urls,
+            excluded_paths=_InstrumentedFlask._excluded_paths,
         )
         self.teardown_request(_teardown_request)
 
@@ -562,6 +584,12 @@ class FlaskInstrumentor(BaseInstrumentor):
             if excluded_urls is None
             else parse_excluded_urls(excluded_urls)
         )
+        excluded_paths = kwargs.get("excluded_paths")
+        _InstrumentedFlask._excluded_paths = (
+            _excluded_paths_from_env
+            if excluded_paths is None
+            else parse_excluded_urls(excluded_paths)
+        )
         enable_commenter = kwargs.get("enable_commenter", True)
         _InstrumentedFlask._enable_commenter = enable_commenter
 
@@ -581,6 +609,7 @@ class FlaskInstrumentor(BaseInstrumentor):
         response_hook=None,
         tracer_provider=None,
         excluded_urls=None,
+        excluded_paths=None,
         enable_commenter=True,
         commenter_options=None,
         meter_provider=None,
@@ -593,6 +622,11 @@ class FlaskInstrumentor(BaseInstrumentor):
                 parse_excluded_urls(excluded_urls)
                 if excluded_urls is not None
                 else _excluded_urls_from_env
+            )
+            excluded_paths = (
+                parse_excluded_urls(excluded_paths)
+                if excluded_paths is not None
+                else _excluded_paths_from_env
             )
             meter = get_meter(__name__, __version__, meter_provider)
             duration_histogram = meter.create_histogram(
@@ -613,6 +647,7 @@ class FlaskInstrumentor(BaseInstrumentor):
                 duration_histogram,
                 response_hook,
                 excluded_urls=excluded_urls,
+                excluded_paths=excluded_paths,
             )
 
             tracer = trace.get_tracer(__name__, __version__, tracer_provider)
@@ -621,6 +656,7 @@ class FlaskInstrumentor(BaseInstrumentor):
                 request_hook,
                 tracer,
                 excluded_urls=excluded_urls,
+                excluded_paths=excluded_paths,
                 enable_commenter=enable_commenter,
                 commenter_options=commenter_options
                 if commenter_options
@@ -631,6 +667,7 @@ class FlaskInstrumentor(BaseInstrumentor):
 
             _teardown_request = _wrapped_teardown_request(
                 excluded_urls=excluded_urls,
+                excluded_paths=excluded_paths,
             )
             app._teardown_request = _teardown_request
             app.teardown_request(_teardown_request)
