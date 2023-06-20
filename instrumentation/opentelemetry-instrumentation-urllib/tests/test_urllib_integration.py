@@ -46,9 +46,9 @@ from opentelemetry.util.http import get_excluded_urls
 class RequestsIntegrationTestBase(abc.ABC):
     # pylint: disable=no-member
 
-    URL = "http://httpbin.org/status/200"
-    URL_TIMEOUT = "http://httpbin.org/timeout/0"
-    URL_EXCEPTION = "http://httpbin.org/exception/0"
+    URL = "http://mock/status/200"
+    URL_TIMEOUT = "http://mock/timeout/0"
+    URL_EXCEPTION = "http://mock/exception/0"
 
     # pylint: disable=invalid-name
     def setUp(self):
@@ -83,7 +83,7 @@ class RequestsIntegrationTestBase(abc.ABC):
         )
         httpretty.register_uri(
             httpretty.GET,
-            "http://httpbin.org/status/500",
+            "http://mock/status/500",
             status=500,
         )
 
@@ -124,7 +124,7 @@ class RequestsIntegrationTestBase(abc.ABC):
         span = self.assert_span()
 
         self.assertIs(span.kind, trace.SpanKind.CLIENT)
-        self.assertEqual(span.name, "HTTP GET")
+        self.assertEqual(span.name, "GET")
 
         self.assertEqual(
             span.attributes,
@@ -142,7 +142,7 @@ class RequestsIntegrationTestBase(abc.ABC):
         )
 
     def test_excluded_urls_explicit(self):
-        url_201 = "http://httpbin.org/status/201"
+        url_201 = "http://mock/status/201"
         httpretty.register_uri(
             httpretty.GET,
             url_201,
@@ -172,7 +172,7 @@ class RequestsIntegrationTestBase(abc.ABC):
         self.assert_span(num_spans=1)
 
     def test_not_foundbasic(self):
-        url_404 = "http://httpbin.org/status/404/"
+        url_404 = "http://mock/status/404/"
         httpretty.register_uri(
             httpretty.GET,
             url_404,
@@ -209,7 +209,7 @@ class RequestsIntegrationTestBase(abc.ABC):
         span = self.assert_span()
 
         self.assertIs(span.kind, trace.SpanKind.CLIENT)
-        self.assertEqual(span.name, "HTTP GET")
+        self.assertEqual(span.name, "GET")
 
         self.assertEqual(
             span.attributes,
@@ -336,14 +336,14 @@ class RequestsIntegrationTestBase(abc.ABC):
 
     def test_requests_exception_with_response(self, *_, **__):
         with self.assertRaises(HTTPError):
-            self.perform_request("http://httpbin.org/status/500")
+            self.perform_request("http://mock/status/500")
 
         span = self.assert_span()
         self.assertEqual(
             dict(span.attributes),
             {
                 SpanAttributes.HTTP_METHOD: "GET",
-                SpanAttributes.HTTP_URL: "http://httpbin.org/status/500",
+                SpanAttributes.HTTP_URL: "http://mock/status/500",
                 SpanAttributes.HTTP_STATUS_CODE: 500,
             },
         )
@@ -365,7 +365,7 @@ class RequestsIntegrationTestBase(abc.ABC):
         self.assertEqual(span.status.status_code, StatusCode.ERROR)
 
     def test_credential_removal(self):
-        url = "http://username:password@httpbin.org/status/200"
+        url = "http://username:password@mock/status/200"
 
         with self.assertRaises(Exception):
             self.perform_request(url)
