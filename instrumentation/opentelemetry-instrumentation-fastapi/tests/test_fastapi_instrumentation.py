@@ -44,10 +44,15 @@ from opentelemetry.util.http import (
 _expected_metric_names = [
     "http.server.active_requests",
     "http.server.duration",
+    "http.server.response.size",
 ]
 _recommended_attrs = {
     "http.server.active_requests": _active_requests_count_attrs,
     "http.server.duration": {*_duration_attrs, SpanAttributes.HTTP_TARGET},
+    "http.server.response.size": {
+        *_duration_attrs,
+        SpanAttributes.HTTP_TARGET,
+    },
 }
 
 
@@ -106,7 +111,7 @@ class TestFastAPIManualInstrumentation(TestBase):
         spans = self.memory_exporter.get_finished_spans()
         self.assertEqual(len(spans), 3)
         for span in spans:
-            self.assertIn("/foobar", span.name)
+            self.assertIn("GET /foobar", span.name)
 
     def test_uninstrument_app(self):
         self._client.get("/foobar")
@@ -138,7 +143,7 @@ class TestFastAPIManualInstrumentation(TestBase):
         spans = self.memory_exporter.get_finished_spans()
         self.assertEqual(len(spans), 3)
         for span in spans:
-            self.assertIn("/foobar", span.name)
+            self.assertIn("GET /foobar", span.name)
 
     def test_fastapi_route_attribute_added(self):
         """Ensure that fastapi routes are used as the span name."""
@@ -146,7 +151,7 @@ class TestFastAPIManualInstrumentation(TestBase):
         spans = self.memory_exporter.get_finished_spans()
         self.assertEqual(len(spans), 3)
         for span in spans:
-            self.assertIn("/user/{username}", span.name)
+            self.assertIn("GET /user/{username}", span.name)
         self.assertEqual(
             spans[-1].attributes[SpanAttributes.HTTP_ROUTE], "/user/{username}"
         )
@@ -187,7 +192,7 @@ class TestFastAPIManualInstrumentation(TestBase):
         for resource_metric in metrics_list.resource_metrics:
             self.assertTrue(len(resource_metric.scope_metrics) == 1)
             for scope_metric in resource_metric.scope_metrics:
-                self.assertTrue(len(scope_metric.metrics) == 2)
+                self.assertTrue(len(scope_metric.metrics) == 3)
                 for metric in scope_metric.metrics:
                     self.assertIn(metric.name, _expected_metric_names)
                     data_points = list(metric.data.data_points)
