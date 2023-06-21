@@ -266,7 +266,11 @@ from opentelemetry.instrumentation.utils import _start_internal_or_server_span
 from opentelemetry.metrics import get_meter
 from opentelemetry.semconv.metrics import MetricInstruments
 from opentelemetry.semconv.trace import SpanAttributes
-from opentelemetry.util.http import get_excluded_urls, get_excluded_paths, parse_excluded_urls
+from opentelemetry.util.http import (
+    get_excluded_urls,
+    get_excluded_paths,
+    parse_excluded_urls,
+)
 
 _logger = getLogger(__name__)
 
@@ -321,12 +325,16 @@ def _rewrapped_app(
         active_requests_counter.add(1, active_requests_count_attrs)
 
         def _start_response(status, response_headers, *args, **kwargs):
-            if flask.request and (
-                excluded_urls is None
-                or not excluded_urls.url_disabled(flask.request.url)
-            ) and (
-                excluded_paths is None
-                or not excluded_paths.url_disabled(flask.request.path)
+            if (
+                flask.request
+                and (
+                    excluded_urls is None
+                    or not excluded_urls.url_disabled(flask.request.url)
+                )
+                and (
+                    excluded_paths is None
+                    or not excluded_paths.url_disabled(flask.request.path)
+                )
             ):
                 span = flask.request.environ.get(_ENVIRON_SPAN_KEY)
 
