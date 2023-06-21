@@ -25,6 +25,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   ([#1679](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/1679))
 - `opentelemetry-instrumentation-asgi` Add `http.server.response.size` metric
   ([#1789](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/1789))
+- `opentelemetry-instrumentation-grpc` Allow gRPC connections via Unix socket
+  ([#1833](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/1833))
 
 ## Version 1.18.0/0.39b0 (2023-05-10)
 
