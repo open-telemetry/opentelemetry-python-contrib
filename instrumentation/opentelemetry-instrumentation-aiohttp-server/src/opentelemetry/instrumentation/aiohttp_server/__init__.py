@@ -2,7 +2,7 @@ import urllib
 from aiohttp import web
 from multidict import CIMultiDictProxy
 from timeit import default_timer
-from typing import Tuple, Dict, List
+from typing import Tuple, Dict, List, Union
 
 from opentelemetry import context, trace, metrics
 from opentelemetry.instrumentation.aiohttp_server.package import _instruments
@@ -148,16 +148,16 @@ def set_status_code(span, status_code):
 class AiohttpGetter(Getter):
     """Extract current trace from headers"""
 
-    def get(self, carrier, key: str):
-        """Getter implementation to retrieve a HTTP header value from the ASGI
+    def get(self, carrier, key: str) -> Union[List, None]:
+        """Getter implementation to retrieve an HTTP header value from the ASGI
         scope.
 
         Args:
             carrier: ASGI scope object
             key: header name in scope
         Returns:
-            A list with a single string with the header value if it exists,
-                else None.
+            A list of all header values matching the key, or None if the key
+            does not match any header.
         """
         headers: CIMultiDictProxy = carrier.headers
         if not headers:
