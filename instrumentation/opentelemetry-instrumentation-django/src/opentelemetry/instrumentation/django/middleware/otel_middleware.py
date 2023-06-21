@@ -174,6 +174,9 @@ class _DjangoMiddleware(MiddlewareMixin):
 
             if hasattr(match, "route") and match.route:
                 return f"{request.method} {match.route}"
+            
+            if hasattr(match, "url_name") and match.url_name:
+                return f"{request.method} {match.url_name}"
 
             return request.method
 
