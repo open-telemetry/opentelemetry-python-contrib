@@ -63,7 +63,7 @@ def _parse_active_request_count_attrs(req_attrs):
 def get_default_span_details(request: web.Request) -> Tuple[str, dict]:
     """Default implementation for get_default_span_details
     Args:
-        scope: the asgi scope dictionary
+        request: the request object itself.
     Returns:
         a tuple of the span name, and any attributes to attach to the span.
     """
@@ -71,15 +71,20 @@ def get_default_span_details(request: web.Request) -> Tuple[str, dict]:
     return span_name, {}
 
 
-def _get_view_func(request) -> str:
-    """TODO: is this useful??"""
+def _get_view_func(request: web.Request) -> str:
+    """Returns the name of the request handler.
+    Args:
+        request: the request object itself.
+    Returns:
+        a string containing the name of the handler function
+    """
     try:
         return request.match_info.handler.__name__
     except AttributeError:
         return "unknown"
 
 
-def collect_request_attributes(request: web.Request):
+def collect_request_attributes(request: web.Request) -> Dict:
     """Collects HTTP request attributes from the ASGI scope and returns a
     dictionary to be used as span creation attributes."""
 
@@ -125,10 +130,9 @@ def collect_request_attributes(request: web.Request):
     return result
 
 
-def set_status_code(span, status_code):
+def set_status_code(span, status_code: int) -> None:
     """Adds HTTP response attributes to span using the status_code argument."""
-    if not span.is_recording():
-        return
+
     try:
         status_code = int(status_code)
     except ValueError:
