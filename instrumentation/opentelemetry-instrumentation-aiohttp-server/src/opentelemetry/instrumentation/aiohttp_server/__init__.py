@@ -2,6 +2,7 @@ import urllib
 from aiohttp import web
 from multidict import CIMultiDictProxy
 from timeit import default_timer
+from typing import Tuple, Dict, List
 
 from opentelemetry import context, trace, metrics
 from opentelemetry.instrumentation.aiohttp_server.package import _instruments
@@ -14,8 +15,6 @@ from opentelemetry.semconv.metrics import MetricInstruments
 from opentelemetry.trace.status import Status, StatusCode
 from opentelemetry.util.http import get_excluded_urls
 from opentelemetry.util.http import remove_url_credentials
-
-from typing import Tuple
 
 
 _SUPPRESS_HTTP_INSTRUMENTATION_KEY = "suppress_http_instrumentation"
@@ -165,7 +164,7 @@ class AiohttpGetter(Getter):
             return None
         return headers.getall(key, None)
 
-    def keys(self, carrier: dict):
+    def keys(self, carrier: Dict) -> List:
         return list(carrier.keys())
 
 
