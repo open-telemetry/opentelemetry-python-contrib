@@ -6,6 +6,8 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## Unreleased
+- `opentelemetry-instrumentation-asgi` Add `http.server.request.size` metric
+  ([#1867](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/1867))
 
 ### Fixed
 
@@ -27,6 +29,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   ([#1679](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/1679))
 - `opentelemetry-instrumentation-asgi` Add `http.server.response.size` metric
   ([#1789](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/1789))
+- `opentelemetry-instrumentation-grpc` Allow gRPC connections via Unix socket
+  ([#1833](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/1833))
 
 ## Version 1.18.0/0.39b0 (2023-05-10)
 
