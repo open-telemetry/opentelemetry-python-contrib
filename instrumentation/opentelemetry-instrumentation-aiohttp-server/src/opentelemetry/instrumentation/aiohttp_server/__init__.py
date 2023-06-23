@@ -205,6 +205,7 @@ async def middleware(request, handler):
 
     with tracer.start_as_current_span(
         span_name,
+        context=extract(request, getter=getter),
         kind=trace.SpanKind.SERVER,
     ) as span:
         attributes = collect_request_attributes(request)
