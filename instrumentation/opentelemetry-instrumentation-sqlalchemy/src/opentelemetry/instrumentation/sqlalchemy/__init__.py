@@ -151,16 +151,17 @@ class SQLAlchemyInstrumentor(BaseInstrumentor):
         )
 
         enable_commenter = kwargs.get("enable_commenter", False)
+        commenter_options = kwargs.get("commenter_options", {})
 
         _w(
             "sqlalchemy",
             "create_engine",
-            _wrap_create_engine(tracer, connections_usage, enable_commenter),
+            _wrap_create_engine(tracer, connections_usage, enable_commenter, commenter_options),
         )
         _w(
             "sqlalchemy.engine",
             "create_engine",
-            _wrap_create_engine(tracer, connections_usage, enable_commenter),
+            _wrap_create_engine(tracer, connections_usage, enable_commenter, commenter_options),
         )
         _w(
             "sqlalchemy.engine.base",
@@ -172,7 +173,7 @@ class SQLAlchemyInstrumentor(BaseInstrumentor):
                 "sqlalchemy.ext.asyncio",
                 "create_async_engine",
                 _wrap_create_async_engine(
-                    tracer, connections_usage, enable_commenter
+                    tracer, connections_usage, enable_commenter, commenter_options
                 ),
             )
         if kwargs.get("engine") is not None:
