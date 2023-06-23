@@ -47,16 +47,19 @@ _expected_metric_names = [
     "http.server.active_requests",
     "http.server.duration",
     "http.server.response.size",
+    "http.server.request.size",
 ]
 _recommended_attrs = {
     "http.server.active_requests": _active_requests_count_attrs,
     "http.server.duration": _duration_attrs,
     "http.server.response.size": _duration_attrs,
+    "http.server.request.size": _duration_attrs,
 }
 
 
 async def http_app(scope, receive, send):
     message = await receive()
+    scope["headers"] = [(b"content-length", b"128")]
     assert scope["type"] == "http"
     if message.get("type") == "http.request":
         await send(
@@ -99,6 +102,7 @@ async def error_asgi(scope, receive, send):
     assert isinstance(scope, dict)
     assert scope["type"] == "http"
     message = await receive()
+    scope["headers"] = [(b"content-length", b"128")]
     if message.get("type") == "http.request":
         try:
             raise ValueError
@@ -592,6 +596,8 @@ class TestAsgiApplication(AsgiTestBase):
                                 )
                             elif metric.name == "http.server.response.size":
                                 self.assertEqual(1024, point.sum)
+                            elif metric.name == "http.server.request.size":
+                                self.assertEqual(128, point.sum)
                         elif isinstance(point, NumberDataPoint):
                             self.assertDictEqual(
                                 expected_requests_count_attributes,
@@ -630,7 +636,7 @@ class TestAsgiApplication(AsgiTestBase):
                                 expected_target,
                             )
                             assertions += 1
-        self.assertEqual(assertions, 2)
+        self.assertEqual(assertions, 3)
 
     def test_no_metric_for_websockets(self):
         self.scope = {
