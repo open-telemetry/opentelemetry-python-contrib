@@ -26,6 +26,87 @@ from opentelemetry.instrumentation.utils import _get_opentelemetry_values
 from opentelemetry.semconv.trace import NetTransportValues, SpanAttributes
 from opentelemetry.trace.status import Status, StatusCode
 
+sql_reserved_words = [
+    "ADD",
+    "ALL",
+    "ALTER",
+    "AND",
+    "ANY",
+    "AS",
+    "ASC",
+    "BACKUP",
+    "BETWEEN",
+    "CASE",
+    "CHECK",
+    "COLUMN",
+    "CONSTRAINT",
+    "CREATE",
+    "DATABASE",
+    "DEFAULT",
+    "DELETE",
+    "DESC",
+    "DISTINCT",
+    "DROP",
+    "EXEC",
+    "EXISTS",
+    "FOREIGN",
+    "FROM",
+    "FULL",
+    "GROUP",
+    "BY",
+    "HAVING",
+    "IN",
+    "INDEX",
+    "INNER",
+    "INSERT",
+    "INTO",
+    "IS",
+    "JOIN",
+    "KEY",
+    "LEFT",
+    "LIKE",
+    "LIMIT",
+    "NOT",
+    "NULL",
+    "ON",
+    "OR",
+    "ORDER",
+    "OUTER",
+    "PRIMARY",
+    "PROCEDURE",
+    "RIGHT",
+    "ROWNUM",
+    "SELECT",
+    "SET",
+    "TABLE",
+    "TOP",
+    "TRUNCATE",
+    "UNION",
+    "UNIQUE",
+    "UPDATE",
+    "VALUES",
+    "VIEW",
+    "WHERE",
+    "=",
+]
+
+sql_reserved_dict = {word: True for word in sql_reserved_words}
+
+
+def _sanitize_query(query):
+    """Remove query content, replace with sanitization symbol.
+    For example `SELECT * FROM table` will sanitize to SELECT ? FROM ?`
+    """
+    sanitized_query = ""
+    if not query:
+        return sanitized_query
+
+    for word in query.split():
+        if word.upper() not in sql_reserved_dict:
+            word = "?"
+        sanitized_query += word + " "
+    return sanitized_query.strip()
+
 
 def _normalize_vendor(vendor):
     """Return a canonical name for a type of database."""
@@ -42,7 +123,7 @@ def _normalize_vendor(vendor):
 
 
 def _wrap_create_async_engine(
-    tracer, connections_usage, enable_commenter=False
+    tracer, connections_usage, sanitize_query, enable_commenter=False
 ):
     # pylint: disable=unused-argument
     def _wrap_create_async_engine_internal(func, module, args, kwargs):
@@ -51,20 +132,28 @@ def _wrap_create_async_engine(
         """
         engine = func(*args, **kwargs)
         EngineTracer(
-            tracer, engine.sync_engine, connections_usage, enable_commenter
+            tracer,
+            engine.sync_engine,
+            connections_usage,
+            sanitize_query,
+            enable_commenter,
         )
         return engine
 
     return _wrap_create_async_engine_internal
 
 
-def _wrap_create_engine(tracer, connections_usage, enable_commenter=False):
+def _wrap_create_engine(
+    tracer, connections_usage, sanitize_query, enable_commenter=False
+):
     def _wrap_create_engine_internal(func, _module, args, kwargs):
         """Trace the SQLAlchemy engine, creating an `EngineTracer`
         object that will listen to SQLAlchemy events.
         """
         engine = func(*args, **kwargs)
-        EngineTracer(tracer, engine, connections_usage, enable_commenter)
+        EngineTracer(
+            tracer, engine, connections_usage, sanitize_query, enable_commenter
+        )
         return engine
 
     return _wrap_create_engine_internal
@@ -95,6 +184,7 @@ class EngineTracer:
         tracer,
         engine,
         connections_usage,
+        sanitize_query=False,
         enable_commenter=False,
         commenter_options=None,
     ):
@@ -104,6 +194,7 @@ class EngineTracer:
         self.vendor = _normalize_vendor(engine.name)
         self.enable_commenter = enable_commenter
         self.commenter_options = commenter_options if commenter_options else {}
+        self.sanitize_query = sanitize_query
         self._leading_comment_remover = re.compile(r"^/\*.*?\*/")
 
         self._register_event_listener(
@@ -209,8 +300,12 @@ class EngineTracer:
         )
         with trace.use_span(span, end_on_exit=False):
             if span.is_recording():
-                span.set_attribute(SpanAttributes.DB_STATEMENT, statement)
                 span.set_attribute(SpanAttributes.DB_SYSTEM, self.vendor)
+                span.set_attribute(SpanAttributes.DB_STATEMENT, statement)
+                if self.sanitize_query:
+                    span.set_attribute(
+                        SpanAttributes.DB_STATEMENT, _sanitize_query(statement)
+                    )
                 for key, value in attrs.items():
                     span.set_attribute(key, value)
             if self.enable_commenter:
