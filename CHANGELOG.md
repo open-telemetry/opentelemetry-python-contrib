@@ -6,9 +6,13 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## Unreleased
+- `opentelemetry-instrumentation-asgi` Add `http.server.request.size` metric
+  ([#1867](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/1867))
 
 ### Fixed
 
+- Fix elastic-search instrumentation sanitization to support bulk queries
+  ([#1870](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/1870))
 - Update falcon instrumentation to follow semantic conventions
   ([#1824](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/1824))
 
