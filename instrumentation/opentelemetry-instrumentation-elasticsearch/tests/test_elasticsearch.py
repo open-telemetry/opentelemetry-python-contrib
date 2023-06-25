@@ -479,3 +479,7 @@ class TestElasticsearchIntegration(TestBase):
             sanitize_body(sanitization_queries.filter_query),
             str(sanitization_queries.filter_query_sanitized),
         )
+        self.assertEqual(
+            sanitize_body(json.dumps(sanitization_queries.interval_query)),
+            str(sanitization_queries.interval_query_sanitized),
+        )
