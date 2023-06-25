@@ -13,6 +13,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - `opentelemetry-instrumentation-django` Fix empty span name when using
   `path("", ...)` ([#1788](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/1788)
+- Fix elastic-search instrumentation sanitization to support bulk queries
+  ([#1870](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/1870))
 - Update falcon instrumentation to follow semantic conventions
   ([#1824](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/1824))
 
