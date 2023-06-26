@@ -250,24 +250,30 @@ class OpenTelemetryServerInterceptor(grpc.ServerInterceptor):
         # * ipv4:127.0.0.1:57284
         # * ipv4:10.2.1.1:57284,127.0.0.1:57284
         #
-        try:
-            ip, port = (
-                context.peer().split(",")[0].split(":", 1)[1].rsplit(":", 1)
-            )
-            ip = unquote(ip)
-            attributes.update(
-                {
-                    SpanAttributes.NET_PEER_IP: ip,
-                    SpanAttributes.NET_PEER_PORT: port,
-                }
-            )
+        if context.peer() != "unix:":
+            try:
+                ip, port = (
+                    context.peer()
+                    .split(",")[0]
+                    .split(":", 1)[1]
+                    .rsplit(":", 1)
+                )
+                ip = unquote(ip)
+                attributes.update(
+                    {
+                        SpanAttributes.NET_PEER_IP: ip,
+                        SpanAttributes.NET_PEER_PORT: port,
+                    }
+                )
 
-            # other telemetry sources add this, so we will too
-            if ip in ("[::1]", "127.0.0.1"):
-                attributes[SpanAttributes.NET_PEER_NAME] = "localhost"
+                # other telemetry sources add this, so we will too
+                if ip in ("[::1]", "127.0.0.1"):
+                    attributes[SpanAttributes.NET_PEER_NAME] = "localhost"
 
-        except IndexError:
-            logger.warning("Failed to parse peer address '%s'", context.peer())
+            except IndexError:
+                logger.warning(
+                    "Failed to parse peer address '%s'", context.peer()
+                )
 
         return self._tracer.start_as_current_span(
             name=handler_call_details.method,
