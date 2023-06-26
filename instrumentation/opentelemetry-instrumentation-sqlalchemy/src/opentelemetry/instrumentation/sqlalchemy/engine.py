@@ -51,20 +51,32 @@ def _wrap_create_async_engine(
         """
         engine = func(*args, **kwargs)
         EngineTracer(
-            tracer, engine.sync_engine, connections_usage, enable_commenter, commenter_options
+            tracer,
+            engine.sync_engine,
+            connections_usage,
+            enable_commenter,
+            commenter_options,
         )
         return engine
 
     return _wrap_create_async_engine_internal
 
 
-def _wrap_create_engine(tracer, connections_usage, enable_commenter=False, commenter_options={}):
+def _wrap_create_engine(
+    tracer, connections_usage, enable_commenter=False, commenter_options={}
+):
     def _wrap_create_engine_internal(func, _module, args, kwargs):
         """Trace the SQLAlchemy engine, creating an `EngineTracer`
         object that will listen to SQLAlchemy events.
         """
         engine = func(*args, **kwargs)
-        EngineTracer(tracer, engine, connections_usage, enable_commenter, commenter_options)
+        EngineTracer(
+            tracer,
+            engine,
+            connections_usage,
+            enable_commenter,
+            commenter_options,
+        )
         return engine
 
     return _wrap_create_engine_internal
