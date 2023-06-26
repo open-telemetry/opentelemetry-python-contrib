@@ -12,6 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 import asyncio
+import logging
 from unittest import mock
 
 import pytest
@@ -176,6 +177,43 @@ class TestSqlalchemyInstrumentation(TestBase):
             "opentelemetry.instrumentation.sqlalchemy",
         )
 
+    def test_create_engine_wrapper_enable_commenter(self):
+        logging.getLogger("sqlalchemy.engine").setLevel(logging.INFO)
+        SQLAlchemyInstrumentor().instrument(
+            enable_commenter=True,
+            commenter_options={"db_framework": False},
+        )
+        from sqlalchemy import create_engine  # pylint: disable-all
+
+        engine = create_engine("sqlite:///:memory:")
+        cnx = engine.connect()
+        cnx.execute("SELECT  1;").fetchall()
+        # sqlcommenter
+        self.assertRegex(
+            self.caplog.records[-2].getMessage(),
+            r"SELECT  1 /\*db_driver='(.*)',traceparent='\d{1,2}-[a-zA-Z0-9_]{32}-[a-zA-Z0-9_]{16}-\d{1,2}'\*/;",
+        )
+
+    def test_create_engine_wrapper_enable_commenter_otel_values_false(self):
+        logging.getLogger("sqlalchemy.engine").setLevel(logging.INFO)
+        SQLAlchemyInstrumentor().instrument(
+            enable_commenter=True,
+            commenter_options={
+                "db_framework": False,
+                "opentelemetry_values": False
+            },
+        )
+        from sqlalchemy import create_engine  # pylint: disable-all
+
+        engine = create_engine("sqlite:///:memory:")
+        cnx = engine.connect()
+        cnx.execute("SELECT  1;").fetchall()
+        # sqlcommenter
+        self.assertRegex(
+            self.caplog.records[-2].getMessage(),
+            r"SELECT  1 /\*db_driver='(.*)'\*/;",
+        )
+
     def test_custom_tracer_provider(self):
         provider = TracerProvider(
             resource=Resource.create(
@@ -238,6 +276,63 @@ class TestSqlalchemyInstrumentation(TestBase):
             self.assertEqual(
                 spans[1].instrumentation_scope.name,
                 "opentelemetry.instrumentation.sqlalchemy",
+            )
+
+        asyncio.get_event_loop().run_until_complete(run())
+
+    @pytest.mark.skipif(
+        not sqlalchemy.__version__.startswith("1.4"),
+        reason="only run async tests for 1.4",
+    )
+    def test_create_async_engine_wrapper_enable_commenter(self):
+        async def run():
+            logging.getLogger("sqlalchemy.engine").setLevel(logging.INFO)
+            SQLAlchemyInstrumentor().instrument(
+                enable_commenter=True,
+                commenter_options={
+                    "db_framework": False,
+                },
+            )
+            from sqlalchemy.ext.asyncio import (  # pylint: disable-all
+                create_async_engine,
+            )
+
+            engine = create_async_engine("sqlite+aiosqlite:///:memory:")
+            async with engine.connect() as cnx:
+                await cnx.execute(sqlalchemy.text("SELECT  1;"))
+            # sqlcommenter
+            self.assertRegex(
+                self.caplog.records[1].getMessage(),
+                r"SELECT  1 /\*db_driver='(.*)',traceparent='\d{1,2}-[a-zA-Z0-9_]{32}-[a-zA-Z0-9_]{16}-\d{1,2}'\*/;",
+            )
+
+        asyncio.get_event_loop().run_until_complete(run())
+
+    @pytest.mark.skipif(
+        not sqlalchemy.__version__.startswith("1.4"),
+        reason="only run async tests for 1.4",
+    )
+    def test_create_async_engine_wrapper_enable_commenter_otel_values_false(self):
+        async def run():
+            logging.getLogger("sqlalchemy.engine").setLevel(logging.INFO)
+            SQLAlchemyInstrumentor().instrument(
+                enable_commenter=True,
+                commenter_options={
+                    "db_framework": False,
+                    "opentelemetry_values": False
+                },
+            )
+            from sqlalchemy.ext.asyncio import (  # pylint: disable-all
+                create_async_engine,
+            )
+
+            engine = create_async_engine("sqlite+aiosqlite:///:memory:")
+            async with engine.connect() as cnx:
+                await cnx.execute(sqlalchemy.text("SELECT  1;"))
+            # sqlcommenter
+            self.assertRegex(
+                self.caplog.records[1].getMessage(),
+                r"SELECT  1 /\*db_driver='(.*)'\*/;",
             )
 
         asyncio.get_event_loop().run_until_complete(run())
