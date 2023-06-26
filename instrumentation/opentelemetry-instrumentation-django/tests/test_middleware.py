@@ -74,8 +74,7 @@ DJANGO_2_2 = VERSION >= (2, 2)
 DJANGO_3_0 = VERSION >= (3, 0)
 
 if DJANGO_2_0:
-    from django.urls import re_path
-    from django.urls import path
+    from django.urls import path, re_path
 else:
     from django.conf.urls import url as re_path
 
