@@ -134,6 +134,9 @@ class SQLAlchemyInstrumentor(BaseInstrumentor):
                 ``engine``: a SQLAlchemy engine instance
                 ``engines``: a list of SQLAlchemy engine instances
                 ``tracer_provider``: a TracerProvider, defaults to global
+                ``meter_provider``: a MeterProvider, defaults to global
+                ``enable_commenter``: bool to enable sqlcommenter, defaults to False
+                ``commenter_options``: dict of sqlcommenter config, defaults to None
 
         Returns:
             An instrumented engine if passed in as an argument or list of instrumented engines, None otherwise.
