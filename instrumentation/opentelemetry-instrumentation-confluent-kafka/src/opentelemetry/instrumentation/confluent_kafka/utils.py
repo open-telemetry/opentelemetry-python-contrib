@@ -84,11 +84,11 @@ _kafka_getter = KafkaContextGetter()
 
 
 def _enrich_span(
-        span,
-        topic,
-        partition: Optional[int] = None,
-        offset: Optional[int] = None,
-        operation: Optional[MessagingOperationValues] = None,
+    span,
+    topic,
+    partition: Optional[int] = None,
+    offset: Optional[int] = None,
+    operation: Optional[MessagingOperationValues] = None,
 ):
     if not span.is_recording():
         return
