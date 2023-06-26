@@ -42,7 +42,7 @@ def _normalize_vendor(vendor):
 
 
 def _wrap_create_async_engine(
-    tracer, connections_usage, enable_commenter=False, commenter_options={}
+    tracer, connections_usage, enable_commenter=False, commenter_options=None
 ):
     # pylint: disable=unused-argument
     def _wrap_create_async_engine_internal(func, module, args, kwargs):
@@ -63,7 +63,7 @@ def _wrap_create_async_engine(
 
 
 def _wrap_create_engine(
-    tracer, connections_usage, enable_commenter=False, commenter_options={}
+    tracer, connections_usage, enable_commenter=False, commenter_options=None
 ):
     def _wrap_create_engine_internal(func, _module, args, kwargs):
         """Trace the SQLAlchemy engine, creating an `EngineTracer`
