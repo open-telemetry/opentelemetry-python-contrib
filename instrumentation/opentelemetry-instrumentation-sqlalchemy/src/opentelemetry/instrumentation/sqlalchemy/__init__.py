@@ -151,7 +151,7 @@ class SQLAlchemyInstrumentor(BaseInstrumentor):
         )
 
         enable_commenter = kwargs.get("enable_commenter", False)
-        commenter_options = kwargs.get("commenter_options")
+        commenter_options = kwargs.get("commenter_options", {})
 
         _w(
             "sqlalchemy",
