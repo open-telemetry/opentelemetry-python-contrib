@@ -200,7 +200,7 @@ class TestSqlalchemyInstrumentation(TestBase):
             enable_commenter=True,
             commenter_options={
                 "db_framework": False,
-                "opentelemetry_values": False
+                "opentelemetry_values": False,
             },
         )
         from sqlalchemy import create_engine  # pylint: disable-all
@@ -319,7 +319,7 @@ class TestSqlalchemyInstrumentation(TestBase):
                 enable_commenter=True,
                 commenter_options={
                     "db_framework": False,
-                    "opentelemetry_values": False
+                    "opentelemetry_values": False,
                 },
             )
             from sqlalchemy.ext.asyncio import (  # pylint: disable-all

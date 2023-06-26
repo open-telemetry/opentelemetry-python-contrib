@@ -64,7 +64,7 @@ class TestSqlalchemyInstrumentationWithSQLCommenter(TestBase):
             enable_commenter=True,
             commenter_options={
                 "db_framework": False,
-                "opentelemetry_values": False
+                "opentelemetry_values": False,
             },
         )
         cnx = engine.connect()
