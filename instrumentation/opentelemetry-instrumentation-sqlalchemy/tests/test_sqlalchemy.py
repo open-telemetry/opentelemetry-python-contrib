@@ -312,7 +312,9 @@ class TestSqlalchemyInstrumentation(TestBase):
         not sqlalchemy.__version__.startswith("1.4"),
         reason="only run async tests for 1.4",
     )
-    def test_create_async_engine_wrapper_enable_commenter_otel_values_false(self):
+    def test_create_async_engine_wrapper_enable_commenter_otel_values_false(
+        self
+    ):
         async def run():
             logging.getLogger("sqlalchemy.engine").setLevel(logging.INFO)
             SQLAlchemyInstrumentor().instrument(
