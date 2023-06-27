@@ -99,7 +99,6 @@ Approvers ([@open-telemetry/python-approvers](https://github.com/orgs/open-telem
 - [Aaron Abbott](https://github.com/aabmass), Google
 - [Jeremy Voss](https://github.com/jeremydvoss), Microsoft
 - [Sanket Mehta](https://github.com/sanketmehta28), Cisco
-- [Shalev Roda](https://github.com/shalevr), Cisco
 
 Emeritus Approvers:
 
@@ -114,6 +113,7 @@ Maintainers ([@open-telemetry/python-maintainers](https://github.com/orgs/open-t
 
 - [Diego Hurtado](https://github.com/ocelotl), Lightstep
 - [Leighton Chen](https://github.com/lzchen), Microsoft
+- [Shalev Roda](https://github.com/shalevr), Cisco
 
 Emeritus Maintainers:
 

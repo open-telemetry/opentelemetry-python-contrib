@@ -415,18 +415,23 @@ def set_status_code(span, status_code):
 
 
 def get_default_span_details(scope: dict) -> Tuple[str, dict]:
-    """Default implementation for get_default_span_details
+    """
+    Default span name is the HTTP method and URL path, or just the method.
+    https://github.com/open-telemetry/opentelemetry-specification/pull/3165
+    https://opentelemetry.io/docs/reference/specification/trace/semantic_conventions/http/#name
+
     Args:
         scope: the ASGI scope dictionary
     Returns:
         a tuple of the span name, and any attributes to attach to the span.
     """
-    span_name = (
-        scope.get("path", "").strip()
-        or f"HTTP {scope.get('method', '').strip()}"
-    )
-
-    return span_name, {}
+    path = scope.get("path", "").strip()
+    method = scope.get("method", "").strip()
+    if method and path:  # http
+        return f"{method} {path}", {}
+    if path:  # websocket
+        return path, {}
+    return method, {}  # http with no path
 
 
 def _collect_target_attribute(
@@ -501,6 +506,16 @@ class OpenTelemetryMiddleware:
             unit="ms",
             description="measures the duration of the inbound HTTP request",
         )
+        self.server_response_size_histogram = self.meter.create_histogram(
+            name=MetricInstruments.HTTP_SERVER_RESPONSE_SIZE,
+            unit="By",
+            description="measures the size of HTTP response messages (compressed).",
+        )
+        self.server_request_size_histogram = self.meter.create_histogram(
+            name=MetricInstruments.HTTP_SERVER_REQUEST_SIZE,
+            unit="By",
+            description="Measures the size of HTTP request messages (compressed).",
+        )
         self.active_requests_counter = self.meter.create_up_down_counter(
             name=MetricInstruments.HTTP_SERVER_ACTIVE_REQUESTS,
             unit="requests",
@@ -513,6 +528,7 @@ class OpenTelemetryMiddleware:
         self.server_request_hook = server_request_hook
         self.client_request_hook = client_request_hook
         self.client_response_hook = client_response_hook
+        self.content_length_header = None
 
     async def __call__(self, scope, receive, send):
         """The ASGI application
@@ -588,6 +604,20 @@ class OpenTelemetryMiddleware:
                 self.active_requests_counter.add(
                     -1, active_requests_count_attrs
                 )
+                if self.content_length_header:
+                    self.server_response_size_histogram.record(
+                        self.content_length_header, duration_attrs
+                    )
+                request_size = asgi_getter.get(scope, "content-length")
+                if request_size:
+                    try:
+                        request_size_amount = int(request_size[0])
+                    except ValueError:
+                        pass
+                    else:
+                        self.server_request_size_histogram.record(
+                            request_size_amount, duration_attrs
+                        )
             if token:
                 context.detach(token)
 
@@ -654,6 +684,13 @@ class OpenTelemetryMiddleware:
                         ),
                         setter=asgi_setter,
                     )
+
+                content_length = asgi_getter.get(message, "content-length")
+                if content_length:
+                    try:
+                        self.content_length_header = int(content_length[0])
+                    except ValueError:
+                        pass
 
                 await send(message)
 

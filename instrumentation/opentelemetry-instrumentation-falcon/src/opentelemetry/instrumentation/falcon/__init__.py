@@ -208,7 +208,7 @@ from opentelemetry.instrumentation.utils import (
 from opentelemetry.metrics import get_meter
 from opentelemetry.semconv.metrics import MetricInstruments
 from opentelemetry.semconv.trace import SpanAttributes
-from opentelemetry.trace.status import Status
+from opentelemetry.trace.status import Status, StatusCode
 from opentelemetry.util.http import get_excluded_urls, get_traced_request_attrs
 
 _logger = getLogger(__name__)
@@ -428,7 +428,6 @@ class _TraceMiddleware:
 
         resource_name = resource.__class__.__name__
         span.set_attribute("falcon.resource", resource_name)
-        span.update_name(f"{resource_name}.on_{req.method.lower()}")
 
     def process_response(
         self, req, resp, resource, req_succeeded=None
@@ -461,11 +460,17 @@ class _TraceMiddleware:
         try:
             status_code = int(status)
             span.set_attribute(SpanAttributes.HTTP_STATUS_CODE, status_code)
+            otel_status_code = http_status_to_status_code(
+                status_code, server_span=True
+            )
+
+            # set the description only when the status code is ERROR
+            if otel_status_code is not StatusCode.ERROR:
+                reason = None
+
             span.set_status(
                 Status(
-                    status_code=http_status_to_status_code(
-                        status_code, server_span=True
-                    ),
+                    status_code=otel_status_code,
                     description=reason,
                 )
             )
@@ -477,6 +482,12 @@ class _TraceMiddleware:
                 response_headers = resp.headers
 
             if span.is_recording() and span.kind == trace.SpanKind.SERVER:
+                # Check if low-cardinality route is available as per semantic-conventions
+                if req.uri_template:
+                    span.update_name(f"{req.method} {req.uri_template}")
+                else:
+                    span.update_name(f"{req.method}")
+
                 custom_attributes = (
                     otel_wsgi.collect_custom_response_headers_attributes(
                         response_headers.items()

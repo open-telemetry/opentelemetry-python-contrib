@@ -16,7 +16,7 @@
 Instrument `redis`_ to report Redis queries.
 
 There are two options for instrumenting code. The first option is to use the
-``opentelemetry-instrumentation`` executable which will automatically
+``opentelemetry-instrument`` executable which will automatically
 instrument your Redis client. The second is to programmatically enable
 instrumentation via the following code:
 
@@ -136,6 +136,43 @@ def _set_connection_attributes(span, conn):
         span.set_attribute(key, value)
 
 
+def _build_span_name(instance, cmd_args):
+    if len(cmd_args) > 0 and cmd_args[0]:
+        name = cmd_args[0]
+    else:
+        name = instance.connection_pool.connection_kwargs.get("db", 0)
+    return name
+
+
+def _build_span_meta_data_for_pipeline(instance):
+    try:
+        command_stack = (
+            instance.command_stack
+            if hasattr(instance, "command_stack")
+            else instance._command_stack
+        )
+
+        cmds = [
+            _format_command_args(c.args if hasattr(c, "args") else c[0])
+            for c in command_stack
+        ]
+        resource = "\n".join(cmds)
+
+        span_name = " ".join(
+            [
+                (c.args[0] if hasattr(c, "args") else c[0][0])
+                for c in command_stack
+            ]
+        )
+    except (AttributeError, IndexError):
+        command_stack = []
+        resource = ""
+        span_name = ""
+
+    return command_stack, resource, span_name
+
+
+# pylint: disable=R0915
 def _instrument(
     tracer,
     request_hook: _RequestHookT = None,
@@ -143,11 +180,8 @@ def _instrument(
 ):
     def _traced_execute_command(func, instance, args, kwargs):
         query = _format_command_args(args)
+        name = _build_span_name(instance, args)
 
-        if len(args) > 0 and args[0]:
-            name = args[0]
-        else:
-            name = instance.connection_pool.connection_kwargs.get("db", 0)
         with tracer.start_as_current_span(
             name, kind=trace.SpanKind.CLIENT
         ) as span:
@@ -163,31 +197,11 @@ def _instrument(
             return response
 
     def _traced_execute_pipeline(func, instance, args, kwargs):
-        try:
-            command_stack = (
-                instance.command_stack
-                if hasattr(instance, "command_stack")
-                else instance._command_stack
-            )
-
-            cmds = [
-                _format_command_args(
-                    c.args if hasattr(c, "args") else c[0],
-                )
-                for c in command_stack
-            ]
-            resource = "\n".join(cmds)
-
-            span_name = " ".join(
-                [
-                    (c.args[0] if hasattr(c, "args") else c[0][0])
-                    for c in command_stack
-                ]
-            )
-        except (AttributeError, IndexError):
-            command_stack = []
-            resource = ""
-            span_name = ""
+        (
+            command_stack,
+            resource,
+            span_name,
+        ) = _build_span_meta_data_for_pipeline(instance)
 
         with tracer.start_as_current_span(
             span_name, kind=trace.SpanKind.CLIENT
@@ -232,32 +246,72 @@ def _instrument(
             "ClusterPipeline.execute",
             _traced_execute_pipeline,
         )
+
+    async def _async_traced_execute_command(func, instance, args, kwargs):
+        query = _format_command_args(args)
+        name = _build_span_name(instance, args)
+
+        with tracer.start_as_current_span(
+            name, kind=trace.SpanKind.CLIENT
+        ) as span:
+            if span.is_recording():
+                span.set_attribute(SpanAttributes.DB_STATEMENT, query)
+                _set_connection_attributes(span, instance)
+                span.set_attribute("db.redis.args_length", len(args))
+            if callable(request_hook):
+                request_hook(span, instance, args, kwargs)
+            response = await func(*args, **kwargs)
+            if callable(response_hook):
+                response_hook(span, instance, response)
+            return response
+
+    async def _async_traced_execute_pipeline(func, instance, args, kwargs):
+        (
+            command_stack,
+            resource,
+            span_name,
+        ) = _build_span_meta_data_for_pipeline(instance)
+
+        with tracer.start_as_current_span(
+            span_name, kind=trace.SpanKind.CLIENT
+        ) as span:
+            if span.is_recording():
+                span.set_attribute(SpanAttributes.DB_STATEMENT, resource)
+                _set_connection_attributes(span, instance)
+                span.set_attribute(
+                    "db.redis.pipeline_length", len(command_stack)
+                )
+            response = await func(*args, **kwargs)
+            if callable(response_hook):
+                response_hook(span, instance, response)
+            return response
+
     if redis.VERSION >= _REDIS_ASYNCIO_VERSION:
         wrap_function_wrapper(
             "redis.asyncio",
             f"{redis_class}.execute_command",
-            _traced_execute_command,
+            _async_traced_execute_command,
         )
         wrap_function_wrapper(
             "redis.asyncio.client",
             f"{pipeline_class}.execute",
-            _traced_execute_pipeline,
+            _async_traced_execute_pipeline,
         )
         wrap_function_wrapper(
             "redis.asyncio.client",
             f"{pipeline_class}.immediate_execute_command",
-            _traced_execute_command,
+            _async_traced_execute_command,
         )
     if redis.VERSION >= _REDIS_ASYNCIO_CLUSTER_VERSION:
         wrap_function_wrapper(
             "redis.asyncio.cluster",
             "RedisCluster.execute_command",
-            _traced_execute_command,
+            _async_traced_execute_command,
         )
         wrap_function_wrapper(
             "redis.asyncio.cluster",
             "ClusterPipeline.execute",
-            _traced_execute_pipeline,
+            _async_traced_execute_pipeline,
         )
 
 
