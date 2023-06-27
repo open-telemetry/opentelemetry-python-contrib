@@ -267,8 +267,8 @@ from opentelemetry.metrics import get_meter
 from opentelemetry.semconv.metrics import MetricInstruments
 from opentelemetry.semconv.trace import SpanAttributes
 from opentelemetry.util.http import (
-    get_excluded_urls,
     get_excluded_paths,
+    get_excluded_urls,
     parse_excluded_urls,
 )
 
@@ -391,10 +391,13 @@ def _wrapped_before_request(
     commenter_options=None,
 ):
     def _before_request():
-        if excluded_urls and excluded_urls.url_disabled(flask.request.url):
+        if (
+            excluded_urls and excluded_urls.url_disabled(flask.request.url)
+        ) or (
+            excluded_paths and excluded_paths.url_disabled(flask.request.path)
+        ):
             return
-        if excluded_paths and excluded_paths.url_disabled(flask.request.path):
-            return
+
         flask_request_environ = flask.request.environ
         span_name = get_default_span_name()
 
