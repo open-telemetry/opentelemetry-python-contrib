@@ -184,7 +184,7 @@ class ProxiedConsumer(Consumer):
 
     def consume(
         self, *args, **kwargs
-    ):  # pylint: disable=keyword-arg-before-vararg
+    ):  
         return ConfluentKafkaInstrumentor.wrap_consume(
             self._consumer.consume, self, self._tracer, args, kwargs,
         )
