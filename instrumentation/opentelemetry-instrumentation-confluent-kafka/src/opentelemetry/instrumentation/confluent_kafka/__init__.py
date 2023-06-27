@@ -137,7 +137,7 @@ class AutoInstrumentedConsumer(Consumer):
     # This method is deliberately implemented in order to allow wrapt to wrap this function
     def poll(self, timeout=-1):  # pylint: disable=useless-super-delegation
         return super().poll(timeout)
-    
+
     # This method is deliberately implemented in order to allow wrapt to wrap this function
     def consume(self, *args, **kwargs):  # pylint: disable=useless-super-delegation
         return super().consume(*args, **kwargs)
@@ -182,9 +182,7 @@ class ProxiedConsumer(Consumer):
     def commit(self, *args, **kwargs):
         return self._consumer.commit(*args, **kwargs)
 
-    def consume(
-        self, *args, **kwargs
-    ):  
+    def consume(self, *args, **kwargs):
         return ConfluentKafkaInstrumentor.wrap_consume(
             self._consumer.consume, self, self._tracer, args, kwargs,
         )
@@ -281,7 +279,7 @@ class ConfluentKafkaInstrumentor(BaseInstrumentor):
             return ConfluentKafkaInstrumentor.wrap_poll(
                 func, instance, self._tracer, args, kwargs
             )
-        
+
         def _inner_wrap_consume(func, instance, args, kwargs):
             return ConfluentKafkaInstrumentor.wrap_consume(
                 func, instance, self._tracer, args, kwargs
@@ -298,7 +296,7 @@ class ConfluentKafkaInstrumentor(BaseInstrumentor):
             "poll",
             _inner_wrap_poll,
         )
-        
+
         wrapt.wrap_function_wrapper(
             AutoInstrumentedConsumer,
             "consume",
@@ -373,7 +371,7 @@ class ConfluentKafkaInstrumentor(BaseInstrumentor):
         )
 
         return record
-    
+
     @staticmethod
     def wrap_consume(func, instance, tracer, args, kwargs):
         if instance._current_consume_span:
@@ -399,7 +397,7 @@ class ConfluentKafkaInstrumentor(BaseInstrumentor):
                     records[0].topic(),
                     operation=MessagingOperationValues.PROCESS,
                 )
-    
+
         instance._current_context_token = context.attach(
             trace.set_span_in_context(instance._current_consume_span)
         )
