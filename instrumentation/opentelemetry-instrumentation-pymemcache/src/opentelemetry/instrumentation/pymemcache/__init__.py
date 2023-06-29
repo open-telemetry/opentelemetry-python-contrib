@@ -182,7 +182,12 @@ class PymemcacheInstrumentor(BaseInstrumentor):
 
     def _instrument(self, **kwargs):
         tracer_provider = kwargs.get("tracer_provider")
-        tracer = get_tracer(__name__, __version__, tracer_provider, schema_url=SpanAttributes.SCHEMA_URL)
+        tracer = get_tracer(
+            __name__,
+            __version__,
+            tracer_provider,
+            schema_url=SpanAttributes.SCHEMA_URL,
+        )
 
         for cmd in COMMANDS:
             _wrap(

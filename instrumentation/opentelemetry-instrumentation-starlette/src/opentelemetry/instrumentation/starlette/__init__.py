@@ -207,7 +207,12 @@ class StarletteInstrumentor(BaseInstrumentor):
         tracer_provider=None,
     ):
         """Instrument an uninstrumented Starlette application."""
-        meter = get_meter(__name__, __version__, meter_provider, schema_url=SpanAttributes.SCHEMA_URL)
+        meter = get_meter(
+            __name__,
+            __version__,
+            meter_provider,
+            schema_url=SpanAttributes.SCHEMA_URL,
+        )
         if not getattr(app, "is_instrumented_by_opentelemetry", False):
             app.add_middleware(
                 OpenTelemetryMiddleware,
@@ -273,7 +278,10 @@ class _InstrumentedStarlette(applications.Starlette):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
         meter = get_meter(
-            __name__, __version__, _InstrumentedStarlette._meter_provider, schema_url=SpanAttributes.SCHEMA_URL
+            __name__,
+            __version__,
+            _InstrumentedStarlette._meter_provider,
+            schema_url=SpanAttributes.SCHEMA_URL,
         )
         self.add_middleware(
             OpenTelemetryMiddleware,

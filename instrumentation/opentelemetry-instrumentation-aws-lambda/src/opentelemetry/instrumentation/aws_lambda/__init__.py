@@ -321,7 +321,12 @@ def _instrument(
         except (IndexError, KeyError, TypeError):
             span_kind = SpanKind.SERVER
 
-        tracer = get_tracer(__name__, __version__, tracer_provider, schema_url=SpanAttributes.SCHEMA_URL)
+        tracer = get_tracer(
+            __name__,
+            __version__,
+            tracer_provider,
+            schema_url=SpanAttributes.SCHEMA_URL,
+        )
 
         with tracer.start_as_current_span(
             name=orig_handler_name,

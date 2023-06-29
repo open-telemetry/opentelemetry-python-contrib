@@ -84,9 +84,9 @@ from sklearn.utils.metaestimators import _IffHasAttrDescriptor
 from opentelemetry.instrumentation.instrumentor import BaseInstrumentor
 from opentelemetry.instrumentation.sklearn.package import _instruments
 from opentelemetry.instrumentation.sklearn.version import __version__
+from opentelemetry.semconv.trace import SpanAttributes
 from opentelemetry.trace import get_tracer
 from opentelemetry.util.types import Attributes
-from opentelemetry.semconv.trace import SpanAttributes
 
 logger = logging.getLogger(__name__)
 
@@ -130,9 +130,9 @@ def implement_span_function(func: Callable, name: str, attributes: Attributes):
 
     @wraps(func)
     def wrapper(*args, **kwargs):
-        with get_tracer(__name__, __version__, schema_url=SpanAttributes.SCHEMA_URL).start_as_current_span(
-            name=name
-        ) as span:
+        with get_tracer(
+            __name__, __version__, schema_url=SpanAttributes.SCHEMA_URL
+        ).start_as_current_span(name=name) as span:
             if span.is_recording():
                 for key, val in attributes.items():
                     span.set_attribute(key, val)

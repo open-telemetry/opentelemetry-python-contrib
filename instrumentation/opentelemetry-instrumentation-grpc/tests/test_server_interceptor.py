@@ -533,12 +533,7 @@ class TestOpenTelemetryServerInterceptor(TestBase):
             self.assertSpanHasAttributes(
                 span,
                 {
-<<<<<<< HEAD
                     **self.net_peer_span_attributes,
-=======
-                    SpanAttributes.NET_SOCK_PEER_ADDR: "[::1]",
-                    SpanAttributes.NET_PEER_NAME: "localhost",
->>>>>>> 4fc2a558 (Update semconv to 1.20.0)
                     SpanAttributes.RPC_METHOD: "handler",
                     SpanAttributes.RPC_SERVICE: "TestServicer",
                     SpanAttributes.RPC_SYSTEM: "grpc",

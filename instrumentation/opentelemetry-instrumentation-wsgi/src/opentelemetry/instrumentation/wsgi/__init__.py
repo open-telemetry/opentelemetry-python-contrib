@@ -203,7 +203,6 @@ API
 
 import functools
 import typing
-import wsgiref.util as wsgiref_util
 from timeit import default_timer
 from urllib.parse import urlparse
 
@@ -522,8 +521,18 @@ class OpenTelemetryMiddleware:
         meter_provider=None,
     ):
         self.wsgi = wsgi
-        self.tracer = trace.get_tracer(__name__, __version__, tracer_provider, schema_url=SpanAttributes.SCHEMA_URL)
-        self.meter = get_meter(__name__, __version__, meter_provider, schema_url=SpanAttributes.SCHEMA_URL)
+        self.tracer = trace.get_tracer(
+            __name__,
+            __version__,
+            tracer_provider,
+            schema_url=SpanAttributes.SCHEMA_URL,
+        )
+        self.meter = get_meter(
+            __name__,
+            __version__,
+            meter_provider,
+            schema_url=SpanAttributes.SCHEMA_URL,
+        )
         self.duration_histogram = self.meter.create_histogram(
             name=MetricInstruments.HTTP_SERVER_DURATION,
             unit="ms",

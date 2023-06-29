@@ -162,7 +162,7 @@ class SystemMetricsInstrumentor(BaseInstrumentor):
             __name__,
             __version__,
             meter_provider,
-            schema_url=SpanAttributes.SCHEMA_URL            
+            schema_url=SpanAttributes.SCHEMA_URL,
         )
 
         if "system.cpu.time" in self._config:

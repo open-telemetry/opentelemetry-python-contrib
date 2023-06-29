@@ -422,7 +422,10 @@ class Boto3SQSInstrumentor(BaseInstrumentor):
             "tracer_provider"
         )
         self._tracer: Tracer = trace.get_tracer(
-            __name__, __version__, self._tracer_provider, schema_url=SpanAttributes.SCHEMA_URL
+            __name__,
+            __version__,
+            self._tracer_provider,
+            schema_url=SpanAttributes.SCHEMA_URL,
         )
         self._wrap_client_creation()
 

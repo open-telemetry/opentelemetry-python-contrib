@@ -205,9 +205,9 @@ def _instrument(
                 if result.raw is not None:
                     version = getattr(result.raw, "version", None)
                     if version:
-                        metric_labels[
-                            SpanAttributes.NET_PROTOCOL_VERSION
-                        ] = ("1.1" if version == 11 else "1.0")
+                        metric_labels[SpanAttributes.NET_PROTOCOL_VERSION] = (
+                            "1.1" if version == 11 else "1.0"
+                        )
 
                 if callable(response_hook):
                     response_hook(span, request, result)
@@ -279,7 +279,12 @@ class RequestsInstrumentor(BaseInstrumentor):
                     list of regexes used to exclude URLs from tracking
         """
         tracer_provider = kwargs.get("tracer_provider")
-        tracer = get_tracer(__name__, __version__, tracer_provider, schema_url=SpanAttributes.SCHEMA_URL)
+        tracer = get_tracer(
+            __name__,
+            __version__,
+            tracer_provider,
+            schema_url=SpanAttributes.SCHEMA_URL,
+        )
         excluded_urls = kwargs.get("excluded_urls")
         meter_provider = kwargs.get("meter_provider")
         meter = get_meter(

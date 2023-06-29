@@ -385,7 +385,7 @@ class AsyncOpenTelemetryTransport(httpx.AsyncBaseTransport):
             __name__,
             instrumenting_library_version=__version__,
             tracer_provider=tracer_provider,
-            schema_url=SpanAttributes.SCHEMA_URL,            
+            schema_url=SpanAttributes.SCHEMA_URL,
         )
         self._request_hook = request_hook
         self._response_hook = response_hook

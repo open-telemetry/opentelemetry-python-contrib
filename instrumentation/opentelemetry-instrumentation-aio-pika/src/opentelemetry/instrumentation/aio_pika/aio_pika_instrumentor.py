@@ -18,8 +18,6 @@ from aio_pika import Exchange, Queue
 from aio_pika.abc import AbstractIncomingMessage
 
 from opentelemetry import trace
-from opentelemetry.semconv.trace import SpanAttributes
-
 from opentelemetry.instrumentation.aio_pika.callback_decorator import (
     CallbackDecorator,
 )
@@ -30,6 +28,7 @@ from opentelemetry.instrumentation.aio_pika.publish_decorator import (
 from opentelemetry.instrumentation.aio_pika.version import __version__
 from opentelemetry.instrumentation.instrumentor import BaseInstrumentor
 from opentelemetry.instrumentation.utils import unwrap
+from opentelemetry.semconv.trace import SpanAttributes
 from opentelemetry.trace import Tracer
 
 _INSTRUMENTATION_MODULE_NAME = "opentelemetry.instrumentation.aio_pika"
@@ -66,7 +65,10 @@ class AioPikaInstrumentor(BaseInstrumentor):
     def _instrument(self, **kwargs):
         tracer_provider = kwargs.get("tracer_provider", None)
         tracer = trace.get_tracer(
-            _INSTRUMENTATION_MODULE_NAME, __version__, tracer_provider, schema_url=SpanAttributes.SCHEMA_URL
+            _INSTRUMENTATION_MODULE_NAME,
+            __version__,
+            tracer_provider,
+            schema_url=SpanAttributes.SCHEMA_URL,
         )
         self._instrument_queue(tracer)
         self._instrument_exchange(tracer)

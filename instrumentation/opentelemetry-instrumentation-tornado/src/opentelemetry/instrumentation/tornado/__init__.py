@@ -238,10 +238,20 @@ class TornadoInstrumentor(BaseInstrumentor):
         process lifetime.
         """
         tracer_provider = kwargs.get("tracer_provider")
-        tracer = trace.get_tracer(__name__, __version__, tracer_provider, schema_url=SpanAttributes.SCHEMA_URL)
+        tracer = trace.get_tracer(
+            __name__,
+            __version__,
+            tracer_provider,
+            schema_url=SpanAttributes.SCHEMA_URL,
+        )
 
         meter_provider = kwargs.get("meter_provider")
-        meter = get_meter(__name__, __version__, meter_provider, schema_url=SpanAttributes.SCHEMA_URL)
+        meter = get_meter(
+            __name__,
+            __version__,
+            meter_provider,
+            schema_url=SpanAttributes.SCHEMA_URL,
+        )
 
         client_histograms = _create_client_histograms(meter)
         server_histograms = _create_server_histograms(meter)
@@ -622,9 +632,9 @@ def _create_active_requests_attributes(request):
     }
 
     host, port_str = parse_http_host(request.host)
-    if host and host is not "":
+    if host and host != "":
         metric_attributes[SpanAttributes.NET_HOST_NAME] = host
-        if port_str and port_str is not "":
+        if port_str and port_str != "":
             metric_attributes[SpanAttributes.NET_HOST_PORT] = int(port_str)
     return metric_attributes
 

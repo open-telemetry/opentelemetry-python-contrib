@@ -443,7 +443,7 @@ class TestWsgiAttributes(unittest.TestCase):
         expected = {
             SpanAttributes.NET_HOST_PORT: 80,
             SpanAttributes.HTTP_TARGET: "/status/200",
-            SpanAttributes.NET_HOST_NAME: "mock"
+            SpanAttributes.NET_HOST_NAME: "mock",
         }
         self.assertGreaterEqual(
             otel_wsgi.collect_request_attributes(self.environ).items(),

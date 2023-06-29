@@ -26,8 +26,8 @@ from opentelemetry.instrumentation.pika import utils
 from opentelemetry.instrumentation.pika.package import _instruments
 from opentelemetry.instrumentation.pika.version import __version__
 from opentelemetry.instrumentation.utils import unwrap
-from opentelemetry.trace import Tracer, TracerProvider
 from opentelemetry.semconv.trace import SpanAttributes
+from opentelemetry.trace import Tracer, TracerProvider
 
 _LOG = getLogger(__name__)
 _CTX_KEY = "__otel_task_span"
@@ -123,7 +123,12 @@ class PikaInstrumentor(BaseInstrumentor):  # type: ignore
                 "Attempting to instrument Pika channel while already instrumented!"
             )
             return
-        tracer = trace.get_tracer(__name__, __version__, tracer_provider, schema_url=SpanAttributes.SCHEMA_URL)
+        tracer = trace.get_tracer(
+            __name__,
+            __version__,
+            tracer_provider,
+            schema_url=SpanAttributes.SCHEMA_URL,
+        )
         PikaInstrumentor._instrument_blocking_channel_consumers(
             channel, tracer, consume_hook
         )

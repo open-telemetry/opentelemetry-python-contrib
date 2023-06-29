@@ -137,9 +137,19 @@ class URLLibInstrumentor(BaseInstrumentor):
                     list of regexes used to exclude URLs from tracking
         """
         tracer_provider = kwargs.get("tracer_provider")
-        tracer = get_tracer(__name__, __version__, tracer_provider, schema_url=SpanAttributes.SCHEMA_URL)
+        tracer = get_tracer(
+            __name__,
+            __version__,
+            tracer_provider,
+            schema_url=SpanAttributes.SCHEMA_URL,
+        )
         meter_provider = kwargs.get("meter_provider")
-        meter = get_meter(__name__, __version__, meter_provider, schema_url=SpanAttributes.SCHEMA_URL)
+        meter = get_meter(
+            __name__,
+            __version__,
+            meter_provider,
+            schema_url=SpanAttributes.SCHEMA_URL,
+        )
 
         histograms = _create_client_histograms(meter)
 

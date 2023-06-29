@@ -106,7 +106,10 @@ from confluent_kafka import Consumer, Producer
 from opentelemetry import context, propagate, trace
 from opentelemetry.instrumentation.instrumentor import BaseInstrumentor
 from opentelemetry.instrumentation.utils import unwrap
-from opentelemetry.semconv.trace import MessagingOperationValues, SpanAttributes
+from opentelemetry.semconv.trace import (
+    MessagingOperationValues,
+    SpanAttributes,
+)
 from opentelemetry.trace import Link, SpanKind, Tracer
 
 from .package import _instruments
@@ -217,7 +220,10 @@ class ConfluentKafkaInstrumentor(BaseInstrumentor):
         producer: Producer, tracer_provider=None
     ) -> ProxiedProducer:
         tracer = trace.get_tracer(
-            __name__, __version__, tracer_provider=tracer_provider, schema_url=SpanAttributes.SCHEMA_URL
+            __name__,
+            __version__,
+            tracer_provider=tracer_provider,
+            schema_url=SpanAttributes.SCHEMA_URL,
         )
 
         manual_producer = ProxiedProducer(producer, tracer)
@@ -229,7 +235,10 @@ class ConfluentKafkaInstrumentor(BaseInstrumentor):
         consumer: Consumer, tracer_provider=None
     ) -> ProxiedConsumer:
         tracer = trace.get_tracer(
-            __name__, __version__, tracer_provider=tracer_provider, schema_url=SpanAttributes.SCHEMA_URL
+            __name__,
+            __version__,
+            tracer_provider=tracer_provider,
+            schema_url=SpanAttributes.SCHEMA_URL,
         )
 
         manual_consumer = ProxiedConsumer(consumer, tracer)
@@ -260,7 +269,10 @@ class ConfluentKafkaInstrumentor(BaseInstrumentor):
 
         tracer_provider = kwargs.get("tracer_provider")
         tracer = trace.get_tracer(
-            __name__, __version__, tracer_provider=tracer_provider, schema_url=SpanAttributes.SCHEMA_URL
+            __name__,
+            __version__,
+            tracer_provider=tracer_provider,
+            schema_url=SpanAttributes.SCHEMA_URL,
         )
 
         self._tracer = tracer

@@ -84,7 +84,9 @@ def _before_traversal(event):
         return
 
     start_time = request_environ.get(_ENVIRON_STARTTIME_KEY)
-    tracer = trace.get_tracer(__name__, __version__, schema_url=SpanAttributes.SCHEMA_URL)
+    tracer = trace.get_tracer(
+        __name__, __version__, schema_url=SpanAttributes.SCHEMA_URL
+    )
 
     if request.matched_route:
         span_name = request.matched_route.pattern
@@ -128,7 +130,9 @@ def trace_tween_factory(handler, registry):
     # pylint: disable=too-many-statements
     settings = registry.settings
     enabled = asbool(settings.get(SETTING_TRACE_ENABLED, True))
-    meter = get_meter(__name__, __version__, schema_url=SpanAttributes.SCHEMA_URL)
+    meter = get_meter(
+        __name__, __version__, schema_url=SpanAttributes.SCHEMA_URL
+    )
     duration_histogram = meter.create_histogram(
         name=MetricInstruments.HTTP_SERVER_DURATION,
         unit="ms",

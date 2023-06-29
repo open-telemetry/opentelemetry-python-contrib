@@ -114,8 +114,9 @@ from opentelemetry.instrumentation.sqlalchemy.version import __version__
 from opentelemetry.instrumentation.utils import unwrap
 from opentelemetry.metrics import get_meter
 from opentelemetry.semconv.metrics import MetricInstruments
-from opentelemetry.trace import get_tracer
 from opentelemetry.semconv.trace import SpanAttributes
+from opentelemetry.trace import get_tracer
+
 
 class SQLAlchemyInstrumentor(BaseInstrumentor):
     """An instrumentor for SQLAlchemy
@@ -142,10 +143,20 @@ class SQLAlchemyInstrumentor(BaseInstrumentor):
             An instrumented engine if passed in as an argument or list of instrumented engines, None otherwise.
         """
         tracer_provider = kwargs.get("tracer_provider")
-        tracer = get_tracer(__name__, __version__, tracer_provider, schema_url=SpanAttributes.SCHEMA_URL)
+        tracer = get_tracer(
+            __name__,
+            __version__,
+            tracer_provider,
+            schema_url=SpanAttributes.SCHEMA_URL,
+        )
 
         meter_provider = kwargs.get("meter_provider")
-        meter = get_meter(__name__, __version__, meter_provider, schema_url=SpanAttributes.SCHEMA_URL)
+        meter = get_meter(
+            __name__,
+            __version__,
+            meter_provider,
+            schema_url=SpanAttributes.SCHEMA_URL,
+        )
 
         connections_usage = meter.create_up_down_counter(
             name=MetricInstruments.DB_CLIENT_CONNECTIONS_USAGE,

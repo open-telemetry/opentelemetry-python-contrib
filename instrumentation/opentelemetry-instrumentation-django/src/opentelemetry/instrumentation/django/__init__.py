@@ -303,7 +303,12 @@ class DjangoInstrumentor(BaseInstrumentor):
             tracer_provider=tracer_provider,
             schema_url=SpanAttributes.SCHEMA_URL,
         )
-        meter = get_meter(__name__, __version__, meter_provider=meter_provider, schema_url=SpanAttributes.SCHEMA_URL)
+        meter = get_meter(
+            __name__,
+            __version__,
+            meter_provider=meter_provider,
+            schema_url=SpanAttributes.SCHEMA_URL,
+        )
         _DjangoMiddleware._tracer = tracer
         _DjangoMiddleware._meter = meter
         _DjangoMiddleware._excluded_urls = (
