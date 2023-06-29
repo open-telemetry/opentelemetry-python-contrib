@@ -224,7 +224,7 @@ class TestFalconInstrumentation(TestFalconBase, WsgiTestBase):
                 SpanAttributes.HTTP_HOST: "falconframework.org",
                 SpanAttributes.HTTP_TARGET: "/",
                 SpanAttributes.NET_PEER_PORT: "65133",
-                SpanAttributes.HTTP_FLAVOR: "1.1",
+                SpanAttributes.NET_APP_PROTOCOL_VERSION: "1.1",
                 "falcon.resource": "UserResource",
                 SpanAttributes.HTTP_STATUS_CODE: 200,
             },
