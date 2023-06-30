@@ -220,7 +220,6 @@ class TestFalconInstrumentation(TestFalconBase, WsgiTestBase):
                 SpanAttributes.HTTP_METHOD: "GET",
                 SpanAttributes.NET_HOST_NAME: "falconframework.org",
                 SpanAttributes.HTTP_SCHEME: "http",
-                SpanAttributes.NET_HOST_PORT: 80,
                 SpanAttributes.HTTP_TARGET: "/user/123",
                 SpanAttributes.NET_PEER_PORT: "65133",
                 SpanAttributes.NET_APP_PROTOCOL_VERSION: "1.1",
