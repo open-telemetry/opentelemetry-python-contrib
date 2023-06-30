@@ -722,7 +722,6 @@ class TestAsgiAttributes(unittest.TestCase):
         attrs = otel_asgi.collect_request_attributes(self.scope)
         self.assertEqual(attrs[SpanAttributes.NET_HOST_NAME], "mock")
         self.assertEqual(attrs[SpanAttributes.HTTP_TARGET], "/status/200")
-        self.assertEqual(attrs[SpanAttributes.NET_HOST_NAME], "httpbin.org")
         self.assertEqual(attrs[SpanAttributes.NET_HOST_PORT], 80)
 
     def test_collect_target_attribute_missing(self):
