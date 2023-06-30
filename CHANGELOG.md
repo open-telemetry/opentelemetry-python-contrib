@@ -35,6 +35,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   ([#1833](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/1833))
 - Fix elasticsearch `Transport.perform_request` instrument wrap for elasticsearch >= 8
   ([#1810](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/1810))
+- `opentelemetry-instrumentation-urllib3` Add support for urllib3 version 2
+  ([#1879](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/1879))
 
 ## Version 1.18.0/0.39b0 (2023-05-10)
 
