@@ -143,6 +143,7 @@ class URLLibInstrumentor(BaseInstrumentor):
             tracer_provider,
             schema_url=SpanAttributes.SCHEMA_URL,
         )
+        excluded_urls = kwargs.get("excluded_urls")
         meter_provider = kwargs.get("meter_provider")
         meter = get_meter(
             __name__,

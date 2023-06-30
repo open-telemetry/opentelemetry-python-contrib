@@ -35,10 +35,7 @@ from opentelemetry.test.test_base import TestBase
 from opentelemetry.trace import StatusCode
 
 if typing.TYPE_CHECKING:
-    from opentelemetry.instrumentation.httpx import (
-        RequestInfo,
-        ResponseInfo,
-    )
+    from opentelemetry.instrumentation.httpx import RequestInfo, ResponseInfo
     from opentelemetry.sdk.trace.export import SpanExporter
     from opentelemetry.trace.span import Span
 
