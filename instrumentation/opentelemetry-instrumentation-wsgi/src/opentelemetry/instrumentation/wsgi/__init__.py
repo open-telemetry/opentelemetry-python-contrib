@@ -322,7 +322,7 @@ def _parse_scheme_path_and_query(environ, result):
     query = environ.get("QUERY_STRING")
     if query and not query == "":
         target += "?" + query
-    set_string_attribute(result, SpanAttributes.HTTP_TARGET, target)
+    set_string_attribute(result, SpanAttributes.HTTP_TARGET, target or "/")
 
 
 def collect_request_attributes(environ):

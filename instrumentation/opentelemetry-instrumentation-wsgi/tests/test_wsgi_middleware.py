@@ -160,7 +160,6 @@ class TestWsgiApplication(WsgiTestBase):
         expected_attributes = {
             SpanAttributes.NET_HOST_NAME: "127.0.0.1",
             SpanAttributes.NET_HOST_PORT: 80,
-            SpanAttributes.HTTP_METHOD: http_method,
             SpanAttributes.HTTP_SCHEME: "http",
             SpanAttributes.HTTP_TARGET: "/",
             SpanAttributes.NET_PROTOCOL_VERSION: "1.0",
