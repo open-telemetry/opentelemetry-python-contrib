@@ -16,7 +16,7 @@ from os import environ
 from re import IGNORECASE as RE_IGNORECASE
 from re import compile as re_compile
 from re import search
-from typing import Iterable, List
+from typing import Iterable, List, Tuple
 from urllib.parse import urlparse, urlunparse
 
 from opentelemetry.semconv.trace import SpanAttributes
@@ -196,7 +196,7 @@ def get_custom_headers(env_var: str) -> List[str]:
     return custom_headers
 
 
-def parse_http_host(host_port) -> tuple[str, str]:
+def parse_http_host(host_port) -> Tuple[str, str]:
     if not host_port:
         return (None, None)
 
