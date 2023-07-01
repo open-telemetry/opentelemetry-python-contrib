@@ -47,6 +47,7 @@ from opentelemetry.instrumentation.instrumentor import BaseInstrumentor
 from opentelemetry.instrumentation.utils import unwrap
 from opentelemetry.semconv.trace import (
     DbSystemValues,
+    NetSockFamilyValues,
     NetTransportValues,
     SpanAttributes,
 )
@@ -84,7 +85,10 @@ def _hydrate_span_from_args(connection, query, parameters) -> dict:
         span_attributes[SpanAttributes.NET_PEER_NAME] = addr
         span_attributes[
             SpanAttributes.NET_TRANSPORT
-        ] = NetTransportValues.UNIX.value
+        ] = NetTransportValues.OTHER.value
+        span_attributes[
+            SpanAttributes.NET_SOCK_FAMILY
+        ] = NetSockFamilyValues.UNIX.value
 
     if query is not None:
         span_attributes[SpanAttributes.DB_STATEMENT] = query

@@ -24,7 +24,11 @@ from opentelemetry import trace
 from opentelemetry.instrumentation.sqlalchemy.version import __version__
 from opentelemetry.instrumentation.sqlcommenter_utils import _add_sql_comment
 from opentelemetry.instrumentation.utils import _get_opentelemetry_values
-from opentelemetry.semconv.trace import NetTransportValues, SpanAttributes
+from opentelemetry.semconv.trace import (
+    NetSockFamilyValues,
+    NetTransportValues,
+    SpanAttributes,
+)
 from opentelemetry.trace.status import Status, StatusCode
 
 
@@ -307,7 +311,11 @@ def _get_attributes_from_cursor(vendor, cursor, attrs):
         else:
             attrs[
                 SpanAttributes.NET_TRANSPORT
-            ] = NetTransportValues.IP_TCP.value
+            ] = NetTransportValues.OTHER.value
+            attrs[
+                SpanAttributes.NET_SOCK_FAMILY
+            ] = NetSockFamilyValues.UNIX.value
+
             attrs[SpanAttributes.NET_PEER_NAME] = info.host
             if info.port:
                 attrs[SpanAttributes.NET_PEER_PORT] = int(info.port)

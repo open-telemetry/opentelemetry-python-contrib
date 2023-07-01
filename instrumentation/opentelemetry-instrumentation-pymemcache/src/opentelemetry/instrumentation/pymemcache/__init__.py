@@ -47,7 +47,11 @@ from opentelemetry.instrumentation.instrumentor import BaseInstrumentor
 from opentelemetry.instrumentation.pymemcache.package import _instruments
 from opentelemetry.instrumentation.pymemcache.version import __version__
 from opentelemetry.instrumentation.utils import unwrap
-from opentelemetry.semconv.trace import NetTransportValues, SpanAttributes
+from opentelemetry.semconv.trace import (
+    NetSockFamilyValues,
+    NetTransportValues,
+    SpanAttributes,
+)
 from opentelemetry.trace import SpanKind, get_tracer
 
 logger = logging.getLogger(__name__)
@@ -169,7 +173,10 @@ def _get_address_attributes(instance):
             address_attributes[SpanAttributes.NET_PEER_NAME] = instance.server
             address_attributes[
                 SpanAttributes.NET_TRANSPORT
-            ] = NetTransportValues.UNIX.value
+            ] = NetTransportValues.OTHER.value
+            address_attributes[
+                SpanAttributes.NET_SOCK_FAMILY
+            ] = NetSockFamilyValues.UNIX.value
 
     return address_attributes
 

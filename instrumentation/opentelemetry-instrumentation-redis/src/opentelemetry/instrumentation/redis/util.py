@@ -17,6 +17,7 @@ Some utils used by the redis integration
 """
 from opentelemetry.semconv.trace import (
     DbSystemValues,
+    NetSockFamilyValues,
     NetTransportValues,
     SpanAttributes,
 )
@@ -43,7 +44,7 @@ def _extract_conn_attributes(conn_kwargs):
         attributes[SpanAttributes.NET_PEER_NAME] = conn_kwargs.get("path", "")
         attributes[
             SpanAttributes.NET_SOCK_FAMILY
-        ] = NetTransportValues.UNIX.value
+        ] = NetSockFamilyValues.UNIX.value
 
     return attributes
 
