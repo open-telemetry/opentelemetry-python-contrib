@@ -6,14 +6,20 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## Unreleased
+- `opentelemetry-instrumentation-asgi` Add `http.server.request.size` metric
+  ([#1867](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/1867))
 
 ### Fixed
 
+- Fix elastic-search instrumentation sanitization to support bulk queries
+  ([#1870](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/1870))
 - Update falcon instrumentation to follow semantic conventions
   ([#1824](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/1824))
+- Fix sqlalchemy instrumentation wrap methods to accept sqlcommenter options([#1873](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/1873))
 
 ### Added
 
+- Fix async redis clients not being traced correctly ([#1830](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/1830))
 - Make Flask request span attributes available for `start_span`. 
   ([#1784](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/1784))
 - Fix falcon instrumentation's usage of Span Status to only set the description if the status code is ERROR.
@@ -25,6 +31,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   ([#1679](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/1679))
 - `opentelemetry-instrumentation-asgi` Add `http.server.response.size` metric
   ([#1789](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/1789))
+- `opentelemetry-instrumentation-grpc` Allow gRPC connections via Unix socket
+  ([#1833](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/1833))
+- Fix elasticsearch `Transport.perform_request` instrument wrap for elasticsearch >= 8
+  ([#1810](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/1810))
 - Allow excluding Flask traces by path instead of by full URL.
   ([#1869](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/1869))
 
@@ -33,6 +43,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - `opentelemetry-instrumentation-system-metrics` Add `process.` prefix to `runtime.memory`, `runtime.cpu.time`, and `runtime.gc_count`. Change `runtime.memory` from count to UpDownCounter. ([#1735](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/1735))
 - Add request and response hooks for GRPC instrumentation (client only)
   ([#1706](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/1706))
+- Fix memory leak in SQLAlchemy instrumentation where disposed `Engine` does not get garbage collected
+  ([#1771](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/1771)
 - `opentelemetry-instrumentation-pymemcache` Update instrumentation to support pymemcache >4
   ([#1764](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/1764))
 - `opentelemetry-instrumentation-confluent-kafka` Add support for higher versions of confluent_kafka

@@ -13,6 +13,7 @@
 # limitations under the License.
 import os
 import re
+import weakref
 
 from sqlalchemy.event import (  # pylint: disable=no-name-in-module
     listen,
@@ -42,7 +43,7 @@ def _normalize_vendor(vendor):
 
 
 def _wrap_create_async_engine(
-    tracer, connections_usage, enable_commenter=False
+    tracer, connections_usage, enable_commenter=False, commenter_options=None
 ):
     # pylint: disable=unused-argument
     def _wrap_create_async_engine_internal(func, module, args, kwargs):
@@ -51,20 +52,32 @@ def _wrap_create_async_engine(
         """
         engine = func(*args, **kwargs)
         EngineTracer(
-            tracer, engine.sync_engine, connections_usage, enable_commenter
+            tracer,
+            engine.sync_engine,
+            connections_usage,
+            enable_commenter,
+            commenter_options,
         )
         return engine
 
     return _wrap_create_async_engine_internal
 
 
-def _wrap_create_engine(tracer, connections_usage, enable_commenter=False):
+def _wrap_create_engine(
+    tracer, connections_usage, enable_commenter=False, commenter_options=None
+):
     def _wrap_create_engine_internal(func, _module, args, kwargs):
         """Trace the SQLAlchemy engine, creating an `EngineTracer`
         object that will listen to SQLAlchemy events.
         """
         engine = func(*args, **kwargs)
-        EngineTracer(tracer, engine, connections_usage, enable_commenter)
+        EngineTracer(
+            tracer,
+            engine,
+            connections_usage,
+            enable_commenter,
+            commenter_options,
+        )
         return engine
 
     return _wrap_create_engine_internal
@@ -99,11 +112,11 @@ class EngineTracer:
         commenter_options=None,
     ):
         self.tracer = tracer
-        self.engine = engine
         self.connections_usage = connections_usage
         self.vendor = _normalize_vendor(engine.name)
         self.enable_commenter = enable_commenter
         self.commenter_options = commenter_options if commenter_options else {}
+        self._engine_attrs = _get_attributes_from_engine(engine)
         self._leading_comment_remover = re.compile(r"^/\*.*?\*/")
 
         self._register_event_listener(
@@ -118,23 +131,11 @@ class EngineTracer:
         self._register_event_listener(engine, "checkin", self._pool_checkin)
         self._register_event_listener(engine, "checkout", self._pool_checkout)
 
-    def _get_connection_string(self):
-        drivername = self.engine.url.drivername or ""
-        host = self.engine.url.host or ""
-        port = self.engine.url.port or ""
-        database = self.engine.url.database or ""
-        return f"{drivername}://{host}:{port}/{database}"
-
-    def _get_pool_name(self):
-        if self.engine.pool.logging_name is not None:
-            return self.engine.pool.logging_name
-        return self._get_connection_string()
-
     def _add_idle_to_connection_usage(self, value):
         self.connections_usage.add(
             value,
             attributes={
-                "pool.name": self._get_pool_name(),
+                **self._engine_attrs,
                 "state": "idle",
             },
         )
@@ -143,7 +144,7 @@ class EngineTracer:
         self.connections_usage.add(
             value,
             attributes={
-                "pool.name": self._get_pool_name(),
+                **self._engine_attrs,
                 "state": "used",
             },
         )
@@ -169,12 +170,21 @@ class EngineTracer:
     @classmethod
     def _register_event_listener(cls, target, identifier, func, *args, **kw):
         listen(target, identifier, func, *args, **kw)
-        cls._remove_event_listener_params.append((target, identifier, func))
+        cls._remove_event_listener_params.append(
+            (weakref.ref(target), identifier, func)
+        )
 
     @classmethod
     def remove_all_event_listeners(cls):
-        for remove_params in cls._remove_event_listener_params:
-            remove(*remove_params)
+        for (
+            weak_ref_target,
+            identifier,
+            func,
+        ) in cls._remove_event_listener_params:
+            # Remove an event listener only if saved weak reference points to an object
+            # which has not been garbage collected
+            if weak_ref_target() is not None:
+                remove(weak_ref_target(), identifier, func)
         cls._remove_event_listener_params.clear()
 
     def _operation_name(self, db_name, statement):
@@ -299,4 +309,23 @@ def _get_attributes_from_cursor(vendor, cursor, attrs):
             attrs[SpanAttributes.NET_PEER_NAME] = info.host
             if info.port:
                 attrs[SpanAttributes.NET_PEER_PORT] = int(info.port)
+    return attrs
+
+
+def _get_connection_string(engine):
+    drivername = engine.url.drivername or ""
+    host = engine.url.host or ""
+    port = engine.url.port or ""
+    database = engine.url.database or ""
+    return f"{drivername}://{host}:{port}/{database}"
+
+
+def _get_attributes_from_engine(engine):
+    """Set metadata attributes of the database engine"""
+    attrs = {}
+
+    attrs["pool.name"] = getattr(
+        getattr(engine, "pool", None), "logging_name", None
+    ) or _get_connection_string(engine)
+
     return attrs

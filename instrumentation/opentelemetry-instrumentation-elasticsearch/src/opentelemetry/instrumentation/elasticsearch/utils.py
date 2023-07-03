@@ -11,6 +11,7 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
+import json
 
 sanitized_keys = (
     "message",
@@ -51,6 +52,9 @@ def _unflatten_dict(d):
 
 
 def sanitize_body(body) -> str:
+    if isinstance(body, str):
+        body = json.loads(body)
+
     flatten_body = _flatten_dict(body)
 
     for key in flatten_body:
