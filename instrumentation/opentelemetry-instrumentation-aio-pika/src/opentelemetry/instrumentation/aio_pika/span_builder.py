@@ -80,10 +80,7 @@ class SpanBuilder:
         if self._operation:
             self._attributes[SpanAttributes.MESSAGING_OPERATION] = self._operation.value
         else:
-            if self._kind == SpanKind.PRODUCER:
-                self._attributes[SpanAttributes.MESSAGING_DESTINATION_TEMPORARY] = True
-            else:
-                self._attributes[SpanAttributes.MESSAGING_SOURCE_TEMPORARY] = True
+            self._attributes[SpanAttributes.MESSAGING_DESTINATION_TEMPORARY] = True
         span = self._tracer.start_span(
             self._generate_span_name(), kind=self._kind, attributes=self._attributes
         )

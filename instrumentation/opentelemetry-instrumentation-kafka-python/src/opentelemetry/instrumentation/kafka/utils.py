@@ -123,16 +123,11 @@ _kafka_setter = KafkaContextSetter()
 
 
 def _enrich_span(
-    span,
-    bootstrap_servers: List[str],
-    topic: str,
-    partition: int
+    span, bootstrap_servers: List[str], topic: str, partition: int
 ):
     if span.is_recording():
         span.set_attribute(SpanAttributes.MESSAGING_SYSTEM, "kafka")
-        span.set_attribute(
-            SpanAttributes.MESSAGING_DESTINATION_NAME, topic
-        )
+        span.set_attribute(SpanAttributes.MESSAGING_DESTINATION_NAME, topic)
 
         span.set_attribute(
             SpanAttributes.MESSAGING_KAFKA_DESTINATION_PARTITION, partition

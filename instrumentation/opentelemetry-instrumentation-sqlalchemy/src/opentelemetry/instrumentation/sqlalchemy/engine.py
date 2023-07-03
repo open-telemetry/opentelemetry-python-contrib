@@ -314,7 +314,7 @@ def _get_attributes_from_cursor(vendor, cursor, attrs):
         else:
             attrs[
                 SpanAttributes.NET_TRANSPORT
-            ] = NetTransportValues.TCP_IP.value
+            ] = NetTransportValues.IP_TCP.value
 
             attrs[SpanAttributes.NET_PEER_NAME] = info.host
             if info.port:
