@@ -44,10 +44,20 @@ from opentelemetry.util.http import (
 _expected_metric_names = [
     "http.server.active_requests",
     "http.server.duration",
+    "http.server.response.size",
+    "http.server.request.size",
 ]
 _recommended_attrs = {
     "http.server.active_requests": _active_requests_count_attrs,
     "http.server.duration": {*_duration_attrs, SpanAttributes.HTTP_TARGET},
+    "http.server.response.size": {
+        *_duration_attrs,
+        SpanAttributes.HTTP_TARGET,
+    },
+    "http.server.request.size": {
+        *_duration_attrs,
+        SpanAttributes.HTTP_TARGET,
+    },
 }
 
 
@@ -187,7 +197,7 @@ class TestFastAPIManualInstrumentation(TestBase):
         for resource_metric in metrics_list.resource_metrics:
             self.assertTrue(len(resource_metric.scope_metrics) == 1)
             for scope_metric in resource_metric.scope_metrics:
-                self.assertTrue(len(scope_metric.metrics) == 2)
+                self.assertTrue(len(scope_metric.metrics) == 3)
                 for metric in scope_metric.metrics:
                     self.assertIn(metric.name, _expected_metric_names)
                     data_points = list(metric.data.data_points)
@@ -246,8 +256,13 @@ class TestFastAPIManualInstrumentation(TestBase):
 
     def test_basic_post_request_metric_success(self):
         start = default_timer()
-        self._client.post("/foobar")
+        response = self._client.post(
+            "/foobar",
+            json={"foo": "bar"},
+        )
         duration = max(round((default_timer() - start) * 1000), 0)
+        response_size = int(response.headers.get("content-length"))
+        request_size = int(response.request.headers.get("content-length"))
         metrics_list = self.memory_metrics_reader.get_metrics_data()
         for metric in (
             metrics_list.resource_metrics[0].scope_metrics[0].metrics
@@ -255,7 +270,12 @@ class TestFastAPIManualInstrumentation(TestBase):
             for point in list(metric.data.data_points):
                 if isinstance(point, HistogramDataPoint):
                     self.assertEqual(point.count, 1)
-                    self.assertAlmostEqual(duration, point.sum, delta=30)
+                    if metric.name == "http.server.duration":
+                        self.assertAlmostEqual(duration, point.sum, delta=30)
+                    elif metric.name == "http.server.response.size":
+                        self.assertEqual(response_size, point.sum)
+                    elif metric.name == "http.server.request.size":
+                        self.assertEqual(request_size, point.sum)
                 if isinstance(point, NumberDataPoint):
                     self.assertEqual(point.value, 0)
 
