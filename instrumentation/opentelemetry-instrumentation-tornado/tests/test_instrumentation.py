@@ -768,7 +768,7 @@ class TestTornadoCustomRequestResponseHeadersNotAddedWithInternalSpan(
             ),
         }
 
-        for s in spans:
-            if s.kind == trace.SpanKind.INTERNAL:
+        for span in spans:
+            if span.kind == trace.SpanKind.INTERNAL:
                 for key, _ in not_expected.items():
-                    self.assertNotIn(key, s.attributes)
+                    self.assertNotIn(key, span.attributes)

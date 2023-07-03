@@ -38,14 +38,9 @@ class _SqsExtension(_AwsSdkExtension):
             attributes[SpanAttributes.NET_PEER_NAME] = queue_host
             try:
                 queue_name = queue_url.split("/")[-1]
-                if self._call_context.operation == "ReceiveMessage":
-                    attributes[
-                        SpanAttributes.MESSAGING_SOURCE_NAME
-                    ] = queue_name
-                else:
-                    attributes[
-                        SpanAttributes.MESSAGING_DESTINATION_NAME
-                    ] = queue_name
+                attributes[
+                    SpanAttributes.MESSAGING_DESTINATION_NAME
+                ] = queue_name
 
             except IndexError:
                 _logger.error(

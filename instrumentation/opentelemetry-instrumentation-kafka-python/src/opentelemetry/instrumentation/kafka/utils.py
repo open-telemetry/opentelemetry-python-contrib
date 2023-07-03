@@ -126,17 +126,13 @@ def _enrich_span(
     span,
     bootstrap_servers: List[str],
     topic: str,
-    partition: int,
-    consumer: bool,
+    partition: int
 ):
     if span.is_recording():
         span.set_attribute(SpanAttributes.MESSAGING_SYSTEM, "kafka")
-        if consumer:
-            span.set_attribute(SpanAttributes.MESSAGING_SOURCE_NAME, topic)
-        else:
-            span.set_attribute(
-                SpanAttributes.MESSAGING_DESTINATION_NAME, topic
-            )
+        span.set_attribute(
+            SpanAttributes.MESSAGING_DESTINATION_NAME, topic
+        )
 
         span.set_attribute(
             SpanAttributes.MESSAGING_KAFKA_DESTINATION_PARTITION, partition

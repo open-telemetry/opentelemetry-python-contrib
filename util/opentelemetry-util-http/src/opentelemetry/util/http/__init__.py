@@ -211,12 +211,11 @@ def parse_http_host(host_port) -> Tuple[str, str]:
 def get_http_protocol_version(protocol_and_version) -> str:
     if protocol_and_version == "HTTP/1.1":
         return "1.1"
-    elif protocol_and_version == "HTTP/1.0":
+    if protocol_and_version == "HTTP/1.0":
         return "1.0"
-    elif protocol_and_version == "HTTP/2":
+    if protocol_and_version == "HTTP/2":
         return "2"
-    else:
-        return None
+    return None
 
 
 def _parse_active_request_count_attrs(req_attrs):

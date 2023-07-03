@@ -46,10 +46,7 @@ class SpanBuilder:
 
     def set_destination(self, destination: str):
         self._destination = destination
-        if self._kind == SpanKind.PRODUCER:
-            self._attributes[SpanAttributes.MESSAGING_DESTINATION_NAME] = destination
-        else:
-            self._attributes[SpanAttributes.MESSAGING_SOURCE_NAME] = destination
+        self._attributes[SpanAttributes.MESSAGING_DESTINATION_NAME] = destination
 
     def set_channel(self, channel: AbstractChannel):
         connection = channel.connection

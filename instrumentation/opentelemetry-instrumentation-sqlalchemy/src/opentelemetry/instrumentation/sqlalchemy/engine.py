@@ -301,8 +301,11 @@ def _get_attributes_from_cursor(vendor, cursor, attrs):
 
         if is_unix_socket:
             attrs[
+                SpanAttributes.NET_TRANSPORT
+            ] = NetTransportValues.OTHER.value
+            attrs[
                 SpanAttributes.NET_SOCK_FAMILY
-            ] = NetTransportValues.UNIX.value
+            ] = NetSockFamilyValues.UNIX.value
             if info.port:
                 # postgresql enforces this pattern on all socket names
                 attrs[SpanAttributes.NET_PEER_NAME] = os.path.join(
@@ -311,10 +314,7 @@ def _get_attributes_from_cursor(vendor, cursor, attrs):
         else:
             attrs[
                 SpanAttributes.NET_TRANSPORT
-            ] = NetTransportValues.OTHER.value
-            attrs[
-                SpanAttributes.NET_SOCK_FAMILY
-            ] = NetSockFamilyValues.UNIX.value
+            ] = NetTransportValues.TCP_IP.value
 
             attrs[SpanAttributes.NET_PEER_NAME] = info.host
             if info.port:

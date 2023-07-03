@@ -113,7 +113,7 @@ class TestSqsExtension(TestBase):
             span.attributes[SpanAttributes.NET_PEER_NAME], queue_host
         )
         self.assertEqual(
-            span.attributes[SpanAttributes.MESSAGING_SOURCE_NAME],
+            span.attributes[SpanAttributes.MESSAGING_DESTINATION_NAME],
             "test_queue_name",
         )
         self.assertEqual(

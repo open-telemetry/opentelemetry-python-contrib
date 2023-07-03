@@ -41,7 +41,7 @@ from .consts import (
 class TestInstrumentedQueueAioRmq7(TestCase):
     EXPECTED_ATTRIBUTES = {
         SpanAttributes.MESSAGING_SYSTEM: MESSAGING_SYSTEM,
-        SpanAttributes.MESSAGING_SOURCE_NAME: EXCHANGE_NAME,
+        SpanAttributes.MESSAGING_DESTINATION_NAME: EXCHANGE_NAME,
         SpanAttributes.NET_PEER_NAME: SERVER_HOST,
         SpanAttributes.NET_PEER_PORT: SERVER_PORT,
         SpanAttributes.MESSAGING_MESSAGE_ID: MESSAGE_ID,
@@ -81,7 +81,7 @@ class TestInstrumentedQueueAioRmq7(TestCase):
 class TestInstrumentedQueueAioRmq8(TestCase):
     EXPECTED_ATTRIBUTES = {
         SpanAttributes.MESSAGING_SYSTEM: MESSAGING_SYSTEM,
-        SpanAttributes.MESSAGING_SOURCE_NAME: EXCHANGE_NAME,
+        SpanAttributes.MESSAGING_DESTINATION_NAME: EXCHANGE_NAME,
         SpanAttributes.NET_PEER_NAME: SERVER_HOST,
         SpanAttributes.NET_PEER_PORT: SERVER_PORT,
         SpanAttributes.MESSAGING_MESSAGE_ID: MESSAGE_ID,

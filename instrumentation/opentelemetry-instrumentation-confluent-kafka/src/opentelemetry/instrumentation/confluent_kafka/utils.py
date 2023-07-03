@@ -91,10 +91,7 @@ def _enrich_span(
         return
 
     span.set_attribute(SpanAttributes.MESSAGING_SYSTEM, "kafka")
-    if operation == MessagingOperationValues.RECEIVE:
-        span.set_attribute(SpanAttributes.MESSAGING_SOURCE_NAME, topic)
-    else:
-        span.set_attribute(SpanAttributes.MESSAGING_DESTINATION_NAME, topic)
+    span.set_attribute(SpanAttributes.MESSAGING_DESTINATION_NAME, topic)
 
     if partition:
         span.set_attribute(
