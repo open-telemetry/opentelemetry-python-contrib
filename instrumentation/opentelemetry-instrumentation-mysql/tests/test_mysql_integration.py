@@ -121,8 +121,8 @@ class TestMysqlIntegration(TestBase):
     @mock.patch("mysql.connector.connect")
     # pylint: disable=unused-argument
     def test_sqlcommenter_enabled(self, event_mocked):
-        cnx = mysql.connector.connect(database="test")
         MySQLInstrumentor().instrument(enable_commenter=True)
+        cnx = mysql.connector.connect(database="test")
         query = "SELECT * FROM test"
         cursor = cnx.cursor()
         cursor.execute(query)
@@ -132,8 +132,8 @@ class TestMysqlIntegration(TestBase):
     @mock.patch("mysql.connector.connect")
     # pylint: disable=unused-argument
     def test_sqlcommenter_disabled(self, event_mocked):
-        cnx = mysql.connector.connect(database="test")
         MySQLInstrumentor().instrument(enable_commenter=False)
+        cnx = mysql.connector.connect(database="test")
         query = "SELECT * FROM test"
         cursor = cnx.cursor()
         cursor.execute(query)
