@@ -18,7 +18,7 @@ from timeit import default_timer
 import httpretty
 import urllib3
 import urllib3.exceptions
-from urllib3.request import encode_multipart_formdata
+from urllib3 import encode_multipart_formdata
 
 from opentelemetry.instrumentation.urllib3 import URLLib3Instrumentor
 from opentelemetry.test.httptest import HttpTestBase

@@ -34,7 +34,7 @@ dependencies = [
 
 [project.optional-dependencies]
 instruments = [
-  "urllib3 >= 1.0.0, < 2.0.0",
+  "urllib3 >= 1.0.0, < 3.0.0",
 ]
 test = [
   "opentelemetry-instrumentation-urllib3[instruments]",
