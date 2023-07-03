@@ -8,6 +8,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## Unreleased
 - `opentelemetry-instrumentation-asgi` Add `http.server.request.size` metric
   ([#1867](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/1867))
+- Update semantic conventions to version 1.20.0
+  ([#1746](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/1746))
 
 ### Fixed
 
@@ -20,7 +22,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Added
 
 - Fix async redis clients not being traced correctly ([#1830](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/1830))
-- Make Flask request span attributes available for `start_span`. 
+- Make Flask request span attributes available for `start_span`.
   ([#1784](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/1784))
 - Fix falcon instrumentation's usage of Span Status to only set the description if the status code is ERROR.
   ([#1840](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/1840))
