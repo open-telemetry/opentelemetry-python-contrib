@@ -110,7 +110,7 @@ class TestFalconInstrumentation(TestFalconBase, WsgiTestBase):
         spans = self.memory_exporter.get_finished_spans()
         self.assertEqual(len(spans), 1)
         span = spans[0]
-        self.assertEqual(span.name, f"HelloWorldResource.on_{method.lower()}")
+        self.assertEqual(span.name, f"{method} /hello")
         self.assertEqual(span.status.status_code, StatusCode.UNSET)
         self.assertEqual(
             span.status.description,
@@ -145,7 +145,7 @@ class TestFalconInstrumentation(TestFalconBase, WsgiTestBase):
         spans = self.memory_exporter.get_finished_spans()
         self.assertEqual(len(spans), 1)
         span = spans[0]
-        self.assertEqual(span.name, "HTTP GET")
+        self.assertEqual(span.name, "GET")
         self.assertEqual(span.status.status_code, StatusCode.UNSET)
         self.assertSpanHasAttributes(
             span,
@@ -177,7 +177,7 @@ class TestFalconInstrumentation(TestFalconBase, WsgiTestBase):
         spans = self.memory_exporter.get_finished_spans()
         self.assertEqual(len(spans), 1)
         span = spans[0]
-        self.assertEqual(span.name, "ErrorResource.on_get")
+        self.assertEqual(span.name, "GET /error")
         self.assertFalse(span.status.is_ok)
         self.assertEqual(span.status.status_code, StatusCode.ERROR)
         self.assertEqual(
@@ -205,6 +205,33 @@ class TestFalconInstrumentation(TestFalconBase, WsgiTestBase):
             self.assertEqual(
                 span.attributes[SpanAttributes.NET_PEER_IP], "127.0.0.1"
             )
+
+    def test_url_template(self):
+        self.client().simulate_get("/user/123")
+        spans = self.memory_exporter.get_finished_spans()
+        self.assertEqual(len(spans), 1)
+        span = spans[0]
+        self.assertEqual(span.name, "GET /user/{user_id}")
+        self.assertEqual(span.status.status_code, StatusCode.UNSET)
+        self.assertEqual(
+            span.status.description,
+            None,
+        )
+        self.assertSpanHasAttributes(
+            span,
+            {
+                SpanAttributes.HTTP_METHOD: "GET",
+                SpanAttributes.HTTP_SERVER_NAME: "falconframework.org",
+                SpanAttributes.HTTP_SCHEME: "http",
+                SpanAttributes.NET_HOST_PORT: 80,
+                SpanAttributes.HTTP_HOST: "falconframework.org",
+                SpanAttributes.HTTP_TARGET: "/",
+                SpanAttributes.NET_PEER_PORT: "65133",
+                SpanAttributes.HTTP_FLAVOR: "1.1",
+                "falcon.resource": "UserResource",
+                SpanAttributes.HTTP_STATUS_CODE: 200,
+            },
+        )
 
     def test_uninstrument(self):
         self.client().simulate_get(path="/hello")

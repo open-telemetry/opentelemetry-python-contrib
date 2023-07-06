@@ -53,7 +53,7 @@ libraries = {
         "instrumentation": "opentelemetry-instrumentation-celery==0.40b0.dev",
     },
     "confluent-kafka": {
-        "library": "confluent-kafka >= 1.8.2, < 2.0.0",
+        "library": "confluent-kafka >= 1.8.2, <= 2.2.0",
         "instrumentation": "opentelemetry-instrumentation-confluent-kafka==0.40b0.dev",
     },
     "django": {
@@ -81,7 +81,7 @@ libraries = {
         "instrumentation": "opentelemetry-instrumentation-grpc==0.40b0.dev",
     },
     "httpx": {
-        "library": "httpx >= 0.18.0, <= 0.23.0",
+        "library": "httpx >= 0.18.0",
         "instrumentation": "opentelemetry-instrumentation-httpx==0.40b0.dev",
     },
     "jinja2": {
@@ -161,7 +161,7 @@ libraries = {
         "instrumentation": "opentelemetry-instrumentation-tortoiseorm==0.40b0.dev",
     },
     "urllib3": {
-        "library": "urllib3 >= 1.0.0, < 2.0.0",
+        "library": "urllib3 >= 1.0.0, < 3.0.0",
         "instrumentation": "opentelemetry-instrumentation-urllib3==0.40b0.dev",
     },
 }

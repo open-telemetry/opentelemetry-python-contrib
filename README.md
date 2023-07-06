@@ -49,6 +49,8 @@ depend on `opentelemetry-sdk` or another package that implements the API.
 **Please note** that these libraries are currently in _beta_, and shouldn't
 generally be used in production environments.
 
+Unless explicitly stated otherwise, any instrumentation here for a particular library is not developed or maintained by the authors of such library.
+
 The
 [`instrumentation/`](https://github.com/open-telemetry/opentelemetry-python-contrib/tree/main/instrumentation)
 directory includes OpenTelemetry instrumentation packages, which can be installed
@@ -97,7 +99,6 @@ Approvers ([@open-telemetry/python-approvers](https://github.com/orgs/open-telem
 - [Aaron Abbott](https://github.com/aabmass), Google
 - [Jeremy Voss](https://github.com/jeremydvoss), Microsoft
 - [Sanket Mehta](https://github.com/sanketmehta28), Cisco
-- [Shalev Roda](https://github.com/shalevr), Cisco
 
 Emeritus Approvers:
 
@@ -112,6 +113,7 @@ Maintainers ([@open-telemetry/python-maintainers](https://github.com/orgs/open-t
 
 - [Diego Hurtado](https://github.com/ocelotl), Lightstep
 - [Leighton Chen](https://github.com/lzchen), Microsoft
+- [Shalev Roda](https://github.com/shalevr), Cisco
 
 Emeritus Maintainers:
 

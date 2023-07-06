@@ -56,8 +56,8 @@ The hooks can be configured as follows:
     def response_hook(span, request, response):
         pass
 
-    URLLib3Instrumentor.instrument(
-        request_hook=request_hook, response_hook=response_hook)
+    URLLib3Instrumentor().instrument(
+        request_hook=request_hook, response_hook=response_hook
     )
 
 Exclude lists
@@ -225,7 +225,7 @@ def _instrument(
         headers = _prepare_headers(kwargs)
         body = _get_url_open_arg("body", args, kwargs)
 
-        span_name = f"HTTP {method.strip()}"
+        span_name = method.strip()
         span_attributes = {
             SpanAttributes.HTTP_METHOD: method,
             SpanAttributes.HTTP_URL: url,
