@@ -328,7 +328,9 @@ class TestURLLib3Instrumentor(TestBase):
 
     def test_request_hook_params(self):
         def request_hook(span, request, headers, body):
-            span.set_attribute("request_hook_headers", json.dumps(headers))
+            span.set_attribute(
+                "request_hook_headers", json.dumps(dict(headers))
+            )
             span.set_attribute("request_hook_body", body)
 
         URLLib3Instrumentor().uninstrument()

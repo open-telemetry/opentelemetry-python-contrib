@@ -164,7 +164,7 @@ libraries = {
         "instrumentation": "opentelemetry-instrumentation-tortoiseorm==0.40b0.dev",
     },
     "urllib3": {
-        "library": "urllib3 >= 1.0.0, < 2.0.0",
+        "library": "urllib3 >= 1.0.0, < 3.0.0",
         "instrumentation": "opentelemetry-instrumentation-urllib3==0.40b0.dev",
     },
 }
