@@ -2,16 +2,17 @@ from confluent_kafka import Consumer
 
 
 class MockConsumer(Consumer):
-
     def __init__(self, queue, config):
         self._queue = queue
         super().__init__(config)
 
-    def consume(self, num_messages=1, *args, **kwargs): # pylint: disable=keyword-arg-before-vararg
+    def consume(
+        self, num_messages=1, *args, **kwargs
+    ):  # pylint: disable=keyword-arg-before-vararg
         messages = self._queue[:num_messages]
         self._queue = self._queue[num_messages:]
         return messages
-    
+
     def poll(self, timeout=None):
         if len(self._queue) > 0:
             return self._queue.pop(0)

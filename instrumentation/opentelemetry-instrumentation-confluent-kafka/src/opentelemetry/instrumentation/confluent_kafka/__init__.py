@@ -139,7 +139,9 @@ class AutoInstrumentedConsumer(Consumer):
         return super().poll(timeout)
 
     # This method is deliberately implemented in order to allow wrapt to wrap this function
-    def consume(self, *args, **kwargs):  # pylint: disable=useless-super-delegation
+    def consume(
+        self, *args, **kwargs
+    ):  # pylint: disable=useless-super-delegation
         return super().consume(*args, **kwargs)
 
 
@@ -184,7 +186,11 @@ class ProxiedConsumer(Consumer):
 
     def consume(self, *args, **kwargs):
         return ConfluentKafkaInstrumentor.wrap_consume(
-            self._consumer.consume, self, self._tracer, args, kwargs,
+            self._consumer.consume,
+            self,
+            self._tracer,
+            args,
+            kwargs,
         )
 
     def get_watermark_offsets(
