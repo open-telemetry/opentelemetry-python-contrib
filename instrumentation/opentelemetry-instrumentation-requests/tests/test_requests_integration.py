@@ -63,7 +63,7 @@ class RequestsIntegrationTestBase(abc.ABC):
     # pylint: disable=no-member
     # pylint: disable=too-many-public-methods
 
-    URL = "http://httpbin.org/status/200"
+    URL = "http://mock/status/200"
 
     # pylint: disable=invalid-name
     def setUp(self):
@@ -116,7 +116,7 @@ class RequestsIntegrationTestBase(abc.ABC):
         span = self.assert_span()
 
         self.assertIs(span.kind, trace.SpanKind.CLIENT)
-        self.assertEqual(span.name, "HTTP GET")
+        self.assertEqual(span.name, "GET")
 
         self.assertEqual(
             span.attributes,
@@ -152,7 +152,7 @@ class RequestsIntegrationTestBase(abc.ABC):
         self.assertEqual(span.attributes["response_hook_attr"], "value")
 
     def test_excluded_urls_explicit(self):
-        url_404 = "http://httpbin.org/status/404"
+        url_404 = "http://mock/status/404"
         httpretty.register_uri(
             httpretty.GET,
             url_404,
@@ -191,10 +191,10 @@ class RequestsIntegrationTestBase(abc.ABC):
         self.assertEqual(result.text, "Hello!")
         span = self.assert_span()
 
-        self.assertEqual(span.name, "HTTP GET")
+        self.assertEqual(span.name, "GET")
 
     def test_not_foundbasic(self):
-        url_404 = "http://httpbin.org/status/404"
+        url_404 = "http://mock/status/404"
         httpretty.register_uri(
             httpretty.GET,
             url_404,
@@ -460,7 +460,7 @@ class TestRequestsIntegration(RequestsIntegrationTestBase, TestBase):
         return session.get(url)
 
     def test_credential_removal(self):
-        new_url = "http://username:password@httpbin.org/status/200"
+        new_url = "http://username:password@mock/status/200"
         self.perform_request(new_url)
         span = self.assert_span()
 

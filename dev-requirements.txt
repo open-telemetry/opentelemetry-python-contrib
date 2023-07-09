@@ -14,7 +14,7 @@ bleach==4.1.0 # transient dependency for readme-renderer
 grpcio-tools==1.29.0
 mypy-protobuf>=1.23
 protobuf~=3.13
-markupsafe==2.0.1
+markupsafe>=2.0.1
 codespell==2.1.0
-requests==2.28.1
+requests==2.31.0
 ruamel.yaml==0.17.21

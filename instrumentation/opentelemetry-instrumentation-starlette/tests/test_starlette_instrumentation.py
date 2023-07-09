@@ -49,10 +49,14 @@ from opentelemetry.util.http import (
 _expected_metric_names = [
     "http.server.active_requests",
     "http.server.duration",
+    "http.server.response.size",
+    "http.server.request.size",
 ]
 _recommended_attrs = {
     "http.server.active_requests": _active_requests_count_attrs,
     "http.server.duration": _duration_attrs,
+    "http.server.response.size": _duration_attrs,
+    "http.server.request.size": _duration_attrs,
 }
 
 
@@ -93,7 +97,7 @@ class TestStarletteManualInstrumentation(TestBase):
         spans = self.memory_exporter.get_finished_spans()
         self.assertEqual(len(spans), 3)
         for span in spans:
-            self.assertIn("/foobar", span.name)
+            self.assertIn("GET /foobar", span.name)
 
     def test_starlette_route_attribute_added(self):
         """Ensure that starlette routes are used as the span name."""
@@ -101,7 +105,7 @@ class TestStarletteManualInstrumentation(TestBase):
         spans = self.memory_exporter.get_finished_spans()
         self.assertEqual(len(spans), 3)
         for span in spans:
-            self.assertIn("/user/{username}", span.name)
+            self.assertIn("GET /user/{username}", span.name)
         self.assertEqual(
             spans[-1].attributes[SpanAttributes.HTTP_ROUTE], "/user/{username}"
         )
@@ -128,7 +132,7 @@ class TestStarletteManualInstrumentation(TestBase):
         for resource_metric in metrics_list.resource_metrics:
             self.assertTrue(len(resource_metric.scope_metrics) == 1)
             for scope_metric in resource_metric.scope_metrics:
-                self.assertTrue(len(scope_metric.metrics) == 2)
+                self.assertTrue(len(scope_metric.metrics) == 3)
                 for metric in scope_metric.metrics:
                     self.assertIn(metric.name, _expected_metric_names)
                     data_points = list(metric.data.data_points)
@@ -163,8 +167,13 @@ class TestStarletteManualInstrumentation(TestBase):
             "http.scheme": "http",
             "http.server_name": "testserver",
         }
-        self._client.post("/foobar")
+        response = self._client.post(
+            "/foobar",
+            json={"foo": "bar"},
+        )
         duration = max(round((default_timer() - start) * 1000), 0)
+        response_size = int(response.headers.get("content-length"))
+        request_size = int(response.request.headers.get("content-length"))
         metrics_list = self.memory_metrics_reader.get_metrics_data()
         for metric in (
             metrics_list.resource_metrics[0].scope_metrics[0].metrics
@@ -172,10 +181,15 @@ class TestStarletteManualInstrumentation(TestBase):
             for point in list(metric.data.data_points):
                 if isinstance(point, HistogramDataPoint):
                     self.assertEqual(point.count, 1)
-                    self.assertAlmostEqual(duration, point.sum, delta=30)
                     self.assertDictEqual(
                         dict(point.attributes), expected_duration_attributes
                     )
+                    if metric.name == "http.server.duration":
+                        self.assertAlmostEqual(duration, point.sum, delta=30)
+                    elif metric.name == "http.server.response.size":
+                        self.assertEqual(response_size, point.sum)
+                    elif metric.name == "http.server.request.size":
+                        self.assertEqual(request_size, point.sum)
                 if isinstance(point, NumberDataPoint):
                     self.assertDictEqual(
                         expected_requests_count_attributes,
