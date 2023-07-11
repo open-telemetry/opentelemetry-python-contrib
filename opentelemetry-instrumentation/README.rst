@@ -18,11 +18,14 @@ This package provides a couple of commands that help automatically instruments a
 
 .. note::
     You need to install a distro package to get auto instrumentation working. The ``opentelemetry-distro``
-    package contains the default distro and automatically configures some of the common options for users.
+    package contains the default distro and configurator and automatically configures some of the common options for users.
     For more info about ``opentelemetry-distro`` check `here <https://opentelemetry-python.readthedocs.io/en/latest/examples/distro/README.html>`__
     ::
 
         pip install opentelemetry-distro[otlp]
+
+    When creating a custom distro and/or configurator, be sure to add entry points for each under `opentelemetry_distro` and `opentelemetry_configurator` respectfully.
+    If you have entry points for multiple distros or configurators present in your environment, you should specify the entry point name of the distro and configurator you want to be used via the `OTEL_PYTHON_DISTRO` and `OTEL_PYTHON_CONFIGURATOR` environment variables.
 
 
 opentelemetry-bootstrap
@@ -58,6 +61,8 @@ The command supports the following configuration options as CLI arguments and en
 
 * ``--traces_exporter`` or ``OTEL_TRACES_EXPORTER``
 * ``--metrics_exporter`` or ``OTEL_METRICS_EXPORTER``
+* ``--distro`` or ``OTEL_PYTHON_DISTRO``
+* ``--configurator`` or ``OTEL_PYTHON_CONFIGURATOR``
 
 Used to specify which trace exporter to use. Can be set to one or more of the well-known exporter
 names (see below).

@@ -37,6 +37,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   ([#1833](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/1833))
 - Fix elasticsearch `Transport.perform_request` instrument wrap for elasticsearch >= 8
   ([#1810](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/1810))
+- `opentelemetry-instrumentation-urllib3` Add support for urllib3 version 2
+  ([#1879](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/1879))
+- Add optional distro and configurator selection for auto-instrumentation
+  ([#1823](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/1823))
 
 ## Version 1.18.0/0.39b0 (2023-05-10)
 
@@ -44,7 +48,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Add request and response hooks for GRPC instrumentation (client only)
   ([#1706](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/1706))
 - Fix memory leak in SQLAlchemy instrumentation where disposed `Engine` does not get garbage collected
-  ([#1771](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/1771)
+  ([#1771](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/1771))
 - `opentelemetry-instrumentation-pymemcache` Update instrumentation to support pymemcache >4
   ([#1764](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/1764))
 - `opentelemetry-instrumentation-confluent-kafka` Add support for higher versions of confluent_kafka
@@ -86,7 +90,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 - Update HTTP server/client instrumentation span names to comply with spec
-  ([#1759](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/1759)
+  ([#1759](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/1759))
 
 ## Version 1.17.0/0.38b0 (2023-03-22)
 
