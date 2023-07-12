@@ -78,8 +78,8 @@ if DJANGO_2_0:
 else:
     from django.conf.urls import url as re_path
 
-    def path(p, *args, **kwargs):
-        return re_path(r"^%s$" % p, *args, **kwargs)
+    def path(path_argument, *args, **kwargs):
+        return re_path(rf"^{path_argument}$", *args, **kwargs)
 
 
 urlpatterns = [
