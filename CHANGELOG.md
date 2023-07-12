@@ -17,16 +17,21 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   ([#1870](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/1870))
 - Update falcon instrumentation to follow semantic conventions
   ([#1824](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/1824))
-- Fix sqlalchemy instrumentation wrap methods to accept sqlcommenter options([#1873](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/1873))
+- Fix sqlalchemy instrumentation wrap methods to accept sqlcommenter options
+  ([#1873](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/1873))
 
 ### Added
 
-- Fix async redis clients not being traced correctly ([#1830](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/1830))
+- Add instrumentor support for mysqlclient
+  ([#1744](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/1744))
+- Fix async redis clients not being traced correctly
+  ([#1830](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/1830))
 - Make Flask request span attributes available for `start_span`. 
   ([#1784](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/1784))
 - Fix falcon instrumentation's usage of Span Status to only set the description if the status code is ERROR.
   ([#1840](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/1840))
-- Instrument all httpx versions >= 0.18. ([#1748](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/1748))
+- Instrument all httpx versions >= 0.18.
+  ([#1748](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/1748))
 - Fix `Invalid type NoneType for attribute X  (opentelemetry-instrumentation-aws-lambda)` error when some attributes do not exist
   ([#1780](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/1780))
 - Add metric instrumentation for celery
@@ -44,7 +49,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## Version 1.18.0/0.39b0 (2023-05-10)
 
-- `opentelemetry-instrumentation-system-metrics` Add `process.` prefix to `runtime.memory`, `runtime.cpu.time`, and `runtime.gc_count`. Change `runtime.memory` from count to UpDownCounter. ([#1735](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/1735))
+- Update runtime metrics to follow semantic conventions
+  ([#1735](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/1735))
 - Add request and response hooks for GRPC instrumentation (client only)
   ([#1706](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/1706))
 - Fix memory leak in SQLAlchemy instrumentation where disposed `Engine` does not get garbage collected
@@ -71,8 +77,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
-- `opentelemetry-instrumentation-botocore` now uses the AWS X-Ray propagator by
-  default
+- `opentelemetry-instrumentation-botocore` now uses the AWS X-Ray propagator by default
   ([#1741](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/1741))
 
 ### Fixed
