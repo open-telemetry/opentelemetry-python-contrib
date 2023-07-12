@@ -98,7 +98,7 @@ libraries = {
     },
     "mysqlclient": {
         "library": "mysqlclient < 3",
-        "instrumentation": "opentelemetry-instrumentation-mysqlclient==0.39b0.dev",
+        "instrumentation": "opentelemetry-instrumentation-mysqlclient==0.40b0.dev",
     },
     "pika": {
         "library": "pika >= 0.12.0",
