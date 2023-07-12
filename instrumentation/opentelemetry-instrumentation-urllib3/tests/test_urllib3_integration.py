@@ -35,8 +35,8 @@ from opentelemetry.util.http import get_excluded_urls
 
 
 class TestURLLib3Instrumentor(TestBase):
-    HTTP_URL = "http://httpbin.org/status/200"
-    HTTPS_URL = "https://httpbin.org/status/200"
+    HTTP_URL = "http://mock/status/200"
+    HTTPS_URL = "https://mock/status/200"
 
     def setUp(self):
         super().setUp()
@@ -87,7 +87,7 @@ class TestURLLib3Instrumentor(TestBase):
 
         span = self.assert_span()
         self.assertIs(trace.SpanKind.CLIENT, span.kind)
-        self.assertEqual("HTTP GET", span.name)
+        self.assertEqual("GET", span.name)
 
         attributes = {
             SpanAttributes.HTTP_METHOD: "GET",
@@ -123,7 +123,7 @@ class TestURLLib3Instrumentor(TestBase):
         self.assert_success_span(response, self.HTTP_URL)
 
     def test_basic_http_success_using_connection_pool(self):
-        pool = urllib3.HTTPConnectionPool("httpbin.org")
+        pool = urllib3.HTTPConnectionPool("mock")
         response = pool.request("GET", "/status/200")
 
         self.assert_success_span(response, self.HTTP_URL)
@@ -133,13 +133,13 @@ class TestURLLib3Instrumentor(TestBase):
         self.assert_success_span(response, self.HTTPS_URL)
 
     def test_basic_https_success_using_connection_pool(self):
-        pool = urllib3.HTTPSConnectionPool("httpbin.org")
+        pool = urllib3.HTTPSConnectionPool("mock")
         response = pool.request("GET", "/status/200")
 
         self.assert_success_span(response, self.HTTPS_URL)
 
     def test_basic_not_found(self):
-        url_404 = "http://httpbin.org/status/404"
+        url_404 = "http://mock/status/404"
         httpretty.register_uri(httpretty.GET, url_404, status=404)
 
         response = self.perform_request(url_404)
@@ -152,30 +152,30 @@ class TestURLLib3Instrumentor(TestBase):
         self.assertIs(trace.status.StatusCode.ERROR, span.status.status_code)
 
     def test_basic_http_non_default_port(self):
-        url = "http://httpbin.org:666/status/200"
+        url = "http://mock:666/status/200"
         httpretty.register_uri(httpretty.GET, url, body="Hello!")
 
         response = self.perform_request(url)
         self.assert_success_span(response, url)
 
     def test_basic_http_absolute_url(self):
-        url = "http://httpbin.org:666/status/200"
+        url = "http://mock:666/status/200"
         httpretty.register_uri(httpretty.GET, url, body="Hello!")
-        pool = urllib3.HTTPConnectionPool("httpbin.org", port=666)
+        pool = urllib3.HTTPConnectionPool("mock", port=666)
         response = pool.request("GET", url)
 
         self.assert_success_span(response, url)
 
     def test_url_open_explicit_arg_parameters(self):
-        url = "http://httpbin.org:666/status/200"
+        url = "http://mock:666/status/200"
         httpretty.register_uri(httpretty.GET, url, body="Hello!")
-        pool = urllib3.HTTPConnectionPool("httpbin.org", port=666)
+        pool = urllib3.HTTPConnectionPool("mock", port=666)
         response = pool.urlopen(method="GET", url="/status/200")
 
         self.assert_success_span(response, url)
 
     def test_excluded_urls_explicit(self):
-        url_201 = "http://httpbin.org/status/201"
+        url_201 = "http://mock/status/201"
         httpretty.register_uri(
             httpretty.GET,
             url_201,
@@ -301,7 +301,7 @@ class TestURLLib3Instrumentor(TestBase):
         self.assert_success_span(response, self.HTTP_URL)
 
     def test_credential_removal(self):
-        url = "http://username:password@httpbin.org/status/200"
+        url = "http://username:password@mock/status/200"
 
         response = self.perform_request(url)
         self.assert_success_span(response, self.HTTP_URL)
@@ -328,7 +328,9 @@ class TestURLLib3Instrumentor(TestBase):
 
     def test_request_hook_params(self):
         def request_hook(span, request, headers, body):
-            span.set_attribute("request_hook_headers", json.dumps(headers))
+            span.set_attribute(
+                "request_hook_headers", json.dumps(dict(headers))
+            )
             span.set_attribute("request_hook_body", body)
 
         URLLib3Instrumentor().uninstrument()
@@ -339,7 +341,7 @@ class TestURLLib3Instrumentor(TestBase):
         headers = {"header1": "value1", "header2": "value2"}
         body = "param1=1&param2=2"
 
-        pool = urllib3.HTTPConnectionPool("httpbin.org")
+        pool = urllib3.HTTPConnectionPool("mock")
         response = pool.request(
             "POST", "/status/200", body=body, headers=headers
         )
@@ -366,7 +368,7 @@ class TestURLLib3Instrumentor(TestBase):
 
         body = "param1=1&param2=2"
 
-        pool = urllib3.HTTPConnectionPool("httpbin.org")
+        pool = urllib3.HTTPConnectionPool("mock")
         response = pool.urlopen("POST", "/status/200", body)
 
         self.assertEqual(b"Hello!", response.data)

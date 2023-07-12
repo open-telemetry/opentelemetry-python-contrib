@@ -13,6 +13,6 @@
 # limitations under the License.
 
 
-_instruments = ("urllib3 >= 1.0.0, < 2.0.0",)
+_instruments = ("urllib3 >= 1.0.0, < 3.0.0",)
 
 _supports_metrics = True

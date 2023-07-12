@@ -179,7 +179,7 @@ def create_trace_config(
             return
 
         http_method = params.method.upper()
-        request_span_name = f"HTTP {http_method}"
+        request_span_name = f"{http_method}"
         request_url = (
             remove_url_credentials(trace_config_ctx.url_filter(params.url))
             if callable(trace_config_ctx.url_filter)

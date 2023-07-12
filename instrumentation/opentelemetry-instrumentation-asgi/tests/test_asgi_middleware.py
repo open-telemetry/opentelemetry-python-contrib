@@ -46,22 +46,30 @@ from opentelemetry.util.http import (
 _expected_metric_names = [
     "http.server.active_requests",
     "http.server.duration",
+    "http.server.response.size",
+    "http.server.request.size",
 ]
 _recommended_attrs = {
     "http.server.active_requests": _active_requests_count_attrs,
     "http.server.duration": _duration_attrs,
+    "http.server.response.size": _duration_attrs,
+    "http.server.request.size": _duration_attrs,
 }
 
 
 async def http_app(scope, receive, send):
     message = await receive()
+    scope["headers"] = [(b"content-length", b"128")]
     assert scope["type"] == "http"
     if message.get("type") == "http.request":
         await send(
             {
                 "type": "http.response.start",
                 "status": 200,
-                "headers": [[b"Content-Type", b"text/plain"]],
+                "headers": [
+                    [b"Content-Type", b"text/plain"],
+                    [b"content-length", b"1024"],
+                ],
             }
         )
         await send({"type": "http.response.body", "body": b"*"})
@@ -94,6 +102,7 @@ async def error_asgi(scope, receive, send):
     assert isinstance(scope, dict)
     assert scope["type"] == "http"
     message = await receive()
+    scope["headers"] = [(b"content-length", b"128")]
     if message.get("type") == "http.request":
         try:
             raise ValueError
@@ -103,7 +112,10 @@ async def error_asgi(scope, receive, send):
             {
                 "type": "http.response.start",
                 "status": 200,
-                "headers": [[b"Content-Type", b"text/plain"]],
+                "headers": [
+                    [b"Content-Type", b"text/plain"],
+                    [b"content-length", b"1024"],
+                ],
             }
         )
         await send({"type": "http.response.body", "body": b"*"})
@@ -126,7 +138,8 @@ class TestAsgiApplication(AsgiTestBase):
         # Check http response start
         self.assertEqual(response_start["status"], 200)
         self.assertEqual(
-            response_start["headers"], [[b"Content-Type", b"text/plain"]]
+            response_start["headers"],
+            [[b"Content-Type", b"text/plain"], [b"content-length", b"1024"]],
         )
 
         exc_info = self.scope.get("hack_exc_info")
@@ -142,12 +155,12 @@ class TestAsgiApplication(AsgiTestBase):
         self.assertEqual(len(span_list), 4)
         expected = [
             {
-                "name": "/ http receive",
+                "name": "GET / http receive",
                 "kind": trace_api.SpanKind.INTERNAL,
                 "attributes": {"type": "http.request"},
             },
             {
-                "name": "/ http send",
+                "name": "GET / http send",
                 "kind": trace_api.SpanKind.INTERNAL,
                 "attributes": {
                     SpanAttributes.HTTP_STATUS_CODE: 200,
@@ -155,12 +168,12 @@ class TestAsgiApplication(AsgiTestBase):
                 },
             },
             {
-                "name": "/ http send",
+                "name": "GET / http send",
                 "kind": trace_api.SpanKind.INTERNAL,
                 "attributes": {"type": "http.response.body"},
             },
             {
-                "name": "/",
+                "name": "GET /",
                 "kind": trace_api.SpanKind.SERVER,
                 "attributes": {
                     SpanAttributes.HTTP_METHOD: "GET",
@@ -231,7 +244,7 @@ class TestAsgiApplication(AsgiTestBase):
                     entry["name"] = span_name
                 else:
                     entry["name"] = " ".join(
-                        [span_name] + entry["name"].split(" ")[1:]
+                        [span_name] + entry["name"].split(" ")[2:]
                     )
             return expected
 
@@ -352,6 +365,7 @@ class TestAsgiApplication(AsgiTestBase):
             response_start["headers"],
             [
                 [b"Content-Type", b"text/plain"],
+                [b"content-length", b"1024"],
                 [b"traceresponse", f"{traceresponse}".encode()],
                 [b"access-control-expose-headers", b"traceresponse"],
             ],
@@ -493,9 +507,9 @@ class TestAsgiApplication(AsgiTestBase):
             for entry in expected:
                 if entry["kind"] == trace_api.SpanKind.SERVER:
                     entry["name"] = "name from server hook"
-                elif entry["name"] == "/ http receive":
+                elif entry["name"] == "GET / http receive":
                     entry["name"] = "name from client request hook"
-                elif entry["name"] == "/ http send":
+                elif entry["name"] == "GET / http send":
                     entry["attributes"].update({"attr-from-hook": "value"})
             return expected
 
@@ -565,6 +579,7 @@ class TestAsgiApplication(AsgiTestBase):
             "http.flavor": "1.0",
         }
         metrics_list = self.memory_metrics_reader.get_metrics_data()
+        # pylint: disable=too-many-nested-blocks
         for resource_metric in metrics_list.resource_metrics:
             for scope_metrics in resource_metric.scope_metrics:
                 for metric in scope_metrics.metrics:
@@ -575,9 +590,14 @@ class TestAsgiApplication(AsgiTestBase):
                                 dict(point.attributes),
                             )
                             self.assertEqual(point.count, 1)
-                            self.assertAlmostEqual(
-                                duration, point.sum, delta=5
-                            )
+                            if metric.name == "http.server.duration":
+                                self.assertAlmostEqual(
+                                    duration, point.sum, delta=5
+                                )
+                            elif metric.name == "http.server.response.size":
+                                self.assertEqual(1024, point.sum)
+                            elif metric.name == "http.server.request.size":
+                                self.assertEqual(128, point.sum)
                         elif isinstance(point, NumberDataPoint):
                             self.assertDictEqual(
                                 expected_requests_count_attributes,
@@ -602,13 +622,12 @@ class TestAsgiApplication(AsgiTestBase):
         app = otel_asgi.OpenTelemetryMiddleware(target_asgi)
         self.seed_app(app)
         self.send_default_request()
-
         metrics_list = self.memory_metrics_reader.get_metrics_data()
         assertions = 0
         for resource_metric in metrics_list.resource_metrics:
             for scope_metrics in resource_metric.scope_metrics:
                 for metric in scope_metrics.metrics:
-                    if metric.name != "http.server.duration":
+                    if metric.name == "http.server.active_requests":
                         continue
                     for point in metric.data.data_points:
                         if isinstance(point, HistogramDataPoint):
@@ -617,7 +636,7 @@ class TestAsgiApplication(AsgiTestBase):
                                 expected_target,
                             )
                             assertions += 1
-        self.assertEqual(assertions, 1)
+        self.assertEqual(assertions, 3)
 
     def test_no_metric_for_websockets(self):
         self.scope = {
@@ -705,11 +724,11 @@ class TestAsgiAttributes(unittest.TestCase):
         self.assertEqual(self.span.set_status.call_count, 1)
 
     def test_credential_removal(self):
-        self.scope["server"] = ("username:password@httpbin.org", 80)
+        self.scope["server"] = ("username:password@mock", 80)
         self.scope["path"] = "/status/200"
         attrs = otel_asgi.collect_request_attributes(self.scope)
         self.assertEqual(
-            attrs[SpanAttributes.HTTP_URL], "http://httpbin.org/status/200"
+            attrs[SpanAttributes.HTTP_URL], "http://mock/status/200"
         )
 
     def test_collect_target_attribute_missing(self):
