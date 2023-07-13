@@ -18,7 +18,7 @@ from timeit import default_timer
 import httpretty
 import urllib3
 import urllib3.exceptions
-from urllib3.request import encode_multipart_formdata
+from urllib3 import encode_multipart_formdata
 
 from opentelemetry.instrumentation.urllib3 import URLLib3Instrumentor
 from opentelemetry.test.httptest import HttpTestBase
@@ -26,7 +26,7 @@ from opentelemetry.test.test_base import TestBase
 
 
 class TestURLLib3InstrumentorMetric(HttpTestBase, TestBase):
-    HTTP_URL = "http://httpbin.org/status/200"
+    HTTP_URL = "http://mock/status/200"
 
     def setUp(self):
         super().setUp()
@@ -68,11 +68,11 @@ class TestURLLib3InstrumentorMetric(HttpTestBase, TestBase):
                     min_data_point=client_duration_estimated,
                     attributes={
                         "http.flavor": "1.1",
-                        "http.host": "httpbin.org",
+                        "http.host": "mock",
                         "http.method": "GET",
                         "http.scheme": "http",
                         "http.status_code": 200,
-                        "net.peer.name": "httpbin.org",
+                        "net.peer.name": "mock",
                         "net.peer.port": 80,
                     },
                 )
@@ -91,11 +91,11 @@ class TestURLLib3InstrumentorMetric(HttpTestBase, TestBase):
                     min_data_point=0,
                     attributes={
                         "http.flavor": "1.1",
-                        "http.host": "httpbin.org",
+                        "http.host": "mock",
                         "http.method": "GET",
                         "http.scheme": "http",
                         "http.status_code": 200,
-                        "net.peer.name": "httpbin.org",
+                        "net.peer.name": "mock",
                         "net.peer.port": 80,
                     },
                 )
@@ -116,11 +116,11 @@ class TestURLLib3InstrumentorMetric(HttpTestBase, TestBase):
                     min_data_point=expected_size,
                     attributes={
                         "http.flavor": "1.1",
-                        "http.host": "httpbin.org",
+                        "http.host": "mock",
                         "http.method": "GET",
                         "http.scheme": "http",
                         "http.status_code": 200,
-                        "net.peer.name": "httpbin.org",
+                        "net.peer.name": "mock",
                         "net.peer.port": 80,
                     },
                 )
@@ -144,11 +144,11 @@ class TestURLLib3InstrumentorMetric(HttpTestBase, TestBase):
                     min_data_point=6,
                     attributes={
                         "http.flavor": "1.1",
-                        "http.host": "httpbin.org",
+                        "http.host": "mock",
                         "http.method": "POST",
                         "http.scheme": "http",
                         "http.status_code": 200,
-                        "net.peer.name": "httpbin.org",
+                        "net.peer.name": "mock",
                         "net.peer.port": 80,
                     },
                 )
@@ -172,11 +172,11 @@ class TestURLLib3InstrumentorMetric(HttpTestBase, TestBase):
                     min_data_point=6,
                     attributes={
                         "http.flavor": "1.1",
-                        "http.host": "httpbin.org",
+                        "http.host": "mock",
                         "http.method": "POST",
                         "http.scheme": "http",
                         "http.status_code": 200,
-                        "net.peer.name": "httpbin.org",
+                        "net.peer.name": "mock",
                         "net.peer.port": 80,
                     },
                 )
@@ -201,11 +201,11 @@ class TestURLLib3InstrumentorMetric(HttpTestBase, TestBase):
                     min_data_point=expected_value,
                     attributes={
                         "http.flavor": "1.1",
-                        "http.host": "httpbin.org",
+                        "http.host": "mock",
                         "http.method": "POST",
                         "http.scheme": "http",
                         "http.status_code": 200,
-                        "net.peer.name": "httpbin.org",
+                        "net.peer.name": "mock",
                         "net.peer.port": 80,
                     },
                 )
@@ -229,11 +229,11 @@ class TestURLLib3InstrumentorMetric(HttpTestBase, TestBase):
                     min_data_point=6,
                     attributes={
                         "http.flavor": "1.1",
-                        "http.host": "httpbin.org",
+                        "http.host": "mock",
                         "http.method": "POST",
                         "http.scheme": "http",
                         "http.status_code": 200,
-                        "net.peer.name": "httpbin.org",
+                        "net.peer.name": "mock",
                         "net.peer.port": 80,
                     },
                 )

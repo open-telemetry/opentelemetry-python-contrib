@@ -70,11 +70,12 @@ class TestSqlalchemyMetricsInstrumentation(TestBase):
         )
 
     def test_metrics_without_pool_name(self):
-        pool_name = ""
+        pool_name = "pool_test_name"
         engine = sqlalchemy.create_engine(
             "sqlite:///:memory:",
             pool_size=5,
             poolclass=QueuePool,
+            pool_logging_name=pool_name,
         )
 
         metrics = self.get_sorted_metrics()

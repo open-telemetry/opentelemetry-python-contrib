@@ -13,6 +13,7 @@
 # limitations under the License.
 
 import asyncio
+from time import time_ns
 
 import redis
 import redis.asyncio
@@ -47,9 +48,7 @@ class TestRedisInstrument(TestBase):
 
     def test_long_command_sanitized(self):
         RedisInstrumentor().uninstrument()
-        RedisInstrumentor().instrument(
-            tracer_provider=self.tracer_provider, sanitize_query=True
-        )
+        RedisInstrumentor().instrument(tracer_provider=self.tracer_provider)
 
         self.redis_client.mget(*range(2000))
 
@@ -75,7 +74,7 @@ class TestRedisInstrument(TestBase):
         self._check_span(span, "MGET")
         self.assertTrue(
             span.attributes.get(SpanAttributes.DB_STATEMENT).startswith(
-                "MGET 0 1 2 3"
+                "MGET ? ? ? ?"
             )
         )
         self.assertTrue(
@@ -84,9 +83,7 @@ class TestRedisInstrument(TestBase):
 
     def test_basics_sanitized(self):
         RedisInstrumentor().uninstrument()
-        RedisInstrumentor().instrument(
-            tracer_provider=self.tracer_provider, sanitize_query=True
-        )
+        RedisInstrumentor().instrument(tracer_provider=self.tracer_provider)
 
         self.assertIsNone(self.redis_client.get("cheese"))
         spans = self.memory_exporter.get_finished_spans()
@@ -105,15 +102,13 @@ class TestRedisInstrument(TestBase):
         span = spans[0]
         self._check_span(span, "GET")
         self.assertEqual(
-            span.attributes.get(SpanAttributes.DB_STATEMENT), "GET cheese"
+            span.attributes.get(SpanAttributes.DB_STATEMENT), "GET ?"
         )
         self.assertEqual(span.attributes.get("db.redis.args_length"), 2)
 
     def test_pipeline_traced_sanitized(self):
         RedisInstrumentor().uninstrument()
-        RedisInstrumentor().instrument(
-            tracer_provider=self.tracer_provider, sanitize_query=True
-        )
+        RedisInstrumentor().instrument(tracer_provider=self.tracer_provider)
 
         with self.redis_client.pipeline(transaction=False) as pipeline:
             pipeline.set("blah", 32)
@@ -144,15 +139,13 @@ class TestRedisInstrument(TestBase):
         self._check_span(span, "SET RPUSH HGETALL")
         self.assertEqual(
             span.attributes.get(SpanAttributes.DB_STATEMENT),
-            "SET blah 32\nRPUSH foo éé\nHGETALL xxx",
+            "SET ? ?\nRPUSH ? ?\nHGETALL ?",
         )
         self.assertEqual(span.attributes.get("db.redis.pipeline_length"), 3)
 
     def test_pipeline_immediate_sanitized(self):
         RedisInstrumentor().uninstrument()
-        RedisInstrumentor().instrument(
-            tracer_provider=self.tracer_provider, sanitize_query=True
-        )
+        RedisInstrumentor().instrument(tracer_provider=self.tracer_provider)
 
         with self.redis_client.pipeline() as pipeline:
             pipeline.set("a", 1)
@@ -182,7 +175,7 @@ class TestRedisInstrument(TestBase):
         span = spans[0]
         self._check_span(span, "SET")
         self.assertEqual(
-            span.attributes.get(SpanAttributes.DB_STATEMENT), "SET b 2"
+            span.attributes.get(SpanAttributes.DB_STATEMENT), "SET ? ?"
         )
 
     def test_parent(self):
@@ -230,7 +223,7 @@ class TestRedisClusterInstrument(TestBase):
         span = spans[0]
         self._check_span(span, "GET")
         self.assertEqual(
-            span.attributes.get(SpanAttributes.DB_STATEMENT), "GET cheese"
+            span.attributes.get(SpanAttributes.DB_STATEMENT), "GET ?"
         )
         self.assertEqual(span.attributes.get("db.redis.args_length"), 2)
 
@@ -247,7 +240,7 @@ class TestRedisClusterInstrument(TestBase):
         self._check_span(span, "SET RPUSH HGETALL")
         self.assertEqual(
             span.attributes.get(SpanAttributes.DB_STATEMENT),
-            "SET blah 32\nRPUSH foo éé\nHGETALL xxx",
+            "SET ? ?\nRPUSH ? ?\nHGETALL ?",
         )
         self.assertEqual(span.attributes.get("db.redis.pipeline_length"), 3)
 
@@ -308,7 +301,7 @@ class TestAsyncRedisInstrument(TestBase):
         self._check_span(span, "MGET")
         self.assertTrue(
             span.attributes.get(SpanAttributes.DB_STATEMENT).startswith(
-                "MGET 0 1 2 3"
+                "MGET ? ? ? ?"
             )
         )
         self.assertTrue(
@@ -322,9 +315,32 @@ class TestAsyncRedisInstrument(TestBase):
         span = spans[0]
         self._check_span(span, "GET")
         self.assertEqual(
-            span.attributes.get(SpanAttributes.DB_STATEMENT), "GET cheese"
+            span.attributes.get(SpanAttributes.DB_STATEMENT), "GET ?"
         )
         self.assertEqual(span.attributes.get("db.redis.args_length"), 2)
+
+    def test_execute_command_traced_full_time(self):
+        """Command should be traced for coroutine execution time, not creation time."""
+        coro_created_time = None
+        finish_time = None
+
+        async def pipeline_simple():
+            nonlocal coro_created_time
+            nonlocal finish_time
+
+            # delay coroutine creation from coroutine execution
+            coro = self.redis_client.get("foo")
+            coro_created_time = time_ns()
+            await coro
+            finish_time = time_ns()
+
+        async_call(pipeline_simple())
+
+        spans = self.memory_exporter.get_finished_spans()
+        self.assertEqual(len(spans), 1)
+        span = spans[0]
+        self.assertTrue(span.start_time > coro_created_time)
+        self.assertTrue(span.end_time < finish_time)
 
     def test_pipeline_traced(self):
         async def pipeline_simple():
@@ -344,9 +360,38 @@ class TestAsyncRedisInstrument(TestBase):
         self._check_span(span, "SET RPUSH HGETALL")
         self.assertEqual(
             span.attributes.get(SpanAttributes.DB_STATEMENT),
-            "SET blah 32\nRPUSH foo éé\nHGETALL xxx",
+            "SET ? ?\nRPUSH ? ?\nHGETALL ?",
         )
         self.assertEqual(span.attributes.get("db.redis.pipeline_length"), 3)
+
+    def test_pipeline_traced_full_time(self):
+        """Command should be traced for coroutine execution time, not creation time."""
+        coro_created_time = None
+        finish_time = None
+
+        async def pipeline_simple():
+            async with self.redis_client.pipeline(
+                transaction=False
+            ) as pipeline:
+                nonlocal coro_created_time
+                nonlocal finish_time
+                pipeline.set("blah", 32)
+                pipeline.rpush("foo", "éé")
+                pipeline.hgetall("xxx")
+
+                # delay coroutine creation from coroutine execution
+                coro = pipeline.execute()
+                coro_created_time = time_ns()
+                await coro
+                finish_time = time_ns()
+
+        async_call(pipeline_simple())
+
+        spans = self.memory_exporter.get_finished_spans()
+        self.assertEqual(len(spans), 1)
+        span = spans[0]
+        self.assertTrue(span.start_time > coro_created_time)
+        self.assertTrue(span.end_time < finish_time)
 
     def test_pipeline_immediate(self):
         async def pipeline_immediate():
@@ -364,8 +409,35 @@ class TestAsyncRedisInstrument(TestBase):
         span = spans[0]
         self._check_span(span, "SET")
         self.assertEqual(
-            span.attributes.get(SpanAttributes.DB_STATEMENT), "SET b 2"
+            span.attributes.get(SpanAttributes.DB_STATEMENT), "SET ? ?"
         )
+
+    def test_pipeline_immediate_traced_full_time(self):
+        """Command should be traced for coroutine execution time, not creation time."""
+        coro_created_time = None
+        finish_time = None
+
+        async def pipeline_simple():
+            async with self.redis_client.pipeline(
+                transaction=False
+            ) as pipeline:
+                nonlocal coro_created_time
+                nonlocal finish_time
+                pipeline.set("a", 1)
+
+                # delay coroutine creation from coroutine execution
+                coro = pipeline.immediate_execute_command("SET", "b", 2)
+                coro_created_time = time_ns()
+                await coro
+                finish_time = time_ns()
+
+        async_call(pipeline_simple())
+
+        spans = self.memory_exporter.get_finished_spans()
+        self.assertEqual(len(spans), 1)
+        span = spans[0]
+        self.assertTrue(span.start_time > coro_created_time)
+        self.assertTrue(span.end_time < finish_time)
 
     def test_parent(self):
         """Ensure OpenTelemetry works with redis."""
@@ -412,9 +484,32 @@ class TestAsyncRedisClusterInstrument(TestBase):
         span = spans[0]
         self._check_span(span, "GET")
         self.assertEqual(
-            span.attributes.get(SpanAttributes.DB_STATEMENT), "GET cheese"
+            span.attributes.get(SpanAttributes.DB_STATEMENT), "GET ?"
         )
         self.assertEqual(span.attributes.get("db.redis.args_length"), 2)
+
+    def test_execute_command_traced_full_time(self):
+        """Command should be traced for coroutine execution time, not creation time."""
+        coro_created_time = None
+        finish_time = None
+
+        async def pipeline_simple():
+            nonlocal coro_created_time
+            nonlocal finish_time
+
+            # delay coroutine creation from coroutine execution
+            coro = self.redis_client.get("foo")
+            coro_created_time = time_ns()
+            await coro
+            finish_time = time_ns()
+
+        async_call(pipeline_simple())
+
+        spans = self.memory_exporter.get_finished_spans()
+        self.assertEqual(len(spans), 1)
+        span = spans[0]
+        self.assertTrue(span.start_time > coro_created_time)
+        self.assertTrue(span.end_time < finish_time)
 
     def test_pipeline_traced(self):
         async def pipeline_simple():
@@ -434,9 +529,38 @@ class TestAsyncRedisClusterInstrument(TestBase):
         self._check_span(span, "SET RPUSH HGETALL")
         self.assertEqual(
             span.attributes.get(SpanAttributes.DB_STATEMENT),
-            "SET blah 32\nRPUSH foo éé\nHGETALL xxx",
+            "SET ? ?\nRPUSH ? ?\nHGETALL ?",
         )
         self.assertEqual(span.attributes.get("db.redis.pipeline_length"), 3)
+
+    def test_pipeline_traced_full_time(self):
+        """Command should be traced for coroutine execution time, not creation time."""
+        coro_created_time = None
+        finish_time = None
+
+        async def pipeline_simple():
+            async with self.redis_client.pipeline(
+                transaction=False
+            ) as pipeline:
+                nonlocal coro_created_time
+                nonlocal finish_time
+                pipeline.set("blah", 32)
+                pipeline.rpush("foo", "éé")
+                pipeline.hgetall("xxx")
+
+                # delay coroutine creation from coroutine execution
+                coro = pipeline.execute()
+                coro_created_time = time_ns()
+                await coro
+                finish_time = time_ns()
+
+        async_call(pipeline_simple())
+
+        spans = self.memory_exporter.get_finished_spans()
+        self.assertEqual(len(spans), 1)
+        span = spans[0]
+        self.assertTrue(span.start_time > coro_created_time)
+        self.assertTrue(span.end_time < finish_time)
 
     def test_parent(self):
         """Ensure OpenTelemetry works with redis."""
@@ -488,5 +612,5 @@ class TestRedisDBIndexInstrument(TestBase):
         span = spans[0]
         self._check_span(span, "GET")
         self.assertEqual(
-            span.attributes.get(SpanAttributes.DB_STATEMENT), "GET foo"
+            span.attributes.get(SpanAttributes.DB_STATEMENT), "GET ?"
         )

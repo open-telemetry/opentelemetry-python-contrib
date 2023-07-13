@@ -172,19 +172,16 @@ class _DjangoMiddleware(MiddlewareMixin):
             else:
                 match = resolve(request.path)
 
-            if hasattr(match, "route"):
-                return match.route
+            if hasattr(match, "route") and match.route:
+                return f"{request.method} {match.route}"
 
-            # Instead of using `view_name`, better to use `_func_name` as some applications can use similar
-            # view names in different modules
-            if hasattr(match, "_func_name"):
-                return match._func_name  # pylint: disable=protected-access
+            if hasattr(match, "url_name") and match.url_name:
+                return f"{request.method} {match.url_name}"
 
-            # Fallback for safety as `_func_name` private field
-            return match.view_name
+            return request.method
 
         except Resolver404:
-            return f"HTTP {request.method}"
+            return request.method
 
     # pylint: disable=too-many-locals
     def process_request(self, request):
