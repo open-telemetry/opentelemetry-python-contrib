@@ -15,6 +15,7 @@
 import logging
 
 from celery import registry  # pylint: disable=no-name-in-module
+from billiard import VERSION
 
 from opentelemetry.semconv.trace import SpanAttributes
 
@@ -45,6 +46,15 @@ CELERY_CONTEXT_ATTRIBUTES = (
     "origin",
     "state",
 )
+
+
+def import_exception_with_traceback():
+    if VERSION >= (4, 0, 1):
+        from billiard.einfo import ExceptionWithTraceback
+
+        return ExceptionWithTraceback
+
+    return None
 
 
 # pylint:disable=too-many-branches

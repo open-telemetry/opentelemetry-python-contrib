@@ -66,13 +66,6 @@ from typing import Collection, Iterable
 from billiard.einfo import ExceptionInfo
 from celery import signals  # pylint: disable=no-name-in-module
 
-try:
-    from billiard.einfo import (  # pylint: disable=no-name-in-module
-        ExceptionWithTraceback,
-    )
-except ImportError:
-    ExceptionWithTraceback = None
-
 from opentelemetry import trace
 from opentelemetry.instrumentation.celery import utils
 from opentelemetry.instrumentation.celery.package import _instruments
@@ -83,6 +76,8 @@ from opentelemetry.propagate import extract, inject
 from opentelemetry.propagators.textmap import Getter
 from opentelemetry.semconv.trace import SpanAttributes
 from opentelemetry.trace.status import Status, StatusCode
+
+ExceptionWithTraceback = utils.import_exception_with_traceback()
 
 logger = logging.getLogger(__name__)
 
