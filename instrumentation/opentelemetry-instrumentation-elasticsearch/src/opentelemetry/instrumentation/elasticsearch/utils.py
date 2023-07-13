@@ -11,6 +11,7 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
+import json
 
 sanitized_keys = (
     "message",
@@ -29,7 +30,8 @@ def _flatten_dict(d, parent_key=""):
     items = []
     for k, v in d.items():
         new_key = parent_key + "." + k if parent_key else k
-        if isinstance(v, dict):
+        # recursive call _flatten_dict for a non-empty dict value
+        if isinstance(v, dict) and v:
             items.extend(_flatten_dict(v, new_key).items())
         else:
             items.append((new_key, v))
@@ -50,6 +52,9 @@ def _unflatten_dict(d):
 
 
 def sanitize_body(body) -> str:
+    if isinstance(body, str):
+        body = json.loads(body)
+
     flatten_body = _flatten_dict(body)
 
     for key in flatten_body:

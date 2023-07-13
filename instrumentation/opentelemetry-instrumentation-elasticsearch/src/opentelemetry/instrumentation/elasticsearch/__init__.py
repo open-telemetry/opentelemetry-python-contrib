@@ -44,7 +44,6 @@ environment variable or by passing the prefix as an argument to the instrumentor
 
 The instrument() method accepts the following keyword args:
 tracer_provider (TracerProvider) - an optional tracer provider
-sanitize_query (bool) - an optional query sanitization flag
 request_hook (Callable) - a function with extra user-defined logic to be performed before performing the request
 this function signature is:
 def request_hook(span: Span, method: str, url: str, kwargs)
@@ -99,6 +98,12 @@ from opentelemetry.trace import SpanKind, get_tracer
 
 from .utils import sanitize_body
 
+# Split of elasticsearch and elastic_transport in 8.0.0+
+# https://www.elastic.co/guide/en/elasticsearch/client/python-api/master/release-notes.html#rn-8-0-0
+es_transport_split = elasticsearch.VERSION[0] > 7
+if es_transport_split:
+    import elastic_transport
+
 logger = getLogger(__name__)
 
 
@@ -138,18 +143,28 @@ class ElasticsearchInstrumentor(BaseInstrumentor):
         tracer = get_tracer(__name__, __version__, tracer_provider)
         request_hook = kwargs.get("request_hook")
         response_hook = kwargs.get("response_hook")
-        sanitize_query = kwargs.get("sanitize_query", False)
-        _wrap(
-            elasticsearch,
-            "Transport.perform_request",
-            _wrap_perform_request(
-                tracer,
-                sanitize_query,
-                self._span_name_prefix,
-                request_hook,
-                response_hook,
-            ),
-        )
+        if es_transport_split:
+            _wrap(
+                elastic_transport,
+                "Transport.perform_request",
+                _wrap_perform_request(
+                    tracer,
+                    self._span_name_prefix,
+                    request_hook,
+                    response_hook,
+                ),
+            )
+        else:
+            _wrap(
+                elasticsearch,
+                "Transport.perform_request",
+                _wrap_perform_request(
+                    tracer,
+                    self._span_name_prefix,
+                    request_hook,
+                    response_hook,
+                ),
+            )
 
     def _uninstrument(self, **kwargs):
         unwrap(elasticsearch.Transport, "perform_request")
@@ -163,7 +178,6 @@ _regex_search_url = re.compile(r"/([^/]+)/_search[/]?")
 
 def _wrap_perform_request(
     tracer,
-    sanitize_query,
     span_name_prefix,
     request_hook=None,
     response_hook=None,
@@ -225,10 +239,9 @@ def _wrap_perform_request(
                 if method:
                     attributes["elasticsearch.method"] = method
                 if body:
-                    statement = str(body)
-                    if sanitize_query:
-                        statement = sanitize_body(body)
-                    attributes[SpanAttributes.DB_STATEMENT] = statement
+                    attributes[SpanAttributes.DB_STATEMENT] = sanitize_body(
+                        body
+                    )
                 if params:
                     attributes["elasticsearch.params"] = str(params)
                 if doc_id:

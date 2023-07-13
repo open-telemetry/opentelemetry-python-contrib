@@ -26,8 +26,8 @@ classifiers = [
 ]
 dependencies = [
   "opentelemetry-api ~= 1.12",
-  "opentelemetry-instrumentation == 0.38b0.dev",
-  "opentelemetry-semantic-conventions == 0.38b0.dev",
+  "opentelemetry-instrumentation == 0.41b0.dev",
+  "opentelemetry-semantic-conventions == 0.41b0.dev",
 ]
 
 [project.optional-dependencies]
@@ -36,8 +36,7 @@ instruments = [
 ]
 test = [
   "opentelemetry-instrumentation-celery[instruments]",
-  "opentelemetry-test-utils == 0.38b0.dev",
-  "importlib-metadata==4.13.0",
+  "opentelemetry-test-utils == 0.41b0.dev",
   "pytest",
 ]
 

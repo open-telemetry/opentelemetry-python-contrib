@@ -51,10 +51,10 @@ API
 import functools
 import types
 from timeit import default_timer
-from typing import Callable, Collection, Iterable, Optional
+from typing import Callable, Collection, Optional
 from urllib.parse import urlparse
 
-from requests.models import Response
+from requests.models import PreparedRequest, Response
 from requests.sessions import Session
 from requests.structures import CaseInsensitiveDict
 
@@ -77,6 +77,7 @@ from opentelemetry.trace import SpanKind, Tracer, get_tracer
 from opentelemetry.trace.span import Span
 from opentelemetry.trace.status import Status
 from opentelemetry.util.http import (
+    ExcludeList,
     get_excluded_urls,
     parse_excluded_urls,
     remove_url_credentials,
@@ -85,15 +86,18 @@ from opentelemetry.util.http.httplib import set_ip_on_next_http_connection
 
 _excluded_urls_from_env = get_excluded_urls("REQUESTS")
 
+_RequestHookT = Optional[Callable[[Span, PreparedRequest], None]]
+_ResponseHookT = Optional[Callable[[Span, PreparedRequest], None]]
+
 
 # pylint: disable=unused-argument
 # pylint: disable=R0915
 def _instrument(
     tracer: Tracer,
     duration_histogram: Histogram,
-    span_callback: Optional[Callable[[Span, Response], str]] = None,
-    name_callback: Optional[Callable[[str, str], str]] = None,
-    excluded_urls: Iterable[str] = None,
+    request_hook: _RequestHookT = None,
+    response_hook: _ResponseHookT = None,
+    excluded_urls: ExcludeList = None,
 ):
     """Enables tracing of all requests calls that go through
     :code:`requests.session.Session.request` (this includes
@@ -106,29 +110,9 @@ def _instrument(
     # before v1.0.0, Dec 17, 2012, see
     # https://github.com/psf/requests/commit/4e5c4a6ab7bb0195dececdd19bb8505b872fe120)
 
-    wrapped_request = Session.request
     wrapped_send = Session.send
 
-    @functools.wraps(wrapped_request)
-    def instrumented_request(self, method, url, *args, **kwargs):
-        if excluded_urls and excluded_urls.url_disabled(url):
-            return wrapped_request(self, method, url, *args, **kwargs)
-
-        def get_or_create_headers():
-            headers = kwargs.get("headers")
-            if headers is None:
-                headers = {}
-                kwargs["headers"] = headers
-
-            return headers
-
-        def call_wrapped():
-            return wrapped_request(self, method, url, *args, **kwargs)
-
-        return _instrumented_requests_call(
-            method, url, call_wrapped, get_or_create_headers
-        )
-
+    # pylint: disable-msg=too-many-locals,too-many-branches
     @functools.wraps(wrapped_send)
     def instrumented_send(self, request, **kwargs):
         if excluded_urls and excluded_urls.url_disabled(request.url):
@@ -142,32 +126,17 @@ def _instrument(
             )
             return request.headers
 
-        def call_wrapped():
-            return wrapped_send(self, request, **kwargs)
-
-        return _instrumented_requests_call(
-            request.method, request.url, call_wrapped, get_or_create_headers
-        )
-
-    # pylint: disable-msg=too-many-locals,too-many-branches
-    def _instrumented_requests_call(
-        method: str, url: str, call_wrapped, get_or_create_headers
-    ):
         if context.get_value(
             _SUPPRESS_INSTRUMENTATION_KEY
         ) or context.get_value(_SUPPRESS_HTTP_INSTRUMENTATION_KEY):
-            return call_wrapped()
+            return wrapped_send(self, request, **kwargs)
 
         # See
         # https://github.com/open-telemetry/opentelemetry-specification/blob/main/specification/trace/semantic_conventions/http.md#http-client
-        method = method.upper()
-        span_name = ""
-        if name_callback is not None:
-            span_name = name_callback(method, url)
-        if not span_name or not isinstance(span_name, str):
-            span_name = get_default_span_name(method)
+        method = request.method.upper()
+        span_name = get_default_span_name(method)
 
-        url = remove_url_credentials(url)
+        url = remove_url_credentials(request.url)
 
         span_attributes = {
             SpanAttributes.HTTP_METHOD: method,
@@ -195,6 +164,8 @@ def _instrument(
             span_name, kind=SpanKind.CLIENT, attributes=span_attributes
         ) as span, set_ip_on_next_http_connection(span):
             exception = None
+            if callable(request_hook):
+                request_hook(span, request)
 
             headers = get_or_create_headers()
             inject(headers)
@@ -206,7 +177,7 @@ def _instrument(
             start_time = default_timer()
 
             try:
-                result = call_wrapped()  # *** PROCEED
+                result = wrapped_send(self, request, **kwargs)  # *** PROCEED
             except Exception as exc:  # pylint: disable=W0703
                 exception = exc
                 result = getattr(exc, "response", None)
@@ -236,8 +207,8 @@ def _instrument(
                             "1.1" if version == 11 else "1.0"
                         )
 
-            if span_callback is not None:
-                span_callback(span, result)
+                if callable(response_hook):
+                    response_hook(span, request, result)
 
             duration_histogram.record(elapsed_time, attributes=metric_labels)
 
@@ -245,9 +216,6 @@ def _instrument(
                 raise exception.with_traceback(exception.__traceback__)
 
         return result
-
-    instrumented_request.opentelemetry_instrumentation_requests_applied = True
-    Session.request = instrumented_request
 
     instrumented_send.opentelemetry_instrumentation_requests_applied = True
     Session.send = instrumented_send
@@ -277,8 +245,16 @@ def _uninstrument_from(instr_root, restore_as_bound_func=False):
 
 
 def get_default_span_name(method):
-    """Default implementation for name_callback, returns HTTP {method_name}."""
-    return f"HTTP {method.strip()}"
+    """
+    Default implementation for name_callback, returns HTTP {method_name}.
+    https://opentelemetry.io/docs/reference/specification/trace/semantic_conventions/http/#name
+
+    Args:
+        method: string representing HTTP method
+    Returns:
+        span name
+    """
+    return method.strip()
 
 
 class RequestsInstrumentor(BaseInstrumentor):
@@ -295,10 +271,8 @@ class RequestsInstrumentor(BaseInstrumentor):
         Args:
             **kwargs: Optional arguments
                 ``tracer_provider``: a TracerProvider, defaults to global
-                ``span_callback``: An optional callback invoked before returning the http response. Invoked with Span and requests.Response
-                ``name_callback``: Callback which calculates a generic span name for an
-                    outgoing HTTP request based on the method and url.
-                    Optional: Defaults to get_default_span_name.
+                ``request_hook``: An optional callback that is invoked right after a span is created.
+                ``response_hook``: An optional callback which is invoked right before the span is finished processing a response.
                 ``excluded_urls``: A string containing a comma-delimited
                     list of regexes used to exclude URLs from tracking
         """
@@ -319,8 +293,8 @@ class RequestsInstrumentor(BaseInstrumentor):
         _instrument(
             tracer,
             duration_histogram,
-            span_callback=kwargs.get("span_callback"),
-            name_callback=kwargs.get("name_callback"),
+            request_hook=kwargs.get("request_hook"),
+            response_hook=kwargs.get("response_hook"),
             excluded_urls=_excluded_urls_from_env
             if excluded_urls is None
             else parse_excluded_urls(excluded_urls),

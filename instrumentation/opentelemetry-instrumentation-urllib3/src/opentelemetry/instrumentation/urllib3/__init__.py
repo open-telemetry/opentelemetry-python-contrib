@@ -56,9 +56,23 @@ The hooks can be configured as follows:
     def response_hook(span, request, response):
         pass
 
-    URLLib3Instrumentor.instrument(
-        request_hook=request_hook, response_hook=response_hook)
+    URLLib3Instrumentor().instrument(
+        request_hook=request_hook, response_hook=response_hook
     )
+
+Exclude lists
+*************
+
+To exclude certain URLs from being tracked, set the environment variable ``OTEL_PYTHON_URLLIB3_EXCLUDED_URLS``
+(or ``OTEL_PYTHON_EXCLUDED_URLS`` as fallback) with comma delimited regexes representing which URLs to exclude.
+
+For example,
+
+::
+
+    export OTEL_PYTHON_URLLIB3_EXCLUDED_URLS="client/.*/info,healthcheck"
+
+will exclude requests such as ``https://site/client/123/info`` and ``https://site/xyz/healthcheck``.
 
 API
 ---
@@ -92,7 +106,14 @@ from opentelemetry.semconv.metrics import MetricInstruments
 from opentelemetry.semconv.trace import SpanAttributes
 from opentelemetry.trace import Span, SpanKind, Tracer, get_tracer
 from opentelemetry.trace.status import Status
+from opentelemetry.util.http import (
+    ExcludeList,
+    get_excluded_urls,
+    parse_excluded_urls,
+)
 from opentelemetry.util.http.httplib import set_ip_on_next_http_connection
+
+_excluded_urls_from_env = get_excluded_urls("URLLIB3")
 
 _UrlFilterT = typing.Optional[typing.Callable[[str], str]]
 _RequestHookT = typing.Optional[
@@ -138,9 +159,13 @@ class URLLib3Instrumentor(BaseInstrumentor):
                 ``response_hook``: An optional callback which is invoked right before the span is finished processing a response.
                 ``url_filter``: A callback to process the requested URL prior
                     to adding it as a span attribute.
+                ``excluded_urls``: A string containing a comma-delimited
+                    list of regexes used to exclude URLs from tracking
         """
         tracer_provider = kwargs.get("tracer_provider")
         tracer = get_tracer(__name__, __version__, tracer_provider)
+
+        excluded_urls = kwargs.get("excluded_urls")
 
         meter_provider = kwargs.get("meter_provider")
         meter = get_meter(__name__, __version__, meter_provider)
@@ -169,6 +194,9 @@ class URLLib3Instrumentor(BaseInstrumentor):
             request_hook=kwargs.get("request_hook"),
             response_hook=kwargs.get("response_hook"),
             url_filter=kwargs.get("url_filter"),
+            excluded_urls=_excluded_urls_from_env
+            if excluded_urls is None
+            else parse_excluded_urls(excluded_urls),
         )
 
     def _uninstrument(self, **kwargs):
@@ -183,17 +211,21 @@ def _instrument(
     request_hook: _RequestHookT = None,
     response_hook: _ResponseHookT = None,
     url_filter: _UrlFilterT = None,
+    excluded_urls: ExcludeList = None,
 ):
     def instrumented_urlopen(wrapped, instance, args, kwargs):
         if _is_instrumentation_suppressed():
             return wrapped(*args, **kwargs)
 
-        method = _get_url_open_arg("method", args, kwargs).upper()
         url = _get_url(instance, args, kwargs, url_filter)
+        if excluded_urls and excluded_urls.url_disabled(url):
+            return wrapped(*args, **kwargs)
+
+        method = _get_url_open_arg("method", args, kwargs).upper()
         headers = _prepare_headers(kwargs)
         body = _get_url_open_arg("body", args, kwargs)
 
-        span_name = f"HTTP {method.strip()}"
+        span_name = method.strip()
         span_attributes = {
             SpanAttributes.HTTP_METHOD: method,
             SpanAttributes.HTTP_URL: url,

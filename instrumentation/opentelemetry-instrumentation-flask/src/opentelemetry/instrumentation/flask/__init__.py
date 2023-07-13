@@ -238,13 +238,14 @@ Note:
 API
 ---
 """
+import weakref
 from logging import getLogger
-from threading import get_ident
 from time import time_ns
 from timeit import default_timer
 from typing import Collection
 
 import flask
+from packaging import version as package_version
 
 import opentelemetry.instrumentation.wsgi as otel_wsgi
 from opentelemetry import context, trace
@@ -265,10 +266,20 @@ _logger = getLogger(__name__)
 _ENVIRON_STARTTIME_KEY = "opentelemetry-flask.starttime_key"
 _ENVIRON_SPAN_KEY = "opentelemetry-flask.span_key"
 _ENVIRON_ACTIVATION_KEY = "opentelemetry-flask.activation_key"
-_ENVIRON_THREAD_ID_KEY = "opentelemetry-flask.thread_id_key"
+_ENVIRON_REQCTX_REF_KEY = "opentelemetry-flask.reqctx_ref_key"
 _ENVIRON_TOKEN = "opentelemetry-flask.token"
 
 _excluded_urls_from_env = get_excluded_urls("FLASK")
+
+if package_version.parse(flask.__version__) >= package_version.parse("2.2.0"):
+
+    def _request_ctx_ref() -> weakref.ReferenceType:
+        return weakref.ref(flask.globals.request_ctx._get_current_object())
+
+else:
+
+    def _request_ctx_ref() -> weakref.ReferenceType:
+        return weakref.ref(flask._request_ctx_stack.top)
 
 
 def get_default_span_name():
@@ -364,27 +375,26 @@ def _wrapped_before_request(
         flask_request_environ = flask.request.environ
         span_name = get_default_span_name()
 
+        attributes = otel_wsgi.collect_request_attributes(
+            flask_request_environ
+        )
+        if flask.request.url_rule:
+            # For 404 that result from no route found, etc, we
+            # don't have a url_rule.
+            attributes[SpanAttributes.HTTP_ROUTE] = flask.request.url_rule.rule
         span, token = _start_internal_or_server_span(
             tracer=tracer,
             span_name=span_name,
             start_time=flask_request_environ.get(_ENVIRON_STARTTIME_KEY),
             context_carrier=flask_request_environ,
             context_getter=otel_wsgi.wsgi_getter,
+            attributes=attributes,
         )
 
         if request_hook:
             request_hook(span, flask_request_environ)
 
         if span.is_recording():
-            attributes = otel_wsgi.collect_request_attributes(
-                flask_request_environ
-            )
-            if flask.request.url_rule:
-                # For 404 that result from no route found, etc, we
-                # don't have a url_rule.
-                attributes[
-                    SpanAttributes.HTTP_ROUTE
-                ] = flask.request.url_rule.rule
             for key, value in attributes.items():
                 span.set_attribute(key, value)
             if span.is_recording() and span.kind == trace.SpanKind.SERVER:
@@ -399,7 +409,7 @@ def _wrapped_before_request(
         activation = trace.use_span(span, end_on_exit=True)
         activation.__enter__()  # pylint: disable=E1101
         flask_request_environ[_ENVIRON_ACTIVATION_KEY] = activation
-        flask_request_environ[_ENVIRON_THREAD_ID_KEY] = get_ident()
+        flask_request_environ[_ENVIRON_REQCTX_REF_KEY] = _request_ctx_ref()
         flask_request_environ[_ENVIRON_SPAN_KEY] = span
         flask_request_environ[_ENVIRON_TOKEN] = token
 
@@ -439,17 +449,22 @@ def _wrapped_teardown_request(
             return
 
         activation = flask.request.environ.get(_ENVIRON_ACTIVATION_KEY)
-        thread_id = flask.request.environ.get(_ENVIRON_THREAD_ID_KEY)
-        if not activation or thread_id != get_ident():
+
+        original_reqctx_ref = flask.request.environ.get(
+            _ENVIRON_REQCTX_REF_KEY
+        )
+        current_reqctx_ref = _request_ctx_ref()
+        if not activation or original_reqctx_ref != current_reqctx_ref:
             # This request didn't start a span, maybe because it was created in
             # a way that doesn't run `before_request`, like when it is created
             # with `app.test_request_context`.
             #
-            # Similarly, check the thread_id against the current thread to ensure
-            # tear down only happens on the original thread. This situation can
-            # arise if the original thread handling the request spawn children
-            # threads and then uses something like copy_current_request_context
-            # to copy the request context.
+            # Similarly, check that the request_ctx that created the span
+            # matches the current request_ctx, and only tear down if they match.
+            # This situation can arise if the original request_ctx handling
+            # the request calls functions that push new request_ctx's,
+            # like any decorated with `flask.copy_current_request_context`.
+
             return
         if exc is None:
             activation.__exit__(None, None, None)

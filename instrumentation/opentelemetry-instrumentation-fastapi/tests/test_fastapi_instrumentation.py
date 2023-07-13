@@ -17,6 +17,7 @@ from timeit import default_timer
 from unittest.mock import patch
 
 import fastapi
+from fastapi.middleware.httpsredirect import HTTPSRedirectMiddleware
 from fastapi.responses import JSONResponse
 from fastapi.testclient import TestClient
 
@@ -43,10 +44,20 @@ from opentelemetry.util.http import (
 _expected_metric_names = [
     "http.server.active_requests",
     "http.server.duration",
+    "http.server.response.size",
+    "http.server.request.size",
 ]
 _recommended_attrs = {
     "http.server.active_requests": _active_requests_count_attrs,
     "http.server.duration": {*_duration_attrs, SpanAttributes.HTTP_TARGET},
+    "http.server.response.size": {
+        *_duration_attrs,
+        SpanAttributes.HTTP_TARGET,
+    },
+    "http.server.request.size": {
+        *_duration_attrs,
+        SpanAttributes.HTTP_TARGET,
+    },
 }
 
 
@@ -87,6 +98,7 @@ class TestFastAPIManualInstrumentation(TestBase):
         self.exclude_patch.start()
         self._instrumentor = otel_fastapi.FastAPIInstrumentor()
         self._app = self._create_app()
+        self._app.add_middleware(HTTPSRedirectMiddleware)
         self._client = TestClient(self._app)
 
     def tearDown(self):
@@ -104,18 +116,14 @@ class TestFastAPIManualInstrumentation(TestBase):
         spans = self.memory_exporter.get_finished_spans()
         self.assertEqual(len(spans), 3)
         for span in spans:
-            self.assertIn("/foobar", span.name)
+            self.assertIn("GET /foobar", span.name)
 
     def test_uninstrument_app(self):
         self._client.get("/foobar")
         spans = self.memory_exporter.get_finished_spans()
         self.assertEqual(len(spans), 3)
-        # pylint: disable=import-outside-toplevel
-        from fastapi.middleware.httpsredirect import HTTPSRedirectMiddleware
 
-        self._app.add_middleware(HTTPSRedirectMiddleware)
         self._instrumentor.uninstrument_app(self._app)
-        print(self._app.user_middleware[0].cls)
         self.assertFalse(
             isinstance(
                 self._app.user_middleware[0].cls, OpenTelemetryMiddleware
@@ -140,7 +148,7 @@ class TestFastAPIManualInstrumentation(TestBase):
         spans = self.memory_exporter.get_finished_spans()
         self.assertEqual(len(spans), 3)
         for span in spans:
-            self.assertIn("/foobar", span.name)
+            self.assertIn("GET /foobar", span.name)
 
     def test_fastapi_route_attribute_added(self):
         """Ensure that fastapi routes are used as the span name."""
@@ -148,7 +156,7 @@ class TestFastAPIManualInstrumentation(TestBase):
         spans = self.memory_exporter.get_finished_spans()
         self.assertEqual(len(spans), 3)
         for span in spans:
-            self.assertIn("/user/{username}", span.name)
+            self.assertIn("GET /user/{username}", span.name)
         self.assertEqual(
             spans[-1].attributes[SpanAttributes.HTTP_ROUTE], "/user/{username}"
         )
@@ -189,7 +197,7 @@ class TestFastAPIManualInstrumentation(TestBase):
         for resource_metric in metrics_list.resource_metrics:
             self.assertTrue(len(resource_metric.scope_metrics) == 1)
             for scope_metric in resource_metric.scope_metrics:
-                self.assertTrue(len(scope_metric.metrics) == 2)
+                self.assertTrue(len(scope_metric.metrics) == 3)
                 for metric in scope_metric.metrics:
                     self.assertIn(metric.name, _expected_metric_names)
                     data_points = list(metric.data.data_points)
@@ -212,18 +220,18 @@ class TestFastAPIManualInstrumentation(TestBase):
         duration = max(round((default_timer() - start) * 1000), 0)
         expected_duration_attributes = {
             "http.method": "GET",
-            "http.host": "testserver",
-            "http.scheme": "http",
+            "http.host": "testserver:443",
+            "http.scheme": "https",
             "http.flavor": "1.1",
             "http.server_name": "testserver",
-            "net.host.port": 80,
+            "net.host.port": 443,
             "http.status_code": 200,
             "http.target": "/foobar",
         }
         expected_requests_count_attributes = {
             "http.method": "GET",
-            "http.host": "testserver",
-            "http.scheme": "http",
+            "http.host": "testserver:443",
+            "http.scheme": "https",
             "http.flavor": "1.1",
             "http.server_name": "testserver",
         }
@@ -248,8 +256,13 @@ class TestFastAPIManualInstrumentation(TestBase):
 
     def test_basic_post_request_metric_success(self):
         start = default_timer()
-        self._client.post("/foobar")
+        response = self._client.post(
+            "/foobar",
+            json={"foo": "bar"},
+        )
         duration = max(round((default_timer() - start) * 1000), 0)
+        response_size = int(response.headers.get("content-length"))
+        request_size = int(response.request.headers.get("content-length"))
         metrics_list = self.memory_metrics_reader.get_metrics_data()
         for metric in (
             metrics_list.resource_metrics[0].scope_metrics[0].metrics
@@ -257,7 +270,12 @@ class TestFastAPIManualInstrumentation(TestBase):
             for point in list(metric.data.data_points):
                 if isinstance(point, HistogramDataPoint):
                     self.assertEqual(point.count, 1)
-                    self.assertAlmostEqual(duration, point.sum, delta=30)
+                    if metric.name == "http.server.duration":
+                        self.assertAlmostEqual(duration, point.sum, delta=30)
+                    elif metric.name == "http.server.response.size":
+                        self.assertEqual(response_size, point.sum)
+                    elif metric.name == "http.server.request.size":
+                        self.assertEqual(request_size, point.sum)
                 if isinstance(point, NumberDataPoint):
                     self.assertEqual(point.value, 0)
 

@@ -38,9 +38,23 @@ The hooks can be configured as follows:
     def response_hook(span, request, response):
         pass
 
-    URLLib3Instrumentor.instrument(
-        request_hook=request_hook, response_hook=response_hook)
+    URLLib3Instrumentor().instrument(
+        request_hook=request_hook, response_hook=response_hook
     )
+
+Exclude lists
+*************
+
+To exclude certain URLs from being tracked, set the environment variable ``OTEL_PYTHON_URLLIB3_EXCLUDED_URLS``
+(or ``OTEL_PYTHON_EXCLUDED_URLS`` as fallback) with comma delimited regexes representing which URLs to exclude.
+
+For example,
+
+::
+
+    export OTEL_PYTHON_URLLIB3_EXCLUDED_URLS="client/.*/info,healthcheck"
+
+will exclude requests such as ``https://site/client/123/info`` and ``https://site/xyz/healthcheck``.
 
 References
 ----------

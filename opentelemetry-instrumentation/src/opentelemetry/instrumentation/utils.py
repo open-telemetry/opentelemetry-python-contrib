@@ -95,7 +95,7 @@ def _start_internal_or_server_span(
 
     Args:
         tracer : tracer in use by given instrumentation library
-        name (string): name of the span
+        span_name (string): name of the span
         start_time : start time of the span
         context_carrier : object which contains values that are
             used to construct a Context. This object

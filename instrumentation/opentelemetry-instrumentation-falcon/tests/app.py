@@ -61,6 +61,13 @@ class CustomResponseHeaderResource:
         resp.set_header("my-secret-header", "my-secret-value")
 
 
+class UserResource:
+    def on_get(self, req, resp, user_id):
+        # pylint: disable=no-member
+        resp.status = falcon.HTTP_200
+        resp.body = f"Hello user {user_id}"
+
+
 def make_app():
     _parsed_falcon_version = package_version.parse(falcon.__version__)
     if _parsed_falcon_version < package_version.parse("3.0.0"):
@@ -76,4 +83,6 @@ def make_app():
     app.add_route(
         "/test_custom_response_headers", CustomResponseHeaderResource()
     )
+    app.add_route("/user/{user_id}", UserResource())
+
     return app
