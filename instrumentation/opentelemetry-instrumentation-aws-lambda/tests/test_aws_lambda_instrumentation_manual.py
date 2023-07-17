@@ -245,6 +245,7 @@ class TestAwsLambdaInstrumentor(TestBase):
             name: str
             context: Dict
             expected_link_trace_id: int
+            expected_link_attributes: dict
             xray_traceid: str
 
         tests = [
