@@ -809,7 +809,7 @@ class TestAsgiApplicationRaisingError(AsgiTestBase):
         self, mock_collect_custom_request_headers_attributes
     ):
         """
-        Test that exception UnboundLocalError local variable 'start' referenced before assignment is not raises
+        Test that exception UnboundLocalError local variable 'start' referenced before assignment is not raised
         See https://github.com/open-telemetry/opentelemetry-python-contrib/issues/1883
         """
         app = otel_asgi.OpenTelemetryMiddleware(simple_asgi)
