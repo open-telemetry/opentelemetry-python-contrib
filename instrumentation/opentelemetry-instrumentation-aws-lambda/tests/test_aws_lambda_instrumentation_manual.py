@@ -260,7 +260,7 @@ class TestAwsLambdaInstrumentor(TestBase):
                 context={},
                 expected_link_trace_id=None,
                 expected_link_attributes={},
-                xray_traceid=f"0",
+                xray_traceid="0",
             ),
         ]
         for test in tests:
@@ -282,7 +282,7 @@ class TestAwsLambdaInstrumentor(TestBase):
             self.assertEqual(len(spans), 1)
             span = spans[0]
 
-            if test.expected_link_trace_id == None:
+            if test.expected_link_trace_id is None:
                 self.assertEqual(0, len(span.links))
             else:
                 link = span.links[0]
