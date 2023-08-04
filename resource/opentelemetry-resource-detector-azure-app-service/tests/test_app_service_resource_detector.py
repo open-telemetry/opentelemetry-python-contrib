@@ -3,7 +3,7 @@
 import unittest
 from unittest.mock import patch
 
-from azure.monitor.opentelemetry.exporter.resource.app_service_resource_detector import (
+from opentelemetry.resource.detector.azure.app_service import (
     AzureAppServiceResourceDetector,
 )
 

@@ -5,19 +5,17 @@ from os import environ
 from opentelemetry.sdk.resources import ResourceDetector, Resource
 from opentelemetry.semconv.resource import ResourceAttributes, CloudPlatformValues, CloudProviderValues
 
-# TODO: change
-from azure.monitor.opentelemetry.exporter._constants import (
-    _AZURE_APP_SERVICE_STAMP_RESOURCE_ATTRIBUTE,
-    _CLOUD_RESOURCE_ID_RESOURCE_ATTRIBUTE,
-    _REGION_NAME,
-    _WEBSITE_HOME_STAMPNAME,
-    _WEBSITE_HOSTNAME,
-    _WEBSITE_INSTANCE_ID,
-    _WEBSITE_OWNER_NAME,
-    _WEBSITE_RESOURCE_GROUP,
-    _WEBSITE_SITE_NAME,
-    _WEBSITE_SLOT_NAME,
-)
+_AZURE_APP_SERVICE_STAMP_RESOURCE_ATTRIBUTE = "azure.app.service.stamp"
+# TODO: Remove once this resource attribute is no longer missing from SDK
+_CLOUD_RESOURCE_ID_RESOURCE_ATTRIBUTE = "cloud.resource_id"
+_REGION_NAME = "REGION_NAME"
+_WEBSITE_HOME_STAMPNAME = "WEBSITE_HOME_STAMPNAME"
+_WEBSITE_HOSTNAME = "WEBSITE_HOSTNAME"
+_WEBSITE_INSTANCE_ID = "WEBSITE_INSTANCE_ID"
+_WEBSITE_OWNER_NAME = "WEBSITE_OWNER_NAME"
+_WEBSITE_RESOURCE_GROUP = "WEBSITE_RESOURCE_GROUP"
+_WEBSITE_SITE_NAME = "WEBSITE_SITE_NAME"
+_WEBSITE_SLOT_NAME = "WEBSITE_SLOT_NAME"
 
 
 _APP_SERVICE_ATTRIBUTE_ENV_VARS = {
