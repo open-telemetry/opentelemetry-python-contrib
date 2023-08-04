@@ -7,7 +7,18 @@ OpenTelemetry Resource detectors for Azure App Services
    :target: https://pypi.org/project/opentelemetry-resource-detector-azure-app-service/
 
 
-This library provides custom resource detector for Azure App Services
+This library provides custom resource detector for Azure App Services. OpenTelemetry Python has an experimental feature whereby Resource Detectors can be injected to Resource Attributes. This package includes a resource detector for Azure App Service. This detector fills out the following Resource Attributes:
+ * `service.name`
+ * `cloud.provider`
+ * `cloud.platform`
+ * `cloud.resource_id`
+ * `cloud.region`
+ * `deployment.environment`
+ * `host.id`
+ * `service.instance.id`
+ * `azure.app.service.stamp`
+
+ For more information, see the Semantic Conventions for Cloud Resource Attributes.
 
 Installation
 ------------
@@ -48,3 +59,5 @@ References
 ----------
 
 * `OpenTelemetry Project <https://opentelemetry.io/>`_
+* `Resource Detector Docs <https://opentelemetry.io/docs/specs/otel/resource/sdk/#detecting-resource-information-from-the-environment>`
+* `Cloud Semantic Conventions <https://opentelemetry.io/docs/specs/otel/resource/semantic_conventions/cloud/>`_
