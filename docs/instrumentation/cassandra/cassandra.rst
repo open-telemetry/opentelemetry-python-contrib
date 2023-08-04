@@ -1,5 +1,5 @@
 OpenTelemetry Cassandra Instrumentation
-====================================
+=======================================
 
 .. automodule:: opentelemetry.instrumentation.cassandra
     :members:
