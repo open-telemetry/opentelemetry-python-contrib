@@ -26,10 +26,11 @@ classifiers = [
 ]
 dependencies = [
   "opentelemetry-api ~= 1.12",
-  "opentelemetry-instrumentation == 0.40b0.dev",
-  "opentelemetry-instrumentation-wsgi == 0.40b0.dev",
-  "opentelemetry-semantic-conventions == 0.40b0.dev",
-  "opentelemetry-util-http == 0.40b0.dev",
+  "opentelemetry-instrumentation == 0.41b0.dev",
+  "opentelemetry-instrumentation-wsgi == 0.41b0.dev",
+  "opentelemetry-semantic-conventions == 0.41b0.dev",
+  "opentelemetry-util-http == 0.41b0.dev",
+  "packaging >= 21.0",
 ]
 
 [project.optional-dependencies]
@@ -38,8 +39,8 @@ instruments = [
 ]
 test = [
   "opentelemetry-instrumentation-flask[instruments]",
-  "markupsafe==2.0.1",
-  "opentelemetry-test-utils == 0.40b0.dev",
+  "markupsafe==2.1.2",
+  "opentelemetry-test-utils == 0.41b0.dev",
 ]
 
 [project.entry-points.opentelemetry_instrumentor]

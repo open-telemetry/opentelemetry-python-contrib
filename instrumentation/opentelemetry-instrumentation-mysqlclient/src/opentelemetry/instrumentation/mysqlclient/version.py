@@ -12,6 +12,4 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-OTEL_PYTHON_INSTRUMENTATION_SANITIZE_REDIS = (
-    "OTEL_PYTHON_INSTRUMENTATION_SANITIZE_REDIS"
-)
+__version__ = "0.41b0.dev"

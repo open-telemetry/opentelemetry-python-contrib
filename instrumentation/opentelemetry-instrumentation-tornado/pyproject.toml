@@ -25,9 +25,9 @@ classifiers = [
 ]
 dependencies = [
   "opentelemetry-api ~= 1.12",
-  "opentelemetry-instrumentation == 0.40b0.dev",
-  "opentelemetry-semantic-conventions == 0.40b0.dev",
-  "opentelemetry-util-http == 0.40b0.dev",
+  "opentelemetry-instrumentation == 0.41b0.dev",
+  "opentelemetry-semantic-conventions == 0.41b0.dev",
+  "opentelemetry-util-http == 0.41b0.dev",
 ]
 
 [project.optional-dependencies]
@@ -36,7 +36,8 @@ instruments = [
 ]
 test = [
   "opentelemetry-instrumentation-tornado[instruments]",
-  "opentelemetry-test-utils == 0.40b0.dev",
+  "opentelemetry-test-utils == 0.41b0.dev",
+  "http-server-mock"
 ]
 
 [project.entry-points.opentelemetry_instrumentor]

@@ -16,7 +16,7 @@
 Instrument `redis`_ to report Redis queries.
 
 There are two options for instrumenting code. The first option is to use the
-``opentelemetry-instrumentation`` executable which will automatically
+``opentelemetry-instrument`` executable which will automatically
 instrument your Redis client. The second is to programmatically enable
 instrumentation via the following code:
 
@@ -64,8 +64,6 @@ this function signature is:  def request_hook(span: Span, instance: redis.connec
 response_hook (Callable) - a function with extra user-defined logic to be performed after performing the request
 this function signature is: def response_hook(span: Span, instance: redis.connection.Connection, response) -> None
 
-sanitize_query (Boolean) - default False, enable the Redis query sanitization
-
 for example:
 
 .. code: python
@@ -88,27 +86,11 @@ for example:
     client = redis.StrictRedis(host="localhost", port=6379)
     client.get("my-key")
 
-Configuration
--------------
-
-Query sanitization
-******************
-To enable query sanitization with an environment variable, set
-``OTEL_PYTHON_INSTRUMENTATION_SANITIZE_REDIS`` to "true".
-
-For example,
-
-::
-
-    export OTEL_PYTHON_INSTRUMENTATION_SANITIZE_REDIS="true"
-
-will result in traced queries like "SET ? ?".
 
 API
 ---
 """
 import typing
-from os import environ
 from typing import Any, Collection
 
 import redis
@@ -116,9 +98,6 @@ from wrapt import wrap_function_wrapper
 
 from opentelemetry import trace
 from opentelemetry.instrumentation.instrumentor import BaseInstrumentor
-from opentelemetry.instrumentation.redis.environment_variables import (
-    OTEL_PYTHON_INSTRUMENTATION_SANITIZE_REDIS,
-)
 from opentelemetry.instrumentation.redis.package import _instruments
 from opentelemetry.instrumentation.redis.util import (
     _extract_conn_attributes,
@@ -157,19 +136,52 @@ def _set_connection_attributes(span, conn):
         span.set_attribute(key, value)
 
 
+def _build_span_name(instance, cmd_args):
+    if len(cmd_args) > 0 and cmd_args[0]:
+        name = cmd_args[0]
+    else:
+        name = instance.connection_pool.connection_kwargs.get("db", 0)
+    return name
+
+
+def _build_span_meta_data_for_pipeline(instance):
+    try:
+        command_stack = (
+            instance.command_stack
+            if hasattr(instance, "command_stack")
+            else instance._command_stack
+        )
+
+        cmds = [
+            _format_command_args(c.args if hasattr(c, "args") else c[0])
+            for c in command_stack
+        ]
+        resource = "\n".join(cmds)
+
+        span_name = " ".join(
+            [
+                (c.args[0] if hasattr(c, "args") else c[0][0])
+                for c in command_stack
+            ]
+        )
+    except (AttributeError, IndexError):
+        command_stack = []
+        resource = ""
+        span_name = ""
+
+    return command_stack, resource, span_name
+
+
+# pylint: disable=R0915
 def _instrument(
     tracer,
     request_hook: _RequestHookT = None,
     response_hook: _ResponseHookT = None,
-    sanitize_query: bool = False,
 ):
     def _traced_execute_command(func, instance, args, kwargs):
-        query = _format_command_args(args, sanitize_query)
+        query = _format_command_args(args)
+        name = _build_span_name(instance, args)
 
-        if len(args) > 0 and args[0]:
-            name = args[0]
-        else:
-            name = instance.connection_pool.connection_kwargs.get("db", 0)
         with tracer.start_as_current_span(
             name, kind=trace.SpanKind.CLIENT
         ) as span:
@@ -185,31 +197,11 @@ def _instrument(
             return response
 
     def _traced_execute_pipeline(func, instance, args, kwargs):
-        try:
-            command_stack = (
-                instance.command_stack
-                if hasattr(instance, "command_stack")
-                else instance._command_stack
-            )
-
-            cmds = [
-                _format_command_args(
-                    c.args if hasattr(c, "args") else c[0], sanitize_query
-                )
-                for c in command_stack
-            ]
-            resource = "\n".join(cmds)
-
-            span_name = " ".join(
-                [
-                    (c.args[0] if hasattr(c, "args") else c[0][0])
-                    for c in command_stack
-                ]
-            )
-        except (AttributeError, IndexError):
-            command_stack = []
-            resource = ""
-            span_name = ""
+        (
+            command_stack,
+            resource,
+            span_name,
+        ) = _build_span_meta_data_for_pipeline(instance)
 
         with tracer.start_as_current_span(
             span_name, kind=trace.SpanKind.CLIENT
@@ -254,32 +246,72 @@ def _instrument(
             "ClusterPipeline.execute",
             _traced_execute_pipeline,
         )
+
+    async def _async_traced_execute_command(func, instance, args, kwargs):
+        query = _format_command_args(args)
+        name = _build_span_name(instance, args)
+
+        with tracer.start_as_current_span(
+            name, kind=trace.SpanKind.CLIENT
+        ) as span:
+            if span.is_recording():
+                span.set_attribute(SpanAttributes.DB_STATEMENT, query)
+                _set_connection_attributes(span, instance)
+                span.set_attribute("db.redis.args_length", len(args))
+            if callable(request_hook):
+                request_hook(span, instance, args, kwargs)
+            response = await func(*args, **kwargs)
+            if callable(response_hook):
+                response_hook(span, instance, response)
+            return response
+
+    async def _async_traced_execute_pipeline(func, instance, args, kwargs):
+        (
+            command_stack,
+            resource,
+            span_name,
+        ) = _build_span_meta_data_for_pipeline(instance)
+
+        with tracer.start_as_current_span(
+            span_name, kind=trace.SpanKind.CLIENT
+        ) as span:
+            if span.is_recording():
+                span.set_attribute(SpanAttributes.DB_STATEMENT, resource)
+                _set_connection_attributes(span, instance)
+                span.set_attribute(
+                    "db.redis.pipeline_length", len(command_stack)
+                )
+            response = await func(*args, **kwargs)
+            if callable(response_hook):
+                response_hook(span, instance, response)
+            return response
+
     if redis.VERSION >= _REDIS_ASYNCIO_VERSION:
         wrap_function_wrapper(
             "redis.asyncio",
             f"{redis_class}.execute_command",
-            _traced_execute_command,
+            _async_traced_execute_command,
         )
         wrap_function_wrapper(
             "redis.asyncio.client",
             f"{pipeline_class}.execute",
-            _traced_execute_pipeline,
+            _async_traced_execute_pipeline,
         )
         wrap_function_wrapper(
             "redis.asyncio.client",
             f"{pipeline_class}.immediate_execute_command",
-            _traced_execute_command,
+            _async_traced_execute_command,
         )
     if redis.VERSION >= _REDIS_ASYNCIO_CLUSTER_VERSION:
         wrap_function_wrapper(
             "redis.asyncio.cluster",
             "RedisCluster.execute_command",
-            _traced_execute_command,
+            _async_traced_execute_command,
         )
         wrap_function_wrapper(
             "redis.asyncio.cluster",
             "ClusterPipeline.execute",
-            _traced_execute_pipeline,
+            _async_traced_execute_pipeline,
         )
 
 
@@ -307,15 +339,6 @@ class RedisInstrumentor(BaseInstrumentor):
             tracer,
             request_hook=kwargs.get("request_hook"),
             response_hook=kwargs.get("response_hook"),
-            sanitize_query=kwargs.get(
-                "sanitize_query",
-                environ.get(
-                    OTEL_PYTHON_INSTRUMENTATION_SANITIZE_REDIS, "false"
-                )
-                .lower()
-                .strip()
-                == "true",
-            ),
         )
 
     def _uninstrument(self, **kwargs):
