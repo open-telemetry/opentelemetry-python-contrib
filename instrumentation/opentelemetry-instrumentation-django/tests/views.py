@@ -82,3 +82,10 @@ async def async_with_custom_header(request):
     response.headers["custom-test-header-1"] = "test-header-value-1"
     response.headers["custom-test-header-2"] = "test-header-value-2"
     return response
+
+class DummyMiddleware:
+    def __init__(self, get_response):
+        self.get_response = get_response
+
+    def __call__(self, request):
+        return self.get_response(request)

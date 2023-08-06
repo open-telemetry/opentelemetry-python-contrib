@@ -67,6 +67,7 @@ from .views import (
     route_span_name,
     traced,
     traced_template,
+    DummyMiddleware,
 )
 
 DJANGO_2_0 = VERSION >= (2, 0)
@@ -144,6 +145,42 @@ class TestMiddleware(WsgiTestBase):
     def tearDownClass(cls):
         super().tearDownClass()
         conf.settings = conf.LazySettings()
+    
+    def test_middleware_added_at_position(self):
+        _django_instrumentor.uninstrument()
+        if DJANGO_2_0:
+            middleware = conf.settings.MIDDLEWARE
+        else:
+            middleware = conf.settings.MIDDLEWARE_CLASSES
+        # adding two dummy middlewares
+        temprory_middelware = "django.utils.deprecation.MiddlewareMixin"
+        middleware.append(temprory_middelware)
+        middleware.append(temprory_middelware)
+        
+        middleware_position = 1
+        _django_instrumentor.instrument(middleware_position=middleware_position)
+        self.assertEqual(
+            middleware[middleware_position],
+            "opentelemetry.instrumentation.django.middleware.otel_middleware._DjangoMiddleware"
+        )
+        
+    
+    def test_middleware_added_at_position_if_wrong_position(self):
+        _django_instrumentor.uninstrument()
+        if DJANGO_2_0:
+            middleware = conf.settings.MIDDLEWARE
+        else:
+            middleware = conf.settings.MIDDLEWARE_CLASSES
+        # adding middleware
+        temprory_middelware = "django.utils.deprecation.MiddlewareMixin"
+        middleware.append(temprory_middelware)
+        middleware_position = 756 # wrong position out of bound of middleware length
+        _django_instrumentor.instrument(middleware_position=middleware_position)
+        self.assertEqual(
+            middleware[len(middleware) - 1],
+            "opentelemetry.instrumentation.django.middleware.otel_middleware._DjangoMiddleware"
+        )
+
 
     def test_templated_route_get(self):
         Client().get("/route/2020/template/")
