@@ -360,13 +360,18 @@ class DjangoInstrumentor(BaseInstrumentor):
             _logger.debug(
                 "The middleware_position you provided (%d) is less than the current number of middlewares (%d). \
                     Since the number of middlewares is less than the total, the Otel middleware will be appended at the end of the middleware chain.",
-                middleware_position, len(settings_middleware)           
+                middleware_position,
+                len(settings_middleware),
             )
             middleware_position = len(settings_middleware)
         if is_sql_commentor_enabled:
-            settings_middleware.insert(middleware_position, self._sql_commenter_middleware)
+            settings_middleware.insert(
+                middleware_position, self._sql_commenter_middleware
+            )
 
-        settings_middleware.insert(middleware_position, self._opentelemetry_middleware)
+        settings_middleware.insert(
+            middleware_position, self._opentelemetry_middleware
+        )
 
         setattr(settings, _middleware_setting, settings_middleware)
 
