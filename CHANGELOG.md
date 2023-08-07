@@ -12,6 +12,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - `opentelemetry-instrumentation-asgi` Fix UnboundLocalError local variable 'start' referenced before assignment 
   ([#1889](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/1889))
 
+### Added
+
+- Added Azure VM Resource Detector
+  ([#1904](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/1904))
+
 ## Version 1.19.0/0.40b0 (2023-07-13)
 - `opentelemetry-instrumentation-asgi` Add `http.server.request.size` metric
   ([#1867](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/1867))
