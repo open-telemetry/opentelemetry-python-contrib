@@ -1,13 +1,13 @@
-OpenTelemetry Resource detectors for Azure App Services
+OpenTelemetry Resource detectors for Azure
 ==========================================================
 
 |pypi|
 
-.. |pypi| image:: https://badge.fury.io/py/opentelemetry-resource-detector-azure-app-service.svg
-   :target: https://pypi.org/project/opentelemetry-resource-detector-azure-app-service/
+.. |pypi| image:: https://badge.fury.io/py/opentelemetry-resource-detector-azure.svg
+   :target: https://pypi.org/project/opentelemetry-resource-detector-azure/
 
 
-This library provides custom resource detector for Azure App Services. OpenTelemetry Python has an experimental feature whereby Resource Detectors can be injected to Resource Attributes. This package includes a resource detector for Azure App Service. This detector fills out the following Resource Attributes:
+The Azure App Service Resource Detector sets the following Resource Attributes:
  * `service.name` set to the value of the WEBSITE_SITE_NAME environment variable.
  * `cloud.provider` set to the value of the "azure".
  * `cloud.platform` set to the value of the "azure_app_service".
@@ -18,11 +18,19 @@ This library provides custom resource detector for Azure App Services. OpenTelem
  * `service.instance.id` set to the value of the WEBSITE_INSTANCE_ID environment variable.
  * `azure.app.service.stamp` set to the value of the WEBSITE_HOME_STAMPNAME environment variable.
 
- ResourceAttributes.CLOUD_REGION: _REGION_NAME,
-    ResourceAttributes.DEPLOYMENT_ENVIRONMENT: _WEBSITE_SLOT_NAME,
-    ResourceAttributes.HOST_ID: _WEBSITE_HOSTNAME,
-    ResourceAttributes.SERVICE_INSTANCE_ID: _WEBSITE_INSTANCE_ID,
-    _AZURE_APP_SERVICE_STAMP_RESOURCE_ATTRIBUTE: _WEBSITE_HOME_STAMPNAME,
+The Azure VM Resource Detector sets the following Resource Attributes:
+ * `azure.vm.scaleset.name`
+ * `azure.vm.sku`
+ * `cloud.platform`
+ * `cloud.provider`
+ * `cloud.region`
+ * `cloud.resource_id`
+ * `host.id`
+ * `host.name`
+ * `host.type`
+ * `os.type`
+ * `os.version`
+ * `service.instance.id`
 
  For more information, see the Semantic Conventions for Cloud Resource Attributes.
 
@@ -31,11 +39,11 @@ Installation
 
 ::
 
-    pip install opentelemetry-resource-detector-azure-app-service
+    pip install opentelemetry-resource-detector-azure
 
 ---------------------------
 
-Usage example for `opentelemetry-resource-detector-azure-app-service`
+Usage example for `opentelemetry-resource-detector-azure`
 
 .. code-block:: python
 
@@ -43,6 +51,10 @@ Usage example for `opentelemetry-resource-detector-azure-app-service`
     from opentelemetry.sdk.trace import TracerProvider
     from opentelemetry.resource.detector.azure.app_service import (
         AzureAppServiceResourceDetector,
+        AzureVMResourceDetector,
+    )
+    from opentelemetry.resource.detector.azure.vm import (
+        AzureVMResourceDetector,
     )
     from opentelemetry.sdk.resources import get_aggregated_resources
 
@@ -52,14 +64,15 @@ Usage example for `opentelemetry-resource-detector-azure-app-service`
             resource=get_aggregated_resources(
                 [
                     AzureAppServiceResourceDetector(),
+                    AzureVMResourceDetector(),
                 ]
             ),
         )
     )
 
-You can also enable the App Service Resource Detector by adding `azure_app_service` to the `OTEL_EXPERIMENTAL_RESOURCE_DETECTORS` environment variable:
+You can also enable the Resource Detectors by adding `azure_app_service` and/or `azure_vm` to the `OTEL_EXPERIMENTAL_RESOURCE_DETECTORS` environment variable:
 
-`export OTEL_EXPERIMENTAL_RESOURCE_DETECTORS=azure_app_service`
+`export OTEL_EXPERIMENTAL_RESOURCE_DETECTORS=azure_app_service,azure_vm`
 
 References
 ----------
