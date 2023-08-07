@@ -27,7 +27,7 @@ _APP_SERVICE_ATTRIBUTE_ENV_VARS = {
 }
 
 class AzureAppServiceResourceDetector(ResourceDetector):
-    def detect(self) -> "Resource":
+    def detect(self) -> Resource:
         attributes = {}
         website_site_name = environ.get(_WEBSITE_SITE_NAME)
         if website_site_name:
