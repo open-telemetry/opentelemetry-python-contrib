@@ -33,12 +33,13 @@ test = []
 
 [project.entry-points.opentelemetry_resource_detector]
 azure_app_service = "opentelemetry.resource.detector.azure.app_service:AzureAppServiceResourceDetector"
+azure_vm = "opentelemetry.resource.detector.azure.vm:AzureVMResourceDetector"
 
 [project.urls]
-Homepage = "https://github.com/open-telemetry/opentelemetry-python-contrib/tree/main/resource/opentelemetry-resource-detector-azure-app-service"
+Homepage = "https://github.com/open-telemetry/opentelemetry-python-contrib/tree/main/resource/opentelemetry-resource-detector-azure"
 
 [tool.hatch.version]
-path = "src/opentelemetry/resource/detector/azure/app_service/version.py"
+path = "src/opentelemetry/resource/detector/azure/version.py"
 
 [tool.hatch.build.targets.sdist]
 include = [
