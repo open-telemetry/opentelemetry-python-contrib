@@ -28,7 +28,7 @@ LINUX_JSON = """
     },
     "isHostCompatibilityLayerVm": "true",
     "licenseType": "",
-    "location": "westus2",
+    "location": "westus",
     "name": "examplevmname",
     "offer": "0001-com-ubuntu-server-focal",
     "osProfile": {
@@ -158,9 +158,9 @@ LINUX_JSON = """
     "virtualMachineScaleSet": {
         "id": "/subscriptions/xxxxxxxx-xxxxx-xxx-xxx-xxxx/resourceGroups/resource-group-name/providers/Microsoft.Compute/virtualMachineScaleSets/virtual-machine-scale-set-name"
     },
-    "vmId": "ed985de8-ade2-4904-9fd4-78247564d5b9",
-    "vmScaleSetName": "",
-    "vmSize": "Standard_D2s_v3",
+    "vmId": "02aab8a4-74ef-476e-8182-f6d2ba4166a6",
+    "vmScaleSetName": "crpteste9vflji9",
+    "vmSize": "Standard_A3",
     "zone": "1"
 }
 """
@@ -183,16 +183,16 @@ WINDOWS_JSON ="""
         "id": ""
     },
     "isHostCompatibilityLayerVm": "true",
-    "licenseType": "",
-    "location": "westus2",
+    "licenseType": "Windows_Client",
+    "location": "westus",
     "name": "examplevmname",
-    "offer": "0001-com-ubuntu-server-focal",
+    "offer": "WindowsServer",
     "osProfile": {
         "adminUsername": "azureuser",
         "computerName": "examplevmname",
         "disablePasswordAuthentication": "true"
     },
-    "osType": "Linux",
+    "osType": "Windows",
     "placementGroupId": "",
     "plan": {
         "name": "",
@@ -214,7 +214,7 @@ WINDOWS_JSON ="""
             "path": "/home/user/.ssh/authorized_keys1"
         }
     ],
-    "publisher": "canonical",
+    "publisher": "RDFE-Test-Microsoft-Windows-Server-Group",
     "resourceGroupName": "macikgo-test-may-23",
     "resourceId": "/subscriptions/xxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxx/resourceGroups/macikgo-test-may-23/providers/Microsoft.Compute/virtualMachines/examplevmname",
     "securityProfile": {
@@ -223,7 +223,7 @@ WINDOWS_JSON ="""
         "securityType": "TrustedLaunch",
         "virtualTpmEnabled": "true"
     },
-    "sku": "20_04-lts-gen2",
+    "sku": "2019-Datacenter",
     "storageProfile": {
         "dataDisks": [
             {
@@ -252,9 +252,9 @@ WINDOWS_JSON ="""
         ],
         "imageReference": {
             "id": "",
-            "offer": "0001-com-ubuntu-server-focal",
-            "publisher": "canonical",
-            "sku": "20_04-lts-gen2",
+            "offer": "WindowsServer",
+            "publisher": "MicrosoftWindowsServer",
+            "sku": "2019-Datacenter",
             "version": "latest"
         },
         "osDisk": {
@@ -287,7 +287,7 @@ WINDOWS_JSON ="""
                 "storageAccountType": "StandardSSD_LRS"
             },
             "name": "exampledatadiskname",
-            "osType": "Linux",
+            "osType": "Windows",
             "vhd": {
                 "uri": ""
             },
@@ -299,6 +299,7 @@ WINDOWS_JSON ="""
     },
     "subscriptionId": "xxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxx",
     "tags": "azsecpack:nonprod;platformsettings.host_environment.service.platform_optedin_for_rootcerts:true",
+    "userData": "Zm9vYmFy",
     "tagsList": [
         {
             "name": "azsecpack",
@@ -314,15 +315,15 @@ WINDOWS_JSON ="""
     "virtualMachineScaleSet": {
         "id": "/subscriptions/xxxxxxxx-xxxxx-xxx-xxx-xxxx/resourceGroups/resource-group-name/providers/Microsoft.Compute/virtualMachineScaleSets/virtual-machine-scale-set-name"
     },
-    "vmId": "ed985de8-ade2-4904-9fd4-78247564d5b9",
-    "vmScaleSetName": "",
-    "vmSize": "Standard_D2s_v3",
+    "vmId": "02aab8a4-74ef-476e-8182-f6d2ba4166a6",
+    "vmScaleSetName": "crpteste9vflji9",
+    "vmSize": "Standard_A3",
     "zone": "1"
 }
 """
 LINUX_ATTRIBUTES = {
     "azure.vm.scaleset.name": "crpteste9vflji9",
-    "azure.vm.sku": "18.04-LTS",
+    "azure.vm.sku": "20_04-lts-gen2",
     "cloud.platform": "azure_vm",
     "cloud.provider": "azure",
     "cloud.region": "westus",
@@ -331,7 +332,7 @@ LINUX_ATTRIBUTES = {
     "host.name": "examplevmname",
     "host.type": "Standard_A3",
     "os.type": "Linux",
-    "os.version": "15.05.22",
+    "os.version": "20.04.202307240",
     "service.instance.id": "02aab8a4-74ef-476e-8182-f6d2ba4166a6",
 }
 WINDOWS_ATTRIBUTES = {
@@ -345,7 +346,7 @@ WINDOWS_ATTRIBUTES = {
     "host.name": "examplevmname",
     "host.type": "Standard_A3",
     "os.type": "Windows",
-    "os.version": "15.05.22",
+    "os.version": "20.04.202307240",
     "service.instance.id": "02aab8a4-74ef-476e-8182-f6d2ba4166a6",
 }
 
