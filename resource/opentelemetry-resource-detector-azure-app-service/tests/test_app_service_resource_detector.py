@@ -31,15 +31,6 @@ class TestAzureAppServiceResourceDetector(unittest.TestCase):
     def test_on_app_service(self):
         resource = AzureAppServiceResourceDetector().detect()
         attributes = resource.attributes
-        # self.assertEqual(attributes {
-        #     "service.name": TEST_WEBSITE_SITE_NAME,
-        #     "cloud.provider": ,
-        #     "cloud.platform": ,
-        #     "cloud.resource_id": ,
-        #     "cloud.region": ,
-        #     "deployment.environment": ,
-        #     "deployment.environment": ,
-        # })
         self.assertEqual(attributes["service.name"], TEST_WEBSITE_SITE_NAME)
         self.assertEqual(attributes["cloud.provider"], "azure")
         self.assertEqual(attributes["cloud.platform"], "azure_app_service")
