@@ -14,7 +14,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Added
 
 - `opentelemetry-resource-detector-azure-app-service` Add resource detector for Azure App Service
-  ([#XXXX](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/XXXX))
+  ([#1901](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/1901))
 
 ## Version 1.19.0/0.40b0 (2023-07-13)
 - `opentelemetry-instrumentation-asgi` Add `http.server.request.size` metric
