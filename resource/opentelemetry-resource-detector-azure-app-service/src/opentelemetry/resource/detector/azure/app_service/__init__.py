@@ -31,7 +31,6 @@ class AzureAppServiceResourceDetector(ResourceDetector):
         attributes = {}
         website_site_name = environ.get(_WEBSITE_SITE_NAME)
         if website_site_name:
-            print(_WEBSITE_SITE_NAME)
             attributes[ResourceAttributes.SERVICE_NAME] = website_site_name
             attributes[ResourceAttributes.CLOUD_PROVIDER] = CloudProviderValues.AZURE.value
             attributes[ResourceAttributes.CLOUD_PLATFORM] = CloudPlatformValues.AZURE_APP_SERVICE.value
@@ -44,7 +43,6 @@ class AzureAppServiceResourceDetector(ResourceDetector):
                 if value:
                     attributes[key] = value
 
-        print(attributes)
         return Resource(attributes)
 
 def _get_azure_resource_uri(website_site_name):
