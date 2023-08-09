@@ -140,7 +140,7 @@ def _default_event_context_extractor(lambda_event: Any) -> Context:
 
 
 def _determine_parent_context(
-        lambda_event: Any, event_context_extractor: Callable[[Any], Context]
+    lambda_event: Any, event_context_extractor: Callable[[Any], Context]
 ) -> Context:
     """Determine the parent context for the current Lambda invocation.
 
@@ -232,7 +232,7 @@ def _determine_links() -> Optional[Sequence[Link]]:
 
 
 def _set_api_gateway_v1_proxy_attributes(
-        lambda_event: Any, span: Span
+    lambda_event: Any, span: Span
 ) -> Span:
     """Sets HTTP attributes for REST APIs and v1 HTTP APIs
 
@@ -276,7 +276,7 @@ def _set_api_gateway_v1_proxy_attributes(
 
 
 def _set_api_gateway_v2_proxy_attributes(
-        lambda_event: Any, span: Span
+    lambda_event: Any, span: Span
 ) -> Span:
     """Sets HTTP attributes for v2 HTTP APIs
 
@@ -320,15 +320,15 @@ def _set_api_gateway_v2_proxy_attributes(
 
 
 def _instrument(
-        wrapped_module_name,
-        wrapped_function_name,
-        flush_timeout,
-        event_context_extractor: Callable[[Any], Context],
-        tracer_provider: TracerProvider = None,
-        meter_provider: MeterProvider = None,
+    wrapped_module_name,
+    wrapped_function_name,
+    flush_timeout,
+    event_context_extractor: Callable[[Any], Context],
+    tracer_provider: TracerProvider = None,
+    meter_provider: MeterProvider = None,
 ):
     def _instrumented_lambda_handler_call(  # noqa pylint: disable=too-many-branches
-            call_wrapped, instance, args, kwargs
+        call_wrapped, instance, args, kwargs
     ):
         orig_handler_name = ".".join(
             [wrapped_module_name, wrapped_function_name]
