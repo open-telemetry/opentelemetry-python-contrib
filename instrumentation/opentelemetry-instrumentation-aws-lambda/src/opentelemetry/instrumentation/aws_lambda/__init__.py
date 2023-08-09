@@ -194,6 +194,43 @@ def _determine_links() -> Optional[Sequence[Link]]:
     return links
 
 
+def _get_trigger_info(
+        lambda_event: Any,
+) -> str:
+    if not lambda_event or not isinstance(lambda_event, dict):
+        return
+
+    # elb
+    if lambda_event.get("headers"):
+        if "host" in lambda_event["headers"]:
+            return lambda_event["headers"]["host"]
+
+    # sns, sqs, s3
+    records = lambda_event.get("Records")
+    if not records or not isinstance(records, list) or not records[0]:
+        return
+
+    event_content = records[0]
+    event_source = event_content.get("eventSource")
+    if not event_source:
+        event_source = event_content.get("EventSource")
+    if not event_source:
+        return
+
+    if event_source == "aws:sns":
+        sns_tag = event_content.get("Sns")
+        if not sns_tag:
+            return
+        return sns_tag.get("TopicArn")
+    elif event_source == "aws:sqs":
+        return event_content.get("eventSourceARN")
+    elif event_source == "aws:s3":
+        s3_tag = event_content.get("s3")
+        if not s3_tag or not s3_tag["bucket"]:
+            return
+        return s3_tag["bucket"].get("arn")
+
+
 def _set_api_gateway_v1_proxy_attributes(
     lambda_event: Any, span: Span
 ) -> Span:
@@ -369,6 +406,11 @@ def _instrument(
                         SpanAttributes.HTTP_STATUS_CODE,
                         result.get("statusCode"),
                     )
+
+            # Add information of trigger to span if available
+            trigger_id = _get_trigger_info(lambda_event)
+            if trigger_id:
+                span.set_attribute("faas.trigger_id", trigger_id)
 
         now = time.time()
         _tracer_provider = tracer_provider or get_tracer_provider()
