@@ -6,6 +6,12 @@ OpenTelemetry Resource detectors for Azure
 .. |pypi| image:: https://badge.fury.io/py/opentelemetry-resource-detector-azure.svg
    :target: https://pypi.org/project/opentelemetry-resource-detector-azure/
 
+This library contains OpenTelemetry `Resource Detectors <https://opentelemetry.io/docs/specs/otel/resource/sdk/#detecting-resource-information-from-the-environment>_` for the following Azure resources:
+ * `Azure App Service <https://azure.microsoft.com/en-us/products/app-service>_`
+ * `Azure Virtual Machines  <https://azure.microsoft.com/en-us/products/virtual-machines>_`
+
+Mappings
+--------
 
 The Azure App Service Resource Detector sets the following Resource Attributes:
  * ``service.name`` set to the value of the ``WEBSITE_SITE_NAME`` environment variable.
@@ -32,7 +38,7 @@ The Azure VM Resource Detector sets the following Resource Attributes according 
  * ``os.version`` set to the value of the ``version`` field.
  * ``service.instance.id`` set to the value of the ``vmId`` field.
 
- For more information, see the `Semantic Conventions for Cloud Resource Attributes <https://opentelemetry.io/docs/specs/otel/resource/semantic_conventions/cloud/>`_.
+For more information, see the `Semantic Conventions for Cloud Resource Attributes <https://opentelemetry.io/docs/specs/otel/resource/semantic_conventions/cloud/>`_.
 
 Installation
 ------------
@@ -74,4 +80,3 @@ References
 ----------
 
 * `OpenTelemetry Project <https://opentelemetry.io/>`_
-* `Resource Detector Docs <https://opentelemetry.io/docs/specs/otel/resource/sdk/#detecting-resource-information-from-the-environment>_`
