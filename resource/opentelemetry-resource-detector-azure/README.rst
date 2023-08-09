@@ -6,9 +6,9 @@ OpenTelemetry Resource detectors for Azure
 .. |pypi| image:: https://badge.fury.io/py/opentelemetry-resource-detector-azure.svg
    :target: https://pypi.org/project/opentelemetry-resource-detector-azure/
 
-This library contains OpenTelemetry `Resource Detectors <https://opentelemetry.io/docs/specs/otel/resource/sdk/#detecting-resource-information-from-the-environment>_` for the following Azure resources:
- * `Azure App Service <https://azure.microsoft.com/en-us/products/app-service>_`
- * `Azure Virtual Machines  <https://azure.microsoft.com/en-us/products/virtual-machines>_`
+This library contains OpenTelemetry `Resource Detectors <https://opentelemetry.io/docs/specs/otel/resource/sdk/#detecting-resource-information-from-the-environment>`_ for the following Azure resources:
+ * `Azure App Service <https://azure.microsoft.com/en-us/products/app-service>`_
+ * `Azure Virtual Machines <https://azure.microsoft.com/en-us/products/virtual-machines>`_
 
 Mappings
 --------
