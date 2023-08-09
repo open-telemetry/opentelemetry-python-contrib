@@ -75,6 +75,9 @@ MOCK_W3C_TRACE_CONTEXT_SAMPLED = (
 MOCK_W3C_TRACE_STATE_KEY = "vendor_specific_key"
 MOCK_W3C_TRACE_STATE_VALUE = "test_value"
 
+MOCK_TRIGGER_ARN = "arn:aws:trigger:us-east-2:123456789012:abc.xyz"
+MOCK_HOST = "lambda-alb-123578498.us-east-1.elb.amazonaws.com"
+
 
 def mock_execute_lambda(event=None):
     """Mocks the AWS Lambda execution.
@@ -428,3 +431,51 @@ class TestAwsLambdaInstrumentor(TestBase):
         spans = self.memory_exporter.get_finished_spans()
         assert spans is not None
         self.assertEqual(len(spans), 0)
+
+    def test_set_trigger_info(self):
+        @dataclass
+        class TestCase:
+            name: str
+            expected_link_span_attr_val: str
+            event_payload: dict
+
+        tests = [
+            TestCase(
+                name="valid_sns_event",
+                expected_link_span_attr_val=MOCK_TRIGGER_ARN,
+                event_payload={"Records": [{"EventSource": "aws:sns", "Sns": {"TopicArn": MOCK_TRIGGER_ARN}}]},
+            ),
+            TestCase(
+                name="valid_sqs_event",
+                expected_link_span_attr_val=MOCK_TRIGGER_ARN,
+                event_payload={"Records": [{"eventSource": "aws:sqs", "eventSourceARN": MOCK_TRIGGER_ARN}]},
+            ),
+            TestCase(
+                name="valid_s3_event",
+                expected_link_span_attr_val=MOCK_TRIGGER_ARN,
+                event_payload={"Records": [{"eventSource": "aws:s3", "s3": {"bucket": {"arn": MOCK_TRIGGER_ARN}}}]},
+            ),
+            TestCase(
+                name="valid_elb_event",
+                expected_link_span_attr_val=MOCK_HOST,
+                event_payload={"headers": {"host": MOCK_HOST}},
+            ),
+        ]
+        for test in tests:
+            AwsLambdaInstrumentor().instrument()
+            mock_execute_lambda(test.event_payload)
+            spans = self.memory_exporter.get_finished_spans()
+            assert spans
+
+            self.assertEqual(len(spans), 1)
+            span = spans[0]
+
+            self.assertSpanHasAttributes(
+                span,
+                {
+                    "faas.trigger_id": test.expected_link_span_attr_val,
+                },
+            )
+
+            self.memory_exporter.clear()
+            AwsLambdaInstrumentor().uninstrument()

@@ -140,7 +140,7 @@ def _default_event_context_extractor(lambda_event: Any) -> Context:
 
 
 def _determine_parent_context(
-    lambda_event: Any, event_context_extractor: Callable[[Any], Context]
+        lambda_event: Any, event_context_extractor: Callable[[Any], Context]
 ) -> Context:
     """Determine the parent context for the current Lambda invocation.
 
@@ -165,6 +165,43 @@ def _determine_parent_context(
         parent_context = _default_event_context_extractor(lambda_event)
 
     return parent_context
+
+
+def _get_trigger_info(
+        lambda_event: Any,
+) -> str:
+    if not lambda_event or not isinstance(lambda_event, dict):
+        return
+
+    # elb
+    if lambda_event.get("headers"):
+        if "host" in lambda_event["headers"]:
+            return lambda_event["headers"]["host"]
+
+    # sns, sqs, s3
+    records = lambda_event.get("Records")
+    if not records or not isinstance(records, list) or not records[0]:
+        return
+
+    event_content = records[0]
+    event_source = event_content.get("eventSource")
+    if not event_source:
+        event_source = event_content.get("EventSource")
+    if not event_source:
+        return
+
+    if event_source == "aws:sns":
+        sns_tag = event_content.get("Sns")
+        if not sns_tag:
+            return
+        return sns_tag.get("TopicArn")
+    elif event_source == "aws:sqs":
+        return event_content.get("eventSourceARN")
+    elif event_source == "aws:s3":
+        s3_tag = event_content.get("s3")
+        if not s3_tag or not s3_tag["bucket"]:
+            return
+        return s3_tag["bucket"].get("arn")
 
 
 def _determine_links() -> Optional[Sequence[Link]]:
@@ -195,7 +232,7 @@ def _determine_links() -> Optional[Sequence[Link]]:
 
 
 def _set_api_gateway_v1_proxy_attributes(
-    lambda_event: Any, span: Span
+        lambda_event: Any, span: Span
 ) -> Span:
     """Sets HTTP attributes for REST APIs and v1 HTTP APIs
 
@@ -239,7 +276,7 @@ def _set_api_gateway_v1_proxy_attributes(
 
 
 def _set_api_gateway_v2_proxy_attributes(
-    lambda_event: Any, span: Span
+        lambda_event: Any, span: Span
 ) -> Span:
     """Sets HTTP attributes for v2 HTTP APIs
 
@@ -283,15 +320,15 @@ def _set_api_gateway_v2_proxy_attributes(
 
 
 def _instrument(
-    wrapped_module_name,
-    wrapped_function_name,
-    flush_timeout,
-    event_context_extractor: Callable[[Any], Context],
-    tracer_provider: TracerProvider = None,
-    meter_provider: MeterProvider = None,
+        wrapped_module_name,
+        wrapped_function_name,
+        flush_timeout,
+        event_context_extractor: Callable[[Any], Context],
+        tracer_provider: TracerProvider = None,
+        meter_provider: MeterProvider = None,
 ):
     def _instrumented_lambda_handler_call(  # noqa pylint: disable=too-many-branches
-        call_wrapped, instance, args, kwargs
+            call_wrapped, instance, args, kwargs
     ):
         orig_handler_name = ".".join(
             [wrapped_module_name, wrapped_function_name]
@@ -369,6 +406,11 @@ def _instrument(
                         SpanAttributes.HTTP_STATUS_CODE,
                         result.get("statusCode"),
                     )
+
+            # Add information of trigger to span if available
+            trigger_id = _get_trigger_info(lambda_event)
+            if trigger_id:
+                span.set_attribute("faas.trigger_id", trigger_id)
 
         now = time.time()
         _tracer_provider = tracer_provider or get_tracer_provider()
