@@ -14,6 +14,7 @@
 
 # pylint: disable=too-many-lines
 
+import asyncio
 import sys
 import unittest
 from timeit import default_timer
@@ -794,6 +795,39 @@ class TestWrappedApplication(AsgiTestBase):
         self.assertEqual(
             span_list[4].context.span_id, span_list[3].parent.span_id
         )
+
+
+class TestAsgiApplicationRaisingError(AsgiTestBase):
+    def tearDown(self):
+        pass
+
+    @mock.patch(
+        "opentelemetry.instrumentation.asgi.collect_custom_request_headers_attributes",
+        side_effect=ValueError("whatever"),
+    )
+    def test_asgi_issue_1883(
+        self, mock_collect_custom_request_headers_attributes
+    ):
+        """
+        Test that exception UnboundLocalError local variable 'start' referenced before assignment is not raised
+        See https://github.com/open-telemetry/opentelemetry-python-contrib/issues/1883
+        """
+        app = otel_asgi.OpenTelemetryMiddleware(simple_asgi)
+        self.seed_app(app)
+        self.send_default_request()
+        try:
+            asyncio.get_event_loop().run_until_complete(
+                self.communicator.stop()
+            )
+        except ValueError as exc_info:
+            self.assertEqual(exc_info.args[0], "whatever")
+        except Exception as exc_info:  # pylint: disable=W0703
+            self.fail(
+                "expecting ValueError('whatever'), received instead: "
+                + str(exc_info)
+            )
+        else:
+            self.fail("expecting ValueError('whatever')")
 
 
 if __name__ == "__main__":
