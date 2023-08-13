@@ -1,7 +1,7 @@
 from logging import getLogger
 from typing import List, Optional
 
-from opentelemetry import propagate
+from opentelemetry import context, propagate
 from opentelemetry.trace import SpanKind, Link
 from opentelemetry.propagators import textmap
 from opentelemetry.semconv.trace import (
@@ -81,6 +81,22 @@ class KafkaContextSetter(textmap.Setter):
 
 
 _kafka_getter = KafkaContextGetter()
+
+
+def _end_current_consume_span(instance):
+    context.detach(instance._current_context_token)
+    instance._current_context_token = None
+    instance._current_consume_span.end()
+    instance._current_consume_span = None
+
+
+def _create_new_consume_span(instance, tracer, records):
+    links = _get_links_from_records(records)
+    instance._current_consume_span = tracer.start_span(
+        name=f"{records[0].topic()} process",
+        links=links,
+        kind=SpanKind.CONSUMER,
+    )
 
 
 def _enrich_span(
