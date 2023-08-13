@@ -165,7 +165,7 @@ class TestConfluentKafka(TestBase):
                 "auto.offset.reset": "earliest",
             },
         )
-        span_list = self.memory_exporter.clear()
+        self.memory_exporter.clear()
         consumer = instrumentation.instrument_consumer(consumer)
         consumer.poll()
         consumer.poll()
@@ -228,7 +228,7 @@ class TestConfluentKafka(TestBase):
             },
         )
 
-        span_list = self.memory_exporter.clear()
+        self.memory_exporter.clear()
         consumer = instrumentation.instrument_consumer(consumer)
         consumer.consume(3)
         consumer.consume(1)
