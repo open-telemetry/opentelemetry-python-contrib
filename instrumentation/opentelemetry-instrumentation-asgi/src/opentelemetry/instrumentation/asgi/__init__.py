@@ -538,6 +538,7 @@ class OpenTelemetryMiddleware:
             receive: An awaitable callable yielding dictionaries
             send: An awaitable callable taking a single dictionary as argument.
         """
+        start = default_timer()
         if scope["type"] not in ("http", "websocket"):
             return await self.app(scope, receive, send)
 
@@ -591,7 +592,6 @@ class OpenTelemetryMiddleware:
                     send,
                     duration_attrs,
                 )
-                start = default_timer()
 
                 await self.app(scope, otel_receive, otel_send)
         finally:
