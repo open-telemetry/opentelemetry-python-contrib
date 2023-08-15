@@ -172,7 +172,7 @@ def _determine_parent_context(
 
 
 def _get_x_ray_context() -> Optional[Context]:
-    """Determine teh context propagated through the lambda runtime"""
+    """Determine the context propagated through the lambda runtime"""
     xray_env_var = os.environ.get(_X_AMZN_TRACE_ID)
     if xray_env_var:
         env_context = AwsXRayPropagator().extract({TRACE_HEADER_KEY: xray_env_var})
@@ -435,8 +435,7 @@ class AwsLambdaInstrumentor(BaseInstrumentor):
                     span of the lambda invocation.
                     Defaults to False.
         """
-        _instrument(**kwargs)
-        """
+
         lambda_handler = os.environ.get(ORIG_HANDLER, os.environ.get(_HANDLER))
         # pylint: disable=attribute-defined-outside-init
         (
