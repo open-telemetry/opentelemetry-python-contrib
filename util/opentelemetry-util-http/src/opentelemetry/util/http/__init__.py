@@ -31,6 +31,10 @@ OTEL_INSTRUMENTATION_HTTP_CAPTURE_HEADERS_SERVER_RESPONSE = (
     "OTEL_INSTRUMENTATION_HTTP_CAPTURE_HEADERS_SERVER_RESPONSE"
 )
 
+OTEL_PYTHON_INSTRUMENTATION_HTTP_CAPTURE_ALL_METHODS = (
+    "OTEL_PYTHON_INSTRUMENTATION_HTTP_CAPTURE_ALL_METHODS"
+)
+
 # List of recommended metrics attributes
 _duration_attrs = {
     SpanAttributes.HTTP_METHOD,
@@ -186,6 +190,15 @@ def normalise_response_header_name(header: str) -> str:
     key = header.lower().replace("-", "_")
     return f"http.response.header.{key}"
 
+def sanitize_method(method: str | None) -> str | None:
+    if method is None:
+        return None
+    method = method.upper()
+    if (environ.get(OTEL_PYTHON_INSTRUMENTATION_HTTP_CAPTURE_ALL_METHODS) or
+        # Based on https://www.rfc-editor.org/rfc/rfc7231#section-4.1 and https://www.rfc-editor.org/rfc/rfc5789#section-2.
+        method in ["GET", "HEAD", "POST", "PUT", "DELETE", "CONNECT", "OPTIONS", "TRACE", "PATCH"]):
+        return method
+    return "NONSTANDARD"
 
 def get_custom_headers(env_var: str) -> List[str]:
     custom_headers = environ.get(env_var, [])
