@@ -53,6 +53,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   ([#1879](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/1879))
 - Add optional distro and configurator selection for auto-instrumentation
   ([#1823](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/1823))
+- `opentelemetry-instrumentation-aws-lambda` Use env var `_X_AMZN_TRACE_ID` as a
+  Span Link instead of parent
+  ([#1657](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/1657))
+- `opentelemetry-instrumentation-aws-lambda` Allow opt-out from the behaviour to use
+`_X_AMZN_TRACE_ID` as a Span Link instead of parent. ([#1909](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/1909))
+
 
 ## Version 1.18.0/0.39b0 (2023-05-10)
 
@@ -155,9 +161,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   ([#1592](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/1592))
 - `opentelemetry-instrumentation-django` Allow explicit `excluded_urls` configuration through `instrument()`
   ([#1618](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/1618))
-- `opentelemetry-instrumentation-aws-lambda` Use env var `_X_AMZN_TRACE_ID` as a
-  Span Link instead of parent
-  ([#1657](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/1657))
+
 
 ### Fixed
 
