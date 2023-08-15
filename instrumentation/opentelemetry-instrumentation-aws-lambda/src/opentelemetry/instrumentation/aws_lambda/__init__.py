@@ -107,6 +107,7 @@ ORIG_HANDLER = "ORIG_HANDLER"
 OTEL_INSTRUMENTATION_AWS_LAMBDA_FLUSH_TIMEOUT = (
     "OTEL_INSTRUMENTATION_AWS_LAMBDA_FLUSH_TIMEOUT"
 )
+OTEL_LAMBDA_USE_AWS_CONTEXT_PROPAGATION = "OTEL_LAMBDA_USE_AWS_CONTEXT_PROPAGATION"
 
 
 def _default_event_context_extractor(lambda_event: Any) -> Context:
@@ -140,7 +141,9 @@ def _default_event_context_extractor(lambda_event: Any) -> Context:
 
 
 def _determine_parent_context(
-    lambda_event: Any, event_context_extractor: Callable[[Any], Context]
+    lambda_event: Any,
+    use_aws_context_propagation: bool,
+    event_context_extractor: Callable[[Any], Context],
 ) -> Context:
     """Determine the parent context for the current Lambda invocation.
 
@@ -158,13 +161,24 @@ def _determine_parent_context(
         A Context with configuration found in the carrier.
     """
     parent_context = None
-
-    if event_context_extractor:
+    if use_aws_context_propagation:
+        parent_context = _get_x_ray_context()
+    elif event_context_extractor:
         parent_context = event_context_extractor(lambda_event)
     else:
         parent_context = _default_event_context_extractor(lambda_event)
 
     return parent_context
+
+
+def _get_x_ray_context() -> Optional[Context]:
+    """Determine teh context propagated through the lambda runtime"""
+    xray_env_var = os.environ.get(_X_AMZN_TRACE_ID)
+    if xray_env_var:
+        env_context = AwsXRayPropagator().extract({TRACE_HEADER_KEY: xray_env_var})
+        return env_context
+
+    return None
 
 
 def _determine_links() -> Optional[Sequence[Link]]:
@@ -180,31 +194,23 @@ def _determine_links() -> Optional[Sequence[Link]]:
     """
     links = None
 
-    xray_env_var = os.environ.get(_X_AMZN_TRACE_ID)
+    x_ray_context = _get_x_ray_context()
 
-    if xray_env_var:
-        env_context = AwsXRayPropagator().extract(
-            {TRACE_HEADER_KEY: xray_env_var}
-        )
-
-        span_context = get_current_span(env_context).get_span_context()
+    if x_ray_context:
+        span_context = get_current_span(x_ray_context).get_span_context()
         if span_context.is_valid:
             links = [Link(span_context, {"source": "x-ray-env"})]
 
     return links
 
 
-def _set_api_gateway_v1_proxy_attributes(
-    lambda_event: Any, span: Span
-) -> Span:
+def _set_api_gateway_v1_proxy_attributes(lambda_event: Any, span: Span) -> Span:
     """Sets HTTP attributes for REST APIs and v1 HTTP APIs
 
     More info:
     https://docs.aws.amazon.com/apigateway/latest/developerguide/set-up-lambda-proxy-integrations.html#api-gateway-simple-proxy-for-lambda-input-format
     """
-    span.set_attribute(
-        SpanAttributes.HTTP_METHOD, lambda_event.get("httpMethod")
-    )
+    span.set_attribute(SpanAttributes.HTTP_METHOD, lambda_event.get("httpMethod"))
 
     if lambda_event.get("headers"):
         if "User-Agent" in lambda_event["headers"]:
@@ -231,16 +237,12 @@ def _set_api_gateway_v1_proxy_attributes(
                 f"{lambda_event['resource']}?{urlencode(lambda_event['queryStringParameters'])}",
             )
         else:
-            span.set_attribute(
-                SpanAttributes.HTTP_TARGET, lambda_event["resource"]
-            )
+            span.set_attribute(SpanAttributes.HTTP_TARGET, lambda_event["resource"])
 
     return span
 
 
-def _set_api_gateway_v2_proxy_attributes(
-    lambda_event: Any, span: Span
-) -> Span:
+def _set_api_gateway_v2_proxy_attributes(lambda_event: Any, span: Span) -> Span:
     """Sets HTTP attributes for v2 HTTP APIs
 
     More info:
@@ -289,21 +291,26 @@ def _instrument(
     event_context_extractor: Callable[[Any], Context],
     tracer_provider: TracerProvider = None,
     meter_provider: MeterProvider = None,
+    use_aws_context_propagation: bool = False,
 ):
     def _instrumented_lambda_handler_call(  # noqa pylint: disable=too-many-branches
         call_wrapped, instance, args, kwargs
     ):
-        orig_handler_name = ".".join(
-            [wrapped_module_name, wrapped_function_name]
-        )
+        orig_handler_name = ".".join([wrapped_module_name, wrapped_function_name])
 
         lambda_event = args[0]
 
+        # We are not fully complying with the specification here to be backwards
+        # compatible with the old version of the specification.
+        # the ``use_aws_context_propagation`` flag allow us
+        # to opt-in into the previous behavior
         parent_context = _determine_parent_context(
-            lambda_event, event_context_extractor
+            lambda_event, use_aws_context_propagation, event_context_extractor
         )
 
-        links = _determine_links()
+        links = None
+        if not use_aws_context_propagation:
+            links = _determine_links()
 
         span_kind = None
         try:
@@ -354,9 +361,7 @@ def _instrument(
             # If the request came from an API Gateway, extract http attributes from the event
             # https://github.com/open-telemetry/opentelemetry-specification/blob/main/specification/trace/semantic_conventions/instrumentation/aws-lambda.md#api-gateway
             # https://github.com/open-telemetry/opentelemetry-specification/blob/main/specification/trace/semantic_conventions/http.md#http-server-semantic-conventions
-            if isinstance(lambda_event, dict) and lambda_event.get(
-                "requestContext"
-            ):
+            if isinstance(lambda_event, dict) and lambda_event.get("requestContext"):
                 span.set_attribute(SpanAttributes.FAAS_TRIGGER, "http")
 
                 if lambda_event.get("version") == "2.0":
@@ -424,6 +429,13 @@ class AwsLambdaInstrumentor(BaseInstrumentor):
                     Event as input and extracts an OTel Context from it. By default,
                     the context is extracted from the HTTP headers of an API Gateway
                     request.
+                ``use_aws_context_propagation``: whether to use the AWS context propagation
+                    to populate the parent context. When set to true, the spans
+                    from the lambda runtime will not be added as span link to the
+                    span of the lambda invocation.
+                    Defaults to False.
+        """
+        _instrument(**kwargs)
         """
         lambda_handler = os.environ.get(ORIG_HANDLER, os.environ.get(_HANDLER))
         # pylint: disable=attribute-defined-outside-init
@@ -454,6 +466,11 @@ class AwsLambdaInstrumentor(BaseInstrumentor):
             ),
             tracer_provider=kwargs.get("tracer_provider"),
             meter_provider=kwargs.get("meter_provider"),
+            use_aws_context_propagation=kwargs.get(
+                "use_aws_context_propagation",
+                os.environ.get(OTEL_LAMBDA_USE_AWS_CONTEXT_PROPAGATION, "False").lower()
+                in ("true", "1", "t"),
+            ),
         )
 
     def _uninstrument(self, **kwargs):
