@@ -11,8 +11,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - `opentelemetry-instrumentation-asgi` Fix UnboundLocalError local variable 'start' referenced before assignment
   ([#1889](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/1889))
-- Fixed union typing error not compatible with Python 3.7 introduced in `opentelemetry-util-http`
-  ([#1889](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/1889))
+- Fixed union typing error not compatible with Python 3.7 introduced in `opentelemetry-util-http`, fix tests introduced by patch related to sanitize method for wsgi
+  ([#1913](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/1913))
 
 ## Version 1.19.0/0.40b0 (2023-07-13)
 - `opentelemetry-instrumentation-asgi` Add `http.server.request.size` metric

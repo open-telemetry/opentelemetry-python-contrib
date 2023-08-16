@@ -289,7 +289,7 @@ class TestWsgiApplication(WsgiTestBase):
         self.environ["REQUEST_METHOD"]= "NONSTANDARD"
         app = otel_wsgi.OpenTelemetryMiddleware(simple_wsgi)
         response = app(self.environ, self.start_response)
-        self.validate_response(response, span_name="HTTP UNKNOWN", http_method="UNKNOWN")
+        self.validate_response(response, span_name="UNKNOWN /", http_method="UNKNOWN")
 
     @mock.patch.dict(
     "os.environ",
@@ -301,7 +301,7 @@ class TestWsgiApplication(WsgiTestBase):
         self.environ["REQUEST_METHOD"]= "NONSTANDARD"
         app = otel_wsgi.OpenTelemetryMiddleware(simple_wsgi)
         response = app(self.environ, self.start_response)
-        self.validate_response(response, span_name="HTTP NONSTANDARD", http_method="NONSTANDARD")
+        self.validate_response(response, span_name="NONSTANDARD /", http_method="NONSTANDARD")
 
     def test_default_span_name_missing_path_info(self):
         """Test that default span_names with missing path info."""

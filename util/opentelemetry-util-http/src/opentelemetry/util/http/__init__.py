@@ -198,7 +198,7 @@ def sanitize_method(method: Optional[str]) -> Optional[str]:
         # Based on https://www.rfc-editor.org/rfc/rfc7231#section-4.1 and https://www.rfc-editor.org/rfc/rfc5789#section-2.
         method in ["GET", "HEAD", "POST", "PUT", "DELETE", "CONNECT", "OPTIONS", "TRACE", "PATCH"]):
         return method
-    return "NONSTANDARD"
+    return "UNKNOWN"
 
 def get_custom_headers(env_var: str) -> List[str]:
     custom_headers = environ.get(env_var, [])
