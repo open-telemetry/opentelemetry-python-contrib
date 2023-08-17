@@ -27,6 +27,7 @@ from opentelemetry.instrumentation.aws_lambda import (
     _HANDLER,
     _X_AMZN_TRACE_ID,
     OTEL_INSTRUMENTATION_AWS_LAMBDA_FLUSH_TIMEOUT,
+    OTEL_LAMBDA_USE_AWS_CONTEXT_PROPAGATION,
     AwsLambdaInstrumentor,
 )
 from opentelemetry.propagate import get_global_textmap
@@ -59,9 +60,7 @@ MOCK_XRAY_TRACE_ID_STR = f"{MOCK_XRAY_TRACE_ID:x}"
 MOCK_XRAY_PARENT_SPAN_ID = 0x3328B8445A6DBAD2
 MOCK_XRAY_TRACE_CONTEXT_COMMON = f"Root={TRACE_ID_VERSION}-{MOCK_XRAY_TRACE_ID_STR[:TRACE_ID_FIRST_PART_LENGTH]}-{MOCK_XRAY_TRACE_ID_STR[TRACE_ID_FIRST_PART_LENGTH:]};Parent={MOCK_XRAY_PARENT_SPAN_ID:x}"
 MOCK_XRAY_TRACE_CONTEXT_SAMPLED = f"{MOCK_XRAY_TRACE_CONTEXT_COMMON};Sampled=1"
-MOCK_XRAY_TRACE_CONTEXT_NOT_SAMPLED = (
-    f"{MOCK_XRAY_TRACE_CONTEXT_COMMON};Sampled=0"
-)
+MOCK_XRAY_TRACE_CONTEXT_NOT_SAMPLED = f"{MOCK_XRAY_TRACE_CONTEXT_COMMON};Sampled=0"
 
 # See more:
 # https://www.w3.org/TR/trace-context/#examples-of-http-traceparent-headers
@@ -116,43 +115,70 @@ class TestAwsLambdaInstrumentor(TestBase):
         AwsLambdaInstrumentor().uninstrument()
 
     def test_active_tracing(self):
-        test_env_patch = mock.patch.dict(
-            "os.environ",
-            {
-                **os.environ,
-                # Using Active tracing
-                _X_AMZN_TRACE_ID: MOCK_XRAY_TRACE_CONTEXT_SAMPLED,
-            },
-        )
-        test_env_patch.start()
+        @dataclass
+        class Testcase:
+            name: str
+            use_aws_context_propagation: str
+            expected_trace_id: str
 
-        AwsLambdaInstrumentor().instrument()
+        tests = [
+            Testcase(
+                name="Use aws context propgation",
+                use_aws_context_propagation="true",
+                expected_trace_id=MOCK_XRAY_TRACE_ID,
+            ),
+            Testcase(
+                name="Do not use aws context propgation",
+                use_aws_context_propagation="false",
+                expected_trace_id=None,
+            ),
+        ]
 
-        mock_execute_lambda()
+        for test in tests:
+            test_env_patch = mock.patch.dict(
+                "os.environ",
+                {
+                    **os.environ,
+                    # Using Active tracing
+                    _X_AMZN_TRACE_ID: MOCK_XRAY_TRACE_CONTEXT_SAMPLED,
+                    OTEL_LAMBDA_USE_AWS_CONTEXT_PROPAGATION: test.use_aws_context_propagation,
+                },
+            )
+            test_env_patch.start()
 
-        spans = self.memory_exporter.get_finished_spans()
+            AwsLambdaInstrumentor().instrument()
 
-        assert spans
+            mock_execute_lambda()
 
-        self.assertEqual(len(spans), 1)
-        span = spans[0]
-        self.assertEqual(span.name, os.environ[_HANDLER])
-        self.assertNotEqual(
-            span.get_span_context().trace_id, MOCK_XRAY_TRACE_ID
-        )
-        self.assertEqual(span.kind, SpanKind.SERVER)
-        self.assertSpanHasAttributes(
-            span,
-            {
-                ResourceAttributes.FAAS_ID: MOCK_LAMBDA_CONTEXT.invoked_function_arn,
-                SpanAttributes.FAAS_EXECUTION: MOCK_LAMBDA_CONTEXT.aws_request_id,
-            },
-        )
+            spans = self.memory_exporter.get_finished_spans()
 
-        parent_context = span.parent
-        self.assertEqual(None, parent_context)
+            assert spans
 
-        test_env_patch.stop()
+            self.assertEqual(len(spans), 1)
+            span = spans[0]
+            self.assertEqual(span.name, os.environ[_HANDLER])
+            parent_context = span.parent
+            if test.expected_trace_id is None:
+                self.assertNotEqual(
+                    span.get_span_context().trace_id, MOCK_XRAY_TRACE_ID
+                )
+                self.assertEqual(None, parent_context)
+            else:
+                self.assertEqual(span.get_span_context().trace_id, MOCK_XRAY_TRACE_ID)
+                self.assertEqual(
+                    parent_context.trace_id, span.get_span_context().trace_id
+                )
+            self.assertEqual(span.kind, SpanKind.SERVER)
+            self.assertSpanHasAttributes(
+                span,
+                {
+                    ResourceAttributes.FAAS_ID: MOCK_LAMBDA_CONTEXT.invoked_function_arn,
+                    SpanAttributes.FAAS_EXECUTION: MOCK_LAMBDA_CONTEXT.aws_request_id,
+                },
+            )
+            self.memory_exporter.clear()
+            AwsLambdaInstrumentor().uninstrument()
+            test_env_patch.stop()
 
     def test_parent_context_from_lambda_event(self):
         @dataclass
@@ -218,14 +244,10 @@ class TestAwsLambdaInstrumentor(TestBase):
             assert spans
             self.assertEqual(len(spans), 1)
             span = spans[0]
-            self.assertEqual(
-                span.get_span_context().trace_id, test.expected_traceid
-            )
+            self.assertEqual(span.get_span_context().trace_id, test.expected_traceid)
 
             parent_context = span.parent
-            self.assertEqual(
-                parent_context.trace_id, span.get_span_context().trace_id
-            )
+            self.assertEqual(parent_context.trace_id, span.get_span_context().trace_id)
             self.assertEqual(parent_context.span_id, test.expected_parentid)
             self.assertEqual(
                 len(parent_context.trace_state), test.expected_trace_state_len
@@ -247,6 +269,7 @@ class TestAwsLambdaInstrumentor(TestBase):
             expected_link_trace_id: int
             expected_link_attributes: dict
             xray_traceid: str
+            use_xray_propagator: str
 
         tests = [
             TestCase(
@@ -255,6 +278,7 @@ class TestAwsLambdaInstrumentor(TestBase):
                 expected_link_trace_id=MOCK_XRAY_TRACE_ID,
                 expected_link_attributes={"source": "x-ray-env"},
                 xray_traceid=MOCK_XRAY_TRACE_CONTEXT_SAMPLED,
+                use_xray_propagator="false",
             ),
             TestCase(
                 name="invalid_xray_trace",
@@ -262,6 +286,15 @@ class TestAwsLambdaInstrumentor(TestBase):
                 expected_link_trace_id=None,
                 expected_link_attributes={},
                 xray_traceid="0",
+                use_xray_propagator="false",
+            ),
+            TestCase(
+                name="use_xra",
+                context={},
+                expected_link_trace_id=None,
+                expected_link_attributes={},
+                xray_traceid=MOCK_XRAY_TRACE_CONTEXT_SAMPLED,
+                use_xray_propagator="true",
             ),
         ]
         for test in tests:
@@ -273,6 +306,7 @@ class TestAwsLambdaInstrumentor(TestBase):
                     _X_AMZN_TRACE_ID: test.xray_traceid,
                     # NOT using the X-Ray Propagator
                     OTEL_PROPAGATORS: "tracecontext",
+                    OTEL_LAMBDA_USE_AWS_CONTEXT_PROPAGATION: test.use_xray_propagator,
                 },
             )
             test_env_patch.start()
@@ -287,12 +321,8 @@ class TestAwsLambdaInstrumentor(TestBase):
                 self.assertEqual(0, len(span.links))
             else:
                 link = span.links[0]
-                self.assertEqual(
-                    link.context.trace_id, test.expected_link_trace_id
-                )
-                self.assertEqual(
-                    link.attributes, test.expected_link_attributes
-                )
+                self.assertEqual(link.context.trace_id, test.expected_link_trace_id)
+                self.assertEqual(link.attributes, test.expected_link_attributes)
 
             self.memory_exporter.clear()
             AwsLambdaInstrumentor().uninstrument()
