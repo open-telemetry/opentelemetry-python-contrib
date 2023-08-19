@@ -3,6 +3,7 @@ components:
   docs/instrumentation:
     - nemoshlag
 
+
   instrumentation/opentelemetry-instrumentation-aio-pika:
     - ofek1weiss
 
