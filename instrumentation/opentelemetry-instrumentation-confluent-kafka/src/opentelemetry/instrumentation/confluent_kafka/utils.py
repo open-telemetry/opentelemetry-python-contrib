@@ -99,6 +99,18 @@ def _create_new_consume_span(instance, tracer, records):
     )
 
 
+def _get_links_from_records(records):
+    links = []
+    for record in records:
+        ctx = propagate.extract(record.headers(), getter=_kafka_getter)
+        if ctx:
+            for item in ctx.values():
+                if hasattr(item, "get_span_context"):
+                    links.append(Link(context=item.get_span_context()))
+
+    return links
+
+
 def _enrich_span(
     span,
     topic,
@@ -132,18 +144,6 @@ def _enrich_span(
             SpanAttributes.MESSAGING_MESSAGE_ID,
             f"{topic}.{partition}.{offset}",
         )
-
-
-def _get_links_from_records(records):
-    links = []
-    for record in records:
-        ctx = propagate.extract(record.headers(), getter=_kafka_getter)
-        if ctx:
-            for item in ctx.values():
-                if hasattr(item, "get_span_context"):
-                    links.append(Link(context=item.get_span_context()))
-
-    return links
 
 
 _kafka_setter = KafkaContextSetter()
