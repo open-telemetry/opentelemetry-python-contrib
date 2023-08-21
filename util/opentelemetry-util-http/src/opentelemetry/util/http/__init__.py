@@ -16,7 +16,7 @@ from os import environ
 from re import IGNORECASE as RE_IGNORECASE
 from re import compile as re_compile
 from re import search
-from typing import Iterable, List
+from typing import Iterable, List, Optional
 from urllib.parse import urlparse, urlunparse
 
 from opentelemetry.semconv.trace import SpanAttributes
@@ -190,7 +190,7 @@ def normalise_response_header_name(header: str) -> str:
     key = header.lower().replace("-", "_")
     return f"http.response.header.{key}"
 
-def sanitize_method(method: str | None) -> str | None:
+def sanitize_method(method: Optional[str]) -> Optional[str]:
     if method is None:
         return None
     method = method.upper()
@@ -198,7 +198,7 @@ def sanitize_method(method: str | None) -> str | None:
         # Based on https://www.rfc-editor.org/rfc/rfc7231#section-4.1 and https://www.rfc-editor.org/rfc/rfc5789#section-2.
         method in ["GET", "HEAD", "POST", "PUT", "DELETE", "CONNECT", "OPTIONS", "TRACE", "PATCH"]):
         return method
-    return "NONSTANDARD"
+    return "UNKNOWN"
 
 def get_custom_headers(env_var: str) -> List[str]:
     custom_headers = environ.get(env_var, [])
