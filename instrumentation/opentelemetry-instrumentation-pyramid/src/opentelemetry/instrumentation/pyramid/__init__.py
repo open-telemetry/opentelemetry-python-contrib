@@ -204,7 +204,9 @@ from opentelemetry.instrumentation.utils import unwrap
 # test_automatic.TestAutomatic.test_tween_list needs trace_tween_factory to be
 # imported in this module. The next line is necessary to avoid a lint error
 # from importing an unused symbol.
-trace_tween_factory  # pylint: disable=pointless-statement
+# if import is intentional, signalling the linter that import is intentional
+#even it is not being used 
+_trace_tween_factory_used = trace_tween_factory  # pylint: disable=pointless-statement
 
 if platform.python_implementation() == "PyPy":
     CALLER_LEVELS = 3
