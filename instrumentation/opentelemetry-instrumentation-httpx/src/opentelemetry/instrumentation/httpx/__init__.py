@@ -181,7 +181,7 @@ Or if you are using the transport classes directly:
     )
 
     async_transport = httpx.AsyncHTTPTransport()
-    telemetry_transport = AsyncOpenTelemetryTransport(
+    async_telemetry_transport = AsyncOpenTelemetryTransport(
         async_transport,
         request_hook=async_request_hook,
         response_hook=async_response_hook
