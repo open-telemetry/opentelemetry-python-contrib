@@ -81,10 +81,10 @@ Usage
 
 .. code-block:: python
 
-    from flask import Flask
+    import flask
     from opentelemetry.instrumentation.flask import FlaskInstrumentor
 
-    app = Flask(__name__)
+    app = flask.Flask(__name__)
 
     FlaskInstrumentor().instrument_app(app)
 

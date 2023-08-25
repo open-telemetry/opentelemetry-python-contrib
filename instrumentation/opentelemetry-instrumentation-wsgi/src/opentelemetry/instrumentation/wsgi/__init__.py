@@ -20,10 +20,10 @@ Usage (Flask)
 
 .. code-block:: python
 
-    from flask import Flask
+    import flask
     from opentelemetry.instrumentation.wsgi import OpenTelemetryMiddleware
 
-    app = Flask(__name__)
+    app = flask.Flask(__name__)
     app.wsgi_app = OpenTelemetryMiddleware(app.wsgi_app)
 
     @app.route("/")
