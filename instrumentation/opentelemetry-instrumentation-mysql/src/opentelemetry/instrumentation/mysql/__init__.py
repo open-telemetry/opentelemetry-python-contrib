@@ -24,13 +24,19 @@ You can optionally configure MySQL instrumentation to enable sqlcommenter which 
 the query with contextual information.
 Usage
 -----
+
 .. code:: python
+
     from opentelemetry.instrumentation.mysql import MySQLInstrumentor()
     MySQLInstrumentor().instrument(enable_commenter=True, commenter_options={})
+
 For example,
+
 ::
+
    Invoking cursor.execute("select * from auth_users") will lead to sql query "select * from auth_users" but when SQLCommenter is enabled
    the query will get appended with some configurable tags like "select * from auth_users /*tag=value*/;"
+
 SQLCOMMENTER Configurations
 ***************************
 We can configure the tags to be appended to the sqlquery log by adding configuration inside commenter_options(default:{}) keyword
