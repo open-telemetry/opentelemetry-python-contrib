@@ -63,6 +63,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Add optional distro and configurator selection for auto-instrumentation
   ([#1823](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/1823))
 
+### Added
+- `opentelemetry-instrumentation-kafka-python` Add instrumentation to `consume` method
+  ([#1786](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/1786))
+
 ## Version 1.18.0/0.39b0 (2023-05-10)
 
 - Update runtime metrics to follow semantic conventions
