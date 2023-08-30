@@ -7,6 +7,18 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## Unreleased
 
+### Fixed
+
+- `opentelemetry-instrumentation-asgi` Fix UnboundLocalError local variable 'start' referenced before assignment
+  ([#1889](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/1889))
+- Fixed union typing error not compatible with Python 3.7 introduced in `opentelemetry-util-http`, fix tests introduced by patch related to sanitize method for wsgi
+  ([#1913](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/1913))
+
+### Added
+
+- `opentelemetry-resource-detector-azure` Add resource detectors for Azure App Service and VM
+  ([#1901](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/1901))
+
 ## Version 1.19.0/0.40b0 (2023-07-13)
 - `opentelemetry-instrumentation-asgi` Add `http.server.request.size` metric
   ([#1867](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/1867))
@@ -152,9 +164,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   ([#1592](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/1592))
 - `opentelemetry-instrumentation-django` Allow explicit `excluded_urls` configuration through `instrument()`
   ([#1618](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/1618))
-- `opentelemetry-instrumentation-aws-lambda` Use env var `_X_AMZN_TRACE_ID` as a
-  Span Link instead of parent
-  ([#1657](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/1657))
 
 ### Fixed
 
