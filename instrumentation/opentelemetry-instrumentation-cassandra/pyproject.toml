@@ -1,0 +1,60 @@
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[project]
+name = "opentelemetry-instrumentation-cassandra"
+dynamic = ["version"]
+description = "OpenTelemetry Cassandra instrumentation"
+readme = "README.rst"
+license = "Apache-2.0"
+requires-python = ">=3.7"
+authors = [
+  { name = "OpenTelemetry Authors", email = "cncf-opentelemetry-contributors@lists.cncf.io" },
+]
+classifiers = [
+  "Development Status :: 4 - Beta",
+  "Intended Audience :: Developers",
+  "License :: OSI Approved :: Apache Software License",
+  "Programming Language :: Python",
+  "Programming Language :: Python :: 3",
+  "Programming Language :: Python :: 3.7",
+  "Programming Language :: Python :: 3.8",
+  "Programming Language :: Python :: 3.9",
+  "Programming Language :: Python :: 3.10",
+  "Programming Language :: Python :: 3.11",
+]
+dependencies = [
+  "opentelemetry-api ~= 1.12",
+  "opentelemetry-instrumentation == 0.41b0.dev",
+  "opentelemetry-semantic-conventions == 0.41b0.dev",
+  "wrapt >= 1.0.0, < 2.0.0",
+]
+
+[project.optional-dependencies]
+instruments = [
+  "cassandra-driver ~= 3.25",
+  "scylla-driver ~= 3.25",
+]
+test = [
+  "opentelemetry-instrumentation-cassandra[instruments]",
+  "opentelemetry-test-utils == 0.41b0.dev",
+]
+
+[project.entry-points.opentelemetry_instrumentor]
+cassandra = "opentelemetry.instrumentation.cassandra:CassandraInstrumentor"
+
+[project.urls]
+Homepage = "https://github.com/open-telemetry/opentelemetry-python-contrib/tree/main/instrumentation/opentelemetry-instrumentation-cassandra"
+
+[tool.hatch.version]
+path = "src/opentelemetry/instrumentation/cassandra/version.py"
+
+[tool.hatch.build.targets.sdist]
+include = [
+  "/src",
+  "/tests",
+]
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/opentelemetry"]

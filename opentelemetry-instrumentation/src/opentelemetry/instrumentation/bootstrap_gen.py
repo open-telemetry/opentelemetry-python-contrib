@@ -48,6 +48,14 @@ libraries = {
         "library": "botocore ~= 1.0",
         "instrumentation": "opentelemetry-instrumentation-botocore==0.41b0.dev",
     },
+    "cassandra-driver": {
+        "library": "cassandra-driver ~= 3.25",
+        "instrumentation": "opentelemetry-instrumentation-cassandra==0.41b0.dev",
+    },
+    "scylla-driver": {
+        "library": "scylla-driver ~= 3.25",
+        "instrumentation": "opentelemetry-instrumentation-cassandra==0.41b0.dev",
+    },
     "celery": {
         "library": "celery >= 4.0, < 6.0",
         "instrumentation": "opentelemetry-instrumentation-celery==0.41b0.dev",

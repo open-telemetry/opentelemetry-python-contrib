@@ -36,6 +36,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- Add instrumentor support for cassandra and scylla
+  ([#1902](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/1902))
 - Add instrumentor support for mysqlclient
   ([#1744](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/1744))
 - Fix async redis clients not being traced correctly
