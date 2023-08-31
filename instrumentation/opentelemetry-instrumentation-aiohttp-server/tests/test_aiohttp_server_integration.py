@@ -17,13 +17,13 @@ import pytest_asyncio
 import aiohttp
 from http import HTTPStatus
 from .utils import HTTPMethod
-from pkg_resources import iter_entry_points
 from unittest import mock
 
 from opentelemetry import trace as trace_api
 from opentelemetry.test.test_base import TestBase
 from opentelemetry.instrumentation.aiohttp_server import AioHttpServerInstrumentor
 from opentelemetry.semconv.trace import SpanAttributes
+from opentelemetry.util._importlib_metadata import entry_points
 
 from opentelemetry.test.globals_test import (
     reset_trace_globals,
@@ -67,11 +67,10 @@ async def server_fixture(tracer, aiohttp_server):
 
 
 def test_checking_instrumentor_pkg_installed():
-    entry_points = iter_entry_points(
-        "opentelemetry_instrumentor", "aiohttp-server"
-    )
+    itered_entry_points = iter(entry_points(
+        "opentelemetry_instrumentor", "aiohttp-server"))
 
-    instrumentor = next(entry_points).load()()
+    instrumentor = next(itered_entry_points).load()()
     assert (isinstance(instrumentor, AioHttpServerInstrumentor))
 
 
