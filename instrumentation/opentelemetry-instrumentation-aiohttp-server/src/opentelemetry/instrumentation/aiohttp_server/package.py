@@ -13,4 +13,4 @@
 # limitations under the License.
 
 
-_instruments = ("aiohttp ~= 3.8",)
+_instruments = ("aiohttp ~= 3.0",)
