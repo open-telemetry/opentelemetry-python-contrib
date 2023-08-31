@@ -103,11 +103,13 @@ def _is_installed(req):
 
 def _find_installed_libraries():
     libs = default_instrumentations[:]
-
-    for _, v in libraries.items():
-        if _is_installed(v["library"]):
-            libs.extend(v["instrumentation"])
-
+    libs.extend(
+        [
+            v["instrumentation"]
+            for _, v in libraries.items()
+            if _is_installed(v["library"])
+        ]
+    )
     return libs
 
 
