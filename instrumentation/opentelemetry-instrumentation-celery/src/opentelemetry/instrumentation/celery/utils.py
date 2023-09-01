@@ -48,15 +48,6 @@ CELERY_CONTEXT_ATTRIBUTES = (
 )
 
 
-def import_exception_with_traceback():
-    if VERSION >= (4, 0, 1):
-        from billiard.einfo import ExceptionWithTraceback
-
-        return ExceptionWithTraceback
-
-    return None
-
-
 # pylint:disable=too-many-branches
 def set_attributes_from_context(span, context):
     """Helper to extract meta values from a Celery Context"""

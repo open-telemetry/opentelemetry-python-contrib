@@ -76,8 +76,13 @@ from opentelemetry.propagate import extract, inject
 from opentelemetry.propagators.textmap import Getter
 from opentelemetry.semconv.trace import SpanAttributes
 from opentelemetry.trace.status import Status, StatusCode
+from billiard import VERSION
 
-ExceptionWithTraceback = utils.import_exception_with_traceback()
+
+if VERSION >= (4, 0, 1):
+    from billiard.einfo import ExceptionWithTraceback
+else:
+    ExceptionWithTraceback = None
 
 logger = logging.getLogger(__name__)
 
