@@ -36,6 +36,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- Add instrumentor support for cassandra and scylla
+  ([#1902](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/1902))
 - Add instrumentor support for mysqlclient
   ([#1744](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/1744))
 - Fix async redis clients not being traced correctly
@@ -60,6 +62,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   ([#1879](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/1879))
 - Add optional distro and configurator selection for auto-instrumentation
   ([#1823](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/1823))
+
+### Added
+- `opentelemetry-instrumentation-kafka-python` Add instrumentation to `consume` method
+  ([#1786](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/1786))
 
 ## Version 1.18.0/0.39b0 (2023-05-10)
 
