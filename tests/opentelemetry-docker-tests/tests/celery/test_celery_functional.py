@@ -279,7 +279,7 @@ def test_fn_exception(celery_app, memory_exporter):
     assert len(span.events) == 1
     event = span.events[0]
     assert event.name == "exception"
-    assert event.attributes[SpanAttributes.EXCEPTION_TYPE] == "ExceptionInfo"
+    assert event.attributes[SpanAttributes.EXCEPTION_TYPE] == "Exception"
     assert SpanAttributes.EXCEPTION_MESSAGE in event.attributes
     assert (
         span.attributes.get(SpanAttributes.MESSAGING_MESSAGE_ID)
@@ -420,7 +420,7 @@ def test_class_task_exception(celery_app, memory_exporter):
     assert "Task class is failing" in span.status.description
 
 
-def test_class_task_exception_excepted(celery_app, memory_exporter):
+def test_class_task_exception_expected(celery_app, memory_exporter):
     class BaseTask(celery_app.Task):
         throws = (MyException,)
 
