@@ -63,6 +63,7 @@ import logging
 from timeit import default_timer
 from typing import Collection, Iterable
 
+from billiard.einfo import ExceptionInfo
 from celery import signals  # pylint: disable=no-name-in-module
 
 from opentelemetry import trace
@@ -75,6 +76,13 @@ from opentelemetry.propagate import extract, inject
 from opentelemetry.propagators.textmap import Getter
 from opentelemetry.semconv.trace import SpanAttributes
 from opentelemetry.trace.status import Status, StatusCode
+from billiard import VERSION
+
+
+if VERSION >= (4, 0, 1):
+    from billiard.einfo import ExceptionWithTraceback
+else:
+    ExceptionWithTraceback = None
 
 logger = logging.getLogger(__name__)
 
@@ -271,6 +279,18 @@ class CeleryInstrumentor(BaseInstrumentor):
             return
 
         if ex is not None:
+            # Unwrap the actual exception wrapped by billiard's
+            # `ExceptionInfo` and `ExceptionWithTraceback`.
+            if isinstance(ex, ExceptionInfo) and ex.exception is not None:
+                ex = ex.exception
+
+            if (
+                ExceptionWithTraceback is not None
+                and isinstance(ex, ExceptionWithTraceback)
+                and ex.exc is not None
+            ):
+                ex = ex.exc
+
             status_kwargs["description"] = str(ex)
             span.record_exception(ex)
         span.set_status(Status(**status_kwargs))
