@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## Unreleased
 
+## Version 1.20.0/0.41b0 (2023-09-01)
+
 ### Fixed
 
 - `opentelemetry-instrumentation-asgi` Fix UnboundLocalError local variable 'start' referenced before assignment
