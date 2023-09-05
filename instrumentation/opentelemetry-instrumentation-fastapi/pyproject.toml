@@ -34,7 +34,7 @@ dependencies = [
 
 [project.optional-dependencies]
 instruments = [
-  "fastapi ~= 0.58",
+  "fastapi >= 0.58",
 ]
 test = [
   "opentelemetry-instrumentation-fastapi[instruments]",
