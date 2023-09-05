@@ -224,7 +224,7 @@ class StarletteInstrumentor(BaseInstrumentor):
                 tracer_provider=tracer_provider,
                 meter=meter,
             )
-            app.is_instrumented_by_opentelemetry = True
+            app._is_instrumented_by_opentelemetry = True
 
             # adding apps to set for uninstrumenting
             if app not in _InstrumentedStarlette._instrumented_starlette_apps:

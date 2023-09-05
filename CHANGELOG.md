@@ -9,6 +9,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - `opentelemetry-resource-detector-azure` Added 10s timeout to VM Resource Detector
   ([#2119](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/2119))
+- `opentelemetry-instrumentation-starlette` Removed upper version bound for `starlette` dependency, fix \_instrumented_by_opentelemetry flag
+  ([#1933](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/1933))
 
 ## Version 1.22.0/0.43b0 (2023-12-14)
 
@@ -33,7 +35,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   ([#1959](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/1959))
 - `opentelemetry-resource-detector-azure` Added dependency for Cloud Resource ID attribute
   ([#2072](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/2072))
-  
+
 ## Version 1.21.0/0.42b0 (2023-11-01)
 
 ### Added

@@ -34,7 +34,7 @@ dependencies = [
 
 [project.optional-dependencies]
 instruments = [
-  "starlette ~= 0.13.0",
+  "starlette >= 0.13.0",
 ]
 test = [
   "opentelemetry-instrumentation-starlette[instruments]",

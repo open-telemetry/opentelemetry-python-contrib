@@ -19,6 +19,7 @@ from unittest.mock import patch
 from starlette import applications
 from starlette.responses import PlainTextResponse
 from starlette.routing import Route
+from starlette.routing import WebSocketRoute
 from starlette.testclient import TestClient
 from starlette.websockets import WebSocket
 
@@ -197,10 +198,12 @@ class TestStarletteManualInstrumentation(TestBase):
                     )
                     self.assertEqual(point.value, 0)
 
-    def test_metric_for_uninstrment_app_method(self):
+    def test_metric_for_uninstrument_app_method(self):
         self._client.get("/foobar")
         # uninstrumenting the existing client app
+        self.assertTrue(self._app._is_instrumented_by_opentelemetry)
         self._instrumentor.uninstrument_app(self._app)
+        self.assertFalse(self._app._is_instrumented_by_opentelemetry)
         self._client.get("/foobar")
         self._client.get("/foobar")
         metrics_list = self.memory_metrics_reader.get_metrics_data()
@@ -422,10 +425,7 @@ class TestBaseWithCustomHeaders(TestBase):
 
     @staticmethod
     def create_starlette_app():
-        app = applications.Starlette()
-
-        @app.route("/foobar")
-        def _(request):
+        def foobar(request):
             return PlainTextResponse(
                 content="hi",
                 headers={
@@ -437,8 +437,7 @@ class TestBaseWithCustomHeaders(TestBase):
                 },
             )
 
-        @app.websocket_route("/foobar_web")
-        async def _(websocket: WebSocket) -> None:
+        async def foobar_web(websocket: WebSocket) -> None:
             message = await websocket.receive()
             if message.get("type") == "websocket.connect":
                 await websocket.send(
@@ -463,6 +462,13 @@ class TestBaseWithCustomHeaders(TestBase):
                 await websocket.close()
             if message.get("type") == "websocket.disconnect":
                 pass
+
+        routes = [
+            Route("/foobar", endpoint=foobar),
+            WebSocketRoute("/foobar_web", endpoint=foobar_web),
+        ]
+
+        app = applications.Starlette(routes=routes)
 
         return app
 
