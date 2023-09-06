@@ -40,11 +40,11 @@ from typing import Collection
 import asyncpg
 import wrapt
 
-from opentelemetry import trace
+from opentelemetry import context, trace
 from opentelemetry.instrumentation.asyncpg.package import _instruments
 from opentelemetry.instrumentation.asyncpg.version import __version__
 from opentelemetry.instrumentation.instrumentor import BaseInstrumentor
-from opentelemetry.instrumentation.utils import unwrap
+from opentelemetry.instrumentation.utils import _SUPPRESS_INSTRUMENTATION_KEY, unwrap
 from opentelemetry.semconv.trace import (
     DbSystemValues,
     NetTransportValues,
@@ -131,6 +131,9 @@ class AsyncPGInstrumentor(BaseInstrumentor):
             unwrap(asyncpg.Connection, method)
 
     async def _do_execute(self, func, instance, args, kwargs):
+        if context.get_value(_SUPPRESS_INSTRUMENTATION_KEY):
+            return await func(*args, **kwargs)
+
         exception = None
         params = getattr(instance, "_params", {})
         name = args[0] if args[0] else params.get("database", "postgresql")
