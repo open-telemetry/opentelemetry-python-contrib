@@ -144,7 +144,12 @@ class LoggingInstrumentor(BaseInstrumentor):  # pylint: disable=empty-docstring
             )
             log_level = log_level or logging.INFO
 
-            logging.basicConfig(format=log_format, level=log_level)
+            root_logger = logging.getLogger()
+            if root_logger.hasHandlers():
+                for handler in root_logger.handlers:
+                    handler.setFormatter(logging.Formatter(log_format))
+            else:
+                logging.basicConfig(format=log_format, level=log_level)
 
     def _uninstrument(self, **kwargs):
         if LoggingInstrumentor._old_factory:
