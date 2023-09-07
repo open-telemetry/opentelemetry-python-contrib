@@ -7,12 +7,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## Unreleased
 
+## Version 1.20.0/0.41b0 (2023-09-01)
+
 ### Fixed
 
 - `opentelemetry-instrumentation-asgi` Fix UnboundLocalError local variable 'start' referenced before assignment
   ([#1889](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/1889))
 - Fixed union typing error not compatible with Python 3.7 introduced in `opentelemetry-util-http`, fix tests introduced by patch related to sanitize method for wsgi
   ([#1913](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/1913))
+- `opentelemetry-instrumentation-celery` Unwrap Celery's `ExceptionInfo` errors and report the actual exception that was raised. ([#1863](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/1863))
 
 ### Added
 
@@ -36,6 +39,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- Add instrumentor support for cassandra and scylla
+  ([#1902](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/1902))
 - Add instrumentor support for mysqlclient
   ([#1744](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/1744))
 - Fix async redis clients not being traced correctly
@@ -62,6 +67,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   ([#1879](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/1879))
 - Add optional distro and configurator selection for auto-instrumentation
   ([#1823](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/1823))
+
+### Added
+- `opentelemetry-instrumentation-kafka-python` Add instrumentation to `consume` method
+  ([#1786](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/1786))
 
 ## Version 1.18.0/0.39b0 (2023-05-10)
 
