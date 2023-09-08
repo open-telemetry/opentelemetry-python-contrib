@@ -221,7 +221,7 @@ async def middleware(request, handler):
             set_status_code(span, ex.status_code)
             raise
         finally:
-            duration = max(round((default_timer() - start) * 1000), 0)
+            duration = max((default_timer() - start) * 1000, 0)
             duration_histogram.record(duration, duration_attrs)
             active_requests_counter.add(-1, active_requests_count_attrs)
         return resp
