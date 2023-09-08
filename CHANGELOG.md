@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## Unreleased
 
+### Fixed
+
+- `opentelemetry-resource-detector-azure` Fix incorrect project name in metadata
+
 ## Version 1.20.0/0.41b0 (2023-09-01)
 
 ### Fixed
