@@ -7,6 +7,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## Unreleased
 
+- `opentelemetry-instrumentation-aiohttp-server` Add instrumentor and auto instrumentation support for aiohttp-server
+  ([#1800](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/1800))
+
 ## Version 1.20.0/0.41b0 (2023-09-01)
 
 ### Fixed
