@@ -33,6 +33,7 @@ dependencies = [
     "opentelemetry-instrumentation-aiohttp-client==0.41b0.dev",
     "opentelemetry-instrumentation-aiopg==0.41b0.dev",
     "opentelemetry-instrumentation-asgi==0.41b0.dev",
+    "opentelemetry-instrumentation-asyncio==0.41b0.dev",
     "opentelemetry-instrumentation-asyncpg==0.41b0.dev",
     "opentelemetry-instrumentation-aws-lambda==0.41b0.dev",
     "opentelemetry-instrumentation-boto==0.41b0.dev",
