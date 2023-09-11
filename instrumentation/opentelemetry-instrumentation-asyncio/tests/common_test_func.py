@@ -16,7 +16,7 @@ import asyncio
 
 
 async def async_func():
-    await asyncio.sleep(1)
+    await asyncio.sleep(0.1)
 
 
 async def factorial(name, number):

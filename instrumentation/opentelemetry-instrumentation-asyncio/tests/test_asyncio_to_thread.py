@@ -34,15 +34,16 @@ class TestAsyncioToThread(TestBase):
 
     def test_to_thread(self):
         # to_thread is only available in Python 3.9+
-        def multiply(x, y):
-            return x * y
-
-        async def to_thread():
-            result = await asyncio.to_thread(multiply, 2, 3)
-            assert result == 6
-
-        asyncio.run(to_thread())
-        spans = self.memory_exporter.get_finished_spans()
         if sys.version_info >= (3, 9):
+            def multiply(x, y):
+                return x * y
+
+            async def to_thread():
+                result = await asyncio.to_thread(multiply, 2, 3)
+                assert result == 6
+
+            asyncio.run(to_thread())
+            spans = self.memory_exporter.get_finished_spans()
+
             self.assertEqual(len(spans), 1)
             assert spans[0].name == "asyncio.to_thread_func-multiply"
