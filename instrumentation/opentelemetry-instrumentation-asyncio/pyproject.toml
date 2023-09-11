@@ -47,7 +47,7 @@ Homepage = "https://github.com/open-telemetry/opentelemetry-python-contrib/tree/
 [tool.hatch.version]
 path = "src/opentelemetry/instrumentation/asyncio/version.py"
 
-[tool.hatch.build.targets.sdist
+[tool.hatch.build.targets.sdist]
 include = [
   "/src",
   "/tests",
