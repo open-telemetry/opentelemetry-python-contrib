@@ -14,12 +14,11 @@
 import asyncio
 import sys
 
-import aiotools
 from opentelemetry.test.test_base import TestBase
 from opentelemetry.trace import get_tracer
 
-from .common_test_func import async_func
 from opentelemetry.instrumentation.asyncio import AsyncioInstrumentor
+from .common_test_func import async_func
 
 py11 = False
 if sys.version_info >= (3, 11):
@@ -44,16 +43,9 @@ class TestAsyncioTaskgroup(TestBase):
                 async with asyncio.TaskGroup() as tg:
                     for _ in range(10):
                         tg.create_task(async_func())
-            else:
-                async with aiotools.TaskGroup() as tg:
-                    for _ in range(10):
-                        tg.create_task(async_func())
 
         asyncio.run(main())
         spans = self.memory_exporter.get_finished_spans()
         assert spans
         if py11:
             self.assertEqual(len(spans), 10)
-        else:
-            # aiotools.TaskGroup is Out of scope of support.
-            self.assertEqual(len(spans), 0)

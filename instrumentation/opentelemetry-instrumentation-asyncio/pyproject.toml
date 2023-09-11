@@ -30,6 +30,12 @@ dependencies = [
 ]
 
 [project.optional-dependencies]
+instruments = []
+test = [
+  "opentelemetry-test-utils == 0.41b0.dev",
+]
+
+[project.optional-dependencies]
 test = [
   "opentelemetry-instrumentation-asyncio[instruments]",
   "opentelemetry-test-utils == 0.41b0.dev",
