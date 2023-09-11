@@ -132,6 +132,10 @@ class AsyncioInstrumentor(BaseInstrumentor):
         unwrap(asyncio, "gather")
 
     def instrument_to_thread(self):
+        # to_thread was added in Python 3.9
+        if sys.version_info < (3, 9):
+            return
+
         def wrap_to_thread(method, instance, args, kwargs):
             if args:
                 first_arg = args[0]
@@ -144,22 +148,30 @@ class AsyncioInstrumentor(BaseInstrumentor):
         _wrap(asyncio, "to_thread", wrap_to_thread)
 
     def uninstrument_to_thread(self):
+        # to_thread was added in Python 3.9
+        if sys.version_info < (3, 9):
+            return
         unwrap(asyncio, "to_thread")
 
     def instrument_taskgroup_create_task(self):
-        if sys.version_info >= (3, 11):
-            def wrap_taskgroup_create_task(method, instance, args, kwargs):
-                if args:
-                    coro = args[0]
-                    wrapped_coro = self.trace_coroutine(coro)
-                    wrapped_args = (wrapped_coro,) + args[1:]
-                    return method(*wrapped_args, **kwargs)
+        # TaskGroup.create_task was added in Python 3.11
+        if sys.version_info < (3, 11):
+            return
 
-            _wrap(asyncio.TaskGroup, "create_task", wrap_taskgroup_create_task)
+        def wrap_taskgroup_create_task(method, instance, args, kwargs):
+            if args:
+                coro = args[0]
+                wrapped_coro = self.trace_coroutine(coro)
+                wrapped_args = (wrapped_coro,) + args[1:]
+                return method(*wrapped_args, **kwargs)
+
+        _wrap(asyncio.TaskGroup, "create_task", wrap_taskgroup_create_task)
 
     def uninstrument_taskgroup_create_task(self):
-        if sys.version_info >= (3, 11):
-            unwrap(asyncio.TaskGroup, "create_task")
+        # TaskGroup.create_task was added in Python 3.11
+        if sys.version_info < (3, 11):
+            return
+        unwrap(asyncio.TaskGroup, "create_task")
 
     def trace_func(self, func):
         """Trace a function."""

@@ -38,6 +38,7 @@ class TestAsyncioTaskgroup(TestBase):
         AsyncioInstrumentor().uninstrument()
 
     def test_task_group_create_task(self):
+        # TaskGroup is only available in Python 3.11+
         async def main():
             if py11:
                 async with asyncio.TaskGroup() as tg:
@@ -46,6 +47,5 @@ class TestAsyncioTaskgroup(TestBase):
 
         asyncio.run(main())
         spans = self.memory_exporter.get_finished_spans()
-        assert spans
         if py11:
             self.assertEqual(len(spans), 10)

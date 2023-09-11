@@ -12,6 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 import asyncio
+import sys
 
 from opentelemetry.test.test_base import TestBase
 from opentelemetry.trace import get_tracer
@@ -32,6 +33,7 @@ class TestAsyncioToThread(TestBase):
         AsyncioInstrumentor().uninstrument()
 
     def test_to_thread(self):
+        # to_thread is only available in Python 3.9+
         def multiply(x, y):
             return x * y
 
@@ -41,5 +43,6 @@ class TestAsyncioToThread(TestBase):
 
         asyncio.run(to_thread())
         spans = self.memory_exporter.get_finished_spans()
-        self.assertEqual(len(spans), 1)
-        assert spans[0].name == "asyncio.to_thread_func-multiply"
+        if sys.version_info >= (3, 9):
+            self.assertEqual(len(spans), 1)
+            assert spans[0].name == "asyncio.to_thread_func-multiply"
