@@ -808,13 +808,13 @@ class TestSystemMetrics(TestBase):
             "process.runtime.context.switches", expected
         )
 
-    @mock.patch("psutil.Process.thread_num")
+    @mock.patch("psutil.Process.num_threads")
     def test_runtime_thread_num(self, mock_process_thread_num):
         mock_process_thread_num.configure_mock(**{"return_value": 42})
 
         expected = [_SystemMetricsResult({}, 42)]
         self._test_metrics(
-            "process.runtime.thread_num", expected
+            "process.runtime.thread_count", expected
         )
 
     @mock.patch("psutil.Process.cpu_percent")
