@@ -119,38 +119,11 @@ class SystemMetricsInstrumentor(BaseInstrumentor):
             self._config = _DEFAULT_CONFIG
         else:
             self._config = config
-        self._labels = {} if labels is None else labels
         self._meter = None
         self._python_implementation = python_implementation().lower()
 
         self._proc = psutil.Process(os.getpid())
-
-        self._system_cpu_time_labels = self._labels.copy()
-        self._system_cpu_utilization_labels = self._labels.copy()
-
-        self._system_memory_usage_labels = self._labels.copy()
-        self._system_memory_utilization_labels = self._labels.copy()
-
-        self._system_swap_usage_labels = self._labels.copy()
-        self._system_swap_utilization_labels = self._labels.copy()
-
-        self._system_disk_io_labels = self._labels.copy()
-        self._system_disk_operations_labels = self._labels.copy()
-        self._system_disk_time_labels = self._labels.copy()
-        self._system_disk_merged_labels = self._labels.copy()
-
-        self._system_network_dropped_packets_labels = self._labels.copy()
-        self._system_network_packets_labels = self._labels.copy()
-        self._system_network_errors_labels = self._labels.copy()
-        self._system_network_io_labels = self._labels.copy()
-        self._system_network_connections_labels = self._labels.copy()
-
-        self._system_thread_count_labels = self._labels.copy()
-
-        self._runtime_memory_labels = self._labels.copy()
-        self._runtime_cpu_time_labels = self._labels.copy()
-        self._runtime_gc_count_labels = self._labels.copy()
-
+        
     def instrumentation_dependencies(self) -> Collection[str]:
         return _instruments
 
