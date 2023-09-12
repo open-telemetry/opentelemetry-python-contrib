@@ -494,7 +494,7 @@ class OpenTelemetryMiddleware:
         self.meter = get_meter(__name__, __version__, meter_provider)
         self.duration_histogram = self.meter.create_histogram(
             name=MetricInstruments.HTTP_SERVER_DURATION,
-            unit="ms",
+            unit="s",
             description="measures the duration of the inbound HTTP request",
         )
         self.active_requests_counter = self.meter.create_up_down_counter(
@@ -580,7 +580,7 @@ class OpenTelemetryMiddleware:
                 context.detach(token)
             raise
         finally:
-            duration = max(round((default_timer() - start) * 1000), 0)
+            duration = max(default_timer() - start, 0)
             self.duration_histogram.record(duration, duration_attrs)
             self.active_requests_counter.add(-1, active_requests_count_attrs)
 
