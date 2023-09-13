@@ -119,10 +119,18 @@ async def long_response_asgi(scope, receive, send):
                 ],
             }
         )
-        await send({"type": "http.response.body", "body": b"*", "more_body": True})
-        await send({"type": "http.response.body", "body": b"*", "more_body": True})
-        await send({"type": "http.response.body", "body": b"*", "more_body": True})
-        await send({"type": "http.response.body", "body": b"*", "more_body": False})
+        await send(
+            {"type": "http.response.body", "body": b"*", "more_body": True}
+        )
+        await send(
+            {"type": "http.response.body", "body": b"*", "more_body": True}
+        )
+        await send(
+            {"type": "http.response.body", "body": b"*", "more_body": True}
+        )
+        await send(
+            {"type": "http.response.body", "body": b"*", "more_body": False}
+        )
 
 
 async def background_execution_asgi(scope, receive, send):
@@ -142,7 +150,12 @@ async def background_execution_asgi(scope, receive, send):
                 ],
             }
         )
-        await send({"type": "http.response.body", "body": b"*", })
+        await send(
+            {
+                "type": "http.response.body",
+                "body": b"*",
+            }
+        )
         time.sleep(simulated_background_task_execution_time_s)
 
 
@@ -280,7 +293,11 @@ class TestAsgiApplication(AsgiTestBase):
         self.validate_outputs(outputs, error=ValueError)
 
     def test_long_response(self):
-        """Test that the server span is ended on the final response body message. If the server span is ended early then this test will fail due discrepancies in the expected list of spans and the emitted list of spans."""
+        """Test that the server span is ended on the final response body message.
+
+        If the server span is ended early then this test will fail due
+        to discrepancies in the expected list of spans and the emitted list of spans.
+        """
         app = otel_asgi.OpenTelemetryMiddleware(long_response_asgi)
         self.seed_app(app)
         self.send_default_request()
@@ -312,7 +329,8 @@ class TestAsgiApplication(AsgiTestBase):
         print(span_duration_nanos)
         self.assertLessEqual(
             span_duration_nanos,
-            simulated_background_task_execution_time_s * 10**9)
+            simulated_background_task_execution_time_s * 10**9,
+        )
 
     def test_override_span_name(self):
         """Test that default span_names can be overwritten by our callback function."""
