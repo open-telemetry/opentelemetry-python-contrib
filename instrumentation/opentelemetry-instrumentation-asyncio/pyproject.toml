@@ -33,7 +33,7 @@ dependencies = [
 instruments = []
 test = [
   "opentelemetry-instrumentation-asyncio[instruments]",
-  "opentelemetry-test-utils == 0.41b0.dev",
+  "opentelemetry-test-utils == 0.41b0",
   "pytest",
   "wrapt >= 1.0.0, < 2.0.0",
   "pytest-asyncio",
