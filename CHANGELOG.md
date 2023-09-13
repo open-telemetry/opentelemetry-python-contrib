@@ -102,6 +102,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Fix Flask instrumentation to only close the span if it was created by the same request context.
   ([#1692](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/1692))
 
+  ### Fixed
+
+- Fix for unused trace tween factory 
+  ([#648](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/1947))
+
 ### Changed
 - Update HTTP server/client instrumentation span names to comply with spec
   ([#1759](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/1759))
