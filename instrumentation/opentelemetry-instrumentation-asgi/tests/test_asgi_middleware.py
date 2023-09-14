@@ -58,7 +58,7 @@ _recommended_attrs = {
     "http.server.request.size": _duration_attrs,
 }
 
-simulated_background_task_execution_time_s = 0.01
+_SIMULATED_BACKGROUND_TASK_EXECUTION_TIME_S = 0.01
 
 
 async def http_app(scope, receive, send):
@@ -156,7 +156,7 @@ async def background_execution_asgi(scope, receive, send):
                 "body": b"*",
             }
         )
-        time.sleep(simulated_background_task_execution_time_s)
+        time.sleep(_SIMULATED_BACKGROUND_TASK_EXECUTION_TIME_S)
 
 
 async def error_asgi(scope, receive, send):
@@ -326,10 +326,9 @@ class TestAsgiApplication(AsgiTestBase):
         server_span = span_list[-1]
         assert server_span.kind == SpanKind.SERVER
         span_duration_nanos = server_span.end_time - server_span.start_time
-        print(span_duration_nanos)
         self.assertLessEqual(
             span_duration_nanos,
-            simulated_background_task_execution_time_s * 10**9,
+            _SIMULATED_BACKGROUND_TASK_EXECUTION_TIME_S * 10**9,
         )
 
     def test_override_span_name(self):
