@@ -14,7 +14,12 @@
 
 # pylint: disable=no-name-in-module
 
-from unittest import TestCase
+from opentelemetry.semconv.trace import (
+    SpanAttributes,
+    MessagingDestinationKindValues,
+)
+from opentelemetry.test.test_base import TestBase
+from .utils import MockConsumer, MockedMessage
 
 from confluent_kafka import Consumer, Producer
 
@@ -29,7 +34,7 @@ from opentelemetry.instrumentation.confluent_kafka.utils import (
 )
 
 
-class TestConfluentKafka(TestCase):
+class TestConfluentKafka(TestBase):
     def test_instrument_api(self) -> None:
         instrumentation = ConfluentKafkaInstrumentor()
 
@@ -104,3 +109,140 @@ class TestConfluentKafka(TestCase):
         context_setter.set(carrier_list, "key1", "val1")
         self.assertEqual(context_getter.get(carrier_list, "key1"), ["val1"])
         self.assertEqual(["key1"], context_getter.keys(carrier_list))
+
+    def test_poll(self) -> None:
+        instrumentation = ConfluentKafkaInstrumentor()
+        mocked_messages = [
+            MockedMessage("topic-10", 0, 0, []),
+            MockedMessage("topic-20", 2, 4, []),
+            MockedMessage("topic-30", 1, 3, []),
+        ]
+        expected_spans = [
+            {"name": "recv", "attributes": {}},
+            {
+                "name": "topic-10 process",
+                "attributes": {
+                    SpanAttributes.MESSAGING_OPERATION: "process",
+                    SpanAttributes.MESSAGING_KAFKA_PARTITION: 0,
+                    SpanAttributes.MESSAGING_SYSTEM: "kafka",
+                    SpanAttributes.MESSAGING_DESTINATION: "topic-10",
+                    SpanAttributes.MESSAGING_DESTINATION_KIND: MessagingDestinationKindValues.QUEUE.value,
+                    SpanAttributes.MESSAGING_MESSAGE_ID: "topic-10.0.0",
+                },
+            },
+            {"name": "recv", "attributes": {}},
+            {
+                "name": "topic-20 process",
+                "attributes": {
+                    SpanAttributes.MESSAGING_OPERATION: "process",
+                    SpanAttributes.MESSAGING_KAFKA_PARTITION: 2,
+                    SpanAttributes.MESSAGING_SYSTEM: "kafka",
+                    SpanAttributes.MESSAGING_DESTINATION: "topic-20",
+                    SpanAttributes.MESSAGING_DESTINATION_KIND: MessagingDestinationKindValues.QUEUE.value,
+                    SpanAttributes.MESSAGING_MESSAGE_ID: "topic-20.2.4",
+                },
+            },
+            {"name": "recv", "attributes": {}},
+            {
+                "name": "topic-30 process",
+                "attributes": {
+                    SpanAttributes.MESSAGING_OPERATION: "process",
+                    SpanAttributes.MESSAGING_KAFKA_PARTITION: 1,
+                    SpanAttributes.MESSAGING_SYSTEM: "kafka",
+                    SpanAttributes.MESSAGING_DESTINATION: "topic-30",
+                    SpanAttributes.MESSAGING_DESTINATION_KIND: MessagingDestinationKindValues.QUEUE.value,
+                    SpanAttributes.MESSAGING_MESSAGE_ID: "topic-30.1.3",
+                },
+            },
+            {"name": "recv", "attributes": {}},
+        ]
+
+        consumer = MockConsumer(
+            mocked_messages,
+            {
+                "bootstrap.servers": "localhost:29092",
+                "group.id": "mygroup",
+                "auto.offset.reset": "earliest",
+            },
+        )
+        self.memory_exporter.clear()
+        consumer = instrumentation.instrument_consumer(consumer)
+        consumer.poll()
+        consumer.poll()
+        consumer.poll()
+        consumer.poll()
+
+        span_list = self.memory_exporter.get_finished_spans()
+        self._compare_spans(span_list, expected_spans)
+
+    def test_consume(self) -> None:
+        instrumentation = ConfluentKafkaInstrumentor()
+        mocked_messages = [
+            MockedMessage("topic-1", 0, 0, []),
+            MockedMessage("topic-1", 2, 1, []),
+            MockedMessage("topic-1", 3, 2, []),
+            MockedMessage("topic-2", 0, 0, []),
+            MockedMessage("topic-3", 0, 3, []),
+            MockedMessage("topic-2", 0, 1, []),
+        ]
+        expected_spans = [
+            {"name": "recv", "attributes": {}},
+            {
+                "name": "topic-1 process",
+                "attributes": {
+                    SpanAttributes.MESSAGING_OPERATION: "process",
+                    SpanAttributes.MESSAGING_SYSTEM: "kafka",
+                    SpanAttributes.MESSAGING_DESTINATION: "topic-1",
+                    SpanAttributes.MESSAGING_DESTINATION_KIND: MessagingDestinationKindValues.QUEUE.value,
+                },
+            },
+            {"name": "recv", "attributes": {}},
+            {
+                "name": "topic-2 process",
+                "attributes": {
+                    SpanAttributes.MESSAGING_OPERATION: "process",
+                    SpanAttributes.MESSAGING_SYSTEM: "kafka",
+                    SpanAttributes.MESSAGING_DESTINATION: "topic-2",
+                    SpanAttributes.MESSAGING_DESTINATION_KIND: MessagingDestinationKindValues.QUEUE.value,
+                },
+            },
+            {"name": "recv", "attributes": {}},
+            {
+                "name": "topic-3 process",
+                "attributes": {
+                    SpanAttributes.MESSAGING_OPERATION: "process",
+                    SpanAttributes.MESSAGING_SYSTEM: "kafka",
+                    SpanAttributes.MESSAGING_DESTINATION: "topic-3",
+                    SpanAttributes.MESSAGING_DESTINATION_KIND: MessagingDestinationKindValues.QUEUE.value,
+                },
+            },
+            {"name": "recv", "attributes": {}},
+        ]
+
+        consumer = MockConsumer(
+            mocked_messages,
+            {
+                "bootstrap.servers": "localhost:29092",
+                "group.id": "mygroup",
+                "auto.offset.reset": "earliest",
+            },
+        )
+
+        self.memory_exporter.clear()
+        consumer = instrumentation.instrument_consumer(consumer)
+        consumer.consume(3)
+        consumer.consume(1)
+        consumer.consume(2)
+        consumer.consume(1)
+        span_list = self.memory_exporter.get_finished_spans()
+        self._compare_spans(span_list, expected_spans)
+
+    def _compare_spans(self, spans, expected_spans):
+        for span, expected_span in zip(spans, expected_spans):
+            self.assertEqual(expected_span["name"], span.name)
+            for attribute_key, expected_attribute_value in expected_span[
+                "attributes"
+            ].items():
+                self.assertEqual(
+                    expected_attribute_value, span.attributes[attribute_key]
+                )

@@ -64,3 +64,6 @@ components:
 
   instrumentation/opentelemetry-instrumentation-requests:
     - ocelotl
+
+  instrumentation/opentelemetry-instrumentation-cassandra:
+    - mattcontinisio
