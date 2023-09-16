@@ -34,7 +34,7 @@ Example
     import asyncio
 
     async def main():
-        await asyncio.sleep(0.1)
+        await asyncio.create_task(asyncio.sleep(0.1))
 
     asyncio.run(main())
 
