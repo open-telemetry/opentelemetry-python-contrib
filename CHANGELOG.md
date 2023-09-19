@@ -7,6 +7,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## Unreleased
 
+- `opentelemetry-instrumentation-urllib` Fix metric descriptions to match semantic conventions
+  ([#1959]((https://github.com/open-telemetry/opentelemetry-python-contrib/pull/1959))
+- `opentelemetry-instrumentation-urllib3` Fix metric descriptions to match semantic conventions
+  ([#1959]((https://github.com/open-telemetry/opentelemetry-python-contrib/pull/1959))
+
 ## Version 1.20.0/0.41b0 (2023-09-01)
 
 ### Fixed
