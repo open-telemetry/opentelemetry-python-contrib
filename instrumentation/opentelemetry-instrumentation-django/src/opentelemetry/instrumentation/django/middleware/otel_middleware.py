@@ -110,26 +110,6 @@ except ImportError:
 
 
 _logger = getLogger(__name__)
-_attributes_by_preference = [
-    [
-        SpanAttributes.HTTP_SCHEME,
-        SpanAttributes.HTTP_HOST,
-        SpanAttributes.HTTP_TARGET,
-    ],
-    [
-        SpanAttributes.HTTP_SCHEME,
-        SpanAttributes.HTTP_SERVER_NAME,
-        SpanAttributes.NET_HOST_PORT,
-        SpanAttributes.HTTP_TARGET,
-    ],
-    [
-        SpanAttributes.HTTP_SCHEME,
-        SpanAttributes.NET_HOST_NAME,
-        SpanAttributes.NET_HOST_PORT,
-        SpanAttributes.HTTP_TARGET,
-    ],
-    [SpanAttributes.HTTP_URL],
-]
 
 
 def _is_asgi_request(request: HttpRequest) -> bool:
