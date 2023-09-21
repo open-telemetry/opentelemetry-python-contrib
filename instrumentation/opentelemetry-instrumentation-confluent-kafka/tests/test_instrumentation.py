@@ -18,6 +18,8 @@ from opentelemetry.semconv.trace import (
     SpanAttributes,
     MessagingDestinationKindValues,
 )
+from opentelemetry import context
+from opentelemetry.instrumentation.utils import _SUPPRESS_INSTRUMENTATION_KEY
 from opentelemetry.test.test_base import TestBase
 from .utils import MockConsumer, MockedMessage
 
@@ -109,6 +111,26 @@ class TestConfluentKafka(TestBase):
         context_setter.set(carrier_list, "key1", "val1")
         self.assertEqual(context_getter.get(carrier_list, "key1"), ["val1"])
         self.assertEqual(["key1"], context_getter.keys(carrier_list))
+
+    def test_produce_with_suppress(self) -> None:
+        instrumentation = ConfluentKafkaInstrumentor()
+
+        producer = Producer({"bootstrap.servers": "localhost:29092"})
+
+        self.memory_exporter.clear()
+        producer = instrumentation.instrument_producer(producer)
+
+        token = context.attach(
+            context.set_value(_SUPPRESS_INSTRUMENTATION_KEY, True)
+        )
+
+        try:
+            producer.produce(topic="topic-10", key="key-10", value="value-10")
+        finally:
+            context.detach(token)
+
+        span_list = self.memory_exporter.get_finished_spans()
+        self.assertEqual(len(span_list), 0)
 
     def test_poll(self) -> None:
         instrumentation = ConfluentKafkaInstrumentor()

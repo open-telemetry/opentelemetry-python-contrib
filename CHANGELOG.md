@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## Unreleased
 
+### Added
+- `opentelemetry-instrumentation-confluent-kafka` Add suppression logic to confluent-kafka
+  ([#1960](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/1960))
+
 ## Version 1.20.0/0.41b0 (2023-09-01)
 
 ### Fixed
