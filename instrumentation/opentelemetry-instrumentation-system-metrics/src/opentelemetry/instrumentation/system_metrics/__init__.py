@@ -36,6 +36,10 @@ following metrics are configured:
         "system.thread_count": None
         "process.runtime.memory": ["rss", "vms"],
         "process.runtime.cpu.time": ["user", "system"],
+        "process.runtime.gc_count": None,
+        "process.runtime.thread_count": None,
+        "process.runtime.cpu.utilization": None,
+        "process.runtime.context_switches": ["involuntary", "voluntary"],
     }
 
 Usage
@@ -63,6 +67,7 @@ Usage
         "system.network.io": ["transmit", "receive"],
         "process.runtime.memory": ["rss", "vms"],
         "process.runtime.cpu.time": ["user", "system"],
+        "process.runtime.context_switches": ["involuntary", "voluntary"],
     }
     SystemMetricsInstrumentor(config=configuration).instrument()
 
@@ -107,7 +112,7 @@ _DEFAULT_CONFIG = {
     "process.runtime.gc_count": None,
     "process.runtime.thread_count": None,
     "process.runtime.cpu.utilization": None,
-    "process.runtime.context.switches": ["involuntary", "voluntary"],
+    "process.runtime.context_switches": ["involuntary", "voluntary"],
 }
 
 
@@ -357,22 +362,22 @@ class SystemMetricsInstrumentor(BaseInstrumentor):
 
         if "process.runtime.thread_count" in self._config:
             self._meter.create_observable_gauge(
-                name="process.runtime.thread_count",
+                name=f"process.runtime.{self._python_implementation}.thread_count",
                 callbacks=[self._get_runtime_thread_count],
                 description="Runtime active threads count",
             )
 
         if "process.runtime.cpu.utilization" in self._config:
             self._meter.create_observable_gauge(
-                name="process.runtime.cpu.utilization",
+                name=f"process.runtime.{self._python_implementation}.cpu.utilization",
                 callbacks=[self._get_runtime_cpu_utilization],
                 description="Runtime CPU utilization",
                 unit="1",
             )
 
-        if "process.runtime.context.switches" in self._config:
+        if "process.runtime.context_switches" in self._config:
             self._meter.create_observable_counter(
-                name="process.runtime.context.switches",
+                name=f"process.runtime.{self._python_implementation}.context_switches",
                 callbacks=[self._get_runtime_context_switches],
                 description="Runtime context switches",
                 unit="switches",
@@ -701,7 +706,7 @@ class SystemMetricsInstrumentor(BaseInstrumentor):
     ) -> Iterable[Observation]:
         """Observer callback for runtime context switches"""
         ctx_switches = self._proc.num_ctx_switches()
-        for metric in self._config["process.runtime.context.switches"]:
+        for metric in self._config["process.runtime.context_switches"]:
             if hasattr(ctx_switches, metric):
                 self._runtime_context_switches_labels["type"] = metric
                 yield Observation(
