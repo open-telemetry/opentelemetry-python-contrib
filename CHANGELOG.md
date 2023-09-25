@@ -7,6 +7,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## Unreleased
 
+### Fixed
+
+- `opentelemetry-instrumentation-aio-pika` and `opentelemetry-instrumentation-pika` Fix missing trace context propagation when trace not recording.
+  ([#1969](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/1969))
+
 ## Version 1.20.0/0.41b0 (2023-09-01)
 
 ### Fixed
