@@ -25,7 +25,6 @@ classifiers = [
   "Programming Language :: Python :: 3.11",
 ]
 dependencies = [
-  "attrs >= 21.2.0",
   "opentelemetry-api ~= 1.12",
   "opentelemetry-instrumentation == 0.42b0.dev",
   "opentelemetry-semantic-conventions == 0.42b0.dev",
