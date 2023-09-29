@@ -11,6 +11,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - Fix version of Flask dependency `werkzeug`
   ([#1980](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/1980))
+- `opentelemetry-instrumentation`, `opentelemetry-instrumentation-aiohttp-client` Use importlib-metadata for entry points instead of pkg_resources
+  ([#1973](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/1973))
 
 ## Version 1.20.0/0.41b0 (2023-09-01)
 
