@@ -15,7 +15,7 @@
 from logging import getLogger
 from os import environ
 
-from pkg_resources import iter_entry_points
+from importlib_metadata import entry_points
 
 from opentelemetry.instrumentation.dependencies import (
     get_dist_dependency_conflicts,
@@ -33,7 +33,7 @@ _logger = getLogger(__name__)
 
 def _load_distro() -> BaseDistro:
     distro_name = environ.get(OTEL_PYTHON_DISTRO, None)
-    for entry_point in iter_entry_points("opentelemetry_distro"):
+    for entry_point in entry_points(group="opentelemetry_distro"):
         try:
             # If no distro is specified, use first to come up.
             if distro_name is None or distro_name == entry_point.name:
@@ -63,10 +63,10 @@ def _load_instrumentors(distro):
         # to handle users entering "requests , flask" or "requests, flask" with spaces
         package_to_exclude = [x.strip() for x in package_to_exclude]
 
-    for entry_point in iter_entry_points("opentelemetry_pre_instrument"):
+    for entry_point in entry_points(group="opentelemetry_pre_instrument"):
         entry_point.load()()
 
-    for entry_point in iter_entry_points("opentelemetry_instrumentor"):
+    for entry_point in entry_points(group="opentelemetry_instrumentor"):
         if entry_point.name in package_to_exclude:
             _logger.debug(
                 "Instrumentation skipped for library %s", entry_point.name
@@ -90,14 +90,14 @@ def _load_instrumentors(distro):
             _logger.exception("Instrumenting of %s failed", entry_point.name)
             raise exc
 
-    for entry_point in iter_entry_points("opentelemetry_post_instrument"):
+    for entry_point in entry_points(group="opentelemetry_post_instrument"):
         entry_point.load()()
 
 
 def _load_configurators():
     configurator_name = environ.get(OTEL_PYTHON_CONFIGURATOR, None)
     configured = None
-    for entry_point in iter_entry_points("opentelemetry_configurator"):
+    for entry_point in entry_points(group="opentelemetry_configurator"):
         if configured is not None:
             _logger.warning(
                 "Configuration of %s not loaded, %s already loaded",
