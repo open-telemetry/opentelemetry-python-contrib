@@ -20,7 +20,7 @@ OpenTelemetry Base Distribution (Distro)
 from abc import ABC, abstractmethod
 from logging import getLogger
 
-from pkg_resources import EntryPoint
+from importlib_metadata import EntryPoint
 
 from opentelemetry.instrumentation.instrumentor import BaseInstrumentor
 
