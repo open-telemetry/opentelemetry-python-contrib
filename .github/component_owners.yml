@@ -67,3 +67,6 @@ components:
 
   instrumentation/opentelemetry-instrumentation-cassandra:
     - mattcontinisio
+
+  instrumentation/opentelemetry-instrumentation-asyncio:
+    - bourbonkk
