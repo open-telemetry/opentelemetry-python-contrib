@@ -3,9 +3,9 @@ requires = ["hatchling"]
 build-backend = "hatchling.build"
 
 [project]
-name = "opentelemetry-resource-detector-container"
+name = "opentelemetry-resource-detector-azure"
 dynamic = ["version"]
-description = "Container Resource Detector for OpenTelemetry"
+description = "Azure Resource Detector for OpenTelemetry"
 readme = "README.rst"
 license = "Apache-2.0"
 requires-python = ">=3.7"
