@@ -490,8 +490,8 @@ class OpenTelemetryMiddleware:
         meter_provider=None,
     ):
         self.wsgi = wsgi
-        self.tracer = trace.get_tracer(__name__, __version__, tracer_provider)
-        self.meter = get_meter(__name__, __version__, meter_provider)
+        self.tracer = trace.get_tracer(__name__, __version__, tracer_provider, schema_url="https://opentelemetry.io/schemas/1.11.0")
+        self.meter = get_meter(__name__, __version__, meter_provider, schema_url="https://opentelemetry.io/schemas/1.11.0")
         self.duration_histogram = self.meter.create_histogram(
             name=MetricInstruments.HTTP_SERVER_DURATION,
             unit="ms",

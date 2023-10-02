@@ -129,7 +129,7 @@ def implement_span_function(func: Callable, name: str, attributes: Attributes):
 
     @wraps(func)
     def wrapper(*args, **kwargs):
-        with get_tracer(__name__, __version__).start_as_current_span(
+        with get_tracer(__name__, __version__, schema_url="https://opentelemetry.io/schemas/1.11.0").start_as_current_span(
             name=name
         ) as span:
             if span.is_recording():

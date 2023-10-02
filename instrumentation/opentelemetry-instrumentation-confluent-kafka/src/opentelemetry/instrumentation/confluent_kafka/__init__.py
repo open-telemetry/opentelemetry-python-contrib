@@ -229,7 +229,7 @@ class ConfluentKafkaInstrumentor(BaseInstrumentor):
         producer: Producer, tracer_provider=None
     ) -> ProxiedProducer:
         tracer = trace.get_tracer(
-            __name__, __version__, tracer_provider=tracer_provider
+            __name__, __version__, tracer_provider=tracer_provider, schema_url="https://opentelemetry.io/schemas/1.11.0"
         )
 
         manual_producer = ProxiedProducer(producer, tracer)
@@ -241,7 +241,7 @@ class ConfluentKafkaInstrumentor(BaseInstrumentor):
         consumer: Consumer, tracer_provider=None
     ) -> ProxiedConsumer:
         tracer = trace.get_tracer(
-            __name__, __version__, tracer_provider=tracer_provider
+            __name__, __version__, tracer_provider=tracer_provider, schema_url="https://opentelemetry.io/schemas/1.11.0"
         )
 
         manual_consumer = ProxiedConsumer(consumer, tracer)
@@ -272,7 +272,7 @@ class ConfluentKafkaInstrumentor(BaseInstrumentor):
 
         tracer_provider = kwargs.get("tracer_provider")
         tracer = trace.get_tracer(
-            __name__, __version__, tracer_provider=tracer_provider
+            __name__, __version__, tracer_provider=tracer_provider, schema_url="https://opentelemetry.io/schemas/1.11.0"
         )
 
         self._tracer = tracer

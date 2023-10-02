@@ -55,7 +55,7 @@ def _instrument(tracer_provider, include_db_statement=False):
 
     Wraps cassandra.cluster.Session.execute_async().
     """
-    tracer = trace.get_tracer(__name__, __version__, tracer_provider)
+    tracer = trace.get_tracer(__name__, __version__, tracer_provider, schema_url="https://opentelemetry.io/schemas/1.11.0")
     name = "Cassandra"
 
     def _traced_execute_async(func, instance, args, kwargs):
