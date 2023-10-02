@@ -655,8 +655,11 @@ class OpenTelemetryMiddleware:
     def _get_otel_send(
         self, server_span, server_span_name, scope, send, duration_attrs
     ):
+        expecting_trailers = False
+
         @wraps(send)
         async def otel_send(message):
+            nonlocal expecting_trailers
             with self.tracer.start_as_current_span(
                 " ".join((server_span_name, scope["type"], "send"))
             ) as send_span:
@@ -670,6 +673,8 @@ class OpenTelemetryMiddleware:
                         ] = status_code
                         set_status_code(server_span, status_code)
                         set_status_code(send_span, status_code)
+
+                        expecting_trailers = message.get("trailers", False)
                     elif message["type"] == "websocket.send":
                         set_status_code(server_span, 200)
                         set_status_code(send_span, 200)
@@ -705,8 +710,15 @@ class OpenTelemetryMiddleware:
                         pass
 
                 await send(message)
-            if message["type"] == "http.response.body":
-                if not message.get("more_body", False):
-                    server_span.end()
+            if (
+                not expecting_trailers
+                and message["type"] == "http.response.body"
+                and not message.get("more_body", False)
+            ) or (
+                expecting_trailers
+                and message["type"] == "http.response.trailers"
+                and not message.get("more_trailers", False)
+            ):
+                server_span.end()
 
         return otel_send

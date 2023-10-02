@@ -159,6 +159,51 @@ async def background_execution_asgi(scope, receive, send):
         time.sleep(_SIMULATED_BACKGROUND_TASK_EXECUTION_TIME_S)
 
 
+async def background_execution_trailers_asgi(scope, receive, send):
+    assert isinstance(scope, dict)
+    assert scope["type"] == "http"
+    message = await receive()
+    scope["headers"] = [(b"content-length", b"128")]
+    assert scope["type"] == "http"
+    if message.get("type") == "http.request":
+        await send(
+            {
+                "type": "http.response.start",
+                "status": 200,
+                "headers": [
+                    [b"Content-Type", b"text/plain"],
+                    [b"content-length", b"1024"],
+                ],
+                "trailers": True,
+            }
+        )
+        await send(
+            {"type": "http.response.body", "body": b"*", "more_body": True}
+        )
+        await send(
+            {"type": "http.response.body", "body": b"*", "more_body": False}
+        )
+        await send(
+            {
+                "type": "http.response.trailers",
+                "headers": [
+                    [b"trailer", b"test-trailer"],
+                ],
+                "more_trailers": True,
+            }
+        )
+        await send(
+            {
+                "type": "http.response.trailers",
+                "headers": [
+                    [b"trailer", b"second-test-trailer"],
+                ],
+                "more_trailers": False,
+            }
+        )
+        time.sleep(_SIMULATED_BACKGROUND_TASK_EXECUTION_TIME_S)
+
+
 async def error_asgi(scope, receive, send):
     assert isinstance(scope, dict)
     assert scope["type"] == "http"
@@ -188,7 +233,12 @@ class TestAsgiApplication(AsgiTestBase):
         modifiers = modifiers or []
         # Check for expected outputs
         response_start = outputs[0]
-        response_final_body = outputs[-1]
+        response_final_body = [
+            output
+            for output in outputs
+            if output["type"] == "http.response.body"
+        ][-1]
+
         self.assertEqual(response_start["type"], "http.response.start")
         self.assertEqual(response_final_body["type"], "http.response.body")
         self.assertEqual(response_final_body.get("more_body", False), False)
@@ -322,6 +372,41 @@ class TestAsgiApplication(AsgiTestBase):
         self.send_default_request()
         outputs = self.get_all_output()
         self.validate_outputs(outputs)
+        span_list = self.memory_exporter.get_finished_spans()
+        server_span = span_list[-1]
+        assert server_span.kind == SpanKind.SERVER
+        span_duration_nanos = server_span.end_time - server_span.start_time
+        self.assertLessEqual(
+            span_duration_nanos,
+            _SIMULATED_BACKGROUND_TASK_EXECUTION_TIME_S * 10**9,
+        )
+
+    def test_trailers(self):
+        """Test that trailers are emitted as expected and that the server span is ended
+        BEFORE the background task is finished."""
+        app = otel_asgi.OpenTelemetryMiddleware(
+            background_execution_trailers_asgi
+        )
+        self.seed_app(app)
+        self.send_default_request()
+        outputs = self.get_all_output()
+
+        def add_body_and_trailer_span(expected: list):
+            body_span = {
+                "name": "GET / http send",
+                "kind": trace_api.SpanKind.INTERNAL,
+                "attributes": {"type": "http.response.body"},
+            }
+            trailer_span = {
+                "name": "GET / http send",
+                "kind": trace_api.SpanKind.INTERNAL,
+                "attributes": {"type": "http.response.trailers"},
+            }
+            expected[2:2] = [body_span]
+            expected[4:4] = [trailer_span] * 2
+            return expected
+
+        self.validate_outputs(outputs, modifiers=[add_body_and_trailer_span])
         span_list = self.memory_exporter.get_finished_spans()
         server_span = span_list[-1]
         assert server_span.kind == SpanKind.SERVER
