@@ -7,6 +7,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## Unreleased
 
+### Added
+
+- `opentelemetry-instrumentation` Added Otel semantic convention opt-in mechanism
+  ([#1901](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/1901))
+
 ## Version 1.20.0/0.41b0 (2023-09-01)
 
 ### Fixed
