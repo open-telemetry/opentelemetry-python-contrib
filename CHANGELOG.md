@@ -7,10 +7,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## Unreleased
 
-
 ### Added
 - `opentelemetry-instrumentation-system-metrics` Add support for collecting process metrics
   ([#1948](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/1948))
+- Added schema_url (`"https://opentelemetry.io/schemas/1.11.0"`) to all metrics and traces
+  ([#TODO](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/TODO))
 
 ### Fixed
 
@@ -18,7 +19,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   ([#1980](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/1980))
 - `opentelemetry-resource-detector-azure` Using new Cloud Resource ID attribute.
   ([#1976](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/1976))
-
 
 ## Version 1.20.0/0.41b0 (2023-09-01)
 
@@ -58,7 +58,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   ([#1744](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/1744))
 - Fix async redis clients not being traced correctly
   ([#1830](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/1830))
-- Make Flask request span attributes available for `start_span`. 
+- Make Flask request span attributes available for `start_span`.
   ([#1784](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/1784))
 - Fix falcon instrumentation's usage of Span Status to only set the description if the status code is ERROR.
   ([#1840](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/1840))

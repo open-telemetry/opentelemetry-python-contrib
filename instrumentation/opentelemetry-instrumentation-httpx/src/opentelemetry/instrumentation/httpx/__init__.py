@@ -290,7 +290,7 @@ class SyncOpenTelemetryTransport(httpx.BaseTransport):
             __name__,
             instrumenting_library_version=__version__,
             tracer_provider=tracer_provider,
-            schema_url="https://opentelemetry.io/schemas/1.11.0"
+            schema_url="https://opentelemetry.io/schemas/1.11.0",
         )
         self._request_hook = request_hook
         self._response_hook = response_hook
@@ -385,7 +385,7 @@ class AsyncOpenTelemetryTransport(httpx.AsyncBaseTransport):
             __name__,
             instrumenting_library_version=__version__,
             tracer_provider=tracer_provider,
-            schema_url="https://opentelemetry.io/schemas/1.11.0"
+            schema_url="https://opentelemetry.io/schemas/1.11.0",
         )
         self._request_hook = request_hook
         self._response_hook = response_hook

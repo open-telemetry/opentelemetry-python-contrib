@@ -264,7 +264,7 @@ class DatabaseApiIntegration:
             self._name,
             instrumenting_library_version=self._version,
             tracer_provider=tracer_provider,
-            schema_url="https://opentelemetry.io/schemas/1.11.0"
+            schema_url="https://opentelemetry.io/schemas/1.11.0",
         )
         self.capture_parameters = capture_parameters
         self.enable_commenter = enable_commenter

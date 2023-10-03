@@ -144,7 +144,10 @@ class TestURLLib3Instrumentor(TestBase):
 
         self.assertEqual(b"Hello!", response.data)
         span = self.assert_span()
-        self.assertEqual(span.instrumentation_info.schema_url, "https://opentelemetry.io/schemas/1.11.0")
+        self.assertEqual(
+            span.instrumentation_info.schema_url,
+            "https://opentelemetry.io/schemas/1.11.0",
+        )
 
     def test_basic_not_found(self):
         url_404 = "http://mock/status/404"
