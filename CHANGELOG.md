@@ -11,7 +11,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - `opentelemetry-instrumentation-system-metrics` Add support for collecting process metrics
   ([#1948](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/1948))
 - Added schema_url (`"https://opentelemetry.io/schemas/1.11.0"`) to all metrics and traces
-  ([#TODO](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/TODO))
+  ([#1977](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/1977))
 
 ### Fixed
 
