@@ -107,7 +107,7 @@ class BaseInstrumentor(ABC):
             if conflict:
                 _LOG.error(conflict)
                 return None
-            
+
         # initialize semantic conventions opt-in if needed
         _OpenTelemetrySemanticConventionStability._initialize()
 

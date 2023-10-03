@@ -155,10 +155,13 @@ def _python_path_without_directory(python_path, directory, path_separator):
         python_path,
     )
 
+
 _OTEL_SEMCONV_STABILITY_OPT_IN_KEY = "OTEL_SEMCONV_STABILITY_OPT_IN"
+
 
 class _OpenTelemetryStabilitySignalType:
     HTTP = "http"
+
 
 class _OpenTelemetryStabilityMode:
     # http - emit the new, stable HTTP and networking conventions ONLY
@@ -167,6 +170,7 @@ class _OpenTelemetryStabilityMode:
     HTTP_DUP = "http/dup"
     # default - continue emitting old experimental HTTP and networking conventions
     DEFAULT = "default"
+
 
 class _OpenTelemetrySemanticConventionStability:
     _initialized = False
@@ -182,9 +186,7 @@ class _OpenTelemetrySemanticConventionStability:
                 opt_in = os.environ.get(_OTEL_SEMCONV_STABILITY_OPT_IN_KEY, "")
                 opt_in_list = []
                 if opt_in:
-                    opt_in_list = [
-                        s.strip() for s in opt_in.split(",")
-                ]
+                    opt_in_list = [s.strip() for s in opt_in.split(",")]
                 http_opt_in = _OpenTelemetryStabilityMode.DEFAULT
                 if opt_in_list:
                     # Process http opt-in
@@ -198,9 +200,10 @@ class _OpenTelemetrySemanticConventionStability:
                 ] = http_opt_in
                 _OpenTelemetrySemanticConventionStability._initialized = True    
 
-
     @classmethod
-    def _get_opentelemetry_stability_opt_in(type: _OpenTelemetryStabilitySignalType) -> _OpenTelemetryStabilityMode:
+    def _get_opentelemetry_stability_opt_in(
+        type: _OpenTelemetryStabilitySignalType
+    ) -> _OpenTelemetryStabilityMode:
         with _OpenTelemetrySemanticConventionStability._lock:
             return _OpenTelemetrySemanticConventionStability._OTEL_SEMCONV_STABILITY_SIGNAL_MAPPING.get(
                 type, _OpenTelemetryStabilityMode.DEFAULT
