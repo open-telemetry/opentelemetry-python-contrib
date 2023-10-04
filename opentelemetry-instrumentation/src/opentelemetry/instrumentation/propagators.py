@@ -59,12 +59,13 @@ class DictHeaderSetter(Setter):
 
 
 class FuncSetter(Setter):
-    """FuncSetter coverts a function into a valid Setter. Any function that can
-    set values in a carrier can be converted into a Setter by using FuncSetter.
-    This is useful when injecting trace context into non-dict objects such
-    HTTP Response objects for different framework.
+    """FuncSetter converts a function into a valid Setter. Any function that
+    can set values in a carrier can be converted into a Setter by using
+    FuncSetter. This is useful when injecting trace context into non-dict
+    objects such HTTP Response objects for different framework.
 
-    For example, it can be used to create a setter for Falcon response object as:
+    For example, it can be used to create a setter for Falcon response object
+    as:
 
         setter = FuncSetter(falcon.api.Response.append_header)
 
