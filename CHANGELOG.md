@@ -12,6 +12,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - `opentelemetry-instrumentation` Added Otel semantic convention opt-in mechanism
   ([#1987](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/1987))
 
+### Fixed
+
+- Fix version of Flask dependency `werkzeug`
+  ([#1980](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/1980))
+
 ## Version 1.20.0/0.41b0 (2023-09-01)
 
 ### Fixed
@@ -357,7 +362,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - `opentelemetry-instrumentation-sqlalchemy` Added span for the connection phase ([#1133](https://github.com/open-telemetry/opentelemetry-python-contrib/issues/1133))
 - Add metric instrumentation in asgi
   ([#1197](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/1197))
-- Add metric instumentation for flask
+- Add metric instrumentation for flask
   ([#1186](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/1186))
 - Add a test for asgi using NoOpTracerProvider
   ([#1367](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/1367))
