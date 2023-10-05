@@ -198,11 +198,11 @@ class _OpenTelemetrySemanticConventionStability:
                 _OpenTelemetrySemanticConventionStability._OTEL_SEMCONV_STABILITY_SIGNAL_MAPPING[
                     _OpenTelemetryStabilitySignalType.HTTP
                 ] = http_opt_in
-                _OpenTelemetrySemanticConventionStability._initialized = True    
+                _OpenTelemetrySemanticConventionStability._initialized = True
 
     @classmethod
     def _get_opentelemetry_stability_opt_in(
-        type: _OpenTelemetryStabilitySignalType
+        type: _OpenTelemetryStabilitySignalType,
     ) -> _OpenTelemetryStabilityMode:
         with _OpenTelemetrySemanticConventionStability._lock:
             return _OpenTelemetrySemanticConventionStability._OTEL_SEMCONV_STABILITY_SIGNAL_MAPPING.get(
