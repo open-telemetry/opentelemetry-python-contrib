@@ -52,8 +52,14 @@ def _unflatten_dict(d):
 
 
 def sanitize_body(body) -> str:
+    if isinstance(body, bytes):
+        body = body.decode("utf8")
+
     if isinstance(body, str):
         body = json.loads(body)
+
+    if isinstance(body, list):
+        return str([sanitize_body(elem) for elem in body])
 
     flatten_body = _flatten_dict(body)
 
