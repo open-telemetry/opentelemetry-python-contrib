@@ -9,6 +9,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- Fix elastic-search instrumentation sanitization to support bulk queries
+  ([#1990](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/1988))
 - Fix version of Flask dependency `werkzeug`
   ([#1980](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/1980))
 
