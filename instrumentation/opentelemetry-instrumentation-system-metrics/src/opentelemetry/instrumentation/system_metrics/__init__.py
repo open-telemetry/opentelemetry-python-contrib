@@ -159,9 +159,7 @@ class SystemMetricsInstrumentor(BaseInstrumentor):
         self._runtime_cpu_time_labels = self._labels.copy()
         self._runtime_gc_count_labels = self._labels.copy()
         self._runtime_thread_count_labels = self._labels.copy()
-
         self._runtime_cpu_utilization_labels = self._labels.copy()
-
         self._runtime_context_switches_labels = self._labels.copy()
 
     def instrumentation_dependencies(self) -> Collection[str]:
@@ -361,7 +359,7 @@ class SystemMetricsInstrumentor(BaseInstrumentor):
             )
 
         if "process.runtime.thread_count" in self._config:
-            self._meter.create_observable_gauge(
+            self._meter.create_observable_up_down_counter(
                 name=f"process.runtime.{self._python_implementation}.thread_count",
                 callbacks=[self._get_runtime_thread_count],
                 description="Runtime active threads count",
