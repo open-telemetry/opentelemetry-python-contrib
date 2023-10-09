@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## Unreleased
 
+### Added
+- `opentelemetry-instrumentation-pymongo` Add full command statement capturing for additional command types
+  ([#1955](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/1955))
+
 ### Fixed
 
 - Fix version of Flask dependency `werkzeug`
