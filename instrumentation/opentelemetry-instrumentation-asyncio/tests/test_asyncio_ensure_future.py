@@ -12,16 +12,36 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 import asyncio
+from unittest.mock import patch
 
 import pytest
+from opentelemetry.sdk.metrics._internal.point import HistogramDataPoint, NumberDataPoint
 from opentelemetry.test.test_base import TestBase
 from opentelemetry.trace import get_tracer
 
-from opentelemetry.instrumentation.asyncio import AsyncioInstrumentor
+from opentelemetry.instrumentation.asyncio import AsyncioInstrumentor, ASYNCIO_FUTURES_DURATION, \
+    ASYNCIO_FUTURES_CANCELLED, ASYNCIO_FUTURES_CREATED, ASYNCIO_FUTURES_ACTIVE, ASYNCIO_FUTURES_EXCEPTIONS, \
+    ASYNCIO_FUTURES_FINISHED, ASYNCIO_FUTURES_TIMEOUTS
+from opentelemetry.instrumentation.asyncio.environment_variables import OTEL_PYTHON_ASYNCIO_FUTURE_TRACE_ENABLED
 from .common_test_func import async_func
+
+_expected_metric_names = [
+    ASYNCIO_FUTURES_DURATION,
+    ASYNCIO_FUTURES_EXCEPTIONS,
+    ASYNCIO_FUTURES_CANCELLED,
+    ASYNCIO_FUTURES_CREATED,
+    ASYNCIO_FUTURES_ACTIVE,
+    ASYNCIO_FUTURES_FINISHED,
+    ASYNCIO_FUTURES_TIMEOUTS
+]
 
 
 class TestAsyncioEnsureFuture(TestBase):
+    @patch.dict(
+        "os.environ", {
+            OTEL_PYTHON_ASYNCIO_FUTURE_TRACE_ENABLED: "true"
+        }
+    )
     def setUp(self):
         super().setUp()
         AsyncioInstrumentor().instrument()
@@ -35,23 +55,41 @@ class TestAsyncioEnsureFuture(TestBase):
 
     @pytest.mark.asyncio
     def test_asyncio_loop_ensure_future(self):
+        """
+        async_func is not traced because it is not set in the environment variable
+        """
         loop = asyncio.get_event_loop()
         task = asyncio.ensure_future(async_func())
         loop.run_until_complete(task)
 
         spans = self.memory_exporter.get_finished_spans()
-        self.assertEqual(len(spans), 1)
-        self.assertEqual(spans[0].name, "asyncio.coro-async_func")
+        self.assertEqual(len(spans), 0)
 
     @pytest.mark.asyncio
     def test_asyncio_ensure_future_with_future(self):
-        loop = asyncio.get_event_loop()
+        with self._tracer.start_as_current_span("root") as root:
+            loop = asyncio.get_event_loop()
 
-        future = asyncio.Future()
-        future.set_result(1)
-        task = asyncio.ensure_future(future)
-        loop.run_until_complete(task)
+            future = asyncio.Future()
+            future.set_result(1)
+            task = asyncio.ensure_future(future)
+            loop.run_until_complete(task)
 
         spans = self.memory_exporter.get_finished_spans()
-        self.assertEqual(len(spans), 1)
-        self.assertEqual(spans[0].name, "asyncio.Future")
+        self.assertEqual(len(spans), 2)
+        self.assertEqual(spans[0].name, "asyncio.future")
+        for metric in self.memory_metrics_reader.get_metrics_data().resource_metrics[0].scope_metrics[0].metrics:
+            if metric.name == ASYNCIO_FUTURES_DURATION:
+                self.assertEquals(metric.data.data_points[0].count, 1)
+            elif metric.name == ASYNCIO_FUTURES_ACTIVE:
+                self.assertEqual(metric.data.data_points[0].value, 0)
+            elif metric.name == ASYNCIO_FUTURES_CREATED:
+                self.assertEqual(metric.data.data_points[0].value, 1)
+            elif metric.name == ASYNCIO_FUTURES_FINISHED:
+                self.assertEqual(metric.data.data_points[0].value, 1)
+            elif metric.name == ASYNCIO_FUTURES_EXCEPTIONS:
+                self.assertEqual(metric.data.data_points[0].value, 0)
+            elif metric.name == ASYNCIO_FUTURES_CANCELLED:
+                self.assertEqual(metric.data.data_points[0].value, 0)
+            elif metric.name == ASYNCIO_FUTURES_TIMEOUTS:
+                self.assertEqual(metric.data.data_points[0].value, 0)

@@ -14,14 +14,22 @@
 import asyncio
 import threading
 from concurrent.futures import ThreadPoolExecutor
+from unittest.mock import patch
 
 from opentelemetry.test.test_base import TestBase
 from opentelemetry.trace import get_tracer
 
 from opentelemetry.instrumentation.asyncio import AsyncioInstrumentor
+from opentelemetry.instrumentation.asyncio.environment_variables import OTEL_PYTHON_ASYNCIO_COROUTINE_NAMES_TO_TRACE
 
 
 class TestRunCoroutineThreadSafe(TestBase):
+
+    @patch.dict(
+        "os.environ", {
+            OTEL_PYTHON_ASYNCIO_COROUTINE_NAMES_TO_TRACE: "coro"
+        }
+    )
     def setUp(self):
         super().setUp()
         AsyncioInstrumentor().instrument()

@@ -8,35 +8,103 @@ OpenTelemetry asyncio Instrumentation
 
 AsyncioInstrumentor: Tracing Requests Made by the Asyncio Library
 
-Primary Use Case:
------------------
-1. Performance and Error Monitoring:
-The AsyncioInstrumentor tool offers significant advantages for developers and system administrators. It's designed to monitor real-time performance bottlenecks and catch exceptions within specific asynchronous tasks.
 
-When It's Not Ideal to Use AsyncioInstrumentor:
-------------------------------------------------
-1. Frameworks with Built-in Instrumentation:
-If you're utilizing a framework like aiohttp that already includes built-in instrumentation, you might not need this library. In such cases, leveraging the built-in tools of the framework is generally more beneficial than using external ones like AsyncioInstrumentor.
+The opentelemetry-instrumentation-asycnio package allows tracing asyncio applications.
+The metric for coroutine, future, is generated even if there is no setting to generate a span.
 
-2. Libraries Lacking Instrumentation:
-Should you employ a library that isn't inherently instrumented, AsyncioInstrumentor can step in to fill that gap.
 
-3. Concerns about Overhead:
-Tracing each task and future consistently can lead to added overhead. As a best practice, it's wise to enable tracing only when crucial, especially during the development stage.
+Set the name of the coroutine you want to trace.
+-----------------------------------------------
+.. code::
+    export OTEL_PYTHON_ASYNCIO_COROUTINE_NAMES_TO_TRACE=coro_name,coro_name2,coro_name3
 
-Example
--------
+If you want to keep track of which function to use in the to_thread function of asyncio, set the name of the function.
+----
+.. code::
+    export OTEL_PYTHON_ASYNCIO_TO_THREAD_FUNCTION_NAMES_TO_TRACE=func_name,func_name2,func_name3
+
+For future, set it up like this
+----
+.. code::
+    export OTEL_PYTHON_ASYNCIO_FUTURE_TRACE_ENABLED=true
+
+Run instrumented taskcoroutine
+----
+1. coroutine
+----
 .. code:: python
 
-    from opentelemetry.instrumentation.asyncio import AsyncioInstrumentor
-    AsyncioInstrumentor().instrument()
+    # export OTEL_PYTHON_ASYNCIO_COROUTINE_NAMES_TO_TRACE=sleep
 
     import asyncio
+    from opentelemetry.instrumentation.asyncio import AsyncioInstrumentor
+
+    AsyncioInstrumentor().instrument()
 
     async def main():
         await asyncio.create_task(asyncio.sleep(0.1))
 
     asyncio.run(main())
+
+2. future
+----
+.. code:: python
+
+    # export OTEL_PYTHON_ASYNCIO_FUTURE_TRACE_ENABLED=true
+
+    loop = asyncio.get_event_loop()
+
+    future = asyncio.Future()
+    future.set_result(1)
+    task = asyncio.ensure_future(future)
+    loop.run_until_complete(task)
+
+3. to_thread
+----
+.. code:: python
+
+    # export OTEL_PYTHON_ASYNCIO_TO_THREAD_FUNCTION_NAMES_TO_TRACE=func
+
+    import asyncio
+    from opentelemetry.instrumentation.asyncio import AsyncioInstrumentor
+
+    AsyncioInstrumentor().instrument()
+
+    async def main():
+        await asyncio.to_thread(func)
+
+    def func():
+        pass
+
+    asyncio.run(main())
+
+
+asyncio metric types
+-------
+
+* `asyncio.futures.duration` (ms) - Duration of the future
+* `asyncio.futures.exceptions` (count) - Number of exceptions raised by the future
+* `asyncio.futures.cancelled` (count) - Number of futures cancelled
+* `asyncio.futures.created` (count) - Number of futures created
+* `asyncio.futures.active` (count) - Number of futures active
+* `asyncio.futures.finished` (count) - Number of futures finished
+* `asyncio.futures.timeouts` (count) - Number of futures timed out
+
+* `asyncio.coroutine.duration` (ms) - Duration of the coroutine
+* `asyncio.coroutine.exceptions` (count) - Number of exceptions raised by the coroutine
+* `asyncio.coroutine.created` (count) - Number of coroutines created
+* `asyncio.coroutine.active` (count) - Number of coroutines active
+* `asyncio.coroutine.finished` (count) - Number of coroutines finished
+* `asyncio.coroutine.timeouts` (count) - Number of coroutines timed out
+* `asyncio.coroutine.cancelled` (count) - Number of coroutines cancelled
+
+* `asyncio.to_thread.duration` (ms) - Duration of the to_thread
+* `asyncio.to_thread.exceptions` (count) - Number of exceptions raised by the to_thread
+* `asyncio.to_thread.created` (count) - Number of to_thread created
+* `asyncio.to_thread.active` (count) - Number of to_thread active
+* `asyncio.to_thread.finished` (count) - Number of to_thread finished
+
+
 
 API
 ---

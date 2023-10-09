@@ -13,15 +13,22 @@
 # limitations under the License.
 import asyncio
 import sys
+from unittest.mock import patch
 
 from opentelemetry.test.test_base import TestBase
 from opentelemetry.trace import get_tracer
 
+from opentelemetry.instrumentation.asyncio.environment_variables import OTEL_PYTHON_ASYNCIO_COROUTINE_NAMES_TO_TRACE
 from .common_test_func import async_func
 from opentelemetry.instrumentation.asyncio import AsyncioInstrumentor
 
 
 class TestAsyncioWait(TestBase):
+    @patch.dict(
+        "os.environ", {
+            OTEL_PYTHON_ASYNCIO_COROUTINE_NAMES_TO_TRACE: "async_func"
+        }
+    )
     def setUp(self):
         super().setUp()
         AsyncioInstrumentor().instrument()
