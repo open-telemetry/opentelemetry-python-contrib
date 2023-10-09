@@ -14,12 +14,12 @@ The metric for coroutine, future, is generated even if there is no setting to ge
 
 
 Set the name of the coroutine you want to trace.
------------------------------------------------
+-------------------------------------------------
 .. code::
     export OTEL_PYTHON_ASYNCIO_COROUTINE_NAMES_TO_TRACE=coro_name,coro_name2,coro_name3
 
 If you want to keep track of which function to use in the to_thread function of asyncio, set the name of the function.
------------------------------------------------
+---------------------------------------------------------------------------------------------------------------------------------------------
 .. code::
     export OTEL_PYTHON_ASYNCIO_TO_THREAD_FUNCTION_NAMES_TO_TRACE=func_name,func_name2,func_name3
 
@@ -29,7 +29,7 @@ For future, set it up like this
     export OTEL_PYTHON_ASYNCIO_FUTURE_TRACE_ENABLED=true
 
 Run instrumented application
---------------------
+-----------------------------
 1. coroutine
 --------------------
 .. code:: python
@@ -80,7 +80,7 @@ Run instrumented application
 
 
 asyncio metric types
---------------------
+----------------------
 
 * `asyncio.futures.duration` (ms) - Duration of the future
 * `asyncio.futures.exceptions` (count) - Number of exceptions raised by the future
