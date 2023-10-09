@@ -22,9 +22,9 @@ from unittest import mock
 
 import aiohttp
 import aiohttp.test_utils
+import importlib_metadata
 import yarl
 from http_server_mock import HttpServerMock
-from pkg_resources import iter_entry_points
 
 from opentelemetry import context
 from opentelemetry import trace as trace_api
@@ -574,8 +574,8 @@ class TestAioHttpClientInstrumentor(TestBase):
 
 class TestLoadingAioHttpInstrumentor(unittest.TestCase):
     def test_loading_instrumentor(self):
-        entry_points = iter_entry_points(
-            "opentelemetry_instrumentor", "aiohttp-client"
+        entry_points = importlib_metadata.entry_points(
+            group="opentelemetry_instrumentor", name="aiohttp-client"
         )
 
         instrumentor = next(entry_points).load()()

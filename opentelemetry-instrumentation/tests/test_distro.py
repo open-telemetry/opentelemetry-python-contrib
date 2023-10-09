@@ -15,7 +15,7 @@
 
 from unittest import TestCase
 
-from pkg_resources import EntryPoint
+from importlib_metadata import EntryPoint
 
 from opentelemetry.instrumentation.distro import BaseDistro
 from opentelemetry.instrumentation.instrumentor import BaseInstrumentor
