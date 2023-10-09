@@ -33,6 +33,7 @@ from typing import Any, Collection, Dict, Generator, List, Mapping, Optional
 
 import boto3
 import botocore.client
+import boto3.session
 from wrapt import wrap_function_wrapper
 
 from opentelemetry import context, propagate, trace
@@ -383,6 +384,7 @@ class Boto3SQSInstrumentor(BaseInstrumentor):
             return retval
 
         wrap_function_wrapper(boto3, "client", client_wrapper)
+        wrap_function_wrapper(boto3.session.Session, "client", client_wrapper)
 
     def _decorate_sqs(self, sqs_class: type) -> None:
         """

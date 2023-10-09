@@ -46,6 +46,15 @@ def _make_sqs_client():
     )
 
 
+def _make_sqs_session_client():
+    return boto3.session.Session().client(
+        "sqs",
+        region_name="us-east-1",
+        aws_access_key_id="dummy",
+        aws_secret_access_key="dummy",
+    )
+
+
 class TestBoto3SQSInstrumentor(TestCase):
     def _assert_instrumented(self, client):
         self.assertIsInstance(boto3.client, FunctionWrapper)
@@ -81,6 +90,20 @@ class TestBoto3SQSInstrumentor(TestCase):
             self._assert_instrumented(_make_sqs_client())
             self._assert_instrumented(_make_sqs_client())
 
+    def test_instrument_api_before_session_client_init(self) -> None:
+        with self._active_instrumentor():
+            client = _make_sqs_session_client()
+            self._assert_instrumented(client)
+
+    def test_instrument_api_after_session_client_init(self) -> None:
+        client = _make_sqs_session_client()
+        with self._active_instrumentor():
+            self._assert_instrumented(client)
+
+    def test_instrument_multiple_clients(self):
+        with self._active_instrumentor():
+            self._assert_instrumented(_make_sqs_session_client())
+            self._assert_instrumented(_make_sqs_session_client())
 
 class TestBoto3SQSGetter(TestCase):
     def setUp(self) -> None:
