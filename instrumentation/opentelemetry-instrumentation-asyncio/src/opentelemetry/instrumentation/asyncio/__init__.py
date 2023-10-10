@@ -71,27 +71,27 @@ Run instrumented application
 asyncio metric types
 ---------------------
 
-* `asyncio.futures.duration` (ms) - Duration of the future
-* `asyncio.futures.exceptions` (count) - Number of exceptions raised by the future
-* `asyncio.futures.cancelled` (count) - Number of futures cancelled
-* `asyncio.futures.created` (count) - Number of futures created
-* `asyncio.futures.active` (count) - Number of futures active
-* `asyncio.futures.finished` (count) - Number of futures finished
-* `asyncio.futures.timeouts` (count) - Number of futures timed out
+* asyncio.futures.duration (ms) - Duration of the future
+* asyncio.futures.exceptions (count) - Number of exceptions raised by the future
+* asyncio.futures.cancelled (count) - Number of futures cancelled
+* asyncio.futures.created (count) - Number of futures created
+* asyncio.futures.active (count) - Number of futures active
+* asyncio.futures.finished (count) - Number of futures finished
+* asyncio.futures.timeouts (count) - Number of futures timed out
 
-* `asyncio.coroutine.duration` (ms) - Duration of the coroutine
-* `asyncio.coroutine.exceptions` (count) - Number of exceptions raised by the coroutine
-* `asyncio.coroutine.created` (count) - Number of coroutines created
-* `asyncio.coroutine.active` (count) - Number of coroutines active
-* `asyncio.coroutine.finished` (count) - Number of coroutines finished
-* `asyncio.coroutine.timeouts` (count) - Number of coroutines timed out
-* `asyncio.coroutine.cancelled` (count) - Number of coroutines cancelled
+* asyncio.coroutine.duration (ms) - Duration of the coroutine
+* asyncio.coroutine.exceptions (count) - Number of exceptions raised by the coroutine
+* asyncio.coroutine.created (count) - Number of coroutines created
+* asyncio.coroutine.active (count) - Number of coroutines active
+* asyncio.coroutine.finished (count) - Number of coroutines finished
+* asyncio.coroutine.timeouts (count) - Number of coroutines timed out
+* asyncio.coroutine.cancelled (count) - Number of coroutines cancelled
 
-* `asyncio.to_thread.duration` (ms) - Duration of the to_thread
-* `asyncio.to_thread.exceptions` (count) - Number of exceptions raised by the to_thread
-* `asyncio.to_thread.created` (count) - Number of to_thread created
-* `asyncio.to_thread.active` (count) - Number of to_thread active
-* `asyncio.to_thread.finished` (count) - Number of to_thread finished
+* asyncio.to_thread.duration (ms) - Duration of the to_thread
+* asyncio.to_thread.exceptions (count) - Number of exceptions raised by the to_thread
+* asyncio.to_thread.created (count) - Number of to_thread created
+* asyncio.to_thread.active (count) - Number of to_thread active
+* asyncio.to_thread.finished (count) - Number of to_thread finished
 
 
 API
