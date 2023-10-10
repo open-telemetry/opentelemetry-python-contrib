@@ -17,7 +17,7 @@ from unittest.mock import patch
 from opentelemetry.test.test_base import TestBase
 from opentelemetry.trace import get_tracer
 
-from common_test_func import factorial
+from .common_test_func import factorial
 from opentelemetry.instrumentation.asyncio import AsyncioInstrumentor
 from opentelemetry.instrumentation.asyncio.environment_variables import OTEL_PYTHON_ASYNCIO_COROUTINE_NAMES_TO_TRACE
 
