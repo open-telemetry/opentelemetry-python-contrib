@@ -11,11 +11,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - `opentelemetry-instrumentation-asyncio` Add support for asyncio
   ([#1919](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/1943))
 
+### Added
+- `opentelemetry-instrumentation-system-metrics` Add support for collecting process metrics
+  ([#1948](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/1948))
 
 ### Fixed
 
 - Fix version of Flask dependency `werkzeug`
   ([#1980](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/1980))
+- `opentelemetry-resource-detector-azure` Using new Cloud Resource ID attribute.
+  ([#1976](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/1976))
+
 
 ## Version 1.20.0/0.41b0 (2023-09-01)
 

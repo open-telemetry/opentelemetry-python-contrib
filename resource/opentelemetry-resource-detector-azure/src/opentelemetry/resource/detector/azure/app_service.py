@@ -18,8 +18,6 @@ from opentelemetry.sdk.resources import ResourceDetector, Resource
 from opentelemetry.semconv.resource import ResourceAttributes, CloudPlatformValues, CloudProviderValues
 
 _AZURE_APP_SERVICE_STAMP_RESOURCE_ATTRIBUTE = "azure.app.service.stamp"
-# TODO: Remove once this resource attribute is no longer missing from SDK
-_CLOUD_RESOURCE_ID_RESOURCE_ATTRIBUTE = "cloud.resource_id"
 _REGION_NAME = "REGION_NAME"
 _WEBSITE_HOME_STAMPNAME = "WEBSITE_HOME_STAMPNAME"
 _WEBSITE_HOSTNAME = "WEBSITE_HOSTNAME"
@@ -49,7 +47,7 @@ class AzureAppServiceResourceDetector(ResourceDetector):
 
             azure_resource_uri = _get_azure_resource_uri(website_site_name)
             if azure_resource_uri:
-                attributes[_CLOUD_RESOURCE_ID_RESOURCE_ATTRIBUTE] = azure_resource_uri
+                attributes[ResourceAttributes.CLOUD_RESOURCE_ID] = azure_resource_uri
             for (key, env_var) in _APP_SERVICE_ATTRIBUTE_ENV_VARS.items():
                 value = environ.get(env_var)
                 if value:
