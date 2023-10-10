@@ -54,26 +54,24 @@ class TestAsyncioEnsureFuture(TestBase):
         AsyncioInstrumentor().uninstrument()
 
     @pytest.mark.asyncio
-    def test_asyncio_loop_ensure_future(self):
+    async def test_asyncio_loop_ensure_future(self):
         """
         async_func is not traced because it is not set in the environment variable
         """
-        loop = asyncio.get_event_loop()
         task = asyncio.ensure_future(async_func())
-        loop.run_until_complete(task)
+        await task
 
         spans = self.memory_exporter.get_finished_spans()
         self.assertEqual(len(spans), 0)
 
     @pytest.mark.asyncio
-    def test_asyncio_ensure_future_with_future(self):
+    async def test_asyncio_ensure_future_with_future(self):
         with self._tracer.start_as_current_span("root") as root:
-            loop = asyncio.get_event_loop()
 
             future = asyncio.Future()
             future.set_result(1)
             task = asyncio.ensure_future(future)
-            loop.run_until_complete(task)
+            await task
 
         spans = self.memory_exporter.get_finished_spans()
         self.assertEqual(len(spans), 2)
