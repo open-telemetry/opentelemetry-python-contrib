@@ -15,7 +15,6 @@ import asyncio
 from unittest.mock import patch
 
 import pytest
-from opentelemetry.sdk.metrics._internal.point import HistogramDataPoint, NumberDataPoint
 from opentelemetry.test.test_base import TestBase
 from opentelemetry.trace import get_tracer
 
@@ -54,28 +53,39 @@ class TestAsyncioEnsureFuture(TestBase):
         AsyncioInstrumentor().uninstrument()
 
     @pytest.mark.asyncio
-    async def test_asyncio_loop_ensure_future(self):
+    def test_asyncio_loop_ensure_future(self):
         """
         async_func is not traced because it is not set in the environment variable
         """
-        task = asyncio.ensure_future(async_func())
-        await task
+
+        async def test():
+            task = asyncio.ensure_future(async_func())
+            await task
+
+        asyncio.run(test())
 
         spans = self.memory_exporter.get_finished_spans()
         self.assertEqual(len(spans), 0)
 
     @pytest.mark.asyncio
-    async def test_asyncio_ensure_future_with_future(self):
-        with self._tracer.start_as_current_span("root") as root:
+    def test_asyncio_ensure_future_with_future(self):
+        async def test():
+            with self._tracer.start_as_current_span("root") as root:
+                future = asyncio.Future()
+                future.set_result(1)
+                task = asyncio.ensure_future(future)
+                await task
 
-            future = asyncio.Future()
-            future.set_result(1)
-            task = asyncio.ensure_future(future)
-            await task
+        asyncio.run(test())
 
         spans = self.memory_exporter.get_finished_spans()
         self.assertEqual(len(spans), 2)
-        self.assertEqual(spans[0].name, "asyncio.future")
+        for span in spans:
+            if span.name == "root":
+                self.assertEqual(span.parent, None)
+            if span.name == "asyncio.future":
+                self.assertNotEquals(span.parent.trace_id, 0)
+
         for metric in self.memory_metrics_reader.get_metrics_data().resource_metrics[0].scope_metrics[0].metrics:
             if metric.name == ASYNCIO_FUTURES_DURATION:
                 self.assertEquals(metric.data.data_points[0].count, 1)
