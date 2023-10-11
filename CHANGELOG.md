@@ -11,6 +11,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   ([#1800](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/1800))
 
 ### Added
+- `opentelemetry-instrumentation-botocore` Include SNS topic ARN as a span attribute with name `messaging.destination.name` to uniquely identify the SNS topic
+  ([#1995](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/1995))
 - `opentelemetry-instrumentation-system-metrics` Add support for collecting process metrics
   ([#1948](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/1948))
 
