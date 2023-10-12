@@ -88,6 +88,10 @@ libraries = {
         "library": "flask >= 1.0, < 3.0",
         "instrumentation": "opentelemetry-instrumentation-flask==0.42b0.dev",
     },
+    "werkzeug": {
+        "library": "werkzeug < 3.0.0",
+        "instrumentation": "opentelemetry-instrumentation-flask==0.42b0.dev",
+    },
     "grpcio": {
         "library": "grpcio ~= 1.27",
         "instrumentation": "opentelemetry-instrumentation-grpc==0.42b0.dev",
