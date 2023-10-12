@@ -78,10 +78,14 @@ def test_checking_instrumentor_pkg_installed():
     ("/test-path", HTTPMethod.GET, HTTPStatus.OK),
     ("/not-found", HTTPMethod.GET, HTTPStatus.NOT_FOUND)
 ])
-async def test_status_code_instrumentation(tracer, server_fixture,
-                                           aiohttp_client, url,
-                                           expected_method,
-                                           expected_status_code):
+async def test_status_code_instrumentation(
+    tracer,
+    server_fixture,
+    aiohttp_client,
+    url,
+    expected_method,
+    expected_status_code
+):
     _, memory_exporter = tracer
     server, app = server_fixture
 
