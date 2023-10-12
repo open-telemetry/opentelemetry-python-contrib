@@ -17,7 +17,6 @@ import pytest_asyncio
 import aiohttp
 from http import HTTPStatus
 from .utils import HTTPMethod
-from unittest import mock
 
 from opentelemetry import trace as trace_api
 from opentelemetry.test.test_base import TestBase
@@ -101,23 +100,3 @@ async def test_status_code_instrumentation(tracer, server_fixture,
     assert f"http://{server.host}:{server.port}{url}" == span.attributes[
         SpanAttributes.HTTP_URL
     ]
-
-
-@pytest.mark.skip(reason="Historical purposes. Can't see the reason of this mock.")
-def test_not_recording(self):
-    mock_tracer = mock.Mock()
-    mock_span = mock.Mock()
-    mock_span.is_recording.return_value = False
-    mock_tracer.start_span.return_value = mock_span
-    with mock.patch("opentelemetry.trace.get_tracer") as patched:
-        patched.start_span.return_value = mock_span
-        # pylint: disable=W0612
-        # host, port = run_with_test_server(
-        #     self.get_default_request(), self.URL, self.default_handler
-        # )
-
-        self.assertTrue(patched.start_span.called)
-        self.assertFalse(mock_span.is_recording())
-        self.assertTrue(mock_span.is_recording.called)
-        self.assertFalse(mock_span.set_attribute.called)
-        self.assertFalse(mock_span.set_status.called)
