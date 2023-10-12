@@ -35,7 +35,7 @@ Package instrumentation example:
     ).instrument()
 
 
-Model intrumentation example:
+Model instrumentation example:
 
 .. code-block:: python
 
@@ -291,7 +291,7 @@ class SklearnInstrumentor(BaseInstrumentor):
         SklearnInstrumentor(packages=packages).instrument()
 
 
-    Model intrumentation example:
+    Model instrumentation example:
 
     .. code-block:: python
 
