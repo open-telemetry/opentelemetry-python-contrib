@@ -350,7 +350,7 @@ class SystemMetricsInstrumentor(BaseInstrumentor):
                 unit="seconds",
             )
 
-        if "process.runtime.gc_count" in self._config:
+        if "process.runtime.gc_count" in self._config and self._python_implementation != "pypy":
             self._meter.create_observable_counter(
                 name=f"process.runtime.{self._python_implementation}.gc_count",
                 callbacks=[self._get_runtime_gc_count],
