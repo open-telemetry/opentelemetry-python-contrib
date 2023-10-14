@@ -16,7 +16,7 @@
 
 from collections import namedtuple
 from platform import python_implementation
-from unittest import mock
+from unittest import mock, skipIf
 
 from opentelemetry.sdk.metrics import MeterProvider
 from opentelemetry.sdk.metrics.export import InMemoryMetricReader
@@ -791,9 +791,8 @@ class TestSystemMetrics(TestBase):
         )
 
     @mock.patch("gc.get_count")
+    @skipIf(python_implementation().lower() == "pypy")
     def test_runtime_get_count(self, mock_gc_get_count):
-        if self.implementation == "pypy":
-            return
 
         mock_gc_get_count.configure_mock(**{"return_value": (1, 2, 3)})
 
