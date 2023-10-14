@@ -791,7 +791,7 @@ class TestSystemMetrics(TestBase):
         )
 
     @mock.patch("gc.get_count")
-    @skipIf(python_implementation().lower() == "pypy")
+    @skipIf(python_implementation().lower() == "pypy", "not supported for pypy")
     def test_runtime_get_count(self, mock_gc_get_count):
 
         mock_gc_get_count.configure_mock(**{"return_value": (1, 2, 3)})
