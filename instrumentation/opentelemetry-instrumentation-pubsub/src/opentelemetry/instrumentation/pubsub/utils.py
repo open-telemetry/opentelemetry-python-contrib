@@ -1,16 +1,15 @@
 import json
 from logging import getLogger
-from typing import Callable, Dict, List, Optional
+from typing import Callable, List
 
-from opentelemetry import context, propagate, trace
-from opentelemetry.propagators import textmap
+from google.cloud.pubsub_v1.subscriber.message import Message
 from opentelemetry.semconv.trace import SpanAttributes
 from opentelemetry.trace import Tracer
-from opentelemetry.trace.span import Span
+
+from opentelemetry import propagate, trace
 
 _LOG = getLogger(__name__)
 
-from google.cloud.pubsub_v1 import PublisherClient
 
 class PubsubPropertiesExtractor:
     @staticmethod
@@ -24,204 +23,91 @@ class PubsubPropertiesExtractor:
         return kwargs.get(key, default_value)
 
     @staticmethod
-    def extract_send_topic(args, kwargs):
-        """extract topic from `send` method arguments in KafkaProducer class"""
+    def extract_publish_topic(args, kwargs):
+        """extract topic from `publish` method arguments in PublisherClient class"""
         return PubsubPropertiesExtractor._extract_argument(
             "topic", 0, "unknown", args, kwargs
         )
 
     @staticmethod
-    def extract_send_value(args, kwargs):
-        """extract value from `send` method arguments in KafkaProducer class"""
+    def extract_publish_data(args, kwargs):
+        """extract data from `publish` method arguments in PublisherClient class"""
         return PubsubPropertiesExtractor._extract_argument(
-            "value", 1, None, args, kwargs
+            "data", 1, None, args, kwargs
+        )
+
+    _publish_not_attributes_kwarg_keys = {"topic", "data", "ordering_key", "retry", "timeout"}
+
+    @staticmethod
+    def extract_publish_metadata(args, kwargs):
+        """extract data from `publish` method arguments in PublisherClient class"""
+        return {k: v for k, v in kwargs.item() if k not in PubsubPropertiesExtractor._publish_not_attributes_kwarg_keys}
+
+    @staticmethod
+    def extract_subscribe_subscription(args, kwargs):
+        """extract subscription from `subscribe` method arguments in SubscriberClient class"""
+        return PubsubPropertiesExtractor._extract_argument(
+            "subscription", 0, "unknown", args, kwargs
         )
 
     @staticmethod
-    def extract_send_key(args, kwargs):
-        """extract key from `send` method arguments in KafkaProducer class"""
+    def extract_subscribe_callback(args, kwargs):
+        """extract subscription from `subscribe` method arguments in SubscriberClient class"""
         return PubsubPropertiesExtractor._extract_argument(
-            "key", 2, None, args, kwargs
-        )
-
-    @staticmethod
-    def extract_send_headers(args, kwargs):
-        """extract headers from `send` method arguments in KafkaProducer class"""
-        return PubsubPropertiesExtractor._extract_argument(
-            "headers", 3, None, args, kwargs
-        )
-
-    @staticmethod
-    def extract_send_partition(instance, args, kwargs):
-        """extract partition `send` method arguments, using the `_partition` method in KafkaProducer class"""
-        try:
-            topic = PubsubPropertiesExtractor.extract_send_topic(args, kwargs)
-            key = PubsubPropertiesExtractor.extract_send_key(args, kwargs)
-            value = PubsubPropertiesExtractor.extract_send_value(args, kwargs)
-            partition = PubsubPropertiesExtractor._extract_argument(
-                "partition", 4, None, args, kwargs
-            )
-            key_bytes = instance._serialize(
-                instance.config["key_serializer"], topic, key
-            )
-            value_bytes = instance._serialize(
-                instance.config["value_serializer"], topic, value
-            )
-            valid_types = (bytes, bytearray, memoryview, type(None))
-            if (
-                type(key_bytes) not in valid_types
-                or type(value_bytes) not in valid_types
-            ):
-                return None
-
-            instance._wait_on_metadata(
-                topic, instance.config["max_block_ms"] / 1000.0
-            )
-
-            return instance._partition(
-                topic, partition, key, value, key_bytes, value_bytes
-            )
-        except Exception as exception:  # pylint: disable=W0703
-            _LOG.debug("Unable to extract partition: %s", exception)
-            return None
-
-
-ProduceHookT = Optional[Callable[[Span, List, Dict], None]]
-ConsumeHookT = Optional[Callable[[Span, ABCRecord, List, Dict], None]]
-
-
-class KafkaContextGetter(textmap.Getter[textmap.CarrierT]):
-    def get(self, carrier: textmap.CarrierT, key: str) -> Optional[List[str]]:
-        if carrier is None:
-            return None
-
-        for item_key, value in carrier:
-            if item_key == key:
-                if value is not None:
-                    return [value.decode()]
-        return None
-
-    def keys(self, carrier: textmap.CarrierT) -> List[str]:
-        if carrier is None:
-            return []
-        return [key for (key, value) in carrier]
-
-
-class KafkaContextSetter(textmap.Setter[textmap.CarrierT]):
-    def set(self, carrier: textmap.CarrierT, key: str, value: str) -> None:
-        if carrier is None or key is None:
-            return
-
-        if value:
-            value = value.encode()
-        carrier.append((key, value))
-
-
-_kafka_getter = KafkaContextGetter()
-_kafka_setter = KafkaContextSetter()
-
-
-def _enrich_span(
-    span, bootstrap_servers: List[str], topic: str, partition: int
-):
-    if span.is_recording():
-        span.set_attribute(SpanAttributes.MESSAGING_SYSTEM, "kafka")
-        span.set_attribute(SpanAttributes.MESSAGING_DESTINATION, topic)
-        span.set_attribute(SpanAttributes.MESSAGING_KAFKA_PARTITION, partition)
-        span.set_attribute(
-            SpanAttributes.MESSAGING_URL, json.dumps(bootstrap_servers)
+            "callback", 1, None, args, kwargs
         )
 
 
-def _get_span_name(operation: str, topic: str):
-    return f"{topic} {operation}"
+def _get_span_name(operation: str, subject: str):
+    return f"{operation}: {subject}"
 
 
-def _wrap_send(tracer: Tracer, produce_hook: ProduceHookT) -> Callable:
+def _wrap_publish(tracer: Tracer) -> Callable:
     def _traced_send(func, instance, args, kwargs):
-        headers = PubsubPropertiesExtractor.extract_send_headers(args, kwargs)
-        if headers is None:
-            headers = []
-            kwargs["headers"] = headers
+        headers = PubsubPropertiesExtractor.extract_publish_metadata(args, kwargs)
+        kwargs["headers"] = headers
 
-        topic = PubsubPropertiesExtractor.extract_send_topic(args, kwargs)
-        bootstrap_servers = PubsubPropertiesExtractor.extract_bootstrap_servers(
-            instance
-        )
-        partition = PubsubPropertiesExtractor.extract_send_partition(
-            instance, args, kwargs
-        )
+        topic = PubsubPropertiesExtractor.extract_publish_topic(args, kwargs)
         span_name = _get_span_name("send", topic)
         with tracer.start_as_current_span(
-            span_name, kind=trace.SpanKind.PRODUCER
+                span_name, kind=trace.SpanKind.PRODUCER
         ) as span:
-            _enrich_span(span, bootstrap_servers, topic, partition)
+            if span.is_recording():
+                span.set_attribute(SpanAttributes.MESSAGING_SYSTEM, "pubsub")
+                span.set_attribute(SpanAttributes.MESSAGING_DESTINATION, topic)
             propagate.inject(
                 headers,
                 context=trace.set_span_in_context(span),
-                setter=_kafka_setter,
             )
-            try:
-                if callable(produce_hook):
-                    produce_hook(span, args, kwargs)
-            except Exception as hook_exception:  # pylint: disable=W0703
-                _LOG.exception(hook_exception)
 
-        return func(*args, **kwargs)
+            return func(*args, **kwargs)
 
     return _traced_send
 
 
-def _create_consumer_span(
-    tracer,
-    consume_hook,
-    record,
-    extracted_context,
-    bootstrap_servers,
-    args,
-    kwargs,
-):
-    span_name = _get_span_name("receive", record.topic)
-    with tracer.start_as_current_span(
-        span_name,
-        context=extracted_context,
-        kind=trace.SpanKind.CONSUMER,
-    ) as span:
-        new_context = trace.set_span_in_context(span, extracted_context)
-        token = context.attach(new_context)
-        _enrich_span(span, bootstrap_servers, record.topic, record.partition)
-        try:
-            if callable(consume_hook):
-                consume_hook(span, record, args, kwargs)
-        except Exception as hook_exception:  # pylint: disable=W0703
-            _LOG.exception(hook_exception)
-        context.detach(token)
-
-
-def _wrap_next(
-    tracer: Tracer,
-    consume_hook: ConsumeHookT,
+def _wrap_subscribe(
+        tracer: Tracer,
 ) -> Callable:
-    def _traced_next(func, instance, args, kwargs):
-        record = func(*args, **kwargs)
+    def _traced_subscribe(func, instance, args, kwargs):
+        subscription = PubsubPropertiesExtractor.extract_subscribe_subscription(args, kwargs)
+        callback = PubsubPropertiesExtractor.extract_subscribe_callback(args, kwargs)
+        span_name = _get_span_name("subscribe", subscription)
 
-        if record:
-            bootstrap_servers = (
-                PubsubPropertiesExtractor.extract_bootstrap_servers(instance)
-            )
+        def _traced_callback(message: Message):
+            extracted_context = propagate.extract(message.attributes)
+            with tracer.start_as_current_span(
+                    span_name, kind=trace.SpanKind.CONSUMER, context=extracted_context
+            ) as span:
+                if span.is_recording():
+                    span.set_attribute(SpanAttributes.MESSAGING_SYSTEM, "pubsub")
+                    span.set_attribute(SpanAttributes.MESSAGING_CONSUMER_ID, subscription)
 
-            extracted_context = propagate.extract(
-                record.headers, getter=_kafka_getter
-            )
-            _create_consumer_span(
-                tracer,
-                consume_hook,
-                record,
-                extracted_context,
-                bootstrap_servers,
-                args,
-                kwargs,
-            )
-        return record
+                if callable(callback):
+                    callback(message)
 
-    return _traced_next
+        kwargs["subscription"] = subscription
+        kwargs["callback"] = _traced_callback
+
+        return func(subscription, callback, *args[2:], **kwargs)
+
+    return _traced_subscribe

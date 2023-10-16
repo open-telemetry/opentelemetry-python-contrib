@@ -13,24 +13,25 @@
 # limitations under the License.
 from unittest import TestCase
 
-from kafka import KafkaConsumer, KafkaProducer
 from wrapt import BoundFunctionWrapper
 
-from opentelemetry.instrumentation.pubsub import KafkaInstrumentor
+from google.cloud.pubsub_v1 import PublisherClient, SubscriberClient
+
+from opentelemetry.instrumentation.pubsub import PubsubInstrumentor
 
 
 class TestKafka(TestCase):
     def test_instrument_api(self) -> None:
-        instrumentation = KafkaInstrumentor()
+        instrumentation = PubsubInstrumentor()
 
         instrumentation.instrument()
-        self.assertTrue(isinstance(KafkaProducer.send, BoundFunctionWrapper))
+        self.assertTrue(isinstance(PublisherClient.publish, BoundFunctionWrapper))
         self.assertTrue(
-            isinstance(KafkaConsumer.__next__, BoundFunctionWrapper)
+            isinstance(SubscriberClient.subscribe, BoundFunctionWrapper)
         )
 
         instrumentation.uninstrument()
-        self.assertFalse(isinstance(KafkaProducer.send, BoundFunctionWrapper))
+        self.assertFalse(isinstance(PublisherClient.publish, BoundFunctionWrapper))
         self.assertFalse(
-            isinstance(KafkaConsumer.__next__, BoundFunctionWrapper)
+            isinstance(SubscriberClient.subscribe, BoundFunctionWrapper)
         )
