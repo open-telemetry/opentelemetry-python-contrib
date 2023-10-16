@@ -66,10 +66,9 @@ async def server_fixture(tracer, aiohttp_server):
 
 
 def test_checking_instrumentor_pkg_installed():
-    itered_entry_points = iter(entry_points(
-        "opentelemetry_instrumentor", "aiohttp-server"))
 
-    instrumentor = next(itered_entry_points).load()()
+    (instrumentor_entrypoint,) = entry_points(group="opentelemetry_instrumentor", name="aiohttp-server")
+    instrumentor = instrumentor_entrypoint.load()()
     assert (isinstance(instrumentor, AioHttpServerInstrumentor))
 
 
@@ -98,7 +97,7 @@ async def test_status_code_instrumentation(
 
     [span] = memory_exporter.get_finished_spans()
 
-    assert expected_method == span.attributes[SpanAttributes.HTTP_METHOD]
+    assert expected_method.value == span.attributes[SpanAttributes.HTTP_METHOD]
     assert expected_status_code == span.attributes[SpanAttributes.HTTP_STATUS_CODE]
 
     assert f"http://{server.host}:{server.port}{url}" == span.attributes[
