@@ -19,14 +19,14 @@ class HTTPMethod(Enum):
     """HTTP methods and descriptions"""
 
     def __repr__(self):
-        return self.value[0]
+        return f"{self.value}"
 
-    CONNECT = 'CONNECT', 'Establish a connection to the server.'
-    DELETE = 'DELETE', 'Remove the target.'
-    GET = 'GET', 'Retrieve the target.'
-    HEAD = 'HEAD', 'Same as GET, but only retrieve the status line and header section.'
-    OPTIONS = 'OPTIONS', 'Describe the communication options for the target.'
-    PATCH = 'PATCH', 'Apply partial modifications to a target.'
-    POST = 'POST', 'Perform target-specific processing with the request payload.'
-    PUT = 'PUT', 'Replace the target with the request payload.'
-    TRACE = 'TRACE', 'Perform a message loop-back test along the path to the target.'
+    CONNECT = 'CONNECT'
+    DELETE = 'DELETE'
+    GET = 'GET'
+    HEAD = 'HEAD'
+    OPTIONS = 'OPTIONS'
+    PATCH = 'PATCH'
+    POST = 'POST'
+    PUT = 'PUT'
+    TRACE = 'TRACE'
