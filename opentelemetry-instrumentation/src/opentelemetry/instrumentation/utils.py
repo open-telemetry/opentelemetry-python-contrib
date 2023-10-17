@@ -15,6 +15,7 @@
 import os
 import threading
 import urllib.parse
+from enum import Enum
 from re import escape, sub
 from typing import Dict, Sequence
 
@@ -163,7 +164,7 @@ class _OpenTelemetryStabilitySignalType:
     HTTP = "http"
 
 
-class _OpenTelemetryStabilityMode:
+class _OpenTelemetryStabilityMode(Enum):
     # http - emit the new, stable HTTP and networking conventions ONLY
     HTTP = "http"
     # http/dup - emit both the old and the stable HTTP and networking conventions
@@ -191,9 +192,9 @@ class _OpenTelemetrySemanticConventionStability:
                 if opt_in_list:
                     # Process http opt-in
                     # http/dup takes priority over http
-                    if _OpenTelemetryStabilityMode.HTTP_DUP in opt_in_list:
+                    if _OpenTelemetryStabilityMode.HTTP_DUP.value in opt_in_list:
                         http_opt_in = _OpenTelemetryStabilityMode.HTTP_DUP
-                    elif _OpenTelemetryStabilityMode.HTTP in opt_in_list:
+                    elif _OpenTelemetryStabilityMode.HTTP.value in opt_in_list:
                         http_opt_in = _OpenTelemetryStabilityMode.HTTP
                 _OpenTelemetrySemanticConventionStability._OTEL_SEMCONV_STABILITY_SIGNAL_MAPPING[
                     _OpenTelemetryStabilitySignalType.HTTP
