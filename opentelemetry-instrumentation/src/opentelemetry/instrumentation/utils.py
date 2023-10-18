@@ -192,7 +192,10 @@ class _OpenTelemetrySemanticConventionStability:
                 if opt_in_list:
                     # Process http opt-in
                     # http/dup takes priority over http
-                    if _OpenTelemetryStabilityMode.HTTP_DUP.value in opt_in_list:
+                    if (
+                        _OpenTelemetryStabilityMode.HTTP_DUP.value
+                        in opt_in_list
+                    ):
                         http_opt_in = _OpenTelemetryStabilityMode.HTTP_DUP
                     elif _OpenTelemetryStabilityMode.HTTP.value in opt_in_list:
                         http_opt_in = _OpenTelemetryStabilityMode.HTTP
