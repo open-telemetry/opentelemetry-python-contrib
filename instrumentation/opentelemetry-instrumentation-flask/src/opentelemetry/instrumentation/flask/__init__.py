@@ -245,12 +245,25 @@ from timeit import default_timer
 from typing import Collection
 
 import flask
+import opentelemetry.instrumentation.wsgi as otel_wsgi
 from packaging import version as package_version
 
-import opentelemetry.instrumentation.wsgi as otel_wsgi
 from opentelemetry import context, trace
 from opentelemetry.instrumentation.flask.package import _instruments
-from opentelemetry.instrumentation.flask.version import __version__
+
+try:
+    from opentelemetry.instrumentation.flask.version import __version__
+except ImportError:
+    try:
+        from importlib import metadata
+    except ImportError:
+        import importlib_metadata as metadata
+
+    try:
+        __version__ = metadata.version("flask")
+    except (ImportError, metadata.PackageNotFoundError):
+        __version__ = "unknown"
+
 from opentelemetry.instrumentation.instrumentor import BaseInstrumentor
 from opentelemetry.instrumentation.propagators import (
     get_global_response_propagator,
