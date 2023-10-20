@@ -28,6 +28,10 @@ libraries = {
         "library": "aiopg >= 0.13.0, < 2.0.0",
         "instrumentation": "opentelemetry-instrumentation-aiopg==0.42b0.dev",
     },
+    "aioredis": {
+        "library": "aioredis >= 1.3, < 2.0",
+        "instrumentation": "opentelemetry-instrumentation-aioredis==0.23.dev0",
+    },
     "asgiref": {
         "library": "asgiref ~= 3.0",
         "instrumentation": "opentelemetry-instrumentation-asgi==0.42b0.dev",
