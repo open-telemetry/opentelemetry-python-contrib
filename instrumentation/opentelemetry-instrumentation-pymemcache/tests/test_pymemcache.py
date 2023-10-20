@@ -522,6 +522,18 @@ class PymemcacheClientTestCase(
         assert spans is not None
         self.assertEqual(len(spans), 0)
 
+    def test_sanitize_query(self):
+        PymemcacheInstrumentor().uninstrument()
+        PymemcacheInstrumentor().instrument(sanitize_query=True)
+
+        client = self.make_client([b"STORED\r\n"])
+        result = client.set(b"key", b"value", noreply=False)
+        self.assertTrue(result)
+
+        spans = self.memory_exporter.get_finished_spans()
+
+        self.check_spans(spans, 1, ["set"])
+
 
 class PymemcacheHashClientTestCase(TestBase):
     """Tests for a patched pymemcache.client.hash.HashClient."""

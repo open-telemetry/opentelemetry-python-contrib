@@ -13,10 +13,6 @@
 # limitations under the License.
 
 """
-
-Usage
------
-
 The OpenTelemetry ``pymemcache`` integration traces pymemcache client operations
 
 Usage
@@ -34,6 +30,20 @@ Usage
 
 API
 ---
+The `instrument` method accepts the following keyword args:
+
+tracer_provider (TracerProvider) - an optional tracer provider
+sanitize_query (Boolean) - default False, an optional boolean to enable the pymemcache query sanitization
+
+for example:
+
+.. code-block:: python
+
+    from opentelemetry.instrumentation.pymemcache import PymemcacheInstrumentor
+
+    # Instrument pymemcache with query sanitization
+    PymemcacheInstrumentor().instrument(sanitize_query=True)
+
 """
 # pylint: disable=no-value-for-parameter
 
@@ -89,13 +99,15 @@ def _set_connection_attributes(span, instance):
 def _with_tracer_wrapper(func):
     """Helper for providing tracer for wrapper functions."""
 
-    def _with_tracer(tracer, cmd):
+    def _with_tracer(tracer, cmd, sanitize_query):
         def wrapper(wrapped, instance, args, kwargs):
             # prevent double wrapping
             if hasattr(wrapped, "__wrapped__"):
                 return wrapped(*args, **kwargs)
 
-            return func(tracer, cmd, wrapped, instance, args, kwargs)
+            return func(
+                tracer, cmd, sanitize_query, wrapped, instance, args, kwargs
+            )
 
         return wrapper
 
@@ -103,13 +115,13 @@ def _with_tracer_wrapper(func):
 
 
 @_with_tracer_wrapper
-def _wrap_cmd(tracer, cmd, wrapped, instance, args, kwargs):
+def _wrap_cmd(tracer, cmd, sanitize_query, wrapped, instance, args, kwargs):
     with tracer.start_as_current_span(
         cmd, kind=SpanKind.CLIENT, attributes={}
     ) as span:
         try:
             if span.is_recording():
-                if not args:
+                if not args or sanitize_query:
                     vals = ""
                 else:
                     vals = _get_query_string(args[0])
@@ -182,13 +194,14 @@ class PymemcacheInstrumentor(BaseInstrumentor):
 
     def _instrument(self, **kwargs):
         tracer_provider = kwargs.get("tracer_provider")
+        sanitize_query = kwargs.get("sanitize_query", False)
         tracer = get_tracer(__name__, __version__, tracer_provider)
 
         for cmd in COMMANDS:
             _wrap(
                 "pymemcache.client.base",
                 f"Client.{cmd}",
-                _wrap_cmd(tracer, cmd),
+                _wrap_cmd(tracer, cmd, sanitize_query),
             )
 
     def _uninstrument(self, **kwargs):
