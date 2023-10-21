@@ -250,19 +250,19 @@ from packaging import version as package_version
 
 from opentelemetry import context, trace
 from opentelemetry.instrumentation.flask.package import _instruments
+from opentelemetry.instrumentation.flask.version import __version__
 
 try:
-    from opentelemetry.instrumentation.flask.version import __version__
-except ImportError:
+    flask_version = flask.__version__
+except Exception as e:
     try:
         from importlib import metadata
     except ImportError:
         import importlib_metadata as metadata
-
     try:
-        __version__ = metadata.version("flask")
+        flask_version = metadata.version("flask")
     except (ImportError, metadata.PackageNotFoundError):
-        __version__ = "unknown"
+        flask_version = "unknown"
 
 from opentelemetry.instrumentation.instrumentor import BaseInstrumentor
 from opentelemetry.instrumentation.propagators import (
@@ -284,7 +284,7 @@ _ENVIRON_TOKEN = "opentelemetry-flask.token"
 
 _excluded_urls_from_env = get_excluded_urls("FLASK")
 
-if package_version.parse(flask.__version__) >= package_version.parse("2.2.0"):
+if package_version.parse(flask_version) >= package_version.parse("2.2.0"):
 
     def _request_ctx_ref() -> weakref.ReferenceType:
         return weakref.ref(flask.globals.request_ctx._get_current_object())
@@ -304,11 +304,11 @@ def get_default_span_name():
 
 
 def _rewrapped_app(
-    wsgi_app,
-    active_requests_counter,
-    duration_histogram,
-    response_hook=None,
-    excluded_urls=None,
+        wsgi_app,
+        active_requests_counter,
+        duration_histogram,
+        response_hook=None,
+        excluded_urls=None,
 ):
     def _wrapped_app(wrapped_app_environ, start_response):
         # We want to measure the time for route matching, etc.
@@ -326,8 +326,8 @@ def _rewrapped_app(
 
         def _start_response(status, response_headers, *args, **kwargs):
             if flask.request and (
-                excluded_urls is None
-                or not excluded_urls.url_disabled(flask.request.url)
+                    excluded_urls is None
+                    or not excluded_urls.url_disabled(flask.request.url)
             ):
                 span = flask.request.environ.get(_ENVIRON_SPAN_KEY)
 
@@ -348,8 +348,8 @@ def _rewrapped_app(
                             SpanAttributes.HTTP_STATUS_CODE
                         ] = status_code
                     if (
-                        span.is_recording()
-                        and span.kind == trace.SpanKind.SERVER
+                            span.is_recording()
+                            and span.kind == trace.SpanKind.SERVER
                     ):
                         custom_attributes = otel_wsgi.collect_custom_response_headers_attributes(
                             response_headers
@@ -376,11 +376,11 @@ def _rewrapped_app(
 
 
 def _wrapped_before_request(
-    request_hook=None,
-    tracer=None,
-    excluded_urls=None,
-    enable_commenter=True,
-    commenter_options=None,
+        request_hook=None,
+        tracer=None,
+        excluded_urls=None,
+        enable_commenter=True,
+        commenter_options=None,
 ):
     def _before_request():
         if excluded_urls and excluded_urls.url_disabled(flask.request.url):
@@ -433,16 +433,16 @@ def _wrapped_before_request(
             # https://flask.palletsprojects.com/en/1.1.x/api/#flask.has_request_context
             if flask and flask.request:
                 if commenter_options.get("framework", True):
-                    flask_info["framework"] = f"flask:{flask.__version__}"
+                    flask_info["framework"] = f"flask:{flask_version}"
                 if (
-                    commenter_options.get("controller", True)
-                    and flask.request.endpoint
+                        commenter_options.get("controller", True)
+                        and flask.request.endpoint
                 ):
                     flask_info["controller"] = flask.request.endpoint
                 if (
-                    commenter_options.get("route", True)
-                    and flask.request.url_rule
-                    and flask.request.url_rule.rule
+                        commenter_options.get("route", True)
+                        and flask.request.url_rule
+                        and flask.request.url_rule.rule
                 ):
                     flask_info["route"] = flask.request.url_rule.rule
             sqlcommenter_context = context.set_value(
@@ -454,7 +454,7 @@ def _wrapped_before_request(
 
 
 def _wrapped_teardown_request(
-    excluded_urls=None,
+        excluded_urls=None,
 ):
     def _teardown_request(exc):
         # pylint: disable=E1101
@@ -595,14 +595,14 @@ class FlaskInstrumentor(BaseInstrumentor):
 
     @staticmethod
     def instrument_app(
-        app,
-        request_hook=None,
-        response_hook=None,
-        tracer_provider=None,
-        excluded_urls=None,
-        enable_commenter=True,
-        commenter_options=None,
-        meter_provider=None,
+            app,
+            request_hook=None,
+            response_hook=None,
+            tracer_provider=None,
+            excluded_urls=None,
+            enable_commenter=True,
+            commenter_options=None,
+            meter_provider=None,
     ):
         if not hasattr(app, "_is_instrumented_by_opentelemetry"):
             app._is_instrumented_by_opentelemetry = False
