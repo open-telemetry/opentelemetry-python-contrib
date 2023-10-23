@@ -70,12 +70,13 @@ ___
 from typing import Collection
 
 from google.cloud.pubsub_v1 import PublisherClient, SubscriberClient
+from google.cloud.pubsub_v1.subscriber.message import Message
 from wrapt import wrap_function_wrapper
 
 from opentelemetry import trace
 from opentelemetry.instrumentation.instrumentor import BaseInstrumentor
 from opentelemetry.instrumentation.pubsub.package import _instruments
-from opentelemetry.instrumentation.pubsub.utils import _wrap_subscribe, _wrap_publish
+from opentelemetry.instrumentation.pubsub.utils import wrap_subscribe, wrap_publish, set_attributes
 from opentelemetry.instrumentation.pubsub.version import __version__
 from opentelemetry.instrumentation.utils import unwrap
 
@@ -104,14 +105,28 @@ class PubsubInstrumentor(BaseInstrumentor):
         )
 
         wrap_function_wrapper(
-            PublisherClient, "publish", _wrap_publish(tracer)
+            PublisherClient, "publish", wrap_publish(tracer)
         )
         wrap_function_wrapper(
             SubscriberClient,
             "subscribe",
-            _wrap_subscribe(tracer),
+            wrap_subscribe(tracer),
         )
+        for method in ["ack", "nack"]:
+            attrs = {"messaging.pubsub.ack_result": method}
+            wrap_function_wrapper(
+                Message,
+                method,
+                set_attributes(attrs),
+            )
+            # todo: watch future returned by this method?
+            wrap_function_wrapper(
+                Message,
+                f"{method}_with_response",
+                set_attributes(attrs),
+            )
 
     def _uninstrument(self, **kwargs):
         unwrap(PublisherClient, "publish")
         unwrap(SubscriberClient, "subscribe")
+        # todo: unwrap Message methods

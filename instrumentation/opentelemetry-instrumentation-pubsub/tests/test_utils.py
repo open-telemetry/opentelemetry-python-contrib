@@ -6,8 +6,8 @@ from opentelemetry.instrumentation.pubsub.utils import (
     _get_span_name,
     _kafka_getter,
     _kafka_setter,
-    _wrap_subscribe,
-    _wrap_publish,
+    wrap_subscribe,
+    wrap_publish,
 )
 from opentelemetry.trace import SpanKind
 
@@ -86,7 +86,7 @@ class TestUtils(TestCase):
         kafka_producer = mock.MagicMock()
         expected_span_name = _get_span_name("send", self.topic_name)
 
-        wrapped_send = _wrap_publish(tracer, produce_hook)
+        wrapped_send = wrap_publish(tracer, produce_hook)
         retval = wrapped_send(
             original_send_callback, kafka_producer, self.args, self.kwargs
         )
@@ -138,7 +138,7 @@ class TestUtils(TestCase):
         original_next_callback = mock.MagicMock()
         kafka_consumer = mock.MagicMock()
 
-        wrapped_next = _wrap_subscribe(tracer, consume_hook)
+        wrapped_next = wrap_subscribe(tracer, consume_hook)
         record = wrapped_next(
             original_next_callback, kafka_consumer, self.args, self.kwargs
         )

@@ -9,6 +9,7 @@ from opentelemetry.trace import Tracer
 from opentelemetry import propagate, trace
 
 _LOG = getLogger(__name__)
+_OTEL_SPAN_ATTRIBUTE = "__otel_span"
 
 
 class PubsubPropertiesExtractor:
@@ -36,13 +37,6 @@ class PubsubPropertiesExtractor:
             "data", 1, None, args, kwargs
         )
 
-    _publish_not_attributes_kwarg_keys = {"topic", "data", "ordering_key", "retry", "timeout"}
-
-    @staticmethod
-    def extract_publish_metadata(args, kwargs):
-        """extract data from `publish` method arguments in PublisherClient class"""
-        return {k: v for k, v in kwargs.item() if k not in PubsubPropertiesExtractor._publish_not_attributes_kwarg_keys}
-
     @staticmethod
     def extract_subscribe_subscription(args, kwargs):
         """extract subscription from `subscribe` method arguments in SubscriberClient class"""
@@ -62,30 +56,36 @@ def _get_span_name(operation: str, subject: str):
     return f"{operation}: {subject}"
 
 
-def _wrap_publish(tracer: Tracer) -> Callable:
+def wrap_publish(tracer: Tracer) -> Callable:
     def _traced_send(func, instance, args, kwargs):
-        headers = PubsubPropertiesExtractor.extract_publish_metadata(args, kwargs)
-        kwargs["headers"] = headers
-
         topic = PubsubPropertiesExtractor.extract_publish_topic(args, kwargs)
         span_name = _get_span_name("send", topic)
         with tracer.start_as_current_span(
-                span_name, kind=trace.SpanKind.PRODUCER
+                span_name, kind=trace.SpanKind.PRODUCER, end_on_exit=False
         ) as span:
             if span.is_recording():
                 span.set_attribute(SpanAttributes.MESSAGING_SYSTEM, "pubsub")
                 span.set_attribute(SpanAttributes.MESSAGING_DESTINATION, topic)
             propagate.inject(
-                headers,
+                kwargs,
                 context=trace.set_span_in_context(span),
             )
 
-            return func(*args, **kwargs)
+            def future_done_callback(f):
+                try:
+                    with trace.use_span(span, end_on_exit=True):
+                        span.set_attribute(SpanAttributes.MESSAGING_MESSAGE_ID, f.result())
+                except Exception:
+                    pass
+
+            future = func(*args, **kwargs)
+            future.add_done_callback(future_done_callback)
+            return future
 
     return _traced_send
 
 
-def _wrap_subscribe(
+def wrap_subscribe(
         tracer: Tracer,
 ) -> Callable:
     def _traced_subscribe(func, instance, args, kwargs):
@@ -98,16 +98,37 @@ def _wrap_subscribe(
             with tracer.start_as_current_span(
                     span_name, kind=trace.SpanKind.CONSUMER, context=extracted_context
             ) as span:
+                try:
+                    setattr(message, _OTEL_SPAN_ATTRIBUTE, span)
+                except Exception as e:
+                    getLogger().warning(f"Cannot set 'Message.{_OTEL_SPAN_ATTRIBUTE}': {e}")
                 if span.is_recording():
                     span.set_attribute(SpanAttributes.MESSAGING_SYSTEM, "pubsub")
                     span.set_attribute(SpanAttributes.MESSAGING_CONSUMER_ID, subscription)
 
-                if callable(callback):
-                    callback(message)
+                try:
+                    if callable(callback):
+                        callback(message)
+                finally:
+                    if hasattr(message, _OTEL_SPAN_ATTRIBUTE):
+                        delattr(message, _OTEL_SPAN_ATTRIBUTE)
 
-        kwargs["subscription"] = subscription
-        kwargs["callback"] = _traced_callback
+        for key in {"subscription", "callback"}:
+            if key in kwargs:
+                del kwargs[key]
 
-        return func(subscription, callback, *args[2:], **kwargs)
+        return func(subscription, _traced_callback, *args[2:], **kwargs)
 
     return _traced_subscribe
+
+def set_attributes(
+        attributes: dict
+) -> Callable:
+    def _traced(func, instance, args, kwargs):
+        span = getattr(instance, _OTEL_SPAN_ATTRIBUTE, trace.INVALID_SPAN)
+        if span.is_recording():
+            span.set_attributes(attributes)
+
+        return func(*args, **kwargs)
+
+    return _traced
