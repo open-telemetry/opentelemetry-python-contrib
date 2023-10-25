@@ -124,12 +124,8 @@ class _OpenTelemetryServicerContext(grpc.ServicerContext):
         self._active_span.set_attribute(
             SpanAttributes.RPC_GRPC_STATUS_CODE, code.value[0]
         )
-        self._active_span.set_status(
-            Status(
-                status_code=StatusCode.ERROR,
-                description=f"{code}:{details}",
-            )
-        )
+        status = self._server_status(code, details)
+        self._active_span.set_status(status)
         return self._servicer_context.abort(code, details)
 
     def abort_with_status(self, status):
@@ -158,24 +154,29 @@ class _OpenTelemetryServicerContext(grpc.ServicerContext):
             SpanAttributes.RPC_GRPC_STATUS_CODE, code.value[0]
         )
         if code != grpc.StatusCode.OK:
-            self._active_span.set_status(
-                Status(
-                    status_code=StatusCode.ERROR,
-                    description=f"{code}:{details}",
-                )
-            )
+            status = self._server_status(code, details)
+            self._active_span.set_status(status)
         return self._servicer_context.set_code(code)
 
     def set_details(self, details):
         self._details = details
         if self._code != grpc.StatusCode.OK:
-            self._active_span.set_status(
-                Status(
-                    status_code=StatusCode.ERROR,
-                    description=f"{self._code}:{details}",
-                )
-            )
+            status = self._server_status(self._code, details)
+            self._active_span.set_status(status)
         return self._servicer_context.set_details(details)
+
+    def _server_status(self, code, details):
+        error_status = Status(status_code=StatusCode.ERROR, description=f"{code}:{details}")
+        status_codes = {
+            grpc.StatusCode.UNKNOWN: error_status,
+            grpc.StatusCode.DEADLINE_EXCEEDED: error_status,
+            grpc.StatusCode.UNIMPLEMENTED: error_status,
+            grpc.StatusCode.INTERNAL: error_status,
+            grpc.StatusCode.UNAVAILABLE: error_status,
+            grpc.StatusCode.DATA_LOSS: error_status,
+        }
+
+        return status_codes.get(code, Status(status_code=StatusCode.UNSET, description=""))
 
 
 # pylint:disable=abstract-method
