@@ -26,8 +26,10 @@ from opentelemetry.instrumentation.propagators import (
 )
 from opentelemetry.instrumentation.wsgi import (
     OpenTelemetryMiddleware,
-    _active_requests_count_attrs,
-    _duration_attrs,
+    _active_requests_count_attrs_old,
+    _duration_attrs_old,
+    _active_requests_count_attrs_new,
+    _duration_attrs_new,
 )
 from opentelemetry.sdk.metrics.export import (
     HistogramDataPoint,
@@ -44,18 +46,18 @@ from opentelemetry.util.http import (
     OTEL_PYTHON_INSTRUMENTATION_HTTP_CAPTURE_ALL_METHODS,
     get_excluded_urls,
 )
+from opentelemetry.instrumentation.utils import _OpenTelemetryStabilityMode
 
 # pylint: disable=import-error
 from .base_test import InstrumentationTest
 
 
-def expected_attributes(override_attributes):
+def expected_attributes_old(override_attributes):
     default_attributes = {
         SpanAttributes.HTTP_METHOD: "GET",
-        SpanAttributes.HTTP_SERVER_NAME: "localhost",
+        SpanAttributes.NET_HOST_NAME: "localhost",
         SpanAttributes.HTTP_SCHEME: "http",
         SpanAttributes.NET_HOST_PORT: 80,
-        SpanAttributes.HTTP_HOST: "localhost",
         SpanAttributes.HTTP_TARGET: "/",
         SpanAttributes.HTTP_FLAVOR: "1.1",
         SpanAttributes.HTTP_STATUS_CODE: 200,
@@ -64,14 +66,47 @@ def expected_attributes(override_attributes):
         default_attributes[key] = val
     return default_attributes
 
+def expected_attributes_new(override_attributes):
+    default_attributes = {
+        SpanAttributes.HTTP_REQUEST_METHOD: "GET",
+        SpanAttributes.SERVER_ADDRESS: "localhost",
+        SpanAttributes.URL_SCHEME: "http",
+        SpanAttributes.SERVER_PORT: 80,
+        SpanAttributes.URL_PATH: "/",
+        SpanAttributes.NETWORK_PROTOCOL_VERSION: "1.1",
+        SpanAttributes.HTTP_RESPONSE_STATUS_CODE: 200,
+    }
+    for key, val in override_attributes.items():
+        default_attributes[key] = val
+    return default_attributes
 
-_expected_metric_names = [
+_expected_metric_names_old = [
     "http.server.active_requests",
     "http.server.duration",
 ]
-_recommended_attrs = {
-    "http.server.active_requests": _active_requests_count_attrs,
-    "http.server.duration": _duration_attrs,
+_expected_metrics_attrs_old = {
+    "http.server.active_requests": _active_requests_count_attrs_old,
+    "http.server.duration": _duration_attrs_old,
+}
+
+_expected_metric_names_new = [
+    "http.server.active_requests",
+    "http.server.request.duration",
+]
+_expected_metrics_attrs_new = {
+    "http.server.active_requests": _active_requests_count_attrs_new,
+    "http.server.request.duration": _duration_attrs_new,
+}
+
+_expected_metric_names_dup = [
+    "http.server.active_requests",
+    "http.server.request.duration",
+    "http.server.duration",
+]
+_expected_metrics_attrs_dup = {
+    "http.server.active_requests": _active_requests_count_attrs_new + _active_requests_count_attrs_old,
+    "http.server.request.duration": _duration_attrs_new,
+    "http.server.duration": _duration_attrs_old,
 }
 
 
@@ -94,7 +129,7 @@ class TestProgrammatic(InstrumentationTest, WsgiTestBase):
         self.exclude_patch.start()
 
         self.app = Flask(__name__)
-        FlaskInstrumentor().instrument_app(self.app)
+        FlaskInstrumentor().instrument_app(self.app, _OpenTelemetryStabilityMode.DEFAULT)
 
         self._common_initialization()
 
@@ -160,7 +195,7 @@ class TestProgrammatic(InstrumentationTest, WsgiTestBase):
         self.assertEqual(nonstring_keys, set())
 
     def test_simple(self):
-        expected_attrs = expected_attributes(
+        expected_attrs = expected_attributes_old(
             {
                 SpanAttributes.HTTP_TARGET: "/hello/123",
                 SpanAttributes.HTTP_ROUTE: "/hello/<int:helloid>",
@@ -170,7 +205,7 @@ class TestProgrammatic(InstrumentationTest, WsgiTestBase):
 
         span_list = self.memory_exporter.get_finished_spans()
         self.assertEqual(len(span_list), 1)
-        self.assertEqual(span_list[0].name, "/hello/<int:helloid>")
+        self.assertEqual(span_list[0].name, "GET /hello/<int:helloid>")
         self.assertEqual(span_list[0].kind, trace.SpanKind.SERVER)
         self.assertEqual(span_list[0].attributes, expected_attrs)
 
@@ -203,7 +238,7 @@ class TestProgrammatic(InstrumentationTest, WsgiTestBase):
             self.assertFalse(mock_span.set_status.called)
 
     def test_404(self):
-        expected_attrs = expected_attributes(
+        expected_attrs = expected_attributes_old(
             {
                 SpanAttributes.HTTP_METHOD: "POST",
                 SpanAttributes.HTTP_TARGET: "/bye",
@@ -216,12 +251,12 @@ class TestProgrammatic(InstrumentationTest, WsgiTestBase):
         resp.close()
         span_list = self.memory_exporter.get_finished_spans()
         self.assertEqual(len(span_list), 1)
-        self.assertEqual(span_list[0].name, "POST /bye")
+        self.assertEqual(span_list[0].name, "POST")
         self.assertEqual(span_list[0].kind, trace.SpanKind.SERVER)
         self.assertEqual(span_list[0].attributes, expected_attrs)
 
     def test_internal_error(self):
-        expected_attrs = expected_attributes(
+        expected_attrs = expected_attributes_old(
             {
                 SpanAttributes.HTTP_TARGET: "/hello/500",
                 SpanAttributes.HTTP_ROUTE: "/hello/<int:helloid>",
@@ -233,7 +268,7 @@ class TestProgrammatic(InstrumentationTest, WsgiTestBase):
         resp.close()
         span_list = self.memory_exporter.get_finished_spans()
         self.assertEqual(len(span_list), 1)
-        self.assertEqual(span_list[0].name, "/hello/<int:helloid>")
+        self.assertEqual(span_list[0].name, "GET /hello/<int:helloid>")
         self.assertEqual(span_list[0].kind, trace.SpanKind.SERVER)
         self.assertEqual(span_list[0].attributes, expected_attrs)
 
@@ -291,7 +326,7 @@ class TestProgrammatic(InstrumentationTest, WsgiTestBase):
             for scope_metric in resource_metric.scope_metrics:
                 self.assertTrue(len(scope_metric.metrics) != 0)
                 for metric in scope_metric.metrics:
-                    self.assertIn(metric.name, _expected_metric_names)
+                    self.assertIn(metric.name, _expected_metric_names_old)
                     data_points = list(metric.data.data_points)
                     self.assertEqual(len(data_points), 1)
                     for point in data_points:
@@ -305,7 +340,7 @@ class TestProgrammatic(InstrumentationTest, WsgiTestBase):
                             number_data_point_seen = True
                         for attr in point.attributes:
                             self.assertIn(
-                                attr, _recommended_attrs[metric.name]
+                                attr, _expected_metrics_attrs_old[metric.name]
                             )
         self.assertTrue(number_data_point_seen and histogram_data_point_seen)
 
@@ -351,19 +386,18 @@ class TestProgrammatic(InstrumentationTest, WsgiTestBase):
         self.client.get("/hello/756")
         expected_duration_attributes = {
             "http.method": "GET",
-            "http.host": "localhost",
+            "net.host.name": "localhost",
             "http.scheme": "http",
             "http.flavor": "1.1",
-            "http.server_name": "localhost",
             "net.host.port": 80,
             "http.status_code": 200,
         }
         expected_requests_count_attributes = {
             "http.method": "GET",
-            "http.host": "localhost",
+            "net.host.name": "localhost",
+            "net.host.port": 80,
             "http.scheme": "http",
             "http.flavor": "1.1",
-            "http.server_name": "localhost",
         }
         self._assert_basic_metric(
             expected_duration_attributes,
@@ -373,25 +407,25 @@ class TestProgrammatic(InstrumentationTest, WsgiTestBase):
     def test_basic_metric_nonstandard_http_method_success(self):
         self.client.open("/hello/756", method="NONSTANDARD")
         expected_duration_attributes = {
-            "http.method": "UNKNOWN",
-            "http.host": "localhost",
+            "http.method": "_OTHER",
+            "net.host.name": "localhost",
             "http.scheme": "http",
             "http.flavor": "1.1",
-            "http.server_name": "localhost",
             "net.host.port": 80,
             "http.status_code": 405,
         }
         expected_requests_count_attributes = {
-            "http.method": "UNKNOWN",
-            "http.host": "localhost",
+            "http.method": "_OTHER",
+            "net.host.name": "localhost",
+            "net.host.port": 80,
             "http.scheme": "http",
-            "http.flavor": "1.1",
-            "http.server_name": "localhost",
+            "http.flavor": "1.1"
         }
         self._assert_basic_metric(
             expected_duration_attributes,
             expected_requests_count_attributes,
         )
+
 
     @patch.dict(
     "os.environ",
@@ -403,19 +437,18 @@ class TestProgrammatic(InstrumentationTest, WsgiTestBase):
         self.client.open("/hello/756", method="NONSTANDARD")
         expected_duration_attributes = {
             "http.method": "NONSTANDARD",
-            "http.host": "localhost",
+            "net.host.name": "localhost",
             "http.scheme": "http",
             "http.flavor": "1.1",
-            "http.server_name": "localhost",
             "net.host.port": 80,
             "http.status_code": 405,
         }
         expected_requests_count_attributes = {
             "http.method": "NONSTANDARD",
-            "http.host": "localhost",
+            "net.host.name": "localhost",
+            "net.host.port": 80,
             "http.scheme": "http",
             "http.flavor": "1.1",
-            "http.server_name": "localhost",
         }
         self._assert_basic_metric(
             expected_duration_attributes,
@@ -467,7 +500,7 @@ class TestProgrammaticHooks(InstrumentationTest, WsgiTestBase):
             FlaskInstrumentor().uninstrument_app(self.app)
 
     def test_hooks(self):
-        expected_attrs = expected_attributes(
+        expected_attrs = expected_attributes_old(
             {
                 "http.target": "/hello/123",
                 "http.route": "/hello/<int:helloid>",
@@ -479,6 +512,7 @@ class TestProgrammaticHooks(InstrumentationTest, WsgiTestBase):
         span_list = self.memory_exporter.get_finished_spans()
         self.assertEqual(len(span_list), 1)
         self.assertEqual(span_list[0].name, "name from hook")
+
         self.assertEqual(span_list[0].attributes, expected_attrs)
         self.assertEqual(resp.headers["hook_attr"], "hello otel")
 
@@ -515,7 +549,7 @@ class TestProgrammaticHooksWithoutApp(InstrumentationTest, WsgiTestBase):
             FlaskInstrumentor().uninstrument()
 
     def test_no_app_hooks(self):
-        expected_attrs = expected_attributes(
+        expected_attrs = expected_attributes_old(
             {
                 "http.target": "/hello/123",
                 "http.route": "/hello/<int:helloid>",
@@ -748,3 +782,234 @@ class TestCustomRequestResponseHeaders(InstrumentationTest, WsgiTestBase):
             self.assertEqual(span.kind, trace.SpanKind.INTERNAL)
             for key, _ in not_expected.items():
                 self.assertNotIn(key, span.attributes)
+
+
+class TestOpInHttp(InstrumentationTest, WsgiTestBase):
+    def setUp(self):
+        super().setUp()
+
+        self.env_patch = patch.dict(
+            "os.environ",
+            {
+                "OTEL_PYTHON_FLASK_EXCLUDED_URLS": "http://localhost/env_excluded_arg/123,env_excluded_noarg"
+            },
+        )
+        self.env_patch.start()
+
+        self.exclude_patch = patch(
+            "opentelemetry.instrumentation.flask._excluded_urls_from_env",
+            get_excluded_urls("FLASK"),
+        )
+        self.exclude_patch.start()
+
+        self.app = Flask(__name__)
+        FlaskInstrumentor().instrument_app(self.app, _OpenTelemetryStabilityMode.HTTP)
+
+        self._common_initialization()
+
+    def tearDown(self):
+        super().tearDown()
+        self.env_patch.stop()
+        self.exclude_patch.stop()
+        with self.disable_logging():
+            FlaskInstrumentor().uninstrument_app(self.app)
+
+    def test_simple(self):
+        expected_attrs = expected_attributes_new(
+            {
+                SpanAttributes.URL_PATH: "/hello/123",
+                SpanAttributes.URL_QUERY: "foo=bar",
+                SpanAttributes.HTTP_ROUTE: "/hello/<int:helloid>",
+            }
+        )
+        self.client.get("/hello/123?foo=bar")
+
+        span_list = self.memory_exporter.get_finished_spans()
+        self.assertEqual(len(span_list), 1)
+        self.assertEqual(span_list[0].name, "GET /hello/<int:helloid>")
+        self.assertEqual(span_list[0].kind, trace.SpanKind.SERVER)
+        self.assertEqual(span_list[0].attributes, expected_attrs)
+
+    def test_404(self):
+        expected_attrs = expected_attributes_new(
+            {
+                SpanAttributes.HTTP_REQUEST_METHOD: "POST",
+                SpanAttributes.URL_PATH: "/bye",
+                SpanAttributes.HTTP_RESPONSE_STATUS_CODE: 404
+            }
+        )
+
+        resp = self.client.post("/bye")
+        self.assertEqual(404, resp.status_code)
+        resp.close()
+        span_list = self.memory_exporter.get_finished_spans()
+        self.assertEqual(len(span_list), 1)
+        self.assertEqual(span_list[0].name, "POST")
+        self.assertEqual(span_list[0].kind, trace.SpanKind.SERVER)
+        self.assertEqual(span_list[0].attributes, expected_attrs)
+
+    def test_internal_error(self):
+        expected_attrs = expected_attributes_new(
+            {
+                SpanAttributes.URL_PATH: "/hello/500",
+                SpanAttributes.HTTP_ROUTE: "/hello/<int:helloid>",
+                SpanAttributes.HTTP_RESPONSE_STATUS_CODE: 500,
+                "error.type" : "500"
+            }
+        )
+        resp = self.client.get("/hello/500")
+        self.assertEqual(500, resp.status_code)
+        resp.close()
+        span_list = self.memory_exporter.get_finished_spans()
+        self.assertEqual(len(span_list), 1)
+        self.assertEqual(span_list[0].name, "GET /hello/<int:helloid>")
+        self.assertEqual(span_list[0].kind, trace.SpanKind.SERVER)
+        self.assertEqual(span_list[0].attributes, expected_attrs)
+
+    def test_flask_metrics(self):
+        start = default_timer()
+        self.client.get("/hello/123")
+        self.client.get("/hello/321")
+        self.client.get("/hello/756")
+        duration = default_timer() - start
+        metrics_list = self.memory_metrics_reader.get_metrics_data()
+        number_data_point_seen = False
+        histogram_data_point_seen = False
+        self.assertTrue(len(metrics_list.resource_metrics) != 0)
+        for resource_metric in metrics_list.resource_metrics:
+            self.assertTrue(len(resource_metric.scope_metrics) != 0)
+            for scope_metric in resource_metric.scope_metrics:
+                self.assertTrue(len(scope_metric.metrics) != 0)
+                for metric in scope_metric.metrics:
+                    self.assertIn(metric.name, _expected_metric_names_new)
+                    data_points = list(metric.data.data_points)
+                    self.assertEqual(len(data_points), 1)
+                    for point in data_points:
+                        if isinstance(point, HistogramDataPoint):
+                            self.assertEqual(point.count, 3)
+                            self.assertAlmostEqual(
+                                duration, point.sum, delta=10
+                            )
+                            histogram_data_point_seen = True
+                        if isinstance(point, NumberDataPoint):
+                            number_data_point_seen = True
+                        for attr in point.attributes:
+                            self.assertIn(
+                                attr, _expected_metrics_attrs_new[metric.name]
+                            )
+        self.assertTrue(number_data_point_seen and histogram_data_point_seen)
+
+    def test_flask_metric_values(self):
+        start = default_timer()
+        self.client.post("/hello/756")
+        self.client.post("/hello/756")
+        self.client.post("/hello/756")
+        duration = default_timer() - start
+        metrics_list = self.memory_metrics_reader.get_metrics_data()
+        for resource_metric in metrics_list.resource_metrics:
+            for scope_metric in resource_metric.scope_metrics:
+                for metric in scope_metric.metrics:
+                    for point in list(metric.data.data_points):
+                        if isinstance(point, HistogramDataPoint):
+                            self.assertEqual(point.count, 3)
+                            self.assertAlmostEqual(
+                                duration, point.sum, delta=10
+                            )
+                        if isinstance(point, NumberDataPoint):
+                            self.assertEqual(point.value, 0)
+
+    def _assert_basic_metric(self, expected_duration_attributes, expected_requests_count_attributes):
+        metrics_list = self.memory_metrics_reader.get_metrics_data()
+        for resource_metric in metrics_list.resource_metrics:
+            for scope_metrics in resource_metric.scope_metrics:
+                for metric in scope_metrics.metrics:
+                    for point in list(metric.data.data_points):
+                        if isinstance(point, HistogramDataPoint):
+                            self.assertDictEqual(
+                                expected_duration_attributes,
+                                dict(point.attributes),
+                            )
+                            self.assertEqual(point.count, 1)
+                        elif isinstance(point, NumberDataPoint):
+                            self.assertDictEqual(
+                                expected_requests_count_attributes,
+                                dict(point.attributes),
+                            )
+                            self.assertEqual(point.value, 0)
+
+    def test_basic_metric_success(self):
+        self.client.get("/hello/756")
+
+        expected_duration_attributes = {
+            "http.request.method": "GET",
+            "url.scheme": "http",
+            "network.protocol.version": "1.1",
+            "http.response.status_code": 200,
+        }
+        expected_requests_count_attributes = {
+            "http.request.method": "GET",
+            "url.scheme": "http",
+        }
+
+        self._assert_basic_metric(
+            expected_duration_attributes,
+            expected_requests_count_attributes,
+        )
+
+    def test_basic_metric_nonstandard_http_method_success(self):
+        self.client.open("/hello/756", method="NONSTANDARD")
+        expected_duration_attributes = {
+            "http.request.method": "_OTHER",
+            "url.scheme": "http",
+            "network.protocol.version": "1.1",
+            "http.response.status_code": 405,
+        }
+        expected_requests_count_attributes = {
+            "http.request.method": "_OTHER",
+            "url.scheme": "http"
+        }
+        self._assert_basic_metric(
+            expected_duration_attributes,
+            expected_requests_count_attributes,
+        )
+
+    @patch.dict(
+    "os.environ",
+        {
+            OTEL_PYTHON_INSTRUMENTATION_HTTP_CAPTURE_ALL_METHODS: "1",
+        },
+    )
+    def test_basic_metric_nonstandard_http_method_allowed_success(self):
+        self.client.open("/hello/756", method="NONSTANDARD")
+        expected_duration_attributes = {
+            "http.request.method": "NONSTANDARD",
+            "url.scheme": "http",
+            "network.protocol.version": "1.1",
+            "http.response.status_code": 405,
+        }
+        expected_requests_count_attributes = {
+            "http.request.method": "NONSTANDARD",
+            "url.scheme": "http",
+        }
+        self._assert_basic_metric(
+            expected_duration_attributes,
+            expected_requests_count_attributes,
+        )
+
+    def test_internal_error_metrics(self):
+        self.client.get("/hello/500")
+        expected_duration_attributes = {
+            "http.request.method": "GET",
+            "url.scheme": "http",
+            "network.protocol.version": "1.1",
+            "http.response.status_code": 500,
+            "error.type": "500",
+        }
+        expected_requests_count_attributes = {
+            "http.request.method": "GET",
+            "url.scheme": "http"
+        }
+        self._assert_basic_metric(
+            expected_duration_attributes,
+            expected_requests_count_attributes,
+        )

@@ -16,7 +16,7 @@ from os import environ
 from re import IGNORECASE as RE_IGNORECASE
 from re import compile as re_compile
 from re import search
-from typing import Iterable, List, Optional
+from typing import Iterable, List, Optional, Tuple
 from urllib.parse import urlparse, urlunparse
 
 from opentelemetry.semconv.trace import SpanAttributes
@@ -38,21 +38,20 @@ OTEL_PYTHON_INSTRUMENTATION_HTTP_CAPTURE_ALL_METHODS = (
 # List of recommended metrics attributes
 _duration_attrs = {
     SpanAttributes.HTTP_METHOD,
-    SpanAttributes.HTTP_HOST,
+    SpanAttributes.NET_HOST_NAME,
+    SpanAttributes.NET_HOST_PORT,
     SpanAttributes.HTTP_SCHEME,
     SpanAttributes.HTTP_STATUS_CODE,
-    SpanAttributes.HTTP_FLAVOR,
-    SpanAttributes.HTTP_SERVER_NAME,
-    SpanAttributes.NET_HOST_NAME,
+    SpanAttributes.NET_PROTOCOL_NAME,
+    SpanAttributes.NET_PROTOCOL_VERSION,
     SpanAttributes.NET_HOST_PORT,
 }
 
 _active_requests_count_attrs = {
     SpanAttributes.HTTP_METHOD,
-    SpanAttributes.HTTP_HOST,
     SpanAttributes.HTTP_SCHEME,
-    SpanAttributes.HTTP_FLAVOR,
-    SpanAttributes.HTTP_SERVER_NAME,
+    SpanAttributes.NET_HOST_NAME,
+    SpanAttributes.NET_HOST_PORT,
 }
 
 
@@ -198,7 +197,7 @@ def sanitize_method(method: Optional[str]) -> Optional[str]:
         # Based on https://www.rfc-editor.org/rfc/rfc7231#section-4.1 and https://www.rfc-editor.org/rfc/rfc5789#section-2.
         method in ["GET", "HEAD", "POST", "PUT", "DELETE", "CONNECT", "OPTIONS", "TRACE", "PATCH"]):
         return method
-    return "UNKNOWN"
+    return "_OTHER"
 
 def get_custom_headers(env_var: str) -> List[str]:
     custom_headers = environ.get(env_var, [])
@@ -208,6 +207,28 @@ def get_custom_headers(env_var: str) -> List[str]:
             for custom_headers in custom_headers.split(",")
         ]
     return custom_headers
+
+
+def parse_http_host(host_port) -> Tuple[str, str]:
+    if not host_port:
+        return (None, None)
+
+    creds_end = host_port.find("@") + 1
+    host_end = host_port.rfind(":", creds_end)
+    if host_end == -1:
+        return (host_port[creds_end:], None)
+
+    return (host_port[creds_end:host_end], host_port[host_end + 1 :])
+
+
+def get_http_protocol_version(protocol_and_version) -> str:
+    if protocol_and_version == "HTTP/1.1":
+        return "1.1"
+    if protocol_and_version == "HTTP/1.0":
+        return "1.0"
+    if protocol_and_version == "HTTP/2":
+        return "2"
+    return None
 
 
 def _parse_active_request_count_attrs(req_attrs):

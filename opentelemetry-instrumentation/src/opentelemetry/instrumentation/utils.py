@@ -12,6 +12,8 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import os
+import threading
 import urllib.parse
 from re import escape, sub
 from typing import Dict, Sequence
@@ -24,6 +26,8 @@ from opentelemetry import context, trace
 # pylint: disable=E0611
 from opentelemetry.context import _SUPPRESS_INSTRUMENTATION_KEY  # noqa: F401
 from opentelemetry.propagate import extract
+from opentelemetry.semconv.resource import ResourceAttributes
+from opentelemetry.semconv.trace import SpanAttributes
 from opentelemetry.trace import StatusCode
 from opentelemetry.trace.propagation.tracecontext import (
     TraceContextTextMapPropagator,
@@ -152,3 +156,72 @@ def _python_path_without_directory(python_path, directory, path_separator):
         "",
         python_path,
     )
+
+
+_OTEL_SEMCONV_STABILITY_OPT_IN_KEY = "OTEL_SEMCONV_STABILITY_OPT_IN"
+
+class _OpenTelemetryStabilitySignalType:
+    HTTP = "http"
+
+
+class _OpenTelemetryStabilityMode:
+    # http - emit the new, stable HTTP and networking conventions ONLY
+    HTTP = "http"
+    # http/dup - emit both the old and the stable HTTP and networking conventions
+    HTTP_DUP = "http/dup"
+    # default - continue emitting old experimental HTTP and networking conventions
+    DEFAULT = "default"
+
+
+def _report_new(mode):
+    return mode == _OpenTelemetryStabilityMode.HTTP or mode == _OpenTelemetryStabilityMode.HTTP_DUP
+
+def _report_old(mode):
+    return mode == _OpenTelemetryStabilityMode.DEFAULT or mode == _OpenTelemetryStabilityMode.HTTP_DUP
+
+
+class _OpenTelemetrySemanticConventionStability:
+    _initialized = False
+    _lock = threading.Lock()
+    _OTEL_SEMCONV_STABILITY_SIGNAL_MAPPING = {}
+
+    @classmethod
+    def _initialize(cls):
+        with _OpenTelemetrySemanticConventionStability._lock:
+            if not _OpenTelemetrySemanticConventionStability._initialized:
+                # Users can pass in comma delimited string for opt-in options
+                # Only values for http stability are supported for now
+                opt_in = os.environ.get(_OTEL_SEMCONV_STABILITY_OPT_IN_KEY, "")
+                opt_in_list = []
+                if opt_in:
+                    opt_in_list = [s.strip() for s in opt_in.split(",")]
+                http_opt_in = _OpenTelemetryStabilityMode.DEFAULT
+                if opt_in_list:
+                    # Process http opt-in
+                    # http/dup takes priority over http
+                    if _OpenTelemetryStabilityMode.HTTP_DUP in opt_in_list:
+                        http_opt_in = _OpenTelemetryStabilityMode.HTTP_DUP
+                    elif _OpenTelemetryStabilityMode.HTTP in opt_in_list:
+                        http_opt_in = _OpenTelemetryStabilityMode.HTTP
+                _OpenTelemetrySemanticConventionStability._OTEL_SEMCONV_STABILITY_SIGNAL_MAPPING[
+                    _OpenTelemetryStabilitySignalType.HTTP
+                ] = http_opt_in
+                _OpenTelemetrySemanticConventionStability._initialized = True
+
+
+    @classmethod
+    # Get OpenTelemetry opt-in mode based off of signal type (http, messaging, etc.)
+    def _get_opentelemetry_stability_opt_in_mode(
+        cls,
+        signal_type: _OpenTelemetryStabilitySignalType,
+    ) -> _OpenTelemetryStabilityMode:
+        return _OpenTelemetrySemanticConventionStability._OTEL_SEMCONV_STABILITY_SIGNAL_MAPPING.get(
+            signal_type, _OpenTelemetryStabilityMode.DEFAULT
+        )
+
+
+# Get schema version based off of opt-in mode
+def _get_schema_url(mode: _OpenTelemetryStabilityMode) -> str:
+    if mode is _OpenTelemetryStabilityMode.DEFAULT:
+        return "https://opentelemetry.io/schemas/1.11.0"
+    return SpanAttributes.SCHEMA_URL

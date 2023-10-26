@@ -35,7 +35,7 @@ from opentelemetry.util.http import (
     OTEL_INSTRUMENTATION_HTTP_CAPTURE_HEADERS_SERVER_RESPONSE,
     OTEL_PYTHON_INSTRUMENTATION_HTTP_CAPTURE_ALL_METHODS,
 )
-
+from opentelemetry.instrumentation.utils import _OpenTelemetryStabilityMode
 
 class Response:
     def __init__(self):
@@ -114,13 +114,33 @@ def wsgi_with_custom_response_headers(environ, start_response):
     return [b"*"]
 
 
-_expected_metric_names = [
+_expected_metric_names_old = [
     "http.server.active_requests",
     "http.server.duration",
 ]
-_recommended_attrs = {
-    "http.server.active_requests": otel_wsgi._active_requests_count_attrs,
-    "http.server.duration": otel_wsgi._duration_attrs,
+_expected_attrs_old = {
+    "http.server.active_requests": otel_wsgi._active_requests_count_attrs_old,
+    "http.server.duration": otel_wsgi._duration_attrs_old,
+}
+
+_expected_metric_names_new = [
+    "http.server.active_requests",
+    "http.server.request.duration",
+]
+_expected_attrs_new = {
+    "http.server.active_requests": otel_wsgi._active_requests_count_attrs_new,
+    "http.server.request.duration": otel_wsgi._duration_attrs_new,
+}
+
+_expected_metric_names_dup = [
+    "http.server.active_requests",
+    "http.server.request.duration",
+    "http.server.duration",
+]
+_expected_attrs_dup = {
+    "http.server.active_requests": otel_wsgi._active_requests_count_attrs_new + otel_wsgi._active_requests_count_attrs_old,
+    "http.server.request.duration": otel_wsgi._duration_attrs_new,
+    "http.server.duration": otel_wsgi._duration_attrs_old,
 }
 
 
@@ -129,7 +149,7 @@ class TestWsgiApplication(WsgiTestBase):
         self,
         response,
         error=None,
-        span_name="GET /",
+        span_name="GET",
         http_method="GET",
         span_attributes=None,
         response_headers=None,
@@ -159,17 +179,17 @@ class TestWsgiApplication(WsgiTestBase):
         self.assertEqual(span_list[0].name, span_name)
         self.assertEqual(span_list[0].kind, trace_api.SpanKind.SERVER)
         expected_attributes = {
-            SpanAttributes.HTTP_SERVER_NAME: "127.0.0.1",
-            SpanAttributes.HTTP_SCHEME: "http",
+            SpanAttributes.NET_HOST_NAME: "127.0.0.1",
             SpanAttributes.NET_HOST_PORT: 80,
-            SpanAttributes.HTTP_HOST: "127.0.0.1",
+            SpanAttributes.HTTP_SCHEME: "http",
+            SpanAttributes.HTTP_TARGET: "/",
             SpanAttributes.HTTP_FLAVOR: "1.0",
-            SpanAttributes.HTTP_URL: "http://127.0.0.1/",
             SpanAttributes.HTTP_STATUS_CODE: 200,
         }
         expected_attributes.update(span_attributes or {})
         if http_method is not None:
             expected_attributes[SpanAttributes.HTTP_METHOD] = http_method
+
         self.assertEqual(span_list[0].attributes, expected_attributes)
 
     def test_basic_wsgi_call(self):
@@ -245,8 +265,8 @@ class TestWsgiApplication(WsgiTestBase):
         response = app(self.environ, self.start_response)
         self.validate_response(response, error=ValueError)
 
-    def test_wsgi_internal_error(self):
-        app = otel_wsgi.OpenTelemetryMiddleware(error_wsgi_unhandled)
+    def test_wsgi_internal_error_old(self):
+        app = otel_wsgi.OpenTelemetryMiddleware(error_wsgi_unhandled, sem_conv_opt_in_mode=_OpenTelemetryStabilityMode.DEFAULT)
         self.assertRaises(ValueError, app, self.environ, self.start_response)
         span_list = self.memory_exporter.get_finished_spans()
         self.assertEqual(len(span_list), 1)
@@ -255,8 +275,22 @@ class TestWsgiApplication(WsgiTestBase):
             StatusCode.ERROR,
         )
 
-    def test_wsgi_metrics(self):
-        app = otel_wsgi.OpenTelemetryMiddleware(error_wsgi_unhandled)
+    def test_wsgi_internal_error_new(self):
+        app = otel_wsgi.OpenTelemetryMiddleware(error_wsgi_unhandled, sem_conv_opt_in_mode=_OpenTelemetryStabilityMode.HTTP)
+        self.assertRaises(ValueError, app, self.environ, self.start_response)
+        span_list = self.memory_exporter.get_finished_spans()
+        self.assertEqual(len(span_list), 1)
+        self.assertEqual(
+            span_list[0].status.status_code,
+            StatusCode.ERROR,
+        )
+        self.assertEqual(
+            span_list[0].attributes["error.type"],
+            "ValueError",
+        )
+
+    def test_wsgi_metrics_old(self):
+        app = otel_wsgi.OpenTelemetryMiddleware(error_wsgi_unhandled, sem_conv_opt_in_mode=_OpenTelemetryStabilityMode.DEFAULT)
         self.assertRaises(ValueError, app, self.environ, self.start_response)
         self.assertRaises(ValueError, app, self.environ, self.start_response)
         self.assertRaises(ValueError, app, self.environ, self.start_response)
@@ -270,7 +304,7 @@ class TestWsgiApplication(WsgiTestBase):
             for scope_metric in resource_metric.scope_metrics:
                 self.assertTrue(len(scope_metric.metrics) != 0)
                 for metric in scope_metric.metrics:
-                    self.assertIn(metric.name, _expected_metric_names)
+                    self.assertIn(metric.name, _expected_metric_names_old)
                     data_points = list(metric.data.data_points)
                     self.assertEqual(len(data_points), 1)
                     for point in data_points:
@@ -281,7 +315,68 @@ class TestWsgiApplication(WsgiTestBase):
                             number_data_point_seen = True
                         for attr in point.attributes:
                             self.assertIn(
-                                attr, _recommended_attrs[metric.name]
+                                attr, _expected_attrs_old[metric.name]
+                            )
+        self.assertTrue(number_data_point_seen and histogram_data_point_seen)
+
+    def test_wsgi_metrics_new(self):
+        app = otel_wsgi.OpenTelemetryMiddleware(error_wsgi_unhandled, sem_conv_opt_in_mode=_OpenTelemetryStabilityMode.HTTP)
+        self.assertRaises(ValueError, app, self.environ, self.start_response)
+        self.assertRaises(ValueError, app, self.environ, self.start_response)
+        self.assertRaises(ValueError, app, self.environ, self.start_response)
+        metrics_list = self.memory_metrics_reader.get_metrics_data()
+        number_data_point_seen = False
+        histogram_data_point_seen = False
+
+        self.assertTrue(len(metrics_list.resource_metrics) != 0)
+        for resource_metric in metrics_list.resource_metrics:
+            self.assertTrue(len(resource_metric.scope_metrics) != 0)
+            for scope_metric in resource_metric.scope_metrics:
+                self.assertTrue(len(scope_metric.metrics) != 0)
+                for metric in scope_metric.metrics:
+                    self.assertIn(metric.name, _expected_metric_names_new)
+                    data_points = list(metric.data.data_points)
+                    self.assertEqual(len(data_points), 1)
+                    for point in data_points:
+                        if isinstance(point, HistogramDataPoint):
+                            self.assertEqual(point.count, 3)
+                            histogram_data_point_seen = True
+                        if isinstance(point, NumberDataPoint):
+                            number_data_point_seen = True
+                        for attr in point.attributes:
+                            self.assertIn(
+                                attr, _expected_attrs_new[metric.name]
+                            )
+        self.assertTrue(number_data_point_seen and histogram_data_point_seen)
+
+
+    def test_wsgi_metrics_dup(self):
+        app = otel_wsgi.OpenTelemetryMiddleware(error_wsgi_unhandled, sem_conv_opt_in_mode=_OpenTelemetryStabilityMode.HTTP_DUP)
+        self.assertRaises(ValueError, app, self.environ, self.start_response)
+        self.assertRaises(ValueError, app, self.environ, self.start_response)
+        self.assertRaises(ValueError, app, self.environ, self.start_response)
+        metrics_list = self.memory_metrics_reader.get_metrics_data()
+        number_data_point_seen = False
+        histogram_data_point_seen = False
+
+        self.assertTrue(len(metrics_list.resource_metrics) != 0)
+        for resource_metric in metrics_list.resource_metrics:
+            self.assertTrue(len(resource_metric.scope_metrics) != 0)
+            for scope_metric in resource_metric.scope_metrics:
+                self.assertTrue(len(scope_metric.metrics) != 0)
+                for metric in scope_metric.metrics:
+                    self.assertIn(metric.name, _expected_metric_names_dup)
+                    data_points = list(metric.data.data_points)
+                    self.assertEqual(len(data_points), 1)
+                    for point in data_points:
+                        if isinstance(point, HistogramDataPoint):
+                            self.assertEqual(point.count, 3)
+                            histogram_data_point_seen = True
+                        if isinstance(point, NumberDataPoint):
+                            number_data_point_seen = True
+                        for attr in point.attributes:
+                            self.assertIn(
+                                attr, _expected_attrs_dup[metric.name]
                             )
         self.assertTrue(number_data_point_seen and histogram_data_point_seen)
 
@@ -289,7 +384,7 @@ class TestWsgiApplication(WsgiTestBase):
         self.environ["REQUEST_METHOD"]= "NONSTANDARD"
         app = otel_wsgi.OpenTelemetryMiddleware(simple_wsgi)
         response = app(self.environ, self.start_response)
-        self.validate_response(response, span_name="UNKNOWN /", http_method="UNKNOWN")
+        self.validate_response(response, span_name="HTTP", http_method="_OTHER")
 
     @mock.patch.dict(
     "os.environ",
@@ -301,7 +396,7 @@ class TestWsgiApplication(WsgiTestBase):
         self.environ["REQUEST_METHOD"]= "NONSTANDARD"
         app = otel_wsgi.OpenTelemetryMiddleware(simple_wsgi)
         response = app(self.environ, self.start_response)
-        self.validate_response(response, span_name="NONSTANDARD /", http_method="NONSTANDARD")
+        self.validate_response(response, span_name="NONSTANDARD", http_method="NONSTANDARD")
 
     def test_default_span_name_missing_path_info(self):
         """Test that default span_names with missing path info."""
@@ -318,20 +413,59 @@ class TestWsgiAttributes(unittest.TestCase):
         wsgiref_util.setup_testing_defaults(self.environ)
         self.span = mock.create_autospec(trace_api.Span, spec_set=True)
 
-    def test_request_attributes(self):
+    def test_request_attributes_old(self):
         self.environ["QUERY_STRING"] = "foo=bar"
 
-        attrs = otel_wsgi.collect_request_attributes(self.environ)
+        attrs = otel_wsgi.collect_request_attributes(self.environ, _OpenTelemetryStabilityMode.DEFAULT)
         self.assertDictEqual(
             attrs,
             {
                 SpanAttributes.HTTP_METHOD: "GET",
-                SpanAttributes.HTTP_HOST: "127.0.0.1",
-                SpanAttributes.HTTP_URL: "http://127.0.0.1/?foo=bar",
+                SpanAttributes.NET_HOST_NAME: "127.0.0.1",
                 SpanAttributes.NET_HOST_PORT: 80,
+                SpanAttributes.HTTP_TARGET: "/?foo=bar",
                 SpanAttributes.HTTP_SCHEME: "http",
-                SpanAttributes.HTTP_SERVER_NAME: "127.0.0.1",
                 SpanAttributes.HTTP_FLAVOR: "1.0",
+            },
+        )
+
+    def test_request_attributes_new(self):
+        self.environ["QUERY_STRING"] = "foo=bar"
+
+        attrs = otel_wsgi.collect_request_attributes(self.environ, _OpenTelemetryStabilityMode.HTTP)
+        self.assertDictEqual(
+            attrs,
+            {
+                SpanAttributes.HTTP_REQUEST_METHOD: "GET",
+                SpanAttributes.SERVER_ADDRESS: "127.0.0.1",
+                SpanAttributes.SERVER_PORT: 80,
+                SpanAttributes.URL_PATH: "/",
+                SpanAttributes.URL_QUERY: "foo=bar",
+                SpanAttributes.URL_SCHEME: "http",
+                SpanAttributes.NETWORK_PROTOCOL_VERSION: "1.0",
+            },
+        )
+
+    def test_request_attributes_dup(self):
+        self.environ["QUERY_STRING"] = "foo=bar"
+
+        attrs = otel_wsgi.collect_request_attributes(self.environ, _OpenTelemetryStabilityMode.HTTP_DUP)
+        self.assertDictEqual(
+            attrs,
+            {
+                SpanAttributes.HTTP_METHOD: "GET",
+                SpanAttributes.NET_HOST_NAME: "127.0.0.1",
+                SpanAttributes.NET_HOST_PORT: 80,
+                SpanAttributes.HTTP_TARGET: "/?foo=bar",
+                SpanAttributes.HTTP_SCHEME: "http",
+                SpanAttributes.HTTP_FLAVOR: "1.0",
+                SpanAttributes.HTTP_REQUEST_METHOD: "GET",
+                SpanAttributes.SERVER_ADDRESS: "127.0.0.1",
+                SpanAttributes.SERVER_PORT: 80,
+                SpanAttributes.URL_PATH: "/",
+                SpanAttributes.URL_QUERY: "foo=bar",
+                SpanAttributes.URL_SCHEME: "http",
+                SpanAttributes.NETWORK_PROTOCOL_VERSION: "1.0",
             },
         )
 
@@ -341,23 +475,22 @@ class TestWsgiAttributes(unittest.TestCase):
             SpanAttributes.HTTP_SCHEME: parts.scheme,
             SpanAttributes.NET_HOST_PORT: parts.port
             or (80 if parts.scheme == "http" else 443),
-            SpanAttributes.HTTP_SERVER_NAME: parts.hostname,  # Not true in the general case, but for all tests.
+            SpanAttributes.NET_HOST_NAME: parts.hostname,  # Not true in the general case, but for all tests.
         }
         if raw:
-            expected[SpanAttributes.HTTP_TARGET] = expected_url.split(
-                parts.netloc, 1
-            )[1]
-        else:
-            expected[SpanAttributes.HTTP_URL] = expected_url
-        if has_host:
-            expected[SpanAttributes.HTTP_HOST] = parts.hostname
+            expected[SpanAttributes.HTTP_TARGET] = parts.path + (
+                "?" + parts.query if parts.query else ""
+            )
 
-        attrs = otel_wsgi.collect_request_attributes(self.environ)
+        if has_host:
+            expected[SpanAttributes.NET_HOST_NAME] = parts.hostname
+
+        attrs = otel_wsgi.collect_request_attributes(self.environ, _OpenTelemetryStabilityMode.DEFAULT)
         self.assertGreaterEqual(
             attrs.items(), expected.items(), expected_url + " expected."
         )
 
-    def test_request_attributes_with_partial_raw_uri(self):
+    def test_request_attributes_with_fragment_raw_uri(self):
         self.environ["RAW_URI"] = "/#top"
         self.validate_url("http://127.0.0.1/#top", raw=True)
 
@@ -406,24 +539,25 @@ class TestWsgiAttributes(unittest.TestCase):
             "HTTP_HOST"
         ] += ":8080"  # Note that we do not correct SERVER_PORT
         expected = {
-            SpanAttributes.HTTP_HOST: "127.0.0.1:8080",
-            SpanAttributes.HTTP_URL: "http://127.0.0.1:8080/",
-            SpanAttributes.NET_HOST_PORT: 80,
+            SpanAttributes.NET_HOST_NAME: "127.0.0.1",
+            SpanAttributes.NET_HOST_PORT: 8080,
+            SpanAttributes.HTTP_TARGET: "/",
         }
         self.assertGreaterEqual(
-            otel_wsgi.collect_request_attributes(self.environ).items(),
+            otel_wsgi.collect_request_attributes(self.environ, _OpenTelemetryStabilityMode.DEFAULT).items(),
             expected.items(),
         )
 
     def test_request_attributes_with_faux_scheme_relative_raw_uri(self):
+        # // indicates absolute url per https://datatracker.ietf.org/doc/html/rfc1808.html#section-2.4.3, i.e. no path here
         self.environ["RAW_URI"] = "//127.0.0.1/?"
-        self.validate_url("http://127.0.0.1//127.0.0.1/?", raw=True)
+        self.validate_url("http://127.0.0.1/?", raw=True)
 
     def test_request_attributes_pathless(self):
         self.environ["RAW_URI"] = ""
-        expected = {SpanAttributes.HTTP_TARGET: ""}
+        expected = {SpanAttributes.HTTP_TARGET: "/"}
         self.assertGreaterEqual(
-            otel_wsgi.collect_request_attributes(self.environ).items(),
+            otel_wsgi.collect_request_attributes(self.environ, _OpenTelemetryStabilityMode.DEFAULT).items(),
             expected.items(),
         )
 
@@ -432,13 +566,14 @@ class TestWsgiAttributes(unittest.TestCase):
         self.environ["REQUEST_METHOD"] = "CONNECT"
         self.environ[
             "REQUEST_URI"
-        ] = "127.0.0.1:8080"  # Might happen in a CONNECT request
+        ] = "http://127.0.0.1:8080"  # Might happen in a CONNECT request
         expected = {
-            SpanAttributes.HTTP_HOST: "127.0.0.1:8080",
-            SpanAttributes.HTTP_TARGET: "127.0.0.1:8080",
+            SpanAttributes.NET_HOST_NAME: "127.0.0.1",
+            SpanAttributes.NET_HOST_PORT: 8080,
+            SpanAttributes.HTTP_TARGET: "/",
         }
         self.assertGreaterEqual(
-            otel_wsgi.collect_request_attributes(self.environ).items(),
+            otel_wsgi.collect_request_attributes(self.environ, _OpenTelemetryStabilityMode.DEFAULT).items(),
             expected.items(),
         )
 
@@ -446,12 +581,12 @@ class TestWsgiAttributes(unittest.TestCase):
         self.environ["HTTP_USER_AGENT"] = "test-useragent"
         expected = {SpanAttributes.HTTP_USER_AGENT: "test-useragent"}
         self.assertGreaterEqual(
-            otel_wsgi.collect_request_attributes(self.environ).items(),
+            otel_wsgi.collect_request_attributes(self.environ, _OpenTelemetryStabilityMode.DEFAULT).items(),
             expected.items(),
         )
 
     def test_response_attributes(self):
-        otel_wsgi.add_response_attributes(self.span, "404 Not Found", {})
+        otel_wsgi.add_response_attributes(self.span, "404 Not Found", {}, {}, sem_conv_opt_in_mode=_OpenTelemetryStabilityMode.DEFAULT)
         expected = (mock.call(SpanAttributes.HTTP_STATUS_CODE, 404),)
         self.assertEqual(self.span.set_attribute.call_count, len(expected))
         self.span.set_attribute.assert_has_calls(expected, any_order=True)
@@ -460,11 +595,12 @@ class TestWsgiAttributes(unittest.TestCase):
         self.environ["HTTP_HOST"] = "username:password@mock"
         self.environ["PATH_INFO"] = "/status/200"
         expected = {
-            SpanAttributes.HTTP_URL: "http://mock/status/200",
             SpanAttributes.NET_HOST_PORT: 80,
+            SpanAttributes.HTTP_TARGET: "/status/200",
+            SpanAttributes.NET_HOST_NAME: "mock",
         }
         self.assertGreaterEqual(
-            otel_wsgi.collect_request_attributes(self.environ).items(),
+            otel_wsgi.collect_request_attributes(self.environ, _OpenTelemetryStabilityMode.DEFAULT).items(),
             expected.items(),
         )
 
@@ -475,7 +611,7 @@ class TestWsgiMiddlewareWithTracerProvider(WsgiTestBase):
         response,
         exporter,
         error=None,
-        span_name="GET /",
+        span_name="GET",
         http_method="GET",
     ):
         while True:
