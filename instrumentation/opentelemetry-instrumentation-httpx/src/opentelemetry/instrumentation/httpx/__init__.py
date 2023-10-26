@@ -206,6 +206,7 @@ from opentelemetry.semconv.trace import SpanAttributes
 from opentelemetry.trace import SpanKind, TracerProvider, get_tracer
 from opentelemetry.trace.span import Span
 from opentelemetry.trace.status import Status
+from opentelemetry.util.http import remove_url_credentials
 
 _logger = logging.getLogger(__name__)
 
@@ -269,7 +270,7 @@ def _extract_parameters(args, kwargs):
         # In httpx >= 0.20.0, handle_request receives a Request object
         request: httpx.Request = args[0]
         method = request.method.encode()
-        url = request.url
+        url = remove_url_credentials(str(request.url))
         headers = request.headers
         stream = request.stream
         extensions = request.extensions
