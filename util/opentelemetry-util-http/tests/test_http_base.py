@@ -64,7 +64,7 @@ class TestHttpBase(TestBase, HttpTestBase):
         assert resp.status == 200
         assert body == b"Hello!"
         span = self.assert_span(num_spans=1)
-        self.assertEqual(span.attributes, {"net.sock.peer.addr": "127.0.0.1"})
+        self.assertEqual(span.attributes, {"net.peer.ip": "127.0.0.1"})
 
     def test_with_nested_span(self):
         tracer = trace.get_tracer(__name__)
@@ -78,9 +78,7 @@ class TestHttpBase(TestBase, HttpTestBase):
         assert resp.status == 200
         assert body == b"Hello!"
         for span in self.assert_span(num_spans=2):
-            self.assertEqual(
-                span.attributes, {"net.sock.peer.addr": "127.0.0.1"}
-            )
+            self.assertEqual(span.attributes, {"net.peer.ip": "127.0.0.1"})
 
     def test_with_nested_nonrecording_span(self):
         tracer = trace.get_tracer(__name__)
@@ -94,7 +92,7 @@ class TestHttpBase(TestBase, HttpTestBase):
         assert resp.status == 200
         assert body == b"Hello!"
         span = self.assert_span(num_spans=1)
-        self.assertEqual(span.attributes, {"net.sock.peer.addr": "127.0.0.1"})
+        self.assertEqual(span.attributes, {"net.peer.ip": "127.0.0.1"})
 
     def test_with_only_nonrecording_span(self):
         with trace.use_span(INVALID_SPAN), set_ip_on_next_http_connection(
