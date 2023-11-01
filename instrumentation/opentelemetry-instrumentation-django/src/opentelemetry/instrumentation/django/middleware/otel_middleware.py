@@ -53,6 +53,7 @@ from opentelemetry.util.http import (
     get_excluded_urls,
     get_traced_request_attrs,
     normalise_request_header_name,
+    normalise_response_header_name,
 )
 
 try:
@@ -110,7 +111,6 @@ except ImportError:
     asgi_collect_request_attributes = None
     set_status_code = None
     _is_asgi_supported = False
-
 
 _logger = getLogger(__name__)
 _attributes_by_preference = [
@@ -361,7 +361,7 @@ class _DjangoMiddleware(MiddlewareMixin):
                             get_custom_headers(
                                 OTEL_INSTRUMENTATION_HTTP_CAPTURE_HEADERS_SERVER_RESPONSE
                             ),
-                            normalise_request_header_name,
+                            normalise_response_header_name,
                         )
                     )
                     for key, value in custom_res_attributes.items():
