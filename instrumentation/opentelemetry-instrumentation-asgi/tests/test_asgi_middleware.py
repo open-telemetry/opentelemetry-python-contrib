@@ -656,10 +656,7 @@ class TestAsgiApplication(AsgiTestBase):
         self.send_input({"type": "websocket.receive", "text": "ping"})
         self.send_input({"type": "websocket.disconnect"})
         self.get_all_output()
-        metrics_list = self.memory_metrics_reader.get_metrics_data()
-        self.assertEqual(
-            len(metrics_list.resource_metrics[0].scope_metrics), 0
-        )
+        self.assertIsNone(self.memory_metrics_reader.get_metrics_data())
 
 
 class TestAsgiAttributes(unittest.TestCase):

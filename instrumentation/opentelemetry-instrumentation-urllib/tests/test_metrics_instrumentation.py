@@ -190,11 +190,18 @@ class TestUrllibMetricsInstrumentation(TestBase):
             metrics = self.get_sorted_metrics()
             self.assertEqual(len(metrics), 3)
 
+            self.assertEqual(
+                metrics[0].data.data_points[0].sum, 1
+            )
+            self.assertEqual(
+                metrics[1].data.data_points[0].sum, 0
+            )
+            self.assertEqual(
+                metrics[2].data.data_points[0].sum, 6
+            )
+
             URLLibInstrumentor().uninstrument()
             with request.urlopen(self.URL):
-                metrics = self.get_sorted_metrics()
-                self.assertEqual(len(metrics), 3)
-
-                for metric in metrics:
-                    for point in list(metric.data.data_points):
-                        self.assertEqual(point.count, 1)
+                self.assertIsNone(
+                    self.memory_metrics_reader.get_metrics_data()
+                )
