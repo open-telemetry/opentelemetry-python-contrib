@@ -176,7 +176,13 @@ from opentelemetry.semconv.trace import SpanAttributes
 from opentelemetry.trace import SpanKind, TracerProvider, get_tracer
 from opentelemetry.trace.span import Span
 from opentelemetry.trace.status import Status
+from opentelemetry.utils.http import (
+    ExcludeList,
+    get_excluded_urls,
+    parse_excluded_urls,
+)
 
+_excluded_urls_from_env = get_excluded_urls("HTTPX")
 _logger = logging.getLogger(__name__)
 
 URL = typing.Tuple[bytes, bytes, typing.Optional[int], bytes]
@@ -276,6 +282,7 @@ class SyncOpenTelemetryTransport(httpx.BaseTransport):
             right after the span is created
         response_hook: A hook that receives the span, request, and response
             that is called right before the span ends
+        excluded_urls: List of urls that should be excluded from tracing
     """
 
     def __init__(
@@ -284,6 +291,7 @@ class SyncOpenTelemetryTransport(httpx.BaseTransport):
         tracer_provider: typing.Optional[TracerProvider] = None,
         request_hook: typing.Optional[RequestHook] = None,
         response_hook: typing.Optional[ResponseHook] = None,
+        excluded_urls: typing.Optional[ExcludeList] = None,
     ):
         self._transport = transport
         self._tracer = get_tracer(
@@ -293,6 +301,7 @@ class SyncOpenTelemetryTransport(httpx.BaseTransport):
         )
         self._request_hook = request_hook
         self._response_hook = response_hook
+        self._excluded_urls = excluded_urls
 
     def __enter__(self) -> "SyncOpenTelemetryTransport":
         self._transport.__enter__()
@@ -317,10 +326,13 @@ class SyncOpenTelemetryTransport(httpx.BaseTransport):
         """Add request info to span."""
         if context.get_value("suppress_instrumentation"):
             return self._transport.handle_request(*args, **kwargs)
-
         method, url, headers, stream, extensions = _extract_parameters(
             args, kwargs
         )
+
+        if self._excluded_urls and self._excluded_urls.url_disabled(url):
+            return self._transport.handle_request(*args, **kwargs)
+
         span_attributes = _prepare_attributes(method, url)
 
         request_info = RequestInfo(method, url, headers, stream, extensions)
@@ -370,6 +382,7 @@ class AsyncOpenTelemetryTransport(httpx.AsyncBaseTransport):
             right after the span is created
         response_hook: A hook that receives the span, request, and response
             that is called right before the span ends
+        excluded_urls: List of urls that should be excluded from tracing
     """
 
     def __init__(
@@ -378,6 +391,7 @@ class AsyncOpenTelemetryTransport(httpx.AsyncBaseTransport):
         tracer_provider: typing.Optional[TracerProvider] = None,
         request_hook: typing.Optional[RequestHook] = None,
         response_hook: typing.Optional[ResponseHook] = None,
+        excluded_urls: typing.Optional[ExcludeList] = None,
     ):
         self._transport = transport
         self._tracer = get_tracer(
@@ -387,6 +401,7 @@ class AsyncOpenTelemetryTransport(httpx.AsyncBaseTransport):
         )
         self._request_hook = request_hook
         self._response_hook = response_hook
+        self._excluded_urls = excluded_urls
 
     async def __aenter__(self) -> "AsyncOpenTelemetryTransport":
         await self._transport.__aenter__()
@@ -407,12 +422,16 @@ class AsyncOpenTelemetryTransport(httpx.AsyncBaseTransport):
         httpx.Response,
     ]:
         """Add request info to span."""
-        if context.get_value("suppress_instrumentation"):
-            return await self._transport.handle_async_request(*args, **kwargs)
-
         method, url, headers, stream, extensions = _extract_parameters(
             args, kwargs
         )
+
+        if self._excluded_urls and self._excluded_urls.url_disabled(url):
+            return await self._transport.handle_async_request(*args, **kwargs)
+
+        if context.get_value("suppress_instrumentation"):
+            return await self._transport.handle_async_request(*args, **kwargs)
+
         span_attributes = _prepare_attributes(method, url)
 
         span_name = _get_default_span_name(
@@ -459,6 +478,7 @@ class _InstrumentedClient(httpx.Client):
     _tracer_provider = None
     _request_hook = None
     _response_hook = None
+    _excluded_urls = None
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
@@ -478,6 +498,7 @@ class _InstrumentedAsyncClient(httpx.AsyncClient):
     _tracer_provider = None
     _request_hook = None
     _response_hook = None
+    _excluded_urls = None
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
@@ -513,11 +534,18 @@ class HTTPXClientInstrumentor(BaseInstrumentor):
                     right after the span is created
                 ``response_hook``: A hook that receives the span, request, and response
                     that is called right before the span ends
+                ``excluded_urls``: A string containing a comma-delimited
+                    list of regexes used to exclude URLs from tracking
         """
         self._original_client = httpx.Client
         self._original_async_client = httpx.AsyncClient
         request_hook = kwargs.get("request_hook")
         response_hook = kwargs.get("response_hook")
+        excluded_urls = kwargs.get("excluded_urls")
+        if  excluded_urls is None:
+            excluded_urls = _excluded_urls_from_env
+        else:
+            excluded_urls = parse_excluded_urls(excluded_urls)
         if callable(request_hook):
             _InstrumentedClient._request_hook = request_hook
             _InstrumentedAsyncClient._request_hook = request_hook
@@ -536,9 +564,11 @@ class HTTPXClientInstrumentor(BaseInstrumentor):
         _InstrumentedClient._tracer_provider = None
         _InstrumentedClient._request_hook = None
         _InstrumentedClient._response_hook = None
+        _InstrumentedClient._excluded_urls = None
         _InstrumentedAsyncClient._tracer_provider = None
         _InstrumentedAsyncClient._request_hook = None
         _InstrumentedAsyncClient._response_hook = None
+        _InstrumentedAsyncClient._excluded_urls = None
 
     @staticmethod
     def instrument_client(

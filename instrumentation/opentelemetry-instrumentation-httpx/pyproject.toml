@@ -38,6 +38,7 @@ test = [
   "opentelemetry-instrumentation-httpx[instruments]",
   "opentelemetry-sdk ~= 1.12",
   "opentelemetry-test-utils == 0.42b0.dev",
+  "httpretty ~= 1.0",
 ]
 
 [project.entry-points.opentelemetry_instrumentor]
