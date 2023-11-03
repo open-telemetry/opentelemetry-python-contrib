@@ -190,7 +190,7 @@ class TestUrllibMetricsInstrumentation(TestBase):
 
     @mark.skipif(
         python_implementation() == "PyPy" or version_info.minor == 7,
-        resason="Fails randomly in 3.7 and pypy"
+        reason="Fails randomly in 3.7 and pypy"
     )
     def test_metric_uninstrument(self):
         with request.urlopen(self.URL):
