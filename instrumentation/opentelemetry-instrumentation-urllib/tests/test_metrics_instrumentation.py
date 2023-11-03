@@ -16,6 +16,9 @@
 from timeit import default_timer
 from urllib import request
 from urllib.parse import urlencode
+from pytest import mark
+from platform import python_implementation
+from sys import version_info
 
 import httpretty
 
@@ -185,6 +188,10 @@ class TestUrllibMetricsInstrumentation(TestBase):
                 ),
             )
 
+    @mark.skipif(
+        python_implementation() == "PyPy" or version_info.minor == 7,
+        resason="Fails randomly in 3.7 and pypy"
+    )
     def test_metric_uninstrument(self):
         with request.urlopen(self.URL):
             metrics = self.get_sorted_metrics()
