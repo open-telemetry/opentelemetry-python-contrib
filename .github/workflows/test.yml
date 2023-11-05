@@ -6,7 +6,7 @@ on:
     - 'release/*'
   pull_request:
 env:
-  CORE_REPO_SHA: 0ef76a5cc39626f783416ca75e43556e2bb2739d
+  CORE_REPO_SHA: d054dff47d2da663a39b9656d106c3d15f344269
 
 jobs:
   build:
@@ -44,7 +44,7 @@ jobs:
             ~/.cache/pip
           key: v7-build-tox-cache-${{ env.RUN_MATRIX_COMBINATION }}-${{ hashFiles('tox.ini', 'gen-requirements.txt', 'dev-requirements.txt') }}
       - name: run tox
-        run: tox -f ${{ matrix.python-version }}-${{ matrix.package }} -- --benchmark-json=${{ env.RUN_MATRIX_COMBINATION }}-benchmark.json
+        run: tox -f ${{ matrix.python-version }}-${{ matrix.package }} -- -ra --benchmark-json=${{ env.RUN_MATRIX_COMBINATION }}-benchmark.json
   #     - name: Find and merge ${{ matrix.package }} benchmarks
   #       # TODO: Add at least one benchmark to every package type to remove this (#249)
   #       if: matrix.package == 'sdkextension' || matrix.package == 'propagator'
