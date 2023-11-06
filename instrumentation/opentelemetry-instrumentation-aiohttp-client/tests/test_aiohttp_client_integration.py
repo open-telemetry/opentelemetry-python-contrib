@@ -134,6 +134,21 @@ class TestAioHttpIntegration(TestBase):
 
                 self.memory_exporter.clear()
 
+    def test_schema_url(self):
+        with self.subTest(status_code=200):
+            host, port = self._http_request(
+                trace_config=aiohttp_client.create_trace_config(),
+                url="/test-path?query=param#foobar",
+                status_code=200,
+            )
+
+            span = self.memory_exporter.get_finished_spans()[0]
+            self.assertEqual(
+                span.instrumentation_info.schema_url,
+                "https://opentelemetry.io/schemas/1.11.0",
+            )
+            self.memory_exporter.clear()
+
     def test_not_recording(self):
         mock_tracer = mock.Mock()
         mock_span = mock.Mock()

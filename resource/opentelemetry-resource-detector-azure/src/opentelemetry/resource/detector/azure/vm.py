@@ -19,11 +19,14 @@ from urllib.request import Request, urlopen
 from urllib.error import URLError
 
 from opentelemetry.sdk.resources import ResourceDetector, Resource
-from opentelemetry.semconv.resource import ResourceAttributes, CloudPlatformValues, CloudProviderValues
+from opentelemetry.semconv.resource import (
+    ResourceAttributes,
+    CloudPlatformValues,
+    CloudProviderValues,
+)
 
 
 # TODO: Remove when cloud resource id is no longer missing in Resource Attributes
-_CLOUD_RESOURCE_ID_RESOURCE_ATTRIBUTE = "cloud.resource_id"
 _AZURE_VM_METADATA_ENDPOINT = "http://169.254.169.254/metadata/instance/compute?api-version=2021-12-13&format=json"
 _AZURE_VM_SCALE_SET_NAME_ATTRIBUTE = "azure.vm.scaleset.name"
 _AZURE_VM_SKU_ATTRIBUTE = "azure.vm.sku"
@@ -35,7 +38,7 @@ EXPECTED_AZURE_AMS_ATTRIBUTES = [
     ResourceAttributes.CLOUD_PLATFORM,
     ResourceAttributes.CLOUD_PROVIDER,
     ResourceAttributes.CLOUD_REGION,
-    _CLOUD_RESOURCE_ID_RESOURCE_ATTRIBUTE,
+    ResourceAttributes.CLOUD_RESOURCE_ID,
     ResourceAttributes.HOST_ID,
     ResourceAttributes.HOST_NAME,
     ResourceAttributes.HOST_TYPE,
@@ -44,16 +47,24 @@ EXPECTED_AZURE_AMS_ATTRIBUTES = [
     ResourceAttributes.SERVICE_INSTANCE_ID,
 ]
 
+
 class AzureVMResourceDetector(ResourceDetector):
     # pylint: disable=no-self-use
     def detect(self) -> "Resource":
         attributes = {}
-        metadata_json = _AzureVMMetadataServiceRequestor().get_azure_vm_metadata()
+        metadata_json = (
+            _AzureVMMetadataServiceRequestor().get_azure_vm_metadata()
+        )
         if not metadata_json:
             return Resource(attributes)
         for attribute_key in EXPECTED_AZURE_AMS_ATTRIBUTES:
-            attributes[attribute_key] = _AzureVMMetadataServiceRequestor().get_attribute_from_metadata(metadata_json, attribute_key)
+            attributes[
+                attribute_key
+            ] = _AzureVMMetadataServiceRequestor().get_attribute_from_metadata(
+                metadata_json, attribute_key
+            )
         return Resource(attributes)
+
 
 class _AzureVMMetadataServiceRequestor:
     def get_azure_vm_metadata(self):
@@ -81,10 +92,12 @@ class _AzureVMMetadataServiceRequestor:
             ams_value = CloudProviderValues.AZURE.value
         elif attribute_key == ResourceAttributes.CLOUD_REGION:
             ams_value = metadata_json["location"]
-        elif attribute_key == _CLOUD_RESOURCE_ID_RESOURCE_ATTRIBUTE:
+        elif attribute_key == ResourceAttributes.CLOUD_RESOURCE_ID:
             ams_value = metadata_json["resourceId"]
-        elif attribute_key == ResourceAttributes.HOST_ID or \
-            attribute_key == ResourceAttributes.SERVICE_INSTANCE_ID:
+        elif (
+            attribute_key == ResourceAttributes.HOST_ID
+            or attribute_key == ResourceAttributes.SERVICE_INSTANCE_ID
+        ):
             ams_value = metadata_json["vmId"]
         elif attribute_key == ResourceAttributes.HOST_NAME:
             ams_value = metadata_json["name"]

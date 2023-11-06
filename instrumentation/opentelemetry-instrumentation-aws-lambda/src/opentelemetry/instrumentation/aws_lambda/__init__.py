@@ -321,7 +321,12 @@ def _instrument(
         except (IndexError, KeyError, TypeError):
             span_kind = SpanKind.SERVER
 
-        tracer = get_tracer(__name__, __version__, tracer_provider)
+        tracer = get_tracer(
+            __name__,
+            __version__,
+            tracer_provider,
+            schema_url="https://opentelemetry.io/schemas/1.11.0",
+        )
 
         with tracer.start_as_current_span(
             name=orig_handler_name,

@@ -236,10 +236,20 @@ class TornadoInstrumentor(BaseInstrumentor):
         process lifetime.
         """
         tracer_provider = kwargs.get("tracer_provider")
-        tracer = trace.get_tracer(__name__, __version__, tracer_provider)
+        tracer = trace.get_tracer(
+            __name__,
+            __version__,
+            tracer_provider,
+            schema_url="https://opentelemetry.io/schemas/1.11.0",
+        )
 
         meter_provider = kwargs.get("meter_provider")
-        meter = get_meter(__name__, __version__, meter_provider)
+        meter = get_meter(
+            __name__,
+            __version__,
+            meter_provider,
+            schema_url="https://opentelemetry.io/schemas/1.11.0",
+        )
 
         client_histograms = _create_client_histograms(meter)
         server_histograms = _create_server_histograms(meter)
