@@ -254,9 +254,17 @@ class _InstrumentedFalconAPI(getattr(falcon, _instrument_app)):
             self._middlewares_list = [self._middlewares_list]
 
         self._otel_tracer = trace.get_tracer(
-            __name__, __version__, tracer_provider
+            __name__,
+            __version__,
+            tracer_provider,
+            schema_url="https://opentelemetry.io/schemas/1.11.0",
         )
-        self._otel_meter = get_meter(__name__, __version__, meter_provider)
+        self._otel_meter = get_meter(
+            __name__,
+            __version__,
+            meter_provider,
+            schema_url="https://opentelemetry.io/schemas/1.11.0",
+        )
         self.duration_histogram = self._otel_meter.create_histogram(
             name=MetricInstruments.HTTP_SERVER_DURATION,
             unit="ms",

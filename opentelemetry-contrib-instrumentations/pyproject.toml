@@ -31,6 +31,7 @@ classifiers = [
 dependencies = [
     "opentelemetry-instrumentation-aio-pika==0.42b0.dev",
     "opentelemetry-instrumentation-aiohttp-client==0.42b0.dev",
+    "opentelemetry-instrumentation-aiohttp-server==0.42b0.dev",
     "opentelemetry-instrumentation-aiopg==0.42b0.dev",
     "opentelemetry-instrumentation-asgi==0.42b0.dev",
     "opentelemetry-instrumentation-asyncpg==0.42b0.dev",
