@@ -11,10 +11,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   ([#1800](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/1800))
 
 ### Added
+
 - `opentelemetry-instrumentation-botocore` Include SNS topic ARN as a span attribute with name `messaging.destination.name` to uniquely identify the SNS topic
   ([#1995](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/1995))
 - `opentelemetry-instrumentation-system-metrics` Add support for collecting process metrics
   ([#1948](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/1948))
+- Added schema_url (`"https://opentelemetry.io/schemas/1.11.0"`) to all metrics and traces
+  ([#1977](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/1977))
 
 ### Fixed
 
@@ -61,7 +64,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   ([#1744](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/1744))
 - Fix async redis clients not being traced correctly
   ([#1830](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/1830))
-- Make Flask request span attributes available for `start_span`. 
+- Make Flask request span attributes available for `start_span`.
   ([#1784](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/1784))
 - Fix falcon instrumentation's usage of Span Status to only set the description if the status code is ERROR.
   ([#1840](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/1840))

@@ -175,7 +175,7 @@ LINUX_JSON = """
     "zone": "1"
 }
 """
-WINDOWS_JSON ="""
+WINDOWS_JSON = """
 {
     "additionalCapabilities": {
         "hibernationEnabled": "false"
@@ -370,7 +370,9 @@ class TestAzureVMResourceDetector(unittest.TestCase):
         mock_open.read.return_value = LINUX_JSON
         attributes = AzureVMResourceDetector().detect().attributes
         for attribute_key in LINUX_ATTRIBUTES:
-            self.assertEqual(attributes[attribute_key], LINUX_ATTRIBUTES[attribute_key])
+            self.assertEqual(
+                attributes[attribute_key], LINUX_ATTRIBUTES[attribute_key]
+            )
 
     @patch("opentelemetry.resource.detector.azure.vm.urlopen")
     def test_windows(self, mock_urlopen):
@@ -379,4 +381,6 @@ class TestAzureVMResourceDetector(unittest.TestCase):
         mock_open.read.return_value = WINDOWS_JSON
         attributes = AzureVMResourceDetector().detect().attributes
         for attribute_key in WINDOWS_ATTRIBUTES:
-            self.assertEqual(attributes[attribute_key], WINDOWS_ATTRIBUTES[attribute_key])
+            self.assertEqual(
+                attributes[attribute_key], WINDOWS_ATTRIBUTES[attribute_key]
+            )
