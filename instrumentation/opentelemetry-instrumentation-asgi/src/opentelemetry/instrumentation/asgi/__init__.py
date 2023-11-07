@@ -495,9 +495,19 @@ class OpenTelemetryMiddleware:
         meter=None,
     ):
         self.app = guarantee_single_callable(app)
-        self.tracer = trace.get_tracer(__name__, __version__, tracer_provider)
+        self.tracer = trace.get_tracer(
+            __name__,
+            __version__,
+            tracer_provider,
+            schema_url="https://opentelemetry.io/schemas/1.11.0",
+        )
         self.meter = (
-            get_meter(__name__, __version__, meter_provider)
+            get_meter(
+                __name__,
+                __version__,
+                meter_provider,
+                schema_url="https://opentelemetry.io/schemas/1.11.0",
+            )
             if meter is None
             else meter
         )
