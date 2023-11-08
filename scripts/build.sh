@@ -18,18 +18,13 @@ DISTDIR=dist
 
  for d in exporter/*/ opentelemetry-instrumentation/ opentelemetry-contrib-instrumentations/ opentelemetry-distro/ instrumentation/*/ propagator/*/ resource/*/ sdk-extension/*/ util/*/ ; do
    (
-    # Skip the build step if the directory name is "opentelemetry-instrumentation-aiohttp-server"
-     if [[ "$d" == *"instrumentation/opentelemetry-instrumentation-aiohttp-server/"* ]]; then
-       echo "Skipping build for $d"
-     else
-      echo "building $d"
-      cd "$d"
-      # Some ext directories (such as docker tests) are not intended to be
-      # packaged. Verify the intent by looking for a pyproject.toml.
-      if [ -f pyproject.toml ]; then
-        python3 -m build --outdir "$BASEDIR/dist/"
-      fi
-    fi
+     echo "building $d"
+     cd "$d"
+     # Some ext directories (such as docker tests) are not intended to be
+     # packaged. Verify the intent by looking for a pyproject.toml.
+     if [ -f pyproject.toml ]; then
+      python3 -m build --outdir "$BASEDIR/dist/"
+     fi
    )
  done
  (
