@@ -57,6 +57,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   ([#1824](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/1824))
 - Fix sqlalchemy instrumentation wrap methods to accept sqlcommenter options
   ([#1873](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/1873))
+- Exclude background task execution from root server span in ASGI middleware
+  ([#1952](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/1952))
 
 ### Added
 

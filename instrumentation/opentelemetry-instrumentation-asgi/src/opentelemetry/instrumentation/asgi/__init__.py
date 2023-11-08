@@ -576,7 +576,7 @@ class OpenTelemetryMiddleware:
         if scope["type"] == "http":
             self.active_requests_counter.add(1, active_requests_count_attrs)
         try:
-            with trace.use_span(span, end_on_exit=True) as current_span:
+            with trace.use_span(span, end_on_exit=False) as current_span:
                 if current_span.is_recording():
                     for key, value in attributes.items():
                         current_span.set_attribute(key, value)
@@ -630,6 +630,8 @@ class OpenTelemetryMiddleware:
                         )
             if token:
                 context.detach(token)
+            if span.is_recording():
+                span.end()
 
     # pylint: enable=too-many-branches
 
@@ -653,8 +655,11 @@ class OpenTelemetryMiddleware:
     def _get_otel_send(
         self, server_span, server_span_name, scope, send, duration_attrs
     ):
+        expecting_trailers = False
+
         @wraps(send)
         async def otel_send(message):
+            nonlocal expecting_trailers
             with self.tracer.start_as_current_span(
                 " ".join((server_span_name, scope["type"], "send"))
             ) as send_span:
@@ -668,6 +673,8 @@ class OpenTelemetryMiddleware:
                         ] = status_code
                         set_status_code(server_span, status_code)
                         set_status_code(send_span, status_code)
+
+                        expecting_trailers = message.get("trailers", False)
                     elif message["type"] == "websocket.send":
                         set_status_code(server_span, 200)
                         set_status_code(send_span, 200)
@@ -703,5 +710,15 @@ class OpenTelemetryMiddleware:
                         pass
 
                 await send(message)
+            if (
+                not expecting_trailers
+                and message["type"] == "http.response.body"
+                and not message.get("more_body", False)
+            ) or (
+                expecting_trailers
+                and message["type"] == "http.response.trailers"
+                and not message.get("more_trailers", False)
+            ):
+                server_span.end()
 
         return otel_send
