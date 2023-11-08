@@ -172,6 +172,7 @@ class SystemMetricsInstrumentor(BaseInstrumentor):
             __name__,
             __version__,
             meter_provider,
+            schema_url="https://opentelemetry.io/schemas/1.11.0",
         )
 
         if "system.cpu.time" in self._config:
