@@ -1,7 +1,7 @@
 OpenTelemetry-Python-Contrib
 ============================
 
-Complimentary instrumentation and vendor-specific packages for use with the
+Complimentary instrumentsation and vendor-specific packages for use with the
 Python `OpenTelemetry <https://opentelemetry.io/>`_ client.
 
 .. image:: https://img.shields.io/badge/slack-chat-green.svg
