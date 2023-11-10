@@ -14,11 +14,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## Version 1.21.0/0.42b0 (2023-11-01)
 
-- `opentelemetry-instrumentation-aiohttp-server` Add instrumentor and auto instrumentation support for aiohttp-server
-  ([#1800](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/1800))
-
 ### Added
 
+- `opentelemetry-instrumentation-aiohttp-server` Add instrumentor and auto instrumentation support for aiohttp-server
+  ([#1800](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/1800))
 - `opentelemetry-instrumentation-botocore` Include SNS topic ARN as a span attribute with name `messaging.destination.name` to uniquely identify the SNS topic
   ([#1995](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/1995))
 - `opentelemetry-instrumentation-system-metrics` Add support for collecting process metrics
@@ -62,6 +61,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   ([#1824](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/1824))
 - Fix sqlalchemy instrumentation wrap methods to accept sqlcommenter options
   ([#1873](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/1873))
+- Exclude background task execution from root server span in ASGI middleware
+  ([#1952](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/1952))
 
 ### Added
 
