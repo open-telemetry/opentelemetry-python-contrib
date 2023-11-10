@@ -81,6 +81,7 @@ from opentelemetry.util.http import (
     get_excluded_urls,
     parse_excluded_urls,
     remove_url_credentials,
+    sanitize_method,
 )
 from opentelemetry.util.http.httplib import set_ip_on_next_http_connection
 
@@ -254,7 +255,7 @@ def get_default_span_name(method):
     Returns:
         span name
     """
-    return method.strip()
+    return sanitize_method(method.strip())
 
 
 class RequestsInstrumentor(BaseInstrumentor):
