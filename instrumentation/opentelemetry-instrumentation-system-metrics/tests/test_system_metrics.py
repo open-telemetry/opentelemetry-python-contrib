@@ -16,7 +16,7 @@
 
 from collections import namedtuple
 from platform import python_implementation
-from unittest import mock
+from unittest import mock, skipIf
 
 from opentelemetry.sdk.metrics import MeterProvider
 from opentelemetry.sdk.metrics.export import InMemoryMetricReader
@@ -97,7 +97,6 @@ class TestSystemMetrics(TestBase):
             for scope_metrics in resource_metrics.scope_metrics:
                 for metric in scope_metrics.metrics:
                     metric_names.append(metric.name)
-        self.assertEqual(len(metric_names), 21)
 
         observer_names = [
             "system.cpu.time",
@@ -117,11 +116,16 @@ class TestSystemMetrics(TestBase):
             "system.thread_count",
             f"process.runtime.{self.implementation}.memory",
             f"process.runtime.{self.implementation}.cpu_time",
-            f"process.runtime.{self.implementation}.gc_count",
             f"process.runtime.{self.implementation}.thread_count",
             f"process.runtime.{self.implementation}.context_switches",
             f"process.runtime.{self.implementation}.cpu.utilization",
         ]
+
+        if self.implementation == "pypy":
+            self.assertEqual(len(metric_names), 20)
+        else:
+            self.assertEqual(len(metric_names), 21)
+            observer_names.append(f"process.runtime.{self.implementation}.gc_count",)
 
         for observer in metric_names:
             self.assertIn(observer, observer_names)
@@ -131,11 +135,13 @@ class TestSystemMetrics(TestBase):
         runtime_config = {
             "process.runtime.memory": ["rss", "vms"],
             "process.runtime.cpu.time": ["user", "system"],
-            "process.runtime.gc_count": None,
             "process.runtime.thread_count": None,
             "process.runtime.cpu.utilization": None,
             "process.runtime.context_switches": ["involuntary", "voluntary"],
         }
+
+        if self.implementation != "pypy":
+            runtime_config["process.runtime.gc_count"] = None
 
         reader = InMemoryMetricReader()
         meter_provider = MeterProvider(metric_readers=[reader])
@@ -147,16 +153,20 @@ class TestSystemMetrics(TestBase):
             for scope_metrics in resource_metrics.scope_metrics:
                 for metric in scope_metrics.metrics:
                     metric_names.append(metric.name)
-        self.assertEqual(len(metric_names), 6)
 
         observer_names = [
             f"process.runtime.{self.implementation}.memory",
             f"process.runtime.{self.implementation}.cpu_time",
-            f"process.runtime.{self.implementation}.gc_count",
             f"process.runtime.{self.implementation}.thread_count",
             f"process.runtime.{self.implementation}.context_switches",
             f"process.runtime.{self.implementation}.cpu.utilization",
         ]
+
+        if self.implementation == "pypy":
+            self.assertEqual(len(metric_names), 5)
+        else:
+            self.assertEqual(len(metric_names), 6)
+            observer_names.append(f"process.runtime.{self.implementation}.gc_count")
 
         for observer in metric_names:
             self.assertIn(observer, observer_names)
@@ -781,7 +791,9 @@ class TestSystemMetrics(TestBase):
         )
 
     @mock.patch("gc.get_count")
+    @skipIf(python_implementation().lower() == "pypy", "not supported for pypy")
     def test_runtime_get_count(self, mock_gc_get_count):
+
         mock_gc_get_count.configure_mock(**{"return_value": (1, 2, 3)})
 
         expected = [
