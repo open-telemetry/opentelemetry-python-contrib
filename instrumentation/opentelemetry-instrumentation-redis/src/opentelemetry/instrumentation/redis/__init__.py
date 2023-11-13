@@ -96,7 +96,8 @@ from typing import Any, Collection
 import redis
 from wrapt import wrap_function_wrapper
 
-from opentelemetry import trace
+from opentelemetry import context, trace
+from opentelemetry.context import _SUPPRESS_INSTRUMENTATION_KEY
 from opentelemetry.instrumentation.instrumentor import BaseInstrumentor
 from opentelemetry.instrumentation.redis.package import _instruments
 from opentelemetry.instrumentation.redis.util import (
@@ -182,6 +183,11 @@ def _instrument(
         query = _format_command_args(args)
         name = _build_span_name(instance, args)
 
+        if context.get_value(
+            _SUPPRESS_INSTRUMENTATION_KEY
+        ):
+            return func(*args, **kwargs)
+
         with tracer.start_as_current_span(
             name, kind=trace.SpanKind.CLIENT
         ) as span:
@@ -197,6 +203,12 @@ def _instrument(
             return response
 
     def _traced_execute_pipeline(func, instance, args, kwargs):
+
+        if context.get_value(
+                _SUPPRESS_INSTRUMENTATION_KEY
+        ):
+            return func(*args, **kwargs)
+
         (
             command_stack,
             resource,
