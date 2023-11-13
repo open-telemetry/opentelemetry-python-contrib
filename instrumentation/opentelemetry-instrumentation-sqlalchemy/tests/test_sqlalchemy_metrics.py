@@ -56,8 +56,7 @@ class TestSqlalchemyMetricsInstrumentation(TestBase):
             pool_logging_name=pool_name,
         )
 
-        metrics = self.get_sorted_metrics()
-        self.assertEqual(len(metrics), 0)
+        self.assertIsNone(self.memory_metrics_reader.get_metrics_data())
 
         with engine.connect():
             self.assert_pool_idle_used_expected(
@@ -78,8 +77,7 @@ class TestSqlalchemyMetricsInstrumentation(TestBase):
             pool_logging_name=pool_name,
         )
 
-        metrics = self.get_sorted_metrics()
-        self.assertEqual(len(metrics), 0)
+        self.assertIsNone(self.memory_metrics_reader.get_metrics_data())
 
         with engine.connect():
             self.assert_pool_idle_used_expected(
@@ -100,8 +98,7 @@ class TestSqlalchemyMetricsInstrumentation(TestBase):
             pool_logging_name=pool_name,
         )
 
-        metrics = self.get_sorted_metrics()
-        self.assertEqual(len(metrics), 0)
+        self.assertIsNone(self.memory_metrics_reader.get_metrics_data())
 
         with engine.connect():
             with engine.connect():
@@ -122,8 +119,7 @@ class TestSqlalchemyMetricsInstrumentation(TestBase):
             pool_logging_name=pool_name,
         )
 
-        metrics = self.get_sorted_metrics()
-        self.assertEqual(len(metrics), 0)
+        self.assertIsNone(self.memory_metrics_reader.get_metrics_data())
 
         with engine.connect():
             with engine.connect():
@@ -156,5 +152,4 @@ class TestSqlalchemyMetricsInstrumentation(TestBase):
 
         engine.connect()
 
-        metrics = self.get_sorted_metrics()
-        self.assertEqual(len(metrics), 0)
+        self.assertIsNone(self.memory_metrics_reader.get_metrics_data())

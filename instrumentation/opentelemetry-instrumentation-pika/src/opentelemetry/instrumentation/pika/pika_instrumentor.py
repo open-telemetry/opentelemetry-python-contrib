@@ -122,7 +122,12 @@ class PikaInstrumentor(BaseInstrumentor):  # type: ignore
                 "Attempting to instrument Pika channel while already instrumented!"
             )
             return
-        tracer = trace.get_tracer(__name__, __version__, tracer_provider)
+        tracer = trace.get_tracer(
+            __name__,
+            __version__,
+            tracer_provider,
+            schema_url="https://opentelemetry.io/schemas/1.11.0",
+        )
         PikaInstrumentor._instrument_blocking_channel_consumers(
             channel, tracer, consume_hook
         )
