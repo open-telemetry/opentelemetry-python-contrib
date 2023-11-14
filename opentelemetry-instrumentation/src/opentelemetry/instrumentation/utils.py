@@ -17,15 +17,16 @@ from contextlib import contextmanager
 from re import escape, sub
 from typing import Dict, Iterable, Sequence
 
+from wrapt import ObjectProxy
+
+from opentelemetry import context, trace
+
 # pylint: disable=E0611
 # FIXME: fix the importing of these private attributes when the location of the _SUPPRESS_HTTP_INSTRUMENTATION_KEY is defined.=
 from opentelemetry.context import (
     _SUPPRESS_HTTP_INSTRUMENTATION_KEY,
     _SUPPRESS_INSTRUMENTATION_KEY,
 )
-from wrapt import ObjectProxy
-
-from opentelemetry import context, trace
 
 # pylint: disable=E0611
 from opentelemetry.propagate import extract
@@ -166,10 +167,8 @@ def is_instrumentation_enabled() -> bool:
 
 
 def is_http_instrumentation_enabled() -> bool:
-    return (
-        is_instrumentation_enabled()
-        and not
-        context.get_value(_SUPPRESS_HTTP_INSTRUMENTATION_KEY)
+    return is_instrumentation_enabled() and not context.get_value(
+        _SUPPRESS_HTTP_INSTRUMENTATION_KEY
     )
 
 
