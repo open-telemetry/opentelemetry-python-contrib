@@ -86,7 +86,7 @@ from opentelemetry.instrumentation.pymongo.utils import (
     COMMAND_TO_ATTRIBUTE_MAPPING,
 )
 from opentelemetry.instrumentation.pymongo.version import __version__
-from opentelemetry.instrumentation.utils import _SUPPRESS_INSTRUMENTATION_KEY
+from opentelemetry.instrumentation.utils import is_instrumentation_enabled
 from opentelemetry.semconv.trace import DbSystemValues, SpanAttributes
 from opentelemetry.trace import SpanKind, get_tracer
 from opentelemetry.trace.span import Span
@@ -122,9 +122,7 @@ class CommandTracer(monitoring.CommandListener):
 
     def started(self, event: monitoring.CommandStartedEvent):
         """Method to handle a pymongo CommandStartedEvent"""
-        if not self.is_enabled or context.get_value(
-            _SUPPRESS_INSTRUMENTATION_KEY
-        ):
+        if not self.is_enabled or not is_instrumentation_enabled():
             return
         command_name = event.command_name
         span_name = f"{event.database_name}.{command_name}"
@@ -167,9 +165,7 @@ class CommandTracer(monitoring.CommandListener):
 
     def succeeded(self, event: monitoring.CommandSucceededEvent):
         """Method to handle a pymongo CommandSucceededEvent"""
-        if not self.is_enabled or context.get_value(
-            _SUPPRESS_INSTRUMENTATION_KEY
-        ):
+        if not self.is_enabled or not is_instrumentation_enabled():
             return
         span = self._pop_span(event)
         if span is None:
@@ -185,9 +181,7 @@ class CommandTracer(monitoring.CommandListener):
 
     def failed(self, event: monitoring.CommandFailedEvent):
         """Method to handle a pymongo CommandFailedEvent"""
-        if not self.is_enabled or context.get_value(
-            _SUPPRESS_INSTRUMENTATION_KEY
-        ):
+        if not (self.is_enabled and is_instrumentation_enabled()):
             return
         span = self._pop_span(event)
         if span is None:

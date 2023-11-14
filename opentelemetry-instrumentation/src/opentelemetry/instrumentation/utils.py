@@ -13,9 +13,16 @@
 # limitations under the License.
 
 import urllib.parse
+from contextlib import contextmanager
 from re import escape, sub
-from typing import Dict, Sequence
+from typing import Dict, Iterable, Sequence
 
+# pylint: disable=E0611
+# FIXME: fix the importing of these private attributes when the location of the _SUPPRESS_HTTP_INSTRUMENTATION_KEY is defined.=
+from opentelemetry.context import (
+    _SUPPRESS_HTTP_INSTRUMENTATION_KEY,
+    _SUPPRESS_INSTRUMENTATION_KEY,
+)
 from wrapt import ObjectProxy
 
 from opentelemetry import context, trace
@@ -153,18 +160,41 @@ def _python_path_without_directory(python_path, directory, path_separator):
 
 
 def is_instrumentation_enabled() -> bool:
-    if (
-        context.get_value("suppress_instrumentation")
-        or
-        context.get_value(context._SUPPRESS_INSTRUMENTATION_KEY)  # type: ignore
-    ):
+    if context.get_value(_SUPPRESS_INSTRUMENTATION_KEY):
         return False
     return True
 
 
 def is_http_instrumentation_enabled() -> bool:
     return (
-        is_http_instrumentation_enabled()
+        is_instrumentation_enabled()
         and not
-        context.get_value(context._SUPPRESS_HTTP_INSTRUMENTATION_KEY)  # type: ignore
+        context.get_value(_SUPPRESS_HTTP_INSTRUMENTATION_KEY)
     )
+
+
+@contextmanager
+def _suppress_instrumentation(*keys: str) -> Iterable[None]:
+    """Suppress instrumentation within the context."""
+    ctx = context.get_current()
+    for key in keys:
+        ctx = context.set_value(key, True, ctx)
+    token = context.attach(ctx)
+    try:
+        yield
+    finally:
+        context.detach(token)
+
+
+@contextmanager
+def suppress_instrumentation() -> Iterable[None]:
+    """Suppress instrumentation within the context."""
+    with _suppress_instrumentation(_SUPPRESS_INSTRUMENTATION_KEY):
+        yield
+
+
+@contextmanager
+def suppress_http_instrumentation() -> Iterable[None]:
+    """Suppress instrumentation within the context."""
+    with _suppress_instrumentation(_SUPPRESS_HTTP_INSTRUMENTATION_KEY):
+        yield
