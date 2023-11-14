@@ -25,6 +25,9 @@ from opentelemetry.instrumentation.dependencies import (
     DependencyConflict,
     get_dependency_conflicts,
 )
+from opentelemetry.instrumentation.utils import (
+    _OpenTelemetrySemanticConventionStability,
+)
 
 _LOG = getLogger(__name__)
 
@@ -104,6 +107,9 @@ class BaseInstrumentor(ABC):
             if conflict:
                 _LOG.error(conflict)
                 return None
+
+        # initialize semantic conventions opt-in if needed
+        _OpenTelemetrySemanticConventionStability._initialize()
 
         result = self._instrument(  # pylint: disable=assignment-from-no-return
             **kwargs
