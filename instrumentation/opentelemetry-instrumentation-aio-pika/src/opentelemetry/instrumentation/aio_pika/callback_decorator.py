@@ -18,9 +18,7 @@ from aio_pika.abc import AbstractIncomingMessage
 
 from opentelemetry import context, propagate, trace
 from opentelemetry.instrumentation.aio_pika.span_builder import SpanBuilder
-from opentelemetry.instrumentation.aio_pika.utils import (
-    is_instrumentation_enabled,
-)
+from opentelemetry.instrumentation.utils import is_instrumentation_enabled
 from opentelemetry.semconv.trace import MessagingOperationValues
 from opentelemetry.trace import Span, Tracer
 
