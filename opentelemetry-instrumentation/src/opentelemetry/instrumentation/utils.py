@@ -20,9 +20,7 @@ from wrapt import ObjectProxy
 
 from opentelemetry import context, trace
 
-# pylint: disable=unused-import
 # pylint: disable=E0611
-from opentelemetry.context import _SUPPRESS_INSTRUMENTATION_KEY  # noqa: F401
 from opentelemetry.propagate import extract
 from opentelemetry.trace import StatusCode
 from opentelemetry.trace.propagation.tracecontext import (
@@ -151,4 +149,22 @@ def _python_path_without_directory(python_path, directory, path_separator):
         rf"{escape(directory)}{path_separator}(?!$)",
         "",
         python_path,
+    )
+
+
+def is_instrumentation_enabled() -> bool:
+    if (
+        context.get_value("suppress_instrumentation")
+        or
+        context.get_value(context._SUPPRESS_INSTRUMENTATION_KEY)  # type: ignore
+    ):
+        return False
+    return True
+
+
+def is_http_instrumentation_enabled() -> bool:
+    return (
+        is_http_instrumentation_enabled()
+        and not
+        context.get_value(context._SUPPRESS_HTTP_INSTRUMENTATION_KEY)  # type: ignore
     )
