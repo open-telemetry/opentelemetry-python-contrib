@@ -232,7 +232,7 @@ class TestURLLib3Instrumentor(TestBase):
         for cm in suppression_cms:
             self.memory_exporter.clear()
 
-            with self.subTest(key=key):
+            with self.subTest(cm=cm):
                 with cm():
                     response = self.perform_request(self.HTTP_URL)
                     self.assertEqual(b"Hello!", response.data)

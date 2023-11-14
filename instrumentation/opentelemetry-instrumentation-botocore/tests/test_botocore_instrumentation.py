@@ -342,6 +342,7 @@ class TestBotocoreInstrumentor(TestBase):
 
     @mock_xray
     def test_suppress_http_instrumentation_xray_client(self):
+        xray_client = self._make_client("xray")
         with suppress_http_instrumentation():
             xray_client.put_trace_segments(TraceSegmentDocuments=["str1"])
             xray_client.put_trace_segments(TraceSegmentDocuments=["str2"])
