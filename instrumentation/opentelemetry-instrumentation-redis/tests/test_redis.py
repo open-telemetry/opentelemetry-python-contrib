@@ -17,8 +17,9 @@ from unittest import mock
 import redis
 import redis.asyncio
 
-from opentelemetry import trace
+from opentelemetry import context, trace
 from opentelemetry.instrumentation.redis import RedisInstrumentor
+from opentelemetry.instrumentation.utils import _SUPPRESS_INSTRUMENTATION_KEY
 from opentelemetry.test.test_base import TestBase
 from opentelemetry.trace import SpanKind
 
@@ -77,6 +78,17 @@ class TestRedis(TestBase):
                 self.assertTrue(mock_span.is_recording.called)
                 self.assertFalse(mock_span.set_attribute.called)
                 self.assertFalse(mock_span.set_status.called)
+
+    def test_suppress_instrumentation_no_span(self):
+        redis_client = redis.Redis()
+
+        token = context.attach(context.set_value(_SUPPRESS_INSTRUMENTATION_KEY, True))
+        with mock.patch.object(redis_client, "connection"):
+            redis_client.ping()
+        context.detach(token)
+        spans = self.memory_exporter.get_finished_spans()
+
+        self.assertEqual(len(spans), 0)
 
     def test_instrument_uninstrument(self):
         redis_client = redis.Redis()
