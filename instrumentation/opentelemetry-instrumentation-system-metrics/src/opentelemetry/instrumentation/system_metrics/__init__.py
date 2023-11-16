@@ -355,17 +355,16 @@ class SystemMetricsInstrumentor(BaseInstrumentor):
                 unit="seconds",
             )
 
-        if "process.runtime.gc_count" in self._config:
-            if self._python_implementation == "pypy":
-                _logger.warning(
+        if "process.runtime.gc_count" in self._config and self._python_implementation != "pypy":
+            self._meter.create_observable_counter(
+                name=f"process.runtime.{self._python_implementation}.gc_count",
+                callbacks=[self._get_runtime_gc_count],
+                description=f"Runtime {self._python_implementation} GC count",
+                unit="bytes",
+            )
+        else:
+             _logger.warning(
                     "The process.runtime.gc_count metric won't be collected because the interpreter is PyPy"
-                )
-            else:
-                self._meter.create_observable_counter(
-                    name=f"process.runtime.{self._python_implementation}.gc_count",
-                    callbacks=[self._get_runtime_gc_count],
-                    description=f"Runtime {self._python_implementation} GC count",
-                    unit="bytes",
                 )
 
         if "process.runtime.thread_count" in self._config:
