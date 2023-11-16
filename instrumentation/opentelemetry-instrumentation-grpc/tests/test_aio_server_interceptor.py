@@ -568,7 +568,7 @@ class TestOpenTelemetryAioServerInterceptor(TestBase, IsolatedAsyncioTestCase):
             # pylint:disable=C0103
             async def SimpleMethod(self, request, context):
                 metadata = (
-                    ("meta", "data")
+                    ("meta", "data"),
                 )
                 await context.abort(
                     grpc.StatusCode.FAILED_PRECONDITION, failure_message, trailing_metadata=metadata
