@@ -32,6 +32,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   ([#1980](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/1980))
 - `opentelemetry-resource-detector-azure` Using new Cloud Resource ID attribute.
   ([#1976](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/1976))
+- Do not collect `system.network.connections` by default on macOS which was causing exceptions in metrics collection.
+  ([#2008](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/2008))
 
 ## Version 1.20.0/0.41b0 (2023-09-01)
 
@@ -1394,6 +1396,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - `opentelemetry-ext-wsgi` Updates for core library changes
 - `opentelemetry-ext-http-requests` Updates for core library changes
+
+- `Added support for PyPy3` Initial release
+## [#1033](https://github.com/open-telemetryopentelemetry-python-contrib/issues/1033)
 
 ## Version 0.1a0 (2019-09-30)
 
