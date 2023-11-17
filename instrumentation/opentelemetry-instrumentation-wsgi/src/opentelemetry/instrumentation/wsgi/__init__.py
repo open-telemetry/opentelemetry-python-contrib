@@ -302,7 +302,9 @@ def collect_request_attributes(environ):
     """
 
     result = {
-        SpanAttributes.HTTP_METHOD: sanitize_method(environ.get("REQUEST_METHOD")),
+        SpanAttributes.HTTP_METHOD: sanitize_method(
+            environ.get("REQUEST_METHOD")
+        ),
         SpanAttributes.HTTP_SERVER_NAME: environ.get("SERVER_NAME"),
         SpanAttributes.HTTP_SCHEME: environ.get("wsgi.url_scheme"),
     }
@@ -490,8 +492,18 @@ class OpenTelemetryMiddleware:
         meter_provider=None,
     ):
         self.wsgi = wsgi
-        self.tracer = trace.get_tracer(__name__, __version__, tracer_provider)
-        self.meter = get_meter(__name__, __version__, meter_provider)
+        self.tracer = trace.get_tracer(
+            __name__,
+            __version__,
+            tracer_provider,
+            schema_url="https://opentelemetry.io/schemas/1.11.0",
+        )
+        self.meter = get_meter(
+            __name__,
+            __version__,
+            meter_provider,
+            schema_url="https://opentelemetry.io/schemas/1.11.0",
+        )
         self.duration_histogram = self.meter.create_histogram(
             name=MetricInstruments.HTTP_SERVER_DURATION,
             unit="ms",

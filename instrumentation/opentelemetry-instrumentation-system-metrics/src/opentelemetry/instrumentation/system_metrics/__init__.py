@@ -77,6 +77,7 @@ API
 
 import gc
 import os
+import logging
 import threading
 from platform import python_implementation
 from typing import Collection, Dict, Iterable, List, Optional
@@ -90,6 +91,9 @@ from opentelemetry.instrumentation.system_metrics.package import _instruments
 from opentelemetry.instrumentation.system_metrics.version import __version__
 from opentelemetry.metrics import CallbackOptions, Observation, get_meter
 from opentelemetry.sdk.util import get_dict_as_key
+
+_logger = logging.getLogger(__name__)
+
 
 _DEFAULT_CONFIG = {
     "system.cpu.time": ["idle", "user", "system", "irq"],
@@ -172,6 +176,7 @@ class SystemMetricsInstrumentor(BaseInstrumentor):
             __name__,
             __version__,
             meter_provider,
+            schema_url="https://opentelemetry.io/schemas/1.11.0",
         )
 
         if "system.cpu.time" in self._config:
@@ -351,12 +356,18 @@ class SystemMetricsInstrumentor(BaseInstrumentor):
             )
 
         if "process.runtime.gc_count" in self._config:
-            self._meter.create_observable_counter(
-                name=f"process.runtime.{self._python_implementation}.gc_count",
-                callbacks=[self._get_runtime_gc_count],
-                description=f"Runtime {self._python_implementation} GC count",
-                unit="bytes",
-            )
+            if self._python_implementation == "pypy":
+                _logger.warning(
+                        "The process.runtime.gc_count metric won't be collected because the interpreter is PyPy"
+                )
+            else:
+                self._meter.create_observable_counter(
+                    name=f"process.runtime.{self._python_implementation}.gc_count",
+                    callbacks=[self._get_runtime_gc_count],
+                    description=f"Runtime {self._python_implementation} GC count",
+                    unit="bytes",
+                )
+             
 
         if "process.runtime.thread_count" in self._config:
             self._meter.create_observable_up_down_counter(

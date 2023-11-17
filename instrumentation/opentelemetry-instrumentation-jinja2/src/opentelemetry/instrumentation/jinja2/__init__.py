@@ -130,7 +130,12 @@ class Jinja2Instrumentor(BaseInstrumentor):
 
     def _instrument(self, **kwargs):
         tracer_provider = kwargs.get("tracer_provider")
-        tracer = get_tracer(__name__, __version__, tracer_provider)
+        tracer = get_tracer(
+            __name__,
+            __version__,
+            tracer_provider,
+            schema_url="https://opentelemetry.io/schemas/1.11.0",
+        )
 
         _wrap(jinja2, "environment.Template.render", _wrap_render(tracer))
         _wrap(jinja2, "environment.Template.generate", _wrap_render(tracer))
