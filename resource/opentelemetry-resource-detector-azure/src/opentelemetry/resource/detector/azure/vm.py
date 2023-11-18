@@ -14,7 +14,6 @@
 
 from json import loads
 from logging import getLogger
-from os import environ
 from urllib.error import URLError
 from urllib.request import Request, urlopen
 
@@ -66,20 +65,22 @@ class AzureVMResourceDetector(ResourceDetector):
 
 
 class _AzureVMMetadataServiceRequestor:
-    def get_azure_vm_metadata(self):
+    def get_azure_vm_metadata(self):  # pylint: disable=no-self-use
         request = Request(_AZURE_VM_METADATA_ENDPOINT)
         request.add_header("Metadata", "True")
         try:
-            response = urlopen(request).read()
-            return loads(response)
+            with urlopen(request).read() as response:
+                return loads(response)
         except URLError:
             # Not on Azure VM
             return None
-        except Exception as e:
+        except Exception as e:  # pylint: disable=broad-except,invalid-name
             _logger.exception("Failed to receive Azure VM metadata: %s", e)
             return None
 
-    def get_attribute_from_metadata(self, metadata_json, attribute_key):
+    def get_attribute_from_metadata(
+        self, metadata_json, attribute_key
+    ):  # pylint: disable=no-self-use
         ams_value = ""
         if attribute_key == _AZURE_VM_SCALE_SET_NAME_ATTRIBUTE:
             ams_value = metadata_json["vmScaleSetName"]
@@ -93,9 +94,9 @@ class _AzureVMMetadataServiceRequestor:
             ams_value = metadata_json["location"]
         elif attribute_key == ResourceAttributes.CLOUD_RESOURCE_ID:
             ams_value = metadata_json["resourceId"]
-        elif (
-            attribute_key == ResourceAttributes.HOST_ID
-            or attribute_key == ResourceAttributes.SERVICE_INSTANCE_ID
+        elif attribute_key in (
+            ResourceAttributes.HOST_ID,
+            ResourceAttributes.SERVICE_INSTANCE_ID,
         ):
             ams_value = metadata_json["vmId"]
         elif attribute_key == ResourceAttributes.HOST_NAME:

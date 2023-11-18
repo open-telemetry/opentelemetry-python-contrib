@@ -14,8 +14,8 @@
 import unittest
 from unittest.mock import Mock, patch
 
+# pylint: disable=no-name-in-module
 from opentelemetry.resource.detector.azure.vm import AzureVMResourceDetector
-from opentelemetry.semconv.resource import ResourceAttributes
 
 LINUX_JSON = """
 {
@@ -367,10 +367,8 @@ class TestAzureVMResourceDetector(unittest.TestCase):
         mock_urlopen.return_value = mock_open
         mock_open.read.return_value = LINUX_JSON
         attributes = AzureVMResourceDetector().detect().attributes
-        for attribute_key in LINUX_ATTRIBUTES:
-            self.assertEqual(
-                attributes[attribute_key], LINUX_ATTRIBUTES[attribute_key]
-            )
+        for attribute_key, attribute_value in LINUX_ATTRIBUTES.items():
+            self.assertEqual(attributes[attribute_key], attribute_value)
 
     @patch("opentelemetry.resource.detector.azure.vm.urlopen")
     def test_windows(self, mock_urlopen):
@@ -378,7 +376,5 @@ class TestAzureVMResourceDetector(unittest.TestCase):
         mock_urlopen.return_value = mock_open
         mock_open.read.return_value = WINDOWS_JSON
         attributes = AzureVMResourceDetector().detect().attributes
-        for attribute_key in WINDOWS_ATTRIBUTES:
-            self.assertEqual(
-                attributes[attribute_key], WINDOWS_ATTRIBUTES[attribute_key]
-            )
+        for attribute_key, attribute_value in LINUX_ATTRIBUTES.items():
+            self.assertEqual(attributes[attribute_key], attribute_value)

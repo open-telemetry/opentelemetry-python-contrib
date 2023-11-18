@@ -239,8 +239,8 @@ def _instrument(
             token = context.attach(
                 context.set_value(_SUPPRESS_HTTP_INSTRUMENTATION_KEY, True)
             )
+            start_time = default_timer()
             try:
-                start_time = default_timer()
                 result = call_wrapped()  # *** PROCEED
             except Exception as exc:  # pylint: disable=W0703
                 exception = exc

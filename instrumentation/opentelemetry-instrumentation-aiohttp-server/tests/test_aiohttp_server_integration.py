@@ -12,6 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+from enum import Enum
 from http import HTTPStatus
 
 import aiohttp
@@ -27,11 +28,26 @@ from opentelemetry.test.globals_test import reset_trace_globals
 from opentelemetry.test.test_base import TestBase
 from opentelemetry.util._importlib_metadata import entry_points
 
-from .utils import HTTPMethod
+
+class HTTPMethod(Enum):
+    """HTTP methods and descriptions"""
+
+    def __repr__(self):
+        return f"{self.value}"
+
+    CONNECT = "CONNECT"
+    DELETE = "DELETE"
+    GET = "GET"
+    HEAD = "HEAD"
+    OPTIONS = "OPTIONS"
+    PATCH = "PATCH"
+    POST = "POST"
+    PUT = "PUT"
+    TRACE = "TRACE"
 
 
-@pytest.fixture(scope="session")
-def tracer():
+@pytest.fixture(name="tracer", scope="session")
+def fixture_tracer():
     test_base = TestBase()
 
     tracer_provider, memory_exporter = test_base.create_tracer_provider()
@@ -48,8 +64,8 @@ async def default_handler(request, status=200):
     return aiohttp.web.Response(status=status)
 
 
-@pytest_asyncio.fixture
-async def server_fixture(tracer, aiohttp_server):
+@pytest_asyncio.fixture(name="server_fixture")
+async def fixture_server_fixture(tracer, aiohttp_server):
     _, memory_exporter = tracer
 
     AioHttpServerInstrumentor().instrument()
@@ -91,7 +107,7 @@ async def test_status_code_instrumentation(
     expected_status_code,
 ):
     _, memory_exporter = tracer
-    server, app = server_fixture
+    server, _ = server_fixture
 
     assert len(memory_exporter.get_finished_spans()) == 0
 

@@ -127,7 +127,7 @@ def collect_request_attributes(request: web.Request) -> Dict:
         result[SpanAttributes.HTTP_METHOD] = http_method
 
     http_host_value_list = (
-        [request.host] if type(request.host) != list else request.host
+        [request.host] if not isinstance(request.host, list) else request.host
     )
     if http_host_value_list:
         result[SpanAttributes.HTTP_SERVER_NAME] = ",".join(
