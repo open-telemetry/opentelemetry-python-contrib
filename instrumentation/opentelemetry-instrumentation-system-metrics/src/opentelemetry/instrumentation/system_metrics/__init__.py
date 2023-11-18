@@ -76,10 +76,9 @@ API
 """
 
 import gc
-import os
-import sys
 import logging
 import os
+import sys
 import threading
 from platform import python_implementation
 from typing import Collection, Dict, Iterable, List, Optional
