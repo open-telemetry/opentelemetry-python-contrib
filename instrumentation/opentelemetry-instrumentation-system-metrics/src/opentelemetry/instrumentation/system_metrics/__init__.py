@@ -76,8 +76,8 @@ API
 """
 
 import gc
-import os
 import logging
+import os
 import threading
 from platform import python_implementation
 from typing import Collection, Dict, Iterable, List, Optional
@@ -358,7 +358,7 @@ class SystemMetricsInstrumentor(BaseInstrumentor):
         if "process.runtime.gc_count" in self._config:
             if self._python_implementation == "pypy":
                 _logger.warning(
-                        "The process.runtime.gc_count metric won't be collected because the interpreter is PyPy"
+                    "The process.runtime.gc_count metric won't be collected because the interpreter is PyPy"
                 )
             else:
                 self._meter.create_observable_counter(
@@ -367,7 +367,6 @@ class SystemMetricsInstrumentor(BaseInstrumentor):
                     description=f"Runtime {self._python_implementation} GC count",
                     unit="bytes",
                 )
-             
 
         if "process.runtime.thread_count" in self._config:
             self._meter.create_observable_up_down_counter(

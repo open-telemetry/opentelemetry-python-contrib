@@ -15,16 +15,15 @@
 from json import loads
 from logging import getLogger
 from os import environ
-from urllib.request import Request, urlopen
 from urllib.error import URLError
+from urllib.request import Request, urlopen
 
-from opentelemetry.sdk.resources import ResourceDetector, Resource
+from opentelemetry.sdk.resources import Resource, ResourceDetector
 from opentelemetry.semconv.resource import (
-    ResourceAttributes,
     CloudPlatformValues,
     CloudProviderValues,
+    ResourceAttributes,
 )
-
 
 # TODO: Remove when cloud resource id is no longer missing in Resource Attributes
 _AZURE_VM_METADATA_ENDPOINT = "http://169.254.169.254/metadata/instance/compute?api-version=2021-12-13&format=json"

@@ -21,12 +21,12 @@ class HTTPMethod(Enum):
     def __repr__(self):
         return f"{self.value}"
 
-    CONNECT = 'CONNECT'
-    DELETE = 'DELETE'
-    GET = 'GET'
-    HEAD = 'HEAD'
-    OPTIONS = 'OPTIONS'
-    PATCH = 'PATCH'
-    POST = 'POST'
-    PUT = 'PUT'
-    TRACE = 'TRACE'
+    CONNECT = "CONNECT"
+    DELETE = "DELETE"
+    GET = "GET"
+    HEAD = "HEAD"
+    OPTIONS = "OPTIONS"
+    PATCH = "PATCH"
+    POST = "POST"
+    PUT = "PUT"
+    TRACE = "TRACE"

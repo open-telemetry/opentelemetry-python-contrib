@@ -12,12 +12,10 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 import unittest
-from unittest.mock import patch, Mock
+from unittest.mock import Mock, patch
 
+from opentelemetry.resource.detector.azure.vm import AzureVMResourceDetector
 from opentelemetry.semconv.resource import ResourceAttributes
-from opentelemetry.resource.detector.azure.vm import (
-    AzureVMResourceDetector,
-)
 
 LINUX_JSON = """
 {
