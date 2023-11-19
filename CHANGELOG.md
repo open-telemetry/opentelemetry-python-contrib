@@ -14,9 +14,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- `opentelemetry-instrumentation-urllib`/`opentelemetry-instrumentation-urllib3` Fix metric descriptions to match semantic conventions
+  ([#1959]((https://github.com/open-telemetry/opentelemetry-python-contrib/pull/1959))
 - `opentelemetry-bootstrap` updated to generate dependencies for both `opentelemetry-instrumentation-aiohttp-client`
-  and `opentelemetry-instrumentation-aiohttp-server`
-
+  and `opentelemetry-instrumentation-aiohttp-server` ([#2059](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/2059))
+  
 ## Version 1.21.0/0.42b0 (2023-11-01)
 
 ### Added
