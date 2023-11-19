@@ -12,7 +12,10 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import os
+import threading
 import urllib.parse
+from enum import Enum
 from re import escape, sub
 from typing import Dict, Sequence
 
@@ -152,3 +155,60 @@ def _python_path_without_directory(python_path, directory, path_separator):
         "",
         python_path,
     )
+
+
+_OTEL_SEMCONV_STABILITY_OPT_IN_KEY = "OTEL_SEMCONV_STABILITY_OPT_IN"
+
+
+class _OpenTelemetryStabilitySignalType:
+    HTTP = "http"
+
+
+class _OpenTelemetryStabilityMode(Enum):
+    # http - emit the new, stable HTTP and networking conventions ONLY
+    HTTP = "http"
+    # http/dup - emit both the old and the stable HTTP and networking conventions
+    HTTP_DUP = "http/dup"
+    # default - continue emitting old experimental HTTP and networking conventions
+    DEFAULT = "default"
+
+
+class _OpenTelemetrySemanticConventionStability:
+    _initialized = False
+    _lock = threading.Lock()
+    _OTEL_SEMCONV_STABILITY_SIGNAL_MAPPING = {}
+
+    @classmethod
+    def _initialize(cls):
+        with _OpenTelemetrySemanticConventionStability._lock:
+            if not _OpenTelemetrySemanticConventionStability._initialized:
+                # Users can pass in comma delimited string for opt-in options
+                # Only values for http stability are supported for now
+                opt_in = os.environ.get(_OTEL_SEMCONV_STABILITY_OPT_IN_KEY, "")
+                opt_in_list = []
+                if opt_in:
+                    opt_in_list = [s.strip() for s in opt_in.split(",")]
+                http_opt_in = _OpenTelemetryStabilityMode.DEFAULT
+                if opt_in_list:
+                    # Process http opt-in
+                    # http/dup takes priority over http
+                    if (
+                        _OpenTelemetryStabilityMode.HTTP_DUP.value
+                        in opt_in_list
+                    ):
+                        http_opt_in = _OpenTelemetryStabilityMode.HTTP_DUP
+                    elif _OpenTelemetryStabilityMode.HTTP.value in opt_in_list:
+                        http_opt_in = _OpenTelemetryStabilityMode.HTTP
+                _OpenTelemetrySemanticConventionStability._OTEL_SEMCONV_STABILITY_SIGNAL_MAPPING[
+                    _OpenTelemetryStabilitySignalType.HTTP
+                ] = http_opt_in
+                _OpenTelemetrySemanticConventionStability._initialized = True
+
+    @classmethod
+    def _get_opentelemetry_stability_opt_in(
+        type: _OpenTelemetryStabilitySignalType,
+    ) -> _OpenTelemetryStabilityMode:
+        with _OpenTelemetrySemanticConventionStability._lock:
+            return _OpenTelemetrySemanticConventionStability._OTEL_SEMCONV_STABILITY_SIGNAL_MAPPING.get(
+                type, _OpenTelemetryStabilityMode.DEFAULT
+            )
