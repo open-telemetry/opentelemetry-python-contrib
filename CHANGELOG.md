@@ -14,6 +14,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - `opentelemetry-instrument-grpc` Fix arity of context.abort for AIO RPCs
   ([#2066](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/2066))
 
+### Fixed
+
+- `opentelemetry-instrumentation-urllib`/`opentelemetry-instrumentation-urllib3` Fix metric descriptions to match semantic conventions
+  ([#1959]((https://github.com/open-telemetry/opentelemetry-python-contrib/pull/1959))
+  
 ## Version 1.21.0/0.42b0 (2023-11-01)
 
 ### Added
