@@ -77,6 +77,7 @@ API
 
 import gc
 import os
+import sys
 import logging
 import threading
 from platform import python_implementation
@@ -118,6 +119,10 @@ _DEFAULT_CONFIG = {
     "process.runtime.cpu.utilization": None,
     "process.runtime.context_switches": ["involuntary", "voluntary"],
 }
+
+if sys.platform == "darwin":
+    # see https://github.com/giampaolo/psutil/issues/1219
+    _DEFAULT_CONFIG.pop("system.network.connections")
 
 
 class SystemMetricsInstrumentor(BaseInstrumentor):
