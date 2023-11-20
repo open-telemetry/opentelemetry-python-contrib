@@ -143,13 +143,13 @@ class _OpPublishBatch(_OpPublish):
 # SNS extension
 ################################################################################
 
-_OPERATION_MAPPING = {
+_OPERATION_MAPPING: Dict[str, _SnsOperation] = {
     op.operation_name(): op
     for op in globals().values()
     if inspect.isclass(op)
     and issubclass(op, _SnsOperation)
     and not inspect.isabstract(op)
-}  # type: Dict[str, _SnsOperation]
+}
 
 
 class _SnsExtension(_AwsSdkExtension):
