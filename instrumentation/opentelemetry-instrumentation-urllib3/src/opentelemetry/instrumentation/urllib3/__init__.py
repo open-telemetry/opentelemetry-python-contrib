@@ -183,17 +183,17 @@ class URLLib3Instrumentor(BaseInstrumentor):
         duration_histogram = meter.create_histogram(
             name=MetricInstruments.HTTP_CLIENT_DURATION,
             unit="ms",
-            description="measures the duration outbound HTTP requests",
+            description="Measures the duration of outbound HTTP requests.",
         )
         request_size_histogram = meter.create_histogram(
             name=MetricInstruments.HTTP_CLIENT_REQUEST_SIZE,
             unit="By",
-            description="measures the size of HTTP request messages (compressed)",
+            description="Measures the size of HTTP request messages.",
         )
         response_size_histogram = meter.create_histogram(
             name=MetricInstruments.HTTP_CLIENT_RESPONSE_SIZE,
             unit="By",
-            description="measures the size of HTTP response messages (compressed)",
+            description="Measures the size of HTTP response messages.",
         )
 
         _instrument(
