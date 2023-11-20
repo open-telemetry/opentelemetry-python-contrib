@@ -25,7 +25,7 @@ from opentelemetry.instrumentation.dependencies import (
     DependencyConflict,
     get_dependency_conflicts,
 )
-from opentelemetry.instrumentation.utils import (
+from opentelemetry.instrumentation._semconv import (
     _OpenTelemetrySemanticConventionStability,
 )
 
