@@ -15,10 +15,6 @@
 import os
 import threading
 from enum import Enum
-from re import escape, sub
-from typing import Dict, Optional, Sequence
-
-
 
 from opentelemetry.semconv.trace import SpanAttributes
 
@@ -103,46 +99,6 @@ def _set_http_network_protocol_version(result, version, sem_conv_opt_in_mode):
 
 _OTEL_SEMCONV_STABILITY_OPT_IN_KEY = "OTEL_SEMCONV_STABILITY_OPT_IN"
 
-# Old to new http semantic convention mappings
-_OTEL_HTTP_SEMCONV_MIGRATION_MAPPING = {
-    SpanAttributes.HTTP_METHOD: SpanAttributes.HTTP_REQUEST_METHOD,
-    SpanAttributes.HTTP_STATUS_CODE: SpanAttributes.HTTP_RESPONSE_STATUS_CODE,
-    SpanAttributes.HTTP_SCHEME: SpanAttributes.URL_SCHEME,
-    SpanAttributes.HTTP_URL: SpanAttributes.URL_FULL,
-    SpanAttributes.HTTP_REQUEST_CONTENT_LENGTH: SpanAttributes.HTTP_REQUEST_BODY_SIZE,
-    SpanAttributes.HTTP_RESPONSE_CONTENT_LENGTH: SpanAttributes.HTTP_RESPONSE_BODY_SIZE,
-    SpanAttributes.NET_HOST_NAME: SpanAttributes.SERVER_ADDRESS,
-    SpanAttributes.NET_HOST_PORT: SpanAttributes.SERVER_PORT,
-    SpanAttributes.NET_SOCK_HOST_ADDR: SpanAttributes.SERVER_SOCKET_ADDRESS,
-    SpanAttributes.NET_SOCK_HOST_PORT: SpanAttributes.SERVER_SOCKET_PORT,
-    SpanAttributes.NET_TRANSPORT: SpanAttributes.NETWORK_TRANSPORT,
-    SpanAttributes.NET_PROTOCOL_NAME: SpanAttributes.NETWORK_PROTOCOL_NAME,
-    SpanAttributes.NET_PROTOCOL_VERSION: SpanAttributes.NETWORK_PROTOCOL_VERSION,
-    SpanAttributes.NET_SOCK_FAMILY: SpanAttributes.NETWORK_TYPE,
-    SpanAttributes.NET_PEER_IP: SpanAttributes.CLIENT_SOCKET_ADDRESS,
-    SpanAttributes.NET_HOST_IP: SpanAttributes.SERVER_SOCKET_ADDRESS,
-    SpanAttributes.HTTP_SERVER_NAME: SpanAttributes.SERVER_ADDRESS,
-    SpanAttributes.HTTP_RETRY_COUNT: SpanAttributes.HTTP_RESEND_COUNT,
-    SpanAttributes.HTTP_REQUEST_CONTENT_LENGTH_UNCOMPRESSED: SpanAttributes.HTTP_REQUEST_BODY_SIZE,
-    SpanAttributes.HTTP_RESPONSE_CONTENT_LENGTH_UNCOMPRESSED: SpanAttributes.HTTP_RESPONSE_BODY_SIZE,
-    SpanAttributes.HTTP_USER_AGENT: SpanAttributes.USER_AGENT_ORIGINAL,
-    SpanAttributes.NET_APP_PROTOCOL_NAME: SpanAttributes.NETWORK_PROTOCOL_NAME,
-    SpanAttributes.NET_APP_PROTOCOL_VERSION: SpanAttributes.NETWORK_PROTOCOL_VERSION,
-    SpanAttributes.HTTP_CLIENT_IP: SpanAttributes.CLIENT_ADDRESS,
-    SpanAttributes.HTTP_FLAVOR: SpanAttributes.NETWORK_PROTOCOL_VERSION,
-    SpanAttributes.NET_HOST_CONNECTION_TYPE: SpanAttributes.NETWORK_CONNECTION_TYPE,
-    SpanAttributes.NET_HOST_CONNECTION_SUBTYPE: SpanAttributes.NETWORK_CONNECTION_SUBTYPE,
-    SpanAttributes.NET_HOST_CARRIER_NAME: SpanAttributes.NETWORK_CARRIER_NAME,
-    SpanAttributes.NET_HOST_CARRIER_MCC: SpanAttributes.NETWORK_CARRIER_MCC,
-    SpanAttributes.NET_HOST_CARRIER_MNC: SpanAttributes.NETWORK_CARRIER_MNC,
-}
-
-# Special mappings handled case-by-case
-_OTEL_HTTP_SEMCONV_MIGRATION_MAPPING_SPECIAL = {
-    SpanAttributes.HTTP_TARGET: (SpanAttributes.URL_PATH, SpanAttributes.URL_QUERY),
-    SpanAttributes.HTTP_HOST: (SpanAttributes.SERVER_ADDRESS, SpanAttributes.SERVER_PORT),
-}
-
 
 class _OpenTelemetryStabilitySignalType:
     HTTP = "http"
@@ -205,26 +161,3 @@ class _OpenTelemetrySemanticConventionStability:
         return _OpenTelemetrySemanticConventionStability._OTEL_SEMCONV_STABILITY_SIGNAL_MAPPING.get(
             signal_type, _OpenTelemetryStabilityMode.DEFAULT
         )
-
-
-# Get new semantic convention attribute key based off old attribute key
-# If no new attribute key exists for old attribute key, returns old attribute key
-def _get_new_convention(old: str) -> str:
-    return _OTEL_HTTP_SEMCONV_MIGRATION_MAPPING.get(old, old)
-
-
-# Get updated attributes based off of opt-in mode and client/server
-def _get_attributes_based_on_stability_mode(
-    mode: _OpenTelemetryStabilityMode,
-    old_attributes: Dict[str, str],
-) -> Dict[str, str]:
-    if mode is _OpenTelemetryStabilityMode.DEFAULT:
-        return old_attributes
-    attributes = {}
-    for old_key, value in old_attributes.items():
-        new_key = _get_new_convention(old_key)
-        attributes[new_key] = value
-        if mode is _OpenTelemetryStabilityMode.HTTP_DUP:
-            attributes[old_key] = value
-        
-    return attributes
