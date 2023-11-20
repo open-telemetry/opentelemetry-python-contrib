@@ -120,7 +120,7 @@ class TestAioHttpIntegration(TestBase):
                 url = f"http://{host}:{port}/test-path?query=param#foobar"
                 # if python version is < 3.8, then the url will be
                 if sys.version_info[1] < 8:
-                    url = "http://{host}:{port}/test-path#foobar"
+                    url = f"http://{host}:{port}/test-path#foobar"
 
                 self.assert_spans(
                     [
