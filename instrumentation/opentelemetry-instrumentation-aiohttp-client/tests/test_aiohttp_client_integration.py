@@ -14,6 +14,7 @@
 
 import asyncio
 import contextlib
+import sys
 import typing
 import unittest
 import urllib.parse
@@ -116,6 +117,11 @@ class TestAioHttpIntegration(TestBase):
                     status_code=status_code,
                 )
 
+                url = f"http://{host}:{port}/test-path?query=param#foobar"
+                # if python version is < 3.8, then the url will be
+                if sys.version_info[1] < 8:
+                    url = "http://{host}:{port}/test-path#foobar"
+
                 self.assert_spans(
                     [
                         (
@@ -123,7 +129,7 @@ class TestAioHttpIntegration(TestBase):
                             (span_status, None),
                             {
                                 SpanAttributes.HTTP_METHOD: "GET",
-                                SpanAttributes.HTTP_URL: f"http://{host}:{port}/test-path?query=param#foobar",
+                                SpanAttributes.HTTP_URL: url,
                                 SpanAttributes.HTTP_STATUS_CODE: int(
                                     status_code
                                 ),
