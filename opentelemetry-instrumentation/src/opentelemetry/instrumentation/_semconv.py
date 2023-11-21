@@ -18,6 +18,40 @@ from enum import Enum
 
 from opentelemetry.semconv.trace import SpanAttributes
 
+# TODO: will come through semconv package once updated
+_SPAN_ATTRIBUTES_ERROR_TYPE = "error.type"
+_SPAN_ATTRIBUTES_NETWORK_PEER_ADDRESS ="network.peer.address"
+_SPAN_ATTRIBUTES_NETWORK_PEER_PORT = "network.peer.port"
+
+_client_duration_attrs_old = [
+    SpanAttributes.HTTP_STATUS_CODE,
+    SpanAttributes.HTTP_HOST,
+    SpanAttributes.NET_PEER_PORT,
+    SpanAttributes.NET_PEER_NAME,
+    SpanAttributes.HTTP_METHOD,
+    SpanAttributes.HTTP_FLAVOR,
+    SpanAttributes.HTTP_SCHEME,   
+]
+
+_client_duration_attrs_new = [
+    _SPAN_ATTRIBUTES_ERROR_TYPE,
+    SpanAttributes.HTTP_REQUEST_METHOD_ORIGINAL,
+    SpanAttributes.HTTP_REQUEST_METHOD,
+    SpanAttributes.HTTP_RESPONSE_STATUS_CODE,
+    SpanAttributes.NET_PROTOCOL_VERSION,
+    SpanAttributes.SERVER_ADDRESS,
+    SpanAttributes.SERVER_PORT,
+    SpanAttributes.URL_SCHEME,
+]
+
+def _filter_duration_attrs(attrs, sem_conv_opt_in_mode):
+    filtered_attrs = {}
+    allowed_attributes = _client_duration_attrs_new if sem_conv_opt_in_mode == _OpenTelemetryStabilityMode.HTTP else _client_duration_attrs_old
+    for key, val in attrs.items():
+        if key in allowed_attributes:
+            filtered_attrs[key] = val
+    return filtered_attrs
+
 
 def set_string_attribute(dict, key, value):
     if value:
@@ -37,7 +71,7 @@ def _set_http_method(result, original, normalized, sem_conv_opt_in_mode):
     normalized = normalized.strip()
     # See https://github.com/open-telemetry/semantic-conventions/blob/main/docs/http/http-spans.md#common-attributes
     # Method is case sensitive. "http.request.method_original" should not be sanitized or automatically capitalized.
-    if original != normalized and sem_conv_opt_in_mode != _OpenTelemetryStabilityMode.DEFAULT:
+    if original != normalized and _report_new():
         set_string_attribute(result, SpanAttributes.HTTP_REQUEST_METHOD_ORIGINAL, original)
 
     if _report_old(sem_conv_opt_in_mode):
@@ -84,9 +118,9 @@ def _set_http_port(result, port, sem_conv_opt_in_mode):
 
 def _set_http_status_code(result, code, sem_conv_opt_in_mode):
     if _report_old(sem_conv_opt_in_mode):
-        set_string_attribute(result, SpanAttributes.HTTP_STATUS_CODE, code)
+        set_int_attribute(result, SpanAttributes.HTTP_STATUS_CODE, code)
     if _report_new(sem_conv_opt_in_mode):
-        set_string_attribute(result, SpanAttributes.HTTP_RESPONSE_STATUS_CODE, code)
+        set_int_attribute(result, SpanAttributes.HTTP_RESPONSE_STATUS_CODE, code)
 
 
 def _set_http_network_protocol_version(result, version, sem_conv_opt_in_mode):

@@ -70,6 +70,7 @@ from opentelemetry.instrumentation.utils import (
     http_status_to_status_code,
 )
 from opentelemetry.instrumentation._semconv import (
+    _filter_duration_attrs,
     _report_old,
     _report_new,
     _set_http_hostname,
@@ -80,6 +81,9 @@ from opentelemetry.instrumentation._semconv import (
     _set_http_scheme,
     _set_http_url,
     _set_http_status_code,
+    _SPAN_ATTRIBUTES_ERROR_TYPE,
+    _SPAN_ATTRIBUTES_NETWORK_PEER_ADDRESS,
+    _SPAN_ATTRIBUTES_NETWORK_PEER_PORT,
     _OpenTelemetrySemanticConventionStability,
     _OpenTelemetryStabilityMode,
     _OpenTelemetryStabilitySignalType,
@@ -104,11 +108,6 @@ _excluded_urls_from_env = get_excluded_urls("REQUESTS")
 
 _RequestHookT = Optional[Callable[[Span, PreparedRequest], None]]
 _ResponseHookT = Optional[Callable[[Span, PreparedRequest], None]]
-
-# TODO: will come through semconv package once updated
-_SPAN_ATTRIBUTES_ERROR_TYPE = "error.type"
-_SPAN_ATTRIBUTES_NETWORK_PEER_ADDRESS ="network.peer.address"
-_SPAN_ATTRIBUTES_NETWORK_PEER_PORT = "network.peer.port"
 
 
 # pylint: disable=unused-argument
@@ -177,11 +176,13 @@ def _instrument(
                 _set_http_net_peer_name(metric_labels, parsed_url.hostname, sem_conv_opt_in_mode)
                 if _report_new(sem_conv_opt_in_mode):
                     _set_http_hostname(span_attributes, parsed_url.hostname, sem_conv_opt_in_mode)
+                    # Use semconv library when available
                     span_attributes[_SPAN_ATTRIBUTES_NETWORK_PEER_ADDRESS] = parsed_url.hostname
             if parsed_url.port:
                 _set_http_port(metric_labels, parsed_url.port, sem_conv_opt_in_mode)
                 if _report_new(sem_conv_opt_in_mode):
                     _set_http_port(span_attributes, parsed_url.port, sem_conv_opt_in_mode)
+                    # Use semconv library when available
                     span_attributes[_SPAN_ATTRIBUTES_NETWORK_PEER_PORT] = parsed_url.port
         except ValueError:
             pass
@@ -229,20 +230,23 @@ def _instrument(
                         _set_http_network_protocol_version(metric_labels, version_text, sem_conv_opt_in_mode)
                         if _report_new(sem_conv_opt_in_mode):
                             _set_http_network_protocol_version(span_attributes, version_text, sem_conv_opt_in_mode)
-                if exception is not None:
-                    if _report_new(sem_conv_opt_in_mode):
-                        span_attributes[_SPAN_ATTRIBUTES_ERROR_TYPE] = type(exception).__name__
-                        metric_labels[_SPAN_ATTRIBUTES_ERROR_TYPE] = type(exception).__name__
                 for k, v in span_attributes.items():
                     span.set_attribute(k, v)
 
                 if callable(response_hook):
                     response_hook(span, request, result)
 
-            if _report_old(sem_conv_opt_in_mode) and duration_histogram_old is not None:
-                duration_histogram_old.record(max(round(elapsed_time * 1000), 0), attributes=metric_labels)
-            # duration_histogram_new.record(elapsed_time, attributes=metric_labels)
-
+            if exception is not None and _report_new(sem_conv_opt_in_mode):
+                span.set_attribute(_SPAN_ATTRIBUTES_ERROR_TYPE, type(exception).__name__)
+                metric_labels[_SPAN_ATTRIBUTES_ERROR_TYPE] = type(exception).__name__
+            
+            if duration_histogram_old is not None:
+                duration_attrs_old = _filter_duration_attrs(metric_labels, _OpenTelemetryStabilityMode.DEFAULT)
+                duration_histogram_old.record(max(round(elapsed_time * 1000), 0), attributes=duration_attrs_old)
+            if duration_histogram_new is not None:
+                duration_attrs_new = _filter_duration_attrs(metric_labels, _OpenTelemetryStabilityMode.HTTP)
+                duration_histogram_new.record(elapsed_time, attributes=duration_attrs_new)
+            
             if exception is not None:
                 raise exception.with_traceback(exception.__traceback__)
 
