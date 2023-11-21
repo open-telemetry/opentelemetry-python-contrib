@@ -24,13 +24,14 @@ from pymemcache.exceptions import (
     MemcacheUnknownError,
 )
 
+# pylint: disable=import-error,no-name-in-module
+from tests.utils import MockSocket, _str
+
 from opentelemetry import trace as trace_api
 from opentelemetry.instrumentation.pymemcache import PymemcacheInstrumentor
 from opentelemetry.semconv.trace import SpanAttributes
 from opentelemetry.test.test_base import TestBase
 from opentelemetry.trace import get_tracer
-
-from .utils import MockSocket, _str
 
 TEST_HOST = "localhost"
 TEST_PORT = 117711
