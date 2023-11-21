@@ -206,9 +206,10 @@ class _OpenTelemetrySemanticConventionStability:
 
     @classmethod
     def _get_opentelemetry_stability_opt_in(
-        type: _OpenTelemetryStabilitySignalType,
+        cls,
+        signal_type: _OpenTelemetryStabilitySignalType,
     ) -> _OpenTelemetryStabilityMode:
         with _OpenTelemetrySemanticConventionStability._lock:
             return _OpenTelemetrySemanticConventionStability._OTEL_SEMCONV_STABILITY_SIGNAL_MAPPING.get(
-                type, _OpenTelemetryStabilityMode.DEFAULT
+                signal_type, _OpenTelemetryStabilityMode.DEFAULT
             )

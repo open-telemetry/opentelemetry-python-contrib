@@ -57,23 +57,21 @@ class _AwsSdkCallContext:
         boto_meta = client.meta
         service_model = boto_meta.service_model
 
-        self.service = service_model.service_name.lower()  # type: str
-        self.operation = operation  # type: str
-        self.params = params  # type: Dict[str, Any]
+        self.service = service_model.service_name.lower()
+        self.operation = operation
+        self.params = params
 
         # 'operation' and 'service' are essential for instrumentation.
         # for all other attributes we extract them defensively. All of them should
         # usually exist unless some future botocore version moved things.
-        self.region = self._get_attr(
-            boto_meta, "region_name"
-        )  # type: Optional[str]
-        self.endpoint_url = self._get_attr(
+        self.region: Optional[str] = self._get_attr(boto_meta, "region_name")
+        self.endpoint_url: Optional[str] = self._get_attr(
             boto_meta, "endpoint_url"
-        )  # type: Optional[str]
+        )
 
-        self.api_version = self._get_attr(
+        self.api_version: Optional[str] = self._get_attr(
             service_model, "api_version"
-        )  # type: Optional[str]
+        )
         # name of the service in proper casing
         self.service_id = str(
             self._get_attr(service_model, "service_id", self.service)
