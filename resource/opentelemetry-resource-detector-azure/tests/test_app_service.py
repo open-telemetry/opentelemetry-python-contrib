@@ -14,6 +14,7 @@
 import unittest
 from unittest.mock import patch
 
+# pylint: disable=no-name-in-module
 from opentelemetry.resource.detector.azure.app_service import (
     AzureAppServiceResourceDetector,
 )

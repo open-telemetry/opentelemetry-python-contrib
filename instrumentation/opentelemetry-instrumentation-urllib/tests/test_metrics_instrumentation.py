@@ -13,14 +13,14 @@
 # limitations under the License.
 
 
+from platform import python_implementation
+from sys import version_info
 from timeit import default_timer
 from urllib import request
 from urllib.parse import urlencode
-from pytest import mark
-from platform import python_implementation
-from sys import version_info
 
 import httpretty
+from pytest import mark
 
 from opentelemetry.instrumentation.urllib import (  # pylint: disable=no-name-in-module,import-error
     URLLibInstrumentor,
@@ -190,22 +190,16 @@ class TestUrllibMetricsInstrumentation(TestBase):
 
     @mark.skipif(
         python_implementation() == "PyPy" or version_info.minor == 7,
-        reason="Fails randomly in 3.7 and pypy"
+        reason="Fails randomly in 3.7 and pypy",
     )
     def test_metric_uninstrument(self):
         with request.urlopen(self.URL):
             metrics = self.get_sorted_metrics()
             self.assertEqual(len(metrics), 3)
 
-            self.assertEqual(
-                metrics[0].data.data_points[0].sum, 1
-            )
-            self.assertEqual(
-                metrics[1].data.data_points[0].sum, 0
-            )
-            self.assertEqual(
-                metrics[2].data.data_points[0].sum, 6
-            )
+            self.assertEqual(metrics[0].data.data_points[0].sum, 1)
+            self.assertEqual(metrics[1].data.data_points[0].sum, 0)
+            self.assertEqual(metrics[2].data.data_points[0].sum, 6)
 
             URLLibInstrumentor().uninstrument()
             with request.urlopen(self.URL):

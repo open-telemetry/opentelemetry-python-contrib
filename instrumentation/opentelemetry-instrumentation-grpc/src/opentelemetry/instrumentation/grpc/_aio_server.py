@@ -127,7 +127,7 @@ class OpenTelemetryAioServerInterceptor(
                         # we handle in our context wrapper.
                         # Here, we're interested in uncaught exceptions.
                         # pylint:disable=unidiomatic-typecheck
-                        if type(error) != Exception:
+                        if type(error) != Exception:  # noqa: E721
                             span.record_exception(error)
                         raise error
 
@@ -151,7 +151,7 @@ class OpenTelemetryAioServerInterceptor(
 
                     except Exception as error:
                         # pylint:disable=unidiomatic-typecheck
-                        if type(error) != Exception:
+                        if type(error) != Exception:  # noqa: E721
                             span.record_exception(error)
                         raise error
 
