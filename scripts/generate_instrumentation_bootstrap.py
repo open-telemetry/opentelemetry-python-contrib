@@ -21,7 +21,6 @@ import subprocess
 import sys
 
 import astor
-import pkg_resources
 from otel_packaging import (
     get_instrumentation_packages,
     root_path,
@@ -58,14 +57,12 @@ gen_path = os.path.join(
 def main():
     # pylint: disable=no-member
     default_instrumentations = ast.List(elts=[])
-    libraries = ast.Dict(keys=[], values=[])
+    libraries = ast.List(elts=[])
     for pkg in get_instrumentation_packages():
         if not pkg["instruments"]:
             default_instrumentations.elts.append(ast.Str(pkg["requirement"]))
         for target_pkg in pkg["instruments"]:
-            parsed = pkg_resources.Requirement.parse(target_pkg)
-            libraries.keys.append(ast.Str(parsed.name))
-            libraries.values.append(
+            libraries.elts.append(
                 ast.Dict(
                     keys=[ast.Str("library"), ast.Str("instrumentation")],
                     values=[ast.Str(target_pkg), ast.Str(pkg["requirement"])],

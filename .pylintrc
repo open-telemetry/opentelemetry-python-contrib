@@ -3,7 +3,7 @@
 # A comma-separated list of package or module names from where C extensions may
 # be loaded. Extensions are loading into the active Python interpreter and may
 # run arbitrary code.
-extension-pkg-whitelist=
+extension-pkg-whitelist=cassandra
 
 # Add list of files or directories to be excluded. They should be base names, not
 # paths.
@@ -29,7 +29,7 @@ limit-inference-results=100
 
 # List of plugins (as comma separated values of python modules names) to load,
 # usually to register additional checkers.
-load-plugins=
+load-plugins=pylint.extensions.no_self_use
 
 # Pickle collected data for later comparisons.
 persistent=yes
@@ -69,7 +69,6 @@ disable=missing-docstring,
       duplicate-code,
       ungrouped-imports, # Leave this up to isort
       wrong-import-order, # Leave this up to isort
-      bad-continuation, # Leave this up to black
       line-too-long, # Leave this up to black
       exec-used,
       super-with-arguments, # temp-pylint-upgrade
@@ -81,6 +80,7 @@ disable=missing-docstring,
       invalid-overridden-method, # temp-pylint-upgrade 
       missing-module-docstring, # temp-pylint-upgrade
       import-error, # needed as a workaround as reported here: https://github.com/open-telemetry/opentelemetry-python-contrib/issues/290
+      cyclic-import,
 
 # Enable the message, report, category or checker with the given id(s). You can
 # either give multiple identifier separated by comma (,) or put this option
@@ -267,13 +267,6 @@ max-line-length=79
 
 # Maximum number of lines in a module.
 max-module-lines=1000
-
-# List of optional constructs for which whitespace checking is disabled. `dict-
-# separator` is used to allow tabulation in dicts, etc.: {1  : 1,\n222: 2}.
-# `trailing-comma` allows a space between comma and closing bracket: (a, ).
-# `empty-line` allows space-only lines.
-no-space-check=trailing-comma,
-               dict-separator
 
 # Allow the body of a class to be on the same line as the declaration if body
 # contains single statement.
