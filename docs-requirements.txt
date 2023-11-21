@@ -1,6 +1,6 @@
-sphinx==4.5.0
-sphinx-rtd-theme~=0.4
-sphinx-autodoc-typehints
+sphinx==7.1.2
+sphinx-rtd-theme==2.0.0rc4
+sphinx-autodoc-typehints==1.25.2
 
 # Need to install the api/sdk in the venv for autodoc. Modifying sys.path
 # doesn't work for pkg_resources.
@@ -45,11 +45,8 @@ remoulade>=0.50
 sqlalchemy>=1.0
 tornado>=5.1.1
 tortoise-orm>=0.17.0
-ddtrace>=0.34.0
 httpx>=0.18.0
 
 # indirect dependency pins
 markupsafe==2.0.1
 itsdangerous==2.0.1
-
-docutils==0.16

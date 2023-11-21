@@ -43,9 +43,9 @@ import cassandra.cluster
 from wrapt import wrap_function_wrapper
 
 from opentelemetry import trace
-from opentelemetry.instrumentation.instrumentor import BaseInstrumentor
 from opentelemetry.instrumentation.cassandra.package import _instruments
 from opentelemetry.instrumentation.cassandra.version import __version__
+from opentelemetry.instrumentation.instrumentor import BaseInstrumentor
 from opentelemetry.instrumentation.utils import unwrap
 from opentelemetry.semconv.trace import SpanAttributes
 
