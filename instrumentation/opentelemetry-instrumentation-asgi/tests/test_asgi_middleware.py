@@ -227,6 +227,7 @@ async def error_asgi(scope, receive, send):
         await send({"type": "http.response.body", "body": b"*"})
 
 
+# pylint: disable=too-many-public-methods
 class TestAsgiApplication(AsgiTestBase):
     def validate_outputs(self, outputs, error=None, modifiers=None):
         # Ensure modifiers is a list
