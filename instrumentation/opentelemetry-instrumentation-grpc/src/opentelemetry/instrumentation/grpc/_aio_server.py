@@ -14,6 +14,7 @@
 
 import grpc
 import grpc.aio
+import wrapt
 
 from ._server import (
     OpenTelemetryServerInterceptor,
@@ -23,121 +24,52 @@ from ._server import (
 from opentelemetry.semconv.trace import SpanAttributes
 from opentelemetry.trace.status import Status, StatusCode
 
-# pylint:disable=abstract-method
-class _OpenTelemetryAioServicerContext(grpc.aio.ServicerContext):
+class _OpenTelemetryAioServicerContext(wrapt.ObjectProxy):
     def __init__(self, servicer_context, active_span):
-        self._servicer_context = servicer_context
-        self._active_span = active_span
-        self._code = grpc.StatusCode.OK
-        self._details = None
-        super().__init__()
+        super().__init__(servicer_context)
+        self._self_active_span = active_span
+        self._self_code = grpc.StatusCode.OK
+        self._self_details = None
 
-    def __getattr__(self, attr):
-        return getattr(self._servicer_context, attr)
-
-    async def read(self):
-        return await self._servicer_context.read()
-
-    async def write(self, message):
-        return await self._servicer_context.write(message)
-
-    def is_active(self, *args, **kwargs):
-        return self._servicer_context.is_active(*args, **kwargs)
-
-    def time_remaining(self, *args, **kwargs):
-        return self._servicer_context.time_remaining(*args, **kwargs)
-
-    def cancel(self, *args, **kwargs):
-        return self._servicer_context.cancel(*args, **kwargs)
-
-    def add_callback(self, *args, **kwargs):
-        return self._servicer_context.add_callback(*args, **kwargs)
-
-    def disable_next_message_compression(self):
-        return self._service_context.disable_next_message_compression()
-
-    def invocation_metadata(self, *args, **kwargs):
-        return self._servicer_context.invocation_metadata(*args, **kwargs)
-
-    def peer(self):
-        return self._servicer_context.peer()
-
-    def peer_identities(self):
-        return self._servicer_context.peer_identities()
-
-    def peer_identity_key(self):
-        return self._servicer_context.peer_identity_key()
-
-    def auth_context(self):
-        return self._servicer_context.auth_context()
-
-    def set_compression(self, compression):
-        return self._servicer_context.set_compression(compression)
-
-    async def send_initial_metadata(self, *args, **kwargs):
-        return await self._servicer_context.send_initial_metadata(*args, **kwargs)
-
-    def set_trailing_metadata(self, *args, **kwargs):
-        return self._servicer_context.set_trailing_metadata(*args, **kwargs)
-
-    def trailing_metadata(self):
-        return self._servicer_context.trailing_metadata()
-
-    async def abort(self, code, details = "", trailing_metadata = tuple()):
-        self._code = code
-        self._details = details
-        self._active_span.set_attribute(
+    async def abort(self, code, details="", trailing_metadata=tuple()):
+        self._self_code = code
+        self._self_details = details
+        self._self_active_span.set_attribute(
             SpanAttributes.RPC_GRPC_STATUS_CODE, code.value[0]
         )
-        self._active_span.set_status(
+        self._self_active_span.set_status(
             Status(
                 status_code=StatusCode.ERROR,
                 description=f"{code}:{details}",
             )
         )
-        return await self._servicer_context.abort(code, details, trailing_metadata)
-
-    def code(self):
-        if not hasattr(self._servicer_context, "code"):
-            raise RuntimeError(
-                "code() is not supported with the installed version of grpcio"
-            )
-        return self._servicer_context.code()
-
-    def details(self):
-        if not hasattr(self._servicer_context, "details"):
-            raise RuntimeError(
-                "details() is not supported with the installed version of "
-                "grpcio"
-            )
-        return self._servicer_context.details()
+        return await self.__wrapped__.abort(code, details, trailing_metadata)
 
     def set_code(self, code):
-        self._code = code
-        # use details if we already have it, otherwise the status description
-        details = self._details or code.value[1]
-        self._active_span.set_attribute(
+        self._self_code = code
+        details = self._self_details or code.value[1]
+        self._self_active_span.set_attribute(
             SpanAttributes.RPC_GRPC_STATUS_CODE, code.value[0]
         )
         if code != grpc.StatusCode.OK:
-            self._active_span.set_status(
+            self._self_active_span.set_status(
                 Status(
                     status_code=StatusCode.ERROR,
                     description=f"{code}:{details}",
                 )
             )
-        return self._servicer_context.set_code(code)
+        return self.__wrapped__.set_code(code)
 
     def set_details(self, details):
-        self._details = details
-        if self._code != grpc.StatusCode.OK:
-            self._active_span.set_status(
+        self._self_details = details
+        if self._self_code != grpc.StatusCode.OK:
+            self._self_active_span.set_status(
                 Status(
                     status_code=StatusCode.ERROR,
-                    description=f"{self._code}:{details}",
+                    description=f"{self._self_code}:{details}",
                 )
             )
-        return self._servicer_context.set_details(details)
+        return self.__wrapped__.set_details(details)
 
 
 class OpenTelemetryAioServerInterceptor(
