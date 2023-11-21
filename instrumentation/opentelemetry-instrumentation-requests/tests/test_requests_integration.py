@@ -27,6 +27,10 @@ from opentelemetry import context, trace
 from opentelemetry.context import _SUPPRESS_HTTP_INSTRUMENTATION_KEY
 from opentelemetry.instrumentation.requests import RequestsInstrumentor
 from opentelemetry.instrumentation.utils import _SUPPRESS_INSTRUMENTATION_KEY
+from opentelemetry.instrumentation._semconv import (
+    _OTEL_SEMCONV_STABILITY_OPT_IN_KEY,
+    _OpenTelemetrySemanticConventionStability,
+)
 from opentelemetry.propagate import get_global_textmap, set_global_textmap
 from opentelemetry.sdk import resources
 from opentelemetry.semconv.trace import SpanAttributes
@@ -64,17 +68,30 @@ class RequestsIntegrationTestBase(abc.ABC):
     # pylint: disable=too-many-public-methods
 
     URL = "http://mock/status/200"
+    HOST = "mock/status"
 
     # pylint: disable=invalid-name
     def setUp(self):
         super().setUp()
 
+        test_name = ""
+        if hasattr(self, "_testMethodName"):
+            test_name = self._testMethodName
+        sem_conv_mode = "default"
+        if "new_semconv" in test_name:
+            sem_conv_mode = "http"
+        elif "both_semconv" in test_name:
+            sem_conv_mode = "http/dup"
         self.env_patch = mock.patch.dict(
             "os.environ",
             {
-                "OTEL_PYTHON_REQUESTS_EXCLUDED_URLS": "http://localhost/env_excluded_arg/123,env_excluded_noarg"
+                "OTEL_PYTHON_REQUESTS_EXCLUDED_URLS": "http://localhost/env_excluded_arg/123,env_excluded_noarg",
+                _OTEL_SEMCONV_STABILITY_OPT_IN_KEY: sem_conv_mode,
             },
         )
+
+        _OpenTelemetrySemanticConventionStability._initialized = False
+
         self.env_patch.start()
 
         self.exclude_patch = mock.patch(
@@ -132,6 +149,34 @@ class RequestsIntegrationTestBase(abc.ABC):
         self.assertEqualSpanInstrumentationInfo(
             span, opentelemetry.instrumentation.requests
         )
+
+
+    # def test_basic_new_semconv(self):
+    #     print("here2")
+        # result = self.perform_request(self.URL)
+        # self.assertEqual(result.text, "Hello!")
+        # span = self.assert_span()
+
+        # self.assertIs(span.kind, trace.SpanKind.CLIENT)
+        # self.assertEqual(span.name, "GET")
+
+        # self.assertEqual(
+        #     span.attributes,
+        #     {
+        #         SpanAttributes.HTTP_REQUEST_METHOD: "GET",
+        #         SpanAttributes.HTTP_REQUEST_METHOD_ORIGINAL: "GET",
+        #         SpanAttributes.URL_FULL: self.URL,
+        #         SpanAttributes.HTTP_RESPONSE_STATUS_CODE: 200,
+        #         SpanAttributes.SERVER_ADDRESS: self.HOST,
+        #     },
+        # )
+
+        # self.assertIs(span.status.status_code, trace.StatusCode.UNSET)
+
+        # self.assertEqualSpanInstrumentationInfo(
+        #     span, opentelemetry.instrumentation.requests
+        # )
+
 
     def test_hooks(self):
         def request_hook(span, request_obj):
