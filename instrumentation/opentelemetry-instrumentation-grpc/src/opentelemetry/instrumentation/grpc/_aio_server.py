@@ -16,14 +16,13 @@ import grpc
 import grpc.aio
 import wrapt
 
-from ._server import (
-    OpenTelemetryServerInterceptor,
-    _wrap_rpc_behavior,
-)
-
 from opentelemetry.semconv.trace import SpanAttributes
 from opentelemetry.trace.status import Status, StatusCode
 
+from ._server import OpenTelemetryServerInterceptor, _wrap_rpc_behavior
+
+
+# pylint:disable=abstract-method
 class _OpenTelemetryAioServicerContext(wrapt.ObjectProxy):
     def __init__(self, servicer_context, active_span):
         super().__init__(servicer_context)

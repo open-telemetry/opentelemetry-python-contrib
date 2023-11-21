@@ -520,7 +520,9 @@ class TestOpenTelemetryAioServerInterceptor(TestBase, IsolatedAsyncioTestCase):
             with testcase.assertRaises(grpc.RpcError) as cm:
                 await channel.unary_unary(rpc_call)(msg)
 
-            self.assertEqual(cm.exception.code(), grpc.StatusCode.FAILED_PRECONDITION)
+            self.assertEqual(
+                cm.exception.code(), grpc.StatusCode.FAILED_PRECONDITION
+            )
             self.assertEqual(cm.exception.details(), failure_message)
 
         await run_with_test_server(request, servicer=AbortServicer())
@@ -567,11 +569,11 @@ class TestOpenTelemetryAioServerInterceptor(TestBase, IsolatedAsyncioTestCase):
         class AbortServicer(GRPCTestServerServicer):
             # pylint:disable=C0103
             async def SimpleMethod(self, request, context):
-                metadata = (
-                    ("meta", "data"),
-                )
+                metadata = (("meta", "data"),)
                 await context.abort(
-                    grpc.StatusCode.FAILED_PRECONDITION, failure_message, trailing_metadata=metadata
+                    grpc.StatusCode.FAILED_PRECONDITION,
+                    failure_message,
+                    trailing_metadata=metadata,
                 )
 
         testcase = self
@@ -583,7 +585,9 @@ class TestOpenTelemetryAioServerInterceptor(TestBase, IsolatedAsyncioTestCase):
             with testcase.assertRaises(grpc.RpcError) as cm:
                 await channel.unary_unary(rpc_call)(msg)
 
-            self.assertEqual(cm.exception.code(), grpc.StatusCode.FAILED_PRECONDITION)
+            self.assertEqual(
+                cm.exception.code(), grpc.StatusCode.FAILED_PRECONDITION
+            )
             self.assertEqual(cm.exception.details(), failure_message)
 
         await run_with_test_server(request, servicer=AbortServicer())
