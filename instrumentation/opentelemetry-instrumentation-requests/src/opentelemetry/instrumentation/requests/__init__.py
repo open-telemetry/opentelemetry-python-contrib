@@ -91,7 +91,6 @@ from opentelemetry.instrumentation.utils import (
 from opentelemetry.metrics import Histogram, get_meter
 from opentelemetry.propagate import inject
 from opentelemetry.semconv.metrics import MetricInstruments
-from opentelemetry.semconv.trace import SpanAttributes
 from opentelemetry.trace import SpanKind, Tracer, get_tracer
 from opentelemetry.trace.span import Span
 from opentelemetry.trace.status import Status
