@@ -1,5 +1,4 @@
 import os
-from unittest import mock
 
 import opentelemetry.instrumentation.asgi as otel_asgi
 from opentelemetry.test.asgitestutil import AsgiTestBase
