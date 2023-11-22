@@ -26,9 +26,9 @@ from opentelemetry import context, trace
 # FIXME: fix the importing of this private attribute when the location of the _SUPPRESS_HTTP_INSTRUMENTATION_KEY is defined.
 from opentelemetry.context import _SUPPRESS_HTTP_INSTRUMENTATION_KEY
 from opentelemetry.instrumentation._semconv import (
+    _OTEL_SEMCONV_STABILITY_OPT_IN_KEY,
     _SPAN_ATTRIBUTES_ERROR_TYPE,
     _SPAN_ATTRIBUTES_NETWORK_PEER_ADDRESS,
-    _OTEL_SEMCONV_STABILITY_OPT_IN_KEY,
     _OpenTelemetrySemanticConventionStability,
 )
 from opentelemetry.instrumentation.requests import RequestsInstrumentor

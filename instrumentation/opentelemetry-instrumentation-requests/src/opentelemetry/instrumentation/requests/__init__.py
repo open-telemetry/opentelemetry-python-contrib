@@ -63,23 +63,23 @@ from opentelemetry import context
 # FIXME: fix the importing of this private attribute when the location of the _SUPPRESS_HTTP_INSTRUMENTATION_KEY is defined.
 from opentelemetry.context import _SUPPRESS_HTTP_INSTRUMENTATION_KEY
 from opentelemetry.instrumentation._semconv import (
+    _SPAN_ATTRIBUTES_ERROR_TYPE,
+    _SPAN_ATTRIBUTES_NETWORK_PEER_ADDRESS,
+    _SPAN_ATTRIBUTES_NETWORK_PEER_PORT,
     _filter_duration_attrs,
-    _report_old,
+    _OpenTelemetrySemanticConventionStability,
+    _OpenTelemetryStabilityMode,
+    _OpenTelemetryStabilitySignalType,
     _report_new,
+    _report_old,
     _set_http_hostname,
     _set_http_method,
     _set_http_net_peer_name,
     _set_http_network_protocol_version,
     _set_http_port,
     _set_http_scheme,
-    _set_http_url,
     _set_http_status_code,
-    _SPAN_ATTRIBUTES_ERROR_TYPE,
-    _SPAN_ATTRIBUTES_NETWORK_PEER_ADDRESS,
-    _SPAN_ATTRIBUTES_NETWORK_PEER_PORT,
-    _OpenTelemetrySemanticConventionStability,
-    _OpenTelemetryStabilityMode,
-    _OpenTelemetryStabilitySignalType,
+    _set_http_url,
 )
 from opentelemetry.instrumentation.instrumentor import BaseInstrumentor
 from opentelemetry.instrumentation.requests.package import _instruments
