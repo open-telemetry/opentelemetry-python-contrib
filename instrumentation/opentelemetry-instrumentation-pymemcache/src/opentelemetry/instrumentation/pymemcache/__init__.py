@@ -169,7 +169,7 @@ def _get_address_attributes(instance):
             address_attributes[SpanAttributes.NET_PEER_NAME] = instance.server
             address_attributes[
                 SpanAttributes.NET_TRANSPORT
-            ] = NetTransportValues.UNIX.value
+            ] = NetTransportValues.OTHER.value
 
     return address_attributes
 

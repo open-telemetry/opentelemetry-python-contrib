@@ -12,25 +12,42 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+from enum import Enum
+from http import HTTPStatus
+
+import aiohttp
 import pytest
 import pytest_asyncio
-import aiohttp
-from http import HTTPStatus
-from .utils import HTTPMethod
 
 from opentelemetry import trace as trace_api
-from opentelemetry.test.test_base import TestBase
-from opentelemetry.instrumentation.aiohttp_server import AioHttpServerInstrumentor
+from opentelemetry.instrumentation.aiohttp_server import (
+    AioHttpServerInstrumentor,
+)
 from opentelemetry.semconv.trace import SpanAttributes
+from opentelemetry.test.globals_test import reset_trace_globals
+from opentelemetry.test.test_base import TestBase
 from opentelemetry.util._importlib_metadata import entry_points
 
-from opentelemetry.test.globals_test import (
-    reset_trace_globals,
-)
+
+class HTTPMethod(Enum):
+    """HTTP methods and descriptions"""
+
+    def __repr__(self):
+        return f"{self.value}"
+
+    CONNECT = "CONNECT"
+    DELETE = "DELETE"
+    GET = "GET"
+    HEAD = "HEAD"
+    OPTIONS = "OPTIONS"
+    PATCH = "PATCH"
+    POST = "POST"
+    PUT = "PUT"
+    TRACE = "TRACE"
 
 
-@pytest.fixture(scope="session")
-def tracer():
+@pytest.fixture(name="tracer", scope="session")
+def fixture_tracer():
     test_base = TestBase()
 
     tracer_provider, memory_exporter = test_base.create_tracer_provider()
@@ -47,15 +64,14 @@ async def default_handler(request, status=200):
     return aiohttp.web.Response(status=status)
 
 
-@pytest_asyncio.fixture
-async def server_fixture(tracer, aiohttp_server):
+@pytest_asyncio.fixture(name="server_fixture")
+async def fixture_server_fixture(tracer, aiohttp_server):
     _, memory_exporter = tracer
 
     AioHttpServerInstrumentor().instrument()
 
     app = aiohttp.web.Application()
-    app.add_routes(
-        [aiohttp.web.get("/test-path", default_handler)])
+    app.add_routes([aiohttp.web.get("/test-path", default_handler)])
 
     server = await aiohttp_server(app)
     yield server, app
@@ -67,26 +83,31 @@ async def server_fixture(tracer, aiohttp_server):
 
 def test_checking_instrumentor_pkg_installed():
 
-    (instrumentor_entrypoint,) = entry_points(group="opentelemetry_instrumentor", name="aiohttp-server")
+    (instrumentor_entrypoint,) = entry_points(
+        group="opentelemetry_instrumentor", name="aiohttp-server"
+    )
     instrumentor = instrumentor_entrypoint.load()()
-    assert (isinstance(instrumentor, AioHttpServerInstrumentor))
+    assert isinstance(instrumentor, AioHttpServerInstrumentor)
 
 
 @pytest.mark.asyncio
-@pytest.mark.parametrize("url, expected_method, expected_status_code", [
-    ("/test-path", HTTPMethod.GET, HTTPStatus.OK),
-    ("/not-found", HTTPMethod.GET, HTTPStatus.NOT_FOUND)
-])
+@pytest.mark.parametrize(
+    "url, expected_method, expected_status_code",
+    [
+        ("/test-path", HTTPMethod.GET, HTTPStatus.OK),
+        ("/not-found", HTTPMethod.GET, HTTPStatus.NOT_FOUND),
+    ],
+)
 async def test_status_code_instrumentation(
     tracer,
     server_fixture,
     aiohttp_client,
     url,
     expected_method,
-    expected_status_code
+    expected_status_code,
 ):
     _, memory_exporter = tracer
-    server, app = server_fixture
+    server, _ = server_fixture
 
     assert len(memory_exporter.get_finished_spans()) == 0
 
@@ -98,8 +119,12 @@ async def test_status_code_instrumentation(
     [span] = memory_exporter.get_finished_spans()
 
     assert expected_method.value == span.attributes[SpanAttributes.HTTP_METHOD]
-    assert expected_status_code == span.attributes[SpanAttributes.HTTP_STATUS_CODE]
+    assert (
+        expected_status_code
+        == span.attributes[SpanAttributes.HTTP_STATUS_CODE]
+    )
 
-    assert f"http://{server.host}:{server.port}{url}" == span.attributes[
-        SpanAttributes.HTTP_URL
-    ]
+    assert (
+        f"http://{server.host}:{server.port}{url}"
+        == span.attributes[SpanAttributes.HTTP_URL]
+    )
