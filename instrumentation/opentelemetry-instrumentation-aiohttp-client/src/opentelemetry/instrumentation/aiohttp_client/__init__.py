@@ -163,7 +163,12 @@ def create_trace_config(
     # Explicitly specify the type for the `request_hook` and `response_hook` param and rtype to work
     # around this issue.
 
-    tracer = get_tracer(__name__, __version__, tracer_provider)
+    tracer = get_tracer(
+        __name__,
+        __version__,
+        tracer_provider,
+        schema_url="https://opentelemetry.io/schemas/1.11.0",
+    )
 
     def _end_trace(trace_config_ctx: types.SimpleNamespace):
         context_api.detach(trace_config_ctx.token)

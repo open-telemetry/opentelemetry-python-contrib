@@ -131,7 +131,21 @@ The hooks can be configured as follows:
         # status_code, headers, stream, extensions = response
         pass
 
-    HTTPXClientInstrumentor().instrument(request_hook=request_hook, response_hook=response_hook)
+    async def async_request_hook(span, request):
+        # method, url, headers, stream, extensions = request
+        pass
+
+    async def async_response_hook(span, request, response):
+        # method, url, headers, stream, extensions = request
+        # status_code, headers, stream, extensions = response
+        pass
+
+    HTTPXClientInstrumentor().instrument(
+        request_hook=request_hook,
+        response_hook=response_hook,
+        async_request_hook=async_request_hook,
+        async_response_hook=async_response_hook
+    )
 
 
 Or if you are using the transport classes directly:
@@ -139,7 +153,7 @@ Or if you are using the transport classes directly:
 
 .. code-block:: python
 
-    from opentelemetry.instrumentation.httpx import SyncOpenTelemetryTransport
+    from opentelemetry.instrumentation.httpx import SyncOpenTelemetryTransport, AsyncOpenTelemetryTransport
 
     def request_hook(span, request):
         # method, url, headers, stream, extensions = request
@@ -150,11 +164,27 @@ Or if you are using the transport classes directly:
         # status_code, headers, stream, extensions = response
         pass
 
+    async def async_request_hook(span, request):
+        # method, url, headers, stream, extensions = request
+        pass
+
+    async def async_response_hook(span, request, response):
+        # method, url, headers, stream, extensions = request
+        # status_code, headers, stream, extensions = response
+        pass
+
     transport = httpx.HTTPTransport()
     telemetry_transport = SyncOpenTelemetryTransport(
         transport,
         request_hook=request_hook,
         response_hook=response_hook
+    )
+
+    async_transport = httpx.AsyncHTTPTransport()
+    async_telemetry_transport = AsyncOpenTelemetryTransport(
+        async_transport,
+        request_hook=async_request_hook,
+        response_hook=async_response_hook
     )
 
 API
@@ -290,6 +320,7 @@ class SyncOpenTelemetryTransport(httpx.BaseTransport):
             __name__,
             instrumenting_library_version=__version__,
             tracer_provider=tracer_provider,
+            schema_url="https://opentelemetry.io/schemas/1.11.0",
         )
         self._request_hook = request_hook
         self._response_hook = response_hook
@@ -376,14 +407,15 @@ class AsyncOpenTelemetryTransport(httpx.AsyncBaseTransport):
         self,
         transport: httpx.AsyncBaseTransport,
         tracer_provider: typing.Optional[TracerProvider] = None,
-        request_hook: typing.Optional[RequestHook] = None,
-        response_hook: typing.Optional[ResponseHook] = None,
+        request_hook: typing.Optional[AsyncRequestHook] = None,
+        response_hook: typing.Optional[AsyncResponseHook] = None,
     ):
         self._transport = transport
         self._tracer = get_tracer(
             __name__,
             instrumenting_library_version=__version__,
             tracer_provider=tracer_provider,
+            schema_url="https://opentelemetry.io/schemas/1.11.0",
         )
         self._request_hook = request_hook
         self._response_hook = response_hook
@@ -509,21 +541,27 @@ class HTTPXClientInstrumentor(BaseInstrumentor):
         Args:
             **kwargs: Optional arguments
                 ``tracer_provider``: a TracerProvider, defaults to global
-                ``request_hook``: A hook that receives the span and request that is called
-                    right after the span is created
-                ``response_hook``: A hook that receives the span, request, and response
-                    that is called right before the span ends
+                ``request_hook``: A ``httpx.Client`` hook that receives the span and request
+                    that is called right after the span is created
+                ``response_hook``: A ``httpx.Client`` hook that receives the span, request,
+                    and response that is called right before the span ends
+                ``async_request_hook``: Async ``request_hook`` for ``httpx.AsyncClient``
+                ``async_response_hook``: Async``response_hook`` for ``httpx.AsyncClient``
         """
         self._original_client = httpx.Client
         self._original_async_client = httpx.AsyncClient
         request_hook = kwargs.get("request_hook")
         response_hook = kwargs.get("response_hook")
+        async_request_hook = kwargs.get("async_request_hook", request_hook)
+        async_response_hook = kwargs.get("async_response_hook", response_hook)
         if callable(request_hook):
             _InstrumentedClient._request_hook = request_hook
-            _InstrumentedAsyncClient._request_hook = request_hook
+        if callable(async_request_hook):
+            _InstrumentedAsyncClient._request_hook = async_request_hook
         if callable(response_hook):
             _InstrumentedClient._response_hook = response_hook
-            _InstrumentedAsyncClient._response_hook = response_hook
+        if callable(async_response_hook):
+            _InstrumentedAsyncClient._response_hook = async_response_hook
         tracer_provider = kwargs.get("tracer_provider")
         _InstrumentedClient._tracer_provider = tracer_provider
         _InstrumentedAsyncClient._tracer_provider = tracer_provider
@@ -544,8 +582,12 @@ class HTTPXClientInstrumentor(BaseInstrumentor):
     def instrument_client(
         client: typing.Union[httpx.Client, httpx.AsyncClient],
         tracer_provider: TracerProvider = None,
-        request_hook: typing.Optional[RequestHook] = None,
-        response_hook: typing.Optional[ResponseHook] = None,
+        request_hook: typing.Union[
+            typing.Optional[RequestHook], typing.Optional[AsyncRequestHook]
+        ] = None,
+        response_hook: typing.Union[
+            typing.Optional[ResponseHook], typing.Optional[AsyncResponseHook]
+        ] = None,
     ) -> None:
         """Instrument httpx Client or AsyncClient
 

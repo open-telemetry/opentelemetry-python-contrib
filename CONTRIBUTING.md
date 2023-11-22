@@ -52,8 +52,12 @@ An easier way to do so is:
 2. Run `.tox/lint/bin/isort .`
 
 See
-[`tox.ini`](https://github.com/open-telemetry/opentelemetry-python/blob/main/tox.ini)
+[`tox.ini`](https://github.com/open-telemetry/opentelemetry-python-contrib/blob/main/tox.ini)
 for more detail on available tox commands.
+
+### Troubleshooting
+
+- Some packages may require additional system wide dependencies to be installed. For example, you may need to install `libpq-dev` to run the postgresql client libraries instrumentation tests. or `libsnappy-dev` to run the prometheus exporter tests. If you encounter a build error, please check the installation instructions for the package you are trying to run tests for.
 
 ### Benchmarks
 
