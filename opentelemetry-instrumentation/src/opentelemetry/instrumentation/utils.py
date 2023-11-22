@@ -12,10 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import os
-import threading
 import urllib.parse
-from enum import Enum
 from re import escape, sub
 from typing import Dict, Sequence
 
