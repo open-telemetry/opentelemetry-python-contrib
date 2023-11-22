@@ -20,7 +20,7 @@ from opentelemetry.semconv.trace import SpanAttributes
 
 # TODO: will come through semconv package once updated
 _SPAN_ATTRIBUTES_ERROR_TYPE = "error.type"
-_SPAN_ATTRIBUTES_NETWORK_PEER_ADDRESS ="network.peer.address"
+_SPAN_ATTRIBUTES_NETWORK_PEER_ADDRESS = "network.peer.address"
 _SPAN_ATTRIBUTES_NETWORK_PEER_PORT = "network.peer.port"
 
 _client_duration_attrs_old = [
@@ -30,7 +30,7 @@ _client_duration_attrs_old = [
     SpanAttributes.NET_PEER_NAME,
     SpanAttributes.HTTP_METHOD,
     SpanAttributes.HTTP_FLAVOR,
-    SpanAttributes.HTTP_SCHEME,   
+    SpanAttributes.HTTP_SCHEME,
 ]
 
 _client_duration_attrs_new = [
@@ -46,7 +46,11 @@ _client_duration_attrs_new = [
 
 def _filter_duration_attrs(attrs, sem_conv_opt_in_mode):
     filtered_attrs = {}
-    allowed_attributes = _client_duration_attrs_new if sem_conv_opt_in_mode == _OpenTelemetryStabilityMode.HTTP else _client_duration_attrs_old
+    allowed_attributes = (
+        _client_duration_attrs_new
+        if sem_conv_opt_in_mode == _OpenTelemetryStabilityMode.HTTP
+        else _client_duration_attrs_old
+    )
     for key, val in attrs.items():
         if key in allowed_attributes:
             filtered_attrs[key] = val
@@ -72,12 +76,16 @@ def _set_http_method(result, original, normalized, sem_conv_opt_in_mode):
     # See https://github.com/open-telemetry/semantic-conventions/blob/main/docs/http/http-spans.md#common-attributes
     # Method is case sensitive. "http.request.method_original" should not be sanitized or automatically capitalized.
     if original != normalized and _report_new():
-        set_string_attribute(result, SpanAttributes.HTTP_REQUEST_METHOD_ORIGINAL, original)
+        set_string_attribute(
+            result, SpanAttributes.HTTP_REQUEST_METHOD_ORIGINAL, original
+        )
 
     if _report_old(sem_conv_opt_in_mode):
         set_string_attribute(result, SpanAttributes.HTTP_METHOD, normalized)
     if _report_new(sem_conv_opt_in_mode):
-        set_string_attribute(result, SpanAttributes.HTTP_REQUEST_METHOD, normalized)
+        set_string_attribute(
+            result, SpanAttributes.HTTP_REQUEST_METHOD, normalized
+        )
 
 
 def _set_http_url(result, url, sem_conv_opt_in_mode):
@@ -120,14 +128,18 @@ def _set_http_status_code(result, code, sem_conv_opt_in_mode):
     if _report_old(sem_conv_opt_in_mode):
         set_int_attribute(result, SpanAttributes.HTTP_STATUS_CODE, code)
     if _report_new(sem_conv_opt_in_mode):
-        set_int_attribute(result, SpanAttributes.HTTP_RESPONSE_STATUS_CODE, code)
+        set_int_attribute(
+            result, SpanAttributes.HTTP_RESPONSE_STATUS_CODE, code
+        )
 
 
 def _set_http_network_protocol_version(result, version, sem_conv_opt_in_mode):
     if _report_old(sem_conv_opt_in_mode):
         set_string_attribute(result, SpanAttributes.HTTP_FLAVOR, version)
     if _report_new(sem_conv_opt_in_mode):
-        set_string_attribute(result, SpanAttributes.NET_PROTOCOL_VERSION, version)
+        set_string_attribute(
+            result, SpanAttributes.NET_PROTOCOL_VERSION, version
+        )
 
 
 
@@ -149,6 +161,7 @@ class _OpenTelemetryStabilityMode(Enum):
 
 def _report_new(mode):
     return mode.name != _OpenTelemetryStabilityMode.DEFAULT.name
+
 
 def _report_old(mode):
     return mode.name != _OpenTelemetryStabilityMode.HTTP.name
@@ -184,7 +197,6 @@ class _OpenTelemetrySemanticConventionStability:
                     _OpenTelemetryStabilitySignalType.HTTP
                 ] = http_opt_in
                 _OpenTelemetrySemanticConventionStability._initialized = True
-
 
     @classmethod
     # Get OpenTelemetry opt-in mode based off of signal type (http, messaging, etc.)

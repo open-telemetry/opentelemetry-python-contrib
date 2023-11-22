@@ -682,7 +682,10 @@ class TestRequestsIntergrationMetric(TestBase):
                 self.assertEqual(len(scope_metrics.metrics), 1)
                 for metric in scope_metrics.metrics:
                     self.assertEqual(metric.unit, "ms")
-                    self.assertEqual(metric.description, "measures the duration of the outbound HTTP request")
+                    self.assertEqual(
+                        metric.description,
+                        "measures the duration of the outbound HTTP request",
+                    )
                     for data_point in metric.data.data_points:
                         self.assertDictEqual(
                             expected_attributes, dict(data_point.attributes)
@@ -708,7 +711,9 @@ class TestRequestsIntergrationMetric(TestBase):
                 self.assertEqual(len(scope_metrics.metrics), 1)
                 for metric in scope_metrics.metrics:
                     self.assertEqual(metric.unit, "s")
-                    self.assertEqual(metric.description, "Duration of HTTP client requests.")
+                    self.assertEqual(
+                        metric.description, "Duration of HTTP client requests."
+                    )
                     for data_point in metric.data.data_points:
                         self.assertDictEqual(
                             expected_attributes, dict(data_point.attributes)
@@ -746,10 +751,12 @@ class TestRequestsIntergrationMetric(TestBase):
                     for data_point in metric.data.data_points:
                         if metric.unit == "ms":
                             self.assertDictEqual(
-                                expected_attributes_old, dict(data_point.attributes)
+                                expected_attributes_old,
+                                dict(data_point.attributes),
                             )
                         else:
                             self.assertDictEqual(
-                                expected_attributes_new, dict(data_point.attributes)
+                                expected_attributes_new,
+                                dict(data_point.attributes),
                             )
                         self.assertEqual(data_point.count, 1)
