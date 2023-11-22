@@ -44,6 +44,7 @@ _client_duration_attrs_new = [
     SpanAttributes.URL_SCHEME,
 ]
 
+
 def _filter_duration_attrs(attrs, sem_conv_opt_in_mode):
     filtered_attrs = {}
     allowed_attributes = (
@@ -140,7 +141,6 @@ def _set_http_network_protocol_version(result, version, sem_conv_opt_in_mode):
         set_string_attribute(
             result, SpanAttributes.NET_PROTOCOL_VERSION, version
         )
-
 
 
 _OTEL_SEMCONV_STABILITY_OPT_IN_KEY = "OTEL_SEMCONV_STABILITY_OPT_IN"

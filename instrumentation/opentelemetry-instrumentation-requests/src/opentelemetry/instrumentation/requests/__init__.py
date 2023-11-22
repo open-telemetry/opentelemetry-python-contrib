@@ -161,7 +161,9 @@ def _instrument(
         url = remove_url_credentials(request.url)
 
         span_attributes = {}
-        _set_http_method(span_attributes, method, span_name, sem_conv_opt_in_mode)
+        _set_http_method(
+            span_attributes, method, span_name, sem_conv_opt_in_mode
+        )
         _set_http_url(span_attributes, url, sem_conv_opt_in_mode)
 
         metric_labels = {}
@@ -275,14 +277,14 @@ def _instrument(
                 metric_labels[_SPAN_ATTRIBUTES_ERROR_TYPE] = type(
                     exception
                 ).__name__
-            
+
             if duration_histogram_old is not None:
                 duration_attrs_old = _filter_duration_attrs(
                     metric_labels, _OpenTelemetryStabilityMode.DEFAULT
                 )
                 duration_histogram_old.record(
                     max(round(elapsed_time * 1000), 0),
-                    attributes=duration_attrs_old
+                    attributes=duration_attrs_old,
                 )
             if duration_histogram_new is not None:
                 duration_attrs_new = _filter_duration_attrs(
