@@ -58,15 +58,15 @@ def _filter_duration_attrs(attrs, sem_conv_opt_in_mode):
     return filtered_attrs
 
 
-def set_string_attribute(dict, key, value):
+def set_string_attribute(result, key, value):
     if value:
-        dict[key] = value
+        result[key] = value
 
 
-def set_int_attribute(dict, key, value):
+def set_int_attribute(result, key, value):
     if value:
         try:
-            dict[key] = int(value)
+            result[key] = int(value)
         except ValueError:
             return
 
@@ -76,7 +76,7 @@ def _set_http_method(result, original, normalized, sem_conv_opt_in_mode):
     normalized = normalized.strip()
     # See https://github.com/open-telemetry/semantic-conventions/blob/main/docs/http/http-spans.md#common-attributes
     # Method is case sensitive. "http.request.method_original" should not be sanitized or automatically capitalized.
-    if original != normalized and _report_new():
+    if original != normalized and _report_new(sem_conv_opt_in_mode):
         set_string_attribute(
             result, SpanAttributes.HTTP_REQUEST_METHOD_ORIGINAL, original
         )
