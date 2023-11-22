@@ -176,7 +176,12 @@ class RemouladeInstrumentor(BaseInstrumentor):
         tracer_provider = kwargs.get("tracer_provider")
 
         # pylint: disable=attribute-defined-outside-init
-        self._tracer = trace.get_tracer(__name__, __version__, tracer_provider)
+        self._tracer = trace.get_tracer(
+            __name__,
+            __version__,
+            tracer_provider,
+            schema_url="https://opentelemetry.io/schemas/1.11.0",
+        )
         instrumentation_middleware = _InstrumentationMiddleware(self._tracer)
 
         broker.add_extra_default_middleware(instrumentation_middleware)

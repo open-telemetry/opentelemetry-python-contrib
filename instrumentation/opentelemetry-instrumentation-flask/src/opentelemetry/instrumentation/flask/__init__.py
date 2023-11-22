@@ -495,7 +495,10 @@ class _InstrumentedFlask(flask.Flask):
         self._is_instrumented_by_opentelemetry = True
 
         meter = get_meter(
-            __name__, __version__, _InstrumentedFlask._meter_provider
+            __name__,
+            __version__,
+            _InstrumentedFlask._meter_provider,
+            schema_url="https://opentelemetry.io/schemas/1.11.0",
         )
         duration_histogram = meter.create_histogram(
             name=MetricInstruments.HTTP_SERVER_DURATION,
@@ -517,7 +520,10 @@ class _InstrumentedFlask(flask.Flask):
         )
 
         tracer = trace.get_tracer(
-            __name__, __version__, _InstrumentedFlask._tracer_provider
+            __name__,
+            __version__,
+            _InstrumentedFlask._tracer_provider,
+            schema_url="https://opentelemetry.io/schemas/1.11.0",
         )
 
         _before_request = _wrapped_before_request(
@@ -594,7 +600,12 @@ class FlaskInstrumentor(BaseInstrumentor):
                 if excluded_urls is not None
                 else _excluded_urls_from_env
             )
-            meter = get_meter(__name__, __version__, meter_provider)
+            meter = get_meter(
+                __name__,
+                __version__,
+                meter_provider,
+                schema_url="https://opentelemetry.io/schemas/1.11.0",
+            )
             duration_histogram = meter.create_histogram(
                 name=MetricInstruments.HTTP_SERVER_DURATION,
                 unit="ms",
@@ -615,7 +626,12 @@ class FlaskInstrumentor(BaseInstrumentor):
                 excluded_urls=excluded_urls,
             )
 
-            tracer = trace.get_tracer(__name__, __version__, tracer_provider)
+            tracer = trace.get_tracer(
+                __name__,
+                __version__,
+                tracer_provider,
+                schema_url="https://opentelemetry.io/schemas/1.11.0",
+            )
 
             _before_request = _wrapped_before_request(
                 request_hook,

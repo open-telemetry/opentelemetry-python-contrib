@@ -14,6 +14,7 @@
 
 import asyncio
 import contextlib
+import sys
 import typing
 import unittest
 import urllib.parse
@@ -116,6 +117,11 @@ class TestAioHttpIntegration(TestBase):
                     status_code=status_code,
                 )
 
+                url = f"http://{host}:{port}/test-path?query=param#foobar"
+                # if python version is < 3.8, then the url will be
+                if sys.version_info[1] < 8:
+                    url = f"http://{host}:{port}/test-path#foobar"
+
                 self.assert_spans(
                     [
                         (
@@ -123,7 +129,7 @@ class TestAioHttpIntegration(TestBase):
                             (span_status, None),
                             {
                                 SpanAttributes.HTTP_METHOD: "GET",
-                                SpanAttributes.HTTP_URL: f"http://{host}:{port}/test-path#foobar",
+                                SpanAttributes.HTTP_URL: url,
                                 SpanAttributes.HTTP_STATUS_CODE: int(
                                     status_code
                                 ),
@@ -134,6 +140,21 @@ class TestAioHttpIntegration(TestBase):
 
                 self.memory_exporter.clear()
 
+    def test_schema_url(self):
+        with self.subTest(status_code=200):
+            self._http_request(
+                trace_config=aiohttp_client.create_trace_config(),
+                url="/test-path?query=param#foobar",
+                status_code=200,
+            )
+
+            span = self.memory_exporter.get_finished_spans()[0]
+            self.assertEqual(
+                span.instrumentation_info.schema_url,
+                "https://opentelemetry.io/schemas/1.11.0",
+            )
+            self.memory_exporter.clear()
+
     def test_not_recording(self):
         mock_tracer = mock.Mock()
         mock_span = mock.Mock()
@@ -141,7 +162,7 @@ class TestAioHttpIntegration(TestBase):
         mock_tracer.start_span.return_value = mock_span
         with mock.patch("opentelemetry.trace.get_tracer"):
             # pylint: disable=W0612
-            host, port = self._http_request(
+            self._http_request(
                 trace_config=aiohttp_client.create_trace_config(),
                 url="/test-path?query=param#foobar",
             )

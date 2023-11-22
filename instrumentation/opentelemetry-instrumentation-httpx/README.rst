@@ -136,7 +136,21 @@ The hooks can be configured as follows:
         # status_code, headers, stream, extensions = response
         pass
 
-    HTTPXClientInstrumentor().instrument(request_hook=request_hook, response_hook=response_hook)
+    async def async_request_hook(span, request):
+        # method, url, headers, stream, extensions = request
+        pass
+
+    async def async_response_hook(span, request, response):
+        # method, url, headers, stream, extensions = request
+        # status_code, headers, stream, extensions = response
+        pass
+
+    HTTPXClientInstrumentor().instrument(
+        request_hook=request_hook,
+        response_hook=response_hook,
+        async_request_hook=async_request_hook,
+        async_response_hook=async_response_hook
+    )
 
 
 Or if you are using the transport classes directly:
@@ -144,7 +158,7 @@ Or if you are using the transport classes directly:
 
 .. code-block:: python
 
-    from opentelemetry.instrumentation.httpx import SyncOpenTelemetryTransport
+    from opentelemetry.instrumentation.httpx import SyncOpenTelemetryTransport, AsyncOpenTelemetryTransport
 
     def request_hook(span, request):
         # method, url, headers, stream, extensions = request
@@ -155,11 +169,27 @@ Or if you are using the transport classes directly:
         # status_code, headers, stream, extensions = response
         pass
 
+    async def async_request_hook(span, request):
+        # method, url, headers, stream, extensions = request
+        pass
+
+    async def async_response_hook(span, request, response):
+        # method, url, headers, stream, extensions = request
+        # status_code, headers, stream, extensions = response
+        pass
+
     transport = httpx.HTTPTransport()
     telemetry_transport = SyncOpenTelemetryTransport(
         transport,
         request_hook=request_hook,
         response_hook=response_hook
+    )
+
+    async_transport = httpx.AsyncHTTPTransport()
+    async_telemetry_transport = AsyncOpenTelemetryTransport(
+        async_transport,
+        request_hook=async_request_hook,
+        response_hook=async_response_hook
     )
 
 

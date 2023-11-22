@@ -16,6 +16,7 @@
 
 import asyncio
 import sys
+import time
 import unittest
 from timeit import default_timer
 from unittest import mock
@@ -56,6 +57,8 @@ _recommended_attrs = {
     "http.server.response.size": _duration_attrs,
     "http.server.request.size": _duration_attrs,
 }
+
+_SIMULATED_BACKGROUND_TASK_EXECUTION_TIME_S = 0.01
 
 
 async def http_app(scope, receive, send):
@@ -99,6 +102,108 @@ async def simple_asgi(scope, receive, send):
         await websocket_app(scope, receive, send)
 
 
+async def long_response_asgi(scope, receive, send):
+    assert isinstance(scope, dict)
+    assert scope["type"] == "http"
+    message = await receive()
+    scope["headers"] = [(b"content-length", b"128")]
+    assert scope["type"] == "http"
+    if message.get("type") == "http.request":
+        await send(
+            {
+                "type": "http.response.start",
+                "status": 200,
+                "headers": [
+                    [b"Content-Type", b"text/plain"],
+                    [b"content-length", b"1024"],
+                ],
+            }
+        )
+        await send(
+            {"type": "http.response.body", "body": b"*", "more_body": True}
+        )
+        await send(
+            {"type": "http.response.body", "body": b"*", "more_body": True}
+        )
+        await send(
+            {"type": "http.response.body", "body": b"*", "more_body": True}
+        )
+        await send(
+            {"type": "http.response.body", "body": b"*", "more_body": False}
+        )
+
+
+async def background_execution_asgi(scope, receive, send):
+    assert isinstance(scope, dict)
+    assert scope["type"] == "http"
+    message = await receive()
+    scope["headers"] = [(b"content-length", b"128")]
+    assert scope["type"] == "http"
+    if message.get("type") == "http.request":
+        await send(
+            {
+                "type": "http.response.start",
+                "status": 200,
+                "headers": [
+                    [b"Content-Type", b"text/plain"],
+                    [b"content-length", b"1024"],
+                ],
+            }
+        )
+        await send(
+            {
+                "type": "http.response.body",
+                "body": b"*",
+            }
+        )
+        time.sleep(_SIMULATED_BACKGROUND_TASK_EXECUTION_TIME_S)
+
+
+async def background_execution_trailers_asgi(scope, receive, send):
+    assert isinstance(scope, dict)
+    assert scope["type"] == "http"
+    message = await receive()
+    scope["headers"] = [(b"content-length", b"128")]
+    assert scope["type"] == "http"
+    if message.get("type") == "http.request":
+        await send(
+            {
+                "type": "http.response.start",
+                "status": 200,
+                "headers": [
+                    [b"Content-Type", b"text/plain"],
+                    [b"content-length", b"1024"],
+                ],
+                "trailers": True,
+            }
+        )
+        await send(
+            {"type": "http.response.body", "body": b"*", "more_body": True}
+        )
+        await send(
+            {"type": "http.response.body", "body": b"*", "more_body": False}
+        )
+        await send(
+            {
+                "type": "http.response.trailers",
+                "headers": [
+                    [b"trailer", b"test-trailer"],
+                ],
+                "more_trailers": True,
+            }
+        )
+        await send(
+            {
+                "type": "http.response.trailers",
+                "headers": [
+                    [b"trailer", b"second-test-trailer"],
+                ],
+                "more_trailers": False,
+            }
+        )
+        time.sleep(_SIMULATED_BACKGROUND_TASK_EXECUTION_TIME_S)
+
+
 async def error_asgi(scope, receive, send):
     assert isinstance(scope, dict)
     assert scope["type"] == "http"
@@ -122,19 +227,25 @@ async def error_asgi(scope, receive, send):
         await send({"type": "http.response.body", "body": b"*"})
 
 
+# pylint: disable=too-many-public-methods
 class TestAsgiApplication(AsgiTestBase):
     def validate_outputs(self, outputs, error=None, modifiers=None):
         # Ensure modifiers is a list
         modifiers = modifiers or []
         # Check for expected outputs
-        self.assertEqual(len(outputs), 2)
         response_start = outputs[0]
-        response_body = outputs[1]
+        response_final_body = [
+            output
+            for output in outputs
+            if output["type"] == "http.response.body"
+        ][-1]
+
         self.assertEqual(response_start["type"], "http.response.start")
-        self.assertEqual(response_body["type"], "http.response.body")
+        self.assertEqual(response_final_body["type"], "http.response.body")
+        self.assertEqual(response_final_body.get("more_body", False), False)
 
         # Check http response body
-        self.assertEqual(response_body["body"], b"*")
+        self.assertEqual(response_final_body["body"], b"*")
 
         # Check http response start
         self.assertEqual(response_start["status"], 200)
@@ -153,7 +264,6 @@ class TestAsgiApplication(AsgiTestBase):
 
         # Check spans
         span_list = self.memory_exporter.get_finished_spans()
-        self.assertEqual(len(span_list), 4)
         expected = [
             {
                 "name": "GET / http receive",
@@ -194,6 +304,7 @@ class TestAsgiApplication(AsgiTestBase):
         for modifier in modifiers:
             expected = modifier(expected)
         # Check that output matches
+        self.assertEqual(len(span_list), len(expected))
         for span, expected in zip(span_list, expected):
             self.assertEqual(span.name, expected["name"])
             self.assertEqual(span.kind, expected["kind"])
@@ -231,6 +342,80 @@ class TestAsgiApplication(AsgiTestBase):
         self.send_default_request()
         outputs = self.get_all_output()
         self.validate_outputs(outputs, error=ValueError)
+
+    def test_long_response(self):
+        """Test that the server span is ended on the final response body message.
+
+        If the server span is ended early then this test will fail due
+        to discrepancies in the expected list of spans and the emitted list of spans.
+        """
+        app = otel_asgi.OpenTelemetryMiddleware(long_response_asgi)
+        self.seed_app(app)
+        self.send_default_request()
+        outputs = self.get_all_output()
+
+        def add_more_body_spans(expected: list):
+            more_body_span = {
+                "name": "GET / http send",
+                "kind": trace_api.SpanKind.INTERNAL,
+                "attributes": {"type": "http.response.body"},
+            }
+            extra_spans = [more_body_span] * 3
+            expected[2:2] = extra_spans
+            return expected
+
+        self.validate_outputs(outputs, modifiers=[add_more_body_spans])
+
+    def test_background_execution(self):
+        """Test that the server span is ended BEFORE the background task is finished."""
+        app = otel_asgi.OpenTelemetryMiddleware(background_execution_asgi)
+        self.seed_app(app)
+        self.send_default_request()
+        outputs = self.get_all_output()
+        self.validate_outputs(outputs)
+        span_list = self.memory_exporter.get_finished_spans()
+        server_span = span_list[-1]
+        assert server_span.kind == SpanKind.SERVER
+        span_duration_nanos = server_span.end_time - server_span.start_time
+        self.assertLessEqual(
+            span_duration_nanos,
+            _SIMULATED_BACKGROUND_TASK_EXECUTION_TIME_S * 10**9,
+        )
+
+    def test_trailers(self):
+        """Test that trailers are emitted as expected and that the server span is ended
+        BEFORE the background task is finished."""
+        app = otel_asgi.OpenTelemetryMiddleware(
+            background_execution_trailers_asgi
+        )
+        self.seed_app(app)
+        self.send_default_request()
+        outputs = self.get_all_output()
+
+        def add_body_and_trailer_span(expected: list):
+            body_span = {
+                "name": "GET / http send",
+                "kind": trace_api.SpanKind.INTERNAL,
+                "attributes": {"type": "http.response.body"},
+            }
+            trailer_span = {
+                "name": "GET / http send",
+                "kind": trace_api.SpanKind.INTERNAL,
+                "attributes": {"type": "http.response.trailers"},
+            }
+            expected[2:2] = [body_span]
+            expected[4:4] = [trailer_span] * 2
+            return expected
+
+        self.validate_outputs(outputs, modifiers=[add_body_and_trailer_span])
+        span_list = self.memory_exporter.get_finished_spans()
+        server_span = span_list[-1]
+        assert server_span.kind == SpanKind.SERVER
+        span_duration_nanos = server_span.end_time - server_span.start_time
+        self.assertLessEqual(
+            span_duration_nanos,
+            _SIMULATED_BACKGROUND_TASK_EXECUTION_TIME_S * 10**9,
+        )
 
     def test_override_span_name(self):
         """Test that default span_names can be overwritten by our callback function."""
@@ -656,10 +841,7 @@ class TestAsgiApplication(AsgiTestBase):
         self.send_input({"type": "websocket.receive", "text": "ping"})
         self.send_input({"type": "websocket.disconnect"})
         self.get_all_output()
-        metrics_list = self.memory_metrics_reader.get_metrics_data()
-        self.assertEqual(
-            len(metrics_list.resource_metrics[0].scope_metrics), 0
-        )
+        self.assertIsNone(self.memory_metrics_reader.get_metrics_data())
 
 
 class TestAsgiAttributes(unittest.TestCase):

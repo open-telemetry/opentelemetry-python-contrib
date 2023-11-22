@@ -118,6 +118,12 @@ class TestSnsExtension(TestBase):
             self.topic_name,
             span.attributes[SpanAttributes.MESSAGING_DESTINATION],
         )
+        self.assertEqual(
+            target_arn,
+            # TODO: Use SpanAttributes.MESSAGING_DESTINATION_NAME when
+            #  opentelemetry-semantic-conventions 0.42b0 is released
+            span.attributes["messaging.destination.name"],
+        )
 
     @mock_sns
     def test_publish_to_phone_number(self):
@@ -183,6 +189,12 @@ class TestSnsExtension(TestBase):
         self.assertEqual(
             self.topic_name,
             span.attributes[SpanAttributes.MESSAGING_DESTINATION],
+        )
+        self.assertEqual(
+            topic_arn,
+            # TODO: Use SpanAttributes.MESSAGING_DESTINATION_NAME when
+            #  opentelemetry-semantic-conventions 0.42b0 is released
+            span.attributes["messaging.destination.name"],
         )
 
         self.assert_injected_span(message1_attrs, span)

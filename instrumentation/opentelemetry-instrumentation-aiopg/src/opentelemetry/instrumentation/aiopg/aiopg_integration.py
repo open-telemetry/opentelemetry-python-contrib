@@ -215,6 +215,7 @@ class _PoolContextManager(_ContextManager):
 
 
 class _PoolAcquireContextManager(_ContextManager):
+    # pylint: disable=redefined-slots-in-subclass
     __slots__ = ("_coro", "_obj", "_pool")
 
     def __init__(self, coro, pool):

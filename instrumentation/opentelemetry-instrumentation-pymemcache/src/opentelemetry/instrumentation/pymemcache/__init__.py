@@ -169,7 +169,7 @@ def _get_address_attributes(instance):
             address_attributes[SpanAttributes.NET_PEER_NAME] = instance.server
             address_attributes[
                 SpanAttributes.NET_TRANSPORT
-            ] = NetTransportValues.UNIX.value
+            ] = NetTransportValues.OTHER.value
 
     return address_attributes
 
@@ -182,7 +182,12 @@ class PymemcacheInstrumentor(BaseInstrumentor):
 
     def _instrument(self, **kwargs):
         tracer_provider = kwargs.get("tracer_provider")
-        tracer = get_tracer(__name__, __version__, tracer_provider)
+        tracer = get_tracer(
+            __name__,
+            __version__,
+            tracer_provider,
+            schema_url="https://opentelemetry.io/schemas/1.11.0",
+        )
 
         for cmd in COMMANDS:
             _wrap(

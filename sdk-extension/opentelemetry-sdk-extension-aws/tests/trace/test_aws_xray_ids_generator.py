@@ -16,6 +16,7 @@ import datetime
 import time
 import unittest
 
+# pylint: disable=no-name-in-module
 from opentelemetry.sdk.extension.aws.trace import AwsXRayIdGenerator
 from opentelemetry.trace.span import INVALID_TRACE_ID
 

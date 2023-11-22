@@ -78,7 +78,7 @@ def trysetip(conn: http.client.HTTPConnection, loglevel=logging.DEBUG) -> bool:
     state = _getstate()
     if not state:
         return True
-    spanlist = state.get("need_ip")  # type: typing.List[Span]
+    spanlist: typing.List[Span] = state.get("need_ip")
     if not spanlist:
         return True
 
@@ -88,7 +88,7 @@ def trysetip(conn: http.client.HTTPConnection, loglevel=logging.DEBUG) -> bool:
 
     sock = "<property not accessed>"
     try:
-        sock = conn.sock  # type: typing.Optional[socket.socket]
+        sock: typing.Optional[socket.socket] = conn.sock
         logger.debug("Got socket: %s", sock)
         if sock is None:
             return False
@@ -163,7 +163,7 @@ def set_ip_on_next_http_connection(span: Span):
         finally:
             context.detach(token)
     else:
-        spans = state["need_ip"]  # type: typing.List[Span]
+        spans: typing.List[Span] = state["need_ip"]
         spans.append(span)
         try:
             yield

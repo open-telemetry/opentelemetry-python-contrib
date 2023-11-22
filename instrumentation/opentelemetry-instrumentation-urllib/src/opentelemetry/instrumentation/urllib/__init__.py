@@ -137,10 +137,20 @@ class URLLibInstrumentor(BaseInstrumentor):
                     list of regexes used to exclude URLs from tracking
         """
         tracer_provider = kwargs.get("tracer_provider")
-        tracer = get_tracer(__name__, __version__, tracer_provider)
+        tracer = get_tracer(
+            __name__,
+            __version__,
+            tracer_provider,
+            schema_url="https://opentelemetry.io/schemas/1.11.0",
+        )
         excluded_urls = kwargs.get("excluded_urls")
         meter_provider = kwargs.get("meter_provider")
-        meter = get_meter(__name__, __version__, meter_provider)
+        meter = get_meter(
+            __name__,
+            __version__,
+            meter_provider,
+            schema_url="https://opentelemetry.io/schemas/1.11.0",
+        )
 
         histograms = _create_client_histograms(meter)
 
@@ -229,8 +239,8 @@ def _instrument(
             token = context.attach(
                 context.set_value(_SUPPRESS_HTTP_INSTRUMENTATION_KEY, True)
             )
+            start_time = default_timer()
             try:
-                start_time = default_timer()
                 result = call_wrapped()  # *** PROCEED
             except Exception as exc:  # pylint: disable=W0703
                 exception = exc
@@ -297,17 +307,17 @@ def _create_client_histograms(meter) -> Dict[str, Histogram]:
         MetricInstruments.HTTP_CLIENT_DURATION: meter.create_histogram(
             name=MetricInstruments.HTTP_CLIENT_DURATION,
             unit="ms",
-            description="measures the duration outbound HTTP requests",
+            description="Measures the duration of outbound HTTP requests.",
         ),
         MetricInstruments.HTTP_CLIENT_REQUEST_SIZE: meter.create_histogram(
             name=MetricInstruments.HTTP_CLIENT_REQUEST_SIZE,
             unit="By",
-            description="measures the size of HTTP request messages (compressed)",
+            description="Measures the size of HTTP request messages.",
         ),
         MetricInstruments.HTTP_CLIENT_RESPONSE_SIZE: meter.create_histogram(
             name=MetricInstruments.HTTP_CLIENT_RESPONSE_SIZE,
             unit="By",
-            description="measures the size of HTTP response messages (compressed)",
+            description="Measures the size of HTTP response messages.",
         ),
     }
 

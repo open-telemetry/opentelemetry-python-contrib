@@ -300,8 +300,14 @@ class DjangoInstrumentor(BaseInstrumentor):
             __name__,
             __version__,
             tracer_provider=tracer_provider,
+            schema_url="https://opentelemetry.io/schemas/1.11.0",
         )
-        meter = get_meter(__name__, __version__, meter_provider=meter_provider)
+        meter = get_meter(
+            __name__,
+            __version__,
+            meter_provider=meter_provider,
+            schema_url="https://opentelemetry.io/schemas/1.11.0",
+        )
         _DjangoMiddleware._tracer = tracer
         _DjangoMiddleware._meter = meter
         _DjangoMiddleware._excluded_urls = (

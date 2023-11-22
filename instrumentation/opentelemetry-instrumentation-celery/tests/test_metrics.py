@@ -68,9 +68,4 @@ class TestMetrics(TestBase):
         self.assertEqual(len(metrics), 1)
         CeleryInstrumentor().uninstrument()
 
-        metrics = self.get_metrics()
-        self.assertEqual(len(metrics), 1)
-
-        for metric in metrics:
-            for point in list(metric.data.data_points):
-                self.assertEqual(point.count, 1)
+        self.assertIsNone(self.memory_metrics_reader.get_metrics_data())
