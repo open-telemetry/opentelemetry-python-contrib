@@ -466,6 +466,7 @@ class TestBaseWithCustomHeaders(TestBase):
 
         return app
 
+
 class TestHTTPAppWithCustomHeaders(TestBaseWithCustomHeaders):
     @patch.dict(
         "os.environ",

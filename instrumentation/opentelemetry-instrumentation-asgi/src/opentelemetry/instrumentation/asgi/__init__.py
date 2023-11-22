@@ -334,7 +334,12 @@ def collect_request_attributes(scope):
     return result
 
 
-def collect_custom_headers_attributes(scope_or_response_message: dict[str, Any], sanitize: SanitizeValue, header_regexes: list[str], normalize_names: Callable[[str], str]) -> dict[str, str]:
+def collect_custom_headers_attributes(
+    scope_or_response_message: dict[str, Any],
+    sanitize: SanitizeValue,
+    header_regexes: list[str],
+    normalize_names: Callable[[str], str],
+) -> dict[str, str]:
     """
     Returns custom HTTP request or response headers to be added into SERVER span as span attributes.
 
@@ -345,7 +350,8 @@ def collect_custom_headers_attributes(scope_or_response_message: dict[str, Any],
     # Decode headers before processing.
     headers: dict[str, str] = {
         _key.decode("utf8"): _value.decode("utf8")
-        for (_key, _value) in scope_or_response_message.get("headers") or cast('list[tuple[bytes, bytes]]', [])
+        for (_key, _value) in scope_or_response_message.get("headers")
+        or cast("list[tuple[bytes, bytes]]", [])
     }
     return sanitize.sanitize_header_values(
         headers,
@@ -463,9 +469,9 @@ class OpenTelemetryMiddleware:
         tracer_provider=None,
         meter_provider=None,
         meter=None,
-        http_capture_headers_server_request : list[str] | None = None,
+        http_capture_headers_server_request: list[str] | None = None,
         http_capture_headers_server_response: list[str] | None = None,
-        http_capture_headers_sanitize_fields: list[str] | None = None
+        http_capture_headers_sanitize_fields: list[str] | None = None,
     ):
         self.app = guarantee_single_callable(app)
         self.tracer = trace.get_tracer(
@@ -514,19 +520,40 @@ class OpenTelemetryMiddleware:
         self.content_length_header = None
 
         # Environment variables as constructor parameters
-        self.http_capture_headers_server_request = http_capture_headers_server_request or (
-            get_custom_headers(OTEL_INSTRUMENTATION_HTTP_CAPTURE_HEADERS_SERVER_REQUEST)
-        ) or None
-        self.http_capture_headers_server_response = http_capture_headers_server_response or (
-            get_custom_headers(OTEL_INSTRUMENTATION_HTTP_CAPTURE_HEADERS_SERVER_RESPONSE)
-        ) or None
+        self.http_capture_headers_server_request = (
+            http_capture_headers_server_request
+            or (
+                get_custom_headers(
+                    OTEL_INSTRUMENTATION_HTTP_CAPTURE_HEADERS_SERVER_REQUEST
+                )
+            )
+            or None
+        )
+        self.http_capture_headers_server_response = (
+            http_capture_headers_server_response
+            or (
+                get_custom_headers(
+                    OTEL_INSTRUMENTATION_HTTP_CAPTURE_HEADERS_SERVER_RESPONSE
+                )
+            )
+            or None
+        )
         self.http_capture_headers_sanitize_fields = SanitizeValue(
-            http_capture_headers_sanitize_fields or (
-                get_custom_headers(OTEL_INSTRUMENTATION_HTTP_CAPTURE_HEADERS_SANITIZE_FIELDS)
-            ) or []
+            http_capture_headers_sanitize_fields
+            or (
+                get_custom_headers(
+                    OTEL_INSTRUMENTATION_HTTP_CAPTURE_HEADERS_SANITIZE_FIELDS
+                )
+            )
+            or []
         )
 
-    async def __call__(self, scope: dict[str, Any], receive: Callable[[], Awaitable[dict[str, Any]]], send: Callable[[dict[str, Any]], Awaitable[None]]) -> None:
+    async def __call__(
+        self,
+        scope: dict[str, Any],
+        receive: Callable[[], Awaitable[dict[str, Any]]],
+        send: Callable[[dict[str, Any]], Awaitable[None]],
+    ) -> None:
         """The ASGI application
 
         Args:

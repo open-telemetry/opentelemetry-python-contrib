@@ -86,7 +86,10 @@ class SanitizeValue:
         )
 
     def sanitize_header_values(
-        self, headers: dict[str, str], header_regexes: list[str], normalize_function: Callable[[str], str]
+        self,
+        headers: dict[str, str],
+        header_regexes: list[str],
+        normalize_function: Callable[[str], str],
     ) -> dict[str, str]:
         values: dict[str, str] = {}
 
@@ -216,6 +219,7 @@ def sanitize_method(method: Optional[str]) -> Optional[str]:
     ):
         return method
     return "UNKNOWN"
+
 
 def get_custom_headers(env_var: str) -> list[str]:
     custom_headers = environ.get(env_var, None)

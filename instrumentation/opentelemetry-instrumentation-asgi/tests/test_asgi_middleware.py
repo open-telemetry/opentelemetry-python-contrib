@@ -988,6 +988,7 @@ class TestAsgiApplicationRaisingError(AsgiTestBase):
         Test that exception UnboundLocalError local variable 'start' referenced before assignment is not raised
         See https://github.com/open-telemetry/opentelemetry-python-contrib/issues/1883
         """
+
         async def bad_app(_scope, _receive, _send):
             raise ValueError("whatever")
 

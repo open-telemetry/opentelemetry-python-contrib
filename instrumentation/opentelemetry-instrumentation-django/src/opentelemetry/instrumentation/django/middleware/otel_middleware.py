@@ -350,19 +350,17 @@ class _DjangoMiddleware(MiddlewareMixin):
                     for key, value in response.items():
                         asgi_setter.set(custom_headers, key, value)
 
-                    custom_res_attributes = (
-                        asgi_collect_custom_headers_attributes(
-                            custom_headers,
-                            SanitizeValue(
-                                get_custom_headers(
-                                    OTEL_INSTRUMENTATION_HTTP_CAPTURE_HEADERS_SANITIZE_FIELDS
-                                )
-                            ),
+                    custom_res_attributes = asgi_collect_custom_headers_attributes(
+                        custom_headers,
+                        SanitizeValue(
                             get_custom_headers(
-                                OTEL_INSTRUMENTATION_HTTP_CAPTURE_HEADERS_SERVER_RESPONSE
-                            ),
-                            normalise_response_header_name,
-                        )
+                                OTEL_INSTRUMENTATION_HTTP_CAPTURE_HEADERS_SANITIZE_FIELDS
+                            )
+                        ),
+                        get_custom_headers(
+                            OTEL_INSTRUMENTATION_HTTP_CAPTURE_HEADERS_SERVER_RESPONSE
+                        ),
+                        normalise_response_header_name,
                     )
                     for key, value in custom_res_attributes.items():
                         span.set_attribute(key, value)
