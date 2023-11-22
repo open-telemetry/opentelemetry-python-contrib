@@ -84,7 +84,7 @@ def _hydrate_span_from_args(connection, query, parameters) -> dict:
         span_attributes[SpanAttributes.NET_PEER_NAME] = addr
         span_attributes[
             SpanAttributes.NET_TRANSPORT
-        ] = NetTransportValues.UNIX.value
+        ] = NetTransportValues.OTHER.value
 
     if query is not None:
         span_attributes[SpanAttributes.DB_STATEMENT] = query
@@ -107,7 +107,12 @@ class AsyncPGInstrumentor(BaseInstrumentor):
 
     def _instrument(self, **kwargs):
         tracer_provider = kwargs.get("tracer_provider")
-        self._tracer = trace.get_tracer(__name__, __version__, tracer_provider)
+        self._tracer = trace.get_tracer(
+            __name__,
+            __version__,
+            tracer_provider,
+            schema_url="https://opentelemetry.io/schemas/1.11.0",
+        )
 
         for method in [
             "Connection.execute",
