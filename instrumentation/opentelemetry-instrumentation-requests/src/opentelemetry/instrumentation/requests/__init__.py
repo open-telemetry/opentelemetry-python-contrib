@@ -62,13 +62,6 @@ from opentelemetry import context
 
 # FIXME: fix the importing of this private attribute when the location of the _SUPPRESS_HTTP_INSTRUMENTATION_KEY is defined.
 from opentelemetry.context import _SUPPRESS_HTTP_INSTRUMENTATION_KEY
-from opentelemetry.instrumentation.instrumentor import BaseInstrumentor
-from opentelemetry.instrumentation.requests.package import _instruments
-from opentelemetry.instrumentation.requests.version import __version__
-from opentelemetry.instrumentation.utils import (
-    _SUPPRESS_INSTRUMENTATION_KEY,
-    http_status_to_status_code,
-)
 from opentelemetry.instrumentation._semconv import (
     _filter_duration_attrs,
     _report_old,
@@ -87,6 +80,13 @@ from opentelemetry.instrumentation._semconv import (
     _OpenTelemetrySemanticConventionStability,
     _OpenTelemetryStabilityMode,
     _OpenTelemetryStabilitySignalType,
+)
+from opentelemetry.instrumentation.instrumentor import BaseInstrumentor
+from opentelemetry.instrumentation.requests.package import _instruments
+from opentelemetry.instrumentation.requests.version import __version__
+from opentelemetry.instrumentation.utils import (
+    _SUPPRESS_INSTRUMENTATION_KEY,
+    http_status_to_status_code,
 )
 from opentelemetry.metrics import Histogram, get_meter
 from opentelemetry.propagate import inject
