@@ -89,9 +89,9 @@ from opentelemetry.instrumentation.instrumentor import BaseInstrumentor
 from opentelemetry.instrumentation.urllib.package import _instruments
 from opentelemetry.instrumentation.urllib.version import __version__
 from opentelemetry.instrumentation.utils import (
+    http_status_to_status_code,
     is_http_instrumentation_enabled,
     suppress_http_instrumentation,
-    http_status_to_status_code,
 )
 from opentelemetry.metrics import Histogram, get_meter
 from opentelemetry.propagate import inject

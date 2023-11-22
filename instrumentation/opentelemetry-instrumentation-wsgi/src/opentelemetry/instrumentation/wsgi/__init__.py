@@ -302,7 +302,9 @@ def collect_request_attributes(environ):
     """
 
     result = {
-        SpanAttributes.HTTP_METHOD: sanitize_method(environ.get("REQUEST_METHOD")),
+        SpanAttributes.HTTP_METHOD: sanitize_method(
+            environ.get("REQUEST_METHOD")
+        ),
         SpanAttributes.HTTP_SERVER_NAME: environ.get("SERVER_NAME"),
         SpanAttributes.HTTP_SCHEME: environ.get("wsgi.url_scheme"),
     }

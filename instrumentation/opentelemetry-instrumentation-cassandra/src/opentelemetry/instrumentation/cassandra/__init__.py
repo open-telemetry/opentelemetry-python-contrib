@@ -70,7 +70,10 @@ def _instrument(tracer_provider, include_db_statement=False):
             if span.is_recording():
                 span.set_attribute(SpanAttributes.DB_NAME, instance.keyspace)
                 span.set_attribute(SpanAttributes.DB_SYSTEM, "cassandra")
-                span.set_attribute(SpanAttributes.NET_PEER_NAME, instance.cluster.contact_points)
+                span.set_attribute(
+                    SpanAttributes.NET_PEER_NAME,
+                    instance.cluster.contact_points,
+                )
 
                 if include_db_statement:
                     query = args[0]
@@ -79,7 +82,9 @@ def _instrument(tracer_provider, include_db_statement=False):
             response = func(*args, **kwargs)
             return response
 
-    wrap_function_wrapper("cassandra.cluster", "Session.execute_async", _traced_execute_async)
+    wrap_function_wrapper(
+        "cassandra.cluster", "Session.execute_async", _traced_execute_async
+    )
 
 
 class CassandraInstrumentor(BaseInstrumentor):

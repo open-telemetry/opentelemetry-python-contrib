@@ -28,7 +28,10 @@ from moto import (  # pylint: disable=import-error
 
 from opentelemetry import trace as trace_api
 from opentelemetry.instrumentation.botocore import BotocoreInstrumentor
-from opentelemetry.instrumentation.utils import suppress_http_instrumentation, suppress_instrumentation
+from opentelemetry.instrumentation.utils import (
+    suppress_http_instrumentation,
+    suppress_instrumentation,
+)
 from opentelemetry.propagate import get_global_textmap, set_global_textmap
 from opentelemetry.propagators.aws.aws_xray_propagator import TRACE_HEADER_KEY
 from opentelemetry.semconv.trace import SpanAttributes

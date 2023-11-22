@@ -210,7 +210,7 @@ class BotocoreInstrumentor(BaseInstrumentor):
                         raise
                     else:
                         _apply_response_attributes(span, result)
-                        _safe_invoke(extension.on_success, span, result)    
+                        _safe_invoke(extension.on_success, span, result)
             finally:
                 _safe_invoke(extension.after_service_call)
                 self._call_response_hook(span, call_context, result)
