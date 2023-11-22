@@ -699,7 +699,6 @@ class TestRequestsIntergrationMetric(TestBase):
             SpanAttributes.HTTP_RESPONSE_STATUS_CODE: 200,
             SpanAttributes.SERVER_ADDRESS: "examplehost",
             SpanAttributes.SERVER_PORT: 8000,
-            SpanAttributes.SERVER_ADDRESS: "examplehost",
             SpanAttributes.HTTP_REQUEST_METHOD: "GET",
             SpanAttributes.NET_PROTOCOL_VERSION: "1.1",
         }
@@ -737,7 +736,6 @@ class TestRequestsIntergrationMetric(TestBase):
             SpanAttributes.HTTP_RESPONSE_STATUS_CODE: 200,
             SpanAttributes.SERVER_ADDRESS: "examplehost",
             SpanAttributes.SERVER_PORT: 8000,
-            SpanAttributes.SERVER_ADDRESS: "examplehost",
             SpanAttributes.HTTP_REQUEST_METHOD: "GET",
             SpanAttributes.NET_PROTOCOL_VERSION: "1.1",
         }

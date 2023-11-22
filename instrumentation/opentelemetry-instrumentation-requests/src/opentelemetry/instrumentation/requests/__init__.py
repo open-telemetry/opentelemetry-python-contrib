@@ -263,8 +263,8 @@ def _instrument(
                                 version_text,
                                 sem_conv_opt_in_mode,
                             )
-                for k, v in span_attributes.items():
-                    span.set_attribute(k, v)
+                for key, val in span_attributes.items():
+                    span.set_attribute(key, val)
 
                 if callable(response_hook):
                     response_hook(span, request, result)
