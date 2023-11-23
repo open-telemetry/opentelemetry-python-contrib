@@ -456,7 +456,7 @@ class TestRequestsIntegration(RequestsIntegrationTestBase, TestBase):
     @staticmethod
     def perform_request(url: str, session: requests.Session = None):
         if session is None:
-            return requests.get(url)
+            return requests.get(url, timeout=5)
         return session.get(url)
 
     def test_credential_removal(self):
@@ -467,7 +467,7 @@ class TestRequestsIntegration(RequestsIntegrationTestBase, TestBase):
         self.assertEqual(span.attributes[SpanAttributes.HTTP_URL], self.URL)
 
     def test_if_headers_equals_none(self):
-        result = requests.get(self.URL, headers=None)
+        result = requests.get(self.URL, headers=None, timeout=5)
         self.assertEqual(result.text, "Hello!")
         self.assert_span()
 
@@ -501,7 +501,7 @@ class TestRequestsIntergrationMetric(TestBase):
 
     @staticmethod
     def perform_request(url: str) -> requests.Response:
-        return requests.get(url)
+        return requests.get(url, timeout=5)
 
     def test_basic_metric_success(self):
         self.perform_request(self.URL)
