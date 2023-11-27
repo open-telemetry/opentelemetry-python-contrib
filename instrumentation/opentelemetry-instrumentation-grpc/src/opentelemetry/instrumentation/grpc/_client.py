@@ -25,7 +25,7 @@ from typing import Callable, MutableMapping
 
 import grpc
 
-from opentelemetry import context, trace
+from opentelemetry import trace
 from opentelemetry.instrumentation.grpc import grpcext
 from opentelemetry.instrumentation.grpc._utilities import RpcInfo
 from opentelemetry.instrumentation.utils import is_instrumentation_enabled

@@ -79,7 +79,6 @@ API
 """
 
 import collections.abc
-import contextlib
 import io
 import typing
 from timeit import default_timer

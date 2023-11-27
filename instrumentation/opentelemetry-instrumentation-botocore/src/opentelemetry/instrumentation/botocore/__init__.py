@@ -86,7 +86,6 @@ from botocore.endpoint import Endpoint
 from botocore.exceptions import ClientError
 from wrapt import wrap_function_wrapper
 
-from opentelemetry import context as context_api
 from opentelemetry.instrumentation.botocore.extensions import _find_extension
 from opentelemetry.instrumentation.botocore.extensions.types import (
     _AwsSdkCallContext,

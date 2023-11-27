@@ -31,7 +31,7 @@ import grpc
 import pytest
 
 import opentelemetry.instrumentation.grpc
-from opentelemetry import context, trace
+from opentelemetry import trace
 from opentelemetry.instrumentation.grpc import (
     GrpcAioInstrumentorClient,
     aio_client_interceptors,

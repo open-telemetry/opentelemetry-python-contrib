@@ -14,7 +14,6 @@
 
 from unittest import mock
 
-from opentelemetry import context
 from opentelemetry import trace as trace_api
 from opentelemetry.instrumentation.pymongo import (
     CommandTracer,

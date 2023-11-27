@@ -79,7 +79,6 @@ from typing import Callable, Collection
 
 from pymongo import monitoring
 
-from opentelemetry import context
 from opentelemetry.instrumentation.instrumentor import BaseInstrumentor
 from opentelemetry.instrumentation.pymongo.package import _instruments
 from opentelemetry.instrumentation.pymongo.utils import (

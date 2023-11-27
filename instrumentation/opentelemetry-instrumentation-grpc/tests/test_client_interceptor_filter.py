@@ -22,7 +22,7 @@ from tests.protobuf import (  # pylint: disable=no-name-in-module
 )
 
 import opentelemetry.instrumentation.grpc
-from opentelemetry import context, trace
+from opentelemetry import trace
 from opentelemetry.instrumentation.grpc import GrpcInstrumentorClient, filters
 from opentelemetry.instrumentation.grpc._client import (
     OpenTelemetryClientInterceptor,

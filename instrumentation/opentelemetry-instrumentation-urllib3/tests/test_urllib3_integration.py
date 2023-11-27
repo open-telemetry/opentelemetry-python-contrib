@@ -19,7 +19,7 @@ import httpretty
 import urllib3
 import urllib3.exceptions
 
-from opentelemetry import context, trace
+from opentelemetry import trace
 from opentelemetry.instrumentation.urllib3 import URLLib3Instrumentor
 from opentelemetry.instrumentation.utils import (
     suppress_http_instrumentation,

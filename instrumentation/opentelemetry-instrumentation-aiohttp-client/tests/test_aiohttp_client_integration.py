@@ -27,7 +27,6 @@ import yarl
 from http_server_mock import HttpServerMock
 from pkg_resources import iter_entry_points
 
-from opentelemetry import context
 from opentelemetry import trace as trace_api
 from opentelemetry.instrumentation import aiohttp_client
 from opentelemetry.instrumentation.aiohttp_client import (
