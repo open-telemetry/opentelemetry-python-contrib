@@ -96,16 +96,17 @@ class TestInstrumentedExchangeAioRmq7(TestCase):
     def _test_publish_works_with_not_recording_span(self, exchange_type):
         exchange = exchange_type(CONNECTION_7, CHANNEL_7, EXCHANGE_NAME)
         with mock.patch.object(
-                PublishDecorator, "_get_publish_span"
+            PublishDecorator, "_get_publish_span"
         ) as mock_get_publish_span:
             mocked_not_recording_span = MagicMock()
             mocked_not_recording_span.is_recording.return_value = False
             mock_get_publish_span.return_value = mocked_not_recording_span
             with mock.patch.object(
-                    Exchange, "publish", return_value=asyncio.sleep(0)
+                Exchange, "publish", return_value=asyncio.sleep(0)
             ) as mock_publish:
                 with mock.patch(
-                        "opentelemetry.instrumentation.aio_pika.publish_decorator.propagate.inject") as mock_inject:
+                    "opentelemetry.instrumentation.aio_pika.publish_decorator.propagate.inject"
+                ) as mock_inject:
                     decorated_publish = PublishDecorator(
                         self.tracer, exchange
                     ).decorate(mock_publish)
@@ -178,16 +179,17 @@ class TestInstrumentedExchangeAioRmq8(TestCase):
     def _test_publish_works_with_not_recording_span(self, exchange_type):
         exchange = exchange_type(CONNECTION_7, CHANNEL_7, EXCHANGE_NAME)
         with mock.patch.object(
-                PublishDecorator, "_get_publish_span"
+            PublishDecorator, "_get_publish_span"
         ) as mock_get_publish_span:
             mocked_not_recording_span = MagicMock()
             mocked_not_recording_span.is_recording.return_value = False
             mock_get_publish_span.return_value = mocked_not_recording_span
             with mock.patch.object(
-                    Exchange, "publish", return_value=asyncio.sleep(0)
+                Exchange, "publish", return_value=asyncio.sleep(0)
             ) as mock_publish:
                 with mock.patch(
-                        "opentelemetry.instrumentation.aio_pika.publish_decorator.propagate.inject") as mock_inject:
+                    "opentelemetry.instrumentation.aio_pika.publish_decorator.propagate.inject"
+                ) as mock_inject:
                     decorated_publish = PublishDecorator(
                         self.tracer, exchange
                     ).decorate(mock_publish)
