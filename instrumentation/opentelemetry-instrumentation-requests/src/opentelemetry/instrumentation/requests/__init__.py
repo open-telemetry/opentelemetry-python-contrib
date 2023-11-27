@@ -63,10 +63,12 @@ from opentelemetry import context
 # FIXME: fix the importing of this private attribute when the location of the _SUPPRESS_HTTP_INSTRUMENTATION_KEY is defined.
 from opentelemetry.context import _SUPPRESS_HTTP_INSTRUMENTATION_KEY
 from opentelemetry.instrumentation._semconv import (
+    _METRIC_ATTRIBUTES_CLIENT_DURATION_NAME,
     _SPAN_ATTRIBUTES_ERROR_TYPE,
     _SPAN_ATTRIBUTES_NETWORK_PEER_ADDRESS,
     _SPAN_ATTRIBUTES_NETWORK_PEER_PORT,
     _filter_duration_attrs,
+    _get_schema_url,
     _OpenTelemetrySemanticConventionStability,
     _OpenTelemetryStabilityMode,
     _OpenTelemetryStabilitySignalType,
@@ -93,7 +95,7 @@ from opentelemetry.propagate import inject
 from opentelemetry.semconv.metrics import MetricInstruments
 from opentelemetry.trace import SpanKind, Tracer, get_tracer
 from opentelemetry.trace.span import Span
-from opentelemetry.trace.status import Status
+from opentelemetry.trace.status import StatusCode
 from opentelemetry.util.http import (
     ExcludeList,
     get_excluded_urls,
@@ -241,13 +243,14 @@ def _instrument(
                         result.status_code,
                         sem_conv_opt_in_mode,
                     )
-                    span.set_status(
-                        Status(http_status_to_status_code(result.status_code))
+                    _set_http_status_code(
+                        metric_labels, result.status_code, sem_conv_opt_in_mode
                     )
-
-                _set_http_status_code(
-                    metric_labels, result.status_code, sem_conv_opt_in_mode
-                )
+                    status_code = http_status_to_status_code(result.status_code)
+                    span.set_status(status_code)
+                    if _report_new(sem_conv_opt_in_mode) and status_code is StatusCode.ERROR:
+                        span_attributes[_SPAN_ATTRIBUTES_ERROR_TYPE] = str(result.status_code)
+                        metric_labels[_SPAN_ATTRIBUTES_ERROR_TYPE] = str(result.status_code)
 
                 if result.raw is not None:
                     version = getattr(result.raw, "version", None)
@@ -271,11 +274,11 @@ def _instrument(
 
             if exception is not None and _report_new(sem_conv_opt_in_mode):
                 span.set_attribute(
-                    _SPAN_ATTRIBUTES_ERROR_TYPE, type(exception).__name__
+                    _SPAN_ATTRIBUTES_ERROR_TYPE, type(exception).__qualname__
                 )
                 metric_labels[_SPAN_ATTRIBUTES_ERROR_TYPE] = type(
                     exception
-                ).__name__
+                ).__qualname__
 
             if duration_histogram_old is not None:
                 duration_attrs_old = _filter_duration_attrs(
@@ -357,12 +360,16 @@ class RequestsInstrumentor(BaseInstrumentor):
                 ``excluded_urls``: A string containing a comma-delimited
                     list of regexes used to exclude URLs from tracking
         """
+        semconv_opt_in_mode = _OpenTelemetrySemanticConventionStability._get_opentelemetry_stability_opt_in_mode(
+            _OpenTelemetryStabilitySignalType.HTTP,
+        )
+        schema_url = _get_schema_url(semconv_opt_in_mode)
         tracer_provider = kwargs.get("tracer_provider")
         tracer = get_tracer(
             __name__,
             __version__,
             tracer_provider,
-            schema_url="https://opentelemetry.io/schemas/1.11.0",
+            schema_url=schema_url,
         )
         excluded_urls = kwargs.get("excluded_urls")
         meter_provider = kwargs.get("meter_provider")
@@ -370,10 +377,7 @@ class RequestsInstrumentor(BaseInstrumentor):
             __name__,
             __version__,
             meter_provider,
-            schema_url="https://opentelemetry.io/schemas/1.11.0",
-        )
-        semconv_opt_in_mode = _OpenTelemetrySemanticConventionStability._get_opentelemetry_stability_opt_in_mode(
-            _OpenTelemetryStabilitySignalType.HTTP,
+            schema_url=schema_url,
         )
         duration_histogram_old = None
         if _report_old(semconv_opt_in_mode):
@@ -385,7 +389,7 @@ class RequestsInstrumentor(BaseInstrumentor):
         duration_histogram_new = None
         if _report_new(semconv_opt_in_mode):
             duration_histogram_new = meter.create_histogram(
-                name=MetricInstruments.HTTP_CLIENT_DURATION,
+                name=_METRIC_ATTRIBUTES_CLIENT_DURATION_NAME,
                 unit="s",
                 description="Duration of HTTP client requests.",
             )

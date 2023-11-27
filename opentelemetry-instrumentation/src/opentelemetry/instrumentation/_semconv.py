@@ -22,6 +22,7 @@ from opentelemetry.semconv.trace import SpanAttributes
 _SPAN_ATTRIBUTES_ERROR_TYPE = "error.type"
 _SPAN_ATTRIBUTES_NETWORK_PEER_ADDRESS = "network.peer.address"
 _SPAN_ATTRIBUTES_NETWORK_PEER_PORT = "network.peer.port"
+_METRIC_ATTRIBUTES_CLIENT_DURATION_NAME = "http.client.request.duration"
 
 _client_duration_attrs_old = [
     SpanAttributes.HTTP_STATUS_CODE,
@@ -35,10 +36,9 @@ _client_duration_attrs_old = [
 
 _client_duration_attrs_new = [
     _SPAN_ATTRIBUTES_ERROR_TYPE,
-    SpanAttributes.HTTP_REQUEST_METHOD_ORIGINAL,
     SpanAttributes.HTTP_REQUEST_METHOD,
     SpanAttributes.HTTP_RESPONSE_STATUS_CODE,
-    SpanAttributes.NET_PROTOCOL_VERSION,
+    SpanAttributes.NETWORK_PROTOCOL_VERSION,
     SpanAttributes.SERVER_ADDRESS,
     SpanAttributes.SERVER_PORT,
     SpanAttributes.URL_SCHEME,
@@ -120,9 +120,9 @@ def _set_http_net_peer_name(result, peer_name, sem_conv_opt_in_mode):
 
 def _set_http_port(result, port, sem_conv_opt_in_mode):
     if _report_old(sem_conv_opt_in_mode):
-        set_string_attribute(result, SpanAttributes.NET_PEER_PORT, port)
+        set_int_attribute(result, SpanAttributes.NET_PEER_PORT, port)
     if _report_new(sem_conv_opt_in_mode):
-        set_string_attribute(result, SpanAttributes.SERVER_PORT, port)
+        set_int_attribute(result, SpanAttributes.SERVER_PORT, port)
 
 
 def _set_http_status_code(result, code, sem_conv_opt_in_mode):
@@ -139,7 +139,7 @@ def _set_http_network_protocol_version(result, version, sem_conv_opt_in_mode):
         set_string_attribute(result, SpanAttributes.HTTP_FLAVOR, version)
     if _report_new(sem_conv_opt_in_mode):
         set_string_attribute(
-            result, SpanAttributes.NET_PROTOCOL_VERSION, version
+            result, SpanAttributes.NETWORK_PROTOCOL_VERSION, version
         )
 
 
@@ -207,3 +207,9 @@ class _OpenTelemetrySemanticConventionStability:
         return _OpenTelemetrySemanticConventionStability._OTEL_SEMCONV_STABILITY_SIGNAL_MAPPING.get(
             signal_type, _OpenTelemetryStabilityMode.DEFAULT
         )
+
+# Get schema version based off of opt-in mode
+def _get_schema_url(mode: _OpenTelemetryStabilityMode) -> str:
+    if mode is _OpenTelemetryStabilityMode.DEFAULT:
+        return "https://opentelemetry.io/schemas/1.11.0"
+    return SpanAttributes.SCHEMA_URL
