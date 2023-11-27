@@ -159,7 +159,9 @@ class RequestsIntegrationTestBase(abc.ABC):
 
     def test_basic_new_semconv(self):
         url_with_port = "http://mock:80/status/200"
-        httpretty.register_uri(httpretty.GET, url_with_port, status=200, body="Hello!")
+        httpretty.register_uri(
+            httpretty.GET, url_with_port, status=200, body="Hello!"
+        )
         result = self.perform_request(url_with_port)
         self.assertEqual(result.text, "Hello!")
         span = self.assert_span()
@@ -193,7 +195,9 @@ class RequestsIntegrationTestBase(abc.ABC):
 
     def test_basic_both_semconv(self):
         url_with_port = "http://mock:80/status/200"
-        httpretty.register_uri(httpretty.GET, url_with_port, status=200, body="Hello!")
+        httpretty.register_uri(
+            httpretty.GET, url_with_port, status=200, body="Hello!"
+        )
         result = self.perform_request(url_with_port)
         self.assertEqual(result.text, "Hello!")
         span = self.assert_span()
@@ -523,7 +527,9 @@ class RequestsIntegrationTestBase(abc.ABC):
     )
     def test_requests_exception_new_semconv(self, *_, **__):
         url_with_port = "http://mock:80/status/200"
-        httpretty.register_uri(httpretty.GET, url_with_port, status=200, body="Hello!")
+        httpretty.register_uri(
+            httpretty.GET, url_with_port, status=200, body="Hello!"
+        )
         with self.assertRaises(requests.RequestException):
             self.perform_request(url_with_port)
 
@@ -771,7 +777,6 @@ class TestRequestsIntergrationMetric(TestBase):
             SpanAttributes.HTTP_REQUEST_METHOD: "GET",
             SpanAttributes.NETWORK_PROTOCOL_VERSION: "1.1",
         }
-
 
         for (
             resource_metrics
