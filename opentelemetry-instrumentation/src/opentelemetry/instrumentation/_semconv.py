@@ -208,6 +208,7 @@ class _OpenTelemetrySemanticConventionStability:
             signal_type, _OpenTelemetryStabilityMode.DEFAULT
         )
 
+
 # Get schema version based off of opt-in mode
 def _get_schema_url(mode: _OpenTelemetryStabilityMode) -> str:
     if mode is _OpenTelemetryStabilityMode.DEFAULT:
