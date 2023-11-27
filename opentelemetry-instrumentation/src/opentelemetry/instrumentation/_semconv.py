@@ -41,7 +41,8 @@ _client_duration_attrs_new = [
     SpanAttributes.NETWORK_PROTOCOL_VERSION,
     SpanAttributes.SERVER_ADDRESS,
     SpanAttributes.SERVER_PORT,
-    SpanAttributes.URL_SCHEME,
+    # TODO: Support opt-in for scheme in new semconv
+    # SpanAttributes.URL_SCHEME,
 ]
 
 

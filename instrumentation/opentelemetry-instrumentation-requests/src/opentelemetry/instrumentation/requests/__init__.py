@@ -246,11 +246,20 @@ def _instrument(
                     _set_http_status_code(
                         metric_labels, result.status_code, sem_conv_opt_in_mode
                     )
-                    status_code = http_status_to_status_code(result.status_code)
+                    status_code = http_status_to_status_code(
+                        result.status_code
+                    )
                     span.set_status(status_code)
-                    if _report_new(sem_conv_opt_in_mode) and status_code is StatusCode.ERROR:
-                        span_attributes[_SPAN_ATTRIBUTES_ERROR_TYPE] = str(result.status_code)
-                        metric_labels[_SPAN_ATTRIBUTES_ERROR_TYPE] = str(result.status_code)
+                    if (
+                        _report_new(sem_conv_opt_in_mode)
+                        and status_code is StatusCode.ERROR
+                    ):
+                        span_attributes[_SPAN_ATTRIBUTES_ERROR_TYPE] = str(
+                            result.status_code
+                        )
+                        metric_labels[_SPAN_ATTRIBUTES_ERROR_TYPE] = str(
+                            result.status_code
+                        )
 
                 if result.raw is not None:
                     version = getattr(result.raw, "version", None)
