@@ -113,12 +113,11 @@ def _decorate_basic_publish(
                 exchange, routing_key, body, properties, mandatory
             )
         with trace.use_span(span, end_on_exit=True):
-            if span.is_recording():
-                propagate.inject(properties.headers)
-                try:
-                    publish_hook(span, body, properties)
-                except Exception as hook_exception:  # pylint: disable=W0703
-                    _LOG.exception(hook_exception)
+            propagate.inject(properties.headers)
+            try:
+                publish_hook(span, body, properties)
+            except Exception as hook_exception:  # pylint: disable=W0703
+                _LOG.exception(hook_exception)
             retval = original_function(
                 exchange, routing_key, body, properties, mandatory
             )
