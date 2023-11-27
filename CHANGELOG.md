@@ -34,6 +34,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- `opentelemetry-instrumentation-aio-pika` and `opentelemetry-instrumentation-pika` Fix missing trace context propagation when trace not recording.
+  ([#1969](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/1969))
 - Fix version of Flask dependency `werkzeug`
   ([#1980](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/1980))
 - `opentelemetry-resource-detector-azure` Using new Cloud Resource ID attribute.
