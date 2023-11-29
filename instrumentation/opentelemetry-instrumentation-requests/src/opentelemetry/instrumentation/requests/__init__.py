@@ -62,6 +62,27 @@ from opentelemetry import context
 
 # FIXME: fix the importing of this private attribute when the location of the _SUPPRESS_HTTP_INSTRUMENTATION_KEY is defined.
 from opentelemetry.context import _SUPPRESS_HTTP_INSTRUMENTATION_KEY
+from opentelemetry.instrumentation._semconv import (
+    _METRIC_ATTRIBUTES_CLIENT_DURATION_NAME,
+    _SPAN_ATTRIBUTES_ERROR_TYPE,
+    _SPAN_ATTRIBUTES_NETWORK_PEER_ADDRESS,
+    _SPAN_ATTRIBUTES_NETWORK_PEER_PORT,
+    _filter_duration_attrs,
+    _get_schema_url,
+    _OpenTelemetrySemanticConventionStability,
+    _OpenTelemetryStabilityMode,
+    _OpenTelemetryStabilitySignalType,
+    _report_new,
+    _report_old,
+    _set_http_hostname,
+    _set_http_method,
+    _set_http_net_peer_name,
+    _set_http_network_protocol_version,
+    _set_http_port,
+    _set_http_scheme,
+    _set_http_status_code,
+    _set_http_url,
+)
 from opentelemetry.instrumentation.instrumentor import BaseInstrumentor
 from opentelemetry.instrumentation.requests.package import _instruments
 from opentelemetry.instrumentation.requests.version import __version__
@@ -72,15 +93,15 @@ from opentelemetry.instrumentation.utils import (
 from opentelemetry.metrics import Histogram, get_meter
 from opentelemetry.propagate import inject
 from opentelemetry.semconv.metrics import MetricInstruments
-from opentelemetry.semconv.trace import SpanAttributes
 from opentelemetry.trace import SpanKind, Tracer, get_tracer
 from opentelemetry.trace.span import Span
-from opentelemetry.trace.status import Status
+from opentelemetry.trace.status import StatusCode
 from opentelemetry.util.http import (
     ExcludeList,
     get_excluded_urls,
     parse_excluded_urls,
     remove_url_credentials,
+    sanitize_method,
 )
 from opentelemetry.util.http.httplib import set_ip_on_next_http_connection
 
@@ -94,10 +115,12 @@ _ResponseHookT = Optional[Callable[[Span, PreparedRequest], None]]
 # pylint: disable=R0915
 def _instrument(
     tracer: Tracer,
-    duration_histogram: Histogram,
+    duration_histogram_old: Histogram,
+    duration_histogram_new: Histogram,
     request_hook: _RequestHookT = None,
     response_hook: _ResponseHookT = None,
     excluded_urls: ExcludeList = None,
+    sem_conv_opt_in_mode: _OpenTelemetryStabilityMode = _OpenTelemetryStabilityMode.DEFAULT,
 ):
     """Enables tracing of all requests calls that go through
     :code:`requests.session.Session.request` (this includes
@@ -132,31 +155,58 @@ def _instrument(
             return wrapped_send(self, request, **kwargs)
 
         # See
-        # https://github.com/open-telemetry/opentelemetry-specification/blob/main/specification/trace/semantic_conventions/http.md#http-client
-        method = request.method.upper()
+        # https://github.com/open-telemetry/semantic-conventions/blob/main/docs/http/http-spans.md#http-client
+        method = request.method
         span_name = get_default_span_name(method)
 
         url = remove_url_credentials(request.url)
 
-        span_attributes = {
-            SpanAttributes.HTTP_METHOD: method,
-            SpanAttributes.HTTP_URL: url,
-        }
+        span_attributes = {}
+        _set_http_method(
+            span_attributes, method, span_name, sem_conv_opt_in_mode
+        )
+        _set_http_url(span_attributes, url, sem_conv_opt_in_mode)
 
-        metric_labels = {
-            SpanAttributes.HTTP_METHOD: method,
-        }
+        metric_labels = {}
+        _set_http_method(
+            metric_labels, method, span_name, sem_conv_opt_in_mode
+        )
 
         try:
             parsed_url = urlparse(url)
-            metric_labels[SpanAttributes.HTTP_SCHEME] = parsed_url.scheme
+            if parsed_url.scheme:
+                _set_http_scheme(
+                    metric_labels, parsed_url.scheme, sem_conv_opt_in_mode
+                )
             if parsed_url.hostname:
-                metric_labels[SpanAttributes.HTTP_HOST] = parsed_url.hostname
-                metric_labels[
-                    SpanAttributes.NET_PEER_NAME
-                ] = parsed_url.hostname
+                _set_http_hostname(
+                    metric_labels, parsed_url.hostname, sem_conv_opt_in_mode
+                )
+                _set_http_net_peer_name(
+                    metric_labels, parsed_url.hostname, sem_conv_opt_in_mode
+                )
+                if _report_new(sem_conv_opt_in_mode):
+                    _set_http_hostname(
+                        span_attributes,
+                        parsed_url.hostname,
+                        sem_conv_opt_in_mode,
+                    )
+                    # Use semconv library when available
+                    span_attributes[
+                        _SPAN_ATTRIBUTES_NETWORK_PEER_ADDRESS
+                    ] = parsed_url.hostname
             if parsed_url.port:
-                metric_labels[SpanAttributes.NET_PEER_PORT] = parsed_url.port
+                _set_http_port(
+                    metric_labels, parsed_url.port, sem_conv_opt_in_mode
+                )
+                if _report_new(sem_conv_opt_in_mode):
+                    _set_http_port(
+                        span_attributes, parsed_url.port, sem_conv_opt_in_mode
+                    )
+                    # Use semconv library when available
+                    span_attributes[
+                        _SPAN_ATTRIBUTES_NETWORK_PEER_PORT
+                    ] = parsed_url.port
         except ValueError:
             pass
 
@@ -182,35 +232,78 @@ def _instrument(
                 exception = exc
                 result = getattr(exc, "response", None)
             finally:
-                elapsed_time = max(
-                    round((default_timer() - start_time) * 1000), 0
-                )
+                elapsed_time = max(default_timer() - start_time, 0)
                 context.detach(token)
 
             if isinstance(result, Response):
+                span_attributes = {}
                 if span.is_recording():
-                    span.set_attribute(
-                        SpanAttributes.HTTP_STATUS_CODE, result.status_code
+                    _set_http_status_code(
+                        span_attributes,
+                        result.status_code,
+                        sem_conv_opt_in_mode,
                     )
-                    span.set_status(
-                        Status(http_status_to_status_code(result.status_code))
+                    _set_http_status_code(
+                        metric_labels, result.status_code, sem_conv_opt_in_mode
                     )
-
-                metric_labels[
-                    SpanAttributes.HTTP_STATUS_CODE
-                ] = result.status_code
+                    status_code = http_status_to_status_code(
+                        result.status_code
+                    )
+                    span.set_status(status_code)
+                    if (
+                        _report_new(sem_conv_opt_in_mode)
+                        and status_code is StatusCode.ERROR
+                    ):
+                        span_attributes[_SPAN_ATTRIBUTES_ERROR_TYPE] = str(
+                            result.status_code
+                        )
+                        metric_labels[_SPAN_ATTRIBUTES_ERROR_TYPE] = str(
+                            result.status_code
+                        )
 
                 if result.raw is not None:
                     version = getattr(result.raw, "version", None)
                     if version:
-                        metric_labels[SpanAttributes.HTTP_FLAVOR] = (
-                            "1.1" if version == 11 else "1.0"
+                        # Only HTTP/1 is supported by requests
+                        version_text = "1.1" if version == 11 else "1.0"
+                        _set_http_network_protocol_version(
+                            metric_labels, version_text, sem_conv_opt_in_mode
                         )
+                        if _report_new(sem_conv_opt_in_mode):
+                            _set_http_network_protocol_version(
+                                span_attributes,
+                                version_text,
+                                sem_conv_opt_in_mode,
+                            )
+                for key, val in span_attributes.items():
+                    span.set_attribute(key, val)
 
                 if callable(response_hook):
                     response_hook(span, request, result)
 
-            duration_histogram.record(elapsed_time, attributes=metric_labels)
+            if exception is not None and _report_new(sem_conv_opt_in_mode):
+                span.set_attribute(
+                    _SPAN_ATTRIBUTES_ERROR_TYPE, type(exception).__qualname__
+                )
+                metric_labels[_SPAN_ATTRIBUTES_ERROR_TYPE] = type(
+                    exception
+                ).__qualname__
+
+            if duration_histogram_old is not None:
+                duration_attrs_old = _filter_duration_attrs(
+                    metric_labels, _OpenTelemetryStabilityMode.DEFAULT
+                )
+                duration_histogram_old.record(
+                    max(round(elapsed_time * 1000), 0),
+                    attributes=duration_attrs_old,
+                )
+            if duration_histogram_new is not None:
+                duration_attrs_new = _filter_duration_attrs(
+                    metric_labels, _OpenTelemetryStabilityMode.HTTP
+                )
+                duration_histogram_new.record(
+                    elapsed_time, attributes=duration_attrs_new
+                )
 
             if exception is not None:
                 raise exception.with_traceback(exception.__traceback__)
@@ -254,7 +347,7 @@ def get_default_span_name(method):
     Returns:
         span name
     """
-    return method.strip()
+    return sanitize_method(method.upper().strip())
 
 
 class RequestsInstrumentor(BaseInstrumentor):
@@ -276,28 +369,49 @@ class RequestsInstrumentor(BaseInstrumentor):
                 ``excluded_urls``: A string containing a comma-delimited
                     list of regexes used to exclude URLs from tracking
         """
+        semconv_opt_in_mode = _OpenTelemetrySemanticConventionStability._get_opentelemetry_stability_opt_in_mode(
+            _OpenTelemetryStabilitySignalType.HTTP,
+        )
+        schema_url = _get_schema_url(semconv_opt_in_mode)
         tracer_provider = kwargs.get("tracer_provider")
-        tracer = get_tracer(__name__, __version__, tracer_provider)
+        tracer = get_tracer(
+            __name__,
+            __version__,
+            tracer_provider,
+            schema_url=schema_url,
+        )
         excluded_urls = kwargs.get("excluded_urls")
         meter_provider = kwargs.get("meter_provider")
         meter = get_meter(
             __name__,
             __version__,
             meter_provider,
+            schema_url=schema_url,
         )
-        duration_histogram = meter.create_histogram(
-            name=MetricInstruments.HTTP_CLIENT_DURATION,
-            unit="ms",
-            description="measures the duration of the outbound HTTP request",
-        )
+        duration_histogram_old = None
+        if _report_old(semconv_opt_in_mode):
+            duration_histogram_old = meter.create_histogram(
+                name=MetricInstruments.HTTP_CLIENT_DURATION,
+                unit="ms",
+                description="measures the duration of the outbound HTTP request",
+            )
+        duration_histogram_new = None
+        if _report_new(semconv_opt_in_mode):
+            duration_histogram_new = meter.create_histogram(
+                name=_METRIC_ATTRIBUTES_CLIENT_DURATION_NAME,
+                unit="s",
+                description="Duration of HTTP client requests.",
+            )
         _instrument(
             tracer,
-            duration_histogram,
+            duration_histogram_old,
+            duration_histogram_new,
             request_hook=kwargs.get("request_hook"),
             response_hook=kwargs.get("response_hook"),
             excluded_urls=_excluded_urls_from_env
             if excluded_urls is None
             else parse_excluded_urls(excluded_urls),
+            sem_conv_opt_in_mode=semconv_opt_in_mode,
         )
 
     def _uninstrument(self, **kwargs):

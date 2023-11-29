@@ -333,7 +333,10 @@ class RedisInstrumentor(BaseInstrumentor):
         """
         tracer_provider = kwargs.get("tracer_provider")
         tracer = trace.get_tracer(
-            __name__, __version__, tracer_provider=tracer_provider
+            __name__,
+            __version__,
+            tracer_provider=tracer_provider,
+            schema_url="https://opentelemetry.io/schemas/1.11.0",
         )
         _instrument(
             tracer,

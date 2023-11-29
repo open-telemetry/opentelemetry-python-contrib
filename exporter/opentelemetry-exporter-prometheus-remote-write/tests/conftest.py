@@ -3,6 +3,8 @@ import random
 import pytest
 
 import opentelemetry.test.metrictestutil as metric_util
+
+# pylint: disable=no-name-in-module
 from opentelemetry.exporter.prometheus_remote_write import (
     PrometheusRemoteWriteMetricsExporter,
 )

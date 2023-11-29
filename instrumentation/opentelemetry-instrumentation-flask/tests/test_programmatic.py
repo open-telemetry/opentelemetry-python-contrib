@@ -40,7 +40,6 @@ from opentelemetry.util.http import (
     OTEL_INSTRUMENTATION_HTTP_CAPTURE_HEADERS_SANITIZE_FIELDS,
     OTEL_INSTRUMENTATION_HTTP_CAPTURE_HEADERS_SERVER_REQUEST,
     OTEL_INSTRUMENTATION_HTTP_CAPTURE_HEADERS_SERVER_RESPONSE,
-    OTEL_INSTRUMENTATION_HTTP_CAPTURE_HEADERS_SERVER_RESPONSE,
     OTEL_PYTHON_INSTRUMENTATION_HTTP_CAPTURE_ALL_METHODS,
     get_excluded_urls,
 )
@@ -328,7 +327,9 @@ class TestProgrammatic(InstrumentationTest, WsgiTestBase):
                         if isinstance(point, NumberDataPoint):
                             self.assertEqual(point.value, 0)
 
-    def _assert_basic_metric(self, expected_duration_attributes, expected_requests_count_attributes):
+    def _assert_basic_metric(
+        self, expected_duration_attributes, expected_requests_count_attributes
+    ):
         metrics_list = self.memory_metrics_reader.get_metrics_data()
         for resource_metric in metrics_list.resource_metrics:
             for scope_metrics in resource_metric.scope_metrics:
@@ -394,7 +395,7 @@ class TestProgrammatic(InstrumentationTest, WsgiTestBase):
         )
 
     @patch.dict(
-    "os.environ",
+        "os.environ",
         {
             OTEL_PYTHON_INSTRUMENTATION_HTTP_CAPTURE_ALL_METHODS: "1",
         },

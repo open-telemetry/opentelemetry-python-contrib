@@ -155,6 +155,20 @@ class TestURLLib3InstrumentorMetric(HttpTestBase, TestBase):
             ],
         )
 
+    def test_schema_url(self):
+        self.pool.request("POST", self.HTTP_URL, body="foobar")
+
+        resource_metrics = (
+            self.memory_metrics_reader.get_metrics_data().resource_metrics
+        )
+
+        for metrics in resource_metrics:
+            for scope_metrics in metrics.scope_metrics:
+                self.assertEqual(
+                    scope_metrics.scope.schema_url,
+                    "https://opentelemetry.io/schemas/1.11.0",
+                )
+
     def test_bytes_request_body_size_metrics(self):
         self.pool.request("POST", self.HTTP_URL, body=b"foobar")
 
