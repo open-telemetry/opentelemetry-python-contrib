@@ -13,13 +13,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   ([#1987](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/1987))
 - `opentelemetry-instrumentation-httpx` Fix mixing async and non async hooks
   ([#1920](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/1920))
+- `opentelemetry-instrumentation-requests` Implement new semantic convention opt-in with stable http semantic conventions
+  ([#2002](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/2002))
 - `opentelemetry-instrument-grpc` Fix arity of context.abort for AIO RPCs
   ([#2066](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/2066))
 
 ### Fixed
 
 - `opentelemetry-instrumentation-urllib`/`opentelemetry-instrumentation-urllib3` Fix metric descriptions to match semantic conventions
-  ([#1959]((https://github.com/open-telemetry/opentelemetry-python-contrib/pull/1959))
+  ([#1959](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/1959))
   
 ## Version 1.21.0/0.42b0 (2023-11-01)
 
