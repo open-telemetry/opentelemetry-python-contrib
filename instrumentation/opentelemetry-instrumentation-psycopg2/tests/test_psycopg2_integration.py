@@ -61,7 +61,7 @@ class MockConnection:
         return MockCursor()
 
     def get_dsn_parameters(self):  # pylint: disable=no-self-use
-        return dict(dbname="test")
+        return {"dbname": "test"}
 
 
 class TestPostgresqlIntegration(TestBase):

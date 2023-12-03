@@ -17,13 +17,14 @@ from typing import Callable, TypeVar
 
 import grpc
 
-TCallDetails = TypeVar(
-    "TCallDetails",
+CallDetailsT = TypeVar(
+    "CallDetailsT",
     grpc.HandlerCallDetails,
     grpc.ClientCallDetails,
     grpc.aio.ClientCallDetails,
 )
-Condition = Callable[[TCallDetails], bool]
+# pylint: disable=invalid-name
+Condition = Callable[[CallDetailsT], bool]
 
 
 def _full_method(metadata):
@@ -61,7 +62,7 @@ def _split_full_method(metadata):
     return (service, method)
 
 
-def all_of(*args: Condition[TCallDetails]) -> Condition[TCallDetails]:
+def all_of(*args: Condition[CallDetailsT]) -> Condition[CallDetailsT]:
     """Returns a filter function that returns True if all filter functions
     assigned matches conditions.
 
@@ -79,7 +80,7 @@ def all_of(*args: Condition[TCallDetails]) -> Condition[TCallDetails]:
     return filter_fn
 
 
-def any_of(*args: Condition[TCallDetails]) -> Condition[TCallDetails]:
+def any_of(*args: Condition[CallDetailsT]) -> Condition[CallDetailsT]:
     """Returns a filter function that returns True if any of filter functions
     assigned matches conditions.
 
@@ -97,7 +98,7 @@ def any_of(*args: Condition[TCallDetails]) -> Condition[TCallDetails]:
     return filter_fn
 
 
-def negate(func: Condition[TCallDetails]) -> Condition[TCallDetails]:
+def negate(func: Condition[CallDetailsT]) -> Condition[CallDetailsT]:
     """Returns a filter function that negate the result of func
 
     Args:
@@ -113,7 +114,7 @@ def negate(func: Condition[TCallDetails]) -> Condition[TCallDetails]:
     return filter_fn
 
 
-def method_name(name: str) -> Condition[TCallDetails]:
+def method_name(name: str) -> Condition[CallDetailsT]:
     """Returns a filter function that return True if
     request's gRPC method name matches name.
 
@@ -132,7 +133,7 @@ def method_name(name: str) -> Condition[TCallDetails]:
     return filter_fn
 
 
-def method_prefix(prefix: str) -> Condition[TCallDetails]:
+def method_prefix(prefix: str) -> Condition[CallDetailsT]:
     """Returns a filter function that return True if
     request's gRPC method name starts with prefix.
 
@@ -151,7 +152,7 @@ def method_prefix(prefix: str) -> Condition[TCallDetails]:
     return filter_fn
 
 
-def full_method_name(name: str) -> Condition[TCallDetails]:
+def full_method_name(name: str) -> Condition[CallDetailsT]:
     """Returns a filter function that return True if
     request's gRPC full method name matches name.
 
@@ -170,7 +171,7 @@ def full_method_name(name: str) -> Condition[TCallDetails]:
     return filter_fn
 
 
-def service_name(name: str) -> Condition[TCallDetails]:
+def service_name(name: str) -> Condition[CallDetailsT]:
     """Returns a filter function that return True if
     request's gRPC service name matches name.
 
@@ -189,7 +190,7 @@ def service_name(name: str) -> Condition[TCallDetails]:
     return filter_fn
 
 
-def service_prefix(prefix: str) -> Condition[TCallDetails]:
+def service_prefix(prefix: str) -> Condition[CallDetailsT]:
     """Returns a filter function that return True if
     request's gRPC service name starts with prefix.
 
@@ -208,7 +209,7 @@ def service_prefix(prefix: str) -> Condition[TCallDetails]:
     return filter_fn
 
 
-def health_check() -> Condition[TCallDetails]:
+def health_check() -> Condition[CallDetailsT]:
     """Returns a Filter that returns true if the request's
     service name is health check defined by gRPC Health Checking Protocol.
     https://github.com/grpc/grpc/blob/master/doc/health-checking.md

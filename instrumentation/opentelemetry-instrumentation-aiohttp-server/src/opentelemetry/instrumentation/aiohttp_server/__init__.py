@@ -13,24 +13,24 @@
 # limitations under the License.
 
 import urllib
+from timeit import default_timer
+from typing import Dict, List, Tuple, Union
+
 from aiohttp import web
 from multidict import CIMultiDictProxy
-from timeit import default_timer
-from typing import Tuple, Dict, List, Union
 
-from opentelemetry import context, trace, metrics
+from opentelemetry import context, metrics, trace
 from opentelemetry.context import _SUPPRESS_HTTP_INSTRUMENTATION_KEY
 from opentelemetry.instrumentation.aiohttp_server.package import _instruments
 from opentelemetry.instrumentation.aiohttp_server.version import __version__
 from opentelemetry.instrumentation.instrumentor import BaseInstrumentor
 from opentelemetry.instrumentation.utils import http_status_to_status_code
-from opentelemetry.propagators.textmap import Getter
 from opentelemetry.propagate import extract
-from opentelemetry.semconv.trace import SpanAttributes
+from opentelemetry.propagators.textmap import Getter
 from opentelemetry.semconv.metrics import MetricInstruments
+from opentelemetry.semconv.trace import SpanAttributes
 from opentelemetry.trace.status import Status, StatusCode
-from opentelemetry.util.http import get_excluded_urls
-from opentelemetry.util.http import remove_url_credentials
+from opentelemetry.util.http import get_excluded_urls, remove_url_credentials
 
 _duration_attrs = [
     SpanAttributes.HTTP_METHOD,
@@ -127,7 +127,7 @@ def collect_request_attributes(request: web.Request) -> Dict:
         result[SpanAttributes.HTTP_METHOD] = http_method
 
     http_host_value_list = (
-        [request.host] if type(request.host) != list else request.host
+        [request.host] if not isinstance(request.host, list) else request.host
     )
     if http_host_value_list:
         result[SpanAttributes.HTTP_SERVER_NAME] = ",".join(
