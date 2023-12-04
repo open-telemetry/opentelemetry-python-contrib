@@ -292,7 +292,6 @@ class TestUtils(TestCase):
         use_span.assert_called_once_with(
             get_span.return_value, end_on_exit=True
         )
-        get_span.return_value.is_recording.assert_called_once()
         inject.assert_called_once_with(properties.headers)
         callback.assert_called_once_with(
             exchange_name, routing_key, mock_body, properties, False
@@ -323,7 +322,6 @@ class TestUtils(TestCase):
         use_span.assert_called_once_with(
             get_span.return_value, end_on_exit=True
         )
-        get_span.return_value.is_recording.assert_called_once()
         inject.assert_called_once_with(basic_properties.return_value.headers)
         self.assertEqual(retval, callback.return_value)
 
@@ -393,7 +391,55 @@ class TestUtils(TestCase):
         use_span.assert_called_once_with(
             get_span.return_value, end_on_exit=True
         )
-        get_span.return_value.is_recording.assert_called_once()
+        inject.assert_called_once_with(properties.headers)
+        publish_hook.assert_called_once_with(
+            get_span.return_value, mock_body, properties
+        )
+        callback.assert_called_once_with(
+            exchange_name, routing_key, mock_body, properties, False
+        )
+        self.assertEqual(retval, callback.return_value)
+
+    @mock.patch("opentelemetry.instrumentation.pika.utils._get_span")
+    @mock.patch("opentelemetry.propagate.inject")
+    @mock.patch("opentelemetry.trace.use_span")
+    def test_decorate_basic_publish_when_span_is_not_recording(
+        self,
+        use_span: mock.MagicMock,
+        inject: mock.MagicMock,
+        get_span: mock.MagicMock,
+    ) -> None:
+        callback = mock.MagicMock()
+        tracer = mock.MagicMock()
+        channel = mock.MagicMock(spec=Channel)
+        exchange_name = "test-exchange"
+        routing_key = "test-routing-key"
+        properties = mock.MagicMock()
+        mock_body = b"mock_body"
+        publish_hook = mock.MagicMock()
+
+        mocked_span = mock.MagicMock()
+        mocked_span.is_recording.return_value = False
+        get_span.return_value = mocked_span
+
+        decorated_basic_publish = utils._decorate_basic_publish(
+            callback, channel, tracer, publish_hook
+        )
+        retval = decorated_basic_publish(
+            exchange_name, routing_key, mock_body, properties
+        )
+        get_span.assert_called_once_with(
+            tracer,
+            channel,
+            properties,
+            destination=exchange_name,
+            span_kind=SpanKind.PRODUCER,
+            task_name="(temporary)",
+            operation=None,
+        )
+        use_span.assert_called_once_with(
+            get_span.return_value, end_on_exit=True
+        )
         inject.assert_called_once_with(properties.headers)
         publish_hook.assert_called_once_with(
             get_span.return_value, mock_body, properties
