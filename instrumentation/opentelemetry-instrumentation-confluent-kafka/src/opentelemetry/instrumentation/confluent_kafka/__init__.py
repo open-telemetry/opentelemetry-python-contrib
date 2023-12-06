@@ -107,16 +107,15 @@ from opentelemetry import context, propagate, trace
 from opentelemetry.instrumentation.instrumentor import BaseInstrumentor
 from opentelemetry.instrumentation.utils import unwrap
 from opentelemetry.semconv.trace import MessagingOperationValues
-from opentelemetry.trace import Link, SpanKind, Tracer
+from opentelemetry.trace import Tracer
 
 from .package import _instruments
 from .utils import (
     KafkaPropertiesExtractor,
-    _end_current_consume_span,
     _create_new_consume_span,
+    _end_current_consume_span,
     _enrich_span,
     _get_span_name,
-    _kafka_getter,
     _kafka_setter,
 )
 from .version import __version__

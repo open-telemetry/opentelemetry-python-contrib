@@ -99,13 +99,13 @@ class _OpInvoke(_LambdaOperation):
 # Lambda extension
 ################################################################################
 
-_OPERATION_MAPPING = {
+_OPERATION_MAPPING: Dict[str, _LambdaOperation] = {
     op.operation_name(): op
     for op in globals().values()
     if inspect.isclass(op)
     and issubclass(op, _LambdaOperation)
     and not inspect.isabstract(op)
-}  # type: Dict[str, _LambdaOperation]
+}
 
 
 class _LambdaExtension(_AwsSdkExtension):

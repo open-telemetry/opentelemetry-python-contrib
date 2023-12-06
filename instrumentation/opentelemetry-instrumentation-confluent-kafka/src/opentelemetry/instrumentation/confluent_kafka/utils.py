@@ -2,13 +2,13 @@ from logging import getLogger
 from typing import List, Optional
 
 from opentelemetry import context, propagate
-from opentelemetry.trace import SpanKind, Link
 from opentelemetry.propagators import textmap
 from opentelemetry.semconv.trace import (
     MessagingDestinationKindValues,
     MessagingOperationValues,
     SpanAttributes,
 )
+from opentelemetry.trace import Link, SpanKind
 
 _LOG = getLogger(__name__)
 

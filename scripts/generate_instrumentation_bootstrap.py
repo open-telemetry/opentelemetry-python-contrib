@@ -21,7 +21,6 @@ import subprocess
 import sys
 
 import astor
-import pkg_resources
 from otel_packaging import (
     get_instrumentation_packages,
     root_path,
