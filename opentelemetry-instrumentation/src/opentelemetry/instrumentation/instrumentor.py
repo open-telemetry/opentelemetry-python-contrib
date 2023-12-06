@@ -21,12 +21,12 @@ from abc import ABC, abstractmethod
 from logging import getLogger
 from typing import Collection, Optional
 
+from opentelemetry.instrumentation._semconv import (
+    _OpenTelemetrySemanticConventionStability,
+)
 from opentelemetry.instrumentation.dependencies import (
     DependencyConflict,
     get_dependency_conflicts,
-)
-from opentelemetry.instrumentation.utils import (
-    _OpenTelemetrySemanticConventionStability,
 )
 
 _LOG = getLogger(__name__)
