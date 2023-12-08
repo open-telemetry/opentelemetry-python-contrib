@@ -251,17 +251,15 @@ class ASGIGetter(Getter[dict]):
         # ASGI header keys are in lower case
         key = key.lower()
         decoded = [
-            _value.decode("utf8")
+            _decode_header_item(_value)
             for (_key, _value) in headers
-            if _key.decode("utf8").lower() == key
+            if _decode_header_item(_key).lower() == key
         ]
-        if not decoded:
-            return None
-        return decoded
+        return decoded or None
 
     def keys(self, carrier: dict) -> typing.List[str]:
         headers = carrier.get("headers") or []
-        return [_key.decode("utf8") for (_key, _value) in headers]
+        return [_decode_header_item(_key) for (_key, _value) in headers]
 
 
 asgi_getter = ASGIGetter()
@@ -344,10 +342,7 @@ def collect_custom_request_headers_attributes(scope):
     )
 
     # Decode headers before processing.
-    headers = {
-        _key.decode("utf8"): _value.decode("utf8")
-        for (_key, _value) in scope.get("headers")
-    }
+    headers = _decode_headers(scope.get("headers"))
 
     return sanitize.sanitize_header_values(
         headers,
@@ -370,10 +365,7 @@ def collect_custom_response_headers_attributes(message):
     )
 
     # Decode headers before processing.
-    headers = {
-        _key.decode("utf8"): _value.decode("utf8")
-        for (_key, _value) in message.get("headers")
-    }
+    headers = _decode_headers(message.get("headers"))
 
     return sanitize.sanitize_header_values(
         headers,
@@ -723,3 +715,17 @@ class OpenTelemetryMiddleware:
                 server_span.end()
 
         return otel_send
+
+
+def _decode_headers(headers):
+    return {
+        _decode_header_item(key): _decode_header_item(value)
+        for key, value in headers
+    }
+
+
+def _decode_header_item(value):
+    try:
+        return value.decode("utf-8")
+    except ValueError:
+        return value.decode("latin-1")
