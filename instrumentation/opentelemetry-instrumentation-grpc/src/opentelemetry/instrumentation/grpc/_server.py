@@ -178,7 +178,9 @@ class _OpenTelemetryServicerContext(grpc.ServicerContext):
             grpc.StatusCode.DATA_LOSS: error_status,
         }
 
-        return status_codes.get(code, Status(status_code=StatusCode.UNSET, description=""))
+        return status_codes.get(
+            code, Status(status_code=StatusCode.UNSET, description="")
+        )
 
 
 # pylint:disable=abstract-method
