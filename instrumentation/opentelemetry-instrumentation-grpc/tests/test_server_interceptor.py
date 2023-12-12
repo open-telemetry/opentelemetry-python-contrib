@@ -572,7 +572,7 @@ class TestOpenTelemetryServerInterceptor(TestBase):
                 max_workers=1,
                 interceptors=[interceptor],
             ) as (server, channel):
-                server.add_generic_rpc_handlers([UnaryUnaryRpcHandler(handler)])
+                server.add_generic_rpc_handlers((UnaryUnaryRpcHandler(handler),))
 
                 server.start()
 

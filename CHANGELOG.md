@@ -22,7 +22,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - `opentelemetry-instrumentation-urllib`/`opentelemetry-instrumentation-urllib3` Fix metric descriptions to match semantic conventions
   ([#1959](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/1959))
-  
+- Align gRPC span status codes to OTEL specification ([#1756](https://github.com/open-telemetry/opentelemetry-python-contrib/issues/1756))
+
 ## Version 1.21.0/0.42b0 (2023-11-01)
 
 ### Added
@@ -44,7 +45,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   ([#1980](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/1980))
 - `opentelemetry-resource-detector-azure` Using new Cloud Resource ID attribute.
   ([#1976](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/1976))
-- Align gRPC span status codes to OTEL specification ([#1756](https://github.com/open-telemetry/opentelemetry-python-contrib/issues/1756))
 - Do not collect `system.network.connections` by default on macOS which was causing exceptions in metrics collection.
   ([#2008](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/2008))
 

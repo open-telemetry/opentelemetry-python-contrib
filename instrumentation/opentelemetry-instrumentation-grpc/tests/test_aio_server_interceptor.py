@@ -507,9 +507,7 @@ class TestOpenTelemetryAioServerInterceptor(TestBase, IsolatedAsyncioTestCase):
         class AbortServicer(GRPCTestServerServicer):
             # pylint:disable=C0103
             async def SimpleMethod(self, request, context):
-                await context.abort(
-                    grpc.StatusCode.INTERNAL, failure_message
-                )
+                await context.abort(grpc.StatusCode.INTERNAL, failure_message)
 
         testcase = self
 

@@ -166,7 +166,9 @@ class _OpenTelemetryServicerContext(grpc.ServicerContext):
         return self._servicer_context.set_details(details)
 
     def _server_status(self, code, details):
-        error_status = Status(status_code=StatusCode.ERROR, description=f"{code}:{details}")
+        error_status = Status(
+            status_code=StatusCode.ERROR, description=f"{code}:{details}"
+        )
         status_codes = {
             grpc.StatusCode.UNKNOWN: error_status,
             grpc.StatusCode.DEADLINE_EXCEEDED: error_status,
