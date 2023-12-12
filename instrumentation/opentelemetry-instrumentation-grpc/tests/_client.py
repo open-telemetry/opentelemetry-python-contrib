@@ -43,12 +43,14 @@ def client_streaming_method(stub, error=False):
     stub.ClientStreamingMethod(request_messages())
 
 
-def server_streaming_method(stub, error=False):
+def server_streaming_method(stub, error=False, serialize=True):
     request = Request(
         client_id=CLIENT_ID, request_data="error" if error else "data"
     )
     response_iterator = stub.ServerStreamingMethod(request)
-    list(response_iterator)
+    if serialize:
+        list(response_iterator)
+    return response_iterator
 
 
 def bidirectional_streaming_method(stub, error=False):
