@@ -648,7 +648,6 @@ class TestOpenTelemetryServerInterceptor(TestBase):
         )
 
 
-
 class TestOpenTelemetryServerInterceptorUnix(
     TestOpenTelemetryServerInterceptor,
 ):
