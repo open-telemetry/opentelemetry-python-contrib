@@ -671,19 +671,21 @@ class OpenTelemetryMiddleware:
                         duration_attrs[
                             SpanAttributes.HTTP_STATUS_CODE
                         ] = status_code
-                        set_status_code(server_span, status_code)
                         set_status_code(send_span, status_code)
 
                         expecting_trailers = message.get("trailers", False)
                     elif message["type"] == "websocket.send":
-                        set_status_code(server_span, 200)
                         set_status_code(send_span, 200)
                     send_span.set_attribute("type", message["type"])
-                    if (
-                        server_span.is_recording()
-                        and server_span.kind == trace.SpanKind.SERVER
-                        and "headers" in message
-                    ):
+
+                if (
+                    server_span.is_recording()
+                    and server_span.kind == trace.SpanKind.SERVER
+                ):
+                    if (message["type"] == "http.response.start") or (message["type"] == "websocket.send"):
+                        set_status_code(server_span, 200)
+
+                    if "headers" in message:
                         custom_response_attributes = (
                             collect_custom_response_headers_attributes(message)
                         )
