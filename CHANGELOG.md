@@ -17,6 +17,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   ([#2002](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/2002))
 - `opentelemetry-instrument-grpc` Fix arity of context.abort for AIO RPCs
   ([#2066](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/2066))
+- `opentelemetry-instrument-asgi` Set HTTP status code attribute for server span
+  ([#2088](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/2088))
 
 ### Fixed
 
