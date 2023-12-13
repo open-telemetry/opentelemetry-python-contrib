@@ -845,7 +845,6 @@ class TestAsgiApplication(AsgiTestBase):
     
     def test_status_code_when_send_not_recording(self):
         from opentelemetry.sdk.trace.sampling import Decision, Sampler, SamplingResult
-        import sys
 
         class TestSampler(Sampler):
             def should_sample(
@@ -858,7 +857,8 @@ class TestAsgiApplication(AsgiTestBase):
                 links=None,
                 trace_state=None,
             ):
-                # Only sample the server span
+                # Only sample the server span, dropping the "http send" and
+                # "http receive" span.
                 return SamplingResult(Decision.RECORD_AND_SAMPLE if name == "GET /" else Decision.DROP)
 
             def get_description(self) -> str:
@@ -875,7 +875,7 @@ class TestAsgiApplication(AsgiTestBase):
         self.send_default_request()
         self.get_all_output()
         span_list = exporter.get_finished_spans()
-        print(span_list, file=sys.stderr)
+
         self.assertEqual(len(span_list), 1)
         self.assertEqual(span_list[0].attributes['http.status_code'], 200)
 
