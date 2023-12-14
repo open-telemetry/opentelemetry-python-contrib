@@ -12,7 +12,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 # pylint:disable=cyclic-import
-from time import sleep
 
 from unittest import mock
 
@@ -62,24 +61,24 @@ class Interceptor(
         pass
 
     def intercept_unary_unary(
-            self, continuation, client_call_details, request
+        self, continuation, client_call_details, request
     ):
         return self._intercept_call(continuation, client_call_details, request)
 
     def intercept_unary_stream(
-            self, continuation, client_call_details, request
+        self, continuation, client_call_details, request
     ):
         return self._intercept_call(continuation, client_call_details, request)
 
     def intercept_stream_unary(
-            self, continuation, client_call_details, request_iterator
+        self, continuation, client_call_details, request_iterator
     ):
         return self._intercept_call(
             continuation, client_call_details, request_iterator
         )
 
     def intercept_stream_stream(
-            self, continuation, client_call_details, request_iterator
+        self, continuation, client_call_details, request_iterator
     ):
         return self._intercept_call(
             continuation, client_call_details, request_iterator
@@ -87,7 +86,7 @@ class Interceptor(
 
     @staticmethod
     def _intercept_call(
-            continuation, client_call_details, request_or_iterator
+        continuation, client_call_details, request_or_iterator
     ):
         return continuation(client_call_details, request_or_iterator)
 
@@ -100,9 +99,7 @@ class TestClientProto(TestBase):
         self.server.start()
         # use a user defined interceptor along with the opentelemetry client interceptor
         interceptors = [Interceptor()]
-        self.channel = grpc.insecure_channel("localhost:25565", options=[
-            # (grpc.experimental.ChannelOptions.SingleThreadedUnaryStream, 1)
-        ])
+        self.channel = grpc.insecure_channel("localhost:25565")
         self.channel = grpc.intercept_channel(self.channel, *interceptors)
         self._stub = test_server_pb2_grpc.GRPCTestServerStub(self.channel)
 
@@ -175,14 +172,11 @@ class TestClientProto(TestBase):
         )
 
     def test_unary_stream_can_be_cancel(self):
-        responses = server_streaming_method(self._stub)
+        responses = server_streaming_method(self._stub, serialize=False)
         for i, _ in enumerate(responses):
             if i == 1:
                 responses.cancel()
                 break
-        sleep(10)
-        self.server.stop(None)
-        self.channel.close()
         spans = self.memory_exporter.get_finished_spans()
         self.assertEqual(len(spans), 1)
         span = spans[0]
@@ -202,6 +196,33 @@ class TestClientProto(TestBase):
                 SpanAttributes.RPC_SERVICE: "GRPCTestServer",
                 SpanAttributes.RPC_SYSTEM: "grpc",
                 SpanAttributes.RPC_GRPC_STATUS_CODE: grpc.StatusCode.CANCELLED.value[
+                    0
+                ],
+            },
+        )
+
+    def test_finished_stream_cancel_does_not_change_status_of_span(self):
+        responses = server_streaming_method(self._stub, serialize=True)
+        responses.cancel()
+        spans = self.memory_exporter.get_finished_spans()
+        self.assertEqual(len(spans), 1)
+        span = spans[0]
+
+        self.assertEqual(span.name, "/GRPCTestServer/ServerStreamingMethod")
+        self.assertIs(span.kind, trace.SpanKind.CLIENT)
+
+        # Check version and name in span's instrumentation info
+        self.assertEqualSpanInstrumentationInfo(
+            span, opentelemetry.instrumentation.grpc
+        )
+
+        self.assertSpanHasAttributes(
+            span,
+            {
+                SpanAttributes.RPC_METHOD: "ServerStreamingMethod",
+                SpanAttributes.RPC_SERVICE: "GRPCTestServer",
+                SpanAttributes.RPC_SYSTEM: "grpc",
+                SpanAttributes.RPC_GRPC_STATUS_CODE: grpc.StatusCode.OK.value[
                     0
                 ],
             },
@@ -254,6 +275,38 @@ class TestClientProto(TestBase):
                 RPC_SERVICE: "GRPCTestServer",
                 RPC_SYSTEM: "grpc",
                 RPC_GRPC_STATUS_CODE: grpc.StatusCode.OK.value[0],
+            },
+        )
+
+    def test_stream_stream_can_be_cancel(self):
+        responses = bidirectional_streaming_method(self._stub, serialize=False)
+        for i, _ in enumerate(responses):
+            if i == 1:
+                responses.cancel()
+                break
+        spans = self.memory_exporter.get_finished_spans()
+        self.assertEqual(len(spans), 1)
+        span = spans[0]
+
+        self.assertEqual(
+            span.name, "/GRPCTestServer/BidirectionalStreamingMethod"
+        )
+        self.assertIs(span.kind, trace.SpanKind.CLIENT)
+
+        # Check version and name in span's instrumentation info
+        self.assertEqualSpanInstrumentationInfo(
+            span, opentelemetry.instrumentation.grpc
+        )
+
+        self.assertSpanHasAttributes(
+            span,
+            {
+                SpanAttributes.RPC_METHOD: "BidirectionalStreamingMethod",
+                SpanAttributes.RPC_SERVICE: "GRPCTestServer",
+                SpanAttributes.RPC_SYSTEM: "grpc",
+                SpanAttributes.RPC_GRPC_STATUS_CODE: grpc.StatusCode.CANCELLED.value[
+                    0
+                ],
             },
         )
 
@@ -332,7 +385,7 @@ class TestClientProto(TestBase):
             self.assertEqual(span_end_mock.call_count, 1)
 
     def test_client_interceptor_trace_context_propagation(
-            self,
+        self,
     ):  # pylint: disable=no-self-use
         """ensure that client interceptor correctly inject trace context into all outgoing requests."""
         previous_propagator = get_global_textmap()
