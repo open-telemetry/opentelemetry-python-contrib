@@ -78,7 +78,7 @@ libraries = [
     },
     {
         "library": "falcon >= 1.4.1, < 3.1.2",
-        "instrumentation": "opentelemetry-instrumentation-falcon==0.43b0.dev",
+        "instrumentation": "opentelemetry-instrumentation-falcon==0.44b0.dev",
     },
     {
         "library": "fastapi ~= 0.58",
