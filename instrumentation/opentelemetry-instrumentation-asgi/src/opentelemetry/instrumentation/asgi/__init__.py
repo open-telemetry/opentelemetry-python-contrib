@@ -682,7 +682,9 @@ class OpenTelemetryMiddleware:
                     server_span.is_recording()
                     and server_span.kind == trace.SpanKind.SERVER
                 ):
-                    if (message["type"] == "http.response.start") or (message["type"] == "websocket.send"):
+                    if (message["type"] == "http.response.start") or (
+                        message["type"] == "websocket.send"
+                    ):
                         set_status_code(server_span, 200)
 
                     if "headers" in message:

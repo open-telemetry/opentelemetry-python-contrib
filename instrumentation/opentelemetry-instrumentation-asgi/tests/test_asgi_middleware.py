@@ -842,9 +842,13 @@ class TestAsgiApplication(AsgiTestBase):
         self.send_input({"type": "websocket.disconnect"})
         self.get_all_output()
         self.assertIsNone(self.memory_metrics_reader.get_metrics_data())
-    
+
     def test_status_code_when_send_not_recording(self):
-        from opentelemetry.sdk.trace.sampling import Decision, Sampler, SamplingResult
+        from opentelemetry.sdk.trace.sampling import (
+            Decision,
+            Sampler,
+            SamplingResult,
+        )
 
         class TestSampler(Sampler):
             def should_sample(
@@ -859,11 +863,14 @@ class TestAsgiApplication(AsgiTestBase):
             ):
                 # Only sample the server span, dropping the "http send" and
                 # "http receive" span.
-                return SamplingResult(Decision.RECORD_AND_SAMPLE if name == "GET /" else Decision.DROP)
+                return SamplingResult(
+                    Decision.RECORD_AND_SAMPLE
+                    if name == "GET /"
+                    else Decision.DROP
+                )
 
             def get_description(self) -> str:
                 return "Sampler that ensures that only server span is recorded"
-
 
         result = TestBase.create_tracer_provider(sampler=TestSampler())
         tracer_provider, exporter = result
@@ -877,7 +884,7 @@ class TestAsgiApplication(AsgiTestBase):
         span_list = exporter.get_finished_spans()
 
         self.assertEqual(len(span_list), 1)
-        self.assertEqual(span_list[0].attributes['http.status_code'], 200)
+        self.assertEqual(span_list[0].attributes["http.status_code"], 200)
 
 
 class TestAsgiAttributes(unittest.TestCase):
