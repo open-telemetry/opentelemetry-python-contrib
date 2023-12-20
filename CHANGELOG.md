@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## Unreleased
 
+## Version 1.22.0/0.43b0 (2023-12-14)
+
 ### Added
 
 - `opentelemetry-instrumentation` Added Otel semantic convention opt-in mechanism
