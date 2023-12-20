@@ -19,5 +19,5 @@ Installation
 References
 ----------
 
-* `OpenTelemetry confluent-kafka/ Tracing <https://opentelemetry-python-contrib.readthedocs.io/en/latest/instrumentation/confluent-kafka/confluent-kafka.html>`_
+* `OpenTelemetry confluent-kafka/ Tracing <https://opentelemetry-python-contrib.readthedocs.io/en/latest/instrumentation/confluent_kafka/confluent_kafka.html>`_
 * `OpenTelemetry Project <https://opentelemetry.io/>`_
