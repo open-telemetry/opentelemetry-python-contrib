@@ -259,10 +259,7 @@ except AttributeError:
         from importlib import metadata
     except ImportError:
         import importlib_metadata as metadata
-    try:
-        flask_version = metadata.version("flask")
-    except (ImportError, metadata.PackageNotFoundError):
-        flask_version = "unknown"
+    flask_version = metadata.version("flask")
 
 from opentelemetry.instrumentation.instrumentor import BaseInstrumentor
 from opentelemetry.instrumentation.propagators import (
