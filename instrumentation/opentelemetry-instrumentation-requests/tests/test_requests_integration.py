@@ -22,7 +22,6 @@ from requests.models import Response
 
 import opentelemetry.instrumentation.requests
 from opentelemetry import trace
-
 from opentelemetry.instrumentation._semconv import (
     _OTEL_SEMCONV_STABILITY_OPT_IN_KEY,
     _SPAN_ATTRIBUTES_ERROR_TYPE,
