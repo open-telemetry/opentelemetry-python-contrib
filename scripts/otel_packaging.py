@@ -18,7 +18,6 @@ from subprocess import CalledProcessError
 import tomli
 from requests import get
 
-
 scripts_path = os.path.dirname(os.path.abspath(__file__))
 root_path = os.path.dirname(scripts_path)
 instrumentations_path = os.path.join(root_path, "instrumentation")
@@ -32,9 +31,7 @@ def get_instrumentation_packages():
 
         error = f"Could not get version for package {pkg}"
         try:
-            response = get(
-                f"https://pypi.org/pypi/{pkg}/json"
-            )
+            response = get(f"https://pypi.org/pypi/{pkg}/json")
 
         except Exception as exc:
             print(error)
