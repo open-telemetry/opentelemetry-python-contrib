@@ -228,8 +228,7 @@ def get_custom_headers(env_var: str) -> list[str]:
             custom_headers.strip()
             for custom_headers in custom_headers.split(",")
         ]
-    else:
-        return []
+    return []
 
 
 def _parse_active_request_count_attrs(req_attrs):
