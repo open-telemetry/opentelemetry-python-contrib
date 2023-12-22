@@ -22,6 +22,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- `opentelemetry-instrumentation-httpx` Remove URL credentials
+  ([#2020](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/2020))
 - `opentelemetry-instrumentation-urllib`/`opentelemetry-instrumentation-urllib3` Fix metric descriptions to match semantic conventions
   ([#1959](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/1959))
   
