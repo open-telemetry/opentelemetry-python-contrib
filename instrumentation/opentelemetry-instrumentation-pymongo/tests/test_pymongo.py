@@ -14,13 +14,12 @@
 
 from unittest import mock
 
-from opentelemetry import context
 from opentelemetry import trace as trace_api
 from opentelemetry.instrumentation.pymongo import (
     CommandTracer,
     PymongoInstrumentor,
 )
-from opentelemetry.instrumentation.utils import _SUPPRESS_INSTRUMENTATION_KEY
+from opentelemetry.instrumentation.utils import suppress_instrumentation
 from opentelemetry.semconv.trace import SpanAttributes
 from opentelemetry.test.test_base import TestBase
 
@@ -112,16 +111,10 @@ class TestPymongo(TestBase):
         mock_event.command.get = mock.Mock()
         mock_event.command.get.return_value = "dummy"
 
-        token = context.attach(
-            context.set_value(_SUPPRESS_INSTRUMENTATION_KEY, True)
-        )
-
-        try:
+        with suppress_instrumentation():
             command_tracer = CommandTracer(mock_tracer)
             command_tracer.started(event=mock_event)
             command_tracer.succeeded(event=mock_event)
-        finally:
-            context.detach(token)
 
         # if suppression key is set, CommandTracer methods return immediately, so command.get is not invoked.
         self.assertFalse(
