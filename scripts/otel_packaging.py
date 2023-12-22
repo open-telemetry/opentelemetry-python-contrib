@@ -13,7 +13,6 @@
 # limitations under the License.
 
 import os
-from subprocess import CalledProcessError
 
 import tomli
 from requests import get
@@ -31,9 +30,9 @@ def get_instrumentation_packages():
 
         error = f"Could not get version for package {pkg}"
         try:
-            response = get(f"https://pypi.org/pypi/{pkg}/json")
+            response = get(f"https://pypi.org/pypi/{pkg}/json", timeout=10)
 
-        except Exception as exc:
+        except Exception:
             print(error)
             continue
 
