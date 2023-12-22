@@ -245,9 +245,9 @@ from timeit import default_timer
 from typing import Collection
 
 import flask
-import opentelemetry.instrumentation.wsgi as otel_wsgi
 from packaging import version as package_version
 
+import opentelemetry.instrumentation.wsgi as otel_wsgi
 from opentelemetry import context, trace
 from opentelemetry.instrumentation.flask.package import _instruments
 from opentelemetry.instrumentation.flask.version import __version__
