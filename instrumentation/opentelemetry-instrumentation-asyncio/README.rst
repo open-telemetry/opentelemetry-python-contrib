@@ -15,17 +15,20 @@ The metric for coroutine, future, is generated even if there is no setting to ge
 
 Set the name of the coroutine you want to trace.
 -------------------------------------------------
-.. code::
+.. code:: bash
+
     export OTEL_PYTHON_ASYNCIO_COROUTINE_NAMES_TO_TRACE=coro_name,coro_name2,coro_name3
 
 If you want to keep track of which function to use in the to_thread function of asyncio, set the name of the function.
 ------------------------------------------------------------------------------------------------------------------------
-.. code::
+.. code:: bash
+
     export OTEL_PYTHON_ASYNCIO_TO_THREAD_FUNCTION_NAMES_TO_TRACE=func_name,func_name2,func_name3
 
 For future, set it up like this
 -----------------------------------------------
-.. code::
+.. code:: bash
+
     export OTEL_PYTHON_ASYNCIO_FUTURE_TRACE_ENABLED=true
 
 Run instrumented application
@@ -122,6 +125,6 @@ Installation
 References
 ----------
 
-* `OpenTelemetry asyncio/ Tracing <https://opentelemetry-python-contrib.readthedocs.io/en/latest/instrumentation/<REPLACE ME>/<REPLACE ME>.html>`_
+* `OpenTelemetry asyncio/ Tracing <https://opentelemetry-python-contrib.readthedocs.io/en/latest/instrumentation/asyncio/asyncio.html>`_
 * `OpenTelemetry Project <https://opentelemetry.io/>`_
 * `OpenTelemetry Python Examples <https://github.com/open-telemetry/opentelemetry-python/tree/main/docs/examples>`_
