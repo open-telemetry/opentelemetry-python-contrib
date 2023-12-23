@@ -42,9 +42,7 @@ class TestAsyncioGather(TestBase):
 
     def test_asyncio_gather(self):
         async def gather_factorial():
-            await asyncio.gather(
-                factorial(2), factorial(3), factorial(4)
-            )
+            await asyncio.gather(factorial(2), factorial(3), factorial(4))
 
         asyncio.run(gather_factorial())
         spans = self.memory_exporter.get_finished_spans()
