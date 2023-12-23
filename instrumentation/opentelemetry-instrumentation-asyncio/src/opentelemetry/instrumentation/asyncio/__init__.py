@@ -287,7 +287,9 @@ class AsyncioInstrumentor(BaseInstrumentor):
             return method(*args, **kwargs)
 
         _wrap(
-            asyncio.TaskGroup, "create_task", wrap_taskgroup_create_task  # pylint: disable=no-member
+            asyncio.TaskGroup,  # pylint: disable=no-member
+            "create_task",
+            wrap_taskgroup_create_task,
         )
 
     def trace_to_thread(self, func):
