@@ -52,8 +52,6 @@ Run instrumented application
 -------------
 .. code:: python
 
-    # export OTEL_PYTHON_ASYNCIO_TO_THREAD_FUNCTION_NAMES_TO_TRACE=func
-
     import asyncio
     from opentelemetry.instrumentation.asyncio import AsyncioInstrumentor
 
@@ -103,18 +101,43 @@ from asyncio import futures
 from timeit import default_timer
 from typing import Collection
 
-from opentelemetry.metrics import get_meter
-from opentelemetry.trace import get_tracer
-from opentelemetry.trace.status import Status, StatusCode
 from wrapt import wrap_function_wrapper as _wrap
 
-from opentelemetry.instrumentation.asyncio.metrics import *
+from opentelemetry.instrumentation.asyncio.metrics import (
+    ASYNCIO_COROUTINE_ACTIVE,
+    ASYNCIO_COROUTINE_CANCELLED,
+    ASYNCIO_COROUTINE_CREATED,
+    ASYNCIO_COROUTINE_DURATION,
+    ASYNCIO_COROUTINE_EXCEPTIONS,
+    ASYNCIO_COROUTINE_FINISHED,
+    ASYNCIO_COROUTINE_NAME,
+    ASYNCIO_COROUTINE_TIMEOUTS,
+    ASYNCIO_EXCEPTIONS_NAME,
+    ASYNCIO_FUTURES_ACTIVE,
+    ASYNCIO_FUTURES_CANCELLED,
+    ASYNCIO_FUTURES_CREATED,
+    ASYNCIO_FUTURES_DURATION,
+    ASYNCIO_FUTURES_EXCEPTIONS,
+    ASYNCIO_FUTURES_FINISHED,
+    ASYNCIO_FUTURES_TIMEOUTS,
+    ASYNCIO_TO_THREAD_ACTIVE,
+    ASYNCIO_TO_THREAD_CREATED,
+    ASYNCIO_TO_THREAD_DURATION,
+    ASYNCIO_TO_THREAD_EXCEPTIONS,
+    ASYNCIO_TO_THREAD_FINISHED,
+)
 from opentelemetry.instrumentation.asyncio.package import _instruments
-from opentelemetry.instrumentation.asyncio.utils import get_coros_to_trace, get_future_trace_enabled, \
-    get_to_thread_to_trace
+from opentelemetry.instrumentation.asyncio.utils import (
+    get_coros_to_trace,
+    get_future_trace_enabled,
+    get_to_thread_to_trace,
+)
 from opentelemetry.instrumentation.asyncio.version import __version__
 from opentelemetry.instrumentation.instrumentor import BaseInstrumentor
 from opentelemetry.instrumentation.utils import unwrap
+from opentelemetry.metrics import get_meter
+from opentelemetry.trace import get_tracer
+from opentelemetry.trace.status import Status, StatusCode
 
 ASYNCIO_PREFIX = "asyncio."
 
@@ -170,9 +193,7 @@ class AsyncioInstrumentor(BaseInstrumentor):
 
     def _instrument(self, **kwargs):
         tracer_provider = kwargs.get("tracer_provider")
-        self._tracer = get_tracer(
-            __name__, __version__, tracer_provider
-        )
+        self._tracer = get_tracer(__name__, __version__, tracer_provider)
         self._meter = get_meter(
             __name__, __version__, kwargs.get("meter_provider")
         )
@@ -211,11 +232,15 @@ class AsyncioInstrumentor(BaseInstrumentor):
             if args and len(args) > 0:
                 first_arg = args[0]
                 # Check if it's a coroutine or future and wrap it
-                if asyncio.iscoroutine(first_arg) or futures.isfuture(first_arg):
+                if asyncio.iscoroutine(first_arg) or futures.isfuture(
+                    first_arg
+                ):
                     args = (self.trace_item(first_arg),) + args[1:]
                 # Check if it's a list and wrap each item
                 elif isinstance(first_arg, list):
-                    args = ([self.trace_item(item) for item in first_arg],) + args[1:]
+                    args = (
+                        [self.trace_item(item) for item in first_arg],
+                    ) + args[1:]
             return method(*args, **kwargs)
 
         _wrap(asyncio, method_name, wrap_coro_or_future)
@@ -227,7 +252,6 @@ class AsyncioInstrumentor(BaseInstrumentor):
         unwrap(asyncio, method_name)
 
     def instrument_gather(self):
-
         def wrap_coros_or_futures(method, instance, args, kwargs):
             if args and len(args) > 0:
                 # Check if it's a coroutine or future and wrap it
@@ -286,8 +310,13 @@ class AsyncioInstrumentor(BaseInstrumentor):
         start = default_timer()
         self.to_thread_created_metric.add(1)
         self.to_thread_active_metric.add(1)
-        span = self._tracer.start_span(
-            f"{ASYNCIO_PREFIX}to_thread_func-" + func.__name__) if func.__name__ in self._to_thread_name_to_trace else None
+        span = (
+            self._tracer.start_span(
+                f"{ASYNCIO_PREFIX}to_thread_func-" + func.__name__
+            )
+            if func.__name__ in self._to_thread_name_to_trace
+            else None
+        )
         exception = None
         try:
             return func
@@ -326,8 +355,11 @@ class AsyncioInstrumentor(BaseInstrumentor):
         self.coro_created_metric.add(1, coro_attr)
         self.coro_active_metric.add(1, coro_attr)
 
-        span = self._tracer.start_span(
-            f"{ASYNCIO_PREFIX}coro-" + coro.__name__) if coro.__name__ in self._coros_name_to_trace else None
+        span = (
+            self._tracer.start_span(f"{ASYNCIO_PREFIX}coro-" + coro.__name__)
+            if coro.__name__ in self._coros_name_to_trace
+            else None
+        )
 
         exception = None
         try:
@@ -343,7 +375,9 @@ class AsyncioInstrumentor(BaseInstrumentor):
         except Exception as exc:
             exception = exc
             coro_exception_attr = coro_attr.copy()
-            coro_exception_attr[ASYNCIO_EXCEPTIONS_NAME] = exc.__class__.__name__
+            coro_exception_attr[
+                ASYNCIO_EXCEPTIONS_NAME
+            ] = exc.__class__.__name__
             self.coro_exception_metric.add(1, coro_exception_attr)
             raise
         finally:
@@ -362,7 +396,11 @@ class AsyncioInstrumentor(BaseInstrumentor):
         start = default_timer()
         self.future_created_metric.add(1)
         self.future_active_metric.add(1)
-        span = self._tracer.start_span(f"{ASYNCIO_PREFIX}future") if self._future_active_enabled else None
+        span = (
+            self._tracer.start_span(f"{ASYNCIO_PREFIX}future")
+            if self._future_active_enabled
+            else None
+        )
 
         def callback(f):
             exception = f.exception()
@@ -371,7 +409,9 @@ class AsyncioInstrumentor(BaseInstrumentor):
             elif isinstance(exception, asyncio.TimeoutError):
                 self.future_timeout_metric.add(1)
             elif exception:
-                exception_attr = {ASYNCIO_EXCEPTIONS_NAME: exception.__class__.__name__}
+                exception_attr = {
+                    ASYNCIO_EXCEPTIONS_NAME: exception.__class__.__name__
+                }
                 self.future_exception_metric.add(1, exception_attr)
 
             duration = max(round((default_timer() - start) * 1000), 0)

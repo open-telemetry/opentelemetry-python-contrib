@@ -15,13 +15,23 @@ import asyncio
 from unittest.mock import patch
 
 import pytest
+
+from opentelemetry.instrumentation.asyncio import (
+    ASYNCIO_FUTURES_ACTIVE,
+    ASYNCIO_FUTURES_CANCELLED,
+    ASYNCIO_FUTURES_CREATED,
+    ASYNCIO_FUTURES_DURATION,
+    ASYNCIO_FUTURES_EXCEPTIONS,
+    ASYNCIO_FUTURES_FINISHED,
+    ASYNCIO_FUTURES_TIMEOUTS,
+    AsyncioInstrumentor,
+)
+from opentelemetry.instrumentation.asyncio.environment_variables import (
+    OTEL_PYTHON_ASYNCIO_FUTURE_TRACE_ENABLED,
+)
 from opentelemetry.test.test_base import TestBase
 from opentelemetry.trace import get_tracer
 
-from opentelemetry.instrumentation.asyncio import AsyncioInstrumentor, ASYNCIO_FUTURES_DURATION, \
-    ASYNCIO_FUTURES_CANCELLED, ASYNCIO_FUTURES_CREATED, ASYNCIO_FUTURES_ACTIVE, ASYNCIO_FUTURES_EXCEPTIONS, \
-    ASYNCIO_FUTURES_FINISHED, ASYNCIO_FUTURES_TIMEOUTS
-from opentelemetry.instrumentation.asyncio.environment_variables import OTEL_PYTHON_ASYNCIO_FUTURE_TRACE_ENABLED
 from .common_test_func import async_func
 
 _expected_metric_names = [
@@ -31,15 +41,13 @@ _expected_metric_names = [
     ASYNCIO_FUTURES_CREATED,
     ASYNCIO_FUTURES_ACTIVE,
     ASYNCIO_FUTURES_FINISHED,
-    ASYNCIO_FUTURES_TIMEOUTS
+    ASYNCIO_FUTURES_TIMEOUTS,
 ]
 
 
 class TestAsyncioEnsureFuture(TestBase):
     @patch.dict(
-        "os.environ", {
-            OTEL_PYTHON_ASYNCIO_FUTURE_TRACE_ENABLED: "true"
-        }
+        "os.environ", {OTEL_PYTHON_ASYNCIO_FUTURE_TRACE_ENABLED: "true"}
     )
     def setUp(self):
         super().setUp()
@@ -70,7 +78,7 @@ class TestAsyncioEnsureFuture(TestBase):
     @pytest.mark.asyncio
     def test_asyncio_ensure_future_with_future(self):
         async def test():
-            with self._tracer.start_as_current_span("root") as root:
+            with self._tracer.start_as_current_span("root"):
                 future = asyncio.Future()
                 future.set_result(1)
                 task = asyncio.ensure_future(future)
@@ -86,7 +94,12 @@ class TestAsyncioEnsureFuture(TestBase):
             if span.name == "asyncio.future":
                 self.assertNotEquals(span.parent.trace_id, 0)
 
-        for metric in self.memory_metrics_reader.get_metrics_data().resource_metrics[0].scope_metrics[0].metrics:
+        for metric in (
+            self.memory_metrics_reader.get_metrics_data()
+            .resource_metrics[0]
+            .scope_metrics[0]
+            .metrics
+        ):
             if metric.name == ASYNCIO_FUTURES_DURATION:
                 self.assertEquals(metric.data.data_points[0].count, 1)
             elif metric.name == ASYNCIO_FUTURES_ACTIVE:

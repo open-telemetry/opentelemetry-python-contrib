@@ -15,19 +15,20 @@ import asyncio
 import sys
 from unittest.mock import patch
 
+from opentelemetry.instrumentation.asyncio import AsyncioInstrumentor
+from opentelemetry.instrumentation.asyncio.environment_variables import (
+    OTEL_PYTHON_ASYNCIO_COROUTINE_NAMES_TO_TRACE,
+)
 from opentelemetry.test.test_base import TestBase
 from opentelemetry.trace import get_tracer
 
-from opentelemetry.instrumentation.asyncio.environment_variables import OTEL_PYTHON_ASYNCIO_COROUTINE_NAMES_TO_TRACE
 from .common_test_func import async_func
-from opentelemetry.instrumentation.asyncio import AsyncioInstrumentor
 
 
 class TestAsyncioWait(TestBase):
     @patch.dict(
-        "os.environ", {
-            OTEL_PYTHON_ASYNCIO_COROUTINE_NAMES_TO_TRACE: "async_func"
-        }
+        "os.environ",
+        {OTEL_PYTHON_ASYNCIO_COROUTINE_NAMES_TO_TRACE: "async_func"},
     )
     def setUp(self):
         super().setUp()
@@ -41,12 +42,14 @@ class TestAsyncioWait(TestBase):
         AsyncioInstrumentor().uninstrument()
 
     def test_asyncio_wait_with_create_task(self):
-
         async def main():
             if sys.version_info >= (3, 11):
                 # In Python 3.11, you can't send coroutines directly to asyncio.wait().
                 # Instead, you must wrap them in asyncio.create_task().
-                tasks = [asyncio.create_task(async_func()), asyncio.create_task(async_func())]
+                tasks = [
+                    asyncio.create_task(async_func()),
+                    asyncio.create_task(async_func()),
+                ]
                 await asyncio.wait(tasks)
             else:
                 await asyncio.wait([async_func(), async_func()])
@@ -69,7 +72,10 @@ class TestAsyncioWait(TestBase):
             if sys.version_info >= (3, 11):
                 # In Python 3.11, you can't send coroutines directly to asyncio.as_completed().
                 # Instead, you must wrap them in asyncio.create_task().
-                tasks = [asyncio.create_task(async_func()), asyncio.create_task(async_func())]
+                tasks = [
+                    asyncio.create_task(async_func()),
+                    asyncio.create_task(async_func()),
+                ]
                 for task in asyncio.as_completed(tasks):
                     await task
             else:

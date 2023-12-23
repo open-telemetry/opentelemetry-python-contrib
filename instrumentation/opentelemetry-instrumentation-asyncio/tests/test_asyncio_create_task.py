@@ -14,19 +14,19 @@
 import asyncio
 from unittest.mock import patch
 
+from opentelemetry.instrumentation.asyncio import AsyncioInstrumentor
+from opentelemetry.instrumentation.asyncio.environment_variables import (
+    OTEL_PYTHON_ASYNCIO_COROUTINE_NAMES_TO_TRACE,
+)
 from opentelemetry.test.test_base import TestBase
 from opentelemetry.trace import get_tracer
 
 from .common_test_func import factorial
-from opentelemetry.instrumentation.asyncio import AsyncioInstrumentor
-from opentelemetry.instrumentation.asyncio.environment_variables import OTEL_PYTHON_ASYNCIO_COROUTINE_NAMES_TO_TRACE
 
 
 class TestAsyncioCreateTask(TestBase):
     @patch.dict(
-        "os.environ", {
-            OTEL_PYTHON_ASYNCIO_COROUTINE_NAMES_TO_TRACE: "sleep"
-        }
+        "os.environ", {OTEL_PYTHON_ASYNCIO_COROUTINE_NAMES_TO_TRACE: "sleep"}
     )
     def setUp(self):
         super().setUp()
@@ -42,7 +42,7 @@ class TestAsyncioCreateTask(TestBase):
     def test_asyncio_create_task(self):
         async def async_func():
             await asyncio.create_task(asyncio.sleep(0))
-            await asyncio.create_task(factorial("A", 3))
+            await asyncio.create_task(factorial(3))
 
         asyncio.run(async_func())
         spans = self.memory_exporter.get_finished_spans()

@@ -26,6 +26,9 @@ classifiers = [
 ]
 dependencies = [
   "opentelemetry-api ~= 1.14",
+  "opentelemetry-instrumentation == 0.44b0.dev",
+  "opentelemetry-semantic-conventions == 0.44b0.dev",
+  "opentelemetry-test-utils == 0.44b0.dev",
   "wrapt >= 1.0.0, < 2.0.0",
 ]
 
@@ -33,7 +36,6 @@ dependencies = [
 instruments = []
 test = [
   "opentelemetry-instrumentation-asyncio[instruments]",
-  "opentelemetry-test-utils == 0.43b0",
   "pytest",
   "wrapt >= 1.0.0, < 2.0.0",
   "pytest-asyncio",

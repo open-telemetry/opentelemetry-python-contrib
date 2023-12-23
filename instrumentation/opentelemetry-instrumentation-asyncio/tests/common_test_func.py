@@ -19,14 +19,12 @@ async def async_func():
     await asyncio.sleep(0.1)
 
 
-async def factorial(name, number):
-    f = 1
-    for i in range(2, number + 1):
-        print(f"Task {name}: Compute factorial({number}), currently i={i}...")
+async def factorial(number):
+    factorial_value = 1
+    for value in range(2, number + 1):
         await asyncio.sleep(0)
-        f *= i
-    print(f"Task {name}: factorial({number}) = {f}")
-    return f
+        factorial_value *= value
+    return factorial_value
 
 
 async def cancellable_coroutine():

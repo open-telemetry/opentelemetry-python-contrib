@@ -15,19 +15,18 @@ import asyncio
 import sys
 from unittest.mock import patch
 
+from opentelemetry.instrumentation.asyncio import AsyncioInstrumentor
+from opentelemetry.instrumentation.asyncio.environment_variables import (
+    OTEL_PYTHON_ASYNCIO_TO_THREAD_FUNCTION_NAMES_TO_TRACE,
+)
 from opentelemetry.test.test_base import TestBase
 from opentelemetry.trace import get_tracer
-
-from opentelemetry.instrumentation.asyncio import AsyncioInstrumentor
-from opentelemetry.instrumentation.asyncio.environment_variables import \
-    OTEL_PYTHON_ASYNCIO_TO_THREAD_FUNCTION_NAMES_TO_TRACE
 
 
 class TestAsyncioToThread(TestBase):
     @patch.dict(
-        "os.environ", {
-            OTEL_PYTHON_ASYNCIO_TO_THREAD_FUNCTION_NAMES_TO_TRACE: "multiply"
-        }
+        "os.environ",
+        {OTEL_PYTHON_ASYNCIO_TO_THREAD_FUNCTION_NAMES_TO_TRACE: "multiply"},
     )
     def setUp(self):
         super().setUp()
@@ -43,6 +42,7 @@ class TestAsyncioToThread(TestBase):
     def test_to_thread(self):
         # to_thread is only available in Python 3.9+
         if sys.version_info >= (3, 9):
+
             def multiply(x, y):
                 return x * y
 
@@ -56,7 +56,12 @@ class TestAsyncioToThread(TestBase):
 
             self.assertEqual(len(spans), 2)
             assert spans[0].name == "asyncio.to_thread_func-multiply"
-            for metric in self.memory_metrics_reader.get_metrics_data().resource_metrics[0].scope_metrics[0].metrics:
+            for metric in (
+                self.memory_metrics_reader.get_metrics_data()
+                .resource_metrics[0]
+                .scope_metrics[0]
+                .metrics
+            ):
                 if metric.name == "asyncio.to_thread.duration":
                     self.assertEquals(metric.data.data_points[0].count, 1)
                 elif metric.name == "asyncio.to_thread.active":
@@ -70,4 +75,6 @@ class TestAsyncioToThread(TestBase):
                 elif metric.name == "asyncio.to_thread.cancelled":
                     self.assertEqual(metric.data.data_points[0].value, 0)
                 elif metric.name == "asyncio.to_thread.name":
-                    self.assertEqual(metric.data.data_points[0].value, "multiply")
+                    self.assertEqual(
+                        metric.data.data_points[0].value, "multiply"
+                    )
