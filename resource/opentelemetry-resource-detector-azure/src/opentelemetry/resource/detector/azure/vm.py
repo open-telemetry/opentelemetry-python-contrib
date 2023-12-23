@@ -24,7 +24,6 @@ from opentelemetry.semconv.resource import (
     ResourceAttributes,
 )
 
-# TODO: Remove when cloud resource id is no longer missing in Resource Attributes
 _AZURE_VM_METADATA_ENDPOINT = "http://169.254.169.254/metadata/instance/compute?api-version=2021-12-13&format=json"
 _AZURE_VM_SCALE_SET_NAME_ATTRIBUTE = "azure.vm.scaleset.name"
 _AZURE_VM_SKU_ATTRIBUTE = "azure.vm.sku"

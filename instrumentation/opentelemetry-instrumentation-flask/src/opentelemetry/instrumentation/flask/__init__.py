@@ -141,7 +141,7 @@ For example,
         if span and span.is_recording():
             span.set_attribute("custom_user_attribute_from_response_hook", "some-value")
 
-    FlaskInstrumentation().instrument(request_hook=request_hook, response_hook=response_hook)
+    FlaskInstrumentor().instrument(request_hook=request_hook, response_hook=response_hook)
 
 Flask Request object reference: https://flask.palletsprojects.com/en/2.1.x/api/#flask.Request
 

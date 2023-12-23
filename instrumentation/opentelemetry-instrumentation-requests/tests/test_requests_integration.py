@@ -21,10 +21,7 @@ from requests.adapters import BaseAdapter
 from requests.models import Response
 
 import opentelemetry.instrumentation.requests
-from opentelemetry import context, trace
-
-# FIXME: fix the importing of this private attribute when the location of the _SUPPRESS_HTTP_INSTRUMENTATION_KEY is defined.
-from opentelemetry.context import _SUPPRESS_HTTP_INSTRUMENTATION_KEY
+from opentelemetry import trace
 from opentelemetry.instrumentation._semconv import (
     _OTEL_SEMCONV_STABILITY_OPT_IN_KEY,
     _SPAN_ATTRIBUTES_ERROR_TYPE,
@@ -33,7 +30,10 @@ from opentelemetry.instrumentation._semconv import (
     _OpenTelemetrySemanticConventionStability,
 )
 from opentelemetry.instrumentation.requests import RequestsInstrumentor
-from opentelemetry.instrumentation.utils import _SUPPRESS_INSTRUMENTATION_KEY
+from opentelemetry.instrumentation.utils import (
+    suppress_http_instrumentation,
+    suppress_instrumentation,
+)
 from opentelemetry.propagate import get_global_textmap, set_global_textmap
 from opentelemetry.sdk import resources
 from opentelemetry.semconv.trace import SpanAttributes
@@ -397,26 +397,16 @@ class RequestsIntegrationTestBase(abc.ABC):
         self.assert_span()
 
     def test_suppress_instrumentation(self):
-        token = context.attach(
-            context.set_value(_SUPPRESS_INSTRUMENTATION_KEY, True)
-        )
-        try:
+        with suppress_instrumentation():
             result = self.perform_request(self.URL)
             self.assertEqual(result.text, "Hello!")
-        finally:
-            context.detach(token)
 
         self.assert_span(num_spans=0)
 
     def test_suppress_http_instrumentation(self):
-        token = context.attach(
-            context.set_value(_SUPPRESS_HTTP_INSTRUMENTATION_KEY, True)
-        )
-        try:
+        with suppress_http_instrumentation():
             result = self.perform_request(self.URL)
             self.assertEqual(result.text, "Hello!")
-        finally:
-            context.detach(token)
 
         self.assert_span(num_spans=0)
 
