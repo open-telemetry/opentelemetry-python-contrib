@@ -15,6 +15,7 @@ import asyncio
 import sys
 from unittest.mock import patch
 
+# pylint: disable=no-name-in-module
 from opentelemetry.instrumentation.asyncio import AsyncioInstrumentor
 from opentelemetry.instrumentation.asyncio.environment_variables import (
     OTEL_PYTHON_ASYNCIO_COROUTINE_NAMES_TO_TRACE,
@@ -51,7 +52,7 @@ class TestAsyncioTaskgroup(TestBase):
             return
 
         async def main():
-            async with asyncio.TaskGroup() as tg:
+            async with asyncio.TaskGroup() as tg:  # pylint: disable=no-member
                 for _ in range(10):
                     tg.create_task(async_func())
 

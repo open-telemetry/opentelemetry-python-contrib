@@ -16,6 +16,7 @@ from unittest.mock import patch
 
 import pytest
 
+# pylint: disable=no-name-in-module
 from opentelemetry.instrumentation.asyncio import (
     ASYNCIO_FUTURES_ACTIVE,
     ASYNCIO_FUTURES_CANCELLED,
@@ -92,7 +93,7 @@ class TestAsyncioEnsureFuture(TestBase):
             if span.name == "root":
                 self.assertEqual(span.parent, None)
             if span.name == "asyncio.future":
-                self.assertNotEquals(span.parent.trace_id, 0)
+                self.assertNotEqual(span.parent.trace_id, 0)
 
         for metric in (
             self.memory_metrics_reader.get_metrics_data()
@@ -101,7 +102,7 @@ class TestAsyncioEnsureFuture(TestBase):
             .metrics
         ):
             if metric.name == ASYNCIO_FUTURES_DURATION:
-                self.assertEquals(metric.data.data_points[0].count, 1)
+                self.assertEqual(metric.data.data_points[0].count, 1)
             elif metric.name == ASYNCIO_FUTURES_ACTIVE:
                 self.assertEqual(metric.data.data_points[0].value, 0)
             elif metric.name == ASYNCIO_FUTURES_CREATED:

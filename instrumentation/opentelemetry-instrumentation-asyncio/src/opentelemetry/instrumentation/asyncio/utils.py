@@ -13,6 +13,7 @@
 # limitations under the License.
 import os
 
+# pylint: disable=no-name-in-module
 from opentelemetry.instrumentation.asyncio.environment_variables import (
     OTEL_PYTHON_ASYNCIO_COROUTINE_NAMES_TO_TRACE,
     OTEL_PYTHON_ASYNCIO_FUTURE_TRACE_ENABLED,

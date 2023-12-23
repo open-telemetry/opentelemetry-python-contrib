@@ -103,6 +103,7 @@ from typing import Collection
 
 from wrapt import wrap_function_wrapper as _wrap
 
+# pylint: disable=no-name-in-module
 from opentelemetry.instrumentation.asyncio.metrics import (
     ASYNCIO_COROUTINE_ACTIVE,
     ASYNCIO_COROUTINE_CANCELLED,
@@ -215,10 +216,10 @@ class AsyncioInstrumentor(BaseInstrumentor):
 
     def _uninstrument(self, **kwargs):
         for method in self.methods_with_coroutine:
-            self.uninstrument_method_with_coroutine(method)
-        self.uninstrument_gather()
-        self.uninstrument_to_thread()
-        self.uninstrument_taskgroup_create_task()
+            uninstrument_method_with_coroutine(method)
+        uninstrument_gather()
+        uninstrument_to_thread()
+        uninstrument_taskgroup_create_task()
 
     def instrument_method_with_coroutine(self, method_name):
         """
@@ -245,23 +246,15 @@ class AsyncioInstrumentor(BaseInstrumentor):
 
         _wrap(asyncio, method_name, wrap_coro_or_future)
 
-    def uninstrument_method_with_coroutine(self, method_name):
-        """
-        Uninstrument specified asyncio method.
-        """
-        unwrap(asyncio, method_name)
-
     def instrument_gather(self):
         def wrap_coros_or_futures(method, instance, args, kwargs):
             if args and len(args) > 0:
                 # Check if it's a coroutine or future and wrap it
                 wrapped_args = tuple(self.trace_item(item) for item in args)
                 return method(*wrapped_args, **kwargs)
+            return method(*args, **kwargs)
 
         _wrap(asyncio, "gather", wrap_coros_or_futures)
-
-    def uninstrument_gather(self):
-        unwrap(asyncio, "gather")
 
     def instrument_to_thread(self):
         # to_thread was added in Python 3.9
@@ -276,14 +269,9 @@ class AsyncioInstrumentor(BaseInstrumentor):
                 wrapped_args = (wrapped_first_arg,) + args[1:]
 
                 return method(*wrapped_args, **kwargs)
+            return method(*args, **kwargs)
 
         _wrap(asyncio, "to_thread", wrap_to_thread)
-
-    def uninstrument_to_thread(self):
-        # to_thread was added in Python 3.9
-        if sys.version_info < (3, 9):
-            return
-        unwrap(asyncio, "to_thread")
 
     def instrument_taskgroup_create_task(self):
         # TaskGroup.create_task was added in Python 3.11
@@ -296,14 +284,11 @@ class AsyncioInstrumentor(BaseInstrumentor):
                 wrapped_coro = self.trace_coroutine(coro)
                 wrapped_args = (wrapped_coro,) + args[1:]
                 return method(*wrapped_args, **kwargs)
+            return method(*args, **kwargs)
 
-        _wrap(asyncio.TaskGroup, "create_task", wrap_taskgroup_create_task)
-
-    def uninstrument_taskgroup_create_task(self):
-        # TaskGroup.create_task was added in Python 3.11
-        if sys.version_info < (3, 11):
-            return
-        unwrap(asyncio.TaskGroup, "create_task")
+        _wrap(
+            asyncio.TaskGroup, "create_task", wrap_taskgroup_create_task  # pylint: disable=no-member
+        )
 
     def trace_to_thread(self, func):
         """Trace a function."""
@@ -343,7 +328,7 @@ class AsyncioInstrumentor(BaseInstrumentor):
             return coro_or_future
         if asyncio.iscoroutine(coro_or_future):
             return self.trace_coroutine(coro_or_future)
-        elif futures.isfuture(coro_or_future):
+        if futures.isfuture(coro_or_future):
             return self.trace_future(coro_or_future)
         return coro_or_future
 
@@ -527,3 +512,28 @@ class AsyncioInstrumentor(BaseInstrumentor):
             description="Number of asyncio function finished",
             unit="1",
         )
+
+
+def uninstrument_taskgroup_create_task():
+    # TaskGroup.create_task was added in Python 3.11
+    if sys.version_info < (3, 11):
+        return
+    unwrap(asyncio.TaskGroup, "create_task")  # pylint: disable=no-member
+
+
+def uninstrument_to_thread():
+    # to_thread was added in Python 3.9
+    if sys.version_info < (3, 9):
+        return
+    unwrap(asyncio, "to_thread")
+
+
+def uninstrument_gather():
+    unwrap(asyncio, "gather")
+
+
+def uninstrument_method_with_coroutine(method_name):
+    """
+    Uninstrument specified asyncio method.
+    """
+    unwrap(asyncio, method_name)

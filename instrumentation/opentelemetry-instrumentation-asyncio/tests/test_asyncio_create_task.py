@@ -14,6 +14,7 @@
 import asyncio
 from unittest.mock import patch
 
+# pylint: disable=no-name-in-module
 from opentelemetry.instrumentation.asyncio import AsyncioInstrumentor
 from opentelemetry.instrumentation.asyncio.environment_variables import (
     OTEL_PYTHON_ASYNCIO_COROUTINE_NAMES_TO_TRACE,
@@ -46,8 +47,6 @@ class TestAsyncioCreateTask(TestBase):
 
         asyncio.run(async_func())
         spans = self.memory_exporter.get_finished_spans()
-        """
-        OTEL_PYTHON_ASYNCIO_COROUTINE_NAMES_TO_TRACE: "sleep"
-        """
+
         self.assertEqual(len(spans), 1)
         self.assertEqual(spans[0].name, "asyncio.coro-sleep")

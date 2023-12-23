@@ -15,6 +15,7 @@ import asyncio
 import sys
 from unittest.mock import patch
 
+# pylint: disable=no-name-in-module
 from opentelemetry.instrumentation.asyncio import AsyncioInstrumentor
 from opentelemetry.instrumentation.asyncio.environment_variables import (
     OTEL_PYTHON_ASYNCIO_COROUTINE_NAMES_TO_TRACE,

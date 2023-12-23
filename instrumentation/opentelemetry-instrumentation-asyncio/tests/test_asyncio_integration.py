@@ -14,6 +14,7 @@
 import asyncio
 from unittest.mock import patch
 
+# pylint: disable=no-name-in-module
 from opentelemetry.instrumentation.asyncio import AsyncioInstrumentor
 from opentelemetry.instrumentation.asyncio.environment_variables import (
     OTEL_PYTHON_ASYNCIO_COROUTINE_NAMES_TO_TRACE,
@@ -30,9 +31,6 @@ class TestAsyncioInstrumentor(TestBase):
         self._tracer = get_tracer(
             __name__,
         )
-
-    def tearDown(self):
-        super().tearDown()
 
     @patch.dict(
         "os.environ", {OTEL_PYTHON_ASYNCIO_COROUTINE_NAMES_TO_TRACE: "sleep"}

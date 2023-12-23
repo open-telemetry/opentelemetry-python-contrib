@@ -15,6 +15,7 @@ import asyncio
 import sys
 from unittest.mock import patch
 
+# pylint: disable=no-name-in-module
 from opentelemetry.instrumentation.asyncio import AsyncioInstrumentor
 from opentelemetry.instrumentation.asyncio.environment_variables import (
     OTEL_PYTHON_ASYNCIO_TO_THREAD_FUNCTION_NAMES_TO_TRACE,
@@ -63,7 +64,7 @@ class TestAsyncioToThread(TestBase):
                 .metrics
             ):
                 if metric.name == "asyncio.to_thread.duration":
-                    self.assertEquals(metric.data.data_points[0].count, 1)
+                    self.assertEqual(metric.data.data_points[0].count, 1)
                 elif metric.name == "asyncio.to_thread.active":
                     self.assertEqual(metric.data.data_points[0].value, 0)
                 elif metric.name == "asyncio.to_thread.created":
