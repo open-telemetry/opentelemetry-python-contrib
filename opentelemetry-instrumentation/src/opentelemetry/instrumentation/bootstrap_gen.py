@@ -186,7 +186,7 @@ libraries = [
     },
 ]
 default_instrumentations = [
-    "opentelemetry-instrumentation-asyncio==0.43b0.dev",
+    "opentelemetry-instrumentation-asyncio==0.44b0.dev",
     "opentelemetry-instrumentation-aws-lambda==0.44b0.dev",
     "opentelemetry-instrumentation-dbapi==0.44b0.dev",
     "opentelemetry-instrumentation-logging==0.44b0.dev",
