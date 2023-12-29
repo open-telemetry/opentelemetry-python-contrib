@@ -38,7 +38,7 @@ from wrapt import wrap_function_wrapper
 from opentelemetry import context, propagate, trace
 from opentelemetry.instrumentation.instrumentor import BaseInstrumentor
 from opentelemetry.instrumentation.utils import (
-    _SUPPRESS_INSTRUMENTATION_KEY,
+    is_instrumentation_enabled,
     unwrap,
 )
 from opentelemetry.propagators.textmap import CarrierT, Getter, Setter
@@ -218,7 +218,7 @@ class Boto3SQSInstrumentor(BaseInstrumentor):
 
     def _wrap_send_message(self, sqs_class: type) -> None:
         def send_wrapper(wrapped, instance, args, kwargs):
-            if context.get_value(_SUPPRESS_INSTRUMENTATION_KEY):
+            if not is_instrumentation_enabled():
                 return wrapped(*args, **kwargs)
             queue_url = kwargs.get("QueueUrl")
             # The method expect QueueUrl and Entries params, so if they are None, we call wrapped to receive the
@@ -252,7 +252,7 @@ class Boto3SQSInstrumentor(BaseInstrumentor):
             # The method expect QueueUrl and Entries params, so if they are None, we call wrapped to receive the
             # original exception
             if (
-                context.get_value(_SUPPRESS_INSTRUMENTATION_KEY)
+                not is_instrumentation_enabled()
                 or not queue_url
                 or not entries
             ):
