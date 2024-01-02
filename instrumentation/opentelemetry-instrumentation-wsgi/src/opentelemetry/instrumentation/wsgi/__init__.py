@@ -249,6 +249,7 @@ _duration_attrs = [
     SpanAttributes.HTTP_SERVER_NAME,
     SpanAttributes.NET_HOST_NAME,
     SpanAttributes.NET_HOST_PORT,
+    SpanAttributes.HTTP_TARGET,
 ]
 
 _active_requests_count_attrs = [
@@ -257,6 +258,7 @@ _active_requests_count_attrs = [
     SpanAttributes.HTTP_SCHEME,
     SpanAttributes.HTTP_FLAVOR,
     SpanAttributes.HTTP_SERVER_NAME,
+    SpanAttributes.HTTP_TARGET,
 ]
 
 
