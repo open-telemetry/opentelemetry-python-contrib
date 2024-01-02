@@ -25,7 +25,7 @@ classifiers = [
   "Programming Language :: Python :: 3.11",
 ]
 dependencies = [
-  "opentelemetry-sdk ~= 1.19",
+  "opentelemetry-sdk ~= 1.21",
 ]
 
 [project.optional-dependencies]

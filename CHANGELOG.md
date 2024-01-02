@@ -19,6 +19,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   ([#2002](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/2002))
 - `opentelemetry-instrument-grpc` Fix arity of context.abort for AIO RPCs
   ([#2066](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/2066))
+- Consolidate instrumentation suppression mechanisms and fix bug in httpx instrumentation
+  ([#2061](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/2061))
 
 ### Fixed
 
@@ -26,6 +28,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   ([#2020](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/2020))
 - `opentelemetry-instrumentation-urllib`/`opentelemetry-instrumentation-urllib3` Fix metric descriptions to match semantic conventions
   ([#1959](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/1959))
+- `opentelemetry-resource-detector-azure` Added dependency for Cloud Resource ID attribute
+  ([#2072](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/2072))
   
 ## Version 1.21.0/0.42b0 (2023-11-01)
 
