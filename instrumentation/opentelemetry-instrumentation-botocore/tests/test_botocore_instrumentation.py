@@ -27,14 +27,11 @@ from moto import (  # pylint: disable=import-error
 )
 
 from opentelemetry import trace as trace_api
-from opentelemetry.context import (
-    _SUPPRESS_HTTP_INSTRUMENTATION_KEY,
-    attach,
-    detach,
-    set_value,
-)
 from opentelemetry.instrumentation.botocore import BotocoreInstrumentor
-from opentelemetry.instrumentation.utils import _SUPPRESS_INSTRUMENTATION_KEY
+from opentelemetry.instrumentation.utils import (
+    suppress_http_instrumentation,
+    suppress_instrumentation,
+)
 from opentelemetry.propagate import get_global_textmap, set_global_textmap
 from opentelemetry.propagators.aws.aws_xray_propagator import TRACE_HEADER_KEY
 from opentelemetry.semconv.trace import SpanAttributes
@@ -341,23 +338,17 @@ class TestBotocoreInstrumentor(TestBase):
     @mock_xray
     def test_suppress_instrumentation_xray_client(self):
         xray_client = self._make_client("xray")
-        token = attach(set_value(_SUPPRESS_INSTRUMENTATION_KEY, True))
-        try:
+        with suppress_instrumentation():
             xray_client.put_trace_segments(TraceSegmentDocuments=["str1"])
             xray_client.put_trace_segments(TraceSegmentDocuments=["str2"])
-        finally:
-            detach(token)
         self.assertEqual(0, len(self.get_finished_spans()))
 
     @mock_xray
     def test_suppress_http_instrumentation_xray_client(self):
         xray_client = self._make_client("xray")
-        token = attach(set_value(_SUPPRESS_HTTP_INSTRUMENTATION_KEY, True))
-        try:
+        with suppress_http_instrumentation():
             xray_client.put_trace_segments(TraceSegmentDocuments=["str1"])
             xray_client.put_trace_segments(TraceSegmentDocuments=["str2"])
-        finally:
-            detach(token)
         self.assertEqual(2, len(self.get_finished_spans()))
 
     @mock_s3
