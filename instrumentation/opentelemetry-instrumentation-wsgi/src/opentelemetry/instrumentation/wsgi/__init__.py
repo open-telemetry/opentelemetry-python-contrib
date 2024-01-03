@@ -249,7 +249,7 @@ _duration_attrs = [
     SpanAttributes.HTTP_SERVER_NAME,
     SpanAttributes.NET_HOST_NAME,
     SpanAttributes.NET_HOST_PORT,
-    SpanAttributes.HTTP_TARGET,
+    SpanAttributes.HTTP_ROUTE,
 ]
 
 _active_requests_count_attrs = [
@@ -258,7 +258,7 @@ _active_requests_count_attrs = [
     SpanAttributes.HTTP_SCHEME,
     SpanAttributes.HTTP_FLAVOR,
     SpanAttributes.HTTP_SERVER_NAME,
-    SpanAttributes.HTTP_TARGET,
+    SpanAttributes.HTTP_ROUTE,
 ]
 
 
@@ -321,6 +321,7 @@ def collect_request_attributes(environ):
         target = environ.get("REQUEST_URI")
     if target is not None:
         result[SpanAttributes.HTTP_TARGET] = target
+        result[SpanAttributes.HTTP_ROUTE] = environ.get("PATH_INFO")
     else:
         result[SpanAttributes.HTTP_URL] = remove_url_credentials(
             wsgiref_util.request_uri(environ)
