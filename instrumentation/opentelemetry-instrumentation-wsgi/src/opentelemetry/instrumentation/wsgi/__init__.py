@@ -321,12 +321,16 @@ def collect_request_attributes(environ):
         target = environ.get("REQUEST_URI")
     if target is not None:
         result[SpanAttributes.HTTP_TARGET] = target
-        result[SpanAttributes.HTTP_ROUTE] = environ.get("PATH_INFO")
     else:
         result[SpanAttributes.HTTP_URL] = remove_url_credentials(
             wsgiref_util.request_uri(environ)
         )
-
+    route = environ.get("PATH_INFO")
+    if route is None:  
+        route = environ.get("PATH_INFO")
+    if target is not None:
+        result[SpanAttributes.HTTP_ROUTE] = route
+        
     remote_addr = environ.get("REMOTE_ADDR")
     if remote_addr:
         result[SpanAttributes.NET_PEER_IP] = remote_addr
