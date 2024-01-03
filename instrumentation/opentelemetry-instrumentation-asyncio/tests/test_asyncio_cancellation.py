@@ -15,14 +15,7 @@ import asyncio
 from unittest.mock import patch
 
 # pylint: disable=no-name-in-module
-from opentelemetry.instrumentation.asyncio import (
-    ASYNCIO_COROUTINE_ACTIVE,
-    ASYNCIO_COROUTINE_CANCELLED,
-    ASYNCIO_COROUTINE_CREATED,
-    ASYNCIO_COROUTINE_DURATION,
-    ASYNCIO_COROUTINE_FINISHED,
-    AsyncioInstrumentor,
-)
+from opentelemetry.instrumentation.asyncio import AsyncioInstrumentor
 from opentelemetry.instrumentation.asyncio.environment_variables import (
     OTEL_PYTHON_ASYNCIO_COROUTINE_NAMES_TO_TRACE,
 )
@@ -66,13 +59,20 @@ class TestAsyncioCancel(TestBase):
             .scope_metrics[0]
             .metrics
         ):
-            if metric.name == ASYNCIO_COROUTINE_CANCELLED:
-                self.assertEqual(metric.data.data_points[0].value, 1)
-            elif metric.name == ASYNCIO_COROUTINE_DURATION:
-                self.assertEqual(metric.data.data_points[0].min != 0, True)
-            elif metric.name == ASYNCIO_COROUTINE_ACTIVE:
-                self.assertEqual(metric.data.data_points[0].value, 0)
-            elif metric.name == ASYNCIO_COROUTINE_CREATED:
-                self.assertEqual(metric.data.data_points[0].value, 1)
-            elif metric.name == ASYNCIO_COROUTINE_FINISHED:
-                self.assertEqual(metric.data.data_points[0].value, 1)
+            if metric.name == "asyncio.process.duration":
+                for point in metric.data.data_points:
+                    self.assertEqual(point.attributes["type"], "coroutine")
+                    self.assertIn(
+                        point.attributes["name"],
+                        ["cancellation_coro", "cancellable_coroutine"],
+                    )
+            if metric.name == "asyncio.process.count":
+                for point in metric.data.data_points:
+                    self.assertEqual(point.attributes["type"], "coroutine")
+                    self.assertIn(
+                        point.attributes["name"],
+                        ["cancellation_coro", "cancellable_coroutine"],
+                    )
+                    self.assertIn(
+                        point.attributes["state"], ["finished", "cancelled"]
+                    )
