@@ -19,7 +19,7 @@ Set the name of the coroutine you want to trace.
 
     export OTEL_PYTHON_ASYNCIO_COROUTINE_NAMES_TO_TRACE=coro_name,coro_name2,coro_name3
 
-If you want to keep track of which function to use in the to_thread function of asyncio, set the name of the function.
+If you want to trace specific blocking functions executed with the ``to_thread`` function of asyncio, set the name of the functions in ``OTEL_PYTHON_ASYNCIO_TO_THREAD_FUNCTION_NAMES_TO_TRACE``.
 ------------------------------------------------------------------------------------------------------------------------
 .. code:: bash
 
