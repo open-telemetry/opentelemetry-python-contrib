@@ -56,26 +56,18 @@ class TestAsyncioToThread(TestBase):
             spans = self.memory_exporter.get_finished_spans()
 
             self.assertEqual(len(spans), 2)
-            assert spans[0].name == "asyncio.to_thread_func-multiply"
+            assert spans[0].name == "asyncio to_thread-multiply"
             for metric in (
                 self.memory_metrics_reader.get_metrics_data()
                 .resource_metrics[0]
                 .scope_metrics[0]
                 .metrics
             ):
-                if metric.name == "asyncio.to_thread.duration":
-                    self.assertEqual(metric.data.data_points[0].count, 1)
-                elif metric.name == "asyncio.to_thread.active":
-                    self.assertEqual(metric.data.data_points[0].value, 0)
-                elif metric.name == "asyncio.to_thread.created":
-                    self.assertEqual(metric.data.data_points[0].value, 1)
-                elif metric.name == "asyncio.to_thread.finished":
-                    self.assertEqual(metric.data.data_points[0].value, 1)
-                elif metric.name == "asyncio.to_thread.exceptions":
-                    self.assertEqual(metric.data.data_points[0].value, 0)
-                elif metric.name == "asyncio.to_thread.cancelled":
-                    self.assertEqual(metric.data.data_points[0].value, 0)
-                elif metric.name == "asyncio.to_thread.name":
-                    self.assertEqual(
-                        metric.data.data_points[0].value, "multiply"
-                    )
+                if metric.name == "asyncio.process.duration":
+                    for point in metric.data.data_points:
+                        self.assertEqual(point.attributes["type"], "to_thread")
+                        self.assertEqual(point.attributes["name"], "multiply")
+                if metric.name == "asyncio.process.count":
+                    for point in metric.data.data_points:
+                        self.assertEqual(point.attributes["type"], "to_thread")
+                        self.assertEqual(point.attributes["name"], "multiply")

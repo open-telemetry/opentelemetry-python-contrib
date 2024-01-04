@@ -21,7 +21,7 @@ from opentelemetry.instrumentation.asyncio.environment_variables import (
 )
 
 
-def separate_coro_names_by_comma(coro_names) -> set:
+def separate_coro_names_by_comma(coro_names: str) -> set:
     """
     Function to separate the coroutines to be traced by comma
     """

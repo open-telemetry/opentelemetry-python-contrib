@@ -19,7 +19,7 @@ async def async_func():
     await asyncio.sleep(0.1)
 
 
-async def factorial(number):
+async def factorial(number: int):
     factorial_value = 1
     for value in range(2, number + 1):
         await asyncio.sleep(0)

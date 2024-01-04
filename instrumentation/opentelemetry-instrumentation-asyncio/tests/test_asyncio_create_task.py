@@ -49,4 +49,4 @@ class TestAsyncioCreateTask(TestBase):
         spans = self.memory_exporter.get_finished_spans()
 
         self.assertEqual(len(spans), 1)
-        self.assertEqual(spans[0].name, "asyncio.coro-sleep")
+        self.assertEqual(spans[0].name, "asyncio coro-sleep")

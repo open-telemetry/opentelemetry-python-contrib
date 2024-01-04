@@ -51,8 +51,8 @@ class TestAsyncioCancel(TestBase):
         self.assertEqual(spans[0].context.trace_id, spans[1].context.trace_id)
         self.assertEqual(spans[2].context.trace_id, spans[1].context.trace_id)
 
-        self.assertEqual(spans[0].name, "asyncio.coro-cancellable_coroutine")
-        self.assertEqual(spans[1].name, "asyncio.coro-cancellation_coro")
+        self.assertEqual(spans[0].name, "asyncio coro-cancellable_coroutine")
+        self.assertEqual(spans[1].name, "asyncio coro-cancellation_coro")
         for metric in (
             self.memory_metrics_reader.get_metrics_data()
             .resource_metrics[0]
