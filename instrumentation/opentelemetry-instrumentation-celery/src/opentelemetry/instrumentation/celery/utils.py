@@ -64,7 +64,8 @@ def set_attributes_from_context(span, context):
         if key == "timelimit":
             if value in [(None, None), [None, None]]:
                 continue
-            value = [str(tl) for tl in value]
+            if None in value:
+                value = ["" if tl is None else str(tl) for tl in value]
 
         # Skip `retries` if it's value is `0`
         if key == "retries" and value == 0:
