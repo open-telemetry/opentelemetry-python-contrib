@@ -10,7 +10,7 @@ AsyncioInstrumentor: Tracing Requests Made by the Asyncio Library
 
 
 The opentelemetry-instrumentation-asyncio package allows tracing asyncio applications.
-The metric for coroutine, future, is generated even if there is no setting to generate a span.
+It also includes metrics for duration and counts of coroutines and futures. Metrics are generated even if coroutines are not traced.
 
 
 Set the names of coroutines you want to trace.
