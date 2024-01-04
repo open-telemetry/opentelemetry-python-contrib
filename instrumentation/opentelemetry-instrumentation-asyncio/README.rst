@@ -25,7 +25,7 @@ If you want to trace specific blocking functions executed with the ``to_thread``
 
     export OTEL_PYTHON_ASYNCIO_TO_THREAD_FUNCTION_NAMES_TO_TRACE=func_name,func_name2,func_name3
 
-For future, set it up like this
+You can enable tracing futures with ``OTEL_PYTHON_ASYNCIO_FUTURE_TRACE_ENABLED``
 -----------------------------------------------
 .. code:: bash
 
