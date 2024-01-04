@@ -27,7 +27,7 @@ def separate_coro_names_by_comma(coro_names: str) -> set:
     """
     if coro_names is None:
         return set()
-    return set(coro_name.strip() for coro_name in coro_names.split(","))
+    return {coro_name.strip() for coro_name in coro_names.split(",")}
 
 
 def get_coros_to_trace() -> set:
