@@ -13,7 +13,7 @@ The opentelemetry-instrumentation-asyncio package allows tracing asyncio applica
 The metric for coroutine, future, is generated even if there is no setting to generate a span.
 
 
-Set the name of the coroutine you want to trace.
+Set the names of coroutines you want to trace.
 -------------------------------------------------
 .. code:: bash
 
