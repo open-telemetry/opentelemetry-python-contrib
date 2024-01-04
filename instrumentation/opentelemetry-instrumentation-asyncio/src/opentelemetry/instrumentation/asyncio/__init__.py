@@ -298,7 +298,7 @@ class AsyncioInstrumentor(BaseInstrumentor):
         finally:
             self.record_process(start, attr, span, exception)
 
-    def trace_future(self, future) -> futures.Future:
+    def trace_future(self, future):
         start = default_timer()
         span = (
             self._tracer.start_span(f"{ASYNCIO_PREFIX} future")

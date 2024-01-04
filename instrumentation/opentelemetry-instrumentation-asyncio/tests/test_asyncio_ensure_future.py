@@ -73,7 +73,7 @@ class TestAsyncioEnsureFuture(TestBase):
         for span in spans:
             if span.name == "root":
                 self.assertEqual(span.parent, None)
-            if span.name == "asyncio.future":
+            if span.name == "asyncio future":
                 self.assertNotEqual(span.parent.trace_id, 0)
 
         for metric in (
