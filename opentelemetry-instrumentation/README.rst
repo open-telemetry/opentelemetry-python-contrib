@@ -65,7 +65,7 @@ variables:
 * ``--distro`` or ``OTEL_PYTHON_DISTRO``
 * ``--configurator`` or ``OTEL_PYTHON_CONFIGURATOR``
 
-The exporter options define what exporter desintation to use and can be set to one or more
+The exporter options define what exporter destintation to use and can be set to one or more
 exporter names (see below). You can pass multiple values to configure multiple exporters
 (e.g., ``zipkin_json,otlp``).
 
