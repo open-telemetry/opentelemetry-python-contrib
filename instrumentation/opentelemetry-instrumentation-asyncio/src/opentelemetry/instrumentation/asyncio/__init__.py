@@ -145,12 +145,12 @@ class AsyncioInstrumentor(BaseInstrumentor):
         self.process_duration_histogram = self._meter.create_histogram(
             name="asyncio.process.duration",
             description="Duration of asyncio process",
-            unit="seconds",
+            unit="s",
         )
         self.process_counts_counter = self._meter.create_counter(
             name="asyncio.process.count",
             description="Number of asyncio process",
-            unit="1",
+            unit="{process}",
         )
 
         for method in self.methods_with_coroutine:
