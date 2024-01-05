@@ -45,8 +45,7 @@ class PublishDecorator:
             if not span:
                 return await publish(message, routing_key, **kwargs)
             with trace.use_span(span, end_on_exit=True):
-                if span.is_recording():
-                    propagate.inject(message.properties.headers)
+                propagate.inject(message.properties.headers)
                 return_value = await publish(message, routing_key, **kwargs)
             return return_value
 

@@ -710,6 +710,7 @@ class OpenTelemetryMiddleware:
                         pass
 
                 await send(message)
+            # pylint: disable=too-many-boolean-expressions
             if (
                 not expecting_trailers
                 and message["type"] == "http.response.body"

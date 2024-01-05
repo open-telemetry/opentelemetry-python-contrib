@@ -84,7 +84,7 @@ def _hydrate_span_from_args(connection, query, parameters) -> dict:
         span_attributes[SpanAttributes.NET_PEER_NAME] = addr
         span_attributes[
             SpanAttributes.NET_TRANSPORT
-        ] = NetTransportValues.UNIX.value
+        ] = NetTransportValues.OTHER.value
 
     if query is not None:
         span_attributes[SpanAttributes.DB_STATEMENT] = query

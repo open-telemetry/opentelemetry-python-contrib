@@ -224,11 +224,11 @@ class EngineTracer:
                 for key, value in attrs.items():
                     span.set_attribute(key, value)
             if self.enable_commenter:
-                commenter_data = dict(
-                    db_driver=conn.engine.driver,
+                commenter_data = {
+                    "db_driver": conn.engine.driver,
                     # Driver/framework centric information.
-                    db_framework=f"sqlalchemy:{__version__}",
-                )
+                    "db_framework": f"sqlalchemy:{__version__}",
+                }
 
                 if self.commenter_options.get("opentelemetry_values", True):
                     commenter_data.update(**_get_opentelemetry_values())
@@ -296,7 +296,9 @@ def _get_attributes_from_cursor(vendor, cursor, attrs):
         is_unix_socket = info.host and info.host.startswith("/")
 
         if is_unix_socket:
-            attrs[SpanAttributes.NET_TRANSPORT] = NetTransportValues.UNIX.value
+            attrs[
+                SpanAttributes.NET_TRANSPORT
+            ] = NetTransportValues.OTHER.value
             if info.port:
                 # postgresql enforces this pattern on all socket names
                 attrs[SpanAttributes.NET_PEER_NAME] = os.path.join(

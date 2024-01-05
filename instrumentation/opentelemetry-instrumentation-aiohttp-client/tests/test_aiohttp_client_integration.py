@@ -14,6 +14,7 @@
 
 import asyncio
 import contextlib
+import sys
 import typing
 import unittest
 import urllib.parse
@@ -26,13 +27,12 @@ import yarl
 from http_server_mock import HttpServerMock
 from pkg_resources import iter_entry_points
 
-from opentelemetry import context
 from opentelemetry import trace as trace_api
 from opentelemetry.instrumentation import aiohttp_client
 from opentelemetry.instrumentation.aiohttp_client import (
     AioHttpClientInstrumentor,
 )
-from opentelemetry.instrumentation.utils import _SUPPRESS_INSTRUMENTATION_KEY
+from opentelemetry.instrumentation.utils import suppress_instrumentation
 from opentelemetry.semconv.trace import SpanAttributes
 from opentelemetry.test.test_base import TestBase
 from opentelemetry.trace import Span, StatusCode
@@ -116,6 +116,11 @@ class TestAioHttpIntegration(TestBase):
                     status_code=status_code,
                 )
 
+                url = f"http://{host}:{port}/test-path?query=param#foobar"
+                # if python version is < 3.8, then the url will be
+                if sys.version_info[1] < 8:
+                    url = f"http://{host}:{port}/test-path#foobar"
+
                 self.assert_spans(
                     [
                         (
@@ -123,7 +128,7 @@ class TestAioHttpIntegration(TestBase):
                             (span_status, None),
                             {
                                 SpanAttributes.HTTP_METHOD: "GET",
-                                SpanAttributes.HTTP_URL: f"http://{host}:{port}/test-path#foobar",
+                                SpanAttributes.HTTP_URL: url,
                                 SpanAttributes.HTTP_STATUS_CODE: int(
                                     status_code
                                 ),
@@ -136,7 +141,7 @@ class TestAioHttpIntegration(TestBase):
 
     def test_schema_url(self):
         with self.subTest(status_code=200):
-            host, port = self._http_request(
+            self._http_request(
                 trace_config=aiohttp_client.create_trace_config(),
                 url="/test-path?query=param#foobar",
                 status_code=200,
@@ -156,7 +161,7 @@ class TestAioHttpIntegration(TestBase):
         mock_tracer.start_span.return_value = mock_span
         with mock.patch("opentelemetry.trace.get_tracer"):
             # pylint: disable=W0612
-            host, port = self._http_request(
+            self._http_request(
                 trace_config=aiohttp_client.create_trace_config(),
                 url="/test-path?query=param#foobar",
             )
@@ -506,25 +511,17 @@ class TestAioHttpClientInstrumentor(TestBase):
         self.assert_spans(1)
 
     def test_suppress_instrumentation(self):
-        token = context.attach(
-            context.set_value(_SUPPRESS_INSTRUMENTATION_KEY, True)
-        )
-        try:
+        with suppress_instrumentation():
             run_with_test_server(
                 self.get_default_request(), self.URL, self.default_handler
             )
-        finally:
-            context.detach(token)
         self.assert_spans(0)
 
     @staticmethod
     async def suppressed_request(server: aiohttp.test_utils.TestServer):
         async with aiohttp.test_utils.TestClient(server) as client:
-            token = context.attach(
-                context.set_value(_SUPPRESS_INSTRUMENTATION_KEY, True)
-            )
-            await client.get(TestAioHttpClientInstrumentor.URL)
-            context.detach(token)
+            with suppress_instrumentation():
+                await client.get(TestAioHttpClientInstrumentor.URL)
 
     def test_suppress_instrumentation_after_creation(self):
         run_with_test_server(

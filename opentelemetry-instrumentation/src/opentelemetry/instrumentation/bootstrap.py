@@ -77,7 +77,7 @@ def _pip_check():
     ) as check_pipe:
         pip_check = check_pipe.communicate()[0].decode()
         pip_check_lower = pip_check.lower()
-    for package_tup in libraries.values():
+    for package_tup in libraries:
         for package in package_tup:
             if package.lower() in pip_check_lower:
                 raise RuntimeError(f"Dependency conflict found: {pip_check}")
@@ -102,15 +102,12 @@ def _is_installed(req):
 
 
 def _find_installed_libraries():
-    libs = default_instrumentations[:]
-    libs.extend(
-        [
-            v["instrumentation"]
-            for _, v in libraries.items()
-            if _is_installed(v["library"])
-        ]
-    )
-    return libs
+    for lib in default_instrumentations:
+        yield lib
+
+    for lib in libraries:
+        if _is_installed(lib["library"]):
+            yield lib["instrumentation"]
 
 
 def _run_requirements():

@@ -12,20 +12,23 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import os
-import threading
 import urllib.parse
-from enum import Enum
+from contextlib import contextmanager
 from re import escape, sub
-from typing import Dict, Sequence
+from typing import Dict, Iterable, Sequence
 
 from wrapt import ObjectProxy
 
 from opentelemetry import context, trace
 
-# pylint: disable=unused-import
 # pylint: disable=E0611
-from opentelemetry.context import _SUPPRESS_INSTRUMENTATION_KEY  # noqa: F401
+# FIXME: fix the importing of these private attributes when the location of the _SUPPRESS_HTTP_INSTRUMENTATION_KEY is defined.=
+from opentelemetry.context import (
+    _SUPPRESS_HTTP_INSTRUMENTATION_KEY,
+    _SUPPRESS_INSTRUMENTATION_KEY,
+)
+
+# pylint: disable=E0611
 from opentelemetry.propagate import extract
 from opentelemetry.trace import StatusCode
 from opentelemetry.trace.propagation.tracecontext import (
@@ -157,58 +160,40 @@ def _python_path_without_directory(python_path, directory, path_separator):
     )
 
 
-_OTEL_SEMCONV_STABILITY_OPT_IN_KEY = "OTEL_SEMCONV_STABILITY_OPT_IN"
+def is_instrumentation_enabled() -> bool:
+    if context.get_value(_SUPPRESS_INSTRUMENTATION_KEY):
+        return False
+    return True
 
 
-class _OpenTelemetryStabilitySignalType:
-    HTTP = "http"
+def is_http_instrumentation_enabled() -> bool:
+    return is_instrumentation_enabled() and not context.get_value(
+        _SUPPRESS_HTTP_INSTRUMENTATION_KEY
+    )
 
 
-class _OpenTelemetryStabilityMode(Enum):
-    # http - emit the new, stable HTTP and networking conventions ONLY
-    HTTP = "http"
-    # http/dup - emit both the old and the stable HTTP and networking conventions
-    HTTP_DUP = "http/dup"
-    # default - continue emitting old experimental HTTP and networking conventions
-    DEFAULT = "default"
+@contextmanager
+def _suppress_instrumentation(*keys: str) -> Iterable[None]:
+    """Suppress instrumentation within the context."""
+    ctx = context.get_current()
+    for key in keys:
+        ctx = context.set_value(key, True, ctx)
+    token = context.attach(ctx)
+    try:
+        yield
+    finally:
+        context.detach(token)
 
 
-class _OpenTelemetrySemanticConventionStability:
-    _initialized = False
-    _lock = threading.Lock()
-    _OTEL_SEMCONV_STABILITY_SIGNAL_MAPPING = {}
+@contextmanager
+def suppress_instrumentation() -> Iterable[None]:
+    """Suppress instrumentation within the context."""
+    with _suppress_instrumentation(_SUPPRESS_INSTRUMENTATION_KEY):
+        yield
 
-    @classmethod
-    def _initialize(cls):
-        with _OpenTelemetrySemanticConventionStability._lock:
-            if not _OpenTelemetrySemanticConventionStability._initialized:
-                # Users can pass in comma delimited string for opt-in options
-                # Only values for http stability are supported for now
-                opt_in = os.environ.get(_OTEL_SEMCONV_STABILITY_OPT_IN_KEY, "")
-                opt_in_list = []
-                if opt_in:
-                    opt_in_list = [s.strip() for s in opt_in.split(",")]
-                http_opt_in = _OpenTelemetryStabilityMode.DEFAULT
-                if opt_in_list:
-                    # Process http opt-in
-                    # http/dup takes priority over http
-                    if (
-                        _OpenTelemetryStabilityMode.HTTP_DUP.value
-                        in opt_in_list
-                    ):
-                        http_opt_in = _OpenTelemetryStabilityMode.HTTP_DUP
-                    elif _OpenTelemetryStabilityMode.HTTP.value in opt_in_list:
-                        http_opt_in = _OpenTelemetryStabilityMode.HTTP
-                _OpenTelemetrySemanticConventionStability._OTEL_SEMCONV_STABILITY_SIGNAL_MAPPING[
-                    _OpenTelemetryStabilitySignalType.HTTP
-                ] = http_opt_in
-                _OpenTelemetrySemanticConventionStability._initialized = True
 
-    @classmethod
-    def _get_opentelemetry_stability_opt_in(
-        type: _OpenTelemetryStabilitySignalType,
-    ) -> _OpenTelemetryStabilityMode:
-        with _OpenTelemetrySemanticConventionStability._lock:
-            return _OpenTelemetrySemanticConventionStability._OTEL_SEMCONV_STABILITY_SIGNAL_MAPPING.get(
-                type, _OpenTelemetryStabilityMode.DEFAULT
-            )
+@contextmanager
+def suppress_http_instrumentation() -> Iterable[None]:
+    """Suppress instrumentation within the context."""
+    with _suppress_instrumentation(_SUPPRESS_HTTP_INSTRUMENTATION_KEY):
+        yield
