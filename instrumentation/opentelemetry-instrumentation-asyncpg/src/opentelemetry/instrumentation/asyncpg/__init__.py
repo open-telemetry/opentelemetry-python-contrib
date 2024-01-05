@@ -138,7 +138,7 @@ class AsyncPGInstrumentor(BaseInstrumentor):
     async def _do_execute(self, func, instance, args, kwargs):
         exception = None
         params = getattr(instance, "_params", {})
-        name = args[0] if args[0] else params.get("database", "postgresql")
+        name = args[0] if args[0] else getattr(params, "database", "postgresql")
 
         try:
             # Strip leading comments so we get the operation name.
