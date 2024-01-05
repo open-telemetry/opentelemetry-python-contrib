@@ -20,13 +20,13 @@ Set the names of coroutines you want to trace.
     export OTEL_PYTHON_ASYNCIO_COROUTINE_NAMES_TO_TRACE=coro_name,coro_name2,coro_name3
 
 If you want to trace specific blocking functions executed with the ``to_thread`` function of asyncio, set the name of the functions in ``OTEL_PYTHON_ASYNCIO_TO_THREAD_FUNCTION_NAMES_TO_TRACE``.
-------------------------------------------------------------------------------------------------------------------------
+------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
 .. code:: bash
 
     export OTEL_PYTHON_ASYNCIO_TO_THREAD_FUNCTION_NAMES_TO_TRACE=func_name,func_name2,func_name3
 
 You can enable tracing futures with ``OTEL_PYTHON_ASYNCIO_FUTURE_TRACE_ENABLED``
------------------------------------------------
+-----------------------------------------------------------------------------------------------
 .. code:: bash
 
     export OTEL_PYTHON_ASYNCIO_FUTURE_TRACE_ENABLED=true
@@ -103,7 +103,7 @@ Installation
 
 
 References
-----------
+-----------
 
 * `OpenTelemetry asyncio/ Tracing <https://opentelemetry-python-contrib.readthedocs.io/en/latest/instrumentation/asyncio/asyncio.html>`_
 * `OpenTelemetry Project <https://opentelemetry.io/>`_
