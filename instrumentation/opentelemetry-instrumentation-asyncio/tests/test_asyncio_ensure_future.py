@@ -85,7 +85,7 @@ class TestAsyncioEnsureFuture(TestBase):
             if metric.name == "asyncio.process.duration":
                 for point in metric.data.data_points:
                     self.assertEqual(point.attributes["type"], "future")
-            if metric.name == "asyncio.process.count":
+            if metric.name == "asyncio.process.created":
                 for point in metric.data.data_points:
                     self.assertEqual(point.attributes["type"], "future")
                     self.assertEqual(point.attributes["state"], "finished")

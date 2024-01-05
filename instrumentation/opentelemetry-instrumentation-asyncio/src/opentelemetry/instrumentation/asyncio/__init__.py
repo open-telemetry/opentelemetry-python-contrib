@@ -119,7 +119,7 @@ class AsyncioInstrumentor(BaseInstrumentor):
     def __init__(self):
         super().__init__()
         self.process_duration_histogram = None
-        self.process_counts_counter = None
+        self.process_created_counter = None
 
         self._tracer = None
         self._meter = None
@@ -147,8 +147,8 @@ class AsyncioInstrumentor(BaseInstrumentor):
             description="Duration of asyncio process",
             unit="s",
         )
-        self.process_counts_counter = self._meter.create_counter(
-            name="asyncio.process.count",
+        self.process_created_counter = self._meter.create_counter(
+            name="asyncio.process.created",
             description="Number of asyncio process",
             unit="{process}",
         )
@@ -331,7 +331,7 @@ class AsyncioInstrumentor(BaseInstrumentor):
         """
         duration = max(default_timer() - start, 0)
         self.process_duration_histogram.record(duration, attr)
-        self.process_counts_counter.add(1, attr)
+        self.process_created_counter.add(1, attr)
 
         if span:
             if span.is_recording() and exception:

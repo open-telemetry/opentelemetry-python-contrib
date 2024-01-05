@@ -66,7 +66,7 @@ class TestAsyncioCancel(TestBase):
                         point.attributes["name"],
                         ["cancellation_coro", "cancellable_coroutine"],
                     )
-            if metric.name == "asyncio.process.count":
+            if metric.name == "asyncio.process.created":
                 for point in metric.data.data_points:
                     self.assertEqual(point.attributes["type"], "coroutine")
                     self.assertIn(

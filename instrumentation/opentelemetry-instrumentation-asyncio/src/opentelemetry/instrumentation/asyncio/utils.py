@@ -12,6 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 import os
+from typing import Set
 
 # pylint: disable=no-name-in-module
 from opentelemetry.instrumentation.asyncio.environment_variables import (

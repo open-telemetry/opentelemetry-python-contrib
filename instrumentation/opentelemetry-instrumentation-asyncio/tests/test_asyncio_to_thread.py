@@ -67,7 +67,7 @@ class TestAsyncioToThread(TestBase):
                     for point in metric.data.data_points:
                         self.assertEqual(point.attributes["type"], "to_thread")
                         self.assertEqual(point.attributes["name"], "multiply")
-                if metric.name == "asyncio.process.count":
+                if metric.name == "asyncio.process.created":
                     for point in metric.data.data_points:
                         self.assertEqual(point.attributes["type"], "to_thread")
                         self.assertEqual(point.attributes["name"], "multiply")
