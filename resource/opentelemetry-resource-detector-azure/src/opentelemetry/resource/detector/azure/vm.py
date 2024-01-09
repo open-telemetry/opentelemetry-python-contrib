@@ -68,8 +68,8 @@ class _AzureVMMetadataServiceRequestor:
         request = Request(_AZURE_VM_METADATA_ENDPOINT)
         request.add_header("Metadata", "True")
         try:
-            with urlopen(request, timeout=10).read() as response:
-                return loads(response)
+            with urlopen(request, timeout=10) as response:
+                return loads(response.read())
         except URLError:
             # Not on Azure VM
             return None
