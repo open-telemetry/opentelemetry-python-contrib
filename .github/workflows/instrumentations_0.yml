@@ -26,6 +26,11 @@ jobs:
         python-version: [py37, py38, py39, py310, py311, pypy3]
         package:
           # Do not add more instrumentations here, add them in instrumentations_1.yml.
+          # The reason for this separation of instrumentations into more than one YAML file is
+          # the limit of jobs that can be run from a Github actions matrix:
+          # https://docs.github.com/en/actions/using-jobs/using-a-matrix-for-your-jobs
+          # "A matrix will generate a maximum of 256 jobs per workflow run. This limit applies
+          # to both GitHub-hosted and self-hosted runners."
           - "aiohttp-client"
           - "aiohttp-server"
           - "aiopg"
