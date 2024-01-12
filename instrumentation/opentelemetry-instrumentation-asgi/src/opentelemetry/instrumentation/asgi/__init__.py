@@ -345,7 +345,6 @@ def collect_custom_headers_attributes(
 
     Refer specifications:
      - https://github.com/open-telemetry/opentelemetry-specification/blob/main/specification/trace/semantic_conventions/http.md#http-request-and-response-headers
-     - https://github.com/open-telemetry/opentelemetry-specification/blob/main/specification/trace/semantic_conventions/http.md#http-request-and-response-headers
     """
     # Decode headers before processing.
     headers: dict[str, str] = {
