@@ -14,6 +14,7 @@
 
 import unittest
 from logging import WARNING
+from sys import version_info
 from unittest import mock
 
 from celery import Celery
@@ -132,7 +133,10 @@ class TestUtils(unittest.TestCase):
             "routing_key": "celery",
         }
         span = trace._Span("name", mock.Mock(spec=trace_api.SpanContext))
-        with self.assertNoLogs(level=WARNING):
+        if version_info.minor >= 10:
+            with self.assertNoLogs(level=WARNING):
+                utils.set_attributes_from_context(span, context)
+        else:
             utils.set_attributes_from_context(span, context)
         self.assertEqual(span.attributes.get("celery.timelimit"), ("42", ""))
 
@@ -174,7 +178,10 @@ class TestUtils(unittest.TestCase):
         }
         span = trace._Span("name", mock.Mock(spec=trace_api.SpanContext))
 
-        with self.assertNoLogs(level=WARNING):
+        if version_info.minor >= 10:
+            with self.assertNoLogs(level=WARNING):
+                utils.set_attributes_from_context(span, context)
+        else:
             utils.set_attributes_from_context(span, context)
         self.assertEqual(span.attributes.get("celery.timelimit"), ("", "42"))
 
