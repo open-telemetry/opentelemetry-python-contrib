@@ -29,6 +29,7 @@ jobs:
           - "wsgi"
           - "distro"
           - "richconsole"
+          - "psycopg"
           - "prometheus-remote-write"
           - "sdkextension-aws"
           - "propagator-aws-xray"
