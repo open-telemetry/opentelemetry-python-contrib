@@ -12,6 +12,9 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 from unittest import TestCase
+from unittest.mock import Mock, patch
+
+import kafka
 
 from kafka import KafkaConsumer, KafkaProducer
 from wrapt import BoundFunctionWrapper
@@ -34,3 +37,22 @@ class TestKafka(TestCase):
         self.assertFalse(
             isinstance(KafkaConsumer.__next__, BoundFunctionWrapper)
         )
+
+    def test_kafka_producer_send_arguments(self) -> None:
+        instrumentation = KafkaInstrumentor()
+
+        class MockedKafkaProducer(Mock):
+            def send(self, topic, value=None, key=None, headers=None,
+                     partition=None, timestamp_ms=None):
+                pass
+
+        with patch.object(kafka, "KafkaProducer", MockedKafkaProducer):
+            instrumentation.instrument()
+            producer = kafka.KafkaProducer()
+            producer.send('test-topic', b'message')
+            producer.send('test-topic', b'message', None, None, None, None)
+            producer.send(
+                'test-topic', b'message', None,
+                headers=[("system", "amd64")]
+            )
+            instrumentation.uninstrument()
