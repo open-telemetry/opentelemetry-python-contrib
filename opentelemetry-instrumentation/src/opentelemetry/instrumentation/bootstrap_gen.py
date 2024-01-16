@@ -85,11 +85,11 @@ libraries = [
         "instrumentation": "opentelemetry-instrumentation-fastapi==0.44b0.dev",
     },
     {
-        "library": "flask >= 1.0, < 3.0",
+        "library": "werkzeug < 3.0.0",
         "instrumentation": "opentelemetry-instrumentation-flask==0.44b0.dev",
     },
     {
-        "library": "werkzeug < 3.0.0",
+        "library": "flask >= 1.0",
         "instrumentation": "opentelemetry-instrumentation-flask==0.44b0.dev",
     },
     {
