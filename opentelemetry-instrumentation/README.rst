@@ -91,8 +91,6 @@ Metric exporter names:
     - prometheus
 
 Note: The default transport protocol for ``otlp`` is gRPC.
-HTTP is currently supported for traces only, and can be set using
-``OTEL_EXPORTER_OTLP_TRACES_PROTOCOL=http/protobuf``.
 
 * ``--id-generator`` or ``OTEL_PYTHON_ID_GENERATOR``
 
