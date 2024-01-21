@@ -1,13 +1,8 @@
 from logging import getLogger
 from typing import Collection, Optional
-
-from pkg_resources import (
-    Distribution,
-    DistributionNotFound,
-    RequirementParseError,
-    VersionConflict,
-    get_distribution,
-)
+import importlib_metadata
+from packaging.requirements import Requirement
+from packaging.version import parse as parse_version
 
 logger = getLogger(__name__)
 
@@ -24,22 +19,10 @@ class DependencyConflict:
         return f'DependencyConflict: requested: "{self.required}" but found: "{self.found}"'
 
 
-def get_dist_dependency_conflicts(
-    dist: Distribution,
-) -> Optional[DependencyConflict]:
-    main_deps = dist.requires()
-    instrumentation_deps = []
-    for dep in dist.requires(("instruments",)):
-        if dep not in main_deps:
-            # we set marker to none so string representation of the dependency looks like
-            #    requests ~= 1.0
-            # instead of
-            #    requests ~= 1.0; extra = "instruments"
-            # which does not work with `get_distribution()`
-            dep.marker = None
-            instrumentation_deps.append(str(dep))
-
-    return get_dependency_conflicts(instrumentation_deps)
+def _check_version(conflict_requirement, installed_version):
+    if not conflict_requirement.specifier.contains(installed_version, prereleases=True):
+        return f"{conflict_requirement.name} {installed_version}"
+    return None
 
 
 def get_dependency_conflicts(
@@ -47,16 +30,44 @@ def get_dependency_conflicts(
 ) -> Optional[DependencyConflict]:
     for dep in deps:
         try:
-            get_distribution(dep)
-        except VersionConflict as exc:
-            return DependencyConflict(dep, exc.dist)
-        except DistributionNotFound:
+            requirement = Requirement(dep)
+            distribution = importlib_metadata.distribution(requirement.name)
+            installed_version = parse_version(distribution.version)
+            conflict_version = _check_version(requirement, installed_version)
+            if conflict_version:
+                return DependencyConflict(dep, conflict_version)
+        except importlib_metadata.PackageNotFoundError:
             return DependencyConflict(dep)
-        except RequirementParseError as exc:
+        except Exception as exc:
             logger.warning(
                 'error parsing dependency, reporting as a conflict: "%s" - %s',
                 dep,
                 exc,
             )
             return DependencyConflict(dep)
+    return None
+
+
+def get_dist_dependency_conflicts(
+    dist_name: str,  # Assuming dist_name is the name of the distribution
+) -> Optional[DependencyConflict]:
+    try:
+        distribution = importlib_metadata.distribution(dist_name)
+    except importlib_metadata.PackageNotFoundError:
+        return DependencyConflict(dist_name)
+
+    conflicts = []
+    for req in distribution.requires or []:
+        try:
+            requirement = Requirement(req)
+            dep_dist = importlib_metadata.distribution(requirement.name)
+            installed_version = parse_version(dep_dist.version)
+            if not requirement.specifier.contains(installed_version, prereleases=True):
+                conflicts.append(f"{requirement.name} {installed_version}")
+        except importlib_metadata.PackageNotFoundError:
+            conflicts.append(requirement.name)
+
+    if conflicts:
+        # Return the first conflict found for simplicity
+        return DependencyConflict(str(conflicts[0]))
     return None

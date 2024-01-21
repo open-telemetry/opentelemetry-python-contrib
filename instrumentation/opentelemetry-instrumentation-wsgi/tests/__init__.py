@@ -1,4 +1,4 @@
-# Copyright The OpenTelemetry Authors
+# Copyright The Open Telemetry Authors
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -11,7 +11,6 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-import pkg_resources
 
 # IMPORTANT: Only the wsgi module needs this because it is always the first
 # package that uses the `{rootdir}/*/tests/` path and gets installed by
@@ -20,4 +19,5 @@ import pkg_resources
 # Naming the tests module as a namespace package ensures that
 # relative imports will resolve properly for subsequent test packages,
 # as it enables searching for a composite of multiple test modules.
-pkg_resources.declare_namespace(__name__)
+
+# No need for additional code here for Python 3.3+

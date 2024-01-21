@@ -15,8 +15,7 @@
 
 import os
 from unittest import TestCase
-
-from pkg_resources import DistributionNotFound, require
+import importlib_metadata
 
 from opentelemetry.distro import OpenTelemetryDistro
 from opentelemetry.environment_variables import (
@@ -25,12 +24,11 @@ from opentelemetry.environment_variables import (
 )
 from opentelemetry.sdk.environment_variables import OTEL_EXPORTER_OTLP_PROTOCOL
 
-
 class TestDistribution(TestCase):
     def test_package_available(self):
         try:
-            require(["opentelemetry-distro"])
-        except DistributionNotFound:
+            importlib_metadata.distribution("opentelemetry-distro")
+        except importlib_metadata.PackageNotFoundError:
             self.fail("opentelemetry-distro not installed")
 
     def test_default_configuration(self):
