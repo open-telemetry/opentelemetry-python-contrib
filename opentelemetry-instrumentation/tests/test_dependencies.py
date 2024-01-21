@@ -14,7 +14,8 @@
 
 # pylint: disable=protected-access
 
-import pkg_resources
+import importlib_metadata
+from packaging import version
 import pytest
 
 from opentelemetry.instrumentation.dependencies import (
@@ -26,6 +27,21 @@ from opentelemetry.test.test_base import TestBase
 
 
 class TestDependencyConflicts(TestBase):
+    def _check_version(self, package_spec):
+        package_name, _, package_version = package_spec.partition('==')
+        package_name = package_name.strip()
+        package_version = package_version.strip()
+
+        try:
+            installed_distribution = importlib_metadata.distribution(package_name)
+        except importlib_metadata.PackageNotFoundError:
+            return None
+
+        installed_version = version.parse(installed_distribution.version)
+        if package_version and installed_version != version.parse(package_version):
+            return f'{package_name} {installed_distribution.version}'
+        return package_name
+
     def test_get_dependency_conflicts_empty(self):
         self.assertIsNone(get_dependency_conflicts([]))
 

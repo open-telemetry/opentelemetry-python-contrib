@@ -19,7 +19,8 @@ import logging
 import subprocess
 import sys
 
-import pkg_resources
+from importlib_metadata import PackageNotFoundError, distribution
+from packaging import version
 
 from opentelemetry.instrumentation.bootstrap_gen import (
     default_instrumentations,
@@ -83,21 +84,45 @@ def _pip_check():
                 raise RuntimeError(f"Dependency conflict found: {pip_check}")
 
 
+# def _is_installed(req):
+#     if req in sys.modules:
+#         return True
+
+#     try:
+#         dist = distribution(req).version
+#     except PackageNotFoundError:
+#         return False
+#     except pkg_resources.VersionConflict as exc:
+#         logger.warning(
+#             "instrumentation for package %s is available but version %s is installed. Skipping.",
+#             exc.req,
+#             exc.dist.as_requirement(),  # pylint: disable=no-member
+#         )
+#         return False
+#     return True
+
+
 def _is_installed(req):
     if req in sys.modules:
         return True
 
     try:
-        pkg_resources.get_distribution(req)
-    except pkg_resources.DistributionNotFound:
+        dist = distribution(req)
+        # Assuming 'req' is in format 'package==version'
+        # Modify this as per the format of your 'req' string
+        required_version = req.split("==")[1] if "==" in req else None
+        if required_version and version.parse(dist.version) != version.parse(
+            required_version
+        ):
+            logger.warning(
+                "Instrumentation for package %s is available but version %s is installed. Skipping.",
+                req,
+                dist.version,
+            )
+            return False
+    except PackageNotFoundError:
         return False
-    except pkg_resources.VersionConflict as exc:
-        logger.warning(
-            "instrumentation for package %s is available but version %s is installed. Skipping.",
-            exc.req,
-            exc.dist.as_requirement(),  # pylint: disable=no-member
-        )
-        return False
+
     return True
 
 
