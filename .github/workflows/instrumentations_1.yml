@@ -26,7 +26,7 @@ jobs:
         python-version: [py37, py38, py39, py310, py311, pypy3]
         package:
           - "urllib"
-          - "urllib3"
+          - "urllib3v"
           - "wsgi"
           - "distro"
           - "richconsole"
