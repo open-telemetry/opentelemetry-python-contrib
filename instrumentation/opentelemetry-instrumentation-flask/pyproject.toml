@@ -35,8 +35,8 @@ dependencies = [
 
 [project.optional-dependencies]
 instruments = [
-  "flask >= 1.0, < 3.0",
-  "werkzeug < 3.0.0"
+  "werkzeug < 3.0.0",
+  "flask >= 1.0",
 ]
 test = [
   "opentelemetry-instrumentation-flask[instruments]",

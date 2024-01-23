@@ -57,7 +57,7 @@ jobs:
           - "logging"
           - "mysql"
           - "mysqlclient"
-          - "pika"
+          - "sio-pika"
           - "psycopg2"
           - "pymemcache"
           - "pymongo"
