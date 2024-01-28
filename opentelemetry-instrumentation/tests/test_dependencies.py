@@ -13,18 +13,14 @@
 # limitations under the License.
 
 # pylint: disable=protected-access
-
-import importlib_metadata
-from packaging import version
 import pytest
-
+import importlib_metadata
+import unittest.mock as mock
 from opentelemetry.instrumentation.dependencies import (
     DependencyConflict,
     get_dependency_conflicts,
-    get_dist_dependency_conflicts,
 )
 from opentelemetry.test.test_base import TestBase
-
 
 class TestDependencyConflicts(TestBase):
     def test_get_dependency_conflicts_empty(self):
@@ -51,20 +47,20 @@ class TestDependencyConflicts(TestBase):
             f'DependencyConflict: requested: "pytest == 5000" but found: "pytest {pytest.__version__}"',
         )
 
-    def test_get_dist_dependency_conflicts(self):
-        # Example: Check for a known conflict in the environment
-        # This is a less ideal approach for unit tests, but necessary due to the limitations of importlib_metadata
-        known_conflict_package = "known-conflict-package==1.0"
-        conflict = get_dependency_conflicts([known_conflict_package])
+    @mock.patch('importlib_metadata.distribution')
+    def test_get_dist_dependency_conflicts(self, mock_distribution):
+        # Mock a distribution return value
+        mock_dist = mock.MagicMock()
+        mock_dist.metadata = {'Name': 'test-pkg', 'Version': '1.0'}
+        mock_dist.requires = lambda: ['test-pkg ~= 1.0']
 
-        # Since we cannot mock the distribution, the assertions might need to be adjusted
-        # based on the actual environment and the packages installed
-        if conflict:
-            self.assertTrue(isinstance(conflict, DependencyConflict))
-            self.assertEqual(
-                str(conflict),
-                f'DependencyConflict: requested: "{known_conflict_package}" but found: "actual_version_installed"',
-            )
-        else:
-            # Handle case where there is no conflict (e.g., package not installed)
-            self.assertIsNone(conflict)
+        mock_distribution.return_value = mock_dist
+
+        conflict = get_dependency_conflicts(['test-pkg ~= 1.0'])
+
+        self.assertIsNotNone(conflict)
+        self.assertIsInstance(conflict, DependencyConflict)
+        self.assertEqual(
+            str(conflict),
+            'DependencyConflict: requested: "test-pkg ~= 1.0" but found: "None"',
+        )
