@@ -9,6 +9,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - `opentelemetry-resource-detector-azure` Added 10s timeout to VM Resource Detector
   ([#2119](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/2119))
+- `opentelemetry-resource-detector-azure` Changed timeout to 4 seconds due to [timeout bug](https://github.com/open-telemetry/opentelemetry-python/issues/3644)
+  ([#2136](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/2136))
 
 ## Version 1.22.0/0.43b0 (2023-12-14)
 
@@ -72,6 +74,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - `opentelemetry-resource-detector-azure` Add resource detectors for Azure App Service and VM
   ([#1901](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/1901))
+- `opentelemetry-instrumentation-flask` Add support for Flask 3.0.0
+  ([#152](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/2013))
 
 ## Version 1.19.0/0.40b0 (2023-07-13)
 - `opentelemetry-instrumentation-asgi` Add `http.server.request.size` metric
