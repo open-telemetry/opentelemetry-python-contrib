@@ -29,6 +29,10 @@ def main():
     error = False
 
     for path in map(Path, args.paths):
+<<<<<<< HEAD
+=======
+
+>>>>>>> upstream/main
         readme = path / "README.rst"
         try:
             if not is_valid_rst(readme):
@@ -36,6 +40,10 @@ def main():
                 print("FAILED: RST syntax errors in", readme)
                 continue
         except FileNotFoundError:
+<<<<<<< HEAD
+=======
+            error = True
+>>>>>>> upstream/main
             print("FAILED: README.rst not found in", path)
             continue
         if args.verbose:

@@ -1,3 +1,4 @@
+<<<<<<< HEAD
 # This file is only used as a way to assign any change to the approvers team
 # except for a change in any of the instrumentations. The actual codeowners
 # of the instrumentations are in .github/component_owners.yml.
@@ -10,3 +11,10 @@
 
 # Learn about CODEOWNERS file format:
 # https://help.github.com/en/articles/about-code-owners
+=======
+# Code owners file.
+# This file controls who is tagged for review for any given pull request.
+
+# For anything not explicitly taken by someone else:
+*               @open-telemetry/python-approvers
+>>>>>>> upstream/main

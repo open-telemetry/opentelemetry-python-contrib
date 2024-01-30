@@ -8,17 +8,28 @@
 *.egg
 *.egg-info
 dist
+<<<<<<< HEAD
 dist-info
+=======
+>>>>>>> upstream/main
 build
 eggs
 parts
 bin
+<<<<<<< HEAD
+=======
+include
+>>>>>>> upstream/main
 var
 sdist
 develop-eggs
 .installed.cfg
 pyvenv.cfg
 lib
+<<<<<<< HEAD
+=======
+share/
+>>>>>>> upstream/main
 lib64
 __pycache__
 venv*/
@@ -58,3 +69,13 @@ _build/
 # mypy
 .mypy_cache/
 target
+<<<<<<< HEAD
+=======
+
+# Django example
+
+docs/examples/django/db.sqlite3
+
+# Semantic conventions
+scripts/semconv/semantic-conventions
+>>>>>>> upstream/main

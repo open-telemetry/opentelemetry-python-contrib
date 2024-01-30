@@ -1,6 +1,7 @@
 version: '3'
 
 services:
+<<<<<<< HEAD
   otmongo:
     ports:
       - "27017:27017"
@@ -58,3 +59,16 @@ services:
       ACCEPT_EULA: "Y"
       SA_PASSWORD: "yourStrong(!)Password"
     command: /opt/mssql/bin/sqlservr
+=======
+  otopencensus:
+    image: rafaeljesus/opencensus-collector:latest
+    command: --logging-exporter DEBUG
+    ports:
+        - "8888:8888"
+        - "55678:55678"
+  otcollector:
+    image: otel/opentelemetry-collector:0.31.0
+    ports:
+        - "4317:4317"
+        - "4318:55681"
+>>>>>>> upstream/main

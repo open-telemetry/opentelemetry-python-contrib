@@ -125,7 +125,11 @@ jobs:
                             --title "Version ${STABLE_VERSION}/${UNSTABLE_VERSION}" \
                             --notes-file /tmp/release-notes.txt \
                             --discussion-category announcements \
+<<<<<<< HEAD
                             v$UNSTABLE_VERSION
+=======
+                            v$STABLE_VERSION
+>>>>>>> upstream/main
 
       - uses: actions/checkout@v3
         with:
@@ -202,4 +206,8 @@ jobs:
           gh pr create --title "$message" \
                        --body "$body" \
                        --head $branch \
+<<<<<<< HEAD
                        --base main
+=======
+                       --base main
+>>>>>>> upstream/main

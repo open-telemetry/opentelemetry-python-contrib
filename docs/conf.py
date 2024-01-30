@@ -12,7 +12,10 @@
 
 import os
 import sys
+<<<<<<< HEAD
 from configparser import ConfigParser
+=======
+>>>>>>> upstream/main
 from os import listdir
 from os.path import isdir, join
 
@@ -24,7 +27,14 @@ from django.conf import settings
 
 settings.configure()
 
+<<<<<<< HEAD
 source_dirs = []
+=======
+
+source_dirs = [
+    os.path.abspath("../opentelemetry-instrumentation/src/"),
+]
+>>>>>>> upstream/main
 
 exp = "../exporter"
 exp_dirs = [
@@ -33,6 +43,7 @@ exp_dirs = [
     if isdir(join(exp, f))
 ]
 
+<<<<<<< HEAD
 instr = "../instrumentation"
 instr_dirs = [
     os.path.abspath("/".join(["../instrumentation", f, "src"]))
@@ -65,6 +76,20 @@ sys.path[:0] = exp_dirs + instr_dirs + sdk_ext_dirs + prop_dirs + resource_dirs
 # -- Project information -----------------------------------------------------
 
 project = "OpenTelemetry Python Contrib"
+=======
+shim = "../shim"
+shim_dirs = [
+    os.path.abspath("/".join(["../shim", f, "src"]))
+    for f in listdir(shim)
+    if isdir(join(shim, f))
+]
+
+sys.path[:0] = source_dirs + exp_dirs + shim_dirs
+
+# -- Project information -----------------------------------------------------
+
+project = "OpenTelemetry Python"
+>>>>>>> upstream/main
 copyright = "OpenTelemetry Authors"  # pylint: disable=redefined-builtin
 author = "OpenTelemetry Authors"
 
@@ -104,10 +129,14 @@ intersphinx_mapping = {
     "aiohttp": ("https://aiohttp.readthedocs.io/en/stable/", None),
     "wrapt": ("https://wrapt.readthedocs.io/en/latest/", None),
     "pymongo": ("https://pymongo.readthedocs.io/en/stable/", None),
+<<<<<<< HEAD
     "opentelemetry": (
         "https://opentelemetry-python.readthedocs.io/en/latest/",
         None,
     ),
+=======
+    "grpc": ("https://grpc.github.io/grpc/python/", None),
+>>>>>>> upstream/main
 }
 
 # http://www.sphinx-doc.org/en/master/config.html#confval-nitpicky
@@ -116,6 +145,7 @@ nitpicky = True
 # Sphinx does not recognize generic type TypeVars
 # Container supposedly were fixed, but does not work
 # https://github.com/sphinx-doc/sphinx/pull/3744
+<<<<<<< HEAD
 nitpick_ignore = []
 
 cfg = ConfigParser()
@@ -140,6 +170,29 @@ for category in ignore_categories:
         for item in items:
             nitpick_ignore.append((category.replace("-", ":"), item))
 
+=======
+nitpick_ignore = [
+    ("py:class", "ValueT"),
+    ("py:class", "CarrierT"),
+    ("py:obj", "opentelemetry.propagators.textmap.CarrierT"),
+    ("py:obj", "Union"),
+    (
+        "py:class",
+        "opentelemetry.sdk.metrics._internal.instrument._Synchronous",
+    ),
+    (
+        "py:class",
+        "opentelemetry.sdk.metrics._internal.instrument._Asynchronous",
+    ),
+    # Even if wrapt is added to intersphinx_mapping, sphinx keeps failing
+    # with "class reference target not found: ObjectProxy".
+    ("py:class", "ObjectProxy"),
+    (
+        "py:class",
+        "opentelemetry.trace._LinkBase",
+    ),
+]
+>>>>>>> upstream/main
 
 # Add any paths that contain templates here, relative to this directory.
 templates_path = ["_templates"]
@@ -147,13 +200,31 @@ templates_path = ["_templates"]
 # List of patterns, relative to source directory, that match files and
 # directories to ignore when looking for source files.
 # This pattern also affects html_static_path and html_extra_path.
+<<<<<<< HEAD
 exclude_patterns = ["_build", "Thumbs.db", ".DS_Store"]
+=======
+exclude_patterns = [
+    "_build",
+    "Thumbs.db",
+    ".DS_Store",
+    "examples/fork-process-model/flask-gunicorn",
+    "examples/fork-process-model/flask-uwsgi",
+    "examples/error_handler/error_handler_0",
+    "examples/error_handler/error_handler_1",
+]
+
+_exclude_members = ["_abc_impl"]
+>>>>>>> upstream/main
 
 autodoc_default_options = {
     "members": True,
     "undoc-members": True,
     "show-inheritance": True,
     "member-order": "bysource",
+<<<<<<< HEAD
+=======
+    "exclude-members": ",".join(_exclude_members),
+>>>>>>> upstream/main
 }
 
 # -- Options for HTML output -------------------------------------------------
@@ -173,16 +244,30 @@ branch = os.environ.get("READTHEDOCS_VERSION")
 if branch is None or branch == "latest":
     branch = "main"
 
+<<<<<<< HEAD
 REPO = "open-telemetry/opentelemetry-python-contrib/"
+=======
+REPO = "open-telemetry/opentelemetry-python/"
+>>>>>>> upstream/main
 scm_raw_web = "https://raw.githubusercontent.com/" + REPO + branch
 scm_web = "https://github.com/" + REPO + "blob/" + branch
 
 # Store variables in the epilogue so they are globally available.
+<<<<<<< HEAD
 rst_epilog = f"""
 .. |SCM_WEB| replace:: {scm_web}
 .. |SCM_RAW_WEB| replace:: {scm_raw_web}
 .. |SCM_BRANCH| replace:: {branch}
 """
+=======
+rst_epilog = """
+.. |SCM_WEB| replace:: {s}
+.. |SCM_RAW_WEB| replace:: {sr}
+.. |SCM_BRANCH| replace:: {b}
+""".format(
+    s=scm_web, sr=scm_raw_web, b=branch
+)
+>>>>>>> upstream/main
 
 # used to have links to repo files
 extlinks = {

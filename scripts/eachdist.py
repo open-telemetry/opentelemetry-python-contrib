@@ -8,7 +8,10 @@ import shutil
 import subprocess
 import sys
 from configparser import ConfigParser
+<<<<<<< HEAD
 from datetime import datetime
+=======
+>>>>>>> upstream/main
 from inspect import cleandoc
 from itertools import chain
 from os.path import basename
@@ -17,8 +20,11 @@ from pathlib import Path, PurePath
 DEFAULT_ALLSEP = " "
 DEFAULT_ALLFMT = "{rel}"
 
+<<<<<<< HEAD
 NON_SRC_DIRS = ["build", "dist", "__pycache__", "lib", "venv", ".tox"]
 
+=======
+>>>>>>> upstream/main
 
 def unique(elems):
     seen = set()
@@ -240,7 +246,12 @@ def parse_args(args=None):
     )
 
     fmtparser = subparsers.add_parser(
+<<<<<<< HEAD
         "format", help="Formats all source code with black and isort.",
+=======
+        "format",
+        help="Formats all source code with black and isort.",
+>>>>>>> upstream/main
     )
     fmtparser.set_defaults(func=format_args)
     fmtparser.add_argument(
@@ -250,7 +261,12 @@ def parse_args(args=None):
     )
 
     versionparser = subparsers.add_parser(
+<<<<<<< HEAD
         "version", help="Get the version for a release",
+=======
+        "version",
+        help="Get the version for a release",
+>>>>>>> upstream/main
     )
     versionparser.set_defaults(func=version_args)
     versionparser.add_argument(
@@ -282,7 +298,11 @@ def find_targets_unordered(rootpath):
             continue
         if any(
             (subdir / marker).exists()
+<<<<<<< HEAD
             for marker in ("pyproject.toml",)
+=======
+            for marker in ("setup.py", "pyproject.toml")
+>>>>>>> upstream/main
         ):
             yield subdir
         else:
@@ -518,19 +538,31 @@ def lint_args(args):
 
     runsubprocess(
         args.dry_run,
+<<<<<<< HEAD
         ("black", "--config", f"{rootdir}/pyproject.toml", ".")
         + (("--diff", "--check") if args.check_only else ()),
+=======
+        ("black", "--config", "pyproject.toml", ".") + (("--diff", "--check") if args.check_only else ()),
+>>>>>>> upstream/main
         cwd=rootdir,
         check=True,
     )
     runsubprocess(
         args.dry_run,
+<<<<<<< HEAD
         ("isort", "--settings-path", f"{rootdir}/.isort.cfg", ".")
+=======
+        ("isort", "--settings-path", ".isort.cfg", ".")
+>>>>>>> upstream/main
         + (("--diff", "--check-only") if args.check_only else ()),
         cwd=rootdir,
         check=True,
     )
+<<<<<<< HEAD
     runsubprocess(args.dry_run, ("flake8", "--config", f"{rootdir}/.flake8", rootdir), check=True)
+=======
+    runsubprocess(args.dry_run, ("flake8", "--config", ".flake8", rootdir), check=True)
+>>>>>>> upstream/main
     execute_args(
         parse_subargs(
             args, ("exec", "pylint {}", "--all", "--mode", "lintroots")
@@ -539,11 +571,20 @@ def lint_args(args):
     execute_args(
         parse_subargs(
             args,
+<<<<<<< HEAD
             ("exec", "python scripts/check_for_valid_readme.py {}", "--all",),
+=======
+            (
+                "exec",
+                "python scripts/check_for_valid_readme.py {}",
+                "--all",
+            ),
+>>>>>>> upstream/main
         )
     )
 
 
+<<<<<<< HEAD
 def update_changelog(path, version, new_entry):
     unreleased_changes = False
     try:
@@ -605,12 +646,17 @@ def find(name, path):
     for root, _, files in os.walk(path):
         if _is_non_src_dir(root):
             continue
+=======
+def find(name, path):
+    for root, _, files in os.walk(path):
+>>>>>>> upstream/main
         if name in files:
             return os.path.join(root, name)
     return None
 
 
 def filter_packages(targets, packages):
+<<<<<<< HEAD
     if not packages:
         return targets
     filtered_packages = []
@@ -619,6 +665,12 @@ def filter_packages(targets, packages):
             if str(pkg) == "all":
                 continue
             if str(pkg) in str(target):
+=======
+    filtered_packages = []
+    for target in targets:
+        for pkg in packages:
+            if pkg in str(target):
+>>>>>>> upstream/main
                 filtered_packages.append(target)
                 break
     return filtered_packages
@@ -628,12 +680,20 @@ def update_version_files(targets, version, packages):
     print("updating version.py files")
     targets = filter_packages(targets, packages)
     update_files(
+<<<<<<< HEAD
         targets, "version.py", "__version__ .*", f'__version__ = "{version}"',
+=======
+        targets,
+        "version.py",
+        "__version__ .*",
+        f'__version__ = "{version}"',
+>>>>>>> upstream/main
     )
 
 
 def update_dependencies(targets, version, packages):
     print("updating dependencies")
+<<<<<<< HEAD
     if "all" in packages:
         packages.extend(targets)
     for pkg in packages:
@@ -648,6 +708,20 @@ def update_dependencies(targets, version, packages):
             "pyproject.toml",
             fr"({package_name}.*)==(.*)",
             r"\1== " + version + '",',
+=======
+    # PEP 508 allowed specifier operators
+    operators = ['==', '!=', '<=', '>=', '<', '>', '===', '~=', '=']
+    operators_pattern = '|'.join(re.escape(op) for op in operators)
+
+    for pkg in packages:
+        search = rf"({basename(pkg)}[^,]*)({operators_pattern})(.*\.dev)"
+        replace = r"\1\2 " + version
+        update_files(
+            targets,
+            "pyproject.toml",
+            search,
+            replace,
+>>>>>>> upstream/main
         )
 
 
@@ -682,22 +756,32 @@ def release_args(args):
     cfg.read(str(find_projectroot() / "eachdist.ini"))
     versions = args.versions
     updated_versions = []
+<<<<<<< HEAD
 
     excluded = cfg["exclude_release"]["packages"].split()
     targets = [target for target in targets if basename(target) not in excluded]
+=======
+>>>>>>> upstream/main
     for group in versions.split(","):
         mcfg = cfg[group]
         version = mcfg["version"]
         updated_versions.append(version)
+<<<<<<< HEAD
         packages = None
         if "packages" in mcfg:
             packages = [pkg for pkg in mcfg["packages"].split() if pkg not in excluded]
+=======
+        packages = mcfg["packages"].split()
+>>>>>>> upstream/main
         print(f"update {group} packages to {version}")
         update_dependencies(targets, version, packages)
         update_version_files(targets, version, packages)
 
+<<<<<<< HEAD
     update_changelogs("-".join(updated_versions))
 
+=======
+>>>>>>> upstream/main
 
 def test_args(args):
     clean_remainder_args(args.pytestargs)
@@ -715,10 +799,17 @@ def test_args(args):
 
 
 def format_args(args):
+<<<<<<< HEAD
     format_dir = str(find_projectroot())
     if args.path:
         format_dir = os.path.join(format_dir, args.path)
     root_dir = str(find_projectroot())
+=======
+    root_dir = format_dir = str(find_projectroot())
+    if args.path:
+        format_dir = os.path.join(format_dir, args.path)
+
+>>>>>>> upstream/main
     runsubprocess(
         args.dry_run,
         ("black", "--config", f"{root_dir}/pyproject.toml", "."),

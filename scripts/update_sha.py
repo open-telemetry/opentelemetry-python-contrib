@@ -19,9 +19,13 @@ import argparse
 import requests
 from ruamel.yaml import YAML
 
+<<<<<<< HEAD
 API_URL = (
     "https://api.github.com/repos/open-telemetry/opentelemetry-python/commits/"
 )
+=======
+API_URL = "https://api.github.com/repos/open-telemetry/opentelemetry-python-contrib/commits/"
+>>>>>>> upstream/main
 WORKFLOW_FILE = ".github/workflows/test.yml"
 
 
@@ -37,7 +41,11 @@ def update_sha(sha):
     yaml.preserve_quotes = True
     with open(WORKFLOW_FILE, "r") as file:
         workflow = yaml.load(file)
+<<<<<<< HEAD
     workflow["env"]["CORE_REPO_SHA"] = sha
+=======
+    workflow["env"]["CONTRIB_REPO_SHA"] = sha
+>>>>>>> upstream/main
     with open(WORKFLOW_FILE, "w") as file:
         yaml.dump(workflow, file)
 

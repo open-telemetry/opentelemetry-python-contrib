@@ -49,6 +49,7 @@ jobs:
       - name: Update version
         run: .github/scripts/update-version.sh $STABLE_VERSION $UNSTABLE_VERSION
 
+<<<<<<< HEAD
       - name: Set up Python 3.9
         uses: actions/setup-python@v2
         with:
@@ -58,6 +59,8 @@ jobs:
       - name: run tox
         run: tox -e generate
 
+=======
+>>>>>>> upstream/main
       - name: Update the change log with the approximate release date
         run: |
           date=$(date "+%Y-%m-%d")
@@ -79,4 +82,8 @@ jobs:
           gh pr create --title "[$GITHUB_REF_NAME] $message" \
                        --body "$message." \
                        --head $branch \
+<<<<<<< HEAD
                        --base $GITHUB_REF_NAME
+=======
+                       --base $GITHUB_REF_NAME
+>>>>>>> upstream/main

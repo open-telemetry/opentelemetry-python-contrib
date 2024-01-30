@@ -1,6 +1,7 @@
 sphinx==7.1.2
 sphinx-rtd-theme==2.0.0rc4
 sphinx-autodoc-typehints==1.25.2
+<<<<<<< HEAD
 
 # Need to install the api/sdk in the venv for autodoc. Modifying sys.path
 # doesn't work for pkg_resources.
@@ -50,3 +51,32 @@ httpx>=0.18.0
 # indirect dependency pins
 markupsafe==2.0.1
 itsdangerous==2.0.1
+=======
+# used to generate docs for the website
+sphinx-jekyll-builder==0.3.0
+
+# Need to install the api/sdk in the venv for autodoc. Modifying sys.path
+# doesn't work for pkg_resources.
+./opentelemetry-api
+./opentelemetry-semantic-conventions
+./opentelemetry-sdk
+./shim/opentelemetry-opencensus-shim
+./shim/opentelemetry-opentracing-shim
+
+# Required by instrumentation and exporter packages
+grpcio~=1.27
+Deprecated~=1.2
+django~=4.2
+flask~=1.0
+opentracing~=2.2.0
+thrift~=0.10
+wrapt>=1.0.0,<2.0.0
+# temporary fix. we should update the jinja, flask deps
+# See https://github.com/pallets/markupsafe/issues/282
+# breaking change introduced in markupsafe causes jinja, flask to break
+markupsafe==2.0.1
+
+# Jaeger generated protobufs do not currently support protobuf 4.x. This can be removed once
+# they're regenerated.
+protobuf~=3.19
+>>>>>>> upstream/main

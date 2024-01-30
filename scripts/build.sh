@@ -16,7 +16,11 @@ DISTDIR=dist
   mkdir -p $DISTDIR
   rm -rf $DISTDIR/*
 
+<<<<<<< HEAD
  for d in exporter/*/ opentelemetry-instrumentation/ opentelemetry-contrib-instrumentations/ opentelemetry-distro/ instrumentation/*/ propagator/*/ resource/*/ sdk-extension/*/ util/*/ ; do
+=======
+ for d in opentelemetry-api/ opentelemetry-sdk/ opentelemetry-proto/ opentelemetry-semantic-conventions/ exporter/*/ shim/opentelemetry-opentracing-shim/ propagator/*/ tests/opentelemetry-test-utils/; do
+>>>>>>> upstream/main
    (
      echo "building $d"
      cd "$d"
@@ -27,6 +31,7 @@ DISTDIR=dist
      fi
    )
  done
+<<<<<<< HEAD
  (
    cd $DISTDIR
    for x in *.tar.gz ; do
@@ -40,4 +45,6 @@ DISTDIR=dist
     fi
    done
  )
+=======
+>>>>>>> upstream/main
 )

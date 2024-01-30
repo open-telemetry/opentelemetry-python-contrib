@@ -23,11 +23,19 @@ exclude =
   venv*/
   target
   __pycache__
+<<<<<<< HEAD
   exporter/opentelemetry-exporter-jaeger/src/opentelemetry/exporter/jaeger/gen/
   exporter/opentelemetry-exporter-prometheus-remote-write/src/opentelemetry/exporter/prometheus_remote_write/gen/
   exporter/opentelemetry-exporter-jaeger/build/*
+=======
+  exporter/opentelemetry-exporter-zipkin-proto-http/src/opentelemetry/exporter/zipkin/proto/http/v2/gen/
+>>>>>>> upstream/main
   docs/examples/opentelemetry-example-app/src/opentelemetry_example_app/grpc/gen/
   docs/examples/opentelemetry-example-app/build/*
   opentelemetry-proto/build/*
   opentelemetry-proto/src/opentelemetry/proto/
+<<<<<<< HEAD
   scripts/*
+=======
+  */build/lib/*
+>>>>>>> upstream/main

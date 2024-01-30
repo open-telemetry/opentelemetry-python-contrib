@@ -1,0 +1,30 @@
+initial commit
+
+Signed-off-by: Alex Boten <aboten@lightstep.com>
+
+# Please enter the commit message for your changes. Lines starting
+# with '#' will be ignored, and an empty message aborts the commit.
+#
+# Author:    Alex Boten <aboten@lightstep.com>
+#
+# interactive rebase in progress; onto c4d17e9f1
+# Last command done (1 command done):
+#    pick 67f43ea6a initial commit
+# Next commands to do (1623 remaining commands):
+#    pick f13c716af Merge in latest from datadog/dd-trace-py (#1)
+#    pick ed6dd7f25 Removing support for python 2.7 (#2)
+# You are currently rebasing branch 'rem-pkg-res' on 'c4d17e9f1'.
+#
+# Changes to be committed:
+#	modified:   .gitignore
+#	new file:   CODEOWNERS
+#	modified:   LICENSE
+#	modified:   README.md
+#
+# Untracked files:
+#	git
+#	my_test_venv/
+#	opentelemetry-python/
+#	pip
+#	python
+#
