@@ -68,7 +68,10 @@ class _AzureVMMetadataServiceRequestor:
         request = Request(_AZURE_VM_METADATA_ENDPOINT)
         request.add_header("Metadata", "True")
         try:
-            with urlopen(request, timeout=10) as response:
+            # TODO: Changed to 4s to fit into OTel SDK's 5 second timeout.
+            # Lengthen or allow user input if issue is resolved.
+            # See https://github.com/open-telemetry/opentelemetry-python/issues/3644
+            with urlopen(request, timeout=4) as response:
                 return loads(response.read())
         except URLError:
             # Not on Azure VM
