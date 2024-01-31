@@ -18,6 +18,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- `opentelemtetry-instrumentation-psycopg3` Inital Instrumentation for psycopg3 including asynchronous instrumentation.
+
 - `opentelemetry-instrumentation` Added Otel semantic convention opt-in mechanism
   ([#1987](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/1987))
 - `opentelemetry-instrumentation-httpx` Fix mixing async and non async hooks
