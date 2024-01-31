@@ -31,6 +31,7 @@ jobs:
           - "distro"
           - "richconsole"
           - "prometheus-remote-write"
+          - "psycopg3"
           - "sdkextension-aws"
           - "propagator-aws-xray"
           - "propagator-ot-trace"
