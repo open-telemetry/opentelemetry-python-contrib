@@ -19,7 +19,7 @@ import flask
 from werkzeug.test import Client
 from werkzeug.wrappers import Response
 
-from opentelemetry import context
+from opentelemetry import context, trace
 
 
 class InstrumentationTest:
@@ -36,6 +36,21 @@ class InstrumentationTest:
             "SQLCOMMENTER_ORM_TAGS_AND_VALUES", {}
         )
         return sqlcommenter_flask_values
+
+    @staticmethod
+    def _copy_context_endpoint():
+        @flask.copy_current_request_context
+        def _extract_header():
+            return flask.request.headers["x-req"]
+
+        # Despite `_extract_header` copying the request context,
+        # calling it shouldn't detach the parent Flask span's contextvar
+        request_header = _extract_header()
+
+        return {
+            "span_name": trace.get_current_span().name,
+            "request_header": request_header,
+        }
 
     @staticmethod
     def _multithreaded_endpoint(count):
@@ -84,6 +99,7 @@ class InstrumentationTest:
         self.app.route("/hello/<int:helloid>")(self._hello_endpoint)
         self.app.route("/sqlcommenter")(self._sqlcommenter_endpoint)
         self.app.route("/multithreaded")(self._multithreaded_endpoint)
+        self.app.route("/copy_context")(self._copy_context_endpoint)
         self.app.route("/excluded/<int:helloid>")(self._hello_endpoint)
         self.app.route("/excluded")(excluded_endpoint)
         self.app.route("/excluded2")(excluded2_endpoint)

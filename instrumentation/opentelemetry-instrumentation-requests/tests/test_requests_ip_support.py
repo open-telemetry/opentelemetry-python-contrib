@@ -38,7 +38,7 @@ class TestURLLib3InstrumentorWithRealSocket(HttpTestBase, TestBase):
 
     @staticmethod
     def perform_request(url: str) -> requests.Response:
-        return requests.get(url)
+        return requests.get(url, timeout=5)
 
     def test_basic_http_success(self):
         response = self.perform_request(self.http_url)
@@ -71,7 +71,7 @@ class TestURLLib3InstrumentorWithRealSocket(HttpTestBase, TestBase):
 
         span = self.assert_span()
         self.assertIs(trace.SpanKind.CLIENT, span.kind)
-        self.assertEqual("HTTP GET", span.name)
+        self.assertEqual("GET", span.name)
 
         attributes = {
             "http.status_code": 200,

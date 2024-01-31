@@ -12,13 +12,63 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import grpc
 import grpc.aio
+import wrapt
 
-from ._server import (
-    OpenTelemetryServerInterceptor,
-    _OpenTelemetryServicerContext,
-    _wrap_rpc_behavior,
-)
+from opentelemetry.semconv.trace import SpanAttributes
+from opentelemetry.trace.status import Status, StatusCode
+
+from ._server import OpenTelemetryServerInterceptor, _wrap_rpc_behavior
+
+
+# pylint:disable=abstract-method
+class _OpenTelemetryAioServicerContext(wrapt.ObjectProxy):
+    def __init__(self, servicer_context, active_span):
+        super().__init__(servicer_context)
+        self._self_active_span = active_span
+        self._self_code = grpc.StatusCode.OK
+        self._self_details = None
+
+    async def abort(self, code, details="", trailing_metadata=tuple()):
+        self._self_code = code
+        self._self_details = details
+        self._self_active_span.set_attribute(
+            SpanAttributes.RPC_GRPC_STATUS_CODE, code.value[0]
+        )
+        self._self_active_span.set_status(
+            Status(
+                status_code=StatusCode.ERROR,
+                description=f"{code}:{details}",
+            )
+        )
+        return await self.__wrapped__.abort(code, details, trailing_metadata)
+
+    def set_code(self, code):
+        self._self_code = code
+        details = self._self_details or code.value[1]
+        self._self_active_span.set_attribute(
+            SpanAttributes.RPC_GRPC_STATUS_CODE, code.value[0]
+        )
+        if code != grpc.StatusCode.OK:
+            self._self_active_span.set_status(
+                Status(
+                    status_code=StatusCode.ERROR,
+                    description=f"{code}:{details}",
+                )
+            )
+        return self.__wrapped__.set_code(code)
+
+    def set_details(self, details):
+        self._self_details = details
+        if self._self_code != grpc.StatusCode.OK:
+            self._self_active_span.set_status(
+                Status(
+                    status_code=StatusCode.ERROR,
+                    description=f"{self._self_code}:{details}",
+                )
+            )
+        return self.__wrapped__.set_details(details)
 
 
 class OpenTelemetryAioServerInterceptor(
@@ -66,7 +116,7 @@ class OpenTelemetryAioServerInterceptor(
                     set_status_on_exception=False,
                 ) as span:
                     # wrap the context
-                    context = _OpenTelemetryServicerContext(context, span)
+                    context = _OpenTelemetryAioServicerContext(context, span)
 
                     # And now we run the actual RPC.
                     try:
@@ -77,7 +127,7 @@ class OpenTelemetryAioServerInterceptor(
                         # we handle in our context wrapper.
                         # Here, we're interested in uncaught exceptions.
                         # pylint:disable=unidiomatic-typecheck
-                        if type(error) != Exception:
+                        if type(error) != Exception:  # noqa: E721
                             span.record_exception(error)
                         raise error
 
@@ -91,7 +141,7 @@ class OpenTelemetryAioServerInterceptor(
                     context,
                     set_status_on_exception=False,
                 ) as span:
-                    context = _OpenTelemetryServicerContext(context, span)
+                    context = _OpenTelemetryAioServicerContext(context, span)
 
                     try:
                         async for response in behavior(
@@ -101,7 +151,7 @@ class OpenTelemetryAioServerInterceptor(
 
                     except Exception as error:
                         # pylint:disable=unidiomatic-typecheck
-                        if type(error) != Exception:
+                        if type(error) != Exception:  # noqa: E721
                             span.record_exception(error)
                         raise error
 

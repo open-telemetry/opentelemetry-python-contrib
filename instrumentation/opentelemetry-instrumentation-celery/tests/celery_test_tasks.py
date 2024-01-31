@@ -24,6 +24,15 @@ app = Celery(broker="memory:///")
 app.config_from_object(Config)
 
 
+class CustomError(Exception):
+    pass
+
+
 @app.task
 def task_add(num_a, num_b):
     return num_a + num_b
+
+
+@app.task
+def task_raises():
+    raise CustomError("The task failed!")

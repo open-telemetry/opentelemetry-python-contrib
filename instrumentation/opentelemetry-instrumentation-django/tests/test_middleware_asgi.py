@@ -137,7 +137,7 @@ class TestMiddlewareAsgi(SimpleTestCase, TestBase):
 
         span = spans[0]
 
-        self.assertEqual(span.name, "^route/(?P<year>[0-9]{4})/template/$")
+        self.assertEqual(span.name, "GET ^route/(?P<year>[0-9]{4})/template/$")
         self.assertEqual(span.kind, SpanKind.SERVER)
         self.assertEqual(span.status.status_code, StatusCode.UNSET)
         self.assertEqual(span.attributes[SpanAttributes.HTTP_METHOD], "GET")
@@ -160,7 +160,7 @@ class TestMiddlewareAsgi(SimpleTestCase, TestBase):
 
         span = spans[0]
 
-        self.assertEqual(span.name, "^traced/")
+        self.assertEqual(span.name, "GET ^traced/")
         self.assertEqual(span.kind, SpanKind.SERVER)
         self.assertEqual(span.status.status_code, StatusCode.UNSET)
         self.assertEqual(span.attributes[SpanAttributes.HTTP_METHOD], "GET")
@@ -195,7 +195,7 @@ class TestMiddlewareAsgi(SimpleTestCase, TestBase):
 
         span = spans[0]
 
-        self.assertEqual(span.name, "^traced/")
+        self.assertEqual(span.name, "POST ^traced/")
         self.assertEqual(span.kind, SpanKind.SERVER)
         self.assertEqual(span.status.status_code, StatusCode.UNSET)
         self.assertEqual(span.attributes[SpanAttributes.HTTP_METHOD], "POST")
@@ -218,7 +218,7 @@ class TestMiddlewareAsgi(SimpleTestCase, TestBase):
 
         span = spans[0]
 
-        self.assertEqual(span.name, "^error/")
+        self.assertEqual(span.name, "GET ^error/")
         self.assertEqual(span.kind, SpanKind.SERVER)
         self.assertEqual(span.status.status_code, StatusCode.ERROR)
         self.assertEqual(span.attributes[SpanAttributes.HTTP_METHOD], "GET")
@@ -264,7 +264,7 @@ class TestMiddlewareAsgi(SimpleTestCase, TestBase):
         self.assertEqual(len(span_list), 1)
 
         span = span_list[0]
-        self.assertEqual(span.name, "^span_name/([0-9]{4})/$")
+        self.assertEqual(span.name, "GET ^span_name/([0-9]{4})/$")
 
     async def test_span_name_for_query_string(self):
         """
@@ -275,7 +275,7 @@ class TestMiddlewareAsgi(SimpleTestCase, TestBase):
         self.assertEqual(len(span_list), 1)
 
         span = span_list[0]
-        self.assertEqual(span.name, "^span_name/([0-9]{4})/$")
+        self.assertEqual(span.name, "GET ^span_name/([0-9]{4})/$")
 
     async def test_span_name_404(self):
         await self.async_client.get("/span_name/1234567890/")
@@ -283,7 +283,7 @@ class TestMiddlewareAsgi(SimpleTestCase, TestBase):
         self.assertEqual(len(span_list), 1)
 
         span = span_list[0]
-        self.assertEqual(span.name, "HTTP GET")
+        self.assertEqual(span.name, "GET")
 
     async def test_traced_request_attrs(self):
         await self.async_client.get("/span_name/1234/", CONTENT_TYPE="test/ct")

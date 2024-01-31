@@ -3,6 +3,7 @@ components:
   docs/instrumentation:
     - nemoshlag
 
+
   instrumentation/opentelemetry-instrumentation-aio-pika:
     - ofek1weiss
 
@@ -43,9 +44,26 @@ components:
 
   instrumentation/opentelemetry-instrumentation-urllib:
     - shalevr
+    - ocelotl
 
   instrumentation/opentelemetry-instrumentation-urllib3:
     - shalevr
+    - ocelotl
 
   instrumentation/opentelemetry-instrumentation-sqlalchemy:
     - shalevr
+
+  instrumentation/opentelemetry-instrumentation-flask:
+    - ocelotl
+
+  instrumentation/opentelemetry-instrumentation-jinja2:
+    - ocelotl
+
+  instrumentation/opentelemetry-instrumentation-logging:
+    - ocelotl
+
+  instrumentation/opentelemetry-instrumentation-requests:
+    - ocelotl
+
+  instrumentation/opentelemetry-instrumentation-cassandra:
+    - mattcontinisio

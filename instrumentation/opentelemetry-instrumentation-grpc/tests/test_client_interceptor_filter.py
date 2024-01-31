@@ -11,6 +11,7 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
+# pylint:disable=cyclic-import
 
 import os
 from unittest import mock
@@ -21,7 +22,7 @@ from tests.protobuf import (  # pylint: disable=no-name-in-module
 )
 
 import opentelemetry.instrumentation.grpc
-from opentelemetry import context, trace
+from opentelemetry import trace
 from opentelemetry.instrumentation.grpc import GrpcInstrumentorClient, filters
 from opentelemetry.instrumentation.grpc._client import (
     OpenTelemetryClientInterceptor,
@@ -29,7 +30,7 @@ from opentelemetry.instrumentation.grpc._client import (
 from opentelemetry.instrumentation.grpc.grpcext._interceptor import (
     _UnaryClientInfo,
 )
-from opentelemetry.instrumentation.utils import _SUPPRESS_INSTRUMENTATION_KEY
+from opentelemetry.instrumentation.utils import suppress_instrumentation
 from opentelemetry.propagate import get_global_textmap, set_global_textmap
 from opentelemetry.semconv.trace import SpanAttributes
 from opentelemetry.test.mock_textmap import MockTextMapPropagator
@@ -638,45 +639,25 @@ class TestClientProtoFilterByEnvAndOption(TestBase):
             set_global_textmap(previous_propagator)
 
     def test_unary_unary_with_suppress_key(self):
-        token = context.attach(
-            context.set_value(_SUPPRESS_INSTRUMENTATION_KEY, True)
-        )
-        try:
+        with suppress_instrumentation():
             simple_method(self._stub)
             spans = self.memory_exporter.get_finished_spans()
-        finally:
-            context.detach(token)
         self.assertEqual(len(spans), 0)
 
     def test_unary_stream_with_suppress_key(self):
-        token = context.attach(
-            context.set_value(_SUPPRESS_INSTRUMENTATION_KEY, True)
-        )
-        try:
+        with suppress_instrumentation():
             server_streaming_method(self._stub)
             spans = self.memory_exporter.get_finished_spans()
-        finally:
-            context.detach(token)
         self.assertEqual(len(spans), 0)
 
     def test_stream_unary_with_suppress_key(self):
-        token = context.attach(
-            context.set_value(_SUPPRESS_INSTRUMENTATION_KEY, True)
-        )
-        try:
+        with suppress_instrumentation():
             client_streaming_method(self._stub)
             spans = self.memory_exporter.get_finished_spans()
-        finally:
-            context.detach(token)
         self.assertEqual(len(spans), 0)
 
     def test_stream_stream_with_suppress_key(self):
-        token = context.attach(
-            context.set_value(_SUPPRESS_INSTRUMENTATION_KEY, True)
-        )
-        try:
+        with suppress_instrumentation():
             bidirectional_streaming_method(self._stub)
             spans = self.memory_exporter.get_finished_spans()
-        finally:
-            context.detach(token)
         self.assertEqual(len(spans), 0)

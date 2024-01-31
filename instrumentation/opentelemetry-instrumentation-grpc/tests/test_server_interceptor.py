@@ -15,6 +15,8 @@
 # pylint:disable=unused-argument
 # pylint:disable=no-self-use
 
+import contextlib
+import tempfile
 import threading
 from concurrent import futures
 
@@ -78,23 +80,32 @@ class Servicer(GRPCTestServerServicer):
 
 
 class TestOpenTelemetryServerInterceptor(TestBase):
+    net_peer_span_attributes = {
+        SpanAttributes.NET_PEER_IP: "[::1]",
+        SpanAttributes.NET_PEER_NAME: "localhost",
+    }
+
+    @contextlib.contextmanager
+    def server(self, max_workers=1, interceptors=None):
+        with futures.ThreadPoolExecutor(max_workers=max_workers) as executor:
+            server = grpc.server(
+                executor,
+                options=(("grpc.so_reuseport", 0),),
+                interceptors=interceptors or [],
+            )
+
+            port = server.add_insecure_port("[::]:0")
+            channel = grpc.insecure_channel(f"localhost:{port:d}")
+            yield server, channel
+
     def test_instrumentor(self):
         def handler(request, context):
             return b""
 
         grpc_server_instrumentor = GrpcInstrumentorServer()
         grpc_server_instrumentor.instrument()
-        with futures.ThreadPoolExecutor(max_workers=1) as executor:
-            server = grpc.server(
-                executor,
-                options=(("grpc.so_reuseport", 0),),
-            )
-
+        with self.server(max_workers=1) as (server, channel):
             server.add_generic_rpc_handlers((UnaryUnaryRpcHandler(handler),))
-
-            port = server.add_insecure_port("[::]:0")
-            channel = grpc.insecure_channel(f"localhost:{port:d}")
-
             rpc_call = "TestServicer/handler"
             try:
                 server.start()
@@ -117,8 +128,7 @@ class TestOpenTelemetryServerInterceptor(TestBase):
             self.assertSpanHasAttributes(
                 span,
                 {
-                    SpanAttributes.NET_PEER_IP: "[::1]",
-                    SpanAttributes.NET_PEER_NAME: "localhost",
+                    **self.net_peer_span_attributes,
                     SpanAttributes.RPC_METHOD: "handler",
                     SpanAttributes.RPC_SERVICE: "TestServicer",
                     SpanAttributes.RPC_SYSTEM: "grpc",
@@ -137,17 +147,8 @@ class TestOpenTelemetryServerInterceptor(TestBase):
         grpc_server_instrumentor = GrpcInstrumentorServer()
         grpc_server_instrumentor.instrument()
         grpc_server_instrumentor.uninstrument()
-        with futures.ThreadPoolExecutor(max_workers=1) as executor:
-            server = grpc.server(
-                executor,
-                options=(("grpc.so_reuseport", 0),),
-            )
-
+        with self.server(max_workers=1) as (server, channel):
             server.add_generic_rpc_handlers((UnaryUnaryRpcHandler(handler),))
-
-            port = server.add_insecure_port("[::]:0")
-            channel = grpc.insecure_channel(f"localhost:{port:d}")
-
             rpc_call = "TestServicer/test"
             try:
                 server.start()
@@ -164,15 +165,11 @@ class TestOpenTelemetryServerInterceptor(TestBase):
         # Intercept gRPC calls...
         interceptor = server_interceptor()
 
-        with futures.ThreadPoolExecutor(max_workers=1) as executor:
-            server = grpc.server(
-                executor,
-                options=(("grpc.so_reuseport", 0),),
-                interceptors=[interceptor],
-            )
+        with self.server(
+            max_workers=1,
+            interceptors=[interceptor],
+        ) as (server, channel):
             add_GRPCTestServerServicer_to_server(Servicer(), server)
-            port = server.add_insecure_port("[::]:0")
-            channel = grpc.insecure_channel(f"localhost:{port:d}")
 
             rpc_call = "/GRPCTestServer/SimpleMethod"
             request = Request(client_id=1, request_data="test")
@@ -199,8 +196,7 @@ class TestOpenTelemetryServerInterceptor(TestBase):
         self.assertSpanHasAttributes(
             span,
             {
-                SpanAttributes.NET_PEER_IP: "[::1]",
-                SpanAttributes.NET_PEER_NAME: "localhost",
+                **self.net_peer_span_attributes,
                 SpanAttributes.RPC_METHOD: "SimpleMethod",
                 SpanAttributes.RPC_SERVICE: "GRPCTestServer",
                 SpanAttributes.RPC_SYSTEM: "grpc",
@@ -231,15 +227,11 @@ class TestOpenTelemetryServerInterceptor(TestBase):
         interceptor = server_interceptor()
 
         # setup the server
-        with futures.ThreadPoolExecutor(max_workers=1) as executor:
-            server = grpc.server(
-                executor,
-                options=(("grpc.so_reuseport", 0),),
-                interceptors=[interceptor],
-            )
+        with self.server(
+            max_workers=1,
+            interceptors=[interceptor],
+        ) as (server, channel):
             add_GRPCTestServerServicer_to_server(TwoSpanServicer(), server)
-            port = server.add_insecure_port("[::]:0")
-            channel = grpc.insecure_channel(f"localhost:{port:d}")
 
             # setup the RPC
             rpc_call = "/GRPCTestServer/SimpleMethod"
@@ -268,8 +260,7 @@ class TestOpenTelemetryServerInterceptor(TestBase):
         self.assertSpanHasAttributes(
             parent_span,
             {
-                SpanAttributes.NET_PEER_IP: "[::1]",
-                SpanAttributes.NET_PEER_NAME: "localhost",
+                **self.net_peer_span_attributes,
                 SpanAttributes.RPC_METHOD: "SimpleMethod",
                 SpanAttributes.RPC_SERVICE: "GRPCTestServer",
                 SpanAttributes.RPC_SYSTEM: "grpc",
@@ -292,15 +283,11 @@ class TestOpenTelemetryServerInterceptor(TestBase):
         # Intercept gRPC calls...
         interceptor = server_interceptor()
 
-        with futures.ThreadPoolExecutor(max_workers=1) as executor:
-            server = grpc.server(
-                executor,
-                options=(("grpc.so_reuseport", 0),),
-                interceptors=[interceptor],
-            )
+        with self.server(
+            max_workers=1,
+            interceptors=[interceptor],
+        ) as (server, channel):
             add_GRPCTestServerServicer_to_server(Servicer(), server)
-            port = server.add_insecure_port("[::]:0")
-            channel = grpc.insecure_channel(f"localhost:{port:d}")
 
             # setup the RPC
             rpc_call = "/GRPCTestServer/ServerStreamingMethod"
@@ -328,8 +315,7 @@ class TestOpenTelemetryServerInterceptor(TestBase):
         self.assertSpanHasAttributes(
             span,
             {
-                SpanAttributes.NET_PEER_IP: "[::1]",
-                SpanAttributes.NET_PEER_NAME: "localhost",
+                **self.net_peer_span_attributes,
                 SpanAttributes.RPC_METHOD: "ServerStreamingMethod",
                 SpanAttributes.RPC_SERVICE: "GRPCTestServer",
                 SpanAttributes.RPC_SYSTEM: "grpc",
@@ -360,15 +346,11 @@ class TestOpenTelemetryServerInterceptor(TestBase):
         # Intercept gRPC calls...
         interceptor = server_interceptor()
 
-        with futures.ThreadPoolExecutor(max_workers=1) as executor:
-            server = grpc.server(
-                executor,
-                options=(("grpc.so_reuseport", 0),),
-                interceptors=[interceptor],
-            )
+        with self.server(
+            max_workers=1,
+            interceptors=[interceptor],
+        ) as (server, channel):
             add_GRPCTestServerServicer_to_server(TwoSpanServicer(), server)
-            port = server.add_insecure_port("[::]:0")
-            channel = grpc.insecure_channel(f"localhost:{port:d}")
 
             # setup the RPC
             rpc_call = "/GRPCTestServer/ServerStreamingMethod"
@@ -397,8 +379,7 @@ class TestOpenTelemetryServerInterceptor(TestBase):
         self.assertSpanHasAttributes(
             parent_span,
             {
-                SpanAttributes.NET_PEER_IP: "[::1]",
-                SpanAttributes.NET_PEER_NAME: "localhost",
+                **self.net_peer_span_attributes,
                 SpanAttributes.RPC_METHOD: "ServerStreamingMethod",
                 SpanAttributes.RPC_SERVICE: "GRPCTestServer",
                 SpanAttributes.RPC_SYSTEM: "grpc",
@@ -427,16 +408,11 @@ class TestOpenTelemetryServerInterceptor(TestBase):
             active_span_in_handler = trace.get_current_span()
             return b""
 
-        with futures.ThreadPoolExecutor(max_workers=1) as executor:
-            server = grpc.server(
-                executor,
-                options=(("grpc.so_reuseport", 0),),
-                interceptors=[interceptor],
-            )
+        with self.server(
+            max_workers=1,
+            interceptors=[interceptor],
+        ) as (server, channel):
             server.add_generic_rpc_handlers((UnaryUnaryRpcHandler(handler),))
-
-            port = server.add_insecure_port("[::]:0")
-            channel = grpc.insecure_channel(f"localhost:{port:d}")
 
             active_span_before_call = trace.get_current_span()
             try:
@@ -463,16 +439,11 @@ class TestOpenTelemetryServerInterceptor(TestBase):
             active_spans_in_handler.append(trace.get_current_span())
             return b""
 
-        with futures.ThreadPoolExecutor(max_workers=1) as executor:
-            server = grpc.server(
-                executor,
-                options=(("grpc.so_reuseport", 0),),
-                interceptors=[interceptor],
-            )
+        with self.server(
+            max_workers=1,
+            interceptors=[interceptor],
+        ) as (server, channel):
             server.add_generic_rpc_handlers((UnaryUnaryRpcHandler(handler),))
-
-            port = server.add_insecure_port("[::]:0")
-            channel = grpc.insecure_channel(f"localhost:{port:d}")
 
             try:
                 server.start()
@@ -496,8 +467,7 @@ class TestOpenTelemetryServerInterceptor(TestBase):
             self.assertSpanHasAttributes(
                 span,
                 {
-                    SpanAttributes.NET_PEER_IP: "[::1]",
-                    SpanAttributes.NET_PEER_NAME: "localhost",
+                    **self.net_peer_span_attributes,
                     SpanAttributes.RPC_METHOD: "handler",
                     SpanAttributes.RPC_SERVICE: "TestServicer",
                     SpanAttributes.RPC_SYSTEM: "grpc",
@@ -527,16 +497,11 @@ class TestOpenTelemetryServerInterceptor(TestBase):
             active_spans_in_handler.append(trace.get_current_span())
             return b""
 
-        with futures.ThreadPoolExecutor(max_workers=2) as executor:
-            server = grpc.server(
-                executor,
-                options=(("grpc.so_reuseport", 0),),
-                interceptors=[interceptor],
-            )
+        with self.server(
+            max_workers=2,
+            interceptors=[interceptor],
+        ) as (server, channel):
             server.add_generic_rpc_handlers((UnaryUnaryRpcHandler(handler),))
-
-            port = server.add_insecure_port("[::]:0")
-            channel = grpc.insecure_channel(f"localhost:{port:d}")
 
             try:
                 server.start()
@@ -568,8 +533,7 @@ class TestOpenTelemetryServerInterceptor(TestBase):
             self.assertSpanHasAttributes(
                 span,
                 {
-                    SpanAttributes.NET_PEER_IP: "[::1]",
-                    SpanAttributes.NET_PEER_NAME: "localhost",
+                    **self.net_peer_span_attributes,
                     SpanAttributes.RPC_METHOD: "handler",
                     SpanAttributes.RPC_SERVICE: "TestServicer",
                     SpanAttributes.RPC_SYSTEM: "grpc",
@@ -592,18 +556,11 @@ class TestOpenTelemetryServerInterceptor(TestBase):
         def handler(request, context):
             context.abort(grpc.StatusCode.FAILED_PRECONDITION, failure_message)
 
-        with futures.ThreadPoolExecutor(max_workers=1) as executor:
-            server = grpc.server(
-                executor,
-                options=(("grpc.so_reuseport", 0),),
-                interceptors=[interceptor],
-            )
-
+        with self.server(
+            max_workers=1,
+            interceptors=[interceptor],
+        ) as (server, channel):
             server.add_generic_rpc_handlers((UnaryUnaryRpcHandler(handler),))
-
-            port = server.add_insecure_port("[::]:0")
-            channel = grpc.insecure_channel(f"localhost:{port:d}")
-
             rpc_call = "TestServicer/handler"
 
             server.start()
@@ -635,8 +592,7 @@ class TestOpenTelemetryServerInterceptor(TestBase):
         self.assertSpanHasAttributes(
             span,
             {
-                SpanAttributes.NET_PEER_IP: "[::1]",
-                SpanAttributes.NET_PEER_NAME: "localhost",
+                **self.net_peer_span_attributes,
                 SpanAttributes.RPC_METHOD: "handler",
                 SpanAttributes.RPC_SERVICE: "TestServicer",
                 SpanAttributes.RPC_SYSTEM: "grpc",
@@ -645,6 +601,28 @@ class TestOpenTelemetryServerInterceptor(TestBase):
                 ],
             },
         )
+
+
+class TestOpenTelemetryServerInterceptorUnix(
+    TestOpenTelemetryServerInterceptor,
+):
+    net_peer_span_attributes = {}
+
+    @contextlib.contextmanager
+    def server(self, max_workers=1, interceptors=None):
+        with futures.ThreadPoolExecutor(
+            max_workers=max_workers
+        ) as executor, tempfile.TemporaryDirectory() as tmp:
+            server = grpc.server(
+                executor,
+                options=(("grpc.so_reuseport", 0),),
+                interceptors=interceptors or [],
+            )
+
+            sock = f"unix://{tmp}/grpc.sock"
+            server.add_insecure_port(sock)
+            channel = grpc.insecure_channel(sock)
+            yield server, channel
 
 
 def get_latch(num):

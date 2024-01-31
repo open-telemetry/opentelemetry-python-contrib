@@ -11,6 +11,8 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
+# pylint: disable=unnecessary-dunder-call
+
 from logging import getLogger
 from typing import Any, Collection, Dict, Optional
 
@@ -122,7 +124,12 @@ class PikaInstrumentor(BaseInstrumentor):  # type: ignore
                 "Attempting to instrument Pika channel while already instrumented!"
             )
             return
-        tracer = trace.get_tracer(__name__, __version__, tracer_provider)
+        tracer = trace.get_tracer(
+            __name__,
+            __version__,
+            tracer_provider,
+            schema_url="https://opentelemetry.io/schemas/1.11.0",
+        )
         PikaInstrumentor._instrument_blocking_channel_consumers(
             channel, tracer, consume_hook
         )

@@ -52,8 +52,12 @@ An easier way to do so is:
 2. Run `.tox/lint/bin/isort .`
 
 See
-[`tox.ini`](https://github.com/open-telemetry/opentelemetry-python/blob/main/tox.ini)
+[`tox.ini`](https://github.com/open-telemetry/opentelemetry-python-contrib/blob/main/tox.ini)
 for more detail on available tox commands.
+
+### Troubleshooting
+
+- Some packages may require additional system wide dependencies to be installed. For example, you may need to install `libpq-dev` to run the postgresql client libraries instrumentation tests. or `libsnappy-dev` to run the prometheus exporter tests. If you encounter a build error, please check the installation instructions for the package you are trying to run tests for.
 
 ### Benchmarks
 
@@ -123,6 +127,17 @@ Open a pull request against the main `opentelemetry-python-contrib` repo.
 * If the PR is not ready for review, please put `[WIP]` in the title, tag it
   as `work-in-progress`, or mark it as [`draft`](https://github.blog/2019-02-14-introducing-draft-pull-requests/).
 * Make sure CLA is signed and CI is clear.
+
+### How to Get PRs Reviewed
+
+The maintainers and approvers of this repo are not experts in every instrumentation there is here.
+In fact each one of us knows enough about them to only review a few. Unfortunately it can be hard
+to find enough experts in every instrumentation to quickly review every instrumentation PR. The
+instrumentation experts are listed in `.github/component_owners.yml` with their corresponding files
+or directories that they own. The owners listed there will be notified when PRs that modify their
+files are opened.
+
+If you are not getting reviews, please contact the respective owners directly.
 
 ### How to Get PRs Merged
 

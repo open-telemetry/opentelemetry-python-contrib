@@ -17,10 +17,12 @@ from importlib import import_module
 from typing import Any, Callable, Dict
 from unittest import mock
 
-from mocks.api_gateway_http_api_event import (
+from tests.mocks.api_gateway_http_api_event import (
     MOCK_LAMBDA_API_GATEWAY_HTTP_API_EVENT,
 )
-from mocks.api_gateway_proxy_event import MOCK_LAMBDA_API_GATEWAY_PROXY_EVENT
+from tests.mocks.api_gateway_proxy_event import (
+    MOCK_LAMBDA_API_GATEWAY_PROXY_EVENT,
+)
 
 from opentelemetry.environment_variables import OTEL_PROPAGATORS
 from opentelemetry.instrumentation.aws_lambda import (
@@ -103,7 +105,7 @@ class TestAwsLambdaInstrumentor(TestBase):
         super().setUp()
         self.common_env_patch = mock.patch.dict(
             "os.environ",
-            {_HANDLER: "mocks.lambda_function.handler"},
+            {_HANDLER: "tests.mocks.lambda_function.handler"},
         )
         self.common_env_patch.start()
 
@@ -356,7 +358,7 @@ class TestAwsLambdaInstrumentor(TestBase):
     def test_api_gateway_proxy_event_sets_attributes(self):
         handler_patch = mock.patch.dict(
             "os.environ",
-            {_HANDLER: "mocks.lambda_function.rest_api_handler"},
+            {_HANDLER: "tests.mocks.lambda_function.rest_api_handler"},
         )
         handler_patch.start()
 

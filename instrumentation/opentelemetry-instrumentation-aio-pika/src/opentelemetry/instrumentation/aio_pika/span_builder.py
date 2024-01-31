@@ -15,9 +15,7 @@ from typing import Optional
 
 from aio_pika.abc import AbstractChannel, AbstractMessage
 
-from opentelemetry.instrumentation.aio_pika.utils import (
-    is_instrumentation_enabled,
-)
+from opentelemetry.instrumentation.utils import is_instrumentation_enabled
 from opentelemetry.semconv.trace import (
     MessagingOperationValues,
     SpanAttributes,

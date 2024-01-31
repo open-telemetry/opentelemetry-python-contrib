@@ -11,6 +11,7 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
+# pylint: disable=unexpected-keyword-arg,missing-kwoa,no-value-for-parameter
 
 import json
 import os
@@ -37,7 +38,9 @@ from . import sanitization_queries  # pylint: disable=no-name-in-module
 
 major_version = elasticsearch.VERSION[0]
 
-if major_version == 7:
+if major_version == 8:
+    from . import helpers_es8 as helpers  # pylint: disable=no-name-in-module
+elif major_version == 7:
     from . import helpers_es7 as helpers  # pylint: disable=no-name-in-module
 elif major_version == 6:
     from . import helpers_es6 as helpers  # pylint: disable=no-name-in-module
@@ -478,4 +481,8 @@ class TestElasticsearchIntegration(TestBase):
         self.assertEqual(
             sanitize_body(sanitization_queries.filter_query),
             str(sanitization_queries.filter_query_sanitized),
+        )
+        self.assertEqual(
+            sanitize_body(json.dumps(sanitization_queries.interval_query)),
+            str(sanitization_queries.interval_query_sanitized),
         )

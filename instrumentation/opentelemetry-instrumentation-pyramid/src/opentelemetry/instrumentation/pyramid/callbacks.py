@@ -84,7 +84,11 @@ def _before_traversal(event):
         return
 
     start_time = request_environ.get(_ENVIRON_STARTTIME_KEY)
-    tracer = trace.get_tracer(__name__, __version__)
+    tracer = trace.get_tracer(
+        __name__,
+        __version__,
+        schema_url="https://opentelemetry.io/schemas/1.11.0",
+    )
 
     if request.matched_route:
         span_name = request.matched_route.pattern
@@ -128,7 +132,11 @@ def trace_tween_factory(handler, registry):
     # pylint: disable=too-many-statements
     settings = registry.settings
     enabled = asbool(settings.get(SETTING_TRACE_ENABLED, True))
-    meter = get_meter(__name__, __version__)
+    meter = get_meter(
+        __name__,
+        __version__,
+        schema_url="https://opentelemetry.io/schemas/1.11.0",
+    )
     duration_histogram = meter.create_histogram(
         name=MetricInstruments.HTTP_SERVER_DURATION,
         unit="ms",

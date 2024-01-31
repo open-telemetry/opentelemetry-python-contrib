@@ -107,14 +107,15 @@ from opentelemetry import context, propagate, trace
 from opentelemetry.instrumentation.instrumentor import BaseInstrumentor
 from opentelemetry.instrumentation.utils import unwrap
 from opentelemetry.semconv.trace import MessagingOperationValues
-from opentelemetry.trace import Link, SpanKind, Tracer
+from opentelemetry.trace import Tracer
 
 from .package import _instruments
 from .utils import (
     KafkaPropertiesExtractor,
+    _create_new_consume_span,
+    _end_current_consume_span,
     _enrich_span,
     _get_span_name,
-    _kafka_getter,
     _kafka_setter,
 )
 from .version import __version__
@@ -136,6 +137,12 @@ class AutoInstrumentedConsumer(Consumer):
     # This method is deliberately implemented in order to allow wrapt to wrap this function
     def poll(self, timeout=-1):  # pylint: disable=useless-super-delegation
         return super().poll(timeout)
+
+    # This method is deliberately implemented in order to allow wrapt to wrap this function
+    def consume(
+        self, *args, **kwargs
+    ):  # pylint: disable=useless-super-delegation
+        return super().consume(*args, **kwargs)
 
 
 class ProxiedProducer(Producer):
@@ -177,10 +184,14 @@ class ProxiedConsumer(Consumer):
     def commit(self, *args, **kwargs):
         return self._consumer.commit(*args, **kwargs)
 
-    def consume(
-        self, num_messages=1, *args, **kwargs
-    ):  # pylint: disable=keyword-arg-before-vararg
-        return self._consumer.consume(num_messages, *args, **kwargs)
+    def consume(self, *args, **kwargs):
+        return ConfluentKafkaInstrumentor.wrap_consume(
+            self._consumer.consume,
+            self,
+            self._tracer,
+            args,
+            kwargs,
+        )
 
     def get_watermark_offsets(
         self, partition, timeout=-1, *args, **kwargs
@@ -217,7 +228,10 @@ class ConfluentKafkaInstrumentor(BaseInstrumentor):
         producer: Producer, tracer_provider=None
     ) -> ProxiedProducer:
         tracer = trace.get_tracer(
-            __name__, __version__, tracer_provider=tracer_provider
+            __name__,
+            __version__,
+            tracer_provider=tracer_provider,
+            schema_url="https://opentelemetry.io/schemas/1.11.0",
         )
 
         manual_producer = ProxiedProducer(producer, tracer)
@@ -229,7 +243,10 @@ class ConfluentKafkaInstrumentor(BaseInstrumentor):
         consumer: Consumer, tracer_provider=None
     ) -> ProxiedConsumer:
         tracer = trace.get_tracer(
-            __name__, __version__, tracer_provider=tracer_provider
+            __name__,
+            __version__,
+            tracer_provider=tracer_provider,
+            schema_url="https://opentelemetry.io/schemas/1.11.0",
         )
 
         manual_consumer = ProxiedConsumer(consumer, tracer)
@@ -260,7 +277,10 @@ class ConfluentKafkaInstrumentor(BaseInstrumentor):
 
         tracer_provider = kwargs.get("tracer_provider")
         tracer = trace.get_tracer(
-            __name__, __version__, tracer_provider=tracer_provider
+            __name__,
+            __version__,
+            tracer_provider=tracer_provider,
+            schema_url="https://opentelemetry.io/schemas/1.11.0",
         )
 
         self._tracer = tracer
@@ -275,6 +295,11 @@ class ConfluentKafkaInstrumentor(BaseInstrumentor):
                 func, instance, self._tracer, args, kwargs
             )
 
+        def _inner_wrap_consume(func, instance, args, kwargs):
+            return ConfluentKafkaInstrumentor.wrap_consume(
+                func, instance, self._tracer, args, kwargs
+            )
+
         wrapt.wrap_function_wrapper(
             AutoInstrumentedProducer,
             "produce",
@@ -285,6 +310,12 @@ class ConfluentKafkaInstrumentor(BaseInstrumentor):
             AutoInstrumentedConsumer,
             "poll",
             _inner_wrap_poll,
+        )
+
+        wrapt.wrap_function_wrapper(
+            AutoInstrumentedConsumer,
+            "consume",
+            _inner_wrap_consume,
         )
 
     def _uninstrument(self, **kwargs):
@@ -326,29 +357,14 @@ class ConfluentKafkaInstrumentor(BaseInstrumentor):
     @staticmethod
     def wrap_poll(func, instance, tracer, args, kwargs):
         if instance._current_consume_span:
-            context.detach(instance._current_context_token)
-            instance._current_context_token = None
-            instance._current_consume_span.end()
-            instance._current_consume_span = None
+            _end_current_consume_span(instance)
 
         with tracer.start_as_current_span(
             "recv", end_on_exit=True, kind=trace.SpanKind.CONSUMER
         ):
             record = func(*args, **kwargs)
             if record:
-                links = []
-                ctx = propagate.extract(record.headers(), getter=_kafka_getter)
-                if ctx:
-                    for item in ctx.values():
-                        if hasattr(item, "get_span_context"):
-                            links.append(Link(context=item.get_span_context()))
-
-                instance._current_consume_span = tracer.start_span(
-                    name=f"{record.topic()} process",
-                    links=links,
-                    kind=SpanKind.CONSUMER,
-                )
-
+                _create_new_consume_span(instance, tracer, [record])
                 _enrich_span(
                     instance._current_consume_span,
                     record.topic(),
@@ -361,3 +377,26 @@ class ConfluentKafkaInstrumentor(BaseInstrumentor):
         )
 
         return record
+
+    @staticmethod
+    def wrap_consume(func, instance, tracer, args, kwargs):
+        if instance._current_consume_span:
+            _end_current_consume_span(instance)
+
+        with tracer.start_as_current_span(
+            "recv", end_on_exit=True, kind=trace.SpanKind.CONSUMER
+        ):
+            records = func(*args, **kwargs)
+            if len(records) > 0:
+                _create_new_consume_span(instance, tracer, records)
+                _enrich_span(
+                    instance._current_consume_span,
+                    records[0].topic(),
+                    operation=MessagingOperationValues.PROCESS,
+                )
+
+        instance._current_context_token = context.attach(
+            trace.set_span_in_context(instance._current_consume_span)
+        )
+
+        return records

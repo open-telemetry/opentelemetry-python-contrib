@@ -26,18 +26,19 @@ classifiers = [
 ]
 dependencies = [
   "opentelemetry-api ~= 1.12",
-  "opentelemetry-instrumentation == 0.39b0.dev",
-  "opentelemetry-semantic-conventions == 0.39b0.dev",
+  "opentelemetry-instrumentation == 0.44b0.dev",
+  "opentelemetry-semantic-conventions == 0.44b0.dev",
+  "opentelemetry-util-http == 0.44b0.dev",
 ]
 
 [project.optional-dependencies]
 instruments = [
-  "httpx >= 0.18.0, <= 0.23.0",
+  "httpx >= 0.18.0",
 ]
 test = [
   "opentelemetry-instrumentation-httpx[instruments]",
   "opentelemetry-sdk ~= 1.12",
-  "opentelemetry-test-utils == 0.39b0.dev",
+  "opentelemetry-test-utils == 0.44b0.dev",
 ]
 
 [project.entry-points.opentelemetry_instrumentor]

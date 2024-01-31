@@ -43,10 +43,17 @@ from opentelemetry.instrumentation.wsgi import wsgi_getter
 from opentelemetry.semconv.trace import SpanAttributes
 from opentelemetry.trace import Span, SpanKind, use_span
 from opentelemetry.util.http import (
+    OTEL_INSTRUMENTATION_HTTP_CAPTURE_HEADERS_SANITIZE_FIELDS,
+    OTEL_INSTRUMENTATION_HTTP_CAPTURE_HEADERS_SERVER_REQUEST,
+    OTEL_INSTRUMENTATION_HTTP_CAPTURE_HEADERS_SERVER_RESPONSE,
+    SanitizeValue,
     _parse_active_request_count_attrs,
     _parse_duration_attrs,
+    get_custom_headers,
     get_excluded_urls,
     get_traced_request_attrs,
+    normalise_request_header_name,
+    normalise_response_header_name,
 )
 
 try:
@@ -91,10 +98,7 @@ else:
 try:
     from opentelemetry.instrumentation.asgi import asgi_getter, asgi_setter
     from opentelemetry.instrumentation.asgi import (
-        collect_custom_request_headers_attributes as asgi_collect_custom_request_attributes,
-    )
-    from opentelemetry.instrumentation.asgi import (
-        collect_custom_response_headers_attributes as asgi_collect_custom_response_attributes,
+        collect_custom_headers_attributes as asgi_collect_custom_headers_attributes,
     )
     from opentelemetry.instrumentation.asgi import (
         collect_request_attributes as asgi_collect_request_attributes,
@@ -107,7 +111,6 @@ except ImportError:
     asgi_collect_request_attributes = None
     set_status_code = None
     _is_asgi_supported = False
-
 
 _logger = getLogger(__name__)
 _attributes_by_preference = [
@@ -172,19 +175,16 @@ class _DjangoMiddleware(MiddlewareMixin):
             else:
                 match = resolve(request.path)
 
-            if hasattr(match, "route"):
-                return match.route
+            if hasattr(match, "route") and match.route:
+                return f"{request.method} {match.route}"
 
-            # Instead of using `view_name`, better to use `_func_name` as some applications can use similar
-            # view names in different modules
-            if hasattr(match, "_func_name"):
-                return match._func_name  # pylint: disable=protected-access
+            if hasattr(match, "url_name") and match.url_name:
+                return f"{request.method} {match.url_name}"
 
-            # Fallback for safety as `_func_name` private field
-            return match.view_name
+            return request.method
 
         except Resolver404:
-            return f"HTTP {request.method}"
+            return request.method
 
     # pylint: disable=too-many-locals
     def process_request(self, request):
@@ -252,7 +252,18 @@ class _DjangoMiddleware(MiddlewareMixin):
                 )
                 if span.is_recording() and span.kind == SpanKind.SERVER:
                     attributes.update(
-                        asgi_collect_custom_request_attributes(carrier)
+                        asgi_collect_custom_headers_attributes(
+                            carrier,
+                            SanitizeValue(
+                                get_custom_headers(
+                                    OTEL_INSTRUMENTATION_HTTP_CAPTURE_HEADERS_SANITIZE_FIELDS
+                                )
+                            ),
+                            get_custom_headers(
+                                OTEL_INSTRUMENTATION_HTTP_CAPTURE_HEADERS_SERVER_REQUEST
+                            ),
+                            normalise_request_header_name,
+                        )
                     )
             else:
                 if span.is_recording() and span.kind == SpanKind.SERVER:
@@ -339,8 +350,17 @@ class _DjangoMiddleware(MiddlewareMixin):
                     for key, value in response.items():
                         asgi_setter.set(custom_headers, key, value)
 
-                    custom_res_attributes = (
-                        asgi_collect_custom_response_attributes(custom_headers)
+                    custom_res_attributes = asgi_collect_custom_headers_attributes(
+                        custom_headers,
+                        SanitizeValue(
+                            get_custom_headers(
+                                OTEL_INSTRUMENTATION_HTTP_CAPTURE_HEADERS_SANITIZE_FIELDS
+                            )
+                        ),
+                        get_custom_headers(
+                            OTEL_INSTRUMENTATION_HTTP_CAPTURE_HEADERS_SERVER_RESPONSE
+                        ),
+                        normalise_response_header_name,
                     )
                     for key, value in custom_res_attributes.items():
                         span.set_attribute(key, value)

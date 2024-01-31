@@ -141,7 +141,7 @@ For example,
         if span and span.is_recording():
             span.set_attribute("custom_user_attribute_from_response_hook", "some-value")
 
-    FlaskInstrumentation().instrument(request_hook=request_hook, response_hook=response_hook)
+    FlaskInstrumentor().instrument(request_hook=request_hook, response_hook=response_hook)
 
 Flask Request object reference: https://flask.palletsprojects.com/en/2.1.x/api/#flask.Request
 
@@ -238,18 +238,29 @@ Note:
 API
 ---
 """
+import weakref
 from logging import getLogger
-from threading import get_ident
 from time import time_ns
 from timeit import default_timer
 from typing import Collection
 
 import flask
+from packaging import version as package_version
 
 import opentelemetry.instrumentation.wsgi as otel_wsgi
 from opentelemetry import context, trace
 from opentelemetry.instrumentation.flask.package import _instruments
 from opentelemetry.instrumentation.flask.version import __version__
+
+try:
+    flask_version = flask.__version__
+except AttributeError:
+    try:
+        from importlib import metadata
+    except ImportError:
+        import importlib_metadata as metadata
+    flask_version = metadata.version("flask")
+
 from opentelemetry.instrumentation.instrumentor import BaseInstrumentor
 from opentelemetry.instrumentation.propagators import (
     get_global_response_propagator,
@@ -265,10 +276,20 @@ _logger = getLogger(__name__)
 _ENVIRON_STARTTIME_KEY = "opentelemetry-flask.starttime_key"
 _ENVIRON_SPAN_KEY = "opentelemetry-flask.span_key"
 _ENVIRON_ACTIVATION_KEY = "opentelemetry-flask.activation_key"
-_ENVIRON_THREAD_ID_KEY = "opentelemetry-flask.thread_id_key"
+_ENVIRON_REQCTX_REF_KEY = "opentelemetry-flask.reqctx_ref_key"
 _ENVIRON_TOKEN = "opentelemetry-flask.token"
 
 _excluded_urls_from_env = get_excluded_urls("FLASK")
+
+if package_version.parse(flask_version) >= package_version.parse("2.2.0"):
+
+    def _request_ctx_ref() -> weakref.ReferenceType:
+        return weakref.ref(flask.globals.request_ctx._get_current_object())
+
+else:
+
+    def _request_ctx_ref() -> weakref.ReferenceType:
+        return weakref.ref(flask._request_ctx_stack.top)
 
 
 def get_default_span_name():
@@ -364,27 +385,26 @@ def _wrapped_before_request(
         flask_request_environ = flask.request.environ
         span_name = get_default_span_name()
 
+        attributes = otel_wsgi.collect_request_attributes(
+            flask_request_environ
+        )
+        if flask.request.url_rule:
+            # For 404 that result from no route found, etc, we
+            # don't have a url_rule.
+            attributes[SpanAttributes.HTTP_ROUTE] = flask.request.url_rule.rule
         span, token = _start_internal_or_server_span(
             tracer=tracer,
             span_name=span_name,
             start_time=flask_request_environ.get(_ENVIRON_STARTTIME_KEY),
             context_carrier=flask_request_environ,
             context_getter=otel_wsgi.wsgi_getter,
+            attributes=attributes,
         )
 
         if request_hook:
             request_hook(span, flask_request_environ)
 
         if span.is_recording():
-            attributes = otel_wsgi.collect_request_attributes(
-                flask_request_environ
-            )
-            if flask.request.url_rule:
-                # For 404 that result from no route found, etc, we
-                # don't have a url_rule.
-                attributes[
-                    SpanAttributes.HTTP_ROUTE
-                ] = flask.request.url_rule.rule
             for key, value in attributes.items():
                 span.set_attribute(key, value)
             if span.is_recording() and span.kind == trace.SpanKind.SERVER:
@@ -399,7 +419,7 @@ def _wrapped_before_request(
         activation = trace.use_span(span, end_on_exit=True)
         activation.__enter__()  # pylint: disable=E1101
         flask_request_environ[_ENVIRON_ACTIVATION_KEY] = activation
-        flask_request_environ[_ENVIRON_THREAD_ID_KEY] = get_ident()
+        flask_request_environ[_ENVIRON_REQCTX_REF_KEY] = _request_ctx_ref()
         flask_request_environ[_ENVIRON_SPAN_KEY] = span
         flask_request_environ[_ENVIRON_TOKEN] = token
 
@@ -410,7 +430,7 @@ def _wrapped_before_request(
             # https://flask.palletsprojects.com/en/1.1.x/api/#flask.has_request_context
             if flask and flask.request:
                 if commenter_options.get("framework", True):
-                    flask_info["framework"] = f"flask:{flask.__version__}"
+                    flask_info["framework"] = f"flask:{flask_version}"
                 if (
                     commenter_options.get("controller", True)
                     and flask.request.endpoint
@@ -439,17 +459,22 @@ def _wrapped_teardown_request(
             return
 
         activation = flask.request.environ.get(_ENVIRON_ACTIVATION_KEY)
-        thread_id = flask.request.environ.get(_ENVIRON_THREAD_ID_KEY)
-        if not activation or thread_id != get_ident():
+
+        original_reqctx_ref = flask.request.environ.get(
+            _ENVIRON_REQCTX_REF_KEY
+        )
+        current_reqctx_ref = _request_ctx_ref()
+        if not activation or original_reqctx_ref != current_reqctx_ref:
             # This request didn't start a span, maybe because it was created in
             # a way that doesn't run `before_request`, like when it is created
             # with `app.test_request_context`.
             #
-            # Similarly, check the thread_id against the current thread to ensure
-            # tear down only happens on the original thread. This situation can
-            # arise if the original thread handling the request spawn children
-            # threads and then uses something like copy_current_request_context
-            # to copy the request context.
+            # Similarly, check that the request_ctx that created the span
+            # matches the current request_ctx, and only tear down if they match.
+            # This situation can arise if the original request_ctx handling
+            # the request calls functions that push new request_ctx's,
+            # like any decorated with `flask.copy_current_request_context`.
+
             return
         if exc is None:
             activation.__exit__(None, None, None)
@@ -480,7 +505,10 @@ class _InstrumentedFlask(flask.Flask):
         self._is_instrumented_by_opentelemetry = True
 
         meter = get_meter(
-            __name__, __version__, _InstrumentedFlask._meter_provider
+            __name__,
+            __version__,
+            _InstrumentedFlask._meter_provider,
+            schema_url="https://opentelemetry.io/schemas/1.11.0",
         )
         duration_histogram = meter.create_histogram(
             name=MetricInstruments.HTTP_SERVER_DURATION,
@@ -502,7 +530,10 @@ class _InstrumentedFlask(flask.Flask):
         )
 
         tracer = trace.get_tracer(
-            __name__, __version__, _InstrumentedFlask._tracer_provider
+            __name__,
+            __version__,
+            _InstrumentedFlask._tracer_provider,
+            schema_url="https://opentelemetry.io/schemas/1.11.0",
         )
 
         _before_request = _wrapped_before_request(
@@ -579,7 +610,12 @@ class FlaskInstrumentor(BaseInstrumentor):
                 if excluded_urls is not None
                 else _excluded_urls_from_env
             )
-            meter = get_meter(__name__, __version__, meter_provider)
+            meter = get_meter(
+                __name__,
+                __version__,
+                meter_provider,
+                schema_url="https://opentelemetry.io/schemas/1.11.0",
+            )
             duration_histogram = meter.create_histogram(
                 name=MetricInstruments.HTTP_SERVER_DURATION,
                 unit="ms",
@@ -600,7 +636,12 @@ class FlaskInstrumentor(BaseInstrumentor):
                 excluded_urls=excluded_urls,
             )
 
-            tracer = trace.get_tracer(__name__, __version__, tracer_provider)
+            tracer = trace.get_tracer(
+                __name__,
+                __version__,
+                tracer_provider,
+                schema_url="https://opentelemetry.io/schemas/1.11.0",
+            )
 
             _before_request = _wrapped_before_request(
                 request_hook,

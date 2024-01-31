@@ -197,6 +197,12 @@ will replace the value of headers such as ``session-id`` and ``set-cookie`` with
 Note:
     The environment variable names used to capture HTTP headers are still experimental, and thus are subject to change.
 
+Sanitizing methods
+******************
+In order to prevent unbound cardinality for HTTP methods by default nonstandard ones are labeled as ``NONSTANDARD``.
+To record all of the names set the environment variable  ``OTEL_PYTHON_INSTRUMENTATION_HTTP_CAPTURE_ALL_METHODS``
+to a value that evaluates to true, e.g. ``1``.
+
 API
 ---
 """
@@ -226,6 +232,7 @@ from opentelemetry.util.http import (
     normalise_request_header_name,
     normalise_response_header_name,
     remove_url_credentials,
+    sanitize_method,
 )
 
 _HTTP_VERSION_PREFIX = "HTTP/"
@@ -295,7 +302,9 @@ def collect_request_attributes(environ):
     """
 
     result = {
-        SpanAttributes.HTTP_METHOD: environ.get("REQUEST_METHOD"),
+        SpanAttributes.HTTP_METHOD: sanitize_method(
+            environ.get("REQUEST_METHOD")
+        ),
         SpanAttributes.HTTP_SERVER_NAME: environ.get("SERVER_NAME"),
         SpanAttributes.HTTP_SCHEME: environ.get("wsgi.url_scheme"),
     }
@@ -440,8 +449,21 @@ def add_response_attributes(
 
 
 def get_default_span_name(environ):
-    """Default implementation for name_callback, returns HTTP {METHOD_NAME}."""
-    return f"HTTP {environ.get('REQUEST_METHOD', '')}".strip()
+    """
+    Default span name is the HTTP method and URL path, or just the method.
+    https://github.com/open-telemetry/opentelemetry-specification/pull/3165
+    https://opentelemetry.io/docs/reference/specification/trace/semantic_conventions/http/#name
+
+    Args:
+        environ: The WSGI environ object.
+    Returns:
+        The span name.
+    """
+    method = sanitize_method(environ.get("REQUEST_METHOD", "").strip())
+    path = environ.get("PATH_INFO", "").strip()
+    if method and path:
+        return f"{method} {path}"
+    return method
 
 
 class OpenTelemetryMiddleware:
@@ -470,8 +492,18 @@ class OpenTelemetryMiddleware:
         meter_provider=None,
     ):
         self.wsgi = wsgi
-        self.tracer = trace.get_tracer(__name__, __version__, tracer_provider)
-        self.meter = get_meter(__name__, __version__, meter_provider)
+        self.tracer = trace.get_tracer(
+            __name__,
+            __version__,
+            tracer_provider,
+            schema_url="https://opentelemetry.io/schemas/1.11.0",
+        )
+        self.meter = get_meter(
+            __name__,
+            __version__,
+            meter_provider,
+            schema_url="https://opentelemetry.io/schemas/1.11.0",
+        )
         self.duration_histogram = self.meter.create_histogram(
             name=MetricInstruments.HTTP_SERVER_DURATION,
             unit="ms",

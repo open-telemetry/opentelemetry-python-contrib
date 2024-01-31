@@ -201,30 +201,35 @@ def _set_api_gateway_v1_proxy_attributes(
     span.set_attribute(
         SpanAttributes.HTTP_METHOD, lambda_event.get("httpMethod")
     )
-    span.set_attribute(SpanAttributes.HTTP_ROUTE, lambda_event.get("resource"))
 
     if lambda_event.get("headers"):
-        span.set_attribute(
-            SpanAttributes.HTTP_USER_AGENT,
-            lambda_event["headers"].get("User-Agent"),
-        )
-        span.set_attribute(
-            SpanAttributes.HTTP_SCHEME,
-            lambda_event["headers"].get("X-Forwarded-Proto"),
-        )
-        span.set_attribute(
-            SpanAttributes.NET_HOST_NAME, lambda_event["headers"].get("Host")
-        )
+        if "User-Agent" in lambda_event["headers"]:
+            span.set_attribute(
+                SpanAttributes.HTTP_USER_AGENT,
+                lambda_event["headers"]["User-Agent"],
+            )
+        if "X-Forwarded-Proto" in lambda_event["headers"]:
+            span.set_attribute(
+                SpanAttributes.HTTP_SCHEME,
+                lambda_event["headers"]["X-Forwarded-Proto"],
+            )
+        if "Host" in lambda_event["headers"]:
+            span.set_attribute(
+                SpanAttributes.NET_HOST_NAME,
+                lambda_event["headers"]["Host"],
+            )
+    if "resource" in lambda_event:
+        span.set_attribute(SpanAttributes.HTTP_ROUTE, lambda_event["resource"])
 
-    if lambda_event.get("queryStringParameters"):
-        span.set_attribute(
-            SpanAttributes.HTTP_TARGET,
-            f"{lambda_event.get('resource')}?{urlencode(lambda_event.get('queryStringParameters'))}",
-        )
-    else:
-        span.set_attribute(
-            SpanAttributes.HTTP_TARGET, lambda_event.get("resource")
-        )
+        if lambda_event.get("queryStringParameters"):
+            span.set_attribute(
+                SpanAttributes.HTTP_TARGET,
+                f"{lambda_event['resource']}?{urlencode(lambda_event['queryStringParameters'])}",
+            )
+        else:
+            span.set_attribute(
+                SpanAttributes.HTTP_TARGET, lambda_event["resource"]
+            )
 
     return span
 
@@ -237,35 +242,38 @@ def _set_api_gateway_v2_proxy_attributes(
     More info:
     https://docs.aws.amazon.com/apigateway/latest/developerguide/http-api-develop-integrations-lambda.html
     """
-    span.set_attribute(
-        SpanAttributes.NET_HOST_NAME,
-        lambda_event["requestContext"].get("domainName"),
-    )
+    if "domainName" in lambda_event["requestContext"]:
+        span.set_attribute(
+            SpanAttributes.NET_HOST_NAME,
+            lambda_event["requestContext"]["domainName"],
+        )
 
     if lambda_event["requestContext"].get("http"):
-        span.set_attribute(
-            SpanAttributes.HTTP_METHOD,
-            lambda_event["requestContext"]["http"].get("method"),
-        )
-        span.set_attribute(
-            SpanAttributes.HTTP_USER_AGENT,
-            lambda_event["requestContext"]["http"].get("userAgent"),
-        )
-        span.set_attribute(
-            SpanAttributes.HTTP_ROUTE,
-            lambda_event["requestContext"]["http"].get("path"),
-        )
-
-        if lambda_event.get("rawQueryString"):
+        if "method" in lambda_event["requestContext"]["http"]:
             span.set_attribute(
-                SpanAttributes.HTTP_TARGET,
-                f"{lambda_event['requestContext']['http'].get('path')}?{lambda_event.get('rawQueryString')}",
+                SpanAttributes.HTTP_METHOD,
+                lambda_event["requestContext"]["http"]["method"],
             )
-        else:
+        if "userAgent" in lambda_event["requestContext"]["http"]:
             span.set_attribute(
-                SpanAttributes.HTTP_TARGET,
-                lambda_event["requestContext"]["http"].get("path"),
+                SpanAttributes.HTTP_USER_AGENT,
+                lambda_event["requestContext"]["http"]["userAgent"],
             )
+        if "path" in lambda_event["requestContext"]["http"]:
+            span.set_attribute(
+                SpanAttributes.HTTP_ROUTE,
+                lambda_event["requestContext"]["http"]["path"],
+            )
+            if lambda_event.get("rawQueryString"):
+                span.set_attribute(
+                    SpanAttributes.HTTP_TARGET,
+                    f"{lambda_event['requestContext']['http']['path']}?{lambda_event['rawQueryString']}",
+                )
+            else:
+                span.set_attribute(
+                    SpanAttributes.HTTP_TARGET,
+                    lambda_event["requestContext"]["http"]["path"],
+                )
 
     return span
 
@@ -313,7 +321,12 @@ def _instrument(
         except (IndexError, KeyError, TypeError):
             span_kind = SpanKind.SERVER
 
-        tracer = get_tracer(__name__, __version__, tracer_provider)
+        tracer = get_tracer(
+            __name__,
+            __version__,
+            tracer_provider,
+            schema_url="https://opentelemetry.io/schemas/1.11.0",
+        )
 
         with tracer.start_as_current_span(
             name=orig_handler_name,

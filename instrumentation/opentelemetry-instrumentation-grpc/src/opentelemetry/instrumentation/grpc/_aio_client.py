@@ -19,12 +19,11 @@ from collections import OrderedDict
 import grpc
 from grpc.aio import ClientCallDetails
 
-from opentelemetry import context
 from opentelemetry.instrumentation.grpc._client import (
     OpenTelemetryClientInterceptor,
     _carrier_setter,
 )
-from opentelemetry.instrumentation.utils import _SUPPRESS_INSTRUMENTATION_KEY
+from opentelemetry.instrumentation.utils import is_instrumentation_enabled
 from opentelemetry.propagate import inject
 from opentelemetry.semconv.trace import SpanAttributes
 from opentelemetry.trace.status import Status, StatusCode
@@ -139,9 +138,10 @@ class _BaseAioClientInterceptor(OpenTelemetryClientInterceptor):
             span.end()
 
     def tracing_skipped(self, client_call_details):
-        return context.get_value(
-            _SUPPRESS_INSTRUMENTATION_KEY
-        ) or not self.rpc_matches_filters(client_call_details)
+        return (
+            not is_instrumentation_enabled()
+            or not self.rpc_matches_filters(client_call_details)
+        )
 
     def rpc_matches_filters(self, client_call_details):
         return self._filter is None or self._filter(client_call_details)
