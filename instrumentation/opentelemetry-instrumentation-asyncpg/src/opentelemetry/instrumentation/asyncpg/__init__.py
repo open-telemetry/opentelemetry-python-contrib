@@ -97,7 +97,7 @@ def _hydrate_span_from_args(connection, query, parameters) -> dict:
 
 class AsyncPGInstrumentor(BaseInstrumentor):
 
-    _leading_comment_remover = re.compile(r"/\*.*?\*/")
+    _leading_comment_remover = re.compile(r"^/\*.*?\*/")
 
     def __init__(self, capture_parameters=False):
         super().__init__()
