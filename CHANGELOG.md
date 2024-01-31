@@ -11,6 +11,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   ([#2119](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/2119))
 - `opentelemetry-instrumentation-confluent-kafka` Add support for higher versions until 2.3.0 of confluent_kafka
   ([#2132](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/2132))
+- `opentelemetry-resource-detector-azure` Changed timeout to 4 seconds due to [timeout bug](https://github.com/open-telemetry/opentelemetry-python/issues/3644)
+  ([#2136](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/2136))
 
 ## Version 1.22.0/0.43b0 (2023-12-14)
 
@@ -48,6 +50,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   ([#1948](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/1948))
 - Added schema_url (`"https://opentelemetry.io/schemas/1.11.0"`) to all metrics and traces
   ([#1977](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/1977))
+- Add support for configuring ASGI middleware header extraction via runtime constructor parameters
+  ([#2026](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/2026))
 
 ### Fixed
 
