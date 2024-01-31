@@ -50,6 +50,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   ([#1948](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/1948))
 - Added schema_url (`"https://opentelemetry.io/schemas/1.11.0"`) to all metrics and traces
   ([#1977](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/1977))
+- Add support for configuring ASGI middleware header extraction via runtime constructor parameters
+  ([#2026](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/2026))
 
 ### Fixed
 
