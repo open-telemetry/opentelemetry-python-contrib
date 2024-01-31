@@ -13,6 +13,8 @@
 # limitations under the License.
 
 import unittest
+from logging import WARNING
+from sys import version_info
 from unittest import mock
 
 from celery import Celery
@@ -115,6 +117,29 @@ class TestUtils(unittest.TestCase):
         utils.set_attributes_from_context(span, context)
         self.assertEqual(span.attributes.get("celery.timelimit"), ("now", ""))
 
+    def test_set_attributes_partial_timelimit_hard_limit_numeric(self):
+        # it should extract only relevant keys
+        context = {
+            "correlation_id": "44b7f305",
+            "delivery_info": {"eager": True},
+            "eta": "soon",
+            "expires": "later",
+            "hostname": "localhost",
+            "id": "44b7f305",
+            "reply_to": "44b7f305",
+            "retries": 4,
+            "timelimit": (42, None),
+            "custom_meta": "custom_value",
+            "routing_key": "celery",
+        }
+        span = trace._Span("name", mock.Mock(spec=trace_api.SpanContext))
+        if version_info.minor >= 10:
+            with self.assertNoLogs(level=WARNING):
+                utils.set_attributes_from_context(span, context)
+        else:
+            utils.set_attributes_from_context(span, context)
+        self.assertEqual(span.attributes.get("celery.timelimit"), ("42", ""))
+
     def test_set_attributes_partial_timelimit_soft_limit(self):
         # it should extract only relevant keys
         context = {
@@ -135,6 +160,30 @@ class TestUtils(unittest.TestCase):
         self.assertEqual(
             span.attributes.get("celery.timelimit"), ("", "later")
         )
+
+    def test_set_attributes_partial_timelimit_soft_limit_numeric(self):
+        # it should extract only relevant keys
+        context = {
+            "correlation_id": "44b7f305",
+            "delivery_info": {"eager": True},
+            "eta": "soon",
+            "expires": "later",
+            "hostname": "localhost",
+            "id": "44b7f305",
+            "reply_to": "44b7f305",
+            "retries": 4,
+            "timelimit": (None, 42),
+            "custom_meta": "custom_value",
+            "routing_key": "celery",
+        }
+        span = trace._Span("name", mock.Mock(spec=trace_api.SpanContext))
+
+        if version_info.minor >= 10:
+            with self.assertNoLogs(level=WARNING):
+                utils.set_attributes_from_context(span, context)
+        else:
+            utils.set_attributes_from_context(span, context)
+        self.assertEqual(span.attributes.get("celery.timelimit"), ("", "42"))
 
     def test_set_attributes_from_context_empty_keys(self):
         # it should not extract empty keys
