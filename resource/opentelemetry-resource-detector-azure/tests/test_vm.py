@@ -363,18 +363,18 @@ WINDOWS_ATTRIBUTES = {
 class TestAzureVMResourceDetector(unittest.TestCase):
     @patch("opentelemetry.resource.detector.azure.vm.urlopen")
     def test_linux(self, mock_urlopen):
-        mock_open = Mock()
-        mock_urlopen.return_value = mock_open
-        mock_open.read.return_value = LINUX_JSON
+        mock_response = Mock()
+        mock_urlopen.return_value = mock_response
+        mock_response.read.return_value = LINUX_JSON
         attributes = AzureVMResourceDetector().detect().attributes
         for attribute_key, attribute_value in LINUX_ATTRIBUTES.items():
             self.assertEqual(attributes[attribute_key], attribute_value)
 
     @patch("opentelemetry.resource.detector.azure.vm.urlopen")
     def test_windows(self, mock_urlopen):
-        mock_open = Mock()
-        mock_urlopen.return_value = mock_open
-        mock_open.read.return_value = WINDOWS_JSON
+        mock_response = Mock()
+        mock_urlopen.return_value = mock_response
+        mock_response.read.return_value = WINDOWS_JSON
         attributes = AzureVMResourceDetector().detect().attributes
         for attribute_key, attribute_value in LINUX_ATTRIBUTES.items():
             self.assertEqual(attributes[attribute_key], attribute_value)
