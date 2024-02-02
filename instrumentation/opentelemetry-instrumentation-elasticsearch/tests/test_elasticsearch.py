@@ -160,9 +160,7 @@ class TestElasticsearchIntegration(TestBase):
         self.assertEqual(1, len(spans))
         self.assertEqual(spans[0].name, "Elasticsearch/test-index/_doc/:id")
         self.assertEqual("False", spans[0].attributes["elasticsearch.found"])
-        self.assertEqual(
-            "True", spans[0].attributes["elasticsearch.timed_out"]
-        )
+        self.assertEqual("True", spans[0].attributes["elasticsearch.timed_out"])
         self.assertEqual("7", spans[0].attributes["elasticsearch.took"])
 
     def test_trace_error_unknown(self, request_mock):
@@ -189,9 +187,7 @@ class TestElasticsearchIntegration(TestBase):
         span = spans[0]
         self.assertFalse(span.status.is_ok)
         self.assertEqual(span.status.status_code, code)
-        self.assertEqual(
-            span.status.description, f"{type(exc).__name__}: {exc}"
-        )
+        self.assertEqual(span.status.description, f"{type(exc).__name__}: {exc}")
 
     def test_parent(self, request_mock):
         request_mock.return_value = (1, {}, {})
@@ -385,9 +381,7 @@ class TestElasticsearchIntegration(TestBase):
         spans = self.get_finished_spans()
 
         self.assertEqual(1, len(spans))
-        self.assertEqual(
-            "GET", spans[0].attributes[request_hook_method_attribute]
-        )
+        self.assertEqual("GET", spans[0].attributes[request_hook_method_attribute])
         self.assertEqual(
             f"/{index}/_doc/{doc_id}",
             spans[0].attributes[request_hook_url_attribute],
@@ -402,9 +396,7 @@ class TestElasticsearchIntegration(TestBase):
 
         def response_hook(span, response):
             if span and span.is_recording():
-                span.set_attribute(
-                    response_attribute_name, json.dumps(response)
-                )
+                span.set_attribute(response_attribute_name, json.dumps(response))
 
         ElasticsearchInstrumentor().uninstrument()
         ElasticsearchInstrumentor().instrument(response_hook=response_hook)
@@ -462,9 +454,7 @@ class TestElasticsearchIntegration(TestBase):
         )
         es = Elasticsearch()
         res = es.get(index="test-index", doc_type="_doc", id=1)
-        self.assertEqual(
-            res.get("found"), json.loads(response_payload).get("found")
-        )
+        self.assertEqual(res.get("found"), json.loads(response_payload).get("found"))
 
         spans_list = self.get_finished_spans()
         self.assertEqual(len(spans_list), 0)
@@ -481,6 +471,22 @@ class TestElasticsearchIntegration(TestBase):
         self.assertEqual(
             sanitize_body(sanitization_queries.filter_query),
             str(sanitization_queries.filter_query_sanitized),
+        )
+        self.assertEqual(
+            sanitize_body(
+                [
+                    sanitization_queries.filter_query,
+                    sanitization_queries.match_query,
+                    sanitization_queries.interval_query,
+                ]
+            ),
+            str(
+                [
+                    sanitization_queries.filter_query_sanitized,
+                    sanitization_queries.match_query_sanitized,
+                    sanitization_queries.interval_query_sanitized,
+                ]
+            ),
         )
         self.assertEqual(
             sanitize_body(json.dumps(sanitization_queries.interval_query)),

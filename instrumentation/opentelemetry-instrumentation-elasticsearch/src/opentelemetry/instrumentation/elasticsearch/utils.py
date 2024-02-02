@@ -54,11 +54,18 @@ def _unflatten_dict(d):
 def sanitize_body(body) -> str:
     if isinstance(body, str):
         body = json.loads(body)
-
-    flatten_body = _flatten_dict(body)
-
-    for key in flatten_body:
-        if key.endswith(sanitized_keys):
-            flatten_body[key] = sanitized_value
-
-    return str(_unflatten_dict(flatten_body))
+    if isinstance(body, list):
+        bodies = body
+    else:
+        bodies = [body]
+    sanitized_bodies = []
+    for body in bodies:
+        flatten_body = _flatten_dict(body)
+        for key in flatten_body:
+            if key.endswith(sanitized_keys):
+                flatten_body[key] = sanitized_value
+        sanitized_bodies.append(str(_unflatten_dict(flatten_body)))
+    if isinstance(body, list):
+        return str(sanitized_bodies)
+    else:
+        return sanitized_bodies[0]
