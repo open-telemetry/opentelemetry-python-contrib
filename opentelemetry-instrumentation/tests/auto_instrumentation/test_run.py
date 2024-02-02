@@ -43,6 +43,16 @@ class TestRun(TestCase):
         cls.which_patcher.stop()
 
     @patch("sys.argv", ["instrument", ""])
+    def test_unset(self):
+        if environ.get("PYTHONPATH"):
+            del environ["PYTHONPATH"]  # enforce remove key/value from environ
+        auto_instrumentation.run()
+        self.assertEqual(
+            environ.get("PYTHONPATH"),
+            pathsep.join([self.auto_instrumentation_path, getcwd()]),
+        )
+
+    @patch("sys.argv", ["instrument", ""])
     @patch.dict("os.environ", {"PYTHONPATH": ""})
     def test_empty(self):
         auto_instrumentation.run()
