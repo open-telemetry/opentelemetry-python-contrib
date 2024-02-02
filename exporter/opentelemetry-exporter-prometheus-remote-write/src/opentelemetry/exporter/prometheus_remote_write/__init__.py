@@ -258,7 +258,11 @@ class PrometheusRemoteWriteMetricsExporter(MetricExporter):
         timeseries = []
         for labels, samples in sample_sets.items():
             ts = TimeSeries()
-            for label_name, label_value in chain(resource_labels, labels):
+            labels = list(chain(resource_labels, labels))
+
+            # Sorting is required by the spec: https://prometheus.io/docs/concepts/remote_write_spec/#labels
+            labels.sort(key=lambda x: x[0])
+            for label_name, label_value in labels:
                 # Previous implementation did not str() the names...
                 ts.labels.append(self._label(label_name, str(label_value)))
             for value, timestamp in samples:

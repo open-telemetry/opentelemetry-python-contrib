@@ -118,6 +118,7 @@ def test_parse_metric(metric, prom_rw):
     attributes = {
         "service_name": "foo",
         "bool_value": True,
+        "aaa_appear_first": 1
     }
 
     assert (
@@ -126,19 +127,20 @@ def test_parse_metric(metric, prom_rw):
     series = prom_rw._parse_metric(metric, tuple(attributes.items()))
     timestamp = metric.data.data_points[0].time_unix_nano // 1_000_000
     for single_series in series:
-        labels = str(single_series.labels)
+        assert(sorted(single_series.labels, key=lambda l: l.name) == single_series.labels)
+        labels_str = str(single_series.labels)
         # Its a bit easier to validate these stringified where we dont have to
         # worry about ordering and protobuf TimeSeries object structure
         # This doesn't guarantee the labels aren't mixed up, but our other
         # test cases already do.
-        assert "__name__" in labels
-        assert prom_rw._sanitize_string(metric.name, "name") in labels
+        assert "__name__" in labels_str
+        assert prom_rw._sanitize_string(metric.name, "name") in labels_str
         combined_attrs = list(attributes.items()) + list(
             metric.data.data_points[0].attributes.items()
         )
         for name, value in combined_attrs:
-            assert prom_rw._sanitize_string(name, "label") in labels
-            assert str(value) in labels
+            assert prom_rw._sanitize_string(name, "label") in labels_str
+            assert str(value) in labels_str
         if isinstance(metric.data, Histogram):
             values = [
                 metric.data.data_points[0].count,

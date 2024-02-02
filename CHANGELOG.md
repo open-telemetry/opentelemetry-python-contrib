@@ -18,6 +18,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- `opentelemetry-exporter-prometheus-remote-write` Improved spec compliance, fixing Thanos compatability 
+  ([#2078](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/2078))
 - `opentelemetry-instrumentation` Added Otel semantic convention opt-in mechanism
   ([#1987](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/1987))
 - `opentelemetry-instrumentation-httpx` Fix mixing async and non async hooks
