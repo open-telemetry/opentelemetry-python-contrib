@@ -139,7 +139,8 @@ class TestPostgresqlIntegration(TestBase):
             "opentelemetry.instrumentation.psycopg3.pg_cursor", MockCursor
         )
         self.cursor_async_mock = mock.patch(
-            "opentelemetry.instrumentation.psycopg3.pg_async_cursor", MockAsyncCursor
+            "opentelemetry.instrumentation.psycopg3.pg_async_cursor",
+            MockAsyncCursor,
         )
         self.connection_mock = mock.patch("psycopg.connect", MockConnection)
         self.connection_sync_mock = mock.patch(

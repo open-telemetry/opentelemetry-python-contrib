@@ -125,7 +125,7 @@ libraries = [
         "instrumentation": "opentelemetry-instrumentation-psycopg2==0.44b0.dev",
     },
     {
-        "library": "psycopg >= 3.1.12",
+        "library": "psycopg >= 3.1.17",
         "instrumentation": "opentelemetry-instrumentation-psycopg3==0.44b0.dev",
     },
     {

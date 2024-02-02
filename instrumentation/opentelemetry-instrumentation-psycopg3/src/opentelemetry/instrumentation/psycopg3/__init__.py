@@ -191,7 +191,9 @@ class Psycopg3Instrumentor(BaseInstrumentor):
             connection._is_instrumented_by_opentelemetry = False
 
         if not connection._is_instrumented_by_opentelemetry:
-            setattr(connection, _OTEL_CURSOR_FACTORY_KEY, connection.cursor_factory)
+            setattr(
+                connection, _OTEL_CURSOR_FACTORY_KEY, connection.cursor_factory
+            )
             connection.cursor_factory = _new_cursor_factory(
                 tracer_provider=tracer_provider
             )
@@ -205,7 +207,9 @@ class Psycopg3Instrumentor(BaseInstrumentor):
     # TODO(owais): check if core dbapi can do this for all dbapi implementations e.g, pymysql and mysql
     @staticmethod
     def uninstrument_connection(connection):
-        connection.cursor_factory = getattr(connection, _OTEL_CURSOR_FACTORY_KEY, None)
+        connection.cursor_factory = getattr(
+            connection, _OTEL_CURSOR_FACTORY_KEY, None
+        )
 
         return connection
 
@@ -241,7 +245,9 @@ class DatabaseApiAsyncIntegration(dbapi.DatabaseApiIntegration):
         new_factory_kwargs = {"db_api": self}
         if base_cursor_factory:
             new_factory_kwargs["base_factory"] = base_cursor_factory
-        kwargs["cursor_factory"] = _new_cursor_async_factory(**new_factory_kwargs)
+        kwargs["cursor_factory"] = _new_cursor_async_factory(
+            **new_factory_kwargs
+        )
         connection = await connect_method(*args, **kwargs)
         self.get_connection_attributes(connection)
         return connection
@@ -305,7 +311,9 @@ def _new_cursor_factory(db_api=None, base_factory=None, tracer_provider=None):
     return TracedCursorFactory
 
 
-def _new_cursor_async_factory(db_api=None, base_factory=None, tracer_provider=None):
+def _new_cursor_async_factory(
+    db_api=None, base_factory=None, tracer_provider=None
+):
     if not db_api:
         db_api = DatabaseApiAsyncIntegration(
             __name__,
