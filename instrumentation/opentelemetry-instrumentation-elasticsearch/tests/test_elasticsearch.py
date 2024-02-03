@@ -486,3 +486,19 @@ class TestElasticsearchIntegration(TestBase):
             sanitize_body(json.dumps(sanitization_queries.interval_query)),
             str(sanitization_queries.interval_query_sanitized),
         )
+        self.assertEqual(
+            sanitize_body(
+                [
+                    json.dumps(sanitization_queries.filter_query).encode("utf-8"),
+                    json.dumps(sanitization_queries.match_query).encode("utf-8"),
+                    json.dumps(sanitization_queries.interval_query).encode("utf-8"),
+                ]
+            ),
+            str(
+                [
+                    str(sanitization_queries.filter_query_sanitized),
+                    str(sanitization_queries.match_query_sanitized),
+                    str(sanitization_queries.interval_query_sanitized),
+                ]
+            ),
+        )
