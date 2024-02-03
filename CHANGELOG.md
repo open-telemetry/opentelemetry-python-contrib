@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## Unreleased
 
+- Drop uspport for 3.7
+  ([#2151](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/2151))
 - `opentelemetry-resource-detector-azure` Added 10s timeout to VM Resource Detector
   ([#2119](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/2119))
 - `opentelemetry-instrumentation-confluent-kafka` Add support for higher versions until 2.3.0 of confluent_kafka
