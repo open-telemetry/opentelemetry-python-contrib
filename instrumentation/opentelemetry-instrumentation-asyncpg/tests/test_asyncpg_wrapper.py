@@ -20,7 +20,9 @@ class TestAsyncPGInstrumentation(TestBase):
         first = AsyncPGInstrumentor()
         first.instrument()
         second = AsyncPGInstrumentor()
-        self.assertIsNotNone(first._tracer) 
+        second.instrument()
+        self.assertIsNotNone(first._tracer)
+        self.assertIsNotNone(second._tracer)
 
     def test_duplicated_uninstrumentation(self):
         AsyncPGInstrumentor().instrument()
