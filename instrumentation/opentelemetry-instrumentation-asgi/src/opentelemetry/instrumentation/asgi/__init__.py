@@ -189,11 +189,13 @@ API
 ---
 """
 
+from __future__ import annotations
+
 import typing
 import urllib
 from functools import wraps
 from timeit import default_timer
-from typing import Tuple
+from typing import Any, Awaitable, Callable, Tuple, cast
 
 from asgiref.compatibility import guarantee_single_callable
 
@@ -332,55 +334,28 @@ def collect_request_attributes(scope):
     return result
 
 
-def collect_custom_request_headers_attributes(scope):
-    """returns custom HTTP request headers to be added into SERVER span as span attributes
-    Refer specification https://github.com/open-telemetry/opentelemetry-specification/blob/main/specification/trace/semantic_conventions/http.md#http-request-and-response-headers
+def collect_custom_headers_attributes(
+    scope_or_response_message: dict[str, Any],
+    sanitize: SanitizeValue,
+    header_regexes: list[str],
+    normalize_names: Callable[[str], str],
+) -> dict[str, str]:
     """
+    Returns custom HTTP request or response headers to be added into SERVER span as span attributes.
 
-    sanitize = SanitizeValue(
-        get_custom_headers(
-            OTEL_INSTRUMENTATION_HTTP_CAPTURE_HEADERS_SANITIZE_FIELDS
-        )
-    )
-
+    Refer specifications:
+     - https://github.com/open-telemetry/opentelemetry-specification/blob/main/specification/trace/semantic_conventions/http.md#http-request-and-response-headers
+    """
     # Decode headers before processing.
-    headers = {
+    headers: dict[str, str] = {
         _key.decode("utf8"): _value.decode("utf8")
-        for (_key, _value) in scope.get("headers")
+        for (_key, _value) in scope_or_response_message.get("headers")
+        or cast("list[tuple[bytes, bytes]]", [])
     }
-
     return sanitize.sanitize_header_values(
         headers,
-        get_custom_headers(
-            OTEL_INSTRUMENTATION_HTTP_CAPTURE_HEADERS_SERVER_REQUEST
-        ),
-        normalise_request_header_name,
-    )
-
-
-def collect_custom_response_headers_attributes(message):
-    """returns custom HTTP response headers to be added into SERVER span as span attributes
-    Refer specification https://github.com/open-telemetry/opentelemetry-specification/blob/main/specification/trace/semantic_conventions/http.md#http-request-and-response-headers
-    """
-
-    sanitize = SanitizeValue(
-        get_custom_headers(
-            OTEL_INSTRUMENTATION_HTTP_CAPTURE_HEADERS_SANITIZE_FIELDS
-        )
-    )
-
-    # Decode headers before processing.
-    headers = {
-        _key.decode("utf8"): _value.decode("utf8")
-        for (_key, _value) in message.get("headers")
-    }
-
-    return sanitize.sanitize_header_values(
-        headers,
-        get_custom_headers(
-            OTEL_INSTRUMENTATION_HTTP_CAPTURE_HEADERS_SERVER_RESPONSE
-        ),
-        normalise_response_header_name,
+        header_regexes,
+        normalize_names,
     )
 
 
@@ -493,6 +468,9 @@ class OpenTelemetryMiddleware:
         tracer_provider=None,
         meter_provider=None,
         meter=None,
+        http_capture_headers_server_request: list[str] | None = None,
+        http_capture_headers_server_response: list[str] | None = None,
+        http_capture_headers_sanitize_fields: list[str] | None = None,
     ):
         self.app = guarantee_single_callable(app)
         self.tracer = trace.get_tracer(
@@ -540,7 +518,41 @@ class OpenTelemetryMiddleware:
         self.client_response_hook = client_response_hook
         self.content_length_header = None
 
-    async def __call__(self, scope, receive, send):
+        # Environment variables as constructor parameters
+        self.http_capture_headers_server_request = (
+            http_capture_headers_server_request
+            or (
+                get_custom_headers(
+                    OTEL_INSTRUMENTATION_HTTP_CAPTURE_HEADERS_SERVER_REQUEST
+                )
+            )
+            or None
+        )
+        self.http_capture_headers_server_response = (
+            http_capture_headers_server_response
+            or (
+                get_custom_headers(
+                    OTEL_INSTRUMENTATION_HTTP_CAPTURE_HEADERS_SERVER_RESPONSE
+                )
+            )
+            or None
+        )
+        self.http_capture_headers_sanitize_fields = SanitizeValue(
+            http_capture_headers_sanitize_fields
+            or (
+                get_custom_headers(
+                    OTEL_INSTRUMENTATION_HTTP_CAPTURE_HEADERS_SANITIZE_FIELDS
+                )
+            )
+            or []
+        )
+
+    async def __call__(
+        self,
+        scope: dict[str, Any],
+        receive: Callable[[], Awaitable[dict[str, Any]]],
+        send: Callable[[dict[str, Any]], Awaitable[None]],
+    ) -> None:
         """The ASGI application
 
         Args:
@@ -583,7 +595,14 @@ class OpenTelemetryMiddleware:
 
                     if current_span.kind == trace.SpanKind.SERVER:
                         custom_attributes = (
-                            collect_custom_request_headers_attributes(scope)
+                            collect_custom_headers_attributes(
+                                scope,
+                                self.http_capture_headers_sanitize_fields,
+                                self.http_capture_headers_server_request,
+                                normalise_request_header_name,
+                            )
+                            if self.http_capture_headers_server_request
+                            else {}
                         )
                         if len(custom_attributes) > 0:
                             current_span.set_attributes(custom_attributes)
@@ -658,7 +677,7 @@ class OpenTelemetryMiddleware:
         expecting_trailers = False
 
         @wraps(send)
-        async def otel_send(message):
+        async def otel_send(message: dict[str, Any]):
             nonlocal expecting_trailers
             with self.tracer.start_as_current_span(
                 " ".join((server_span_name, scope["type"], "send"))
@@ -685,7 +704,14 @@ class OpenTelemetryMiddleware:
                         and "headers" in message
                     ):
                         custom_response_attributes = (
-                            collect_custom_response_headers_attributes(message)
+                            collect_custom_headers_attributes(
+                                message,
+                                self.http_capture_headers_sanitize_fields,
+                                self.http_capture_headers_server_response,
+                                normalise_response_header_name,
+                            )
+                            if self.http_capture_headers_server_response
+                            else {}
                         )
                         if len(custom_response_attributes) > 0:
                             server_span.set_attributes(
