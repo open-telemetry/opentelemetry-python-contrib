@@ -40,7 +40,7 @@ You can run `tox` with the following arguments:
 - `tox` to run all existing tox commands, including unit tests for all packages
   under multiple Python versions
 - `tox -e docs` to regenerate the API docs
-- `tox -e py37-test-instrumentation-aiopg` to e.g. run the aiopg instrumentation unit tests under a specific
+- `tox -e py311-test-instrumentation-aiopg` to e.g. run the aiopg instrumentation unit tests under a specific
   Python version
 - `tox -e spellcheck` to run a spellcheck on all the code
 - `tox -e lint` to run lint checks on all code
