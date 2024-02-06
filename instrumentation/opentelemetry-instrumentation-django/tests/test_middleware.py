@@ -391,6 +391,50 @@ class TestMiddleware(WsgiTestBase):
         self.assertIsInstance(response_hook_args[1], HttpRequest)
         self.assertIsInstance(response_hook_args[2], HttpResponse)
         self.assertEqual(response_hook_args[2], response)
+    
+    def test_request_hook_exception(self):
+
+        class RequestHookException(Exception):
+            pass
+
+        def request_hook(span, request):
+            raise RequestHookException()
+
+        _DjangoMiddleware._otel_request_hook = request_hook
+        with self.assertRaises(RequestHookException):
+            Client().get("/span_name/1234/")
+        _DjangoMiddleware._otel_request_hook = None
+
+        # ensure that span ended
+        finished_spans = self.memory_exporter.get_finished_spans()
+        self.assertEqual(len(finished_spans), 1)
+        self.assertEquals(finished_spans[0].status.status_code, StatusCode.ERROR)
+    
+    def test_response_hook_exception(self):
+
+        class ResponseHookException(Exception):
+            pass
+
+        def response_hook(span, request, response):
+            raise ResponseHookException()
+
+        _DjangoMiddleware._otel_response_hook = response_hook
+        with self.assertRaises(ResponseHookException):
+            Client().get("/span_name/1234/")
+        with self.assertRaises(ResponseHookException):
+            Client().get("/error/")
+        _DjangoMiddleware._otel_response_hook = None
+
+        # ensure that span ended
+        finished_spans = self.memory_exporter.get_finished_spans()
+        self.assertEqual(len(finished_spans), 2)
+        self.assertEquals(finished_spans[0].status.status_code, StatusCode.ERROR)
+        self.assertIn("ResponseHookException", finished_spans[0].status.description)
+        self.assertEquals(finished_spans[1].status.status_code, StatusCode.ERROR)
+        # view error takes precedence over response hook error
+        self.assertIn("ValueError", finished_spans[1].status.description)
+        # ensure an event was added for both the view error and the response hook error
+        self.assertEquals(len(finished_spans[1].events), 2)
 
     def test_trace_parent(self):
         id_generator = RandomIdGenerator()

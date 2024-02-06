@@ -286,9 +286,20 @@ class _DjangoMiddleware(MiddlewareMixin):
             request.META[self._environ_token] = token
 
         if _DjangoMiddleware._otel_request_hook:
-            _DjangoMiddleware._otel_request_hook(  # pylint: disable=not-callable
-                span, request
-            )
+            try:
+                _DjangoMiddleware._otel_request_hook(  # pylint: disable=not-callable
+                    span, request
+                )
+            except Exception as exception:
+                # process_response() will not be called, so we need to clean up
+                if token:
+                    detach(token)
+                activation.__exit__(
+                    type(exception),
+                    exception,
+                    getattr(exception, "__traceback__", None),
+                )
+                raise exception
 
     # pylint: disable=unused-argument
     def process_view(self, request, view_func, *args, **kwargs):
@@ -341,6 +352,8 @@ class _DjangoMiddleware(MiddlewareMixin):
             )
         request_start_time = request.META.pop(self._environ_timer_key, None)
 
+        response_hook_exception = None
+
         if activation and span:
             if is_asgi_request:
                 set_status_code(span, response.status_code)
@@ -385,10 +398,19 @@ class _DjangoMiddleware(MiddlewareMixin):
 
             # record any exceptions raised while processing the request
             exception = request.META.pop(self._environ_exception_key, None)
+
             if _DjangoMiddleware._otel_response_hook:
-                _DjangoMiddleware._otel_response_hook(  # pylint: disable=not-callable
-                    span, request, response
-                )
+                try:
+                    _DjangoMiddleware._otel_response_hook(  # pylint: disable=not-callable
+                        span, request, response
+                    )
+                except Exception as e:
+                    response_hook_exception = e
+                    if not exception:
+                        exception = e
+                    else:
+                        # original exception takes precedence, so just log this one
+                        span.record_exception(e)
 
             if exception:
                 activation.__exit__(
@@ -408,5 +430,8 @@ class _DjangoMiddleware(MiddlewareMixin):
         if request.META.get(self._environ_token, None) is not None:
             detach(request.META.get(self._environ_token))
             request.META.pop(self._environ_token)
+        
+        if response_hook_exception is not None:
+            raise response_hook_exception
 
         return response
