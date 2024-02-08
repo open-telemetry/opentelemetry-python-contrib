@@ -502,3 +502,38 @@ class TestElasticsearchIntegration(TestBase):
                 ]
             ),
         )
+
+    def test_bulk_search(self, request_mock):
+
+        request_mock.return_value = (2, {}, json.dumps({"items": []}))
+
+        client = Elasticsearch()
+
+        data = [
+            {
+                "_index": "words",
+                "word": "foo",
+            },
+            {
+                "_index": "words",
+                "word": "bar",
+            },
+        ]
+
+        elasticsearch.helpers.bulk(client, data)
+
+        spans = self.get_finished_spans()
+        span = spans[0]
+        self.assertEqual(1, len(spans))
+        self.assertEqual(span.name, "Elasticsearch/_bulk")
+        self.assertIsNotNone(span.end_time)
+        expected_bulk_attributes = {
+            SpanAttributes.DB_SYSTEM: "elasticsearch",
+            "elasticsearch.url": "/_bulk",
+            "elasticsearch.method": "POST",
+            SpanAttributes.DB_STATEMENT: "[\"{'index': {'_index': 'words'}}\", \"{'word': 'foo'}\", \"{'index': {'_index': 'words'}}\", \"{'word': 'bar'}\"]",
+        }
+        self.assertEqual(
+            span.attributes,
+            expected_bulk_attributes,
+        )
