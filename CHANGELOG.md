@@ -16,7 +16,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - `opentelemetry-resource-detector-azure` Changed timeout to 4 seconds due to [timeout bug](https://github.com/open-telemetry/opentelemetry-python/issues/3644)
   ([#2136](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/2136))
 - Fix elastic-search instrumentation sanitization to support bulk queries
-  ([#1990](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/1988))
+  ([#1990](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/1990))
 
 ## Version 1.22.0/0.43b0 (2023-12-14)
 
