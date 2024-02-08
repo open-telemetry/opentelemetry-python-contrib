@@ -504,10 +504,7 @@ class TestElasticsearchIntegration(TestBase):
         )
 
     def test_bulk_search(self, request_mock):
-
         request_mock.return_value = (2, {}, json.dumps({"items": []}))
-
-        client = Elasticsearch()
 
         data = [
             {
@@ -519,7 +516,7 @@ class TestElasticsearchIntegration(TestBase):
                 "word": "bar",
             },
         ]
-
+        client = Elasticsearch()
         elasticsearch.helpers.bulk(client, data)
 
         spans = self.get_finished_spans()
