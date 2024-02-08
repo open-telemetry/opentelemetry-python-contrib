@@ -56,6 +56,10 @@ def sanitize_body(body) -> str:
         body = body.decode("utf8")
 
     if isinstance(body, str):
+        body_lines = body.strip().split("\n")
+        if len(body_lines) > 1:
+            return sanitize_body(body_lines)
+
         body = json.loads(body)
 
     if isinstance(body, list):
