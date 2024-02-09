@@ -24,24 +24,24 @@ class TestSiteCustomize(TestCase):
     def test_unset(self):
         if environ.get("PYTHONPATH"):
             del environ["PYTHONPATH"]  # enforce remove key/value from environ
-        from opentelemetry.instrumentation.auto_instrumentation import (  # noqa
-            sitecustomize,
+        from opentelemetry.instrumentation.auto_instrumentation.sitecustomize import (  # noqa
+            initialize,
         )
 
         self.assertEqual(environ.get("PYTHONPATH"), None)
 
     @patch.dict("os.environ", {"PYTHONPATH": ""})
     def test_empty(self):
-        from opentelemetry.instrumentation.auto_instrumentation import (  # noqa
-            sitecustomize,
+        from opentelemetry.instrumentation.auto_instrumentation.sitecustomize import (  # noqa
+            initialize,
         )
 
         self.assertEqual(environ["PYTHONPATH"], "")
 
     @patch.dict("os.environ", {"PYTHONPATH": "abc"})
     def test_set(self):
-        from opentelemetry.instrumentation.auto_instrumentation import (  # noqa
-            sitecustomize,
+        from opentelemetry.instrumentation.auto_instrumentation.sitecustomize import (  # noqa
+            initialize,
         )
 
         self.assertEqual(environ["PYTHONPATH"], "abc")
