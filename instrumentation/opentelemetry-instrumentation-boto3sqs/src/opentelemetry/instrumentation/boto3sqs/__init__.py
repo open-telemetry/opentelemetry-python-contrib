@@ -437,6 +437,9 @@ class Boto3SQSInstrumentor(BaseInstrumentor):
 
     def _uninstrument(self, **kwargs: Dict[str, Any]) -> None:
         unwrap(boto3, "client")
+        unwrap(boto3, "resource")
+        unwrap(boto3.Session, "client")
+        unwrap(boto3.Session, "resource")
 
         for client_cls in botocore.client.BaseClient.__subclasses__():
             self._un_decorate_sqs(client_cls)
