@@ -114,6 +114,9 @@ def _get_v4_resource(metadata_v4_endpoint):
                 "AvailabilityZone"
             ].lower(),
             ResourceAttributes.CLOUD_REGION: region,
+            ResourceAttributes.CLOUD_RESOURCE_ID: metadata_container[
+                "ContainerARN"
+            ],
             ResourceAttributes.AWS_ECS_CONTAINER_ARN: metadata_container[
                 "ContainerARN"
             ],
