@@ -18,6 +18,7 @@ from unittest import mock
 import pytest
 import sqlalchemy
 from sqlalchemy import create_engine, text
+from packaging.version import parse as parse_version
 
 from opentelemetry import trace
 from opentelemetry.instrumentation.sqlalchemy import SQLAlchemyInstrumentor
@@ -97,8 +98,8 @@ class TestSqlalchemyInstrumentation(TestBase):
         self.assertEqual(len(spans), 1)
 
     @pytest.mark.skipif(
-        not sqlalchemy.__version__.startswith("1.4"),
-        reason="only run async tests for 1.4",
+        not parse_version(sqlalchemy.__version__).release >= (1, 4),
+        reason="only run async tests for 1.4+",
     )
     def test_async_trace_integration(self):
         async def run():
@@ -246,8 +247,8 @@ class TestSqlalchemyInstrumentation(TestBase):
         )
 
     @pytest.mark.skipif(
-        not sqlalchemy.__version__.startswith("1.4"),
-        reason="only run async tests for 1.4",
+        not parse_version(sqlalchemy.__version__).release >= (1, 4),
+        reason="only run async tests for 1.4+",
     )
     def test_create_async_engine_wrapper(self):
         async def run():
@@ -281,8 +282,8 @@ class TestSqlalchemyInstrumentation(TestBase):
         asyncio.get_event_loop().run_until_complete(run())
 
     @pytest.mark.skipif(
-        not sqlalchemy.__version__.startswith("1.4"),
-        reason="only run async tests for 1.4",
+        not parse_version(sqlalchemy.__version__).release >= (1, 4),
+        reason="only run async tests for 1.4+",
     )
     def test_create_async_engine_wrapper_enable_commenter(self):
         async def run():
@@ -309,8 +310,8 @@ class TestSqlalchemyInstrumentation(TestBase):
         asyncio.get_event_loop().run_until_complete(run())
 
     @pytest.mark.skipif(
-        not sqlalchemy.__version__.startswith("1.4"),
-        reason="only run async tests for 1.4",
+        not parse_version(sqlalchemy.__version__).release >= (1, 4),
+        reason="only run async tests for 1.4+",
     )
     def test_create_async_engine_wrapper_enable_commenter_otel_values_false(
         self,
