@@ -37,8 +37,17 @@ from opentelemetry.trace import SpanKind
 from opentelemetry.trace.span import Span, format_span_id, format_trace_id
 
 
-def _make_sqs_client():
-    return boto3.client(
+def _make_sqs_client(*, session=False):
+    return (boto3.Session() if session else boto3).client(
+        "sqs",
+        region_name="us-east-1",
+        aws_access_key_id="dummy",
+        aws_secret_access_key="dummy",
+    )
+
+
+def _make_sqs_resource(*, session=False):
+    return (boto3.Session() if session else boto3).resource(
         "sqs",
         region_name="us-east-1",
         aws_access_key_id="dummy",
@@ -67,19 +76,44 @@ class TestBoto3SQSInstrumentor(TestCase):
             Boto3SQSInstrumentor().uninstrument()
 
     def test_instrument_api_before_client_init(self) -> None:
-        with self._active_instrumentor():
-            client = _make_sqs_client()
-            self._assert_instrumented(client)
+        for session in (False, True):
+            with self._active_instrumentor():
+                client = _make_sqs_client(session=session)
+                self._assert_instrumented(client)
 
     def test_instrument_api_after_client_init(self) -> None:
-        client = _make_sqs_client()
-        with self._active_instrumentor():
-            self._assert_instrumented(client)
+        for session in (False, True):
+            client = _make_sqs_client(session=session)
+            with self._active_instrumentor():
+                self._assert_instrumented(client)
 
     def test_instrument_multiple_clients(self):
-        with self._active_instrumentor():
-            self._assert_instrumented(_make_sqs_client())
-            self._assert_instrumented(_make_sqs_client())
+        for session in (False, True):
+            with self._active_instrumentor():
+                self._assert_instrumented(_make_sqs_client(session=session))
+                self._assert_instrumented(_make_sqs_client(session=session))
+
+    def test_instrument_api_before_resource_init(self) -> None:
+        for session in (False, True):
+            with self._active_instrumentor():
+                sqs = _make_sqs_resource(session=session)
+                self._assert_instrumented(sqs.meta.client)
+
+    def test_instrument_api_after_client_init(self) -> None:
+        for session in (False, True):
+            sqs = _make_sqs_resource(session=session)
+            with self._active_instrumentor():
+                self._assert_instrumented(sqs.meta.client)
+
+    def test_instrument_multiple_clients(self):
+        for session in (False, True):
+            with self._active_instrumentor():
+                self._assert_instrumented(
+                    _make_sqs_resource(session=session).meta.client
+                )
+                self._assert_instrumented(
+                    _make_sqs_resource(session=session).meta.client
+                )
 
 
 class TestBoto3SQSGetter(TestCase):

@@ -383,6 +383,9 @@ class Boto3SQSInstrumentor(BaseInstrumentor):
             return retval
 
         wrap_function_wrapper(boto3, "client", client_wrapper)
+        wrap_function_wrapper(boto3, "resource", client_wrapper)
+        wrap_function_wrapper(boto3.Session, "client", client_wrapper)
+        wrap_function_wrapper(boto3.Session, "resource", client_wrapper)
 
     def _decorate_sqs(self, sqs_class: type) -> None:
         """
