@@ -367,6 +367,15 @@ def _rewrapped_app(
         duration = max(round((default_timer() - start) * 1000), 0)
         duration_histogram.record(duration, duration_attrs)
         active_requests_counter.add(-1, active_requests_count_attrs)
+
+        activation = wrapped_app_environ.get(_ENVIRON_ACTIVATION_KEY)
+        if activation:
+            if isinstance(result, Exception):
+                activation.__exit__(
+                    type(result), result, getattr(result, "__traceback__", None)
+                )
+            else:
+                activation.__exit__(None, None, None)
         return result
 
     return _wrapped_app
@@ -476,12 +485,6 @@ def _wrapped_teardown_request(
             # like any decorated with `flask.copy_current_request_context`.
 
             return
-        if exc is None:
-            activation.__exit__(None, None, None)
-        else:
-            activation.__exit__(
-                type(exc), exc, getattr(exc, "__traceback__", None)
-            )
 
         if flask.request.environ.get(_ENVIRON_TOKEN, None):
             context.detach(flask.request.environ.get(_ENVIRON_TOKEN))

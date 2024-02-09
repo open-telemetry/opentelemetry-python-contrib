@@ -7,7 +7,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## Unreleased
 
-- Drop uspport for 3.7
+- Drop support for 3.7
   ([#2151](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/2151))
 - `opentelemetry-resource-detector-azure` Added 10s timeout to VM Resource Detector
   ([#2119](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/2119))
@@ -17,6 +17,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   ([#2132](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/2132))
 - `opentelemetry-resource-detector-azure` Changed timeout to 4 seconds due to [timeout bug](https://github.com/open-telemetry/opentelemetry-python/issues/3644)
   ([#2136](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/2136))
+- `opentelemetry-instrumentation-wsgi` Add exemplar generation
+- `opentelemetry-instrumentation-flask` Add exemplar generation
 
 ## Version 1.22.0/0.43b0 (2023-12-14)
 
@@ -41,7 +43,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   ([#1959](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/1959))
 - `opentelemetry-resource-detector-azure` Added dependency for Cloud Resource ID attribute
   ([#2072](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/2072))
-  
+
 ## Version 1.21.0/0.42b0 (2023-11-01)
 
 ### Added
