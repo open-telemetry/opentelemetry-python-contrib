@@ -40,7 +40,7 @@ Usage
 For example,
 ::
 
-    Invoking engine.execute("select * from auth_users") will lead to sql query "select * from auth_users" but when SQLCommenter is enabled
+    Invoking engine.execute(text("select * from auth_users")) will lead to sql query "select * from auth_users" but when SQLCommenter is enabled
     the query will get appended with some configurable tags like "select * from auth_users /*tag=value*/;"
 
 SQLCommenter Configurations
