@@ -99,13 +99,13 @@ class TestBoto3SQSInstrumentor(TestCase):
                 sqs = _make_sqs_resource(session=session)
                 self._assert_instrumented(sqs.meta.client)
 
-    def test_instrument_api_after_client_init(self) -> None:
+    def test_instrument_api_after_resource_init(self) -> None:
         for session in (False, True):
             sqs = _make_sqs_resource(session=session)
             with self._active_instrumentor():
                 self._assert_instrumented(sqs.meta.client)
 
-    def test_instrument_multiple_clients(self):
+    def test_instrument_multiple_resources(self):
         for session in (False, True):
             with self._active_instrumentor():
                 self._assert_instrumented(
