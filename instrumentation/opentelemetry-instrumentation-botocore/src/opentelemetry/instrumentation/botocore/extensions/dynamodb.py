@@ -150,6 +150,17 @@ class _OpBatchWriteItem(_DynamoDbOperation):
         return "BatchWriteItem"
 
 
+class _OpTransactWriteItems(_DynamoDbOperation):
+    response_attributes = {
+        SpanAttributes.AWS_DYNAMODB_CONSUMED_CAPACITY: _RES_CONSUMED_CAP,
+        SpanAttributes.AWS_DYNAMODB_ITEM_COLLECTION_METRICS: _RES_ITEM_COL_METRICS,
+    }
+
+    @classmethod
+    def operation_name(cls):
+        return "TransactWriteItems"
+
+
 class _OpCreateTable(_DynamoDbOperation):
     start_attributes = {
         SpanAttributes.AWS_DYNAMODB_TABLE_NAMES: _REQ_TABLE_NAME,
