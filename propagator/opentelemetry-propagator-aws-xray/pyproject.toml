@@ -28,7 +28,9 @@ dependencies = [
 ]
 
 [project.optional-dependencies]
-test = []
+test = [
+    "requests",
+]
 
 [project.entry-points.opentelemetry_propagator]
 xray = "opentelemetry.propagators.aws:AwsXRayPropagator"
