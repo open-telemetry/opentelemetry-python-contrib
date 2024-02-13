@@ -64,8 +64,44 @@ class TestMetrics(TestBase):
 
     def test_metric_uninstrument(self):
         CeleryInstrumentor().instrument()
-        metrics = self.get_metrics()
-        self.assertEqual(len(metrics), 1)
+
+        self.get_metrics()
+        self.assertEqual(
+            (
+                self.memory_metrics_reader.get_metrics_data()
+                .resource_metrics[0]
+                .scope_metrics[0]
+                .metrics[0]
+                .data.data_points[0]
+                .bucket_counts[1]
+            ),
+            1,
+        )
+
+        self.get_metrics()
+        self.assertEqual(
+            (
+                self.memory_metrics_reader.get_metrics_data()
+                .resource_metrics[0]
+                .scope_metrics[0]
+                .metrics[0]
+                .data.data_points[0]
+                .bucket_counts[1]
+            ),
+            2,
+        )
+
         CeleryInstrumentor().uninstrument()
 
-        self.assertIsNone(self.memory_metrics_reader.get_metrics_data())
+        self.get_metrics()
+        self.assertEqual(
+            (
+                self.memory_metrics_reader.get_metrics_data()
+                .resource_metrics[0]
+                .scope_metrics[0]
+                .metrics[0]
+                .data.data_points[0]
+                .bucket_counts[1]
+            ),
+            2,
+        )
