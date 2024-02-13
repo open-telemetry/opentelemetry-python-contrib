@@ -14,7 +14,7 @@ Installation
     pip install opentelemetry-instrumentation
 
 
-This package provides a couple of commands that help automatically instruments a program:
+This package provides commands that help automatically instrument a program:
 
 .. note::
     You need to install a distro package to get auto instrumentation working. The ``opentelemetry-distro``
@@ -22,7 +22,7 @@ This package provides a couple of commands that help automatically instruments a
     For more info about ``opentelemetry-distro`` check `here <https://opentelemetry-python.readthedocs.io/en/latest/examples/distro/README.html>`__
     ::
 
-        pip install opentelemetry-distro[otlp]
+        pip install "opentelemetry-distro[otlp]"
 
     When creating a custom distro and/or configurator, be sure to add entry points for each under `opentelemetry_distro` and `opentelemetry_configurator` respectfully.
     If you have entry points for multiple distros or configurators present in your environment, you should specify the entry point name of the distro and configurator you want to be used via the `OTEL_PYTHON_DISTRO` and `OTEL_PYTHON_CONFIGURATOR` environment variables.
@@ -33,13 +33,14 @@ opentelemetry-bootstrap
 
 ::
 
-    opentelemetry-bootstrap --action=install|requirements
+    opentelemetry-bootstrap [-a |--action=][install|requirements]
 
-This commands inspects the active Python site-packages and figures out which
-instrumentation packages the user might want to install. By default it prints out
-a list of the suggested instrumentation packages which can be added to a requirements.txt
-file. It also supports installing the suggested packages when run with :code:`--action=install`
-flag.
+This command install default instrumentation packages and detects active Python site-packages
+to figure out which instrumentation packages the user might want to install. By default, it
+prints out a list of the default and detected instrumentation packages that can be added to a
+requirements.txt file. It also supports installing the packages when run with
+:code:`--action=install` or :code:`-a install` flag. All default and detectable
+instrumentation packages are defined `here <https://github.com/flands/opentelemetry-python-contrib/blob/main/opentelemetry-instrumentation/src/opentelemetry/instrumentation/bootstrap_gen.py>`.
 
 
 opentelemetry-instrument
@@ -51,12 +52,12 @@ opentelemetry-instrument
 
 The instrument command will try to automatically detect packages used by your python program
 and when possible, apply automatic tracing instrumentation on them. This means your program
-will get automatic distributed tracing for free without having to make any code changes
-at all. This will also configure a global tracer and tracing exporter without you having to
-make any code changes. By default, the instrument command will use the OTLP exporter but
-this can be overridden when needed.
+will get automatic distributed tracing without having to make any code changes. This will
+also configure a global tracer and tracing exporter as well as a meter and meter exporter.
+By default, the instrument command will use the OTLP exporter but this can be overridden.
 
-The command supports the following configuration options as CLI arguments and environment vars:
+The command supports the following configuration options as CLI arguments and environment
+variables:
 
 
 * ``--traces_exporter`` or ``OTEL_TRACES_EXPORTER``
@@ -64,27 +65,32 @@ The command supports the following configuration options as CLI arguments and en
 * ``--distro`` or ``OTEL_PYTHON_DISTRO``
 * ``--configurator`` or ``OTEL_PYTHON_CONFIGURATOR``
 
-Used to specify which trace exporter to use. Can be set to one or more of the well-known exporter
-names (see below).
+The exporter options define what exporter destination to use and can be set to one or more
+exporter names (see below). You can pass multiple values to configure multiple exporters
+(e.g., ``zipkin_json,otlp``).
 
     - Defaults to `otlp`.
     - Can be set to `none` to disable automatic tracer initialization.
+    - Can be set to 'console` to display JSON results locally.
 
-You can pass multiple values to configure multiple exporters e.g, ``zipkin,prometheus``
-
-Well known trace exporter names:
+Trace exporter names:
 
     - jaeger_proto
     - jaeger_thrift
     - opencensus
-    - zipkin_json
-    - zipkin_proto
     - otlp
     - otlp_proto_grpc (`deprecated`)
     - otlp_proto_http (`deprecated`)
+    - zipkin_json
+    - zipkin_proto
+
+Metric exporter names:
+
+    - otlp
+    - otlp_proto_grpc (`deprecated`)
+    - prometheus
 
 Note: The default transport protocol for ``otlp`` is gRPC.
-HTTP is currently supported for traces only, and should be set using ``OTEL_EXPORTER_OTLP_TRACES_PROTOCOL=http/protobuf``
 
 * ``--id-generator`` or ``OTEL_PYTHON_ID_GENERATOR``
 
@@ -106,9 +112,9 @@ Examples
 
 ::
 
-    opentelemetry-instrument --traces_exporter otlp flask run --port=3000
+    opentelemetry-instrument --traces_exporter console flask run --port=3000
 
-The above command will pass ``--traces_exporter otlp`` to the instrument command and ``--port=3000`` to ``flask run``.
+The above command will pass ``--traces_exporter console`` to the instrument command and ``--port=3000`` to ``flask run``.
 
 ::
 

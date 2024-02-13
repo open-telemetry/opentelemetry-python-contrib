@@ -96,11 +96,13 @@ def _hydrate_span_from_args(connection, query, parameters) -> dict:
 
 
 class AsyncPGInstrumentor(BaseInstrumentor):
+
+    _leading_comment_remover = re.compile(r"^/\*.*?\*/")
+    _tracer = None
+
     def __init__(self, capture_parameters=False):
         super().__init__()
         self.capture_parameters = capture_parameters
-        self._tracer = None
-        self._leading_comment_remover = re.compile(r"^/\*.*?\*/")
 
     def instrumentation_dependencies(self) -> Collection[str]:
         return _instruments
