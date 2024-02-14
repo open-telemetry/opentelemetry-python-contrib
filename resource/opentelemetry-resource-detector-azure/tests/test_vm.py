@@ -12,7 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 import unittest
-from unittest.mock import Mock, patch
+from unittest.mock import patch
 
 # pylint: disable=no-name-in-module
 from opentelemetry.resource.detector.azure.vm import AzureVMResourceDetector
