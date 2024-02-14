@@ -14,7 +14,6 @@
 
 
 from platform import python_implementation
-from sys import version_info
 from timeit import default_timer
 from urllib import request
 from urllib.parse import urlencode
@@ -189,8 +188,7 @@ class TestUrllibMetricsInstrumentation(TestBase):
             )
 
     @mark.skipif(
-        python_implementation() == "PyPy" or version_info.minor == 7,
-        reason="Fails randomly in 3.7 and pypy",
+        python_implementation() == "PyPy", reason="Fails randomly in pypy"
     )
     def test_metric_uninstrument(self):
         with request.urlopen(self.URL):
