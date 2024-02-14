@@ -1,13 +1,7 @@
 from logging import getLogger
 from typing import Collection, Optional
 
-from pkg_resources import (
-    Distribution,
-    DistributionNotFound,
-    RequirementParseError,
-    VersionConflict,
-    get_distribution,
-)
+from importlib.metadata import distribution, PackageNotFoundError, Distribution
 
 logger = getLogger(__name__)
 
@@ -47,16 +41,7 @@ def get_dependency_conflicts(
 ) -> Optional[DependencyConflict]:
     for dep in deps:
         try:
-            get_distribution(dep)
-        except VersionConflict as exc:
-            return DependencyConflict(dep, exc.dist)
-        except DistributionNotFound:
-            return DependencyConflict(dep)
-        except RequirementParseError as exc:
-            logger.warning(
-                'error parsing dependency, reporting as a conflict: "%s" - %s',
-                dep,
-                exc,
-            )
+            distribution(dep)
+        except PackageNotFoundError:
             return DependencyConflict(dep)
     return None
