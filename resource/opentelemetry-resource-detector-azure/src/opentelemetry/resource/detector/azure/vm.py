@@ -17,6 +17,12 @@ from logging import getLogger
 from urllib.error import URLError
 from urllib.request import Request, urlopen
 
+from opentelemetry.context import (
+    _SUPPRESS_INSTRUMENTATION_KEY,
+    attach,
+    detach,
+    set_value,
+)
 from opentelemetry.sdk.resources import Resource, ResourceDetector
 from opentelemetry.semconv.resource import (
     CloudPlatformValues,
@@ -49,6 +55,7 @@ class AzureVMResourceDetector(ResourceDetector):
     # pylint: disable=no-self-use
     def detect(self) -> "Resource":
         attributes = {}
+        token = attach(set_value(_SUPPRESS_INSTRUMENTATION_KEY, True))
         metadata_json = _get_azure_vm_metadata()
         if not metadata_json:
             return Resource(attributes)
@@ -56,6 +63,7 @@ class AzureVMResourceDetector(ResourceDetector):
             attributes[attribute_key] = _get_attribute_from_metadata(
                 metadata_json, attribute_key
             )
+        detach(token)
         return Resource(attributes)
 
 
@@ -74,6 +82,7 @@ def _get_azure_vm_metadata():
     except Exception as e:  # pylint: disable=broad-except,invalid-name
         _logger.exception("Failed to receive Azure VM metadata: %s", e)
         return None
+
 
 def _get_attribute_from_metadata(metadata_json, attribute_key):
     ams_value = ""
