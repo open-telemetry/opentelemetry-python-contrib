@@ -49,15 +49,11 @@ class AzureVMResourceDetector(ResourceDetector):
     # pylint: disable=no-self-use
     def detect(self) -> "Resource":
         attributes = {}
-        metadata_json = (
-            _get_azure_vm_metadata()
-        )
+        metadata_json = _get_azure_vm_metadata()
         if not metadata_json:
             return Resource(attributes)
         for attribute_key in EXPECTED_AZURE_AMS_ATTRIBUTES:
-            attributes[
-                attribute_key
-            ] = _get_attribute_from_metadata(
+            attributes[attribute_key] = _get_attribute_from_metadata(
                 metadata_json, attribute_key
             )
         return Resource(attributes)
@@ -79,9 +75,7 @@ def _get_azure_vm_metadata():
         _logger.exception("Failed to receive Azure VM metadata: %s", e)
         return None
 
-def _get_attribute_from_metadata(
-    metadata_json, attribute_key
-):
+def _get_attribute_from_metadata(metadata_json, attribute_key):
     ams_value = ""
     if attribute_key == _AZURE_VM_SCALE_SET_NAME_ATTRIBUTE:
         ams_value = metadata_json["vmScaleSetName"]
