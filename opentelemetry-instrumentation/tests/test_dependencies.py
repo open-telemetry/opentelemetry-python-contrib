@@ -14,7 +14,7 @@
 
 # pylint: disable=protected-access
 
-import pkg_resources
+from importlib.metadata import Distribution, requires
 import pytest
 
 from opentelemetry.instrumentation.dependencies import (
@@ -53,14 +53,12 @@ class TestDependencyConflicts(TestBase):
     def test_get_dist_dependency_conflicts(self):
         def mock_requires(extras=()):
             if "instruments" in extras:
-                return [
-                    pkg_resources.Requirement(
+                return requires(
                         'test-pkg ~= 1.0; extra == "instruments"'
                     )
-                ]
             return []
 
-        dist = pkg_resources.Distribution(
+        dist = Distribution(
             project_name="test-instrumentation", version="1.0"
         )
         dist.requires = mock_requires
