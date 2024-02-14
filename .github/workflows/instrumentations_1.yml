@@ -35,6 +35,11 @@ jobs:
           - "propagator-ot-trace"
           - "resource-detector-container"
         os: [ubuntu-20.04]
+        exclude:
+          - python-version: py311
+            package: "prometheus-remote-write"
+          - python-version: pypy3
+            package: "prometheus-remote-write"
     steps:
       - name: Checkout Contrib Repo @ SHA - ${{ github.sha }}
         uses: actions/checkout@v2
@@ -43,7 +48,7 @@ jobs:
         with:
           python-version: ${{ env[matrix.python-version] }}
       - name: Install tox
-        run: pip install tox==3.27.1 tox-factor
+        run: pip install tox
       - name: Cache tox environment
         # Preserves .tox directory between runs for faster installs
         uses: actions/cache@v1
