@@ -587,7 +587,6 @@ class OpenTelemetryMiddleware:
         except Exception as ex:
             if span.is_recording():
                 span.set_status(Status(StatusCode.ERROR, str(ex)))
-            span.end()
             if token is not None:
                 context.detach(token)
             raise
@@ -595,6 +594,7 @@ class OpenTelemetryMiddleware:
             duration = max(round((default_timer() - start) * 1000), 0)
             self.duration_histogram.record(duration, duration_attrs)
             self.active_requests_counter.add(-1, active_requests_count_attrs)
+            span.end()
 
 
 # Put this in a subfunction to not delay the call to the wrapped
