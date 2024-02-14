@@ -486,3 +486,51 @@ class TestElasticsearchIntegration(TestBase):
             sanitize_body(json.dumps(sanitization_queries.interval_query)),
             str(sanitization_queries.interval_query_sanitized),
         )
+        self.assertEqual(
+            sanitize_body(
+                [
+                    json.dumps(sanitization_queries.filter_query).encode("utf-8"),
+                    json.dumps(sanitization_queries.match_query).encode("utf-8"),
+                    json.dumps(sanitization_queries.interval_query).encode("utf-8"),
+                ]
+            ),
+            str(
+                [
+                    str(sanitization_queries.filter_query_sanitized),
+                    str(sanitization_queries.match_query_sanitized),
+                    str(sanitization_queries.interval_query_sanitized),
+                ]
+            ),
+        )
+
+    def test_bulk_search(self, request_mock):
+        request_mock.return_value = (2, {}, json.dumps({"items": []}))
+
+        data = [
+            {
+                "_index": "words",
+                "word": "foo",
+            },
+            {
+                "_index": "words",
+                "word": "bar",
+            },
+        ]
+        client = Elasticsearch()
+        elasticsearch.helpers.bulk(client, data)
+
+        spans = self.get_finished_spans()
+        span = spans[0]
+        self.assertEqual(1, len(spans))
+        self.assertEqual(span.name, "Elasticsearch/_bulk")
+        self.assertIsNotNone(span.end_time)
+        expected_bulk_attributes = {
+            SpanAttributes.DB_SYSTEM: "elasticsearch",
+            "elasticsearch.url": "/_bulk",
+            "elasticsearch.method": "POST",
+            SpanAttributes.DB_STATEMENT: "[\"{'index': {'_index': 'words'}}\", \"{'word': 'foo'}\", \"{'index': {'_index': 'words'}}\", \"{'word': 'bar'}\"]",
+        }
+        self.assertEqual(
+            span.attributes,
+            expected_bulk_attributes,
+        )
