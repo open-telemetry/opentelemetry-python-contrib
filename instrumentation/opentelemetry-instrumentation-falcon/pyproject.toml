@@ -39,7 +39,6 @@ instruments = [
 test = [
   "opentelemetry-instrumentation-falcon[instruments]",
   "opentelemetry-test-utils == 0.44b0.dev",
-  "parameterized == 0.7.4",
 ]
 
 [project.entry-points.opentelemetry_instrumentor]
