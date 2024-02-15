@@ -97,6 +97,7 @@ from opentelemetry.trace import (
     get_tracer_provider,
 )
 from opentelemetry.trace.propagation import get_current_span
+from opentelemetry.trace.status import Status, StatusCode
 
 logger = logging.getLogger(__name__)
 
@@ -350,7 +351,12 @@ def _instrument(
                     lambda_context.aws_request_id,
                 )
 
-            result = call_wrapped(*args, **kwargs)
+            exception = None
+            try:
+                result = call_wrapped(*args, **kwargs)
+            except Exception as exc:  # pylint: disable=W0703
+                exception = exc
+                span.set_status(Status(StatusCode.ERROR))
 
             # If the request came from an API Gateway, extract http attributes from the event
             # https://github.com/open-telemetry/opentelemetry-specification/blob/main/specification/trace/semantic_conventions/instrumentation/aws-lambda.md#api-gateway
@@ -397,6 +403,9 @@ def _instrument(
             logger.warning(
                 "MeterProvider was missing `force_flush` method. This is necessary in case of a Lambda freeze and would exist in the OTel SDK implementation."
             )
+
+        if exception is not None:
+            raise exception.with_traceback(exception.__traceback__)
 
         return result
 
