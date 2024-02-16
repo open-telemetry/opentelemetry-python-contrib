@@ -15,7 +15,7 @@
 from logging import getLogger
 from os import environ
 
-from importlib.metadata import entry_points
+from importlib.metadata import entry_points, EntryPoint, distributions
 
 from opentelemetry.instrumentation.dependencies import (
     get_dist_dependency_conflicts,
@@ -29,6 +29,29 @@ from opentelemetry.instrumentation.environment_variables import (
 from opentelemetry.instrumentation.version import __version__
 
 _logger = getLogger(__name__)
+
+
+class _EntryPointDistFinder:
+    def __int__(self):
+        self._mapping = None
+
+    def dist_for(self, entry_point: EntryPoint):
+        dist = getattr(entry_point, "dist", None)
+        if dist:
+            return dist
+
+        if self._mapping is None:
+            self._mapping = {
+                self._key_for(ep): dist
+                for ep in dist.entry_points
+                for dist in distributions()
+            }
+
+        return self._mapping.get(self._key_for(entry_point))
+
+    @staticmethod
+    def _key_for(entry_point: EntryPoint):
+        return f"{entry_point.group}:{entry_point.name}:{entry_point.value}"
 
 
 def _load_distro() -> BaseDistro:
@@ -58,6 +81,7 @@ def _load_distro() -> BaseDistro:
 
 def _load_instrumentors(distro):
     package_to_exclude = environ.get(OTEL_PYTHON_DISABLED_INSTRUMENTATIONS, [])
+    entry_point_finder = _EntryPointDistFinder()
     if isinstance(package_to_exclude, str):
         package_to_exclude = package_to_exclude.split(",")
         # to handle users entering "requests , flask" or "requests, flask" with spaces
@@ -74,7 +98,8 @@ def _load_instrumentors(distro):
             continue
 
         try:
-            conflict = get_dist_dependency_conflicts(entry_point.dist)
+            entry_point_dist = entry_point_finder.dist_for(entry_point)
+            conflict = get_dist_dependency_conflicts(entry_point_dist)
             if conflict:
                 _logger.debug(
                     "Skipping instrumentation %s: %s",
