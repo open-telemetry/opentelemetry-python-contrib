@@ -12,7 +12,7 @@ dynamic = [
 description = "OpenTelemetry Contrib Instrumentation Packages"
 readme = "README.rst"
 license = "Apache-2.0"
-requires-python = ">=3.7"
+requires-python = ">=3.8"
 authors = [
     { name = "OpenTelemetry Authors", email = "cncf-opentelemetry-contributors@lists.cncf.io" },
 ]
@@ -22,7 +22,6 @@ classifiers = [
     "License :: OSI Approved :: Apache Software License",
     "Programming Language :: Python",
     "Programming Language :: Python :: 3",
-    "Programming Language :: Python :: 3.7",
     "Programming Language :: Python :: 3.8",
     "Programming Language :: Python :: 3.9",
     "Programming Language :: Python :: 3.10",
@@ -34,6 +33,7 @@ dependencies = [
     "opentelemetry-instrumentation-aiohttp-server==0.44b0.dev",
     "opentelemetry-instrumentation-aiopg==0.44b0.dev",
     "opentelemetry-instrumentation-asgi==0.44b0.dev",
+    "opentelemetry-instrumentation-asyncio==0.44b0.dev",
     "opentelemetry-instrumentation-asyncpg==0.44b0.dev",
     "opentelemetry-instrumentation-aws-lambda==0.44b0.dev",
     "opentelemetry-instrumentation-boto==0.44b0.dev",

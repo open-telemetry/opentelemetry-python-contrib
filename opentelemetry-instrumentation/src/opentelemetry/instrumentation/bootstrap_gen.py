@@ -65,7 +65,7 @@ libraries = [
         "instrumentation": "opentelemetry-instrumentation-celery==0.44b0.dev",
     },
     {
-        "library": "confluent-kafka >= 1.8.2, <= 2.2.0",
+        "library": "confluent-kafka >= 1.8.2, <= 2.3.0",
         "instrumentation": "opentelemetry-instrumentation-confluent-kafka==0.44b0.dev",
     },
     {
@@ -85,11 +85,11 @@ libraries = [
         "instrumentation": "opentelemetry-instrumentation-fastapi==0.44b0.dev",
     },
     {
-        "library": "flask >= 1.0, < 3.0",
+        "library": "werkzeug < 3.0.0",
         "instrumentation": "opentelemetry-instrumentation-flask==0.44b0.dev",
     },
     {
-        "library": "werkzeug < 3.0.0",
+        "library": "flask >= 1.0",
         "instrumentation": "opentelemetry-instrumentation-flask==0.44b0.dev",
     },
     {
@@ -186,6 +186,7 @@ libraries = [
     },
 ]
 default_instrumentations = [
+    "opentelemetry-instrumentation-asyncio==0.44b0.dev",
     "opentelemetry-instrumentation-aws-lambda==0.44b0.dev",
     "opentelemetry-instrumentation-dbapi==0.44b0.dev",
     "opentelemetry-instrumentation-logging==0.44b0.dev",

@@ -1026,18 +1026,16 @@ class TestAsgiApplicationRaisingError(AsgiTestBase):
     def tearDown(self):
         pass
 
-    @mock.patch(
-        "opentelemetry.instrumentation.asgi.collect_custom_request_headers_attributes",
-        side_effect=ValueError("whatever"),
-    )
-    def test_asgi_issue_1883(
-        self, mock_collect_custom_request_headers_attributes
-    ):
+    def test_asgi_issue_1883(self):
         """
         Test that exception UnboundLocalError local variable 'start' referenced before assignment is not raised
         See https://github.com/open-telemetry/opentelemetry-python-contrib/issues/1883
         """
-        app = otel_asgi.OpenTelemetryMiddleware(simple_asgi)
+
+        async def bad_app(_scope, _receive, _send):
+            raise ValueError("whatever")
+
+        app = otel_asgi.OpenTelemetryMiddleware(bad_app)
         self.seed_app(app)
         self.send_default_request()
         try:
