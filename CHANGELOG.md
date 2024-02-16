@@ -216,6 +216,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   ([#2367](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/2367))
 
 
+### Added
+- `opentelemetry-instrumentation-fastapi` Add support for configuring header extraction via runtime constructor parameters
+  ([#2241](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/2241))
+
 ## Version 1.23.0/0.44b0 (2024-02-23)
 
 - Drop support for 3.7
