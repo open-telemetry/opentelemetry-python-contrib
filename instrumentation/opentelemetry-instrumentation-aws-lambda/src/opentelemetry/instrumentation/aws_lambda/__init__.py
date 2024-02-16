@@ -279,6 +279,7 @@ def _set_api_gateway_v2_proxy_attributes(
     return span
 
 
+# pylint: disable=too-many-statements
 def _instrument(
     wrapped_module_name,
     wrapped_function_name,
@@ -288,6 +289,8 @@ def _instrument(
     disable_aws_context_propagation: bool = False,
     meter_provider: MeterProvider = None,
 ):
+    # pylint: disable=too-many-locals
+    # pylint: disable=too-many-statements
     def _instrumented_lambda_handler_call(  # noqa pylint: disable=too-many-branches
         call_wrapped, instance, args, kwargs
     ):
