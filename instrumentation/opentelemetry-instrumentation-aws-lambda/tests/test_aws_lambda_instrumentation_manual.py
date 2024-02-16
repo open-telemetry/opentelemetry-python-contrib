@@ -411,11 +411,11 @@ class TestAwsLambdaInstrumentor(TestBase):
         assert spans
 
     def test_lambda_handles_handler_exception(self):
-        self.exc_env_patch = mock.patch.dict(
+        exc_env_patch = mock.patch.dict(
             "os.environ",
             {_HANDLER: "tests.mocks.lambda_function.handler_exc"},
         )
-        self.exc_env_patch.start()
+        exc_env_patch.start()
         AwsLambdaInstrumentor().instrument()
         # instrumentor re-raises the exception
         with self.assertRaises(Exception):
@@ -429,7 +429,7 @@ class TestAwsLambdaInstrumentor(TestBase):
         event = span.events[0]
         self.assertEqual(event.name, "exception")
 
-        self.exc_env_patch.stop()
+        exc_env_patch.stop()
 
     def test_uninstrument(self):
         AwsLambdaInstrumentor().instrument()
