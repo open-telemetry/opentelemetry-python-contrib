@@ -357,6 +357,7 @@ def _instrument(
             except Exception as exc:  # pylint: disable=W0703
                 exception = exc
                 span.set_status(Status(StatusCode.ERROR))
+                span.record_exception(exception)
 
             # If the request came from an API Gateway, extract http attributes from the event
             # https://github.com/open-telemetry/opentelemetry-specification/blob/main/specification/trace/semantic_conventions/instrumentation/aws-lambda.md#api-gateway
