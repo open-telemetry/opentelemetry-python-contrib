@@ -36,11 +36,11 @@
 
 ---
 
-## OpenTelemetry Python Contrib
+# OpenTelemetry Python Contrib
 
 The Python auto-instrumentation libraries for [OpenTelemetry](https://opentelemetry.io/) (per [OTEP 0001](https://github.com/open-telemetry/oteps/blob/main/text/0001-telemetry-without-manual-instrumentation.md))
 
-### Installation
+## Installation
 
 This repository includes installable packages for each instrumented library. Libraries that produce telemetry data should only depend on `opentelemetry-api`,
 and defer the choice of the SDK to the application developer. Applications may
@@ -79,6 +79,7 @@ To resolve this, members of the community are encouraged to commit to becoming a
 ### Releasing a package as `1.0` stable
 
 To release a package as `1.0` stable, the package:
+
 - SHOULD have a CODEOWNER. To become one, submit an issue and explain why you meet the responsibilities found in [CODEOWNERS](.github/CODEOWNERS).
 - MUST have unit tests that cover all supported versions of the instrumented library.
   - e.g. Instrumentation packages might use different techniques to instrument different major versions of python packages
@@ -131,9 +132,8 @@ Emeritus Maintainers:
 4. Make sure you have `tox` installed. `pip install tox`.
 5. Run tests for a package. (e.g. `tox -e test-instrumentation-flask`.)
 
-### Thanks to all the people who already contributed!
+### Thanks to all the people who already contributed
 
 <a href="https://github.com/open-telemetry/opentelemetry-python-contrib/graphs/contributors">
   <img src="https://contributors-img.web.app/image?repo=open-telemetry/opentelemetry-python-contrib" />
 </a>
-

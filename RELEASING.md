@@ -75,15 +75,17 @@
   * If for some reason the action failed, see [Publish failed](#publish-failed) below
 * Move stable tag
   * Run the following (TODO automate):
+
     ```bash
     git tag -d stable
     git tag stable
     git push --delete origin tagname
     git push origin stable
     ```
+
   * This will ensure the docs are pointing at the stable release.
   * To validate this worked, ensure the stable build has run successfully:
-    https://readthedocs.org/projects/opentelemetry-python/builds/.
+    <https://readthedocs.org/projects/opentelemetry-python/builds/>.
     If the build has not run automatically, it can be manually trigger via the readthedocs interface.
 
 ## Troubleshooting
