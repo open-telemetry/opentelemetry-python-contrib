@@ -23,7 +23,8 @@ from subprocess import (
     check_call,
 )
 
-from importlib.metadata import distribution, PackageNotFoundError
+from packaging.requirements import Requirement
+from importlib.metadata import PackageNotFoundError, version
 
 from opentelemetry.instrumentation.bootstrap_gen import (
     default_instrumentations,
@@ -91,12 +92,20 @@ def _pip_check():
 
 
 def _is_installed(req):
-    if req in sys.modules:
-        return True
+    req = Requirement(req)
     
     try:
-        distribution(req)
+        dist_version = version(req.name)
     except PackageNotFoundError:
+        return False
+    
+    if not req.specifier.filter(dist_version):
+        logger.warning(
+            "instrumentation for package %s is available"
+            " but version %s is installed. Skipping.",
+            req,
+            dist_version
+        )
         return False
     return True
 

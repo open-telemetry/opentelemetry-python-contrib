@@ -1,7 +1,8 @@
 from logging import getLogger
 from typing import Collection, Optional
 
-from importlib.metadata import distribution, PackageNotFoundError, Distribution
+from packaging.requirements import Requirement
+from importlib.metadata import PackageNotFoundError, Distribution, requires, version
 
 logger = getLogger(__name__)
 
@@ -21,9 +22,9 @@ class DependencyConflict:
 def get_dist_dependency_conflicts(
     dist: Distribution,
 ) -> Optional[DependencyConflict]:
-    main_deps = dist.requires()
+    main_deps = dist.requires
     instrumentation_deps = []
-    for dep in dist.requires(("instruments",)):
+    for dep in requires(("instruments",)):
         if dep not in main_deps:
             # we set marker to none so string representation of the dependency looks like
             #    requests ~= 1.0
@@ -40,8 +41,11 @@ def get_dependency_conflicts(
     deps: Collection[str],
 ) -> Optional[DependencyConflict]:
     for dep in deps:
+        req = Requirement(dep)
         try:
-            distribution(dep)
+            dist_version = version(req.name)
         except PackageNotFoundError:
-            return DependencyConflict(dep)
+            return DependencyConflict(req.name)
+        if not req.specifier.filter(dist_version):
+            return DependencyConflict(req.name)
     return None
