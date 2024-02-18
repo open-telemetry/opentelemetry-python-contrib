@@ -40,6 +40,15 @@
 
 The Python auto-instrumentation libraries for [OpenTelemetry](https://opentelemetry.io/) (per [OTEP 0001](https://github.com/open-telemetry/oteps/blob/main/text/0001-telemetry-without-manual-instrumentation.md))
 
+## Index
+
+* [Installation](#installation)
+* [Releasing](#releasing)
+  * [Releasing a package as `1.0` stable](#releasing-a-package-as-10-stable)
+* [Contributing](#contributing)
+* [Running Tests Locally](#running-tests-locally)
+* [Thanks to all the people who already contributed](#thanks-to-all-the-people-who-already-contributed)
+
 ## Installation
 
 This repository includes installable packages for each instrumented library. Libraries that produce telemetry data should only depend on `opentelemetry-api`,

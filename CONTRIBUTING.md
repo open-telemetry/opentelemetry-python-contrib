@@ -13,6 +13,25 @@ on how to become a [**Member**](https://github.com/open-telemetry/community/blob
 [**Approver**](https://github.com/open-telemetry/community/blob/main/community-membership.md#approver)
 and [**Maintainer**](https://github.com/open-telemetry/community/blob/main/community-membership.md#maintainer).
 
+## Index
+
+* [Find a Buddy and get Started Quickly](#find-a-buddy-and-get-started-quickly)
+* [Development](#development)
+  * [Troubleshooting](#troubleshooting)
+  * [Benchmarks](#benchmarks)
+* [Pull requests](#pull-requests)
+  * [How to Send Pull Requests](#how-to-send-pull-requests)
+  * [How to Receive Comments](#how-to-receive-comments)
+  * [How to Get PRs Reviewed](#how-to-get-prs-reviewed)
+  * [How to Get PRs Merged](#how-to-get-prs-merged)
+* [Design Choices](#design-choices)
+  * [Focus on Capabilities, Not Structure Compliance](#focus-on-capabilities-not-structure-compliance)
+* [Running Tests Locally](#running-tests-locally)
+  * [Testing against a different Core repo branch/commit](#testing-against-a-different-core-repo-branchcommit)
+* [Style Guide](#style-guide)
+* [Guideline for instrumentations](#guideline-for-instrumentations)
+* [Expectations from contributors](#expectations-from-contributors)
+
 ## Find a Buddy and get Started Quickly
 
 If you are looking for someone to help you find a starting point and be a resource for your first contribution, join our
@@ -57,7 +76,7 @@ for more detail on available tox commands.
 
 ### Troubleshooting
 
-- Some packages may require additional system wide dependencies to be installed. For example, you may need to install `libpq-dev` to run the postgresql client libraries instrumentation tests. or `libsnappy-dev` to run the prometheus exporter tests. If you encounter a build error, please check the installation instructions for the package you are trying to run tests for.
+> Some packages may require additional system wide dependencies to be installed. For example, you may need to install `libpq-dev` to run the postgresql client libraries instrumentation tests. or `libsnappy-dev` to run the prometheus exporter tests. If you encounter a build error, please check the installation instructions for the package you are trying to run tests for.
 
 ### Benchmarks
 
