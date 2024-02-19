@@ -1464,8 +1464,6 @@ class TestHTTPAppWithCustomHeadersParameters(TestBase):
             span for span in span_list if span.kind == trace.SpanKind.SERVER
         ][0]
 
-        from pprint import pprint
-        pprint(server_span)
         expected = {
             # apple should be included because it starts with a
             "http.request.header.apple": ("red",),
