@@ -15,6 +15,7 @@
 # pylint: disable=protected-access
 
 from importlib.metadata import Distribution, requires
+from packaging.requirements import Requirement, InvalidRequirement
 import pytest
 
 from opentelemetry.instrumentation.dependencies import (
@@ -29,8 +30,22 @@ class TestDependencyConflicts(TestBase):
     def test_get_dependency_conflicts_empty(self):
         self.assertIsNone(get_dependency_conflicts([]))
 
+    def test_get_dependency_conflicts_no_conflict_requirement(self):
+        req = Requirement("pytest")
+        self.assertIsNone(get_dependency_conflicts([req]))
+
     def test_get_dependency_conflicts_no_conflict(self):
         self.assertIsNone(get_dependency_conflicts(["pytest"]))
+
+    def test_get_dependency_conflicts_not_installed_requirement(self):
+        req = Requirement("this-package-does-not-exist")
+        conflict = get_dependency_conflicts([req])
+        self.assertTrue(conflict is not None)
+        self.assertTrue(isinstance(conflict, DependencyConflict))
+        self.assertEqual(
+            str(conflict),
+            'DependencyConflict: requested: "this-package-does-not-exist" but found: "None"',
+        )
 
     def test_get_dependency_conflicts_not_installed(self):
         conflict = get_dependency_conflicts(["this-package-does-not-exist"])
@@ -58,9 +73,7 @@ class TestDependencyConflicts(TestBase):
                     )
             return []
 
-        dist = Distribution(
-            project_name="test-instrumentation", version="1.0"
-        )
+        dist = Distribution()
         dist.requires = mock_requires
 
         conflict = get_dist_dependency_conflicts(dist)
