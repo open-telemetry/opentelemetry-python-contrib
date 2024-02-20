@@ -48,9 +48,7 @@ def run() -> None:
 
     argument_otel_environment_variable = {}
 
-    for entry_point in entry_points().get(
-        "opentelemetry_environment_variables", []
-    ):
+    for entry_point in entry_points(group="opentelemetry_environment_variables"):
         environment_variable_module = entry_point.load()
 
         for attribute in dir(environment_variable_module):
