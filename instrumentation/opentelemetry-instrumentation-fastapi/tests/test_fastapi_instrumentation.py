@@ -1420,6 +1420,7 @@ class TestHTTPAppWithCustomHeaders(TestBase):
 
 class TestHTTPAppWithCustomHeadersParameters(TestBase):
     """Minimal tests here since the behavior of this logic is tested above and in the ASGI tests."""
+
     def setUp(self):
         super().setUp()
         self.app = self._create_app()
@@ -1427,7 +1428,7 @@ class TestHTTPAppWithCustomHeadersParameters(TestBase):
             self.app,
             http_capture_headers_server_request=["a.*", "b.*"],
             http_capture_headers_server_response=["c.*", "d.*"],
-            http_capture_headers_sanitize_fields=[".*secret.*"]
+            http_capture_headers_sanitize_fields=[".*secret.*"],
         )
         self.client = TestClient(self.app)
 
@@ -1453,9 +1454,14 @@ class TestHTTPAppWithCustomHeadersParameters(TestBase):
         return app
 
     def test_http_custom_request_headers_in_span_attributes(self):
-        resp = self.client.get("/foobar", headers={
-            "apple": "red", "banana-secret": "yellow", "fig": "green"
-        })
+        resp = self.client.get(
+            "/foobar",
+            headers={
+                "apple": "red",
+                "banana-secret": "yellow",
+                "fig": "green",
+            },
+        )
         self.assertEqual(200, resp.status_code)
         span_list = self.memory_exporter.get_finished_spans()
         self.assertEqual(len(span_list), 3)
