@@ -175,6 +175,9 @@ Note:
 API
 ---
 """
+
+from __future__ import annotations
+
 import logging
 from importlib.metadata import PackageNotFoundError, distribution
 from typing import Collection
