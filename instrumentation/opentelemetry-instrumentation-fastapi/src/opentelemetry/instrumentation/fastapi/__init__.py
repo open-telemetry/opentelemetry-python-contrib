@@ -175,6 +175,9 @@ Note:
 API
 ---
 """
+
+from __future__ import annotations
+
 import logging
 import typing
 from typing import Collection
