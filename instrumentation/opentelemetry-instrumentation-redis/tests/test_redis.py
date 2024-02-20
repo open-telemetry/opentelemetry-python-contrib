@@ -13,6 +13,7 @@
 # limitations under the License.
 import asyncio
 from unittest import mock
+from unittest.mock import AsyncMock
 
 import redis
 import redis.asyncio
@@ -21,24 +22,6 @@ from opentelemetry import trace
 from opentelemetry.instrumentation.redis import RedisInstrumentor
 from opentelemetry.test.test_base import TestBase
 from opentelemetry.trace import SpanKind
-
-
-class AsyncMock:
-    """A sufficient async mock implementation.
-
-    Python 3.7 doesn't have an inbuilt async mock class, so this is used.
-    """
-
-    def __init__(self):
-        self.mock = mock.Mock()
-
-    async def __call__(self, *args, **kwargs):
-        future = asyncio.Future()
-        future.set_result("random")
-        return future
-
-    def __getattr__(self, item):
-        return AsyncMock()
 
 
 class TestRedis(TestBase):
