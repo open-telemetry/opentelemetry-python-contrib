@@ -6,7 +6,7 @@ on:
     - 'release/*'
   pull_request:
 env:
-  CORE_REPO_SHA: 84c0e4f38d4fcdb8c13fd3988469fbb8cda28150
+  CORE_REPO_SHA: e98af82ff0ebe7e687fda265093aa576cd9ba80f
 
 jobs:
   instrumentations-1:
@@ -36,6 +36,11 @@ jobs:
           - "propagator-ot-trace"
           - "resource-detector-container"
         os: [ubuntu-20.04]
+        exclude:
+          - python-version: py311
+            package: "prometheus-remote-write"
+          - python-version: pypy3
+            package: "prometheus-remote-write"
     steps:
       - name: Checkout Contrib Repo @ SHA - ${{ github.sha }}
         uses: actions/checkout@v2
@@ -44,7 +49,7 @@ jobs:
         with:
           python-version: ${{ env[matrix.python-version] }}
       - name: Install tox
-        run: pip install tox==3.27.1 tox-factor
+        run: pip install tox
       - name: Cache tox environment
         # Preserves .tox directory between runs for faster installs
         uses: actions/cache@v1
