@@ -34,7 +34,6 @@ dependencies = [
 
 [project.optional-dependencies]
 instruments = [
-  "werkzeug < 3.0.0",
   "flask >= 1.0",
 ]
 test = [
