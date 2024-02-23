@@ -57,12 +57,22 @@ def _make_sqs_resource(*, session=False):
 
 class TestBoto3SQSInstrumentor(TestCase):
     def _assert_instrumented(self, client):
-        self.assertIsInstance(boto3.client, FunctionWrapper)
         self.assertIsInstance(client.send_message, BoundFunctionWrapper)
         self.assertIsInstance(client.send_message_batch, BoundFunctionWrapper)
         self.assertIsInstance(client.receive_message, BoundFunctionWrapper)
         self.assertIsInstance(client.delete_message, BoundFunctionWrapper)
         self.assertIsInstance(
+            client.delete_message_batch, BoundFunctionWrapper
+        )
+
+    def _assert_uninstrumented(self, client):
+        self.assertNotIsInstance(client.send_message, BoundFunctionWrapper)
+        self.assertNotIsInstance(
+            client.send_message_batch, BoundFunctionWrapper
+        )
+        self.assertNotIsInstance(client.receive_message, BoundFunctionWrapper)
+        self.assertNotIsInstance(client.delete_message, BoundFunctionWrapper)
+        self.assertNotIsInstance(
             client.delete_message_batch, BoundFunctionWrapper
         )
 
@@ -80,12 +90,14 @@ class TestBoto3SQSInstrumentor(TestCase):
             with self._active_instrumentor():
                 client = _make_sqs_client(session=session)
                 self._assert_instrumented(client)
+            self._assert_uninstrumented(client)
 
     def test_instrument_api_after_client_init(self) -> None:
         for session in (False, True):
             client = _make_sqs_client(session=session)
             with self._active_instrumentor():
                 self._assert_instrumented(client)
+            self._assert_uninstrumented(client)
 
     def test_instrument_multiple_clients(self):
         for session in (False, True):
@@ -98,12 +110,14 @@ class TestBoto3SQSInstrumentor(TestCase):
             with self._active_instrumentor():
                 sqs = _make_sqs_resource(session=session)
                 self._assert_instrumented(sqs.meta.client)
+            self._assert_uninstrumented(sqs.meta.client)
 
     def test_instrument_api_after_resource_init(self) -> None:
         for session in (False, True):
             sqs = _make_sqs_resource(session=session)
             with self._active_instrumentor():
                 self._assert_instrumented(sqs.meta.client)
+            self._assert_uninstrumented(sqs.meta.client)
 
     def test_instrument_multiple_resources(self):
         for session in (False, True):
