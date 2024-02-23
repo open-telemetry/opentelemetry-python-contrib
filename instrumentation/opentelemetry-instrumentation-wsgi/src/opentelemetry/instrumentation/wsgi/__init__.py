@@ -140,7 +140,7 @@ To capture all request headers, set ``OTEL_INSTRUMENTATION_HTTP_CAPTURE_HEADERS_
     export OTEL_INSTRUMENTATION_HTTP_CAPTURE_HEADERS_SERVER_REQUEST=".*"
 
 The name of the added span attribute will follow the format ``http.request.header.<header_name>`` where ``<header_name>``
-is the normalized HTTP header name (lowercase, with ``-`` replaced by ``_``). The value of the attribute will be a
+is the normalized HTTP header name (lowercase). The value of the attribute will be a
 single item list containing all the header values.
 
 For example:
@@ -174,7 +174,7 @@ To capture all response headers, set ``OTEL_INSTRUMENTATION_HTTP_CAPTURE_HEADERS
     export OTEL_INSTRUMENTATION_HTTP_CAPTURE_HEADERS_SERVER_RESPONSE=".*"
 
 The name of the added span attribute will follow the format ``http.response.header.<header_name>`` where ``<header_name>``
-is the normalized HTTP header name (lowercase, with ``-`` replaced by ``_``). The value of the attribute will be a
+is the normalized HTTP header name (lowercase). The value of the attribute will be a
 single item list containing all the header values.
 
 For example:
