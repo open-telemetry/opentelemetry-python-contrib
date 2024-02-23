@@ -10,7 +10,7 @@
   * Review the two pull requests that it creates.
     (one is targeted to the release branch and one is targeted to `main`).
     * Merge the one targeted towards the release branch.
-    * The builds will fail for the `main` pr because of validation rules. Follow the [release workflow](https://github.com/open-telemetry/opentelemetry-python-contrib/blob/main/RELEASING.md) for the contrib repo up until this same point. Change the SHAs of each PR to point at each other to get the `main` builds to pass.
+    * The builds will fail for the `main` pr because of validation rules. Follow the [release workflow](https://github.com/open-telemetry/opentelemetry-python/blob/main/RELEASING.md) for the core repo up until this same point. Change the SHAs of each PR to point at each other to get the `main` builds to pass.
 
 ## Preparing a new patch release
 
