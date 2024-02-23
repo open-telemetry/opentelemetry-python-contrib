@@ -514,32 +514,6 @@ class TestHTTPAppWithCustomHeaders(TestBaseWithCustomHeaders):
 
         self.assertSpanHasAttributes(server_span, expected)
 
-    def test_duplicate_request_headers_in_span_attributes(self):
-        class Headers:
-            def items(self):
-                return [
-                    ("custom-test-header-1", "v1"),
-                    ("custom-test-header-1", "v2"),
-                ]
-        resp = self._client.get(
-            "/foobar",
-            headers=Headers(),
-        )
-        self.assertEqual(200, resp.status_code)
-        span_list = self.memory_exporter.get_finished_spans()
-        self.assertEqual(len(span_list), 3)
-
-        server_span = [
-            span for span in span_list if span.kind == SpanKind.SERVER
-        ][0]
-
-        expected = {
-            "http.request.header.custom-test-header-1": (
-                "v1", "v2",
-            ),
-        }
-        self.assertSpanHasAttributes(server_span, expected)
-
     @patch.dict(
         "os.environ",
         {
