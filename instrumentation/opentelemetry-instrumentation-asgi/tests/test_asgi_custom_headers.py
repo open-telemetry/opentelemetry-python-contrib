@@ -105,17 +105,17 @@ class TestCustomHeaders(AsgiTestBase, TestBase):
         self.get_all_output()
         span_list = self.exporter.get_finished_spans()
         expected = {
-            "http.request.header.custom_test_header_1": (
+            "http.request.header.custom-test-header-1": (
                 "test-header-value-1",
             ),
-            "http.request.header.custom_test_header_2": (
+            "http.request.header.custom-test-header-2": (
                 "test-header-value-2",
             ),
-            "http.request.header.regex_test_header_1": ("Regex Test Value 1",),
-            "http.request.header.regex_test_header_2": (
+            "http.request.header.regex-test-header-1": ("Regex Test Value 1",),
+            "http.request.header.regex-test-header-2": (
                 "RegexTestValue2,RegexTestValue3",
             ),
-            "http.request.header.my_secret_header": ("[REDACTED]",),
+            "http.request.header.my-secret-header": ("[REDACTED]",),
         }
         for span in span_list:
             if span.kind == SpanKind.SERVER:
@@ -132,12 +132,12 @@ class TestCustomHeaders(AsgiTestBase, TestBase):
         self.get_all_output()
         span_list = self.exporter.get_finished_spans()
         expected = {
-            "http.request.header.custom_test_header_1": (
+            "http.request.header.custom-test-header-1": (
                 "test-header-value-1",
             ),
         }
         not_expected = {
-            "http.request.header.custom_test_header_2": (
+            "http.request.header.custom-test-header-2": (
                 "test-header-value-2",
             ),
         }
@@ -158,19 +158,19 @@ class TestCustomHeaders(AsgiTestBase, TestBase):
         self.get_all_output()
         span_list = self.exporter.get_finished_spans()
         expected = {
-            "http.response.header.custom_test_header_1": (
+            "http.response.header.custom-test-header-1": (
                 "test-header-value-1",
             ),
-            "http.response.header.custom_test_header_2": (
+            "http.response.header.custom-test-header-2": (
                 "test-header-value-2",
             ),
-            "http.response.header.my_custom_regex_header_1": (
+            "http.response.header.my-custom-regex-header-1": (
                 "my-custom-regex-value-1,my-custom-regex-value-2",
             ),
-            "http.response.header.my_custom_regex_header_2": (
+            "http.response.header.my-custom-regex-header-2": (
                 "my-custom-regex-value-3,my-custom-regex-value-4",
             ),
-            "http.response.header.my_secret_header": ("[REDACTED]",),
+            "http.response.header.my-secret-header": ("[REDACTED]",),
         }
         for span in span_list:
             if span.kind == SpanKind.SERVER:
@@ -187,7 +187,7 @@ class TestCustomHeaders(AsgiTestBase, TestBase):
         self.get_all_output()
         span_list = self.exporter.get_finished_spans()
         not_expected = {
-            "http.response.header.custom_test_header_3": (
+            "http.response.header.custom-test-header-3": (
                 "test-header-value-3",
             ),
         }
@@ -221,17 +221,17 @@ class TestCustomHeaders(AsgiTestBase, TestBase):
         self.get_all_output()
         span_list = self.exporter.get_finished_spans()
         expected = {
-            "http.request.header.custom_test_header_1": (
+            "http.request.header.custom-test-header-1": (
                 "test-header-value-1",
             ),
-            "http.request.header.custom_test_header_2": (
+            "http.request.header.custom-test-header-2": (
                 "test-header-value-2",
             ),
-            "http.request.header.regex_test_header_1": ("Regex Test Value 1",),
-            "http.request.header.regex_test_header_2": (
+            "http.request.header.regex-test-header-1": ("Regex Test Value 1",),
+            "http.request.header.regex-test-header-2": (
                 "RegexTestValue2,RegexTestValue3",
             ),
-            "http.request.header.my_secret_header": ("[REDACTED]",),
+            "http.request.header.my-secret-header": ("[REDACTED]",),
         }
         for span in span_list:
             if span.kind == SpanKind.SERVER:
@@ -259,7 +259,7 @@ class TestCustomHeaders(AsgiTestBase, TestBase):
         self.get_all_output()
         span_list = self.exporter.get_finished_spans()
         not_expected = {
-            "http.request.header.custom_test_header_3": (
+            "http.request.header.custom-test-header-3": (
                 "test-header-value-3",
             ),
         }
@@ -291,19 +291,19 @@ class TestCustomHeaders(AsgiTestBase, TestBase):
         self.get_all_output()
         span_list = self.exporter.get_finished_spans()
         expected = {
-            "http.response.header.custom_test_header_1": (
+            "http.response.header.custom-test-header-1": (
                 "test-header-value-1",
             ),
-            "http.response.header.custom_test_header_2": (
+            "http.response.header.custom-test-header-2": (
                 "test-header-value-2",
             ),
-            "http.response.header.my_custom_regex_header_1": (
+            "http.response.header.my-custom-regex-header-1": (
                 "my-custom-regex-value-1,my-custom-regex-value-2",
             ),
-            "http.response.header.my_custom_regex_header_2": (
+            "http.response.header.my-custom-regex-header-2": (
                 "my-custom-regex-value-3,my-custom-regex-value-4",
             ),
-            "http.response.header.my_secret_header": ("[REDACTED]",),
+            "http.response.header.my-secret-header": ("[REDACTED]",),
         }
         for span in span_list:
             if span.kind == SpanKind.SERVER:
@@ -332,7 +332,7 @@ class TestCustomHeaders(AsgiTestBase, TestBase):
         self.get_all_output()
         span_list = self.exporter.get_finished_spans()
         not_expected = {
-            "http.response.header.custom_test_header_3": (
+            "http.response.header.custom-test-header-3": (
                 "test-header-value-3",
             ),
         }

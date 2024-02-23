@@ -658,15 +658,15 @@ class TestCustomRequestResponseHeaders(InstrumentationTest, WsgiTestBase):
         self.assertEqual(200, resp.status_code)
         span = self.memory_exporter.get_finished_spans()[0]
         expected = {
-            "http.request.header.custom_test_header_1": ("Test Value 1",),
-            "http.request.header.custom_test_header_2": (
+            "http.request.header.custom-test-header-1": ("Test Value 1",),
+            "http.request.header.custom-test-header-2": (
                 "TestValue2,TestValue3",
             ),
-            "http.request.header.regex_test_header_1": ("Regex Test Value 1",),
-            "http.request.header.regex_test_header_2": (
+            "http.request.header.regex-test-header-1": ("Regex Test Value 1",),
+            "http.request.header.regex-test-header-2": (
                 "RegexTestValue2,RegexTestValue3",
             ),
-            "http.request.header.my_secret_header": ("[REDACTED]",),
+            "http.request.header.my-secret-header": ("[REDACTED]",),
         }
         self.assertEqual(span.kind, trace.SpanKind.SERVER)
         self.assertSpanHasAttributes(span, expected)
@@ -685,17 +685,17 @@ class TestCustomRequestResponseHeaders(InstrumentationTest, WsgiTestBase):
             self.assertEqual(200, resp.status_code)
             span = self.memory_exporter.get_finished_spans()[0]
             not_expected = {
-                "http.request.header.custom_test_header_1": ("Test Value 1",),
-                "http.request.header.custom_test_header_2": (
+                "http.request.header.custom-test-header-1": ("Test Value 1",),
+                "http.request.header.custom-test-header-2": (
                     "TestValue2,TestValue3",
                 ),
-                "http.request.header.regex_test_header_1": (
+                "http.request.header.regex-test-header-1": (
                     "Regex Test Value 1",
                 ),
-                "http.request.header.regex_test_header_2": (
+                "http.request.header.regex-test-header-2": (
                     "RegexTestValue2,RegexTestValue3",
                 ),
-                "http.request.header.my_secret_header": ("[REDACTED]",),
+                "http.request.header.my-secret-header": ("[REDACTED]",),
             }
             self.assertEqual(span.kind, trace.SpanKind.INTERNAL)
             for key, _ in not_expected.items():
@@ -706,20 +706,20 @@ class TestCustomRequestResponseHeaders(InstrumentationTest, WsgiTestBase):
         self.assertEqual(resp.status_code, 200)
         span = self.memory_exporter.get_finished_spans()[0]
         expected = {
-            "http.response.header.content_type": (
+            "http.response.header.content-type": (
                 "text/plain; charset=utf-8",
             ),
-            "http.response.header.content_length": ("13",),
-            "http.response.header.my_custom_header": (
+            "http.response.header.content-length": ("13",),
+            "http.response.header.my-custom-header": (
                 "my-custom-value-1,my-custom-header-2",
             ),
-            "http.response.header.my_custom_regex_header_1": (
+            "http.response.header.my-custom-regex-header-1": (
                 "my-custom-regex-value-1,my-custom-regex-value-2",
             ),
-            "http.response.header.my_custom_regex_header_2": (
+            "http.response.header.my-custom-regex-header-2": (
                 "my-custom-regex-value-3,my-custom-regex-value-4",
             ),
-            "http.response.header.my_secret_header": ("[REDACTED]",),
+            "http.response.header.my-secret-header": ("[REDACTED]",),
         }
         self.assertEqual(span.kind, trace.SpanKind.SERVER)
         self.assertSpanHasAttributes(span, expected)
@@ -731,20 +731,20 @@ class TestCustomRequestResponseHeaders(InstrumentationTest, WsgiTestBase):
             self.assertEqual(resp.status_code, 200)
             span = self.memory_exporter.get_finished_spans()[0]
             not_expected = {
-                "http.response.header.content_type": (
+                "http.response.header.content-type": (
                     "text/plain; charset=utf-8",
                 ),
-                "http.response.header.content_length": ("13",),
-                "http.response.header.my_custom_header": (
+                "http.response.header.content-length": ("13",),
+                "http.response.header.my-custom-header": (
                     "my-custom-value-1,my-custom-header-2",
                 ),
-                "http.response.header.my_custom_regex_header_1": (
+                "http.response.header.my-custom-regex-header-1": (
                     "my-custom-regex-value-1,my-custom-regex-value-2",
                 ),
-                "http.response.header.my_custom_regex_header_2": (
+                "http.response.header.my-custom-regex-header-2": (
                     "my-custom-regex-value-3,my-custom-regex-value-4",
                 ),
-                "http.response.header.my_secret_header": ("[REDACTED]",),
+                "http.response.header.my-secret-header": ("[REDACTED]",),
             }
             self.assertEqual(span.kind, trace.SpanKind.INTERNAL)
             for key, _ in not_expected.items():
