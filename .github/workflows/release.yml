@@ -54,6 +54,7 @@ jobs:
             fi
           fi
 
+
       # check out main branch to verify there won't be problems with merging the change log
       # at the end of this workflow
       - uses: actions/checkout@v3
