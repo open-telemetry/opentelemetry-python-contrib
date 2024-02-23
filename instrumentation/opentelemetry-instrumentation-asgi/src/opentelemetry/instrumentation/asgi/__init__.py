@@ -347,11 +347,17 @@ def collect_custom_headers_attributes(
      - https://github.com/open-telemetry/opentelemetry-specification/blob/main/specification/trace/semantic_conventions/http.md#http-request-and-response-headers
     """
     # Decode headers before processing.
-    headers: dict[str, str] = {
-        _key.decode("utf8"): _value.decode("utf8")
-        for (_key, _value) in scope_or_response_message.get("headers")
-        or cast("list[tuple[bytes, bytes]]", [])
-    }
+    headers: dict[str, str] = {}
+    raw_headers = scope_or_response_message.get("headers")
+    if raw_headers:
+        for _key, _value in raw_headers:
+            key = _key.decode().lower()
+            value = _value.decode()
+            if key in headers:
+                headers[key] += f",{value}"
+            else:
+                headers[key] = value
+
     return sanitize.sanitize_header_values(
         headers,
         header_regexes,
