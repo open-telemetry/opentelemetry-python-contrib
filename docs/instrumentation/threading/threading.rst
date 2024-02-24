@@ -1,5 +1,5 @@
 OpenTelemetry Threading Instrumentation
-======================================
+=======================================
 
 .. automodule:: opentelemetry.instrumentation.threading
     :members:
