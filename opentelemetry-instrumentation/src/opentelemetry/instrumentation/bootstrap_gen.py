@@ -117,6 +117,10 @@ libraries = [
         "instrumentation": "opentelemetry-instrumentation-pika==0.45b0.dev",
     },
     {
+        "library": "psycopg >= 3.1.0",
+        "instrumentation": "opentelemetry-instrumentation-psycopg==0.45b0.dev",
+    },
+    {
         "library": "psycopg2 >= 2.7.3.1",
         "instrumentation": "opentelemetry-instrumentation-psycopg2==0.45b0.dev",
     },
