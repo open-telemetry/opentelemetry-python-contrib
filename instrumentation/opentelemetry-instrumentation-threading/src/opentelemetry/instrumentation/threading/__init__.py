@@ -57,17 +57,25 @@ class ThreadingInstrumentor(BaseInstrumentor):
 
     @staticmethod
     def _instrument_thread():
-        wrap_function_wrapper(threading.Thread, 'start',
-                              ThreadingInstrumentor.__wrap_threading_start)
-        wrap_function_wrapper(threading.Thread, 'run',
-                              ThreadingInstrumentor.__wrap_threading_run)
+        wrap_function_wrapper(
+            threading.Thread,
+            "start",
+            ThreadingInstrumentor.__wrap_threading_start,
+        )
+        wrap_function_wrapper(
+            threading.Thread, "run", ThreadingInstrumentor.__wrap_threading_run
+        )
 
     @staticmethod
     def _instrument_timer():
-        wrap_function_wrapper(threading.Timer, 'start',
-                              ThreadingInstrumentor.__wrap_threading_start)
-        wrap_function_wrapper(threading.Timer, 'run',
-                              ThreadingInstrumentor.__wrap_threading_run)
+        wrap_function_wrapper(
+            threading.Timer,
+            "start",
+            ThreadingInstrumentor.__wrap_threading_start,
+        )
+        wrap_function_wrapper(
+            threading.Timer, "run", ThreadingInstrumentor.__wrap_threading_run
+        )
 
     @staticmethod
     def _uninstrument_thread():

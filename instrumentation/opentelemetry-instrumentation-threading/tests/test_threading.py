@@ -39,8 +39,9 @@ class TestThreading(TestBase):
         self.run_threading_test(threading.Thread(target=self.fake_func))
 
     def test_trace_context_propagation_in_timer(self):
-        self.run_threading_test(threading.Timer(
-            interval=1, function=self.fake_func))
+        self.run_threading_test(
+            threading.Timer(interval=1, function=self.fake_func)
+        )
 
     def run_threading_test(self, thread: threading.Thread):
         with self.get_root_span() as span:
