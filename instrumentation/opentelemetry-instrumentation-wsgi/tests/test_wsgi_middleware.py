@@ -729,7 +729,7 @@ class TestAdditionOfCustomRequestResponseHeaders(WsgiTestBase):
             OTEL_INSTRUMENTATION_HTTP_CAPTURE_HEADERS_SERVER_RESPONSE: "my-custom-header",
         },
     )
-    def test_custom_response_headers_added_in_server_span(self):
+    def test_repeat_custom_response_headers_added_in_server_span(self):
         app = otel_wsgi.OpenTelemetryMiddleware(
             wsgi_with_repeat_custom_response_headers
         )

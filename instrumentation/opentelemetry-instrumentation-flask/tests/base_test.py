@@ -92,9 +92,7 @@ class InstrumentationTest:
     def _repeat_custom_response_headers():
         headers = {
             "content-type": "text/plain; charset=utf-8",
-            "my-custom-header": [
-                "my-custom-value-1", "my-custom-header-2"
-            ],
+            "my-custom-header": ["my-custom-value-1", "my-custom-header-2"],
         }
         return flask.Response("test response", headers=headers)
 

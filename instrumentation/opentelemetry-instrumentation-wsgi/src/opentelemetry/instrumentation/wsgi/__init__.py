@@ -362,7 +362,9 @@ def collect_custom_request_headers_attributes(environ):
 
     for key, val in environ.items():
         if key.startswith(_CARRIER_KEY_PREFIX):
-            header_key = key[_CARRIER_KEY_PREFIX_LEN:].replace("_", "-").lower()
+            header_key = (
+                key[_CARRIER_KEY_PREFIX_LEN:].replace("_", "-").lower()
+            )
             if header_key in headers:
                 headers[header_key] += "," + val
             else:
