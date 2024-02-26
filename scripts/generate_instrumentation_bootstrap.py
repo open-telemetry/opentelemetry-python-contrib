@@ -59,6 +59,10 @@ def main():
     default_instrumentations = ast.List(elts=[])
     libraries = ast.List(elts=[])
     for pkg in get_instrumentation_packages():
+        # FIXME: Remove this logic once these packages are available in Pypi
+        if pkg["name"] == "opentelemetry-instrumentation-aiohttp-server":
+            continue
+
         if not pkg["instruments"]:
             default_instrumentations.elts.append(ast.Str(pkg["requirement"]))
         for target_pkg in pkg["instruments"]:
