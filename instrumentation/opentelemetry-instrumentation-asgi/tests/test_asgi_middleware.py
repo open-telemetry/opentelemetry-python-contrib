@@ -268,20 +268,19 @@ class TestAsgiApplication(AsgiTestBase):
             {
                 "name": "GET / http receive",
                 "kind": trace_api.SpanKind.INTERNAL,
-                "attributes": {"type": "http.request"},
+                "attributes": {},
             },
             {
                 "name": "GET / http send",
                 "kind": trace_api.SpanKind.INTERNAL,
                 "attributes": {
                     SpanAttributes.HTTP_STATUS_CODE: 200,
-                    "type": "http.response.start",
                 },
             },
             {
                 "name": "GET / http send",
                 "kind": trace_api.SpanKind.INTERNAL,
-                "attributes": {"type": "http.response.body"},
+                "attributes": {},
             },
             {
                 "name": "GET /",
@@ -358,7 +357,7 @@ class TestAsgiApplication(AsgiTestBase):
             more_body_span = {
                 "name": "GET / http send",
                 "kind": trace_api.SpanKind.INTERNAL,
-                "attributes": {"type": "http.response.body"},
+                "attributes": {},
             }
             extra_spans = [more_body_span] * 3
             expected[2:2] = extra_spans
@@ -396,12 +395,12 @@ class TestAsgiApplication(AsgiTestBase):
             body_span = {
                 "name": "GET / http send",
                 "kind": trace_api.SpanKind.INTERNAL,
-                "attributes": {"type": "http.response.body"},
+                "attributes": {},
             }
             trailer_span = {
                 "name": "GET / http send",
                 "kind": trace_api.SpanKind.INTERNAL,
-                "attributes": {"type": "http.response.trailers"},
+                "attributes": {},
             }
             expected[2:2] = [body_span]
             expected[4:4] = [trailer_span] * 2
@@ -582,18 +581,17 @@ class TestAsgiApplication(AsgiTestBase):
             {
                 "name": "/ websocket receive",
                 "kind": trace_api.SpanKind.INTERNAL,
-                "attributes": {"type": "websocket.connect"},
+                "attributes": {},
             },
             {
                 "name": "/ websocket send",
                 "kind": trace_api.SpanKind.INTERNAL,
-                "attributes": {"type": "websocket.accept"},
+                "attributes": {},
             },
             {
                 "name": "/ websocket receive",
                 "kind": trace_api.SpanKind.INTERNAL,
                 "attributes": {
-                    "type": "websocket.receive",
                     SpanAttributes.HTTP_STATUS_CODE: 200,
                 },
             },
@@ -601,14 +599,13 @@ class TestAsgiApplication(AsgiTestBase):
                 "name": "/ websocket send",
                 "kind": trace_api.SpanKind.INTERNAL,
                 "attributes": {
-                    "type": "websocket.send",
                     SpanAttributes.HTTP_STATUS_CODE: 200,
                 },
             },
             {
                 "name": "/ websocket receive",
                 "kind": trace_api.SpanKind.INTERNAL,
-                "attributes": {"type": "websocket.disconnect"},
+                "attributes": {},
             },
             {
                 "name": "/",
@@ -638,6 +635,7 @@ class TestAsgiApplication(AsgiTestBase):
         set_global_response_propagator(TraceResponsePropagator())
 
         self.scope = {
+            "type": "websocket",
             "http_version": "1.1",
             "scheme": "ws",
             "path": "/",
