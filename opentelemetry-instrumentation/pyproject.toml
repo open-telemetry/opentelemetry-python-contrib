@@ -28,7 +28,7 @@ dependencies = [
   "opentelemetry-api ~= 1.4",
   "opentelemetry-semantic-conventions >= 0.48b0",
   "wrapt >= 1.0.0, < 2.0.0",
-  "importlib-metadata >= 6.0, < 7.0",
+  "importlib-metadata >= 6.0, < 8.0",
   "packaging >= 18.0",
 ]
 
