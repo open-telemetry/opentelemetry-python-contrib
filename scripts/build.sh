@@ -27,12 +27,21 @@ DISTDIR=dist
      fi
    )
  done
+
  (
    cd $DISTDIR
-   for x in *.tar.gz ; do
+   for x in * ; do
+    # FIXME: Remove this logic once these packages are available in Pypi
+    if echo "$x" | grep -Eq "^opentelemetry_(instrumentation_aiohttp_server|resource_detector_container).*(\.tar\.gz|\.whl)$"; then
+      echo "Skipping $x because of erroneous uploads. See: https://github.com/open-telemetry/opentelemetry-python-contrib/issues/2053"
+      rm $x
+    # FIXME: Remove this once opentelemetry-resource-detector-azure package goes 1.X
+    elif echo "$x" | grep -Eq "^opentelemetry_resource_detector_azure.*(\.tar\.gz|\.whl)$"; then
+      echo "Skipping $x because of manual upload by Azure maintainers."
+      rm $x
     # NOTE: We filter beta vs 1.0 package at this point because we can read the
-    # version directly from the .tar.gz file.
-    if (echo "$x" | grep -Eq ^opentelemetry_.*-0\..*\.tar\.gz$); then
+    # version directly from the .tar.gz/whl file
+    elif echo "$x" | grep -Eq "^opentelemetry_.*-0\..*(\.tar\.gz|\.whl)$"; then
       :
     else
       echo "Skipping $x because it is not in pre-1.0 state and should be released using a tag."
