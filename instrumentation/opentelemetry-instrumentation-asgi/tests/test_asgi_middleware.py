@@ -638,7 +638,6 @@ class TestAsgiApplication(AsgiTestBase):
         set_global_response_propagator(TraceResponsePropagator())
 
         self.scope = {
-            "type": "websocket",
             "http_version": "1.1",
             "scheme": "ws",
             "path": "/",
