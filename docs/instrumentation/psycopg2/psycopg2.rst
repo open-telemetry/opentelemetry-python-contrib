@@ -1,5 +1,5 @@
-OpenTelemetry Psycopg Instrumentation
-=====================================
+OpenTelemetry Psycopg2 Instrumentation
+======================================
 
 .. automodule:: opentelemetry.instrumentation.psycopg2
     :members:

@@ -25,7 +25,7 @@ classifiers = [
 ]
 dependencies = [
   "opentelemetry-api ~= 1.5",
-  "opentelemetry-instrumentation == 0.44b0.dev",
+  "opentelemetry-instrumentation == 0.45b0.dev",
   "wrapt >= 1.0.0, < 2.0.0",
 ]
 
@@ -35,7 +35,7 @@ instruments = [
 ]
 test = [
   "opentelemetry-instrumentation-aio-pika[instruments]",
-  "opentelemetry-test-utils == 0.44b0.dev",
+  "opentelemetry-test-utils == 0.45b0.dev",
   "pytest",
   "wrapt >= 1.0.0, < 2.0.0",
 ]

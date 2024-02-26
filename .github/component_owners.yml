@@ -70,3 +70,6 @@ components:
 
   instrumentation/opentelemetry-instrumentation-asyncio:
     - bourbonkk
+
+  instrumentation/opentelemetry-instrumentation-psycopg:
+    - federicobond
