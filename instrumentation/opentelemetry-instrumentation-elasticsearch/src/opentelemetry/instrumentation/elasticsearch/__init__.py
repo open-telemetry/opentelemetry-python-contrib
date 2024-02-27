@@ -246,7 +246,7 @@ def _wrap_perform_request(
                     attributes["elasticsearch.method"] = method
                 if body:
                     # Don't set db.statement for bulk requests, as it can be very large
-                    if not isinstance(body, list):
+                    if isinstance(body, dict):
                         attributes[SpanAttributes.DB_STATEMENT] = sanitize_body(
                             body
                         )
