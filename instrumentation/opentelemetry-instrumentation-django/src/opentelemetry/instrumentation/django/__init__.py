@@ -316,9 +316,7 @@ class DjangoInstrumentor(BaseInstrumentor):
             else parse_excluded_urls(_excluded_urls)
         )
         _DjangoMiddleware._otel_request_hook = kwargs.pop("request_hook", None)
-        _DjangoMiddleware._otel_response_hook = kwargs.pop(
-            "response_hook", None
-        )
+        _DjangoMiddleware._otel_response_hook = kwargs.pop("response_hook", None)
         _DjangoMiddleware._duration_histogram = meter.create_histogram(
             name=MetricInstruments.HTTP_SERVER_DURATION,
             unit="ms",

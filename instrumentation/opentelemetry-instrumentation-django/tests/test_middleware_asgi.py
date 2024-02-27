@@ -84,9 +84,7 @@ urlpatterns = [
 _django_instrumentor = DjangoInstrumentor()
 
 
-@pytest.mark.skipif(
-    not DJANGO_3_1, reason="AsyncClient implemented since Django 3.1"
-)
+@pytest.mark.skipif(not DJANGO_3_1, reason="AsyncClient implemented since Django 3.1")
 class TestMiddlewareAsgi(SimpleTestCase, TestBase):
     @classmethod
     def setUpClass(cls):
@@ -168,9 +166,7 @@ class TestMiddlewareAsgi(SimpleTestCase, TestBase):
             span.attributes[SpanAttributes.HTTP_URL],
             "http://127.0.0.1/traced/",
         )
-        self.assertEqual(
-            span.attributes[SpanAttributes.HTTP_ROUTE], "^traced/"
-        )
+        self.assertEqual(span.attributes[SpanAttributes.HTTP_ROUTE], "^traced/")
         self.assertEqual(span.attributes[SpanAttributes.HTTP_SCHEME], "http")
         self.assertEqual(span.attributes[SpanAttributes.HTTP_STATUS_CODE], 200)
 
@@ -203,9 +199,7 @@ class TestMiddlewareAsgi(SimpleTestCase, TestBase):
             span.attributes[SpanAttributes.HTTP_URL],
             "http://127.0.0.1/traced/",
         )
-        self.assertEqual(
-            span.attributes[SpanAttributes.HTTP_ROUTE], "^traced/"
-        )
+        self.assertEqual(span.attributes[SpanAttributes.HTTP_ROUTE], "^traced/")
         self.assertEqual(span.attributes[SpanAttributes.HTTP_SCHEME], "http")
         self.assertEqual(span.attributes[SpanAttributes.HTTP_STATUS_CODE], 200)
 
@@ -233,12 +227,8 @@ class TestMiddlewareAsgi(SimpleTestCase, TestBase):
         self.assertEqual(len(span.events), 1)
         event = span.events[0]
         self.assertEqual(event.name, "exception")
-        self.assertEqual(
-            event.attributes[SpanAttributes.EXCEPTION_TYPE], "ValueError"
-        )
-        self.assertEqual(
-            event.attributes[SpanAttributes.EXCEPTION_MESSAGE], "error"
-        )
+        self.assertEqual(event.attributes[SpanAttributes.EXCEPTION_TYPE], "ValueError")
+        self.assertEqual(event.attributes[SpanAttributes.EXCEPTION_MESSAGE], "error")
 
     async def test_exclude_lists(self):
         await self.async_client.get("/excluded_arg/123")
@@ -395,9 +385,7 @@ class TestMiddlewareAsgiWithTracerProvider(SimpleTestCase, TestBase):
     def setUp(self):
         super().setUp()
         setup_test_environment()
-        resource = resources.Resource.create(
-            {"resource-key": "resource-value"}
-        )
+        resource = resources.Resource.create({"resource-key": "resource-value"})
         result = self.create_tracer_provider(resource=resource)
         tracer_provider, exporter = result
         self.exporter = exporter
@@ -421,15 +409,11 @@ class TestMiddlewareAsgiWithTracerProvider(SimpleTestCase, TestBase):
 
         span = spans[0]
 
-        self.assertEqual(
-            span.resource.attributes["resource-key"], "resource-value"
-        )
+        self.assertEqual(span.resource.attributes["resource-key"], "resource-value")
 
     async def test_no_op_tracer_provider(self):
         _django_instrumentor.uninstrument()
-        _django_instrumentor.instrument(
-            tracer_provider=trace_api.NoOpTracerProvider()
-        )
+        _django_instrumentor.instrument(tracer_provider=trace_api.NoOpTracerProvider())
 
         await self.async_client.post("/traced/")
         spans = self.exporter.get_finished_spans()
@@ -470,12 +454,8 @@ class TestMiddlewareAsgiWithCustomHeaders(SimpleTestCase, TestBase):
 
     async def test_http_custom_request_headers_in_span_attributes(self):
         expected = {
-            "http.request.header.custom_test_header_1": (
-                "test-header-value-1",
-            ),
-            "http.request.header.custom_test_header_2": (
-                "test-header-value-2",
-            ),
+            "http.request.header.custom_test_header_1": ("test-header-value-1",),
+            "http.request.header.custom_test_header_2": ("test-header-value-2",),
             "http.request.header.regex_test_header_1": ("Regex Test Value 1",),
             "http.request.header.regex_test_header_2": (
                 "RegexTestValue2,RegexTestValue3",
@@ -502,9 +482,7 @@ class TestMiddlewareAsgiWithCustomHeaders(SimpleTestCase, TestBase):
 
     async def test_http_custom_request_headers_not_in_span_attributes(self):
         not_expected = {
-            "http.request.header.custom_test_header_2": (
-                "test-header-value-2",
-            ),
+            "http.request.header.custom_test_header_2": ("test-header-value-2",),
         }
         await self.async_client.get(
             "/traced/",
@@ -523,12 +501,8 @@ class TestMiddlewareAsgiWithCustomHeaders(SimpleTestCase, TestBase):
 
     async def test_http_custom_response_headers_in_span_attributes(self):
         expected = {
-            "http.response.header.custom_test_header_1": (
-                "test-header-value-1",
-            ),
-            "http.response.header.custom_test_header_2": (
-                "test-header-value-2",
-            ),
+            "http.response.header.custom_test_header_1": ("test-header-value-1",),
+            "http.response.header.custom_test_header_2": ("test-header-value-2",),
             "http.response.header.my_custom_regex_header_1": (
                 "my-custom-regex-value-1,my-custom-regex-value-2",
             ),
@@ -548,9 +522,7 @@ class TestMiddlewareAsgiWithCustomHeaders(SimpleTestCase, TestBase):
 
     async def test_http_custom_response_headers_not_in_span_attributes(self):
         not_expected = {
-            "http.response.header.custom_test_header_3": (
-                "test-header-value-3",
-            ),
+            "http.response.header.custom_test_header_3": ("test-header-value-3",),
         }
         await self.async_client.get("/traced_custom_header/")
         spans = self.exporter.get_finished_spans()
