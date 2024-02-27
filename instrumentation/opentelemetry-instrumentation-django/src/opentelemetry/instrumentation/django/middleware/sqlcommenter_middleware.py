@@ -47,9 +47,7 @@ class SqlCommenter:
         with ExitStack() as stack:
             for db_alias in connections:
                 stack.enter_context(
-                    connections[db_alias].execute_wrapper(
-                        _QueryWrapper(request)
-                    )
+                    connections[db_alias].execute_wrapper(_QueryWrapper(request))
                 )
             return self.get_response(request)
 
@@ -60,22 +58,14 @@ class _QueryWrapper:
 
     def __call__(self, execute: Type[T], sql, params, many, context) -> T:
         # pylint: disable-msg=too-many-locals
-        with_framework = getattr(
-            conf.settings, "SQLCOMMENTER_WITH_FRAMEWORK", True
-        )
-        with_controller = getattr(
-            conf.settings, "SQLCOMMENTER_WITH_CONTROLLER", True
-        )
+        with_framework = getattr(conf.settings, "SQLCOMMENTER_WITH_FRAMEWORK", True)
+        with_controller = getattr(conf.settings, "SQLCOMMENTER_WITH_CONTROLLER", True)
         with_route = getattr(conf.settings, "SQLCOMMENTER_WITH_ROUTE", True)
-        with_app_name = getattr(
-            conf.settings, "SQLCOMMENTER_WITH_APP_NAME", True
-        )
+        with_app_name = getattr(conf.settings, "SQLCOMMENTER_WITH_APP_NAME", True)
         with_opentelemetry = getattr(
             conf.settings, "SQLCOMMENTER_WITH_OPENTELEMETRY", True
         )
-        with_db_driver = getattr(
-            conf.settings, "SQLCOMMENTER_WITH_DB_DRIVER", True
-        )
+        with_db_driver = getattr(conf.settings, "SQLCOMMENTER_WITH_DB_DRIVER", True)
 
         db_driver = context["connection"].settings_dict.get("ENGINE", "")
         resolver_match = self.request.resolver_match
