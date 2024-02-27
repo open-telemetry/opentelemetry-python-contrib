@@ -7,6 +7,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## Unreleased
 
+### Fixed
+
+- Rename `type` attribute to `asgi.event.type` in `opentelemetry-instrumentation-asgi`
+  ([#2300](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/2300))
+
 ## Version 1.23.0/0.44b0 (2024-02-23)
 
 - Drop support for 3.7
