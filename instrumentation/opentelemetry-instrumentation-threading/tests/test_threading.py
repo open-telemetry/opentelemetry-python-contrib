@@ -12,11 +12,12 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from concurrent import futures
 import threading
-from opentelemetry.test.test_base import TestBase
-from opentelemetry.instrumentation.threading import ThreadingInstrumentor
+from concurrent import futures
+
 from opentelemetry import trace
+from opentelemetry.instrumentation.threading import ThreadingInstrumentor
+from opentelemetry.test.test_base import TestBase
 
 
 class TestThreading(TestBase):
