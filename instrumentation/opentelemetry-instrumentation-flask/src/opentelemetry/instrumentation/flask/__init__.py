@@ -243,6 +243,7 @@ from logging import getLogger
 from time import time_ns
 from timeit import default_timer
 from typing import Collection
+import importlib_metadata as metadata
 
 import flask
 from packaging import version as package_version
@@ -252,14 +253,6 @@ from opentelemetry import context, trace
 from opentelemetry.instrumentation.flask.package import _instruments
 from opentelemetry.instrumentation.flask.version import __version__
 
-try:
-    flask_version = flask.__version__
-except AttributeError:
-    try:
-        from importlib import metadata
-    except ImportError:
-        import importlib_metadata as metadata
-    flask_version = metadata.version("flask")
 
 from opentelemetry.instrumentation.instrumentor import BaseInstrumentor
 from opentelemetry.instrumentation.propagators import (
@@ -280,6 +273,8 @@ _ENVIRON_REQCTX_REF_KEY = "opentelemetry-flask.reqctx_ref_key"
 _ENVIRON_TOKEN = "opentelemetry-flask.token"
 
 _excluded_urls_from_env = get_excluded_urls("FLASK")
+
+flask_version = metadata.version("flask")
 
 if package_version.parse(flask_version) >= package_version.parse("2.2.0"):
 
