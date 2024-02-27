@@ -33,14 +33,14 @@ re-activated in the thread's run method.
 
 import threading
 from typing import Collection
-from opentelemetry.instrumentation.instrumentor import BaseInstrumentor
+
+from wrapt import wrap_function_wrapper
+
+from opentelemetry import context, trace
 from opentelemetry.instrumentation.instrumentor import BaseInstrumentor
 from opentelemetry.instrumentation.threading.package import _instruments
 from opentelemetry.instrumentation.threading.version import __version__
-from opentelemetry import context, trace
-from opentelemetry.instrumentation.instrumentor import BaseInstrumentor
 from opentelemetry.instrumentation.utils import unwrap
-from wrapt import wrap_function_wrapper
 
 
 class ThreadingInstrumentor(BaseInstrumentor):
