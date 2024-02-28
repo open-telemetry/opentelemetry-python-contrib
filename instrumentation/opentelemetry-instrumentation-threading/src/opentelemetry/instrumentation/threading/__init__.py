@@ -39,7 +39,6 @@ from wrapt import wrap_function_wrapper
 from opentelemetry import context, trace
 from opentelemetry.instrumentation.instrumentor import BaseInstrumentor
 from opentelemetry.instrumentation.threading.package import _instruments
-from opentelemetry.instrumentation.threading.version import __version__
 from opentelemetry.instrumentation.utils import unwrap
 
 

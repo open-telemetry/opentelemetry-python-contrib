@@ -57,6 +57,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Added
 
 - `opentelemetry-instrumentation-psycopg` Initial release for psycopg 3.x
+- `opentelemetry-instrumentation-threading` Initial release for threading
+  ([#2253](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/2253))
 
 ## Version 1.22.0/0.43b0 (2023-12-14)
 
