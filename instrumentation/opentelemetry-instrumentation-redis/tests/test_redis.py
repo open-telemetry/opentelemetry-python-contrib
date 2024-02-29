@@ -18,7 +18,7 @@ from unittest.mock import AsyncMock
 import redis
 import redis.asyncio
 
-from opentelemetry import context, trace
+from opentelemetry import trace
 from opentelemetry.instrumentation.redis import RedisInstrumentor
 from opentelemetry.instrumentation.utils import suppress_instrumentation
 from opentelemetry.test.test_base import TestBase
