@@ -20,7 +20,7 @@ import redis.asyncio
 
 from opentelemetry import context, trace
 from opentelemetry.instrumentation.redis import RedisInstrumentor
-from opentelemetry.instrumentation.utils import _SUPPRESS_INSTRUMENTATION_KEY
+from opentelemetry.instrumentation.utils import suppress_instrumentation
 from opentelemetry.test.test_base import TestBase
 from opentelemetry.trace import SpanKind
 
@@ -65,12 +65,35 @@ class TestRedis(TestBase):
     def test_suppress_instrumentation_no_span(self):
         redis_client = redis.Redis()
 
-        token = context.attach(context.set_value(_SUPPRESS_INSTRUMENTATION_KEY, True))
         with mock.patch.object(redis_client, "connection"):
-            redis_client.ping()
-        context.detach(token)
+            redis_client.get("key")
         spans = self.memory_exporter.get_finished_spans()
 
+        self.assertEqual(len(spans), 1)
+        self.memory_exporter.clear()
+
+        with suppress_instrumentation():
+            with mock.patch.object(redis_client, "connection"):
+                redis_client.ping()
+            spans = self.memory_exporter.get_finished_spans()
+        
+        self.assertEqual(len(spans), 0)
+
+    def test_suppress_async_instrumentation_no_span(self):
+        redis_client = redis.Redis()
+
+        with mock.patch.object(redis_client, "connection", AsyncMock()):
+            redis_client.get("key")
+        spans = self.memory_exporter.get_finished_spans()
+
+        self.assertEqual(len(spans), 1)
+        self.memory_exporter.clear()
+
+        with suppress_instrumentation():
+            with mock.patch.object(redis_client, "connection", AsyncMock()):
+                redis_client.ping()
+            spans = self.memory_exporter.get_finished_spans()
+        
         self.assertEqual(len(spans), 0)
 
     def test_instrument_uninstrument(self):

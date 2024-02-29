@@ -96,8 +96,7 @@ from typing import Any, Collection
 import redis
 from wrapt import wrap_function_wrapper
 
-from opentelemetry import context, trace
-from opentelemetry.context import _SUPPRESS_INSTRUMENTATION_KEY
+from opentelemetry import trace
 from opentelemetry.instrumentation.instrumentor import BaseInstrumentor
 from opentelemetry.instrumentation.redis.package import _instruments
 from opentelemetry.instrumentation.redis.util import (
@@ -105,7 +104,7 @@ from opentelemetry.instrumentation.redis.util import (
     _format_command_args,
 )
 from opentelemetry.instrumentation.redis.version import __version__
-from opentelemetry.instrumentation.utils import unwrap
+from opentelemetry.instrumentation.utils import unwrap, is_instrumentation_enabled
 from opentelemetry.semconv.trace import SpanAttributes
 from opentelemetry.trace import Span
 
@@ -180,14 +179,12 @@ def _instrument(
     response_hook: _ResponseHookT = None,
 ):
     def _traced_execute_command(func, instance, args, kwargs):
-        query = _format_command_args(args)
-        name = _build_span_name(instance, args)
 
-        if context.get_value(
-            _SUPPRESS_INSTRUMENTATION_KEY
-        ):
+        if not is_instrumentation_enabled():
             return func(*args, **kwargs)
 
+        query = _format_command_args(args)
+        name = _build_span_name(instance, args)
         with tracer.start_as_current_span(
             name, kind=trace.SpanKind.CLIENT
         ) as span:
@@ -204,9 +201,7 @@ def _instrument(
 
     def _traced_execute_pipeline(func, instance, args, kwargs):
 
-        if context.get_value(
-                _SUPPRESS_INSTRUMENTATION_KEY
-        ):
+        if not is_instrumentation_enabled():
             return func(*args, **kwargs)
 
         (
@@ -260,6 +255,10 @@ def _instrument(
         )
 
     async def _async_traced_execute_command(func, instance, args, kwargs):
+        
+        if not is_instrumentation_enabled():
+            return func(*args, **kwargs)
+        
         query = _format_command_args(args)
         name = _build_span_name(instance, args)
 
@@ -278,6 +277,10 @@ def _instrument(
             return response
 
     async def _async_traced_execute_pipeline(func, instance, args, kwargs):
+        
+        if not is_instrumentation_enabled():
+            return func(*args, **kwargs)
+        
         (
             command_stack,
             resource,
