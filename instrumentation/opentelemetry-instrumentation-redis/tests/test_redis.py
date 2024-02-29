@@ -74,16 +74,16 @@ class TestRedis(TestBase):
 
         with suppress_instrumentation():
             with mock.patch.object(redis_client, "connection"):
-                redis_client.ping()
+                redis_client.get("key")
             spans = self.memory_exporter.get_finished_spans()
 
         self.assertEqual(len(spans), 0)
 
     def test_suppress_async_instrumentation_no_span(self):
-        redis_client = redis.Redis()
+        redis_client = redis.asyncio.Redis()
 
         with mock.patch.object(redis_client, "connection", AsyncMock()):
-            redis_client.get("key")
+            asyncio.run(redis_client.get("key"))
         spans = self.memory_exporter.get_finished_spans()
 
         self.assertEqual(len(spans), 1)
@@ -91,7 +91,7 @@ class TestRedis(TestBase):
 
         with suppress_instrumentation():
             with mock.patch.object(redis_client, "connection", AsyncMock()):
-                redis_client.ping()
+                asyncio.run(redis_client.get("key"))
             spans = self.memory_exporter.get_finished_spans()
 
         self.assertEqual(len(spans), 0)
