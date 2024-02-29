@@ -77,9 +77,6 @@ dependencies = [
     "opentelemetry-instrumentation-wsgi==0.45b0.dev",
 ]
 
-[project.optional-dependencies]
-test = []
-
 [project.urls]
 Homepage = "https://github.com/open-telemetry/opentelemetry-python-contrib/tree/main/opentelemetry-contrib-instrumentations"
 
