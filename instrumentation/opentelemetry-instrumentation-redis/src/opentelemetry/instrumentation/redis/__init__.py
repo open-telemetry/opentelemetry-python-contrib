@@ -260,7 +260,7 @@ def _instrument(
     async def _async_traced_execute_command(func, instance, args, kwargs):
 
         if not is_instrumentation_enabled():
-            return func(*args, **kwargs)
+            return await func(*args, **kwargs)
 
         query = _format_command_args(args)
         name = _build_span_name(instance, args)
@@ -282,7 +282,7 @@ def _instrument(
     async def _async_traced_execute_pipeline(func, instance, args, kwargs):
 
         if not is_instrumentation_enabled():
-            return func(*args, **kwargs)
+            return await func(*args, **kwargs)
 
         (
             command_stack,
