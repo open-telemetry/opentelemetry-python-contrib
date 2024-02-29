@@ -54,7 +54,7 @@ jobs:
         with:
           python-version: 3.9
       - name: Install tox
-        run: pip install tox==3.27.1
+        run: pip install tox
       - name: run tox
         run: tox -e generate
 

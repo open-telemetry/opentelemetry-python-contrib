@@ -63,6 +63,7 @@ import logging
 from timeit import default_timer
 from typing import Collection, Iterable
 
+from billiard import VERSION
 from billiard.einfo import ExceptionInfo
 from celery import signals  # pylint: disable=no-name-in-module
 
@@ -76,8 +77,6 @@ from opentelemetry.propagate import extract, inject
 from opentelemetry.propagators.textmap import Getter
 from opentelemetry.semconv.trace import SpanAttributes
 from opentelemetry.trace.status import Status, StatusCode
-from billiard import VERSION
-
 
 if VERSION >= (4, 0, 1):
     from billiard.einfo import ExceptionWithTraceback

@@ -15,7 +15,6 @@
 import logging
 
 from celery import registry  # pylint: disable=no-name-in-module
-from billiard import VERSION
 
 from opentelemetry.semconv.trace import SpanAttributes
 

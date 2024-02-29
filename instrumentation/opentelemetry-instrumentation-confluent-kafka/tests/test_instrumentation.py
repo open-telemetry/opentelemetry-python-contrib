@@ -14,13 +14,6 @@
 
 # pylint: disable=no-name-in-module
 
-from opentelemetry.semconv.trace import (
-    SpanAttributes,
-    MessagingDestinationKindValues,
-)
-from opentelemetry.test.test_base import TestBase
-from .utils import MockConsumer, MockedMessage
-
 from confluent_kafka import Consumer, Producer
 
 from opentelemetry.instrumentation.confluent_kafka import (
@@ -32,6 +25,13 @@ from opentelemetry.instrumentation.confluent_kafka.utils import (
     KafkaContextGetter,
     KafkaContextSetter,
 )
+from opentelemetry.semconv.trace import (
+    MessagingDestinationKindValues,
+    SpanAttributes,
+)
+from opentelemetry.test.test_base import TestBase
+
+from .utils import MockConsumer, MockedMessage
 
 
 class TestConfluentKafka(TestBase):

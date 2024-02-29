@@ -1,4 +1,4 @@
-# Copyright 2020, OpenTelemetry Authors
+# Copyright The OpenTelemetry Authors
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -12,21 +12,4 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from enum import Enum
-
-
-class HTTPMethod(Enum):
-    """HTTP methods and descriptions"""
-
-    def __repr__(self):
-        return f"{self.value}"
-
-    CONNECT = 'CONNECT'
-    DELETE = 'DELETE'
-    GET = 'GET'
-    HEAD = 'HEAD'
-    OPTIONS = 'OPTIONS'
-    PATCH = 'PATCH'
-    POST = 'POST'
-    PUT = 'PUT'
-    TRACE = 'TRACE'
+__version__ = "0.45b0.dev"

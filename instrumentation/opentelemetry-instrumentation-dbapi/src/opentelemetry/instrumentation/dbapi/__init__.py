@@ -427,14 +427,14 @@ class CursorTracer:
             if args and self._commenter_enabled:
                 try:
                     args_list = list(args)
-                    commenter_data = dict(
+                    commenter_data = {
                         # Psycopg2/framework information
-                        db_driver=f"psycopg2:{self._connect_module.__version__.split(' ')[0]}",
-                        dbapi_threadsafety=self._connect_module.threadsafety,
-                        dbapi_level=self._connect_module.apilevel,
-                        libpq_version=self._connect_module.__libpq_version__,
-                        driver_paramstyle=self._connect_module.paramstyle,
-                    )
+                        "db_driver": f"psycopg2:{self._connect_module.__version__.split(' ')[0]}",
+                        "dbapi_threadsafety": self._connect_module.threadsafety,
+                        "dbapi_level": self._connect_module.apilevel,
+                        "libpq_version": self._connect_module.__libpq_version__,
+                        "driver_paramstyle": self._connect_module.paramstyle,
+                    }
                     if self._commenter_options.get(
                         "opentelemetry_values", True
                     ):

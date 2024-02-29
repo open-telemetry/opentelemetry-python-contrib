@@ -13,14 +13,13 @@
 # limitations under the License.
 
 
+from platform import python_implementation
 from timeit import default_timer
 from urllib import request
 from urllib.parse import urlencode
-from pytest import mark
-from platform import python_implementation
-from sys import version_info
 
 import httpretty
+from pytest import mark
 
 from opentelemetry.instrumentation.urllib import (  # pylint: disable=no-name-in-module,import-error
     URLLibInstrumentor,
@@ -189,26 +188,151 @@ class TestUrllibMetricsInstrumentation(TestBase):
             )
 
     @mark.skipif(
-        python_implementation() == "PyPy" or version_info.minor == 7,
-        reason="Fails randomly in 3.7 and pypy"
+        python_implementation() == "PyPy", reason="Fails randomly in pypy"
     )
     def test_metric_uninstrument(self):
         with request.urlopen(self.URL):
-            metrics = self.get_sorted_metrics()
-            self.assertEqual(len(metrics), 3)
 
             self.assertEqual(
-                metrics[0].data.data_points[0].sum, 1
-            )
-            self.assertEqual(
-                metrics[1].data.data_points[0].sum, 0
-            )
-            self.assertEqual(
-                metrics[2].data.data_points[0].sum, 6
+                len(
+                    (
+                        self.memory_metrics_reader.get_metrics_data()
+                        .resource_metrics[0]
+                        .scope_metrics[0]
+                        .metrics
+                    )
+                ),
+                3,
             )
 
-            URLLibInstrumentor().uninstrument()
-            with request.urlopen(self.URL):
-                self.assertIsNone(
+            self.assertEqual(
+                (
                     self.memory_metrics_reader.get_metrics_data()
-                )
+                    .resource_metrics[0]
+                    .scope_metrics[0]
+                    .metrics[0]
+                    .data.data_points[0]
+                    .bucket_counts[1]
+                ),
+                1,
+            )
+            self.assertEqual(
+                (
+                    self.memory_metrics_reader.get_metrics_data()
+                    .resource_metrics[0]
+                    .scope_metrics[0]
+                    .metrics[1]
+                    .data.data_points[0]
+                    .bucket_counts[0]
+                ),
+                1,
+            )
+            self.assertEqual(
+                (
+                    self.memory_metrics_reader.get_metrics_data()
+                    .resource_metrics[0]
+                    .scope_metrics[0]
+                    .metrics[2]
+                    .data.data_points[0]
+                    .bucket_counts[2]
+                ),
+                1,
+            )
+
+        with request.urlopen(self.URL):
+
+            self.assertEqual(
+                len(
+                    (
+                        self.memory_metrics_reader.get_metrics_data()
+                        .resource_metrics[0]
+                        .scope_metrics[0]
+                        .metrics
+                    )
+                ),
+                3,
+            )
+
+            self.assertEqual(
+                (
+                    self.memory_metrics_reader.get_metrics_data()
+                    .resource_metrics[0]
+                    .scope_metrics[0]
+                    .metrics[0]
+                    .data.data_points[0]
+                    .bucket_counts[1]
+                ),
+                2,
+            )
+            self.assertEqual(
+                (
+                    self.memory_metrics_reader.get_metrics_data()
+                    .resource_metrics[0]
+                    .scope_metrics[0]
+                    .metrics[1]
+                    .data.data_points[0]
+                    .bucket_counts[0]
+                ),
+                2,
+            )
+            self.assertEqual(
+                (
+                    self.memory_metrics_reader.get_metrics_data()
+                    .resource_metrics[0]
+                    .scope_metrics[0]
+                    .metrics[2]
+                    .data.data_points[0]
+                    .bucket_counts[2]
+                ),
+                2,
+            )
+
+        URLLibInstrumentor().uninstrument()
+
+        with request.urlopen(self.URL):
+
+            self.assertEqual(
+                len(
+                    (
+                        self.memory_metrics_reader.get_metrics_data()
+                        .resource_metrics[0]
+                        .scope_metrics[0]
+                        .metrics
+                    )
+                ),
+                3,
+            )
+
+            self.assertEqual(
+                (
+                    self.memory_metrics_reader.get_metrics_data()
+                    .resource_metrics[0]
+                    .scope_metrics[0]
+                    .metrics[0]
+                    .data.data_points[0]
+                    .bucket_counts[1]
+                ),
+                2,
+            )
+            self.assertEqual(
+                (
+                    self.memory_metrics_reader.get_metrics_data()
+                    .resource_metrics[0]
+                    .scope_metrics[0]
+                    .metrics[1]
+                    .data.data_points[0]
+                    .bucket_counts[0]
+                ),
+                2,
+            )
+            self.assertEqual(
+                (
+                    self.memory_metrics_reader.get_metrics_data()
+                    .resource_metrics[0]
+                    .scope_metrics[0]
+                    .metrics[2]
+                    .data.data_points[0]
+                    .bucket_counts[2]
+                ),
+                2,
+            )

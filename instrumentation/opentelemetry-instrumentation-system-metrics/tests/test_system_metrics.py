@@ -18,13 +18,12 @@ from collections import namedtuple
 from platform import python_implementation
 from unittest import mock, skipIf
 
-from opentelemetry.sdk.metrics import MeterProvider
-from opentelemetry.sdk.metrics.export import InMemoryMetricReader
-from opentelemetry.test.test_base import TestBase
-
 from opentelemetry.instrumentation.system_metrics import (
     SystemMetricsInstrumentor,
 )
+from opentelemetry.sdk.metrics import MeterProvider
+from opentelemetry.sdk.metrics.export import InMemoryMetricReader
+from opentelemetry.test.test_base import TestBase
 
 
 def _mock_netconnection():
@@ -120,12 +119,14 @@ class TestSystemMetrics(TestBase):
             f"process.runtime.{self.implementation}.context_switches",
             f"process.runtime.{self.implementation}.cpu.utilization",
         ]
-        
+
         if self.implementation == "pypy":
             self.assertEqual(len(metric_names), 20)
         else:
             self.assertEqual(len(metric_names), 21)
-        observer_names.append(f"process.runtime.{self.implementation}.gc_count",)
+        observer_names.append(
+            f"process.runtime.{self.implementation}.gc_count",
+        )
 
         for observer in metric_names:
             self.assertIn(observer, observer_names)
@@ -139,7 +140,7 @@ class TestSystemMetrics(TestBase):
             "process.runtime.cpu.utilization": None,
             "process.runtime.context_switches": ["involuntary", "voluntary"],
         }
-        
+
         if self.implementation != "pypy":
             runtime_config["process.runtime.gc_count"] = None
 
@@ -166,7 +167,9 @@ class TestSystemMetrics(TestBase):
             self.assertEqual(len(metric_names), 5)
         else:
             self.assertEqual(len(metric_names), 6)
-        observer_names.append(f"process.runtime.{self.implementation}.gc_count")
+        observer_names.append(
+            f"process.runtime.{self.implementation}.gc_count"
+        )
 
         for observer in metric_names:
             self.assertIn(observer, observer_names)
@@ -181,9 +184,9 @@ class TestSystemMetrics(TestBase):
                     for data_point in metric.data.data_points:
                         for expect in expected:
                             if (
-                                    dict(data_point.attributes)
-                                    == expect.attributes
-                                    and metric.name == observer_name
+                                dict(data_point.attributes)
+                                == expect.attributes
+                                and metric.name == observer_name
                             ):
                                 self.assertEqual(
                                     data_point.value,
@@ -791,7 +794,9 @@ class TestSystemMetrics(TestBase):
         )
 
     @mock.patch("gc.get_count")
-    @skipIf(python_implementation().lower() == "pypy", "not supported for pypy")
+    @skipIf(
+        python_implementation().lower() == "pypy", "not supported for pypy"
+    )
     def test_runtime_get_count(self, mock_gc_get_count):
         mock_gc_get_count.configure_mock(**{"return_value": (1, 2, 3)})
 
