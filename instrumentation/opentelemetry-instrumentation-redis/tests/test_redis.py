@@ -76,7 +76,7 @@ class TestRedis(TestBase):
             with mock.patch.object(redis_client, "connection"):
                 redis_client.ping()
             spans = self.memory_exporter.get_finished_spans()
-        
+
         self.assertEqual(len(spans), 0)
 
     def test_suppress_async_instrumentation_no_span(self):
@@ -93,7 +93,7 @@ class TestRedis(TestBase):
             with mock.patch.object(redis_client, "connection", AsyncMock()):
                 redis_client.ping()
             spans = self.memory_exporter.get_finished_spans()
-        
+
         self.assertEqual(len(spans), 0)
 
     def test_instrument_uninstrument(self):
