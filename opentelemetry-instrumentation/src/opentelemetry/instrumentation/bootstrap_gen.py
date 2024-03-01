@@ -21,14 +21,6 @@ libraries = [
         "instrumentation": "opentelemetry-instrumentation-aio-pika==0.46b0.dev",
     },
     {
-        "library": "aiohttp ~= 3.0",
-        "instrumentation": "opentelemetry-instrumentation-aiohttp-client==0.46b0.dev",
-    },
-    {
-        "library": "aiohttp ~= 3.0",
-        "instrumentation": "opentelemetry-instrumentation-aiohttp-server==0.46b0.dev",
-    },
-    {
         "library": "aiopg >= 0.13.0, < 2.0.0",
         "instrumentation": "opentelemetry-instrumentation-aiopg==0.46b0.dev",
     },
