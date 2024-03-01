@@ -106,6 +106,7 @@ import typing
 from typing import Collection
 
 import psycopg
+from psycopg import AsyncCursor as pg_async_cursor
 from psycopg import Cursor as pg_cursor  # pylint: disable=no-name-in-module
 from psycopg.sql import Composed  # pylint: disable=no-name-in-module
 
@@ -151,9 +152,36 @@ class PsycopgInstrumentor(BaseInstrumentor):
             commenter_options=commenter_options,
         )
 
+        dbapi.wrap_connect(
+            __name__,
+            psycopg.Connection,
+            "connect",
+            self._DATABASE_SYSTEM,
+            self._CONNECTION_ATTRIBUTES,
+            version=__version__,
+            tracer_provider=tracer_provider,
+            db_api_integration_factory=DatabaseApiIntegration,
+            enable_commenter=enable_sqlcommenter,
+            commenter_options=commenter_options,
+        )
+        dbapi.wrap_connect(
+            __name__,
+            psycopg.AsyncConnection,
+            "connect",
+            self._DATABASE_SYSTEM,
+            self._CONNECTION_ATTRIBUTES,
+            version=__version__,
+            tracer_provider=tracer_provider,
+            db_api_integration_factory=DatabaseApiAsyncIntegration,
+            enable_commenter=enable_sqlcommenter,
+            commenter_options=commenter_options,
+        )
+
     def _uninstrument(self, **kwargs):
         """ "Disable Psycopg instrumentation"""
         dbapi.unwrap_connect(psycopg, "connect")
+        dbapi.unwrap_connect(psycopg.Connection, "connect")
+        dbapi.unwrap_connect(psycopg.AsyncConnection, "connect")
 
     # TODO(owais): check if core dbapi can do this for all dbapi implementations e.g, pymysql and mysql
     @staticmethod
@@ -200,6 +228,26 @@ class DatabaseApiIntegration(dbapi.DatabaseApiIntegration):
             new_factory_kwargs["base_factory"] = base_cursor_factory
         kwargs["cursor_factory"] = _new_cursor_factory(**new_factory_kwargs)
         connection = connect_method(*args, **kwargs)
+        self.get_connection_attributes(connection)
+        return connection
+
+
+class DatabaseApiAsyncIntegration(dbapi.DatabaseApiIntegration):
+    async def wrapped_connection(
+        self,
+        connect_method: typing.Callable[..., typing.Any],
+        args: typing.Tuple[typing.Any, typing.Any],
+        kwargs: typing.Dict[typing.Any, typing.Any],
+    ):
+        """Add object proxy to connection object."""
+        base_cursor_factory = kwargs.pop("cursor_factory", None)
+        new_factory_kwargs = {"db_api": self}
+        if base_cursor_factory:
+            new_factory_kwargs["base_factory"] = base_cursor_factory
+        kwargs["cursor_factory"] = _new_cursor_async_factory(
+            **new_factory_kwargs
+        )
+        connection = await connect_method(*args, **kwargs)
         self.get_connection_attributes(connection)
         return connection
 
@@ -259,3 +307,36 @@ def _new_cursor_factory(db_api=None, base_factory=None, tracer_provider=None):
             )
 
     return TracedCursorFactory
+
+
+def _new_cursor_async_factory(
+    db_api=None, base_factory=None, tracer_provider=None
+):
+    if not db_api:
+        db_api = DatabaseApiAsyncIntegration(
+            __name__,
+            Psycopg3Instrumentor._DATABASE_SYSTEM,
+            connection_attributes=Psycopg3Instrumentor._CONNECTION_ATTRIBUTES,
+            version=__version__,
+            tracer_provider=tracer_provider,
+        )
+    base_factory = base_factory or pg_async_cursor
+    _cursor_tracer = CursorTracer(db_api)
+
+    class TracedCursorAsyncFactory(base_factory):
+        async def execute(self, *args, **kwargs):
+            return await _cursor_tracer.traced_execution(
+                self, super().execute, *args, **kwargs
+            )
+
+        async def executemany(self, *args, **kwargs):
+            return await _cursor_tracer.traced_execution(
+                self, super().executemany, *args, **kwargs
+            )
+
+        async def callproc(self, *args, **kwargs):
+            return await _cursor_tracer.traced_execution(
+                self, super().callproc, *args, **kwargs
+            )
+
+    return TracedCursorAsyncFactory

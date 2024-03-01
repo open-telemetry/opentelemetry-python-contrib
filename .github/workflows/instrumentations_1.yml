@@ -31,7 +31,6 @@ jobs:
           - "richconsole"
           - "psycopg"
           - "prometheus-remote-write"
-          - "psycopg3"
           - "sdkextension-aws"
           - "propagator-aws-xray"
           - "propagator-ot-trace"

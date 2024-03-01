@@ -12,6 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import asyncio
 import types
 from unittest import mock
 
@@ -21,6 +22,11 @@ import opentelemetry.instrumentation.psycopg
 from opentelemetry.instrumentation.psycopg import PsycopgInstrumentor
 from opentelemetry.sdk import resources
 from opentelemetry.test.test_base import TestBase
+
+
+def async_call(coro, *args, **kwargs):
+    loop = asyncio.get_event_loop()
+    return loop.run_until_complete(coro, *args, **kwargs)
 
 
 class MockCursor:
@@ -45,6 +51,35 @@ class MockCursor:
         return self
 
 
+class MockAsyncCursor:
+    def __init__(self, *args, **kwargs):
+        pass
+
+    # pylint: disable=unused-argument, no-self-use
+    async def execute(self, query, params=None, throw_exception=False):
+        if throw_exception:
+            raise Exception("Test Exception")
+
+    # pylint: disable=unused-argument, no-self-use
+    async def executemany(self, query, params=None, throw_exception=False):
+        if throw_exception:
+            raise Exception("Test Exception")
+
+    # pylint: disable=unused-argument, no-self-use
+    async def callproc(self, query, params=None, throw_exception=False):
+        if throw_exception:
+            raise Exception("Test Exception")
+
+    async def __aenter__(self, *args, **kwargs):
+        return self
+
+    async def __aexit__(self, *args, **kwargs):
+        pass
+
+    def close(self):
+        pass
+
+
 class MockConnection:
     commit = mock.MagicMock(spec=types.MethodType)
     commit.__name__ = "commit"
@@ -64,22 +99,71 @@ class MockConnection:
         return {"dbname": "test"}
 
 
+class MockAsyncConnection:
+    commit = mock.MagicMock(spec=types.MethodType)
+    commit.__name__ = "commit"
+
+    rollback = mock.MagicMock(spec=types.MethodType)
+    rollback.__name__ = "rollback"
+
+    def __init__(self, *args, **kwargs):
+        self.cursor_factory = kwargs.pop("cursor_factory", None)
+        pass
+
+    @classmethod
+    async def connect(*args, **kwargs):
+        return MockAsyncConnection(**kwargs)
+
+    def cursor(self):
+        if self.cursor_factory:
+            cur = self.cursor_factory(self)
+            print("Returning factory cursor", cur)
+            return cur
+        print("Returning MockAsyncCursor")
+        return MockAsyncCursor()
+
+    def get_dsn_parameters(self):  # pylint: disable=no-self-use
+        return {"dbname": "test"}
+
+    async def __aenter__(self):
+        return self
+
+    async def __aexit__(self, *args):
+        return mock.MagicMock(spec=types.MethodType)
+
+
 class TestPostgresqlIntegration(TestBase):
     def setUp(self):
         super().setUp()
         self.cursor_mock = mock.patch(
             "opentelemetry.instrumentation.psycopg.pg_cursor", MockCursor
         )
+        self.cursor_async_mock = mock.patch(
+            "opentelemetry.instrumentation.psycopg.pg_async_cursor",
+            MockAsyncCursor,
+        )
         self.connection_mock = mock.patch("psycopg.connect", MockConnection)
+        self.connection_sync_mock = mock.patch(
+            "psycopg.Connection.connect", MockConnection
+        )
+        self.connection_async_mock = mock.patch(
+            "psycopg.AsyncConnection.connect", MockAsyncConnection.connect
+        )
 
         self.cursor_mock.start()
+        self.cursor_async_mock.start()
         self.connection_mock.start()
+        self.connection_sync_mock.start()
+        self.connection_async_mock.start()
 
     def tearDown(self):
         super().tearDown()
         self.memory_exporter.clear()
         self.cursor_mock.stop()
+        self.cursor_async_mock.stop()
         self.connection_mock.stop()
+        self.connection_sync_mock.stop()
+        self.connection_async_mock.stop()
         with self.disable_logging():
             PsycopgInstrumentor().uninstrument()
 
@@ -114,6 +198,93 @@ class TestPostgresqlIntegration(TestBase):
         spans_list = self.memory_exporter.get_finished_spans()
         self.assertEqual(len(spans_list), 1)
 
+    # pylint: disable=unused-argument
+    def test_instrumentor_with_connection_class(self):
+        PsycopgInstrumentor().instrument()
+
+        cnx = psycopg.Connection.connect(database="test")
+
+        cursor = cnx.cursor()
+
+        query = "SELECT * FROM test"
+        cursor.execute(query)
+
+        spans_list = self.memory_exporter.get_finished_spans()
+        self.assertEqual(len(spans_list), 1)
+        span = spans_list[0]
+
+        # Check version and name in span's instrumentation info
+        self.assertEqualSpanInstrumentationInfo(
+            span, opentelemetry.instrumentation.psycopg
+        )
+
+        # check that no spans are generated after uninstrument
+        PsycopgInstrumentor().uninstrument()
+
+        cnx = psycopg.Connection.connect(database="test")
+        cursor = cnx.cursor()
+        query = "SELECT * FROM test"
+        cursor.execute(query)
+
+        spans_list = self.memory_exporter.get_finished_spans()
+        self.assertEqual(len(spans_list), 1)
+
+    def test_wrap_async_connection_class_with_cursor(self):
+        PsycopgInstrumentor().instrument()
+
+        async def test_async_connection():
+            acnx = await psycopg.AsyncConnection.connect(database="test")
+            async with acnx as cnx:
+                async with cnx.cursor() as cursor:
+                    await cursor.execute("SELECT * FROM test")
+
+        async_call(test_async_connection())
+        spans_list = self.memory_exporter.get_finished_spans()
+        self.assertEqual(len(spans_list), 1)
+        span = spans_list[0]
+
+        # Check version and name in span's instrumentation info
+        self.assertEqualSpanInstrumentationInfo(
+            span, opentelemetry.instrumentation.psycopg
+        )
+
+        # check that no spans are generated after uninstrument
+        PsycopgInstrumentor().uninstrument()
+
+        async_call(test_async_connection())
+
+        spans_list = self.memory_exporter.get_finished_spans()
+        self.assertEqual(len(spans_list), 1)
+
+    # pylint: disable=unused-argument
+    async def test_instrumentor_with_async_connection_class(self):
+        PsycopgInstrumentor().instrument()
+
+        async def test_async_connection():
+            acnx = await psycopg.AsyncConnection.connect(database="test")
+            async with acnx as cnx:
+                await cnx.execute("SELECT * FROM test")
+
+        import asyncio
+
+        asyncio.run(test_async_connection)
+
+        spans_list = self.memory_exporter.get_finished_spans()
+        self.assertEqual(len(spans_list), 1)
+        span = spans_list[0]
+
+        # Check version and name in span's instrumentation info
+        self.assertEqualSpanInstrumentationInfo(
+            span, opentelemetry.instrumentation.psycopg
+        )
+
+        # check that no spans are generated after uninstrument
+        PsycopgInstrumentor().uninstrument()
+        asyncio.run(test_async_connection())
+
+        spans_list = self.memory_exporter.get_finished_spans()
+        self.assertEqual(len(spans_list), 1)
+
     def test_span_name(self):
         PsycopgInstrumentor().instrument()
 
@@ -140,6 +311,34 @@ class TestPostgresqlIntegration(TestBase):
         self.assertEqual(spans_list[4].name, "query")
         self.assertEqual(spans_list[5].name, "query")
 
+    async def test_span_name_async(self):
+        PsycopgInstrumentor().instrument()
+
+        acnx = psycopg.AsyncConnection.connect(database="test")
+        async with acnx as cnx:
+            async with cnx.cursor() as cursor:
+                await cursor.execute("Test query", ("param1Value", False))
+                await cursor.execute(
+                    """multi
+        line
+        query"""
+                )
+                await cursor.execute("tab\tseparated query")
+                await cursor.execute("/* leading comment */ query")
+                await cursor.execute(
+                    "/* leading comment */ query /* trailing comment */"
+                )
+                await cursor.execute("query /* trailing comment */")
+
+        spans_list = self.memory_exporter.get_finished_spans()
+        self.assertEqual(len(spans_list), 6)
+        self.assertEqual(spans_list[0].name, "Test")
+        self.assertEqual(spans_list[1].name, "multi")
+        self.assertEqual(spans_list[2].name, "tab")
+        self.assertEqual(spans_list[3].name, "query")
+        self.assertEqual(spans_list[4].name, "query")
+        self.assertEqual(spans_list[5].name, "query")
+
     # pylint: disable=unused-argument
     def test_not_recording(self):
         mock_tracer = mock.Mock()
@@ -153,6 +352,27 @@ class TestPostgresqlIntegration(TestBase):
             cursor = cnx.cursor()
             query = "SELECT * FROM test"
             cursor.execute(query)
+            self.assertFalse(mock_span.is_recording())
+            self.assertTrue(mock_span.is_recording.called)
+            self.assertFalse(mock_span.set_attribute.called)
+            self.assertFalse(mock_span.set_status.called)
+
+        PsycopgInstrumentor().uninstrument()
+
+    # pylint: disable=unused-argument
+    async def test_not_recording_async(self):
+        mock_tracer = mock.Mock()
+        mock_span = mock.Mock()
+        mock_span.is_recording.return_value = False
+        mock_tracer.start_span.return_value = mock_span
+        PsycopgInstrumentor().instrument()
+        with mock.patch("opentelemetry.trace.get_tracer") as tracer:
+            tracer.return_value = mock_tracer
+            acnx = psycopg.AsyncConnection.connect(database="test")
+            async with acnx as cnx:
+                async with cnx.cursor() as cursor:
+                    query = "SELECT * FROM test"
+                    cursor.execute(query)
             self.assertFalse(mock_span.is_recording())
             self.assertTrue(mock_span.is_recording.called)
             self.assertFalse(mock_span.set_attribute.called)
