@@ -25,14 +25,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- `opentelemtetry-instrumentation-psycopg3` Async Instrumentation for psycopg 3.x 
+  ([#2146](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/2146))
 - `opentelemetry-instrumentation-psycopg` Initial release for psycopg 3.x
 
 ## Version 1.22.0/0.43b0 (2023-12-14)
 
 ### Added
 
-- `opentelemtetry-instrumentation-psycopg3` Initial Instrumentation for psycopg3 including async instrumentation.
-  ([#2146](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/2146))
 - `opentelemetry-instrumentation-asyncio` Add support for asyncio
   ([#1919](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/1943))
 - `opentelemetry-instrumentation` Added Otel semantic convention opt-in mechanism
