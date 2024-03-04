@@ -222,7 +222,7 @@ class TestPostgresqlIntegration(TestBase):
         spans_list = self.memory_exporter.get_finished_spans()
         self.assertEqual(len(spans_list), 1)
 
-    def test_wrap_async_connection_class_with_cursor(self):
+    async def test_wrap_async_connection_class_with_cursor(self):
         PsycopgInstrumentor().instrument()
 
         async def test_async_connection():
