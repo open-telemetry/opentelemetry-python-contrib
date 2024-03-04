@@ -24,11 +24,6 @@ from opentelemetry.sdk import resources
 from opentelemetry.test.test_base import TestBase
 
 
-def async_call(coro, *args, **kwargs):
-    loop = asyncio.get_event_loop()
-    return loop.run_until_complete(coro, *args, **kwargs)
-
-
 class MockCursor:
     execute = mock.MagicMock(spec=types.MethodType)
     execute.__name__ = "execute"
@@ -117,9 +112,7 @@ class MockAsyncConnection:
     def cursor(self):
         if self.cursor_factory:
             cur = self.cursor_factory(self)
-            print("Returning factory cursor", cur)
             return cur
-        print("Returning MockAsyncCursor")
         return MockAsyncCursor()
 
     def get_dsn_parameters(self):  # pylint: disable=no-self-use
@@ -238,7 +231,7 @@ class TestPostgresqlIntegration(TestBase):
                 async with cnx.cursor() as cursor:
                     await cursor.execute("SELECT * FROM test")
 
-        async_call(test_async_connection())
+        asyncio.run(test_async_connection())
         spans_list = self.memory_exporter.get_finished_spans()
         self.assertEqual(len(spans_list), 1)
         span = spans_list[0]
@@ -251,7 +244,7 @@ class TestPostgresqlIntegration(TestBase):
         # check that no spans are generated after uninstrument
         PsycopgInstrumentor().uninstrument()
 
-        async_call(test_async_connection())
+        asyncio.run(test_async_connection())
 
         spans_list = self.memory_exporter.get_finished_spans()
         self.assertEqual(len(spans_list), 1)
@@ -265,9 +258,7 @@ class TestPostgresqlIntegration(TestBase):
             async with acnx as cnx:
                 await cnx.execute("SELECT * FROM test")
 
-        import asyncio
-
-        asyncio.run(test_async_connection)
+        asyncio.run(test_async_connection())
 
         spans_list = self.memory_exporter.get_finished_spans()
         self.assertEqual(len(spans_list), 1)
