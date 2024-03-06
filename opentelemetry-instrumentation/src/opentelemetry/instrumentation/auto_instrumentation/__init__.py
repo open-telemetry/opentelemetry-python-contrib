@@ -19,7 +19,7 @@ from os.path import abspath, dirname, pathsep
 from re import sub
 from shutil import which
 
-from pkg_resources import iter_entry_points
+from importlib.metadata import entry_points
 
 from opentelemetry.instrumentation.version import __version__
 
@@ -48,9 +48,7 @@ def run() -> None:
 
     argument_otel_environment_variable = {}
 
-    for entry_point in iter_entry_points(
-        "opentelemetry_environment_variables"
-    ):
+    for entry_point in entry_points(group="opentelemetry_environment_variables"):
         environment_variable_module = entry_point.load()
 
         for attribute in dir(environment_variable_module):

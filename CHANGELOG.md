@@ -7,6 +7,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## Unreleased
 
+- Deprecation of pkg_resource in favor of importlib.metadata
+  ([#2180](https://github.com/open-telemetry/opentelemetry-python-contrib/issues/2180))
+
 ## Version 1.23.0/0.44b0 (2024-02-23)
 
 - Drop support for 3.7
