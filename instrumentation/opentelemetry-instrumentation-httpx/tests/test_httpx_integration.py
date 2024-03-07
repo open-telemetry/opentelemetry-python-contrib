@@ -604,6 +604,13 @@ class TestSyncIntegration(BaseTestCases.BaseManualTest):
             return self.client.request(method, url, headers=headers)
         return client.request(method, url, headers=headers)
 
+    def test_credential_removal(self):
+        new_url = "http://username:password@mock/status/200"
+        self.perform_request(new_url)
+        span = self.assert_span()
+
+        self.assertEqual(span.attributes[SpanAttributes.HTTP_URL], self.URL)
+
 
 class TestAsyncIntegration(BaseTestCases.BaseManualTest):
     response_hook = staticmethod(_async_response_hook)
@@ -663,6 +670,13 @@ class TestAsyncIntegration(BaseTestCases.BaseManualTest):
             self.URL, client=self.create_client(self.transport)
         )
         self.assert_span(num_spans=2)
+
+    def test_credential_removal(self):
+        new_url = "http://username:password@mock/status/200"
+        self.perform_request(new_url)
+        span = self.assert_span()
+
+        self.assertEqual(span.attributes[SpanAttributes.HTTP_URL], self.URL)
 
 
 class TestSyncInstrumentationIntegration(BaseTestCases.BaseInstrumentorTest):

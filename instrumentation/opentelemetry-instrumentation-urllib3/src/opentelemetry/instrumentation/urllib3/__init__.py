@@ -79,7 +79,6 @@ API
 """
 
 import collections.abc
-import contextlib
 import io
 import typing
 from timeit import default_timer
@@ -88,16 +87,13 @@ from typing import Collection
 import urllib3.connectionpool
 import wrapt
 
-from opentelemetry import context
-
-# FIXME: fix the importing of this private attribute when the location of the _SUPPRESS_HTTP_INSTRUMENTATION_KEY is defined.
-from opentelemetry.context import _SUPPRESS_HTTP_INSTRUMENTATION_KEY
 from opentelemetry.instrumentation.instrumentor import BaseInstrumentor
 from opentelemetry.instrumentation.urllib3.package import _instruments
 from opentelemetry.instrumentation.urllib3.version import __version__
 from opentelemetry.instrumentation.utils import (
-    _SUPPRESS_INSTRUMENTATION_KEY,
     http_status_to_status_code,
+    is_http_instrumentation_enabled,
+    suppress_http_instrumentation,
     unwrap,
 )
 from opentelemetry.metrics import Histogram, get_meter
@@ -224,7 +220,7 @@ def _instrument(
     excluded_urls: ExcludeList = None,
 ):
     def instrumented_urlopen(wrapped, instance, args, kwargs):
-        if _is_instrumentation_suppressed():
+        if not is_http_instrumentation_enabled():
             return wrapped(*args, **kwargs)
 
         url = _get_url(instance, args, kwargs, url_filter)
@@ -248,7 +244,7 @@ def _instrument(
                 request_hook(span, instance, headers, body)
             inject(headers)
 
-            with _suppress_further_instrumentation():
+            with suppress_http_instrumentation():
                 start_time = default_timer()
                 response = wrapped(*args, **kwargs)
                 elapsed_time = round((default_timer() - start_time) * 1000)
@@ -352,13 +348,6 @@ def _apply_response(span: Span, response: urllib3.response.HTTPResponse):
     span.set_status(Status(http_status_to_status_code(response.status)))
 
 
-def _is_instrumentation_suppressed() -> bool:
-    return bool(
-        context.get_value(_SUPPRESS_INSTRUMENTATION_KEY)
-        or context.get_value(_SUPPRESS_HTTP_INSTRUMENTATION_KEY)
-    )
-
-
 def _create_metric_attributes(
     instance: urllib3.connectionpool.HTTPConnectionPool,
     response: urllib3.response.HTTPResponse,
@@ -380,17 +369,6 @@ def _create_metric_attributes(
         )
 
     return metric_attributes
-
-
-@contextlib.contextmanager
-def _suppress_further_instrumentation():
-    token = context.attach(
-        context.set_value(_SUPPRESS_HTTP_INSTRUMENTATION_KEY, True)
-    )
-    try:
-        yield
-    finally:
-        context.detach(token)
 
 
 def _uninstrument():

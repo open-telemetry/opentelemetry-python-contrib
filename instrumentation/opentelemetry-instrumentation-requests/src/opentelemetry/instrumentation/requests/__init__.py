@@ -58,10 +58,6 @@ from requests.models import PreparedRequest, Response
 from requests.sessions import Session
 from requests.structures import CaseInsensitiveDict
 
-from opentelemetry import context
-
-# FIXME: fix the importing of this private attribute when the location of the _SUPPRESS_HTTP_INSTRUMENTATION_KEY is defined.
-from opentelemetry.context import _SUPPRESS_HTTP_INSTRUMENTATION_KEY
 from opentelemetry.instrumentation._semconv import (
     _METRIC_ATTRIBUTES_CLIENT_DURATION_NAME,
     _SPAN_ATTRIBUTES_ERROR_TYPE,
@@ -87,8 +83,9 @@ from opentelemetry.instrumentation.instrumentor import BaseInstrumentor
 from opentelemetry.instrumentation.requests.package import _instruments
 from opentelemetry.instrumentation.requests.version import __version__
 from opentelemetry.instrumentation.utils import (
-    _SUPPRESS_INSTRUMENTATION_KEY,
     http_status_to_status_code,
+    is_http_instrumentation_enabled,
+    suppress_http_instrumentation,
 )
 from opentelemetry.metrics import Histogram, get_meter
 from opentelemetry.propagate import inject
@@ -149,9 +146,7 @@ def _instrument(
             )
             return request.headers
 
-        if context.get_value(
-            _SUPPRESS_INSTRUMENTATION_KEY
-        ) or context.get_value(_SUPPRESS_HTTP_INSTRUMENTATION_KEY):
+        if not is_http_instrumentation_enabled():
             return wrapped_send(self, request, **kwargs)
 
         # See
@@ -220,20 +215,19 @@ def _instrument(
             headers = get_or_create_headers()
             inject(headers)
 
-            token = context.attach(
-                context.set_value(_SUPPRESS_HTTP_INSTRUMENTATION_KEY, True)
-            )
-
-            start_time = default_timer()
-
-            try:
-                result = wrapped_send(self, request, **kwargs)  # *** PROCEED
-            except Exception as exc:  # pylint: disable=W0703
-                exception = exc
-                result = getattr(exc, "response", None)
-            finally:
-                elapsed_time = max(default_timer() - start_time, 0)
-                context.detach(token)
+            with suppress_http_instrumentation():
+                start_time = default_timer()
+                try:
+                    result = wrapped_send(
+                        self, request, **kwargs
+                    )  # *** PROCEED
+                except Exception as exc:  # pylint: disable=W0703
+                    exception = exc
+                    result = getattr(exc, "response", None)
+                finally:
+                    elapsed_time = max(
+                        round((default_timer() - start_time) * 1000), 0
+                    )
 
             if isinstance(result, Response):
                 span_attributes = {}

@@ -27,13 +27,12 @@ import yarl
 from http_server_mock import HttpServerMock
 from pkg_resources import iter_entry_points
 
-from opentelemetry import context
 from opentelemetry import trace as trace_api
 from opentelemetry.instrumentation import aiohttp_client
 from opentelemetry.instrumentation.aiohttp_client import (
     AioHttpClientInstrumentor,
 )
-from opentelemetry.instrumentation.utils import _SUPPRESS_INSTRUMENTATION_KEY
+from opentelemetry.instrumentation.utils import suppress_instrumentation
 from opentelemetry.semconv.trace import SpanAttributes
 from opentelemetry.test.test_base import TestBase
 from opentelemetry.trace import Span, StatusCode
@@ -512,25 +511,17 @@ class TestAioHttpClientInstrumentor(TestBase):
         self.assert_spans(1)
 
     def test_suppress_instrumentation(self):
-        token = context.attach(
-            context.set_value(_SUPPRESS_INSTRUMENTATION_KEY, True)
-        )
-        try:
+        with suppress_instrumentation():
             run_with_test_server(
                 self.get_default_request(), self.URL, self.default_handler
             )
-        finally:
-            context.detach(token)
         self.assert_spans(0)
 
     @staticmethod
     async def suppressed_request(server: aiohttp.test_utils.TestServer):
         async with aiohttp.test_utils.TestClient(server) as client:
-            token = context.attach(
-                context.set_value(_SUPPRESS_INSTRUMENTATION_KEY, True)
-            )
-            await client.get(TestAioHttpClientInstrumentor.URL)
-            context.detach(token)
+            with suppress_instrumentation():
+                await client.get(TestAioHttpClientInstrumentor.URL)
 
     def test_suppress_instrumentation_after_creation(self):
         run_with_test_server(

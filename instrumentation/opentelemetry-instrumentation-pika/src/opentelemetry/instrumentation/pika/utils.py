@@ -5,7 +5,7 @@ from pika.channel import Channel
 from pika.spec import Basic, BasicProperties
 
 from opentelemetry import context, propagate, trace
-from opentelemetry.instrumentation.utils import _SUPPRESS_INSTRUMENTATION_KEY
+from opentelemetry.instrumentation.utils import is_instrumentation_enabled
 from opentelemetry.propagators.textmap import CarrierT, Getter
 from opentelemetry.semconv.trace import (
     MessagingOperationValues,
@@ -135,9 +135,7 @@ def _get_span(
     span_kind: SpanKind,
     operation: Optional[MessagingOperationValues] = None,
 ) -> Optional[Span]:
-    if context.get_value("suppress_instrumentation") or context.get_value(
-        _SUPPRESS_INSTRUMENTATION_KEY
-    ):
+    if not is_instrumentation_enabled():
         return None
     task_name = properties.type if properties.type else task_name
     span = tracer.start_span(
