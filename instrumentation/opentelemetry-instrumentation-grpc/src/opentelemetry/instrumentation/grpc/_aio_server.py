@@ -75,6 +75,7 @@ class _OpenTelemetryAioServicerContext(wrapt.ObjectProxy):
             code, Status(status_code=StatusCode.UNSET, description="")
         )
 
+
 class OpenTelemetryAioServerInterceptor(
     grpc.aio.ServerInterceptor, OpenTelemetryServerInterceptor
 ):

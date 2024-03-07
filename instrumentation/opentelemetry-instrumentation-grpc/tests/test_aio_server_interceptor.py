@@ -518,9 +518,7 @@ class TestOpenTelemetryAioServerInterceptor(TestBase, IsolatedAsyncioTestCase):
             with testcase.assertRaises(grpc.RpcError) as cm:
                 await channel.unary_unary(rpc_call)(msg)
 
-            self.assertEqual(
-                cm.exception.code(), grpc.StatusCode.INTERNAL
-            )
+            self.assertEqual(cm.exception.code(), grpc.StatusCode.INTERNAL)
             self.assertEqual(cm.exception.details(), failure_message)
 
         await run_with_test_server(request, servicer=AbortServicer())
@@ -604,10 +602,7 @@ class TestOpenTelemetryAioServerInterceptor(TestBase, IsolatedAsyncioTestCase):
 
         # make sure this span errored, with the right status and detail
         self.assertEqual(span.status.status_code, StatusCode.UNSET)
-        self.assertEqual(
-            span.status.description,
-            None
-        )
+        self.assertEqual(span.status.description, None)
 
         # Check attributes
         self.assertSpanHasAttributes(
