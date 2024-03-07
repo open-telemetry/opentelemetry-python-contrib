@@ -82,6 +82,8 @@ from sklearn.tree import BaseDecisionTree
 from sklearn.utils.metaestimators import _IffHasAttrDescriptor
 
 from opentelemetry.instrumentation.instrumentor import BaseInstrumentor
+
+# pylint: disable=no-name-in-module
 from opentelemetry.instrumentation.sklearn.package import _instruments
 from opentelemetry.instrumentation.sklearn.version import __version__
 from opentelemetry.trace import get_tracer

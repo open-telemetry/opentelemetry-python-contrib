@@ -122,7 +122,7 @@ class TestSnsExtension(TestBase):
             target_arn,
             # TODO: Use SpanAttributes.MESSAGING_DESTINATION_NAME when
             #  opentelemetry-semantic-conventions 0.42b0 is released
-            span.attributes["messaging.destination.name"]
+            span.attributes["messaging.destination.name"],
         )
 
     @mock_sns
@@ -194,7 +194,7 @@ class TestSnsExtension(TestBase):
             topic_arn,
             # TODO: Use SpanAttributes.MESSAGING_DESTINATION_NAME when
             #  opentelemetry-semantic-conventions 0.42b0 is released
-            span.attributes["messaging.destination.name"]
+            span.attributes["messaging.destination.name"],
         )
 
         self.assert_injected_span(message1_attrs, span)

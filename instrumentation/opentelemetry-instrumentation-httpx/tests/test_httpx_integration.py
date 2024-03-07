@@ -421,10 +421,46 @@ class BaseTestCases:
             )
             HTTPXClientInstrumentor().uninstrument()
 
+        def test_response_hook_sync_async_kwargs(self):
+            HTTPXClientInstrumentor().instrument(
+                tracer_provider=self.tracer_provider,
+                response_hook=_response_hook,
+                async_response_hook=_async_response_hook,
+            )
+            client = self.create_client()
+            result = self.perform_request(self.URL, client=client)
+
+            self.assertEqual(result.text, "Hello!")
+            span = self.assert_span()
+            self.assertEqual(
+                span.attributes,
+                {
+                    SpanAttributes.HTTP_METHOD: "GET",
+                    SpanAttributes.HTTP_URL: self.URL,
+                    SpanAttributes.HTTP_STATUS_CODE: 200,
+                    HTTP_RESPONSE_BODY: "Hello!",
+                },
+            )
+            HTTPXClientInstrumentor().uninstrument()
+
         def test_request_hook(self):
             HTTPXClientInstrumentor().instrument(
                 tracer_provider=self.tracer_provider,
                 request_hook=self.request_hook,
+            )
+            client = self.create_client()
+            result = self.perform_request(self.URL, client=client)
+
+            self.assertEqual(result.text, "Hello!")
+            span = self.assert_span()
+            self.assertEqual(span.name, "GET" + self.URL)
+            HTTPXClientInstrumentor().uninstrument()
+
+        def test_request_hook_sync_async_kwargs(self):
+            HTTPXClientInstrumentor().instrument(
+                tracer_provider=self.tracer_provider,
+                request_hook=_request_hook,
+                async_request_hook=_async_request_hook,
             )
             client = self.create_client()
             result = self.perform_request(self.URL, client=client)
@@ -568,6 +604,13 @@ class TestSyncIntegration(BaseTestCases.BaseManualTest):
             return self.client.request(method, url, headers=headers)
         return client.request(method, url, headers=headers)
 
+    def test_credential_removal(self):
+        new_url = "http://username:password@mock/status/200"
+        self.perform_request(new_url)
+        span = self.assert_span()
+
+        self.assertEqual(span.attributes[SpanAttributes.HTTP_URL], self.URL)
+
 
 class TestAsyncIntegration(BaseTestCases.BaseManualTest):
     response_hook = staticmethod(_async_response_hook)
@@ -627,6 +670,13 @@ class TestAsyncIntegration(BaseTestCases.BaseManualTest):
             self.URL, client=self.create_client(self.transport)
         )
         self.assert_span(num_spans=2)
+
+    def test_credential_removal(self):
+        new_url = "http://username:password@mock/status/200"
+        self.perform_request(new_url)
+        span = self.assert_span()
+
+        self.assertEqual(span.attributes[SpanAttributes.HTTP_URL], self.URL)
 
 
 class TestSyncInstrumentationIntegration(BaseTestCases.BaseInstrumentorTest):

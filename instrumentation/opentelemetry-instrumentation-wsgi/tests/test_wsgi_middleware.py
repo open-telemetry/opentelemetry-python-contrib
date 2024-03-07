@@ -78,6 +78,7 @@ def create_gen_wsgi(response):
 
 def error_wsgi(environ, start_response):
     assert isinstance(environ, dict)
+    exc_info = None
     try:
         raise ValueError
     except ValueError:

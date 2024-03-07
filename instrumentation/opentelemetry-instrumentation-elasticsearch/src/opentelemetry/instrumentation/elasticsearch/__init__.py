@@ -172,6 +172,7 @@ class ElasticsearchInstrumentor(BaseInstrumentor):
             )
 
     def _uninstrument(self, **kwargs):
+        # pylint: disable=no-member
         unwrap(elasticsearch.Transport, "perform_request")
 
 

@@ -8,7 +8,7 @@ dynamic = ["version"]
 description = "OpenTelemetry AWS Lambda instrumentation"
 readme = "README.rst"
 license = "Apache-2.0"
-requires-python = ">=3.7"
+requires-python = ">=3.8"
 authors = [
   { name = "OpenTelemetry Authors", email = "cncf-opentelemetry-contributors@lists.cncf.io" },
 ]
@@ -18,19 +18,18 @@ classifiers = [
   "License :: OSI Approved :: Apache Software License",
   "Programming Language :: Python",
   "Programming Language :: Python :: 3",
-  "Programming Language :: Python :: 3.7",
   "Programming Language :: Python :: 3.8",
 ]
 dependencies = [
-  "opentelemetry-instrumentation == 0.42b0.dev",
+  "opentelemetry-instrumentation == 0.45b0.dev",
   "opentelemetry-propagator-aws-xray == 1.0.1",
-  "opentelemetry-semantic-conventions == 0.42b0.dev",
+  "opentelemetry-semantic-conventions == 0.45b0.dev",
 ]
 
 [project.optional-dependencies]
 instruments = []
 test = [
-  "opentelemetry-test-utils == 0.42b0.dev",
+  "opentelemetry-test-utils == 0.45b0.dev",
 ]
 
 [project.urls]

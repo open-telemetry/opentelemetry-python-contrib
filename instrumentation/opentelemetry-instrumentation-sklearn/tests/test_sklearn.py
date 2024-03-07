@@ -14,6 +14,7 @@
 
 from sklearn.ensemble import RandomForestClassifier
 
+# pylint: disable=no-name-in-module
 from opentelemetry.instrumentation.sklearn import (
     DEFAULT_EXCLUDE_CLASSES,
     DEFAULT_METHODS,

@@ -84,7 +84,7 @@ def _hydrate_span_from_args(connection, query, parameters) -> dict:
         span_attributes[SpanAttributes.NET_PEER_NAME] = addr
         span_attributes[
             SpanAttributes.NET_TRANSPORT
-        ] = NetTransportValues.UNIX.value
+        ] = NetTransportValues.OTHER.value
 
     if query is not None:
         span_attributes[SpanAttributes.DB_STATEMENT] = query
@@ -96,11 +96,13 @@ def _hydrate_span_from_args(connection, query, parameters) -> dict:
 
 
 class AsyncPGInstrumentor(BaseInstrumentor):
+
+    _leading_comment_remover = re.compile(r"^/\*.*?\*/")
+    _tracer = None
+
     def __init__(self, capture_parameters=False):
         super().__init__()
         self.capture_parameters = capture_parameters
-        self._tracer = None
-        self._leading_comment_remover = re.compile(r"^/\*.*?\*/")
 
     def instrumentation_dependencies(self) -> Collection[str]:
         return _instruments
