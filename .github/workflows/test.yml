@@ -6,7 +6,7 @@ on:
     - 'release/*'
   pull_request:
 env:
-  CORE_REPO_SHA: 84c0e4f38d4fcdb8c13fd3988469fbb8cda28150
+  CORE_REPO_SHA: a1253585f66d63e7c05a19f070f3bfe0ab6460c1
 
 jobs:
   misc:
@@ -24,7 +24,7 @@ jobs:
         with:
           python-version: "3.10"
       - name: Install tox
-        run: pip install tox==3.27.1
+        run: pip install tox
       - name: Install libsnappy-dev
         if: ${{ matrix.tox-environment == 'lint' }}
         run: sudo apt-get install -y libsnappy-dev
