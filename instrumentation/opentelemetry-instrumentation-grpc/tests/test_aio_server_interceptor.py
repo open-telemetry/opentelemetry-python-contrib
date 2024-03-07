@@ -541,7 +541,7 @@ class TestOpenTelemetryAioServerInterceptor(TestBase, IsolatedAsyncioTestCase):
         self.assertEqual(span.status.status_code, StatusCode.ERROR)
         self.assertEqual(
             span.status.description,
-            f"{grpc.StatusCode.FAILED_PRECONDITION}:{failure_message}",
+            f"{grpc.StatusCode.INTERNAL}:{failure_message}",
         )
 
         # Check attributes
@@ -603,7 +603,7 @@ class TestOpenTelemetryAioServerInterceptor(TestBase, IsolatedAsyncioTestCase):
         )
 
         # make sure this span errored, with the right status and detail
-        self.assertEqual(span.status.status_code, StatusCode.ERROR)
+        self.assertEqual(span.status.status_code, StatusCode.UNSET)
         self.assertEqual(
             span.status.description,
             f"{grpc.StatusCode.FAILED_PRECONDITION}:{failure_message}",
