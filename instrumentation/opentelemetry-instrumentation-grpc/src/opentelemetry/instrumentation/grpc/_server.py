@@ -31,7 +31,8 @@ from opentelemetry import trace
 from opentelemetry.context import attach, detach
 from opentelemetry.propagate import extract
 from opentelemetry.semconv.trace import SpanAttributes
-from opentelemetry.trace.status import Status, StatusCode
+
+from ._utilities import _server_status
 
 logger = logging.getLogger(__name__)
 
@@ -124,7 +125,7 @@ class _OpenTelemetryServicerContext(grpc.ServicerContext):
         self._active_span.set_attribute(
             SpanAttributes.RPC_GRPC_STATUS_CODE, code.value[0]
         )
-        status = self._server_status(code, details)
+        status = _server_status(code, details)
         self._active_span.set_status(status)
         return self._servicer_context.abort(code, details)
 
@@ -154,33 +155,16 @@ class _OpenTelemetryServicerContext(grpc.ServicerContext):
             SpanAttributes.RPC_GRPC_STATUS_CODE, code.value[0]
         )
         if code != grpc.StatusCode.OK:
-            status = self._server_status(code, details)
+            status = _server_status(code, details)
             self._active_span.set_status(status)
         return self._servicer_context.set_code(code)
 
     def set_details(self, details):
         self._details = details
         if self._code != grpc.StatusCode.OK:
-            status = self._server_status(self._code, details)
+            status = _server_status(self._code, details)
             self._active_span.set_status(status)
         return self._servicer_context.set_details(details)
-
-    def _server_status(self, code, details):
-        error_status = Status(
-            status_code=StatusCode.ERROR, description=f"{code}:{details}"
-        )
-        status_codes = {
-            grpc.StatusCode.UNKNOWN: error_status,
-            grpc.StatusCode.DEADLINE_EXCEEDED: error_status,
-            grpc.StatusCode.UNIMPLEMENTED: error_status,
-            grpc.StatusCode.INTERNAL: error_status,
-            grpc.StatusCode.UNAVAILABLE: error_status,
-            grpc.StatusCode.DATA_LOSS: error_status,
-        }
-
-        return status_codes.get(
-            code, Status(status_code=StatusCode.UNSET, description="")
-        )
 
 
 # pylint:disable=abstract-method
