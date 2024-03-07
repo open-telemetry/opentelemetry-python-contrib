@@ -519,7 +519,7 @@ class TestOpenTelemetryAioServerInterceptor(TestBase, IsolatedAsyncioTestCase):
                 await channel.unary_unary(rpc_call)(msg)
 
             self.assertEqual(
-                cm.exception.code(), grpc.StatusCode.FAILED_PRECONDITION
+                cm.exception.code(), grpc.StatusCode.INTERNAL
             )
             self.assertEqual(cm.exception.details(), failure_message)
 
@@ -606,7 +606,7 @@ class TestOpenTelemetryAioServerInterceptor(TestBase, IsolatedAsyncioTestCase):
         self.assertEqual(span.status.status_code, StatusCode.ERROR)
         self.assertEqual(
             span.status.description,
-            f"{grpc.StatusCode.INTERNAL}:{failure_message}",
+            f"{grpc.StatusCode.FAILED_PRECONDITION}:{failure_message}",
         )
 
         # Check attributes
