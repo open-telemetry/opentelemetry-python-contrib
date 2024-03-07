@@ -141,7 +141,7 @@ For example,
         if span and span.is_recording():
             span.set_attribute("custom_user_attribute_from_response_hook", "some-value")
 
-    FlaskInstrumentation().instrument(request_hook=request_hook, response_hook=response_hook)
+    FlaskInstrumentor().instrument(request_hook=request_hook, response_hook=response_hook)
 
 Flask Request object reference: https://flask.palletsprojects.com/en/2.1.x/api/#flask.Request
 
@@ -251,6 +251,16 @@ import opentelemetry.instrumentation.wsgi as otel_wsgi
 from opentelemetry import context, trace
 from opentelemetry.instrumentation.flask.package import _instruments
 from opentelemetry.instrumentation.flask.version import __version__
+
+try:
+    flask_version = flask.__version__
+except AttributeError:
+    try:
+        from importlib import metadata
+    except ImportError:
+        import importlib_metadata as metadata
+    flask_version = metadata.version("flask")
+
 from opentelemetry.instrumentation.instrumentor import BaseInstrumentor
 from opentelemetry.instrumentation.propagators import (
     get_global_response_propagator,
@@ -271,7 +281,7 @@ _ENVIRON_TOKEN = "opentelemetry-flask.token"
 
 _excluded_urls_from_env = get_excluded_urls("FLASK")
 
-if package_version.parse(flask.__version__) >= package_version.parse("2.2.0"):
+if package_version.parse(flask_version) >= package_version.parse("2.2.0"):
 
     def _request_ctx_ref() -> weakref.ReferenceType:
         return weakref.ref(flask.globals.request_ctx._get_current_object())
@@ -420,7 +430,7 @@ def _wrapped_before_request(
             # https://flask.palletsprojects.com/en/1.1.x/api/#flask.has_request_context
             if flask and flask.request:
                 if commenter_options.get("framework", True):
-                    flask_info["framework"] = f"flask:{flask.__version__}"
+                    flask_info["framework"] = f"flask:{flask_version}"
                 if (
                     commenter_options.get("controller", True)
                     and flask.request.endpoint
@@ -495,7 +505,10 @@ class _InstrumentedFlask(flask.Flask):
         self._is_instrumented_by_opentelemetry = True
 
         meter = get_meter(
-            __name__, __version__, _InstrumentedFlask._meter_provider
+            __name__,
+            __version__,
+            _InstrumentedFlask._meter_provider,
+            schema_url="https://opentelemetry.io/schemas/1.11.0",
         )
         duration_histogram = meter.create_histogram(
             name=MetricInstruments.HTTP_SERVER_DURATION,
@@ -517,7 +530,10 @@ class _InstrumentedFlask(flask.Flask):
         )
 
         tracer = trace.get_tracer(
-            __name__, __version__, _InstrumentedFlask._tracer_provider
+            __name__,
+            __version__,
+            _InstrumentedFlask._tracer_provider,
+            schema_url="https://opentelemetry.io/schemas/1.11.0",
         )
 
         _before_request = _wrapped_before_request(
@@ -594,7 +610,12 @@ class FlaskInstrumentor(BaseInstrumentor):
                 if excluded_urls is not None
                 else _excluded_urls_from_env
             )
-            meter = get_meter(__name__, __version__, meter_provider)
+            meter = get_meter(
+                __name__,
+                __version__,
+                meter_provider,
+                schema_url="https://opentelemetry.io/schemas/1.11.0",
+            )
             duration_histogram = meter.create_histogram(
                 name=MetricInstruments.HTTP_SERVER_DURATION,
                 unit="ms",
@@ -615,7 +636,12 @@ class FlaskInstrumentor(BaseInstrumentor):
                 excluded_urls=excluded_urls,
             )
 
-            tracer = trace.get_tracer(__name__, __version__, tracer_provider)
+            tracer = trace.get_tracer(
+                __name__,
+                __version__,
+                tracer_provider,
+                schema_url="https://opentelemetry.io/schemas/1.11.0",
+            )
 
             _before_request = _wrapped_before_request(
                 request_hook,

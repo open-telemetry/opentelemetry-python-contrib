@@ -63,6 +63,8 @@ import logging
 from timeit import default_timer
 from typing import Collection, Iterable
 
+from billiard import VERSION
+from billiard.einfo import ExceptionInfo
 from celery import signals  # pylint: disable=no-name-in-module
 
 from opentelemetry import trace
@@ -75,6 +77,11 @@ from opentelemetry.propagate import extract, inject
 from opentelemetry.propagators.textmap import Getter
 from opentelemetry.semconv.trace import SpanAttributes
 from opentelemetry.trace.status import Status, StatusCode
+
+if VERSION >= (4, 0, 1):
+    from billiard.einfo import ExceptionWithTraceback
+else:
+    ExceptionWithTraceback = None
 
 logger = logging.getLogger(__name__)
 
@@ -118,10 +125,20 @@ class CeleryInstrumentor(BaseInstrumentor):
         tracer_provider = kwargs.get("tracer_provider")
 
         # pylint: disable=attribute-defined-outside-init
-        self._tracer = trace.get_tracer(__name__, __version__, tracer_provider)
+        self._tracer = trace.get_tracer(
+            __name__,
+            __version__,
+            tracer_provider,
+            schema_url="https://opentelemetry.io/schemas/1.11.0",
+        )
 
         meter_provider = kwargs.get("meter_provider")
-        meter = get_meter(__name__, __version__, meter_provider)
+        meter = get_meter(
+            __name__,
+            __version__,
+            meter_provider,
+            schema_url="https://opentelemetry.io/schemas/1.11.0",
+        )
 
         self.create_celery_metrics(meter)
 
@@ -271,6 +288,18 @@ class CeleryInstrumentor(BaseInstrumentor):
             return
 
         if ex is not None:
+            # Unwrap the actual exception wrapped by billiard's
+            # `ExceptionInfo` and `ExceptionWithTraceback`.
+            if isinstance(ex, ExceptionInfo) and ex.exception is not None:
+                ex = ex.exception
+
+            if (
+                ExceptionWithTraceback is not None
+                and isinstance(ex, ExceptionWithTraceback)
+                and ex.exc is not None
+            ):
+                ex = ex.exc
+
             status_kwargs["description"] = str(ex)
             span.record_exception(ex)
         span.set_status(Status(**status_kwargs))

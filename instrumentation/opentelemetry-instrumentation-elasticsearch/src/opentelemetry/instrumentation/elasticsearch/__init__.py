@@ -140,7 +140,12 @@ class ElasticsearchInstrumentor(BaseInstrumentor):
         Instruments Elasticsearch module
         """
         tracer_provider = kwargs.get("tracer_provider")
-        tracer = get_tracer(__name__, __version__, tracer_provider)
+        tracer = get_tracer(
+            __name__,
+            __version__,
+            tracer_provider,
+            schema_url="https://opentelemetry.io/schemas/1.11.0",
+        )
         request_hook = kwargs.get("request_hook")
         response_hook = kwargs.get("response_hook")
         if es_transport_split:
@@ -167,6 +172,7 @@ class ElasticsearchInstrumentor(BaseInstrumentor):
             )
 
     def _uninstrument(self, **kwargs):
+        # pylint: disable=no-member
         unwrap(elasticsearch.Transport, "perform_request")
 
 

@@ -85,16 +85,13 @@ from urllib.request import (  # pylint: disable=no-name-in-module,import-error
     Request,
 )
 
-from opentelemetry import context
-
-# FIXME: fix the importing of this private attribute when the location of the _SUPPRESS_HTTP_INSTRUMENTATION_KEY is defined.
-from opentelemetry.context import _SUPPRESS_HTTP_INSTRUMENTATION_KEY
 from opentelemetry.instrumentation.instrumentor import BaseInstrumentor
 from opentelemetry.instrumentation.urllib.package import _instruments
 from opentelemetry.instrumentation.urllib.version import __version__
 from opentelemetry.instrumentation.utils import (
-    _SUPPRESS_INSTRUMENTATION_KEY,
     http_status_to_status_code,
+    is_http_instrumentation_enabled,
+    suppress_http_instrumentation,
 )
 from opentelemetry.metrics import Histogram, get_meter
 from opentelemetry.propagate import inject
@@ -137,10 +134,20 @@ class URLLibInstrumentor(BaseInstrumentor):
                     list of regexes used to exclude URLs from tracking
         """
         tracer_provider = kwargs.get("tracer_provider")
-        tracer = get_tracer(__name__, __version__, tracer_provider)
+        tracer = get_tracer(
+            __name__,
+            __version__,
+            tracer_provider,
+            schema_url="https://opentelemetry.io/schemas/1.11.0",
+        )
         excluded_urls = kwargs.get("excluded_urls")
         meter_provider = kwargs.get("meter_provider")
-        meter = get_meter(__name__, __version__, meter_provider)
+        meter = get_meter(
+            __name__,
+            __version__,
+            meter_provider,
+            schema_url="https://opentelemetry.io/schemas/1.11.0",
+        )
 
         histograms = _create_client_histograms(meter)
 
@@ -196,9 +203,7 @@ def _instrument(
     def _instrumented_open_call(
         _, request, call_wrapped, get_or_create_headers
     ):  # pylint: disable=too-many-locals
-        if context.get_value(
-            _SUPPRESS_INSTRUMENTATION_KEY
-        ) or context.get_value(_SUPPRESS_HTTP_INSTRUMENTATION_KEY):
+        if not is_http_instrumentation_enabled():
             return call_wrapped()
 
         url = request.full_url
@@ -226,18 +231,15 @@ def _instrument(
             headers = get_or_create_headers()
             inject(headers)
 
-            token = context.attach(
-                context.set_value(_SUPPRESS_HTTP_INSTRUMENTATION_KEY, True)
-            )
-            try:
+            with suppress_http_instrumentation():
                 start_time = default_timer()
-                result = call_wrapped()  # *** PROCEED
-            except Exception as exc:  # pylint: disable=W0703
-                exception = exc
-                result = getattr(exc, "file", None)
-            finally:
-                elapsed_time = round((default_timer() - start_time) * 1000)
-                context.detach(token)
+                try:
+                    result = call_wrapped()  # *** PROCEED
+                except Exception as exc:  # pylint: disable=W0703
+                    exception = exc
+                    result = getattr(exc, "file", None)
+                finally:
+                    elapsed_time = round((default_timer() - start_time) * 1000)
 
             if result is not None:
                 code_ = result.getcode()
@@ -297,17 +299,17 @@ def _create_client_histograms(meter) -> Dict[str, Histogram]:
         MetricInstruments.HTTP_CLIENT_DURATION: meter.create_histogram(
             name=MetricInstruments.HTTP_CLIENT_DURATION,
             unit="ms",
-            description="measures the duration outbound HTTP requests",
+            description="Measures the duration of outbound HTTP requests.",
         ),
         MetricInstruments.HTTP_CLIENT_REQUEST_SIZE: meter.create_histogram(
             name=MetricInstruments.HTTP_CLIENT_REQUEST_SIZE,
             unit="By",
-            description="measures the size of HTTP request messages (compressed)",
+            description="Measures the size of HTTP request messages.",
         ),
         MetricInstruments.HTTP_CLIENT_RESPONSE_SIZE: meter.create_histogram(
             name=MetricInstruments.HTTP_CLIENT_RESPONSE_SIZE,
             unit="By",
-            description="measures the size of HTTP response messages (compressed)",
+            description="Measures the size of HTTP response messages.",
         ),
     }
 

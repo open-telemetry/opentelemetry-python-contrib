@@ -97,6 +97,7 @@ from opentelemetry.trace import (
     get_tracer_provider,
 )
 from opentelemetry.trace.propagation import get_current_span
+from opentelemetry.trace.status import Status, StatusCode
 
 logger = logging.getLogger(__name__)
 
@@ -278,6 +279,7 @@ def _set_api_gateway_v2_proxy_attributes(
     return span
 
 
+# pylint: disable=too-many-statements
 def _instrument(
     wrapped_module_name,
     wrapped_function_name,
@@ -287,6 +289,8 @@ def _instrument(
     disable_aws_context_propagation: bool = False,
     meter_provider: MeterProvider = None,
 ):
+    # pylint: disable=too-many-locals
+    # pylint: disable=too-many-statements
     def _instrumented_lambda_handler_call(  # noqa pylint: disable=too-many-branches
         call_wrapped, instance, args, kwargs
     ):
@@ -321,7 +325,12 @@ def _instrument(
         except (IndexError, KeyError, TypeError):
             span_kind = SpanKind.SERVER
 
-        tracer = get_tracer(__name__, __version__, tracer_provider)
+        tracer = get_tracer(
+            __name__,
+            __version__,
+            tracer_provider,
+            schema_url="https://opentelemetry.io/schemas/1.11.0",
+        )
 
         with tracer.start_as_current_span(
             name=orig_handler_name,
@@ -345,7 +354,13 @@ def _instrument(
                     lambda_context.aws_request_id,
                 )
 
-            result = call_wrapped(*args, **kwargs)
+            exception = None
+            try:
+                result = call_wrapped(*args, **kwargs)
+            except Exception as exc:  # pylint: disable=W0703
+                exception = exc
+                span.set_status(Status(StatusCode.ERROR))
+                span.record_exception(exception)
 
             # If the request came from an API Gateway, extract http attributes from the event
             # https://github.com/open-telemetry/opentelemetry-specification/blob/main/specification/trace/semantic_conventions/instrumentation/aws-lambda.md#api-gateway
@@ -392,6 +407,9 @@ def _instrument(
             logger.warning(
                 "MeterProvider was missing `force_flush` method. This is necessary in case of a Lambda freeze and would exist in the OTel SDK implementation."
             )
+
+        if exception is not None:
+            raise exception.with_traceback(exception.__traceback__)
 
         return result
 

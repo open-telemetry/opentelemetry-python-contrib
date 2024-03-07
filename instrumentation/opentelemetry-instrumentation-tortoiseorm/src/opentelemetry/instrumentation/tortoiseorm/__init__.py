@@ -95,7 +95,12 @@ class TortoiseORMInstrumentor(BaseInstrumentor):
         """
         tracer_provider = kwargs.get("tracer_provider")
         # pylint: disable=attribute-defined-outside-init
-        self._tracer = trace.get_tracer(__name__, __version__, tracer_provider)
+        self._tracer = trace.get_tracer(
+            __name__,
+            __version__,
+            tracer_provider,
+            schema_url="https://opentelemetry.io/schemas/1.11.0",
+        )
         self.capture_parameters = kwargs.get("capture_parameters", False)
         if TORTOISE_SQLITE_SUPPORT:
             funcs = [

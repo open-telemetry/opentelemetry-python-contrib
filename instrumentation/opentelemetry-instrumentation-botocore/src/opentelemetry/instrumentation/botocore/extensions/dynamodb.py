@@ -28,6 +28,7 @@ from opentelemetry.semconv.trace import DbSystemValues, SpanAttributes
 from opentelemetry.trace.span import Span
 from opentelemetry.util.types import AttributeValue
 
+# pylint: disable=invalid-name
 _AttributePathT = Union[str, Tuple[str]]
 
 

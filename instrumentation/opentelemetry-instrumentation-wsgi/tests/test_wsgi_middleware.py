@@ -33,6 +33,7 @@ from opentelemetry.util.http import (
     OTEL_INSTRUMENTATION_HTTP_CAPTURE_HEADERS_SANITIZE_FIELDS,
     OTEL_INSTRUMENTATION_HTTP_CAPTURE_HEADERS_SERVER_REQUEST,
     OTEL_INSTRUMENTATION_HTTP_CAPTURE_HEADERS_SERVER_RESPONSE,
+    OTEL_PYTHON_INSTRUMENTATION_HTTP_CAPTURE_ALL_METHODS,
 )
 
 
@@ -77,6 +78,7 @@ def create_gen_wsgi(response):
 
 def error_wsgi(environ, start_response):
     assert isinstance(environ, dict)
+    exc_info = None
     try:
         raise ValueError
     except ValueError:
@@ -283,6 +285,28 @@ class TestWsgiApplication(WsgiTestBase):
                                 attr, _recommended_attrs[metric.name]
                             )
         self.assertTrue(number_data_point_seen and histogram_data_point_seen)
+
+    def test_nonstandard_http_method(self):
+        self.environ["REQUEST_METHOD"] = "NONSTANDARD"
+        app = otel_wsgi.OpenTelemetryMiddleware(simple_wsgi)
+        response = app(self.environ, self.start_response)
+        self.validate_response(
+            response, span_name="UNKNOWN /", http_method="UNKNOWN"
+        )
+
+    @mock.patch.dict(
+        "os.environ",
+        {
+            OTEL_PYTHON_INSTRUMENTATION_HTTP_CAPTURE_ALL_METHODS: "1",
+        },
+    )
+    def test_nonstandard_http_method_allowed(self):
+        self.environ["REQUEST_METHOD"] = "NONSTANDARD"
+        app = otel_wsgi.OpenTelemetryMiddleware(simple_wsgi)
+        response = app(self.environ, self.start_response)
+        self.validate_response(
+            response, span_name="NONSTANDARD /", http_method="NONSTANDARD"
+        )
 
     def test_default_span_name_missing_path_info(self):
         """Test that default span_names with missing path info."""

@@ -43,7 +43,7 @@ def _extract_conn_attributes(conn_kwargs):
         attributes[SpanAttributes.NET_PEER_NAME] = conn_kwargs.get("path", "")
         attributes[
             SpanAttributes.NET_TRANSPORT
-        ] = NetTransportValues.UNIX.value
+        ] = NetTransportValues.OTHER.value
 
     return attributes
 
