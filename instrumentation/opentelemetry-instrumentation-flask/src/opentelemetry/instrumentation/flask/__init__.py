@@ -251,6 +251,16 @@ import opentelemetry.instrumentation.wsgi as otel_wsgi
 from opentelemetry import context, trace
 from opentelemetry.instrumentation.flask.package import _instruments
 from opentelemetry.instrumentation.flask.version import __version__
+
+try:
+    flask_version = flask.__version__
+except AttributeError:
+    try:
+        from importlib import metadata
+    except ImportError:
+        import importlib_metadata as metadata
+    flask_version = metadata.version("flask")
+
 from opentelemetry.instrumentation.instrumentor import BaseInstrumentor
 from opentelemetry.instrumentation.propagators import (
     get_global_response_propagator,
@@ -271,7 +281,7 @@ _ENVIRON_TOKEN = "opentelemetry-flask.token"
 
 _excluded_urls_from_env = get_excluded_urls("FLASK")
 
-if package_version.parse(flask.__version__) >= package_version.parse("2.2.0"):
+if package_version.parse(flask_version) >= package_version.parse("2.2.0"):
 
     def _request_ctx_ref() -> weakref.ReferenceType:
         return weakref.ref(flask.globals.request_ctx._get_current_object())
@@ -420,7 +430,7 @@ def _wrapped_before_request(
             # https://flask.palletsprojects.com/en/1.1.x/api/#flask.has_request_context
             if flask and flask.request:
                 if commenter_options.get("framework", True):
-                    flask_info["framework"] = f"flask:{flask.__version__}"
+                    flask_info["framework"] = f"flask:{flask_version}"
                 if (
                     commenter_options.get("controller", True)
                     and flask.request.endpoint
