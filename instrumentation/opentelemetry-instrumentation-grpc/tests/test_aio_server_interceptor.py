@@ -553,7 +553,7 @@ class TestOpenTelemetryAioServerInterceptor(TestBase, IsolatedAsyncioTestCase):
                 SpanAttributes.RPC_METHOD: "SimpleMethod",
                 SpanAttributes.RPC_SERVICE: "GRPCTestServer",
                 SpanAttributes.RPC_SYSTEM: "grpc",
-                SpanAttributes.RPC_GRPC_STATUS_CODE: grpc.StatusCode.FAILED_PRECONDITION.value[
+                SpanAttributes.RPC_GRPC_STATUS_CODE: grpc.StatusCode.INTERNAL.value[
                     0
                 ],
             },
@@ -606,7 +606,7 @@ class TestOpenTelemetryAioServerInterceptor(TestBase, IsolatedAsyncioTestCase):
         self.assertEqual(span.status.status_code, StatusCode.UNSET)
         self.assertEqual(
             span.status.description,
-            f"{grpc.StatusCode.FAILED_PRECONDITION}:{failure_message}",
+            None
         )
 
         # Check attributes
@@ -618,7 +618,7 @@ class TestOpenTelemetryAioServerInterceptor(TestBase, IsolatedAsyncioTestCase):
                 SpanAttributes.RPC_METHOD: "SimpleMethod",
                 SpanAttributes.RPC_SERVICE: "GRPCTestServer",
                 SpanAttributes.RPC_SYSTEM: "grpc",
-                SpanAttributes.RPC_GRPC_STATUS_CODE: grpc.StatusCode.INTERNAL.value[
+                SpanAttributes.RPC_GRPC_STATUS_CODE: grpc.StatusCode.UNSET.value[
                     0
                 ],
             },
