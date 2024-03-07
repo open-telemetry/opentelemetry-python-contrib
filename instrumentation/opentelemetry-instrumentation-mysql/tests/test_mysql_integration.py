@@ -117,3 +117,25 @@ class TestMysqlIntegration(TestBase):
 
         spans_list = self.memory_exporter.get_finished_spans()
         self.assertEqual(len(spans_list), 1)
+
+    @mock.patch("mysql.connector.connect")
+    # pylint: disable=unused-argument
+    def test_sqlcommenter_enabled(self, event_mocked):
+        MySQLInstrumentor().instrument(enable_commenter=True)
+        cnx = mysql.connector.connect(database="test")
+        query = "SELECT * FROM test"
+        cursor = cnx.cursor()
+        cursor.execute(query)
+        kwargs = event_mocked.call_args[1]
+        self.assertEqual(kwargs["enable_commenter"], True)
+
+    @mock.patch("mysql.connector.connect")
+    # pylint: disable=unused-argument
+    def test_sqlcommenter_disabled(self, event_mocked):
+        MySQLInstrumentor().instrument(enable_commenter=False)
+        cnx = mysql.connector.connect(database="test")
+        query = "SELECT * FROM test"
+        cursor = cnx.cursor()
+        cursor.execute(query)
+        kwargs = event_mocked.call_args[1]
+        self.assertEqual(kwargs["enable_commenter"], False)
