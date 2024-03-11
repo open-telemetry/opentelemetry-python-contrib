@@ -142,7 +142,6 @@ def wrap_message_listener(topic, tracer, message_listener):
             message.partition_key(),
         )
         _enrich_span_with_message(span, message)
-        message._set_current_span(span)
         with trace.use_span(span, True):
             return message_listener(consumer, message, *args, **kwargs)
 
