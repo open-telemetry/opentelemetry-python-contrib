@@ -552,28 +552,45 @@ class TestOpenTelemetryServerInterceptor(TestBase):
         # our detailed failure message
         failure_message = "This is a test failure"
 
-        # aborting RPC handler
-        def handler(request, context):
+        # aborting RPC handlers
+        def error_status_handler(request, context):
+            context.abort(grpc.StatusCode.INTERNAL, failure_message)
+
+        def unset_status_handler(request, context):
             context.abort(grpc.StatusCode.FAILED_PRECONDITION, failure_message)
 
-        with self.server(
-            max_workers=1,
-            interceptors=[interceptor],
-        ) as (server, channel):
-            server.add_generic_rpc_handlers((UnaryUnaryRpcHandler(handler),))
-            rpc_call = "TestServicer/handler"
+        rpc_call_error = "TestServicer/error_status_handler"
+        rpc_call_unset = "TestServicer/unset_status_handler"
 
-            server.start()
-            # unfortunately, these are just bare exceptions in grpc...
-            with self.assertRaises(Exception):
-                channel.unary_unary(rpc_call)(b"")
-            server.stop(None)
+        rpc_calls = {
+            rpc_call_error: error_status_handler,
+            rpc_call_unset: unset_status_handler,
+        }
+
+        for rpc_call, handler in rpc_calls.items():
+            with self.server(
+                max_workers=1,
+                interceptors=[interceptor],
+            ) as (server, channel):
+                server.add_generic_rpc_handlers(
+                    (UnaryUnaryRpcHandler(handler),)
+                )
+
+                server.start()
+
+                with self.assertRaises(Exception):
+                    channel.unary_unary(rpc_call)(b"")
+
+                # unfortunately, these are just bare exceptions in grpc...
+                server.stop(None)
 
         spans_list = self.memory_exporter.get_finished_spans()
-        self.assertEqual(len(spans_list), 1)
+        self.assertEqual(len(spans_list), 2)
+
+        # check error span
         span = spans_list[0]
 
-        self.assertEqual(span.name, rpc_call)
+        self.assertEqual(span.name, rpc_call_error)
         self.assertIs(span.kind, trace.SpanKind.SERVER)
 
         # Check version and name in span's instrumentation info
@@ -585,7 +602,7 @@ class TestOpenTelemetryServerInterceptor(TestBase):
         self.assertEqual(span.status.status_code, StatusCode.ERROR)
         self.assertEqual(
             span.status.description,
-            f"{grpc.StatusCode.FAILED_PRECONDITION}:{failure_message}",
+            f"{grpc.StatusCode.INTERNAL}:{failure_message}",
         )
 
         # Check attributes
@@ -593,7 +610,35 @@ class TestOpenTelemetryServerInterceptor(TestBase):
             span,
             {
                 **self.net_peer_span_attributes,
-                SpanAttributes.RPC_METHOD: "handler",
+                SpanAttributes.RPC_METHOD: "error_status_handler",
+                SpanAttributes.RPC_SERVICE: "TestServicer",
+                SpanAttributes.RPC_SYSTEM: "grpc",
+                SpanAttributes.RPC_GRPC_STATUS_CODE: grpc.StatusCode.INTERNAL.value[
+                    0
+                ],
+            },
+        )
+
+        # check unset status span
+        span = spans_list[1]
+
+        self.assertEqual(span.name, rpc_call_unset)
+        self.assertIs(span.kind, trace.SpanKind.SERVER)
+
+        # Check version and name in span's instrumentation info
+        self.assertEqualSpanInstrumentationInfo(
+            span, opentelemetry.instrumentation.grpc
+        )
+
+        self.assertEqual(span.status.description, None)
+        self.assertEqual(span.status.status_code, StatusCode.UNSET)
+
+        # Check attributes
+        self.assertSpanHasAttributes(
+            span,
+            {
+                **self.net_peer_span_attributes,
+                SpanAttributes.RPC_METHOD: "unset_status_handler",
                 SpanAttributes.RPC_SERVICE: "TestServicer",
                 SpanAttributes.RPC_SYSTEM: "grpc",
                 SpanAttributes.RPC_GRPC_STATUS_CODE: grpc.StatusCode.FAILED_PRECONDITION.value[
