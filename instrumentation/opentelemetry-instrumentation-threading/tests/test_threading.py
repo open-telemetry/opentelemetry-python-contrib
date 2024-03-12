@@ -13,20 +13,27 @@
 # limitations under the License.
 
 import threading
-from concurrent import futures
+from concurrent.futures import ThreadPoolExecutor, as_completed
+from dataclasses import dataclass
+from typing import List
 
 from opentelemetry import trace
 from opentelemetry.instrumentation.threading import ThreadingInstrumentor
 from opentelemetry.test.test_base import TestBase
 
 
+@dataclass
+class MockContext:
+    span_context: trace.SpanContext = None
+    trace_id: int = None
+    span_id: int = None
+
+
 class TestThreading(TestBase):
     def setUp(self):
         super().setUp()
         self._tracer = self.tracer_provider.get_tracer(__name__)
-        self.global_context = None
-        self.global_trace_id = None
-        self.global_span_id = None
+        self._mock_contexts: List[MockContext] = []
         ThreadingInstrumentor().instrument()
 
     def tearDown(self):
@@ -54,31 +61,48 @@ class TestThreading(TestBase):
             thread.join()
 
             # check result
-            self.assertEqual(self.global_context, expected_context)
-            self.assertEqual(self.global_trace_id, expected_trace_id)
-            self.assertEqual(self.global_span_id, expected_span_id)
+            self.assertEqual(len(self._mock_contexts), 1)
+
+            current_mock_context = self._mock_contexts[0]
+            self.assertEqual(
+                current_mock_context.span_context, expected_context
+            )
+            self.assertEqual(current_mock_context.trace_id, expected_trace_id)
+            self.assertEqual(current_mock_context.span_id, expected_span_id)
 
     def test_trace_context_propagation_in_thread_pool(self):
-        with self.get_root_span() as span:
-            span_context = span.get_span_context()
-            expected_context = span_context
-            expected_trace_id = span_context.trace_id
-            expected_span_id = span_context.span_id
+        max_workers = 10
+        executor = ThreadPoolExecutor(max_workers=max_workers)
 
-            with futures.ThreadPoolExecutor(max_workers=1) as executor:
+        expected_contexts: List[trace.SpanContext] = []
+        futures_list = []
+        for num in range(max_workers):
+            with self._tracer.start_as_current_span(f"trace_{num}") as span:
+                span_context = span.get_span_context()
+                expected_contexts.append(span_context)
                 future = executor.submit(self.fake_func)
-                future.result()
+                futures_list.append(future)
 
-                # check result
-                self.assertEqual(self.global_context, expected_context)
-                self.assertEqual(self.global_trace_id, expected_trace_id)
-                self.assertEqual(self.global_span_id, expected_span_id)
+        for future in as_completed(futures_list):
+            future.result()
+
+        # check result
+        self.assertEqual(len(self._mock_contexts), max_workers)
+        self.assertEqual(len(self._mock_contexts), len(expected_contexts))
+        for index, mock_context in enumerate(self._mock_contexts):
+            span_context = expected_contexts[index]
+            self.assertEqual(mock_context.span_context, span_context)
+            self.assertEqual(mock_context.trace_id, span_context.trace_id)
+            self.assertEqual(mock_context.span_id, span_context.span_id)
 
     def fake_func(self):
         span_context = trace.get_current_span().get_span_context()
-        self.global_context = span_context
-        self.global_trace_id = span_context.trace_id
-        self.global_span_id = span_context.span_id
+        mock_context = MockContext(
+            span_context=span_context,
+            trace_id=span_context.trace_id,
+            span_id=span_context.span_id,
+        )
+        self._mock_contexts.append(mock_context)
 
     def print_square(self, num):
         with self._tracer.start_as_current_span("square"):
