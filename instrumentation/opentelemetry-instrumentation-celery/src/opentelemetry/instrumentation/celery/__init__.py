@@ -116,9 +116,6 @@ class CeleryInstrumentor(BaseInstrumentor):
     metrics = None
     task_id_to_start_time = {}
 
-    def __init__(self):
-        super().__init__()
-
     def instrumentation_dependencies(self) -> Collection[str]:
         return _instruments
 
