@@ -5,7 +5,7 @@ build-backend = "hatchling.build"
 [project]
 name = "opentelemetry-instrumentation-threading"
 dynamic = ["version"]
-description = "Threading tracing for OpenTelemetry"
+description = "Thread context propagation support for OpenTelemetry"
 readme = "README.rst"
 license = "Apache-2.0"
 requires-python = ">=3.8"

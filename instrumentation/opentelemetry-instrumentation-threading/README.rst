@@ -7,7 +7,9 @@ OpenTelemetry threading Instrumentation
    :target: https://pypi.org/project/opentelemetry-instrumentation-threading/
 
 This library provides instrumentation for the `threading` module to ensure that
-the OpenTelemetry context is propagated across threads.
+the OpenTelemetry context is propagated across threads. It is important to note
+that this instrumentation does not produce any telemetry data on its own. It
+merely ensures that the context is correctly propagated when threads are used.
 
 Installation
 ------------
