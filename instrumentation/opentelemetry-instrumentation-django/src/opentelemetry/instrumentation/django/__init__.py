@@ -321,7 +321,7 @@ class DjangoInstrumentor(BaseInstrumentor):
         )
         _DjangoMiddleware._duration_histogram = meter.create_histogram(
             name=MetricInstruments.HTTP_SERVER_DURATION,
-            unit="ms",
+            unit="s",
             description="measures the duration of the inbound http request",
         )
         _DjangoMiddleware._active_request_counter = meter.create_up_down_counter(

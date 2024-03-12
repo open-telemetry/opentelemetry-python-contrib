@@ -295,7 +295,7 @@ def _create_server_histograms(meter) -> Dict[str, Histogram]:
     histograms = {
         MetricInstruments.HTTP_SERVER_DURATION: meter.create_histogram(
             name=MetricInstruments.HTTP_SERVER_DURATION,
-            unit="ms",
+            unit="s",
             description="measures the duration outbound HTTP requests",
         ),
         MetricInstruments.HTTP_SERVER_REQUEST_SIZE: meter.create_histogram(
@@ -592,9 +592,7 @@ def _record_prepare_metrics(server_histograms, handler):
 
 
 def _record_on_finish_metrics(server_histograms, handler, error=None):
-    elapsed_time = round(
-        (default_timer() - server_histograms[_START_TIME]) * 1000
-    )
+    elapsed_time = (default_timer() - server_histograms[_START_TIME])
 
     response_size = int(handler._headers.get("Content-Length", 0))
     metric_attributes = _create_metric_attributes(handler)

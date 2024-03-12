@@ -491,7 +491,7 @@ class OpenTelemetryMiddleware:
         )
         self.duration_histogram = self.meter.create_histogram(
             name=MetricInstruments.HTTP_SERVER_DURATION,
-            unit="ms",
+            unit="s",
             description="measures the duration of the inbound HTTP request",
         )
         self.server_response_size_histogram = self.meter.create_histogram(
@@ -628,7 +628,7 @@ class OpenTelemetryMiddleware:
                 target = _collect_target_attribute(scope)
                 if target:
                     duration_attrs[SpanAttributes.HTTP_TARGET] = target
-                duration = max(round((default_timer() - start) * 1000), 0)
+                duration = max(default_timer() - start, 0)
                 self.duration_histogram.record(duration, duration_attrs)
                 self.active_requests_counter.add(
                     -1, active_requests_count_attrs

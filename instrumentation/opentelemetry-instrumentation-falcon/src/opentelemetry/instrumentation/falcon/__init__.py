@@ -267,7 +267,7 @@ class _InstrumentedFalconAPI(getattr(falcon, _instrument_app)):
         )
         self.duration_histogram = self._otel_meter.create_histogram(
             name=MetricInstruments.HTTP_SERVER_DURATION,
-            unit="ms",
+            unit="s",
             description="measures the duration of the inbound HTTP request",
         )
         self.active_requests_counter = self._otel_meter.create_up_down_counter(
@@ -385,7 +385,7 @@ class _InstrumentedFalconAPI(getattr(falcon, _instrument_app)):
                 duration_attrs[
                     SpanAttributes.HTTP_STATUS_CODE
                 ] = span.attributes.get(SpanAttributes.HTTP_STATUS_CODE)
-            duration = max(round((default_timer() - start) * 1000), 0)
+            duration = max(default_timer() - start, 0)
             self.duration_histogram.record(duration, duration_attrs)
             self.active_requests_counter.add(-1, active_requests_count_attrs)
             if exception is None:

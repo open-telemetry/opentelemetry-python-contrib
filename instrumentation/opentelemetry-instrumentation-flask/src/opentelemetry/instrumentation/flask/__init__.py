@@ -364,7 +364,7 @@ def _rewrapped_app(
             return start_response(status, response_headers, *args, **kwargs)
 
         result = wsgi_app(wrapped_app_environ, _start_response)
-        duration = max(round((default_timer() - start) * 1000), 0)
+        duration = max((default_timer() - start), 0)
         duration_histogram.record(duration, duration_attrs)
         active_requests_counter.add(-1, active_requests_count_attrs)
         return result
@@ -512,7 +512,7 @@ class _InstrumentedFlask(flask.Flask):
         )
         duration_histogram = meter.create_histogram(
             name=MetricInstruments.HTTP_SERVER_DURATION,
-            unit="ms",
+            unit="s",
             description="measures the duration of the inbound HTTP request",
         )
         active_requests_counter = meter.create_up_down_counter(
@@ -618,7 +618,7 @@ class FlaskInstrumentor(BaseInstrumentor):
             )
             duration_histogram = meter.create_histogram(
                 name=MetricInstruments.HTTP_SERVER_DURATION,
-                unit="ms",
+                unit="s",
                 description="measures the duration of the inbound HTTP request",
             )
             active_requests_counter = meter.create_up_down_counter(

@@ -139,7 +139,7 @@ def trace_tween_factory(handler, registry):
     )
     duration_histogram = meter.create_histogram(
         name=MetricInstruments.HTTP_SERVER_DURATION,
-        unit="ms",
+        unit="s",
         description="measures the duration of the inbound HTTP request",
     )
     active_requests_counter = meter.create_up_down_counter(
@@ -197,7 +197,7 @@ def trace_tween_factory(handler, registry):
             status = "500 InternalServerError"
             raise
         finally:
-            duration = max(round((default_timer() - start) * 1000), 0)
+            duration = max(default_timer() - start, 0)
             status = getattr(response, "status", status)
             status_code = otel_wsgi._parse_status_code(status)
             if status_code is not None:
