@@ -32,7 +32,7 @@ some aspects of development, including testing against multiple Python versions.
 To install `tox`, run:
 
 ```console
-$ pip install tox==3.27.1
+$ pip install tox
 ```
 
 You can run `tox` with the following arguments:
@@ -40,7 +40,7 @@ You can run `tox` with the following arguments:
 - `tox` to run all existing tox commands, including unit tests for all packages
   under multiple Python versions
 - `tox -e docs` to regenerate the API docs
-- `tox -e py37-test-instrumentation-aiopg` to e.g. run the aiopg instrumentation unit tests under a specific
+- `tox -e py311-test-instrumentation-aiopg` to e.g. run the aiopg instrumentation unit tests under a specific
   Python version
 - `tox -e spellcheck` to run a spellcheck on all the code
 - `tox -e lint` to run lint checks on all code
@@ -107,7 +107,7 @@ Run tests:
 
 ```sh
 # make sure you have all supported versions of Python installed
-$ pip install tox==3.27.1  # only first time.
+$ pip install tox  # only first time.
 $ tox  # execute in the root of the repository
 ```
 
@@ -177,7 +177,7 @@ For a deeper discussion, see: https://github.com/open-telemetry/opentelemetry-sp
 ## Running Tests Locally
 
 1. Go to your Contrib repo directory. `git clone git@github.com:open-telemetry/opentelemetry-python-contrib.git && cd opentelemetry-python-contrib`.
-2. Make sure you have `tox` installed. `pip install tox==3.27.1`.
+2. Make sure you have `tox` installed. `pip install tox`.
 3. Run `tox` without any arguments to run tests for all the packages. Read more about [tox](https://tox.readthedocs.io/en/latest/).
 
 ### Testing against a different Core repo branch/commit
@@ -202,7 +202,7 @@ The continuation integration overrides that environment variable with as per the
 Below is a checklist of things to be mindful of when implementing a new instrumentation or working on a specific instrumentation. It is one of our goals as a community to keep the implementation specific details of instrumentations as similar across the board as possible for ease of testing and feature parity. It is also good to abstract as much common functionality as possible.
 
 - Follow semantic conventions
-  - The instrumentation should follow the semantic conventions defined [here](https://github.com/open-telemetry/opentelemetry-specification/tree/main/semantic_conventions)
+  - The instrumentation should follow the semantic conventions defined [here](https://github.com/open-telemetry/opentelemetry-specification/tree/main/specification/semantic-conventions.md)
 - Extends from [BaseInstrumentor](https://github.com/open-telemetry/opentelemetry-python-contrib/blob/main/opentelemetry-instrumentation/src/opentelemetry/instrumentation/instrumentor.py#L26)
 - Supports auto-instrumentation
   - Add an entry point (ex. https://github.com/open-telemetry/opentelemetry-python-contrib/blob/f045c43affff6ff1af8fa2f7514a4fdaca97dacf/instrumentation/opentelemetry-instrumentation-requests/pyproject.toml#L44)
