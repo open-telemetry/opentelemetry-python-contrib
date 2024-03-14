@@ -140,7 +140,7 @@ def trace_tween_factory(handler, registry):
     duration_histogram = meter.create_histogram(
         name=MetricInstruments.HTTP_SERVER_DURATION,
         unit="ms",
-        description="Measures the duration of inbound HTTP requests",
+        description="Duration of HTTP client requests.",
     )
     active_requests_counter = meter.create_up_down_counter(
         name=MetricInstruments.HTTP_SERVER_ACTIVE_REQUESTS,

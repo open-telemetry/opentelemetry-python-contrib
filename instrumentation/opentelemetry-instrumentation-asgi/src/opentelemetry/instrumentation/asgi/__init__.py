@@ -492,7 +492,7 @@ class OpenTelemetryMiddleware:
         self.duration_histogram = self.meter.create_histogram(
             name=MetricInstruments.HTTP_SERVER_DURATION,
             unit="ms",
-            description="Measures the duration of inbound HTTP requests",
+            description="Duration of HTTP client requests.",
         )
         self.server_response_size_histogram = self.meter.create_histogram(
             name=MetricInstruments.HTTP_SERVER_RESPONSE_SIZE,
