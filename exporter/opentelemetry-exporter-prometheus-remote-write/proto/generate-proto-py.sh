@@ -1,4 +1,5 @@
 #!/bin/bash
+set -e
 
 PROM_VERSION=v2.39.0
 PROTO_VERSION=v1.3.2

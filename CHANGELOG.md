@@ -8,7 +8,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## Unreleased
 
 ### Fixed
-
+- `opentelemetry-instrumentation-celery` Allow Celery instrumentation to be installed multiple times
+  ([#2342](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/2342))
+- Align gRPC span status codes to OTEL specification ([#1756](https://github.com/open-telemetry/opentelemetry-python-contrib/issues/1756))
 - Rename `type` attribute to `asgi.event.type` in `opentelemetry-instrumentation-asgi`
   ([#2300](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/2300))
 
