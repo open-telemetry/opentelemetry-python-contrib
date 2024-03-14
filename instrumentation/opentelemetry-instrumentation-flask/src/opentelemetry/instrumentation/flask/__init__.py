@@ -243,17 +243,15 @@ from logging import getLogger
 from time import time_ns
 from timeit import default_timer
 from typing import Collection
-import importlib_metadata as metadata
 
 import flask
+import importlib_metadata as metadata
 from packaging import version as package_version
 
 import opentelemetry.instrumentation.wsgi as otel_wsgi
 from opentelemetry import context, trace
 from opentelemetry.instrumentation.flask.package import _instruments
 from opentelemetry.instrumentation.flask.version import __version__
-
-
 from opentelemetry.instrumentation.instrumentor import BaseInstrumentor
 from opentelemetry.instrumentation.propagators import (
     get_global_response_propagator,
