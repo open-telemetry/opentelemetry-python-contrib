@@ -315,8 +315,8 @@ def _new_cursor_async_factory(
     if not db_api:
         db_api = DatabaseApiAsyncIntegration(
             __name__,
-            Psycopg3Instrumentor._DATABASE_SYSTEM,
-            connection_attributes=Psycopg3Instrumentor._CONNECTION_ATTRIBUTES,
+            PsycopgInstrumentor._DATABASE_SYSTEM,
+            connection_attributes=PsycopgInstrumentor._CONNECTION_ATTRIBUTES,
             version=__version__,
             tracer_provider=tracer_provider,
         )
