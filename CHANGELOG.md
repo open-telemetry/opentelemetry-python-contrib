@@ -7,6 +7,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## Unreleased
 
+- `opentelemetry-instrumentation-psycopg` Async Instrumentation for psycopg 3.x
+  ([#2146](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/2146))
+
 ### Fixed
 - Align gRPC span status codes to OTEL specification ([#1756](https://github.com/open-telemetry/opentelemetry-python-contrib/issues/1756))
 
