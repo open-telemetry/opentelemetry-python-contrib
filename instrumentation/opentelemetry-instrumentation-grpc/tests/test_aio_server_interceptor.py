@@ -507,9 +507,7 @@ class TestOpenTelemetryAioServerInterceptor(TestBase, IsolatedAsyncioTestCase):
         class AbortServicer(GRPCTestServerServicer):
             # pylint:disable=C0103
             async def SimpleMethod(self, request, context):
-                await context.abort(
-                    grpc.StatusCode.FAILED_PRECONDITION, failure_message
-                )
+                await context.abort(grpc.StatusCode.INTERNAL, failure_message)
 
         testcase = self
 
@@ -520,9 +518,7 @@ class TestOpenTelemetryAioServerInterceptor(TestBase, IsolatedAsyncioTestCase):
             with testcase.assertRaises(grpc.RpcError) as cm:
                 await channel.unary_unary(rpc_call)(msg)
 
-            self.assertEqual(
-                cm.exception.code(), grpc.StatusCode.FAILED_PRECONDITION
-            )
+            self.assertEqual(cm.exception.code(), grpc.StatusCode.INTERNAL)
             self.assertEqual(cm.exception.details(), failure_message)
 
         await run_with_test_server(request, servicer=AbortServicer())
@@ -543,7 +539,7 @@ class TestOpenTelemetryAioServerInterceptor(TestBase, IsolatedAsyncioTestCase):
         self.assertEqual(span.status.status_code, StatusCode.ERROR)
         self.assertEqual(
             span.status.description,
-            f"{grpc.StatusCode.FAILED_PRECONDITION}:{failure_message}",
+            f"{grpc.StatusCode.INTERNAL}:{failure_message}",
         )
 
         # Check attributes
@@ -555,7 +551,7 @@ class TestOpenTelemetryAioServerInterceptor(TestBase, IsolatedAsyncioTestCase):
                 SpanAttributes.RPC_METHOD: "SimpleMethod",
                 SpanAttributes.RPC_SERVICE: "GRPCTestServer",
                 SpanAttributes.RPC_SYSTEM: "grpc",
-                SpanAttributes.RPC_GRPC_STATUS_CODE: grpc.StatusCode.FAILED_PRECONDITION.value[
+                SpanAttributes.RPC_GRPC_STATUS_CODE: grpc.StatusCode.INTERNAL.value[
                     0
                 ],
             },
@@ -605,11 +601,8 @@ class TestOpenTelemetryAioServerInterceptor(TestBase, IsolatedAsyncioTestCase):
         )
 
         # make sure this span errored, with the right status and detail
-        self.assertEqual(span.status.status_code, StatusCode.ERROR)
-        self.assertEqual(
-            span.status.description,
-            f"{grpc.StatusCode.FAILED_PRECONDITION}:{failure_message}",
-        )
+        self.assertEqual(span.status.status_code, StatusCode.UNSET)
+        self.assertEqual(span.status.description, None)
 
         # Check attributes
         self.assertSpanHasAttributes(
