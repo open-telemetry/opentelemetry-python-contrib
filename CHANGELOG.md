@@ -38,7 +38,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## Version 1.22.0/0.43b0 (2023-12-14)
 
 ### Added
-
 - `opentelemetry-instrumentation-asyncio` Add support for asyncio
   ([#1919](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/1943))
 - `opentelemetry-instrumentation` Added Otel semantic convention opt-in mechanism
