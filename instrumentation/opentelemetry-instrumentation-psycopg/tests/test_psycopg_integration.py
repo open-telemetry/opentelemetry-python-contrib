@@ -314,7 +314,9 @@ class TestPostgresqlIntegration(TestBase):
             )
             await cursor.execute("tab\tseparated query")
             await cursor.execute("/* leading comment */ query")
-            await cursor.execute("/* leading comment */ query /* trailing comment */")
+            await cursor.execute(
+                "/* leading comment */ query /* trailing comment */"
+            )
             await cursor.execute("query /* trailing comment */")
 
         spans_list = self.memory_exporter.get_finished_spans()
