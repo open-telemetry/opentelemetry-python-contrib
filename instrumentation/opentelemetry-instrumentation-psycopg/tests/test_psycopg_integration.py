@@ -103,9 +103,8 @@ class MockAsyncConnection:
 
     def __init__(self, *args, **kwargs):
         self.cursor_factory = kwargs.pop("cursor_factory", None)
-        pass
 
-    @classmethod
+    @staticmethod
     async def connect(*args, **kwargs):
         return MockAsyncConnection(**kwargs)
 
@@ -305,21 +304,18 @@ class TestPostgresqlIntegration(TestBase):
     async def test_span_name_async(self):
         PsycopgInstrumentor().instrument()
 
-        acnx = psycopg.AsyncConnection.connect(database="test")
-        async with acnx as cnx:
-            async with cnx.cursor() as cursor:
-                await cursor.execute("Test query", ("param1Value", False))
-                await cursor.execute(
-                    """multi
-        line
-        query"""
-                )
-                await cursor.execute("tab\tseparated query")
-                await cursor.execute("/* leading comment */ query")
-                await cursor.execute(
-                    "/* leading comment */ query /* trailing comment */"
-                )
-                await cursor.execute("query /* trailing comment */")
+        cnx = psycopg.AsyncConnection.connect(database="test")
+        async with cnx.cursor() as cursor:
+            await cursor.execute("Test query", ("param1Value", False))
+            await cursor.execute(
+                """multi
+    line
+    query"""
+            )
+            await cursor.execute("tab\tseparated query")
+            await cursor.execute("/* leading comment */ query")
+            await cursor.execute("/* leading comment */ query /* trailing comment */")
+            await cursor.execute("query /* trailing comment */")
 
         spans_list = self.memory_exporter.get_finished_spans()
         self.assertEqual(len(spans_list), 6)
@@ -359,11 +355,10 @@ class TestPostgresqlIntegration(TestBase):
         PsycopgInstrumentor().instrument()
         with mock.patch("opentelemetry.trace.get_tracer") as tracer:
             tracer.return_value = mock_tracer
-            acnx = psycopg.AsyncConnection.connect(database="test")
-            async with acnx as cnx:
-                async with cnx.cursor() as cursor:
-                    query = "SELECT * FROM test"
-                    cursor.execute(query)
+            cnx = psycopg.AsyncConnection.connect(database="test")
+            async with cnx.cursor() as cursor:
+                query = "SELECT * FROM test"
+                cursor.execute(query)
             self.assertFalse(mock_span.is_recording())
             self.assertTrue(mock_span.is_recording.called)
             self.assertFalse(mock_span.set_attribute.called)
