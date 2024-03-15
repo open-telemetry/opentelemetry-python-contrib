@@ -29,9 +29,9 @@ that this instrumentation does not produce any telemetry data on its own. It
 merely ensures that the context is correctly propagated when threads are used.
 
 
-When instrumented, new threads created using threading.Thread, threading.Timer, 
-or within futures.ThreadPoolExecutor will have the current OpenTelemetry 
-context attached, and this context will be re-activated in the thread's 
+When instrumented, new threads created using threading.Thread, threading.Timer,
+or within futures.ThreadPoolExecutor will have the current OpenTelemetry
+context attached, and this context will be re-activated in the thread's
 run method or the executor's worker thread."
 """
 
