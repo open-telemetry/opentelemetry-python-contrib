@@ -120,7 +120,7 @@ class TestThreading(TestBase):
                 # check result
                 self.assertEqual(future2.result(), expected_task2_context)
 
-    def fake_func(self) -> trace.SpanContext:
+    def fake_func(self):
         span_context = self.get_current_span_context_for_test()
         self._mock_span_contexts.append(span_context)
 
