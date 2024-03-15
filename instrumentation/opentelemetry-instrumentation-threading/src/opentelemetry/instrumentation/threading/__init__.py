@@ -136,25 +136,16 @@ class ThreadingInstrumentor(BaseInstrumentor):
     def __wrap_thread_pool_submit(call_wrapped, instance, args, kwargs):
         # obtain the original function and wrapped kwargs
         original_func = args[0]
-        wrapped_kwargs = {
-            ThreadingInstrumentor.__WRAPPER_KWARGS: kwargs,
-            ThreadingInstrumentor.__WRAPPER_CONTEXT: context.get_current(),
-        }
+        otel_context = context.get_current()
 
         def wrapped_func(*func_args, **func_kwargs):
-            original_kwargs = func_kwargs.pop(
-                ThreadingInstrumentor.__WRAPPER_KWARGS
-            )
-            otel_context = func_kwargs.pop(
-                ThreadingInstrumentor.__WRAPPER_CONTEXT
-            )
             token = None
             try:
                 token = context.attach(otel_context)
-                return original_func(*func_args, **original_kwargs)
+                return original_func(*func_args, **func_kwargs)
             finally:
                 context.detach(token)
 
         # replace the original function with the wrapped function
         new_args = (wrapped_func,) + args[1:]
-        return call_wrapped(*new_args, **wrapped_kwargs)
+        return call_wrapped(*new_args, **kwargs)
