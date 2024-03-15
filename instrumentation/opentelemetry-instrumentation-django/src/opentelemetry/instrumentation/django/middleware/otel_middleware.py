@@ -286,14 +286,7 @@ class _DjangoMiddleware(MiddlewareMixin):
                 )
             except Exception as exception:
                 # process_response() will not be called, so we need to clean up
-                if token:
-                    detach(token)
-                activation.__exit__(
-                    type(exception),
-                    exception,
-                    getattr(exception, "__traceback__", None),
-                )
-                raise exception
+                _logger.exception("Exception raised by request_hook")
 
     # pylint: disable=unused-argument
     def process_view(self, request, view_func, *args, **kwargs):
@@ -395,12 +388,7 @@ class _DjangoMiddleware(MiddlewareMixin):
                         span, request, response
                     )
                 except Exception as e:
-                    response_hook_exception = e
-                    if not exception:
-                        exception = e
-                    else:
-                        # original exception takes precedence, so just log this one
-                        span.record_exception(e)
+                    _logger.exception("Exception raised by response_hook")
 
             if exception:
                 activation.__exit__(
