@@ -113,10 +113,8 @@ celery_getter = CeleryGetter()
 
 
 class CeleryInstrumentor(BaseInstrumentor):
-    def __init__(self):
-        super().__init__()
-        self.metrics = None
-        self.task_id_to_start_time = {}
+    metrics = None
+    task_id_to_start_time = {}
 
     def instrumentation_dependencies(self) -> Collection[str]:
         return _instruments

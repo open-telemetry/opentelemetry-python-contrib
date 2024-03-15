@@ -75,9 +75,7 @@ class TestInstrumentedExchangeAioRmq7(TestCase):
         with mock.patch.object(
             PublishDecorator, "_get_publish_span"
         ) as mock_get_publish_span:
-            with mock.patch.object(
-                Exchange, "publish", return_value=asyncio.sleep(0)
-            ) as mock_publish:
+            with mock.patch.object(Exchange, "publish") as mock_publish:
                 decorated_publish = PublishDecorator(
                     self.tracer, exchange
                 ).decorate(mock_publish)
@@ -101,9 +99,7 @@ class TestInstrumentedExchangeAioRmq7(TestCase):
             mocked_not_recording_span = MagicMock()
             mocked_not_recording_span.is_recording.return_value = False
             mock_get_publish_span.return_value = mocked_not_recording_span
-            with mock.patch.object(
-                Exchange, "publish", return_value=asyncio.sleep(0)
-            ) as mock_publish:
+            with mock.patch.object(Exchange, "publish") as mock_publish:
                 with mock.patch(
                     "opentelemetry.instrumentation.aio_pika.publish_decorator.propagate.inject"
                 ) as mock_inject:
@@ -158,9 +154,7 @@ class TestInstrumentedExchangeAioRmq8(TestCase):
         with mock.patch.object(
             PublishDecorator, "_get_publish_span"
         ) as mock_get_publish_span:
-            with mock.patch.object(
-                Exchange, "publish", return_value=asyncio.sleep(0)
-            ) as mock_publish:
+            with mock.patch.object(Exchange, "publish") as mock_publish:
                 decorated_publish = PublishDecorator(
                     self.tracer, exchange
                 ).decorate(mock_publish)
@@ -184,9 +178,7 @@ class TestInstrumentedExchangeAioRmq8(TestCase):
             mocked_not_recording_span = MagicMock()
             mocked_not_recording_span.is_recording.return_value = False
             mock_get_publish_span.return_value = mocked_not_recording_span
-            with mock.patch.object(
-                Exchange, "publish", return_value=asyncio.sleep(0)
-            ) as mock_publish:
+            with mock.patch.object(Exchange, "publish") as mock_publish:
                 with mock.patch(
                     "opentelemetry.instrumentation.aio_pika.publish_decorator.propagate.inject"
                 ) as mock_inject:

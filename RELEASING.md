@@ -7,8 +7,10 @@
     * If making a pre-release of stable components (e.g. release candidate),
       enter the pre-release version number, e.g. `1.9.0rc2`.
       (otherwise the workflow will pick up the version from `main` and just remove the `.dev` suffix).
-  * Review and merge the two pull requests that it creates
+  * Review the two pull requests that it creates.
     (one is targeted to the release branch and one is targeted to `main`).
+    * Merge the one targeted towards the release branch.
+    * The builds will fail for the `main` pr because of validation rules. Follow the [release workflow](https://github.com/open-telemetry/opentelemetry-python/blob/main/RELEASING.md) for the core repo up until this same point. Change the SHAs of each PR to point at each other to get the `main` builds to pass.
 
 ## Preparing a new patch release
 
@@ -75,15 +77,17 @@
   * If for some reason the action failed, see [Publish failed](#publish-failed) below
 * Move stable tag
   * Run the following (TODO automate):
+
     ```bash
     git tag -d stable
     git tag stable
     git push --delete origin tagname
     git push origin stable
     ```
+
   * This will ensure the docs are pointing at the stable release.
   * To validate this worked, ensure the stable build has run successfully:
-    https://readthedocs.org/projects/opentelemetry-python/builds/.
+    <https://readthedocs.org/projects/opentelemetry-python/builds/>.
     If the build has not run automatically, it can be manually trigger via the readthedocs interface.
 
 ## Troubleshooting

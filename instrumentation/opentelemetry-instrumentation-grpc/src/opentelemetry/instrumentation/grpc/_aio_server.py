@@ -17,9 +17,9 @@ import grpc.aio
 import wrapt
 
 from opentelemetry.semconv.trace import SpanAttributes
-from opentelemetry.trace.status import Status, StatusCode
 
 from ._server import OpenTelemetryServerInterceptor, _wrap_rpc_behavior
+from ._utilities import _server_status
 
 
 # pylint:disable=abstract-method
@@ -36,12 +36,8 @@ class _OpenTelemetryAioServicerContext(wrapt.ObjectProxy):
         self._self_active_span.set_attribute(
             SpanAttributes.RPC_GRPC_STATUS_CODE, code.value[0]
         )
-        self._self_active_span.set_status(
-            Status(
-                status_code=StatusCode.ERROR,
-                description=f"{code}:{details}",
-            )
-        )
+        status = _server_status(code, details)
+        self._self_active_span.set_status(status)
         return await self.__wrapped__.abort(code, details, trailing_metadata)
 
     def set_code(self, code):
@@ -51,23 +47,15 @@ class _OpenTelemetryAioServicerContext(wrapt.ObjectProxy):
             SpanAttributes.RPC_GRPC_STATUS_CODE, code.value[0]
         )
         if code != grpc.StatusCode.OK:
-            self._self_active_span.set_status(
-                Status(
-                    status_code=StatusCode.ERROR,
-                    description=f"{code}:{details}",
-                )
-            )
+            status = _server_status(code, details)
+            self._self_active_span.set_status(status)
         return self.__wrapped__.set_code(code)
 
     def set_details(self, details):
         self._self_details = details
         if self._self_code != grpc.StatusCode.OK:
-            self._self_active_span.set_status(
-                Status(
-                    status_code=StatusCode.ERROR,
-                    description=f"{self._self_code}:{details}",
-                )
-            )
+            status = _server_status(self._self_code, details)
+            self._self_active_span.set_status(status)
         return self.__wrapped__.set_details(details)
 
 

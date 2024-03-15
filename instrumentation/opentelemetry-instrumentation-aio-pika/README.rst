@@ -18,6 +18,6 @@ Installation
 References
 ----------
 
-* `OpenTelemetry Aio-pika instrumentation <https://opentelemetry-python-contrib.readthedocs.io/en/latest/instrumentation/aio-pika/aio-pika.html>`_
+* `OpenTelemetry Aio-pika instrumentation <https://opentelemetry-python-contrib.readthedocs.io/en/latest/instrumentation/aio_pika/aio_pika.html>`_
 * `OpenTelemetry Project <https://opentelemetry.io/>`_
 * `OpenTelemetry Python Examples <https://github.com/open-telemetry/opentelemetry-python/tree/main/docs/examples>`_
