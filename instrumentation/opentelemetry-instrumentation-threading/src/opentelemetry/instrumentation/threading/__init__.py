@@ -51,8 +51,6 @@ class ThreadingInstrumentor(BaseInstrumentor):
     __WRAPPER_START_METHOD = "start"
     __WRAPPER_RUN_METHOD = "run"
     __WRAPPER_SUBMIT_METHOD = "submit"
-    __WRAPPER_KWARGS = "kwargs"
-    __WRAPPER_CONTEXT = "_otel_context"
 
     def instrumentation_dependencies(self) -> Collection[str]:
         return _instruments
