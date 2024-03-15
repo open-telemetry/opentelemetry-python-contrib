@@ -75,14 +75,7 @@ class TestThreading(TestBase):
         result_span_contexts = [future.result() for future in futures_list]
 
         # check result
-        self.assertEqual(len(result_span_contexts), max_workers)
-        self.assertEqual(
-            len(result_span_contexts), len(expected_span_contexts)
-        )
-        for index, result_span_context in enumerate(result_span_contexts):
-            self.assertEqual(
-                result_span_context, expected_span_contexts[index]
-            )
+        self.assertEqual(result_span_contexts, expected_span_contexts)
 
     def test_trace_context_propagation_in_thread_pool_with_single_worker(self):
         max_workers = 1
