@@ -81,7 +81,7 @@ class TestThreading(TestBase):
         max_workers = 1
         with ThreadPoolExecutor(max_workers=max_workers) as executor:
             # test propagation of the same trace context across multiple tasks
-            with self._tracer.start_as_current_span(f"task") as task_span:
+            with self._tracer.start_as_current_span("task") as task_span:
                 expected_task_context = task_span.get_span_context()
                 future1 = executor.submit(
                     self.get_current_span_context_for_test
@@ -95,7 +95,7 @@ class TestThreading(TestBase):
                 self.assertEqual(future2.result(), expected_task_context)
 
             # test propagation of different trace contexts across tasks in sequence
-            with self._tracer.start_as_current_span(f"task1") as task1_span:
+            with self._tracer.start_as_current_span("task1") as task1_span:
                 expected_task1_context = task1_span.get_span_context()
                 future1 = executor.submit(
                     self.get_current_span_context_for_test
@@ -104,7 +104,7 @@ class TestThreading(TestBase):
                 # check result
                 self.assertEqual(future1.result(), expected_task1_context)
 
-            with self._tracer.start_as_current_span(f"task2") as task2_span:
+            with self._tracer.start_as_current_span("task2") as task2_span:
                 expected_task2_context = task2_span.get_span_context()
                 future2 = executor.submit(
                     self.get_current_span_context_for_test
