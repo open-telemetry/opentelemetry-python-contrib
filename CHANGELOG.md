@@ -17,6 +17,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   ([#1756](https://github.com/open-telemetry/opentelemetry-python-contrib/issues/1756))
 - `opentelemetry-instrumentation-flask` Add importlib metadata default for deprecation warning flask version
   ([#2297](https://github.com/open-telemetry/opentelemetry-python-contrib/issues/2297))
+- Ensure all http.server.duration metrics have the same description
+  ([#2151](https://github.com/open-telemetry/opentelemetry-python-contrib/issues/2298))
 
 ## Version 1.23.0/0.44b0 (2024-02-23)
 
