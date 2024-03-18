@@ -34,10 +34,6 @@ dependencies = [
 instruments = [
   "pymemcache >= 1.3.5, < 5",
 ]
-test = [
-  "opentelemetry-instrumentation-pymemcache[instruments]",
-  "opentelemetry-test-utils == 0.45b0.dev",
-]
 
 [project.entry-points.opentelemetry_instrumentor]
 pymemcache = "opentelemetry.instrumentation.pymemcache:PymemcacheInstrumentor"
