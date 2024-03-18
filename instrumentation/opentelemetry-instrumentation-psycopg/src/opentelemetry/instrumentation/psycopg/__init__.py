@@ -106,11 +106,11 @@ import typing
 from typing import Collection
 
 import psycopg  # pylint: disable=import-self
-from psycopg import (  # pylint: disable=import-self,no-name-in-module
-    AsyncCursor as pg_async_cursor,
+from psycopg import (
+    AsyncCursor as pg_async_cursor,  # pylint: disable=import-self,no-name-in-module
 )
-from psycopg import (  # pylint: disable=no-name-in-module,import-self
-    Cursor as pg_cursor,
+from psycopg import (
+    Cursor as pg_cursor,  # pylint: disable=no-name-in-module,import-self
 )
 from psycopg.sql import Composed  # pylint: disable=no-name-in-module
 
