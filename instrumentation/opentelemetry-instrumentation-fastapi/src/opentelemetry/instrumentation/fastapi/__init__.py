@@ -76,7 +76,7 @@ right after a span is created for a request and right before the span is finishe
         if span and span.is_recording():
             span.set_attribute("custom_user_attribute_from_response_hook", "some-value")
 
-   FastAPIInstrumentor().instrument_app(server_request_hook=server_request_hook, client_request_hook=client_request_hook, client_response_hook=client_response_hook)
+   FastAPIInstrumentor().instrument(server_request_hook=server_request_hook, client_request_hook=client_request_hook, client_response_hook=client_response_hook)
 
 Capture HTTP request and response headers
 *****************************************
@@ -327,6 +327,15 @@ class FastAPIInstrumentor(BaseInstrumentor):
         _InstrumentedFastAPI._client_response_hook = kwargs.get(
             "client_response_hook"
         )
+        _InstrumentedFastAPI._http_capture_headers_server_request = kwargs.get(
+            "http_capture_headers_server_request"
+        )
+        _InstrumentedFastAPI._http_capture_headers_server_response = (
+            kwargs.get("http_capture_headers_server_response")
+        )
+        _InstrumentedFastAPI._http_capture_headers_sanitize_fields = (
+            kwargs.get("http_capture_headers_sanitize_fields")
+        )
         _excluded_urls = kwargs.get("excluded_urls")
         _InstrumentedFastAPI._excluded_urls = (
             _excluded_urls_from_env
@@ -381,6 +390,9 @@ class _InstrumentedFastAPI(fastapi.FastAPI):
             # Pass in tracer/meter to get __name__and __version__ of fastapi instrumentation
             tracer=tracer,
             meter=meter,
+            http_capture_headers_server_request=_InstrumentedFastAPI._http_capture_headers_server_request,
+            http_capture_headers_server_response=_InstrumentedFastAPI._http_capture_headers_server_response,
+            http_capture_headers_sanitize_fields=_InstrumentedFastAPI._http_capture_headers_sanitize_fields,
         )
         self._is_instrumented_by_opentelemetry = True
         _InstrumentedFastAPI._instrumented_fastapi_apps.add(self)

@@ -1423,19 +1423,21 @@ class TestHTTPAppWithCustomHeadersParameters(TestBase):
 
     def setUp(self):
         super().setUp()
-        self.app = self._create_app()
-        otel_fastapi.FastAPIInstrumentor().instrument_app(
-            self.app,
+        self.instrumentor = otel_fastapi.FastAPIInstrumentor()
+        self.kwargs = dict(
             http_capture_headers_server_request=["a.*", "b.*"],
             http_capture_headers_server_response=["c.*", "d.*"],
             http_capture_headers_sanitize_fields=[".*secret.*"],
         )
-        self.client = TestClient(self.app)
+        self.app = None
 
     def tearDown(self) -> None:
         super().tearDown()
         with self.disable_logging():
-            otel_fastapi.FastAPIInstrumentor().uninstrument_app(self.app)
+            if self.app:
+                self.instrumentor.uninstrument_app(self.app)
+            else:
+                self.instrumentor.uninstrument()
 
     @staticmethod
     def _create_app():
@@ -1453,8 +1455,11 @@ class TestHTTPAppWithCustomHeadersParameters(TestBase):
 
         return app
 
-    def test_http_custom_request_headers_in_span_attributes(self):
-        resp = self.client.get(
+    def test_http_custom_request_headers_in_span_attributes_app(self):
+        self.app = self._create_app()
+        self.instrumentor.instrument_app(self.app, **self.kwargs)
+
+        resp = TestClient(self.app).get(
             "/foobar",
             headers={
                 "apple": "red",
@@ -1480,8 +1485,60 @@ class TestHTTPAppWithCustomHeadersParameters(TestBase):
         self.assertSpanHasAttributes(server_span, expected)
         self.assertNotIn("http.request.header.fig", server_span.attributes)
 
-    def test_http_custom_response_headers_in_span_attributes(self):
-        resp = self.client.get("/foobar")
+    def test_http_custom_request_headers_in_span_attributes_instr(self):
+        """As above, but use instrument(), not instrument_app()."""
+        self.instrumentor.instrument(**self.kwargs)
+
+        resp = TestClient(self._create_app()).get(
+            "/foobar",
+            headers={
+                "apple": "red",
+                "banana-secret": "yellow",
+                "fig": "green",
+            },
+        )
+        self.assertEqual(200, resp.status_code)
+        span_list = self.memory_exporter.get_finished_spans()
+        self.assertEqual(len(span_list), 3)
+
+        server_span = [
+            span for span in span_list if span.kind == trace.SpanKind.SERVER
+        ][0]
+
+        expected = {
+            # apple should be included because it starts with a
+            "http.request.header.apple": ("red",),
+            # same with banana because it starts with b,
+            # redacted because it contains "secret"
+            "http.request.header.banana_secret": ("[REDACTED]",),
+        }
+        self.assertSpanHasAttributes(server_span, expected)
+        self.assertNotIn("http.request.header.fig", server_span.attributes)
+
+    def test_http_custom_response_headers_in_span_attributes_app(self):
+        self.app = self._create_app()
+        self.instrumentor.instrument_app(self.app, **self.kwargs)
+        resp = TestClient(self.app).get("/foobar")
+        self.assertEqual(200, resp.status_code)
+        span_list = self.memory_exporter.get_finished_spans()
+        self.assertEqual(len(span_list), 3)
+
+        server_span = [
+            span for span in span_list if span.kind == trace.SpanKind.SERVER
+        ][0]
+
+        expected = {
+            "http.response.header.carrot": ("bar",),
+            "http.response.header.date_secret": ("[REDACTED]",),
+        }
+        self.assertSpanHasAttributes(server_span, expected)
+        self.assertNotIn("http.response.header.egg", server_span.attributes)
+
+    def test_http_custom_response_headers_in_span_attributes_inst(self):
+        """As above, but use instrument(), not instrument_app()."""
+        self.instrumentor.instrument(**self.kwargs)
+
+        resp = TestClient(self._create_app()).get("/foobar")
         self.assertEqual(200, resp.status_code)
         span_list = self.memory_exporter.get_finished_spans()
         self.assertEqual(len(span_list), 3)
