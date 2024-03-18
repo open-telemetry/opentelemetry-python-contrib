@@ -35,11 +35,6 @@ dependencies = [
 instruments = [
     "aiohttp ~= 3.0",
 ]
-test = [
-  "opentelemetry-instrumentation-aiohttp-server[instruments]",
-  "pytest-asyncio",
-  "pytest-aiohttp",
-]
 
 [project.entry-points.opentelemetry_instrumentor]
 aiohttp-server = "opentelemetry.instrumentation.aiohttp_server:AioHttpServerInstrumentor"
