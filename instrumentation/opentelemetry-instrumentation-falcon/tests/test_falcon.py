@@ -490,26 +490,6 @@ class TestCustomRequestResponseHeaders(TestFalconBase):
         for key, _ in not_expected.items():
             self.assertNotIn(key, span.attributes)
 
-    def test_repeated_request_header_added_in_server_span(self):
-        headers = [
-            ("Custom-Test-Header-1", "Test Value 1"),
-            ("Custom-Test-Header-1", "Test Value 2"),
-        ]
-        self.client().simulate_request(
-            method="GET", path="/hello", headers=headers
-        )
-        span = self.memory_exporter.get_finished_spans()[0]
-        assert span.status.is_ok
-
-        expected = {
-            "http.request.header.custom_test_header_1": (
-                "Test Value 1,Test Value 2",
-            ),
-        }
-
-        self.assertEqual(span.kind, trace.SpanKind.SERVER)
-        self.assertSpanHasAttributes(span, expected)
-
     def test_custom_request_header_not_added_in_internal_span(self):
         tracer = trace.get_tracer(__name__)
         with tracer.start_as_current_span("test", kind=trace.SpanKind.SERVER):

@@ -358,17 +358,11 @@ def collect_custom_request_headers_attributes(environ):
             OTEL_INSTRUMENTATION_HTTP_CAPTURE_HEADERS_SANITIZE_FIELDS
         )
     )
-    headers = {}
-
-    for key, val in environ.items():
-        if key.startswith(_CARRIER_KEY_PREFIX):
-            header_key = (
-                key[_CARRIER_KEY_PREFIX_LEN:].replace("_", "-").lower()
-            )
-            if header_key in headers:
-                headers[header_key] += "," + val
-            else:
-                headers[header_key] = val
+    headers = {
+        key[_CARRIER_KEY_PREFIX_LEN:].replace("_", "-"): val
+        for key, val in environ.items()
+        if key.startswith(_CARRIER_KEY_PREFIX)
+    }
 
     return sanitize.sanitize_header_values(
         headers,

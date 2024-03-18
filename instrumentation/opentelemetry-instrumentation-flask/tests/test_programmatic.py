@@ -687,6 +687,22 @@ class TestCustomRequestResponseHeaders(InstrumentationTest, WsgiTestBase):
         self.assertEqual(span.kind, trace.SpanKind.SERVER)
         self.assertSpanHasAttributes(span, expected)
 
+    def test_repeat_similar_custom_request_header_added_in_server_span(self):
+        headers = [
+            ("Custom-Test-Header-1", "Test Value 1"),
+            ("Custom-Test-Header_1", "Test Value 2"),
+        ]
+        resp = self.client.get("/hello/123", headers=headers)
+        self.assertEqual(200, resp.status_code)
+        span = self.memory_exporter.get_finished_spans()[0]
+        expected = {
+            "http.request.header.custom_test_header_1": (
+                "Test Value 1, Test Value 2",
+            ),
+        }
+        self.assertEqual(span.kind, trace.SpanKind.SERVER)
+        self.assertSpanHasAttributes(span, expected)
+
     def test_custom_request_header_not_added_in_internal_span(self):
         tracer = trace.get_tracer(__name__)
         with tracer.start_as_current_span("test", kind=trace.SpanKind.SERVER):
