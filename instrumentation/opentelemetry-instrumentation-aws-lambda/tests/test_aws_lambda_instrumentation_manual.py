@@ -32,7 +32,10 @@ from opentelemetry.instrumentation.aws_lambda import (
     OTEL_LAMBDA_DISABLE_AWS_CONTEXT_PROPAGATION,
     AwsLambdaInstrumentor,
 )
-from opentelemetry.instrumentation._semconv import _OTEL_SEMCONV_STABILITY_OPT_IN_KEY
+from opentelemetry.instrumentation._semconv import (
+    _OTEL_SEMCONV_STABILITY_OPT_IN_KEY,
+    _OpenTelemetrySemanticConventionStability,
+)
 from opentelemetry.propagate import get_global_textmap
 from opentelemetry.propagators.aws.aws_xray_propagator import (
     TRACE_ID_FIRST_PART_LENGTH,
@@ -108,6 +111,7 @@ class TestAwsLambdaInstrumentor(TestBase):
             "os.environ",
             {_HANDLER: "tests.mocks.lambda_function.handler"},
         )
+        _OpenTelemetrySemanticConventionStability._initialized = False
         self.common_env_patch.start()
 
         # NOTE: Whether AwsLambdaInstrumentor().instrument() is run is decided
@@ -191,6 +195,8 @@ class TestAwsLambdaInstrumentor(TestBase):
             },
         )
 
+        test_env_patch.stop()
+
     def test_active_tracing_semconv_opt_in_dup(self):
         test_env_patch = mock.patch.dict(
             "os.environ",
@@ -223,6 +229,8 @@ class TestAwsLambdaInstrumentor(TestBase):
                 SpanAttributes.FAAS_INVOCATION_ID: MOCK_LAMBDA_CONTEXT.aws_request_id,
             },
         )
+
+        test_env_patch.stop()
 
     def test_parent_context_from_lambda_event(self):
         @dataclass

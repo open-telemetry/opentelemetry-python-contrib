@@ -145,16 +145,30 @@ def _set_http_network_protocol_version(result, version, sem_conv_opt_in_mode):
         )
 
 
-def _get_cloud_resource_id(sem_conv_opt_in_mode) -> str:
-    if _report_new(sem_conv_opt_in_mode):
-        return ResourceAttributes.CLOUD_RESOURCE_ID
-    return ResourceAttributes.FAAS_ID
+def _set_cloud_resource_id(span, cr_id, sem_conv_opt_in_mode):
+    if _report_old_faas(sem_conv_opt_in_mode):
+        span.set_attribute(
+            ResourceAttributes.FAAS_ID,
+            cr_id,
+        )
+    if _report_new_faas(sem_conv_opt_in_mode):
+        span.set_attribute(
+            ResourceAttributes.CLOUD_RESOURCE_ID,
+            cr_id,
+        )
 
 
-def _get_faas_invocation_id(sem_conv_opt_in_mode) -> str:
-    if _report_new(sem_conv_opt_in_mode):
-        return SpanAttributes.FAAS_INVOCATION_ID
-    return SpanAttributes.FAAS_EXECUTION
+def _set_faas_invocation_id(span, fi_id, sem_conv_opt_in_mode):
+    if _report_old_faas(sem_conv_opt_in_mode):
+        span.set_attribute(
+            SpanAttributes.FAAS_EXECUTION,
+            fi_id,
+        )
+    if _report_new_faas(sem_conv_opt_in_mode):
+        span.set_attribute(
+            SpanAttributes.FAAS_INVOCATION_ID,
+            fi_id,
+        )
 
 
 _OTEL_SEMCONV_STABILITY_OPT_IN_KEY = "OTEL_SEMCONV_STABILITY_OPT_IN"
@@ -176,7 +190,7 @@ class _OpenTelemetryStabilityMode(Enum):
     # faas/dup - emit both the old and the stable FAAS conventions
     FAAS_DUP = "faas/dup"
 
-    # default - continue emitting old experimental conventions
+    # default - continue emitting all old experimental conventions
     DEFAULT = "default"
 
 
@@ -186,6 +200,14 @@ def _report_new(mode):
 
 def _report_old(mode):
     return mode.name != _OpenTelemetryStabilityMode.HTTP.name
+
+
+def _report_new_faas(mode):
+    return mode.name != _OpenTelemetryStabilityMode.DEFAULT.name
+
+
+def _report_old_faas(mode):
+    return mode.name != _OpenTelemetryStabilityMode.FAAS.name
 
 
 class _OpenTelemetrySemanticConventionStability:
