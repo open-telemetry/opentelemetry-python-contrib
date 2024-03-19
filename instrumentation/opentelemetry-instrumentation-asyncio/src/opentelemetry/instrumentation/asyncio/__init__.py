@@ -264,7 +264,7 @@ class AsyncioInstrumentor(BaseInstrumentor):
         # Task is already traced, return it
         if isinstance(coro_or_future, asyncio.Task):
             return coro_or_future
-        if asyncio.iscoroutine(coro_or_future):
+        if asyncio.iscoroutine(coro_or_future) and has_attr(coro_or_future, "__name__"):
             return self.trace_coroutine(coro_or_future)
         if futures.isfuture(coro_or_future):
             return self.trace_future(coro_or_future)
