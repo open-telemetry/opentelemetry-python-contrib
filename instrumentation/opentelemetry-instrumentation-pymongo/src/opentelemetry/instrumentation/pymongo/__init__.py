@@ -136,7 +136,7 @@ class CommandTracer(monitoring.CommandListener):
                 )
                 span.set_attribute(SpanAttributes.DB_NAME, event.database_name)
                 span.set_attribute(SpanAttributes.DB_STATEMENT, statement)
-                if collection:
+                if collection and isinstance(collection, str):
                     span.set_attribute(
                         SpanAttributes.DB_MONGODB_COLLECTION, collection
                     )
@@ -186,7 +186,7 @@ class CommandTracer(monitoring.CommandListener):
         if span is None:
             return
         if span.is_recording():
-            span.set_status(Status(StatusCode.ERROR, event.failure))
+            span.set_status(Status(StatusCode.ERROR, str(event.failure)))
             try:
                 self.failed_hook(span, event)
             except (
