@@ -117,7 +117,8 @@ class TestThreading(TestBase):
         span_context = self.get_current_span_context_for_test()
         self._mock_span_contexts.append(span_context)
 
-    def get_current_span_context_for_test(self) -> trace.SpanContext:
+    @staticmethod
+    def get_current_span_context_for_test() -> trace.SpanContext:
         return trace.get_current_span().get_span_context()
 
     def print_square(self, num):
