@@ -145,7 +145,7 @@ def _set_http_network_protocol_version(result, version, sem_conv_opt_in_mode):
         )
 
 
-def _get_cloud_resource_id( sem_conv_opt_in_mode) -> str:
+def _get_cloud_resource_id(sem_conv_opt_in_mode) -> str:
     if _report_new(sem_conv_opt_in_mode):
         return ResourceAttributes.CLOUD_RESOURCE_ID
     return ResourceAttributes.FAAS_ID
@@ -215,7 +215,7 @@ class _OpenTelemetrySemanticConventionStability:
                         http_opt_in = _OpenTelemetryStabilityMode.HTTP_DUP
                     elif _OpenTelemetryStabilityMode.HTTP.value in opt_in_list:
                         http_opt_in = _OpenTelemetryStabilityMode.HTTP
-                    
+
                     # Process faas opt-in
                     # faas/dup takes priority over faas
                     if (
