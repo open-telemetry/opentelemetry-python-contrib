@@ -32,6 +32,7 @@ from opentelemetry.instrumentation.aws_lambda import (
     OTEL_LAMBDA_DISABLE_AWS_CONTEXT_PROPAGATION,
     AwsLambdaInstrumentor,
 )
+from opentelemetry.instrumentation._semconv import _OTEL_SEMCONV_STABILITY_OPT_IN_KEY
 from opentelemetry.propagate import get_global_textmap
 from opentelemetry.propagators.aws.aws_xray_propagator import (
     TRACE_ID_FIRST_PART_LENGTH,
@@ -158,6 +159,70 @@ class TestAwsLambdaInstrumentor(TestBase):
         self.assertTrue(parent_context.is_remote)
 
         test_env_patch.stop()
+
+    def test_active_tracing_semconv_opt_in(self):
+        test_env_patch = mock.patch.dict(
+            "os.environ",
+            {
+                **os.environ,
+                # Using Active tracing
+                _X_AMZN_TRACE_ID: MOCK_XRAY_TRACE_CONTEXT_SAMPLED,
+                # Opt into new semconv
+                _OTEL_SEMCONV_STABILITY_OPT_IN_KEY: "faas"
+            },
+        )
+        test_env_patch.start()
+
+        AwsLambdaInstrumentor().instrument()
+
+        mock_execute_lambda()
+
+        spans = self.memory_exporter.get_finished_spans()
+
+        assert spans
+
+        self.assertEqual(len(spans), 1)
+        span = spans[0]
+        self.assertSpanHasAttributes(
+            span,
+            {
+                ResourceAttributes.CLOUD_RESOURCE_ID: MOCK_LAMBDA_CONTEXT.invoked_function_arn,
+                SpanAttributes.FAAS_INVOCATION_ID: MOCK_LAMBDA_CONTEXT.aws_request_id,
+            },
+        )
+
+    def test_active_tracing_semconv_opt_in_dup(self):
+        test_env_patch = mock.patch.dict(
+            "os.environ",
+            {
+                **os.environ,
+                # Using Active tracing
+                _X_AMZN_TRACE_ID: MOCK_XRAY_TRACE_CONTEXT_SAMPLED,
+                # Opt into new semconv
+                _OTEL_SEMCONV_STABILITY_OPT_IN_KEY: "faas/dup"
+            },
+        )
+        test_env_patch.start()
+
+        AwsLambdaInstrumentor().instrument()
+
+        mock_execute_lambda()
+
+        spans = self.memory_exporter.get_finished_spans()
+
+        assert spans
+
+        self.assertEqual(len(spans), 1)
+        span = spans[0]
+        self.assertSpanHasAttributes(
+            span,
+            {
+                ResourceAttributes.FAAS_ID: MOCK_LAMBDA_CONTEXT.invoked_function_arn,
+                ResourceAttributes.CLOUD_RESOURCE_ID: MOCK_LAMBDA_CONTEXT.invoked_function_arn,
+                SpanAttributes.FAAS_EXECUTION: MOCK_LAMBDA_CONTEXT.aws_request_id,
+                SpanAttributes.FAAS_INVOCATION_ID: MOCK_LAMBDA_CONTEXT.aws_request_id,
+            },
+        )
 
     def test_parent_context_from_lambda_event(self):
         @dataclass
