@@ -35,10 +35,6 @@ dependencies = [
 instruments = [
   "aiohttp ~= 3.0",
 ]
-test = [
-  "opentelemetry-instrumentation-aiohttp-client[instruments]",
-  "http-server-mock"
-]
 
 [project.entry-points.opentelemetry_instrumentor]
 aiohttp-client = "opentelemetry.instrumentation.aiohttp_client:AioHttpClientInstrumentor"
