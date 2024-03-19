@@ -486,3 +486,18 @@ class TestElasticsearchIntegration(TestBase):
             sanitize_body(json.dumps(sanitization_queries.interval_query)),
             str(sanitization_queries.interval_query_sanitized),
         )
+
+    def test_bulk(self, request_mock):
+        request_mock.return_value = (1, {}, "")
+
+        es = Elasticsearch()
+        es.bulk([dict(_op_type="index", _index="sw", _doc_type="_doc", _id=1, doc={"name": "adam"})] * 2)
+
+        spans_list = self.get_finished_spans()
+        self.assertEqual(len(spans_list), 1)
+        span = spans_list[0]
+
+        # Check version and name in span's instrumentation info
+        self.assertEqualSpanInstrumentationInfo(
+            span, opentelemetry.instrumentation.elasticsearch
+        )
