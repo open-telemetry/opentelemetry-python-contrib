@@ -333,8 +333,6 @@ class _DjangoMiddleware(MiddlewareMixin):
             duration_attrs[SpanAttributes.HTTP_STATUS_CODE] = response.status_code
         request_start_time = request.META.pop(self._environ_timer_key, None)
 
-        response_hook_exception = None
-
         if activation and span:
             if is_asgi_request:
                 set_status_code(span, response.status_code)
@@ -402,8 +400,5 @@ class _DjangoMiddleware(MiddlewareMixin):
         if request.META.get(self._environ_token, None) is not None:
             detach(request.META.get(self._environ_token))
             request.META.pop(self._environ_token)
-
-        if response_hook_exception is not None:
-            raise response_hook_exception
 
         return response
