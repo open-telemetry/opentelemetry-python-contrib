@@ -1,6 +1,9 @@
 import threading
 import time
+from platform import python_implementation
 from timeit import default_timer
+
+from pytest import mark
 
 from opentelemetry.instrumentation.celery import CeleryInstrumentor
 from opentelemetry.test.test_base import TestBase
@@ -62,6 +65,9 @@ class TestMetrics(TestBase):
             est_value_delta=200,
         )
 
+    @mark.skipif(
+        python_implementation() == "PyPy", reason="Fails randomly in pypy"
+    )
     def test_metric_uninstrument(self):
         CeleryInstrumentor().instrument()
 
