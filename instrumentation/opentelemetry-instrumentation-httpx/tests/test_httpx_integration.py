@@ -57,6 +57,7 @@ def _async_call(coro: typing.Coroutine) -> asyncio.Task:
 
 
 def _response_hook(span, request: "RequestInfo", response: "ResponseInfo"):
+    assert isinstance(request.url, httpx.URL)
     span.set_attribute(
         HTTP_RESPONSE_BODY,
         b"".join(response[2]),
@@ -66,6 +67,7 @@ def _response_hook(span, request: "RequestInfo", response: "ResponseInfo"):
 async def _async_response_hook(
     span: "Span", request: "RequestInfo", response: "ResponseInfo"
 ):
+    assert isinstance(request.url, httpx.URL)
     span.set_attribute(
         HTTP_RESPONSE_BODY,
         b"".join([part async for part in response[2]]),
@@ -73,11 +75,13 @@ async def _async_response_hook(
 
 
 def _request_hook(span: "Span", request: "RequestInfo"):
+    assert isinstance(request.url, httpx.URL)
     url = httpx.URL(request[1])
     span.update_name("GET" + str(url))
 
 
 async def _async_request_hook(span: "Span", request: "RequestInfo"):
+    assert isinstance(request.url, httpx.URL)
     url = httpx.URL(request[1])
     span.update_name("GET" + str(url))
 
