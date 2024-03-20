@@ -210,7 +210,9 @@ API
 import functools
 import typing
 import wsgiref.util as wsgiref_util
+from collections import defaultdict
 from timeit import default_timer
+from typing import DefaultDict
 
 from opentelemetry import context, trace
 from opentelemetry.instrumentation.utils import (
@@ -384,14 +386,10 @@ def collect_custom_response_headers_attributes(response_headers):
             OTEL_INSTRUMENTATION_HTTP_CAPTURE_HEADERS_SANITIZE_FIELDS
         )
     )
-    response_headers_dict = {}
+    response_headers_dict: DefaultDict[str, list[str]] = defaultdict(list)
     if response_headers:
         for key, val in response_headers:
-            key = key.lower()
-            if key in response_headers_dict:
-                response_headers_dict[key] += "," + val
-            else:
-                response_headers_dict[key] = val
+            response_headers_dict[key.lower()].append(val)
 
     return sanitize.sanitize_header_values(
         response_headers_dict,

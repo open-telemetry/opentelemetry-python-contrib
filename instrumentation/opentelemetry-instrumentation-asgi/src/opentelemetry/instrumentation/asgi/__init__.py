@@ -193,9 +193,10 @@ from __future__ import annotations
 
 import typing
 import urllib
+from collections import defaultdict
 from functools import wraps
 from timeit import default_timer
-from typing import Any, Awaitable, Callable, Tuple
+from typing import Any, Awaitable, Callable, Tuple, DefaultDict
 
 from asgiref.compatibility import guarantee_single_callable
 
@@ -339,7 +340,7 @@ def collect_custom_headers_attributes(
     sanitize: SanitizeValue,
     header_regexes: list[str],
     normalize_names: Callable[[str], str],
-) -> dict[str, str]:
+) -> dict[str, list[str]]:
     """
     Returns custom HTTP request or response headers to be added into SERVER span as span attributes.
 
@@ -347,16 +348,11 @@ def collect_custom_headers_attributes(
      - https://github.com/open-telemetry/opentelemetry-specification/blob/main/specification/trace/semantic_conventions/http.md#http-request-and-response-headers
     """
     # Decode headers before processing.
-    headers: dict[str, str] = {}
+    headers: DefaultDict[str, list[str]] = defaultdict(list)
     raw_headers = scope_or_response_message.get("headers")
     if raw_headers:
-        for _key, _value in raw_headers:
-            key = _key.decode().lower()
-            value = _value.decode()
-            if key in headers:
-                headers[key] += f",{value}"
-            else:
-                headers[key] = value
+        for key, value in raw_headers:
+            headers[key.decode()].append(value.decode())
 
     return sanitize.sanitize_header_values(
         headers,

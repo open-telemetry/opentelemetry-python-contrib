@@ -749,7 +749,8 @@ class TestCustomRequestResponseHeaders(InstrumentationTest, WsgiTestBase):
                 "text/plain; charset=utf-8",
             ),
             "http.response.header.my_custom_header": (
-                "my-custom-value-1,my-custom-header-2",
+                "my-custom-value-1",
+                "my-custom-header-2",
             ),
         }
         self.assertEqual(span.kind, trace.SpanKind.SERVER)

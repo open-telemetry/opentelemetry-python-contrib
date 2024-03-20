@@ -738,7 +738,8 @@ class TestAdditionOfCustomRequestResponseHeaders(WsgiTestBase):
         span = self.memory_exporter.get_finished_spans()[0]
         expected = {
             "http.response.header.my_custom_header": (
-                "my-custom-value-1,my-custom-value-2",
+                "my-custom-value-1",
+                "my-custom-value-2",
             ),
         }
         self.assertSpanHasAttributes(span, expected)
