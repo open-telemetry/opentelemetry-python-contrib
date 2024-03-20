@@ -19,6 +19,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   ([#2297](https://github.com/open-telemetry/opentelemetry-python-contrib/issues/2297))
 - Ensure all http.server.duration metrics have the same description
   ([#2151](https://github.com/open-telemetry/opentelemetry-python-contrib/issues/2298))
+- Fix regression in httpx `request.url` not being of type `httpx.URL` after `0.44b0`
+  ([#2359](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/2359))
 
 ## Version 1.23.0/0.44b0 (2024-02-23)
 
