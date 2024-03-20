@@ -18,7 +18,7 @@ from os import environ
 from re import IGNORECASE as RE_IGNORECASE
 from re import compile as re_compile
 from re import search
-from typing import Callable, Iterable, Optional, Mapping
+from typing import Callable, Iterable, Mapping, Optional
 from urllib.parse import urlparse, urlunparse
 
 from opentelemetry.semconv.trace import SpanAttributes
