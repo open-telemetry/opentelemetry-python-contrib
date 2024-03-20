@@ -25,16 +25,16 @@ from tests.mocks.api_gateway_proxy_event import (
 )
 
 from opentelemetry.environment_variables import OTEL_PROPAGATORS
+from opentelemetry.instrumentation._semconv import (
+    _OTEL_SEMCONV_STABILITY_OPT_IN_KEY,
+    _OpenTelemetrySemanticConventionStability,
+)
 from opentelemetry.instrumentation.aws_lambda import (
     _HANDLER,
     _X_AMZN_TRACE_ID,
     OTEL_INSTRUMENTATION_AWS_LAMBDA_FLUSH_TIMEOUT,
     OTEL_LAMBDA_DISABLE_AWS_CONTEXT_PROPAGATION,
     AwsLambdaInstrumentor,
-)
-from opentelemetry.instrumentation._semconv import (
-    _OTEL_SEMCONV_STABILITY_OPT_IN_KEY,
-    _OpenTelemetrySemanticConventionStability,
 )
 from opentelemetry.propagate import get_global_textmap
 from opentelemetry.propagators.aws.aws_xray_propagator import (
@@ -172,7 +172,7 @@ class TestAwsLambdaInstrumentor(TestBase):
                 # Using Active tracing
                 _X_AMZN_TRACE_ID: MOCK_XRAY_TRACE_CONTEXT_SAMPLED,
                 # Opt into new semconv
-                _OTEL_SEMCONV_STABILITY_OPT_IN_KEY: "faas"
+                _OTEL_SEMCONV_STABILITY_OPT_IN_KEY: "faas",
             },
         )
         test_env_patch.start()
@@ -205,7 +205,7 @@ class TestAwsLambdaInstrumentor(TestBase):
                 # Using Active tracing
                 _X_AMZN_TRACE_ID: MOCK_XRAY_TRACE_CONTEXT_SAMPLED,
                 # Opt into new semconv
-                _OTEL_SEMCONV_STABILITY_OPT_IN_KEY: "faas/dup"
+                _OTEL_SEMCONV_STABILITY_OPT_IN_KEY: "faas/dup",
             },
         )
         test_env_patch.start()

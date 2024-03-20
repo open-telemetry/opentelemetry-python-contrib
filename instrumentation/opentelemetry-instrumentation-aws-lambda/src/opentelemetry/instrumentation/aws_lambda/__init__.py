@@ -95,7 +95,6 @@ from opentelemetry.propagators.aws.aws_xray_propagator import (
     TRACE_HEADER_KEY,
     AwsXRayPropagator,
 )
-from opentelemetry.semconv.resource import ResourceAttributes
 from opentelemetry.semconv.trace import SpanAttributes
 from opentelemetry.trace import (
     Span,
