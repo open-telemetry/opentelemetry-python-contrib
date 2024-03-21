@@ -115,6 +115,18 @@ def wsgi_with_custom_response_headers(environ, start_response):
     return [b"*"]
 
 
+def wsgi_with_repeat_custom_response_headers(environ, start_response):
+    assert isinstance(environ, dict)
+    start_response(
+        "200 OK",
+        [
+            ("my-custom-header", "my-custom-value-1"),
+            ("my-custom-header", "my-custom-value-2"),
+        ],
+    )
+    return [b"*"]
+
+
 _expected_metric_names = [
     "http.server.active_requests",
     "http.server.duration",
@@ -710,6 +722,26 @@ class TestAdditionOfCustomRequestResponseHeaders(WsgiTestBase):
             }
             for key, _ in not_expected.items():
                 self.assertNotIn(key, span.attributes)
+
+    @mock.patch.dict(
+        "os.environ",
+        {
+            OTEL_INSTRUMENTATION_HTTP_CAPTURE_HEADERS_SERVER_RESPONSE: "my-custom-header",
+        },
+    )
+    def test_repeat_custom_response_headers_added_in_server_span(self):
+        app = otel_wsgi.OpenTelemetryMiddleware(
+            wsgi_with_repeat_custom_response_headers
+        )
+        response = app(self.environ, self.start_response)
+        self.iterate_response(response)
+        span = self.memory_exporter.get_finished_spans()[0]
+        expected = {
+            "http.response.header.my_custom_header": (
+                "my-custom-value-1,my-custom-value-2",
+            ),
+        }
+        self.assertSpanHasAttributes(span, expected)
 
 
 if __name__ == "__main__":
