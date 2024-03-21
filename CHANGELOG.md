@@ -7,12 +7,22 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## Unreleased
 
+- `opentelemetry-instrumentation-psycopg` Async Instrumentation for psycopg 3.x
+  ([#2146](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/2146))
+
 ### Fixed
-- Align gRPC span status codes to OTEL specification ([#1756](https://github.com/open-telemetry/opentelemetry-python-contrib/issues/1756))
+- `opentelemetry-instrumentation-celery` Allow Celery instrumentation to be installed multiple times
+  ([#2342](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/2342))
+- Align gRPC span status codes to OTEL specification
+  ([#1756](https://github.com/open-telemetry/opentelemetry-python-contrib/issues/1756))
+- `opentelemetry-instrumentation-flask` Add importlib metadata default for deprecation warning flask version
+  ([#2297](https://github.com/open-telemetry/opentelemetry-python-contrib/issues/2297))
+- Ensure all http.server.duration metrics have the same description
+  ([#2151](https://github.com/open-telemetry/opentelemetry-python-contrib/issues/2298))
 
 ## Version 1.23.0/0.44b0 (2024-02-23)
 
-- Drop support for 3.7
+- Drop uspport for 3.7
   ([#2151](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/2151))
 - `opentelemetry-resource-detector-azure` Added 10s timeout to VM Resource Detector
   ([#2119](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/2119))
