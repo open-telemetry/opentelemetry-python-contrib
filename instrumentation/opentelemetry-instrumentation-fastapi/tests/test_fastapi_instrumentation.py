@@ -12,6 +12,8 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+# pylint: disable=too-many-lines
+
 import unittest
 from timeit import default_timer
 from unittest.mock import patch
@@ -699,11 +701,11 @@ class TestHTTPAppWithCustomHeadersParameters(TestBase):
     def setUp(self):
         super().setUp()
         self.instrumentor = otel_fastapi.FastAPIInstrumentor()
-        self.kwargs = dict(
-            http_capture_headers_server_request=["a.*", "b.*"],
-            http_capture_headers_server_response=["c.*", "d.*"],
-            http_capture_headers_sanitize_fields=[".*secret.*"],
-        )
+        self.kwargs = {
+            "http_capture_headers_server_request": ["a.*", "b.*"],
+            "http_capture_headers_server_response": ["c.*", "d.*"],
+            "http_capture_headers_sanitize_fields": [".*secret.*"],
+        }
         self.app = None
 
     def tearDown(self) -> None:
