@@ -21,6 +21,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   ([#2151](https://github.com/open-telemetry/opentelemetry-python-contrib/issues/2298))
 - Avoid losing repeated HTTP headers
   ([#2266](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/2266))
+- `opentelemetry-instrumentation-elasticsearch` Don't send bulk request body as db statement
+  ([#2355](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/2355))
 
 ## Version 1.23.0/0.44b0 (2024-02-23)
 

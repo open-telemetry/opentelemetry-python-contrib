@@ -51,6 +51,8 @@ else:
 
 Article = helpers.Article
 
+# pylint: disable=too-many-public-methods
+
 
 @mock.patch(
     "elasticsearch.connection.http_urllib3.Urllib3HttpConnection.perform_request"
@@ -485,4 +487,36 @@ class TestElasticsearchIntegration(TestBase):
         self.assertEqual(
             sanitize_body(json.dumps(sanitization_queries.interval_query)),
             str(sanitization_queries.interval_query_sanitized),
+        )
+
+    def test_bulk(self, request_mock):
+        request_mock.return_value = (1, {}, "")
+
+        es = Elasticsearch()
+        es.bulk(
+            [
+                {
+                    "_op_type": "index",
+                    "_index": "sw",
+                    "_doc_type": "_doc",
+                    "_id": 1,
+                    "doc": {"name": "adam"},
+                },
+                {
+                    "_op_type": "index",
+                    "_index": "sw",
+                    "_doc_type": "_doc",
+                    "_id": 1,
+                    "doc": {"name": "adam"},
+                },
+            ]
+        )
+
+        spans_list = self.get_finished_spans()
+        self.assertEqual(len(spans_list), 1)
+        span = spans_list[0]
+
+        # Check version and name in span's instrumentation info
+        self.assertEqualSpanInstrumentationInfo(
+            span, opentelemetry.instrumentation.elasticsearch
         )
