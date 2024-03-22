@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## Unreleased
 
+- `opentelemetry-instrumentation-psycopg` Async Instrumentation for psycopg 3.x
+  ([#2146](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/2146))
+
+### Fixed
 - `opentelemetry-instrumentation-celery` Allow Celery instrumentation to be installed multiple times
   ([#2342](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/2342))
 - Align gRPC span status codes to OTEL specification
@@ -15,6 +19,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   ([#2297](https://github.com/open-telemetry/opentelemetry-python-contrib/issues/2297))
 - Ensure all http.server.duration metrics have the same description
   ([#2151](https://github.com/open-telemetry/opentelemetry-python-contrib/issues/2298))
+- Avoid losing repeated HTTP headers
+  ([#2266](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/2266))
 - `opentelemetry-instrumentation-aws-lambda` Implement new semantic convention opt-in with stable faas semantic conventions
   ([#2356](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/2356))
 
