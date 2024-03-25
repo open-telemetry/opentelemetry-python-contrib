@@ -592,9 +592,12 @@ def _record_prepare_metrics(server_histograms, handler):
 
 
 def _record_on_finish_metrics(server_histograms, handler, error=None):
-    elapsed_time = round(
-        (default_timer() - server_histograms[_START_TIME]) * 1000
-    )
+    if _START_TIME in server_histograms:
+        elapsed_time = round(
+            (default_timer() - server_histograms[_START_TIME]) * 1000
+        )
+    else:
+        elapsed_time = 0
 
     response_size = int(handler._headers.get("Content-Length", 0))
     metric_attributes = _create_metric_attributes(handler)
