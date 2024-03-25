@@ -6,6 +6,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## Unreleased
+- `opentelemetry-instrumentation-django` Handle exceptions from request/response hooks ([#2153](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/2153))
 
 - `opentelemetry-instrumentation-psycopg` Async Instrumentation for psycopg 3.x
   ([#2146](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/2146))

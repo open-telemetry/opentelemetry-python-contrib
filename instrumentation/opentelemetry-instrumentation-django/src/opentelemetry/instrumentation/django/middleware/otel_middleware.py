@@ -142,18 +142,14 @@ def _is_asgi_request(request: HttpRequest) -> bool:
 class _DjangoMiddleware(MiddlewareMixin):
     """Django Middleware for OpenTelemetry"""
 
-    _environ_activation_key = (
-        "opentelemetry-instrumentor-django.activation_key"
-    )
+    _environ_activation_key = "opentelemetry-instrumentor-django.activation_key"
     _environ_token = "opentelemetry-instrumentor-django.token"
     _environ_span_key = "opentelemetry-instrumentor-django.span_key"
     _environ_exception_key = "opentelemetry-instrumentor-django.exception_key"
     _environ_active_request_attr_key = (
         "opentelemetry-instrumentor-django.active_request_attr_key"
     )
-    _environ_duration_attr_key = (
-        "opentelemetry-instrumentor-django.duration_attr_key"
-    )
+    _environ_duration_attr_key = "opentelemetry-instrumentor-django.duration_attr_key"
     _environ_timer_key = "opentelemetry-instrumentor-django.timer_key"
     _traced_request_attrs = get_traced_request_attrs("DJANGO")
     _excluded_urls = get_excluded_urls("DJANGO")
@@ -163,9 +159,7 @@ class _DjangoMiddleware(MiddlewareMixin):
     _active_request_counter = None
 
     _otel_request_hook: Callable[[Span, HttpRequest], None] = None
-    _otel_response_hook: Callable[
-        [Span, HttpRequest, HttpResponse], None
-    ] = None
+    _otel_response_hook: Callable[[Span, HttpRequest, HttpResponse], None] = None
 
     @staticmethod
     def _get_span_name(request):
@@ -224,9 +218,7 @@ class _DjangoMiddleware(MiddlewareMixin):
             attributes=attributes,
         )
 
-        active_requests_count_attrs = _parse_active_request_count_attrs(
-            attributes
-        )
+        active_requests_count_attrs = _parse_active_request_count_attrs(attributes)
         duration_attrs = _parse_duration_attrs(attributes)
 
         request.META[
@@ -267,8 +259,8 @@ class _DjangoMiddleware(MiddlewareMixin):
                     )
             else:
                 if span.is_recording() and span.kind == SpanKind.SERVER:
-                    custom_attributes = (
-                        wsgi_collect_custom_request_headers_attributes(carrier)
+                    custom_attributes = wsgi_collect_custom_request_headers_attributes(
+                        carrier
                     )
                     if len(custom_attributes) > 0:
                         span.set_attributes(custom_attributes)
@@ -286,9 +278,13 @@ class _DjangoMiddleware(MiddlewareMixin):
             request.META[self._environ_token] = token
 
         if _DjangoMiddleware._otel_request_hook:
-            _DjangoMiddleware._otel_request_hook(  # pylint: disable=not-callable
-                span, request
-            )
+            try:
+                _DjangoMiddleware._otel_request_hook(  # pylint: disable=not-callable
+                    span, request
+                )
+            except Exception as exception:
+                # process_response() will not be called, so we need to clean up
+                _logger.exception("Exception raised by request_hook")
 
     # pylint: disable=unused-argument
     def process_view(self, request, view_func, *args, **kwargs):
@@ -332,13 +328,9 @@ class _DjangoMiddleware(MiddlewareMixin):
         active_requests_count_attrs = request.META.pop(
             self._environ_active_request_attr_key, None
         )
-        duration_attrs = request.META.pop(
-            self._environ_duration_attr_key, None
-        )
+        duration_attrs = request.META.pop(self._environ_duration_attr_key, None)
         if duration_attrs:
-            duration_attrs[
-                SpanAttributes.HTTP_STATUS_CODE
-            ] = response.status_code
+            duration_attrs[SpanAttributes.HTTP_STATUS_CODE] = response.status_code
         request_start_time = request.META.pop(self._environ_timer_key, None)
 
         if activation and span:
@@ -371,10 +363,8 @@ class _DjangoMiddleware(MiddlewareMixin):
                     response.items(),
                 )
                 if span.is_recording() and span.kind == SpanKind.SERVER:
-                    custom_attributes = (
-                        wsgi_collect_custom_response_headers_attributes(
-                            response.items()
-                        )
+                    custom_attributes = wsgi_collect_custom_response_headers_attributes(
+                        response.items()
                     )
                     if len(custom_attributes) > 0:
                         span.set_attributes(custom_attributes)
@@ -385,10 +375,14 @@ class _DjangoMiddleware(MiddlewareMixin):
 
             # record any exceptions raised while processing the request
             exception = request.META.pop(self._environ_exception_key, None)
+
             if _DjangoMiddleware._otel_response_hook:
-                _DjangoMiddleware._otel_response_hook(  # pylint: disable=not-callable
-                    span, request, response
-                )
+                try:
+                    _DjangoMiddleware._otel_response_hook(  # pylint: disable=not-callable
+                        span, request, response
+                    )
+                except Exception as e:
+                    _logger.exception("Exception raised by response_hook")
 
             if exception:
                 activation.__exit__(
@@ -400,9 +394,7 @@ class _DjangoMiddleware(MiddlewareMixin):
                 activation.__exit__(None, None, None)
 
         if request_start_time is not None:
-            duration = max(
-                round((default_timer() - request_start_time) * 1000), 0
-            )
+            duration = max(round((default_timer() - request_start_time) * 1000), 0)
             self._duration_histogram.record(duration, duration_attrs)
         self._active_request_counter.add(-1, active_requests_count_attrs)
         if request.META.get(self._environ_token, None) is not None:

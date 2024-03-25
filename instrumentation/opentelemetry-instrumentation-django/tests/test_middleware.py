@@ -155,9 +155,7 @@ class TestMiddleware(WsgiTestBase):
 
         self.assertEqual(
             span.name,
-            "GET ^route/(?P<year>[0-9]{4})/template/$"
-            if DJANGO_2_2
-            else "GET",
+            "GET ^route/(?P<year>[0-9]{4})/template/$" if DJANGO_2_2 else "GET",
         )
         self.assertEqual(span.kind, SpanKind.SERVER)
         self.assertEqual(span.status.status_code, StatusCode.UNSET)
@@ -191,9 +189,7 @@ class TestMiddleware(WsgiTestBase):
             "http://testserver/traced/",
         )
         if DJANGO_2_2:
-            self.assertEqual(
-                span.attributes[SpanAttributes.HTTP_ROUTE], "^traced/"
-            )
+            self.assertEqual(span.attributes[SpanAttributes.HTTP_ROUTE], "^traced/")
         self.assertEqual(span.attributes[SpanAttributes.HTTP_SCHEME], "http")
         self.assertEqual(span.attributes[SpanAttributes.HTTP_STATUS_CODE], 200)
 
@@ -237,9 +233,7 @@ class TestMiddleware(WsgiTestBase):
             "http://testserver/traced/",
         )
         if DJANGO_2_2:
-            self.assertEqual(
-                span.attributes[SpanAttributes.HTTP_ROUTE], "^traced/"
-            )
+            self.assertEqual(span.attributes[SpanAttributes.HTTP_ROUTE], "^traced/")
         self.assertEqual(span.attributes[SpanAttributes.HTTP_SCHEME], "http")
         self.assertEqual(span.attributes[SpanAttributes.HTTP_STATUS_CODE], 200)
 
@@ -261,21 +255,15 @@ class TestMiddleware(WsgiTestBase):
             "http://testserver/error/",
         )
         if DJANGO_2_2:
-            self.assertEqual(
-                span.attributes[SpanAttributes.HTTP_ROUTE], "^error/"
-            )
+            self.assertEqual(span.attributes[SpanAttributes.HTTP_ROUTE], "^error/")
         self.assertEqual(span.attributes[SpanAttributes.HTTP_SCHEME], "http")
         self.assertEqual(span.attributes[SpanAttributes.HTTP_STATUS_CODE], 500)
 
         self.assertEqual(len(span.events), 1)
         event = span.events[0]
         self.assertEqual(event.name, "exception")
-        self.assertEqual(
-            event.attributes[SpanAttributes.EXCEPTION_TYPE], "ValueError"
-        )
-        self.assertEqual(
-            event.attributes[SpanAttributes.EXCEPTION_MESSAGE], "error"
-        )
+        self.assertEqual(event.attributes[SpanAttributes.EXCEPTION_TYPE], "ValueError")
+        self.assertEqual(event.attributes[SpanAttributes.EXCEPTION_MESSAGE], "error")
 
     def test_exclude_lists(self):
         client = Client()
@@ -390,6 +378,30 @@ class TestMiddleware(WsgiTestBase):
         self.assertIsInstance(response_hook_args[2], HttpResponse)
         self.assertEqual(response_hook_args[2], response)
 
+    def test_request_hook_exception(self):
+        def request_hook(span, request):
+            raise Exception("request hook exception")
+
+        _DjangoMiddleware._otel_request_hook = request_hook
+        Client().get("/span_name/1234/")
+        _DjangoMiddleware._otel_request_hook = None
+
+        # ensure that span ended
+        finished_spans = self.memory_exporter.get_finished_spans()
+        self.assertEqual(len(finished_spans), 1)
+
+    def test_response_hook_exception(self):
+        def response_hook(span, request, response):
+            raise Exception("response hook exception")
+
+        _DjangoMiddleware._otel_response_hook = response_hook
+        Client().get("/span_name/1234/")
+        _DjangoMiddleware._otel_response_hook = None
+
+        # ensure that span ended
+        finished_spans = self.memory_exporter.get_finished_spans()
+        self.assertEqual(len(finished_spans), 2)
+
     def test_trace_parent(self):
         id_generator = RandomIdGenerator()
         trace_id = format_trace_id(id_generator.generate_trace_id())
@@ -476,16 +488,12 @@ class TestMiddleware(WsgiTestBase):
                         if isinstance(point, HistogramDataPoint):
                             self.assertEqual(point.count, 3)
                             histrogram_data_point_seen = True
-                            self.assertAlmostEqual(
-                                duration, point.sum, delta=100
-                            )
+                            self.assertAlmostEqual(duration, point.sum, delta=100)
                         if isinstance(point, NumberDataPoint):
                             number_data_point_seen = True
                             self.assertEqual(point.value, 0)
                         for attr in point.attributes:
-                            self.assertIn(
-                                attr, _recommended_attrs[metric.name]
-                            )
+                            self.assertIn(attr, _recommended_attrs[metric.name])
         self.assertTrue(histrogram_data_point_seen and number_data_point_seen)
 
     def test_wsgi_metrics_unistrument(self):
@@ -512,9 +520,7 @@ class TestMiddlewareWithTracerProvider(WsgiTestBase):
     def setUp(self):
         super().setUp()
         setup_test_environment()
-        resource = resources.Resource.create(
-            {"resource-key": "resource-value"}
-        )
+        resource = resources.Resource.create({"resource-key": "resource-value"})
         result = self.create_tracer_provider(resource=resource)
         tracer_provider, exporter = result
         self.exporter = exporter
@@ -539,15 +545,11 @@ class TestMiddlewareWithTracerProvider(WsgiTestBase):
 
         span = spans[0]
 
-        self.assertEqual(
-            span.resource.attributes["resource-key"], "resource-value"
-        )
+        self.assertEqual(span.resource.attributes["resource-key"], "resource-value")
 
     def test_django_with_wsgi_instrumented(self):
         tracer = self.tracer_provider.get_tracer(__name__)
-        with tracer.start_as_current_span(
-            "test", kind=SpanKind.SERVER
-        ) as parent_span:
+        with tracer.start_as_current_span("test", kind=SpanKind.SERVER) as parent_span:
             Client().get("/span_name/1234/")
             span_list = self.exporter.get_finished_spans()
             print(span_list)
@@ -594,12 +596,8 @@ class TestMiddlewareWsgiWithCustomHeaders(WsgiTestBase):
 
     def test_http_custom_request_headers_in_span_attributes(self):
         expected = {
-            "http.request.header.custom_test_header_1": (
-                "test-header-value-1",
-            ),
-            "http.request.header.custom_test_header_2": (
-                "test-header-value-2",
-            ),
+            "http.request.header.custom_test_header_1": ("test-header-value-1",),
+            "http.request.header.custom_test_header_2": ("test-header-value-2",),
             "http.request.header.regex_test_header_1": ("Regex Test Value 1",),
             "http.request.header.regex_test_header_2": (
                 "RegexTestValue2,RegexTestValue3",
@@ -623,9 +621,7 @@ class TestMiddlewareWsgiWithCustomHeaders(WsgiTestBase):
 
     def test_http_custom_request_headers_not_in_span_attributes(self):
         not_expected = {
-            "http.request.header.custom_test_header_2": (
-                "test-header-value-2",
-            ),
+            "http.request.header.custom_test_header_2": ("test-header-value-2",),
         }
         Client(HTTP_CUSTOM_TEST_HEADER_1="test-header-value-1").get("/traced/")
         spans = self.exporter.get_finished_spans()
@@ -639,12 +635,8 @@ class TestMiddlewareWsgiWithCustomHeaders(WsgiTestBase):
 
     def test_http_custom_response_headers_in_span_attributes(self):
         expected = {
-            "http.response.header.custom_test_header_1": (
-                "test-header-value-1",
-            ),
-            "http.response.header.custom_test_header_2": (
-                "test-header-value-2",
-            ),
+            "http.response.header.custom_test_header_1": ("test-header-value-1",),
+            "http.response.header.custom_test_header_2": ("test-header-value-2",),
             "http.response.header.my_custom_regex_header_1": (
                 "my-custom-regex-value-1,my-custom-regex-value-2",
             ),
@@ -664,9 +656,7 @@ class TestMiddlewareWsgiWithCustomHeaders(WsgiTestBase):
 
     def test_http_custom_response_headers_not_in_span_attributes(self):
         not_expected = {
-            "http.response.header.custom_test_header_3": (
-                "test-header-value-3",
-            ),
+            "http.response.header.custom_test_header_3": ("test-header-value-3",),
         }
         Client().get("/traced_custom_header/")
         spans = self.exporter.get_finished_spans()
