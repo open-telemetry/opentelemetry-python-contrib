@@ -105,7 +105,7 @@ from opentelemetry.util.http.httplib import set_ip_on_next_http_connection
 _excluded_urls_from_env = get_excluded_urls("REQUESTS")
 
 _RequestHookT = Optional[Callable[[Span, PreparedRequest], None]]
-_ResponseHookT = Optional[Callable[[Span, PreparedRequest], None]]
+_ResponseHookT = Optional[Callable[[Span, PreparedRequest, Response], None]]
 
 
 # pylint: disable=unused-argument

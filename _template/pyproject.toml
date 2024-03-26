@@ -31,12 +31,6 @@ dependencies = [
   "opentelemetry-api ~= 1.12",
 ]
 
-[project.optional-dependencies]
-test = [
-  # add any test dependencies here
-  "<REPLACE ME>",
-]
-
 [project.entry-points.opentelemetry_instrumentor]
 # REPLACE ME: the entrypoint for the instrumentor e.g
 # sqlalchemy = "opentelemetry.instrumentation.sqlalchemy:SQLAlchemyInstrumentor"

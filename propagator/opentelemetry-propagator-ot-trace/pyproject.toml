@@ -28,9 +28,6 @@ dependencies = [
   "opentelemetry-sdk ~= 1.12",
 ]
 
-[project.optional-dependencies]
-test = []
-
 [project.entry-points.opentelemetry_propagator]
 ottrace = "opentelemetry.propagators.ot_trace:OTTracePropagator"
 

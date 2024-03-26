@@ -25,13 +25,13 @@ jobs:
         python-version: [py38, py39, py310, py311, pypy3]
         package:
           - "urllib"
-          - "urllib3v"
+          - "urllib3"
           - "wsgi"
           - "distro"
           - "richconsole"
           - "psycopg"
           - "prometheus-remote-write"
-          - "sdkextension-aws"
+          - "sdk-extension-aws"
           - "propagator-aws-xray"
           - "propagator-ot-trace"
           - "resource-detector-container"

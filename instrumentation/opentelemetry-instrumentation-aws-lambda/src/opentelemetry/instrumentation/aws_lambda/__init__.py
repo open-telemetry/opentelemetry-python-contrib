@@ -354,6 +354,16 @@ def _instrument(
                     lambda_context.aws_request_id,
                 )
 
+                # NOTE: `cloud.account.id` can be parsed from the ARN as the fifth item when splitting on `:`
+                #
+                # See more:
+                # https://github.com/open-telemetry/semantic-conventions/blob/main/docs/faas/aws-lambda.md#all-triggers
+                account_id = lambda_context.invoked_function_arn.split(":")[4]
+                span.set_attribute(
+                    ResourceAttributes.CLOUD_ACCOUNT_ID,
+                    account_id,
+                )
+
             exception = None
             try:
                 result = call_wrapped(*args, **kwargs)

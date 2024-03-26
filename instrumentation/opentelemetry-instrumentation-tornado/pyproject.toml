@@ -33,11 +33,6 @@ dependencies = [
 instruments = [
   "tornado >= 5.1.1",
 ]
-test = [
-  "opentelemetry-instrumentation-tornado[instruments]",
-  "opentelemetry-test-utils == 0.45b0.dev",
-  "http-server-mock"
-]
 
 [project.entry-points.opentelemetry_instrumentor]
 tornado = "opentelemetry.instrumentation.tornado:TornadoInstrumentor"

@@ -38,10 +38,6 @@ asgi = [
 instruments = [
   "django >= 1.10",
 ]
-test = [
-  "opentelemetry-instrumentation-django[instruments]",
-  "opentelemetry-test-utils == 0.45b0.dev",
-]
 
 [project.entry-points.opentelemetry_instrumentor]
 django = "opentelemetry.instrumentation.django:DjangoInstrumentor"

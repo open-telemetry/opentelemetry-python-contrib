@@ -390,7 +390,7 @@ class TestMiddleware(WsgiTestBase):
         self.assertIsInstance(response_hook_args[2], HttpResponse)
         self.assertEqual(response_hook_args[2], response)
 
-    async def test_trace_parent(self):
+    def test_trace_parent(self):
         id_generator = RandomIdGenerator()
         trace_id = format_trace_id(id_generator.generate_trace_id())
         span_id = format_span_id(id_generator.generate_span_id())
@@ -398,7 +398,7 @@ class TestMiddleware(WsgiTestBase):
 
         Client().get(
             "/span_name/1234/",
-            traceparent=traceparent_value,
+            HTTP_TRACEPARENT=traceparent_value,
         )
         span = self.memory_exporter.get_finished_spans()[0]
 

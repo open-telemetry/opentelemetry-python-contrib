@@ -33,11 +33,6 @@ dependencies = [
 instruments = [
   "kafka-python >= 2.0",
 ]
-test = [
-  "opentelemetry-instrumentation-kafka-python[instruments]",
-  "opentelemetry-test-utils == 0.45b0.dev",
-  "wrapt >= 1.0.0, < 2.0.0",
-]
 
 [project.entry-points.opentelemetry_instrumentor]
 kafka = "opentelemetry.instrumentation.kafka:KafkaInstrumentor"

@@ -76,7 +76,7 @@ class TestAiopgInstrumentor(TestBase):
         cnx = async_call(aiopg.connect(database="test"))
         cursor = async_call(cnx.cursor())
         query = "SELECT * FROM test"
-        cursor.execute(query)
+        async_call(cursor.execute(query))
 
         spans_list = self.memory_exporter.get_finished_spans()
         self.assertEqual(len(spans_list), 1)
@@ -127,7 +127,7 @@ class TestAiopgInstrumentor(TestBase):
         cnx = async_call(pool.acquire())
         cursor = async_call(cnx.cursor())
         query = "SELECT * FROM test"
-        cursor.execute(query)
+        async_call(cursor.execute(query))
 
         spans_list = self.memory_exporter.get_finished_spans()
         self.assertEqual(len(spans_list), 1)

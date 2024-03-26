@@ -27,9 +27,6 @@ dependencies = [
   "opentelemetry-sdk ~= 1.12",
 ]
 
-[project.optional-dependencies]
-test = []
-
 [project.entry-points.opentelemetry_resource_detector]
 container = "opentelemetry.resource.detector.container:ContainerResourceDetector"
 

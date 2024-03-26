@@ -51,12 +51,18 @@ if typing.TYPE_CHECKING:
 HTTP_RESPONSE_BODY = "http.response.body"
 
 
+def _is_url_tuple(request: "RequestInfo"):
+    """Determine if request url format is for httpx versions < 0.20.0."""
+    return isinstance(request[1], tuple) and len(request[1]) == 4
+
+
 def _async_call(coro: typing.Coroutine) -> asyncio.Task:
     loop = asyncio.get_event_loop()
     return loop.run_until_complete(coro)
 
 
 def _response_hook(span, request: "RequestInfo", response: "ResponseInfo"):
+    assert _is_url_tuple(request) or isinstance(request.url, httpx.URL)
     span.set_attribute(
         HTTP_RESPONSE_BODY,
         b"".join(response[2]),
@@ -66,6 +72,7 @@ def _response_hook(span, request: "RequestInfo", response: "ResponseInfo"):
 async def _async_response_hook(
     span: "Span", request: "RequestInfo", response: "ResponseInfo"
 ):
+    assert _is_url_tuple(request) or isinstance(request.url, httpx.URL)
     span.set_attribute(
         HTTP_RESPONSE_BODY,
         b"".join([part async for part in response[2]]),
@@ -73,11 +80,13 @@ async def _async_response_hook(
 
 
 def _request_hook(span: "Span", request: "RequestInfo"):
+    assert _is_url_tuple(request) or isinstance(request.url, httpx.URL)
     url = httpx.URL(request[1])
     span.update_name("GET" + str(url))
 
 
 async def _async_request_hook(span: "Span", request: "RequestInfo"):
+    assert _is_url_tuple(request) or isinstance(request.url, httpx.URL)
     url = httpx.URL(request[1])
     span.update_name("GET" + str(url))
 
