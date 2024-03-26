@@ -27,6 +27,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   ([#2355](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/2355))
 - AwsLambdaInstrumentor sets `cloud.account.id` span attribute
   ([#2367](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/2367))
+- AwsLambdaInstrumentor sets `cloud.resource_id`, `faas.invocation_id` span attributes (breaking)
+  ([#2372](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/2372))
 
 ## Version 1.23.0/0.44b0 (2024-02-23)
 
