@@ -13,10 +13,9 @@
 # limitations under the License.
 
 import os
-import subprocess
-from subprocess import CalledProcessError
 
 import tomli
+from requests import get
 
 scripts_path = os.path.dirname(os.path.abspath(__file__))
 root_path = os.path.dirname(scripts_path)
@@ -29,17 +28,19 @@ def get_instrumentation_packages():
         if not os.path.isdir(pkg_path):
             continue
 
+        error = f"Could not get version for package {pkg}"
         try:
-            version = subprocess.check_output(
-                "hatch version",
-                shell=True,
-                cwd=pkg_path,
-                universal_newlines=True,
-            )
-        except CalledProcessError as exc:
-            print(f"Could not get hatch version from path {pkg_path}")
-            print(exc.output)
-            raise exc
+            response = get(f"https://pypi.org/pypi/{pkg}/json", timeout=10)
+
+        except Exception:
+            print(error)
+            continue
+
+        if response.status_code != 200:
+            print(error)
+            continue
+
+        version = response.json()["info"]["version"]
 
         pyproject_toml_path = os.path.join(pkg_path, "pyproject.toml")
 
