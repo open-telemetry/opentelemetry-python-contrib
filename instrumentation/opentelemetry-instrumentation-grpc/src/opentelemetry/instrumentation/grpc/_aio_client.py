@@ -59,11 +59,18 @@ class _BaseAioClientInterceptor(OpenTelemetryClientInterceptor):
         metadata = client_call_details.metadata
         if not metadata:
             mutable_metadata = OrderedDict()
-        else:
+        elif isinstance(metadata, tuple):
             mutable_metadata = OrderedDict(metadata)
+        else:
+            # The metadata is already mutable (e.g. `grpc.aio.Metadata`)
+            mutable_metadata = metadata
 
         inject(mutable_metadata, setter=_carrier_setter)
-        metadata = tuple(mutable_metadata.items())
+        if isinstance(mutable_metadata, OrderedDict):
+            # We created a copy above; convert back to a tuple
+            metadata = tuple(mutable_metadata.items())
+        # else:
+        #     metadata = mutable_metadata
 
         return ClientCallDetails(
             client_call_details.method,
