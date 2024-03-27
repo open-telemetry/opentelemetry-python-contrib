@@ -18,7 +18,7 @@ from structlog.processors import _figure_out_exc_info
 _EXCLUDE_ATTRS = {"exception", "timestamp"}
 
 
-class OpenTelemetryExporter:
+class StructlogHandler:
     """A structlog processor that writes logs in OTLP format to a collector.
 
     Note: this will replace (or insert if not present) the `timestamp` key in the
