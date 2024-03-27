@@ -25,8 +25,6 @@ from opentelemetry.instrumentation.logging import (  # pylint: disable=no-name-i
 from opentelemetry.test.test_base import TestBase
 from opentelemetry.trace import ProxyTracer, get_tracer
 
-import sys
-sys.path.insert(0, "../../../")
 from handlers.opentelemetry_structlog.src.exporter import StructlogHandler
 
 
