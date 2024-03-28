@@ -672,7 +672,9 @@ class OpenTelemetryMiddleware:
                 if receive_span.is_recording():
                     if message["type"] == "websocket.receive":
                         set_status_code(receive_span, 200)
-                    receive_span.set_attribute("asgi.event.type", message["type"])
+                    receive_span.set_attribute(
+                        "asgi.event.type", message["type"]
+                    )
             return message
 
         return otel_receive

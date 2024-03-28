@@ -119,10 +119,18 @@ async def long_response_asgi(scope, receive, send):
                 ],
             }
         )
-        await send({"type": "http.response.body", "body": b"*", "more_body": True})
-        await send({"type": "http.response.body", "body": b"*", "more_body": True})
-        await send({"type": "http.response.body", "body": b"*", "more_body": True})
-        await send({"type": "http.response.body", "body": b"*", "more_body": False})
+        await send(
+            {"type": "http.response.body", "body": b"*", "more_body": True}
+        )
+        await send(
+            {"type": "http.response.body", "body": b"*", "more_body": True}
+        )
+        await send(
+            {"type": "http.response.body", "body": b"*", "more_body": True}
+        )
+        await send(
+            {"type": "http.response.body", "body": b"*", "more_body": False}
+        )
 
 
 async def background_execution_asgi(scope, receive, send):
@@ -169,8 +177,12 @@ async def background_execution_trailers_asgi(scope, receive, send):
                 "trailers": True,
             }
         )
-        await send({"type": "http.response.body", "body": b"*", "more_body": True})
-        await send({"type": "http.response.body", "body": b"*", "more_body": False})
+        await send(
+            {"type": "http.response.body", "body": b"*", "more_body": True}
+        )
+        await send(
+            {"type": "http.response.body", "body": b"*", "more_body": False}
+        )
         await send(
             {
                 "type": "http.response.trailers",
@@ -223,7 +235,9 @@ class TestAsgiApplication(AsgiTestBase):
         # Check for expected outputs
         response_start = outputs[0]
         response_final_body = [
-            output for output in outputs if output["type"] == "http.response.body"
+            output
+            for output in outputs
+            if output["type"] == "http.response.body"
         ][-1]
 
         self.assertEqual(response_start["type"], "http.response.start")
@@ -371,7 +385,9 @@ class TestAsgiApplication(AsgiTestBase):
     def test_trailers(self):
         """Test that trailers are emitted as expected and that the server span is ended
         BEFORE the background task is finished."""
-        app = otel_asgi.OpenTelemetryMiddleware(background_execution_trailers_asgi)
+        app = otel_asgi.OpenTelemetryMiddleware(
+            background_execution_trailers_asgi
+        )
         self.seed_app(app)
         self.send_default_request()
         outputs = self.get_all_output()
@@ -413,7 +429,9 @@ class TestAsgiApplication(AsgiTestBase):
                 if entry["kind"] == trace_api.SpanKind.SERVER:
                     entry["name"] = span_name
                 else:
-                    entry["name"] = " ".join([span_name] + entry["name"].split(" ")[2:])
+                    entry["name"] = " ".join(
+                        [span_name] + entry["name"].split(" ")[2:]
+                    )
             return expected
 
         app = otel_asgi.OpenTelemetryMiddleware(
@@ -436,7 +454,9 @@ class TestAsgiApplication(AsgiTestBase):
         self.send_default_request()
         span_list = exporter.get_finished_spans()
         for span in span_list:
-            self.assertEqual(span.resource.attributes["service-test-key"], "value")
+            self.assertEqual(
+                span.resource.attributes["service-test-key"], "value"
+            )
 
     def test_no_op_tracer_provider_otel_asgi(self):
         app = otel_asgi.OpenTelemetryMiddleware(
@@ -470,7 +490,9 @@ class TestAsgiApplication(AsgiTestBase):
         self.seed_app(app)
         self.send_default_request()
         outputs = self.get_all_output()
-        self.validate_outputs(outputs, modifiers=[update_expected_server])
+        self.validate_outputs(
+            outputs, modifiers=[update_expected_server]
+        )
 
     def test_host_header(self):
         """Test that host header is converted to http.server_name."""
@@ -717,7 +739,9 @@ class TestAsgiApplication(AsgiTestBase):
                         if isinstance(point, NumberDataPoint):
                             number_data_point_seen = True
                         for attr in point.attributes:
-                            self.assertIn(attr, _recommended_attrs[metric.name])
+                            self.assertIn(
+                                attr, _recommended_attrs[metric.name]
+                            )
         self.assertTrue(number_data_point_seen and histogram_data_point_seen)
 
     def test_basic_metric_success(self):
@@ -753,7 +777,9 @@ class TestAsgiApplication(AsgiTestBase):
                             )
                             self.assertEqual(point.count, 1)
                             if metric.name == "http.server.duration":
-                                self.assertAlmostEqual(duration, point.sum, delta=5)
+                                self.assertAlmostEqual(
+                                    duration, point.sum, delta=5
+                                )
                             elif metric.name == "http.server.response.size":
                                 self.assertEqual(1024, point.sum)
                             elif metric.name == "http.server.request.size":
@@ -851,17 +877,23 @@ class TestAsgiAttributes(unittest.TestCase):
     def test_query_string(self):
         self.scope["query_string"] = b"foo=bar"
         attrs = otel_asgi.collect_request_attributes(self.scope)
-        self.assertEqual(attrs[SpanAttributes.HTTP_URL], "http://127.0.0.1/?foo=bar")
+        self.assertEqual(
+            attrs[SpanAttributes.HTTP_URL], "http://127.0.0.1/?foo=bar"
+        )
 
     def test_query_string_percent_bytes(self):
         self.scope["query_string"] = b"foo%3Dbar"
         attrs = otel_asgi.collect_request_attributes(self.scope)
-        self.assertEqual(attrs[SpanAttributes.HTTP_URL], "http://127.0.0.1/?foo=bar")
+        self.assertEqual(
+            attrs[SpanAttributes.HTTP_URL], "http://127.0.0.1/?foo=bar"
+        )
 
     def test_query_string_percent_str(self):
         self.scope["query_string"] = "foo%3Dbar"
         attrs = otel_asgi.collect_request_attributes(self.scope)
-        self.assertEqual(attrs[SpanAttributes.HTTP_URL], "http://127.0.0.1/?foo=bar")
+        self.assertEqual(
+            attrs[SpanAttributes.HTTP_URL], "http://127.0.0.1/?foo=bar"
+        )
 
     def test_response_attributes(self):
         otel_asgi.set_status_code(self.span, 404)
@@ -878,7 +910,9 @@ class TestAsgiAttributes(unittest.TestCase):
         self.scope["server"] = ("username:password@mock", 80)
         self.scope["path"] = "/status/200"
         attrs = otel_asgi.collect_request_attributes(self.scope)
-        self.assertEqual(attrs[SpanAttributes.HTTP_URL], "http://mock/status/200")
+        self.assertEqual(
+            attrs[SpanAttributes.HTTP_URL], "http://mock/status/200"
+        )
 
     def test_collect_target_attribute_missing(self):
         self.assertIsNone(otel_asgi._collect_target_attribute(self.scope))
@@ -922,7 +956,9 @@ class TestWrappedApplication(AsgiTestBase):
 
         # Wrapping the otel intercepted app with server span
         async def wrapped_app(scope, receive, send):
-            with tracer.start_as_current_span("test", kind=SpanKind.SERVER) as _:
+            with tracer.start_as_current_span(
+                "test", kind=SpanKind.SERVER
+            ) as _:
                 await app(scope, receive, send)
 
         self.seed_app(wrapped_app)
@@ -938,7 +974,9 @@ class TestWrappedApplication(AsgiTestBase):
         self.assertEqual(SpanKind.SERVER, span_list[4].kind)
 
         # internal span should be child of the test span we have provided
-        self.assertEqual(span_list[4].context.span_id, span_list[3].parent.span_id)
+        self.assertEqual(
+            span_list[4].context.span_id, span_list[3].parent.span_id
+        )
 
 
 class TestAsgiApplicationRaisingError(AsgiTestBase):
@@ -958,12 +996,15 @@ class TestAsgiApplicationRaisingError(AsgiTestBase):
         self.seed_app(app)
         self.send_default_request()
         try:
-            asyncio.get_event_loop().run_until_complete(self.communicator.stop())
+            asyncio.get_event_loop().run_until_complete(
+                self.communicator.stop()
+            )
         except ValueError as exc_info:
             self.assertEqual(exc_info.args[0], "whatever")
         except Exception as exc_info:  # pylint: disable=W0703
             self.fail(
-                "expecting ValueError('whatever'), received instead: " + str(exc_info)
+                "expecting ValueError('whatever'), received instead: "
+                + str(exc_info)
             )
         else:
             self.fail("expecting ValueError('whatever')")
