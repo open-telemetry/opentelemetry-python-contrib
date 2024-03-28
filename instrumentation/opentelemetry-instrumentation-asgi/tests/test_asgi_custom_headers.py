@@ -129,9 +129,7 @@ class TestCustomHeaders(AsgiTestBase, TestBase):
             "http.request.header.custom_test_header_2": (
                 "test-header-value-2",
             ),
-            "http.request.header.regex_test_header_1": (
-                "Regex Test Value 1",
-            ),
+            "http.request.header.regex_test_header_1": ("Regex Test Value 1",),
             "http.request.header.regex_test_header_2": (
                 "RegexTestValue2,RegexTestValue3",
             ),
@@ -197,8 +195,12 @@ class TestCustomHeaders(AsgiTestBase, TestBase):
         self.get_all_output()
         span_list = self.exporter.get_finished_spans()
         expected = {
-            "http.response.header.custom_test_header_1": ("test-header-value-1",),
-            "http.response.header.custom_test_header_2": ("test-header-value-2",),
+            "http.response.header.custom_test_header_1": (
+                "test-header-value-1",
+            ),
+            "http.response.header.custom_test_header_2": (
+                "test-header-value-2",
+            ),
             "http.response.header.my_custom_regex_header_1": (
                 "my-custom-regex-value-1,my-custom-regex-value-2",
             ),
@@ -280,9 +282,7 @@ class TestCustomHeaders(AsgiTestBase, TestBase):
             "http.request.header.custom_test_header_2": (
                 "test-header-value-2",
             ),
-            "http.request.header.regex_test_header_1": (
-                "Regex Test Value 1",
-            ),
+            "http.request.header.regex_test_header_1": ("Regex Test Value 1",),
             "http.request.header.regex_test_header_2": (
                 "RegexTestValue2,RegexTestValue3",
             ),

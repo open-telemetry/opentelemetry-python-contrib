@@ -490,9 +490,7 @@ class TestAsgiApplication(AsgiTestBase):
         self.seed_app(app)
         self.send_default_request()
         outputs = self.get_all_output()
-        self.validate_outputs(
-            outputs, modifiers=[update_expected_server]
-        )
+        self.validate_outputs(outputs, modifiers=[update_expected_server])
 
     def test_host_header(self):
         """Test that host header is converted to http.server_name."""
@@ -710,7 +708,9 @@ class TestAsgiApplication(AsgiTestBase):
         self.seed_app(app)
         self.send_default_request()
         outputs = self.get_all_output()
-        self.validate_outputs(outputs, modifiers=[update_expected_hook_results])
+        self.validate_outputs(
+            outputs, modifiers=[update_expected_hook_results]
+        )
 
     def test_asgi_metrics(self):
         app = otel_asgi.OpenTelemetryMiddleware(simple_asgi)
