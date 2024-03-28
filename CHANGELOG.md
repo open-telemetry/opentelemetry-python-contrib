@@ -1487,3 +1487,25 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   ([#2178](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/2178))
 - AwsLambdaInstrumentor handles and re-raises function exception ([#2245](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/2245))
 
+
+- `opentelemetry-instrumentation-psycopg` Async Instrumentation for psycopg 3.x
+  ([#2146](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/2146))
+
+### Fixed
+- `opentelemetry-instrumentation-celery` Allow Celery instrumentation to be installed multiple times
+  ([#2342](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/2342))
+- Align gRPC span status codes to OTEL specification
+  ([#1756](https://github.com/open-telemetry/opentelemetry-python-contrib/issues/1756))
+- `opentelemetry-instrumentation-flask` Add importlib metadata default for deprecation warning flask version
+  ([#2297](https://github.com/open-telemetry/opentelemetry-python-contrib/issues/2297))
+- Ensure all http.server.duration metrics have the same description
+  ([#2151](https://github.com/open-telemetry/opentelemetry-python-contrib/issues/2298))
+- Fix regression in httpx `request.url` not being of type `httpx.URL` after `0.44b0`
+  ([#2359](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/2359))
+- Avoid losing repeated HTTP headers
+  ([#2266](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/2266))
+- `opentelemetry-instrumentation-elasticsearch` Don't send bulk request body as db statement
+  ([#2355](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/2355))
+- AwsLambdaInstrumentor sets `cloud.account.id` span attribute
+  ([#2367](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/2367))
+
