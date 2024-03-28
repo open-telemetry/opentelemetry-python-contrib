@@ -31,7 +31,6 @@ dependencies = [
 otlp = [
   "opentelemetry-exporter-otlp == 1.24.0.dev",
 ]
-test = []
 
 [project.entry-points.opentelemetry_configurator]
 configurator = "opentelemetry.distro:OpenTelemetryConfigurator"

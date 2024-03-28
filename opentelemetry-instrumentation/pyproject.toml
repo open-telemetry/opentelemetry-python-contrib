@@ -29,9 +29,6 @@ dependencies = [
   "wrapt >= 1.0.0, < 2.0.0",
 ]
 
-[project.optional-dependencies]
-test = []
-
 [project.scripts]
 opentelemetry-bootstrap = "opentelemetry.instrumentation.bootstrap:run"
 opentelemetry-instrument = "opentelemetry.instrumentation.auto_instrumentation:run"
