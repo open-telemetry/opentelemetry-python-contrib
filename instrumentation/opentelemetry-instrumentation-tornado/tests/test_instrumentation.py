@@ -528,7 +528,7 @@ class TestTornadoInstrumentation(TornadoTest, WsgiTestBase):
 
 
 class TestTornadoInstrumentationWithXHeaders(TornadoTest):
-    def get_httpserver_options(self):
+    def get_httpserver_options(self):  # pylint: disable=no-self-use
         return {"xheaders": True}
 
     def test_xheaders(self):

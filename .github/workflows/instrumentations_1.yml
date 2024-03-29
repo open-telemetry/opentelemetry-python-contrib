@@ -6,7 +6,7 @@ on:
     - 'release/*'
   pull_request:
 env:
-  CORE_REPO_SHA: a1253585f66d63e7c05a19f070f3bfe0ab6460c1
+  CORE_REPO_SHA: 955c92e91b5cd4bcfb43c39efcef086b040471d2
 
 jobs:
   instrumentations-1:
@@ -25,12 +25,13 @@ jobs:
         python-version: [py38, py39, py310, py311, pypy3]
         package:
           - "urllib"
-          - "urllib3v"
+          - "urllib3"
           - "wsgi"
           - "distro"
           - "richconsole"
+          - "psycopg"
           - "prometheus-remote-write"
-          - "sdkextension-aws"
+          - "sdk-extension-aws"
           - "propagator-aws-xray"
           - "propagator-ot-trace"
           - "resource-detector-container"
