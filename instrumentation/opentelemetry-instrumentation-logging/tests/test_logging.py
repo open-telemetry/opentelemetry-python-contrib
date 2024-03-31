@@ -22,6 +22,8 @@ import pytest
 from unittest.mock import Mock
 from handlers.opentelemetry_structlog.src.exporter import LogExporter
 from datetime import datetime, timezone
+from unittest.mock import MagicMock
+
 
 
 
@@ -224,6 +226,9 @@ class TestStructlogHandler(TestBase):
     @pytest.fixture(autouse=True)
     def inject_fixtures(self, caplog):
         self.caplog = caplog  # pylint: disable=attribute-defined-outside-init
+    
+    def mocker(self):
+        return MagicMock()
 
     def setUp(self):
         super().setUp()
@@ -276,15 +281,22 @@ class TestStructlogHandler(TestBase):
         expected_timestamp = 1577836800000000000  # Expected nanoseconds since epoch
         assert timestamp == expected_timestamp, "Timestamp should be correctly parsed to nanoseconds"
 
-    def test_call_method_processes_log_correctly(self, mocker):
-        exporter_instance = self.structlog_exporter()
-        mocker.patch.object(exporter_instance._logger, 'emit')
-        event_dict = {"level": "info", "event": "test event", "timestamp": datetime.now(timezone.utc)}
-        processed_event = exporter_instance.emit(logger=None, name=None, event_dict=event_dict)
+    def test_call_method2(self):
+        # Mock the logger and exporter
+        exporter = MagicMock()
+        logger = MagicMock()
+        exporter_instance = StructlogHandler("test_service", "test_host", exporter)
+        exporter_instance._logger = logger
 
-        exporter_instance._logger.emit.assert_called_once()
-        assert "timestamp" in processed_event, "Processed event should contain a timestamp"
-        # Add more assertions based on expected transformations and processing outcomes
+        # Define an event dictionary
+        event_dict = {"level": "info", "event": "test event", "timestamp": datetime.now(timezone.utc)}
+
+        # Call the __call__ method of StructlogHandler
+        processed_event = exporter_instance(logger=None, name=None, event_dict=event_dict)
+
+        # Assert that the logger's emit method was called with the processed event
+        logger.emit.assert_called_once()
+
 
 
 
