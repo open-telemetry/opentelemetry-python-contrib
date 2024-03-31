@@ -281,7 +281,7 @@ class TestStructlogHandler(TestBase):
         expected_timestamp = 1577836800000000000  # Expected nanoseconds since epoch
         assert timestamp == expected_timestamp, "Timestamp should be correctly parsed to nanoseconds"
 
-    def test_call_method2(self):
+    def test_call_method_processes_log_correctly(self):
         # Mock the logger and exporter
         exporter = MagicMock()
         logger = MagicMock()
