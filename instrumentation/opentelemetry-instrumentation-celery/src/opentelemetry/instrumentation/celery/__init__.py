@@ -67,7 +67,7 @@ from billiard import VERSION
 from billiard.einfo import ExceptionInfo
 from celery import signals  # pylint: disable=no-name-in-module
 
-from opentelemetry import trace
+from opentelemetry import context, trace
 from opentelemetry.instrumentation.celery import utils
 from opentelemetry.instrumentation.celery.package import _instruments
 from opentelemetry.instrumentation.celery.version import __version__
@@ -169,6 +169,9 @@ class CeleryInstrumentor(BaseInstrumentor):
         self.update_task_duration_time(task_id)
         request = task.request
         tracectx = extract(request, getter=celery_getter) or None
+
+        if tracectx is not None:
+            context.attach(tracectx)
 
         logger.debug("prerun signal start task_id=%s", task_id)
 
