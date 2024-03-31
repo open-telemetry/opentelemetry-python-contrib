@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## Unreleased
 
+### Fixed
+
+- `opentelemetry-instrumentation-celery` propagates baggage ([#2385](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/2385))
+
 ## Version 1.24.0/0.45b0 (2024-03-28)
 
 - `opentelemetry-instrumentation-psycopg` Async Instrumentation for psycopg 3.x
