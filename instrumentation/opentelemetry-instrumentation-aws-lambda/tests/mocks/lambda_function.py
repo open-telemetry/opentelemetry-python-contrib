@@ -12,6 +12,8 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+from opentelemetry import baggage, trace
+
 
 def handler(event, context):
     return "200 ok"
@@ -23,3 +25,9 @@ def rest_api_handler(event, context):
 
 def handler_exc(event, context):
     raise Exception("500 internal server error")
+
+
+def handler_extract_baggage(event, context):
+    span = trace.get_current_span()
+    span.set_attribute("baggage_key", str(baggage.get_baggage("baggage_key")))
+    return dict(baggage.get_all())

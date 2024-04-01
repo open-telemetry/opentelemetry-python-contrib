@@ -11,6 +11,7 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
+import copy
 import os
 from dataclasses import dataclass
 from importlib import import_module
@@ -24,6 +25,7 @@ from tests.mocks.api_gateway_proxy_event import (
     MOCK_LAMBDA_API_GATEWAY_PROXY_EVENT,
 )
 
+from opentelemetry import propagate, baggage
 from opentelemetry.environment_variables import OTEL_PROPAGATORS
 from opentelemetry.instrumentation.aws_lambda import (
     _HANDLER,
@@ -95,7 +97,7 @@ def mock_execute_lambda(event=None):
 
     module_name, handler_name = os.environ[_HANDLER].rsplit(".", 1)
     handler_module = import_module(module_name.replace("/", "."))
-    getattr(handler_module, handler_name)(event, MOCK_LAMBDA_CONTEXT)
+    return getattr(handler_module, handler_name)(event, MOCK_LAMBDA_CONTEXT)
 
 
 class TestAwsLambdaInstrumentor(TestBase):
@@ -434,6 +436,33 @@ class TestAwsLambdaInstrumentor(TestBase):
         event = span.events[0]
         self.assertEqual(event.name, "exception")
 
+        exc_env_patch.stop()
+
+    def test_lambda_handles_baggage_in_headers(self):
+        exc_env_patch = mock.patch.dict(
+            "os.environ",
+            {_HANDLER: "tests.mocks.lambda_function.handler_extract_baggage"},
+        )
+        exc_env_patch.start()
+        AwsLambdaInstrumentor().instrument()
+
+        event = copy.deepcopy(MOCK_LAMBDA_API_GATEWAY_HTTP_API_EVENT)
+        ctx = baggage.set_baggage("baggage_key", "value")
+        propagate.inject(event["headers"], ctx)
+
+        b = mock_execute_lambda(event)
+        self.assertDictEqual(b, {"baggage_key": "value"})
+
+        spans = self.memory_exporter.get_finished_spans()
+        self.assertEqual(len(spans), 1)
+        span = spans[0]
+
+        self.assertSpanHasAttributes(
+            span,
+            {
+                "baggage_key": "value",
+            }
+        )
         exc_env_patch.stop()
 
     def test_uninstrument(self):

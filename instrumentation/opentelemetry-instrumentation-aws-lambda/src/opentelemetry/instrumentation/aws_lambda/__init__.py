@@ -76,13 +76,14 @@ from urllib.parse import urlencode
 
 from wrapt import wrap_function_wrapper
 
+from opentelemetry import context
+from opentelemetry import propagate
 from opentelemetry.context.context import Context
 from opentelemetry.instrumentation.aws_lambda.package import _instruments
 from opentelemetry.instrumentation.aws_lambda.version import __version__
 from opentelemetry.instrumentation.instrumentor import BaseInstrumentor
 from opentelemetry.instrumentation.utils import unwrap
 from opentelemetry.metrics import MeterProvider, get_meter_provider
-from opentelemetry.propagate import get_global_textmap
 from opentelemetry.propagators.aws.aws_xray_propagator import (
     TRACE_HEADER_KEY,
     AwsXRayPropagator,
@@ -139,7 +140,7 @@ def _default_event_context_extractor(lambda_event: Any) -> Context:
         )
     if not isinstance(headers, dict):
         headers = {}
-    return get_global_textmap().extract(headers)
+    return propagate.extract(headers)
 
 
 def _determine_parent_context(
@@ -332,91 +333,96 @@ def _instrument(
             schema_url="https://opentelemetry.io/schemas/1.11.0",
         )
 
-        with tracer.start_as_current_span(
-            name=orig_handler_name,
-            context=parent_context,
-            kind=span_kind,
-        ) as span:
-            if span.is_recording():
-                lambda_context = args[1]
-                # NOTE: The specs mention an exception here, allowing the
-                # `ResourceAttributes.FAAS_ID` attribute to be set as a span
-                # attribute instead of a resource attribute.
-                #
-                # See more:
-                # https://github.com/open-telemetry/opentelemetry-specification/blob/main/specification/trace/semantic_conventions/faas.md#example
-                span.set_attribute(
-                    ResourceAttributes.FAAS_ID,
-                    lambda_context.invoked_function_arn,
-                )
-                span.set_attribute(
-                    SpanAttributes.FAAS_EXECUTION,
-                    lambda_context.aws_request_id,
-                )
+        token = context.attach(parent_context)
 
-                # NOTE: `cloud.account.id` can be parsed from the ARN as the fifth item when splitting on `:`
-                #
-                # See more:
-                # https://github.com/open-telemetry/semantic-conventions/blob/main/docs/faas/aws-lambda.md#all-triggers
-                account_id = lambda_context.invoked_function_arn.split(":")[4]
-                span.set_attribute(
-                    ResourceAttributes.CLOUD_ACCOUNT_ID,
-                    account_id,
-                )
-
-            exception = None
-            try:
-                result = call_wrapped(*args, **kwargs)
-            except Exception as exc:  # pylint: disable=W0703
-                exception = exc
-                span.set_status(Status(StatusCode.ERROR))
-                span.record_exception(exception)
-
-            # If the request came from an API Gateway, extract http attributes from the event
-            # https://github.com/open-telemetry/opentelemetry-specification/blob/main/specification/trace/semantic_conventions/instrumentation/aws-lambda.md#api-gateway
-            # https://github.com/open-telemetry/opentelemetry-specification/blob/main/specification/trace/semantic_conventions/http.md#http-server-semantic-conventions
-            if isinstance(lambda_event, dict) and lambda_event.get(
-                "requestContext"
-            ):
-                span.set_attribute(SpanAttributes.FAAS_TRIGGER, "http")
-
-                if lambda_event.get("version") == "2.0":
-                    _set_api_gateway_v2_proxy_attributes(lambda_event, span)
-                else:
-                    _set_api_gateway_v1_proxy_attributes(lambda_event, span)
-
-                if isinstance(result, dict) and result.get("statusCode"):
+        try:
+            with tracer.start_as_current_span(
+                name=orig_handler_name,
+                context=parent_context,
+                kind=span_kind,
+            ) as span:
+                if span.is_recording():
+                    lambda_context = args[1]
+                    # NOTE: The specs mention an exception here, allowing the
+                    # `ResourceAttributes.FAAS_ID` attribute to be set as a span
+                    # attribute instead of a resource attribute.
+                    #
+                    # See more:
+                    # https://github.com/open-telemetry/opentelemetry-specification/blob/main/specification/trace/semantic_conventions/faas.md#example
                     span.set_attribute(
-                        SpanAttributes.HTTP_STATUS_CODE,
-                        result.get("statusCode"),
+                        ResourceAttributes.FAAS_ID,
+                        lambda_context.invoked_function_arn,
+                    )
+                    span.set_attribute(
+                        SpanAttributes.FAAS_EXECUTION,
+                        lambda_context.aws_request_id,
                     )
 
-        now = time.time()
-        _tracer_provider = tracer_provider or get_tracer_provider()
-        if hasattr(_tracer_provider, "force_flush"):
-            try:
-                # NOTE: `force_flush` before function quit in case of Lambda freeze.
-                _tracer_provider.force_flush(flush_timeout)
-            except Exception:  # pylint: disable=broad-except
-                logger.exception("TracerProvider failed to flush traces")
-        else:
-            logger.warning(
-                "TracerProvider was missing `force_flush` method. This is necessary in case of a Lambda freeze and would exist in the OTel SDK implementation."
-            )
+                    # NOTE: `cloud.account.id` can be parsed from the ARN as the fifth item when splitting on `:`
+                    #
+                    # See more:
+                    # https://github.com/open-telemetry/semantic-conventions/blob/main/docs/faas/aws-lambda.md#all-triggers
+                    account_id = lambda_context.invoked_function_arn.split(":")[4]
+                    span.set_attribute(
+                        ResourceAttributes.CLOUD_ACCOUNT_ID,
+                        account_id,
+                    )
 
-        _meter_provider = meter_provider or get_meter_provider()
-        if hasattr(_meter_provider, "force_flush"):
-            rem = flush_timeout - (time.time() - now) * 1000
-            if rem > 0:
+                exception = None
+                try:
+                    result = call_wrapped(*args, **kwargs)
+                except Exception as exc:  # pylint: disable=W0703
+                    exception = exc
+                    span.set_status(Status(StatusCode.ERROR))
+                    span.record_exception(exception)
+
+                # If the request came from an API Gateway, extract http attributes from the event
+                # https://github.com/open-telemetry/opentelemetry-specification/blob/main/specification/trace/semantic_conventions/instrumentation/aws-lambda.md#api-gateway
+                # https://github.com/open-telemetry/opentelemetry-specification/blob/main/specification/trace/semantic_conventions/http.md#http-server-semantic-conventions
+                if isinstance(lambda_event, dict) and lambda_event.get(
+                    "requestContext"
+                ):
+                    span.set_attribute(SpanAttributes.FAAS_TRIGGER, "http")
+
+                    if lambda_event.get("version") == "2.0":
+                        _set_api_gateway_v2_proxy_attributes(lambda_event, span)
+                    else:
+                        _set_api_gateway_v1_proxy_attributes(lambda_event, span)
+
+                    if isinstance(result, dict) and result.get("statusCode"):
+                        span.set_attribute(
+                            SpanAttributes.HTTP_STATUS_CODE,
+                            result.get("statusCode"),
+                        )
+
+            now = time.time()
+            _tracer_provider = tracer_provider or get_tracer_provider()
+            if hasattr(_tracer_provider, "force_flush"):
                 try:
                     # NOTE: `force_flush` before function quit in case of Lambda freeze.
-                    _meter_provider.force_flush(rem)
+                    _tracer_provider.force_flush(flush_timeout)
                 except Exception:  # pylint: disable=broad-except
-                    logger.exception("MeterProvider failed to flush metrics")
-        else:
-            logger.warning(
-                "MeterProvider was missing `force_flush` method. This is necessary in case of a Lambda freeze and would exist in the OTel SDK implementation."
-            )
+                    logger.exception("TracerProvider failed to flush traces")
+            else:
+                logger.warning(
+                    "TracerProvider was missing `force_flush` method. This is necessary in case of a Lambda freeze and would exist in the OTel SDK implementation."
+                )
+
+            _meter_provider = meter_provider or get_meter_provider()
+            if hasattr(_meter_provider, "force_flush"):
+                rem = flush_timeout - (time.time() - now) * 1000
+                if rem > 0:
+                    try:
+                        # NOTE: `force_flush` before function quit in case of Lambda freeze.
+                        _meter_provider.force_flush(rem)
+                    except Exception:  # pylint: disable=broad-except
+                        logger.exception("MeterProvider failed to flush metrics")
+            else:
+                logger.warning(
+                    "MeterProvider was missing `force_flush` method. This is necessary in case of a Lambda freeze and would exist in the OTel SDK implementation."
+                )
+        finally:
+            context.detach(token)
 
         if exception is not None:
             raise exception.with_traceback(exception.__traceback__)
