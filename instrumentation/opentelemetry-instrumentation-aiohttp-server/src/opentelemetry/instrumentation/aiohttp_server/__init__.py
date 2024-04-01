@@ -24,7 +24,7 @@ from opentelemetry.context import _SUPPRESS_HTTP_INSTRUMENTATION_KEY
 from opentelemetry.instrumentation.aiohttp_server.package import _instruments
 from opentelemetry.instrumentation.aiohttp_server.version import __version__
 from opentelemetry.instrumentation.instrumentor import BaseInstrumentor
-from opentelemetry.instrumentation.utils import http_status_to_status_code
+from opentelemetry.instrumentation.utils import http_status_to_status_code, _start_internal_or_server_span
 from opentelemetry.propagate import extract
 from opentelemetry.propagators.textmap import Getter
 from opentelemetry.semconv.metrics import MetricInstruments
@@ -216,27 +216,31 @@ async def middleware(request, handler):
         description="measures the number of concurrent HTTP requests those are currently in flight",
     )
 
-    with tracer.start_as_current_span(
-        span_name,
-        context=extract(request, getter=getter),
-        kind=trace.SpanKind.SERVER,
-    ) as span:
-        attributes = collect_request_attributes(request)
-        attributes.update(additional_attributes)
-        span.set_attributes(attributes)
+    span, token = _start_internal_or_server_span(tracer, span_name, start_time=None, context_carrier=request, context_getter=getter, attributes=additional_attributes)
+
+    try:
+        with trace.use_span(span, end_on_exit=False) as current_span:
+            if current_span.is_recording():
+                attributes = collect_request_attributes(request)
+                current_span.set_attributes(attributes)
         start = default_timer()
         active_requests_counter.add(1, active_requests_count_attrs)
         try:
             resp = await handler(request)
-            set_status_code(span, resp.status)
+            set_status_code(current_span, resp.status)
         except web.HTTPException as ex:
-            set_status_code(span, ex.status_code)
+            set_status_code(current_span, ex.status_code)
             raise
         finally:
             duration = max((default_timer() - start) * 1000, 0)
             duration_histogram.record(duration, duration_attrs)
             active_requests_counter.add(-1, active_requests_count_attrs)
         return resp
+    finally:
+        if token:
+            context.detach(token)
+        if span.is_recording():
+            span.end()
 
 
 class _InstrumentedApplication(web.Application):
