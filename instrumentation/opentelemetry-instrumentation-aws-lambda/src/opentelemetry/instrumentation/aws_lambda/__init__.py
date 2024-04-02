@@ -166,28 +166,21 @@ def _determine_parent_context(
     Returns:
         A Context with configuration found in the carrier.
     """
-    parent_context = None
+    if event_context_extractor:
+        parent_context = event_context_extractor(lambda_event)
+    else:
+        parent_context = _default_event_context_extractor(lambda_event)
 
     if not disable_aws_context_propagation:
         xray_env_var = os.environ.get(_X_AMZN_TRACE_ID)
 
         if xray_env_var:
-            parent_context = AwsXRayPropagator().extract(
-                {TRACE_HEADER_KEY: xray_env_var}
+            extracted_xray_context = AwsXRayPropagator().extract(
+                {TRACE_HEADER_KEY: xray_env_var},
+                context=parent_context
             )
-
-    if (
-        parent_context
-        and get_current_span(parent_context)
-        .get_span_context()
-        .trace_flags.sampled
-    ):
-        return parent_context
-
-    if event_context_extractor:
-        parent_context = event_context_extractor(lambda_event)
-    else:
-        parent_context = _default_event_context_extractor(lambda_event)
+            if get_current_span(extracted_xray_context).get_span_context().trace_flags.sampled:
+                parent_context = extracted_xray_context
 
     return parent_context
 

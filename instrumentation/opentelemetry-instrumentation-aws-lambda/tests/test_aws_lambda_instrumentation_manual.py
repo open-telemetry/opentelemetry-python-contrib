@@ -465,6 +465,46 @@ class TestAwsLambdaInstrumentor(TestBase):
         )
         exc_env_patch.stop()
 
+    def test_lambda_handles_baggage_in_headers_with_active_tracing(self):
+        exc_env_patch = mock.patch.dict(
+            "os.environ",
+            {
+                _HANDLER: "tests.mocks.lambda_function.handler_extract_baggage",
+                _X_AMZN_TRACE_ID: MOCK_XRAY_TRACE_CONTEXT_SAMPLED,
+            }
+        )
+        exc_env_patch.start()
+        AwsLambdaInstrumentor().instrument()
+
+        event = copy.deepcopy(MOCK_LAMBDA_API_GATEWAY_HTTP_API_EVENT)
+        ctx = baggage.set_baggage("baggage_key", "value")
+        propagate.inject(event["headers"], ctx)
+
+        b = mock_execute_lambda(event)
+        self.assertDictEqual(b, {"baggage_key": "value"})
+
+        spans = self.memory_exporter.get_finished_spans()
+        self.assertEqual(len(spans), 1)
+        span = spans[0]
+
+        self.assertEqual(span.name, os.environ[_HANDLER])
+        self.assertEqual(span.get_span_context().trace_id, MOCK_XRAY_TRACE_ID)
+        self.assertEqual(span.kind, SpanKind.SERVER)
+        self.assertSpanHasAttributes(
+            span,
+            {
+                "baggage_key": "value",
+            }
+        )
+
+        parent_context = span.parent
+        self.assertEqual(
+            parent_context.trace_id, span.get_span_context().trace_id
+        )
+        self.assertEqual(parent_context.span_id, MOCK_XRAY_PARENT_SPAN_ID)
+        self.assertTrue(parent_context.is_remote)
+        exc_env_patch.stop()
+
     def test_uninstrument(self):
         AwsLambdaInstrumentor().instrument()
 
