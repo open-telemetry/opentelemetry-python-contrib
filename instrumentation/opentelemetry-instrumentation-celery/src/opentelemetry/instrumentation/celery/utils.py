@@ -13,10 +13,13 @@
 # limitations under the License.
 
 import logging
+from typing import Optional, ContextManager
 
 from celery import registry  # pylint: disable=no-name-in-module
+from celery.app.task import Task
 
 from opentelemetry.semconv.trace import SpanAttributes
+from opentelemetry.trace import Span
 
 logger = logging.getLogger(__name__)
 
@@ -82,9 +85,7 @@ def set_attributes_from_context(span, context):
             # Get also destination from this
             routing_key = value.get("routing_key")
             if routing_key is not None:
-                span.set_attribute(
-                    SpanAttributes.MESSAGING_DESTINATION, routing_key
-                )
+                span.set_attribute(SpanAttributes.MESSAGING_DESTINATION, routing_key)
             value = str(value)
 
         elif key == "id":
@@ -112,6 +113,70 @@ def set_attributes_from_context(span, context):
             attribute_name = f"celery.{key}"
 
         span.set_attribute(attribute_name, value)
+
+
+def attach_context(
+    task: Optional[Task],
+    task_id: str,
+    span: Span,
+    activation: ContextManager[Span],
+    token: Optional[object],
+    is_publish: bool = False,
+) -> None:
+    """Helper to propagate a `Span`, `ContextManager` and context token
+    for the given `Task` instance. This function uses a `dict` that stores
+    the Span using the `(task_id, is_publish)` as a key. This is useful
+    when information must be propagated from one Celery signal to another.
+
+    We use (task_id, is_publish) for the key to ensure that publishing a
+    task from within another task does not cause any conflicts.
+
+    This mostly happens when either a task fails and a retry policy is in place,
+    or when a task is manually retries (e.g. `task.retry()`), we end up trying
+    to publish a task with the same id as the task currently running.
+
+    Previously publishing the new task would overwrite the existing `celery.run` span
+    in the `dict` causing that span to be forgotten and never finished
+    NOTE: We cannot test for this well yet, because we do not run a celery worker,
+    and cannot run `task.apply_async()`
+    """
+    if task is None:
+        return
+
+    ctx_dict = getattr(task, CTX_KEY, None)
+
+    if ctx_dict is None:
+        ctx_dict = {}
+        setattr(task, CTX_KEY, ctx_dict)
+
+    ctx_dict[(task_id, is_publish)] = (span, activation, token)
+
+
+def detach_context(task, task_id, is_publish=False) -> None:
+    """Helper to remove  `Span`, `ContextManager` and context token in a
+    Celery task when it's propagated.
+    This function handles tasks where no values are attached to the `Task`.
+    """
+    span_dict = getattr(task, CTX_KEY, None)
+    if span_dict is None:
+        return
+
+    # See note in `attach_context` for key info
+    span_dict.pop((task_id, is_publish), None)
+
+
+def retrieve_context(
+    task, task_id, is_publish=False
+) -> Optional[tuple[Span, ContextManager[Span], Optional[object]]]:
+    """Helper to retrieve an active `Span`, `ContextManager` and context token
+    stored in a `Task` instance
+    """
+    span_dict = getattr(task, CTX_KEY, None)
+    if span_dict is None:
+        return None
+
+    # See note in `attach_context` for key info
+    return span_dict.get((task_id, is_publish), None)
 
 
 def attach_span(task, task_id, span, is_publish=False):
