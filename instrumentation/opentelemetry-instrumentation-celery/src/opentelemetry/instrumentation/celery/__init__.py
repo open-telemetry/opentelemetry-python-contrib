@@ -67,7 +67,8 @@ from billiard import VERSION
 from billiard.einfo import ExceptionInfo
 from celery import signals  # pylint: disable=no-name-in-module
 
-from opentelemetry import context, trace
+from opentelemetry import context as context_api
+from opentelemetry import trace
 from opentelemetry.instrumentation.celery import utils
 from opentelemetry.instrumentation.celery.package import _instruments
 from opentelemetry.instrumentation.celery.version import __version__
@@ -142,12 +143,9 @@ class CeleryInstrumentor(BaseInstrumentor):
 
         signals.task_prerun.connect(self._trace_prerun, weak=False)
         signals.task_postrun.connect(self._trace_postrun, weak=False)
-        signals.before_task_publish.connect(
-            self._trace_before_publish, weak=False
-        )
-        signals.after_task_publish.connect(
-            self._trace_after_publish, weak=False
-        )
+        signals.before_task_publish.connect(self._trace_before_publish, weak=False)
+        signals.before_task_publish.connect(self._trace_before_publish, weak=False)
+        signals.after_task_publish.connect(self._trace_after_publish, weak=False)
         signals.task_failure.connect(self._trace_failure, weak=False)
         signals.task_retry.connect(self._trace_retry, weak=False)
 
@@ -169,9 +167,7 @@ class CeleryInstrumentor(BaseInstrumentor):
         self.update_task_duration_time(task_id)
         request = task.request
         tracectx = extract(request, getter=celery_getter) or None
-
-        if tracectx is not None:
-            context.attach(tracectx)
+        token = context_api.attach(tracectx)
 
         logger.debug("prerun signal start task_id=%s", task_id)
 
@@ -182,7 +178,7 @@ class CeleryInstrumentor(BaseInstrumentor):
 
         activation = trace.use_span(span, end_on_exit=True)
         activation.__enter__()  # pylint: disable=E1101
-        utils.attach_span(task, task_id, (span, activation))
+        utils.attach_context(task, task_id, span, activation, token)
 
     def _trace_postrun(self, *args, **kwargs):
         task = utils.retrieve_task(kwargs)
@@ -194,10 +190,13 @@ class CeleryInstrumentor(BaseInstrumentor):
         logger.debug("postrun signal task_id=%s", task_id)
 
         # retrieve and finish the Span
-        span, activation = utils.retrieve_span(task, task_id)
-        if span is None:
+        ctx = utils.retrieve_context(task, task_id)
+
+        if ctx is None:
             logger.warning("no existing span found for task_id=%s", task_id)
             return
+
+        span, activation, token = ctx
 
         # request context tags
         if span.is_recording():
@@ -207,10 +206,11 @@ class CeleryInstrumentor(BaseInstrumentor):
             span.set_attribute(_TASK_NAME_KEY, task.name)
 
         activation.__exit__(None, None, None)
-        utils.detach_span(task, task_id)
+        utils.detach_context(task, task_id)
         self.update_task_duration_time(task_id)
         labels = {"task": task.name, "worker": task.request.hostname}
         self._record_histograms(task_id, labels)
+        context_api.detach(token)
 
     def _trace_before_publish(self, *args, **kwargs):
         task = utils.retrieve_task_from_sender(kwargs)
@@ -227,9 +227,7 @@ class CeleryInstrumentor(BaseInstrumentor):
         else:
             task_name = task.name
         operation_name = f"{_TASK_APPLY_ASYNC}/{task_name}"
-        span = self._tracer.start_span(
-            operation_name, kind=trace.SpanKind.PRODUCER
-        )
+        span = self._tracer.start_span(operation_name, kind=trace.SpanKind.PRODUCER)
 
         # apply some attributes here because most of the data is not available
         if span.is_recording():
@@ -241,7 +239,7 @@ class CeleryInstrumentor(BaseInstrumentor):
         activation = trace.use_span(span, end_on_exit=True)
         activation.__enter__()  # pylint: disable=E1101
 
-        utils.attach_span(task, task_id, (span, activation), is_publish=True)
+        utils.attach_context(task, task_id, span, activation, None, is_publish=True)
 
         headers = kwargs.get("headers")
         if headers:
@@ -256,13 +254,16 @@ class CeleryInstrumentor(BaseInstrumentor):
             return
 
         # retrieve and finish the Span
-        _, activation = utils.retrieve_span(task, task_id, is_publish=True)
-        if activation is None:
+        ctx = utils.retrieve_context(task, task_id, is_publish=True)
+
+        if ctx is None:
             logger.warning("no existing span found for task_id=%s", task_id)
             return
 
+        _, activation, _ = ctx
+
         activation.__exit__(None, None, None)  # pylint: disable=E1101
-        utils.detach_span(task, task_id, is_publish=True)
+        utils.detach_context(task, task_id, is_publish=True)
 
     @staticmethod
     def _trace_failure(*args, **kwargs):
@@ -272,9 +273,14 @@ class CeleryInstrumentor(BaseInstrumentor):
         if task is None or task_id is None:
             return
 
-        # retrieve and pass exception info to activation
-        span, _ = utils.retrieve_span(task, task_id)
-        if span is None or not span.is_recording():
+        ctx = utils.retrieve_context(task, task_id)
+
+        if ctx is None:
+            return
+
+        span, _, _ = ctx
+
+        if not span.is_recording():
             return
 
         status_kwargs = {"status_code": StatusCode.ERROR}
@@ -314,8 +320,14 @@ class CeleryInstrumentor(BaseInstrumentor):
         if task is None or task_id is None or reason is None:
             return
 
-        span, _ = utils.retrieve_span(task, task_id)
-        if span is None or not span.is_recording():
+        ctx = utils.retrieve_context(task, task_id)
+
+        if ctx is None:
+            return
+
+        span, _, _ = ctx
+
+        if not span.is_recording():
             return
 
         # Add retry reason metadata to span
