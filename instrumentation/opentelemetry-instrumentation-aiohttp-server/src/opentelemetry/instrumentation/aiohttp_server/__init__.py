@@ -223,19 +223,19 @@ async def middleware(request, handler):
             if current_span.is_recording():
                 attributes = collect_request_attributes(request)
                 current_span.set_attributes(attributes)
-        start = default_timer()
-        active_requests_counter.add(1, active_requests_count_attrs)
-        try:
-            resp = await handler(request)
-            set_status_code(current_span, resp.status)
-        except web.HTTPException as ex:
-            set_status_code(current_span, ex.status_code)
-            raise
-        finally:
-            duration = max((default_timer() - start) * 1000, 0)
-            duration_histogram.record(duration, duration_attrs)
-            active_requests_counter.add(-1, active_requests_count_attrs)
-        return resp
+            start = default_timer()
+            active_requests_counter.add(1, active_requests_count_attrs)
+            try:
+                resp = await handler(request)
+                set_status_code(current_span, resp.status)
+            except web.HTTPException as ex:
+                set_status_code(current_span, ex.status_code)
+                raise
+            finally:
+                duration = max((default_timer() - start) * 1000, 0)
+                duration_histogram.record(duration, duration_attrs)
+                active_requests_counter.add(-1, active_requests_count_attrs)
+            return resp
     finally:
         if token:
             context.detach(token)
