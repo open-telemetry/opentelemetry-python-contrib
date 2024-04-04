@@ -65,6 +65,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   ([#2066](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/2066))
 - Consolidate instrumentation suppression mechanisms and fix bug in httpx instrumentation
   ([#2061](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/2061))
+- `opentelemetry-instrument-asgi` Set HTTP status code attribute for server span
+  ([#2088](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/2088))
 
 ### Fixed
 

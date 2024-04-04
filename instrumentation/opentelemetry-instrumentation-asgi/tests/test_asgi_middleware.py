@@ -843,6 +843,49 @@ class TestAsgiApplication(AsgiTestBase):
         self.get_all_output()
         self.assertIsNone(self.memory_metrics_reader.get_metrics_data())
 
+    def test_status_code_when_send_not_recording(self):
+        from opentelemetry.sdk.trace.sampling import (
+            Decision,
+            Sampler,
+            SamplingResult,
+        )
+
+        class TestSampler(Sampler):
+            def should_sample(
+                self,
+                parent_context,
+                trace_id,
+                name,
+                kind=None,
+                attributes=None,
+                links=None,
+                trace_state=None,
+            ):
+                # Only sample the server span, dropping the "http send" and
+                # "http receive" span.
+                return SamplingResult(
+                    Decision.RECORD_AND_SAMPLE
+                    if name == "GET /"
+                    else Decision.DROP
+                )
+
+            def get_description(self) -> str:
+                return "Sampler that ensures that only server span is recorded"
+
+        result = TestBase.create_tracer_provider(sampler=TestSampler())
+        tracer_provider, exporter = result
+
+        app = otel_asgi.OpenTelemetryMiddleware(
+            simple_asgi, tracer_provider=tracer_provider
+        )
+        self.seed_app(app)
+        self.send_default_request()
+        self.get_all_output()
+        span_list = exporter.get_finished_spans()
+
+        self.assertEqual(len(span_list), 1)
+        self.assertEqual(span_list[0].attributes["http.status_code"], 200)
+
 
 class TestAsgiAttributes(unittest.TestCase):
     def setUp(self):
