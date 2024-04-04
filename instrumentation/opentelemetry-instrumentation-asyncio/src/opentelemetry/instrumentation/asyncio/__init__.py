@@ -307,7 +307,14 @@ class AsyncioInstrumentor(BaseInstrumentor):
         )
 
         def callback(f):
-            exception = f.exception()
+            try:
+                exception = f.exception()
+            except asyncio.CancelledError as ex:
+                # If the future has been cancelled, raises CancelledError
+                exception = ex
+            except asyncio.InvalidStateError as ex:
+                # If the future isn't done yet, raises InvalidStateError
+                exception = ex
             attr = {
                 "type": "future",
             }
