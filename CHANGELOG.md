@@ -7,7 +7,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## Unreleased
 
+### Breaking changes
+
+- Rename `type` attribute to `asgi.event.type` in `opentelemetry-instrumentation-asgi`
+  ([#2300](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/2300))
+
 ## Version 1.24.0/0.45b0 (2024-03-28)
+
+### Added
 
 - `opentelemetry-instrumentation-psycopg` Async Instrumentation for psycopg 3.x
   ([#2146](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/2146))
@@ -30,9 +37,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - AwsLambdaInstrumentor sets `cloud.account.id` span attribute
   ([#2367](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/2367))
 
+
 ## Version 1.23.0/0.44b0 (2024-02-23)
 
-- Drop uspport for 3.7
+- Drop support for 3.7
   ([#2151](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/2151))
 - `opentelemetry-resource-detector-azure` Added 10s timeout to VM Resource Detector
   ([#2119](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/2119))
