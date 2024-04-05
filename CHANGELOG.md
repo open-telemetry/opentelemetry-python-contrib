@@ -12,6 +12,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Rename `type` attribute to `asgi.event.type` in `opentelemetry-instrumentation-asgi`
   ([#2300](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/2300))
 
+### Added
+
+- `opentelemetry-instrumentation-threading` Initial release for threading
+  ([#2253](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/2253))
+
 ## Version 1.24.0/0.45b0 (2024-03-28)
 
 ### Added
@@ -57,8 +62,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Added
 
 - `opentelemetry-instrumentation-psycopg` Initial release for psycopg 3.x
-- `opentelemetry-instrumentation-threading` Initial release for threading
-  ([#2253](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/2253))
 
 ## Version 1.22.0/0.43b0 (2023-12-14)
 
