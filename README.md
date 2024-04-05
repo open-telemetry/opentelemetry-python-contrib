@@ -108,14 +108,18 @@ Approvers ([@open-telemetry/python-approvers](https://github.com/orgs/open-telem
 
 - [Aaron Abbott](https://github.com/aabmass), Google
 - [Jeremy Voss](https://github.com/jeremydvoss), Microsoft
+- [Owais Lone](https://github.com/owais), Splunk
+- [Pablo Collins](https://github.com/pmcollins), Splunk
 - [Sanket Mehta](https://github.com/sanketmehta28), Cisco
+- [Tammy Baylis](https://github.com/tammy-baylis-swi), SolarWinds
 
 Emeritus Approvers:
 
-- [Héctor Hernández](https://github.com/hectorhdzg), Microsoft
-- [Yusuke Tsutsumi](https://github.com/toumorokoshi), Google
-- [Nathaniel Ruiz Nowell](https://github.com/NathanielRN), AWS
 - [Ashutosh Goel](https://github.com/ashu658), Cisco
+- [Héctor Hernández](https://github.com/hectorhdzg), Microsoft
+- [Nikolay Sokolik](https://github.com/oxeye-nikolay), Oxeye
+- [Nikolay Sokolik](https://github.com/nikosokolik), Oxeye
+- [Nathaniel Ruiz Nowell](https://github.com/NathanielRN), AWS
 
 *Find more about the approver role in [community repository](https://github.com/open-telemetry/community/blob/main/community-membership.md#approver).*
 
@@ -130,6 +134,7 @@ Emeritus Maintainers:
 - [Alex Boten](https://github.com/codeboten), Lightstep
 - [Owais Lone](https://github.com/owais), Splunk
 - [Srikanth Chekuri](https://github.com/srikanthccv), signoz.io
+- [Yusuke Tsutsumi](https://github.com/toumorokoshi), Google
 
 *Find more about the maintainer role in [community repository](https://github.com/open-telemetry/community/blob/main/community-membership.md#maintainer).*
 
