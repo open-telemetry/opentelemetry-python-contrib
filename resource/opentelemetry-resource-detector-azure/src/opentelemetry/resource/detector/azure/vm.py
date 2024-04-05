@@ -71,10 +71,8 @@ def _get_azure_vm_metadata():
     request = Request(_AZURE_VM_METADATA_ENDPOINT)
     request.add_header("Metadata", "True")
     try:
-        # TODO: Changed to 4s to fit into OTel SDK's 5 second timeout.
-        # Lengthen or allow user input if issue is resolved.
-        # See https://github.com/open-telemetry/opentelemetry-python/issues/3644
-        with urlopen(request, timeout=4) as response:
+        # VM metadata service should not take more than 200ms on success case
+        with urlopen(request, timeout=0.2) as response:
             return loads(response.read())
     except URLError:
         # Not on Azure VM
