@@ -8,7 +8,8 @@ from opentelemetry.sdk.trace.export import SpanExporter, SpanExportResult
 
 # SQS Limit for each message is 256Kb - https://docs.aws.amazon.com/AWSSimpleQueueService/latest/SQSDeveloperGuide/quotas-messages.html
 # 100 KB less than the limit to transport the last span
-MAX_SQS_TO_SQS = 262144-100
+MAX_SQS_TO_SQS = 262144 - 100
+
 
 # https://opentelemetry.io/docs/specs/otel/trace/sdk/#span-exporter
 class AwsSqsSpanExporter(SpanExporter):
@@ -18,7 +19,6 @@ class AwsSqsSpanExporter(SpanExporter):
         self.logger = logging.getLogger(__name__)
         self.sqs_client = session.client("sqs")
         self.sqs_queue_url = sqs_queue_url
-        
 
     def _get_size(self, span: dict) -> int:
         """This function recursively finds the size of a nested dictionary
@@ -35,7 +35,6 @@ class AwsSqsSpanExporter(SpanExporter):
             else:
                 size += sys.getsizeof(v)
         return size
-
 
     def _publish_message_to_sqs(self, message: str, attributes: dict):
         """Function used to submit jobs to SQS queue.
@@ -75,24 +74,35 @@ class AwsSqsSpanExporter(SpanExporter):
         self.logger.debug(f"Size of spans {len(spans)}")
         for span in spans:
             total_number_of_spans_per_sqs_message += 1
-            compressed_spans[total_number_of_spans_per_sqs_message] = json.loads(span.to_json())
+            compressed_spans[total_number_of_spans_per_sqs_message] = (
+                json.loads(span.to_json())
+            )
             size_of_spans = self._get_size(compressed_spans)
             # checking if the span size is not greater than SQS message limit
             if size_of_spans >= MAX_SQS_TO_SQS:
-                sqs_attributes["number_of_spans"] = str(total_number_of_spans_per_sqs_message)
+                sqs_attributes["number_of_spans"] = str(
+                    total_number_of_spans_per_sqs_message
+                )
                 self._publish_message_to_sqs(compressed_spans, attributes)
-                self.logger.info(f"Spans exported to sqs {total_number_of_spans_per_sqs_message}")
+                self.logger.info(
+                    f"Spans exported to sqs {total_number_of_spans_per_sqs_message}"
+                )
                 # reseting it back to 0 for next batch
                 total_number_of_spans_per_sqs_message = 0
                 compressed_spans = {}
                 attributes = {}
 
         # if we dont hit the limit we trigger with whenever we have collected
-        attributes["number_of_spans"] = str(total_number_of_spans_per_sqs_message)
-        self.logger.info(f"Limit not hit, transporting {total_number_of_spans_per_sqs_message} messages to sqs")
+        attributes["number_of_spans"] = str(
+            total_number_of_spans_per_sqs_message
+        )
+        self.logger.info(
+            f"Limit not hit, transporting {total_number_of_spans_per_sqs_message} messages to sqs"
+        )
         self._publish_message_to_sqs(compressed_spans, sqs_attributes)
-        self.logger.info(f"Spans exported to sqs {total_number_of_spans_per_sqs_message}")
-
+        self.logger.info(
+            f"Spans exported to sqs {total_number_of_spans_per_sqs_message}"
+        )
 
     def export(self, batch_of_spans: List[ReadableSpan]):
         try:
