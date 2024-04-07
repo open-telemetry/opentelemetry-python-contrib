@@ -74,6 +74,33 @@ populate `resource` attributes by creating a `TraceProvider` using the `AwsEc2Re
 Refer to each detectors' docstring to determine any possible requirements for that
 detector.
 
+Usage ( SQS Span Exporter )
+------------------------------
+
+Use the provided `SQS Exporter` to export all spans to preferred `AWS SQS Queue <https://aws.amazon.com/sqs/>`_.
+Use the `SQS Exporter` with preferred `SpanProcessor`
+
+For example, if tracing with OpenTelemetry, you can automatically export spans generated to 
+`AWS SQS Queue <https://aws.amazon.com/sqs/>`_
+
+.. code-block:: python
+
+    import opentelemetry.trace as trace
+    from opentelemetry.sdk.trace import TracerProvider
+    from opentelemetry.sdk.extension.aws.exporter.sqs import (
+        AwsSqsSpanExporter
+    )
+    from opentelemetry.sdk.trace.export import BatchSpanProcessor
+    import boto3
+
+    sqs_exporter = SqsSpanExporter(session=boto3.Session(), 
+                                   sqs_queue_url="https://sqs.<accountRegion>.amazonaws.com/<accountId>/<queueName>")
+
+    span_processor = BatchSpanProcessor(sqs_exporter)
+
+    trace.set_tracer_provider(TracerProvider(active_span_processor=span_processor))
+
+
 References
 ----------
 
