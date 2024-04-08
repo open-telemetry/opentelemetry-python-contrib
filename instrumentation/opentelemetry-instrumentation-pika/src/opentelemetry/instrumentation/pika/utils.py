@@ -268,5 +268,5 @@ class ReadyMessagesDequeProxy(ObjectProxy):
                 self._self_active_span.end()
         except Exception as inst_exception:  # pylint: disable=W0703
             _LOG.exception(inst_exception)
-        finally:
-            return evt
+
+        return evt

@@ -57,11 +57,15 @@ class TestPika(TestCase):
     @mock.patch(
         "opentelemetry.instrumentation.pika.PikaInstrumentor._instrument_blocking_channel_consumers"
     )
+    @mock.patch(
+        "opentelemetry.instrumentation.pika.PikaInstrumentor._decorate_queue_consumer_generator"
+    )
     def test_instrument(
         self,
         instrument_blocking_channel_consumers: mock.MagicMock,
         instrument_basic_consume: mock.MagicMock,
         instrument_channel_functions: mock.MagicMock,
+        instrument_queue_consumer_generator: mock.MagicMock,
     ):
         PikaInstrumentor.instrument_channel(channel=self.channel)
         assert hasattr(
@@ -70,6 +74,7 @@ class TestPika(TestCase):
         instrument_blocking_channel_consumers.assert_called_once()
         instrument_basic_consume.assert_called_once()
         instrument_channel_functions.assert_called_once()
+        instrument_queue_consumer_generator.assert_called_once()
 
     @mock.patch("opentelemetry.instrumentation.pika.utils._decorate_callback")
     def test_instrument_consumers(
