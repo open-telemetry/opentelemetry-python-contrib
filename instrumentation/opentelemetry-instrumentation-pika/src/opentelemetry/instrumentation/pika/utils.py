@@ -208,7 +208,6 @@ class ReadyMessagesDequeProxy(ObjectProxy):
         consume_hook: HookT = dummy_callback,
     ):
         super().__init__(wrapped)
-        self._self_active_span: Optional[Span] = None
         self._self_active_token = None
         self._self_tracer = tracer
         self._self_consume_hook = consume_hook
@@ -221,11 +220,12 @@ class ReadyMessagesDequeProxy(ObjectProxy):
                 context.detach(self._self_active_token)
         except Exception as inst_exception:  # pylint: disable=W0703
             _LOG.exception(inst_exception)
+
         evt = self.__wrapped__.popleft(*args, **kwargs)
+
         try:
-            # If a new message was received, create a span and set as active
+            # If a new message was received, create a span and set as active context
             if type(evt) is _ConsumerDeliveryEvt:
-                # start span
                 method = evt.method
                 properties = evt.properties
                 if not properties:
@@ -238,7 +238,7 @@ class ReadyMessagesDequeProxy(ObjectProxy):
                 if not ctx:
                     ctx = context.get_current()
                 message_ctx_token = context.attach(ctx)
-                self._self_active_span = _get_span(
+                span = _get_span(
                     self._self_tracer,
                     None,
                     properties,
@@ -251,12 +251,10 @@ class ReadyMessagesDequeProxy(ObjectProxy):
                 )
                 context.detach(message_ctx_token)
                 self._self_active_token = context.attach(
-                    trace.set_span_in_context(self._self_active_span)
+                    trace.set_span_in_context(span)
                 )
                 try:
-                    self._self_consume_hook(
-                        self._self_active_span, evt.body, properties
-                    )
+                    self._self_consume_hook(span, evt.body, properties)
                 except Exception as hook_exception:  # pylint: disable=W0703
                     _LOG.exception(hook_exception)
 
@@ -265,7 +263,7 @@ class ReadyMessagesDequeProxy(ObjectProxy):
                 # arrives. we still set this span's context as the active context
                 # so user code that handles this message will co child-spans of
                 # this one.
-                self._self_active_span.end()
+                span.end()
         except Exception as inst_exception:  # pylint: disable=W0703
             _LOG.exception(inst_exception)
 
