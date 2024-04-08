@@ -8,7 +8,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## Unreleased
 ### Added
 
-- `opentelemetry-instrumentation-pika` Instrumentation for `channel.consume()` function 
+- `opentelemetry-instrumentation-pika` Instrumentation for `channel.consume()` (supported
+  only for global, non channel specific instrumentation)
   ([#2397](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/2397)))
 
 ### Breaking changes
