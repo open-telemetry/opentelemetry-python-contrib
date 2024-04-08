@@ -262,8 +262,8 @@ class ReadyMessagesDequeProxy(ObjectProxy):
                 # We must end the span here, because the next place we can hook
                 # is not the end of the user code, but only when the next message
                 # arrives. we still set this span's context as the active context
-                # so user code that handles this message will co child-spans of
-                # this one.
+                # so spans created by user code that handles this message will be
+                # children of this one.
                 span.end()
         except Exception as inst_exception:  # pylint: disable=W0703
             _LOG.exception(inst_exception)
