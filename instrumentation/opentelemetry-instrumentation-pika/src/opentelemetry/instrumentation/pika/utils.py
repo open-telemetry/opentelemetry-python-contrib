@@ -250,21 +250,21 @@ class ReadyMessagesDequeProxy(ObjectProxy):
                     task_name=self._self_queue_consumer_generator.consumer_tag,
                     operation=MessagingOperationValues.RECEIVE,
                 )
-                context.detach(message_ctx_token)
-                self._self_active_token = context.attach(
-                    trace.set_span_in_context(span)
-                )
                 try:
+                    context.detach(message_ctx_token)
+                    self._self_active_token = context.attach(
+                        trace.set_span_in_context(span)
+                    )
                     self._self_consume_hook(span, evt.body, properties)
                 except Exception as hook_exception:  # pylint: disable=W0703
                     _LOG.exception(hook_exception)
-
-                # We must end the span here, because the next place we can hook
-                # is not the end of the user code, but only when the next message
-                # arrives. we still set this span's context as the active context
-                # so spans created by user code that handles this message will be
-                # children of this one.
-                span.end()
+                finally:
+                    # We must end the span here, because the next place we can hook
+                    # is not the end of the user code, but only when the next message
+                    # arrives. we still set this span's context as the active context
+                    # so spans created by user code that handles this message will be
+                    # children of this one.
+                    span.end()
         except Exception as inst_exception:  # pylint: disable=W0703
             _LOG.exception(inst_exception)
 
