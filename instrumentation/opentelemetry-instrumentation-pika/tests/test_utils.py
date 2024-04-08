@@ -455,6 +455,7 @@ class TestUtils(TestCase):
         )
         self.assertEqual(retval, callback.return_value)
 
+    # pylint: disable=too-many-statements
     @mock.patch("opentelemetry.instrumentation.pika.utils._get_span")
     @mock.patch("opentelemetry.propagate.extract")
     @mock.patch("opentelemetry.context.detach")
@@ -471,18 +472,16 @@ class TestUtils(TestCase):
         returned_span = mock.MagicMock()
         get_span.return_value = returned_span
         consume_hook = mock.MagicMock()
-        mock_task_name = "mock_task_name"
         tracer = mock.MagicMock()
         generator_info = mock.MagicMock(
             spec=_QueueConsumerGeneratorInfo,
             pending_events=mock.MagicMock(spec=collections.deque),
-            consumer_tag=mock_task_name,
+            consumer_tag="mock_task_name",
         )
         method = mock.MagicMock(spec=Basic.Deliver)
         method.exchange = "test_exchange"
         properties = mock.MagicMock()
-        mock_body = b"mock_body"
-        evt = _ConsumerDeliveryEvt(method, properties, mock_body)
+        evt = _ConsumerDeliveryEvt(method, properties, b"mock_body")
         generator_info.pending_events.popleft.return_value = evt
         proxy = utils.ReadyMessagesDequeProxy(
             generator_info.pending_events, generator_info, tracer, consume_hook
@@ -504,7 +503,7 @@ class TestUtils(TestCase):
             properties,
             destination=method.exchange,
             span_kind=SpanKind.CONSUMER,
-            task_name=mock_task_name,
+            task_name=generator_info.consumer_tag,
             operation=MessagingOperationValues.RECEIVE,
         )
         consume_hook.assert_called_once()
@@ -535,7 +534,7 @@ class TestUtils(TestCase):
             properties,
             destination=method.exchange,
             span_kind=SpanKind.CONSUMER,
-            task_name=mock_task_name,
+            task_name=generator_info.consumer_tag,
             operation=MessagingOperationValues.RECEIVE,
         )
         consume_hook.assert_called_once()

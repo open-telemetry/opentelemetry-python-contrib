@@ -199,6 +199,7 @@ def _enrich_span(
         )
 
 
+# pylint:disable=abstract-method
 class ReadyMessagesDequeProxy(ObjectProxy):
     def __init__(
         self,
@@ -225,7 +226,7 @@ class ReadyMessagesDequeProxy(ObjectProxy):
 
         try:
             # If a new message was received, create a span and set as active context
-            if type(evt) is _ConsumerDeliveryEvt:
+            if isinstance(evt, _ConsumerDeliveryEvt):
                 method = evt.method
                 properties = evt.properties
                 if not properties:
