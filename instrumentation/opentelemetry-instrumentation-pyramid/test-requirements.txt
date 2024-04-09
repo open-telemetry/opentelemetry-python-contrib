@@ -19,7 +19,7 @@ translationstring==1.4
 typing_extensions==4.9.0
 venusian==3.1.0
 WebOb==1.8.7
-Werkzeug==0.16.1
+Werkzeug==2.3.8
 wrapt==1.16.0
 zipp==3.17.0
 zope.deprecation==5.0
