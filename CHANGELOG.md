@@ -11,6 +11,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - Rename `type` attribute to `asgi.event.type` in `opentelemetry-instrumentation-asgi`
   ([#2300](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/2300))
+- Rename AwsLambdaInstrumentor span attributes `faas.id` to `cloud.resource_id`, `faas.execution` to `faas.invocation_id`
+  ([#2372](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/2372))
 
 ## Version 1.24.0/0.45b0 (2024-03-28)
 
@@ -36,8 +38,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   ([#2355](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/2355))
 - AwsLambdaInstrumentor sets `cloud.account.id` span attribute
   ([#2367](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/2367))
-- AwsLambdaInstrumentor sets `cloud.resource_id`, `faas.invocation_id` span attributes (breaking)
-  ([#2372](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/2372))
 
 
 ## Version 1.23.0/0.44b0 (2024-02-23)
