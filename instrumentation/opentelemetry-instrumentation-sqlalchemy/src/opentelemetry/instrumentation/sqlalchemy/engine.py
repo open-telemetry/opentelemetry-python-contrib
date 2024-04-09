@@ -13,6 +13,7 @@
 # limitations under the License.
 import os
 import re
+import sqlalchemy
 import weakref
 
 from sqlalchemy.event import (  # pylint: disable=no-name-in-module
@@ -227,7 +228,7 @@ class EngineTracer:
                 commenter_data = {
                     "db_driver": conn.engine.driver,
                     # Driver/framework centric information.
-                    "db_framework": f"sqlalchemy:{__version__}",
+                    "db_framework": f"sqlalchemy:{sqlalchemy.__version__}",
                 }
 
                 if self.commenter_options.get("opentelemetry_values", True):
