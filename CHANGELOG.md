@@ -29,6 +29,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - `opentelemetry-instrumentation-grpc` AioClientInterceptor should propagate with a Metadata object
   ([#2363](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/2363))
 
+### Added
+
+- `opentelemetry-instrumentation-flask`, `opentelemetry-instrumentation-wsgi` Implement new semantic convention opt-in with stable http semantic conventions
+  ([#2002](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/2002))
+
 ## Version 1.24.0/0.45b0 (2024-03-28)
 
 ### Added
