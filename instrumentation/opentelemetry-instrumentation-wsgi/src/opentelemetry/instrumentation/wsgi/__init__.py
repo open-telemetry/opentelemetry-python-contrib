@@ -213,6 +213,19 @@ import wsgiref.util as wsgiref_util
 from timeit import default_timer
 
 from opentelemetry import context, trace
+from opentelemetry.instrumentation._semconv import (
+    _OpenTelemetryStabilityMode,
+    _report_old,
+    _set_http_flavor_version,
+    _set_http_method,
+    _set_http_net_host,
+    _set_http_net_host_port,
+    _set_http_peer_ip,
+    _set_http_peer_port_client_server,
+    _set_http_scheme,
+    _set_http_target,
+    _set_http_user_agent,
+)
 from opentelemetry.instrumentation.utils import (
     _start_internal_or_server_span,
     http_status_to_status_code,
@@ -296,53 +309,81 @@ def setifnotnone(dic, key, value):
         dic[key] = value
 
 
-def collect_request_attributes(environ):
+def collect_request_attributes(
+        environ,
+        sem_conv_opt_in_mode: _OpenTelemetryStabilityMode = _OpenTelemetryStabilityMode.DEFAULT
+    ):
     """Collects HTTP request attributes from the PEP3333-conforming
     WSGI environ and returns a dictionary to be used as span creation attributes.
     """
-
-    result = {
-        SpanAttributes.HTTP_METHOD: sanitize_method(
-            environ.get("REQUEST_METHOD")
+    result = {}
+    _set_http_method(
+        result,
+        environ.get("REQUEST_METHOD", ""),
+        sanitize_method(
+            environ.get("REQUEST_METHOD", "")
         ),
-        SpanAttributes.HTTP_SERVER_NAME: environ.get("SERVER_NAME"),
-        SpanAttributes.HTTP_SCHEME: environ.get("wsgi.url_scheme"),
-    }
+        sem_conv_opt_in_mode,
+    )
+    # old semconv v1.12.0
+    server_name = environ.get("SERVER_NAME")
+    if _report_old():
+        result[SpanAttributes.HTTP_SERVER_NAME] = server_name
 
+    _set_http_scheme(
+        result,
+        environ.get("wsgi.url_scheme"),
+        sem_conv_opt_in_mode,
+    )
+
+    host = environ.get("HTTP_HOST")
     host_port = environ.get("SERVER_PORT")
-    if host_port is not None and not host_port == "":
-        result.update({SpanAttributes.NET_HOST_PORT: int(host_port)})
+    if host:
+        _set_http_net_host(result, host, sem_conv_opt_in_mode)
+        # old semconv v1.12.0
+        if _report_old():
+            result[SpanAttributes.HTTP_HOST] = host
+        if host_port:
+            _set_http_net_host_port(
+                result,
+                int(host_port),
+                sem_conv_opt_in_mode,
+            )
 
-    setifnotnone(result, SpanAttributes.HTTP_HOST, environ.get("HTTP_HOST"))
+
     target = environ.get("RAW_URI")
     if target is None:  # Note: `"" or None is None`
         target = environ.get("REQUEST_URI")
     if target is not None:
-        result[SpanAttributes.HTTP_TARGET] = target
+        _set_http_target(result, target, sem_conv_opt_in_mode)
     else:
-        result[SpanAttributes.HTTP_URL] = remove_url_credentials(
-            wsgiref_util.request_uri(environ)
-        )
+        # old semconv v1.20.0
+        if _report_old():
+            result[SpanAttributes.HTTP_URL] = remove_url_credentials(
+                wsgiref_util.request_uri(environ)
+            )
 
     remote_addr = environ.get("REMOTE_ADDR")
     if remote_addr:
-        result[SpanAttributes.NET_PEER_IP] = remote_addr
+        _set_http_peer_ip(result, target, sem_conv_opt_in_mode)
+    
+    peer_port = environ.get("REMOTE_PORT")
+    if peer_port:
+        _set_http_peer_port_client_server(result, peer_port, sem_conv_opt_in_mode)
+
     remote_host = environ.get("REMOTE_HOST")
     if remote_host and remote_host != remote_addr:
         result[SpanAttributes.NET_PEER_NAME] = remote_host
 
     user_agent = environ.get("HTTP_USER_AGENT")
     if user_agent is not None and len(user_agent) > 0:
-        result[SpanAttributes.HTTP_USER_AGENT] = user_agent
+        _set_http_user_agent(result, user_agent, sem_conv_opt_in_mode)
 
-    setifnotnone(
-        result, SpanAttributes.NET_PEER_PORT, environ.get("REMOTE_PORT")
-    )
     flavor = environ.get("SERVER_PROTOCOL", "")
     if flavor.upper().startswith(_HTTP_VERSION_PREFIX):
         flavor = flavor[len(_HTTP_VERSION_PREFIX) :]
     if flavor:
-        result[SpanAttributes.HTTP_FLAVOR] = flavor
+        _set_http_flavor_version(result, flavor, sem_conv_opt_in_mode)
 
     return result
 

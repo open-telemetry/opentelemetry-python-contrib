@@ -70,11 +70,11 @@ from opentelemetry.instrumentation._semconv import (
     _OpenTelemetryStabilitySignalType,
     _report_new,
     _report_old,
-    _set_http_hostname,
+    _set_http_host,
     _set_http_method,
     _set_http_net_peer_name,
     _set_http_network_protocol_version,
-    _set_http_port,
+    _set_http_peer_port_client,
     _set_http_scheme,
     _set_http_status_code,
     _set_http_url,
@@ -174,14 +174,14 @@ def _instrument(
                     metric_labels, parsed_url.scheme, sem_conv_opt_in_mode
                 )
             if parsed_url.hostname:
-                _set_http_hostname(
+                _set_http_host(
                     metric_labels, parsed_url.hostname, sem_conv_opt_in_mode
                 )
                 _set_http_net_peer_name(
                     metric_labels, parsed_url.hostname, sem_conv_opt_in_mode
                 )
                 if _report_new(sem_conv_opt_in_mode):
-                    _set_http_hostname(
+                    _set_http_host(
                         span_attributes,
                         parsed_url.hostname,
                         sem_conv_opt_in_mode,
@@ -191,11 +191,11 @@ def _instrument(
                         _SPAN_ATTRIBUTES_NETWORK_PEER_ADDRESS
                     ] = parsed_url.hostname
             if parsed_url.port:
-                _set_http_port(
+                _set_http_peer_port_client(
                     metric_labels, parsed_url.port, sem_conv_opt_in_mode
                 )
                 if _report_new(sem_conv_opt_in_mode):
-                    _set_http_port(
+                    _set_http_peer_port_client(
                         span_attributes, parsed_url.port, sem_conv_opt_in_mode
                     )
                     # Use semconv library when available

@@ -17,6 +17,7 @@ import threading
 from enum import Enum
 
 from opentelemetry.semconv.trace import SpanAttributes
+from opentelemetry.util.http import _parse_url_query
 
 # TODO: will come through semconv package once updated
 _SPAN_ATTRIBUTES_ERROR_TYPE = "error.type"
@@ -90,6 +91,15 @@ def _set_http_method(result, original, normalized, sem_conv_opt_in_mode):
         )
 
 
+def _set_http_status_code(result, code, sem_conv_opt_in_mode):
+    if _report_old(sem_conv_opt_in_mode):
+        set_int_attribute(result, SpanAttributes.HTTP_STATUS_CODE, code)
+    if _report_new(sem_conv_opt_in_mode):
+        set_int_attribute(
+            result, SpanAttributes.HTTP_RESPONSE_STATUS_CODE, code
+        )
+
+
 def _set_http_url(result, url, sem_conv_opt_in_mode):
     if _report_old(sem_conv_opt_in_mode):
         set_string_attribute(result, SpanAttributes.HTTP_URL, url)
@@ -100,17 +110,17 @@ def _set_http_url(result, url, sem_conv_opt_in_mode):
 def _set_http_scheme(result, scheme, sem_conv_opt_in_mode):
     if _report_old(sem_conv_opt_in_mode):
         set_string_attribute(result, SpanAttributes.HTTP_SCHEME, scheme)
-    # TODO: Support opt-in for scheme in new semconv
-    # if _report_new(sem_conv_opt_in_mode):
-    #     set_string_attribute(result, SpanAttributes.URL_SCHEME, scheme)
-
-
-def _set_http_hostname(result, hostname, sem_conv_opt_in_mode):
-    if _report_old(sem_conv_opt_in_mode):
-        set_string_attribute(result, SpanAttributes.HTTP_HOST, hostname)
     if _report_new(sem_conv_opt_in_mode):
-        set_string_attribute(result, SpanAttributes.SERVER_ADDRESS, hostname)
+        set_string_attribute(result, SpanAttributes.URL_SCHEME, scheme)
 
+
+def _set_http_host(result, host, sem_conv_opt_in_mode):
+    if _report_old(sem_conv_opt_in_mode):
+        set_string_attribute(result, SpanAttributes.HTTP_HOST, host)
+    if _report_new(sem_conv_opt_in_mode):
+        set_string_attribute(result, SpanAttributes.SERVER_ADDRESS, host)
+
+# Client
 
 def _set_http_net_peer_name(result, peer_name, sem_conv_opt_in_mode):
     if _report_old(sem_conv_opt_in_mode):
@@ -119,20 +129,11 @@ def _set_http_net_peer_name(result, peer_name, sem_conv_opt_in_mode):
         set_string_attribute(result, SpanAttributes.SERVER_ADDRESS, peer_name)
 
 
-def _set_http_port(result, port, sem_conv_opt_in_mode):
+def _set_http_peer_port_client(result, port, sem_conv_opt_in_mode):
     if _report_old(sem_conv_opt_in_mode):
         set_int_attribute(result, SpanAttributes.NET_PEER_PORT, port)
     if _report_new(sem_conv_opt_in_mode):
         set_int_attribute(result, SpanAttributes.SERVER_PORT, port)
-
-
-def _set_http_status_code(result, code, sem_conv_opt_in_mode):
-    if _report_old(sem_conv_opt_in_mode):
-        set_int_attribute(result, SpanAttributes.HTTP_STATUS_CODE, code)
-    if _report_new(sem_conv_opt_in_mode):
-        set_int_attribute(
-            result, SpanAttributes.HTTP_RESPONSE_STATUS_CODE, code
-        )
 
 
 def _set_http_network_protocol_version(result, version, sem_conv_opt_in_mode):
@@ -142,6 +143,71 @@ def _set_http_network_protocol_version(result, version, sem_conv_opt_in_mode):
         set_string_attribute(
             result, SpanAttributes.NETWORK_PROTOCOL_VERSION, version
         )
+
+# Server
+
+def _set_http_net_host(result, host, sem_conv_opt_in_mode):
+    if _report_old(sem_conv_opt_in_mode):
+        set_string_attribute(result, SpanAttributes.NET_HOST_NAME, host)
+    if _report_new(sem_conv_opt_in_mode):
+        set_string_attribute(result, SpanAttributes.SERVER_ADDRESS, host)
+
+
+def _set_http_net_host_port(result, port, sem_conv_opt_in_mode):
+    if _report_old(sem_conv_opt_in_mode):
+        set_int_attribute(result, SpanAttributes.NET_HOST_PORT, port)
+    if _report_new(sem_conv_opt_in_mode):
+        set_int_attribute(result, SpanAttributes.SERVER_PORT, port)
+
+
+def _set_http_target(result, target, sem_conv_opt_in_mode):
+    if _report_old(sem_conv_opt_in_mode):
+        set_string_attribute(result, SpanAttributes.HTTP_TARGET, target)
+    if _report_new(sem_conv_opt_in_mode):
+        path, query = _parse_url_query(target)
+        if path:
+            set_string_attribute(
+                result, SpanAttributes.URL_PATH, path
+            )
+        if query:
+            set_string_attribute(
+                result, SpanAttributes.URL_QUERY, query
+            )
+
+
+def _set_http_peer_ip(result, ip, sem_conv_opt_in_mode):
+    if _report_old(sem_conv_opt_in_mode):
+        set_string_attribute(result, SpanAttributes.NET_PEER_IP, ip)
+    if _report_new(sem_conv_opt_in_mode):
+        set_string_attribute(result, SpanAttributes.CLIENT_ADDRESS, ip)
+
+
+def _set_http_peer_port_client_server(result, port, sem_conv_opt_in_mode):
+    if _report_old(sem_conv_opt_in_mode):
+        set_int_attribute(result, SpanAttributes.NET_PEER_PORT, port)
+    if _report_new(sem_conv_opt_in_mode):
+        set_int_attribute(result, SpanAttributes.CLIENT_PORT, port)
+    
+
+def _set_http_user_agent(result, user_agent, sem_conv_opt_in_mode):
+    if _report_old(sem_conv_opt_in_mode):
+        set_string_attribute(result, SpanAttributes.HTTP_USER_AGENT, user_agent)
+    if _report_new(sem_conv_opt_in_mode):
+        set_string_attribute(result, SpanAttributes.USER_AGENT_ORIGINAL, user_agent)
+
+
+def _set_http_net_peer_name(result, name, sem_conv_opt_in_mode):
+    if _report_old(sem_conv_opt_in_mode):
+        set_string_attribute(result, SpanAttributes.NET_PEER_NAME, name)
+    if _report_new(sem_conv_opt_in_mode):
+        set_string_attribute(result, SpanAttributes.CLIENT_ADDRESS, name)
+
+
+def _set_http_flavor_version(result, version, sem_conv_opt_in_mode):
+    if _report_old(sem_conv_opt_in_mode):
+        set_string_attribute(result, SpanAttributes.HTTP_FLAVOR, version)
+    if _report_new(sem_conv_opt_in_mode):
+        set_string_attribute(result, SpanAttributes.NETWORK_PROTOCOL_VERSION, version)
 
 
 _OTEL_SEMCONV_STABILITY_OPT_IN_KEY = "OTEL_SEMCONV_STABILITY_OPT_IN"
