@@ -230,15 +230,16 @@ from opentelemetry.instrumentation._semconv import (
     _set_http_method,
     _set_http_net_host,
     _set_http_net_host_port,
+    _set_http_net_peer_name_server,
     _set_http_peer_ip,
-    _set_http_peer_port_client_server,
+    _set_http_peer_port_server,
     _set_http_scheme,
     _set_http_target,
     _set_http_user_agent,
+    _set_status,
 )
 from opentelemetry.instrumentation.utils import (
     _start_internal_or_server_span,
-    http_status_to_status_code,
 )
 from opentelemetry.instrumentation.wsgi.version import __version__
 from opentelemetry.metrics import get_meter
@@ -379,11 +380,11 @@ def collect_request_attributes(
     
     peer_port = environ.get("REMOTE_PORT")
     if peer_port:
-        _set_http_peer_port_client_server(result, peer_port, sem_conv_opt_in_mode)
+        _set_http_peer_port_server(result, peer_port, sem_conv_opt_in_mode)
 
     remote_host = environ.get("REMOTE_HOST")
     if remote_host and remote_host != remote_addr:
-        result[SpanAttributes.NET_PEER_NAME] = remote_host
+        _set_http_net_peer_name_server(result, remote_host, sem_conv_opt_in_mode)
 
     user_agent = environ.get("HTTP_USER_AGENT")
     if user_agent is not None and len(user_agent) > 0:
@@ -491,23 +492,17 @@ def add_response_attributes(
     """
     if not span.is_recording():
         return
-    status_code, _ = start_response_status.split(" ", 1)
+    status_code_str, _ = start_response_status.split(" ", 1)
 
+    status_code = 0
     try:
-        status_code = int(status_code)
+        status_code = int(status_code_str)
     except ValueError:
-        span.set_status(
-            Status(
-                StatusCode.ERROR,
-                "Non-integer HTTP status: " + repr(status_code),
-            )
-        )
-    else:
-        span.set_attribute(SpanAttributes.HTTP_STATUS_CODE, status_code)
-        span.set_status(
-            Status(http_status_to_status_code(status_code, server_span=True))
-        )
-
+        status_code = -1
+    if duration_attrs is None:
+        duration_attrs = {}
+    _set_status(span, duration_attrs, status_code_str, status_code, sem_conv_opt_in_mode)
+        
 
 def get_default_span_name(environ):
     """
@@ -591,17 +586,15 @@ class OpenTelemetryMiddleware:
         )
         self.request_hook = request_hook
         self.response_hook = response_hook
+        self._sem_conv_opt_in_mode = sem_conv_opt_in_mode
 
     @staticmethod
     def _create_start_response(
-        span, start_response, response_hook, duration_attrs
+        span, start_response, response_hook, duration_attrs, sem_conv_opt_in_mode,
     ):
         @functools.wraps(start_response)
         def _start_response(status, response_headers, *args, **kwargs):
-            add_response_attributes(span, status, response_headers)
-            status_code = _parse_status_code(status)
-            if status_code is not None:
-                duration_attrs[SpanAttributes.HTTP_STATUS_CODE] = status_code
+            add_response_attributes(span, status, response_headers, duration_attrs, sem_conv_opt_in_mode)
             if span.is_recording() and span.kind == trace.SpanKind.SERVER:
                 custom_attributes = collect_custom_response_headers_attributes(
                     response_headers
@@ -622,11 +615,11 @@ class OpenTelemetryMiddleware:
             environ: A WSGI environment.
             start_response: The WSGI start_response callable.
         """
-        req_attrs = collect_request_attributes(environ)
+        req_attrs = collect_request_attributes(environ, self._sem_conv_opt_in_mode)
         active_requests_count_attrs = _parse_active_request_count_attrs(
-            req_attrs
+            req_attrs,
+            self._sem_conv_opt_in_mode,
         )
-        duration_attrs = _parse_duration_attrs(req_attrs)
 
         span, token = _start_internal_or_server_span(
             tracer=self.tracer,
@@ -655,20 +648,31 @@ class OpenTelemetryMiddleware:
         try:
             with trace.use_span(span):
                 start_response = self._create_start_response(
-                    span, start_response, response_hook, duration_attrs
+                    span,
+                    start_response,
+                    response_hook,
+                    req_attrs,
+                    self._sem_conv_opt_in_mode,
                 )
                 iterable = self.wsgi(environ, start_response)
                 return _end_span_after_iterating(iterable, span, token)
         except Exception as ex:
             if span.is_recording():
-                span.set_status(Status(StatusCode.ERROR, str(ex)))
+                if _report_new(self._sem_conv_opt_in_mode):
+                    span.set_attribute(_SPAN_ATTRIBUTES_ERROR_TYPE, type(ex).__qualname__ )
+            span.set_status(Status(StatusCode.ERROR, str(ex)))
             span.end()
             if token is not None:
                 context.detach(token)
             raise
         finally:
-            duration = max(round((default_timer() - start) * 1000), 0)
-            self.duration_histogram.record(duration, duration_attrs)
+            duration_s = default_timer() - start
+            if self.duration_histogram_old:
+                duration_attrs_old = _parse_duration_attrs(req_attrs, _OpenTelemetryStabilityMode.DEFAULT)
+                self.duration_histogram_old.record(max(round(duration_s * 1000), 0), duration_attrs_old)
+            if self.duration_histogram_new:
+                duration_attrs_new = _parse_duration_attrs(req_attrs, _OpenTelemetryStabilityMode.HTTP)
+                self.duration_histogram_new.record(max(round(duration_s * 1000), 0), duration_attrs_new)
             self.active_requests_counter.add(-1, active_requests_count_attrs)
 
 
