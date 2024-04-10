@@ -74,7 +74,7 @@ from opentelemetry.instrumentation._semconv import (
     _report_old,
     _set_http_host,
     _set_http_method,
-    _set_http_net_peer_name,
+    _set_http_net_peer_name_client,
     _set_http_network_protocol_version,
     _set_http_peer_port_client,
     _set_http_scheme,
@@ -179,7 +179,7 @@ def _instrument(
                 _set_http_host(
                     metric_labels, parsed_url.hostname, sem_conv_opt_in_mode
                 )
-                _set_http_net_peer_name(
+                _set_http_net_peer_name_client(
                     metric_labels, parsed_url.hostname, sem_conv_opt_in_mode
                 )
                 if _report_new(sem_conv_opt_in_mode):

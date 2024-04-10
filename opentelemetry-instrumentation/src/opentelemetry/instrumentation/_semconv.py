@@ -16,6 +16,10 @@ import os
 import threading
 from enum import Enum
 
+from opentelemetry.instrumentation.utils import (
+    http_status_to_status_code,
+)
+from opentelemetry.trace.status import Status, StatusCode
 from opentelemetry.semconv.trace import SpanAttributes
 from opentelemetry.util.http import _parse_url_query
 
@@ -246,7 +250,7 @@ def _set_http_host(result, host, sem_conv_opt_in_mode):
 
 # Client
 
-def _set_http_net_peer_name(result, peer_name, sem_conv_opt_in_mode):
+def _set_http_net_peer_name_client(result, peer_name, sem_conv_opt_in_mode):
     if _report_old(sem_conv_opt_in_mode):
         set_string_attribute(result, SpanAttributes.NET_PEER_NAME, peer_name)
     if _report_new(sem_conv_opt_in_mode):
@@ -306,7 +310,7 @@ def _set_http_peer_ip(result, ip, sem_conv_opt_in_mode):
         set_string_attribute(result, SpanAttributes.CLIENT_ADDRESS, ip)
 
 
-def _set_http_peer_port_client_server(result, port, sem_conv_opt_in_mode):
+def _set_http_peer_port_server(result, port, sem_conv_opt_in_mode):
     if _report_old(sem_conv_opt_in_mode):
         set_int_attribute(result, SpanAttributes.NET_PEER_PORT, port)
     if _report_new(sem_conv_opt_in_mode):
@@ -320,7 +324,7 @@ def _set_http_user_agent(result, user_agent, sem_conv_opt_in_mode):
         set_string_attribute(result, SpanAttributes.USER_AGENT_ORIGINAL, user_agent)
 
 
-def _set_http_net_peer_name(result, name, sem_conv_opt_in_mode):
+def _set_http_net_peer_name_server(result, name, sem_conv_opt_in_mode):
     if _report_old(sem_conv_opt_in_mode):
         set_string_attribute(result, SpanAttributes.NET_PEER_NAME, name)
     if _report_new(sem_conv_opt_in_mode):
@@ -332,6 +336,33 @@ def _set_http_flavor_version(result, version, sem_conv_opt_in_mode):
         set_string_attribute(result, SpanAttributes.HTTP_FLAVOR, version)
     if _report_new(sem_conv_opt_in_mode):
         set_string_attribute(result, SpanAttributes.NETWORK_PROTOCOL_VERSION, version)
+
+
+def _set_status(span, metrics_attributes, status_code_str, status_code, sem_conv_opt_in_mode):
+    if (status_code < 0):
+        if _report_new(sem_conv_opt_in_mode):
+            span.set_attribute(_SPAN_ATTRIBUTES_ERROR_TYPE, status_code_str)
+            metrics_attributes[_SPAN_ATTRIBUTES_ERROR_TYPE] = status_code_str
+
+        span.set_status(
+            Status(
+                StatusCode.ERROR,
+                "Non-integer HTTP status: " + status_code_str,
+            )
+        )
+    else:
+        status = http_status_to_status_code(status_code, server_span=True)
+
+        if _report_old(sem_conv_opt_in_mode):
+            span.set_attribute(SpanAttributes.HTTP_STATUS_CODE, status_code)
+            metrics_attributes[SpanAttributes.HTTP_STATUS_CODE] = status_code
+        if _report_new(sem_conv_opt_in_mode):
+            span.set_attribute(SpanAttributes.HTTP_RESPONSE_STATUS_CODE, status_code)
+            metrics_attributes[SpanAttributes.HTTP_RESPONSE_STATUS_CODE] = status_code
+            if status == StatusCode.ERROR:
+                span.set_attribute(_SPAN_ATTRIBUTES_ERROR_TYPE, status_code_str)
+                metrics_attributes[_SPAN_ATTRIBUTES_ERROR_TYPE] = status_code_str
+        span.set_status(Status(status))
 
 
 # Get schema version based off of opt-in mode
