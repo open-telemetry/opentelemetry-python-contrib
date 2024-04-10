@@ -18,12 +18,24 @@ from unittest import mock
 
 import pytest
 
+# Imports for StructlogHandler tests
+from unittest.mock import Mock
+from handlers.opentelemetry_structlog.src.exporter import LogExporter
+from datetime import datetime, timezone
+from unittest.mock import MagicMock
+
+
+
+
 from opentelemetry.instrumentation.logging import (  # pylint: disable=no-name-in-module
     DEFAULT_LOGGING_FORMAT,
     LoggingInstrumentor,
 )
 from opentelemetry.test.test_base import TestBase
 from opentelemetry.trace import ProxyTracer, get_tracer
+
+from handlers.opentelemetry_structlog.src.exporter import StructlogHandler
+
 
 
 class FakeTracerProvider:
@@ -207,3 +219,84 @@ class TestLoggingInstrumentor(TestBase):
                 self.assertFalse(hasattr(record, "otelTraceID"))
                 self.assertFalse(hasattr(record, "otelServiceName"))
                 self.assertFalse(hasattr(record, "otelTraceSampled"))
+
+# StructlogHandler Tests
+# Test Initialization
+class TestStructlogHandler(TestBase):
+    @pytest.fixture(autouse=True)
+    def inject_fixtures(self, caplog):
+        self.caplog = caplog  # pylint: disable=attribute-defined-outside-init
+    
+    def mocker(self):
+        return MagicMock()
+
+    def setUp(self):
+        super().setUp()
+        LoggingInstrumentor().instrument()
+        self.tracer = get_tracer(__name__)
+
+    def tearDown(self):
+        super().tearDown()
+        LoggingInstrumentor().uninstrument()
+
+    def structlog_exporter(self):
+        with self.caplog.at_level(level=logging.INFO):
+            # Mock the LogExporter dependency
+            mock_exporter = Mock(spec=LogExporter)
+            # Instantiate the StructlogHandler with mock dependencies
+            exporter = StructlogHandler("test_service", "test_host", mock_exporter)
+            return exporter
+
+
+    def test_initialization(self):
+        exporter = self.structlog_exporter()
+        assert exporter._logger_provider is not None, "LoggerProvider should be initialized"
+        assert exporter._logger is not None, "Logger should be initialized"
+
+    def test_pre_process_adds_timestamp(self):
+        event_dict = {"event": "test_event"}
+        processed_event = self.structlog_exporter()._pre_process(event_dict)
+        assert "timestamp" in processed_event, "Timestamp should be added in pre-processing"
+
+    def test_post_process_formats_timestamp(self):
+        # Assuming the pre_process method has added a datetime object
+        event_dict = {"timestamp": datetime.now(timezone.utc)}
+        processed_event = self.structlog_exporter()._post_process(event_dict)
+        assert isinstance(processed_event["timestamp"], str), "Timestamp should be formatted to string in ISO format"
+
+    def test_parse_exception(self):
+        # Mocking an exception event
+        exception = (ValueError, ValueError("mock error"), None)
+        event_dict = {"exception": exception}
+        parsed_exception = self.structlog_exporter()._parse_exception(event_dict)
+        assert parsed_exception["exception.type"] == "ValueError", "Exception type should be parsed"
+        assert parsed_exception["exception.message"] == "mock error", "Exception message should be parsed"
+        # Further assertions can be added for stack trace
+
+    def test_parse_timestamp(self):
+        # Assuming a specific datetime for consistency
+        fixed_datetime = datetime(2020, 1, 1, tzinfo=timezone.utc)
+        event_dict = {"timestamp": fixed_datetime}
+        timestamp = self.structlog_exporter()._parse_timestamp(event_dict)
+        expected_timestamp = 1577836800000000000  # Expected nanoseconds since epoch
+        assert timestamp == expected_timestamp, "Timestamp should be correctly parsed to nanoseconds"
+
+    def test_call_method_processes_log_correctly(self):
+        # Mock the logger and exporter
+        exporter = MagicMock()
+        logger = MagicMock()
+        exporter_instance = StructlogHandler("test_service", "test_host", exporter)
+        exporter_instance._logger = logger
+
+        # Define an event dictionary
+        event_dict = {"level": "info", "event": "test event", "timestamp": datetime.now(timezone.utc)}
+
+        # Call the __call__ method of StructlogHandler
+        processed_event = exporter_instance(logger=None, name=None, event_dict=event_dict)
+
+        # Assert that the logger's emit method was called with the processed event
+        logger.emit.assert_called_once()
+
+
+
+
