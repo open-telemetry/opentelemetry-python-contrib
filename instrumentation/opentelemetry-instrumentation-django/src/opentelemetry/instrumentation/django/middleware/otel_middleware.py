@@ -197,6 +197,9 @@ class _DjangoMiddleware(MiddlewareMixin):
 
         is_asgi_request = _is_asgi_request(request)
         if not _is_asgi_supported and is_asgi_request:
+            _logger.warning(
+                "ASGI request detected but ASGI instrumentation is not available. Skipping instrumentation. You may need to install the `opentelemetry-instrumentation-asgi` package."
+            )
             return
 
         # pylint:disable=W0212
