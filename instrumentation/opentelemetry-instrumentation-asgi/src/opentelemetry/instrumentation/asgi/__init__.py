@@ -458,6 +458,9 @@ class OpenTelemetryMiddleware:
                       scope which is sent as a dictionary for when the method receive is called.
         client_response_hook: Optional callback which is called with the internal span and an ASGI
                       event which is sent as a dictionary for when the method send is called.
+        excluded_urls: (opentelemetry.util.http.ExcludeList) Optional parameter to specify URLs that should be excluded from tracing. 
+                      This can be useful for skipping health checks or other endpoints that do not need to be monitored. 
+                      Defaults to None.
         tracer_provider: The optional tracer provider to use. If omitted
             the current globally configured one is used.
     """
