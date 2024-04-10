@@ -214,8 +214,18 @@ from timeit import default_timer
 
 from opentelemetry import context, trace
 from opentelemetry.instrumentation._semconv import (
+    _METRIC_ATTRIBUTES_SERVER_DURATION_NAME,
     _OpenTelemetryStabilityMode,
+    _SPAN_ATTRIBUTES_ERROR_TYPE,
+    _get_schema_url,
+    _filter_semconv_active_request_count_attr,
+    _filter_semconv_duration_attrs,
     _report_old,
+    _report_new,
+    _server_active_requests_count_attrs_new,
+    _server_active_requests_count_attrs_old,
+    _server_duration_attrs_new,
+    _server_duration_attrs_old,
     _set_http_flavor_version,
     _set_http_method,
     _set_http_net_host,
@@ -311,7 +321,7 @@ def setifnotnone(dic, key, value):
 
 def collect_request_attributes(
         environ,
-        sem_conv_opt_in_mode: _OpenTelemetryStabilityMode = _OpenTelemetryStabilityMode.DEFAULT
+        sem_conv_opt_in_mode = _OpenTelemetryStabilityMode.DEFAULT,
     ):
     """Collects HTTP request attributes from the PEP3333-conforming
     WSGI environ and returns a dictionary to be used as span creation attributes.
@@ -327,7 +337,7 @@ def collect_request_attributes(
     )
     # old semconv v1.12.0
     server_name = environ.get("SERVER_NAME")
-    if _report_old():
+    if _report_old(sem_conv_opt_in_mode):
         result[SpanAttributes.HTTP_SERVER_NAME] = server_name
 
     _set_http_scheme(
@@ -341,7 +351,7 @@ def collect_request_attributes(
     if host:
         _set_http_net_host(result, host, sem_conv_opt_in_mode)
         # old semconv v1.12.0
-        if _report_old():
+        if _report_old(sem_conv_opt_in_mode):
             result[SpanAttributes.HTTP_HOST] = host
         if host_port:
             _set_http_net_host_port(
@@ -358,7 +368,7 @@ def collect_request_attributes(
         _set_http_target(result, target, sem_conv_opt_in_mode)
     else:
         # old semconv v1.20.0
-        if _report_old():
+        if _report_old(sem_conv_opt_in_mode):
             result[SpanAttributes.HTTP_URL] = remove_url_credentials(
                 wsgiref_util.request_uri(environ)
             )
@@ -451,24 +461,30 @@ def _parse_status_code(resp_status):
         return None
 
 
-def _parse_active_request_count_attrs(req_attrs):
-    active_requests_count_attrs = {}
-    for attr_key in _active_requests_count_attrs:
-        if req_attrs.get(attr_key) is not None:
-            active_requests_count_attrs[attr_key] = req_attrs[attr_key]
-    return active_requests_count_attrs
+def _parse_active_request_count_attrs(req_attrs, sem_conv_opt_in_mode = _OpenTelemetryStabilityMode.DEFAULT):
+    return _filter_semconv_active_request_count_attr(
+        req_attrs,
+        _server_active_requests_count_attrs_old,
+        _server_active_requests_count_attrs_new,
+        sem_conv_opt_in_mode,
+    )
 
 
-def _parse_duration_attrs(req_attrs):
-    duration_attrs = {}
-    for attr_key in _duration_attrs:
-        if req_attrs.get(attr_key) is not None:
-            duration_attrs[attr_key] = req_attrs[attr_key]
-    return duration_attrs
+def _parse_duration_attrs(req_attrs, sem_conv_opt_in_mode = _OpenTelemetryStabilityMode.DEFAULT):
+    return _filter_semconv_duration_attrs(
+        req_attrs,
+        _server_duration_attrs_old,
+        _server_duration_attrs_new,
+        sem_conv_opt_in_mode,
+    )
 
 
 def add_response_attributes(
-    span, start_response_status, response_headers
+    span,
+    start_response_status,
+    response_headers,
+    sem_conv_opt_in_mode = _OpenTelemetryStabilityMode.DEFAULT,
+    duration_attrs = None,
 ):  # pylint: disable=unused-argument
     """Adds HTTP response attributes to span using the arguments
     passed to a PEP3333-conforming start_response callable.
@@ -505,6 +521,8 @@ def get_default_span_name(environ):
         The span name.
     """
     method = sanitize_method(environ.get("REQUEST_METHOD", "").strip())
+    if method == "_OTHER":
+        return "HTTP"
     path = environ.get("PATH_INFO", "").strip()
     if method and path:
         return f"{method} {path}"
@@ -535,29 +553,41 @@ class OpenTelemetryMiddleware:
         response_hook=None,
         tracer_provider=None,
         meter_provider=None,
+        sem_conv_opt_in_mode: _OpenTelemetryStabilityMode = _OpenTelemetryStabilityMode.DEFAULT,
     ):
         self.wsgi = wsgi
         self.tracer = trace.get_tracer(
             __name__,
             __version__,
             tracer_provider,
-            schema_url="https://opentelemetry.io/schemas/1.11.0",
+            schema_url=_get_schema_url(sem_conv_opt_in_mode),
         )
         self.meter = get_meter(
             __name__,
             __version__,
             meter_provider,
-            schema_url="https://opentelemetry.io/schemas/1.11.0",
+            schema_url=_get_schema_url(sem_conv_opt_in_mode),
         )
-        self.duration_histogram = self.meter.create_histogram(
-            name=MetricInstruments.HTTP_SERVER_DURATION,
-            unit="ms",
-            description="Duration of HTTP client requests.",
-        )
+        self.duration_histogram_old = None
+        if _report_old(sem_conv_opt_in_mode):
+            self.duration_histogram_old = self.meter.create_histogram(
+                name=MetricInstruments.HTTP_SERVER_DURATION,
+                unit="ms",
+                description="measures the duration of the inbound HTTP request",
+            )
+        self.duration_histogram_new = None
+        if _report_new(sem_conv_opt_in_mode):
+            self.duration_histogram_new = self.meter.create_histogram(
+                name=_METRIC_ATTRIBUTES_SERVER_DURATION_NAME,
+                unit="s",
+                description="measures the duration of the inbound HTTP request",
+            )
+        # We don't need a separate active request counter for old/new semantic conventions
+        # because the new attributes are a subset of the old attributes
         self.active_requests_counter = self.meter.create_up_down_counter(
             name=MetricInstruments.HTTP_SERVER_ACTIVE_REQUESTS,
-            unit="requests",
-            description="measures the number of concurrent HTTP requests that are currently in-flight",
+            unit="{request}",
+            description="Number of active HTTP server requests.",
         )
         self.request_hook = request_hook
         self.response_hook = response_hook

@@ -63,7 +63,9 @@ from opentelemetry.instrumentation._semconv import (
     _SPAN_ATTRIBUTES_ERROR_TYPE,
     _SPAN_ATTRIBUTES_NETWORK_PEER_ADDRESS,
     _SPAN_ATTRIBUTES_NETWORK_PEER_PORT,
-    _filter_duration_attrs,
+    _client_duration_attrs_new,
+    _client_duration_attrs_old,
+    _filter_semconv_duration_attrs,
     _get_schema_url,
     _OpenTelemetrySemanticConventionStability,
     _OpenTelemetryStabilityMode,
@@ -284,16 +286,22 @@ def _instrument(
                 ).__qualname__
 
             if duration_histogram_old is not None:
-                duration_attrs_old = _filter_duration_attrs(
-                    metric_labels, _OpenTelemetryStabilityMode.DEFAULT
+                duration_attrs_old = _filter_semconv_duration_attrs(
+                    metric_labels,
+                    _client_duration_attrs_old,
+                    _client_duration_attrs_new,
+                    _OpenTelemetryStabilityMode.DEFAULT
                 )
                 duration_histogram_old.record(
                     max(round(elapsed_time * 1000), 0),
                     attributes=duration_attrs_old,
                 )
             if duration_histogram_new is not None:
-                duration_attrs_new = _filter_duration_attrs(
-                    metric_labels, _OpenTelemetryStabilityMode.HTTP
+                duration_attrs_new = _filter_semconv_duration_attrs(
+                    metric_labels,
+                    _client_duration_attrs_old,
+                    _client_duration_attrs_new,
+                    _OpenTelemetryStabilityMode.HTTP
                 )
                 duration_histogram_new.record(
                     elapsed_time, attributes=duration_attrs_new
