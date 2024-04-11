@@ -21,6 +21,7 @@ import pytest
 # Imports for StructlogHandler tests
 from unittest.mock import Mock
 from handlers.opentelemetry_structlog.src.exporter import LogExporter
+
 from datetime import datetime, timezone
 from unittest.mock import MagicMock
 
@@ -35,6 +36,7 @@ from opentelemetry.test.test_base import TestBase
 from opentelemetry.trace import ProxyTracer, get_tracer
 
 from handlers.opentelemetry_structlog.src.exporter import StructlogHandler
+from handlers.opentelemetry_loguru.src.exporter import LoguruHandler
 
 
 
