@@ -16,7 +16,7 @@ from timeit import default_timer
 from unittest.mock import Mock, patch
 
 import pytest
-from falcon import __version__ as _falcon_verison
+from falcon import __version__ as _falcon_version
 from falcon import testing
 from packaging import version as package_version
 
@@ -135,9 +135,15 @@ class TestFalconInstrumentation(TestFalconBase, WsgiTestBase):
         # In falcon>3, NET_PEER_IP is not set to anything by default to
         # https://github.com/falconry/falcon/blob/5233d0abed977d9dab78ebadf305f5abe2eef07c/falcon/testing/helpers.py#L1168-L1172 # noqa
         if SpanAttributes.NET_PEER_IP in span.attributes:
-            self.assertEqual(
-                span.attributes[SpanAttributes.NET_PEER_IP], "127.0.0.1"
-            )
+            if _falcon_version < 3:
+                self.assertEqual(
+                    span.attributes[SpanAttributes.NET_PEER_IP], "127.0.0.1"
+                )
+            else:
+                self.assertEqual(
+                    span.attributes[SpanAttributes.NET_PEER_IP], "/"
+                )
+
         self.memory_exporter.clear()
 
     def test_404(self):
@@ -526,7 +532,7 @@ class TestCustomRequestResponseHeaders(TestFalconBase):
                 self.assertNotIn(key, span.attributes)
 
     @pytest.mark.skipif(
-        condition=package_version.parse(_falcon_verison)
+        condition=package_version.parse(_falcon_version)
         < package_version.parse("2.0.0"),
         reason="falcon<2 does not implement custom response headers",
     )
@@ -561,7 +567,7 @@ class TestCustomRequestResponseHeaders(TestFalconBase):
             self.assertNotIn(key, span.attributes)
 
     @pytest.mark.skipif(
-        condition=package_version.parse(_falcon_verison)
+        condition=package_version.parse(_falcon_version)
         < package_version.parse("2.0.0"),
         reason="falcon<2 does not implement custom response headers",
     )
