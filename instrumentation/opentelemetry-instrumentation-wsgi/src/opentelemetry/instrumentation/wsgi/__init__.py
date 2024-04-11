@@ -248,6 +248,7 @@ from opentelemetry.semconv.metrics import MetricInstruments
 from opentelemetry.semconv.trace import SpanAttributes
 from opentelemetry.trace.status import Status, StatusCode
 from opentelemetry.util.http import (
+    _parse_url_query,
     OTEL_INSTRUMENTATION_HTTP_CAPTURE_HEADERS_SANITIZE_FIELDS,
     OTEL_INSTRUMENTATION_HTTP_CAPTURE_HEADERS_SERVER_REQUEST,
     OTEL_INSTRUMENTATION_HTTP_CAPTURE_HEADERS_SERVER_RESPONSE,
@@ -346,7 +347,8 @@ def collect_request_attributes(
     if target is None:  # Note: `"" or None is None`
         target = environ.get("REQUEST_URI")
     if target:
-        _set_http_target(result, target, sem_conv_opt_in_mode)
+        path, query = _parse_url_query(target)
+        _set_http_target(result, target, path, query, sem_conv_opt_in_mode)
     else:
         # old semconv v1.20.0
         if _report_old(sem_conv_opt_in_mode):

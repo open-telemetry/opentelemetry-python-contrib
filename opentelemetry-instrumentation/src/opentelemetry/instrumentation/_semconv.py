@@ -21,7 +21,6 @@ from opentelemetry.instrumentation.utils import (
 )
 from opentelemetry.trace.status import Status, StatusCode
 from opentelemetry.semconv.trace import SpanAttributes
-from opentelemetry.util.http import _parse_url_query
 
 # TODO: will come through semconv package once updated
 _SPAN_ATTRIBUTES_ERROR_TYPE = "error.type"
@@ -288,11 +287,10 @@ def _set_http_net_host_port(result, port, sem_conv_opt_in_mode):
         set_int_attribute(result, SpanAttributes.SERVER_PORT, port)
 
 
-def _set_http_target(result, target, sem_conv_opt_in_mode):
+def _set_http_target(result, target, path, query, sem_conv_opt_in_mode):
     if _report_old(sem_conv_opt_in_mode):
         set_string_attribute(result, SpanAttributes.HTTP_TARGET, target)
     if _report_new(sem_conv_opt_in_mode):
-        path, query = _parse_url_query(target)
         if path:
             set_string_attribute(
                 result, SpanAttributes.URL_PATH, path
