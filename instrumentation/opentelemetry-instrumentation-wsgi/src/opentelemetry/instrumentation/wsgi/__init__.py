@@ -465,6 +465,7 @@ def _parse_duration_attrs(req_attrs, sem_conv_opt_in_mode = _OpenTelemetryStabil
 def add_response_attributes(
     span,
     start_response_status,
+    response_headers,
     duration_attrs = None,
     sem_conv_opt_in_mode = _OpenTelemetryStabilityMode.DEFAULT,
 ):  # pylint: disable=unused-argument
