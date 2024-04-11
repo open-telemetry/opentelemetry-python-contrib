@@ -27,9 +27,9 @@ from opentelemetry.instrumentation.propagators import (
     get_global_response_propagator,
     set_global_response_propagator,
 )
-from opentelemetry.instrumentation.wsgi import (
-    _active_requests_count_attrs,
-    _duration_attrs,
+from opentelemetry.instrumentation._semconv import (
+    _server_active_requests_count_attrs_old,
+    _server_duration_attrs_old
 )
 from opentelemetry.sdk.metrics.export import (
     HistogramDataPoint,
@@ -53,8 +53,8 @@ _expected_metric_names = [
     "http.server.duration",
 ]
 _recommended_attrs = {
-    "http.server.active_requests": _active_requests_count_attrs,
-    "http.server.duration": _duration_attrs,
+    "http.server.active_requests": _server_active_requests_count_attrs_old,
+    "http.server.duration": _server_duration_attrs_old,
 }
 
 

@@ -263,26 +263,6 @@ _HTTP_VERSION_PREFIX = "HTTP/"
 _CARRIER_KEY_PREFIX = "HTTP_"
 _CARRIER_KEY_PREFIX_LEN = len(_CARRIER_KEY_PREFIX)
 
-# List of recommended attributes
-_duration_attrs = [
-    SpanAttributes.HTTP_METHOD,
-    SpanAttributes.HTTP_HOST,
-    SpanAttributes.HTTP_SCHEME,
-    SpanAttributes.HTTP_STATUS_CODE,
-    SpanAttributes.HTTP_FLAVOR,
-    SpanAttributes.HTTP_SERVER_NAME,
-    SpanAttributes.NET_HOST_NAME,
-    SpanAttributes.NET_HOST_PORT,
-]
-
-_active_requests_count_attrs = [
-    SpanAttributes.HTTP_METHOD,
-    SpanAttributes.HTTP_HOST,
-    SpanAttributes.HTTP_SCHEME,
-    SpanAttributes.HTTP_FLAVOR,
-    SpanAttributes.HTTP_SERVER_NAME,
-]
-
 
 class WSGIGetter(Getter[dict]):
     def get(
@@ -354,18 +334,18 @@ def collect_request_attributes(
         # old semconv v1.12.0
         if _report_old(sem_conv_opt_in_mode):
             result[SpanAttributes.HTTP_HOST] = host
-        if host_port:
-            _set_http_net_host_port(
-                result,
-                int(host_port),
-                sem_conv_opt_in_mode,
-            )
+    if host_port:
+        _set_http_net_host_port(
+            result,
+            int(host_port),
+            sem_conv_opt_in_mode,
+        )
 
 
     target = environ.get("RAW_URI")
     if target is None:  # Note: `"" or None is None`
         target = environ.get("REQUEST_URI")
-    if target is not None:
+    if target:
         _set_http_target(result, target, sem_conv_opt_in_mode)
     else:
         # old semconv v1.20.0
@@ -483,9 +463,8 @@ def _parse_duration_attrs(req_attrs, sem_conv_opt_in_mode = _OpenTelemetryStabil
 def add_response_attributes(
     span,
     start_response_status,
-    response_headers,
-    sem_conv_opt_in_mode = _OpenTelemetryStabilityMode.DEFAULT,
     duration_attrs = None,
+    sem_conv_opt_in_mode = _OpenTelemetryStabilityMode.DEFAULT,
 ):  # pylint: disable=unused-argument
     """Adds HTTP response attributes to span using the arguments
     passed to a PEP3333-conforming start_response callable.
@@ -594,7 +573,7 @@ class OpenTelemetryMiddleware:
     ):
         @functools.wraps(start_response)
         def _start_response(status, response_headers, *args, **kwargs):
-            add_response_attributes(span, status, response_headers, duration_attrs, sem_conv_opt_in_mode)
+            add_response_attributes(span, status, duration_attrs, sem_conv_opt_in_mode)
             if span.is_recording() and span.kind == trace.SpanKind.SERVER:
                 custom_attributes = collect_custom_response_headers_attributes(
                     response_headers
