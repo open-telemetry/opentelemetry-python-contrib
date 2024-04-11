@@ -54,6 +54,7 @@ def expected_attributes(override_attributes):
         SpanAttributes.HTTP_SERVER_NAME: "localhost",
         SpanAttributes.HTTP_SCHEME: "http",
         SpanAttributes.NET_HOST_PORT: 80,
+        SpanAttributes.NET_HOST_NAME: "localhost",
         SpanAttributes.HTTP_HOST: "localhost",
         SpanAttributes.HTTP_TARGET: "/",
         SpanAttributes.HTTP_FLAVOR: "1.1",
@@ -358,6 +359,7 @@ class TestProgrammatic(InstrumentationTest, WsgiTestBase):
             "http.server_name": "localhost",
             "net.host.port": 80,
             "http.status_code": 200,
+            "net.host.name": "localhost",
         }
         expected_requests_count_attributes = {
             "http.method": "GET",
@@ -365,6 +367,8 @@ class TestProgrammatic(InstrumentationTest, WsgiTestBase):
             "http.scheme": "http",
             "http.flavor": "1.1",
             "http.server_name": "localhost",
+            "net.host.name": "localhost",
+            "net.host.port": 80,
         }
         self._assert_basic_metric(
             expected_duration_attributes,
@@ -374,20 +378,23 @@ class TestProgrammatic(InstrumentationTest, WsgiTestBase):
     def test_basic_metric_nonstandard_http_method_success(self):
         self.client.open("/hello/756", method="NONSTANDARD")
         expected_duration_attributes = {
-            "http.method": "UNKNOWN",
+            "http.method": "_OTHER",
             "http.host": "localhost",
             "http.scheme": "http",
             "http.flavor": "1.1",
             "http.server_name": "localhost",
             "net.host.port": 80,
             "http.status_code": 405,
+            "net.host.name": "localhost",
         }
         expected_requests_count_attributes = {
-            "http.method": "UNKNOWN",
+            "http.method": "_OTHER",
             "http.host": "localhost",
             "http.scheme": "http",
             "http.flavor": "1.1",
             "http.server_name": "localhost",
+            "net.host.name": "localhost",
+            "net.host.port": 80,
         }
         self._assert_basic_metric(
             expected_duration_attributes,
@@ -410,6 +417,7 @@ class TestProgrammatic(InstrumentationTest, WsgiTestBase):
             "http.server_name": "localhost",
             "net.host.port": 80,
             "http.status_code": 405,
+            "net.host.name": "localhost",
         }
         expected_requests_count_attributes = {
             "http.method": "NONSTANDARD",
@@ -417,6 +425,8 @@ class TestProgrammatic(InstrumentationTest, WsgiTestBase):
             "http.scheme": "http",
             "http.flavor": "1.1",
             "http.server_name": "localhost",
+            "net.host.name": "localhost",
+            "net.host.port": 80,
         }
         self._assert_basic_metric(
             expected_duration_attributes,
