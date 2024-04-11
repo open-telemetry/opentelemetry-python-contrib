@@ -135,7 +135,7 @@ class TestFalconInstrumentation(TestFalconBase, WsgiTestBase):
         # In falcon>3, NET_PEER_IP is not set to anything by default to
         # https://github.com/falconry/falcon/blob/5233d0abed977d9dab78ebadf305f5abe2eef07c/falcon/testing/helpers.py#L1168-L1172 # noqa
         if SpanAttributes.NET_PEER_IP in span.attributes:
-            if _falcon_version < 3:
+            if package_version.parse(_falcon_version) < 3:
                 self.assertEqual(
                     span.attributes[SpanAttributes.NET_PEER_IP], "127.0.0.1"
                 )
