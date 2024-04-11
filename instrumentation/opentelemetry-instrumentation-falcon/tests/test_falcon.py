@@ -125,7 +125,7 @@ class TestFalconInstrumentation(TestFalconBase, WsgiTestBase):
                 SpanAttributes.NET_HOST_PORT: 80,
                 SpanAttributes.HTTP_HOST: "falconframework.org",
                 SpanAttributes.HTTP_TARGET: "/",
-                SpanAttributes.NET_PEER_PORT: "65133",
+                SpanAttributes.NET_PEER_PORT: 65133,
                 SpanAttributes.HTTP_FLAVOR: "1.1",
                 "falcon.resource": "HelloWorldResource",
                 SpanAttributes.HTTP_STATUS_CODE: 201,
@@ -156,7 +156,7 @@ class TestFalconInstrumentation(TestFalconBase, WsgiTestBase):
                 SpanAttributes.NET_HOST_PORT: 80,
                 SpanAttributes.HTTP_HOST: "falconframework.org",
                 SpanAttributes.HTTP_TARGET: "/",
-                SpanAttributes.NET_PEER_PORT: "65133",
+                SpanAttributes.NET_PEER_PORT: 65133,
                 SpanAttributes.HTTP_FLAVOR: "1.1",
                 SpanAttributes.HTTP_STATUS_CODE: 404,
             },
@@ -193,7 +193,7 @@ class TestFalconInstrumentation(TestFalconBase, WsgiTestBase):
                 SpanAttributes.NET_HOST_PORT: 80,
                 SpanAttributes.HTTP_HOST: "falconframework.org",
                 SpanAttributes.HTTP_TARGET: "/",
-                SpanAttributes.NET_PEER_PORT: "65133",
+                SpanAttributes.NET_PEER_PORT: 65133,
                 SpanAttributes.HTTP_FLAVOR: "1.1",
                 SpanAttributes.HTTP_STATUS_CODE: 500,
             },
@@ -226,7 +226,7 @@ class TestFalconInstrumentation(TestFalconBase, WsgiTestBase):
                 SpanAttributes.NET_HOST_PORT: 80,
                 SpanAttributes.HTTP_HOST: "falconframework.org",
                 SpanAttributes.HTTP_TARGET: "/",
-                SpanAttributes.NET_PEER_PORT: "65133",
+                SpanAttributes.NET_PEER_PORT: 65133,
                 SpanAttributes.HTTP_FLAVOR: "1.1",
                 "falcon.resource": "UserResource",
                 SpanAttributes.HTTP_STATUS_CODE: 200,
@@ -336,6 +336,7 @@ class TestFalconInstrumentation(TestFalconBase, WsgiTestBase):
             "http.flavor": "1.1",
             "http.server_name": "falconframework.org",
             "net.host.port": 80,
+            "net.host.name": "falconframework.org",
             "http.status_code": 404,
         }
         expected_requests_count_attributes = {
@@ -344,6 +345,8 @@ class TestFalconInstrumentation(TestFalconBase, WsgiTestBase):
             "http.scheme": "http",
             "http.flavor": "1.1",
             "http.server_name": "falconframework.org",
+            "net.host.name": "falconframework.org",
+            "net.host.port": 80,
         }
         start = default_timer()
         self.client().simulate_get("/hello/756")

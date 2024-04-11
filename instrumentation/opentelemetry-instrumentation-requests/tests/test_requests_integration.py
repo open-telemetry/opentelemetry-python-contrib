@@ -730,6 +730,7 @@ class TestRequestsIntergrationMetric(TestBase):
             SpanAttributes.SERVER_PORT: 8000,
             SpanAttributes.HTTP_REQUEST_METHOD: "GET",
             SpanAttributes.NETWORK_PROTOCOL_VERSION: "1.1",
+            SpanAttributes.URL_SCHEME: "http",
         }
         for (
             resource_metrics
@@ -766,6 +767,7 @@ class TestRequestsIntergrationMetric(TestBase):
             SpanAttributes.SERVER_PORT: 8000,
             SpanAttributes.HTTP_REQUEST_METHOD: "GET",
             SpanAttributes.NETWORK_PROTOCOL_VERSION: "1.1",
+            SpanAttributes.URL_SCHEME: "http",
         }
 
         for (
