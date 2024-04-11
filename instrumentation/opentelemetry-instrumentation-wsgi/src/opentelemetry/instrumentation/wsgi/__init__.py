@@ -576,7 +576,7 @@ class OpenTelemetryMiddleware:
     ):
         @functools.wraps(start_response)
         def _start_response(status, response_headers, *args, **kwargs):
-            add_response_attributes(span, status, duration_attrs, sem_conv_opt_in_mode)
+            add_response_attributes(span, status, response_headers, duration_attrs, sem_conv_opt_in_mode)
             if span.is_recording() and span.kind == trace.SpanKind.SERVER:
                 custom_attributes = collect_custom_response_headers_attributes(
                     response_headers
