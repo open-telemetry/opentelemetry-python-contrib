@@ -20,6 +20,12 @@ from urllib.parse import urlsplit
 
 import opentelemetry.instrumentation.wsgi as otel_wsgi
 from opentelemetry import trace as trace_api
+from opentelemetry.instrumentation._semconv import (
+    _server_active_requests_count_attrs_new,
+    _server_active_requests_count_attrs_old,
+    _server_duration_attrs_new,
+    _server_duration_attrs_old,
+)
 from opentelemetry.sdk.metrics.export import (
     HistogramDataPoint,
     NumberDataPoint,
@@ -131,9 +137,13 @@ _expected_metric_names = [
     "http.server.active_requests",
     "http.server.duration",
 ]
-_recommended_attrs = {
-    "http.server.active_requests": otel_wsgi._active_requests_count_attrs,
-    "http.server.duration": otel_wsgi._duration_attrs,
+_recommended_metrics_attrs_old = {
+    "http.server.active_requests": _server_active_requests_count_attrs_old,
+    "http.server.duration": _server_duration_attrs_old,
+}
+_recommended_metrics_attrs_new = {
+    "http.server.active_requests": _server_active_requests_count_attrs_new,
+    "http.server.duration": _server_duration_attrs_new,
 }
 
 
@@ -179,6 +189,7 @@ class TestWsgiApplication(WsgiTestBase):
             SpanAttributes.HTTP_FLAVOR: "1.0",
             SpanAttributes.HTTP_URL: "http://127.0.0.1/",
             SpanAttributes.HTTP_STATUS_CODE: 200,
+            SpanAttributes.NET_HOST_NAME: "127.0.0.1",
         }
         expected_attributes.update(span_attributes or {})
         if http_method is not None:
@@ -294,7 +305,7 @@ class TestWsgiApplication(WsgiTestBase):
                             number_data_point_seen = True
                         for attr in point.attributes:
                             self.assertIn(
-                                attr, _recommended_attrs[metric.name]
+                                attr, _recommended_metrics_attrs_old[metric.name]
                             )
         self.assertTrue(number_data_point_seen and histogram_data_point_seen)
 
@@ -303,7 +314,7 @@ class TestWsgiApplication(WsgiTestBase):
         app = otel_wsgi.OpenTelemetryMiddleware(simple_wsgi)
         response = app(self.environ, self.start_response)
         self.validate_response(
-            response, span_name="UNKNOWN /", http_method="UNKNOWN"
+            response, span_name="HTTP", http_method="_OTHER"
         )
 
     @mock.patch.dict(
@@ -349,6 +360,7 @@ class TestWsgiAttributes(unittest.TestCase):
                 SpanAttributes.HTTP_SCHEME: "http",
                 SpanAttributes.HTTP_SERVER_NAME: "127.0.0.1",
                 SpanAttributes.HTTP_FLAVOR: "1.0",
+                SpanAttributes.NET_HOST_NAME: "127.0.0.1",
             },
         )
 
@@ -439,10 +451,8 @@ class TestWsgiAttributes(unittest.TestCase):
     def test_request_attributes_pathless(self):
         self.environ["RAW_URI"] = ""
         expected = {SpanAttributes.HTTP_TARGET: ""}
-        self.assertGreaterEqual(
-            otel_wsgi.collect_request_attributes(self.environ).items(),
-            expected.items(),
-        )
+        self.assertIsNone(otel_wsgi.collect_request_attributes(self.environ)
+.get(SpanAttributes.HTTP_TARGET))
 
     def test_request_attributes_with_full_request_uri(self):
         self.environ["HTTP_HOST"] = "127.0.0.1:8080"
