@@ -349,7 +349,10 @@ def get_default_span_name(method):
     Returns:
         span name
     """
-    return sanitize_method(method.upper().strip())
+    method = sanitize_method(method.upper().strip())
+    if method == "_OTHER":
+        return "HTTP"
+    return method
 
 
 class RequestsInstrumentor(BaseInstrumentor):
