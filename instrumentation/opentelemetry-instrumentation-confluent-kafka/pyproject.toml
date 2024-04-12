@@ -21,6 +21,7 @@ classifiers = [
   "Programming Language :: Python :: 3.8",
 ]
 dependencies = [
+  "opentelemetry-instrumentation == 0.46b0.dev",
   "opentelemetry-api ~= 1.12",
   "wrapt >= 1.0.0, < 2.0.0",
 ]
@@ -28,9 +29,6 @@ dependencies = [
 [project.optional-dependencies]
 instruments = [
   "confluent-kafka >= 1.8.2, <= 2.3.0",
-]
-test = [
-  "opentelemetry-instrumentation-confluent-kafka[instruments]",
 ]
 
 [project.entry-points.opentelemetry_instrumentor]
