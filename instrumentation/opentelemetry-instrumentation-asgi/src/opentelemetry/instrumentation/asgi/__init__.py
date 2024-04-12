@@ -225,6 +225,7 @@ from opentelemetry.util.http import (
     normalise_request_header_name,
     normalise_response_header_name,
     remove_url_credentials,
+    ExcludeList,
 )
 
 _ServerRequestHookT = typing.Optional[typing.Callable[[Span, dict], None]]
@@ -449,7 +450,7 @@ class OpenTelemetryMiddleware:
 
     Args:
         app: The ASGI application callable to forward requests to.
-        excluded_urls: (opentelemetry.util.http.ExcludeList) Optional parameter to specify URLs that should be excluded from tracing. 
+        excluded_urls: Optional parameter to specify URLs that should be excluded from tracing. 
                        This can be useful for skipping health checks or other endpoints that do not need to be monitored. 
                        Defaults to None.
         default_span_details: Callback which should return a string and a tuple, representing the desired default span name and a
@@ -476,7 +477,7 @@ class OpenTelemetryMiddleware:
     def __init__(
         self,
         app,
-        excluded_urls=None,
+        excluded_urls: ExcludeList = None,
         default_span_details=None,
         server_request_hook: _ServerRequestHookT = None,
         client_request_hook: _ClientRequestHookT = None,
