@@ -218,6 +218,7 @@ from opentelemetry.util.http import (
     OTEL_INSTRUMENTATION_HTTP_CAPTURE_HEADERS_SANITIZE_FIELDS,
     OTEL_INSTRUMENTATION_HTTP_CAPTURE_HEADERS_SERVER_REQUEST,
     OTEL_INSTRUMENTATION_HTTP_CAPTURE_HEADERS_SERVER_RESPONSE,
+    ExcludeList,    
     SanitizeValue,
     _parse_active_request_count_attrs,
     _parse_duration_attrs,
@@ -225,7 +226,6 @@ from opentelemetry.util.http import (
     normalise_request_header_name,
     normalise_response_header_name,
     remove_url_credentials,
-    ExcludeList,
 )
 
 _ServerRequestHookT = typing.Optional[typing.Callable[[Span, dict], None]]
