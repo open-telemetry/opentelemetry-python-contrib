@@ -127,8 +127,7 @@ class TestCeleryInstrumentation(TestBase):
 
         # TODO: use plain assertEqual after 1.25 is released (https://github.com/open-telemetry/opentelemetry-python/pull/3837)
         self.assertIn(
-            "CustomError",
-            event.attributes[SpanAttributes.EXCEPTION_TYPE]
+            "CustomError", event.attributes[SpanAttributes.EXCEPTION_TYPE]
         )
 
         self.assertEqual(
