@@ -40,7 +40,7 @@ from opentelemetry.propagators.aws.aws_xray_propagator import (
 from opentelemetry.semconv.resource import ResourceAttributes
 from opentelemetry.semconv.trace import SpanAttributes
 from opentelemetry.test.test_base import TestBase
-from opentelemetry.trace import NoOpTracerProvider, SpanKind
+from opentelemetry.trace import NoOpTracerProvider, SpanKind, StatusCode
 from opentelemetry.trace.propagation.tracecontext import (
     TraceContextTextMapPropagator,
 )
@@ -54,7 +54,7 @@ class MockLambdaContext:
 
 MOCK_LAMBDA_CONTEXT = MockLambdaContext(
     aws_request_id="mock_aws_request_id",
-    invoked_function_arn="arn://mock-lambda-function-arn",
+    invoked_function_arn="arn:aws:lambda:us-east-1:123456:function:myfunction:myalias",
 )
 
 MOCK_XRAY_TRACE_ID = 0x5FB7331105E8BB83207FA31D4D9CDB4C
@@ -147,6 +147,11 @@ class TestAwsLambdaInstrumentor(TestBase):
             {
                 ResourceAttributes.FAAS_ID: MOCK_LAMBDA_CONTEXT.invoked_function_arn,
                 SpanAttributes.FAAS_EXECUTION: MOCK_LAMBDA_CONTEXT.aws_request_id,
+                ResourceAttributes.CLOUD_ACCOUNT_ID: MOCK_LAMBDA_CONTEXT.invoked_function_arn.split(
+                    ":"
+                )[
+                    4
+                ],
             },
         )
 
@@ -409,6 +414,27 @@ class TestAwsLambdaInstrumentor(TestBase):
         spans = self.memory_exporter.get_finished_spans()
 
         assert spans
+
+    def test_lambda_handles_handler_exception(self):
+        exc_env_patch = mock.patch.dict(
+            "os.environ",
+            {_HANDLER: "tests.mocks.lambda_function.handler_exc"},
+        )
+        exc_env_patch.start()
+        AwsLambdaInstrumentor().instrument()
+        # instrumentor re-raises the exception
+        with self.assertRaises(Exception):
+            mock_execute_lambda()
+
+        spans = self.memory_exporter.get_finished_spans()
+        self.assertEqual(len(spans), 1)
+        span = spans[0]
+        self.assertEqual(span.status.status_code, StatusCode.ERROR)
+        self.assertEqual(len(span.events), 1)
+        event = span.events[0]
+        self.assertEqual(event.name, "exception")
+
+        exc_env_patch.stop()
 
     def test_uninstrument(self):
         AwsLambdaInstrumentor().instrument()

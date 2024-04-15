@@ -36,11 +36,20 @@
 
 ---
 
-## OpenTelemetry Python Contrib
+# OpenTelemetry Python Contrib
 
 The Python auto-instrumentation libraries for [OpenTelemetry](https://opentelemetry.io/) (per [OTEP 0001](https://github.com/open-telemetry/oteps/blob/main/text/0001-telemetry-without-manual-instrumentation.md))
 
-### Installation
+## Index
+
+* [Installation](#installation)
+* [Releasing](#releasing)
+  * [Releasing a package as `1.0` stable](#releasing-a-package-as-10-stable)
+* [Contributing](#contributing)
+* [Running Tests Locally](#running-tests-locally)
+* [Thanks to all the people who already contributed](#thanks-to-all-the-people-who-already-contributed)
+
+## Installation
 
 This repository includes installable packages for each instrumented library. Libraries that produce telemetry data should only depend on `opentelemetry-api`,
 and defer the choice of the SDK to the application developer. Applications may
@@ -79,6 +88,7 @@ To resolve this, members of the community are encouraged to commit to becoming a
 ### Releasing a package as `1.0` stable
 
 To release a package as `1.0` stable, the package:
+
 - SHOULD have a CODEOWNER. To become one, submit an issue and explain why you meet the responsibilities found in [CODEOWNERS](.github/CODEOWNERS).
 - MUST have unit tests that cover all supported versions of the instrumented library.
   - e.g. Instrumentation packages might use different techniques to instrument different major versions of python packages
@@ -98,14 +108,20 @@ Approvers ([@open-telemetry/python-approvers](https://github.com/orgs/open-telem
 
 - [Aaron Abbott](https://github.com/aabmass), Google
 - [Jeremy Voss](https://github.com/jeremydvoss), Microsoft
+- [Owais Lone](https://github.com/owais), Splunk
+- [Pablo Collins](https://github.com/pmcollins), Splunk
+- [Riccardo Magliocchetti](https://github.com/xrmx), Elastic
 - [Sanket Mehta](https://github.com/sanketmehta28), Cisco
+- [Srikanth Chekuri](https://github.com/srikanthccv), signoz.io
+- [Tammy Baylis](https://github.com/tammy-baylis-swi), SolarWinds
 
 Emeritus Approvers:
 
-- [Héctor Hernández](https://github.com/hectorhdzg), Microsoft
-- [Yusuke Tsutsumi](https://github.com/toumorokoshi), Google
-- [Nathaniel Ruiz Nowell](https://github.com/NathanielRN), AWS
 - [Ashutosh Goel](https://github.com/ashu658), Cisco
+- [Héctor Hernández](https://github.com/hectorhdzg), Microsoft
+- [Nikolay Sokolik](https://github.com/oxeye-nikolay), Oxeye
+- [Nikolay Sokolik](https://github.com/nikosokolik), Oxeye
+- [Nathaniel Ruiz Nowell](https://github.com/NathanielRN), AWS
 
 *Find more about the approver role in [community repository](https://github.com/open-telemetry/community/blob/main/community-membership.md#approver).*
 
@@ -119,7 +135,7 @@ Emeritus Maintainers:
 
 - [Alex Boten](https://github.com/codeboten), Lightstep
 - [Owais Lone](https://github.com/owais), Splunk
-- [Srikanth Chekuri](https://github.com/srikanthccv), signoz.io
+- [Yusuke Tsutsumi](https://github.com/toumorokoshi), Google
 
 *Find more about the maintainer role in [community repository](https://github.com/open-telemetry/community/blob/main/community-membership.md#maintainer).*
 
@@ -131,9 +147,8 @@ Emeritus Maintainers:
 4. Make sure you have `tox` installed. `pip install tox`.
 5. Run tests for a package. (e.g. `tox -e test-instrumentation-flask`.)
 
-### Thanks to all the people who already contributed!
+### Thanks to all the people who already contributed
 
 <a href="https://github.com/open-telemetry/opentelemetry-python-contrib/graphs/contributors">
   <img src="https://contributors-img.web.app/image?repo=open-telemetry/opentelemetry-python-contrib" />
 </a>
-

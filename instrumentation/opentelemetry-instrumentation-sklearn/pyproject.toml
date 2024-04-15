@@ -25,16 +25,12 @@ classifiers = [
 ]
 dependencies = [
   "opentelemetry-api ~= 1.12",
-  "opentelemetry-instrumentation == 0.44b0.dev",
+  "opentelemetry-instrumentation == 0.46b0.dev",
 ]
 
 [project.optional-dependencies]
 instruments = [
   "scikit-learn ~= 0.24.0",
-]
-test = [
-  "opentelemetry-instrumentation-sklearn[instruments]",
-  "opentelemetry-test-utils == 0.44b0.dev",
 ]
 
 [project.entry-points.opentelemetry_instrumentor]

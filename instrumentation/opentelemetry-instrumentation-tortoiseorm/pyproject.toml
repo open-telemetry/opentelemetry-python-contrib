@@ -25,18 +25,14 @@ classifiers = [
 ]
 dependencies = [
   "opentelemetry-api ~= 1.12",
-  "opentelemetry-instrumentation == 0.44b0.dev",
-  "opentelemetry-semantic-conventions == 0.44b0.dev",
+  "opentelemetry-instrumentation == 0.46b0.dev",
+  "opentelemetry-semantic-conventions == 0.46b0.dev",
 ]
 
 [project.optional-dependencies]
 instruments = [
   "tortoise-orm >= 0.17.0",
   "pydantic >= 1.10.2"
-]
-test = [
-  "opentelemetry-instrumentation-tortoiseorm[instruments]",
-  "opentelemetry-test-utils == 0.44b0.dev",
 ]
 
 [project.entry-points.opentelemetry_instrumentor]

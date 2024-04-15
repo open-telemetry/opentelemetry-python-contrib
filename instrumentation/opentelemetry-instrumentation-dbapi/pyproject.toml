@@ -25,16 +25,13 @@ classifiers = [
 ]
 dependencies = [
   "opentelemetry-api ~= 1.12",
-  "opentelemetry-instrumentation == 0.44b0.dev",
-  "opentelemetry-semantic-conventions == 0.44b0.dev",
+  "opentelemetry-instrumentation == 0.46b0.dev",
+  "opentelemetry-semantic-conventions == 0.46b0.dev",
   "wrapt >= 1.0.0, < 2.0.0",
 ]
 
 [project.optional-dependencies]
 instruments = []
-test = [
-  "opentelemetry-test-utils == 0.44b0.dev",
-]
 
 [project.urls]
 Homepage = "https://github.com/open-telemetry/opentelemetry-python-contrib/tree/main/instrumentation/opentelemetry-instrumentation-dbapi"
