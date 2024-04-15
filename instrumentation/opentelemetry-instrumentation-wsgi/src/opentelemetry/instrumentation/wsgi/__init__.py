@@ -214,6 +214,8 @@ from timeit import default_timer
 
 from opentelemetry import context, trace
 from opentelemetry.instrumentation._semconv import (
+    _OpenTelemetrySemanticConventionStability,
+    _OpenTelemetryStabilitySignalType,
     _METRIC_ATTRIBUTES_SERVER_DURATION_NAME,
     _OpenTelemetryStabilityMode,
     _SPAN_ATTRIBUTES_ERROR_TYPE,
@@ -530,8 +532,12 @@ class OpenTelemetryMiddleware:
         response_hook=None,
         tracer_provider=None,
         meter_provider=None,
-        sem_conv_opt_in_mode: _OpenTelemetryStabilityMode = _OpenTelemetryStabilityMode.DEFAULT,
     ):
+        # initialize semantic conventions opt-in if needed
+        _OpenTelemetrySemanticConventionStability._initialize()
+        sem_conv_opt_in_mode = _OpenTelemetrySemanticConventionStability._get_opentelemetry_stability_opt_in_mode(
+            _OpenTelemetryStabilitySignalType.HTTP,
+        )
         self.wsgi = wsgi
         self.tracer = trace.get_tracer(
             __name__,
