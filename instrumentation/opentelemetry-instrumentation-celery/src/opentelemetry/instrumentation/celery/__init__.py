@@ -144,7 +144,6 @@ class CeleryInstrumentor(BaseInstrumentor):
         signals.task_prerun.connect(self._trace_prerun, weak=False)
         signals.task_postrun.connect(self._trace_postrun, weak=False)
         signals.before_task_publish.connect(self._trace_before_publish, weak=False)
-        signals.before_task_publish.connect(self._trace_before_publish, weak=False)
         signals.after_task_publish.connect(self._trace_after_publish, weak=False)
         signals.task_failure.connect(self._trace_failure, weak=False)
         signals.task_retry.connect(self._trace_retry, weak=False)
