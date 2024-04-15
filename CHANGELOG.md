@@ -17,6 +17,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Rename AwsLambdaInstrumentor span attributes `faas.id` to `cloud.resource_id`, `faas.execution` to `faas.invocation_id`
   ([#2372](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/2372))
 
+### Added
+
+- `opentelemetry-instrumentation-threading` Initial release for threading
+  ([#2253](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/2253))
+
 ## Version 1.24.0/0.45b0 (2024-03-28)
 
 ### Added
