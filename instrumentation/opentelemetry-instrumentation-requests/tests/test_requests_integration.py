@@ -524,7 +524,6 @@ class RequestsIntegrationTestBase(abc.ABC):
             self.perform_request(url_with_port)
 
         span = self.assert_span()
-        print(span.attributes)
         self.assertEqual(
             span.attributes,
             {
