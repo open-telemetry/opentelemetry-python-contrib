@@ -22,7 +22,7 @@ import pytest
 from unittest.mock import Mock
 from handlers.opentelemetry_structlog.src.exporter import LogExporter
 from datetime import datetime, timezone
-from unittest.mock import MagicMock
+from unittest.mock import MagicMock, patch
 
 
 
@@ -247,7 +247,6 @@ class TestStructlogHandler(TestBase):
             exporter = StructlogHandler("test_service", "test_host", mock_exporter)
             return exporter
 
-
     def test_initialization(self):
         exporter = self.structlog_exporter()
         assert exporter._logger_provider is not None, "LoggerProvider should be initialized"
@@ -271,7 +270,6 @@ class TestStructlogHandler(TestBase):
         parsed_exception = self.structlog_exporter()._parse_exception(event_dict)
         assert parsed_exception["exception.type"] == "ValueError", "Exception type should be parsed"
         assert parsed_exception["exception.message"] == "mock error", "Exception message should be parsed"
-        # Further assertions can be added for stack trace
 
     def test_parse_timestamp(self):
         # Assuming a specific datetime for consistency
@@ -296,7 +294,77 @@ class TestStructlogHandler(TestBase):
 
         # Assert that the logger's emit method was called with the processed event
         logger.emit.assert_called_once()
+        
+    # Adding new test cases 
+    def test_log_record_translation_attributes(self):
+        """Verify that event_dict translates correctly into a LogRecord with the correct attributes."""
+        exporter = MagicMock()
+        logger = MagicMock()
+        exporter_instance = StructlogHandler("test_service", "test_host", exporter)
+        exporter_instance._logger = logger
+        
+        timestamp = datetime.now(timezone.utc)
+        event_dict = {
+            "level": "info",
+            "event": "test event",
+            "timestamp": timestamp
+        }
+        # Get the StructlogHandler instance
 
+        # Assuming StructlogHandler has a method to process and possibly log the event_dict directly.
+        # Use the instance to process the event_dict.
+        # Mocking the internal logger's emit method to capture the log record
+        with patch.object(exporter_instance._logger, 'emit') as mock_emit:
+            exporter_instance(event_dict=event_dict, logger=None, name=None)
+            calls = mock_emit.call_args_list
+            assert len(calls) > 0, "Emit should be called"
+            log_record = calls[0][0][0]  # First call, first arg
 
+            # Assuming log_record is the structured log that would have been emitted,
+            # and you need to verify its contents.
+            # Need to adjust the assertion depending on how log records are structured.
+            # I am assuming log_record is a dictionary that was passed to logger.emit.
+            assert log_record["body"] == event_dict["event"], "LogRecord body should match event"
+            assert log_record["timestamp"] == timestamp, "LogRecord timestamp should match event"
+            assert log_record["level"] == event_dict["level"], "LogRecord level should match event" 
+                
+    # def test_filtering_of_excluded_attributes(self):
+    #     """Ensure specified attributes are not passed to the log record."""
+    #     event_dict = {
+    #         "level": "error",
+    #         "event": "Something happened!",
+    #         "timestamp": datetime.now(timezone.utc),
+    #         "exception": ValueError("An error occurred")
+    #     }
+        
+    #     # Get the StructlogHandler instance
+    #     exporter_instance = self.structlog_exporter()
+        
+    #     with patch.object(exporter_instance._logger, "_logger") as mocked_logger:
+    #         exporter_instance(event_dict=event_dict, logger=None, name=None)
+    #         calls = mocked_logger.emit.call_args_list
+    #         log_record = calls[0][0][0]
+    #         assert "exception" not in log_record.attributes, "Excluded attributes should not be in the log record"
 
+    # def test_trace_context_propogation(self):
+    #     """Ensure trace context is correctly propagated to the log record."""
+    #     with self.tracer.start_as_current_span("test_span") as span:
+    #         span_id = format(span.get_span_context().span_id, "016x")
+    #         trace_id = format(span.get_span_context().trace_id, "032x")
+    #         trace_sampled = span.get_span_context().trace_flags.sampled
+    #         event_dict = {
+    #             "level": "info",
+    #             "event": "test event",
+    #             "timestamp": datetime.now(timezone.utc)
+    #         }
+            
+    #         # Get the StructlogHandler instance
+    #         exporter_instance = self.structlog_exporter()
 
+    #         with patch.object(exporter_instance, "_logger") as mocked_logger:
+    #             exporter_instance(event_dict=event_dict, logger=None, name=None)
+    #             calls = mocked_logger.emit.call_args_list
+    #             log_record = calls[0][0][0]
+    #             assert log_record.attributes["otelSpanID"] == span_id, "Span ID should be propagated"
+    #             assert log_record.attributes["otelTraceID"] == trace_id, "Trace ID should be propagated"
+    #             assert log_record.attributes["otelTraceSampled"] == trace_sampled, ""
