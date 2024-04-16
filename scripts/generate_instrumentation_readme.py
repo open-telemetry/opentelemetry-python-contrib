@@ -66,7 +66,7 @@ def main():
         semconv_status = pkg_info.get("_semconv_status")
         if not instruments:
             instruments = (name,)
-        
+
         if not semconv_status:
             semconv_status = "experimental"
 
