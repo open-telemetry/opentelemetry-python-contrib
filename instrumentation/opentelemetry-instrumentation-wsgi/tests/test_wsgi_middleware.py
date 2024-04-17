@@ -26,7 +26,7 @@ from opentelemetry.instrumentation._semconv import (
     _server_duration_attrs_old,
     _OTEL_SEMCONV_STABILITY_OPT_IN_KEY,
     _OpenTelemetrySemanticConventionStability,
-    _OpenTelemetryStabilityMode,
+    _HTTPStabilityMode,
 )
 from opentelemetry.sdk.metrics.export import (
     HistogramDataPoint,
@@ -496,7 +496,7 @@ class TestWsgiAttributes(unittest.TestCase):
 
         attrs = otel_wsgi.collect_request_attributes(
             self.environ,
-            _OpenTelemetryStabilityMode.HTTP,
+            _HTTPStabilityMode.HTTP,
         )
         self.assertDictEqual(
             attrs,
@@ -654,7 +654,7 @@ class TestWsgiAttributes(unittest.TestCase):
         self.assertGreaterEqual(
             otel_wsgi.collect_request_attributes(
                 self.environ,
-                _OpenTelemetryStabilityMode.HTTP,
+                _HTTPStabilityMode.HTTP,
             ).items(),
             expected_new.items(),
         )
@@ -670,7 +670,7 @@ class TestWsgiAttributes(unittest.TestCase):
         self.assertGreaterEqual(
             otel_wsgi.collect_request_attributes(
                 self.environ,
-                _OpenTelemetryStabilityMode.HTTP,
+                _HTTPStabilityMode.HTTP,
             ).items(),
             expected_new.items(),
         )
@@ -681,7 +681,7 @@ class TestWsgiAttributes(unittest.TestCase):
             self.span,
             "404 Not Found",
             {},
-            sem_conv_opt_in_mode=_OpenTelemetryStabilityMode.HTTP,
+            sem_conv_opt_in_mode=_HTTPStabilityMode.HTTP,
         )
         expected = (mock.call(SpanAttributes.HTTP_STATUS_CODE, 404),)
         expected_new = (mock.call(SpanAttributes.HTTP_RESPONSE_STATUS_CODE, 404),)
