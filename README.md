@@ -96,11 +96,15 @@ To release a package as `1.0` stable, the package:
   - e.g. If an instrumentation package uses flags, a token as context, or parameters that are not typical of the `BaseInstrumentor` class, these are documented
 - After the release of `1.0`, a CODEOWNER may no longer feel like they have the bandwidth to meet the responsibilities of maintaining the package. That's not a problem at all, life happens! However, if that is the case, we ask that the CODEOWNER please raise an issue indicating that they would like to be removed as a CODEOWNER so that they don't get pinged on future PRs. Ultimately, we hope to use that issue to find a new CODEOWNER.
 
+## Semantic Convention status of instrumentations
+
+In our efforts to maintain optimal user experience and prevent breaking changes for transitioning into stable semantic conventions, OpenTelemetry Python is adopting the [semantic convention migration plan](https://github.com/open-telemetry/semantic-conventions/blob/main/docs/http/migration-guide.md) for several instrumentations. Currently this plan is only being adopted for HTTP-related instrumentations, but will eventually cover all types. Please refer to the `semconv status` column of the [instrumentation README](instrumentation/README.md) of the current status of instrumentations' semantic conventions. The possible values are `experimental`, `stable` and `migration` referring to [status](https://github.com/open-telemetry/opentelemetry-specification/blob/v1.31.0/specification/document-status.md#lifecycle-status) of that particular semantic convention. `Migration` refers to an instrumentation that currently supports the migration plan.
+
 ## Contributing
 
 See [CONTRIBUTING.md](CONTRIBUTING.md)
 
-We meet weekly on Thursday, and the time of the meeting alternates between 9AM PT and 4PM PT. The meeting is subject to change depending on contributors' availability. Check the [OpenTelemetry community calendar](https://calendar.google.com/calendar/embed?src=google.com_b79e3e90j7bbsa2n2p5an5lf60%40group.calendar.google.com) for specific dates and for the Zoom link.
+We meet weekly on Thursday at 9AM PT. The meeting is subject to change depending on contributors' availability. Check the [OpenTelemetry community calendar](https://calendar.google.com/calendar/embed?src=c_2bf73e3b6b530da4babd444e72b76a6ad893a5c3f43cf40467abc7a9a897f977%40group.calendar.google.com) for specific dates and for the Zoom link.
 
 Meeting notes are available as a public [Google doc](https://docs.google.com/document/d/1CIMGoIOZ-c3-igzbd6_Pnxx1SjAkjwqoYSUWxPY8XIs/edit). For edit access, get in touch on [GitHub Discussions](https://github.com/open-telemetry/opentelemetry-python/discussions).
 
