@@ -91,7 +91,7 @@ class _OpenTelemetryStabilitySignalType:
     HTTP = "http"
 
 
-class _OpenTelemetryStabilityMode(Enum):
+class _HTTPStabilityMode(Enum):
     # http - emit the new, stable HTTP and networking conventions ONLY
     HTTP = "http"
     # http/dup - emit both the old and the stable HTTP and networking conventions
@@ -101,11 +101,11 @@ class _OpenTelemetryStabilityMode(Enum):
 
 
 def _report_new(mode):
-    return mode.name != _OpenTelemetryStabilityMode.DEFAULT.name
+    return mode.name != _HTTPStabilityMode.DEFAULT.name
 
 
 def _report_old(mode):
-    return mode.name != _OpenTelemetryStabilityMode.HTTP.name
+    return mode.name != _HTTPStabilityMode.HTTP.name
 
 
 class _OpenTelemetrySemanticConventionStability:
@@ -123,17 +123,17 @@ class _OpenTelemetrySemanticConventionStability:
                 opt_in_list = []
                 if opt_in:
                     opt_in_list = [s.strip() for s in opt_in.split(",")]
-                http_opt_in = _OpenTelemetryStabilityMode.DEFAULT
+                http_opt_in = _HTTPStabilityMode.DEFAULT
                 if opt_in_list:
                     # Process http opt-in
                     # http/dup takes priority over http
                     if (
-                        _OpenTelemetryStabilityMode.HTTP_DUP.value
+                        _HTTPStabilityMode.HTTP_DUP.value
                         in opt_in_list
                     ):
-                        http_opt_in = _OpenTelemetryStabilityMode.HTTP_DUP
-                    elif _OpenTelemetryStabilityMode.HTTP.value in opt_in_list:
-                        http_opt_in = _OpenTelemetryStabilityMode.HTTP
+                        http_opt_in = _HTTPStabilityMode.HTTP_DUP
+                    elif _HTTPStabilityMode.HTTP.value in opt_in_list:
+                        http_opt_in = _HTTPStabilityMode.HTTP
                 _OpenTelemetrySemanticConventionStability._OTEL_SEMCONV_STABILITY_SIGNAL_MAPPING[
                     _OpenTelemetryStabilitySignalType.HTTP
                 ] = http_opt_in
@@ -144,9 +144,9 @@ class _OpenTelemetrySemanticConventionStability:
     def _get_opentelemetry_stability_opt_in_mode(
         cls,
         signal_type: _OpenTelemetryStabilitySignalType,
-    ) -> _OpenTelemetryStabilityMode:
+    ) -> _HTTPStabilityMode:
         return _OpenTelemetrySemanticConventionStability._OTEL_SEMCONV_STABILITY_SIGNAL_MAPPING.get(
-            signal_type, _OpenTelemetryStabilityMode.DEFAULT
+            signal_type, _HTTPStabilityMode.DEFAULT
         )
 
 
@@ -154,13 +154,13 @@ def _filter_semconv_duration_attrs(
     attrs,
     old_attrs,
     new_attrs,
-    sem_conv_opt_in_mode = _OpenTelemetryStabilityMode.DEFAULT,
+    sem_conv_opt_in_mode = _HTTPStabilityMode.DEFAULT,
 ):
     filtered_attrs = {}
     # duration is two different metrics depending on sem_conv_opt_in_mode, so no DUP attributes
     allowed_attributes = (
         new_attrs
-        if sem_conv_opt_in_mode == _OpenTelemetryStabilityMode.HTTP
+        if sem_conv_opt_in_mode == _HTTPStabilityMode.HTTP
         else old_attrs
     )
     for key, val in attrs.items():
@@ -173,7 +173,7 @@ def _filter_semconv_active_request_count_attr(
     attrs,
     old_attrs,
     new_attrs,
-    sem_conv_opt_in_mode = _OpenTelemetryStabilityMode.DEFAULT,
+    sem_conv_opt_in_mode = _HTTPStabilityMode.DEFAULT,
 ):
     filtered_attrs = {}
     if _report_old(sem_conv_opt_in_mode):
@@ -364,7 +364,7 @@ def _set_status(span, metrics_attributes, status_code_str, status_code, sem_conv
 
 
 # Get schema version based off of opt-in mode
-def _get_schema_url(mode: _OpenTelemetryStabilityMode) -> str:
-    if mode is _OpenTelemetryStabilityMode.DEFAULT:
+def _get_schema_url(mode: _HTTPStabilityMode) -> str:
+    if mode is _HTTPStabilityMode.DEFAULT:
         return "https://opentelemetry.io/schemas/1.11.0"
     return SpanAttributes.SCHEMA_URL

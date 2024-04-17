@@ -217,7 +217,7 @@ from opentelemetry.instrumentation._semconv import (
     _OpenTelemetrySemanticConventionStability,
     _OpenTelemetryStabilitySignalType,
     _METRIC_ATTRIBUTES_SERVER_DURATION_NAME,
-    _OpenTelemetryStabilityMode,
+    _HTTPStabilityMode,
     _SPAN_ATTRIBUTES_ERROR_TYPE,
     _get_schema_url,
     _filter_semconv_active_request_count_attr,
@@ -305,7 +305,7 @@ def setifnotnone(dic, key, value):
 
 def collect_request_attributes(
         environ,
-        sem_conv_opt_in_mode = _OpenTelemetryStabilityMode.DEFAULT,
+        sem_conv_opt_in_mode = _HTTPStabilityMode.DEFAULT,
     ):
     """Collects HTTP request attributes from the PEP3333-conforming
     WSGI environ and returns a dictionary to be used as span creation attributes.
@@ -446,7 +446,7 @@ def _parse_status_code(resp_status):
         return None
 
 
-def _parse_active_request_count_attrs(req_attrs, sem_conv_opt_in_mode = _OpenTelemetryStabilityMode.DEFAULT):
+def _parse_active_request_count_attrs(req_attrs, sem_conv_opt_in_mode = _HTTPStabilityMode.DEFAULT):
     return _filter_semconv_active_request_count_attr(
         req_attrs,
         _server_active_requests_count_attrs_old,
@@ -455,7 +455,7 @@ def _parse_active_request_count_attrs(req_attrs, sem_conv_opt_in_mode = _OpenTel
     )
 
 
-def _parse_duration_attrs(req_attrs, sem_conv_opt_in_mode = _OpenTelemetryStabilityMode.DEFAULT):
+def _parse_duration_attrs(req_attrs, sem_conv_opt_in_mode = _HTTPStabilityMode.DEFAULT):
     return _filter_semconv_duration_attrs(
         req_attrs,
         _server_duration_attrs_old,
@@ -469,7 +469,7 @@ def add_response_attributes(
     start_response_status,
     response_headers,
     duration_attrs = None,
-    sem_conv_opt_in_mode = _OpenTelemetryStabilityMode.DEFAULT,
+    sem_conv_opt_in_mode = _HTTPStabilityMode.DEFAULT,
 ):  # pylint: disable=unused-argument
     """Adds HTTP response attributes to span using the arguments
     passed to a PEP3333-conforming start_response callable.
@@ -648,7 +648,7 @@ class OpenTelemetryMiddleware:
             if span.is_recording():
                 if _report_new(self._sem_conv_opt_in_mode):
                     span.set_attribute(_SPAN_ATTRIBUTES_ERROR_TYPE, type(ex).__qualname__ )
-            span.set_status(Status(StatusCode.ERROR, str(ex)))
+                span.set_status(Status(StatusCode.ERROR, str(ex)))
             span.end()
             if token is not None:
                 context.detach(token)
@@ -656,10 +656,10 @@ class OpenTelemetryMiddleware:
         finally:
             duration_s = default_timer() - start
             if self.duration_histogram_old:
-                duration_attrs_old = _parse_duration_attrs(req_attrs, _OpenTelemetryStabilityMode.DEFAULT)
+                duration_attrs_old = _parse_duration_attrs(req_attrs, _HTTPStabilityMode.DEFAULT)
                 self.duration_histogram_old.record(max(round(duration_s * 1000), 0), duration_attrs_old)
             if self.duration_histogram_new:
-                duration_attrs_new = _parse_duration_attrs(req_attrs, _OpenTelemetryStabilityMode.HTTP)
+                duration_attrs_new = _parse_duration_attrs(req_attrs, _HTTPStabilityMode.HTTP)
                 self.duration_histogram_new.record(max(round(duration_s * 1000), 0), duration_attrs_new)
             self.active_requests_counter.add(-1, active_requests_count_attrs)
 
