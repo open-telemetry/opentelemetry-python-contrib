@@ -1,13 +1,8 @@
 from logging import getLogger
 from typing import Collection, Optional
 
-from pkg_resources import (
-    Distribution,
-    DistributionNotFound,
-    RequirementParseError,
-    VersionConflict,
-    get_distribution,
-)
+from packaging.requirements import Requirement, InvalidRequirement
+from importlib.metadata import PackageNotFoundError, Distribution, version
 
 logger = getLogger(__name__)
 
@@ -27,36 +22,43 @@ class DependencyConflict:
 def get_dist_dependency_conflicts(
     dist: Distribution,
 ) -> Optional[DependencyConflict]:
-    main_deps = dist.requires()
     instrumentation_deps = []
-    for dep in dist.requires(("instruments",)):
-        if dep not in main_deps:
-            # we set marker to none so string representation of the dependency looks like
-            #    requests ~= 1.0
-            # instead of
-            #    requests ~= 1.0; extra = "instruments"
-            # which does not work with `get_distribution()`
-            dep.marker = None
-            instrumentation_deps.append(str(dep))
+    extra = "extra"
+    instruments = "instruments"
+    instruments_marker = {extra: instruments}
+    for dep in dist.requires:
+        if extra not in dep or instruments not in dep:
+            continue
+
+        req = Requirement(dep)
+        if req.marker.evaluate(instruments_marker):
+            instrumentation_deps.append(req)
 
     return get_dependency_conflicts(instrumentation_deps)
 
 
 def get_dependency_conflicts(
-    deps: Collection[str],
+    deps: Collection[str, Requirement],
 ) -> Optional[DependencyConflict]:
     for dep in deps:
+        if isinstance(dep, Requirement):
+            req = dep
+        else:
+            try:
+                req = Requirement(dep)
+            except InvalidRequirement as exc:
+                logger.warning(
+                    'error parsing dependency, reporting as a conflict: "%s" - %s',
+                    dep,
+                    exc,
+                )
+                return DependencyConflict(dep)            
+
         try:
-            get_distribution(dep)
-        except VersionConflict as exc:
-            return DependencyConflict(dep, exc.dist)
-        except DistributionNotFound:
+            dist_version = version(req.name)
+        except PackageNotFoundError:
             return DependencyConflict(dep)
-        except RequirementParseError as exc:
-            logger.warning(
-                'error parsing dependency, reporting as a conflict: "%s" - %s',
-                dep,
-                exc,
-            )
-            return DependencyConflict(dep)
+
+        if not req.specifier.contains(dist_version):
+            return DependencyConflict(dep, f"{req.name} {dist_version}")
     return None
