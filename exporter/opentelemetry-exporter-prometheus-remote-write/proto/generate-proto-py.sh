@@ -6,7 +6,6 @@ PROTO_VERSION=v1.3.2
 
 # SRC_DIR is from protoc perspective. ie its the destination for our checkouts/clones
 SRC_DIR=opentelemetry/exporter/prometheus_remote_write/gen/
-DST_DIR=../src/opentelemetry/exporter/prometheus_remote_write/gen/
 
 #TODO:
 # Check that black & protoc are installed properly
