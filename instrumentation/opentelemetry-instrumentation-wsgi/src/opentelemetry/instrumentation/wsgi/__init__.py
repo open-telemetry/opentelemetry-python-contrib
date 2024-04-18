@@ -645,8 +645,9 @@ class OpenTelemetryMiddleware:
                 iterable = self.wsgi(environ, start_response)
                 return _end_span_after_iterating(iterable, span, token)
         except Exception as ex:
-            if span.is_recording():
-                if _report_new(self._sem_conv_opt_in_mode):
+            if _report_new(self._sem_conv_opt_in_mode):
+                req_attrs[_SPAN_ATTRIBUTES_ERROR_TYPE] = type(ex).__qualname__
+                if span.is_recording():
                     span.set_attribute(_SPAN_ATTRIBUTES_ERROR_TYPE, type(ex).__qualname__ )
                 span.set_status(Status(StatusCode.ERROR, str(ex)))
             span.end()
@@ -660,7 +661,7 @@ class OpenTelemetryMiddleware:
                 self.duration_histogram_old.record(max(round(duration_s * 1000), 0), duration_attrs_old)
             if self.duration_histogram_new:
                 duration_attrs_new = _parse_duration_attrs(req_attrs, _HTTPStabilityMode.HTTP)
-                self.duration_histogram_new.record(max(round(duration_s * 1000), 0), duration_attrs_new)
+                self.duration_histogram_new.record(max(duration_s, 0), duration_attrs_new)
             self.active_requests_counter.add(-1, active_requests_count_attrs)
 
 

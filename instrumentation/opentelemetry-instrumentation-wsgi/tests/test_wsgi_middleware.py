@@ -230,7 +230,6 @@ class TestWsgiApplication(WsgiTestBase):
             SpanAttributes.NET_HOST_NAME: "127.0.0.1"
         }
         expected_attributes_new = {
-            SpanAttributes.URL_SCHEME: "http",
             SpanAttributes.SERVER_PORT: 80,
             SpanAttributes.SERVER_ADDRESS: "127.0.0.1",
             SpanAttributes.NETWORK_PROTOCOL_VERSION: "1.0",
@@ -504,7 +503,6 @@ class TestWsgiAttributes(unittest.TestCase):
                 SpanAttributes.HTTP_REQUEST_METHOD: "GET",
                 SpanAttributes.SERVER_ADDRESS: "127.0.0.1",
                 SpanAttributes.SERVER_PORT: 80,
-                SpanAttributes.URL_SCHEME: "http",
                 SpanAttributes.NETWORK_PROTOCOL_VERSION: "1.0",
                 SpanAttributes.URL_PATH: "/",
                 SpanAttributes.URL_QUERY: "foo=bar",
@@ -520,7 +518,6 @@ class TestWsgiAttributes(unittest.TestCase):
             SpanAttributes.HTTP_SERVER_NAME: parts.hostname,  # Not true in the general case, but for all tests.
         }
         expected_new = {
-            SpanAttributes.URL_SCHEME: parts.scheme,
             SpanAttributes.SERVER_PORT: parts.port
             or (80 if parts.scheme == "http" else 443),
             SpanAttributes.SERVER_ADDRESS: parts.hostname,
@@ -638,14 +635,14 @@ class TestWsgiAttributes(unittest.TestCase):
         self.environ["REQUEST_METHOD"] = "CONNECT"
         self.environ[
             "REQUEST_URI"
-        ] = "127.0.0.1:8080/?foo=bar"  # Might happen in a CONNECT request
+        ] = "http://docs.python.org:80/3/library/urllib.parse.html?highlight=params#url-parsing"  # Might happen in a CONNECT request
         expected_old = {
             SpanAttributes.HTTP_HOST: "127.0.0.1:8080",
-            SpanAttributes.HTTP_TARGET: "127.0.0.1:8080/?foo=bar",
+            SpanAttributes.HTTP_TARGET: "http://docs.python.org:80/3/library/urllib.parse.html?highlight=params#url-parsing",
         }
         expected_new = {
-            SpanAttributes.URL_PATH: "127.0.0.1:8080/",
-            SpanAttributes.URL_QUERY: "foo=bar",
+            SpanAttributes.URL_PATH: "/3/library/urllib.parse.html",
+            SpanAttributes.URL_QUERY: "highlight=params",
         }
         self.assertGreaterEqual(
             otel_wsgi.collect_request_attributes(self.environ).items(),
