@@ -82,7 +82,7 @@ from pymongo import monitoring
 from opentelemetry.instrumentation.instrumentor import BaseInstrumentor
 from opentelemetry.instrumentation.pymongo.package import _instruments
 from opentelemetry.instrumentation.pymongo.utils import (
-    COMMAND_TO_ATTRIBUTE_MAPPING,
+    COMMAND_TO_ATTRIBUTES_MAPPING,
 )
 from opentelemetry.instrumentation.pymongo.version import __version__
 from opentelemetry.instrumentation.utils import is_instrumentation_enabled
@@ -200,10 +200,11 @@ class CommandTracer(monitoring.CommandListener):
 
     def _get_statement_by_command_name(self, command_name, event):
         statement = command_name
-        command_attribute = COMMAND_TO_ATTRIBUTE_MAPPING.get(command_name)
-        command = event.command.get(command_attribute)
-        if command and self.capture_statement:
-            statement += " " + str(command)
+        command_attributes = COMMAND_TO_ATTRIBUTES_MAPPING.get(command_name)
+        if self.capture_statement:
+            for attribute in command_attributes:
+                if command := event.command.get(attribute):
+                    statement += " " + str(command)
         return statement
 
 

@@ -84,6 +84,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Consolidate instrumentation suppression mechanisms and fix bug in httpx instrumentation
   ([#2061](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/2061))
 
+### Added
+- `opentelemetry-instrumentation-pymongo` Add full command statement capturing for additional command types
+  ([#1955](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/1955))
+
 ### Fixed
 
 - `opentelemetry-instrumentation-httpx` Remove URL credentials
