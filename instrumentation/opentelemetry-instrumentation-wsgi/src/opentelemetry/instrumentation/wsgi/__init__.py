@@ -304,9 +304,9 @@ def setifnotnone(dic, key, value):
 
 
 def collect_request_attributes(
-        environ,
-        sem_conv_opt_in_mode = _HTTPStabilityMode.DEFAULT,
-    ):
+    environ,
+    sem_conv_opt_in_mode=_HTTPStabilityMode.DEFAULT,
+):
     """Collects HTTP request attributes from the PEP3333-conforming
     WSGI environ and returns a dictionary to be used as span creation attributes.
     """
@@ -314,9 +314,7 @@ def collect_request_attributes(
     _set_http_method(
         result,
         environ.get("REQUEST_METHOD", ""),
-        sanitize_method(
-            environ.get("REQUEST_METHOD", "")
-        ),
+        sanitize_method(environ.get("REQUEST_METHOD", "")),
         sem_conv_opt_in_mode,
     )
     # old semconv v1.12.0
@@ -344,7 +342,6 @@ def collect_request_attributes(
             sem_conv_opt_in_mode,
         )
 
-
     target = environ.get("RAW_URI")
     if target is None:  # Note: `"" or None is None`
         target = environ.get("REQUEST_URI")
@@ -361,14 +358,16 @@ def collect_request_attributes(
     remote_addr = environ.get("REMOTE_ADDR")
     if remote_addr:
         _set_http_peer_ip(result, remote_addr, sem_conv_opt_in_mode)
-    
+
     peer_port = environ.get("REMOTE_PORT")
     if peer_port:
         _set_http_peer_port_server(result, peer_port, sem_conv_opt_in_mode)
 
     remote_host = environ.get("REMOTE_HOST")
     if remote_host and remote_host != remote_addr:
-        _set_http_net_peer_name_server(result, remote_host, sem_conv_opt_in_mode)
+        _set_http_net_peer_name_server(
+            result, remote_host, sem_conv_opt_in_mode
+        )
 
     user_agent = environ.get("HTTP_USER_AGENT")
     if user_agent is not None and len(user_agent) > 0:
@@ -446,7 +445,9 @@ def _parse_status_code(resp_status):
         return None
 
 
-def _parse_active_request_count_attrs(req_attrs, sem_conv_opt_in_mode = _HTTPStabilityMode.DEFAULT):
+def _parse_active_request_count_attrs(
+    req_attrs, sem_conv_opt_in_mode=_HTTPStabilityMode.DEFAULT
+):
     return _filter_semconv_active_request_count_attr(
         req_attrs,
         _server_active_requests_count_attrs_old,
@@ -455,7 +456,9 @@ def _parse_active_request_count_attrs(req_attrs, sem_conv_opt_in_mode = _HTTPSta
     )
 
 
-def _parse_duration_attrs(req_attrs, sem_conv_opt_in_mode = _HTTPStabilityMode.DEFAULT):
+def _parse_duration_attrs(
+    req_attrs, sem_conv_opt_in_mode=_HTTPStabilityMode.DEFAULT
+):
     return _filter_semconv_duration_attrs(
         req_attrs,
         _server_duration_attrs_old,
@@ -468,8 +471,8 @@ def add_response_attributes(
     span,
     start_response_status,
     response_headers,
-    duration_attrs = None,
-    sem_conv_opt_in_mode = _HTTPStabilityMode.DEFAULT,
+    duration_attrs=None,
+    sem_conv_opt_in_mode=_HTTPStabilityMode.DEFAULT,
 ):  # pylint: disable=unused-argument
     """Adds HTTP response attributes to span using the arguments
     passed to a PEP3333-conforming start_response callable.
@@ -485,8 +488,14 @@ def add_response_attributes(
         status_code = -1
     if duration_attrs is None:
         duration_attrs = {}
-    _set_status(span, duration_attrs, status_code_str, status_code, sem_conv_opt_in_mode)
-        
+    _set_status(
+        span,
+        duration_attrs,
+        status_code_str,
+        status_code,
+        sem_conv_opt_in_mode,
+    )
+
 
 def get_default_span_name(environ):
     """
@@ -578,11 +587,21 @@ class OpenTelemetryMiddleware:
 
     @staticmethod
     def _create_start_response(
-        span, start_response, response_hook, duration_attrs, sem_conv_opt_in_mode,
+        span,
+        start_response,
+        response_hook,
+        duration_attrs,
+        sem_conv_opt_in_mode,
     ):
         @functools.wraps(start_response)
         def _start_response(status, response_headers, *args, **kwargs):
-            add_response_attributes(span, status, response_headers, duration_attrs, sem_conv_opt_in_mode)
+            add_response_attributes(
+                span,
+                status,
+                response_headers,
+                duration_attrs,
+                sem_conv_opt_in_mode,
+            )
             if span.is_recording() and span.kind == trace.SpanKind.SERVER:
                 custom_attributes = collect_custom_response_headers_attributes(
                     response_headers
@@ -603,7 +622,9 @@ class OpenTelemetryMiddleware:
             environ: A WSGI environment.
             start_response: The WSGI start_response callable.
         """
-        req_attrs = collect_request_attributes(environ, self._sem_conv_opt_in_mode)
+        req_attrs = collect_request_attributes(
+            environ, self._sem_conv_opt_in_mode
+        )
         active_requests_count_attrs = _parse_active_request_count_attrs(
             req_attrs,
             self._sem_conv_opt_in_mode,
@@ -648,7 +669,9 @@ class OpenTelemetryMiddleware:
             if _report_new(self._sem_conv_opt_in_mode):
                 req_attrs[_SPAN_ATTRIBUTES_ERROR_TYPE] = type(ex).__qualname__
                 if span.is_recording():
-                    span.set_attribute(_SPAN_ATTRIBUTES_ERROR_TYPE, type(ex).__qualname__ )
+                    span.set_attribute(
+                        _SPAN_ATTRIBUTES_ERROR_TYPE, type(ex).__qualname__
+                    )
                 span.set_status(Status(StatusCode.ERROR, str(ex)))
             span.end()
             if token is not None:
@@ -657,11 +680,19 @@ class OpenTelemetryMiddleware:
         finally:
             duration_s = default_timer() - start
             if self.duration_histogram_old:
-                duration_attrs_old = _parse_duration_attrs(req_attrs, _HTTPStabilityMode.DEFAULT)
-                self.duration_histogram_old.record(max(round(duration_s * 1000), 0), duration_attrs_old)
+                duration_attrs_old = _parse_duration_attrs(
+                    req_attrs, _HTTPStabilityMode.DEFAULT
+                )
+                self.duration_histogram_old.record(
+                    max(round(duration_s * 1000), 0), duration_attrs_old
+                )
             if self.duration_histogram_new:
-                duration_attrs_new = _parse_duration_attrs(req_attrs, _HTTPStabilityMode.HTTP)
-                self.duration_histogram_new.record(max(duration_s, 0), duration_attrs_new)
+                duration_attrs_new = _parse_duration_attrs(
+                    req_attrs, _HTTPStabilityMode.HTTP
+                )
+                self.duration_histogram_new.record(
+                    max(duration_s, 0), duration_attrs_new
+                )
             self.active_requests_counter.add(-1, active_requests_count_attrs)
 
 
