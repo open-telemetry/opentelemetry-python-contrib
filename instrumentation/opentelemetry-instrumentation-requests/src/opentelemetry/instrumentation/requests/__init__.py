@@ -290,7 +290,7 @@ def _instrument(
                     metric_labels,
                     _client_duration_attrs_old,
                     _client_duration_attrs_new,
-                    _HTTPStabilityMode.DEFAULT
+                    _HTTPStabilityMode.DEFAULT,
                 )
                 duration_histogram_old.record(
                     max(round(elapsed_time * 1000), 0),
@@ -301,7 +301,7 @@ def _instrument(
                     metric_labels,
                     _client_duration_attrs_old,
                     _client_duration_attrs_new,
-                    _HTTPStabilityMode.HTTP
+                    _HTTPStabilityMode.HTTP,
                 )
                 duration_histogram_new.record(
                     elapsed_time, attributes=duration_attrs_new

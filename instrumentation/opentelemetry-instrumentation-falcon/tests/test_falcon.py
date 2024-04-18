@@ -29,7 +29,7 @@ from opentelemetry.instrumentation.propagators import (
 )
 from opentelemetry.instrumentation._semconv import (
     _server_active_requests_count_attrs_old,
-    _server_duration_attrs_old
+    _server_duration_attrs_old,
 )
 from opentelemetry.sdk.metrics.export import (
     HistogramDataPoint,

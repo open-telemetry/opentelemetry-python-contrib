@@ -151,8 +151,12 @@ _recommended_metrics_attrs_new = {
     "http.server.active_requests": _server_active_requests_count_attrs_new,
     "http.server.request.duration": _server_duration_attrs_new,
 }
-_server_active_requests_count_attrs_both = _server_active_requests_count_attrs_old
-_server_active_requests_count_attrs_both.extend(_server_active_requests_count_attrs_new)
+_server_active_requests_count_attrs_both = (
+    _server_active_requests_count_attrs_old
+)
+_server_active_requests_count_attrs_both.extend(
+    _server_active_requests_count_attrs_new
+)
 _recommended_metrics_attrs_both = {
     "http.server.active_requests": _server_active_requests_count_attrs_both,
     "http.server.duration": _server_duration_attrs_old,
@@ -227,7 +231,7 @@ class TestWsgiApplication(WsgiTestBase):
             SpanAttributes.HTTP_FLAVOR: "1.0",
             SpanAttributes.HTTP_URL: "http://127.0.0.1/",
             SpanAttributes.HTTP_STATUS_CODE: 200,
-            SpanAttributes.NET_HOST_NAME: "127.0.0.1"
+            SpanAttributes.NET_HOST_NAME: "127.0.0.1",
         }
         expected_attributes_new = {
             SpanAttributes.SERVER_PORT: 80,
@@ -239,13 +243,15 @@ class TestWsgiApplication(WsgiTestBase):
             expected_attributes.update(expected_attributes_old)
         if new_sem_conv:
             expected_attributes.update(expected_attributes_new)
-        
+
         expected_attributes.update(span_attributes or {})
         if http_method is not None:
             if old_sem_conv:
                 expected_attributes[SpanAttributes.HTTP_METHOD] = http_method
             if new_sem_conv:
-                expected_attributes[SpanAttributes.HTTP_REQUEST_METHOD] = http_method
+                expected_attributes[
+                    SpanAttributes.HTTP_REQUEST_METHOD
+                ] = http_method
         self.assertEqual(span_list[0].attributes, expected_attributes)
 
     def test_basic_wsgi_call(self):
@@ -367,7 +373,8 @@ class TestWsgiApplication(WsgiTestBase):
                             number_data_point_seen = True
                         for attr in point.attributes:
                             self.assertIn(
-                                attr, _recommended_metrics_attrs_old[metric.name]
+                                attr,
+                                _recommended_metrics_attrs_old[metric.name],
                             )
         self.assertTrue(number_data_point_seen and histogram_data_point_seen)
 
@@ -397,7 +404,8 @@ class TestWsgiApplication(WsgiTestBase):
                             number_data_point_seen = True
                         for attr in point.attributes:
                             self.assertIn(
-                                attr, _recommended_metrics_attrs_new[metric.name]
+                                attr,
+                                _recommended_metrics_attrs_new[metric.name],
                             )
         self.assertTrue(number_data_point_seen and histogram_data_point_seen)
 
@@ -417,9 +425,13 @@ class TestWsgiApplication(WsgiTestBase):
                     if metric.unit == "ms":
                         self.assertEqual(metric.name, "http.server.duration")
                     elif metric.unit == "s":
-                        self.assertEqual(metric.name, "http.server.request.duration")
+                        self.assertEqual(
+                            metric.name, "http.server.request.duration"
+                        )
                     else:
-                        self.assertEqual(metric.name, "http.server.active_requests")
+                        self.assertEqual(
+                            metric.name, "http.server.active_requests"
+                        )
                     data_points = list(metric.data.data_points)
                     self.assertEqual(len(data_points), 1)
                     for point in data_points:
@@ -430,7 +442,8 @@ class TestWsgiApplication(WsgiTestBase):
                             number_data_point_seen = True
                         for attr in point.attributes:
                             self.assertIn(
-                                attr, _recommended_metrics_attrs_both[metric.name]
+                                attr,
+                                _recommended_metrics_attrs_both[metric.name],
                             )
         self.assertTrue(number_data_point_seen and histogram_data_point_seen)
 
@@ -509,7 +522,14 @@ class TestWsgiAttributes(unittest.TestCase):
             },
         )
 
-    def validate_url(self, expected_url, raw=False, has_host=True, old_semconv=True, new_semconv=False):
+    def validate_url(
+        self,
+        expected_url,
+        raw=False,
+        has_host=True,
+        old_semconv=True,
+        new_semconv=False,
+    ):
         parts = urlsplit(expected_url)
         expected_old = {
             SpanAttributes.HTTP_SCHEME: parts.scheme,
@@ -539,9 +559,9 @@ class TestWsgiAttributes(unittest.TestCase):
                     parts.path, 1
                 )[1]
                 if parts.query:
-                    expected_new[SpanAttributes.URL_QUERY] = expected_url.split(
-                        parts.query, 1
-                    )[1]
+                    expected_new[
+                        SpanAttributes.URL_QUERY
+                    ] = expected_url.split(parts.query, 1)[1]
             else:
                 expected_new[SpanAttributes.HTTP_URL] = expected_url
             if has_host:
@@ -555,8 +575,18 @@ class TestWsgiAttributes(unittest.TestCase):
     def test_request_attributes_with_partial_raw_uri(self):
         self.environ["RAW_URI"] = "/?foo=bar/#top"
         self.validate_url("http://127.0.0.1/?foo=bar/#top", raw=True)
-        self.validate_url("http://127.0.0.1/?foo=bar/#top", raw=True, old_semconv=False, new_semconv=True)
-        self.validate_url("http://127.0.0.1/?foo=bar/#top", raw=True, old_semconv=True, new_semconv=True)
+        self.validate_url(
+            "http://127.0.0.1/?foo=bar/#top",
+            raw=True,
+            old_semconv=False,
+            new_semconv=True,
+        )
+        self.validate_url(
+            "http://127.0.0.1/?foo=bar/#top",
+            raw=True,
+            old_semconv=True,
+            new_semconv=True,
+        )
 
     def test_request_attributes_with_partial_raw_uri_and_nonstandard_port(
         self,
@@ -565,26 +595,68 @@ class TestWsgiAttributes(unittest.TestCase):
         del self.environ["HTTP_HOST"]
         self.environ["SERVER_PORT"] = "8080"
         self.validate_url("http://127.0.0.1:8080/?", raw=True, has_host=False)
-        self.validate_url("http://127.0.0.1:8080/?", raw=True, has_host=False, old_semconv=False, new_semconv=True)
-        self.validate_url("http://127.0.0.1:8080/?", raw=True, has_host=False, old_semconv=True, new_semconv=True)
+        self.validate_url(
+            "http://127.0.0.1:8080/?",
+            raw=True,
+            has_host=False,
+            old_semconv=False,
+            new_semconv=True,
+        )
+        self.validate_url(
+            "http://127.0.0.1:8080/?",
+            raw=True,
+            has_host=False,
+            old_semconv=True,
+            new_semconv=True,
+        )
 
     def test_https_uri_port(self):
         del self.environ["HTTP_HOST"]
         self.environ["SERVER_PORT"] = "443"
         self.environ["wsgi.url_scheme"] = "https"
         self.validate_url("https://127.0.0.1/", has_host=False)
-        self.validate_url("https://127.0.0.1/", has_host=False, old_semconv=False, new_semconv=True)
-        self.validate_url("https://127.0.0.1/", has_host=False, old_semconv=True, new_semconv=True)
+        self.validate_url(
+            "https://127.0.0.1/",
+            has_host=False,
+            old_semconv=False,
+            new_semconv=True,
+        )
+        self.validate_url(
+            "https://127.0.0.1/",
+            has_host=False,
+            old_semconv=True,
+            new_semconv=True,
+        )
 
         self.environ["SERVER_PORT"] = "8080"
         self.validate_url("https://127.0.0.1:8080/", has_host=False)
-        self.validate_url("https://127.0.0.1:8080/", has_host=False, old_semconv=False, new_semconv=True)
-        self.validate_url("https://127.0.0.1:8080/", has_host=False, old_semconv=True, new_semconv=True)
+        self.validate_url(
+            "https://127.0.0.1:8080/",
+            has_host=False,
+            old_semconv=False,
+            new_semconv=True,
+        )
+        self.validate_url(
+            "https://127.0.0.1:8080/",
+            has_host=False,
+            old_semconv=True,
+            new_semconv=True,
+        )
 
         self.environ["SERVER_PORT"] = "80"
         self.validate_url("https://127.0.0.1:80/", has_host=False)
-        self.validate_url("https://127.0.0.1:80/", has_host=False, old_semconv=False, new_semconv=True)
-        self.validate_url("https://127.0.0.1:80/", has_host=False, old_semconv=True, new_semconv=True)
+        self.validate_url(
+            "https://127.0.0.1:80/",
+            has_host=False,
+            old_semconv=False,
+            new_semconv=True,
+        )
+        self.validate_url(
+            "https://127.0.0.1:80/",
+            has_host=False,
+            old_semconv=True,
+            new_semconv=True,
+        )
 
     def test_http_uri_port(self):
         del self.environ["HTTP_HOST"]
@@ -627,8 +699,11 @@ class TestWsgiAttributes(unittest.TestCase):
     def test_request_attributes_pathless(self):
         self.environ["RAW_URI"] = ""
         expected = {SpanAttributes.HTTP_TARGET: ""}
-        self.assertIsNone(otel_wsgi.collect_request_attributes(self.environ)
-.get(SpanAttributes.HTTP_TARGET))
+        self.assertIsNone(
+            otel_wsgi.collect_request_attributes(self.environ).get(
+                SpanAttributes.HTTP_TARGET
+            )
+        )
 
     def test_request_attributes_with_full_request_uri(self):
         self.environ["HTTP_HOST"] = "127.0.0.1:8080"
@@ -681,7 +756,9 @@ class TestWsgiAttributes(unittest.TestCase):
             sem_conv_opt_in_mode=_HTTPStabilityMode.HTTP,
         )
         expected = (mock.call(SpanAttributes.HTTP_STATUS_CODE, 404),)
-        expected_new = (mock.call(SpanAttributes.HTTP_RESPONSE_STATUS_CODE, 404),)
+        expected_new = (
+            mock.call(SpanAttributes.HTTP_RESPONSE_STATUS_CODE, 404),
+        )
         self.assertEqual(self.span.set_attribute.call_count, 2)
         self.span.set_attribute.assert_has_calls(expected, any_order=True)
         self.span.set_attribute.assert_has_calls(expected_new, any_order=True)

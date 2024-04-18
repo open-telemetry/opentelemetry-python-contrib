@@ -129,10 +129,7 @@ class _OpenTelemetrySemanticConventionStability:
                 if opt_in_list:
                     # Process http opt-in
                     # http/dup takes priority over http
-                    if (
-                        _HTTPStabilityMode.HTTP_DUP.value
-                        in opt_in_list
-                    ):
+                    if _HTTPStabilityMode.HTTP_DUP.value in opt_in_list:
                         http_opt_in = _HTTPStabilityMode.HTTP_DUP
                     elif _HTTPStabilityMode.HTTP.value in opt_in_list:
                         http_opt_in = _HTTPStabilityMode.HTTP
@@ -156,7 +153,7 @@ def _filter_semconv_duration_attrs(
     attrs,
     old_attrs,
     new_attrs,
-    sem_conv_opt_in_mode = _HTTPStabilityMode.DEFAULT,
+    sem_conv_opt_in_mode=_HTTPStabilityMode.DEFAULT,
 ):
     filtered_attrs = {}
     # duration is two different metrics depending on sem_conv_opt_in_mode, so no DUP attributes
@@ -175,7 +172,7 @@ def _filter_semconv_active_request_count_attr(
     attrs,
     old_attrs,
     new_attrs,
-    sem_conv_opt_in_mode = _HTTPStabilityMode.DEFAULT,
+    sem_conv_opt_in_mode=_HTTPStabilityMode.DEFAULT,
 ):
     filtered_attrs = {}
     if _report_old(sem_conv_opt_in_mode):
@@ -250,7 +247,9 @@ def _set_http_host(result, host, sem_conv_opt_in_mode):
     if _report_new(sem_conv_opt_in_mode):
         set_string_attribute(result, SpanAttributes.SERVER_ADDRESS, host)
 
+
 # Client
+
 
 def _set_http_net_peer_name_client(result, peer_name, sem_conv_opt_in_mode):
     if _report_old(sem_conv_opt_in_mode):
@@ -274,7 +273,9 @@ def _set_http_network_protocol_version(result, version, sem_conv_opt_in_mode):
             result, SpanAttributes.NETWORK_PROTOCOL_VERSION, version
         )
 
+
 # Server
+
 
 def _set_http_net_host(result, host, sem_conv_opt_in_mode):
     if _report_old(sem_conv_opt_in_mode):
@@ -295,13 +296,9 @@ def _set_http_target(result, target, path, query, sem_conv_opt_in_mode):
         set_string_attribute(result, SpanAttributes.HTTP_TARGET, target)
     if _report_new(sem_conv_opt_in_mode):
         if path:
-            set_string_attribute(
-                result, SpanAttributes.URL_PATH, path
-            )
+            set_string_attribute(result, SpanAttributes.URL_PATH, path)
         if query:
-            set_string_attribute(
-                result, SpanAttributes.URL_QUERY, query
-            )
+            set_string_attribute(result, SpanAttributes.URL_QUERY, query)
 
 
 def _set_http_peer_ip(result, ip, sem_conv_opt_in_mode):
@@ -316,13 +313,17 @@ def _set_http_peer_port_server(result, port, sem_conv_opt_in_mode):
         set_int_attribute(result, SpanAttributes.NET_PEER_PORT, port)
     if _report_new(sem_conv_opt_in_mode):
         set_int_attribute(result, SpanAttributes.CLIENT_PORT, port)
-    
+
 
 def _set_http_user_agent(result, user_agent, sem_conv_opt_in_mode):
     if _report_old(sem_conv_opt_in_mode):
-        set_string_attribute(result, SpanAttributes.HTTP_USER_AGENT, user_agent)
+        set_string_attribute(
+            result, SpanAttributes.HTTP_USER_AGENT, user_agent
+        )
     if _report_new(sem_conv_opt_in_mode):
-        set_string_attribute(result, SpanAttributes.USER_AGENT_ORIGINAL, user_agent)
+        set_string_attribute(
+            result, SpanAttributes.USER_AGENT_ORIGINAL, user_agent
+        )
 
 
 def _set_http_net_peer_name_server(result, name, sem_conv_opt_in_mode):
@@ -336,11 +337,19 @@ def _set_http_flavor_version(result, version, sem_conv_opt_in_mode):
     if _report_old(sem_conv_opt_in_mode):
         set_string_attribute(result, SpanAttributes.HTTP_FLAVOR, version)
     if _report_new(sem_conv_opt_in_mode):
-        set_string_attribute(result, SpanAttributes.NETWORK_PROTOCOL_VERSION, version)
+        set_string_attribute(
+            result, SpanAttributes.NETWORK_PROTOCOL_VERSION, version
+        )
 
 
-def _set_status(span, metrics_attributes, status_code_str, status_code, sem_conv_opt_in_mode):
-    if (status_code < 0):
+def _set_status(
+    span,
+    metrics_attributes,
+    status_code_str,
+    status_code,
+    sem_conv_opt_in_mode,
+):
+    if status_code < 0:
         if _report_new(sem_conv_opt_in_mode):
             span.set_attribute(_SPAN_ATTRIBUTES_ERROR_TYPE, status_code_str)
             metrics_attributes[_SPAN_ATTRIBUTES_ERROR_TYPE] = status_code_str
@@ -358,11 +367,19 @@ def _set_status(span, metrics_attributes, status_code_str, status_code, sem_conv
             span.set_attribute(SpanAttributes.HTTP_STATUS_CODE, status_code)
             metrics_attributes[SpanAttributes.HTTP_STATUS_CODE] = status_code
         if _report_new(sem_conv_opt_in_mode):
-            span.set_attribute(SpanAttributes.HTTP_RESPONSE_STATUS_CODE, status_code)
-            metrics_attributes[SpanAttributes.HTTP_RESPONSE_STATUS_CODE] = status_code
+            span.set_attribute(
+                SpanAttributes.HTTP_RESPONSE_STATUS_CODE, status_code
+            )
+            metrics_attributes[
+                SpanAttributes.HTTP_RESPONSE_STATUS_CODE
+            ] = status_code
             if status == StatusCode.ERROR:
-                span.set_attribute(_SPAN_ATTRIBUTES_ERROR_TYPE, status_code_str)
-                metrics_attributes[_SPAN_ATTRIBUTES_ERROR_TYPE] = status_code_str
+                span.set_attribute(
+                    _SPAN_ATTRIBUTES_ERROR_TYPE, status_code_str
+                )
+                metrics_attributes[
+                    _SPAN_ATTRIBUTES_ERROR_TYPE
+                ] = status_code_str
         span.set_status(Status(status))
 
 
