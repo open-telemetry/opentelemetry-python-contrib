@@ -55,18 +55,14 @@ logger = logging.getLogger(__name__)
 
 COMMANDS = [
     "set",
-    "set_many",
     "add",
     "replace",
     "append",
     "prepend",
     "cas",
     "get",
-    "get_many",
     "gets",
-    "gets_many",
     "delete",
-    "delete_many",
     "incr",
     "decr",
     "touch",
@@ -77,13 +73,6 @@ COMMANDS = [
     "set_multi",
     "get_multi",
 ]
-
-
-def _set_connection_attributes(span, instance):
-    if not span.is_recording():
-        return
-    for key, value in _get_address_attributes(instance).items():
-        span.set_attribute(key, value)
 
 
 def _with_tracer_wrapper(func):
@@ -117,7 +106,6 @@ def _wrap_cmd(tracer, cmd, wrapped, instance, args, kwargs):
                 query = f"{cmd}{' ' if vals else ''}{vals}"
                 span.set_attribute(SpanAttributes.DB_STATEMENT, query)
 
-                _set_connection_attributes(span, instance)
         except Exception as ex:  # pylint: disable=broad-except
             logger.warning(
                 "Failed to set attributes for libmc span %s", str(ex)
@@ -150,30 +138,6 @@ def _get_query_string(arg):
     return keys
 
 
-def _get_address_attributes(instance):
-    """Attempt to get host and port from Client instance."""
-    address_attributes = {}
-    address_attributes[SpanAttributes.DB_SYSTEM] = "memcached"
-
-    # client.base.Client contains server attribute which is either a host/port tuple, or unix socket path string
-    # https://github.com/pinterest/libmc/blob/f02ddf73a28c09256589b8afbb3ee50f1171cac7/libmc/client/base.py#L228
-    if hasattr(instance, "server"):
-        if isinstance(instance.server, tuple):
-            host, port = instance.server
-            address_attributes[SpanAttributes.NET_PEER_NAME] = host
-            address_attributes[SpanAttributes.NET_PEER_PORT] = port
-            address_attributes[
-                SpanAttributes.NET_TRANSPORT
-            ] = NetTransportValues.IP_TCP.value
-        elif isinstance(instance.server, str):
-            address_attributes[SpanAttributes.NET_PEER_NAME] = instance.server
-            address_attributes[
-                SpanAttributes.NET_TRANSPORT
-            ] = NetTransportValues.OTHER.value
-
-    return address_attributes
-
-
 class libmcInstrumentor(BaseInstrumentor):
     """An instrumentor for libmc See `BaseInstrumentor`"""
 
@@ -191,7 +155,7 @@ class libmcInstrumentor(BaseInstrumentor):
 
         for cmd in COMMANDS:
             _wrap(
-                "libmc.client.base",
+                "libmc",
                 f"Client.{cmd}",
                 _wrap_cmd(tracer, cmd),
             )
