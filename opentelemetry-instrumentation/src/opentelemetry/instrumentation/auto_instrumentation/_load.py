@@ -94,7 +94,8 @@ def _load_instrumentors(distro):
         entry_point.load()()
 
 
-def _load_configurators():
+def _load_configurators(**configuration_kwargs):
+    configuration_kwargs["auto_instrumentation_version"] =__version__
     configurator_name = environ.get(OTEL_PYTHON_CONFIGURATOR, None)
     configured = None
     for entry_point in iter_entry_points("opentelemetry_configurator"):
@@ -110,7 +111,7 @@ def _load_configurators():
                 configurator_name is None
                 or configurator_name == entry_point.name
             ):
-                entry_point.load()().configure(auto_instrumentation_version=__version__)  # type: ignore
+                entry_point.load()().configure(**configuration_kwargs)  # type: ignore
                 configured = entry_point.name
             else:
                 _logger.warning(

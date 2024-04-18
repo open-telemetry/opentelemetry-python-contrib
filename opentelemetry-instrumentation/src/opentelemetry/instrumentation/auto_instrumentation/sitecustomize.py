@@ -34,8 +34,8 @@ def initialize():
 
     try:
         distro = _load_distro()
-        distro.configure()
-        _load_configurators()
+        configuration_kwargs = distro.configure()
+        _load_configurators(**configuration_kwargs)
         _load_instrumentors(distro)
     except Exception:  # pylint: disable=broad-except
         logger.exception("Failed to auto initialize opentelemetry")
