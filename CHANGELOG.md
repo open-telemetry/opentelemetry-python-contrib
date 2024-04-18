@@ -16,6 +16,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   ([#2300](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/2300))
 - Rename AwsLambdaInstrumentor span attributes `faas.id` to `cloud.resource_id`, `faas.execution` to `faas.invocation_id`
   ([#2372](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/2372))
+- Drop support for instrumenting elasticsearch client < 6`
+  ([#2422](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/2422))
 
 ### Added
 
