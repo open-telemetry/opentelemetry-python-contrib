@@ -19,8 +19,8 @@ from flask import Flask, request
 
 from opentelemetry import trace
 from opentelemetry.instrumentation._semconv import (
-    _server_duration_attrs_old,
     _server_active_requests_count_attrs_old,
+    _server_duration_attrs_old,
 )
 from opentelemetry.instrumentation.flask import FlaskInstrumentor
 from opentelemetry.instrumentation.propagators import (

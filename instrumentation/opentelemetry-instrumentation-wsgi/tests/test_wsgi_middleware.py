@@ -20,13 +20,13 @@ from urllib.parse import urlsplit
 import opentelemetry.instrumentation.wsgi as otel_wsgi
 from opentelemetry import trace as trace_api
 from opentelemetry.instrumentation._semconv import (
+    OTEL_SEMCONV_STABILITY_OPT_IN,
+    _HTTPStabilityMode,
+    _OpenTelemetrySemanticConventionStability,
     _server_active_requests_count_attrs_new,
     _server_active_requests_count_attrs_old,
     _server_duration_attrs_new,
     _server_duration_attrs_old,
-    _OTEL_SEMCONV_STABILITY_OPT_IN_KEY,
-    _OpenTelemetrySemanticConventionStability,
-    _HTTPStabilityMode,
 )
 from opentelemetry.sdk.metrics.export import (
     HistogramDataPoint,
@@ -179,7 +179,7 @@ class TestWsgiApplication(WsgiTestBase):
         self.env_patch = mock.patch.dict(
             "os.environ",
             {
-                _OTEL_SEMCONV_STABILITY_OPT_IN_KEY: sem_conv_mode,
+                OTEL_SEMCONV_STABILITY_OPT_IN: sem_conv_mode,
             },
         )
 

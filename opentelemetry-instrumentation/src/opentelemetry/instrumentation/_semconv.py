@@ -16,11 +16,9 @@ import os
 import threading
 from enum import Enum
 
-from opentelemetry.instrumentation.utils import (
-    http_status_to_status_code,
-)
-from opentelemetry.trace.status import Status, StatusCode
+from opentelemetry.instrumentation.utils import http_status_to_status_code
 from opentelemetry.semconv.trace import SpanAttributes
+from opentelemetry.trace.status import Status, StatusCode
 
 # TODO: will come through semconv package once updated
 _SPAN_ATTRIBUTES_ERROR_TYPE = "error.type"
@@ -86,7 +84,7 @@ _server_active_requests_count_attrs_new = [
     SpanAttributes.URL_SCHEME,
 ]
 
-_OTEL_SEMCONV_STABILITY_OPT_IN_KEY = "OTEL_SEMCONV_STABILITY_OPT_IN"
+OTEL_SEMCONV_STABILITY_OPT_IN = "OTEL_SEMCONV_STABILITY_OPT_IN"
 
 
 class _OpenTelemetryStabilitySignalType:
@@ -121,7 +119,7 @@ class _OpenTelemetrySemanticConventionStability:
             if not _OpenTelemetrySemanticConventionStability._initialized:
                 # Users can pass in comma delimited string for opt-in options
                 # Only values for http stability are supported for now
-                opt_in = os.environ.get(_OTEL_SEMCONV_STABILITY_OPT_IN_KEY, "")
+                opt_in = os.environ.get(OTEL_SEMCONV_STABILITY_OPT_IN, "")
                 opt_in_list = []
                 if opt_in:
                     opt_in_list = [s.strip() for s in opt_in.split(",")]

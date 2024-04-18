@@ -21,15 +21,15 @@ from falcon import testing
 from packaging import version as package_version
 
 from opentelemetry import trace
+from opentelemetry.instrumentation._semconv import (
+    _server_active_requests_count_attrs_old,
+    _server_duration_attrs_old,
+)
 from opentelemetry.instrumentation.falcon import FalconInstrumentor
 from opentelemetry.instrumentation.propagators import (
     TraceResponsePropagator,
     get_global_response_propagator,
     set_global_response_propagator,
-)
-from opentelemetry.instrumentation._semconv import (
-    _server_active_requests_count_attrs_old,
-    _server_duration_attrs_old,
 )
 from opentelemetry.sdk.metrics.export import (
     HistogramDataPoint,
