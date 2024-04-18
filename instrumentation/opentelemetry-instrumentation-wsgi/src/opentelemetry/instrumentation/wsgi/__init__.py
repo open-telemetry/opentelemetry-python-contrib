@@ -214,16 +214,16 @@ from timeit import default_timer
 
 from opentelemetry import context, trace
 from opentelemetry.instrumentation._semconv import (
-    _OpenTelemetrySemanticConventionStability,
-    _OpenTelemetryStabilitySignalType,
     _METRIC_ATTRIBUTES_SERVER_DURATION_NAME,
-    _HTTPStabilityMode,
     _SPAN_ATTRIBUTES_ERROR_TYPE,
-    _get_schema_url,
     _filter_semconv_active_request_count_attr,
     _filter_semconv_duration_attrs,
-    _report_old,
+    _get_schema_url,
+    _HTTPStabilityMode,
+    _OpenTelemetrySemanticConventionStability,
+    _OpenTelemetryStabilitySignalType,
     _report_new,
+    _report_old,
     _server_active_requests_count_attrs_new,
     _server_active_requests_count_attrs_old,
     _server_duration_attrs_new,
@@ -240,9 +240,7 @@ from opentelemetry.instrumentation._semconv import (
     _set_http_user_agent,
     _set_status,
 )
-from opentelemetry.instrumentation.utils import (
-    _start_internal_or_server_span,
-)
+from opentelemetry.instrumentation.utils import _start_internal_or_server_span
 from opentelemetry.instrumentation.wsgi.version import __version__
 from opentelemetry.metrics import get_meter
 from opentelemetry.propagators.textmap import Getter
@@ -250,11 +248,11 @@ from opentelemetry.semconv.metrics import MetricInstruments
 from opentelemetry.semconv.trace import SpanAttributes
 from opentelemetry.trace.status import Status, StatusCode
 from opentelemetry.util.http import (
-    _parse_url_query,
     OTEL_INSTRUMENTATION_HTTP_CAPTURE_HEADERS_SANITIZE_FIELDS,
     OTEL_INSTRUMENTATION_HTTP_CAPTURE_HEADERS_SERVER_REQUEST,
     OTEL_INSTRUMENTATION_HTTP_CAPTURE_HEADERS_SERVER_RESPONSE,
     SanitizeValue,
+    _parse_url_query,
     get_custom_headers,
     normalise_request_header_name,
     normalise_response_header_name,

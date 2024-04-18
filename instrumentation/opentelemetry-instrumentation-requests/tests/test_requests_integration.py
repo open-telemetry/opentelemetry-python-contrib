@@ -23,7 +23,7 @@ from requests.models import Response
 import opentelemetry.instrumentation.requests
 from opentelemetry import trace
 from opentelemetry.instrumentation._semconv import (
-    _OTEL_SEMCONV_STABILITY_OPT_IN_KEY,
+    OTEL_SEMCONV_STABILITY_OPT_IN,
     _SPAN_ATTRIBUTES_ERROR_TYPE,
     _SPAN_ATTRIBUTES_NETWORK_PEER_ADDRESS,
     _SPAN_ATTRIBUTES_NETWORK_PEER_PORT,
@@ -88,7 +88,7 @@ class RequestsIntegrationTestBase(abc.ABC):
             "os.environ",
             {
                 "OTEL_PYTHON_REQUESTS_EXCLUDED_URLS": "http://localhost/env_excluded_arg/123,env_excluded_noarg",
-                _OTEL_SEMCONV_STABILITY_OPT_IN_KEY: sem_conv_mode,
+                OTEL_SEMCONV_STABILITY_OPT_IN: sem_conv_mode,
             },
         )
 
@@ -670,7 +670,7 @@ class TestRequestsIntergrationMetric(TestBase):
         self.env_patch = mock.patch.dict(
             "os.environ",
             {
-                _OTEL_SEMCONV_STABILITY_OPT_IN_KEY: sem_conv_mode,
+                OTEL_SEMCONV_STABILITY_OPT_IN: sem_conv_mode,
             },
         )
         self.env_patch.start()
