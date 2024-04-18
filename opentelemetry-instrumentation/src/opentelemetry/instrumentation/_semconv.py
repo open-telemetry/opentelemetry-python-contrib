@@ -46,7 +46,8 @@ _client_duration_attrs_new = [
     SpanAttributes.NETWORK_PROTOCOL_VERSION,
     SpanAttributes.SERVER_ADDRESS,
     SpanAttributes.SERVER_PORT,
-    SpanAttributes.URL_SCHEME,
+    # TODO: Support opt-in for scheme in new semconv
+    # SpanAttributes.URL_SCHEME,
 ]
 
 _server_duration_attrs_old = [
@@ -66,7 +67,8 @@ _server_duration_attrs_new = [
     SpanAttributes.HTTP_RESPONSE_STATUS_CODE,
     SpanAttributes.HTTP_ROUTE,
     SpanAttributes.NETWORK_PROTOCOL_VERSION,
-    SpanAttributes.URL_SCHEME,
+    # TODO: Support opt-in for scheme in new semconv
+    # SpanAttributes.URL_SCHEME,
 ]
 
 _server_active_requests_count_attrs_old = [
@@ -237,8 +239,9 @@ def _set_http_url(result, url, sem_conv_opt_in_mode):
 def _set_http_scheme(result, scheme, sem_conv_opt_in_mode):
     if _report_old(sem_conv_opt_in_mode):
         set_string_attribute(result, SpanAttributes.HTTP_SCHEME, scheme)
-    if _report_new(sem_conv_opt_in_mode):
-        set_string_attribute(result, SpanAttributes.URL_SCHEME, scheme)
+    # TODO: Support opt-in for scheme in new semconv
+    # if _report_new(sem_conv_opt_in_mode):
+    #     set_string_attribute(result, SpanAttributes.URL_SCHEME, scheme)
 
 
 def _set_http_host(result, host, sem_conv_opt_in_mode):
