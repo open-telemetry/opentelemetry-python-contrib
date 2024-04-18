@@ -14,6 +14,7 @@
 # pylint:disable=cyclic-import
 
 import grpc
+from grpc._cython import cygrpc
 from tests.protobuf import (  # pylint: disable=no-name-in-module
     test_server_pb2_grpc,
 )
@@ -329,3 +330,10 @@ class TestClientProto(TestBase):
             bidirectional_streaming_method(self._stub)
             spans = self.memory_exporter.get_finished_spans()
         self.assertEqual(len(spans), 0)
+
+    def test_interceptor_channel_api(self):
+        channel = self.channel._channel
+        original_channel_methods = [m for m in dir(cygrpc.Channel) if not m.startswith('_')]
+
+        for m in original_channel_methods:
+            self.assertTrue(getattr(channel._channel, m), 'method `{m}` is not available on channel._channel'.format(m=m))

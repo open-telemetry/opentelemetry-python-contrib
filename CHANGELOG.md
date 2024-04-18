@@ -238,6 +238,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## Version 1.17.0/0.38b0 (2023-03-22)
 
+- Allow access to grpc channel attributes when using grpc client instrumentations ([#1716](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/1716))
+
 ### Added
 
 - Add connection attributes to sqlalchemy connect span

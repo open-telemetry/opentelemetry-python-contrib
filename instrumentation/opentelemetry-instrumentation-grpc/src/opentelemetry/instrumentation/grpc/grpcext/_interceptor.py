@@ -260,9 +260,25 @@ class _InterceptorStreamStreamMultiCallable(grpc.StreamStreamMultiCallable):
         )
 
 
+class _ChannelWithAccess:
+    """
+    Wraps a grpc channel to allow access to its API before it is replaced
+    with _InterceptorChannel
+    """
+
+    def __init__(self, channel):
+        self._channel = channel
+
+    def __getattr__(self, name):
+        try:
+            return getattr(self._channel, name)
+        except AttributeError:
+            return getattr(self._channel._channel, name)
+
+
 class _InterceptorChannel(grpc.Channel):
     def __init__(self, channel, interceptor):
-        self._channel = channel
+        self._channel = _ChannelWithAccess(channel)
         self._interceptor = interceptor
 
     def subscribe(self, *args, **kwargs):
