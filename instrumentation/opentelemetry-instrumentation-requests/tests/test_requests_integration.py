@@ -23,10 +23,10 @@ from requests.models import Response
 import opentelemetry.instrumentation.requests
 from opentelemetry import trace
 from opentelemetry.instrumentation._semconv import (
-    OTEL_SEMCONV_STABILITY_OPT_IN,
     _SPAN_ATTRIBUTES_ERROR_TYPE,
     _SPAN_ATTRIBUTES_NETWORK_PEER_ADDRESS,
     _SPAN_ATTRIBUTES_NETWORK_PEER_PORT,
+    OTEL_SEMCONV_STABILITY_OPT_IN,
     _OpenTelemetrySemanticConventionStability,
 )
 from opentelemetry.instrumentation.requests import RequestsInstrumentor
