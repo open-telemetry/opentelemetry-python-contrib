@@ -698,7 +698,6 @@ class TestWsgiAttributes(unittest.TestCase):
 
     def test_request_attributes_pathless(self):
         self.environ["RAW_URI"] = ""
-        expected = {SpanAttributes.HTTP_TARGET: ""}
         self.assertIsNone(
             otel_wsgi.collect_request_attributes(self.environ).get(
                 SpanAttributes.HTTP_TARGET
