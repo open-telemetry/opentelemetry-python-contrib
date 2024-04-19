@@ -300,7 +300,7 @@ def setifnotnone(dic, key, value):
     if value is not None:
         dic[key] = value
 
-
+# pylint: enable=too-many-branches
 def collect_request_attributes(
     environ,
     sem_conv_opt_in_mode=_HTTPStabilityMode.DEFAULT,
