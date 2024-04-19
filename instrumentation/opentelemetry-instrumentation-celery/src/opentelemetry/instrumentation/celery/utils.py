@@ -13,7 +13,7 @@
 # limitations under the License.
 
 import logging
-from typing import Optional, ContextManager
+from typing import Optional, ContextManager, Tuple
 
 from celery import registry  # pylint: disable=no-name-in-module
 from celery.app.task import Task
@@ -171,7 +171,7 @@ def detach_context(task, task_id, is_publish=False) -> None:
 
 def retrieve_context(
     task, task_id, is_publish=False
-) -> Optional[tuple[Span, ContextManager[Span], Optional[object]]]:
+) -> Optional[Tuple[Span, ContextManager[Span], Optional[object]]]:
     """Helper to retrieve an active `Span`, `ContextManager` and context token
     stored in a `Task` instance
     """

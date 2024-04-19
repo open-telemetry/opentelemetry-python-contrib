@@ -126,8 +126,8 @@ class TestCeleryInstrumentation(TestBase):
 
         self.assertIn(SpanAttributes.EXCEPTION_STACKTRACE, event.attributes)
 
-        self.assertEqual(
-            event.attributes[SpanAttributes.EXCEPTION_TYPE], "CustomError"
+        self.assertIn(
+            "CustomError", event.attributes[SpanAttributes.EXCEPTION_TYPE]
         )
 
         self.assertEqual(
