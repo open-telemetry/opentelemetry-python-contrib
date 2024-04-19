@@ -301,7 +301,7 @@ def setifnotnone(dic, key, value):
         dic[key] = value
 
 
-# pylint: enable=too-many-branches
+# pylint: disable=too-many-branches
 
 
 def collect_request_attributes(
