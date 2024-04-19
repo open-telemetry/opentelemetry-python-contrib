@@ -84,8 +84,12 @@ def set_attributes_from_context(span, context):
         elif key == "delivery_info":
             # Get also destination from this
             routing_key = value.get("routing_key")
+
             if routing_key is not None:
-                span.set_attribute(SpanAttributes.MESSAGING_DESTINATION, routing_key)
+                span.set_attribute(
+                    SpanAttributes.MESSAGING_DESTINATION, routing_key
+                )
+
             value = str(value)
 
         elif key == "id":
