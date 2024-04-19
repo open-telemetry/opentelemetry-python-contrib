@@ -73,7 +73,7 @@ libraries = [
         "instrumentation": "opentelemetry-instrumentation-django==0.46b0.dev",
     },
     {
-        "library": "elasticsearch >= 2.0",
+        "library": "elasticsearch >= 6.0",
         "instrumentation": "opentelemetry-instrumentation-elasticsearch==0.46b0.dev",
     },
     {

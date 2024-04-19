@@ -14,6 +14,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - Rename `type` attribute to `asgi.event.type` in `opentelemetry-instrumentation-asgi`
   ([#2300](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/2300))
+- Rename AwsLambdaInstrumentor span attributes `faas.id` to `cloud.resource_id`, `faas.execution` to `faas.invocation_id`
+  ([#2372](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/2372))
+- Drop support for instrumenting elasticsearch client < 6`
+  ([#2422](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/2422))
 
 ### Added
 
@@ -23,6 +27,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Fixed
 
 - `opentelemetry-instrumentation-celery` propagates baggage ([#2385](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/2385))
+- `opentelemetry-instrumentation-grpc` AioClientInterceptor should propagate with a Metadata object
+  ([#2363](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/2363))
+
 
 ## Version 1.24.0/0.45b0 (2024-03-28)
 

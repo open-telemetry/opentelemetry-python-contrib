@@ -21,7 +21,7 @@ async def simple_method(stub, error=False):
     request = Request(
         client_id=CLIENT_ID, request_data="error" if error else "data"
     )
-    return await stub.SimpleMethod(request)
+    return await stub.SimpleMethod(request, metadata=(("key", "value"),))
 
 
 async def client_streaming_method(stub, error=False):
@@ -41,7 +41,7 @@ def server_streaming_method(stub, error=False):
         client_id=CLIENT_ID, request_data="error" if error else "data"
     )
 
-    return stub.ServerStreamingMethod(request)
+    return stub.ServerStreamingMethod(request, metadata=(("key", "value"),))
 
 
 def bidirectional_streaming_method(stub, error=False):
@@ -53,4 +53,6 @@ def bidirectional_streaming_method(stub, error=False):
             )
             yield request
 
-    return stub.BidirectionalStreamingMethod(request_messages())
+    return stub.BidirectionalStreamingMethod(
+        request_messages(), metadata=(("key", "value"),)
+    )

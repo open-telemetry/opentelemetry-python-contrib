@@ -145,8 +145,8 @@ class TestAwsLambdaInstrumentor(TestBase):
         self.assertSpanHasAttributes(
             span,
             {
-                ResourceAttributes.FAAS_ID: MOCK_LAMBDA_CONTEXT.invoked_function_arn,
-                SpanAttributes.FAAS_EXECUTION: MOCK_LAMBDA_CONTEXT.aws_request_id,
+                SpanAttributes.CLOUD_RESOURCE_ID: MOCK_LAMBDA_CONTEXT.invoked_function_arn,
+                SpanAttributes.FAAS_INVOCATION_ID: MOCK_LAMBDA_CONTEXT.aws_request_id,
                 ResourceAttributes.CLOUD_ACCOUNT_ID: MOCK_LAMBDA_CONTEXT.invoked_function_arn.split(
                     ":"
                 )[

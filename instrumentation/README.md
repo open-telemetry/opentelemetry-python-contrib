@@ -1,51 +1,51 @@
 
-| Instrumentation | Supported Packages | Metrics support |
-| --------------- | ------------------ | --------------- |
-| [opentelemetry-instrumentation-aio-pika](./opentelemetry-instrumentation-aio-pika) | aio_pika >= 7.2.0, < 10.0.0 | No
-| [opentelemetry-instrumentation-aiohttp-client](./opentelemetry-instrumentation-aiohttp-client) | aiohttp ~= 3.0 | No
-| [opentelemetry-instrumentation-aiohttp-server](./opentelemetry-instrumentation-aiohttp-server) | aiohttp ~= 3.0 | No
-| [opentelemetry-instrumentation-aiopg](./opentelemetry-instrumentation-aiopg) | aiopg >= 0.13.0, < 2.0.0 | No
-| [opentelemetry-instrumentation-asgi](./opentelemetry-instrumentation-asgi) | asgiref ~= 3.0 | No
-| [opentelemetry-instrumentation-asyncio](./opentelemetry-instrumentation-asyncio) | asyncio | No
-| [opentelemetry-instrumentation-asyncpg](./opentelemetry-instrumentation-asyncpg) | asyncpg >= 0.12.0 | No
-| [opentelemetry-instrumentation-aws-lambda](./opentelemetry-instrumentation-aws-lambda) | aws_lambda | No
-| [opentelemetry-instrumentation-boto](./opentelemetry-instrumentation-boto) | boto~=2.0 | No
-| [opentelemetry-instrumentation-boto3sqs](./opentelemetry-instrumentation-boto3sqs) | boto3 ~= 1.0 | No
-| [opentelemetry-instrumentation-botocore](./opentelemetry-instrumentation-botocore) | botocore ~= 1.0 | No
-| [opentelemetry-instrumentation-cassandra](./opentelemetry-instrumentation-cassandra) | cassandra-driver ~= 3.25,scylla-driver ~= 3.25 | No
-| [opentelemetry-instrumentation-celery](./opentelemetry-instrumentation-celery) | celery >= 4.0, < 6.0 | No
-| [opentelemetry-instrumentation-confluent-kafka](./opentelemetry-instrumentation-confluent-kafka) | confluent-kafka >= 1.8.2, <= 2.3.0 | No
-| [opentelemetry-instrumentation-dbapi](./opentelemetry-instrumentation-dbapi) | dbapi | No
-| [opentelemetry-instrumentation-django](./opentelemetry-instrumentation-django) | django >= 1.10 | Yes
-| [opentelemetry-instrumentation-elasticsearch](./opentelemetry-instrumentation-elasticsearch) | elasticsearch >= 2.0 | No
-| [opentelemetry-instrumentation-falcon](./opentelemetry-instrumentation-falcon) | falcon >= 1.4.1, < 4.0.0 | Yes
-| [opentelemetry-instrumentation-fastapi](./opentelemetry-instrumentation-fastapi) | fastapi ~= 0.58 | Yes
-| [opentelemetry-instrumentation-flask](./opentelemetry-instrumentation-flask) | flask >= 1.0 | Yes
-| [opentelemetry-instrumentation-grpc](./opentelemetry-instrumentation-grpc) | grpcio ~= 1.27 | No
-| [opentelemetry-instrumentation-httpx](./opentelemetry-instrumentation-httpx) | httpx >= 0.18.0 | No
-| [opentelemetry-instrumentation-jinja2](./opentelemetry-instrumentation-jinja2) | jinja2 >= 2.7, < 4.0 | No
-| [opentelemetry-instrumentation-kafka-python](./opentelemetry-instrumentation-kafka-python) | kafka-python >= 2.0 | No
-| [opentelemetry-instrumentation-logging](./opentelemetry-instrumentation-logging) | logging | No
-| [opentelemetry-instrumentation-mysql](./opentelemetry-instrumentation-mysql) | mysql-connector-python ~= 8.0 | No
-| [opentelemetry-instrumentation-mysqlclient](./opentelemetry-instrumentation-mysqlclient) | mysqlclient < 3 | No
-| [opentelemetry-instrumentation-pika](./opentelemetry-instrumentation-pika) | pika >= 0.12.0 | No
-| [opentelemetry-instrumentation-psycopg](./opentelemetry-instrumentation-psycopg) | psycopg >= 3.1.0 | No
-| [opentelemetry-instrumentation-psycopg2](./opentelemetry-instrumentation-psycopg2) | psycopg2 >= 2.7.3.1 | No
-| [opentelemetry-instrumentation-pymemcache](./opentelemetry-instrumentation-pymemcache) | pymemcache >= 1.3.5, < 5 | No
-| [opentelemetry-instrumentation-pymongo](./opentelemetry-instrumentation-pymongo) | pymongo >= 3.1, < 5.0 | No
-| [opentelemetry-instrumentation-pymysql](./opentelemetry-instrumentation-pymysql) | PyMySQL < 2 | No
-| [opentelemetry-instrumentation-pyramid](./opentelemetry-instrumentation-pyramid) | pyramid >= 1.7 | Yes
-| [opentelemetry-instrumentation-redis](./opentelemetry-instrumentation-redis) | redis >= 2.6 | No
-| [opentelemetry-instrumentation-remoulade](./opentelemetry-instrumentation-remoulade) | remoulade >= 0.50 | No
-| [opentelemetry-instrumentation-requests](./opentelemetry-instrumentation-requests) | requests ~= 2.0 | Yes
-| [opentelemetry-instrumentation-sklearn](./opentelemetry-instrumentation-sklearn) | scikit-learn ~= 0.24.0 | No
-| [opentelemetry-instrumentation-sqlalchemy](./opentelemetry-instrumentation-sqlalchemy) | sqlalchemy | Yes
-| [opentelemetry-instrumentation-sqlite3](./opentelemetry-instrumentation-sqlite3) | sqlite3 | No
-| [opentelemetry-instrumentation-starlette](./opentelemetry-instrumentation-starlette) | starlette ~= 0.13.0 | Yes
-| [opentelemetry-instrumentation-system-metrics](./opentelemetry-instrumentation-system-metrics) | psutil >= 5 | No
-| [opentelemetry-instrumentation-threading](./opentelemetry-instrumentation-threading) | threading | No
-| [opentelemetry-instrumentation-tornado](./opentelemetry-instrumentation-tornado) | tornado >= 5.1.1 | Yes
-| [opentelemetry-instrumentation-tortoiseorm](./opentelemetry-instrumentation-tortoiseorm) | tortoise-orm >= 0.17.0 | No
-| [opentelemetry-instrumentation-urllib](./opentelemetry-instrumentation-urllib) | urllib | Yes
-| [opentelemetry-instrumentation-urllib3](./opentelemetry-instrumentation-urllib3) | urllib3 >= 1.0.0, < 3.0.0 | Yes
-| [opentelemetry-instrumentation-wsgi](./opentelemetry-instrumentation-wsgi) | wsgi | Yes
+| Instrumentation | Supported Packages | Metrics support | Semconv status |
+| --------------- | ------------------ | --------------- | -------------- |
+| [opentelemetry-instrumentation-aio-pika](./opentelemetry-instrumentation-aio-pika) | aio_pika >= 7.2.0, < 10.0.0 | No | experimental
+| [opentelemetry-instrumentation-aiohttp-client](./opentelemetry-instrumentation-aiohttp-client) | aiohttp ~= 3.0 | No | experimental
+| [opentelemetry-instrumentation-aiohttp-server](./opentelemetry-instrumentation-aiohttp-server) | aiohttp ~= 3.0 | No | experimental
+| [opentelemetry-instrumentation-aiopg](./opentelemetry-instrumentation-aiopg) | aiopg >= 0.13.0, < 2.0.0 | No | experimental
+| [opentelemetry-instrumentation-asgi](./opentelemetry-instrumentation-asgi) | asgiref ~= 3.0 | No | experimental
+| [opentelemetry-instrumentation-asyncio](./opentelemetry-instrumentation-asyncio) | asyncio | No | experimental
+| [opentelemetry-instrumentation-asyncpg](./opentelemetry-instrumentation-asyncpg) | asyncpg >= 0.12.0 | No | experimental
+| [opentelemetry-instrumentation-aws-lambda](./opentelemetry-instrumentation-aws-lambda) | aws_lambda | No | experimental
+| [opentelemetry-instrumentation-boto](./opentelemetry-instrumentation-boto) | boto~=2.0 | No | experimental
+| [opentelemetry-instrumentation-boto3sqs](./opentelemetry-instrumentation-boto3sqs) | boto3 ~= 1.0 | No | experimental
+| [opentelemetry-instrumentation-botocore](./opentelemetry-instrumentation-botocore) | botocore ~= 1.0 | No | experimental
+| [opentelemetry-instrumentation-cassandra](./opentelemetry-instrumentation-cassandra) | cassandra-driver ~= 3.25,scylla-driver ~= 3.25 | No | experimental
+| [opentelemetry-instrumentation-celery](./opentelemetry-instrumentation-celery) | celery >= 4.0, < 6.0 | No | experimental
+| [opentelemetry-instrumentation-confluent-kafka](./opentelemetry-instrumentation-confluent-kafka) | confluent-kafka >= 1.8.2, <= 2.3.0 | No | experimental
+| [opentelemetry-instrumentation-dbapi](./opentelemetry-instrumentation-dbapi) | dbapi | No | experimental
+| [opentelemetry-instrumentation-django](./opentelemetry-instrumentation-django) | django >= 1.10 | Yes | experimental
+| [opentelemetry-instrumentation-elasticsearch](./opentelemetry-instrumentation-elasticsearch) | elasticsearch >= 2.0 | No | experimental
+| [opentelemetry-instrumentation-falcon](./opentelemetry-instrumentation-falcon) | falcon >= 1.4.1, < 4.0.0 | Yes | experimental
+| [opentelemetry-instrumentation-fastapi](./opentelemetry-instrumentation-fastapi) | fastapi ~= 0.58 | Yes | experimental
+| [opentelemetry-instrumentation-flask](./opentelemetry-instrumentation-flask) | flask >= 1.0 | Yes | experimental
+| [opentelemetry-instrumentation-grpc](./opentelemetry-instrumentation-grpc) | grpcio ~= 1.27 | No | experimental
+| [opentelemetry-instrumentation-httpx](./opentelemetry-instrumentation-httpx) | httpx >= 0.18.0 | No | experimental
+| [opentelemetry-instrumentation-jinja2](./opentelemetry-instrumentation-jinja2) | jinja2 >= 2.7, < 4.0 | No | experimental
+| [opentelemetry-instrumentation-kafka-python](./opentelemetry-instrumentation-kafka-python) | kafka-python >= 2.0 | No | experimental
+| [opentelemetry-instrumentation-logging](./opentelemetry-instrumentation-logging) | logging | No | experimental
+| [opentelemetry-instrumentation-mysql](./opentelemetry-instrumentation-mysql) | mysql-connector-python ~= 8.0 | No | experimental
+| [opentelemetry-instrumentation-mysqlclient](./opentelemetry-instrumentation-mysqlclient) | mysqlclient < 3 | No | experimental
+| [opentelemetry-instrumentation-pika](./opentelemetry-instrumentation-pika) | pika >= 0.12.0 | No | experimental
+| [opentelemetry-instrumentation-psycopg](./opentelemetry-instrumentation-psycopg) | psycopg >= 3.1.0 | No | experimental
+| [opentelemetry-instrumentation-psycopg2](./opentelemetry-instrumentation-psycopg2) | psycopg2 >= 2.7.3.1 | No | experimental
+| [opentelemetry-instrumentation-pymemcache](./opentelemetry-instrumentation-pymemcache) | pymemcache >= 1.3.5, < 5 | No | experimental
+| [opentelemetry-instrumentation-pymongo](./opentelemetry-instrumentation-pymongo) | pymongo >= 3.1, < 5.0 | No | experimental
+| [opentelemetry-instrumentation-pymysql](./opentelemetry-instrumentation-pymysql) | PyMySQL < 2 | No | experimental
+| [opentelemetry-instrumentation-pyramid](./opentelemetry-instrumentation-pyramid) | pyramid >= 1.7 | Yes | experimental
+| [opentelemetry-instrumentation-redis](./opentelemetry-instrumentation-redis) | redis >= 2.6 | No | experimental
+| [opentelemetry-instrumentation-remoulade](./opentelemetry-instrumentation-remoulade) | remoulade >= 0.50 | No | experimental
+| [opentelemetry-instrumentation-requests](./opentelemetry-instrumentation-requests) | requests ~= 2.0 | Yes | migration
+| [opentelemetry-instrumentation-sklearn](./opentelemetry-instrumentation-sklearn) | scikit-learn ~= 0.24.0 | No | experimental
+| [opentelemetry-instrumentation-sqlalchemy](./opentelemetry-instrumentation-sqlalchemy) | sqlalchemy | Yes | experimental
+| [opentelemetry-instrumentation-sqlite3](./opentelemetry-instrumentation-sqlite3) | sqlite3 | No | experimental
+| [opentelemetry-instrumentation-starlette](./opentelemetry-instrumentation-starlette) | starlette ~= 0.13.0 | Yes | experimental
+| [opentelemetry-instrumentation-system-metrics](./opentelemetry-instrumentation-system-metrics) | psutil >= 5 | No | experimental
+| [opentelemetry-instrumentation-threading](./opentelemetry-instrumentation-threading) | threading | No | experimental
+| [opentelemetry-instrumentation-tornado](./opentelemetry-instrumentation-tornado) | tornado >= 5.1.1 | Yes | experimental
+| [opentelemetry-instrumentation-tortoiseorm](./opentelemetry-instrumentation-tortoiseorm) | tortoise-orm >= 0.17.0 | No | experimental
+| [opentelemetry-instrumentation-urllib](./opentelemetry-instrumentation-urllib) | urllib | Yes | experimental
+| [opentelemetry-instrumentation-urllib3](./opentelemetry-instrumentation-urllib3) | urllib3 >= 1.0.0, < 3.0.0 | Yes | experimental
+| [opentelemetry-instrumentation-wsgi](./opentelemetry-instrumentation-wsgi) | wsgi | Yes | experimental
