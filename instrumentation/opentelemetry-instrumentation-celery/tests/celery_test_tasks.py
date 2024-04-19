@@ -13,6 +13,7 @@
 # limitations under the License.
 
 from celery import Celery
+
 from opentelemetry import baggage
 
 

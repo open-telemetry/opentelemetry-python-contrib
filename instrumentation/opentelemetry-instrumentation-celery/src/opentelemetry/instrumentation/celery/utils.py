@@ -13,7 +13,7 @@
 # limitations under the License.
 
 import logging
-from typing import Optional, ContextManager, Tuple
+from typing import ContextManager, Optional, Tuple
 
 from celery import registry  # pylint: disable=no-name-in-module
 from celery.app.task import Task
