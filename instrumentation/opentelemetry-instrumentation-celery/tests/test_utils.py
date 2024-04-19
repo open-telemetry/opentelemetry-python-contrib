@@ -58,18 +58,14 @@ class TestUtils(unittest.TestCase):
             span.attributes.get(SpanAttributes.MESSAGING_DESTINATION), "celery"
         )
 
-        self.assertEqual(
-            span.attributes["celery.delivery_info"], str({"eager": True})
-        )
+        self.assertEqual(span.attributes["celery.delivery_info"], str({"eager": True}))
         self.assertEqual(span.attributes.get("celery.eta"), "soon")
         self.assertEqual(span.attributes.get("celery.expires"), "later")
         self.assertEqual(span.attributes.get("celery.hostname"), "localhost")
 
         self.assertEqual(span.attributes.get("celery.reply_to"), "44b7f305")
         self.assertEqual(span.attributes.get("celery.retries"), 4)
-        self.assertEqual(
-            span.attributes.get("celery.timelimit"), ("now", "later")
-        )
+        self.assertEqual(span.attributes.get("celery.timelimit"), ("now", "later"))
         self.assertNotIn("custom_meta", span.attributes)
 
     def test_set_attributes_not_recording(self):
@@ -132,9 +128,7 @@ class TestUtils(unittest.TestCase):
         }
         span = trace._Span("name", mock.Mock(spec=trace_api.SpanContext))
         utils.set_attributes_from_context(span, context)
-        self.assertEqual(
-            span.attributes.get("celery.timelimit"), ("", "later")
-        )
+        self.assertEqual(span.attributes.get("celery.timelimit"), ("", "later"))
 
     def test_set_attributes_from_context_empty_keys(self):
         # it should not extract empty keys
@@ -192,7 +186,9 @@ class TestUtils(unittest.TestCase):
         span = trace._Span("name", mock.Mock(spec=trace_api.SpanContext))
 
         # assert this is is a no-aop
-        self.assertIsNone(utils.attach_context(None, task_id, span, mock.Mock(), ""))
+        self.assertIsNone(
+            utils.attach_context(None, task_id, span, mock.Mock(), "")
+        )
 
     def test_span_delete_empty(self):
         # ensure detach_span doesn't raise an exception if span is not present
