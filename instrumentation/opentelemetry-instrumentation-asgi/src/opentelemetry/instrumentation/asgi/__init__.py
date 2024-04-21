@@ -218,7 +218,7 @@ from opentelemetry.util.http import (
     OTEL_INSTRUMENTATION_HTTP_CAPTURE_HEADERS_SANITIZE_FIELDS,
     OTEL_INSTRUMENTATION_HTTP_CAPTURE_HEADERS_SERVER_REQUEST,
     OTEL_INSTRUMENTATION_HTTP_CAPTURE_HEADERS_SERVER_RESPONSE,
-    ExcludeList,    
+    ExcludeList,
     SanitizeValue,
     _parse_active_request_count_attrs,
     _parse_duration_attrs,
@@ -450,9 +450,9 @@ class OpenTelemetryMiddleware:
 
     Args:
         app: The ASGI application callable to forward requests to.
-        excluded_urls: Optional parameter to specify URLs that should be excluded from tracing. 
-                       This can be useful for skipping health checks or other endpoints that do not need to be monitored. 
-                       Defaults to None.
+        excluded_urls: Optional parameter to specify URLs that should be excluded from tracing.
+                       This can be useful for skipping health checks or other endpoints that do not need to be monitored.
+                       Should be an instance of :class:`opentelemetry.util.http.ExcludeList`. Defaults to None.
         default_span_details: Callback which should return a string and a tuple, representing the desired default span name and a
                               dictionary with any additional span attributes to set.
                               Optional: Defaults to get_default_span_details.
@@ -706,9 +706,9 @@ class OpenTelemetryMiddleware:
                 if send_span.is_recording():
                     if message["type"] == "http.response.start":
                         status_code = message["status"]
-                        duration_attrs[
-                            SpanAttributes.HTTP_STATUS_CODE
-                        ] = status_code
+                        duration_attrs[SpanAttributes.HTTP_STATUS_CODE] = (
+                            status_code
+                        )
                         set_status_code(server_span, status_code)
                         set_status_code(send_span, status_code)
 
