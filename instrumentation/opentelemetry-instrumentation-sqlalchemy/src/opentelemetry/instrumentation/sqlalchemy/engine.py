@@ -13,9 +13,9 @@
 # limitations under the License.
 import os
 import re
-import sqlalchemy
 import weakref
 
+import sqlalchemy
 from sqlalchemy.event import (  # pylint: disable=no-name-in-module
     listen,
     remove,
