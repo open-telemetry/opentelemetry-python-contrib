@@ -31,7 +31,8 @@ from opentelemetry import trace
 from opentelemetry.context import attach, detach
 from opentelemetry.propagate import extract
 from opentelemetry.semconv.trace import SpanAttributes
-from opentelemetry.trace.status import Status, StatusCode
+
+from ._utilities import _server_status
 
 logger = logging.getLogger(__name__)
 
@@ -124,12 +125,8 @@ class _OpenTelemetryServicerContext(grpc.ServicerContext):
         self._active_span.set_attribute(
             SpanAttributes.RPC_GRPC_STATUS_CODE, code.value[0]
         )
-        self._active_span.set_status(
-            Status(
-                status_code=StatusCode.ERROR,
-                description=f"{code}:{details}",
-            )
-        )
+        status = _server_status(code, details)
+        self._active_span.set_status(status)
         return self._servicer_context.abort(code, details)
 
     def abort_with_status(self, status):
@@ -158,23 +155,15 @@ class _OpenTelemetryServicerContext(grpc.ServicerContext):
             SpanAttributes.RPC_GRPC_STATUS_CODE, code.value[0]
         )
         if code != grpc.StatusCode.OK:
-            self._active_span.set_status(
-                Status(
-                    status_code=StatusCode.ERROR,
-                    description=f"{code}:{details}",
-                )
-            )
+            status = _server_status(code, details)
+            self._active_span.set_status(status)
         return self._servicer_context.set_code(code)
 
     def set_details(self, details):
         self._details = details
         if self._code != grpc.StatusCode.OK:
-            self._active_span.set_status(
-                Status(
-                    status_code=StatusCode.ERROR,
-                    description=f"{self._code}:{details}",
-                )
-            )
+            status = _server_status(self._code, details)
+            self._active_span.set_status(status)
         return self._servicer_context.set_details(details)
 
 
@@ -250,24 +239,30 @@ class OpenTelemetryServerInterceptor(grpc.ServerInterceptor):
         # * ipv4:127.0.0.1:57284
         # * ipv4:10.2.1.1:57284,127.0.0.1:57284
         #
-        try:
-            ip, port = (
-                context.peer().split(",")[0].split(":", 1)[1].rsplit(":", 1)
-            )
-            ip = unquote(ip)
-            attributes.update(
-                {
-                    SpanAttributes.NET_PEER_IP: ip,
-                    SpanAttributes.NET_PEER_PORT: port,
-                }
-            )
+        if context.peer() != "unix:":
+            try:
+                ip, port = (
+                    context.peer()
+                    .split(",")[0]
+                    .split(":", 1)[1]
+                    .rsplit(":", 1)
+                )
+                ip = unquote(ip)
+                attributes.update(
+                    {
+                        SpanAttributes.NET_PEER_IP: ip,
+                        SpanAttributes.NET_PEER_PORT: port,
+                    }
+                )
 
-            # other telemetry sources add this, so we will too
-            if ip in ("[::1]", "127.0.0.1"):
-                attributes[SpanAttributes.NET_PEER_NAME] = "localhost"
+                # other telemetry sources add this, so we will too
+                if ip in ("[::1]", "127.0.0.1"):
+                    attributes[SpanAttributes.NET_PEER_NAME] = "localhost"
 
-        except IndexError:
-            logger.warning("Failed to parse peer address '%s'", context.peer())
+            except IndexError:
+                logger.warning(
+                    "Failed to parse peer address '%s'", context.peer()
+                )
 
         return self._tracer.start_as_current_span(
             name=handler_call_details.method,
@@ -309,7 +304,7 @@ class OpenTelemetryServerInterceptor(grpc.ServerInterceptor):
                             # we handle in our context wrapper.
                             # Here, we're interested in uncaught exceptions.
                             # pylint:disable=unidiomatic-typecheck
-                            if type(error) != Exception:
+                            if type(error) != Exception:  # noqa: E721
                                 span.record_exception(error)
                             raise error
 
@@ -336,6 +331,6 @@ class OpenTelemetryServerInterceptor(grpc.ServerInterceptor):
 
                 except Exception as error:
                     # pylint:disable=unidiomatic-typecheck
-                    if type(error) != Exception:
+                    if type(error) != Exception:  # noqa: E721
                         span.record_exception(error)
                     raise error

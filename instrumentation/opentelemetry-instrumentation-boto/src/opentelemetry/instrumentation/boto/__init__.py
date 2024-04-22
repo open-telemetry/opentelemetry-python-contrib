@@ -91,7 +91,10 @@ class BotoInstrumentor(BaseInstrumentor):
 
         # pylint: disable=attribute-defined-outside-init
         self._tracer = get_tracer(
-            __name__, __version__, kwargs.get("tracer_provider")
+            __name__,
+            __version__,
+            kwargs.get("tracer_provider"),
+            schema_url="https://opentelemetry.io/schemas/1.11.0",
         )
 
         wrap_function_wrapper(

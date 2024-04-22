@@ -38,8 +38,8 @@ The hooks can be configured as follows:
     def response_hook(span, request, response):
         pass
 
-    URLLib3Instrumentor.instrument(
-        request_hook=request_hook, response_hook=response_hook)
+    URLLib3Instrumentor().instrument(
+        request_hook=request_hook, response_hook=response_hook
     )
 
 Exclude lists

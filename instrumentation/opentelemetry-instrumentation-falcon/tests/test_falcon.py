@@ -16,20 +16,20 @@ from timeit import default_timer
 from unittest.mock import Mock, patch
 
 import pytest
-from falcon import __version__ as _falcon_verison
+from falcon import __version__ as _falcon_version
 from falcon import testing
 from packaging import version as package_version
 
 from opentelemetry import trace
+from opentelemetry.instrumentation._semconv import (
+    _server_active_requests_count_attrs_old,
+    _server_duration_attrs_old,
+)
 from opentelemetry.instrumentation.falcon import FalconInstrumentor
 from opentelemetry.instrumentation.propagators import (
     TraceResponsePropagator,
     get_global_response_propagator,
     set_global_response_propagator,
-)
-from opentelemetry.instrumentation.wsgi import (
-    _active_requests_count_attrs,
-    _duration_attrs,
 )
 from opentelemetry.sdk.metrics.export import (
     HistogramDataPoint,
@@ -53,8 +53,8 @@ _expected_metric_names = [
     "http.server.duration",
 ]
 _recommended_attrs = {
-    "http.server.active_requests": _active_requests_count_attrs,
-    "http.server.duration": _duration_attrs,
+    "http.server.active_requests": _server_active_requests_count_attrs_old,
+    "http.server.duration": _server_duration_attrs_old,
 }
 
 
@@ -110,7 +110,7 @@ class TestFalconInstrumentation(TestFalconBase, WsgiTestBase):
         spans = self.memory_exporter.get_finished_spans()
         self.assertEqual(len(spans), 1)
         span = spans[0]
-        self.assertEqual(span.name, f"HelloWorldResource.on_{method.lower()}")
+        self.assertEqual(span.name, f"{method} /hello")
         self.assertEqual(span.status.status_code, StatusCode.UNSET)
         self.assertEqual(
             span.status.description,
@@ -125,7 +125,7 @@ class TestFalconInstrumentation(TestFalconBase, WsgiTestBase):
                 SpanAttributes.NET_HOST_PORT: 80,
                 SpanAttributes.HTTP_HOST: "falconframework.org",
                 SpanAttributes.HTTP_TARGET: "/",
-                SpanAttributes.NET_PEER_PORT: "65133",
+                SpanAttributes.NET_PEER_PORT: 65133,
                 SpanAttributes.HTTP_FLAVOR: "1.1",
                 "falcon.resource": "HelloWorldResource",
                 SpanAttributes.HTTP_STATUS_CODE: 201,
@@ -145,7 +145,7 @@ class TestFalconInstrumentation(TestFalconBase, WsgiTestBase):
         spans = self.memory_exporter.get_finished_spans()
         self.assertEqual(len(spans), 1)
         span = spans[0]
-        self.assertEqual(span.name, "HTTP GET")
+        self.assertEqual(span.name, "GET")
         self.assertEqual(span.status.status_code, StatusCode.UNSET)
         self.assertSpanHasAttributes(
             span,
@@ -156,7 +156,7 @@ class TestFalconInstrumentation(TestFalconBase, WsgiTestBase):
                 SpanAttributes.NET_HOST_PORT: 80,
                 SpanAttributes.HTTP_HOST: "falconframework.org",
                 SpanAttributes.HTTP_TARGET: "/",
-                SpanAttributes.NET_PEER_PORT: "65133",
+                SpanAttributes.NET_PEER_PORT: 65133,
                 SpanAttributes.HTTP_FLAVOR: "1.1",
                 SpanAttributes.HTTP_STATUS_CODE: 404,
             },
@@ -177,7 +177,7 @@ class TestFalconInstrumentation(TestFalconBase, WsgiTestBase):
         spans = self.memory_exporter.get_finished_spans()
         self.assertEqual(len(spans), 1)
         span = spans[0]
-        self.assertEqual(span.name, "ErrorResource.on_get")
+        self.assertEqual(span.name, "GET /error")
         self.assertFalse(span.status.is_ok)
         self.assertEqual(span.status.status_code, StatusCode.ERROR)
         self.assertEqual(
@@ -193,7 +193,7 @@ class TestFalconInstrumentation(TestFalconBase, WsgiTestBase):
                 SpanAttributes.NET_HOST_PORT: 80,
                 SpanAttributes.HTTP_HOST: "falconframework.org",
                 SpanAttributes.HTTP_TARGET: "/",
-                SpanAttributes.NET_PEER_PORT: "65133",
+                SpanAttributes.NET_PEER_PORT: 65133,
                 SpanAttributes.HTTP_FLAVOR: "1.1",
                 SpanAttributes.HTTP_STATUS_CODE: 500,
             },
@@ -205,6 +205,33 @@ class TestFalconInstrumentation(TestFalconBase, WsgiTestBase):
             self.assertEqual(
                 span.attributes[SpanAttributes.NET_PEER_IP], "127.0.0.1"
             )
+
+    def test_url_template(self):
+        self.client().simulate_get("/user/123")
+        spans = self.memory_exporter.get_finished_spans()
+        self.assertEqual(len(spans), 1)
+        span = spans[0]
+        self.assertEqual(span.name, "GET /user/{user_id}")
+        self.assertEqual(span.status.status_code, StatusCode.UNSET)
+        self.assertEqual(
+            span.status.description,
+            None,
+        )
+        self.assertSpanHasAttributes(
+            span,
+            {
+                SpanAttributes.HTTP_METHOD: "GET",
+                SpanAttributes.HTTP_SERVER_NAME: "falconframework.org",
+                SpanAttributes.HTTP_SCHEME: "http",
+                SpanAttributes.NET_HOST_PORT: 80,
+                SpanAttributes.HTTP_HOST: "falconframework.org",
+                SpanAttributes.HTTP_TARGET: "/",
+                SpanAttributes.NET_PEER_PORT: 65133,
+                SpanAttributes.HTTP_FLAVOR: "1.1",
+                "falcon.resource": "UserResource",
+                SpanAttributes.HTTP_STATUS_CODE: 200,
+            },
+        )
 
     def test_uninstrument(self):
         self.client().simulate_get(path="/hello")
@@ -309,6 +336,7 @@ class TestFalconInstrumentation(TestFalconBase, WsgiTestBase):
             "http.flavor": "1.1",
             "http.server_name": "falconframework.org",
             "net.host.port": 80,
+            "net.host.name": "falconframework.org",
             "http.status_code": 404,
         }
         expected_requests_count_attributes = {
@@ -317,6 +345,8 @@ class TestFalconInstrumentation(TestFalconBase, WsgiTestBase):
             "http.scheme": "http",
             "http.flavor": "1.1",
             "http.server_name": "falconframework.org",
+            "net.host.name": "falconframework.org",
+            "net.host.port": 80,
         }
         start = default_timer()
         self.client().simulate_get("/hello/756")
@@ -496,7 +526,7 @@ class TestCustomRequestResponseHeaders(TestFalconBase):
                 self.assertNotIn(key, span.attributes)
 
     @pytest.mark.skipif(
-        condition=package_version.parse(_falcon_verison)
+        condition=package_version.parse(_falcon_version)
         < package_version.parse("2.0.0"),
         reason="falcon<2 does not implement custom response headers",
     )
@@ -531,7 +561,7 @@ class TestCustomRequestResponseHeaders(TestFalconBase):
             self.assertNotIn(key, span.attributes)
 
     @pytest.mark.skipif(
-        condition=package_version.parse(_falcon_verison)
+        condition=package_version.parse(_falcon_version)
         < package_version.parse("2.0.0"),
         reason="falcon<2 does not implement custom response headers",
     )

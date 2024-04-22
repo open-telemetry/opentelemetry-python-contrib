@@ -37,6 +37,7 @@ def expected_attributes(override_attributes):
         SpanAttributes.HTTP_SERVER_NAME: "localhost",
         SpanAttributes.HTTP_SCHEME: "http",
         SpanAttributes.NET_HOST_PORT: 80,
+        SpanAttributes.NET_HOST_NAME: "localhost",
         SpanAttributes.HTTP_HOST: "localhost",
         SpanAttributes.HTTP_TARGET: "/",
         SpanAttributes.HTTP_FLAVOR: "1.1",
@@ -145,7 +146,7 @@ class TestProgrammatic(InstrumentationTest, WsgiTestBase):
         resp.close()
         span_list = self.memory_exporter.get_finished_spans()
         self.assertEqual(len(span_list), 1)
-        self.assertEqual(span_list[0].name, "HTTP POST")
+        self.assertEqual(span_list[0].name, "POST /bye")
         self.assertEqual(span_list[0].kind, trace.SpanKind.SERVER)
         self.assertEqual(span_list[0].attributes, expected_attrs)
 

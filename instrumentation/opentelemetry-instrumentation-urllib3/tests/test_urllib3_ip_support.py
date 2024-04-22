@@ -77,7 +77,7 @@ class TestURLLib3InstrumentorWithRealSocket(HttpTestBase, TestBase):
 
         span = self.assert_span()
         self.assertIs(trace.SpanKind.CLIENT, span.kind)
-        self.assertEqual("HTTP GET", span.name)
+        self.assertEqual("GET", span.name)
 
         attributes = {
             "http.status_code": 200,

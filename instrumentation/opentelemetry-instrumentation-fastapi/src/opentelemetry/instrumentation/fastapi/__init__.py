@@ -222,12 +222,17 @@ class FastAPIInstrumentor(BaseInstrumentor):
                 excluded_urls = _excluded_urls_from_env
             else:
                 excluded_urls = parse_excluded_urls(excluded_urls)
-            meter = get_meter(__name__, __version__, meter_provider)
+            meter = get_meter(
+                __name__,
+                __version__,
+                meter_provider,
+                schema_url="https://opentelemetry.io/schemas/1.11.0",
+            )
 
             app.add_middleware(
                 OpenTelemetryMiddleware,
                 excluded_urls=excluded_urls,
-                default_span_details=_get_route_details,
+                default_span_details=_get_default_span_details,
                 server_request_hook=server_request_hook,
                 client_request_hook=client_request_hook,
                 client_response_hook=client_response_hook,
@@ -295,12 +300,15 @@ class _InstrumentedFastAPI(fastapi.FastAPI):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
         meter = get_meter(
-            __name__, __version__, _InstrumentedFastAPI._meter_provider
+            __name__,
+            __version__,
+            _InstrumentedFastAPI._meter_provider,
+            schema_url="https://opentelemetry.io/schemas/1.11.0",
         )
         self.add_middleware(
             OpenTelemetryMiddleware,
             excluded_urls=_InstrumentedFastAPI._excluded_urls,
-            default_span_details=_get_route_details,
+            default_span_details=_get_default_span_details,
             server_request_hook=_InstrumentedFastAPI._server_request_hook,
             client_request_hook=_InstrumentedFastAPI._client_request_hook,
             client_response_hook=_InstrumentedFastAPI._client_response_hook,
@@ -316,15 +324,21 @@ class _InstrumentedFastAPI(fastapi.FastAPI):
 
 
 def _get_route_details(scope):
-    """Callback to retrieve the fastapi route being served.
+    """
+    Function to retrieve Starlette route from scope.
 
     TODO: there is currently no way to retrieve http.route from
     a starlette application from scope.
-
     See: https://github.com/encode/starlette/pull/804
+
+    Args:
+        scope: A Starlette scope
+    Returns:
+        A string containing the route or None
     """
     app = scope["app"]
     route = None
+
     for starlette_route in app.routes:
         match, _ = starlette_route.matches(scope)
         if match == Match.FULL:
@@ -332,10 +346,27 @@ def _get_route_details(scope):
             break
         if match == Match.PARTIAL:
             route = starlette_route.path
-    # method only exists for http, if websocket
-    # leave it blank.
-    span_name = route or scope.get("method", "")
+    return route
+
+
+def _get_default_span_details(scope):
+    """
+    Callback to retrieve span name and attributes from scope.
+
+    Args:
+        scope: A Starlette scope
+    Returns:
+        A tuple of span name and attributes
+    """
+    route = _get_route_details(scope)
+    method = scope.get("method", "")
     attributes = {}
     if route:
         attributes[SpanAttributes.HTTP_ROUTE] = route
+    if method and route:  # http
+        span_name = f"{method} {route}"
+    elif route:  # websocket
+        span_name = route
+    else:  # fallback
+        span_name = method
     return span_name, attributes

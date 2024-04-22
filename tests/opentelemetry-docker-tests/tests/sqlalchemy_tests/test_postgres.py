@@ -95,3 +95,40 @@ class PostgresCreatorTestCase(PostgresTestCase):
         "url": "postgresql://",
         "creator": lambda: psycopg2.connect(**POSTGRES_CONFIG),
     }
+
+
+class PostgresMetricsTestCase(PostgresTestCase):
+    __test__ = True
+
+    VENDOR = "postgresql"
+    SQL_DB = "opentelemetry-tests"
+    ENGINE_ARGS = {
+        "url": "postgresql://%(user)s:%(password)s@%(host)s:%(port)s/%(dbname)s"
+        % POSTGRES_CONFIG
+    }
+
+    def test_metrics_pool_name(self):
+        with self.connection() as conn:
+            conn.execute("SELECT 1 + 1").fetchall()
+
+        pool_name = "{}://{}:{}/{}".format(
+            self.VENDOR,
+            POSTGRES_CONFIG["host"],
+            POSTGRES_CONFIG["port"],
+            self.SQL_DB,
+        )
+        metrics = self.get_sorted_metrics()
+        self.assertEqual(len(metrics), 1)
+        self.assert_metric_expected(
+            metrics[0],
+            [
+                self.create_number_data_point(
+                    value=0,
+                    attributes={"pool.name": pool_name, "state": "idle"},
+                ),
+                self.create_number_data_point(
+                    value=0,
+                    attributes={"pool.name": pool_name, "state": "used"},
+                ),
+            ],
+        )

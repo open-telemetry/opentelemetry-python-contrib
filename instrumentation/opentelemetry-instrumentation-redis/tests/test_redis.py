@@ -11,9 +11,12 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
+import asyncio
 from unittest import mock
+from unittest.mock import AsyncMock
 
 import redis
+import redis.asyncio
 
 from opentelemetry import trace
 from opentelemetry.instrumentation.redis import RedisInstrumentor
@@ -83,6 +86,35 @@ class TestRedis(TestBase):
 
         with mock.patch.object(redis_client, "connection"):
             redis_client.get("key")
+
+        spans = self.memory_exporter.get_finished_spans()
+        self.assertEqual(len(spans), 1)
+
+    def test_instrument_uninstrument_async_client_command(self):
+        redis_client = redis.asyncio.Redis()
+
+        with mock.patch.object(redis_client, "connection", AsyncMock()):
+            asyncio.run(redis_client.get("key"))
+
+        spans = self.memory_exporter.get_finished_spans()
+        self.assertEqual(len(spans), 1)
+        self.memory_exporter.clear()
+
+        # Test uninstrument
+        RedisInstrumentor().uninstrument()
+
+        with mock.patch.object(redis_client, "connection", AsyncMock()):
+            asyncio.run(redis_client.get("key"))
+
+        spans = self.memory_exporter.get_finished_spans()
+        self.assertEqual(len(spans), 0)
+        self.memory_exporter.clear()
+
+        # Test instrument again
+        RedisInstrumentor().instrument()
+
+        with mock.patch.object(redis_client, "connection", AsyncMock()):
+            asyncio.run(redis_client.get("key"))
 
         spans = self.memory_exporter.get_finished_spans()
         self.assertEqual(len(spans), 1)
@@ -168,21 +200,10 @@ class TestRedis(TestBase):
         span = spans[0]
         self.assertEqual(span.attributes.get("db.statement"), "SET ? ?")
 
-    def test_query_sanitizer_enabled_env(self):
+    def test_query_sanitizer(self):
         redis_client = redis.Redis()
         connection = redis.connection.Connection()
         redis_client.connection = connection
-
-        RedisInstrumentor().uninstrument()
-
-        env_patch = mock.patch.dict(
-            "os.environ",
-            {"OTEL_PYTHON_INSTRUMENTATION_SANITIZE_REDIS": "true"},
-        )
-        env_patch.start()
-        RedisInstrumentor().instrument(
-            tracer_provider=self.tracer_provider,
-        )
 
         with mock.patch.object(redis_client, "connection"):
             redis_client.set("key", "value")
@@ -192,21 +213,6 @@ class TestRedis(TestBase):
 
         span = spans[0]
         self.assertEqual(span.attributes.get("db.statement"), "SET ? ?")
-        env_patch.stop()
-
-    def test_query_sanitizer_disabled(self):
-        redis_client = redis.Redis()
-        connection = redis.connection.Connection()
-        redis_client.connection = connection
-
-        with mock.patch.object(redis_client, "connection"):
-            redis_client.set("key", "value")
-
-        spans = self.memory_exporter.get_finished_spans()
-        self.assertEqual(len(spans), 1)
-
-        span = spans[0]
-        self.assertEqual(span.attributes.get("db.statement"), "SET key value")
 
     def test_no_op_tracer_provider(self):
         RedisInstrumentor().uninstrument()

@@ -97,6 +97,7 @@ from opentelemetry.trace import (
     get_tracer_provider,
 )
 from opentelemetry.trace.propagation import get_current_span
+from opentelemetry.trace.status import Status, StatusCode
 
 logger = logging.getLogger(__name__)
 
@@ -201,30 +202,35 @@ def _set_api_gateway_v1_proxy_attributes(
     span.set_attribute(
         SpanAttributes.HTTP_METHOD, lambda_event.get("httpMethod")
     )
-    span.set_attribute(SpanAttributes.HTTP_ROUTE, lambda_event.get("resource"))
 
     if lambda_event.get("headers"):
-        span.set_attribute(
-            SpanAttributes.HTTP_USER_AGENT,
-            lambda_event["headers"].get("User-Agent"),
-        )
-        span.set_attribute(
-            SpanAttributes.HTTP_SCHEME,
-            lambda_event["headers"].get("X-Forwarded-Proto"),
-        )
-        span.set_attribute(
-            SpanAttributes.NET_HOST_NAME, lambda_event["headers"].get("Host")
-        )
+        if "User-Agent" in lambda_event["headers"]:
+            span.set_attribute(
+                SpanAttributes.HTTP_USER_AGENT,
+                lambda_event["headers"]["User-Agent"],
+            )
+        if "X-Forwarded-Proto" in lambda_event["headers"]:
+            span.set_attribute(
+                SpanAttributes.HTTP_SCHEME,
+                lambda_event["headers"]["X-Forwarded-Proto"],
+            )
+        if "Host" in lambda_event["headers"]:
+            span.set_attribute(
+                SpanAttributes.NET_HOST_NAME,
+                lambda_event["headers"]["Host"],
+            )
+    if "resource" in lambda_event:
+        span.set_attribute(SpanAttributes.HTTP_ROUTE, lambda_event["resource"])
 
-    if lambda_event.get("queryStringParameters"):
-        span.set_attribute(
-            SpanAttributes.HTTP_TARGET,
-            f"{lambda_event.get('resource')}?{urlencode(lambda_event.get('queryStringParameters'))}",
-        )
-    else:
-        span.set_attribute(
-            SpanAttributes.HTTP_TARGET, lambda_event.get("resource")
-        )
+        if lambda_event.get("queryStringParameters"):
+            span.set_attribute(
+                SpanAttributes.HTTP_TARGET,
+                f"{lambda_event['resource']}?{urlencode(lambda_event['queryStringParameters'])}",
+            )
+        else:
+            span.set_attribute(
+                SpanAttributes.HTTP_TARGET, lambda_event["resource"]
+            )
 
     return span
 
@@ -237,39 +243,43 @@ def _set_api_gateway_v2_proxy_attributes(
     More info:
     https://docs.aws.amazon.com/apigateway/latest/developerguide/http-api-develop-integrations-lambda.html
     """
-    span.set_attribute(
-        SpanAttributes.NET_HOST_NAME,
-        lambda_event["requestContext"].get("domainName"),
-    )
+    if "domainName" in lambda_event["requestContext"]:
+        span.set_attribute(
+            SpanAttributes.NET_HOST_NAME,
+            lambda_event["requestContext"]["domainName"],
+        )
 
     if lambda_event["requestContext"].get("http"):
-        span.set_attribute(
-            SpanAttributes.HTTP_METHOD,
-            lambda_event["requestContext"]["http"].get("method"),
-        )
-        span.set_attribute(
-            SpanAttributes.HTTP_USER_AGENT,
-            lambda_event["requestContext"]["http"].get("userAgent"),
-        )
-        span.set_attribute(
-            SpanAttributes.HTTP_ROUTE,
-            lambda_event["requestContext"]["http"].get("path"),
-        )
-
-        if lambda_event.get("rawQueryString"):
+        if "method" in lambda_event["requestContext"]["http"]:
             span.set_attribute(
-                SpanAttributes.HTTP_TARGET,
-                f"{lambda_event['requestContext']['http'].get('path')}?{lambda_event.get('rawQueryString')}",
+                SpanAttributes.HTTP_METHOD,
+                lambda_event["requestContext"]["http"]["method"],
             )
-        else:
+        if "userAgent" in lambda_event["requestContext"]["http"]:
             span.set_attribute(
-                SpanAttributes.HTTP_TARGET,
-                lambda_event["requestContext"]["http"].get("path"),
+                SpanAttributes.HTTP_USER_AGENT,
+                lambda_event["requestContext"]["http"]["userAgent"],
             )
+        if "path" in lambda_event["requestContext"]["http"]:
+            span.set_attribute(
+                SpanAttributes.HTTP_ROUTE,
+                lambda_event["requestContext"]["http"]["path"],
+            )
+            if lambda_event.get("rawQueryString"):
+                span.set_attribute(
+                    SpanAttributes.HTTP_TARGET,
+                    f"{lambda_event['requestContext']['http']['path']}?{lambda_event['rawQueryString']}",
+                )
+            else:
+                span.set_attribute(
+                    SpanAttributes.HTTP_TARGET,
+                    lambda_event["requestContext"]["http"]["path"],
+                )
 
     return span
 
 
+# pylint: disable=too-many-statements
 def _instrument(
     wrapped_module_name,
     wrapped_function_name,
@@ -279,6 +289,8 @@ def _instrument(
     disable_aws_context_propagation: bool = False,
     meter_provider: MeterProvider = None,
 ):
+    # pylint: disable=too-many-locals
+    # pylint: disable=too-many-statements
     def _instrumented_lambda_handler_call(  # noqa pylint: disable=too-many-branches
         call_wrapped, instance, args, kwargs
     ):
@@ -313,7 +325,12 @@ def _instrument(
         except (IndexError, KeyError, TypeError):
             span_kind = SpanKind.SERVER
 
-        tracer = get_tracer(__name__, __version__, tracer_provider)
+        tracer = get_tracer(
+            __name__,
+            __version__,
+            tracer_provider,
+            schema_url="https://opentelemetry.io/schemas/1.11.0",
+        )
 
         with tracer.start_as_current_span(
             name=orig_handler_name,
@@ -323,21 +340,37 @@ def _instrument(
             if span.is_recording():
                 lambda_context = args[1]
                 # NOTE: The specs mention an exception here, allowing the
-                # `ResourceAttributes.FAAS_ID` attribute to be set as a span
+                # `SpanAttributes.CLOUD_RESOURCE_ID` attribute to be set as a span
                 # attribute instead of a resource attribute.
                 #
                 # See more:
-                # https://github.com/open-telemetry/opentelemetry-specification/blob/main/specification/trace/semantic_conventions/faas.md#example
+                # https://github.com/open-telemetry/semantic-conventions/blob/main/docs/faas/aws-lambda.md#resource-detector
                 span.set_attribute(
-                    ResourceAttributes.FAAS_ID,
+                    SpanAttributes.CLOUD_RESOURCE_ID,
                     lambda_context.invoked_function_arn,
                 )
                 span.set_attribute(
-                    SpanAttributes.FAAS_EXECUTION,
+                    SpanAttributes.FAAS_INVOCATION_ID,
                     lambda_context.aws_request_id,
                 )
 
-            result = call_wrapped(*args, **kwargs)
+                # NOTE: `cloud.account.id` can be parsed from the ARN as the fifth item when splitting on `:`
+                #
+                # See more:
+                # https://github.com/open-telemetry/semantic-conventions/blob/main/docs/faas/aws-lambda.md#all-triggers
+                account_id = lambda_context.invoked_function_arn.split(":")[4]
+                span.set_attribute(
+                    ResourceAttributes.CLOUD_ACCOUNT_ID,
+                    account_id,
+                )
+
+            exception = None
+            try:
+                result = call_wrapped(*args, **kwargs)
+            except Exception as exc:  # pylint: disable=W0703
+                exception = exc
+                span.set_status(Status(StatusCode.ERROR))
+                span.record_exception(exception)
 
             # If the request came from an API Gateway, extract http attributes from the event
             # https://github.com/open-telemetry/opentelemetry-specification/blob/main/specification/trace/semantic_conventions/instrumentation/aws-lambda.md#api-gateway
@@ -384,6 +417,9 @@ def _instrument(
             logger.warning(
                 "MeterProvider was missing `force_flush` method. This is necessary in case of a Lambda freeze and would exist in the OTel SDK implementation."
             )
+
+        if exception is not None:
+            raise exception.with_traceback(exception.__traceback__)
 
         return result
 

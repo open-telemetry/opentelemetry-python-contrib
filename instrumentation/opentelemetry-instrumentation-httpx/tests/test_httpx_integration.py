@@ -51,33 +51,42 @@ if typing.TYPE_CHECKING:
 HTTP_RESPONSE_BODY = "http.response.body"
 
 
+def _is_url_tuple(request: "RequestInfo"):
+    """Determine if request url format is for httpx versions < 0.20.0."""
+    return isinstance(request[1], tuple) and len(request[1]) == 4
+
+
 def _async_call(coro: typing.Coroutine) -> asyncio.Task:
     loop = asyncio.get_event_loop()
     return loop.run_until_complete(coro)
 
 
 def _response_hook(span, request: "RequestInfo", response: "ResponseInfo"):
+    assert _is_url_tuple(request) or isinstance(request.url, httpx.URL)
     span.set_attribute(
         HTTP_RESPONSE_BODY,
-        response[2].read(),
+        b"".join(response[2]),
     )
 
 
 async def _async_response_hook(
     span: "Span", request: "RequestInfo", response: "ResponseInfo"
 ):
+    assert _is_url_tuple(request) or isinstance(request.url, httpx.URL)
     span.set_attribute(
         HTTP_RESPONSE_BODY,
-        await response[2].aread(),
+        b"".join([part async for part in response[2]]),
     )
 
 
 def _request_hook(span: "Span", request: "RequestInfo"):
+    assert _is_url_tuple(request) or isinstance(request.url, httpx.URL)
     url = httpx.URL(request[1])
     span.update_name("GET" + str(url))
 
 
 async def _async_request_hook(span: "Span", request: "RequestInfo"):
+    assert _is_url_tuple(request) or isinstance(request.url, httpx.URL)
     url = httpx.URL(request[1])
     span.update_name("GET" + str(url))
 
@@ -97,7 +106,7 @@ class BaseTestCases:
     class BaseTest(TestBase, metaclass=abc.ABCMeta):
         # pylint: disable=no-member
 
-        URL = "http://httpbin.org/status/200"
+        URL = "http://mock/status/200"
         response_hook = staticmethod(_response_hook)
         request_hook = staticmethod(_request_hook)
         no_update_request_hook = staticmethod(_no_update_request_hook)
@@ -142,7 +151,7 @@ class BaseTestCases:
             span = self.assert_span()
 
             self.assertIs(span.kind, trace.SpanKind.CLIENT)
-            self.assertEqual(span.name, "HTTP GET")
+            self.assertEqual(span.name, "GET")
 
             self.assertEqual(
                 span.attributes,
@@ -165,7 +174,7 @@ class BaseTestCases:
             self.assert_span(num_spans=2)
 
         def test_not_foundbasic(self):
-            url_404 = "http://httpbin.org/status/404"
+            url_404 = "http://mock/status/404"
 
             with respx.mock:
                 respx.get(url_404).mock(httpx.Response(404))
@@ -258,7 +267,7 @@ class BaseTestCases:
 
             span = self.assert_span()
 
-            self.assertEqual(span.name, "HTTP POST")
+            self.assertEqual(span.name, "POST")
             self.assertEqual(
                 span.attributes[SpanAttributes.HTTP_METHOD], "POST"
             )
@@ -350,7 +359,7 @@ class BaseTestCases:
 
             self.assertEqual(result.text, "Hello!")
             span = self.assert_span()
-            self.assertEqual(span.name, "HTTP GET")
+            self.assertEqual(span.name, "GET")
 
         def test_not_recording(self):
             with mock.patch("opentelemetry.trace.INVALID_SPAN") as mock_span:
@@ -421,10 +430,46 @@ class BaseTestCases:
             )
             HTTPXClientInstrumentor().uninstrument()
 
+        def test_response_hook_sync_async_kwargs(self):
+            HTTPXClientInstrumentor().instrument(
+                tracer_provider=self.tracer_provider,
+                response_hook=_response_hook,
+                async_response_hook=_async_response_hook,
+            )
+            client = self.create_client()
+            result = self.perform_request(self.URL, client=client)
+
+            self.assertEqual(result.text, "Hello!")
+            span = self.assert_span()
+            self.assertEqual(
+                span.attributes,
+                {
+                    SpanAttributes.HTTP_METHOD: "GET",
+                    SpanAttributes.HTTP_URL: self.URL,
+                    SpanAttributes.HTTP_STATUS_CODE: 200,
+                    HTTP_RESPONSE_BODY: "Hello!",
+                },
+            )
+            HTTPXClientInstrumentor().uninstrument()
+
         def test_request_hook(self):
             HTTPXClientInstrumentor().instrument(
                 tracer_provider=self.tracer_provider,
                 request_hook=self.request_hook,
+            )
+            client = self.create_client()
+            result = self.perform_request(self.URL, client=client)
+
+            self.assertEqual(result.text, "Hello!")
+            span = self.assert_span()
+            self.assertEqual(span.name, "GET" + self.URL)
+            HTTPXClientInstrumentor().uninstrument()
+
+        def test_request_hook_sync_async_kwargs(self):
+            HTTPXClientInstrumentor().instrument(
+                tracer_provider=self.tracer_provider,
+                request_hook=_request_hook,
+                async_request_hook=_async_request_hook,
             )
             client = self.create_client()
             result = self.perform_request(self.URL, client=client)
@@ -444,7 +489,7 @@ class BaseTestCases:
 
             self.assertEqual(result.text, "Hello!")
             span = self.assert_span()
-            self.assertEqual(span.name, "HTTP GET")
+            self.assertEqual(span.name, "GET")
             HTTPXClientInstrumentor().uninstrument()
 
         def test_not_recording(self):
@@ -568,6 +613,13 @@ class TestSyncIntegration(BaseTestCases.BaseManualTest):
             return self.client.request(method, url, headers=headers)
         return client.request(method, url, headers=headers)
 
+    def test_credential_removal(self):
+        new_url = "http://username:password@mock/status/200"
+        self.perform_request(new_url)
+        span = self.assert_span()
+
+        self.assertEqual(span.attributes[SpanAttributes.HTTP_URL], self.URL)
+
 
 class TestAsyncIntegration(BaseTestCases.BaseManualTest):
     response_hook = staticmethod(_async_response_hook)
@@ -627,6 +679,13 @@ class TestAsyncIntegration(BaseTestCases.BaseManualTest):
             self.URL, client=self.create_client(self.transport)
         )
         self.assert_span(num_spans=2)
+
+    def test_credential_removal(self):
+        new_url = "http://username:password@mock/status/200"
+        self.perform_request(new_url)
+        span = self.assert_span()
+
+        self.assertEqual(span.attributes[SpanAttributes.HTTP_URL], self.URL)
 
 
 class TestSyncInstrumentationIntegration(BaseTestCases.BaseInstrumentorTest):

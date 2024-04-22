@@ -17,10 +17,12 @@ from importlib import import_module
 from typing import Any, Callable, Dict
 from unittest import mock
 
-from mocks.api_gateway_http_api_event import (
+from tests.mocks.api_gateway_http_api_event import (
     MOCK_LAMBDA_API_GATEWAY_HTTP_API_EVENT,
 )
-from mocks.api_gateway_proxy_event import MOCK_LAMBDA_API_GATEWAY_PROXY_EVENT
+from tests.mocks.api_gateway_proxy_event import (
+    MOCK_LAMBDA_API_GATEWAY_PROXY_EVENT,
+)
 
 from opentelemetry.environment_variables import OTEL_PROPAGATORS
 from opentelemetry.instrumentation.aws_lambda import (
@@ -38,7 +40,7 @@ from opentelemetry.propagators.aws.aws_xray_propagator import (
 from opentelemetry.semconv.resource import ResourceAttributes
 from opentelemetry.semconv.trace import SpanAttributes
 from opentelemetry.test.test_base import TestBase
-from opentelemetry.trace import NoOpTracerProvider, SpanKind
+from opentelemetry.trace import NoOpTracerProvider, SpanKind, StatusCode
 from opentelemetry.trace.propagation.tracecontext import (
     TraceContextTextMapPropagator,
 )
@@ -52,7 +54,7 @@ class MockLambdaContext:
 
 MOCK_LAMBDA_CONTEXT = MockLambdaContext(
     aws_request_id="mock_aws_request_id",
-    invoked_function_arn="arn://mock-lambda-function-arn",
+    invoked_function_arn="arn:aws:lambda:us-east-1:123456:function:myfunction:myalias",
 )
 
 MOCK_XRAY_TRACE_ID = 0x5FB7331105E8BB83207FA31D4D9CDB4C
@@ -103,7 +105,7 @@ class TestAwsLambdaInstrumentor(TestBase):
         super().setUp()
         self.common_env_patch = mock.patch.dict(
             "os.environ",
-            {_HANDLER: "mocks.lambda_function.handler"},
+            {_HANDLER: "tests.mocks.lambda_function.handler"},
         )
         self.common_env_patch.start()
 
@@ -143,8 +145,13 @@ class TestAwsLambdaInstrumentor(TestBase):
         self.assertSpanHasAttributes(
             span,
             {
-                ResourceAttributes.FAAS_ID: MOCK_LAMBDA_CONTEXT.invoked_function_arn,
-                SpanAttributes.FAAS_EXECUTION: MOCK_LAMBDA_CONTEXT.aws_request_id,
+                SpanAttributes.CLOUD_RESOURCE_ID: MOCK_LAMBDA_CONTEXT.invoked_function_arn,
+                SpanAttributes.FAAS_INVOCATION_ID: MOCK_LAMBDA_CONTEXT.aws_request_id,
+                ResourceAttributes.CLOUD_ACCOUNT_ID: MOCK_LAMBDA_CONTEXT.invoked_function_arn.split(
+                    ":"
+                )[
+                    4
+                ],
             },
         )
 
@@ -356,7 +363,7 @@ class TestAwsLambdaInstrumentor(TestBase):
     def test_api_gateway_proxy_event_sets_attributes(self):
         handler_patch = mock.patch.dict(
             "os.environ",
-            {_HANDLER: "mocks.lambda_function.rest_api_handler"},
+            {_HANDLER: "tests.mocks.lambda_function.rest_api_handler"},
         )
         handler_patch.start()
 
@@ -407,6 +414,27 @@ class TestAwsLambdaInstrumentor(TestBase):
         spans = self.memory_exporter.get_finished_spans()
 
         assert spans
+
+    def test_lambda_handles_handler_exception(self):
+        exc_env_patch = mock.patch.dict(
+            "os.environ",
+            {_HANDLER: "tests.mocks.lambda_function.handler_exc"},
+        )
+        exc_env_patch.start()
+        AwsLambdaInstrumentor().instrument()
+        # instrumentor re-raises the exception
+        with self.assertRaises(Exception):
+            mock_execute_lambda()
+
+        spans = self.memory_exporter.get_finished_spans()
+        self.assertEqual(len(spans), 1)
+        span = spans[0]
+        self.assertEqual(span.status.status_code, StatusCode.ERROR)
+        self.assertEqual(len(span.events), 1)
+        event = span.events[0]
+        self.assertEqual(event.name, "exception")
+
+        exc_env_patch.stop()
 
     def test_uninstrument(self):
         AwsLambdaInstrumentor().instrument()
