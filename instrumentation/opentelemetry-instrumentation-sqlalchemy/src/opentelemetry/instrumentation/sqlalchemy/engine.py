@@ -22,7 +22,6 @@ from sqlalchemy.event import (  # pylint: disable=no-name-in-module
 )
 
 from opentelemetry import trace
-from opentelemetry.instrumentation.sqlalchemy.version import __version__
 from opentelemetry.instrumentation.sqlcommenter_utils import _add_sql_comment
 from opentelemetry.instrumentation.utils import _get_opentelemetry_values
 from opentelemetry.semconv.trace import NetTransportValues, SpanAttributes
