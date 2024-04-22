@@ -18,17 +18,17 @@ from unittest.mock import Mock, patch
 from flask import Flask, request
 
 from opentelemetry import trace
+from opentelemetry.instrumentation._semconv import (
+    _server_active_requests_count_attrs_old,
+    _server_duration_attrs_old,
+)
 from opentelemetry.instrumentation.flask import FlaskInstrumentor
 from opentelemetry.instrumentation.propagators import (
     TraceResponsePropagator,
     get_global_response_propagator,
     set_global_response_propagator,
 )
-from opentelemetry.instrumentation.wsgi import (
-    OpenTelemetryMiddleware,
-    _active_requests_count_attrs,
-    _duration_attrs,
-)
+from opentelemetry.instrumentation.wsgi import OpenTelemetryMiddleware
 from opentelemetry.sdk.metrics.export import (
     HistogramDataPoint,
     NumberDataPoint,
@@ -54,6 +54,7 @@ def expected_attributes(override_attributes):
         SpanAttributes.HTTP_SERVER_NAME: "localhost",
         SpanAttributes.HTTP_SCHEME: "http",
         SpanAttributes.NET_HOST_PORT: 80,
+        SpanAttributes.NET_HOST_NAME: "localhost",
         SpanAttributes.HTTP_HOST: "localhost",
         SpanAttributes.HTTP_TARGET: "/",
         SpanAttributes.HTTP_FLAVOR: "1.1",
@@ -69,8 +70,8 @@ _expected_metric_names = [
     "http.server.duration",
 ]
 _recommended_attrs = {
-    "http.server.active_requests": _active_requests_count_attrs,
-    "http.server.duration": _duration_attrs,
+    "http.server.active_requests": _server_active_requests_count_attrs_old,
+    "http.server.duration": _server_duration_attrs_old,
 }
 
 
@@ -358,6 +359,7 @@ class TestProgrammatic(InstrumentationTest, WsgiTestBase):
             "http.server_name": "localhost",
             "net.host.port": 80,
             "http.status_code": 200,
+            "net.host.name": "localhost",
         }
         expected_requests_count_attributes = {
             "http.method": "GET",
@@ -365,6 +367,8 @@ class TestProgrammatic(InstrumentationTest, WsgiTestBase):
             "http.scheme": "http",
             "http.flavor": "1.1",
             "http.server_name": "localhost",
+            "net.host.name": "localhost",
+            "net.host.port": 80,
         }
         self._assert_basic_metric(
             expected_duration_attributes,
@@ -374,20 +378,23 @@ class TestProgrammatic(InstrumentationTest, WsgiTestBase):
     def test_basic_metric_nonstandard_http_method_success(self):
         self.client.open("/hello/756", method="NONSTANDARD")
         expected_duration_attributes = {
-            "http.method": "UNKNOWN",
+            "http.method": "_OTHER",
             "http.host": "localhost",
             "http.scheme": "http",
             "http.flavor": "1.1",
             "http.server_name": "localhost",
             "net.host.port": 80,
             "http.status_code": 405,
+            "net.host.name": "localhost",
         }
         expected_requests_count_attributes = {
-            "http.method": "UNKNOWN",
+            "http.method": "_OTHER",
             "http.host": "localhost",
             "http.scheme": "http",
             "http.flavor": "1.1",
             "http.server_name": "localhost",
+            "net.host.name": "localhost",
+            "net.host.port": 80,
         }
         self._assert_basic_metric(
             expected_duration_attributes,
@@ -410,6 +417,7 @@ class TestProgrammatic(InstrumentationTest, WsgiTestBase):
             "http.server_name": "localhost",
             "net.host.port": 80,
             "http.status_code": 405,
+            "net.host.name": "localhost",
         }
         expected_requests_count_attributes = {
             "http.method": "NONSTANDARD",
@@ -417,6 +425,8 @@ class TestProgrammatic(InstrumentationTest, WsgiTestBase):
             "http.scheme": "http",
             "http.flavor": "1.1",
             "http.server_name": "localhost",
+            "net.host.name": "localhost",
+            "net.host.port": 80,
         }
         self._assert_basic_metric(
             expected_duration_attributes,
@@ -671,6 +681,22 @@ class TestCustomRequestResponseHeaders(InstrumentationTest, WsgiTestBase):
         self.assertEqual(span.kind, trace.SpanKind.SERVER)
         self.assertSpanHasAttributes(span, expected)
 
+    def test_repeat_custom_request_header_added_in_server_span(self):
+        headers = [
+            ("Custom-Test-Header-1", "Test Value 1"),
+            ("Custom-Test-Header-1", "Test Value 2"),
+        ]
+        resp = self.client.get("/hello/123", headers=headers)
+        self.assertEqual(200, resp.status_code)
+        span = self.memory_exporter.get_finished_spans()[0]
+        expected = {
+            "http.request.header.custom_test_header_1": (
+                "Test Value 1, Test Value 2",
+            ),
+        }
+        self.assertEqual(span.kind, trace.SpanKind.SERVER)
+        self.assertSpanHasAttributes(span, expected)
+
     def test_custom_request_header_not_added_in_internal_span(self):
         tracer = trace.get_tracer(__name__)
         with tracer.start_as_current_span("test", kind=trace.SpanKind.SERVER):
@@ -720,6 +746,21 @@ class TestCustomRequestResponseHeaders(InstrumentationTest, WsgiTestBase):
                 "my-custom-regex-value-3,my-custom-regex-value-4",
             ),
             "http.response.header.my_secret_header": ("[REDACTED]",),
+        }
+        self.assertEqual(span.kind, trace.SpanKind.SERVER)
+        self.assertSpanHasAttributes(span, expected)
+
+    def test_repeat_custom_response_header_added_in_server_span(self):
+        resp = self.client.get("/test_repeat_custom_response_headers")
+        self.assertEqual(resp.status_code, 200)
+        span = self.memory_exporter.get_finished_spans()[0]
+        expected = {
+            "http.response.header.content_type": (
+                "text/plain; charset=utf-8",
+            ),
+            "http.response.header.my_custom_header": (
+                "my-custom-value-1,my-custom-header-2",
+            ),
         }
         self.assertEqual(span.kind, trace.SpanKind.SERVER)
         self.assertSpanHasAttributes(span, expected)

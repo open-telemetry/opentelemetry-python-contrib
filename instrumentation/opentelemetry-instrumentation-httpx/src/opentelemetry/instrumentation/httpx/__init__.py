@@ -270,7 +270,7 @@ def _extract_parameters(args, kwargs):
         # In httpx >= 0.20.0, handle_request receives a Request object
         request: httpx.Request = args[0]
         method = request.method.encode()
-        url = remove_url_credentials(str(request.url))
+        url = httpx.URL(remove_url_credentials(str(request.url)))
         headers = request.headers
         stream = request.stream
         extensions = request.extensions

@@ -268,20 +268,20 @@ class TestAsgiApplication(AsgiTestBase):
             {
                 "name": "GET / http receive",
                 "kind": trace_api.SpanKind.INTERNAL,
-                "attributes": {"type": "http.request"},
+                "attributes": {"asgi.event.type": "http.request"},
             },
             {
                 "name": "GET / http send",
                 "kind": trace_api.SpanKind.INTERNAL,
                 "attributes": {
                     SpanAttributes.HTTP_STATUS_CODE: 200,
-                    "type": "http.response.start",
+                    "asgi.event.type": "http.response.start",
                 },
             },
             {
                 "name": "GET / http send",
                 "kind": trace_api.SpanKind.INTERNAL,
-                "attributes": {"type": "http.response.body"},
+                "attributes": {"asgi.event.type": "http.response.body"},
             },
             {
                 "name": "GET /",
@@ -358,7 +358,7 @@ class TestAsgiApplication(AsgiTestBase):
             more_body_span = {
                 "name": "GET / http send",
                 "kind": trace_api.SpanKind.INTERNAL,
-                "attributes": {"type": "http.response.body"},
+                "attributes": {"asgi.event.type": "http.response.body"},
             }
             extra_spans = [more_body_span] * 3
             expected[2:2] = extra_spans
@@ -396,12 +396,12 @@ class TestAsgiApplication(AsgiTestBase):
             body_span = {
                 "name": "GET / http send",
                 "kind": trace_api.SpanKind.INTERNAL,
-                "attributes": {"type": "http.response.body"},
+                "attributes": {"asgi.event.type": "http.response.body"},
             }
             trailer_span = {
                 "name": "GET / http send",
                 "kind": trace_api.SpanKind.INTERNAL,
-                "attributes": {"type": "http.response.trailers"},
+                "attributes": {"asgi.event.type": "http.response.trailers"},
             }
             expected[2:2] = [body_span]
             expected[4:4] = [trailer_span] * 2
@@ -582,18 +582,18 @@ class TestAsgiApplication(AsgiTestBase):
             {
                 "name": "/ websocket receive",
                 "kind": trace_api.SpanKind.INTERNAL,
-                "attributes": {"type": "websocket.connect"},
+                "attributes": {"asgi.event.type": "websocket.connect"},
             },
             {
                 "name": "/ websocket send",
                 "kind": trace_api.SpanKind.INTERNAL,
-                "attributes": {"type": "websocket.accept"},
+                "attributes": {"asgi.event.type": "websocket.accept"},
             },
             {
                 "name": "/ websocket receive",
                 "kind": trace_api.SpanKind.INTERNAL,
                 "attributes": {
-                    "type": "websocket.receive",
+                    "asgi.event.type": "websocket.receive",
                     SpanAttributes.HTTP_STATUS_CODE: 200,
                 },
             },
@@ -601,14 +601,14 @@ class TestAsgiApplication(AsgiTestBase):
                 "name": "/ websocket send",
                 "kind": trace_api.SpanKind.INTERNAL,
                 "attributes": {
-                    "type": "websocket.send",
+                    "asgi.event.type": "websocket.send",
                     SpanAttributes.HTTP_STATUS_CODE: 200,
                 },
             },
             {
                 "name": "/ websocket receive",
                 "kind": trace_api.SpanKind.INTERNAL,
-                "attributes": {"type": "websocket.disconnect"},
+                "attributes": {"asgi.event.type": "websocket.disconnect"},
             },
             {
                 "name": "/",
