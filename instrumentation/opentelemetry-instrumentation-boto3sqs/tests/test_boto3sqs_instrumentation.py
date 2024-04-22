@@ -20,7 +20,7 @@ from unittest import TestCase, mock
 
 import boto3
 from botocore.awsrequest import AWSResponse
-from wrapt import BoundFunctionWrapper, FunctionWrapper
+from wrapt import BoundFunctionWrapper
 
 from opentelemetry.instrumentation.boto3sqs import (
     Boto3SQSGetter,
