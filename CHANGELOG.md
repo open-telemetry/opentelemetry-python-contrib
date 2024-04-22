@@ -7,6 +7,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## Unreleased
 
+- Use sqlalchemy version in sqlalchemy commenter instead of opentelemetry library version
+  ([#2404](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/2404))
+
 ### Added
 
 - `opentelemetry-instrumentation-pika` Instrumentation for `channel.consume()` (supported
