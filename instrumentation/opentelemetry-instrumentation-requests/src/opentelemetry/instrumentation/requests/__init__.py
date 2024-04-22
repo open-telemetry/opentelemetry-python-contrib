@@ -63,18 +63,20 @@ from opentelemetry.instrumentation._semconv import (
     _SPAN_ATTRIBUTES_ERROR_TYPE,
     _SPAN_ATTRIBUTES_NETWORK_PEER_ADDRESS,
     _SPAN_ATTRIBUTES_NETWORK_PEER_PORT,
-    _filter_duration_attrs,
+    _client_duration_attrs_new,
+    _client_duration_attrs_old,
+    _filter_semconv_duration_attrs,
     _get_schema_url,
+    _HTTPStabilityMode,
     _OpenTelemetrySemanticConventionStability,
-    _OpenTelemetryStabilityMode,
     _OpenTelemetryStabilitySignalType,
     _report_new,
     _report_old,
-    _set_http_hostname,
+    _set_http_host,
     _set_http_method,
-    _set_http_net_peer_name,
+    _set_http_net_peer_name_client,
     _set_http_network_protocol_version,
-    _set_http_port,
+    _set_http_peer_port_client,
     _set_http_scheme,
     _set_http_status_code,
     _set_http_url,
@@ -105,7 +107,7 @@ from opentelemetry.util.http.httplib import set_ip_on_next_http_connection
 _excluded_urls_from_env = get_excluded_urls("REQUESTS")
 
 _RequestHookT = Optional[Callable[[Span, PreparedRequest], None]]
-_ResponseHookT = Optional[Callable[[Span, PreparedRequest], None]]
+_ResponseHookT = Optional[Callable[[Span, PreparedRequest, Response], None]]
 
 
 # pylint: disable=unused-argument
@@ -117,7 +119,7 @@ def _instrument(
     request_hook: _RequestHookT = None,
     response_hook: _ResponseHookT = None,
     excluded_urls: ExcludeList = None,
-    sem_conv_opt_in_mode: _OpenTelemetryStabilityMode = _OpenTelemetryStabilityMode.DEFAULT,
+    sem_conv_opt_in_mode: _HTTPStabilityMode = _HTTPStabilityMode.DEFAULT,
 ):
     """Enables tracing of all requests calls that go through
     :code:`requests.session.Session.request` (this includes
@@ -174,14 +176,14 @@ def _instrument(
                     metric_labels, parsed_url.scheme, sem_conv_opt_in_mode
                 )
             if parsed_url.hostname:
-                _set_http_hostname(
+                _set_http_host(
                     metric_labels, parsed_url.hostname, sem_conv_opt_in_mode
                 )
-                _set_http_net_peer_name(
+                _set_http_net_peer_name_client(
                     metric_labels, parsed_url.hostname, sem_conv_opt_in_mode
                 )
                 if _report_new(sem_conv_opt_in_mode):
-                    _set_http_hostname(
+                    _set_http_host(
                         span_attributes,
                         parsed_url.hostname,
                         sem_conv_opt_in_mode,
@@ -191,11 +193,11 @@ def _instrument(
                         _SPAN_ATTRIBUTES_NETWORK_PEER_ADDRESS
                     ] = parsed_url.hostname
             if parsed_url.port:
-                _set_http_port(
+                _set_http_peer_port_client(
                     metric_labels, parsed_url.port, sem_conv_opt_in_mode
                 )
                 if _report_new(sem_conv_opt_in_mode):
-                    _set_http_port(
+                    _set_http_peer_port_client(
                         span_attributes, parsed_url.port, sem_conv_opt_in_mode
                     )
                     # Use semconv library when available
@@ -284,16 +286,22 @@ def _instrument(
                 ).__qualname__
 
             if duration_histogram_old is not None:
-                duration_attrs_old = _filter_duration_attrs(
-                    metric_labels, _OpenTelemetryStabilityMode.DEFAULT
+                duration_attrs_old = _filter_semconv_duration_attrs(
+                    metric_labels,
+                    _client_duration_attrs_old,
+                    _client_duration_attrs_new,
+                    _HTTPStabilityMode.DEFAULT,
                 )
                 duration_histogram_old.record(
                     max(round(elapsed_time * 1000), 0),
                     attributes=duration_attrs_old,
                 )
             if duration_histogram_new is not None:
-                duration_attrs_new = _filter_duration_attrs(
-                    metric_labels, _OpenTelemetryStabilityMode.HTTP
+                duration_attrs_new = _filter_semconv_duration_attrs(
+                    metric_labels,
+                    _client_duration_attrs_old,
+                    _client_duration_attrs_new,
+                    _HTTPStabilityMode.HTTP,
                 )
                 duration_histogram_new.record(
                     elapsed_time, attributes=duration_attrs_new
@@ -341,7 +349,10 @@ def get_default_span_name(method):
     Returns:
         span name
     """
-    return sanitize_method(method.upper().strip())
+    method = sanitize_method(method.upper().strip())
+    if method == "_OTHER":
+        return "HTTP"
+    return method
 
 
 class RequestsInstrumentor(BaseInstrumentor):
