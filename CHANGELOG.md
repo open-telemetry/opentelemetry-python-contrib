@@ -30,6 +30,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   ([#2382](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/2382))
 - `opentelemetry-instrumentation-wsgi` Implement new semantic convention opt-in with stable http semantic conventions
   ([#2425](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/2425))
+- `opentelemetry-instrumentation-flask` Implement new semantic convention opt-in with stable http semantic conventions
+  ([#2425](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/2425))
 - `opentelemetry-instrumentation-threading` Initial release for threading
   ([#2253](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/2253))
 

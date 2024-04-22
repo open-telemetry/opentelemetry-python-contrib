@@ -170,7 +170,7 @@ class TestProgrammatic(InstrumentationTest, WsgiTestBase):
 
         span_list = self.memory_exporter.get_finished_spans()
         self.assertEqual(len(span_list), 1)
-        self.assertEqual(span_list[0].name, "/hello/<int:helloid>")
+        self.assertEqual(span_list[0].name, "GET /hello/<int:helloid>")
         self.assertEqual(span_list[0].kind, trace.SpanKind.SERVER)
         self.assertEqual(span_list[0].attributes, expected_attrs)
 
@@ -233,7 +233,7 @@ class TestProgrammatic(InstrumentationTest, WsgiTestBase):
         resp.close()
         span_list = self.memory_exporter.get_finished_spans()
         self.assertEqual(len(span_list), 1)
-        self.assertEqual(span_list[0].name, "/hello/<int:helloid>")
+        self.assertEqual(span_list[0].name, "GET /hello/<int:helloid>")
         self.assertEqual(span_list[0].kind, trace.SpanKind.SERVER)
         self.assertEqual(span_list[0].attributes, expected_attrs)
 
