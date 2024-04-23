@@ -48,4 +48,4 @@
 | [opentelemetry-instrumentation-tortoiseorm](./opentelemetry-instrumentation-tortoiseorm) | tortoise-orm >= 0.17.0 | No | experimental
 | [opentelemetry-instrumentation-urllib](./opentelemetry-instrumentation-urllib) | urllib | Yes | experimental
 | [opentelemetry-instrumentation-urllib3](./opentelemetry-instrumentation-urllib3) | urllib3 >= 1.0.0, < 3.0.0 | Yes | experimental
-| [opentelemetry-instrumentation-wsgi](./opentelemetry-instrumentation-wsgi) | wsgi | Yes | experimental
+| [opentelemetry-instrumentation-wsgi](./opentelemetry-instrumentation-wsgi) | wsgi | Yes | migration

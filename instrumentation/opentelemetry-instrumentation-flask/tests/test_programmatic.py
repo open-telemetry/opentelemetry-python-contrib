@@ -19,11 +19,9 @@ from flask import Flask, request
 
 from opentelemetry import trace
 from opentelemetry.instrumentation._semconv import (
+    _SPAN_ATTRIBUTES_ERROR_TYPE,
     OTEL_SEMCONV_STABILITY_OPT_IN,
     _OpenTelemetrySemanticConventionStability,
-    _SPAN_ATTRIBUTES_ERROR_TYPE,
-    _server_active_requests_count_attrs_old,
-    _server_duration_attrs_old,
     _server_active_requests_count_attrs_new,
     _server_active_requests_count_attrs_old,
     _server_duration_attrs_new,
