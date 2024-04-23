@@ -241,6 +241,7 @@ class TestWsgiApplication(WsgiTestBase):
             SpanAttributes.SERVER_ADDRESS: "127.0.0.1",
             SpanAttributes.NETWORK_PROTOCOL_VERSION: "1.0",
             SpanAttributes.HTTP_RESPONSE_STATUS_CODE: 200,
+            SpanAttributes.URL_SCHEME: "http",
         }
         if old_sem_conv:
             expected_attributes.update(expected_attributes_old)
@@ -522,6 +523,7 @@ class TestWsgiAttributes(unittest.TestCase):
                 SpanAttributes.NETWORK_PROTOCOL_VERSION: "1.0",
                 SpanAttributes.URL_PATH: "/",
                 SpanAttributes.URL_QUERY: "foo=bar",
+                SpanAttributes.URL_SCHEME: "http",
             },
         )
 
