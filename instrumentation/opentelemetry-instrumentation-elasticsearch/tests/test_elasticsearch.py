@@ -44,10 +44,6 @@ elif major_version == 7:
     from . import helpers_es7 as helpers  # pylint: disable=no-name-in-module
 elif major_version == 6:
     from . import helpers_es6 as helpers  # pylint: disable=no-name-in-module
-elif major_version == 5:
-    from . import helpers_es5 as helpers  # pylint: disable=no-name-in-module
-else:
-    from . import helpers_es2 as helpers  # pylint: disable=no-name-in-module
 
 Article = helpers.Article
 

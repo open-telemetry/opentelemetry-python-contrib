@@ -334,9 +334,9 @@ def _rewrapped_app(
                     )
                     status_code = otel_wsgi._parse_status_code(status)
                     if status_code is not None:
-                        duration_attrs[
-                            SpanAttributes.HTTP_STATUS_CODE
-                        ] = status_code
+                        duration_attrs[SpanAttributes.HTTP_STATUS_CODE] = (
+                            status_code
+                        )
                     if (
                         span.is_recording()
                         and span.kind == trace.SpanKind.SERVER
@@ -641,9 +641,9 @@ class FlaskInstrumentor(BaseInstrumentor):
                 tracer,
                 excluded_urls=excluded_urls,
                 enable_commenter=enable_commenter,
-                commenter_options=commenter_options
-                if commenter_options
-                else {},
+                commenter_options=(
+                    commenter_options if commenter_options else {}
+                ),
             )
             app._before_request = _before_request
             app.before_request(_before_request)

@@ -34,13 +34,13 @@ if _descriptor._USE_C_DESCRIPTORS == False:
     DESCRIPTOR._options = None
     DESCRIPTOR._serialized_options = b"Z\006prompb"
     _WRITEREQUEST.fields_by_name["timeseries"]._options = None
-    _WRITEREQUEST.fields_by_name[
-        "timeseries"
-    ]._serialized_options = b"\310\336\037\000"
+    _WRITEREQUEST.fields_by_name["timeseries"]._serialized_options = (
+        b"\310\336\037\000"
+    )
     _WRITEREQUEST.fields_by_name["metadata"]._options = None
-    _WRITEREQUEST.fields_by_name[
-        "metadata"
-    ]._serialized_options = b"\310\336\037\000"
+    _WRITEREQUEST.fields_by_name["metadata"]._serialized_options = (
+        b"\310\336\037\000"
+    )
     _WRITEREQUEST._serialized_start = 216
     _WRITEREQUEST._serialized_end = 338
     _READREQUEST._serialized_start = 341
