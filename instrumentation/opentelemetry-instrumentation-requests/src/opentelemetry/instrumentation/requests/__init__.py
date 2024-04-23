@@ -191,9 +191,9 @@ def _instrument(
                         sem_conv_opt_in_mode,
                     )
                     # Use semconv library when available
-                    span_attributes[
-                        _SPAN_ATTRIBUTES_NETWORK_PEER_ADDRESS
-                    ] = parsed_url.hostname
+                    span_attributes[_SPAN_ATTRIBUTES_NETWORK_PEER_ADDRESS] = (
+                        parsed_url.hostname
+                    )
             if parsed_url.port:
                 _set_http_peer_port_client(
                     metric_labels, parsed_url.port, sem_conv_opt_in_mode
@@ -203,9 +203,9 @@ def _instrument(
                         span_attributes, parsed_url.port, sem_conv_opt_in_mode
                     )
                     # Use semconv library when available
-                    span_attributes[
-                        _SPAN_ATTRIBUTES_NETWORK_PEER_PORT
-                    ] = parsed_url.port
+                    span_attributes[_SPAN_ATTRIBUTES_NETWORK_PEER_PORT] = (
+                        parsed_url.port
+                    )
         except ValueError:
             pass
 
@@ -415,9 +415,11 @@ class RequestsInstrumentor(BaseInstrumentor):
             duration_histogram_new,
             request_hook=kwargs.get("request_hook"),
             response_hook=kwargs.get("response_hook"),
-            excluded_urls=_excluded_urls_from_env
-            if excluded_urls is None
-            else parse_excluded_urls(excluded_urls),
+            excluded_urls=(
+                _excluded_urls_from_env
+                if excluded_urls is None
+                else parse_excluded_urls(excluded_urls)
+            ),
             sem_conv_opt_in_mode=semconv_opt_in_mode,
         )
 

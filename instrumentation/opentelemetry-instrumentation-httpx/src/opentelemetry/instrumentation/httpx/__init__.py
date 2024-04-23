@@ -433,9 +433,7 @@ class AsyncOpenTelemetryTransport(httpx.AsyncBaseTransport):
     ) -> None:
         await self._transport.__aexit__(exc_type, exc_value, traceback)
 
-    async def handle_async_request(
-        self, *args, **kwargs
-    ) -> typing.Union[
+    async def handle_async_request(self, *args, **kwargs) -> typing.Union[
         typing.Tuple[int, "Headers", httpx.AsyncByteStream, dict],
         httpx.Response,
     ]:

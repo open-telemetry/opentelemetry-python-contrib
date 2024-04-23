@@ -711,9 +711,9 @@ class FlaskInstrumentor(BaseInstrumentor):
                 tracer,
                 excluded_urls=excluded_urls,
                 enable_commenter=enable_commenter,
-                commenter_options=commenter_options
-                if commenter_options
-                else {},
+                commenter_options=(
+                    commenter_options if commenter_options else {}
+                ),
                 sem_conv_opt_in_mode=sem_conv_opt_in_mode,
             )
             app._before_request = _before_request

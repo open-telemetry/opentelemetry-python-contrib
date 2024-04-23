@@ -296,18 +296,18 @@ def _get_attributes_from_cursor(vendor, cursor, attrs):
         is_unix_socket = info.host and info.host.startswith("/")
 
         if is_unix_socket:
-            attrs[
-                SpanAttributes.NET_TRANSPORT
-            ] = NetTransportValues.OTHER.value
+            attrs[SpanAttributes.NET_TRANSPORT] = (
+                NetTransportValues.OTHER.value
+            )
             if info.port:
                 # postgresql enforces this pattern on all socket names
                 attrs[SpanAttributes.NET_PEER_NAME] = os.path.join(
                     info.host, f".s.PGSQL.{info.port}"
                 )
         else:
-            attrs[
-                SpanAttributes.NET_TRANSPORT
-            ] = NetTransportValues.IP_TCP.value
+            attrs[SpanAttributes.NET_TRANSPORT] = (
+                NetTransportValues.IP_TCP.value
+            )
             attrs[SpanAttributes.NET_PEER_NAME] = info.host
             if info.port:
                 attrs[SpanAttributes.NET_PEER_PORT] = int(info.port)

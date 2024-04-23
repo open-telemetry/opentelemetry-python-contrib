@@ -163,9 +163,9 @@ class _DjangoMiddleware(MiddlewareMixin):
     _active_request_counter = None
 
     _otel_request_hook: Callable[[Span, HttpRequest], None] = None
-    _otel_response_hook: Callable[
-        [Span, HttpRequest, HttpResponse], None
-    ] = None
+    _otel_response_hook: Callable[[Span, HttpRequest, HttpResponse], None] = (
+        None
+    )
 
     @staticmethod
     def _get_span_name(request):
@@ -229,9 +229,9 @@ class _DjangoMiddleware(MiddlewareMixin):
         )
         duration_attrs = _parse_duration_attrs(attributes)
 
-        request.META[
-            self._environ_active_request_attr_key
-        ] = active_requests_count_attrs
+        request.META[self._environ_active_request_attr_key] = (
+            active_requests_count_attrs
+        )
         request.META[self._environ_duration_attr_key] = duration_attrs
         self._active_request_counter.add(1, active_requests_count_attrs)
         if span.is_recording():
@@ -336,9 +336,9 @@ class _DjangoMiddleware(MiddlewareMixin):
             self._environ_duration_attr_key, None
         )
         if duration_attrs:
-            duration_attrs[
-                SpanAttributes.HTTP_STATUS_CODE
-            ] = response.status_code
+            duration_attrs[SpanAttributes.HTTP_STATUS_CODE] = (
+                response.status_code
+            )
         request_start_time = request.META.pop(self._environ_timer_key, None)
 
         if activation and span:

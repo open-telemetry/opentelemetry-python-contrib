@@ -366,16 +366,16 @@ def _set_status(
             span.set_attribute(
                 SpanAttributes.HTTP_RESPONSE_STATUS_CODE, status_code
             )
-            metrics_attributes[
-                SpanAttributes.HTTP_RESPONSE_STATUS_CODE
-            ] = status_code
+            metrics_attributes[SpanAttributes.HTTP_RESPONSE_STATUS_CODE] = (
+                status_code
+            )
             if status == StatusCode.ERROR:
                 span.set_attribute(
                     _SPAN_ATTRIBUTES_ERROR_TYPE, status_code_str
                 )
-                metrics_attributes[
-                    _SPAN_ATTRIBUTES_ERROR_TYPE
-                ] = status_code_str
+                metrics_attributes[_SPAN_ATTRIBUTES_ERROR_TYPE] = (
+                    status_code_str
+                )
         span.set_status(Status(status))
 
 

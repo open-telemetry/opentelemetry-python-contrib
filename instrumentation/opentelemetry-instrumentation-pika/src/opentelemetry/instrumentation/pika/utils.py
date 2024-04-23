@@ -38,8 +38,7 @@ _pika_getter = _PikaGetter()
 HookT = Callable[[Span, bytes, BasicProperties], None]
 
 
-def dummy_callback(span: Span, body: bytes, properties: BasicProperties):
-    ...
+def dummy_callback(span: Span, body: bytes, properties: BasicProperties): ...
 
 
 def _decorate_callback(
@@ -66,9 +65,9 @@ def _decorate_callback(
             tracer,
             channel,
             properties,
-            destination=method.exchange
-            if method.exchange
-            else method.routing_key,
+            destination=(
+                method.exchange if method.exchange else method.routing_key
+            ),
             span_kind=SpanKind.CONSUMER,
             task_name=task_name,
             operation=MessagingOperationValues.RECEIVE,
@@ -243,9 +242,11 @@ class ReadyMessagesDequeProxy(ObjectProxy):
                     self._self_tracer,
                     None,
                     properties,
-                    destination=method.exchange
-                    if method.exchange
-                    else method.routing_key,
+                    destination=(
+                        method.exchange
+                        if method.exchange
+                        else method.routing_key
+                    ),
                     span_kind=SpanKind.CONSUMER,
                     task_name=self._self_queue_consumer_generator.consumer_tag,
                     operation=MessagingOperationValues.RECEIVE,
