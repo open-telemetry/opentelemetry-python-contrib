@@ -15,13 +15,13 @@ import os
 import re
 import weakref
 
+import sqlalchemy
 from sqlalchemy.event import (  # pylint: disable=no-name-in-module
     listen,
     remove,
 )
 
 from opentelemetry import trace
-from opentelemetry.instrumentation.sqlalchemy.version import __version__
 from opentelemetry.instrumentation.sqlcommenter_utils import _add_sql_comment
 from opentelemetry.instrumentation.utils import _get_opentelemetry_values
 from opentelemetry.semconv.trace import NetTransportValues, SpanAttributes
@@ -227,7 +227,7 @@ class EngineTracer:
                 commenter_data = {
                     "db_driver": conn.engine.driver,
                     # Driver/framework centric information.
-                    "db_framework": f"sqlalchemy:{__version__}",
+                    "db_framework": f"sqlalchemy:{sqlalchemy.__version__}",
                 }
 
                 if self.commenter_options.get("opentelemetry_values", True):
