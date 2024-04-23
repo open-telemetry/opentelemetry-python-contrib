@@ -481,9 +481,11 @@ class SystemMetricsInstrumentor(BaseInstrumentor):
             if hasattr(system_swap, metric):
                 self._system_swap_utilization_labels["state"] = metric
                 yield Observation(
-                    getattr(system_swap, metric) / system_swap.total
-                    if system_swap.total
-                    else 0,
+                    (
+                        getattr(system_swap, metric) / system_swap.total
+                        if system_swap.total
+                        else 0
+                    ),
                     self._system_swap_utilization_labels.copy(),
                 )
 
@@ -556,9 +558,9 @@ class SystemMetricsInstrumentor(BaseInstrumentor):
             for metric in self._config["system.network.dropped.packets"]:
                 in_out = {"receive": "in", "transmit": "out"}[metric]
                 if hasattr(counters, f"drop{in_out}"):
-                    self._system_network_dropped_packets_labels[
-                        "device"
-                    ] = device
+                    self._system_network_dropped_packets_labels["device"] = (
+                        device
+                    )
                     self._system_network_dropped_packets_labels[
                         "direction"
                     ] = metric
@@ -629,9 +631,9 @@ class SystemMetricsInstrumentor(BaseInstrumentor):
                     1: "tcp",
                     2: "udp",
                 }[net_connection.type.value]
-                self._system_network_connections_labels[
-                    "state"
-                ] = net_connection.status
+                self._system_network_connections_labels["state"] = (
+                    net_connection.status
+                )
                 self._system_network_connections_labels[metric] = getattr(
                     net_connection, metric
                 )

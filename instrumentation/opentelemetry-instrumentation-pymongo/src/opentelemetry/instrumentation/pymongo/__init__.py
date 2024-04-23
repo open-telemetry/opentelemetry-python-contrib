@@ -98,8 +98,7 @@ ResponseHookT = Callable[[Span, monitoring.CommandSucceededEvent], None]
 FailedHookT = Callable[[Span, monitoring.CommandFailedEvent], None]
 
 
-def dummy_callback(span, event):
-    ...
+def dummy_callback(span, event): ...
 
 
 class CommandTracer(monitoring.CommandListener):

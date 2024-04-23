@@ -35,9 +35,9 @@ class _SqsExtension(_AwsSdkExtension):
             attributes[SpanAttributes.MESSAGING_SYSTEM] = "aws.sqs"
             attributes[SpanAttributes.MESSAGING_URL] = queue_url
             try:
-                attributes[
-                    SpanAttributes.MESSAGING_DESTINATION
-                ] = queue_url.split("/")[-1]
+                attributes[SpanAttributes.MESSAGING_DESTINATION] = (
+                    queue_url.split("/")[-1]
+                )
             except IndexError:
                 _logger.error(
                     "Could not extract messaging destination from '%s'",

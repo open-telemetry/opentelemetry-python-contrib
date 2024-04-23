@@ -218,7 +218,7 @@ def sanitize_method(method: Optional[str]) -> Optional[str]:
         ]
     ):
         return method
-    return "UNKNOWN"
+    return "_OTHER"
 
 
 def get_custom_headers(env_var: str) -> list[str]:
@@ -245,3 +245,10 @@ def _parse_duration_attrs(req_attrs):
         for key in _duration_attrs.intersection(req_attrs.keys())
     }
     return duration_attrs
+
+
+def _parse_url_query(url: str):
+    parsed_url = urlparse(url)
+    path = parsed_url.path
+    query_params = parsed_url.query
+    return path, query_params
