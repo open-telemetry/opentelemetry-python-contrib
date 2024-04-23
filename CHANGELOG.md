@@ -15,6 +15,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   ([#2372](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/2372))
 - Drop support for instrumenting elasticsearch client < 6`
   ([#2422](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/2422))
+- `opentelemetry-instrumentation-wsgi` Add `http.method` to `span.name`
+  ([#2425](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/2425))
+- `opentelemetry-instrumentation-flask` Add `http.method` to `span.name`
+  ([#2425](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/2425))
 
 ### Added
 
