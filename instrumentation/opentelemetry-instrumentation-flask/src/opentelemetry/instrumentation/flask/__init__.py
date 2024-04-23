@@ -642,6 +642,7 @@ class FlaskInstrumentor(BaseInstrumentor):
     def _uninstrument(self, **kwargs):
         flask.Flask = self._original_flask
 
+    # pylint: disable=too-many-locals
     @staticmethod
     def instrument_app(
         app,

@@ -12,6 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+# pylint: disable=too-many-public-lines
 from timeit import default_timer
 from unittest.mock import Mock, patch
 
@@ -113,6 +114,7 @@ _recommended_metrics_attrs_both = {
 }
 
 
+# pylint: disable=too-many-public-methods
 class TestProgrammatic(InstrumentationTest, WsgiTestBase):
     def setUp(self):
         super().setUp()
