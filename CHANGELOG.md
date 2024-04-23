@@ -21,6 +21,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - `opentelemetry-instrumentation-threading` Initial release for threading
   ([#2253](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/2253))
+- `opentelemetry-processor-baggage` Initial release
+  ([#2436](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/2436))
 
 ## Version 1.24.0/0.45b0 (2024-03-28)
 
