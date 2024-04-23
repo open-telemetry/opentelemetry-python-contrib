@@ -488,7 +488,7 @@ class TestProgrammatic(InstrumentationTest, WsgiTestBase):
                         for attr in point.attributes:
                             self.assertIn(
                                 attr,
-                                _recommended_metrics_attrs_old[metric.name]
+                                _recommended_metrics_attrs_old[metric.name],
                             )
         self.assertTrue(number_data_point_seen and histogram_data_point_seen)
 
@@ -522,7 +522,7 @@ class TestProgrammatic(InstrumentationTest, WsgiTestBase):
                         for attr in point.attributes:
                             self.assertIn(
                                 attr,
-                                _recommended_metrics_attrs_new[metric.name]
+                                _recommended_metrics_attrs_new[metric.name],
                             )
         self.assertTrue(number_data_point_seen and histogram_data_point_seen)
 
@@ -659,7 +659,7 @@ class TestProgrammatic(InstrumentationTest, WsgiTestBase):
         },
     )
     def test_basic_metric_nonstandard_http_method_allowed_success_new_semconv(
-        self
+        self,
     ):
         self.client.open("/hello/756", method="NONSTANDARD")
         expected_duration_attributes = {
