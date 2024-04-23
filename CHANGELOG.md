@@ -18,7 +18,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - `opentelemetry-instrumentation-wsgi` Add `http.method` to `span.name`
   ([#2425](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/2425))
 - `opentelemetry-instrumentation-flask` Add `http.method` to `span.name`
-  ([#2425](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/2425))
+  ([#2454](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/2454))
 
 ### Added
 
@@ -28,7 +28,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - `opentelemetry-instrumentation-wsgi` Implement new semantic convention opt-in with stable http semantic conventions
   ([#2425](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/2425))
 - `opentelemetry-instrumentation-flask` Implement new semantic convention opt-in with stable http semantic conventions
-  ([#2425](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/2425))
+  ([#2454](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/2454))
 - `opentelemetry-instrumentation-threading` Initial release for threading
   ([#2253](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/2253))
 - `opentelemetry-instrumentation-pika` Instrumentation for `channel.consume()` (supported

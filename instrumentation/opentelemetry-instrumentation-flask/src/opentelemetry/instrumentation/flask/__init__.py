@@ -269,7 +269,11 @@ from opentelemetry.instrumentation.utils import _start_internal_or_server_span
 from opentelemetry.metrics import get_meter
 from opentelemetry.semconv.metrics import MetricInstruments
 from opentelemetry.semconv.trace import SpanAttributes
-from opentelemetry.util.http import get_excluded_urls, parse_excluded_urls, sanitize_method
+from opentelemetry.util.http import (
+    get_excluded_urls,
+    parse_excluded_urls,
+    sanitize_method,
+)
 
 _logger = getLogger(__name__)
 
@@ -295,7 +299,9 @@ else:
 
 
 def get_default_span_name():
-    method = sanitize_method(flask.request.environ.get("REQUEST_METHOD", "").strip())
+    method = sanitize_method(
+        flask.request.environ.get("REQUEST_METHOD", "").strip()
+    )
     if method == "_OTHER":
         method = "HTTP"
     try:
@@ -322,8 +328,7 @@ def _rewrapped_app(
         wrapped_app_environ[_ENVIRON_STARTTIME_KEY] = time_ns()
         start = default_timer()
         attributes = otel_wsgi.collect_request_attributes(
-            wrapped_app_environ,
-            sem_conv_opt_in_mode
+            wrapped_app_environ, sem_conv_opt_in_mode
         )
         active_requests_count_attrs = (
             otel_wsgi._parse_active_request_count_attrs(

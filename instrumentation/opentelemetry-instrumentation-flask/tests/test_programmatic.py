@@ -71,6 +71,7 @@ def expected_attributes(override_attributes):
         default_attributes[key] = val
     return default_attributes
 
+
 def expected_attributes_new(override_attributes):
     default_attributes = {
         SpanAttributes.HTTP_REQUEST_METHOD: "GET",
@@ -486,7 +487,8 @@ class TestProgrammatic(InstrumentationTest, WsgiTestBase):
                             number_data_point_seen = True
                         for attr in point.attributes:
                             self.assertIn(
-                                attr, _recommended_metrics_attrs_old[metric.name]
+                                attr,
+                                _recommended_metrics_attrs_old[metric.name]
                             )
         self.assertTrue(number_data_point_seen and histogram_data_point_seen)
 
@@ -519,7 +521,8 @@ class TestProgrammatic(InstrumentationTest, WsgiTestBase):
                             number_data_point_seen = True
                         for attr in point.attributes:
                             self.assertIn(
-                                attr, _recommended_metrics_attrs_new[metric.name]
+                                attr,
+                                _recommended_metrics_attrs_new[metric.name]
                             )
         self.assertTrue(number_data_point_seen and histogram_data_point_seen)
 
@@ -655,7 +658,9 @@ class TestProgrammatic(InstrumentationTest, WsgiTestBase):
             OTEL_PYTHON_INSTRUMENTATION_HTTP_CAPTURE_ALL_METHODS: "1",
         },
     )
-    def test_basic_metric_nonstandard_http_method_allowed_success_new_semconv(self):
+    def test_basic_metric_nonstandard_http_method_allowed_success_new_semconv(
+        self
+    ):
         self.client.open("/hello/756", method="NONSTANDARD")
         expected_duration_attributes = {
             "http.request.method": "NONSTANDARD",
