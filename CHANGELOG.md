@@ -7,13 +7,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## Unreleased
 
-### Added
-
-- `opentelemetry-instrumentation-pika` Instrumentation for `channel.consume()` (supported
-  only for global, non channel specific instrumentation)
-  ([#2397](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/2397)))
-
-
 ### Breaking changes
 
 - Rename `type` attribute to `asgi.event.type` in `opentelemetry-instrumentation-asgi`
@@ -32,20 +25,18 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   ([#2425](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/2425))
 - `opentelemetry-instrumentation-threading` Initial release for threading
   ([#2253](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/2253))
+- `opentelemetry-instrumentation-pika` Instrumentation for `channel.consume()` (supported
+  only for global, non channel specific instrumentation)
+  ([#2397](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/2397)))
 
 ### Fixed
 
 - `opentelemetry-instrumentation-grpc` AioClientInterceptor should propagate with a Metadata object
   ([#2363](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/2363))
-
-### Added
-
-- `opentelemetry-sdk-extension-aws` Register AWS resource detectors under the `opentelemetry_resource_detector` entry point
-  ([#2382](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/2382))
-- `opentelemetry-instrumentation-wsgi` Implement new semantic convention opt-in with stable http semantic conventions
-  ([#2425](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/2425))
-- `opentelemetry-instrumentation-threading` Initial release for threading
-  ([#2253](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/2253))
+- `opentelemetry-instrumentation-boto3sqs` Instrument Session and resource
+  ([#2161](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/2161))
+- Use sqlalchemy version in sqlalchemy commenter instead of opentelemetry library version
+  ([#2404](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/2404))
 
 ## Version 1.24.0/0.45b0 (2024-03-28)
 
