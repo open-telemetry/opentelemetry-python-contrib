@@ -436,7 +436,9 @@ class TestAwsLambdaInstrumentor(TestBase):
 
         exc_env_patch.stop()
 
-    def test_lambda_handles_handler_exception_with_api_gateway_proxy_event(self):
+    def test_lambda_handles_handler_exception_with_api_gateway_proxy_event(
+        self,
+    ):
         exc_env_patch = mock.patch.dict(
             "os.environ",
             {_HANDLER: "tests.mocks.lambda_function.handler_exc"},
@@ -445,7 +447,9 @@ class TestAwsLambdaInstrumentor(TestBase):
         AwsLambdaInstrumentor().instrument()
         # instrumentor re-raises the exception
         with self.assertRaises(Exception):
-            mock_execute_lambda({"requestContext": {"http": {"method": "GET"}}})
+            mock_execute_lambda(
+                {"requestContext": {"http": {"method": "GET"}}}
+            )
 
         spans = self.memory_exporter.get_finished_spans()
         self.assertEqual(len(spans), 1)
