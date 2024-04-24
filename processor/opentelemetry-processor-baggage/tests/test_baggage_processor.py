@@ -14,27 +14,23 @@
 
 import unittest
 
-from opentelemetry.sdk.trace.export import SpanProcessor
-from opentelemetry.sdk.trace import TracerProvider
-from opentelemetry.trace import (
-    Span,
-    Tracer
-)
-from opentelemetry.baggage import (
-    get_all as get_all_baggage,
-    set_baggage
-)
+from opentelemetry.baggage import get_all as get_all_baggage
+from opentelemetry.baggage import set_baggage
 from opentelemetry.context import attach, detach
 from opentelemetry.processors.baggage import BaggageSpanProcessor
+from opentelemetry.sdk.trace import TracerProvider
+from opentelemetry.sdk.trace.export import SpanProcessor
+from opentelemetry.trace import Span, Tracer
+
 
 class BaggageSpanProcessorTest(unittest.TestCase):
-
     def test_check_the_baggage(self):
         baggageProcessor = BaggageSpanProcessor()
         assert isinstance(baggageProcessor, SpanProcessor)
 
-
-    def test_set_baggage_attaches_to_child_spans_and_detaches_properly_with_context(self):
+    def test_set_baggage_attaches_to_child_spans_and_detaches_properly_with_context(
+        self,
+    ):
         tracer_provider = TracerProvider()
         tracer_provider.add_span_processor(BaggageSpanProcessor())
 
@@ -44,20 +40,25 @@ class BaggageSpanProcessorTest(unittest.TestCase):
         assert get_all_baggage() == {}
         # set baggage in context
         ctx = set_baggage("queen", "bee")
-        with tracer.start_as_current_span(name="bumble", context=ctx) as bumble_span:
+        with tracer.start_as_current_span(
+            name="bumble", context=ctx
+        ) as bumble_span:
             # span should have baggage key-value pair in context
             assert get_all_baggage(ctx) == {"queen": "bee"}
             # span should have baggage key-value pair in attribute
             assert bumble_span._attributes["queen"] == "bee"
-            with tracer.start_as_current_span(name="child_span", context=ctx) as child_span:
+            with tracer.start_as_current_span(
+                name="child_span", context=ctx
+            ) as child_span:
                 assert isinstance(child_span, Span)
                 # child span should have baggage key-value pair in context
                 assert get_all_baggage(ctx) == {"queen": "bee"}
                 # child span should have baggage key-value pair in attribute
                 assert child_span._attributes["queen"] == "bee"
 
-
-    def test_set_baggage_attaches_to_child_spans_and_detaches_properly_with_token(self):
+    def test_set_baggage_attaches_to_child_spans_and_detaches_properly_with_token(
+        self,
+    ):
         tracer_provider = TracerProvider()
         tracer_provider.add_span_processor(BaggageSpanProcessor())
 
