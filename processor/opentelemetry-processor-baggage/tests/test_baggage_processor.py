@@ -74,10 +74,14 @@ class BaggageSpanProcessorTest(unittest.TestCase):
             self.assertEqual(span._attributes["bumble"], "bee")
             # create a second context token and set more baggage
             moar_token = attach(set_baggage("moar", "bee"))
-            self.assertEqual(get_all_baggage(), {"bumble": "bee", "moar": "bee"})
+            self.assertEqual(
+                get_all_baggage(), {"bumble": "bee", "moar": "bee"}
+            )
             # in a child span, ensure all baggage is there as attributes
             with tracer.start_as_current_span("child") as child_span:
-                self.assertEqual(get_all_baggage(), {"bumble": "bee", "moar": "bee"})
+                self.assertEqual(
+                    get_all_baggage(), {"bumble": "bee", "moar": "bee"}
+                )
                 self.assertEqual(child_span._attributes["bumble"], "bee")
                 self.assertEqual(child_span._attributes["moar"], "bee")
             detach(moar_token)
