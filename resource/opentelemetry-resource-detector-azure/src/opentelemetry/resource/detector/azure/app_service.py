@@ -14,31 +14,18 @@
 
 from os import environ
 
+from opentelemetry.resource.detector.azure._constants import (
+    _APP_SERVICE_ATTRIBUTE_ENV_VARS,
+    _WEBSITE_OWNER_NAME,
+    _WEBSITE_RESOURCE_GROUP,
+    _WEBSITE_SITE_NAME,
+)
 from opentelemetry.sdk.resources import Resource, ResourceDetector
 from opentelemetry.semconv.resource import (
     CloudPlatformValues,
     CloudProviderValues,
     ResourceAttributes,
 )
-
-_AZURE_APP_SERVICE_STAMP_RESOURCE_ATTRIBUTE = "azure.app.service.stamp"
-_REGION_NAME = "REGION_NAME"
-_WEBSITE_HOME_STAMPNAME = "WEBSITE_HOME_STAMPNAME"
-_WEBSITE_HOSTNAME = "WEBSITE_HOSTNAME"
-_WEBSITE_INSTANCE_ID = "WEBSITE_INSTANCE_ID"
-_WEBSITE_OWNER_NAME = "WEBSITE_OWNER_NAME"
-_WEBSITE_RESOURCE_GROUP = "WEBSITE_RESOURCE_GROUP"
-_WEBSITE_SITE_NAME = "WEBSITE_SITE_NAME"
-_WEBSITE_SLOT_NAME = "WEBSITE_SLOT_NAME"
-
-
-_APP_SERVICE_ATTRIBUTE_ENV_VARS = {
-    ResourceAttributes.CLOUD_REGION: _REGION_NAME,
-    ResourceAttributes.DEPLOYMENT_ENVIRONMENT: _WEBSITE_SLOT_NAME,
-    ResourceAttributes.HOST_ID: _WEBSITE_HOSTNAME,
-    ResourceAttributes.SERVICE_INSTANCE_ID: _WEBSITE_INSTANCE_ID,
-    _AZURE_APP_SERVICE_STAMP_RESOURCE_ATTRIBUTE: _WEBSITE_HOME_STAMPNAME,
-}
 
 
 class AzureAppServiceResourceDetector(ResourceDetector):
