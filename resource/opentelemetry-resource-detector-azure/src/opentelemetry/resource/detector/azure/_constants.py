@@ -14,7 +14,7 @@
 
 from opentelemetry.semconv.resource import ResourceAttributes
 
-# cSpell:disable
+# codespell: disable
 
 # AKS
 
@@ -65,4 +65,4 @@ _EXPECTED_AZURE_AMS_ATTRIBUTES = [
     ResourceAttributes.SERVICE_INSTANCE_ID,
 ]
 
-# cSpell:enable
+# codespell: enable
