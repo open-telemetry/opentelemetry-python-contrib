@@ -32,7 +32,7 @@ dependencies = [
 Homepage = "https://github.com/open-telemetry/opentelemetry-python-contrib/tree/main/processor/opentelemetry-processor-baggage"
 
 [tool.hatch.version]
-path = "src/opentelemetry/processors/baggage/version.py"
+path = "src/opentelemetry/processor/baggage/version.py"
 
 [tool.hatch.build.targets.sdist]
 include = [

@@ -17,7 +17,7 @@ import unittest
 from opentelemetry.baggage import get_all as get_all_baggage
 from opentelemetry.baggage import set_baggage
 from opentelemetry.context import attach, detach
-from opentelemetry.processors.baggage import BaggageSpanProcessor
+from opentelemetry.processor.baggage import BaggageSpanProcessor
 from opentelemetry.sdk.trace import TracerProvider
 from opentelemetry.sdk.trace.export import SpanProcessor
 from opentelemetry.trace import Span, Tracer
