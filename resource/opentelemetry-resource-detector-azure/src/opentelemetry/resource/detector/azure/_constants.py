@@ -14,6 +14,8 @@
 
 from opentelemetry.semconv.resource import ResourceAttributes
 
+# cSpell:disable
+
 # AKS
 
 _AKS_ARM_NAMESPACE_ID = "AKS_ARM_NAMESPACE_ID"
@@ -62,3 +64,5 @@ _EXPECTED_AZURE_AMS_ATTRIBUTES = [
     ResourceAttributes.OS_VERSION,
     ResourceAttributes.SERVICE_INSTANCE_ID,
 ]
+
+# cSpell:enable
