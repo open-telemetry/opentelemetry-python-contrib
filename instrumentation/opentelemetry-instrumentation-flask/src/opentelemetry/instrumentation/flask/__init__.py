@@ -305,7 +305,7 @@ def get_default_span_name():
     if method == "_OTHER":
         method = "HTTP"
     try:
-        span_name = method + " " + flask.request.url_rule.rule
+        span_name = f"{method} {flask.request.url_rule.rule}"
     except AttributeError:
         span_name = otel_wsgi.get_default_span_name(flask.request.environ)
     return span_name
