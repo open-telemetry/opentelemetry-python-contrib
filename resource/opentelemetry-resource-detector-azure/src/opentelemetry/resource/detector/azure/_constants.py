@@ -16,7 +16,7 @@ from opentelemetry.semconv.resource import ResourceAttributes
 
 # cSpell:disable
 
-# AKS
+# AKS # codespell:ignore
 
 _AKS_ARM_NAMESPACE_ID = "AKS_ARM_NAMESPACE_ID"
 

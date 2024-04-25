@@ -20,14 +20,18 @@ from opentelemetry.resource.detector.azure._constants import (
     _WEBSITE_SITE_NAME,
 )
 
+
 def _is_on_aks() -> bool:
     return os.environ.get(_AKS_ARM_NAMESPACE_ID) is not None
+
 
 def _is_on_app_service() -> bool:
     return os.environ.get(_WEBSITE_SITE_NAME) is not None
 
+
 def _is_on_functions() -> bool:
     return os.environ.get(_FUNCTIONS_WORKER_RUNTIME) is not None
+
 
 def _can_ignore_vm_detect() -> bool:
     return _is_on_aks() or _is_on_app_service() or _is_on_functions()
