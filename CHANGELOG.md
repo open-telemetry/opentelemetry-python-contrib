@@ -34,6 +34,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - `opentelemetry-instrumentation-pika` Instrumentation for `channel.consume()` (supported
   only for global, non channel specific instrumentation)
   ([#2397](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/2397)))
+- `opentelemetry-processor-baggage` Initial release
+  ([#2436](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/2436))
 
 ### Fixed
 
@@ -41,6 +43,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   ([#2363](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/2363))
 - `opentelemetry-instrumentation-boto3sqs` Instrument Session and resource
   ([#2161](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/2161))
+- `opentelemetry-instrumentation-aws-lambda` Fix exception handling for events with requestContext
+  ([#2418](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/2418))
 - Use sqlalchemy version in sqlalchemy commenter instead of opentelemetry library version
   ([#2404](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/2404))
 
