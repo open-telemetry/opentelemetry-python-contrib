@@ -23,13 +23,13 @@ from opentelemetry.context import (
     detach,
     set_value,
 )
+from opentelemetry.resource.detector._utils import _can_ignore_vm_detect
 from opentelemetry.resource.detector.azure._constants import (
     _AZURE_VM_METADATA_ENDPOINT,
     _AZURE_VM_SCALE_SET_NAME_ATTRIBUTE,
     _AZURE_VM_SKU_ATTRIBUTE,
     _EXPECTED_AZURE_AMS_ATTRIBUTES,
 )
-from opentelemetry.resource.detector._utils import _can_ignore_vm_detect
 from opentelemetry.sdk.resources import Resource, ResourceDetector
 from opentelemetry.semconv.resource import (
     CloudPlatformValues,
