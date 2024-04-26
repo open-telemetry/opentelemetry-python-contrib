@@ -22,6 +22,7 @@ jobs:
           # to both GitHub-hosted and self-hosted runners."
           - "instrumentation-flask"
           - "resource-detector-container"
+          - "sdk-extension-aws"
         os: [ubuntu-20.04]
     runs-on: ubuntu-20.04
     steps:
