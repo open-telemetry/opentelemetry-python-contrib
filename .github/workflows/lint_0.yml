@@ -29,6 +29,7 @@ jobs:
           - "instrumentation-aiohttp-server"
           - "instrumentation-aiopg"
           - "instrumentation-aws-lambda"
+          - "instrumentation-botocore"
         os: [ubuntu-20.04]
     runs-on: ubuntu-20.04
     steps:
