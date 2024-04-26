@@ -38,6 +38,7 @@ jobs:
           - "instrumentation-falcon"
           - "instrumentation-fastapi"
           - "instrumentation-urllib"
+          - "instrumentation-urllib3"
         os: [ubuntu-20.04]
     runs-on: ubuntu-20.04
     steps:
