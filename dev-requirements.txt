@@ -17,3 +17,4 @@ codespell==2.1.0
 requests==2.31.0
 ruamel.yaml==0.17.21
 flaky==3.7.0
+grpcio==1.62.2
