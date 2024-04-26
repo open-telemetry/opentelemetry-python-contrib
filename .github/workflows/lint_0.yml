@@ -71,6 +71,7 @@ jobs:
           - "propagator-aws-xray"
           - "propagator-ot-trace"
           - "instrumentation-sio-pika"
+          - "instrumentation-aio-pika"
         os: [ubuntu-20.04]
     runs-on: ubuntu-20.04
     steps:
