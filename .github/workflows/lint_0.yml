@@ -53,6 +53,7 @@ jobs:
           - "instrumentation-pymongo"
           - "instrumentation-pymysql"
           - "instrumentation-pyramid"
+          - "instrumentation-asgi"
         os: [ubuntu-20.04]
     runs-on: ubuntu-20.04
     steps:
