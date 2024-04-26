@@ -307,13 +307,11 @@ class AsyncioInstrumentor(BaseInstrumentor):
         )
 
         def callback(f):
-            exception = f.exception()
             attr = {
                 "type": "future",
+                "state": "cancelled" if f.cancelled() else determine_state(f.exception())
             }
-            state = determine_state(exception)
-            attr["state"] = state
-            self.record_process(start, attr, span, exception)
+            self.record_process(start, attr, span, None if f.cancelled() else f.exception())
 
         future.add_done_callback(callback)
         return future
