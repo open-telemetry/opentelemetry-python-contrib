@@ -25,6 +25,7 @@ jobs:
           - "sdk-extension-aws"
           - "distro"
           - "opentelemetry-instrumentation"
+          - "instrumentation-aiohttp-client"
         os: [ubuntu-20.04]
     runs-on: ubuntu-20.04
     steps:
