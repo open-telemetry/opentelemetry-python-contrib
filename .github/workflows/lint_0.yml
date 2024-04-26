@@ -67,6 +67,7 @@ jobs:
           - "instrumentation-threading"
           - "instrumentation-tornado"
           - "instrumentation-tortoiseorm"
+          - "instrumentation-httpx"
         os: [ubuntu-20.04]
     runs-on: ubuntu-20.04
     steps:
