@@ -61,6 +61,8 @@ jobs:
           - "instrumentation-sqlalchemy"
           - "instrumentation-redis"
           - "instrumentation-remoulade"
+          - "instrumentation-celery"
+          - "instrumentation-sklearn"
         os: [ubuntu-20.04]
     runs-on: ubuntu-20.04
     steps:
