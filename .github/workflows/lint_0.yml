@@ -32,6 +32,7 @@ jobs:
           - "instrumentation-botocore"
           - "instrumentation-boto3sqs"
           - "instrumentation-django"
+          - "instrumentation-dbapi"
         os: [ubuntu-20.04]
     runs-on: ubuntu-20.04
     steps:
