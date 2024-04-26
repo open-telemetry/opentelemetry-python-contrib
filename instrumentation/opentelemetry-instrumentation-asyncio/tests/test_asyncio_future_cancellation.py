@@ -23,6 +23,11 @@ class TestTraceFuture(TestBase):
         self.instrumentor = AsyncioInstrumentor()
         self.instrumentor.instrument()
 
+    def tearDown(self):
+        super().tearDown()
+        self.instrumentor.uninstrument()
+        self.loop.close()
+
     @pytest.mark.asyncio
     def test_trace_future_cancelled(self):
         with self._tracer.start_as_current_span("root"):
@@ -33,7 +38,6 @@ class TestTraceFuture(TestBase):
             self.loop.run_until_complete(future)
         except asyncio.CancelledError as e:
             self.assertEqual(isinstance(e, asyncio.CancelledError), True)
-        self.loop.close()
         spans = self.memory_exporter.get_finished_spans()
         self.assertEqual(len(spans), 2)
         self.assertEqual(spans[0].name, "root")
