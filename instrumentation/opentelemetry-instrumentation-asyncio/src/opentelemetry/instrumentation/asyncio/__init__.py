@@ -296,7 +296,6 @@ class AsyncioInstrumentor(BaseInstrumentor):
         )
 
         def callback(f):
-            print("qlwkdnlqkwdnlqkwndlkqwndlknqw")
             attr = {
                 "type": "future",
                 "state": (
