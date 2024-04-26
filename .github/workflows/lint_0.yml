@@ -24,6 +24,7 @@ jobs:
           - "resource-detector-container"
           - "sdk-extension-aws"
           - "distro"
+          - "opentelemetry-instrumentation"
         os: [ubuntu-20.04]
     runs-on: ubuntu-20.04
     steps:
