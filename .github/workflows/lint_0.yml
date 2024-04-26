@@ -68,6 +68,7 @@ jobs:
           - "instrumentation-tornado"
           - "instrumentation-tortoiseorm"
           - "instrumentation-httpx"
+          - "propagator-aws-xray"
         os: [ubuntu-20.04]
     runs-on: ubuntu-20.04
     steps:
