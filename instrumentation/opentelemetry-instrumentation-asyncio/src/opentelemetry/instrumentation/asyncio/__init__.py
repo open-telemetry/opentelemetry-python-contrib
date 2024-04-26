@@ -310,8 +310,8 @@ class AsyncioInstrumentor(BaseInstrumentor):
             attr = {
                 "type": "future",
                 "state": (
-                    "cancelled" 
-                    if f.cancelled() 
+                    "cancelled"
+                    if f.cancelled()
                     else determine_state(f.exception())
                 ),
             }
