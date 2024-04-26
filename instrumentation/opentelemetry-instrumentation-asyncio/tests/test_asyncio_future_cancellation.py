@@ -39,10 +39,10 @@ class TestTraceFuture(TestBase):
         self.assertEqual(spans[0].name, "root")
         self.assertEqual(spans[1].name, "asyncio future")
         for metric in (
-                self.memory_metrics_reader.get_metrics_data()
-                        .resource_metrics[0]
-                        .scope_metrics[0]
-                        .metrics
+            self.memory_metrics_reader.get_metrics_data()
+            .resource_metrics[0]
+            .scope_metrics[0]
+            .metrics
         ):
             if metric.name == "asyncio.process.duration":
                 for point in metric.data.data_points:
