@@ -44,6 +44,7 @@ jobs:
           - "instrumentation-jinja2"
           - "instrumentation-logging"
           - "exporter-richconsole"
+          - "exporter-prometheus-remote-write"
         os: [ubuntu-20.04]
     runs-on: ubuntu-20.04
     steps:
