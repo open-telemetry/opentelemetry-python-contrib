@@ -48,6 +48,7 @@ jobs:
           - "instrumentation-mysql"
           - "instrumentation-mysqlclient"
           - "instrumentation-psycopg2"
+          - "instrumentation-psycopg"
         os: [ubuntu-20.04]
     runs-on: ubuntu-20.04
     steps:
