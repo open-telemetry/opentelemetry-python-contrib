@@ -64,6 +64,7 @@ jobs:
           - "instrumentation-celery"
           - "instrumentation-sklearn"
           - "instrumentation-system-metrics"
+          - "instrumentation-threading"
         os: [ubuntu-20.04]
     runs-on: ubuntu-20.04
     steps:
