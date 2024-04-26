@@ -57,6 +57,7 @@ jobs:
           - "instrumentation-asyncpg"
           - "instrumentation-sqlite3"
           - "instrumentation-wsgi"
+          - "instrumentation-grpc"
         os: [ubuntu-20.04]
     runs-on: ubuntu-20.04
     steps:
