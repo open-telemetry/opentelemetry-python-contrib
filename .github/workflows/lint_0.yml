@@ -69,6 +69,7 @@ jobs:
           - "instrumentation-tortoiseorm"
           - "instrumentation-httpx"
           - "propagator-aws-xray"
+          - "propagator-ot-trace"
         os: [ubuntu-20.04]
     runs-on: ubuntu-20.04
     steps:
