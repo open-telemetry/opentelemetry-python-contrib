@@ -59,6 +59,7 @@ jobs:
           - "instrumentation-wsgi"
           - "instrumentation-grpc"
           - "instrumentation-sqlalchemy"
+          - "instrumentation-redis"
         os: [ubuntu-20.04]
     runs-on: ubuntu-20.04
     steps:
