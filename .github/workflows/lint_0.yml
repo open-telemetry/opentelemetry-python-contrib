@@ -23,6 +23,7 @@ jobs:
           - "instrumentation-flask"
           - "resource-detector-container"
         os: [ubuntu-20.04]
+    runs-on: ubuntu-20.04
     steps:
       - name: Checkout Contrib Repo @ SHA - ${{ github.sha }}
         uses: actions/checkout@v4
