@@ -41,6 +41,7 @@ jobs:
           - "instrumentation-urllib3"
           - "instrumentation-requests"
           - "instrumentation-starlette"
+          - "instrumentation-jinja2"
         os: [ubuntu-20.04]
     runs-on: ubuntu-20.04
     steps:
