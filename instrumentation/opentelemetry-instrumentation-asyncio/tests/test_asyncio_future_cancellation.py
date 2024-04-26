@@ -6,7 +6,9 @@ from opentelemetry.test.test_base import TestBase
 from opentelemetry.trace import get_tracer
 
 from opentelemetry.instrumentation.asyncio import AsyncioInstrumentor
-from opentelemetry.instrumentation.asyncio.environment_variables import OTEL_PYTHON_ASYNCIO_FUTURE_TRACE_ENABLED
+from opentelemetry.instrumentation.asyncio.environment_variables import (
+    OTEL_PYTHON_ASYNCIO_FUTURE_TRACE_ENABLED,
+)
 
 
 class TestTraceFuture(TestBase):
