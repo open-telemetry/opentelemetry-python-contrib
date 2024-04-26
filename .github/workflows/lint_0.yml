@@ -66,6 +66,7 @@ jobs:
           - "instrumentation-system-metrics"
           - "instrumentation-threading"
           - "instrumentation-tornado"
+          - "instrumentation-tortoiseorm"
         os: [ubuntu-20.04]
     runs-on: ubuntu-20.04
     steps:
