@@ -27,6 +27,7 @@ jobs:
           - "opentelemetry-instrumentation"
           - "instrumentation-aiohttp-client"
           - "instrumentation-aiohttp-server"
+          - "instrumentation-aiopg"
         os: [ubuntu-20.04]
     runs-on: ubuntu-20.04
     steps:
