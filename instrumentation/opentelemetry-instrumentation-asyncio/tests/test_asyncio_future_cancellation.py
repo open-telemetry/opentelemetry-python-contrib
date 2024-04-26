@@ -23,6 +23,4 @@ class TestTraceFuture(TestBase):
         try:
             loop.run_until_complete(future)
         except asyncio.CancelledError as e:
-            self.assertEqual(
-                isinstance(e, asyncio.CancelledError), True
-            )
+            self.assertEqual(isinstance(e, asyncio.CancelledError), True)
