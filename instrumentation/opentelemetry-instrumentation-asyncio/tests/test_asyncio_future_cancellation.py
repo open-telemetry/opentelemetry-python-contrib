@@ -1,26 +1,53 @@
 import asyncio
+from unittest.mock import patch
 
 import pytest
 from opentelemetry.test.test_base import TestBase
+from opentelemetry.trace import get_tracer
+
+from opentelemetry.instrumentation.asyncio import AsyncioInstrumentor
+from opentelemetry.instrumentation.asyncio.environment_variables import OTEL_PYTHON_ASYNCIO_FUTURE_TRACE_ENABLED
 
 
 class TestTraceFuture(TestBase):
+    @patch.dict(
+        "os.environ", {OTEL_PYTHON_ASYNCIO_FUTURE_TRACE_ENABLED: "true"}
+    )
+    def setUp(self):
+        super().setUp()
+        self._tracer = get_tracer(
+            __name__,
+        )
+        self.loop = asyncio.new_event_loop()
+        asyncio.set_event_loop(self.loop)
+        self.instrumentor = AsyncioInstrumentor()
+        self.instrumentor.instrument()
 
     @pytest.mark.asyncio
     def test_trace_future_cancelled(self):
-        loop = asyncio.new_event_loop()
-        asyncio.set_event_loop(loop)
-
-        future = asyncio.Future()
-        future.cancel()
-
-        def callback(f):
-            state = "cancelled" if f.cancelled() else "done"
-            self.assertEqual(state, "cancelled")
-
-        future.add_done_callback(callback)
-
+        with self._tracer.start_as_current_span("root"):
+            future = asyncio.Future()
+            future = self.instrumentor.trace_future(future)
+            future.cancel()
         try:
-            loop.run_until_complete(future)
+            self.loop.run_until_complete(future)
         except asyncio.CancelledError as e:
             self.assertEqual(isinstance(e, asyncio.CancelledError), True)
+        self.loop.close()
+        spans = self.memory_exporter.get_finished_spans()
+        self.assertEqual(len(spans), 2)
+        self.assertEqual(spans[0].name, "root")
+        self.assertEqual(spans[1].name, "asyncio future")
+        for metric in (
+                self.memory_metrics_reader.get_metrics_data()
+                        .resource_metrics[0]
+                        .scope_metrics[0]
+                        .metrics
+        ):
+            if metric.name == "asyncio.process.duration":
+                for point in metric.data.data_points:
+                    self.assertEqual(point.attributes["type"], "future")
+            if metric.name == "asyncio.process.created":
+                for point in metric.data.data_points:
+                    self.assertEqual(point.attributes["type"], "future")
+                    self.assertEqual(point.attributes["state"], "cancelled")
