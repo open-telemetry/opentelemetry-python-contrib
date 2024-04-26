@@ -1,0 +1,44 @@
+name: Lint tests
+
+on:
+  push:
+    branches-ignore:
+    - 'release/*'
+  pull_request:
+env:
+  CORE_REPO_SHA: 955c92e91b5cd4bcfb43c39efcef086b040471d2
+
+jobs:
+  lint-0:
+    strategy:
+      fail-fast: false  # ensures the entire test matrix is run, even if one permutation fails
+      matrix:
+        package:
+          # Do not add more instrumentations here, add them in lint_1.yml.
+          # The reason for this separation of instrumentations into more than one YAML file is
+          # the limit of jobs that can be run from a Github actions matrix:
+          # https://docs.github.com/en/actions/using-jobs/using-a-matrix-for-your-jobs
+          # "A matrix will generate a maximum of 256 jobs per workflow run. This limit applies
+          # to both GitHub-hosted and self-hosted runners."
+          - "instrumentation-flask"
+          - "resource-detector-container"
+        os: [ubuntu-20.04]
+    steps:
+      - name: Checkout Contrib Repo @ SHA - ${{ github.sha }}
+        uses: actions/checkout@v4
+      - name: Set up Python 3.11
+        uses: actions/setup-python@v5
+        with:
+          python-version: 3.11
+      - name: Install tox
+        run: pip install tox
+      - name: Cache tox environment
+        # Preserves .tox directory between runs for faster installs
+        uses: actions/cache@v4
+        with:
+          path: |
+            .tox
+            ~/.cache/pip
+          key: v7-build-tox-cache-${{ matrix.package }}-${{ hashFiles('tox.ini', 'gen-requirements.txt', 'dev-requirements.txt') }}
+      - name: run tox
+        run: tox -e lint-${{ matrix.package }}
