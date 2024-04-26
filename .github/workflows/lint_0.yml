@@ -65,6 +65,7 @@ jobs:
           - "instrumentation-sklearn"
           - "instrumentation-system-metrics"
           - "instrumentation-threading"
+          - "instrumentation-tornado"
         os: [ubuntu-20.04]
     runs-on: ubuntu-20.04
     steps:
