@@ -46,6 +46,7 @@ jobs:
           - "exporter-richconsole"
           - "exporter-prometheus-remote-write"
           - "instrumentation-mysql"
+          - "instrumentation-mysqlclient"
         os: [ubuntu-20.04]
     runs-on: ubuntu-20.04
     steps:
