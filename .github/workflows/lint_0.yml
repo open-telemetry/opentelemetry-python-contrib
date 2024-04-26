@@ -30,6 +30,7 @@ jobs:
           - "instrumentation-aiopg"
           - "instrumentation-aws-lambda"
           - "instrumentation-botocore"
+          - "instrumentation-boto3sqs"
         os: [ubuntu-20.04]
     runs-on: ubuntu-20.04
     steps:
