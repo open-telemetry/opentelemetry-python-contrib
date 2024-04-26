@@ -38,7 +38,7 @@ class TestURLLib3InstrumentorWithRealSocket(HttpTestBase, TestBase):
 
     @staticmethod
     def perform_request(url: str) -> requests.Response:
-        return requests.get(url)
+        return requests.get(url, timeout=5)
 
     def test_basic_http_success(self):
         response = self.perform_request(self.http_url)

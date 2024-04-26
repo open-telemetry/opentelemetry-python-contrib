@@ -8,7 +8,7 @@ dynamic = ["version"]
 description = "Tornado instrumentation for OpenTelemetry"
 readme = "README.rst"
 license = "Apache-2.0"
-requires-python = ">=3.7"
+requires-python = ">=3.8"
 authors = [
   { name = "OpenTelemetry Authors", email = "cncf-opentelemetry-contributors@lists.cncf.io" },
 ]
@@ -17,7 +17,6 @@ classifiers = [
   "Intended Audience :: Developers",
   "License :: OSI Approved :: Apache Software License",
   "Programming Language :: Python",
-  "Programming Language :: Python :: 3.7",
   "Programming Language :: Python :: 3.8",
   "Programming Language :: Python :: 3.9",
   "Programming Language :: Python :: 3.10",
@@ -25,19 +24,14 @@ classifiers = [
 ]
 dependencies = [
   "opentelemetry-api ~= 1.12",
-  "opentelemetry-instrumentation == 0.42b0.dev",
-  "opentelemetry-semantic-conventions == 0.42b0.dev",
-  "opentelemetry-util-http == 0.42b0.dev",
+  "opentelemetry-instrumentation == 0.46b0.dev",
+  "opentelemetry-semantic-conventions == 0.46b0.dev",
+  "opentelemetry-util-http == 0.46b0.dev",
 ]
 
 [project.optional-dependencies]
 instruments = [
   "tornado >= 5.1.1",
-]
-test = [
-  "opentelemetry-instrumentation-tornado[instruments]",
-  "opentelemetry-test-utils == 0.42b0.dev",
-  "http-server-mock"
 ]
 
 [project.entry-points.opentelemetry_instrumentor]

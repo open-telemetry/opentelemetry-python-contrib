@@ -76,7 +76,9 @@ API
 """
 
 import gc
+import logging
 import os
+import sys
 import threading
 from platform import python_implementation
 from typing import Collection, Dict, Iterable, List, Optional
@@ -90,6 +92,9 @@ from opentelemetry.instrumentation.system_metrics.package import _instruments
 from opentelemetry.instrumentation.system_metrics.version import __version__
 from opentelemetry.metrics import CallbackOptions, Observation, get_meter
 from opentelemetry.sdk.util import get_dict_as_key
+
+_logger = logging.getLogger(__name__)
+
 
 _DEFAULT_CONFIG = {
     "system.cpu.time": ["idle", "user", "system", "irq"],
@@ -114,6 +119,10 @@ _DEFAULT_CONFIG = {
     "process.runtime.cpu.utilization": None,
     "process.runtime.context_switches": ["involuntary", "voluntary"],
 }
+
+if sys.platform == "darwin":
+    # see https://github.com/giampaolo/psutil/issues/1219
+    _DEFAULT_CONFIG.pop("system.network.connections")
 
 
 class SystemMetricsInstrumentor(BaseInstrumentor):
@@ -172,6 +181,7 @@ class SystemMetricsInstrumentor(BaseInstrumentor):
             __name__,
             __version__,
             meter_provider,
+            schema_url="https://opentelemetry.io/schemas/1.11.0",
         )
 
         if "system.cpu.time" in self._config:
@@ -351,12 +361,17 @@ class SystemMetricsInstrumentor(BaseInstrumentor):
             )
 
         if "process.runtime.gc_count" in self._config:
-            self._meter.create_observable_counter(
-                name=f"process.runtime.{self._python_implementation}.gc_count",
-                callbacks=[self._get_runtime_gc_count],
-                description=f"Runtime {self._python_implementation} GC count",
-                unit="bytes",
-            )
+            if self._python_implementation == "pypy":
+                _logger.warning(
+                    "The process.runtime.gc_count metric won't be collected because the interpreter is PyPy"
+                )
+            else:
+                self._meter.create_observable_counter(
+                    name=f"process.runtime.{self._python_implementation}.gc_count",
+                    callbacks=[self._get_runtime_gc_count],
+                    description=f"Runtime {self._python_implementation} GC count",
+                    unit="bytes",
+                )
 
         if "process.runtime.thread_count" in self._config:
             self._meter.create_observable_up_down_counter(
@@ -466,9 +481,11 @@ class SystemMetricsInstrumentor(BaseInstrumentor):
             if hasattr(system_swap, metric):
                 self._system_swap_utilization_labels["state"] = metric
                 yield Observation(
-                    getattr(system_swap, metric) / system_swap.total
-                    if system_swap.total
-                    else 0,
+                    (
+                        getattr(system_swap, metric) / system_swap.total
+                        if system_swap.total
+                        else 0
+                    ),
                     self._system_swap_utilization_labels.copy(),
                 )
 
@@ -541,9 +558,9 @@ class SystemMetricsInstrumentor(BaseInstrumentor):
             for metric in self._config["system.network.dropped.packets"]:
                 in_out = {"receive": "in", "transmit": "out"}[metric]
                 if hasattr(counters, f"drop{in_out}"):
-                    self._system_network_dropped_packets_labels[
-                        "device"
-                    ] = device
+                    self._system_network_dropped_packets_labels["device"] = (
+                        device
+                    )
                     self._system_network_dropped_packets_labels[
                         "direction"
                     ] = metric
@@ -614,9 +631,9 @@ class SystemMetricsInstrumentor(BaseInstrumentor):
                     1: "tcp",
                     2: "udp",
                 }[net_connection.type.value]
-                self._system_network_connections_labels[
-                    "state"
-                ] = net_connection.status
+                self._system_network_connections_labels["state"] = (
+                    net_connection.status
+                )
                 self._system_network_connections_labels[metric] = getattr(
                     net_connection, metric
                 )

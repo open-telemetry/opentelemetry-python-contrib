@@ -13,7 +13,26 @@ on how to become a [**Member**](https://github.com/open-telemetry/community/blob
 [**Approver**](https://github.com/open-telemetry/community/blob/main/community-membership.md#approver)
 and [**Maintainer**](https://github.com/open-telemetry/community/blob/main/community-membership.md#maintainer).
 
-## Find a Buddy and get Started Quickly!
+## Index
+
+* [Find a Buddy and get Started Quickly](#find-a-buddy-and-get-started-quickly)
+* [Development](#development)
+  * [Troubleshooting](#troubleshooting)
+  * [Benchmarks](#benchmarks)
+* [Pull requests](#pull-requests)
+  * [How to Send Pull Requests](#how-to-send-pull-requests)
+  * [How to Receive Comments](#how-to-receive-comments)
+  * [How to Get PRs Reviewed](#how-to-get-prs-reviewed)
+  * [How to Get PRs Merged](#how-to-get-prs-merged)
+* [Design Choices](#design-choices)
+  * [Focus on Capabilities, Not Structure Compliance](#focus-on-capabilities-not-structure-compliance)
+* [Running Tests Locally](#running-tests-locally)
+  * [Testing against a different Core repo branch/commit](#testing-against-a-different-core-repo-branchcommit)
+* [Style Guide](#style-guide)
+* [Guideline for instrumentations](#guideline-for-instrumentations)
+* [Expectations from contributors](#expectations-from-contributors)
+
+## Find a Buddy and get Started Quickly
 
 If you are looking for someone to help you find a starting point and be a resource for your first contribution, join our
 Slack and find a buddy!
@@ -31,8 +50,8 @@ This project uses [tox](https://tox.readthedocs.io) to automate
 some aspects of development, including testing against multiple Python versions.
 To install `tox`, run:
 
-```console
-$ pip install tox==3.27.1
+```sh
+pip install tox
 ```
 
 You can run `tox` with the following arguments:
@@ -40,7 +59,7 @@ You can run `tox` with the following arguments:
 - `tox` to run all existing tox commands, including unit tests for all packages
   under multiple Python versions
 - `tox -e docs` to regenerate the API docs
-- `tox -e py37-test-instrumentation-aiopg` to e.g. run the aiopg instrumentation unit tests under a specific
+- `tox -e py311-test-instrumentation-aiopg` to e.g. run the aiopg instrumentation unit tests under a specific
   Python version
 - `tox -e spellcheck` to run a spellcheck on all the code
 - `tox -e lint` to run lint checks on all code
@@ -52,8 +71,12 @@ An easier way to do so is:
 2. Run `.tox/lint/bin/isort .`
 
 See
-[`tox.ini`](https://github.com/open-telemetry/opentelemetry-python/blob/main/tox.ini)
+[`tox.ini`](https://github.com/open-telemetry/opentelemetry-python-contrib/blob/main/tox.ini)
 for more detail on available tox commands.
+
+### Troubleshooting
+
+> Some packages may require additional system wide dependencies to be installed. For example, you may need to install `libpq-dev` to run the postgresql client libraries instrumentation tests. or `libsnappy-dev` to run the prometheus exporter tests. If you encounter a build error, please check the installation instructions for the package you are trying to run tests for.
 
 ### Benchmarks
 
@@ -90,30 +113,30 @@ pull requests (PRs).
 To create a new PR, fork the project in GitHub and clone the upstream repo:
 
 ```sh
-$ git clone https://github.com/open-telemetry/opentelemetry-python-contrib.git
+git clone https://github.com/open-telemetry/opentelemetry-python-contrib.git
 ```
 
 Add your fork as an origin:
 
 ```sh
-$ git remote add fork https://github.com/YOUR_GITHUB_USERNAME/opentelemetry-python-contrib.git
+git remote add fork https://github.com/YOUR_GITHUB_USERNAME/opentelemetry-python-contrib.git
 ```
 
 Run tests:
 
 ```sh
 # make sure you have all supported versions of Python installed
-$ pip install tox==3.27.1  # only first time.
+$ pip install tox  # only first time.
 $ tox  # execute in the root of the repository
 ```
 
 Check out a new branch, make modifications and push the branch to your fork:
 
 ```sh
-$ git checkout -b feature
+git checkout -b feature
 # edit files
-$ git commit
-$ git push fork feature
+git commit
+git push fork feature
 ```
 
 Open a pull request against the main `opentelemetry-python-contrib` repo.
@@ -138,6 +161,7 @@ If you are not getting reviews, please contact the respective owners directly.
 ### How to Get PRs Merged
 
 A PR is considered to be **ready to merge** when:
+
 * It has received two approvals from [Approvers](https://github.com/open-telemetry/community/blob/main/community-membership.md#approver)
   / [Maintainers](https://github.com/open-telemetry/community/blob/main/community-membership.md#maintainer)
   (at different companies).
@@ -173,7 +197,7 @@ For a deeper discussion, see: https://github.com/open-telemetry/opentelemetry-sp
 ## Running Tests Locally
 
 1. Go to your Contrib repo directory. `git clone git@github.com:open-telemetry/opentelemetry-python-contrib.git && cd opentelemetry-python-contrib`.
-2. Make sure you have `tox` installed. `pip install tox==3.27.1`.
+2. Make sure you have `tox` installed. `pip install tox`.
 3. Run `tox` without any arguments to run tests for all the packages. Read more about [tox](https://tox.readthedocs.io/en/latest/).
 
 ### Testing against a different Core repo branch/commit
@@ -182,8 +206,7 @@ Some of the tox targets install packages from the [OpenTelemetry Python Core Rep
 
 CORE_REPO_SHA=c49ad57bfe35cfc69bfa863d74058ca9bec55fc3 tox
 
-The continuation integration overrides that environment variable with as per the configuration [here](https://github.com/open-telemetry/opentelemetry-python-contrib/blob/main/.github/workflows/test.yml#L9).
-
+The continuation integration overrides that environment variable with as per the configuration [here](https://github.com/open-telemetry/opentelemetry-python-contrib/blob/2518a4ac07cb62ad6587dd8f6cbb5f8663a7e179/.github/workflows/test.yml#L9).
 
 ## Style Guide
 
@@ -198,28 +221,26 @@ The continuation integration overrides that environment variable with as per the
 Below is a checklist of things to be mindful of when implementing a new instrumentation or working on a specific instrumentation. It is one of our goals as a community to keep the implementation specific details of instrumentations as similar across the board as possible for ease of testing and feature parity. It is also good to abstract as much common functionality as possible.
 
 - Follow semantic conventions
-  - The instrumentation should follow the semantic conventions defined [here](https://github.com/open-telemetry/opentelemetry-specification/tree/main/semantic_conventions)
-- Extends from [BaseInstrumentor](https://github.com/open-telemetry/opentelemetry-python-contrib/blob/main/opentelemetry-instrumentation/src/opentelemetry/instrumentation/instrumentor.py#L26)
+  - The instrumentation should follow the semantic conventions defined [here](https://github.com/open-telemetry/opentelemetry-specification/tree/main/specification/semantic-conventions.md)
+- Extends from [BaseInstrumentor](https://github.com/open-telemetry/opentelemetry-python-contrib/blob/2518a4ac07cb62ad6587dd8f6cbb5f8663a7e179/opentelemetry-instrumentation/src/opentelemetry/instrumentation/instrumentor.py#L35)
 - Supports auto-instrumentation
-  - Add an entry point (ex. https://github.com/open-telemetry/opentelemetry-python-contrib/blob/f045c43affff6ff1af8fa2f7514a4fdaca97dacf/instrumentation/opentelemetry-instrumentation-requests/pyproject.toml#L44)
+  - Add an entry point (ex. <https://github.com/open-telemetry/opentelemetry-python-contrib/blob/2518a4ac07cb62ad6587dd8f6cbb5f8663a7e179/instrumentation/opentelemetry-instrumentation-requests/pyproject.toml#L44>)
   - Run `python scripts/generate_instrumentation_bootstrap.py` after adding a new instrumentation package.
 - Functionality that is common amongst other instrumentation and can be abstracted [here](https://github.com/open-telemetry/opentelemetry-python-contrib/tree/main/opentelemetry-instrumentation/src/opentelemetry/instrumentation)
 - Request/response [hooks](https://github.com/open-telemetry/opentelemetry-python-contrib/issues/408) for http instrumentations
 - `suppress_instrumentation` functionality
-  - ex. https://github.com/open-telemetry/opentelemetry-python-contrib/blob/3ec77360cb20482b08b30312a6bedc8b946e3fa1/instrumentation/opentelemetry-instrumentation-requests/src/opentelemetry/instrumentation/requests/__init__.py#L111
+  - ex. <https://github.com/open-telemetry/opentelemetry-python-contrib/blob/2518a4ac07cb62ad6587dd8f6cbb5f8663a7e179/opentelemetry-instrumentation/src/opentelemetry/instrumentation/utils.py#L191>
 - Suppress propagation functionality
   - https://github.com/open-telemetry/opentelemetry-python-contrib/issues/344 for more context
 - `exclude_urls` functionality
-  - ex. https://github.com/open-telemetry/opentelemetry-python-contrib/blob/0fcb60d2ad139f78a52edd85b1cc4e32f2e962d0/instrumentation/opentelemetry-instrumentation-flask/src/opentelemetry/instrumentation/flask/__init__.py#L91
+  - ex. <https://github.com/open-telemetry/opentelemetry-python-contrib/blob/2518a4ac07cb62ad6587dd8f6cbb5f8663a7e179/instrumentation/opentelemetry-instrumentation-flask/src/opentelemetry/instrumentation/flask/__init__.py#L327>
 - `url_filter` functionality
-  - ex. https://github.com/open-telemetry/opentelemetry-python-contrib/blob/0fcb60d2ad139f78a52edd85b1cc4e32f2e962d0/instrumentation/opentelemetry-instrumentation-aiohttp-client/src/opentelemetry/instrumentation/aiohttp_client/__init__.py#L235
+  - ex. <https://github.com/open-telemetry/opentelemetry-python-contrib/blob/2518a4ac07cb62ad6587dd8f6cbb5f8663a7e179/instrumentation/opentelemetry-instrumentation-aiohttp-client/src/opentelemetry/instrumentation/aiohttp_client/__init__.py#L268>
 - `is_recording()` optimization on non-sampled spans
-  - ex. https://github.com/open-telemetry/opentelemetry-python-contrib/blob/main/instrumentation/opentelemetry-instrumentation-requests/src/opentelemetry/instrumentation/requests/__init__.py#L133
+  - ex. <https://github.com/open-telemetry/opentelemetry-python-contrib/blob/2518a4ac07cb62ad6587dd8f6cbb5f8663a7e179/instrumentation/opentelemetry-instrumentation-requests/src/opentelemetry/instrumentation/requests/__init__.py#L234>
 - Appropriate error handling
-  - ex. https://github.com/open-telemetry/opentelemetry-python-contrib/blob/main/instrumentation/opentelemetry-instrumentation-requests/src/opentelemetry/instrumentation/requests/__init__.py#L146
-
+  - ex. <https://github.com/open-telemetry/opentelemetry-python-contrib/blob/2518a4ac07cb62ad6587dd8f6cbb5f8663a7e179/instrumentation/opentelemetry-instrumentation-requests/src/opentelemetry/instrumentation/requests/__init__.py#L220>
 
 ## Expectations from contributors
 
 OpenTelemetry is an open source community, and as such, greatly encourages contributions from anyone interested in the project. With that being said, there is a certain level of expectation from contributors even after a pull request is merged, specifically pertaining to instrumentations. The OpenTelemetry Python community expects contributors to maintain a level of support and interest in the instrumentations they contribute. This is to ensure that the instrumentation does not become stale and still functions the way the original contributor intended. Some instrumentations also pertain to libraries that the current members of the community are not so familiar with, so it is necessary to rely on the expertise of the original contributing parties.
-

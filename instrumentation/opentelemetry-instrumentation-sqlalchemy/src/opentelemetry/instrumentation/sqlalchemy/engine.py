@@ -15,13 +15,13 @@ import os
 import re
 import weakref
 
+import sqlalchemy
 from sqlalchemy.event import (  # pylint: disable=no-name-in-module
     listen,
     remove,
 )
 
 from opentelemetry import trace
-from opentelemetry.instrumentation.sqlalchemy.version import __version__
 from opentelemetry.instrumentation.sqlcommenter_utils import _add_sql_comment
 from opentelemetry.instrumentation.utils import _get_opentelemetry_values
 from opentelemetry.semconv.trace import NetTransportValues, SpanAttributes
@@ -224,11 +224,11 @@ class EngineTracer:
                 for key, value in attrs.items():
                     span.set_attribute(key, value)
             if self.enable_commenter:
-                commenter_data = dict(
-                    db_driver=conn.engine.driver,
+                commenter_data = {
+                    "db_driver": conn.engine.driver,
                     # Driver/framework centric information.
-                    db_framework=f"sqlalchemy:{__version__}",
-                )
+                    "db_framework": f"sqlalchemy:{sqlalchemy.__version__}",
+                }
 
                 if self.commenter_options.get("opentelemetry_values", True):
                     commenter_data.update(**_get_opentelemetry_values())
@@ -296,16 +296,18 @@ def _get_attributes_from_cursor(vendor, cursor, attrs):
         is_unix_socket = info.host and info.host.startswith("/")
 
         if is_unix_socket:
-            attrs[SpanAttributes.NET_TRANSPORT] = NetTransportValues.UNIX.value
+            attrs[SpanAttributes.NET_TRANSPORT] = (
+                NetTransportValues.OTHER.value
+            )
             if info.port:
                 # postgresql enforces this pattern on all socket names
                 attrs[SpanAttributes.NET_PEER_NAME] = os.path.join(
                     info.host, f".s.PGSQL.{info.port}"
                 )
         else:
-            attrs[
-                SpanAttributes.NET_TRANSPORT
-            ] = NetTransportValues.IP_TCP.value
+            attrs[SpanAttributes.NET_TRANSPORT] = (
+                NetTransportValues.IP_TCP.value
+            )
             attrs[SpanAttributes.NET_PEER_NAME] = info.host
             if info.port:
                 attrs[SpanAttributes.NET_PEER_PORT] = int(info.port)

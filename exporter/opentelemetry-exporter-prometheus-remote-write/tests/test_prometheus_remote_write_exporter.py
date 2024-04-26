@@ -17,6 +17,7 @@ from unittest.mock import patch
 
 import pytest
 
+# pylint: disable=no-name-in-module
 from opentelemetry.exporter.prometheus_remote_write import (
     PrometheusRemoteWriteMetricsExporter,
 )

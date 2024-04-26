@@ -11,6 +11,7 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
+# pylint: disable=unexpected-keyword-arg,missing-kwoa,no-value-for-parameter
 
 import json
 import os
@@ -43,12 +44,10 @@ elif major_version == 7:
     from . import helpers_es7 as helpers  # pylint: disable=no-name-in-module
 elif major_version == 6:
     from . import helpers_es6 as helpers  # pylint: disable=no-name-in-module
-elif major_version == 5:
-    from . import helpers_es5 as helpers  # pylint: disable=no-name-in-module
-else:
-    from . import helpers_es2 as helpers  # pylint: disable=no-name-in-module
 
 Article = helpers.Article
+
+# pylint: disable=too-many-public-methods
 
 
 @mock.patch(
@@ -484,4 +483,36 @@ class TestElasticsearchIntegration(TestBase):
         self.assertEqual(
             sanitize_body(json.dumps(sanitization_queries.interval_query)),
             str(sanitization_queries.interval_query_sanitized),
+        )
+
+    def test_bulk(self, request_mock):
+        request_mock.return_value = (1, {}, "")
+
+        es = Elasticsearch()
+        es.bulk(
+            [
+                {
+                    "_op_type": "index",
+                    "_index": "sw",
+                    "_doc_type": "_doc",
+                    "_id": 1,
+                    "doc": {"name": "adam"},
+                },
+                {
+                    "_op_type": "index",
+                    "_index": "sw",
+                    "_doc_type": "_doc",
+                    "_id": 1,
+                    "doc": {"name": "adam"},
+                },
+            ]
+        )
+
+        spans_list = self.get_finished_spans()
+        self.assertEqual(len(spans_list), 1)
+        span = spans_list[0]
+
+        # Check version and name in span's instrumentation info
+        self.assertEqualSpanInstrumentationInfo(
+            span, opentelemetry.instrumentation.elasticsearch
         )

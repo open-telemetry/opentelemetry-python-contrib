@@ -264,6 +264,7 @@ class DatabaseApiIntegration:
             self._name,
             instrumenting_library_version=self._version,
             tracer_provider=tracer_provider,
+            schema_url="https://opentelemetry.io/schemas/1.11.0",
         )
         self.capture_parameters = capture_parameters
         self.enable_commenter = enable_commenter
@@ -426,14 +427,14 @@ class CursorTracer:
             if args and self._commenter_enabled:
                 try:
                     args_list = list(args)
-                    commenter_data = dict(
+                    commenter_data = {
                         # Psycopg2/framework information
-                        db_driver=f"psycopg2:{self._connect_module.__version__.split(' ')[0]}",
-                        dbapi_threadsafety=self._connect_module.threadsafety,
-                        dbapi_level=self._connect_module.apilevel,
-                        libpq_version=self._connect_module.__libpq_version__,
-                        driver_paramstyle=self._connect_module.paramstyle,
-                    )
+                        "db_driver": f"psycopg2:{self._connect_module.__version__.split(' ')[0]}",
+                        "dbapi_threadsafety": self._connect_module.threadsafety,
+                        "dbapi_level": self._connect_module.apilevel,
+                        "libpq_version": self._connect_module.__libpq_version__,
+                        "driver_paramstyle": self._connect_module.paramstyle,
+                    }
                     if self._commenter_options.get(
                         "opentelemetry_values", True
                     ):

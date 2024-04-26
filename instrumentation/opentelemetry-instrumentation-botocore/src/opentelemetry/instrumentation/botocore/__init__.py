@@ -86,10 +86,6 @@ from botocore.endpoint import Endpoint
 from botocore.exceptions import ClientError
 from wrapt import wrap_function_wrapper
 
-from opentelemetry import context as context_api
-
-# FIXME: fix the importing of this private attribute when the location of the _SUPPRESS_HTTP_INSTRUMENTATION_KEY is defined.
-from opentelemetry.context import _SUPPRESS_HTTP_INSTRUMENTATION_KEY
 from opentelemetry.instrumentation.botocore.extensions import _find_extension
 from opentelemetry.instrumentation.botocore.extensions.types import (
     _AwsSdkCallContext,
@@ -98,7 +94,8 @@ from opentelemetry.instrumentation.botocore.package import _instruments
 from opentelemetry.instrumentation.botocore.version import __version__
 from opentelemetry.instrumentation.instrumentor import BaseInstrumentor
 from opentelemetry.instrumentation.utils import (
-    _SUPPRESS_INSTRUMENTATION_KEY,
+    is_instrumentation_enabled,
+    suppress_http_instrumentation,
     unwrap,
 )
 from opentelemetry.propagators.aws.aws_xray_propagator import AwsXRayPropagator
@@ -127,7 +124,10 @@ class BotocoreInstrumentor(BaseInstrumentor):
     def _instrument(self, **kwargs):
         # pylint: disable=attribute-defined-outside-init
         self._tracer = get_tracer(
-            __name__, __version__, kwargs.get("tracer_provider")
+            __name__,
+            __version__,
+            kwargs.get("tracer_provider"),
+            schema_url="https://opentelemetry.io/schemas/1.11.0",
         )
 
         self.request_hook = kwargs.get("request_hook")
@@ -168,7 +168,7 @@ class BotocoreInstrumentor(BaseInstrumentor):
 
     # pylint: disable=too-many-branches
     def _patched_api_call(self, original_func, instance, args, kwargs):
-        if context_api.get_value(_SUPPRESS_INSTRUMENTATION_KEY):
+        if not is_instrumentation_enabled():
             return original_func(*args, **kwargs)
 
         call_context = _determine_call_context(instance, args)
@@ -197,25 +197,20 @@ class BotocoreInstrumentor(BaseInstrumentor):
             _safe_invoke(extension.before_service_call, span)
             self._call_request_hook(span, call_context)
 
-            token = context_api.attach(
-                context_api.set_value(_SUPPRESS_HTTP_INSTRUMENTATION_KEY, True)
-            )
-
-            result = None
             try:
-                result = original_func(*args, **kwargs)
-            except ClientError as error:
-                result = getattr(error, "response", None)
-                _apply_response_attributes(span, result)
-                _safe_invoke(extension.on_error, span, error)
-                raise
-            else:
-                _apply_response_attributes(span, result)
-                _safe_invoke(extension.on_success, span, result)
+                with suppress_http_instrumentation():
+                    result = None
+                    try:
+                        result = original_func(*args, **kwargs)
+                    except ClientError as error:
+                        result = getattr(error, "response", None)
+                        _apply_response_attributes(span, result)
+                        _safe_invoke(extension.on_error, span, error)
+                        raise
+                    _apply_response_attributes(span, result)
+                    _safe_invoke(extension.on_success, span, result)
             finally:
-                context_api.detach(token)
                 _safe_invoke(extension.after_service_call)
-
                 self._call_response_hook(span, call_context, result)
 
             return result
