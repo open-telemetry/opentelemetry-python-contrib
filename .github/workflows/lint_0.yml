@@ -55,6 +55,7 @@ jobs:
           - "instrumentation-pyramid"
           - "instrumentation-asgi"
           - "instrumentation-asyncpg"
+          - "instrumentation-sqlite3"
         os: [ubuntu-20.04]
     runs-on: ubuntu-20.04
     steps:
