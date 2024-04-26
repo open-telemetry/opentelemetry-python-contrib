@@ -52,6 +52,7 @@ jobs:
           - "instrumentation-pymemcache"
           - "instrumentation-pymongo"
           - "instrumentation-pymysql"
+          - "instrumentation-pyramid"
         os: [ubuntu-20.04]
     runs-on: ubuntu-20.04
     steps:
