@@ -38,8 +38,8 @@ class TestTraceFuture(TestBase):
             future.cancel()
         try:
             self.loop.run_until_complete(future)
-        except asyncio.CancelledError as e:
-            self.assertEqual(isinstance(e, asyncio.CancelledError), True)
+        except asyncio.CancelledError as exc:
+            self.assertEqual(isinstance(exc, asyncio.CancelledError), True)
         spans = self.memory_exporter.get_finished_spans()
         self.assertEqual(len(spans), 2)
         self.assertEqual(spans[0].name, "root")
