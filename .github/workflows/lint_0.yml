@@ -73,6 +73,7 @@ jobs:
           - "instrumentation-sio-pika"
           - "instrumentation-aio-pika"
           - "instrumentation-kafka-python"
+          - "instrumentation-confluent-kafka"
         os: [ubuntu-20.04]
     runs-on: ubuntu-20.04
     steps:
