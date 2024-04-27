@@ -111,7 +111,7 @@ class LoguruHandler:
         )
         
         
-    def _get_attributes(record) -> Attributes:
+    def _get_attributes(self, record) -> Attributes:
         attributes = {key:value for key, value in record.items()}
         
          # Add standard code attributes for logs.
@@ -129,7 +129,7 @@ class LoguruHandler:
         
         return attributes
 
-    def _loguru_to_otel(levelno: int) -> SeverityNumber:
+    def _loguru_to_otel(self, levelno: int) -> SeverityNumber:
         if levelno < 10 or levelno == 25:
             return SeverityNumber.UNSPECIFIED
         
