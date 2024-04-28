@@ -31,14 +31,14 @@ Usage
 import logging
 from typing import Any, Collection, Dict, Generator, List, Mapping, Optional
 
-import boto3
+import boto3.session
 import botocore.client
 from wrapt import wrap_function_wrapper
 
 from opentelemetry import context, propagate, trace
 from opentelemetry.instrumentation.instrumentor import BaseInstrumentor
 from opentelemetry.instrumentation.utils import (
-    _SUPPRESS_INSTRUMENTATION_KEY,
+    is_instrumentation_enabled,
     unwrap,
 )
 from opentelemetry.propagators.textmap import CarrierT, Getter, Setter
@@ -218,7 +218,7 @@ class Boto3SQSInstrumentor(BaseInstrumentor):
 
     def _wrap_send_message(self, sqs_class: type) -> None:
         def send_wrapper(wrapped, instance, args, kwargs):
-            if context.get_value(_SUPPRESS_INSTRUMENTATION_KEY):
+            if not is_instrumentation_enabled():
                 return wrapped(*args, **kwargs)
             queue_url = kwargs.get("QueueUrl")
             # The method expect QueueUrl and Entries params, so if they are None, we call wrapped to receive the
@@ -252,7 +252,7 @@ class Boto3SQSInstrumentor(BaseInstrumentor):
             # The method expect QueueUrl and Entries params, so if they are None, we call wrapped to receive the
             # original exception
             if (
-                context.get_value(_SUPPRESS_INSTRUMENTATION_KEY)
+                not is_instrumentation_enabled()
                 or not queue_url
                 or not entries
             ):
@@ -382,7 +382,7 @@ class Boto3SQSInstrumentor(BaseInstrumentor):
             self._decorate_sqs(type(retval))
             return retval
 
-        wrap_function_wrapper(boto3, "client", client_wrapper)
+        wrap_function_wrapper(boto3.session.Session, "client", client_wrapper)
 
     def _decorate_sqs(self, sqs_class: type) -> None:
         """
@@ -422,7 +422,10 @@ class Boto3SQSInstrumentor(BaseInstrumentor):
             "tracer_provider"
         )
         self._tracer: Tracer = trace.get_tracer(
-            __name__, __version__, self._tracer_provider
+            __name__,
+            __version__,
+            self._tracer_provider,
+            schema_url="https://opentelemetry.io/schemas/1.11.0",
         )
         self._wrap_client_creation()
 
@@ -430,7 +433,7 @@ class Boto3SQSInstrumentor(BaseInstrumentor):
             self._decorate_sqs(client_cls)
 
     def _uninstrument(self, **kwargs: Dict[str, Any]) -> None:
-        unwrap(boto3, "client")
+        unwrap(boto3.session.Session, "client")
 
         for client_cls in botocore.client.BaseClient.__subclasses__():
             self._un_decorate_sqs(client_cls)

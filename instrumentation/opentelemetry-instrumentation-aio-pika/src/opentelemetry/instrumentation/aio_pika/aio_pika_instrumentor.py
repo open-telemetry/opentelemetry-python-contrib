@@ -64,7 +64,10 @@ class AioPikaInstrumentor(BaseInstrumentor):
     def _instrument(self, **kwargs):
         tracer_provider = kwargs.get("tracer_provider", None)
         tracer = trace.get_tracer(
-            _INSTRUMENTATION_MODULE_NAME, __version__, tracer_provider
+            _INSTRUMENTATION_MODULE_NAME,
+            __version__,
+            tracer_provider,
+            schema_url="https://opentelemetry.io/schemas/1.11.0",
         )
         self._instrument_queue(tracer)
         self._instrument_exchange(tracer)

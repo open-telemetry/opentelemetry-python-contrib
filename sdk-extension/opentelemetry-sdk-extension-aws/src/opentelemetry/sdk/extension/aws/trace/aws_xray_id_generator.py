@@ -77,8 +77,7 @@ class AwsXRayIdGenerator(IdGenerator):
     def generate_span_id(self) -> int:
         return self.random_id_generator.generate_span_id()
 
-    @staticmethod
-    def generate_trace_id() -> int:
+    def generate_trace_id(self) -> int:
         trace_time = int(time.time())
         trace_identifier = random.getrandbits(96)
         return (trace_time << 96) + trace_identifier

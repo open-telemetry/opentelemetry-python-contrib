@@ -12,12 +12,10 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 import unittest
-from unittest.mock import patch, Mock
+from unittest.mock import patch
 
-from opentelemetry.semconv.resource import ResourceAttributes
-from opentelemetry.resource.detector.azure.vm import (
-    AzureVMResourceDetector,
-)
+# pylint: disable=no-name-in-module
+from opentelemetry.resource.detector.azure.vm import AzureVMResourceDetector
 
 LINUX_JSON = """
 {
@@ -175,7 +173,7 @@ LINUX_JSON = """
     "zone": "1"
 }
 """
-WINDOWS_JSON ="""
+WINDOWS_JSON = """
 {
     "additionalCapabilities": {
         "hibernationEnabled": "false"
@@ -365,18 +363,18 @@ WINDOWS_ATTRIBUTES = {
 class TestAzureVMResourceDetector(unittest.TestCase):
     @patch("opentelemetry.resource.detector.azure.vm.urlopen")
     def test_linux(self, mock_urlopen):
-        mock_open = Mock()
-        mock_urlopen.return_value = mock_open
-        mock_open.read.return_value = LINUX_JSON
+        mock_urlopen.return_value.__enter__.return_value.read.return_value = (
+            LINUX_JSON
+        )
         attributes = AzureVMResourceDetector().detect().attributes
-        for attribute_key in LINUX_ATTRIBUTES:
-            self.assertEqual(attributes[attribute_key], LINUX_ATTRIBUTES[attribute_key])
+        for attribute_key, attribute_value in LINUX_ATTRIBUTES.items():
+            self.assertEqual(attributes[attribute_key], attribute_value)
 
     @patch("opentelemetry.resource.detector.azure.vm.urlopen")
     def test_windows(self, mock_urlopen):
-        mock_open = Mock()
-        mock_urlopen.return_value = mock_open
-        mock_open.read.return_value = WINDOWS_JSON
+        mock_urlopen.return_value.__enter__.return_value.read.return_value = (
+            WINDOWS_JSON
+        )
         attributes = AzureVMResourceDetector().detect().attributes
-        for attribute_key in WINDOWS_ATTRIBUTES:
-            self.assertEqual(attributes[attribute_key], WINDOWS_ATTRIBUTES[attribute_key])
+        for attribute_key, attribute_value in WINDOWS_ATTRIBUTES.items():
+            self.assertEqual(attributes[attribute_key], attribute_value)

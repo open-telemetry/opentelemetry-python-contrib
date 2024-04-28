@@ -63,6 +63,7 @@ import logging
 from timeit import default_timer
 from typing import Collection, Iterable
 
+from billiard import VERSION
 from billiard.einfo import ExceptionInfo
 from celery import signals  # pylint: disable=no-name-in-module
 
@@ -76,8 +77,6 @@ from opentelemetry.propagate import extract, inject
 from opentelemetry.propagators.textmap import Getter
 from opentelemetry.semconv.trace import SpanAttributes
 from opentelemetry.trace.status import Status, StatusCode
-from billiard import VERSION
-
 
 if VERSION >= (4, 0, 1):
     from billiard.einfo import ExceptionWithTraceback
@@ -114,10 +113,8 @@ celery_getter = CeleryGetter()
 
 
 class CeleryInstrumentor(BaseInstrumentor):
-    def __init__(self):
-        super().__init__()
-        self.metrics = None
-        self.task_id_to_start_time = {}
+    metrics = None
+    task_id_to_start_time = {}
 
     def instrumentation_dependencies(self) -> Collection[str]:
         return _instruments
@@ -126,10 +123,20 @@ class CeleryInstrumentor(BaseInstrumentor):
         tracer_provider = kwargs.get("tracer_provider")
 
         # pylint: disable=attribute-defined-outside-init
-        self._tracer = trace.get_tracer(__name__, __version__, tracer_provider)
+        self._tracer = trace.get_tracer(
+            __name__,
+            __version__,
+            tracer_provider,
+            schema_url="https://opentelemetry.io/schemas/1.11.0",
+        )
 
         meter_provider = kwargs.get("meter_provider")
-        meter = get_meter(__name__, __version__, meter_provider)
+        meter = get_meter(
+            __name__,
+            __version__,
+            meter_provider,
+            schema_url="https://opentelemetry.io/schemas/1.11.0",
+        )
 
         self.create_celery_metrics(meter)
 

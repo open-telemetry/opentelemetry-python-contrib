@@ -20,6 +20,7 @@ from opentelemetry.util.http import (
     sanitize_method,
 )
 
+
 class TestSanitizeMethod(unittest.TestCase):
     def test_standard_method_uppercase(self):
         method = sanitize_method("GET")
@@ -34,7 +35,7 @@ class TestSanitizeMethod(unittest.TestCase):
         self.assertEqual(method, "NONSTANDARD")
 
     @patch.dict(
-    "os.environ",
+        "os.environ",
         {
             OTEL_PYTHON_INSTRUMENTATION_HTTP_CAPTURE_ALL_METHODS: "1",
         },

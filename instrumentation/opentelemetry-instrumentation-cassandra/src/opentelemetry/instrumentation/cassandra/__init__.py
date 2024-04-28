@@ -43,9 +43,9 @@ import cassandra.cluster
 from wrapt import wrap_function_wrapper
 
 from opentelemetry import trace
-from opentelemetry.instrumentation.instrumentor import BaseInstrumentor
 from opentelemetry.instrumentation.cassandra.package import _instruments
 from opentelemetry.instrumentation.cassandra.version import __version__
+from opentelemetry.instrumentation.instrumentor import BaseInstrumentor
 from opentelemetry.instrumentation.utils import unwrap
 from opentelemetry.semconv.trace import SpanAttributes
 
@@ -55,7 +55,12 @@ def _instrument(tracer_provider, include_db_statement=False):
 
     Wraps cassandra.cluster.Session.execute_async().
     """
-    tracer = trace.get_tracer(__name__, __version__, tracer_provider)
+    tracer = trace.get_tracer(
+        __name__,
+        __version__,
+        tracer_provider,
+        schema_url="https://opentelemetry.io/schemas/1.11.0",
+    )
     name = "Cassandra"
 
     def _traced_execute_async(func, instance, args, kwargs):
@@ -65,7 +70,10 @@ def _instrument(tracer_provider, include_db_statement=False):
             if span.is_recording():
                 span.set_attribute(SpanAttributes.DB_NAME, instance.keyspace)
                 span.set_attribute(SpanAttributes.DB_SYSTEM, "cassandra")
-                span.set_attribute(SpanAttributes.NET_PEER_NAME, instance.cluster.contact_points)
+                span.set_attribute(
+                    SpanAttributes.NET_PEER_NAME,
+                    instance.cluster.contact_points,
+                )
 
                 if include_db_statement:
                     query = args[0]
@@ -74,7 +82,9 @@ def _instrument(tracer_provider, include_db_statement=False):
             response = func(*args, **kwargs)
             return response
 
-    wrap_function_wrapper("cassandra.cluster", "Session.execute_async", _traced_execute_async)
+    wrap_function_wrapper(
+        "cassandra.cluster", "Session.execute_async", _traced_execute_async
+    )
 
 
 class CassandraInstrumentor(BaseInstrumentor):

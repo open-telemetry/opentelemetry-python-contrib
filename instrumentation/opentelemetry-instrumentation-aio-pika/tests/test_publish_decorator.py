@@ -14,6 +14,7 @@
 import asyncio
 from typing import Type
 from unittest import TestCase, mock, skipIf
+from unittest.mock import MagicMock
 
 from aio_pika import Exchange, RobustExchange
 
@@ -74,9 +75,7 @@ class TestInstrumentedExchangeAioRmq7(TestCase):
         with mock.patch.object(
             PublishDecorator, "_get_publish_span"
         ) as mock_get_publish_span:
-            with mock.patch.object(
-                Exchange, "publish", return_value=asyncio.sleep(0)
-            ) as mock_publish:
+            with mock.patch.object(Exchange, "publish") as mock_publish:
                 decorated_publish = PublishDecorator(
                     self.tracer, exchange
                 ).decorate(mock_publish)
@@ -91,6 +90,34 @@ class TestInstrumentedExchangeAioRmq7(TestCase):
 
     def test_robust_publish(self):
         self._test_publish(RobustExchange)
+
+    def _test_publish_works_with_not_recording_span(self, exchange_type):
+        exchange = exchange_type(CONNECTION_7, CHANNEL_7, EXCHANGE_NAME)
+        with mock.patch.object(
+            PublishDecorator, "_get_publish_span"
+        ) as mock_get_publish_span:
+            mocked_not_recording_span = MagicMock()
+            mocked_not_recording_span.is_recording.return_value = False
+            mock_get_publish_span.return_value = mocked_not_recording_span
+            with mock.patch.object(Exchange, "publish") as mock_publish:
+                with mock.patch(
+                    "opentelemetry.instrumentation.aio_pika.publish_decorator.propagate.inject"
+                ) as mock_inject:
+                    decorated_publish = PublishDecorator(
+                        self.tracer, exchange
+                    ).decorate(mock_publish)
+                    self.loop.run_until_complete(
+                        decorated_publish(MESSAGE, ROUTING_KEY)
+                    )
+        mock_publish.assert_called_once()
+        mock_get_publish_span.assert_called_once()
+        mock_inject.assert_called_once()
+
+    def test_publish_works_with_not_recording_span(self):
+        self._test_publish_works_with_not_recording_span(Exchange)
+
+    def test_publish_works_with_not_recording_span_robust(self):
+        self._test_publish_works_with_not_recording_span(RobustExchange)
 
 
 @skipIf(AIOPIKA_VERSION_INFO <= (8, 0), "Only for aio_pika 8")
@@ -127,9 +154,7 @@ class TestInstrumentedExchangeAioRmq8(TestCase):
         with mock.patch.object(
             PublishDecorator, "_get_publish_span"
         ) as mock_get_publish_span:
-            with mock.patch.object(
-                Exchange, "publish", return_value=asyncio.sleep(0)
-            ) as mock_publish:
+            with mock.patch.object(Exchange, "publish") as mock_publish:
                 decorated_publish = PublishDecorator(
                     self.tracer, exchange
                 ).decorate(mock_publish)
@@ -144,3 +169,31 @@ class TestInstrumentedExchangeAioRmq8(TestCase):
 
     def test_robust_publish(self):
         self._test_publish(RobustExchange)
+
+    def _test_publish_works_with_not_recording_span(self, exchange_type):
+        exchange = exchange_type(CONNECTION_7, CHANNEL_7, EXCHANGE_NAME)
+        with mock.patch.object(
+            PublishDecorator, "_get_publish_span"
+        ) as mock_get_publish_span:
+            mocked_not_recording_span = MagicMock()
+            mocked_not_recording_span.is_recording.return_value = False
+            mock_get_publish_span.return_value = mocked_not_recording_span
+            with mock.patch.object(Exchange, "publish") as mock_publish:
+                with mock.patch(
+                    "opentelemetry.instrumentation.aio_pika.publish_decorator.propagate.inject"
+                ) as mock_inject:
+                    decorated_publish = PublishDecorator(
+                        self.tracer, exchange
+                    ).decorate(mock_publish)
+                    self.loop.run_until_complete(
+                        decorated_publish(MESSAGE, ROUTING_KEY)
+                    )
+        mock_publish.assert_called_once()
+        mock_get_publish_span.assert_called_once()
+        mock_inject.assert_called_once()
+
+    def test_publish_works_with_not_recording_span(self):
+        self._test_publish_works_with_not_recording_span(Exchange)
+
+    def test_publish_works_with_not_recording_span_robust(self):
+        self._test_publish_works_with_not_recording_span(RobustExchange)
