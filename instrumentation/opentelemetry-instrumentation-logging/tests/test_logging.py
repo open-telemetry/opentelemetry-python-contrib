@@ -15,28 +15,35 @@
 import logging
 from typing import Optional
 from unittest import mock
+import unittest
+from collections import namedtuple
 
 import pytest
 
 # Imports for StructlogHandler tests
 from unittest.mock import Mock
 from handlers.opentelemetry_structlog.src.exporter import LogExporter
-from datetime import datetime, timezone, timedelta
+
+from datetime import datetime, timezone
+
 from unittest.mock import MagicMock, patch
 
 
 
+from opentelemetry.semconv.trace import SpanAttributes
 
 from opentelemetry.instrumentation.logging import (  # pylint: disable=no-name-in-module
     DEFAULT_LOGGING_FORMAT,
     LoggingInstrumentor,
 )
 from opentelemetry.test.test_base import TestBase
-from opentelemetry.trace import ProxyTracer, get_tracer
+from opentelemetry.trace import ProxyTracer, get_tracer, get_current_span, SpanContext, TraceFlags
 
 from handlers.opentelemetry_structlog.src.exporter import StructlogHandler
+from handlers.opentelemetry_loguru.src.exporter import LoguruHandler, _STD_TO_OTEL
 
-
+from opentelemetry._logs import get_logger_provider, get_logger
+import time
 
 class FakeTracerProvider:
     def get_tracer(  # pylint: disable=no-self-use
@@ -295,7 +302,6 @@ class TestStructlogHandler(TestBase):
         # Assert that the logger's emit method was called with the processed event
         logger.emit.assert_called_once()
         
-
     def test_log_record_translation_attributes(self):
         """Verify that event_dict translates correctly into a LogRecord with the correct attributes."""
         exporter = MagicMock()
@@ -381,4 +387,104 @@ class TestStructlogHandler(TestBase):
                 actual_trace_id = format(log_record.trace_id, "032x")
                 assert actual_trace_id == trace_id, "Trace ID should be propagated"
 
-                assert log_record.trace_flags == trace_sampled, "Trace flags should be propagated"
+                assert log_record.trace_flags == trace_sampled, "Trace flags should be propagated" 
+        
+
+
+class TestLoguruHandler(TestBase):
+    def setUp(self):
+        self.default_provider = get_logger_provider()
+        self.custom_provider = MagicMock()
+        self.record = {
+            "time": 1581000000.000123,
+            "level": MagicMock(name="ERROR", no=40),
+            "message": "Test message",
+            "file": "test_file.py",
+            "function": "test_function",
+            "line": 123,
+            "exception": None
+        }
+        # self.span_context = SpanContext(
+        #     trace_id=1234,
+        #     span_id=5678,
+        #     trace_flags=TraceFlags(1),
+        #     is_remote=False
+        # )
+        self.span_context = get_current_span().get_span_context()
+        self.current_span = MagicMock()
+        self.current_span.get_span_context.return_value = self.span_context
+
+    def test_initialization_with_default_provider(self):
+        handler = LoguruHandler()
+        self.assertEqual(handler._logger_provider, self.default_provider)
+
+    def test_initialization_with_custom_provider(self):
+        handler = LoguruHandler(logger_provider=self.custom_provider)
+        self.assertEqual(handler._logger_provider, self.custom_provider)
+
+    def test_attributes_extraction_without_exception(self):
+        attrs = LoguruHandler()._get_attributes(self.record)
+        expected_attrs = {
+            SpanAttributes.CODE_FILEPATH: 'test_file.py',
+            SpanAttributes.CODE_FUNCTION: 'test_function',
+            SpanAttributes.CODE_LINENO: 123
+        }
+        
+        self.assertEqual(attrs[SpanAttributes.CODE_FILEPATH], expected_attrs[SpanAttributes.CODE_FILEPATH])
+        self.assertEqual(attrs[SpanAttributes.CODE_FUNCTION], expected_attrs[SpanAttributes.CODE_FUNCTION])
+        self.assertEqual(attrs[SpanAttributes.CODE_LINENO], expected_attrs[SpanAttributes.CODE_LINENO])
+
+    @patch('traceback.format_exception')
+    def test_attributes_extraction_with_exception(self, mock_format_exception):
+        mock_format_exception.return_value = 'Exception traceback'
+        exception = Exception("Test exception")
+        
+        ExceptionRecord = namedtuple('ExceptionRecord', ['type', 'value', 'traceback'])
+
+# Example usage:
+        exception_record = ExceptionRecord(
+            type=type(exception).__name__,
+            value=str(exception),
+            traceback=mock_format_exception(exception)
+        )
+        self.record['exception'] = exception_record
+        # self.record['exception'].type = type(exception).__name__
+        # self.record['exception'].value = str(exception)
+        # self.record['exception'].traceback = mock_format_exception(exception)
+        
+        attrs = LoguruHandler()._get_attributes(self.record)
+        
+        expected_attrs = {
+            SpanAttributes.CODE_FILEPATH: 'test_file.py',
+            SpanAttributes.CODE_FUNCTION: 'test_function',
+            SpanAttributes.CODE_LINENO: 123,
+            SpanAttributes.EXCEPTION_TYPE: 'Exception',
+            SpanAttributes.EXCEPTION_MESSAGE: 'Test exception',
+            SpanAttributes.EXCEPTION_STACKTRACE: 'Exception traceback'
+        }
+        
+        self.assertEqual(attrs[SpanAttributes.EXCEPTION_TYPE], expected_attrs[SpanAttributes.EXCEPTION_TYPE])
+        self.assertEqual(attrs[SpanAttributes.EXCEPTION_MESSAGE], expected_attrs[SpanAttributes.EXCEPTION_MESSAGE])
+        self.assertEqual(attrs[SpanAttributes.EXCEPTION_STACKTRACE], expected_attrs[SpanAttributes.EXCEPTION_STACKTRACE])
+
+    @patch('opentelemetry.trace.get_current_span')
+    def test_translation(self, mock_get_current_span):
+        mock_get_current_span.return_value = self.current_span
+        handler = LoguruHandler(logger_provider=self.custom_provider)
+        log_record = handler._translate(self.record)
+        self.assertEqual(log_record.trace_id, self.span_context.trace_id)
+        self.assertEqual(log_record.span_id, self.span_context.span_id)
+        self.assertEqual(log_record.trace_flags, self.span_context.trace_flags)
+        self.assertEqual(log_record.severity_number, _STD_TO_OTEL[self.record["level"].no])
+        self.assertEqual(log_record.body, self.record["message"])
+
+    @patch('opentelemetry._logs.Logger.emit')
+    @patch('opentelemetry.trace.get_current_span')
+    def test_sink(self, mock_get_current_span, mock_emit):
+        mock_get_current_span.return_value = self.current_span
+        handler = LoguruHandler(logger_provider=self.custom_provider)
+        handler.sink(self.record)
+        #mock_emit.assert_called_once()
+        handler._logger.emit.assert_called_once()
+
+
