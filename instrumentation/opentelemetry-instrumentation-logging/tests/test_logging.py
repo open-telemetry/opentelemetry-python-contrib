@@ -394,13 +394,13 @@ class TestLoguruHandler(TestBase):
         self.assertEqual(log_record.severity_number, _STD_TO_OTEL[self.record["level"].no])
         self.assertEqual(log_record.body, self.record["message"])
 
-#     @patch('opentelemetry._logs.Logger.emit')
-#     @patch('opentelemetry.trace.get_current_span')
-#     def test_sink(self, mock_get_current_span, mock_emit):
-#         mock_get_current_span.return_value = self.current_span
-#         handler = LoguruHandler()
-#         handler.sink(self.record)
-#         mock_emit.assert_called_once()
+    @patch('opentelemetry._logs.Logger.emit')
+    @patch('opentelemetry.trace.get_current_span')
+    def test_sink(self, mock_get_current_span, mock_emit):
+        mock_get_current_span.return_value = self.current_span
+        handler = LoguruHandler(logger_provider=self.custom_provider)
+        handler.sink(self.record)
+        mock_emit.assert_called_once()
 
 # # Running the tests
 # if __name__ == '__main__':
