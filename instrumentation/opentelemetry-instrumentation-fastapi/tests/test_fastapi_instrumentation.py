@@ -11,6 +11,8 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
+# pylint: disable=too-many-lines
+
 import unittest
 from collections.abc import Mapping
 from timeit import default_timer
@@ -319,9 +321,56 @@ class TestFastAPIManualInstrumentation(TestBase):
                 if isinstance(point, NumberDataPoint):
                     self.assertEqual(point.value, 0)
 
+    def test_sub_app_fastapi_call(self):
+        """
+        This test is to ensure that a span in case of a sub app targeted contains the correct server url
+
+        As this test case covers manual instrumentation, we won't see any additional spans for the sub app.
+        In this case all generated spans might suffice the requirements for the attributes already
+        (as the testcase is not setting a root_path for the outer app here)
+        """
+
+        self._client.get("/sub/home")
+        spans = self.memory_exporter.get_finished_spans()
+        self.assertEqual(len(spans), 3)
+        for span in spans:
+            # As we are only looking to the "outer" app, we would see only the "GET /sub" spans
+            self.assertIn("GET /sub", span.name)
+
+        # We now want to specifically test all spans including the
+        # - HTTP_TARGET
+        # - HTTP_URL
+        # attributes to be populated with the expected values
+        spans_with_http_attributes = [
+            span
+            for span in spans
+            if (
+                SpanAttributes.HTTP_URL in span.attributes
+                or SpanAttributes.HTTP_TARGET in span.attributes
+            )
+        ]
+
+        # We expect only one span to have the HTTP attributes set (the SERVER span from the app itself)
+        # the sub app is not instrumented with manual instrumentation tests.
+        self.assertEqual(1, len(spans_with_http_attributes))
+
+        for span in spans_with_http_attributes:
+            self.assertEqual(
+                "/sub/home", span.attributes[SpanAttributes.HTTP_TARGET]
+            )
+        self.assertEqual(
+            "https://testserver:443/sub/home",
+            span.attributes[SpanAttributes.HTTP_URL],
+        )
+
     @staticmethod
     def _create_fastapi_app():
         app = fastapi.FastAPI()
+        sub_app = fastapi.FastAPI()
+
+        @sub_app.get("/home")
+        async def _():
+            return {"message": "sub hi"}
 
         @app.get("/foobar")
         async def _():
@@ -338,6 +387,8 @@ class TestFastAPIManualInstrumentation(TestBase):
         @app.get("/healthzz")
         async def _():
             return {"message": "ok"}
+
+        app.mount("/sub", app=sub_app)
 
         return app
 
@@ -453,6 +504,58 @@ class TestAutoInstrumentation(TestFastAPIManualInstrumentation):
         self._instrumentor.uninstrument()
         super().tearDown()
 
+    def test_sub_app_fastapi_call(self):
+        """
+        !!! Attention: we need to override this testcase for the auto-instrumented variant
+            The reason is, that with auto instrumentation, the sub app is instrumented as well
+            and therefore we would see the spans for the sub app as well
+
+        This test is to ensure that a span in case of a sub app targeted contains the correct server url
+        """
+
+        self._client.get("/sub/home")
+        spans = self.memory_exporter.get_finished_spans()
+        self.assertEqual(len(spans), 6)
+
+        for span in spans:
+            # As we are only looking to the "outer" app, we would see only the "GET /sub" spans
+            #   -> the outer app is not aware of the sub_apps internal routes
+            sub_in = "GET /sub" in span.name
+            # The sub app spans are named GET /home as from the sub app perspective the request targets /home
+            #   -> the sub app is technically not aware of the /sub prefix
+            home_in = "GET /home" in span.name
+
+            # We expect the spans to be either from the outer app or the sub app
+            self.assertTrue(
+                sub_in or home_in,
+                f"Span {span.name} does not have /sub or /home in its name",
+            )
+
+        # We now want to specifically test all spans including the
+        # - HTTP_TARGET
+        # - HTTP_URL
+        # attributes to be populated with the expected values
+        spans_with_http_attributes = [
+            span
+            for span in spans
+            if (
+                SpanAttributes.HTTP_URL in span.attributes
+                or SpanAttributes.HTTP_TARGET in span.attributes
+            )
+        ]
+
+        # We now expect spans with attributes from both the app and its sub app
+        self.assertEqual(2, len(spans_with_http_attributes))
+
+        for span in spans_with_http_attributes:
+            self.assertEqual(
+                "/sub/home", span.attributes[SpanAttributes.HTTP_TARGET]
+            )
+        self.assertEqual(
+            "https://testserver:443/sub/home",
+            span.attributes[SpanAttributes.HTTP_URL],
+        )
+
 
 class TestAutoInstrumentationHooks(TestFastAPIManualInstrumentationHooks):
     """
@@ -493,6 +596,58 @@ class TestAutoInstrumentationHooks(TestFastAPIManualInstrumentationHooks):
     def tearDown(self):
         self._instrumentor.uninstrument()
         super().tearDown()
+
+    def test_sub_app_fastapi_call(self):
+        """
+        !!! Attention: we need to override this testcase for the auto-instrumented variant
+            The reason is, that with auto instrumentation, the sub app is instrumented as well
+            and therefore we would see the spans for the sub app as well
+
+        This test is to ensure that a span in case of a sub app targeted contains the correct server url
+        """
+
+        self._client.get("/sub/home")
+        spans = self.memory_exporter.get_finished_spans()
+        self.assertEqual(len(spans), 6)
+
+        for span in spans:
+            # As we are only looking to the "outer" app, we would see only the "GET /sub" spans
+            #   -> the outer app is not aware of the sub_apps internal routes
+            sub_in = "GET /sub" in span.name
+            # The sub app spans are named GET /home as from the sub app perspective the request targets /home
+            #   -> the sub app is technically not aware of the /sub prefix
+            home_in = "GET /home" in span.name
+
+            # We expect the spans to be either from the outer app or the sub app
+            self.assertTrue(
+                sub_in or home_in,
+                f"Span {span.name} does not have /sub or /home in its name",
+            )
+
+        # We now want to specifically test all spans including the
+        # - HTTP_TARGET
+        # - HTTP_URL
+        # attributes to be populated with the expected values
+        spans_with_http_attributes = [
+            span
+            for span in spans
+            if (
+                SpanAttributes.HTTP_URL in span.attributes
+                or SpanAttributes.HTTP_TARGET in span.attributes
+            )
+        ]
+
+        # We now expect spans with attributes from both the app and its sub app
+        self.assertEqual(2, len(spans_with_http_attributes))
+
+        for span in spans_with_http_attributes:
+            self.assertEqual(
+                "/sub/home", span.attributes[SpanAttributes.HTTP_TARGET]
+            )
+        self.assertEqual(
+            "https://testserver:443/sub/home",
+            span.attributes[SpanAttributes.HTTP_URL],
+        )
 
 
 class TestAutoInstrumentationLogic(unittest.TestCase):
