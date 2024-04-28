@@ -400,7 +400,8 @@ class TestLoguruHandler(TestBase):
         mock_get_current_span.return_value = self.current_span
         handler = LoguruHandler(logger_provider=self.custom_provider)
         handler.sink(self.record)
-        mock_emit.assert_called_once()
+        #mock_emit.assert_called_once()
+        handler._logger.emit.assert_called_once()
 
 # # Running the tests
 # if __name__ == '__main__':
