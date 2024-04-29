@@ -17,13 +17,6 @@ from importlib import import_module
 from typing import Any, Callable, Dict
 from unittest import mock
 
-from tests.mocks.api_gateway_http_api_event import (
-    MOCK_LAMBDA_API_GATEWAY_HTTP_API_EVENT,
-)
-from tests.mocks.api_gateway_proxy_event import (
-    MOCK_LAMBDA_API_GATEWAY_PROXY_EVENT,
-)
-
 from opentelemetry.environment_variables import OTEL_PROPAGATORS
 from opentelemetry.instrumentation.aws_lambda import (
     _HANDLER,
@@ -44,6 +37,11 @@ from opentelemetry.trace import NoOpTracerProvider, SpanKind, StatusCode
 from opentelemetry.trace.propagation.tracecontext import (
     TraceContextTextMapPropagator,
 )
+
+from .mocks.api_gateway_http_api_event import (
+    MOCK_LAMBDA_API_GATEWAY_HTTP_API_EVENT,
+)
+from .mocks.api_gateway_proxy_event import MOCK_LAMBDA_API_GATEWAY_PROXY_EVENT
 
 
 class MockLambdaContext:
