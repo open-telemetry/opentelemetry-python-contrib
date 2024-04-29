@@ -14,17 +14,17 @@
 
 from os import environ
 
-from ._constants import (
-    _APP_SERVICE_ATTRIBUTE_ENV_VARS,
-    _WEBSITE_OWNER_NAME,
-    _WEBSITE_RESOURCE_GROUP,
-    _WEBSITE_SITE_NAME,
-)
 from opentelemetry.sdk.resources import Resource, ResourceDetector
 from opentelemetry.semconv.resource import (
     CloudPlatformValues,
     CloudProviderValues,
     ResourceAttributes,
+)
+from ._constants import (
+    _APP_SERVICE_ATTRIBUTE_ENV_VARS,
+    _WEBSITE_OWNER_NAME,
+    _WEBSITE_RESOURCE_GROUP,
+    _WEBSITE_SITE_NAME,
 )
 
 
