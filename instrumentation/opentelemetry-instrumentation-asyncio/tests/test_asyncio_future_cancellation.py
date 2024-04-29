@@ -50,10 +50,6 @@ class TestTraceFuture(TestBase):
             .scope_metrics[0]
             .metrics
         ):
-            if metric.name == "asyncio.process.duration":
-                for point in metric.data.data_points:
-                    self.assertEqual(point.attributes["type"], "future")
-            if metric.name == "asyncio.process.created":
-                for point in metric.data.data_points:
-                    self.assertEqual(point.attributes["type"], "future")
-                    self.assertEqual(point.attributes["state"], "cancelled")
+            for point in metric.data.data_points:
+                self.assertEqual(point.attributes["type"], "future")
+                self.assertEqual(point.attributes["state"], "cancelled")
