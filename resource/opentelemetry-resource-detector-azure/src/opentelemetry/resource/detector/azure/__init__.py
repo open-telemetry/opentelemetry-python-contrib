@@ -18,4 +18,8 @@ from .app_service import AzureAppServiceResourceDetector
 from .version import __version__
 from .vm import AzureVMResourceDetector
 
-__all__ = ["AzureAppServiceResourceDetector", "AzureVMResourceDetector", "__version__"]
+__all__ = [
+    "AzureAppServiceResourceDetector",
+    "AzureVMResourceDetector",
+    "__version__",
+]
