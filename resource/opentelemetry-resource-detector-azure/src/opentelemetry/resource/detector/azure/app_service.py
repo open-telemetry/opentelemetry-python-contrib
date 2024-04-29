@@ -14,7 +14,7 @@
 
 from os import environ
 
-from opentelemetry.resource.detector.azure._constants import (
+from ._constants import (
     _APP_SERVICE_ATTRIBUTE_ENV_VARS,
     _WEBSITE_OWNER_NAME,
     _WEBSITE_RESOURCE_GROUP,

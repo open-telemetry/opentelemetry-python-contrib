@@ -14,7 +14,7 @@
 
 import os
 
-from opentelemetry.resource.detector.azure._constants import (
+from ._constants import (
     _AKS_ARM_NAMESPACE_ID,
     _FUNCTIONS_WORKER_RUNTIME,
     _WEBSITE_SITE_NAME,
