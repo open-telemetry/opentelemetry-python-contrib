@@ -29,6 +29,7 @@ from opentelemetry.semconv.resource import (
     CloudProviderValues,
     ResourceAttributes,
 )
+
 from ._constants import (
     _AZURE_VM_METADATA_ENDPOINT,
     _AZURE_VM_SCALE_SET_NAME_ATTRIBUTE,

@@ -20,6 +20,7 @@ from opentelemetry.semconv.resource import (
     CloudProviderValues,
     ResourceAttributes,
 )
+
 from ._constants import (
     _APP_SERVICE_ATTRIBUTE_ENV_VARS,
     _WEBSITE_OWNER_NAME,
