@@ -11,8 +11,6 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-# pylint: disable=too-many-lines
-
 import unittest
 from collections.abc import Mapping
 from timeit import default_timer
@@ -21,7 +19,6 @@ from unittest.mock import patch
 
 import fastapi
 from fastapi.middleware.httpsredirect import HTTPSRedirectMiddleware
-from fastapi.responses import JSONResponse
 from fastapi.testclient import TestClient
 
 import opentelemetry.instrumentation.fastapi as otel_fastapi
@@ -33,12 +30,8 @@ from opentelemetry.sdk.metrics.export import (
 )
 from opentelemetry.sdk.resources import Resource
 from opentelemetry.semconv.trace import SpanAttributes
-from opentelemetry.test.globals_test import reset_trace_globals
 from opentelemetry.test.test_base import TestBase
 from opentelemetry.util.http import (
-    OTEL_INSTRUMENTATION_HTTP_CAPTURE_HEADERS_SANITIZE_FIELDS,
-    OTEL_INSTRUMENTATION_HTTP_CAPTURE_HEADERS_SERVER_REQUEST,
-    OTEL_INSTRUMENTATION_HTTP_CAPTURE_HEADERS_SERVER_RESPONSE,
     _active_requests_count_attrs,
     _duration_attrs,
     get_excluded_urls,
