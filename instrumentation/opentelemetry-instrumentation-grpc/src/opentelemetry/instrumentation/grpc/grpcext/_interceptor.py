@@ -23,8 +23,6 @@ import collections
 import grpc
 
 from opentelemetry.instrumentation.grpc import grpcext
-import pkg_resources
-
 
 
 class _UnaryClientInfo(
@@ -274,11 +272,18 @@ class _InterceptorChannel(grpc.Channel):
         self._channel.unsubscribe(*args, **kwargs)
 
     def unary_unary(
-        self, method, request_serializer=None, response_deserializer=None, _registered_method=False
+        self,
+        method,
+        request_serializer=None,
+        response_deserializer=None,
+        _registered_method=False,
     ):
         if _registered_method:
             base_callable = self._channel.unary_unary(
-                method, request_serializer, response_deserializer, _registered_method
+                method,
+                request_serializer,
+                response_deserializer,
+                _registered_method,
             )
         else:
             base_callable = self._channel.unary_unary(
@@ -291,11 +296,18 @@ class _InterceptorChannel(grpc.Channel):
         return base_callable
 
     def unary_stream(
-        self, method, request_serializer=None, response_deserializer=None, _registered_method=False
+        self,
+        method,
+        request_serializer=None,
+        response_deserializer=None,
+        _registered_method=False,
     ):
         if _registered_method:
             base_callable = self._channel.unary_stream(
-                method, request_serializer, response_deserializer, _registered_method
+                method,
+                request_serializer,
+                response_deserializer,
+                _registered_method,
             )
         else:
             base_callable = self._channel.unary_stream(
@@ -308,7 +320,11 @@ class _InterceptorChannel(grpc.Channel):
         return base_callable
 
     def stream_unary(
-        self, method, request_serializer=None, response_deserializer=None, _registered_method=False
+        self,
+        method,
+        request_serializer=None,
+        response_deserializer=None,
+        _registered_method=False,
     ):
         if _registered_method:
             base_callable = self._channel.stream_unary(
@@ -325,7 +341,11 @@ class _InterceptorChannel(grpc.Channel):
         return base_callable
 
     def stream_stream(
-        self, method, request_serializer=None, response_deserializer=None, _registered_method=False
+        self,
+        method,
+        request_serializer=None,
+        response_deserializer=None,
+        _registered_method=False,
     ):
         if _registered_method:
             base_callable = self._channel.stream_stream(
