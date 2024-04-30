@@ -70,6 +70,17 @@ An easier way to do so is:
 1. Run `.tox/lint-some-package/bin/black .`
 2. Run `.tox/lint-some-package/bin/isort .`
 
+Or you can call formatting and linting in one command by [pre-commit](https://pre-commit.com/):
+
+```console
+$ pre-commit
+```
+
+You can also configure it to run lint tools automatically before committing with:
+
+```console
+$ pre-commit install
+
 See
 [`tox.ini`](https://github.com/open-telemetry/opentelemetry-python-contrib/blob/main/tox.ini)
 for more detail on available tox commands.
