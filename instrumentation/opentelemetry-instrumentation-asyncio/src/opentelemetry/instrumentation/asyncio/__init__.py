@@ -120,6 +120,7 @@ class AsyncioInstrumentor(BaseInstrumentor):
         return _instruments
 
     def _instrument(self, **kwargs):
+        # pylint: disable=attribute-defined-outside-init
         self._tracer = get_tracer(
             __name__, __version__, kwargs.get("tracer_provider")
         )
