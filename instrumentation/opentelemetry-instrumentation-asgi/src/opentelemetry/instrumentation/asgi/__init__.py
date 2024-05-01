@@ -347,11 +347,11 @@ def collect_custom_headers_attributes(
     Refer specifications:
      - https://github.com/open-telemetry/opentelemetry-specification/blob/main/specification/trace/semantic_conventions/http.md#http-request-and-response-headers
     """
-    # Decode headers before processing.
     headers: DefaultDict[str, list[str]] = defaultdict(list)
     raw_headers = scope_or_response_message.get("headers")
     if raw_headers:
         for key, value in raw_headers:
+            # Decode headers before processing.
             headers[key.decode()].append(value.decode())
 
     return sanitize.sanitize_header_values(
@@ -668,7 +668,9 @@ class OpenTelemetryMiddleware:
                 if receive_span.is_recording():
                     if message["type"] == "websocket.receive":
                         set_status_code(receive_span, 200)
-                    receive_span.set_attribute("type", message["type"])
+                    receive_span.set_attribute(
+                        "asgi.event.type", message["type"]
+                    )
             return message
 
         return otel_receive
@@ -689,9 +691,9 @@ class OpenTelemetryMiddleware:
                 if send_span.is_recording():
                     if message["type"] == "http.response.start":
                         status_code = message["status"]
-                        duration_attrs[
-                            SpanAttributes.HTTP_STATUS_CODE
-                        ] = status_code
+                        duration_attrs[SpanAttributes.HTTP_STATUS_CODE] = (
+                            status_code
+                        )
                         set_status_code(server_span, status_code)
                         set_status_code(send_span, status_code)
 
@@ -699,7 +701,7 @@ class OpenTelemetryMiddleware:
                     elif message["type"] == "websocket.send":
                         set_status_code(server_span, 200)
                         set_status_code(send_span, 200)
-                    send_span.set_attribute("type", message["type"])
+                    send_span.set_attribute("asgi.event.type", message["type"])
                     if (
                         server_span.is_recording()
                         and server_span.kind == trace.SpanKind.SERVER

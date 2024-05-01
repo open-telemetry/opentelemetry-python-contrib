@@ -7,6 +7,55 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## Unreleased
 
+### Breaking changes
+
+- Rename `type` attribute to `asgi.event.type` in `opentelemetry-instrumentation-asgi`
+  ([#2300](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/2300))
+- Rename AwsLambdaInstrumentor span attributes `faas.id` to `cloud.resource_id`, `faas.execution` to `faas.invocation_id`
+  ([#2372](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/2372))
+- Drop support for instrumenting elasticsearch client < 6`
+  ([#2422](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/2422))
+- `opentelemetry-instrumentation-wsgi` Add `http.method` to `span.name`
+  ([#2425](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/2425))
+- `opentelemetry-instrumentation-flask` Add `http.method` to `span.name`
+  ([#2454](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/2454))
+
+### Added
+
+- `opentelemetry-sdk-extension-aws` Register AWS resource detectors under the
+  `opentelemetry_resource_detector` entry point
+  ([#2382](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/2382))
+- `opentelemetry-instrumentation-wsgi` Implement new semantic convention opt-in with stable http semantic conventions
+  ([#2425](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/2425))
+- `opentelemetry-instrumentation-flask` Implement new semantic convention opt-in with stable http semantic conventions
+  ([#2454](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/2454))
+- `opentelemetry-instrumentation-threading` Initial release for threading
+  ([#2253](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/2253))
+- `opentelemetry-instrumentation-pika` Instrumentation for `channel.consume()` (supported
+  only for global, non channel specific instrumentation)
+  ([#2397](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/2397)))
+- `opentelemetry-processor-baggage` Initial release
+  ([#2436](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/2436))
+
+### Fixed
+
+- `opentelemetry-instrumentation-grpc` AioClientInterceptor should propagate with a Metadata object
+  ([#2363](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/2363))
+- `opentelemetry-instrumentation-boto3sqs` Instrument Session and resource
+  ([#2161](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/2161))
+- `opentelemetry-instrumentation-aws-lambda` Fix exception handling for events with requestContext
+  ([#2418](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/2418))
+- Use sqlalchemy version in sqlalchemy commenter instead of opentelemetry library version
+  ([#2404](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/2404))
+
+## Version 1.24.0/0.45b0 (2024-03-28)
+
+### Added
+
+- `opentelemetry-instrumentation-psycopg` Async Instrumentation for psycopg 3.x
+  ([#2146](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/2146))
+
+### Fixed
 - `opentelemetry-instrumentation-celery` Allow Celery instrumentation to be installed multiple times
   ([#2342](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/2342))
 - Align gRPC span status codes to OTEL specification
@@ -15,12 +64,18 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   ([#2297](https://github.com/open-telemetry/opentelemetry-python-contrib/issues/2297))
 - Ensure all http.server.duration metrics have the same description
   ([#2151](https://github.com/open-telemetry/opentelemetry-python-contrib/issues/2298))
+- Fix regression in httpx `request.url` not being of type `httpx.URL` after `0.44b0`
+  ([#2359](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/2359))
 - Avoid losing repeated HTTP headers
   ([#2266](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/2266))
+- `opentelemetry-instrumentation-elasticsearch` Don't send bulk request body as db statement
+  ([#2355](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/2355))
+- AwsLambdaInstrumentor sets `cloud.account.id` span attribute
+  ([#2367](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/2367))
 
 ## Version 1.23.0/0.44b0 (2024-02-23)
 
-- Drop uspport for 3.7
+- Drop support for 3.7
   ([#2151](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/2151))
 - `opentelemetry-resource-detector-azure` Added 10s timeout to VM Resource Detector
   ([#2119](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/2119))

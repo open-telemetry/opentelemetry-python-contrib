@@ -23,8 +23,8 @@ logger = logging.getLogger("instrumentation_readme_generator")
 _prefix = "opentelemetry-instrumentation-"
 
 header = """
-| Instrumentation | Supported Packages | Metrics support |
-| --------------- | ------------------ | --------------- |"""
+| Instrumentation | Supported Packages | Metrics support | Semconv status |
+| --------------- | ------------------ | --------------- | -------------- |"""
 
 
 def main():
@@ -63,13 +63,17 @@ def main():
 
         instruments = pkg_info["_instruments"]
         supports_metrics = pkg_info.get("_supports_metrics")
+        semconv_status = pkg_info.get("_semconv_status")
         if not instruments:
             instruments = (name,)
+
+        if not semconv_status:
+            semconv_status = "experimental"
 
         metric_column = "Yes" if supports_metrics else "No"
 
         table.append(
-            f"| [{instrumentation}](./{instrumentation}) | {','.join(instruments)} | {metric_column}"
+            f"| [{instrumentation}](./{instrumentation}) | {','.join(instruments)} | {metric_column} | {semconv_status}"
         )
 
     with open(

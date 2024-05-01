@@ -18,6 +18,10 @@ from unittest.mock import patch
 from pyramid.config import Configurator
 
 from opentelemetry import trace
+from opentelemetry.instrumentation._semconv import (
+    _server_active_requests_count_attrs_old,
+    _server_duration_attrs_old,
+)
 from opentelemetry.instrumentation.pyramid import PyramidInstrumentor
 from opentelemetry.sdk.metrics.export import (
     HistogramDataPoint,
@@ -31,8 +35,6 @@ from opentelemetry.util.http import (
     OTEL_INSTRUMENTATION_HTTP_CAPTURE_HEADERS_SANITIZE_FIELDS,
     OTEL_INSTRUMENTATION_HTTP_CAPTURE_HEADERS_SERVER_REQUEST,
     OTEL_INSTRUMENTATION_HTTP_CAPTURE_HEADERS_SERVER_RESPONSE,
-    _active_requests_count_attrs,
-    _duration_attrs,
 )
 
 # pylint: disable=import-error
@@ -43,8 +45,8 @@ _expected_metric_names = [
     "http.server.duration",
 ]
 _recommended_attrs = {
-    "http.server.active_requests": _active_requests_count_attrs,
-    "http.server.duration": _duration_attrs,
+    "http.server.active_requests": _server_active_requests_count_attrs_old,
+    "http.server.duration": _server_duration_attrs_old,
 }
 
 
@@ -213,6 +215,7 @@ class TestAutomatic(InstrumentationTest, WsgiTestBase):
             "http.server_name": "localhost",
             "net.host.port": 80,
             "http.status_code": 200,
+            "net.host.name": "localhost",
         }
         expected_requests_count_attributes = {
             "http.method": "GET",
@@ -220,6 +223,8 @@ class TestAutomatic(InstrumentationTest, WsgiTestBase):
             "http.scheme": "http",
             "http.flavor": "1.1",
             "http.server_name": "localhost",
+            "net.host.name": "localhost",
+            "net.host.port": 80,
         }
         metrics_list = self.memory_metrics_reader.get_metrics_data()
         for metric in (
