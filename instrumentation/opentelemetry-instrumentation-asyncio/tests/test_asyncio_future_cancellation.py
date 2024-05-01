@@ -20,36 +20,34 @@ class TestTraceFuture(TestBase):
         self._tracer = get_tracer(
             __name__,
         )
-        self.loop = asyncio.new_event_loop()
-        asyncio.set_event_loop(self.loop)
         self.instrumentor = AsyncioInstrumentor()
         self.instrumentor.instrument()
 
     def tearDown(self):
         super().tearDown()
         self.instrumentor.uninstrument()
-        self.loop.close()
 
     @pytest.mark.asyncio
     def test_trace_future_cancelled(self):
-        with self._tracer.start_as_current_span("root"):
-            future = asyncio.Future()
-            future = self.instrumentor.trace_future(future)
-            future.cancel()
+        async def future_cancelled():
+            with self._tracer.start_as_current_span("root"):
+                future = asyncio.Future()
+                future = self.instrumentor.trace_future(future)
+                future.cancel()
         try:
-            self.loop.run_until_complete(future)
+            asyncio.run(future_cancelled())
         except asyncio.CancelledError as exc:
             self.assertEqual(isinstance(exc, asyncio.CancelledError), True)
         spans = self.memory_exporter.get_finished_spans()
         self.assertEqual(len(spans), 2)
         self.assertEqual(spans[0].name, "root")
         self.assertEqual(spans[1].name, "asyncio future")
-        for metric in (
-            self.memory_metrics_reader.get_metrics_data()
-            .resource_metrics[0]
-            .scope_metrics[0]
-            .metrics
-        ):
-            for point in metric.data.data_points:
-                self.assertEqual(point.attributes["type"], "future")
-                self.assertEqual(point.attributes["state"], "cancelled")
+
+        metrics = self.memory_metrics_reader.get_metrics_data().resource_metrics[0].scope_metrics[0].metrics
+        self.assertEqual(len(metrics), 2)
+
+        self.assertEqual(metrics[0].name, "asyncio.process.duration")
+        self.assertEqual(metrics[0].data.data_points[0].attributes["state"], "cancelled")
+
+        self.assertEqual(metrics[1].name, "asyncio.process.created")
+        self.assertEqual(metrics[1].data.data_points[0].attributes["state"], "cancelled")
