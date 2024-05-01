@@ -34,6 +34,7 @@ class TestTraceFuture(TestBase):
                 future = asyncio.Future()
                 future = self.instrumentor.trace_future(future)
                 future.cancel()
+
         try:
             asyncio.run(future_cancelled())
         except asyncio.CancelledError as exc:
@@ -43,11 +44,20 @@ class TestTraceFuture(TestBase):
         self.assertEqual(spans[0].name, "root")
         self.assertEqual(spans[1].name, "asyncio future")
 
-        metrics = self.memory_metrics_reader.get_metrics_data().resource_metrics[0].scope_metrics[0].metrics
+        metrics = (
+            self.memory_metrics_reader.get_metrics_data()
+            .resource_metrics[0]
+            .scope_metrics[0]
+            .metrics
+        )
         self.assertEqual(len(metrics), 2)
 
         self.assertEqual(metrics[0].name, "asyncio.process.duration")
-        self.assertEqual(metrics[0].data.data_points[0].attributes["state"], "cancelled")
+        self.assertEqual(
+            metrics[0].data.data_points[0].attributes["state"], "cancelled"
+        )
 
         self.assertEqual(metrics[1].name, "asyncio.process.created")
-        self.assertEqual(metrics[1].data.data_points[0].attributes["state"], "cancelled")
+        self.assertEqual(
+            metrics[1].data.data_points[0].attributes["state"], "cancelled"
+        )
