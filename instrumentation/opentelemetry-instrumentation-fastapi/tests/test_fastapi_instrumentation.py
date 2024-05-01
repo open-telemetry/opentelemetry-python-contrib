@@ -558,10 +558,10 @@ class MultiMapping(Mapping):
         return len(self._items)
 
     def __getitem__(self, __key):
-        raise NotImplementedError('use .items() instead')
+        raise NotImplementedError("use .items() instead")
 
     def __iter__(self):
-        raise NotImplementedError('use .items() instead')
+        raise NotImplementedError("use .items() instead")
 
     def items(self):
         return self._items
