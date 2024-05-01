@@ -19,6 +19,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   ([#2425](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/2425))
 - `opentelemetry-instrumentation-flask` Add `http.method` to `span.name`
   ([#2454](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/2454))
+- Record repeated HTTP headers in lists, rather than a comma separate strings
+  ([#2361](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/2361))
 
 ### Added
 
