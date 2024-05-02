@@ -170,8 +170,8 @@ starting otelsink with print handler
 
 #### Programmatic
 
-```
-from oteltest.sink import GrpcSink, PrintHandler
+```python
+from oteltest.sink import GrpcSink, RequestHandler
 
 class MyHandler(RequestHandler):
     def handle_logs(self, request, context):
