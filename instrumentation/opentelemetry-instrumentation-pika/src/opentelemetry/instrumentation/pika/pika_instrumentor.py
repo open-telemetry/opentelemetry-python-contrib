@@ -20,7 +20,10 @@ import pika
 import wrapt
 from packaging import version
 from pika.adapters import BlockingConnection
-from pika.adapters.blocking_connection import BlockingChannel
+from pika.adapters.blocking_connection import (
+    BlockingChannel,
+    _QueueConsumerGeneratorInfo,
+)
 
 from opentelemetry import trace
 from opentelemetry.instrumentation.instrumentor import BaseInstrumentor
@@ -153,9 +156,9 @@ class PikaInstrumentor(BaseInstrumentor):  # type: ignore
             callback_attr = PikaInstrumentor.CONSUMER_CALLBACK_ATTR
             consumer_callback = getattr(client_info, callback_attr, None)
             if hasattr(consumer_callback, "_original_callback"):
-                channel._consumer_infos[
-                    consumers_tag
-                ] = consumer_callback._original_callback
+                channel._consumer_infos[consumers_tag] = (
+                    consumer_callback._original_callback
+                )
         PikaInstrumentor._uninstrument_channel_functions(channel)
 
     def _decorate_channel_function(
@@ -191,6 +194,24 @@ class PikaInstrumentor(BaseInstrumentor):  # type: ignore
 
         wrapt.wrap_function_wrapper(channel, "basic_consume", wrapper)
 
+    @staticmethod
+    def _decorate_queue_consumer_generator(
+        tracer_provider: Optional[TracerProvider],
+        consume_hook: utils.HookT = utils.dummy_callback,
+    ) -> None:
+        tracer = trace.get_tracer(__name__, __version__, tracer_provider)
+
+        def wrapper(wrapped, instance, args, kwargs):
+            res = wrapped(*args, **kwargs)
+            instance.pending_events = utils.ReadyMessagesDequeProxy(
+                instance.pending_events, instance, tracer, consume_hook
+            )
+            return res
+
+        wrapt.wrap_function_wrapper(
+            _QueueConsumerGeneratorInfo, "__init__", wrapper
+        )
+
     def _instrument(self, **kwargs: Dict[str, Any]) -> None:
         tracer_provider: TracerProvider = kwargs.get("tracer_provider", None)
         publish_hook: utils.HookT = kwargs.get(
@@ -207,10 +228,15 @@ class PikaInstrumentor(BaseInstrumentor):  # type: ignore
             consume_hook=consume_hook,
         )
 
+        self._decorate_queue_consumer_generator(
+            tracer_provider, consume_hook=consume_hook
+        )
+
     def _uninstrument(self, **kwargs: Dict[str, Any]) -> None:
         if hasattr(self, "__opentelemetry_tracer_provider"):
             delattr(self, "__opentelemetry_tracer_provider")
         unwrap(BlockingConnection, "channel")
+        unwrap(_QueueConsumerGeneratorInfo, "__init__")
 
     def instrumentation_dependencies(self) -> Collection[str]:
         return _instruments
