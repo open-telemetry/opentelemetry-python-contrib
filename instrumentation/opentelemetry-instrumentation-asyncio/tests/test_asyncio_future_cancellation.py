@@ -1,8 +1,6 @@
 import asyncio
 from unittest.mock import patch
 
-import pytest
-
 from opentelemetry.instrumentation.asyncio import AsyncioInstrumentor
 from opentelemetry.instrumentation.asyncio.environment_variables import (
     OTEL_PYTHON_ASYNCIO_FUTURE_TRACE_ENABLED,
@@ -27,7 +25,6 @@ class TestTraceFuture(TestBase):
         super().tearDown()
         self.instrumentor.uninstrument()
 
-    @pytest.mark.asyncio
     def test_trace_future_cancelled(self):
         async def future_cancelled():
             with self._tracer.start_as_current_span("root"):
