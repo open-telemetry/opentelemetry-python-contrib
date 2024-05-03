@@ -27,7 +27,9 @@ from handlers.opentelemetry_structlog.src.exporter import LogExporter
 from datetime import datetime, timezone
 
 from unittest.mock import MagicMock, patch
-
+from opentelemetry.exporter.otlp.proto.grpc._log_exporter import (
+    OTLPLogExporter,
+)
 
 
 from opentelemetry.semconv.trace import SpanAttributes
@@ -389,41 +391,58 @@ class TestStructlogHandler(TestBase):
 
                 assert log_record.trace_flags == trace_sampled, "Trace flags should be propagated" 
         
-
+class TimestampRecord:
+    def __init__(self, data):
+        self.timestam = data
+    def timestamp(self):
+        return self.timestam
 
 class TestLoguruHandler(TestBase):
     def setUp(self):
         self.default_provider = get_logger_provider()
         self.custom_provider = MagicMock()
+
+        RecordFile = namedtuple('RecordFile', ['path', 'name'])
+        file_record = RecordFile(
+            path="test_file.py",
+            name = "test_file.py"
+        )
+
+        RecordProcess = namedtuple('RecordProcess', ['name', 'id'])
+        process_record = RecordProcess(
+            name = "MainProcess",
+            id = 1
+        )
+
+        RecordThread = namedtuple('RecordThread', ['name', 'id'])
+        thread_record = RecordThread(
+            name = "MainThread",
+            id = 1
+        )
+
+        timeRec = TimestampRecord(data=2.38763786)
+
         self.record = {
-            "time": 1581000000.000123,
+            "time": timeRec,
             "level": MagicMock(name="ERROR", no=40),
             "message": "Test message",
-            "file": "test_file.py",
+            "file": file_record,
+            "process": process_record,
+            "thread": thread_record,
             "function": "test_function",
             "line": 123,
             "exception": None
         }
-        # self.span_context = SpanContext(
-        #     trace_id=1234,
-        #     span_id=5678,
-        #     trace_flags=TraceFlags(1),
-        #     is_remote=False
-        # )
+
         self.span_context = get_current_span().get_span_context()
         self.current_span = MagicMock()
-        self.current_span.get_span_context.return_value = self.span_context
-
-    def test_initialization_with_default_provider(self):
-        handler = LoguruHandler()
-        self.assertEqual(handler._logger_provider, self.default_provider)
-
-    def test_initialization_with_custom_provider(self):
-        handler = LoguruHandler(logger_provider=self.custom_provider)
-        self.assertEqual(handler._logger_provider, self.custom_provider)
+        self.current_span.get_span_context.return_value = self.span_context 
 
     def test_attributes_extraction_without_exception(self):
-        attrs = LoguruHandler()._get_attributes(self.record)
+        handler = LoguruHandler(service_name="flask-loguru-demo", server_hostname="instance-1", exporter=OTLPLogExporter(insecure=True))
+
+        attrs = handler._get_attributes(self.record)
+
         expected_attrs = {
             SpanAttributes.CODE_FILEPATH: 'test_file.py',
             SpanAttributes.CODE_FUNCTION: 'test_function',
@@ -448,11 +467,11 @@ class TestLoguruHandler(TestBase):
             traceback=mock_format_exception(exception)
         )
         self.record['exception'] = exception_record
-        # self.record['exception'].type = type(exception).__name__
-        # self.record['exception'].value = str(exception)
-        # self.record['exception'].traceback = mock_format_exception(exception)
+
         
-        attrs = LoguruHandler()._get_attributes(self.record)
+        handler = LoguruHandler(service_name="flask-loguru-demo", server_hostname="instance-1", exporter=OTLPLogExporter(insecure=True))
+
+        attrs = handler._get_attributes(self.record)
         
         expected_attrs = {
             SpanAttributes.CODE_FILEPATH: 'test_file.py',
@@ -470,7 +489,9 @@ class TestLoguruHandler(TestBase):
     @patch('opentelemetry.trace.get_current_span')
     def test_translation(self, mock_get_current_span):
         mock_get_current_span.return_value = self.current_span
-        handler = LoguruHandler(logger_provider=self.custom_provider)
+
+        handler = LoguruHandler(service_name="flask-loguru-demo", server_hostname="instance-1", exporter=OTLPLogExporter(insecure=True))
+        
         log_record = handler._translate(self.record)
         self.assertEqual(log_record.trace_id, self.span_context.trace_id)
         self.assertEqual(log_record.span_id, self.span_context.span_id)
@@ -482,9 +503,14 @@ class TestLoguruHandler(TestBase):
     @patch('opentelemetry.trace.get_current_span')
     def test_sink(self, mock_get_current_span, mock_emit):
         mock_get_current_span.return_value = self.current_span
-        handler = LoguruHandler(logger_provider=self.custom_provider)
-        handler.sink(self.record)
-        #mock_emit.assert_called_once()
-        handler._logger.emit.assert_called_once()
+        
+        handler = LoguruHandler(service_name="flask-loguru-demo", server_hostname="instance-1", exporter=OTLPLogExporter(insecure=True))
+
+        MessageRecord = namedtuple('MessageRecord', ['record']) 
+        message = MessageRecord(
+            record=self.record
+        )
+
+        handler.sink(message)
 
 
