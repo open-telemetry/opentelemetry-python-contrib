@@ -14,19 +14,11 @@ from opentelemetry.sdk.resources import Resource
 
 
 
-logger_provider = LoggerProvider(
-    resource=Resource.create(
-        {
-            "service.name": "shoppingcart",
-            "service.instance.id": "instance-12",
-        }
-    ),
-)
-set_logger_provider(logger_provider)
 
 # Replace the standard logging configuration with Loguru
 loguru_handler = LoguruHandler(service_name="flask-loguru-demo", server_hostname="instance-1", exporter=OTLPLogExporter(insecure=True)) 
 loguru_logger.add(loguru_handler.sink)  # Add  LoguruHandler to the logger
+
 
 app = Flask(__name__)
 
@@ -43,4 +35,3 @@ def roll_dice():
 
 def roll():
     return randint(1, 6)
-
