@@ -199,6 +199,5 @@ class LoguruHandler:
         )
 
     def sink(self, record) -> None:
-        print("\n BALLIN HERE\n")
         self._logger.emit(self._translate(record.record))
     
