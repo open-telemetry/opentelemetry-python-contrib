@@ -94,7 +94,7 @@ _STD_TO_OTEL = {
     53: SeverityNumber.FATAL4,
 }
 
-
+EXCLUDE_ATTR = ("elapsed", "exception", "extra", "file", "level", "process", "thread", "time")
 class LoguruHandler:
 
     # this was largely inspired by the OpenTelemetry handler for stdlib `logging`:
@@ -102,22 +102,40 @@ class LoguruHandler:
 
     def __init__(
         self,
-        logger_provider=None,
+        service_name: str,
+        server_hostname: str,
+        exporter: LogExporter,
     ) -> None:
-        
-        self._logger_provider = logger_provider or get_logger_provider()
-        self._logger = get_logger(
-            __name__, logger_provider=self._logger_provider
+        logger_provider = LoggerProvider(
+            resource=Resource.create(
+                {
+                    "service.name": service_name,
+                    "service.instance.id": server_hostname,
+                }
+            ),
         )
+
+        logger_provider.add_log_record_processor(
+            BatchLogRecordProcessor(exporter, max_export_batch_size=1)
+        )
+
+        self._logger_provider = logger_provider
+        self._logger = logger_provider.get_logger(__name__)
         
         
     def _get_attributes(self, record) -> Attributes:
-        attributes = {key:value for key, value in record.items()}
+        attributes = {key:value for key, value in record.items() if key not in EXCLUDE_ATTR}
         
          # Add standard code attributes for logs.
-        attributes[SpanAttributes.CODE_FILEPATH] = record['file'] #This includes file and path -> (file, path)
+        attributes[SpanAttributes.CODE_FILEPATH] = record['file'].path #This includes file and path -> (file, path)
         attributes[SpanAttributes.CODE_FUNCTION] = record['function']
         attributes[SpanAttributes.CODE_LINENO] = record['line']
+
+        attributes['process_name'] = (record['process']).name
+        attributes['process_id'] = (record['process']).id
+        attributes['thread_name'] = (record['thread']).name
+        attributes['thread_id'] = (record['thread']).id
+        attributes['file'] = record['file'].name
         
         if record['exception'] is not None:
 
@@ -138,11 +156,13 @@ class LoguruHandler:
         
         return _STD_TO_OTEL[levelno]
     
+  
+        
         
     def _translate(self, record) -> LogRecord:
         
         #Timestamp
-        timestamp = record["time"]
+        timestamp = int((record["time"].timestamp()) * 1e9)
         
         #Observed timestamp
         observedTimestamp = time_ns()
@@ -179,6 +199,6 @@ class LoguruHandler:
         )
 
     def sink(self, record) -> None:
-        
-        self._logger.emit(self._translate(record))
+        print("\n BALLIN HERE\n")
+        self._logger.emit(self._translate(record.record))
     
