@@ -76,7 +76,11 @@ class OtelTest(abc.ABC):
 
 @dataclasses.dataclass
 class Request:
-    request: dict
+    """
+    Wraps a grpc message (metric, trace, or log), http headers that came in with the message, and the time elapsed
+    between the start of the test the receipt of the message.
+    """
+    message: dict
     headers: dict
     test_elapsed_ms: int
 
@@ -88,47 +92,51 @@ class Request:
 
     def to_dict(self):
         return {
-            "request": self.request,
+            "request": self.message,
             "headers": self.headers,
             "test_elapsed_ms": self.test_elapsed_ms,
         }
 
 
 class Telemetry:
+    """
+    Wraps lists of logs, metrics, and trace requests. Intended to encompass all logs, metrics, and trace requests sent
+    during a single oteltest script run. An instance is passed in to OtelTest#on_stop().
+    """
     def __init__(
         self,
-        log_reqs: Optional[List[Request]] = None,
-        metric_reqs: Optional[List[Request]] = None,
-        trace_reqs: Optional[List[Request]] = None,
+        log_requests: Optional[List[Request]] = None,
+        metric_requests: Optional[List[Request]] = None,
+        trace_requests: Optional[List[Request]] = None,
     ):
-        self.log_reqs: List[Request] = log_reqs or []
-        self.metric_reqs: List[Request] = metric_reqs or []
-        self.trace_reqs: List[Request] = trace_reqs or []
+        self.log_requests: List[Request] = log_requests or []
+        self.metric_requests: List[Request] = metric_requests or []
+        self.trace_requests: List[Request] = trace_requests or []
 
     def add_log(self, log: dict, headers: dict, test_elapsed_ms: int):
-        self.log_reqs.append(Request(log, headers, test_elapsed_ms))
+        self.log_requests.append(Request(log, headers, test_elapsed_ms))
 
     def add_metric(self, metric: dict, headers: dict, test_elapsed_ms: int):
-        self.metric_reqs.append(Request(metric, headers, test_elapsed_ms))
+        self.metric_requests.append(Request(metric, headers, test_elapsed_ms))
 
     def add_trace(self, trace: dict, headers: dict, test_elapsed_ms: int):
-        self.trace_reqs.append(Request(trace, headers, test_elapsed_ms))
+        self.trace_requests.append(Request(trace, headers, test_elapsed_ms))
 
     def get_trace_requests(self) -> List[Request]:
-        return self.trace_reqs
+        return self.trace_requests
 
     def num_metrics(self) -> int:
         out = 0
-        for req in self.metric_reqs:
-            for rm in req.request["resourceMetrics"]:
+        for req in self.metric_requests:
+            for rm in req.message["resourceMetrics"]:
                 for sm in rm["scopeMetrics"]:
                     out += len(sm["metrics"])
         return out
 
     def metric_names(self) -> set:
         out = set()
-        for req in self.metric_reqs:
-            for rm in req.request["resourceMetrics"]:
+        for req in self.metric_requests:
+            for rm in req.message["resourceMetrics"]:
                 for sm in rm["scopeMetrics"]:
                     for metric in sm["metrics"]:
                         out.add(metric["name"])
@@ -136,14 +144,14 @@ class Telemetry:
 
     def num_spans(self) -> int:
         out = 0
-        for req in self.trace_reqs:
-            for rs in req.request["resourceSpans"]:
+        for req in self.trace_requests:
+            for rs in req.message["resourceSpans"]:
                 for ss in rs["scopeSpans"]:
                     out += len(ss["spans"])
         return out
 
     def has_trace_header(self, key, expected) -> bool:
-        for req in self.trace_reqs:
+        for req in self.trace_requests:
             actual = req.get_header(key)
             if expected == actual:
                 return True
@@ -154,19 +162,10 @@ class Telemetry:
 
     def to_dict(self):
         return {
-            "log_reqs": [req.to_dict() for req in self.log_reqs],
-            "metric_reqs": [req.to_dict() for req in self.metric_reqs],
-            "trace_reqs": [req.to_dict() for req in self.trace_reqs],
+            "log_requests": [req.to_dict() for req in self.log_requests],
+            "metric_requests": [req.to_dict() for req in self.metric_requests],
+            "trace_requests": [req.to_dict() for req in self.trace_requests],
         }
 
     def __str__(self):
         return self.to_json()
-
-
-def trace_attribute_as_str_array(tr: dict, attr_name) -> [str]:
-    out = []
-    for rs in tr["resourceSpans"]:
-        for attr in rs["resource"]["attributes"]:
-            if attr["key"] == attr_name:
-                out.append(attr["value"]["stringValue"])
-    return out

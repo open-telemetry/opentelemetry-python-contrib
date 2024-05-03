@@ -1,3 +1,17 @@
+# Copyright The OpenTelemetry Authors
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
 import glob
 import importlib
 import inspect
@@ -86,7 +100,7 @@ def get_next_json_file(path_str: str, module_name: str):
             index = int(last_part)
             if index > max_index:
                 max_index = index
-    return f"{module_name}.{max_index+1}.json"
+    return f"{module_name}.{max_index + 1}.json"
 
 
 def save_telemetry_json(script_dir: str, file_name: str, json_str: str):
