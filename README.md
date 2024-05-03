@@ -141,7 +141,7 @@ Emeritus Maintainers:
 4. Make sure you have `tox` installed. `pip install tox==4.13.0`.
 5. Change Python version to 3.11
 6. Run tests for a package. (e.g. `tox -e test-instrumentation-flask`.)
-
+7. To install new packages when running Tox, add the package with the desired version to the test-requirements.txt file associated with the instrumentation being tested. 
 ### Thanks to all the people who already contributed
 
 <a href="https://github.com/open-telemetry/opentelemetry-python-contrib/graphs/contributors">
