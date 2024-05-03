@@ -80,6 +80,7 @@ class Request:
     Wraps a grpc message (metric, trace, or log), http headers that came in with the message, and the time elapsed
     between the start of the test the receipt of the message.
     """
+
     message: dict
     headers: dict
     test_elapsed_ms: int
@@ -103,6 +104,7 @@ class Telemetry:
     Wraps lists of logs, metrics, and trace requests. Intended to encompass all logs, metrics, and trace requests sent
     during a single oteltest script run. An instance is passed in to OtelTest#on_stop().
     """
+
     def __init__(
         self,
         log_requests: Optional[List[Request]] = None,
