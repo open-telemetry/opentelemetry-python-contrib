@@ -27,9 +27,9 @@ def roll_dice():
     player = request.args.get('player', default=None, type=str)
     result = str(roll())
     if player:
-        loguru_logger.warning("Player is rolling the dice: num")
+        loguru_logger.warning(f"Player {player} is rolling the dice: {result}")
     else:
-        loguru_logger.warning("Anonymous player is rolling the dice: num")
+        loguru_logger.warning(f"Anonymous player is rolling the dice: {result}")
     return result
 
 
