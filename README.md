@@ -138,8 +138,9 @@ Emeritus Maintainers:
 1. Go to your Contrib repo directory. `cd ~/git/opentelemetry-python-contrib`.
 2. Create a virtual env in your Contrib repo directory. `python3 -m venv my_test_venv`.
 3. Activate your virtual env. `source my_test_venv/bin/activate`.
-4. Make sure you have `tox` installed. `pip install tox`.
-5. Run tests for a package. (e.g. `tox -e test-instrumentation-flask`.)
+4. Make sure you have `tox` installed. `pip install tox==4.13.0`.
+5. Change Python version to 3.11
+6. Run tests for a package. (e.g. `tox -e test-instrumentation-flask`.)
 
 ### Thanks to all the people who already contributed
 
