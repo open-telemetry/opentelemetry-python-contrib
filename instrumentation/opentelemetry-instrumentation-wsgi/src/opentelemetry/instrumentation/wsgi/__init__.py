@@ -533,6 +533,7 @@ class OpenTelemetryMiddleware:
                        incoming request.
         tracer_provider: Optional tracer provider to use. If omitted the current
                          globally configured one is used.
+        excluded_urls: list of urls to exclude                         
     """
 
     def __init__(
@@ -542,6 +543,7 @@ class OpenTelemetryMiddleware:
         response_hook=None,
         tracer_provider=None,
         meter_provider=None,
+        excluded_urls=None,
     ):
         # initialize semantic conventions opt-in if needed
         _OpenTelemetrySemanticConventionStability._initialize()
@@ -585,6 +587,7 @@ class OpenTelemetryMiddleware:
         self.request_hook = request_hook
         self.response_hook = response_hook
         self._sem_conv_opt_in_mode = sem_conv_opt_in_mode
+        self.excluded_urls = excluded_urls or []
 
     @staticmethod
     def _create_start_response(
@@ -623,6 +626,8 @@ class OpenTelemetryMiddleware:
             environ: A WSGI environment.
             start_response: The WSGI start_response callable.
         """
+        if environ.get("PATH_INFO") in self.excluded_urls:
+            return self.wsgi(environ, start_response) 
         req_attrs = collect_request_attributes(
             environ, self._sem_conv_opt_in_mode
         )

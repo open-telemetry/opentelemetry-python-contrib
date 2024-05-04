@@ -273,6 +273,12 @@ class TestWsgiApplication(WsgiTestBase):
         response = app(self.environ, self.start_response)
         self.validate_response(response, old_sem_conv=True, new_sem_conv=True)
 
+    def test_basic_wsgi_call_with_excluded_urls(self):
+        app = otel_wsgi.OpenTelemetryMiddleware(simple_wsgi, excluded_urls="/test")
+        self.environ["PATH_INFO"] = "/test"
+        response = app(self.environ, self.start_response)
+        assert(isinstance(response,list))    
+
     def test_hooks(self):
         hook_headers = (
             "hook_attr",
