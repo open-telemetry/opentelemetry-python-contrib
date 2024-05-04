@@ -26,6 +26,6 @@ dsl_create_statement = {
     }
 }
 dsl_index_result = (1, {}, '{"result": "created"}')
-dsl_index_span_name = "Elasticsearch/test-index/_doc/2"
+dsl_index_span_name = "Elasticsearch/test-index/_doc/:id"
 dsl_index_url = "/test-index/_doc/2"
 dsl_search_method = "POST"
