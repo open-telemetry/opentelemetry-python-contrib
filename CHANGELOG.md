@@ -49,6 +49,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   ([#2404](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/2404))
 - `opentelemetry-instrumentation-asyncio` Check for cancelledException in the future
   ([#2461](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/2461))
+- Remove SDK dependency from opentelemetry-instrumentation-grpc
+  ([#2474](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/2474))
 
 ## Version 1.24.0/0.45b0 (2024-03-28)
 
