@@ -127,6 +127,16 @@ class AsyncPGInstrumentor(BaseInstrumentor):
                 "asyncpg.connection", method, self._do_execute
             )
 
+        for method in [
+            "Cursor.fetch",
+            "Cursor.forward",
+            "Cursor.fetchrow",
+            "CursorIterator.__anext__",
+        ]:
+            wrapt.wrap_function_wrapper(
+                "asyncpg.cursor", method, self._do_cursor_execute
+            )
+
     def _uninstrument(self, **__):
         for method in [
             "execute",
@@ -135,7 +145,15 @@ class AsyncPGInstrumentor(BaseInstrumentor):
             "fetchval",
             "fetchrow",
         ]:
-            unwrap(asyncpg.Connection, method)
+            unwrap(asyncpg.connection.Connection, method)
+
+        for method in [
+            "fetch",
+            "forward",
+            "fetchrow",
+            "__anext__",
+        ]:
+            unwrap(asyncpg.cursor, method)
 
     async def _do_execute(self, func, instance, args, kwargs):
         exception = None
@@ -170,3 +188,45 @@ class AsyncPGInstrumentor(BaseInstrumentor):
                     span.set_status(Status(StatusCode.ERROR))
 
         return result
+
+    async def _do_cursor_execute(self, func, instance, args, kwargs):
+        """ Wrap curser based functions. For every call this will generate a new span.
+        """
+        exception = None
+        params = getattr(instance._connection, "_params", {})
+        name = instance._query if instance._query else params.get("database", "postgresql")
+
+        try:
+            # Strip leading comments so we get the operation name.
+            name = self._leading_comment_remover.sub("", name).split()[0]
+        except IndexError:
+            name = ""
+
+        stop = False
+        with self._tracer.start_as_current_span(
+            f"CURSOR: {name}", kind=SpanKind.CLIENT,
+        ) as span:
+            if span.is_recording():
+                span_attributes = _hydrate_span_from_args(
+                    instance._connection,
+                    instance._query,
+                    instance._args if self.capture_parameters else None,
+                )
+                for attribute, value in span_attributes.items():
+                    span.set_attribute(attribute, value)
+
+            try:
+                result = await func(*args, **kwargs)
+            except StopAsyncIteration:
+                # Do not show this exception to the span
+                stop = True
+            except Exception as exc:  # pylint: disable=W0703
+                exception = exc
+                raise
+            finally:
+                if span.is_recording() and exception is not None:
+                    span.set_status(Status(StatusCode.ERROR))
+
+        if not stop:
+            return result
+        raise StopAsyncIteration
