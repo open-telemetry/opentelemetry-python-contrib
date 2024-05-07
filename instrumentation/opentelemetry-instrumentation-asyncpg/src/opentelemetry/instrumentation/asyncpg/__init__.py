@@ -138,22 +138,13 @@ class AsyncPGInstrumentor(BaseInstrumentor):
             )
 
     def _uninstrument(self, **__):
-        for method in [
-            "execute",
-            "executemany",
-            "fetch",
-            "fetchval",
-            "fetchrow",
+        for cls, methods in [
+            (asyncpg.connection.Connection, ("execute", "executemany", "fetch", "fetchval", "fetchrow")),
+            (asyncpg.cursor.Cursor, ("forward", "fetch", "fetchrow")), 
+            (asyncpg.cursor.CursorIterator, ("__anext__", ))
         ]:
-            unwrap(asyncpg.connection.Connection, method)
-
-        for method in [
-            "fetch",
-            "forward",
-            "fetchrow",
-            "__anext__",
-        ]:
-            unwrap(asyncpg.cursor, method)
+            for method_name in methods:
+                unwrap(cls, method_name)
 
     async def _do_execute(self, func, instance, args, kwargs):
         exception = None
