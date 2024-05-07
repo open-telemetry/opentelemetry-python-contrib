@@ -1,0 +1,41 @@
+name: spellcheck 1
+
+on:
+  push:
+    branches-ignore:
+    - 'release/*'
+  pull_request:
+env:
+  CORE_REPO_SHA: 955c92e91b5cd4bcfb43c39efcef086b040471d2
+
+jobs:
+  test-1:
+    env:
+      RUN_MATRIX_COMBINATION: ${{ matrix.python-version }}-${{ matrix.package }}-${{ matrix.os }}
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false  # ensures the entire test matrix is run, even if one permutation fails
+      matrix:
+        package:
+          - "resource/opentelemetry-resource-detector-container"
+          - "sdk-extension/opentelemetry-sdk-extension-aws"
+        os: [ubuntu-20.04]
+    steps:
+      - name: Checkout Contrib Repo @ SHA - ${{ github.sha }}
+        uses: actions/checkout@v4
+      - name: Set up Python ${{ env[matrix.python-version] }}
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - name: Install tox
+        run: pip install tox
+      - name: Cache tox environment
+        # Preserves .tox directory between runs for faster installs
+        uses: actions/cache@v4
+        with:
+          path: |
+            .tox
+            ~/.cache/pip
+          key: v7-build-tox-cache-${{ env.RUN_MATRIX_COMBINATION }}-${{ hashFiles('tox.ini', 'gen-requirements.txt', 'dev-requirements.txt') }}
+      - name: run tox
+        run: tox -c ${{ matrix.package }}/tox.ini -e spellcheck

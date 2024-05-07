@@ -27,13 +27,14 @@ venv*/
 # Installer logs
 pip-log.txt
 
-# Unit test / coverage reports
+# Unit test / coverage, benchmark reports
 coverage.xml
 .coverage
 .nox
 .tox
 .cache
 htmlcov
+benchmark.json
 
 # Translations
 *.mo
