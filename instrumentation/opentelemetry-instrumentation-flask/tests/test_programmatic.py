@@ -459,6 +459,7 @@ class TestProgrammatic(InstrumentationTest, WsgiTestBase):
         self.assertEqual(len(span_list), 1)
 
     def test_flask_metrics(self):
+        _server_duration_attrs_old.append("http.route")
         start = default_timer()
         self.client.get("/hello/123")
         self.client.get("/hello/321")
@@ -570,6 +571,7 @@ class TestProgrammatic(InstrumentationTest, WsgiTestBase):
         self.client.get("/hello/756")
         expected_duration_attributes = {
             "http.method": "GET",
+            "http.route": "/hello/<int:helloid>",
             "http.host": "localhost",
             "http.scheme": "http",
             "http.flavor": "1.1",
@@ -597,6 +599,7 @@ class TestProgrammatic(InstrumentationTest, WsgiTestBase):
         expected_duration_attributes = {
             "http.request.method": "GET",
             "url.scheme": "http",
+            "http.route": "/hello/<int:helloid>",
             "network.protocol.version": "1.1",
             "http.response.status_code": 200,
         }

@@ -282,6 +282,7 @@ _ENVIRON_SPAN_KEY = "opentelemetry-flask.span_key"
 _ENVIRON_ACTIVATION_KEY = "opentelemetry-flask.activation_key"
 _ENVIRON_REQCTX_REF_KEY = "opentelemetry-flask.reqctx_ref_key"
 _ENVIRON_TOKEN = "opentelemetry-flask.token"
+_ENVIRON_REQUEST_ROUTE_KEY = "request-route_key"
 
 _excluded_urls_from_env = get_excluded_urls("FLASK")
 
@@ -344,6 +345,9 @@ def _rewrapped_app(
                 excluded_urls is None
                 or not excluded_urls.url_disabled(flask.request.url)
             ):
+                if flask.request.url_rule:
+                    wrapped_app_environ[_ENVIRON_REQUEST_ROUTE_KEY] = str(flask.request.url_rule)
+
                 span = flask.request.environ.get(_ENVIRON_SPAN_KEY)
 
                 propagator = get_global_response_propagator()
@@ -386,6 +390,10 @@ def _rewrapped_app(
             duration_attrs_old = otel_wsgi._parse_duration_attrs(
                 attributes, _HTTPStabilityMode.DEFAULT
             )
+
+            if wrapped_app_environ.get(_ENVIRON_REQUEST_ROUTE_KEY, None):
+                duration_attrs_old[SpanAttributes.HTTP_ROUTE] = wrapped_app_environ.get(_ENVIRON_REQUEST_ROUTE_KEY)
+
             duration_histogram_old.record(
                 max(round(duration_s * 1000), 0), duration_attrs_old
             )
@@ -393,6 +401,10 @@ def _rewrapped_app(
             duration_attrs_new = otel_wsgi._parse_duration_attrs(
                 attributes, _HTTPStabilityMode.HTTP
             )
+
+            if wrapped_app_environ.get(_ENVIRON_REQUEST_ROUTE_KEY, None):
+                duration_attrs_new[SpanAttributes.HTTP_ROUTE] = wrapped_app_environ.get(_ENVIRON_REQUEST_ROUTE_KEY)
+
             duration_histogram_new.record(
                 max(duration_s, 0), duration_attrs_new
             )
