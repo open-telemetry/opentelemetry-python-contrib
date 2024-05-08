@@ -21,24 +21,12 @@ from opentelemetry.semconv.resource import (
     ResourceAttributes,
 )
 
-_AZURE_APP_SERVICE_STAMP_RESOURCE_ATTRIBUTE = "azure.app.service.stamp"
-_REGION_NAME = "REGION_NAME"
-_WEBSITE_HOME_STAMPNAME = "WEBSITE_HOME_STAMPNAME"
-_WEBSITE_HOSTNAME = "WEBSITE_HOSTNAME"
-_WEBSITE_INSTANCE_ID = "WEBSITE_INSTANCE_ID"
-_WEBSITE_OWNER_NAME = "WEBSITE_OWNER_NAME"
-_WEBSITE_RESOURCE_GROUP = "WEBSITE_RESOURCE_GROUP"
-_WEBSITE_SITE_NAME = "WEBSITE_SITE_NAME"
-_WEBSITE_SLOT_NAME = "WEBSITE_SLOT_NAME"
-
-
-_APP_SERVICE_ATTRIBUTE_ENV_VARS = {
-    ResourceAttributes.CLOUD_REGION: _REGION_NAME,
-    ResourceAttributes.DEPLOYMENT_ENVIRONMENT: _WEBSITE_SLOT_NAME,
-    ResourceAttributes.HOST_ID: _WEBSITE_HOSTNAME,
-    ResourceAttributes.SERVICE_INSTANCE_ID: _WEBSITE_INSTANCE_ID,
-    _AZURE_APP_SERVICE_STAMP_RESOURCE_ATTRIBUTE: _WEBSITE_HOME_STAMPNAME,
-}
+from ._constants import (
+    _APP_SERVICE_ATTRIBUTE_ENV_VARS,
+    _WEBSITE_OWNER_NAME,
+    _WEBSITE_RESOURCE_GROUP,
+    _WEBSITE_SITE_NAME,
+)
 
 
 class AzureAppServiceResourceDetector(ResourceDetector):
@@ -47,19 +35,19 @@ class AzureAppServiceResourceDetector(ResourceDetector):
         website_site_name = environ.get(_WEBSITE_SITE_NAME)
         if website_site_name:
             attributes[ResourceAttributes.SERVICE_NAME] = website_site_name
-            attributes[
-                ResourceAttributes.CLOUD_PROVIDER
-            ] = CloudProviderValues.AZURE.value
-            attributes[
-                ResourceAttributes.CLOUD_PLATFORM
-            ] = CloudPlatformValues.AZURE_APP_SERVICE.value
+            attributes[ResourceAttributes.CLOUD_PROVIDER] = (
+                CloudProviderValues.AZURE.value
+            )
+            attributes[ResourceAttributes.CLOUD_PLATFORM] = (
+                CloudPlatformValues.AZURE_APP_SERVICE.value
+            )
 
             azure_resource_uri = _get_azure_resource_uri(website_site_name)
             if azure_resource_uri:
-                attributes[
-                    ResourceAttributes.CLOUD_RESOURCE_ID
-                ] = azure_resource_uri
-            for (key, env_var) in _APP_SERVICE_ATTRIBUTE_ENV_VARS.items():
+                attributes[ResourceAttributes.CLOUD_RESOURCE_ID] = (
+                    azure_resource_uri
+                )
+            for key, env_var in _APP_SERVICE_ATTRIBUTE_ENV_VARS.items():
                 value = environ.get(env_var)
                 if value:
                     attributes[key] = value

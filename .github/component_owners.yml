@@ -73,3 +73,6 @@ components:
 
   instrumentation/opentelemetry-instrumentation-psycopg:
     - federicobond
+
+  processor/opentelemetry-processor-baggage:
+    - codeboten

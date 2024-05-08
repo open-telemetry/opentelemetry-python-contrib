@@ -25,10 +25,6 @@ libraries = [
         "instrumentation": "opentelemetry-instrumentation-aiohttp-client==0.46b0.dev",
     },
     {
-        "library": "aiohttp ~= 3.0",
-        "instrumentation": "opentelemetry-instrumentation-aiohttp-server==0.46b0.dev",
-    },
-    {
         "library": "aiopg >= 0.13.0, < 2.0.0",
         "instrumentation": "opentelemetry-instrumentation-aiopg==0.46b0.dev",
     },
@@ -73,7 +69,7 @@ libraries = [
         "instrumentation": "opentelemetry-instrumentation-django==0.46b0.dev",
     },
     {
-        "library": "elasticsearch >= 2.0",
+        "library": "elasticsearch >= 6.0",
         "instrumentation": "opentelemetry-instrumentation-elasticsearch==0.46b0.dev",
     },
     {
