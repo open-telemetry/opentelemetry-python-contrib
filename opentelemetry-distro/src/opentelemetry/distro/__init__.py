@@ -41,14 +41,5 @@ class OpenTelemetryDistro(BaseDistro):
         # Since the distro sets these env vars, these params are not necesary.
         # However they could replace these env var defaults.
         # Otherwise, they just serve as an example.
-        configuration_kwargs = {
-            # Could be trace_exporters or span_exporters
-            "span_exporter_names": ("otlp"),
-            "metric_exporter_names": ("otlp"),
-            "log_exporter_names": ("otlp"),
-            "sampler_name": None,
-            # Could be attribute dict or Resource object
-            "resource_attributes": {},
-            # Could be string or bool
-            "logging_enabled": False,
-        }
+        configuration_kwargs = {}
+        return configuration_kwargs
