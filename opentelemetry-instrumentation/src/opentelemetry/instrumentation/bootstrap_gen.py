@@ -25,10 +25,6 @@ libraries = [
         "instrumentation": "opentelemetry-instrumentation-aiohttp-client==0.46b0.dev",
     },
     {
-        "library": "aiohttp ~= 3.0",
-        "instrumentation": "opentelemetry-instrumentation-aiohttp-server==0.46b0.dev",
-    },
-    {
         "library": "aiopg >= 0.13.0, < 2.0.0",
         "instrumentation": "opentelemetry-instrumentation-aiopg==0.46b0.dev",
     },
@@ -191,7 +187,6 @@ default_instrumentations = [
     "opentelemetry-instrumentation-dbapi==0.46b0.dev",
     "opentelemetry-instrumentation-logging==0.46b0.dev",
     "opentelemetry-instrumentation-sqlite3==0.46b0.dev",
-    "opentelemetry-instrumentation-threading==0.46b0.dev",
     "opentelemetry-instrumentation-urllib==0.46b0.dev",
     "opentelemetry-instrumentation-wsgi==0.46b0.dev",
 ]
