@@ -21,5 +21,6 @@ References
 
 * `SQLAlchemy Project <https://www.sqlalchemy.org/>`_
 * `OpenTelemetry SQLAlchemy Tracing <https://opentelemetry-python-contrib.readthedocs.io/en/latest/instrumentation/sqlalchemy/sqlalchemy.html>`_
+* `sqlcommenter Project <https://google.github.io/sqlcommenter/>`_
 * `OpenTelemetry Project <https://opentelemetry.io/>`_
 * `OpenTelemetry Python Examples <https://github.com/open-telemetry/opentelemetry-python/tree/main/docs/examples>`_

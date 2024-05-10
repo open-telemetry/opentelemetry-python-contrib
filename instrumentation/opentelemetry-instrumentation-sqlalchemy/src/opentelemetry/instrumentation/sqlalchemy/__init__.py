@@ -20,12 +20,21 @@ the ``opentelemetry-instrument`` executable which will automatically
 instrument your SQLAlchemy engine. The second is to programmatically enable
 instrumentation via the following code:
 
+.. code:: python
+
+    from opentelemetry.instrumentation.sqlalchemy import SQLAlchemyInstrumentor
+
+    SQLAlchemyInstrumentor().instrument()
+
 .. _sqlalchemy: https://pypi.org/project/sqlalchemy/
 
-SQLCOMMENTER
-****************************************
-You can optionally configure SQLAlchemy instrumentation to enable sqlcommenter which enriches
+sqlcommenter
+************
+
+You can optionally configure SQLAlchemy instrumentation to enable `sqlcommenter`_ which enriches
 the query with contextual information.
+
+.. _sqlcommenter: https://google.github.io/sqlcommenter/
 
 Usage
 -----
@@ -37,36 +46,31 @@ Usage
     SQLAlchemyInstrumentor().instrument(enable_commenter=True, commenter_options={})
 
 
-For example,
-::
+For example, invoking ``engine.execute("select * from auth_users")``
+will lead to the SQL query ``select * from auth_users`` but when sqlcommenter is enabled
+the query will get appended with some configurable tags like ``select * from auth_users /*tag=value*/;``
 
-    Invoking engine.execute("select * from auth_users") will lead to sql query "select * from auth_users" but when SQLCommenter is enabled
-    the query will get appended with some configurable tags like "select * from auth_users /*tag=value*/;"
-
-SQLCommenter Configurations
+sqlcommenter Configurations
 ***************************
-We can configure the tags to be appended to the sqlquery log by adding configuration inside commenter_options(default:{}) keyword
 
-db_driver = True(Default) or False
+We can configure the tags to be appended to the sqlquery log
+by adding configuration inside ``commenter_options`` (default: ``{}``).
 
-For example,
-::
-Enabling this flag will add any underlying driver like psycopg2 /*db_driver='psycopg2'*/
+* ``db_driver = True  # (default) or False``
 
-db_framework = True(Default) or False
+  Enabling this flag will add any underlying driver like psycopg2: ``/*db_driver='psycopg2'*/``.
 
-For example,
-::
-Enabling this flag will add db_framework and it's version /*db_framework='sqlalchemy:0.41b0'*/
+* ``db_framework = True  # (default) or False``
 
-opentelemetry_values = True(Default) or False
+  Enabling this flag will add ``db_framework`` and its version: ``/*db_framework='sqlalchemy:0.41b0'*/``.
 
-For example,
-::
-Enabling this flag will add traceparent values /*traceparent='00-03afa25236b8cd948fa853d67038ac79-405ff022e8247c46-01'*/
+* ``opentelemetry_values = True  # (default) or False``
+
+  Enabling this flag will add ``traceparent`` values: ``/*traceparent='00-03afa25236b8cd948fa853d67038ac79-405ff022e8247c46-01'*/``
 
 Usage
 -----
+
 .. code:: python
 
     from sqlalchemy import create_engine
@@ -79,8 +83,7 @@ Usage
         engine=engine,
     )
 
-    # of the async variant of SQLAlchemy
-
+    # or the async variant of SQLAlchemy
     from sqlalchemy.ext.asyncio import create_async_engine
 
     from opentelemetry.instrumentation.sqlalchemy import SQLAlchemyInstrumentor

@@ -1,5 +1,7 @@
-OpenTelemetry SQLAlchemy Instrumentation
-========================================
+.. include:: ../../../instrumentation/opentelemetry-instrumentation-sqlalchemy/README.rst
+
+API
+---
 
 .. automodule:: opentelemetry.instrumentation.sqlalchemy
     :members:
