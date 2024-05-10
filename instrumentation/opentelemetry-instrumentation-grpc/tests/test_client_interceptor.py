@@ -173,8 +173,8 @@ class TestClientProto(TestBase):
 
     def test_unary_stream_can_be_cancel(self):
         responses = server_streaming_method(self._stub, serialize=False)
-        for i, _ in enumerate(responses):
-            if i == 1:
+        for response_num, _ in enumerate(responses):
+            if response_num == 1:
                 responses.cancel()
                 break
         spans = self.memory_exporter.get_finished_spans()
@@ -280,8 +280,8 @@ class TestClientProto(TestBase):
 
     def test_stream_stream_can_be_cancel(self):
         responses = bidirectional_streaming_method(self._stub, serialize=False)
-        for i, _ in enumerate(responses):
-            if i == 1:
+        for response_num, _ in enumerate(responses):
+            if response_num == 1:
                 responses.cancel()
                 break
         spans = self.memory_exporter.get_finished_spans()
