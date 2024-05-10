@@ -14,6 +14,7 @@
 from unittest import TestCase, mock
 
 from pika.adapters import BlockingConnection
+from pika.adapters.blocking_connection import _QueueConsumerGeneratorInfo
 from pika.channel import Channel
 from wrapt import BoundFunctionWrapper
 
@@ -21,7 +22,10 @@ from opentelemetry.instrumentation.pika import PikaInstrumentor
 from opentelemetry.instrumentation.pika.pika_instrumentor import (
     _consumer_callback_attribute_name,
 )
-from opentelemetry.instrumentation.pika.utils import dummy_callback
+from opentelemetry.instrumentation.pika.utils import (
+    ReadyMessagesDequeProxy,
+    dummy_callback,
+)
 from opentelemetry.trace import Tracer
 
 
@@ -40,12 +44,22 @@ class TestPika(TestCase):
         self.assertTrue(
             isinstance(BlockingConnection.channel, BoundFunctionWrapper)
         )
+        self.assertTrue(
+            isinstance(
+                _QueueConsumerGeneratorInfo.__init__, BoundFunctionWrapper
+            )
+        )
         assert hasattr(
             instrumentation, "__opentelemetry_tracer_provider"
         ), "Tracer not stored for the object!"
-        instrumentation.uninstrument(channel=self.channel)
+        instrumentation.uninstrument()
         self.assertFalse(
             isinstance(BlockingConnection.channel, BoundFunctionWrapper)
+        )
+        self.assertFalse(
+            isinstance(
+                _QueueConsumerGeneratorInfo.__init__, BoundFunctionWrapper
+            )
         )
 
     @mock.patch(
@@ -57,7 +71,7 @@ class TestPika(TestCase):
     @mock.patch(
         "opentelemetry.instrumentation.pika.PikaInstrumentor._instrument_blocking_channel_consumers"
     )
-    def test_instrument(
+    def test_instrument_channel(
         self,
         instrument_blocking_channel_consumers: mock.MagicMock,
         instrument_basic_consume: mock.MagicMock,
@@ -108,6 +122,23 @@ class TestPika(TestCase):
         )
         self.assertEqual(
             self.channel.basic_publish, decorate_basic_publish.return_value
+        )
+
+    def test_instrument_queue_consumer_generator(self) -> None:
+        instrumentation = PikaInstrumentor()
+        instrumentation.instrument()
+        generator_info = _QueueConsumerGeneratorInfo(
+            params=("queue", False, False), consumer_tag="tag"
+        )
+        self.assertTrue(
+            isinstance(generator_info.pending_events, ReadyMessagesDequeProxy)
+        )
+        instrumentation.uninstrument()
+        generator_info = _QueueConsumerGeneratorInfo(
+            params=("queue", False, False), consumer_tag="tag"
+        )
+        self.assertFalse(
+            isinstance(generator_info.pending_events, ReadyMessagesDequeProxy)
         )
 
     def test_uninstrument_channel_functions(self) -> None:

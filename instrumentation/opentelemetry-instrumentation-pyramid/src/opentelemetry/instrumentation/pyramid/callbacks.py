@@ -106,9 +106,9 @@ def _before_traversal(event):
     if span.is_recording():
         attributes = otel_wsgi.collect_request_attributes(request_environ)
         if request.matched_route:
-            attributes[
-                SpanAttributes.HTTP_ROUTE
-            ] = request.matched_route.pattern
+            attributes[SpanAttributes.HTTP_ROUTE] = (
+                request.matched_route.pattern
+            )
         for key, value in attributes.items():
             span.set_attribute(key, value)
         if span.kind == trace.SpanKind.SERVER:
@@ -140,7 +140,7 @@ def trace_tween_factory(handler, registry):
     duration_histogram = meter.create_histogram(
         name=MetricInstruments.HTTP_SERVER_DURATION,
         unit="ms",
-        description="measures the duration of the inbound HTTP request",
+        description="Duration of HTTP client requests.",
     )
     active_requests_counter = meter.create_up_down_counter(
         name=MetricInstruments.HTTP_SERVER_ACTIVE_REQUESTS,
@@ -201,9 +201,9 @@ def trace_tween_factory(handler, registry):
             status = getattr(response, "status", status)
             status_code = otel_wsgi._parse_status_code(status)
             if status_code is not None:
-                duration_attrs[
-                    SpanAttributes.HTTP_STATUS_CODE
-                ] = otel_wsgi._parse_status_code(status)
+                duration_attrs[SpanAttributes.HTTP_STATUS_CODE] = (
+                    otel_wsgi._parse_status_code(status)
+                )
             duration_histogram.record(duration, duration_attrs)
             active_requests_counter.add(-1, active_requests_count_attrs)
             span = request.environ.get(_ENVIRON_SPAN_KEY)

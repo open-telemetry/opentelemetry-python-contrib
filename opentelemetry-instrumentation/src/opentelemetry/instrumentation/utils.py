@@ -13,16 +13,22 @@
 # limitations under the License.
 
 import urllib.parse
+from contextlib import contextmanager
 from re import escape, sub
-from typing import Dict, Sequence
+from typing import Dict, Iterable, Sequence
 
 from wrapt import ObjectProxy
 
 from opentelemetry import context, trace
 
-# pylint: disable=unused-import
 # pylint: disable=E0611
-from opentelemetry.context import _SUPPRESS_INSTRUMENTATION_KEY  # noqa: F401
+# FIXME: fix the importing of these private attributes when the location of the _SUPPRESS_HTTP_INSTRUMENTATION_KEY is defined.=
+from opentelemetry.context import (
+    _SUPPRESS_HTTP_INSTRUMENTATION_KEY,
+    _SUPPRESS_INSTRUMENTATION_KEY,
+)
+
+# pylint: disable=E0611
 from opentelemetry.propagate import extract
 from opentelemetry.trace import StatusCode
 from opentelemetry.trace.propagation.tracecontext import (
@@ -152,3 +158,42 @@ def _python_path_without_directory(python_path, directory, path_separator):
         "",
         python_path,
     )
+
+
+def is_instrumentation_enabled() -> bool:
+    if context.get_value(_SUPPRESS_INSTRUMENTATION_KEY):
+        return False
+    return True
+
+
+def is_http_instrumentation_enabled() -> bool:
+    return is_instrumentation_enabled() and not context.get_value(
+        _SUPPRESS_HTTP_INSTRUMENTATION_KEY
+    )
+
+
+@contextmanager
+def _suppress_instrumentation(*keys: str) -> Iterable[None]:
+    """Suppress instrumentation within the context."""
+    ctx = context.get_current()
+    for key in keys:
+        ctx = context.set_value(key, True, ctx)
+    token = context.attach(ctx)
+    try:
+        yield
+    finally:
+        context.detach(token)
+
+
+@contextmanager
+def suppress_instrumentation() -> Iterable[None]:
+    """Suppress instrumentation within the context."""
+    with _suppress_instrumentation(_SUPPRESS_INSTRUMENTATION_KEY):
+        yield
+
+
+@contextmanager
+def suppress_http_instrumentation() -> Iterable[None]:
+    """Suppress instrumentation within the context."""
+    with _suppress_instrumentation(_SUPPRESS_HTTP_INSTRUMENTATION_KEY):
+        yield

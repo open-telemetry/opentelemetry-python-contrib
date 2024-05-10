@@ -245,9 +245,11 @@ def _wrap_perform_request(
                 if method:
                     attributes["elasticsearch.method"] = method
                 if body:
-                    attributes[SpanAttributes.DB_STATEMENT] = sanitize_body(
-                        body
-                    )
+                    # Don't set db.statement for bulk requests, as it can be very large
+                    if isinstance(body, dict):
+                        attributes[SpanAttributes.DB_STATEMENT] = (
+                            sanitize_body(body)
+                        )
                 if params:
                     attributes["elasticsearch.params"] = str(params)
                 if doc_id:

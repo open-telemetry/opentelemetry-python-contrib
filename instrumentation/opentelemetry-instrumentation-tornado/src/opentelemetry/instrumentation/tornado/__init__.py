@@ -296,7 +296,7 @@ def _create_server_histograms(meter) -> Dict[str, Histogram]:
         MetricInstruments.HTTP_SERVER_DURATION: meter.create_histogram(
             name=MetricInstruments.HTTP_SERVER_DURATION,
             unit="ms",
-            description="measures the duration outbound HTTP requests",
+            description="Duration of HTTP client requests.",
         ),
         MetricInstruments.HTTP_SERVER_REQUEST_SIZE: meter.create_histogram(
             name=MetricInstruments.HTTP_SERVER_REQUEST_SIZE,
@@ -455,9 +455,9 @@ def _get_attributes_from_request(request):
         if hasattr(request.connection, "context") and getattr(
             request.connection.context, "_orig_remote_ip", None
         ):
-            attrs[
-                SpanAttributes.NET_PEER_IP
-            ] = request.connection.context._orig_remote_ip
+            attrs[SpanAttributes.NET_PEER_IP] = (
+                request.connection.context._orig_remote_ip
+            )
 
     return extract_attributes_from_object(
         request, _traced_request_attrs, attrs
