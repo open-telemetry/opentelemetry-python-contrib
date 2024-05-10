@@ -327,7 +327,7 @@ class DjangoInstrumentor(BaseInstrumentor):
         _DjangoMiddleware._active_request_counter = meter.create_up_down_counter(
             name=MetricInstruments.HTTP_SERVER_ACTIVE_REQUESTS,
             unit="requests",
-            description="measures the number of concurrent HTTP requests those are currently in flight",
+            description="measures the number of concurrent HTTP requests that are currently in-flight",
         )
         # This can not be solved, but is an inherent problem of this approach:
         # the order of middleware entries matters, and here you have no control
