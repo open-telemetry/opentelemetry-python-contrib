@@ -1,9 +1,10 @@
+from unittest import mock
+
 from asyncpg import Connection, cursor
+from wrapt import ObjectProxy
 
 from opentelemetry.instrumentation.asyncpg import AsyncPGInstrumentor
 from opentelemetry.test.test_base import TestBase
-
-from wrapt import ObjectProxy
 
 
 class TestAsyncPGInstrumentation(TestBase):
@@ -54,3 +55,14 @@ class TestAsyncPGInstrumentation(TestBase):
         AsyncPGInstrumentor().uninstrument()
         assert_wrapped(self.assertFalse)
 
+    async def test_cursor_span_creation(self):
+        def mock_fn(*args, **kwargs):
+            pass
+
+        cursor_mock = mock.Mock()
+
+        apg = AsyncPGInstrumentor()
+        await apg._do_cursor_execute(mock_fn, cursor_mock, "SELECT * FROM test", {})
+
+        spans = self.memory_exporter.get_finished_spans()
+        self.assertEqual(len(spans), 2)
