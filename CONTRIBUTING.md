@@ -62,13 +62,24 @@ You can run `tox` with the following arguments:
 - `tox -e py311-test-instrumentation-aiopg` to e.g. run the aiopg instrumentation unit tests under a specific
   Python version
 - `tox -e spellcheck` to run a spellcheck on all the code
-- `tox -e lint` to run lint checks on all code
+- `tox -e lint-some-package` to run lint checks on `some-package`
 
 `black` and `isort` are executed when `tox -e lint` is run. The reported errors can be tedious to fix manually.
 An easier way to do so is:
 
 1. Run `.tox/lint/bin/black .`
 2. Run `.tox/lint/bin/isort .`
+
+Or you can call formatting and linting in one command by [pre-commit](https://pre-commit.com/):
+
+```console
+$ pre-commit
+```
+
+You can also configure it to run lint tools automatically before committing with:
+
+```console
+$ pre-commit install
 
 See
 [`tox.ini`](https://github.com/open-telemetry/opentelemetry-python-contrib/blob/main/tox.ini)

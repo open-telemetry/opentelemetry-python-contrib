@@ -12,9 +12,9 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+# pylint: disable=import-error
 
-_instruments = ("flask >= 1.0",)
+from .processor import BaggageSpanProcessor
+from .version import __version__
 
-_supports_metrics = True
-
-_semconv_status = "migration"
+__all__ = ["BaggageSpanProcessor", "__version__"]

@@ -3,9 +3,9 @@ requires = ["hatchling"]
 build-backend = "hatchling.build"
 
 [project]
-name = "opentelemetry-instrumentation-grpc"
+name = "opentelemetry-processor-baggage"
 dynamic = ["version"]
-description = "OpenTelemetry gRPC instrumentation"
+description = "OpenTelemetry Baggage Span Processor"
 readme = "README.rst"
 license = "Apache-2.0"
 requires-python = ">=3.8"
@@ -24,28 +24,15 @@ classifiers = [
   "Programming Language :: Python :: 3.11",
 ]
 dependencies = [
-  "opentelemetry-api ~= 1.12",
-  "opentelemetry-instrumentation == 0.46b0.dev",
-  "opentelemetry-semantic-conventions == 0.46b0.dev",
+  "opentelemetry-api ~= 1.5",
   "wrapt >= 1.0.0, < 2.0.0",
 ]
 
-[project.optional-dependencies]
-instruments = [
-  "grpcio ~= 1.27",
-]
-
-[project.entry-points.opentelemetry_instrumentor]
-grpc_client = "opentelemetry.instrumentation.grpc:GrpcInstrumentorClient"
-grpc_server = "opentelemetry.instrumentation.grpc:GrpcInstrumentorServer"
-grpc_aio_client = "opentelemetry.instrumentation.grpc:GrpcAioInstrumentorClient"
-grpc_aio_server = "opentelemetry.instrumentation.grpc:GrpcAioInstrumentorServer"
-
 [project.urls]
-Homepage = "https://github.com/open-telemetry/opentelemetry-python-contrib/tree/main/instrumentation/opentelemetry-instrumentation-grpc"
+Homepage = "https://github.com/open-telemetry/opentelemetry-python-contrib/tree/main/processor/opentelemetry-processor-baggage"
 
 [tool.hatch.version]
-path = "src/opentelemetry/instrumentation/grpc/version.py"
+path = "src/opentelemetry/processor/baggage/version.py"
 
 [tool.hatch.build.targets.sdist]
 include = [

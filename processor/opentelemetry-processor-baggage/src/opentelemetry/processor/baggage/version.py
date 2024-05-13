@@ -12,9 +12,4 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-
-_instruments = ("flask >= 1.0",)
-
-_supports_metrics = True
-
-_semconv_status = "migration"
+__version__ = "0.46b0.dev"

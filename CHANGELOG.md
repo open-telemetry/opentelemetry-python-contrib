@@ -15,6 +15,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   ([#2372](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/2372))
 - Drop support for instrumenting elasticsearch client < 6`
   ([#2422](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/2422))
+- `opentelemetry-instrumentation-wsgi` Add `http.method` to `span.name`
+  ([#2425](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/2425))
+- `opentelemetry-instrumentation-flask` Add `http.method` to `span.name`
+  ([#2454](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/2454))
 
 ### Added
 
@@ -23,11 +27,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   ([#2382](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/2382))
 - `opentelemetry-instrumentation-wsgi` Implement new semantic convention opt-in with stable http semantic conventions
   ([#2425](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/2425))
+- `opentelemetry-instrumentation-flask` Implement new semantic convention opt-in with stable http semantic conventions
+  ([#2454](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/2454))
 - `opentelemetry-instrumentation-threading` Initial release for threading
   ([#2253](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/2253))
 - `opentelemetry-instrumentation-pika` Instrumentation for `channel.consume()` (supported
   only for global, non channel specific instrumentation)
   ([#2397](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/2397)))
+- `opentelemetry-processor-baggage` Initial release
+  ([#2436](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/2436))
 
 ### Fixed
 
@@ -35,8 +43,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   ([#2363](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/2363))
 - `opentelemetry-instrumentation-boto3sqs` Instrument Session and resource
   ([#2161](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/2161))
+- `opentelemetry-instrumentation-aws-lambda` Fix exception handling for events with requestContext
+  ([#2418](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/2418))
 - Use sqlalchemy version in sqlalchemy commenter instead of opentelemetry library version
   ([#2404](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/2404))
+- `opentelemetry-instrumentation-asyncio` Check for cancelledException in the future
+  ([#2461](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/2461))
+- Remove SDK dependency from opentelemetry-instrumentation-grpc
+  ([#2474](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/2474))
 
 ## Version 1.24.0/0.45b0 (2024-03-28)
 

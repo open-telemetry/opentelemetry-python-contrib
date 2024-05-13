@@ -12,9 +12,26 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import os
 
-_instruments = ("flask >= 1.0",)
+from ._constants import (
+    _AKS_ARM_NAMESPACE_ID,
+    _FUNCTIONS_WORKER_RUNTIME,
+    _WEBSITE_SITE_NAME,
+)
 
-_supports_metrics = True
 
-_semconv_status = "migration"
+def _is_on_aks() -> bool:
+    return os.environ.get(_AKS_ARM_NAMESPACE_ID) is not None
+
+
+def _is_on_app_service() -> bool:
+    return os.environ.get(_WEBSITE_SITE_NAME) is not None
+
+
+def _is_on_functions() -> bool:
+    return os.environ.get(_FUNCTIONS_WORKER_RUNTIME) is not None
+
+
+def _can_ignore_vm_detect() -> bool:
+    return _is_on_aks() or _is_on_app_service() or _is_on_functions()

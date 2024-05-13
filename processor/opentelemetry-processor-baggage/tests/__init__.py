@@ -11,10 +11,3 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-
-
-_instruments = ("flask >= 1.0",)
-
-_supports_metrics = True
-
-_semconv_status = "migration"
