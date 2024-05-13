@@ -19,7 +19,7 @@ import aiohttp
 import pytest
 import pytest_asyncio
 
-from opentelemetry import trace as trace_api
+from opentelemetry import trace as trace_api, baggage, trace
 from opentelemetry.instrumentation.aiohttp_server import (
     AioHttpServerInstrumentor,
 )
@@ -61,6 +61,10 @@ def fixture_tracer():
 
 
 async def default_handler(request, status=200):
+    b = baggage.get_baggage("baggage-key")
+    span = trace.get_current_span()
+    if b is not None:
+        span.set_attribute("extracted-baggage-key", str(b))
     return aiohttp.web.Response(status=status)
 
 
@@ -128,3 +132,25 @@ async def test_status_code_instrumentation(
         f"http://{server.host}:{server.port}{url}"
         == span.attributes[SpanAttributes.HTTP_URL]
     )
+
+
+@pytest.mark.asyncio
+async def test_baggage_propagation(
+    tracer,
+    server_fixture,
+    aiohttp_client,
+):
+    _, memory_exporter = tracer
+    server, _ = server_fixture
+
+    assert len(memory_exporter.get_finished_spans()) == 0
+
+    client = await aiohttp_client(server)
+
+    await client.get("/test-path", headers={"baggage": "baggage-key=value"})
+
+    assert len(memory_exporter.get_finished_spans()) == 1
+
+    [span] = memory_exporter.get_finished_spans()
+
+    assert "value" == span.attributes["extracted-baggage-key"]
