@@ -12,8 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from typing import Optional
-from os import environ
+from os import environ, getpid
 
 from opentelemetry.sdk.resources import Resource, ResourceDetector
 from opentelemetry.semconv.resource import (
@@ -21,39 +20,49 @@ from opentelemetry.semconv.resource import (
     CloudProviderValues,
     ResourceAttributes,
 )
-from opentelemetry.resource.detector.azure._utils import _get_azure_resource_uri
 
 from ._constants import (
-    _APP_SERVICE_ATTRIBUTE_ENV_VARS,
+    _FUNCTIONS_ATTRIBUTE_ENV_VARS,
+    _REGION_NAME,
     _WEBSITE_SITE_NAME,
 )
+from opentelemetry.resource.detector.azure._utils import (
+    _get_azure_resource_uri,
+    _is_on_functions,
+)
 
-from opentelemetry.resource.detector.azure._utils import _is_on_functions
 
-
-class AzureAppServiceResourceDetector(ResourceDetector):
+class AzureFunctionsResourceDetector(ResourceDetector):
     def detect(self) -> Resource:
         attributes = {}
-        website_site_name = environ.get(_WEBSITE_SITE_NAME)
-        if website_site_name:
-            # Functions resource detector takes priority with `service.name` and `cloud.platform`
-            if not _is_on_functions():
+        if _is_on_functions():
+            website_site_name = environ.get(_WEBSITE_SITE_NAME)
+            if website_site_name:
                 attributes[ResourceAttributes.SERVICE_NAME] = website_site_name
-                attributes[ResourceAttributes.CLOUD_PLATFORM] = (
-                CloudPlatformValues.AZURE_APP_SERVICE.value
-            )
+            attributes[ResourceAttributes.PROCESS_PID] = getpid()
             attributes[ResourceAttributes.CLOUD_PROVIDER] = (
                 CloudProviderValues.AZURE.value
             )
-
+            attributes[ResourceAttributes.CLOUD_PLATFORM] = (
+                CloudPlatformValues.AZURE_FUNCTIONS.value
+            )
+            cloud_region = environ.get(_REGION_NAME)
+            if cloud_region:
+                attributes[ResourceAttributes.CLOUD_REGION] = cloud_region
             azure_resource_uri = _get_azure_resource_uri()
             if azure_resource_uri:
                 attributes[ResourceAttributes.CLOUD_RESOURCE_ID] = (
                     azure_resource_uri
                 )
-            for key, env_var in _APP_SERVICE_ATTRIBUTE_ENV_VARS.items():
+            for key, env_var in _FUNCTIONS_ATTRIBUTE_ENV_VARS.items():
                 value = environ.get(env_var)
                 if value:
+                    if key == ResourceAttributes.FAAS_MAX_MEMORY:
+                        try:
+                            value = int(value)
+                        except ValueError:
+                            continue
                     attributes[key] = value
 
         return Resource(attributes)
+
