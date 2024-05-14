@@ -12,8 +12,9 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 import unittest
+from collections.abc import Mapping
 from timeit import default_timer
-from typing import Mapping, Tuple
+from typing import Tuple
 from unittest.mock import patch
 
 import fastapi
