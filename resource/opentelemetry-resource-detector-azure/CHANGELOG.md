@@ -10,7 +10,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Ignore vm detector if already in other rps
   ([#2456](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/2456))
 - Implement functions resource detector
-  ([#2456](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/2456))
+  ([#2523](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/2523))
 
 ## Version 0.1.4 (2024-04-05)
 
