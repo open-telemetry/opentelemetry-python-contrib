@@ -1,4 +1,4 @@
-from confluent_kafka import Consumer
+from confluent_kafka import Consumer, Producer
 
 
 class MockConsumer(Consumer):
@@ -20,7 +20,7 @@ class MockConsumer(Consumer):
 
 
 class MockedMessage:
-    def __init__(self, topic: str, partition: int, offset: int, headers):
+    def __init__(self, topic: str, partition: int, offset: int, headers, key=None, value=None):
         self._topic = topic
         self._partition = partition
         self._offset = offset
@@ -37,3 +37,35 @@ class MockedMessage:
 
     def headers(self):
         return self._headers
+
+    def key(self):
+        return self._key
+
+    def value(self):
+        return self._value
+
+
+class MockedProducer(Producer):
+    def __init__(self, queue, config):
+        self._queue = queue
+        super().__init__(config)
+
+    def produce(
+        self, *args, **kwargs
+    ):  # pylint: disable=keyword-arg-before-vararg
+        self._queue.append(
+            MockedMessage(
+                topic=kwargs.get("topic"),
+                partition=0,
+                offset=0,
+                headers=[],
+                key=kwargs.get("key"),
+                value=kwargs.get("value")
+            )
+        )
+
+    def poll(self, timeout=None):
+        return len(self._queue)
+
+    def flush(self, timeout=None):
+        return len(self._queue)
