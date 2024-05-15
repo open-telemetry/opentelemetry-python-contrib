@@ -67,8 +67,8 @@ You can run `tox` with the following arguments:
 `black` and `isort` are executed when `tox -e lint` is run. The reported errors can be tedious to fix manually.
 An easier way to do so is:
 
-1. Run `.tox/lint-some-package/bin/black .`
-2. Run `.tox/lint-some-package/bin/isort .`
+1. Run `.tox/lint/bin/black .`
+2. Run `.tox/lint/bin/isort .`
 
 Or you can call formatting and linting in one command by [pre-commit](https://pre-commit.com/):
 

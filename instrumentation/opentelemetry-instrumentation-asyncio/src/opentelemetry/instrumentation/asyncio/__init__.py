@@ -116,21 +116,11 @@ class AsyncioInstrumentor(BaseInstrumentor):
         "run_coroutine_threadsafe",
     ]
 
-    def __init__(self):
-        super().__init__()
-        self.process_duration_histogram = None
-        self.process_created_counter = None
-
-        self._tracer = None
-        self._meter = None
-        self._coros_name_to_trace: set = set()
-        self._to_thread_name_to_trace: set = set()
-        self._future_active_enabled: bool = False
-
     def instrumentation_dependencies(self) -> Collection[str]:
         return _instruments
 
     def _instrument(self, **kwargs):
+        # pylint: disable=attribute-defined-outside-init
         self._tracer = get_tracer(
             __name__, __version__, kwargs.get("tracer_provider")
         )
@@ -307,13 +297,17 @@ class AsyncioInstrumentor(BaseInstrumentor):
         )
 
         def callback(f):
-            exception = f.exception()
             attr = {
                 "type": "future",
+                "state": (
+                    "cancelled"
+                    if f.cancelled()
+                    else determine_state(f.exception())
+                ),
             }
-            state = determine_state(exception)
-            attr["state"] = state
-            self.record_process(start, attr, span, exception)
+            self.record_process(
+                start, attr, span, None if f.cancelled() else f.exception()
+            )
 
         future.add_done_callback(callback)
         return future
