@@ -12,55 +12,43 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from tomli import load
-from os import path, listdir
-from subprocess import check_output, CalledProcessError
-from requests import get
+import os
+import subprocess
+from subprocess import CalledProcessError
 
-scripts_path = path.dirname(path.abspath(__file__))
-root_path = path.dirname(scripts_path)
-instrumentations_path = path.join(root_path, "instrumentation")
+import tomli
+
+scripts_path = os.path.dirname(os.path.abspath(__file__))
+root_path = os.path.dirname(scripts_path)
+instrumentations_path = os.path.join(root_path, "instrumentation")
 
 
 def get_instrumentation_packages():
-    for pkg in sorted(listdir(instrumentations_path)):
-        pkg_path = path.join(instrumentations_path, pkg)
-        if not path.isdir(pkg_path):
+    for pkg in sorted(os.listdir(instrumentations_path)):
+        pkg_path = os.path.join(instrumentations_path, pkg)
+        if not os.path.isdir(pkg_path):
             continue
 
-        error = f"Could not get version for package {pkg}"
-
         try:
-            hatch_version = check_output(
+            version = subprocess.check_output(
                 "hatch version",
                 shell=True,
                 cwd=pkg_path,
-                universal_newlines=True
+                universal_newlines=True,
             )
-
         except CalledProcessError as exc:
             print(f"Could not get hatch version from path {pkg_path}")
             print(exc.output)
+            raise exc
 
-        try:
-            response = get(f"https://pypi.org/pypi/{pkg}/json", timeout=10)
-
-        except Exception:
-            print(error)
-            continue
-
-        if response.status_code != 200:
-            print(error)
-            continue
-
-        pyproject_toml_path = path.join(pkg_path, "pyproject.toml")
+        pyproject_toml_path = os.path.join(pkg_path, "pyproject.toml")
 
         with open(pyproject_toml_path, "rb") as file:
-            pyproject_toml = load(file)
+            pyproject_toml = tomli.load(file)
 
         instrumentation = {
             "name": pyproject_toml["project"]["name"],
-            "version": hatch_version.strip(),
+            "version": version.strip(),
             "instruments": pyproject_toml["project"]["optional-dependencies"][
                 "instruments"
             ],
