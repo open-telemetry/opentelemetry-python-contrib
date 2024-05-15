@@ -218,6 +218,7 @@ from opentelemetry.util.http import (
     OTEL_INSTRUMENTATION_HTTP_CAPTURE_HEADERS_SANITIZE_FIELDS,
     OTEL_INSTRUMENTATION_HTTP_CAPTURE_HEADERS_SERVER_REQUEST,
     OTEL_INSTRUMENTATION_HTTP_CAPTURE_HEADERS_SERVER_RESPONSE,
+    ExcludeList,
     SanitizeValue,
     _parse_active_request_count_attrs,
     _parse_duration_attrs,
@@ -449,24 +450,34 @@ class OpenTelemetryMiddleware:
 
     Args:
         app: The ASGI application callable to forward requests to.
+        excluded_urls: Optional parameter to specify URLs that should be excluded from tracing.
+                       This can be useful for skipping health checks or other endpoints that do not need to be monitored.
+                       Should be an instance of :class:`opentelemetry.util.http.ExcludeList`. Defaults to None.
         default_span_details: Callback which should return a string and a tuple, representing the desired default span name and a
-                      dictionary with any additional span attributes to set.
-                      Optional: Defaults to get_default_span_details.
+                              dictionary with any additional span attributes to set.
+                              Optional: Defaults to get_default_span_details.
         server_request_hook: Optional callback which is called with the server span and ASGI
-                      scope object for every incoming request.
+                             scope object for every incoming request.
         client_request_hook: Optional callback which is called with the internal span and an ASGI
-                      scope which is sent as a dictionary for when the method receive is called.
+                             scope which is sent as a dictionary for when the method receive is called.
         client_response_hook: Optional callback which is called with the internal span and an ASGI
-                      event which is sent as a dictionary for when the method send is called.
-        tracer_provider: The optional tracer provider to use. If omitted
-            the current globally configured one is used.
+                              event which is sent as a dictionary for when the method send is called.
+        tracer_provider: The optional tracer provider to use. If omitted, the current globally configured one is used.
+        meter_provider: Optional. The meter provider to use for creating metric instruments. If omitted, the current globally configured meter provider is used.
+                        This allows for the collection of metrics in addition to traces.
+        http_capture_headers_server_request: Optional. A list of request header names whose values will be captured in the span attributes for server requests.
+                                             This can be used to include specific HTTP request headers in the tracing information.
+        http_capture_headers_server_response: Optional. A list of response header names whose values will be captured in the span attributes for server responses.
+                                              This allows for including specific HTTP response headers in the tracing data.
+        http_capture_headers_sanitize_fields: Optional. A list of header names for which the values should be sanitized before being added to the span.
+                                              This is useful for headers that contain sensitive information that should not be stored in trace data.
     """
 
     # pylint: disable=too-many-branches
     def __init__(
         self,
         app,
-        excluded_urls=None,
+        excluded_urls: ExcludeList = None,
         default_span_details=None,
         server_request_hook: _ServerRequestHookT = None,
         client_request_hook: _ClientRequestHookT = None,
