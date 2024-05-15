@@ -1,7 +1,9 @@
 from unittest import mock
+import asyncio
 
 from asyncpg import Connection, cursor
 from wrapt import ObjectProxy
+import pytest
 
 from opentelemetry.instrumentation.asyncpg import AsyncPGInstrumentor
 from opentelemetry.test.test_base import TestBase
@@ -55,14 +57,34 @@ class TestAsyncPGInstrumentation(TestBase):
         AsyncPGInstrumentor().uninstrument()
         assert_wrapped(self.assertFalse)
 
-    async def test_cursor_span_creation(self):
-        def mock_fn(*args, **kwargs):
+    def test_cursor_span_creation(self):
+        """ Test the cursor wrapper if it creates spans correctly.
+        """
+        async def mock_fn(*args, **kwargs):
             pass
 
+        async def mock_fn_stop(*args, **kwargs):
+            raise StopAsyncIteration()
+
         cursor_mock = mock.Mock()
+        cursor_mock._query = "SELECT * FROM test"
 
         apg = AsyncPGInstrumentor()
-        await apg._do_cursor_execute(mock_fn, cursor_mock, "SELECT * FROM test", {})
+        apg.instrument(tracer_provider=self.tracer_provider)
+
+        # Call the wrapper function directly. They only way to be able to do this on the real classes is to mock all of the
+        # methods. In that case we are only testing the instrumentation of mocked functions. This makes it explicit.
+        asyncio.run(apg._do_cursor_execute(mock_fn, cursor_mock, [], {}))
+
+        spans = self.memory_exporter.get_finished_spans()
+        self.assertEqual(len(spans), 1)
+        self.assertEqual(spans[0].name, "CURSOR: SELECT")
+        self.assertTrue(spans[0].status.is_ok)
+
+        # Now test that the StopAsyncIteration of the cursor does not get recorded as an ERROR
+        with pytest.raises(StopAsyncIteration):
+            asyncio.run(apg._do_cursor_execute(mock_fn_stop, cursor_mock, [], {}))
 
         spans = self.memory_exporter.get_finished_spans()
         self.assertEqual(len(spans), 2)
+        self.assertEqual([span.status.is_ok for span in spans], [True, True])
