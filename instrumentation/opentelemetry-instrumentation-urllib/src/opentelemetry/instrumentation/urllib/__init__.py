@@ -85,16 +85,13 @@ from urllib.request import (  # pylint: disable=no-name-in-module,import-error
     Request,
 )
 
-from opentelemetry import context
-
-# FIXME: fix the importing of this private attribute when the location of the _SUPPRESS_HTTP_INSTRUMENTATION_KEY is defined.
-from opentelemetry.context import _SUPPRESS_HTTP_INSTRUMENTATION_KEY
 from opentelemetry.instrumentation.instrumentor import BaseInstrumentor
 from opentelemetry.instrumentation.urllib.package import _instruments
 from opentelemetry.instrumentation.urllib.version import __version__
 from opentelemetry.instrumentation.utils import (
-    _SUPPRESS_INSTRUMENTATION_KEY,
     http_status_to_status_code,
+    is_http_instrumentation_enabled,
+    suppress_http_instrumentation,
 )
 from opentelemetry.metrics import Histogram, get_meter
 from opentelemetry.propagate import inject
@@ -159,9 +156,11 @@ class URLLibInstrumentor(BaseInstrumentor):
             histograms,
             request_hook=kwargs.get("request_hook"),
             response_hook=kwargs.get("response_hook"),
-            excluded_urls=_excluded_urls_from_env
-            if excluded_urls is None
-            else parse_excluded_urls(excluded_urls),
+            excluded_urls=(
+                _excluded_urls_from_env
+                if excluded_urls is None
+                else parse_excluded_urls(excluded_urls)
+            ),
         )
 
     def _uninstrument(self, **kwargs):
@@ -206,9 +205,7 @@ def _instrument(
     def _instrumented_open_call(
         _, request, call_wrapped, get_or_create_headers
     ):  # pylint: disable=too-many-locals
-        if context.get_value(
-            _SUPPRESS_INSTRUMENTATION_KEY
-        ) or context.get_value(_SUPPRESS_HTTP_INSTRUMENTATION_KEY):
+        if not is_http_instrumentation_enabled():
             return call_wrapped()
 
         url = request.full_url
@@ -236,18 +233,15 @@ def _instrument(
             headers = get_or_create_headers()
             inject(headers)
 
-            token = context.attach(
-                context.set_value(_SUPPRESS_HTTP_INSTRUMENTATION_KEY, True)
-            )
-            start_time = default_timer()
-            try:
-                result = call_wrapped()  # *** PROCEED
-            except Exception as exc:  # pylint: disable=W0703
-                exception = exc
-                result = getattr(exc, "file", None)
-            finally:
-                elapsed_time = round((default_timer() - start_time) * 1000)
-                context.detach(token)
+            with suppress_http_instrumentation():
+                start_time = default_timer()
+                try:
+                    result = call_wrapped()  # *** PROCEED
+                except Exception as exc:  # pylint: disable=W0703
+                    exception = exc
+                    result = getattr(exc, "file", None)
+                finally:
+                    elapsed_time = round((default_timer() - start_time) * 1000)
 
             if result is not None:
                 code_ = result.getcode()
@@ -259,9 +253,9 @@ def _instrument(
 
                 ver_ = str(getattr(result, "version", ""))
                 if ver_:
-                    labels[
-                        SpanAttributes.HTTP_FLAVOR
-                    ] = f"{ver_[:1]}.{ver_[:-1]}"
+                    labels[SpanAttributes.HTTP_FLAVOR] = (
+                        f"{ver_[:1]}.{ver_[:-1]}"
+                    )
 
             _record_histograms(
                 histograms, labels, request, result, elapsed_time

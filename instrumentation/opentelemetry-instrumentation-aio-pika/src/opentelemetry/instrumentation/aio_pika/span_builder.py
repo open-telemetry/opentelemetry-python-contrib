@@ -15,9 +15,7 @@ from typing import Optional
 
 from aio_pika.abc import AbstractChannel, AbstractMessage
 
-from opentelemetry.instrumentation.aio_pika.utils import (
-    is_instrumentation_enabled,
-)
+from opentelemetry.instrumentation.utils import is_instrumentation_enabled
 from opentelemetry.semconv.trace import (
     MessagingOperationValues,
     SpanAttributes,
@@ -49,8 +47,13 @@ class SpanBuilder:
         self._attributes[SpanAttributes.MESSAGING_DESTINATION] = destination
 
     def set_channel(self, channel: AbstractChannel):
-        connection = channel.connection
-        if getattr(connection, "connection", None):
+        if hasattr(channel, "_connection"):
+            # aio_rmq 9.1 and above removed the connection attribute from the abstract listings
+            connection = channel._connection
+        else:
+            # aio_rmq 9.0.5 and below
+            connection = channel.connection
+        if hasattr(connection, "connection"):
             # aio_rmq 7
             url = connection.connection.url
         else:
@@ -59,7 +62,7 @@ class SpanBuilder:
         self._attributes.update(
             {
                 SpanAttributes.NET_PEER_NAME: url.host,
-                SpanAttributes.NET_PEER_PORT: url.port,
+                SpanAttributes.NET_PEER_PORT: url.port or 5672,
             }
         )
 

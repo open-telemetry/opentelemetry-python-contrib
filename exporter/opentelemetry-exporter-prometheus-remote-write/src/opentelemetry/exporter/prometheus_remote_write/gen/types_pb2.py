@@ -31,31 +31,31 @@ if _descriptor._USE_C_DESCRIPTORS == False:
     DESCRIPTOR._options = None
     DESCRIPTOR._serialized_options = b"Z\006prompb"
     _EXEMPLAR.fields_by_name["labels"]._options = None
-    _EXEMPLAR.fields_by_name[
-        "labels"
-    ]._serialized_options = b"\310\336\037\000"
+    _EXEMPLAR.fields_by_name["labels"]._serialized_options = (
+        b"\310\336\037\000"
+    )
     _TIMESERIES.fields_by_name["labels"]._options = None
-    _TIMESERIES.fields_by_name[
-        "labels"
-    ]._serialized_options = b"\310\336\037\000"
+    _TIMESERIES.fields_by_name["labels"]._serialized_options = (
+        b"\310\336\037\000"
+    )
     _TIMESERIES.fields_by_name["samples"]._options = None
-    _TIMESERIES.fields_by_name[
-        "samples"
-    ]._serialized_options = b"\310\336\037\000"
+    _TIMESERIES.fields_by_name["samples"]._serialized_options = (
+        b"\310\336\037\000"
+    )
     _TIMESERIES.fields_by_name["exemplars"]._options = None
-    _TIMESERIES.fields_by_name[
-        "exemplars"
-    ]._serialized_options = b"\310\336\037\000"
+    _TIMESERIES.fields_by_name["exemplars"]._serialized_options = (
+        b"\310\336\037\000"
+    )
     _LABELS.fields_by_name["labels"]._options = None
     _LABELS.fields_by_name["labels"]._serialized_options = b"\310\336\037\000"
     _CHUNKEDSERIES.fields_by_name["labels"]._options = None
-    _CHUNKEDSERIES.fields_by_name[
-        "labels"
-    ]._serialized_options = b"\310\336\037\000"
+    _CHUNKEDSERIES.fields_by_name["labels"]._serialized_options = (
+        b"\310\336\037\000"
+    )
     _CHUNKEDSERIES.fields_by_name["chunks"]._options = None
-    _CHUNKEDSERIES.fields_by_name[
-        "chunks"
-    ]._serialized_options = b"\310\336\037\000"
+    _CHUNKEDSERIES.fields_by_name["chunks"]._serialized_options = (
+        b"\310\336\037\000"
+    )
     _METRICMETADATA._serialized_start = 152
     _METRICMETADATA._serialized_end = 400
     _METRICMETADATA_METRICTYPE._serialized_start = 279

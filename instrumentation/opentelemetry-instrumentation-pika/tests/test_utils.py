@@ -11,8 +11,14 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
+import collections
 from unittest import TestCase, mock
 
+from pika.adapters.blocking_connection import (
+    _ConsumerCancellationEvt,
+    _ConsumerDeliveryEvt,
+    _QueueConsumerGeneratorInfo,
+)
 from pika.channel import Channel
 from pika.spec import Basic, BasicProperties
 
@@ -292,7 +298,6 @@ class TestUtils(TestCase):
         use_span.assert_called_once_with(
             get_span.return_value, end_on_exit=True
         )
-        get_span.return_value.is_recording.assert_called_once()
         inject.assert_called_once_with(properties.headers)
         callback.assert_called_once_with(
             exchange_name, routing_key, mock_body, properties, False
@@ -323,7 +328,6 @@ class TestUtils(TestCase):
         use_span.assert_called_once_with(
             get_span.return_value, end_on_exit=True
         )
-        get_span.return_value.is_recording.assert_called_once()
         inject.assert_called_once_with(basic_properties.return_value.headers)
         self.assertEqual(retval, callback.return_value)
 
@@ -393,7 +397,6 @@ class TestUtils(TestCase):
         use_span.assert_called_once_with(
             get_span.return_value, end_on_exit=True
         )
-        get_span.return_value.is_recording.assert_called_once()
         inject.assert_called_once_with(properties.headers)
         publish_hook.assert_called_once_with(
             get_span.return_value, mock_body, properties
@@ -402,3 +405,162 @@ class TestUtils(TestCase):
             exchange_name, routing_key, mock_body, properties, False
         )
         self.assertEqual(retval, callback.return_value)
+
+    @mock.patch("opentelemetry.instrumentation.pika.utils._get_span")
+    @mock.patch("opentelemetry.propagate.inject")
+    @mock.patch("opentelemetry.trace.use_span")
+    def test_decorate_basic_publish_when_span_is_not_recording(
+        self,
+        use_span: mock.MagicMock,
+        inject: mock.MagicMock,
+        get_span: mock.MagicMock,
+    ) -> None:
+        callback = mock.MagicMock()
+        tracer = mock.MagicMock()
+        channel = mock.MagicMock(spec=Channel)
+        exchange_name = "test-exchange"
+        routing_key = "test-routing-key"
+        properties = mock.MagicMock()
+        mock_body = b"mock_body"
+        publish_hook = mock.MagicMock()
+
+        mocked_span = mock.MagicMock()
+        mocked_span.is_recording.return_value = False
+        get_span.return_value = mocked_span
+
+        decorated_basic_publish = utils._decorate_basic_publish(
+            callback, channel, tracer, publish_hook
+        )
+        retval = decorated_basic_publish(
+            exchange_name, routing_key, mock_body, properties
+        )
+        get_span.assert_called_once_with(
+            tracer,
+            channel,
+            properties,
+            destination=exchange_name,
+            span_kind=SpanKind.PRODUCER,
+            task_name="(temporary)",
+            operation=None,
+        )
+        use_span.assert_called_once_with(
+            get_span.return_value, end_on_exit=True
+        )
+        inject.assert_called_once_with(properties.headers)
+        publish_hook.assert_called_once_with(
+            get_span.return_value, mock_body, properties
+        )
+        callback.assert_called_once_with(
+            exchange_name, routing_key, mock_body, properties, False
+        )
+        self.assertEqual(retval, callback.return_value)
+
+    # pylint: disable=too-many-statements
+    @mock.patch("opentelemetry.instrumentation.pika.utils._get_span")
+    @mock.patch("opentelemetry.propagate.extract")
+    @mock.patch("opentelemetry.context.detach")
+    @mock.patch("opentelemetry.context.attach")
+    @mock.patch("opentelemetry.context.get_current")
+    def test_decorate_deque_proxy(
+        self,
+        context_get_current: mock.MagicMock,
+        context_attach: mock.MagicMock,
+        context_detach: mock.MagicMock,
+        extract: mock.MagicMock,
+        get_span: mock.MagicMock,
+    ) -> None:
+        returned_span = mock.MagicMock()
+        get_span.return_value = returned_span
+        consume_hook = mock.MagicMock()
+        tracer = mock.MagicMock()
+        generator_info = mock.MagicMock(
+            spec=_QueueConsumerGeneratorInfo,
+            pending_events=mock.MagicMock(spec=collections.deque),
+            consumer_tag="mock_task_name",
+        )
+        method = mock.MagicMock(spec=Basic.Deliver)
+        method.exchange = "test_exchange"
+        properties = mock.MagicMock()
+        evt = _ConsumerDeliveryEvt(method, properties, b"mock_body")
+        generator_info.pending_events.popleft.return_value = evt
+        proxy = utils.ReadyMessagesDequeProxy(
+            generator_info.pending_events, generator_info, tracer, consume_hook
+        )
+
+        # First call (no detach cleanup)
+        res = proxy.popleft()
+        self.assertEqual(res, evt)
+        generator_info.pending_events.popleft.assert_called_once()
+        extract.assert_called_once_with(
+            properties.headers, getter=utils._pika_getter
+        )
+        context_get_current.assert_called_once()
+        self.assertEqual(context_attach.call_count, 2)
+        self.assertEqual(context_detach.call_count, 1)
+        get_span.assert_called_once_with(
+            tracer,
+            None,
+            properties,
+            destination=method.exchange,
+            span_kind=SpanKind.CONSUMER,
+            task_name=generator_info.consumer_tag,
+            operation=MessagingOperationValues.RECEIVE,
+        )
+        consume_hook.assert_called_once()
+        returned_span.end.assert_called_once()
+
+        generator_info.pending_events.reset_mock()
+        extract.reset_mock()
+        context_get_current.reset_mock()
+        get_span.reset_mock()
+        context_attach.reset_mock()
+        context_detach.reset_mock()
+        returned_span.end.reset_mock()
+        consume_hook.reset_mock()
+
+        # Second call (has detach cleanup)
+        res = proxy.popleft()
+        self.assertEqual(res, evt)
+        generator_info.pending_events.popleft.assert_called_once()
+        extract.assert_called_once_with(
+            properties.headers, getter=utils._pika_getter
+        )
+        context_get_current.assert_called_once()
+        self.assertEqual(context_attach.call_count, 2)
+        self.assertEqual(context_detach.call_count, 2)
+        get_span.assert_called_once_with(
+            tracer,
+            None,
+            properties,
+            destination=method.exchange,
+            span_kind=SpanKind.CONSUMER,
+            task_name=generator_info.consumer_tag,
+            operation=MessagingOperationValues.RECEIVE,
+        )
+        consume_hook.assert_called_once()
+        returned_span.end.assert_called_once()
+        generator_info.pending_events.reset_mock()
+
+        extract.reset_mock()
+        context_get_current.reset_mock()
+        get_span.reset_mock()
+        context_attach.reset_mock()
+        context_detach.reset_mock()
+        returned_span.end.reset_mock()
+        consume_hook.reset_mock()
+
+        # Third call (cancellation event)
+        evt = _ConsumerCancellationEvt("")
+        generator_info.pending_events.popleft.return_value = evt
+
+        res = proxy.popleft()
+
+        self.assertEqual(res, evt)
+        generator_info.pending_events.popleft.assert_called_once()
+        extract.assert_not_called()
+        context_get_current.not_called()
+        context_detach.assert_called_once()
+        context_attach.assert_not_called()
+        get_span.assert_not_called()
+        consume_hook.assert_not_called()
+        returned_span.end.assert_not_called()
