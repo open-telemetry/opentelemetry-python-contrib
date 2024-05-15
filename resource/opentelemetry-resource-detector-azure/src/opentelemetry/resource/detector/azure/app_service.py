@@ -40,8 +40,8 @@ class AzureAppServiceResourceDetector(ResourceDetector):
             if not _is_on_functions():
                 attributes[ResourceAttributes.SERVICE_NAME] = website_site_name
                 attributes[ResourceAttributes.CLOUD_PLATFORM] = (
-                CloudPlatformValues.AZURE_APP_SERVICE.value
-            )
+                    CloudPlatformValues.AZURE_APP_SERVICE.value
+                )
             attributes[ResourceAttributes.CLOUD_PROVIDER] = (
                 CloudProviderValues.AZURE.value
             )
