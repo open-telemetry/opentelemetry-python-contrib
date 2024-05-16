@@ -21,6 +21,7 @@ from opentelemetry.resource.detector.azure.functions import (
 
 TEST_WEBSITE_SITE_NAME = "TEST_WEBSITE_SITE_NAME"
 TEST_REGION_NAME = "TEST_REGION_NAME"
+TEST_WEBSITE_SLOT_NAME = "TEST_WEBSITE_SLOT_NAME"
 TEST_WEBSITE_INSTANCE_ID = "TEST_WEBSITE_INSTANCE_ID"
 
 TEST_WEBSITE_RESOURCE_GROUP = "TEST_WEBSITE_RESOURCE_GROUP"
@@ -58,6 +59,9 @@ class TestAzureAppServiceResourceDetector(unittest.TestCase):
         )
 
         self.assertEqual(attributes["cloud.region"], TEST_REGION_NAME)
+        self.assertEqual(
+            attributes["deployment.environment"], TEST_WEBSITE_SLOT_NAME
+        )
         self.assertEqual(attributes["faas.instance"], TEST_WEBSITE_INSTANCE_ID)
         self.assertEqual(attributes["faas.max_memory"], 1024)
 
@@ -90,6 +94,9 @@ class TestAzureAppServiceResourceDetector(unittest.TestCase):
         )
 
         self.assertEqual(attributes["cloud.region"], TEST_REGION_NAME)
+        self.assertEqual(
+            attributes["deployment.environment"], TEST_WEBSITE_SLOT_NAME
+        )
         self.assertEqual(attributes["faas.instance"], TEST_WEBSITE_INSTANCE_ID)
         self.assertIsNone(attributes.get("faas.max_memory"))
 
