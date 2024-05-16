@@ -19,7 +19,7 @@ This library allows tracing HTTP elasticsearch made by the
 .. warning::
     The elasticsearch package got native OpenTelemetry support since version
     `8.13 <https://www.elastic.co/guide/en/elasticsearch/client/python-api/current/release-notes.html#rn-8-13-0>`_.
-    To avoid duplicated tracing this instrumentation disables itself if it founds an elasticsearch client
+    To avoid duplicated tracing this instrumentation disables itself if it finds an elasticsearch client
     that has OpenTelemetry support enabled.
 
     Please be aware that the two libraries may use a different semantic convention.
