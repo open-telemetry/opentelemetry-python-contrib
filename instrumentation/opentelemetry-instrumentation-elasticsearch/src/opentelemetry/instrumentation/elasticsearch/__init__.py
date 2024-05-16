@@ -17,7 +17,7 @@ This library allows tracing HTTP elasticsearch made by the
 `elasticsearch <https://elasticsearch-py.readthedocs.io/en/master/>`_ library.
 
 .. warning::
-    The elasticsearch package got native OpenTelemetry supportSince version
+    The elasticsearch package got native OpenTelemetry support since version
     `8.13 <https://www.elastic.co/guide/en/elasticsearch/client/python-api/current/release-notes.html#rn-8-13-0>`_.
     To avoid duplicated tracing this instrumentation disables itself if it founds an elasticsearch client
     that has OpenTelemetry support enabled.
