@@ -212,7 +212,7 @@ def _wrap_perform_request(
         if otel_span and otel_span.otel_span:
             warnings.warn(
                 "Instrumentation disabled, relying on elasticsearch native OTel support, see "
-                "https://opentelemetry-python-contrib.readthedocs.io/en/latest/instrumentation/elasticsearch/elasticsearch.html ",
+                "https://opentelemetry-python-contrib.readthedocs.io/en/latest/instrumentation/elasticsearch/elasticsearch.html",
                 Warning,
             )
             return wrapped(*args, **kwargs)
