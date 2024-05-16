@@ -89,6 +89,7 @@ API
 """
 
 import re
+import warnings
 from logging import getLogger
 from os import environ
 from typing import Collection
@@ -208,6 +209,9 @@ def _wrap_perform_request(
         # if wrapped elasticsearch has native OTel instrumentation just call the wrapped function
         otel_span = kwargs.get("otel_span")
         if otel_span and otel_span.otel_span:
+            warnings.warn(
+                "Using native elasticsearch OTel instrumentation", Warning
+            )
             return wrapped(*args, **kwargs)
 
         method = url = None
