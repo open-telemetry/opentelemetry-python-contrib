@@ -22,7 +22,8 @@ This library allows tracing HTTP elasticsearch made by the
     To avoid duplicated tracing this instrumentation disables itself if it finds an elasticsearch client
     that has OpenTelemetry support enabled.
 
-    Please be aware that the two libraries may use a different semantic convention.
+    Please be aware that the two libraries may use a different semantic convention, see
+    `elasticsearch documentation <https://www.elastic.co/guide/en/elasticsearch/client/python-api/current/opentelemetry.html>`_.
 
 Usage
 -----
@@ -210,7 +211,9 @@ def _wrap_perform_request(
         otel_span = kwargs.get("otel_span")
         if otel_span and otel_span.otel_span:
             warnings.warn(
-                "Using native elasticsearch OTel instrumentation", Warning
+                "Instrumentation disabled, relying on elasticsearch native OTel support, see "
+                "https://opentelemetry-python-contrib.readthedocs.io/en/latest/instrumentation/elasticsearch/elasticsearch.html ",
+                Warning,
             )
             return wrapped(*args, **kwargs)
 
