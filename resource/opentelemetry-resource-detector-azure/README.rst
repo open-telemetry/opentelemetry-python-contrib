@@ -67,7 +67,6 @@ The Azure App Service Resource Detector sets the following Resource Attributes:
  * ``cloud.provider`` set to ``azure``.
  * ``cloud.resource_id`` set using the ``WEBSITE_RESOURCE_GROUP``, ``WEBSITE_OWNER_NAME``, and ``WEBSITE_SITE_NAME`` environment variables.
  * ``cloud.region`` set to the value of the ``REGION_NAME`` environment variable.
- * ``deployment.environment`` set to the value of the ``WEBSITE_SLOT_NAME`` environment variable.
  * ``faas.instance`` set to the value of the ``WEBSITE_INSTANCE_ID`` environment variable.
  * ``faas.max_memory`` set to the value of the ``WEBSITE_MEMORY_LIMIT_MB`` environment variable.
 
