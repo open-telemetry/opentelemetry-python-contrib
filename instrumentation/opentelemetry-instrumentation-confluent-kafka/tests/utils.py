@@ -1,5 +1,5 @@
 from confluent_kafka import Consumer, Producer
-
+from typing import Optional
 
 class MockConsumer(Consumer):
     def __init__(self, queue, config):
@@ -20,11 +20,21 @@ class MockConsumer(Consumer):
 
 
 class MockedMessage:
-    def __init__(self, topic: str, partition: int, offset: int, headers, key=None, value=None):
+    def __init__(
+            self,
+            topic: str,
+            partition: int,
+            offset: int,
+            headers,
+            key: Optional[str]=None,
+            value=Optional[str]=None
+        ):
         self._topic = topic
         self._partition = partition
         self._offset = offset
         self._headers = headers
+        self._key = key
+        self._value = value
 
     def topic(self):
         return self._topic
