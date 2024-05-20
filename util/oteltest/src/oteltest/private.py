@@ -64,7 +64,9 @@ def handle_file(script_path, temp_dir, wheel_file):
     print(f"- Setting up environment for file {script_path}")
     script_dir = os.path.dirname(script_path)
     sys.path.append(script_dir)
-    setup_script_environment(temp_dir, script_dir, os.path.basename(script_path), wheel_file)
+    setup_script_environment(
+        temp_dir, script_dir, os.path.basename(script_path), wheel_file
+    )
 
 
 def ls_scripts(script_dir):
@@ -94,7 +96,9 @@ def setup_script_environment(venv_parent, script_dir, script, wheel_file):
         print(f"- Will install requirement: '{req}'")
         run_subprocess([pip_path, "install", req])
 
-    stdout, stderr, returncode = run_python_script(script_dir, script, oteltest_instance, script_venv)
+    stdout, stderr, returncode = run_python_script(
+        script_dir, script, oteltest_instance, script_venv
+    )
     print_subprocess_result(stdout, stderr, returncode)
 
     filename = get_next_json_file(script_dir, module_name)
@@ -123,7 +127,9 @@ def save_telemetry_json(script_dir: str, file_name: str, json_str: str):
         file.write(json_str)
 
 
-def run_python_script(script_dir: str, script: str, oteltest_instance: OtelTest, v) -> typing.Tuple[str, str, int]:
+def run_python_script(
+    script_dir: str, script: str, oteltest_instance: OtelTest, v
+) -> typing.Tuple[str, str, int]:
     print(f"- Running python script: {script}")
     python_script_cmd = [
         v.path_to_executable("python"),

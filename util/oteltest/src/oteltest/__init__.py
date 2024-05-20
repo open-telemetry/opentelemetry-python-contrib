@@ -74,4 +74,3 @@ class OtelTest(abc.ABC):
         Called immediately after the script has ended. Passed in are both the telemetry otelsink received while the
         script was running and the output of the script (stdout, stderr, returncode).
         """
-
