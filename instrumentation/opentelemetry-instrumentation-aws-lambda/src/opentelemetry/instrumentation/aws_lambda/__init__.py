@@ -145,7 +145,7 @@ def _default_event_context_extractor(lambda_event: Any) -> Context:
 def _determine_parent_context(
     lambda_event: Any,
     event_context_extractor: Callable[[Any], Context],
-    disable_aws_context_propagation: bool = False,
+    disable_aws_context_propagation: bool,
 ) -> Context:
     """Determine the parent context for the current Lambda invocation.
 
@@ -285,8 +285,8 @@ def _instrument(
     wrapped_function_name,
     flush_timeout,
     event_context_extractor: Callable[[Any], Context],
+    disable_aws_context_propagation: bool,
     tracer_provider: TracerProvider = None,
-    disable_aws_context_propagation: bool = False,
     meter_provider: MeterProvider = None,
 ):
     # pylint: disable=too-many-locals
@@ -458,6 +458,43 @@ def determine_flush_timeout() -> int:
     return flush_timeout
 
 
+def is_aws_context_propagation_disabled(
+    disable_aws_context_propagation_override: Any,
+) -> bool:
+    """
+    Determine if AWS context propagation should be disabled.
+
+    Propagation can be disabled by setting the `OTEL_LAMBDA_DISABLE_AWS_CONTEXT_PROPAGATION` environment variable to:
+    `true`, `1`, or `t`.
+    Or, by passing `True` to the `disable_aws_context_propagation` parameter in the `instrument` method.
+
+    Args:
+        disable_aws_context_propagation_override: Flag indicating whether AWS context propagation should be disabled.
+
+    Returns: True if AWS context propagation should be disabled, False otherwise.
+    """
+
+    if not isinstance(disable_aws_context_propagation_override, bool):
+        logger.warning(
+            "disable_aws_context_propagation must be a boolean, got %s",
+            type(disable_aws_context_propagation_override),
+        )
+        disable_aws_context_propagation_override = False
+
+    disable_from_env = False
+
+    # If the override is set, use it, otherwise check the environment variable.
+    if not disable_aws_context_propagation_override:
+        env_value = (
+            os.getenv(OTEL_LAMBDA_DISABLE_AWS_CONTEXT_PROPAGATION, "False")
+            .strip()
+            .lower()
+        )
+        disable_from_env = env_value in ("true", "1", "t")
+
+    return disable_aws_context_propagation_override or disable_from_env
+
+
 class AwsLambdaInstrumentor(BaseInstrumentor):
     def instrumentation_dependencies(self) -> Collection[str]:
         return _instruments
@@ -480,22 +517,13 @@ class AwsLambdaInstrumentor(BaseInstrumentor):
                     will try to read the context from the `_X_AMZN_TRACE_ID` environment
                     variable set by Lambda, set this to `True` to disable this behavior.
         """
+
         lambda_handler = os.environ.get(ORIG_HANDLER, os.environ.get(_HANDLER))
         # pylint: disable=attribute-defined-outside-init
         (
             self._wrapped_module_name,
             self._wrapped_function_name,
         ) = lambda_handler.rsplit(".", 1)
-
-        disable_aws_context_propagation = kwargs.get(
-            "disable_aws_context_propagation", False
-        ) or os.getenv(
-            OTEL_LAMBDA_DISABLE_AWS_CONTEXT_PROPAGATION, "False"
-        ).strip().lower() in (
-            "true",
-            "1",
-            "t",
-        )
 
         _instrument(
             self._wrapped_module_name,
@@ -505,7 +533,11 @@ class AwsLambdaInstrumentor(BaseInstrumentor):
                 "event_context_extractor", _default_event_context_extractor
             ),
             tracer_provider=kwargs.get("tracer_provider"),
-            disable_aws_context_propagation=disable_aws_context_propagation,
+            disable_aws_context_propagation=is_aws_context_propagation_disabled(
+                disable_aws_context_propagation_override=kwargs.get(
+                    "disable_aws_context_propagation", False
+                )
+            ),
             meter_provider=kwargs.get("meter_provider"),
         )
 
