@@ -433,6 +433,31 @@ def _instrument(
     )
 
 
+def determine_flush_timeout() -> int:
+    """
+    Determine the flush timeout for the Lambda function.
+
+    Returns: Flush timeout in milliseconds
+    """
+
+    flush_timeout_env = os.environ.get(
+        OTEL_INSTRUMENTATION_AWS_LAMBDA_FLUSH_TIMEOUT, None
+    )
+
+    flush_timeout = 30000
+
+    try:
+        if flush_timeout_env is not None:
+            flush_timeout = int(flush_timeout_env)
+    except ValueError:
+        logger.warning(
+            "Could not convert OTEL_INSTRUMENTATION_AWS_LAMBDA_FLUSH_TIMEOUT value %s to int",
+            flush_timeout_env,
+        )
+
+    return flush_timeout
+
+
 class AwsLambdaInstrumentor(BaseInstrumentor):
     def instrumentation_dependencies(self) -> Collection[str]:
         return _instruments
@@ -462,19 +487,6 @@ class AwsLambdaInstrumentor(BaseInstrumentor):
             self._wrapped_function_name,
         ) = lambda_handler.rsplit(".", 1)
 
-        flush_timeout_env = os.environ.get(
-            OTEL_INSTRUMENTATION_AWS_LAMBDA_FLUSH_TIMEOUT, None
-        )
-        flush_timeout = 30000
-        try:
-            if flush_timeout_env is not None:
-                flush_timeout = int(flush_timeout_env)
-        except ValueError:
-            logger.warning(
-                "Could not convert OTEL_INSTRUMENTATION_AWS_LAMBDA_FLUSH_TIMEOUT value %s to int",
-                flush_timeout_env,
-            )
-
         disable_aws_context_propagation = kwargs.get(
             "disable_aws_context_propagation", False
         ) or os.getenv(
@@ -488,7 +500,7 @@ class AwsLambdaInstrumentor(BaseInstrumentor):
         _instrument(
             self._wrapped_module_name,
             self._wrapped_function_name,
-            flush_timeout,
+            flush_timeout=determine_flush_timeout(),
             event_context_extractor=kwargs.get(
                 "event_context_extractor", _default_event_context_extractor
             ),
