@@ -15,7 +15,6 @@ import json
 import pathlib
 
 import pytest
-
 from oteltest import telemetry
 from oteltest.private import get_next_json_file, save_telemetry_json
 

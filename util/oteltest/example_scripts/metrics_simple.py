@@ -5,7 +5,8 @@ from oteltest import OtelTest, Telemetry
 
 def print_time(iterations):
     import time
-    from opentelemetry import trace, metrics
+
+    from opentelemetry import metrics, trace
 
     meter = metrics.get_meter("time-printer", "1.0")
     print(f"got meter: {meter}")
