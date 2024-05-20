@@ -26,7 +26,7 @@ import venv
 from pathlib import Path
 
 from google.protobuf.json_format import MessageToDict
-from oteltest import OtelTest, Telemetry
+from oteltest import OtelTest, telemetry
 from oteltest.sink import GrpcSink, RequestHandler
 
 from opentelemetry.proto.collector.logs.v1.logs_service_pb2 import (
@@ -40,15 +40,31 @@ from opentelemetry.proto.collector.trace.v1.trace_service_pb2 import (
 )
 
 
-def run(script_dir: str, wheel_file: str, venv_parent_dir: str):
+def run(script_path: str, wheel_file: str, venv_parent_dir: str):
     temp_dir = venv_parent_dir or tempfile.mkdtemp()
     print(f"- Using temp dir for venvs: {temp_dir}")
 
-    sys.path.append(script_dir)
+    if os.path.isdir(script_path):
+        handle_dir(script_path, temp_dir, wheel_file)
+    elif os.path.isfile(script_path):
+        handle_file(script_path, temp_dir, wheel_file)
+    else:
+        print(f"- {script_path} does not exist")
+        return
 
-    for script in ls_scripts(script_dir):
-        print(f"- Setting up environment for {script}")
-        setup_script_environment(temp_dir, script_dir, script, wheel_file)
+
+def handle_dir(script_path, temp_dir, wheel_file):
+    sys.path.append(script_path)
+    for script in ls_scripts(script_path):
+        print(f"- Setting up environment for dir {script}")
+        setup_script_environment(temp_dir, script_path, script, wheel_file)
+
+
+def handle_file(script_path, temp_dir, wheel_file):
+    print(f"- Setting up environment for file {script_path}")
+    script_dir = os.path.dirname(script_path)
+    sys.path.append(script_dir)
+    setup_script_environment(temp_dir, script_dir, os.path.basename(script_path), wheel_file)
 
 
 def ls_scripts(script_dir):
@@ -78,9 +94,7 @@ def setup_script_environment(venv_parent, script_dir, script, wheel_file):
         print(f"- Will install requirement: '{req}'")
         run_subprocess([pip_path, "install", req])
 
-    stdout, stderr, returncode = run_python_script(
-        script, script_dir, oteltest_instance, script_venv
-    )
+    stdout, stderr, returncode = run_python_script(script_dir, script, oteltest_instance, script_venv)
     print_subprocess_result(stdout, stderr, returncode)
 
     filename = get_next_json_file(script_dir, module_name)
@@ -109,9 +123,7 @@ def save_telemetry_json(script_dir: str, file_name: str, json_str: str):
         file.write(json_str)
 
 
-def run_python_script(
-    script, script_dir, oteltest_instance: OtelTest, v
-) -> typing.Tuple[str, str, int]:
+def run_python_script(script_dir: str, script: str, oteltest_instance: OtelTest, v) -> typing.Tuple[str, str, int]:
     print(f"- Running python script: {script}")
     python_script_cmd = [
         v.path_to_executable("python"),
@@ -218,7 +230,7 @@ class Venv:
 class AccumulatingHandler(RequestHandler):
     def __init__(self):
         self.start_time = time.time_ns()
-        self.telemetry = Telemetry()
+        self.telemetry = telemetry.Telemetry()
 
     def handle_logs(
         self, request: ExportLogsServiceRequest, context

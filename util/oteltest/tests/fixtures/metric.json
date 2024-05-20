@@ -1,0 +1,66 @@
+{
+  "resourceMetrics": [
+    {
+      "resource": {
+        "attributes": [
+          {
+            "key": "telemetry.sdk.language",
+            "value": {
+              "stringValue": "python"
+            }
+          },
+          {
+            "key": "telemetry.sdk.name",
+            "value": {
+              "stringValue": "opentelemetry"
+            }
+          },
+          {
+            "key": "telemetry.sdk.version",
+            "value": {
+              "stringValue": "1.24.0"
+            }
+          },
+          {
+            "key": "telemetry.auto.version",
+            "value": {
+              "stringValue": "0.45b0"
+            }
+          },
+          {
+            "key": "service.name",
+            "value": {
+              "stringValue": "my-service"
+            }
+          }
+        ]
+      },
+      "scopeMetrics": [
+        {
+          "scope": {
+            "name": "my-scope-name",
+            "version": "1.0"
+          },
+          "metrics": [
+            {
+              "name": "my-metric-name",
+              "description": "my description",
+              "unit": "1",
+              "sum": {
+                "dataPoints": [
+                  {
+                    "startTimeUnixNano": "1715705692028000000",
+                    "timeUnixNano":      "1715705701070000000",
+                    "asInt": "1"
+                  }
+                ],
+                "aggregationTemporality": "AGGREGATION_TEMPORALITY_CUMULATIVE",
+                "isMonotonic": true
+              }
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}
