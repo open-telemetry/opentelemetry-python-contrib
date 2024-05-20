@@ -14,9 +14,7 @@
 
 
 import abc
-import dataclasses
-import json
-from typing import List, Mapping, Optional, Sequence
+from typing import Mapping, Optional, Sequence
 
 from oteltest.telemetry import Telemetry
 

@@ -19,7 +19,7 @@ def print_time(iterations):
     for i in range(iterations):
         time.sleep(1)
         counter.add(1)
-        with tracer.start_as_current_span("my-span") as span:
+        with tracer.start_as_current_span("my-span"):
             print(f"{i + 1}/{iterations} current time: {round(time.time())}")
 
 
