@@ -14,13 +14,14 @@
 
 from opentelemetry.instrumentation.aws_lambda import (
     determine_flush_timeout,
+    flush,
     is_aws_context_propagation_disabled,
 )
 from opentelemetry.instrumentation.aws_lambda import (
     OTEL_INSTRUMENTATION_AWS_LAMBDA_FLUSH_TIMEOUT,
     OTEL_LAMBDA_DISABLE_AWS_CONTEXT_PROPAGATION,
 )
-from unittest.mock import patch
+from unittest.mock import patch, MagicMock
 from unittest import TestCase
 
 
@@ -84,3 +85,96 @@ class TestIsAWSContextPropagationDisabled(TestCase):
     def test_env_var_not_set(self):
         result = is_aws_context_propagation_disabled(False)
         self.assertFalse(result)
+
+
+class TestFlush(TestCase):
+
+    @patch("time.time", return_value=0)
+    @patch(
+        "opentelemetry.instrumentation.aws_lambda.determine_flush_timeout",
+        return_value=1000,
+    )
+    def test_successful_flush(self, mock_time, mock_determine_flush_timeout):
+        tracer_provider = MagicMock()
+        meter_provider = MagicMock()
+        tracer_provider.force_flush = MagicMock()
+        meter_provider.force_flush = MagicMock()
+
+        flush(tracer_provider, meter_provider)
+
+        tracer_provider.force_flush.assert_called_once_with(1000)
+        meter_provider.force_flush.assert_called_once_with(1000)
+
+    @patch("time.time", return_value=0)
+    @patch(
+        "opentelemetry.instrumentation.aws_lambda.determine_flush_timeout",
+        return_value=1000,
+    )
+    def test_missing_force_flush_in_tracer_provider(
+        self, mock_time, mock_determine_flush_timeout
+    ):
+        tracer_provider = MagicMock()
+        del tracer_provider.force_flush  # Remove force_flush method
+        meter_provider = MagicMock()
+        meter_provider.force_flush = MagicMock()
+
+        flush(tracer_provider, meter_provider)
+
+        assert "force_flush" not in dir(tracer_provider)
+        meter_provider.force_flush.assert_called_once_with(1000)
+
+    @patch("time.time", return_value=0)
+    @patch(
+        "opentelemetry.instrumentation.aws_lambda.determine_flush_timeout",
+        return_value=1000,
+    )
+    def test_missing_force_flush_in_meter_provider(
+        self, mock_time, mock_determine_flush_timeout
+    ):
+        tracer_provider = MagicMock()
+        tracer_provider.force_flush = MagicMock()
+        meter_provider = MagicMock()
+        del meter_provider.force_flush  # Remove force_flush method
+
+        flush(tracer_provider, meter_provider)
+
+        assert "force_flush" not in dir(meter_provider)
+        tracer_provider.force_flush.assert_called_once_with(1000)
+
+    @patch("time.time", return_value=0)
+    @patch(
+        "opentelemetry.instrumentation.aws_lambda.determine_flush_timeout",
+        return_value=1000,
+    )
+    def test_exception_in_force_flush_tracer_provider(
+        self, mock_time, mock_determine_flush_timeout
+    ):
+        tracer_provider = MagicMock()
+        tracer_provider.force_flush = MagicMock(
+            side_effect=Exception("Tracer flush exception")
+        )
+        meter_provider = MagicMock()
+        meter_provider.force_flush = MagicMock()
+
+        flush(tracer_provider, meter_provider)
+
+        meter_provider.force_flush.assert_called_once_with(1000)
+
+    @patch("time.time", return_value=0)
+    @patch(
+        "opentelemetry.instrumentation.aws_lambda.determine_flush_timeout",
+        return_value=1000,
+    )
+    def test_exception_in_force_flush_meter_provider(
+        self, mock_time, mock_determine_flush_timeout
+    ):
+        tracer_provider = MagicMock()
+        tracer_provider.force_flush = MagicMock()
+        meter_provider = MagicMock()
+        meter_provider.force_flush = MagicMock(
+            side_effect=Exception("Meter flush exception")
+        )
+
+        flush(tracer_provider, meter_provider)
+
+        tracer_provider.force_flush.assert_called_once_with(1000)
