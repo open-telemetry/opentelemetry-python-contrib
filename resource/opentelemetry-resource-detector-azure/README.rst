@@ -75,7 +75,7 @@ The Azure VM Resource Detector sets the following Resource Attributes according 
  * ``os.version`` set to the value of the ``version`` field.
  * ``service.instance.id`` set to the value of the ``vmId`` field.
 
- The Azure Functions Resource Detector sets the following Resource Attributes (This resource detector is currently experimental):
+The Azure Functions Resource Detector is currently experimental. It sets the following Resource Attributes:
  * ``service.name`` set to the value of the ``WEBSITE_SITE_NAME`` environment variable.
  * ``process.id`` set to the process ID collected from the running process.
  * ``cloud.platform`` set to ``azure_functions``.
