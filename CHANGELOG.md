@@ -39,7 +39,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
-- `opentelemetry-instrumentation-dbapi` Fix compability with Psycopg3 to extract libpq build version (#2500)[https://github.com/open-telemetry/opentelemetry-python-contrib/pull/2500]
+- `opentelemetry-instrumentation-dbapi` Fix compatibility with Psycopg3 to extract libpq build version (#2500)[https://github.com/open-telemetry/opentelemetry-python-contrib/pull/2500]
 - `opentelemetry-instrumentation-grpc` AioClientInterceptor should propagate with a Metadata object
   ([#2363](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/2363))
 - `opentelemetry-instrumentation-boto3sqs` Instrument Session and resource
