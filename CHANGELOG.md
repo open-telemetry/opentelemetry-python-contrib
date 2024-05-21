@@ -57,7 +57,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
-- `opentelemetry-instrumentation-logging` Ensure that logging is properly configured independently of the order of instrumentation. This is especially useful in case of automatic instrumentation)
+- `opentelemetry-instrumentation-logging` Ensure that logging is properly configured independently of the order of instrumentation.
   ([#2384](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/2384))
 - `opentelemetry-instrumentation-dbapi` Fix compatibility with Psycopg3 to extract libpq build version
   ([#2500](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/2500))
