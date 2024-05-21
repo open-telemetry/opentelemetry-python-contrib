@@ -393,11 +393,13 @@ class MockCursor:
     # pylint: disable=unused-argument, no-self-use
     def execute(self, query, params=None, throw_exception=False):
         if throw_exception:
+            # pylint: disable=broad-exception-raised
             raise Exception("Test Exception")
 
     # pylint: disable=unused-argument, no-self-use
     def executemany(self, query, params=None, throw_exception=False):
         if throw_exception:
+            # pylint: disable=broad-exception-raised
             raise Exception("Test Exception")
         self.query = query
         self.params = params
@@ -405,4 +407,5 @@ class MockCursor:
     # pylint: disable=unused-argument, no-self-use
     def callproc(self, query, params=None, throw_exception=False):
         if throw_exception:
+            # pylint: disable=broad-exception-raised
             raise Exception("Test Exception")
