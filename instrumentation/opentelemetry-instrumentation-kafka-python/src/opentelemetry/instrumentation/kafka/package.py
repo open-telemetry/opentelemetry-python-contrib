@@ -13,4 +13,5 @@
 # limitations under the License.
 
 
-_instruments = ("kafka-python >= 2.0",)
+_instruments = ("kafka-python >= 2.0, < 3.0",)
+_instruments_ng = ("kafka-python-ng >= 2.0, < 3.0",)
