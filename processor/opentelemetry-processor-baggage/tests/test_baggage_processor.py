@@ -17,7 +17,7 @@ import unittest
 from opentelemetry.baggage import get_all as get_all_baggage
 from opentelemetry.baggage import set_baggage
 from opentelemetry.context import attach, detach
-from opentelemetry.processor.baggage import BaggageSpanProcessor
+from opentelemetry.processor.baggage import BaggageSpanProcessor, ALLOW_ALL_BAGGAGE_KEYS
 from opentelemetry.sdk.trace import TracerProvider
 from opentelemetry.sdk.trace.export import SpanProcessor
 from opentelemetry.trace import Span, Tracer
@@ -31,7 +31,65 @@ class BaggageSpanProcessorTest(unittest.TestCase):
         self,
     ):
         tracer_provider = TracerProvider()
-        tracer_provider.add_span_processor(BaggageSpanProcessor())
+        tracer_provider.add_span_processor(BaggageSpanProcessor(ALLOW_ALL_BAGGAGE_KEYS))
+
+        # tracer has no baggage to start
+        tracer = tracer_provider.get_tracer("my-tracer")
+        self.assertIsInstance(tracer, Tracer)
+        self.assertEqual(get_all_baggage(), {})
+        # set baggage in context
+        ctx = set_baggage("queen", "bee")
+        with tracer.start_as_current_span(
+            name="bumble", context=ctx
+        ) as bumble_span:
+            # span should have baggage key-value pair in context
+            self.assertEqual(get_all_baggage(ctx), {"queen": "bee"})
+            # span should have baggage key-value pair in attribute
+            self.assertEqual(bumble_span._attributes["queen"], "bee")
+            with tracer.start_as_current_span(
+                name="child_span", context=ctx
+            ) as child_span:
+                self.assertIsInstance(child_span, Span)
+                # child span should have baggage key-value pair in context
+                self.assertEqual(get_all_baggage(ctx), {"queen": "bee"})
+                # child span should have baggage key-value pair in attribute
+                self.assertEqual(child_span._attributes["queen"], "bee")
+                
+    def test_baggage_span_processor_with_string_prefix(
+        self,
+    ):
+        starts_with_predicate = lambda baggage_key: baggage_key.startswith("que")
+        tracer_provider = TracerProvider()
+        tracer_provider.add_span_processor(BaggageSpanProcessor(starts_with_predicate))
+
+        # tracer has no baggage to start
+        tracer = tracer_provider.get_tracer("my-tracer")
+        self.assertIsInstance(tracer, Tracer)
+        self.assertEqual(get_all_baggage(), {})
+        # set baggage in context
+        ctx = set_baggage("queen", "bee")
+        with tracer.start_as_current_span(
+            name="bumble", context=ctx
+        ) as bumble_span:
+            # span should have baggage key-value pair in context
+            self.assertEqual(get_all_baggage(ctx), {"queen": "bee"})
+            # span should have baggage key-value pair in attribute
+            self.assertEqual(bumble_span._attributes["queen"], "bee")
+            with tracer.start_as_current_span(
+                name="child_span", context=ctx
+            ) as child_span:
+                self.assertIsInstance(child_span, Span)
+                # child span should have baggage key-value pair in context
+                self.assertEqual(get_all_baggage(ctx), {"queen": "bee"})
+                # child span should have baggage key-value pair in attribute
+                self.assertEqual(child_span._attributes["queen"], "bee")
+                
+    def test_baggage_span_processor_with_regex(
+        self,
+    ):
+        regex_predicate = lambda baggage_key: baggage_key.startswith("que")
+        tracer_provider = TracerProvider()
+        tracer_provider.add_span_processor(BaggageSpanProcessor(regex_predicate))
 
         # tracer has no baggage to start
         tracer = tracer_provider.get_tracer("my-tracer")
@@ -59,7 +117,7 @@ class BaggageSpanProcessorTest(unittest.TestCase):
         self,
     ):
         tracer_provider = TracerProvider()
-        tracer_provider.add_span_processor(BaggageSpanProcessor())
+        tracer_provider.add_span_processor(BaggageSpanProcessor(ALLOW_ALL_BAGGAGE_KEYS))
 
         # tracer has no baggage to start
         tracer = tracer_provider.get_tracer("my-tracer")
