@@ -545,10 +545,12 @@ class BaseTestCases:
 
             spans = self.assert_span(num_spans=len(results))
             for idx, res in enumerate(results):
-                self.assertEqual(res.text, "Hello!")
-                self.assertEqual(
-                    spans[idx].attributes[SpanAttributes.HTTP_URL], self.URL
-                )
+                with self.subTest(idx=idx, res=res):
+                    self.assertEqual(res.text, "Hello!")
+                    self.assertEqual(
+                        spans[idx].attributes[SpanAttributes.HTTP_URL],
+                        self.URL,
+                    )
 
             HTTPXClientInstrumentor().uninstrument()
 
