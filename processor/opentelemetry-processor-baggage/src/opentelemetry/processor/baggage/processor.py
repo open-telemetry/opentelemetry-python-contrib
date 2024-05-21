@@ -19,15 +19,11 @@ from opentelemetry.context import Context
 from opentelemetry.sdk.trace.export import SpanProcessor
 from opentelemetry.trace import Span
 
-"""
-A BaggageKeyPredicate is a function that takes a baggage key and returns a boolean
-"""
-type BaggageKeyPredicate = Callable[[str], bool]
+# A BaggageKeyPredicate is a function that takes a baggage key and returns a boolean
+BaggageKeyPredicateT = Callable[[str], bool]
 
-"""
-A BaggageKeyPredicate that always returns True, allowing all baggage keys to be added to spans
-"""
-ALLOW_ALL_BAGGAGE_KEYS: BaggageKeyPredicate = lambda baggageKey: True
+# A BaggageKeyPredicate that always returns True, allowing all baggage keys to be added to spans
+ALLOW_ALL_BAGGAGE_KEYS: BaggageKeyPredicateT = lambda _: True
 
 
 class BaggageSpanProcessor(SpanProcessor):
@@ -54,9 +50,8 @@ class BaggageSpanProcessor(SpanProcessor):
 
     """
 
-    def __init__(self, baggage_key_predicate: BaggageKeyPredicate) -> None:
+    def __init__(self, baggage_key_predicate: BaggageKeyPredicateT) -> None:
         self._baggage_key_predicate = baggage_key_predicate
-        pass
 
     def on_start(
         self, span: "Span", parent_context: Optional[Context] = None

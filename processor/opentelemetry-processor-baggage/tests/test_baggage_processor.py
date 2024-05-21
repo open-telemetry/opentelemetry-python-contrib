@@ -29,7 +29,9 @@ from opentelemetry.trace import Span, Tracer
 
 class BaggageSpanProcessorTest(unittest.TestCase):
     def test_check_the_baggage(self):
-        self.assertIsInstance(BaggageSpanProcessor(), SpanProcessor)
+        self.assertIsInstance(
+            BaggageSpanProcessor(ALLOW_ALL_BAGGAGE_KEYS), SpanProcessor
+        )
 
     def test_set_baggage_attaches_to_child_spans_and_detaches_properly_with_context(
         self,
@@ -156,8 +158,10 @@ class BaggageSpanProcessorTest(unittest.TestCase):
         detach(honey_token)
         self.assertEqual(get_all_baggage(), {})
 
+    @staticmethod
     def has_prefix(baggage_key: str) -> bool:
         return baggage_key.startswith("que")
 
+    @staticmethod
     def matches_regex(baggage_key: str) -> bool:
         return re.match(r"que.*", baggage_key) is not None
