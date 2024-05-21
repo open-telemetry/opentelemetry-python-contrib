@@ -147,6 +147,13 @@ class TestBotocoreInstrumentor(TestBase):
 
         s3.list_buckets()
         self.assert_span("S3", "ListBuckets")
+   
+    @mock_s3
+    def test_no_op_tracer_provider_s3(self):
+        BotocoreInstrumentor().uninstrument()
+        BotocoreInstrumentor().instrument(
+            tracer_provider = trace_api.NoOpTracerProvider()
+        )
 
     @mock_aws
     def test_s3_put(self):
@@ -203,6 +210,19 @@ class TestBotocoreInstrumentor(TestBase):
 
         kinesis.list_streams()
         self.assert_span("Kinesis", "ListStreams")
+    
+    @mock_kinesis
+    def test_no_op_tracer_provider_kinesis(self):
+        BotocoreInstrumentor().uninstrument()
+        BotocoreInstrumentor().instrument(
+            tracer_provider = trace_api.NoOpTracerProvider()
+        )
+
+        kinesis = self._make_client("kinesis")
+        kinesis.list_streams()
+
+        spans_list = self.memory_exporter.get_finished_spans()
+        self.assertEqual(len(spans_list), 0)
 
     @mock_aws
     def test_unpatch(self):
