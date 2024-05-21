@@ -532,12 +532,34 @@ class BaseTestCases:
             self.assertEqual(result.text, "Hello!")
             self.assert_span(num_spans=1)
 
+        def test_instrumentation_without_client(self):
+
+            HTTPXClientInstrumentor().instrument()
+            results = [
+                httpx.get(self.URL),
+                httpx.request("GET", self.URL),
+            ]
+            with httpx.stream("GET", self.URL) as stream:
+                stream.read()
+                results.append(stream)
+
+            spans = self.assert_span(num_spans=len(results))
+            for idx, res in enumerate(results):
+                self.assertEqual(res.text, "Hello!")
+                self.assertEqual(
+                    spans[idx].attributes[SpanAttributes.HTTP_URL], self.URL
+                )
+
+            HTTPXClientInstrumentor().uninstrument()
+
         def test_uninstrument(self):
             HTTPXClientInstrumentor().instrument()
             HTTPXClientInstrumentor().uninstrument()
             client = self.create_client()
             result = self.perform_request(self.URL, client=client)
+            result_no_client = httpx.get(self.URL)
             self.assertEqual(result.text, "Hello!")
+            self.assertEqual(result_no_client.text, "Hello!")
             self.assert_span(num_spans=0)
 
         def test_uninstrument_client(self):

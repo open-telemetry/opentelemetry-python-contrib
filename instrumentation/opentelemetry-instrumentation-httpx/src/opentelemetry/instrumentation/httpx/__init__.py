@@ -564,11 +564,11 @@ class HTTPXClientInstrumentor(BaseInstrumentor):
         tracer_provider = kwargs.get("tracer_provider")
         _InstrumentedClient._tracer_provider = tracer_provider
         _InstrumentedAsyncClient._tracer_provider = tracer_provider
-        httpx.Client = _InstrumentedClient
+        httpx.Client = httpx._api.Client = _InstrumentedClient
         httpx.AsyncClient = _InstrumentedAsyncClient
 
     def _uninstrument(self, **kwargs):
-        httpx.Client = self._original_client
+        httpx.Client = httpx._api.Client = self._original_client
         httpx.AsyncClient = self._original_async_client
         _InstrumentedClient._tracer_provider = None
         _InstrumentedClient._request_hook = None
