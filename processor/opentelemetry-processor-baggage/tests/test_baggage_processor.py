@@ -12,12 +12,16 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import re
 import unittest
 
 from opentelemetry.baggage import get_all as get_all_baggage
 from opentelemetry.baggage import set_baggage
 from opentelemetry.context import attach, detach
-from opentelemetry.processor.baggage import BaggageSpanProcessor, ALLOW_ALL_BAGGAGE_KEYS
+from opentelemetry.processor.baggage import (
+    ALLOW_ALL_BAGGAGE_KEYS,
+    BaggageSpanProcessor,
+)
 from opentelemetry.sdk.trace import TracerProvider
 from opentelemetry.sdk.trace.export import SpanProcessor
 from opentelemetry.trace import Span, Tracer
@@ -31,7 +35,9 @@ class BaggageSpanProcessorTest(unittest.TestCase):
         self,
     ):
         tracer_provider = TracerProvider()
-        tracer_provider.add_span_processor(BaggageSpanProcessor(ALLOW_ALL_BAGGAGE_KEYS))
+        tracer_provider.add_span_processor(
+            BaggageSpanProcessor(ALLOW_ALL_BAGGAGE_KEYS)
+        )
 
         # tracer has no baggage to start
         tracer = tracer_provider.get_tracer("my-tracer")
@@ -54,13 +60,14 @@ class BaggageSpanProcessorTest(unittest.TestCase):
                 self.assertEqual(get_all_baggage(ctx), {"queen": "bee"})
                 # child span should have baggage key-value pair in attribute
                 self.assertEqual(child_span._attributes["queen"], "bee")
-                
+
     def test_baggage_span_processor_with_string_prefix(
         self,
     ):
-        starts_with_predicate = lambda baggage_key: baggage_key.startswith("que")
         tracer_provider = TracerProvider()
-        tracer_provider.add_span_processor(BaggageSpanProcessor(starts_with_predicate))
+        tracer_provider.add_span_processor(
+            BaggageSpanProcessor(self.has_prefix)
+        )
 
         # tracer has no baggage to start
         tracer = tracer_provider.get_tracer("my-tracer")
@@ -83,13 +90,14 @@ class BaggageSpanProcessorTest(unittest.TestCase):
                 self.assertEqual(get_all_baggage(ctx), {"queen": "bee"})
                 # child span should have baggage key-value pair in attribute
                 self.assertEqual(child_span._attributes["queen"], "bee")
-                
+
     def test_baggage_span_processor_with_regex(
         self,
     ):
-        regex_predicate = lambda baggage_key: baggage_key.startswith("que")
         tracer_provider = TracerProvider()
-        tracer_provider.add_span_processor(BaggageSpanProcessor(regex_predicate))
+        tracer_provider.add_span_processor(
+            BaggageSpanProcessor(self.matches_regex)
+        )
 
         # tracer has no baggage to start
         tracer = tracer_provider.get_tracer("my-tracer")
@@ -117,7 +125,9 @@ class BaggageSpanProcessorTest(unittest.TestCase):
         self,
     ):
         tracer_provider = TracerProvider()
-        tracer_provider.add_span_processor(BaggageSpanProcessor(ALLOW_ALL_BAGGAGE_KEYS))
+        tracer_provider.add_span_processor(
+            BaggageSpanProcessor(ALLOW_ALL_BAGGAGE_KEYS)
+        )
 
         # tracer has no baggage to start
         tracer = tracer_provider.get_tracer("my-tracer")
@@ -145,3 +155,9 @@ class BaggageSpanProcessorTest(unittest.TestCase):
             detach(moar_token)
         detach(honey_token)
         self.assertEqual(get_all_baggage(), {})
+
+    def has_prefix(baggage_key: str) -> bool:
+        return baggage_key.startswith("que")
+
+    def matches_regex(baggage_key: str) -> bool:
+        return re.match(r"que.*", baggage_key) is not None
