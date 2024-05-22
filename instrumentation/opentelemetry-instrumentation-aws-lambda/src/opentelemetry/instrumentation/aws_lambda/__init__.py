@@ -365,6 +365,7 @@ def _instrument(
                 )
 
             exception = None
+            result = None
             try:
                 result = call_wrapped(*args, **kwargs)
             except Exception as exc:  # pylint: disable=W0703

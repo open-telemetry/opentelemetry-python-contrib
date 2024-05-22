@@ -13,9 +13,6 @@
 # limitations under the License.
 
 import grpc
-from tests.protobuf import (  # pylint: disable=no-name-in-module
-    test_server_pb2_grpc,
-)
 
 from opentelemetry import trace
 from opentelemetry.instrumentation.grpc import GrpcInstrumentorClient
@@ -23,6 +20,7 @@ from opentelemetry.test.test_base import TestBase
 
 from ._client import simple_method
 from ._server import create_test_server
+from .protobuf import test_server_pb2_grpc
 
 
 # User defined interceptor. Is used in the tests along with the opentelemetry client interceptor.

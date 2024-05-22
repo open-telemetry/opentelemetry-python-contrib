@@ -378,3 +378,13 @@ class TestAzureVMResourceDetector(unittest.TestCase):
         attributes = AzureVMResourceDetector().detect().attributes
         for attribute_key, attribute_value in WINDOWS_ATTRIBUTES.items():
             self.assertEqual(attributes[attribute_key], attribute_value)
+
+    @patch("opentelemetry.resource.detector.azure.vm._can_ignore_vm_detect")
+    @patch("opentelemetry.resource.detector.azure.vm.urlopen")
+    def test_in_another_rp(self, mock_urlopen, detect_mock):
+        mock_urlopen.return_value.__enter__.return_value.read.return_value = (
+            LINUX_JSON
+        )
+        detect_mock.return_value = True
+        attributes = AzureVMResourceDetector().detect().attributes
+        self.assertEqual(attributes, {})

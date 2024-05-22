@@ -17,9 +17,6 @@ import os
 from unittest import mock
 
 import grpc
-from tests.protobuf import (  # pylint: disable=no-name-in-module
-    test_server_pb2_grpc,
-)
 
 import opentelemetry.instrumentation.grpc
 from opentelemetry import trace
@@ -44,6 +41,7 @@ from ._client import (
     simple_method_future,
 )
 from ._server import create_test_server
+from .protobuf import test_server_pb2_grpc
 from .protobuf.test_server_pb2 import Request
 
 

@@ -60,7 +60,17 @@ The Azure App Service Resource Detector sets the following Resource Attributes:
  * ``service.instance.id`` set to the value of the ``WEBSITE_INSTANCE_ID`` environment variable.
  * ``azure.app.service.stamp`` set to the value of the ``WEBSITE_HOME_STAMPNAME`` environment variable.
 
-The Azure VM Resource Detector sets the following Resource Attributes according to the response from the `Azure Metadata Service <https://learn.microsoft.com/en-us/azure/virtual-machines/instance-metadata-service?tabs=windows>`_:
+ The Azure Functions Resource Detector sets the following Resource Attributes:
+ * ``service.name`` set to the value of the ``WEBSITE_SITE_NAME`` environment variable.
+ * ``process.id`` set to the process ID collected from the running process.
+ * ``cloud.platform`` set to ``azure_functions``.
+ * ``cloud.provider`` set to ``azure``.
+ * ``cloud.resource_id`` set using the ``WEBSITE_RESOURCE_GROUP``, ``WEBSITE_OWNER_NAME``, and ``WEBSITE_SITE_NAME`` environment variables.
+ * ``cloud.region`` set to the value of the ``REGION_NAME`` environment variable.
+ * ``faas.instance`` set to the value of the ``WEBSITE_INSTANCE_ID`` environment variable.
+ * ``faas.max_memory`` set to the value of the ``WEBSITE_MEMORY_LIMIT_MB`` environment variable.
+
+The Azure VM Resource Detector sets the following Resource Attributes according to the response from the `Azure Metadata Service <https://learn.microsoft.com/azure/virtual-machines/instance-metadata-service?tabs=windows>`_:
  * ``azure.vm.scaleset.name`` set to the value of the ``vmScaleSetName`` field.
  * ``azure.vm.sku`` set to the value of the ``sku`` field.
  * ``cloud.platform`` set to the value of the ``azure_vm``.

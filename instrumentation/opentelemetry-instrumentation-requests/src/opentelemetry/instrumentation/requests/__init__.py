@@ -172,9 +172,11 @@ def _instrument(
         try:
             parsed_url = urlparse(url)
             if parsed_url.scheme:
-                _set_http_scheme(
-                    metric_labels, parsed_url.scheme, sem_conv_opt_in_mode
-                )
+                if _report_old(sem_conv_opt_in_mode):
+                    # TODO: Support opt-in for url.scheme in new semconv
+                    _set_http_scheme(
+                        metric_labels, parsed_url.scheme, sem_conv_opt_in_mode
+                    )
             if parsed_url.hostname:
                 _set_http_host(
                     metric_labels, parsed_url.hostname, sem_conv_opt_in_mode
