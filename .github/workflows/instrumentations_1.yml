@@ -6,7 +6,7 @@ on:
     - 'release/*'
   pull_request:
 env:
-  CORE_REPO_SHA: a1253585f66d63e7c05a19f070f3bfe0ab6460c1
+  CORE_REPO_SHA: 955c92e91b5cd4bcfb43c39efcef086b040471d2
 
 jobs:
   instrumentations-1:
@@ -31,7 +31,7 @@ jobs:
           - "richconsole"
           - "psycopg"
           - "prometheus-remote-write"
-          - "sdkextension-aws"
+          - "sdk-extension-aws"
           - "propagator-aws-xray"
           - "propagator-ot-trace"
           - "resource-detector-container"
@@ -43,16 +43,16 @@ jobs:
             package: "prometheus-remote-write"
     steps:
       - name: Checkout Contrib Repo @ SHA - ${{ github.sha }}
-        uses: actions/checkout@v2
+        uses: actions/checkout@v4
       - name: Set up Python ${{ env[matrix.python-version] }}
-        uses: actions/setup-python@v4
+        uses: actions/setup-python@v5
         with:
           python-version: ${{ env[matrix.python-version] }}
       - name: Install tox
         run: pip install tox
       - name: Cache tox environment
         # Preserves .tox directory between runs for faster installs
-        uses: actions/cache@v1
+        uses: actions/cache@v4
         with:
           path: |
             .tox

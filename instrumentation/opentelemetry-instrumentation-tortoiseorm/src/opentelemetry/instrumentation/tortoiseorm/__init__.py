@@ -229,17 +229,17 @@ class TortoiseORMInstrumentor(BaseInstrumentor):
         capabilities = getattr(connection, "capabilities", None)
         if capabilities is not None:
             if capabilities.dialect == "sqlite":
-                span_attributes[
-                    SpanAttributes.DB_SYSTEM
-                ] = DbSystemValues.SQLITE.value
+                span_attributes[SpanAttributes.DB_SYSTEM] = (
+                    DbSystemValues.SQLITE.value
+                )
             elif capabilities.dialect == "postgres":
-                span_attributes[
-                    SpanAttributes.DB_SYSTEM
-                ] = DbSystemValues.POSTGRESQL.value
+                span_attributes[SpanAttributes.DB_SYSTEM] = (
+                    DbSystemValues.POSTGRESQL.value
+                )
             elif capabilities.dialect == "mysql":
-                span_attributes[
-                    SpanAttributes.DB_SYSTEM
-                ] = DbSystemValues.MYSQL.value
+                span_attributes[SpanAttributes.DB_SYSTEM] = (
+                    DbSystemValues.MYSQL.value
+                )
         dbname = getattr(connection, "filename", None)
         if dbname:
             span_attributes[SpanAttributes.DB_NAME] = dbname

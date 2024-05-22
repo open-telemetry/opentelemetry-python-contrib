@@ -305,11 +305,10 @@ class TestAioClientInterceptor(TestBase, IsolatedAsyncioTestCase):
             await simple_method(stub)
 
             metadata = recording_interceptor.recorded_details.metadata
-            assert len(metadata) == 2
-            assert metadata[0][0] == "mock-traceid"
-            assert metadata[0][1] == "0"
-            assert metadata[1][0] == "mock-spanid"
-            assert metadata[1][1] == "0"
+            assert len(metadata) == 3
+            assert metadata.get_all("key") == ["value"]
+            assert metadata.get_all("mock-traceid") == ["0"]
+            assert metadata.get_all("mock-spanid") == ["0"]
         finally:
             set_global_textmap(previous_propagator)
 
