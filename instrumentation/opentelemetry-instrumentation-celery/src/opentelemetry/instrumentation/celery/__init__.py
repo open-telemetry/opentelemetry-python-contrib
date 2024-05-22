@@ -170,7 +170,7 @@ class CeleryInstrumentor(BaseInstrumentor):
         self.update_task_duration_time(task_id)
         request = task.request
         tracectx = extract(request, getter=celery_getter) or None
-        token = context_api.attach(tracectx)
+        token = context_api.attach(tracectx) if tracectx is not None else None
 
         logger.debug("prerun signal start task_id=%s", task_id)
 
