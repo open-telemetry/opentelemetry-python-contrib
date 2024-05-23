@@ -39,6 +39,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- `opentelemetry-instrumentation-dbapi` Fix compatibility with Psycopg3 to extract libpq build version (#2500)[https://github.com/open-telemetry/opentelemetry-python-contrib/pull/2500]
 - `opentelemetry-instrumentation-grpc` AioClientInterceptor should propagate with a Metadata object
   ([#2363](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/2363))
 - `opentelemetry-instrumentation-boto3sqs` Instrument Session and resource
@@ -126,7 +127,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   ([#1959](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/1959))
 - `opentelemetry-resource-detector-azure` Added dependency for Cloud Resource ID attribute
   ([#2072](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/2072))
-  
+
 ## Version 1.21.0/0.42b0 (2023-11-01)
 
 ### Added
@@ -1540,4 +1541,3 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - `opentelemetry-resource-detector-azure` Suppress instrumentation for `urllib` call
   ([#2178](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/2178))
 - AwsLambdaInstrumentor handles and re-raises function exception ([#2245](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/2245))
-
