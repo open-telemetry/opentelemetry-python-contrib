@@ -262,7 +262,7 @@ class AsyncioInstrumentor(BaseInstrumentor):
 
     async def trace_coroutine(self, coro):
         if not hasattr(coro, "__name__"):
-            return
+            return coro
         start = default_timer()
         attr = {
             "type": "coroutine",
