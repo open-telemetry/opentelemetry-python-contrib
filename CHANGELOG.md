@@ -22,6 +22,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- Add support for Python 3.12
+  ([#2549](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/2549))
 - `opentelemetry-sdk-extension-aws` Register AWS resource detectors under the
   `opentelemetry_resource_detector` entry point
   ([#2382](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/2382))
