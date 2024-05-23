@@ -1,10 +1,14 @@
 OpenTelemetry Pyramid Instrumentation
 =====================================
 
-|pypi|
+|pypi| |monthly-downloads-badge|
 
 .. |pypi| image:: https://badge.fury.io/py/opentelemetry-instrumentation-pyramid.svg
    :target: https://pypi.org/project/opentelemetry-instrumentation-pyramid/
+
+.. |monthly-downloads-badge| image:: https://assets.piptrends.com/get-last-month-downloads-badge/opentelemetry-instrumentation-pyramid.svg
+    :alt: opentelemetry-instrumentation-pyramid Downloads Last Month by pip Trends
+    :target: https://piptrends.com/package/opentelemetry-instrumentation-pyramid
 
 Installation
 ------------
