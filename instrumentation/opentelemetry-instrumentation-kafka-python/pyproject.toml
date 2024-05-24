@@ -31,7 +31,8 @@ dependencies = [
 
 [project.optional-dependencies]
 instruments = [
-  "kafka-python >= 2.0",
+  "kafka-python >= 2.0, < 3.0",
+  "kafka-python-ng >= 2.0, < 3.0"
 ]
 
 [project.entry-points.opentelemetry_instrumentor]

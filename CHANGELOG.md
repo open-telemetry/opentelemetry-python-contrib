@@ -36,6 +36,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   ([#2397](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/2397)))
 - `opentelemetry-processor-baggage` Initial release
   ([#2436](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/2436))
+- `opentelemetry-instrumentation-kafka-python` Instrument temporary fork, kafka-python-ng
+  inside kafka-python's instrumentation
+  ([#2537](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/2537)))
 
 ### Fixed
 
