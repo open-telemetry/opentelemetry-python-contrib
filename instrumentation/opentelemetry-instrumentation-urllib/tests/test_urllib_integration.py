@@ -99,7 +99,7 @@ class RequestsIntegrationTestBase(abc.ABC):
 
     @staticmethod
     def base_exception_callback(*_, **__):
-        raise Exception("test")
+        raise Exception("test")  # pylint: disable=broad-exception-raised
 
     def assert_span(self, exporter=None, num_spans=1):
         if exporter is None:
