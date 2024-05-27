@@ -253,9 +253,9 @@ class TestWsgiApplication(WsgiTestBase):
             if old_sem_conv:
                 expected_attributes[SpanAttributes.HTTP_METHOD] = http_method
             if new_sem_conv:
-                expected_attributes[SpanAttributes.HTTP_REQUEST_METHOD] = (
-                    http_method
-                )
+                expected_attributes[
+                    SpanAttributes.HTTP_REQUEST_METHOD
+                ] = http_method
         self.assertEqual(span_list[0].attributes, expected_attributes)
 
     def test_basic_wsgi_call(self):
@@ -272,6 +272,14 @@ class TestWsgiApplication(WsgiTestBase):
         app = otel_wsgi.OpenTelemetryMiddleware(simple_wsgi)
         response = app(self.environ, self.start_response)
         self.validate_response(response, old_sem_conv=True, new_sem_conv=True)
+
+    def test_basic_wsgi_call_with_excluded_urls(self):
+        app = otel_wsgi.OpenTelemetryMiddleware(
+            simple_wsgi, excluded_urls="/test"
+        )
+        self.environ["PATH_INFO"] = "/test"
+        response = app(self.environ, self.start_response)
+        assert isinstance(response, list)
 
     def test_hooks(self):
         hook_headers = (
@@ -564,9 +572,9 @@ class TestWsgiAttributes(unittest.TestCase):
                     parts.path, 1
                 )[1]
                 if parts.query:
-                    expected_new[SpanAttributes.URL_QUERY] = (
-                        expected_url.split(parts.query, 1)[1]
-                    )
+                    expected_new[
+                        SpanAttributes.URL_QUERY
+                    ] = expected_url.split(parts.query, 1)[1]
             else:
                 expected_new[SpanAttributes.HTTP_URL] = expected_url
             if has_host:
@@ -712,9 +720,9 @@ class TestWsgiAttributes(unittest.TestCase):
     def test_request_attributes_with_full_request_uri(self):
         self.environ["HTTP_HOST"] = "127.0.0.1:8080"
         self.environ["REQUEST_METHOD"] = "CONNECT"
-        self.environ["REQUEST_URI"] = (
-            "http://docs.python.org:80/3/library/urllib.parse.html?highlight=params#url-parsing"  # Might happen in a CONNECT request
-        )
+        self.environ[
+            "REQUEST_URI"
+        ] = "http://docs.python.org:80/3/library/urllib.parse.html?highlight=params#url-parsing"  # Might happen in a CONNECT request
         expected_old = {
             SpanAttributes.HTTP_HOST: "127.0.0.1:8080",
             SpanAttributes.HTTP_TARGET: "http://docs.python.org:80/3/library/urllib.parse.html?highlight=params#url-parsing",
