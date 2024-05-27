@@ -91,7 +91,6 @@ from opentelemetry.instrumentation.instrumentor import BaseInstrumentor
 from opentelemetry.instrumentation.system_metrics.package import _instruments
 from opentelemetry.instrumentation.system_metrics.version import __version__
 from opentelemetry.metrics import CallbackOptions, Observation, get_meter
-from opentelemetry.sdk.util import get_dict_as_key
 
 _logger = logging.getLogger(__name__)
 
@@ -638,8 +637,11 @@ class SystemMetricsInstrumentor(BaseInstrumentor):
                     net_connection, metric
                 )
 
-            connection_counters_key = get_dict_as_key(
-                self._system_network_connections_labels
+            connection_counters_key = tuple(
+                sorted(
+                    (k, tuple(v) if isinstance(v, (list, set)) else v)
+                    for k, v in self._system_network_connections_labels.items()
+                )
             )
 
             if connection_counters_key in connection_counters:
