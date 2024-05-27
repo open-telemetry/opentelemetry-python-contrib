@@ -62,10 +62,15 @@ def main():
         if not pkg["instruments"]:
             default_instrumentations.elts.append(ast.Str(pkg["requirement"]))
         for target_pkg in pkg["instruments"]:
+            library_value = (
+                ast.List(elts=[ast.Str(target) for target in target_pkg])
+                if isinstance(target_pkg, list)
+                else ast.Str(target_pkg)
+            )
             libraries.elts.append(
                 ast.Dict(
                     keys=[ast.Str("library"), ast.Str("instrumentation")],
-                    values=[ast.Str(target_pkg), ast.Str(pkg["requirement"])],
+                    values=[library_value, ast.Str(pkg["requirement"])],
                 )
             )
 
