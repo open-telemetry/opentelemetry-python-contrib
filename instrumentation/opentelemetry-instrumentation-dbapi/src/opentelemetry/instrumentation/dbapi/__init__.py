@@ -427,12 +427,19 @@ class CursorTracer:
             if args and self._commenter_enabled:
                 try:
                     args_list = list(args)
+                    if hasattr(self._connect_module, "__libpq_version__"):
+                        libpq_version = self._connect_module.__libpq_version__
+                    else:
+                        libpq_version = (
+                            self._connect_module.pq.__build_version__
+                        )
+
                     commenter_data = {
                         # Psycopg2/framework information
                         "db_driver": f"psycopg2:{self._connect_module.__version__.split(' ')[0]}",
                         "dbapi_threadsafety": self._connect_module.threadsafety,
                         "dbapi_level": self._connect_module.apilevel,
-                        "libpq_version": self._connect_module.__libpq_version__,
+                        "libpq_version": libpq_version,
                         "driver_paramstyle": self._connect_module.paramstyle,
                     }
                     if self._commenter_options.get(

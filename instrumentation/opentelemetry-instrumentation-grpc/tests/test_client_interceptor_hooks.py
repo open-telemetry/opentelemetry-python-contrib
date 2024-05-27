@@ -73,11 +73,11 @@ def response_hook(span, response):
 
 
 def request_hook_with_exception(_span, _request):
-    raise Exception()
+    raise Exception()  # pylint: disable=broad-exception-raised
 
 
 def response_hook_with_exception(_span, _response):
-    raise Exception()
+    raise Exception()  # pylint: disable=broad-exception-raised
 
 
 class TestHooks(TestBase):

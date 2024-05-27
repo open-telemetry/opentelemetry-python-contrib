@@ -16,6 +16,15 @@
 This library allows tracing HTTP elasticsearch made by the
 `elasticsearch <https://elasticsearch-py.readthedocs.io/en/master/>`_ library.
 
+.. warning::
+    The elasticsearch package got native OpenTelemetry support since version
+    `8.13 <https://www.elastic.co/guide/en/elasticsearch/client/python-api/current/release-notes.html#rn-8-13-0>`_.
+    To avoid duplicated tracing this instrumentation disables itself if it finds an elasticsearch client
+    that has OpenTelemetry support enabled.
+
+    Please be aware that the two libraries may use a different semantic convention, see
+    `elasticsearch documentation <https://www.elastic.co/guide/en/elasticsearch/client/python-api/current/opentelemetry.html>`_.
+
 Usage
 -----
 
@@ -54,7 +63,7 @@ def response_hook(span: Span, response: dict)
 
 for example:
 
-.. code: python
+.. code-block: python
 
     from opentelemetry.instrumentation.elasticsearch import ElasticsearchInstrumentor
     import elasticsearch
@@ -81,6 +90,7 @@ API
 """
 
 import re
+import warnings
 from logging import getLogger
 from os import environ
 from typing import Collection
@@ -197,6 +207,16 @@ def _wrap_perform_request(
 ):
     # pylint: disable=R0912,R0914
     def wrapper(wrapped, _, args, kwargs):
+        # if wrapped elasticsearch has native OTel instrumentation just call the wrapped function
+        otel_span = kwargs.get("otel_span")
+        if otel_span and otel_span.otel_span:
+            warnings.warn(
+                "Instrumentation disabled, relying on elasticsearch native OTel support, see "
+                "https://opentelemetry-python-contrib.readthedocs.io/en/latest/instrumentation/elasticsearch/elasticsearch.html",
+                Warning,
+            )
+            return wrapped(*args, **kwargs)
+
         method = url = None
         try:
             method, url, *_ = args
@@ -249,6 +269,11 @@ def _wrap_perform_request(
                             v = str(v)
                         elif isinstance(v, elastic_transport.HttpHeaders):
                             v = dict(v)
+                        elif isinstance(
+                            v, elastic_transport.OpenTelemetrySpan
+                        ):
+                            # the transport Span is always a dummy one
+                            v = None
                         return (k, v)
 
                     hook_kwargs = dict(

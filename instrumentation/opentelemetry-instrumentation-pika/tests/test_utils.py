@@ -558,7 +558,7 @@ class TestUtils(TestCase):
         self.assertEqual(res, evt)
         generator_info.pending_events.popleft.assert_called_once()
         extract.assert_not_called()
-        context_get_current.not_called()
+        context_get_current.assert_not_called()
         context_detach.assert_called_once()
         context_attach.assert_not_called()
         get_span.assert_not_called()

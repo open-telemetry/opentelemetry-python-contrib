@@ -53,17 +53,17 @@ class MockAsyncCursor:
     # pylint: disable=unused-argument, no-self-use
     async def execute(self, query, params=None, throw_exception=False):
         if throw_exception:
-            raise Exception("Test Exception")
+            raise psycopg.Error("Test Exception")
 
     # pylint: disable=unused-argument, no-self-use
     async def executemany(self, query, params=None, throw_exception=False):
         if throw_exception:
-            raise Exception("Test Exception")
+            raise psycopg.Error("Test Exception")
 
     # pylint: disable=unused-argument, no-self-use
     async def callproc(self, query, params=None, throw_exception=False):
         if throw_exception:
-            raise Exception("Test Exception")
+            raise psycopg.Error("Test Exception")
 
     async def __aenter__(self, *args, **kwargs):
         return self
