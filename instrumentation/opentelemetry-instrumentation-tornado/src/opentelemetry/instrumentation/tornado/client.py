@@ -109,13 +109,14 @@ def _finish_tracing_callback(
     description = None
     exc = future.exception()
 
-    response = future.result()
-
     if span.is_recording() and exc:
         if isinstance(exc, HTTPError):
             status_code = exc.code
         description = f"{type(exc).__name__}: {exc}"
-    else:
+    
+    response = None
+    if not exc:
+        response = future.result()
         status_code = response.code
 
     if status_code is not None:
@@ -127,15 +128,16 @@ def _finish_tracing_callback(
             )
         )
 
-    metric_attributes = _create_metric_attributes(response)
-    request_size = int(response.request.headers.get("Content-Length", 0))
-    response_size = int(response.headers.get("Content-Length", 0))
+    if response is not None:
+        metric_attributes = _create_metric_attributes(response)
+        request_size = int(response.request.headers.get("Content-Length", 0))
+        response_size = int(response.headers.get("Content-Length", 0))
 
-    duration_histogram.record(
-        response.request_time, attributes=metric_attributes
-    )
-    request_size_histogram.record(request_size, attributes=metric_attributes)
-    response_size_histogram.record(response_size, attributes=metric_attributes)
+        duration_histogram.record(
+            response.request_time, attributes=metric_attributes
+        )
+        request_size_histogram.record(request_size, attributes=metric_attributes)
+        response_size_histogram.record(response_size, attributes=metric_attributes)
 
     if response_hook:
         response_hook(span, future)
