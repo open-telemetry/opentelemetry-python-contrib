@@ -229,9 +229,7 @@ def _instrument(
                     exception = exc
                     result = getattr(exc, "response", None)
                 finally:
-                    elapsed_time = max(
-                        round((default_timer() - start_time) * 1000), 0
-                    )
+                    elapsed_time = max(default_timer() - start_time, 0)
 
             if isinstance(result, Response):
                 span_attributes = {}
