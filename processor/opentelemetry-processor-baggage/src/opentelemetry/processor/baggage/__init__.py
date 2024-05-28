@@ -14,7 +14,7 @@
 
 # pylint: disable=import-error
 
-from .processor import BaggageSpanProcessor
+from .processor import ALLOW_ALL_BAGGAGE_KEYS, BaggageSpanProcessor
 from .version import __version__
 
-__all__ = ["BaggageSpanProcessor", "__version__"]
+__all__ = ["ALLOW_ALL_BAGGAGE_KEYS", "BaggageSpanProcessor", "__version__"]
