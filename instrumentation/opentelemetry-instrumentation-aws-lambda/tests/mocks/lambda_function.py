@@ -22,4 +22,5 @@ def rest_api_handler(event, context):
 
 
 def handler_exc(event, context):
+    # pylint: disable=broad-exception-raised
     raise Exception("500 internal server error")
