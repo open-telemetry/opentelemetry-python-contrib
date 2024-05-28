@@ -167,11 +167,7 @@ def remove_url_credentials(url: str) -> str:
         parsed = urlparse(url)
         if all([parsed.scheme, parsed.netloc]):  # checks for valid url
             parsed_url = urlparse(url)
-            netloc = (
-                (":".join(((parsed_url.hostname or ""), str(parsed_url.port))))
-                if parsed_url.port
-                else (parsed_url.hostname or "")
-            )
+            _, _, netloc = parsed.netloc.rpartition("@")
             return urlunparse(
                 (
                     parsed_url.scheme,
