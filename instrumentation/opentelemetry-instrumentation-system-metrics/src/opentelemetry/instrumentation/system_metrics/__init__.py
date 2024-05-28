@@ -638,10 +638,7 @@ class SystemMetricsInstrumentor(BaseInstrumentor):
                 )
 
             connection_counters_key = tuple(
-                sorted(
-                    (k, tuple(v) if isinstance(v, (list, set)) else v)
-                    for k, v in self._system_network_connections_labels.items()
-                )
+                sorted(self._system_network_connections_labels.items())
             )
 
             if connection_counters_key in connection_counters:
