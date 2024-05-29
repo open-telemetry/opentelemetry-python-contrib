@@ -77,14 +77,14 @@ def _hydrate_span_from_args(connection, query, parameters) -> dict:
     if isinstance(addr, tuple):
         span_attributes[SpanAttributes.NET_PEER_NAME] = addr[0]
         span_attributes[SpanAttributes.NET_PEER_PORT] = addr[1]
-        span_attributes[
-            SpanAttributes.NET_TRANSPORT
-        ] = NetTransportValues.IP_TCP.value
+        span_attributes[SpanAttributes.NET_TRANSPORT] = (
+            NetTransportValues.IP_TCP.value
+        )
     elif isinstance(addr, str):
         span_attributes[SpanAttributes.NET_PEER_NAME] = addr
-        span_attributes[
-            SpanAttributes.NET_TRANSPORT
-        ] = NetTransportValues.OTHER.value
+        span_attributes[SpanAttributes.NET_TRANSPORT] = (
+            NetTransportValues.OTHER.value
+        )
 
     if query is not None:
         span_attributes[SpanAttributes.DB_STATEMENT] = query

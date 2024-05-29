@@ -87,14 +87,14 @@ created span and some other contextual information. Example:
     # will be called after a outgoing request made with
     # `tornado.httpclient.AsyncHTTPClient.fetch` finishes.
     # `response`` is an instance of ``Future[tornado.httpclient.HTTPResponse]`.
-    def client_resposne_hook(span, future):
+    def client_response_hook(span, future):
         pass
 
     # apply tornado instrumentation with hooks
     TornadoInstrumentor().instrument(
         server_request_hook=server_request_hook,
         client_request_hook=client_request_hook,
-        client_response_hook=client_resposne_hook
+        client_response_hook=client_response_hook
     )
 
 Capture HTTP request and response headers
@@ -455,9 +455,9 @@ def _get_attributes_from_request(request):
         if hasattr(request.connection, "context") and getattr(
             request.connection.context, "_orig_remote_ip", None
         ):
-            attrs[
-                SpanAttributes.NET_PEER_IP
-            ] = request.connection.context._orig_remote_ip
+            attrs[SpanAttributes.NET_PEER_IP] = (
+                request.connection.context._orig_remote_ip
+            )
 
     return extract_attributes_from_object(
         request, _traced_request_attrs, attrs

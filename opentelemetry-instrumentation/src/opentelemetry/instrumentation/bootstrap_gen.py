@@ -73,7 +73,7 @@ libraries = [
         "instrumentation": "opentelemetry-instrumentation-django==0.46b0.dev",
     },
     {
-        "library": "elasticsearch >= 2.0",
+        "library": "elasticsearch >= 6.0",
         "instrumentation": "opentelemetry-instrumentation-elasticsearch==0.46b0.dev",
     },
     {
@@ -191,6 +191,7 @@ default_instrumentations = [
     "opentelemetry-instrumentation-dbapi==0.46b0.dev",
     "opentelemetry-instrumentation-logging==0.46b0.dev",
     "opentelemetry-instrumentation-sqlite3==0.46b0.dev",
+    "opentelemetry-instrumentation-threading==0.46b0.dev",
     "opentelemetry-instrumentation-urllib==0.46b0.dev",
     "opentelemetry-instrumentation-wsgi==0.46b0.dev",
 ]

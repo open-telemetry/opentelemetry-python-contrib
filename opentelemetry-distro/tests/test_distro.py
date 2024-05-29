@@ -14,7 +14,7 @@
 # type: ignore
 
 import os
-from unittest import TestCase
+from unittest import TestCase, mock
 
 from pkg_resources import DistributionNotFound, require
 
@@ -33,17 +33,10 @@ class TestDistribution(TestCase):
         except DistributionNotFound:
             self.fail("opentelemetry-distro not installed")
 
+    @mock.patch.dict("os.environ", {}, clear=True)
     def test_default_configuration(self):
         distro = OpenTelemetryDistro()
-        self.assertIsNone(os.environ.get(OTEL_TRACES_EXPORTER))
-        self.assertIsNone(os.environ.get(OTEL_METRICS_EXPORTER))
         distro.configure()
-        self.assertEqual(
-            "otlp", os.environ.get(OTEL_TRACES_EXPORTER)
-        )
-        self.assertEqual(
-            "otlp", os.environ.get(OTEL_METRICS_EXPORTER)
-        )
-        self.assertEqual(
-            "grpc", os.environ.get(OTEL_EXPORTER_OTLP_PROTOCOL)
-        )
+        self.assertEqual("otlp", os.environ.get(OTEL_TRACES_EXPORTER))
+        self.assertEqual("otlp", os.environ.get(OTEL_METRICS_EXPORTER))
+        self.assertEqual("grpc", os.environ.get(OTEL_EXPORTER_OTLP_PROTOCOL))

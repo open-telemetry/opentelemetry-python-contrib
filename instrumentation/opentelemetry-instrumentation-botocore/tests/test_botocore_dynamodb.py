@@ -324,14 +324,14 @@ class TestDynamoDbExtension(TestBase):
             Key={"id": {"S": "1"}},
             ConsistentRead=True,
             AttributesToGet=["id"],
-            ProjectionExpression="1,2",
+            ProjectionExpression="PE",
             ReturnConsumedCapacity="TOTAL",
         )
 
         span = self.assert_span("GetItem")
         self.assert_table_names(span, self.default_table_name)
         self.assert_consistent_read(span, True)
-        self.assert_projection(span, "1,2")
+        self.assert_projection(span, "PE")
         self.assert_consumed_capacity(span, self.default_table_name)
 
     @mock_dynamodb2
@@ -390,7 +390,7 @@ class TestDynamoDbExtension(TestBase):
                 }
             },
             ScanIndexForward=True,
-            ProjectionExpression="1,2",
+            ProjectionExpression="PE",
             ReturnConsumedCapacity="TOTAL",
         )
 
@@ -403,7 +403,7 @@ class TestDynamoDbExtension(TestBase):
         self.assert_consistent_read(span, True)
         self.assert_index_name(span, "lsi")
         self.assert_limit(span, 42)
-        self.assert_projection(span, "1,2")
+        self.assert_projection(span, "PE")
         self.assert_select(span, "ALL_ATTRIBUTES")
         self.assert_consumed_capacity(span, self.default_table_name)
 
@@ -419,7 +419,7 @@ class TestDynamoDbExtension(TestBase):
             Select="ALL_ATTRIBUTES",
             TotalSegments=17,
             Segment=21,
-            ProjectionExpression="1,2",
+            ProjectionExpression="PE",
             ConsistentRead=True,
             ReturnConsumedCapacity="TOTAL",
         )
@@ -440,7 +440,7 @@ class TestDynamoDbExtension(TestBase):
         self.assert_consistent_read(span, True)
         self.assert_index_name(span, "lsi")
         self.assert_limit(span, 42)
-        self.assert_projection(span, "1,2")
+        self.assert_projection(span, "PE")
         self.assert_select(span, "ALL_ATTRIBUTES")
         self.assert_consumed_capacity(span, self.default_table_name)
 

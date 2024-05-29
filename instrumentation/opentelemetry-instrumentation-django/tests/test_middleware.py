@@ -155,9 +155,11 @@ class TestMiddleware(WsgiTestBase):
 
         self.assertEqual(
             span.name,
-            "GET ^route/(?P<year>[0-9]{4})/template/$"
-            if DJANGO_2_2
-            else "GET",
+            (
+                "GET ^route/(?P<year>[0-9]{4})/template/$"
+                if DJANGO_2_2
+                else "GET"
+            ),
         )
         self.assertEqual(span.kind, SpanKind.SERVER)
         self.assertEqual(span.status.status_code, StatusCode.UNSET)

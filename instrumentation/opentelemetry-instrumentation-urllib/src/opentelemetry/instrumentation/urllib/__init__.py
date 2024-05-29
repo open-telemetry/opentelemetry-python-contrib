@@ -156,9 +156,11 @@ class URLLibInstrumentor(BaseInstrumentor):
             histograms,
             request_hook=kwargs.get("request_hook"),
             response_hook=kwargs.get("response_hook"),
-            excluded_urls=_excluded_urls_from_env
-            if excluded_urls is None
-            else parse_excluded_urls(excluded_urls),
+            excluded_urls=(
+                _excluded_urls_from_env
+                if excluded_urls is None
+                else parse_excluded_urls(excluded_urls)
+            ),
         )
 
     def _uninstrument(self, **kwargs):
@@ -251,9 +253,9 @@ def _instrument(
 
                 ver_ = str(getattr(result, "version", ""))
                 if ver_:
-                    labels[
-                        SpanAttributes.HTTP_FLAVOR
-                    ] = f"{ver_[:1]}.{ver_[:-1]}"
+                    labels[SpanAttributes.HTTP_FLAVOR] = (
+                        f"{ver_[:1]}.{ver_[:-1]}"
+                    )
 
             _record_histograms(
                 histograms, labels, request, result, elapsed_time

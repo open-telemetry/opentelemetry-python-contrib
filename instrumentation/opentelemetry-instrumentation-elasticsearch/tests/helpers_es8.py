@@ -12,6 +12,8 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+from elastic_transport import ApiResponseMeta, HttpHeaders
+from elastic_transport._node import NodeApiResponse
 from elasticsearch_dsl import Document, Keyword, Text
 
 
@@ -36,6 +38,23 @@ dsl_create_statement = {
     }
 }
 dsl_index_result = (1, {}, '{"result": "created"}')
-dsl_index_span_name = "Elasticsearch/test-index/_doc/2"
+dsl_index_span_name = "Elasticsearch/test-index/_doc/:id"
 dsl_index_url = "/test-index/_doc/2"
 dsl_search_method = "POST"
+
+perform_request_mock_path = (
+    "elastic_transport._node._http_urllib3.Urllib3HttpNode.perform_request"
+)
+
+
+def mock_response(body: str, status_code: int = 200):
+    return NodeApiResponse(
+        ApiResponseMeta(
+            status=status_code,
+            headers=HttpHeaders({}),
+            duration=100,
+            http_version="1.1",
+            node="node",
+        ),
+        body.encode(),
+    )

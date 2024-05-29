@@ -31,7 +31,7 @@ Usage
 import logging
 from typing import Any, Collection, Dict, Generator, List, Mapping, Optional
 
-import boto3
+import boto3.session
 import botocore.client
 from wrapt import wrap_function_wrapper
 
@@ -382,7 +382,7 @@ class Boto3SQSInstrumentor(BaseInstrumentor):
             self._decorate_sqs(type(retval))
             return retval
 
-        wrap_function_wrapper(boto3, "client", client_wrapper)
+        wrap_function_wrapper(boto3.session.Session, "client", client_wrapper)
 
     def _decorate_sqs(self, sqs_class: type) -> None:
         """
@@ -433,7 +433,7 @@ class Boto3SQSInstrumentor(BaseInstrumentor):
             self._decorate_sqs(client_cls)
 
     def _uninstrument(self, **kwargs: Dict[str, Any]) -> None:
-        unwrap(boto3, "client")
+        unwrap(boto3.session.Session, "client")
 
         for client_cls in botocore.client.BaseClient.__subclasses__():
             self._un_decorate_sqs(client_cls)

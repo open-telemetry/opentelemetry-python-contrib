@@ -76,9 +76,9 @@ class _OpPublish(_SnsOperation):
         destination_name, is_phone_number = cls._extract_destination_name(
             call_context
         )
-        attributes[
-            SpanAttributes.MESSAGING_DESTINATION_KIND
-        ] = MessagingDestinationKindValues.TOPIC.value
+        attributes[SpanAttributes.MESSAGING_DESTINATION_KIND] = (
+            MessagingDestinationKindValues.TOPIC.value
+        )
         attributes[SpanAttributes.MESSAGING_DESTINATION] = destination_name
 
         # TODO: Use SpanAttributes.MESSAGING_DESTINATION_NAME when opentelemetry-semantic-conventions 0.42b0 is released
