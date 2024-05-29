@@ -19,13 +19,9 @@ class TestRemoveUrlCredentials(unittest.TestCase):
     def test_remove_credentials_ipv4_literal(self):
         url = "http://someuser:somepass@127.0.0.1:8080/test/path?query=value"
         cleaned_url = remove_url_credentials(url)
-        self.assertEqual(
-            cleaned_url, "http://127.0.0.1:8080/test/path?query=value"
-        )
+        self.assertEqual(cleaned_url, "http://127.0.0.1:8080/test/path?query=value")
 
     def test_remove_credentials_ipv6_literal(self):
         url = "http://someuser:somepass@[::1]:8080/test/path?query=value"
         cleaned_url = remove_url_credentials(url)
-        self.assertEqual(
-            cleaned_url, "http://[::1]:8080/test/path?query=value"
-        )
+        self.assertEqual(cleaned_url, "http://[::1]:8080/test/path?query=value")

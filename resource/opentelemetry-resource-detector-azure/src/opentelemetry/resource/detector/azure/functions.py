@@ -14,10 +14,6 @@
 
 from os import environ, getpid
 
-from opentelemetry.resource.detector.azure._utils import (
-    _get_azure_resource_uri,
-    _is_on_functions,
-)
 from opentelemetry.sdk.resources import Resource, ResourceDetector
 from opentelemetry.semconv.resource import (
     CloudPlatformValues,
@@ -29,6 +25,10 @@ from ._constants import (
     _FUNCTIONS_ATTRIBUTE_ENV_VARS,
     _REGION_NAME,
     _WEBSITE_SITE_NAME,
+)
+from opentelemetry.resource.detector.azure._utils import (
+    _get_azure_resource_uri,
+    _is_on_functions,
 )
 
 
@@ -65,3 +65,4 @@ class AzureFunctionsResourceDetector(ResourceDetector):
                     attributes[key] = value
 
         return Resource(attributes)
+

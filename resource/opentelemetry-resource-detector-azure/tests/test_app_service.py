@@ -68,7 +68,7 @@ class TestAzureAppServiceResourceDetector(unittest.TestCase):
         self.assertEqual(
             attributes["azure.app.service.stamp"], TEST_WEBSITE_HOME_STAMPNAME
         )
-
+    
     @patch.dict(
         "os.environ",
         {
