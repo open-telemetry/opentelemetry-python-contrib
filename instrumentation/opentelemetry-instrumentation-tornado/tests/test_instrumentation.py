@@ -14,7 +14,6 @@
 
 
 from unittest.mock import Mock, patch
-from urllib.error import HTTPError
 
 from http_server_mock import HttpServerMock
 from tornado.httpclient import HTTPClientError
