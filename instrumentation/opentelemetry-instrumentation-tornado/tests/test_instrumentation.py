@@ -17,8 +17,8 @@ from unittest.mock import Mock, patch
 from urllib.error import HTTPError
 
 from http_server_mock import HttpServerMock
-from tornado.testing import AsyncHTTPTestCase
 from tornado.httpclient import HTTPClientError
+from tornado.testing import AsyncHTTPTestCase
 
 from opentelemetry import trace
 from opentelemetry.instrumentation.propagators import (
@@ -603,6 +603,7 @@ class TornadoHookTest(TornadoTest):
 
         self.memory_exporter.clear()
 
+
 class TestTornadoHTTPClientInstrumentation(TornadoTest, WsgiTestBase):
     def test_http_client_success_response(self):
         response = self.fetch("/")
@@ -645,6 +646,7 @@ class TestTornadoHTTPClientInstrumentation(TornadoTest, WsgiTestBase):
         self.assertEqual(server.name, "GET /some-404")
         self.assertEqual(client.name, "GET")
         self.memory_exporter.clear()
+
 
 class TestTornadoUninstrument(TornadoTest):
     def test_uninstrument(self):

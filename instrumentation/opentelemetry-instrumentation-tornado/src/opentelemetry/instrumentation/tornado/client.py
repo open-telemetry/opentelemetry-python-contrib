@@ -113,7 +113,7 @@ def _finish_tracing_callback(
         if isinstance(exc, HTTPError):
             status_code = exc.code
         description = f"{type(exc).__name__}: {exc}"
-    
+
     response = None
     if not exc:
         response = future.result()
@@ -136,8 +136,12 @@ def _finish_tracing_callback(
         duration_histogram.record(
             response.request_time, attributes=metric_attributes
         )
-        request_size_histogram.record(request_size, attributes=metric_attributes)
-        response_size_histogram.record(response_size, attributes=metric_attributes)
+        request_size_histogram.record(
+            request_size, attributes=metric_attributes
+        )
+        response_size_histogram.record(
+            response_size, attributes=metric_attributes
+        )
 
     if response_hook:
         response_hook(span, future)
