@@ -195,7 +195,7 @@ import typing
 import urllib
 from functools import wraps
 from timeit import default_timer
-from typing import Any, Awaitable, Callable, Tuple
+from typing import Any, Callable, Tuple
 
 from asgiref.compatibility import guarantee_single_callable
 
