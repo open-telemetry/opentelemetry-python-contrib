@@ -634,8 +634,6 @@ class TestTornadoHTTPClientInstrumentation(TornadoTest, WsgiTestBase):
             self.assertEqual(response.code, 404)
         except HTTPClientError:
             pass
-        except Exception as e:
-            self.fail(f"Unexpected exception: {e}")
 
         spans = self.memory_exporter.get_finished_spans()
         self.assertEqual(len(spans), 2)
