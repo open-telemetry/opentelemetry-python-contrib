@@ -553,7 +553,7 @@ class OpenTelemetryMiddleware:
             or []
         )
 
-    async def __call__(self, scope, receive, send) -> None:
+    async def __call__(self, scope, receive, send):
         """The ASGI application
 
         Args:
