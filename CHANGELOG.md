@@ -63,6 +63,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - `opentelemetry-instrumentation-requests` Fix wrong time unit for duration histogram
   ([#2553](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/2553))
 - `opentelemetry-util-http` Preserve brackets around literal IPv6 hosts ([#2552](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/2552))
+- `opentelemetry-instrumentation-tornado` Fix not handling a http client exception
+  ([#2563](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/2563))
 
 ## Version 1.24.0/0.45b0 (2024-03-28)
 
