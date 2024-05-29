@@ -498,35 +498,35 @@ class TestTornadoInstrumentation(TornadoTest, WsgiTestBase):
         self.memory_exporter.clear()
         set_global_response_propagator(orig)
 
-    # def test_credential_removal(self):
-    #     app = HttpServerMock("test_credential_removal")
+    def test_credential_removal(self):
+        app = HttpServerMock("test_credential_removal")
 
-    #     @app.route("/status/200")
-    #     def index():
-    #         return "hello"
+        @app.route("/status/200")
+        def index():
+            return "hello"
 
-    #     with app.run("localhost", 5000):
-    #         response = self.fetch(
-    #             "http://username:password@localhost:5000/status/200"
-    #         )
-    #     self.assertEqual(response.code, 200)
+        with app.run("localhost", 5000):
+            response = self.fetch(
+                "http://username:password@localhost:5000/status/200"
+            )
+        self.assertEqual(response.code, 200)
 
-    #     spans = self.sorted_spans(self.memory_exporter.get_finished_spans())
-    #     self.assertEqual(len(spans), 1)
-    #     client = spans[0]
+        spans = self.sorted_spans(self.memory_exporter.get_finished_spans())
+        self.assertEqual(len(spans), 1)
+        client = spans[0]
 
-    #     self.assertEqual(client.name, "GET")
-    #     self.assertEqual(client.kind, SpanKind.CLIENT)
-    #     self.assertSpanHasAttributes(
-    #         client,
-    #         {
-    #             SpanAttributes.HTTP_URL: "http://localhost:5000/status/200",
-    #             SpanAttributes.HTTP_METHOD: "GET",
-    #             SpanAttributes.HTTP_STATUS_CODE: 200,
-    #         },
-    #     )
+        self.assertEqual(client.name, "GET")
+        self.assertEqual(client.kind, SpanKind.CLIENT)
+        self.assertSpanHasAttributes(
+            client,
+            {
+                SpanAttributes.HTTP_URL: "http://localhost:5000/status/200",
+                SpanAttributes.HTTP_METHOD: "GET",
+                SpanAttributes.HTTP_STATUS_CODE: 200,
+            },
+        )
 
-    #     self.memory_exporter.clear()
+        self.memory_exporter.clear()
 
 
 class TestTornadoInstrumentationWithXHeaders(TornadoTest):
