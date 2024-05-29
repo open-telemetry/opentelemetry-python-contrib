@@ -628,7 +628,6 @@ class TestTornadoHTTPClientInstrumentation(TornadoTest, WsgiTestBase):
         self.assertEqual(server.name, "GET /some-404")
         self.assertEqual(client.name, "GET")
         self.memory_exporter.clear()
-        print("server span", server)
 
         # when an exception is thrown
         try:
@@ -637,7 +636,6 @@ class TestTornadoHTTPClientInstrumentation(TornadoTest, WsgiTestBase):
         except HTTPClientError:
             pass
         except Exception as e:
-            print("Exception type", type(e))
             self.fail(f"Unexpected exception: {e}")
 
         spans = self.memory_exporter.get_finished_spans()
