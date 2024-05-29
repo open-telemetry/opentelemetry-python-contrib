@@ -606,7 +606,7 @@ class TornadoHookTest(TornadoTest):
 class TestTornadoHTTPClientInstrumentation(TornadoTest, WsgiTestBase):
     def test_http_client_success_response(self):
         response = self.fetch("/")
-        self.assertEqual(response.code, 200)
+        self.assertEqual(response.code, 201)
 
         spans = self.memory_exporter.get_finished_spans()
         self.assertEqual(len(spans), 3)
