@@ -553,12 +553,7 @@ class OpenTelemetryMiddleware:
             or []
         )
 
-    async def __call__(
-        self,
-        scope: dict[str, Any],
-        receive: Callable[[], Awaitable[dict[str, Any]]],
-        send: Callable[[dict[str, Any]], Awaitable[None]],
-    ) -> None:
+    async def __call__(self, scope, receive, send) -> None:
         """The ASGI application
 
         Args:
