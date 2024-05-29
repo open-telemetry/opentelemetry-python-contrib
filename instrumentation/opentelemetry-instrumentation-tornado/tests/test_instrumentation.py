@@ -14,9 +14,11 @@
 
 
 from unittest.mock import Mock, patch
+from urllib.error import HTTPError
 
 from http_server_mock import HttpServerMock
 from tornado.testing import AsyncHTTPTestCase
+from tornado.httpclient import HTTPClientError
 
 from opentelemetry import trace
 from opentelemetry.instrumentation.propagators import (
@@ -615,6 +617,7 @@ class TestTornadoHTTPClientInstrumentation(TornadoTest, WsgiTestBase):
         self.memory_exporter.clear()
 
     def test_http_client_failed_response(self):
+        # when an exception isn't thrown
         response = self.fetch("/some-404")
         self.assertEqual(response.code, 404)
 
@@ -625,6 +628,23 @@ class TestTornadoHTTPClientInstrumentation(TornadoTest, WsgiTestBase):
         self.assertEqual(client.name, "GET")
         self.memory_exporter.clear()
         print("server span", server)
+
+        # when an exception is thrown
+        try:
+            response = self.fetch("/some-404", raise_error=True)
+            self.assertEqual(response.code, 404)
+        except HTTPClientError:
+            pass
+        except Exception as e:
+            print("Exception type", type(e))
+            self.fail(f"Unexpected exception: {e}")
+
+        spans = self.memory_exporter.get_finished_spans()
+        self.assertEqual(len(spans), 2)
+        server, client = self.sorted_spans(spans)
+        self.assertEqual(server.name, "GET /some-404")
+        self.assertEqual(client.name, "GET")
+        self.memory_exporter.clear()
 
 class TestTornadoUninstrument(TornadoTest):
     def test_uninstrument(self):
