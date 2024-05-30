@@ -564,6 +564,8 @@ class HTTPXClientInstrumentor(BaseInstrumentor):
         tracer_provider = kwargs.get("tracer_provider")
         _InstrumentedClient._tracer_provider = tracer_provider
         _InstrumentedAsyncClient._tracer_provider = tracer_provider
+        # Intentionally using a private attribute here, see:
+        # https://github.com/open-telemetry/opentelemetry-python-contrib/pull/2538#discussion_r1610603719
         httpx.Client = httpx._api.Client = _InstrumentedClient
         httpx.AsyncClient = _InstrumentedAsyncClient
 
