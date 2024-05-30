@@ -12,17 +12,16 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+from unittest import TestCase
+from unittest.mock import MagicMock, patch
+
 from opentelemetry.instrumentation.aws_lambda import (
+    OTEL_INSTRUMENTATION_AWS_LAMBDA_FLUSH_TIMEOUT,
+    OTEL_LAMBDA_DISABLE_AWS_CONTEXT_PROPAGATION,
     determine_flush_timeout,
     flush,
     is_aws_context_propagation_disabled,
 )
-from opentelemetry.instrumentation.aws_lambda import (
-    OTEL_INSTRUMENTATION_AWS_LAMBDA_FLUSH_TIMEOUT,
-    OTEL_LAMBDA_DISABLE_AWS_CONTEXT_PROPAGATION,
-)
-from unittest.mock import patch, MagicMock
-from unittest import TestCase
 
 
 class TestDetermineFlushTimeout:

@@ -71,17 +71,21 @@ import logging
 import os
 import time
 from importlib import import_module
-from typing import Any, Callable, Collection, Optional, cast
+from typing import Any, Callable, Collection, Dict, List, Optional, Tuple, cast
 from urllib.parse import urlencode
 
+from wrapt import wrap_function_wrapper
+
 from opentelemetry.context.context import Context
+from opentelemetry.instrumentation.aws_lambda.package import _instruments
+from opentelemetry.instrumentation.aws_lambda.version import __version__
 from opentelemetry.instrumentation.instrumentor import BaseInstrumentor
 from opentelemetry.instrumentation.utils import unwrap
 from opentelemetry.metrics import MeterProvider, get_meter_provider
 from opentelemetry.propagate import get_global_textmap
 from opentelemetry.propagators.aws.aws_xray_propagator import (
-    AwsXRayPropagator,
     TRACE_HEADER_KEY,
+    AwsXRayPropagator,
 )
 from opentelemetry.semconv.resource import ResourceAttributes
 from opentelemetry.semconv.trace import SpanAttributes
@@ -94,10 +98,6 @@ from opentelemetry.trace import (
 )
 from opentelemetry.trace.propagation import get_current_span
 from opentelemetry.trace.status import Status, StatusCode
-from wrapt import wrap_function_wrapper
-
-from opentelemetry.instrumentation.aws_lambda.package import _instruments
-from opentelemetry.instrumentation.aws_lambda.version import __version__
 
 logger = logging.getLogger(__name__)
 
@@ -110,6 +110,9 @@ OTEL_INSTRUMENTATION_AWS_LAMBDA_FLUSH_TIMEOUT = (
 OTEL_LAMBDA_DISABLE_AWS_CONTEXT_PROPAGATION = (
     "OTEL_LAMBDA_DISABLE_AWS_CONTEXT_PROPAGATION"
 )
+CONSUMER_EVENT_SOURCES = {"aws:sqs", "aws:s3", "aws:sns", "aws:dynamodb"}
+
+LambdaEvent = Dict[str, Any]
 
 
 class FlushableMeterProvider(MeterProvider):
@@ -122,7 +125,8 @@ class FlushableMeterProvider(MeterProvider):
         Force flush all meter data.
 
         Args:
-            timeout: The maximum amount of time to wait for the flush to complete, in milliseconds.
+            timeout: The maximum amount of time to wait for the flush to complete,
+            in milliseconds.
 
         Returns: None
         """
@@ -140,7 +144,8 @@ class FlushableTracerProvider(TracerProvider):
         Force flush all tracer data.
 
         Args:
-            timeout: The maximum amount of time to wait for the flush to complete, in milliseconds.
+            timeout: The maximum amount of time to wait for the flush to complete,
+            in milliseconds.
 
         Returns: None
         """
@@ -160,7 +165,8 @@ def provider_warning(provider_type: str):
 
     return lambda timeout: logger.warning(
         f"{provider_type} was missing `force_flush` method. "
-        "This is necessary in case of a Lambda freeze and would exist in the OTel SDK implementation."
+        "This is necessary in case of a Lambda freeze and would exist in the "
+        "OTel SDK implementation."
     )
 
 
@@ -171,7 +177,8 @@ def determine_tracer_provider(
     Determine the TracerProvider to use for the instrumentation.
 
     The TracerProvider must have a `force_flush` method to be used in the instrumentation.
-    If the TracerProvider does not have a `force_flush` method, a dummy `force_flush` method is added that logs a warning.
+    If the TracerProvider does not have a `force_flush` method,
+    a dummy `force_flush` method is added that logs a warning.
 
     Args:
         tracer_provider_override: Optional TracerProvider to use for the instrumentation.
@@ -220,59 +227,483 @@ def determine_meter_provider(
     return cast(FlushableMeterProvider, meter_provider)
 
 
-def _default_event_context_extractor(lambda_event: Any) -> Context:
-    """Default way of extracting the context from the Lambda Event.
-
-    Assumes the Lambda Event is a map with the headers under the 'headers' key.
-    This is the mapping to use when the Lambda is invoked by an API Gateway
-    REST API where API Gateway is acting as a pure proxy for the request.
-    Protects headers from being something other than dictionary, as this
-    is what downstream propagators expect.
-
-    See more:
-    https://docs.aws.amazon.com/apigateway/latest/developerguide/set-up-lambda-proxy-integrations.html#api-gateway-simple-proxy-for-lambda-input-format
+def _handle_multi_value_headers_for_request(
+    event: LambdaEvent,
+) -> Dict[str, str]:
+    """
+    Process multi-value headers for a Lambda event.
 
     Args:
-        lambda_event: user-defined, so it could be anything, but this
-            method counts on it being a map with a 'headers' key
-    Returns:
-        A Context with configuration found in the event.
+        event: Lambda event object.
+
+    Returns: Headers for the Lambda event.
     """
-    headers = None
-    try:
-        headers = lambda_event["headers"]
-    except (TypeError, KeyError):
-        logger.debug(
-            "Extracting context from Lambda Event failed: either enable X-Ray active tracing or configure API Gateway to trigger this Lambda function as a pure proxy. Otherwise, generated spans will have an invalid (empty) parent context."
+
+    headers = event.get("headers", {}) or {}
+    headers = {k.lower(): v for k, v in headers.items()}
+
+    if event.get("multiValueHeaders"):
+        headers.update(
+            {
+                k.lower(): ", ".join(v) if isinstance(v, list) else ""
+                for k, v in event.get("multiValueHeaders", {}).items()
+            }
         )
-    if not isinstance(headers, dict):
-        headers = {}
-    return get_global_textmap().extract(headers)
+
+    return headers
+
+
+class EventWrapper:
+    """
+    General purpose wrapper for Lambda events.
+    """
+
+    def __init__(self, event, context):
+        self._event = event
+        self._context = context
+
+    @property
+    def headers(self) -> dict:
+        """
+        Determine the headers for the event.
+
+        Returns: Headers for the event.
+        """
+
+        if self._event and "headers" in self._event:
+            return self._event["headers"]
+        else:
+            return {}
+
+    @property
+    def span_kind(self) -> SpanKind:
+        """
+        Determine the SpanKind for the event.
+
+        Returns: SpanKind
+        """
+
+        return SpanKind.SERVER
+
+    def set_pre_execution_span_attributes(self, span: Span, context) -> Span:
+        """
+        Set the span attributes before the Lambda function has executed.
+
+        Args:
+            span: Span to set attributes on.
+            context: Lambda context object.
+
+        Returns: The span with the attributes set.
+        """
+
+        if span.is_recording():
+            # NOTE: The specs mention an exception here, allowing the
+            # `SpanAttributes.CLOUD_RESOURCE_ID` attribute to be set as a span
+            # attribute instead of a resource attribute.
+            #
+            # See more:
+            # https://github.com/open-telemetry/semantic-conventions/blob/main/docs/faas/aws-lambda.md#resource-detector
+            span.set_attribute(
+                SpanAttributes.CLOUD_RESOURCE_ID,
+                context.invoked_function_arn,
+            )
+            span.set_attribute(
+                SpanAttributes.FAAS_INVOCATION_ID,
+                context.aws_request_id,
+            )
+
+            # NOTE: `cloud.account.id` can be parsed from the ARN as the fifth item when splitting on `:`
+            #
+            # See more:
+            # https://github.com/open-telemetry/semantic-conventions/blob/main/docs/faas/aws-lambda.md#all-triggers
+            span.set_attribute(
+                ResourceAttributes.CLOUD_ACCOUNT_ID,
+                context.invoked_function_arn.split(":")[4],
+            )
+
+        return span
+
+    def set_post_execution_span_attributes(
+        self, span: Span, context, result: Any
+    ) -> Span:
+        """
+        Set the span attributes after the Lambda function has executed.
+
+        Args:
+            span: Span to set attributes on.
+            context: Lambda context object.
+            result: Execution result of the Lambda function.
+
+        Returns: The span with the attributes set.
+        """
+
+        _ = result
+        return span
+
+
+class ALBWrapper(EventWrapper):
+    @property
+    def headers(self) -> dict:
+        """
+        Determine the headers for the Application Load Balancer event.
+
+        Returns: Headers for the Application Load Balancer event.
+        """
+
+        headers: List[Tuple[bytes, bytes]] = []
+
+        if "multiValueHeaders" in self._event:
+            for k, v in self._event["multiValueHeaders"].items():
+                for inner_v in v:
+                    headers.append((k.lower().encode(), inner_v.encode()))
+        else:
+            for k, v in self._event["headers"].items():
+                headers.append((k.lower().encode(), v.encode()))
+
+        # Unique headers. If there are duplicates, it will use the last defined.
+        uq_headers = {k.decode(): v.decode() for k, v in headers}
+
+        return uq_headers
+
+    def set_post_execution_span_attributes(
+        self, span: Span, context, result: Any
+    ) -> Span:
+        """
+        Set the span attributes after the Lambda function has executed.
+
+        Args:
+            span: Span to set attributes on.
+            context: Lambda context object.
+            result: Execution result of the Lambda function.
+
+        Returns: The span with the attributes set.
+        """
+
+        span.set_attribute(SpanAttributes.FAAS_TRIGGER, "http")
+
+        if "httpMethod" in self._event:
+            span.set_attribute(
+                SpanAttributes.HTTP_METHOD,
+                self._event["httpMethod"],
+            )
+
+        if self.headers:
+            if "user-agent" in self.headers:
+                span.set_attribute(
+                    SpanAttributes.HTTP_USER_AGENT,
+                    self.headers["user-agent"],
+                )
+
+            if "x-forwarded-proto" in self.headers:
+                span.set_attribute(
+                    SpanAttributes.HTTP_SCHEME,
+                    self.headers["x-forwarded-proto"],
+                )
+            if "host" in self.headers:
+                span.set_attribute(
+                    SpanAttributes.NET_HOST_NAME,
+                    self.headers["host"],
+                )
+
+        if "path" in self._event:
+            span.set_attribute(SpanAttributes.HTTP_ROUTE, self._event["path"])
+
+            if self._event.get("queryStringParameters"):
+                span.set_attribute(
+                    SpanAttributes.HTTP_TARGET,
+                    f"{self._event['path']}?{urlencode(self._event['queryStringParameters'])}",
+                )
+            else:
+                span.set_attribute(
+                    SpanAttributes.HTTP_TARGET, self._event["path"]
+                )
+
+        return span
+
+
+class BaseAPIGatewayWrapper(EventWrapper):
+    def _set_api_gateway_v1_attributes(self, span: Span) -> Span:
+        """
+        Set the span attributes for API Gateway v1 events.
+
+        Args:
+            span: Span to set attributes on.
+
+        Returns: The span with the attributes set.
+        """
+
+        span.set_attribute(
+            SpanAttributes.HTTP_METHOD, self._event.get("httpMethod")
+        )
+
+        if self._event.get("headers"):
+            if "User-Agent" in self._event["headers"]:
+                span.set_attribute(
+                    SpanAttributes.HTTP_USER_AGENT,
+                    self._event["headers"]["User-Agent"],
+                )
+            if "X-Forwarded-Proto" in self._event["headers"]:
+                span.set_attribute(
+                    SpanAttributes.HTTP_SCHEME,
+                    self._event["headers"]["X-Forwarded-Proto"],
+                )
+            if "Host" in self._event["headers"]:
+                span.set_attribute(
+                    SpanAttributes.NET_HOST_NAME,
+                    self._event["headers"]["Host"],
+                )
+
+        if "resource" in self._event:
+            span.set_attribute(
+                SpanAttributes.HTTP_ROUTE, self._event["resource"]
+            )
+
+            if self._event.get("queryStringParameters"):
+                span.set_attribute(
+                    SpanAttributes.HTTP_TARGET,
+                    f"{self._event['resource']}?{urlencode(self._event['queryStringParameters'])}",
+                )
+            else:
+                span.set_attribute(
+                    SpanAttributes.HTTP_TARGET, self._event["resource"]
+                )
+
+        return span
+
+
+class APIGatewayHTTPWrapper(BaseAPIGatewayWrapper):
+    @property
+    def event_version(self) -> str:
+        """
+        Determine the version of the API Gateway event.
+
+        Returns: The version of the API Gateway event.
+        """
+
+        return self._event["version"]
+
+    @property
+    def headers(self) -> dict:
+        """
+        Determine the headers for the API Gateway HTTP event.
+
+        Returns: Headers for the API Gateway HTTP event.
+        """
+
+        # API Gateway v2
+        if self.event_version == "2.0":
+            return {
+                k.lower(): v for k, v in self._event.get("headers", {}).items()
+            }
+
+        # API Gateway v1
+        return _handle_multi_value_headers_for_request(self._event)
+
+    def _set_api_gateway_v2_attributes(self, span: Span) -> Span:
+        """
+        Set the span attributes for API Gateway v2 events.
+
+        Args:
+            span: Span to set attributes on.
+
+        Returns: The span with the attributes set.
+        """
+
+        if "domainName" in self._event["requestContext"]:
+            span.set_attribute(
+                SpanAttributes.NET_HOST_NAME,
+                self._event["requestContext"]["domainName"],
+            )
+
+        if self._event["requestContext"].get("http"):
+            if "method" in self._event["requestContext"]["http"]:
+                span.set_attribute(
+                    SpanAttributes.HTTP_METHOD,
+                    self._event["requestContext"]["http"]["method"],
+                )
+            if "userAgent" in self._event["requestContext"]["http"]:
+                span.set_attribute(
+                    SpanAttributes.HTTP_USER_AGENT,
+                    self._event["requestContext"]["http"]["userAgent"],
+                )
+            if "path" in self._event["requestContext"]["http"]:
+                span.set_attribute(
+                    SpanAttributes.HTTP_ROUTE,
+                    self._event["requestContext"]["http"]["path"],
+                )
+                if self._event.get("rawQueryString"):
+                    span.set_attribute(
+                        SpanAttributes.HTTP_TARGET,
+                        f"{self._event['requestContext']['http']['path']}?{self._event['rawQueryString']}",
+                    )
+                else:
+                    span.set_attribute(
+                        SpanAttributes.HTTP_TARGET,
+                        self._event["requestContext"]["http"]["path"],
+                    )
+
+        return span
+
+    def set_pre_execution_span_attributes(self, span, context) -> Span:
+        """
+        Set the span attributes before the Lambda function has executed.
+
+        Args:
+            span: Span to set attributes on.
+            context: Lambda context object.
+
+        Returns: The span with the attributes set.
+        """
+
+        super().set_pre_execution_span_attributes(span=span, context=context)
+        span.set_attribute(SpanAttributes.FAAS_TRIGGER, "http")
+
+        if self.event_version == "2.0":
+            return self._set_api_gateway_v2_attributes(span)
+
+        return self._set_api_gateway_v1_attributes(span)
+
+    def set_post_execution_span_attributes(
+        self, span: Span, context, result: Any
+    ) -> Span:
+        """
+        Set the span attributes after the Lambda function has executed.
+
+        Args:
+            span: Span to set attributes on.
+            context: Lambda context object.
+            result: Execution result of the Lambda function.
+
+        Returns: The span with the attributes set.
+        """
+
+        if isinstance(result, dict) and result.get("statusCode"):
+            span.set_attribute(
+                SpanAttributes.HTTP_STATUS_CODE,
+                result.get("statusCode"),
+            )
+
+        return span
+
+
+class APIGatewayProxyWrapper(BaseAPIGatewayWrapper):
+    """
+    Wrapper for API Gateway Proxy event.
+    """
+
+    @property
+    def headers(self) -> dict:
+        """
+        Determine the headers for the API Gateway Proxy event.
+
+        Returns: Headers for the API Gateway Proxy event.
+        """
+
+        return _handle_multi_value_headers_for_request(self._event)
+
+    def set_pre_execution_span_attributes(self, span: Span, context) -> Span:
+        """
+        Set the span attributes before the Lambda function has executed.
+
+        Args:
+            span: Span to set attributes on.
+            context: Lambda context object.
+
+        Returns: The span with the attributes set.
+        """
+
+        super().set_pre_execution_span_attributes(span=span, context=context)
+        span.set_attribute(SpanAttributes.FAAS_TRIGGER, "http")
+        return self._set_api_gateway_v1_attributes(span)
+
+    def set_post_execution_span_attributes(
+        self, span: Span, context, result: Any
+    ) -> Span:
+        """
+        Set the span attributes after the Lambda function has executed.
+
+        Args:
+            span: Span to set attributes on.
+            context: Lambda context object.
+            result: Execution result of the Lambda function.
+
+        Returns: The span with the attributes set.
+        """
+
+        if isinstance(result, dict) and result.get("statusCode"):
+            span.set_attribute(
+                SpanAttributes.HTTP_STATUS_CODE,
+                result.get("statusCode"),
+            )
+
+        return span
+
+
+class ConsumerSource(EventWrapper):
+    """
+    General purpose wrapper for events that should be marked as a consumer span.
+    """
+
+    @property
+    def span_kind(self):
+        """
+        Determine the SpanKing for the event.
+
+        Returns: SpanKind.CONSUMER
+        """
+
+        return SpanKind.CONSUMER
+
+
+def get_event_wrapper(event: LambdaEvent, context: Any) -> EventWrapper:
+    """
+    There isn't a consistent interface for the event object.
+
+    Determine the event source and place it in a wrapper that can be used to extract the trace context,
+    and relevant span attributes.
+
+    Args:
+        event: The Lambda event object.
+        context: The Lambda context object.
+
+    Returns: An EventWrapper that can be used to extract the trace context and span attributes.
+    """
+
+    default_wrapper = EventWrapper(event=event, context=context)
+
+    if not event:
+        return default_wrapper
+    elif "requestContext" in event and "elb" in event["requestContext"]:
+        return ALBWrapper(event=event, context=context)
+    elif "version" in event and "requestContext" in event:
+        return APIGatewayHTTPWrapper(event=event, context=context)
+    elif "resource" in event and "requestContext" in event:
+        return APIGatewayProxyWrapper(event=event, context=context)
+    elif "Records" in event and len(event["Records"]) > 0:
+        # There appears to be inconsistency in the event source key for different event types.
+        if (
+            "eventSource" in event["Records"][0]
+            and event["Records"][0]["eventSource"] in CONSUMER_EVENT_SOURCES
+        ) or (
+            "EventSource" in event["Records"][0]
+            and event["Records"][0]["EventSource"] in CONSUMER_EVENT_SOURCES
+        ):
+            return ConsumerSource(event=event, context=context)
+
+    return default_wrapper
 
 
 def _determine_parent_context(
-    lambda_event: Any,
+    event: EventWrapper,
     event_context_extractor: Callable[[Any], Context],
     disable_aws_context_propagation: bool,
 ) -> Context:
     """Determine the parent context for the current Lambda invocation.
 
-    See more:
-    https://github.com/open-telemetry/opentelemetry-specification/blob/main/specification/trace/semantic_conventions/instrumentation/aws-lambda.md#determining-the-parent-of-a-span
-
-    Args:
-        lambda_event: user-defined, so it could be anything, but this
-            method counts it being a map with a 'headers' key
-        event_context_extractor: a method which takes the Lambda
-            Event as input and extracts an OTel Context from it. By default,
-            the context is extracted from the HTTP headers of an API Gateway
-            request.
-        disable_aws_context_propagation: By default, this instrumentation
-            will try to read the context from the `_X_AMZN_TRACE_ID` environment
-            variable set by Lambda, set this to `True` to disable this behavior.
-    Returns:
-        A Context with configuration found in the carrier.
+    See more:    https://github.com/open-telemetry/opentelemetry-specification/blob/main/specification/trace/semantic_conventions/instrumentation/aws-lambda.md#determining-the-parent-of-a-span
+    Args:        lambda_event: user-defined, so it could be anything, but this            method counts it being a map with a 'headers' key        event_context_extractor: a method which takes the Lambda            Event as input and extracts an OTel Context from it. By default,            the context is extracted from the HTTP headers of an API Gateway            request.        disable_aws_context_propagation: By default, this instrumentation            will try to read the context from the `_X_AMZN_TRACE_ID` environment            variable set by Lambda, set this to `True` to disable this behavior.    Returns:        A Context with configuration found in the carrier.
     """
+
     parent_context = None
 
     if not disable_aws_context_propagation:
@@ -291,100 +722,9 @@ def _determine_parent_context(
     ):
         return parent_context
 
-    if event_context_extractor:
-        parent_context = event_context_extractor(lambda_event)
-    else:
-        parent_context = _default_event_context_extractor(lambda_event)
+    parent_context = event_context_extractor(event)
 
     return parent_context
-
-
-def _set_api_gateway_v1_proxy_attributes(
-    lambda_event: Any, span: Span
-) -> Span:
-    """Sets HTTP attributes for REST APIs and v1 HTTP APIs
-
-    More info:
-    https://docs.aws.amazon.com/apigateway/latest/developerguide/set-up-lambda-proxy-integrations.html#api-gateway-simple-proxy-for-lambda-input-format
-    """
-    span.set_attribute(
-        SpanAttributes.HTTP_METHOD, lambda_event.get("httpMethod")
-    )
-
-    if lambda_event.get("headers"):
-        if "User-Agent" in lambda_event["headers"]:
-            span.set_attribute(
-                SpanAttributes.HTTP_USER_AGENT,
-                lambda_event["headers"]["User-Agent"],
-            )
-        if "X-Forwarded-Proto" in lambda_event["headers"]:
-            span.set_attribute(
-                SpanAttributes.HTTP_SCHEME,
-                lambda_event["headers"]["X-Forwarded-Proto"],
-            )
-        if "Host" in lambda_event["headers"]:
-            span.set_attribute(
-                SpanAttributes.NET_HOST_NAME,
-                lambda_event["headers"]["Host"],
-            )
-    if "resource" in lambda_event:
-        span.set_attribute(SpanAttributes.HTTP_ROUTE, lambda_event["resource"])
-
-        if lambda_event.get("queryStringParameters"):
-            span.set_attribute(
-                SpanAttributes.HTTP_TARGET,
-                f"{lambda_event['resource']}?{urlencode(lambda_event['queryStringParameters'])}",
-            )
-        else:
-            span.set_attribute(
-                SpanAttributes.HTTP_TARGET, lambda_event["resource"]
-            )
-
-    return span
-
-
-def _set_api_gateway_v2_proxy_attributes(
-    lambda_event: Any, span: Span
-) -> Span:
-    """Sets HTTP attributes for v2 HTTP APIs
-
-    More info:
-    https://docs.aws.amazon.com/apigateway/latest/developerguide/http-api-develop-integrations-lambda.html
-    """
-    if "domainName" in lambda_event["requestContext"]:
-        span.set_attribute(
-            SpanAttributes.NET_HOST_NAME,
-            lambda_event["requestContext"]["domainName"],
-        )
-
-    if lambda_event["requestContext"].get("http"):
-        if "method" in lambda_event["requestContext"]["http"]:
-            span.set_attribute(
-                SpanAttributes.HTTP_METHOD,
-                lambda_event["requestContext"]["http"]["method"],
-            )
-        if "userAgent" in lambda_event["requestContext"]["http"]:
-            span.set_attribute(
-                SpanAttributes.HTTP_USER_AGENT,
-                lambda_event["requestContext"]["http"]["userAgent"],
-            )
-        if "path" in lambda_event["requestContext"]["http"]:
-            span.set_attribute(
-                SpanAttributes.HTTP_ROUTE,
-                lambda_event["requestContext"]["http"]["path"],
-            )
-            if lambda_event.get("rawQueryString"):
-                span.set_attribute(
-                    SpanAttributes.HTTP_TARGET,
-                    f"{lambda_event['requestContext']['http']['path']}?{lambda_event['rawQueryString']}",
-                )
-            else:
-                span.set_attribute(
-                    SpanAttributes.HTTP_TARGET,
-                    lambda_event["requestContext"]["http"]["path"],
-                )
-
-    return span
 
 
 def flush(
@@ -434,38 +774,23 @@ def _instrument(
     def _instrumented_lambda_handler_call(  # noqa pylint: disable=too-many-branches
         call_wrapped, instance, args, kwargs
     ):
+        _ = instance
+
         orig_handler_name = ".".join(
             [wrapped_module_name, wrapped_function_name]
         )
 
         lambda_event = args[0]
+        lambda_context = args[1]
+        event_wrapper = get_event_wrapper(
+            event=lambda_event, context=lambda_context
+        )
 
         parent_context = _determine_parent_context(
-            lambda_event,
+            event_wrapper,
             event_context_extractor,
             disable_aws_context_propagation,
         )
-
-        try:
-            event_source = lambda_event["Records"][0].get(
-                "eventSource"
-            ) or lambda_event["Records"][0].get("EventSource")
-            if event_source in {
-                "aws:sqs",
-                "aws:s3",
-                "aws:sns",
-                "aws:dynamodb",
-            }:
-                # See more:
-                # https://docs.aws.amazon.com/lambda/latest/dg/with-sqs.html
-                # https://docs.aws.amazon.com/lambda/latest/dg/with-sns.html
-                # https://docs.aws.amazon.com/AmazonS3/latest/userguide/notification-content-structure.html
-                # https://docs.aws.amazon.com/lambda/latest/dg/with-ddb.html
-                span_kind = SpanKind.CONSUMER
-            else:
-                span_kind = SpanKind.SERVER
-        except (IndexError, KeyError, TypeError):
-            span_kind = SpanKind.SERVER
 
         tracer = get_tracer(
             __name__,
@@ -477,34 +802,11 @@ def _instrument(
         with tracer.start_as_current_span(
             name=orig_handler_name,
             context=parent_context,
-            kind=span_kind,
+            kind=event_wrapper.span_kind,
         ) as span:
-            if span.is_recording():
-                lambda_context = args[1]
-                # NOTE: The specs mention an exception here, allowing the
-                # `SpanAttributes.CLOUD_RESOURCE_ID` attribute to be set as a span
-                # attribute instead of a resource attribute.
-                #
-                # See more:
-                # https://github.com/open-telemetry/semantic-conventions/blob/main/docs/faas/aws-lambda.md#resource-detector
-                span.set_attribute(
-                    SpanAttributes.CLOUD_RESOURCE_ID,
-                    lambda_context.invoked_function_arn,
-                )
-                span.set_attribute(
-                    SpanAttributes.FAAS_INVOCATION_ID,
-                    lambda_context.aws_request_id,
-                )
-
-                # NOTE: `cloud.account.id` can be parsed from the ARN as the fifth item when splitting on `:`
-                #
-                # See more:
-                # https://github.com/open-telemetry/semantic-conventions/blob/main/docs/faas/aws-lambda.md#all-triggers
-                account_id = lambda_context.invoked_function_arn.split(":")[4]
-                span.set_attribute(
-                    ResourceAttributes.CLOUD_ACCOUNT_ID,
-                    account_id,
-                )
+            event_wrapper.set_pre_execution_span_attributes(
+                span=span, context=lambda_context
+            )
 
             exception = None
             result = None
@@ -515,24 +817,9 @@ def _instrument(
                 span.set_status(Status(StatusCode.ERROR))
                 span.record_exception(exception)
 
-            # If the request came from an API Gateway, extract http attributes from the event
-            # https://github.com/open-telemetry/opentelemetry-specification/blob/main/specification/trace/semantic_conventions/instrumentation/aws-lambda.md#api-gateway
-            # https://github.com/open-telemetry/opentelemetry-specification/blob/main/specification/trace/semantic_conventions/http.md#http-server-semantic-conventions
-            if isinstance(lambda_event, dict) and lambda_event.get(
-                "requestContext"
-            ):
-                span.set_attribute(SpanAttributes.FAAS_TRIGGER, "http")
-
-                if lambda_event.get("version") == "2.0":
-                    _set_api_gateway_v2_proxy_attributes(lambda_event, span)
-                else:
-                    _set_api_gateway_v1_proxy_attributes(lambda_event, span)
-
-                if isinstance(result, dict) and result.get("statusCode"):
-                    span.set_attribute(
-                        SpanAttributes.HTTP_STATUS_CODE,
-                        result.get("statusCode"),
-                    )
+            event_wrapper.set_post_execution_span_attributes(
+                span=span, context=lambda_context, result=result
+            )
 
         flush(
             meter_provider=meter_provider,
@@ -613,6 +900,27 @@ def is_aws_context_propagation_disabled(
     return disable_aws_context_propagation_override or disable_from_env
 
 
+def determine_context_extractor(
+    context_extractor_override: Optional[Callable],
+) -> Callable:
+    """
+    Determine the context extractor to use for the Lambda instrumentation.
+    The context extract should accept an EventWrapper and return an OTel Context.
+
+    Args:
+        context_extractor_override: Optional context extractor to use.
+
+    Returns: A context extractor function.
+    """
+
+    if context_extractor_override and isinstance(
+        context_extractor_override, Callable
+    ):
+        return context_extractor_override
+
+    return lambda event: get_global_textmap().extract(event.headers)
+
+
 class AwsLambdaInstrumentor(BaseInstrumentor):
     def instrumentation_dependencies(self) -> Collection[str]:
         return _instruments
@@ -646,8 +954,10 @@ class AwsLambdaInstrumentor(BaseInstrumentor):
         _instrument(
             self._wrapped_module_name,
             self._wrapped_function_name,
-            event_context_extractor=kwargs.get(
-                "event_context_extractor", _default_event_context_extractor
+            event_context_extractor=determine_context_extractor(
+                context_extractor_override=kwargs.get(
+                    "event_context_extractor"
+                )
             ),
             disable_aws_context_propagation=is_aws_context_propagation_disabled(
                 disable_aws_context_propagation_override=kwargs.get(
