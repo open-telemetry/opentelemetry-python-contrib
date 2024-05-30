@@ -38,6 +38,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   ([#2397](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/2397)))
 - `opentelemetry-processor-baggage` Initial release
   ([#2436](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/2436))
+- `opentelemetry-processor-baggage` Add baggage key predicate
+  ([#2535](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/2535))
 
 ### Fixed
 
