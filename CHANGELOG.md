@@ -7,6 +7,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## Unreleased
 
+### Fixed
+
+- `opentelemetry-instrumentation-dbapi` Fix compatibility with Psycopg3 to extract libpq build version
+  ([#2500](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/2500))
+- `opentelemetry-instrumentation-httpx` Ensure httpx.get or httpx.request like methods are instrumented
+  ([#2538](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/2538))
+
 ## Version 1.25.0/0.46b0 (2024-05-30)
 
 ### Breaking changes
@@ -44,10 +51,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
-- `opentelemetry-instrumentation-dbapi` Fix compatibility with Psycopg3 to extract libpq build version
-  ([#2500](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/2500))
-- `opentelemetry-instrumentation-httpx` Ensure httpx.get or httpx.request like methods are instrumented
-  ([#2538](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/2538))
 - `opentelemetry-instrumentation-grpc` AioClientInterceptor should propagate with a Metadata object
   ([#2363](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/2363))
 - `opentelemetry-instrumentation-boto3sqs` Instrument Session and resource
