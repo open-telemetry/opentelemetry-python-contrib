@@ -50,9 +50,10 @@ class BaseDistro(ABC):
     def load_instrumentor(  # pylint: disable=no-self-use
         self, entry_point: EntryPoint, **kwargs
     ):
-        """Takes a collection of instrumentation entry points
-        and activates them by instantiating and calling instrument()
-        on each one.
+        """Takes an instrumentation entry point and activates it by instantiating
+        and calling instrument() on it.
+        This is called for each opentelemetry_instrumentor entry point by auto
+        instrumentation.
 
         Distros can override this method to customize the behavior by
         inspecting each entry point and configuring them in special ways,

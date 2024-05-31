@@ -279,7 +279,7 @@ class TestFastAPIManualInstrumentation(TestBase):
                 if isinstance(point, NumberDataPoint):
                     self.assertEqual(point.value, 0)
 
-    def test_metric_uninstruemnt_app(self):
+    def test_metric_uninstrument_app(self):
         self._client.get("/foobar")
         self._instrumentor.uninstrument_app(self._app)
         self._client.get("/foobar")
