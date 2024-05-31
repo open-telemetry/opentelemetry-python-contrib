@@ -9,6 +9,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Breaking changes
 
+- Add return statement to Confluent kafka Producer poll() and flush() calls when instrumented by ConfluentKafkaInstrumentor().instrument_producer() ([#2527](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/2527))
 - Rename `type` attribute to `asgi.event.type` in `opentelemetry-instrumentation-asgi`
   ([#2300](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/2300))
 - Rename AwsLambdaInstrumentor span attributes `faas.id` to `cloud.resource_id`, `faas.execution` to `faas.invocation_id`
@@ -41,7 +42,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
-- `opentelemetry-instrumentation-dbapi` Fix compatibility with Psycopg3 to extract libpq build version (#2500)[https://github.com/open-telemetry/opentelemetry-python-contrib/pull/2500]
+- `opentelemetry-instrumentation-dbapi` Fix compatibility with Psycopg3 to extract libpq build version
+  ([#2500](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/2500))
+- `opentelemetry-instrumentation-httpx` Ensure httpx.get or httpx.request like methods are instrumented
+  ([#2538](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/2538))
 - `opentelemetry-instrumentation-grpc` AioClientInterceptor should propagate with a Metadata object
   ([#2363](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/2363))
 - `opentelemetry-instrumentation-boto3sqs` Instrument Session and resource
@@ -65,6 +69,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - `opentelemetry-util-http` Preserve brackets around literal IPv6 hosts ([#2552](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/2552))
 - `opentelemetry-instrumentation-tornado` Fix not handling a http client exception
   ([#2563](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/2563))
+- `opentelemetry-util-redis` Fix net peer attribute for unix socket connection ([#2493](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/2493))
 
 ## Version 1.24.0/0.45b0 (2024-03-28)
 
