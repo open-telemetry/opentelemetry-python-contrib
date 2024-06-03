@@ -38,10 +38,6 @@ jobs:
           - "resource-detector-container"
         os: [ubuntu-20.04]
         exclude:
-          - python-version: py311
-            package: "prometheus-remote-write"
-          # - python-version: py312
-          #   package: "prometheus-remote-write"
           - python-version: pypy3
             package: "prometheus-remote-write"
     steps:
