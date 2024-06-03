@@ -87,6 +87,10 @@ def setup_script_environment(venv_parent, script_dir, script, wheel_file):
     module_path = os.path.join(script_dir, script)
     oteltest_instance: OtelTest = load_test_class_for_script(module_name, module_path)()
 
+    if oteltest_instance is None:
+        print(f"- Failed to load test class for script {script}")
+        return
+
     script_venv = Venv(str(Path(venv_parent) / module_name))
     script_venv.create()
 
@@ -217,7 +221,10 @@ def load_test_class_for_script(module_name, module_path):
 
 def is_test_class(value):
     return (
-        inspect.isclass(value) and issubclass(value, OtelTest) and value is not OtelTest
+        inspect.isclass(value)
+        and issubclass(value, OtelTest)
+        and value is not OtelTest
+        and not inspect.isabstract(value)
     )
 
 

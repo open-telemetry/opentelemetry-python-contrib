@@ -13,10 +13,12 @@
 # limitations under the License.
 import json
 import pathlib
+from abc import ABC
+from typing import Mapping, Optional, Sequence
 
 import pytest
-from oteltest import telemetry
-from oteltest.private import get_next_json_file, save_telemetry_json
+from oteltest import OtelTest, telemetry, Telemetry
+from oteltest.private import get_next_json_file, is_test_class, save_telemetry_json
 
 
 @pytest.fixture
@@ -76,6 +78,52 @@ def test_telemetry_trace_operations(trace_telemetry):
     assert 2 == telemetry.num_spans(tel)
     assert telemetry.has_trace_header(tel, header_key, header_val)
     assert {"/"} == telemetry.span_names(tel)
+
+
+def test_is_test_class():
+    class Plain:
+        pass
+
+    class Direct(OtelTest):
+
+        def environment_variables(self) -> Mapping[str, str]:
+            pass
+
+        def requirements(self) -> Sequence[str]:
+            pass
+
+        def wrapper_command(self) -> str:
+            pass
+
+        def on_start(self) -> Optional[float]:
+            pass
+
+        def on_stop(self, tel: Telemetry, stdout: str, stderr: str, returncode: int) -> None:
+            pass
+
+    class Intermediate(OtelTest, ABC):
+
+        def environment_variables(self) -> Mapping[str, str]:
+            return {}
+
+    class Final(Intermediate):
+
+        def requirements(self) -> Sequence[str]:
+            pass
+
+        def wrapper_command(self) -> str:
+            pass
+
+        def on_start(self) -> Optional[float]:
+            pass
+
+        def on_stop(self, tel: Telemetry, stdout: str, stderr: str, returncode: int) -> None:
+            pass
+
+    assert not is_test_class(Plain)
+    assert is_test_class(Direct)
+    assert is_test_class(Final)
+    assert not is_test_class(Intermediate)
 
 
 def telemetry_from_json(json_str: str) -> telemetry.Telemetry:
