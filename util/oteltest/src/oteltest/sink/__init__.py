@@ -89,13 +89,11 @@ class GrpcSink:
         self.svr.start()
 
     def wait_for_termination(self):
-        """Blocks until the server stops. Stops the server on KeyboardInterrupt."""
+        """Blocks until the server stops."""
         try:
             self.svr.wait_for_termination()
-        except KeyboardInterrupt:
-            print("\nstopping...", end="")
-            self.stop()
-            print("done")
+        except BaseException:
+            print("terminated")
 
     def stop(self):
         """Stops the server immediately."""
@@ -108,26 +106,20 @@ class PrintHandler(RequestHandler):
     """
 
     def handle_logs(self, request, context):  # noqa: ARG002
-        print(f"log request: {request}")  # noqa: T201
+        print(f"log request: {request}", flush=True)  # noqa: T201
 
     def handle_metrics(self, request, context):  # noqa: ARG002
-        print(f"metrics request: {request}")  # noqa: T201
+        print(f"metrics request: {request}", flush=True)  # noqa: T201
 
-    def handle_trace(
-        self, request: ExportTraceServiceRequest, context
-    ):  # noqa: ARG002
-        print(f"trace request: {request}")  # noqa: T201
+    def handle_trace(self, request, context):  # noqa: ARG002
+        print(f"trace request: {request}", flush=True)  # noqa: T201
 
 
 def run_with_print_handler():
     """
     Runs otelsink with a PrintHandler.
     """
-    print("starting otelsink with a print handler")
+    print("starting otelsink with a print handler", flush=True)
     sink = GrpcSink(PrintHandler())
     sink.start()
     sink.wait_for_termination()
-
-
-if __name__ == "__main__":
-    run_with_print_handler()

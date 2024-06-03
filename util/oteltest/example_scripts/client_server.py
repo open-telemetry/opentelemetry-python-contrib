@@ -12,26 +12,27 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+from oteltest import OtelTest, Telemetry
 
-import time
 from typing import Mapping, Optional, Sequence
 
-from flask import Flask, jsonify
-from oteltest import OtelTest, Telemetry
+import time
 
 PORT = 8909
 HOST = "127.0.0.1"
 
-
-app = Flask(__name__)
-
-
-@app.route("/")
-def home():
-    return jsonify({"library": "flask"})
-
-
 if __name__ == "__main__":
+    # local import so flask not req'd to load this script
+    from flask import Flask, jsonify
+
+    app = Flask(__name__)
+
+
+    @app.route("/")
+    def home():
+        return jsonify({"library": "flask"})
+
+
     app.run(port=PORT, host=HOST)
 
 

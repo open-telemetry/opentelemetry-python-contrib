@@ -15,7 +15,7 @@
 
 import time
 
-from oteltest import OtelTest, Telemetry
+from oteltest import OtelTest, Telemetry, telemetry
 
 from opentelemetry import trace
 
@@ -44,6 +44,6 @@ class MyOtelTest(OtelTest):
         return None
 
     def on_stop(
-        self, telemetry: Telemetry, stdout: str, stderr: str, returncode: int
+        self, tel: Telemetry, stdout: str, stderr: str, returncode: int
     ) -> None:
-        assert telemetry.num_spans() == NUM_ADDS
+        assert telemetry.num_spans(tel) == NUM_ADDS
