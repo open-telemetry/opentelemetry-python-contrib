@@ -83,9 +83,9 @@ jobs:
             package: "sklearn"
           - python-version: py312
             package: "sklearn"
-          - python-version: python312
+          - python-version: py312
             package: "boto"
-          - python-version: python312
+          - python-version: py312
             package: "kafka-python"
           - python-version: pypy3
             package: "aiopg"
