@@ -245,7 +245,7 @@ class TestAutomatic(InstrumentationTest, WsgiTestBase):
                     )
                     self.assertEqual(point.value, 0)
 
-    def test_metric_uninstruemnt(self):
+    def test_metric_uninstrument(self):
         self.client.get("/hello/756")
         PyramidInstrumentor().uninstrument()
         self.config = Configurator()

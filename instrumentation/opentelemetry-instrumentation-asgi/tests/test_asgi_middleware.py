@@ -683,10 +683,10 @@ class TestAsgiApplication(AsgiTestBase):
         def server_request_hook(span, scope):
             span.update_name("name from server hook")
 
-        def client_request_hook(recieve_span, request):
-            recieve_span.update_name("name from client request hook")
+        def client_request_hook(receive_span, scope, message):
+            receive_span.update_name("name from client request hook")
 
-        def client_response_hook(send_span, response):
+        def client_response_hook(send_span, scope, message):
             send_span.set_attribute("attr-from-hook", "value")
 
         def update_expected_hook_results(expected):

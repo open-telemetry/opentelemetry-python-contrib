@@ -151,10 +151,10 @@ class ProxiedProducer(Producer):
         self._tracer = tracer
 
     def flush(self, timeout=-1):
-        self._producer.flush(timeout)
+        return self._producer.flush(timeout)
 
     def poll(self, timeout=-1):
-        self._producer.poll(timeout)
+        return self._producer.poll(timeout)
 
     def produce(
         self, topic, value=None, *args, **kwargs
