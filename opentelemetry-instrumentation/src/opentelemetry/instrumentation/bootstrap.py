@@ -1,5 +1,3 @@
-#!/usr/bin/env python3
-
 # Copyright The OpenTelemetry Authors
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -16,8 +14,14 @@
 
 import argparse
 import logging
-import subprocess
 import sys
+from subprocess import (
+    PIPE,
+    CalledProcessError,
+    Popen,
+    SubprocessError,
+    check_call,
+)
 
 import pkg_resources
 
@@ -36,7 +40,7 @@ def _syscall(func):
             if package:
                 return func(package)
             return func()
-        except subprocess.SubprocessError as exp:
+        except SubprocessError as exp:
             cmd = getattr(exp, "cmd", None)
             if cmd:
                 msg = f'Error calling system command "{" ".join(cmd)}"'
@@ -50,18 +54,21 @@ def _syscall(func):
 @_syscall
 def _sys_pip_install(package):
     # explicit upgrade strategy to override potential pip config
-    subprocess.check_call(
-        [
-            sys.executable,
-            "-m",
-            "pip",
-            "install",
-            "-U",
-            "--upgrade-strategy",
-            "only-if-needed",
-            package,
-        ]
-    )
+    try:
+        check_call(
+            [
+                sys.executable,
+                "-m",
+                "pip",
+                "install",
+                "-U",
+                "--upgrade-strategy",
+                "only-if-needed",
+                package,
+            ]
+        )
+    except CalledProcessError as error:
+        print(error)
 
 
 def _pip_check():
@@ -72,12 +79,12 @@ def _pip_check():
     'opentelemetry-instrumentation-flask 1.0.1 has requirement opentelemetry-sdk<2.0,>=1.0, but you have opentelemetry-sdk 0.5.'
     To not be too restrictive, we'll only check for relevant packages.
     """
-    with subprocess.Popen(
-        [sys.executable, "-m", "pip", "check"], stdout=subprocess.PIPE
+    with Popen(
+        [sys.executable, "-m", "pip", "check"], stdout=PIPE
     ) as check_pipe:
         pip_check = check_pipe.communicate()[0].decode()
         pip_check_lower = pip_check.lower()
-    for package_tup in libraries.values():
+    for package_tup in libraries:
         for package in package_tup:
             if package.lower() in pip_check_lower:
                 raise RuntimeError(f"Dependency conflict found: {pip_check}")
@@ -102,15 +109,12 @@ def _is_installed(req):
 
 
 def _find_installed_libraries():
-    libs = default_instrumentations[:]
-    libs.extend(
-        [
-            v["instrumentation"]
-            for _, v in libraries.items()
-            if _is_installed(v["library"])
-        ]
-    )
-    return libs
+    for lib in default_instrumentations:
+        yield lib
+
+    for lib in libraries:
+        if _is_installed(lib["library"]):
+            yield lib["instrumentation"]
 
 
 def _run_requirements():

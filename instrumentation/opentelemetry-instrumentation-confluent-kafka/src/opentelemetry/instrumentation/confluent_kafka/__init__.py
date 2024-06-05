@@ -110,16 +110,15 @@ from opentelemetry.instrumentation.utils import (
     _SUPPRESS_INSTRUMENTATION_KEY,
 )
 from opentelemetry.semconv.trace import MessagingOperationValues
-from opentelemetry.trace import Link, SpanKind, Tracer
+from opentelemetry.trace import Tracer
 
 from .package import _instruments
 from .utils import (
     KafkaPropertiesExtractor,
-    _end_current_consume_span,
     _create_new_consume_span,
+    _end_current_consume_span,
     _enrich_span,
     _get_span_name,
-    _kafka_getter,
     _kafka_setter,
 )
 from .version import __version__
@@ -155,10 +154,10 @@ class ProxiedProducer(Producer):
         self._tracer = tracer
 
     def flush(self, timeout=-1):
-        self._producer.flush(timeout)
+        return self._producer.flush(timeout)
 
     def poll(self, timeout=-1):
-        self._producer.poll(timeout)
+        return self._producer.poll(timeout)
 
     def produce(
         self, topic, value=None, *args, **kwargs
@@ -232,7 +231,10 @@ class ConfluentKafkaInstrumentor(BaseInstrumentor):
         producer: Producer, tracer_provider=None
     ) -> ProxiedProducer:
         tracer = trace.get_tracer(
-            __name__, __version__, tracer_provider=tracer_provider
+            __name__,
+            __version__,
+            tracer_provider=tracer_provider,
+            schema_url="https://opentelemetry.io/schemas/1.11.0",
         )
 
         manual_producer = ProxiedProducer(producer, tracer)
@@ -244,7 +246,10 @@ class ConfluentKafkaInstrumentor(BaseInstrumentor):
         consumer: Consumer, tracer_provider=None
     ) -> ProxiedConsumer:
         tracer = trace.get_tracer(
-            __name__, __version__, tracer_provider=tracer_provider
+            __name__,
+            __version__,
+            tracer_provider=tracer_provider,
+            schema_url="https://opentelemetry.io/schemas/1.11.0",
         )
 
         manual_consumer = ProxiedConsumer(consumer, tracer)
@@ -275,7 +280,10 @@ class ConfluentKafkaInstrumentor(BaseInstrumentor):
 
         tracer_provider = kwargs.get("tracer_provider")
         tracer = trace.get_tracer(
-            __name__, __version__, tracer_provider=tracer_provider
+            __name__,
+            __version__,
+            tracer_provider=tracer_provider,
+            schema_url="https://opentelemetry.io/schemas/1.11.0",
         )
 
         self._tracer = tracer

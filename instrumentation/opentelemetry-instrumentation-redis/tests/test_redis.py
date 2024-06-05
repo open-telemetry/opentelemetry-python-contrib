@@ -13,32 +13,20 @@
 # limitations under the License.
 import asyncio
 from unittest import mock
+from unittest.mock import AsyncMock
 
 import redis
 import redis.asyncio
 
 from opentelemetry import trace
 from opentelemetry.instrumentation.redis import RedisInstrumentor
+from opentelemetry.semconv.trace import (
+    DbSystemValues,
+    NetTransportValues,
+    SpanAttributes,
+)
 from opentelemetry.test.test_base import TestBase
 from opentelemetry.trace import SpanKind
-
-
-class AsyncMock:
-    """A sufficient async mock implementation.
-
-    Python 3.7 doesn't have an inbuilt async mock class, so this is used.
-    """
-
-    def __init__(self):
-        self.mock = mock.Mock()
-
-    async def __call__(self, *args, **kwargs):
-        future = asyncio.Future()
-        future.set_result("random")
-        return future
-
-    def __getattr__(self, item):
-        return AsyncMock()
 
 
 class TestRedis(TestBase):
@@ -243,3 +231,83 @@ class TestRedis(TestBase):
 
         spans = self.memory_exporter.get_finished_spans()
         self.assertEqual(len(spans), 0)
+
+    def test_attributes_default(self):
+        redis_client = redis.Redis()
+
+        with mock.patch.object(redis_client, "connection"):
+            redis_client.set("key", "value")
+
+        spans = self.memory_exporter.get_finished_spans()
+        self.assertEqual(len(spans), 1)
+
+        span = spans[0]
+        self.assertEqual(
+            span.attributes[SpanAttributes.DB_SYSTEM],
+            DbSystemValues.REDIS.value,
+        )
+        self.assertEqual(
+            span.attributes[SpanAttributes.DB_REDIS_DATABASE_INDEX], 0
+        )
+        self.assertEqual(
+            span.attributes[SpanAttributes.NET_PEER_NAME], "localhost"
+        )
+        self.assertEqual(span.attributes[SpanAttributes.NET_PEER_PORT], 6379)
+        self.assertEqual(
+            span.attributes[SpanAttributes.NET_TRANSPORT],
+            NetTransportValues.IP_TCP.value,
+        )
+
+    def test_attributes_tcp(self):
+        redis_client = redis.Redis.from_url("redis://foo:bar@1.1.1.1:6380/1")
+
+        with mock.patch.object(redis_client, "connection"):
+            redis_client.set("key", "value")
+
+        spans = self.memory_exporter.get_finished_spans()
+        self.assertEqual(len(spans), 1)
+
+        span = spans[0]
+        self.assertEqual(
+            span.attributes[SpanAttributes.DB_SYSTEM],
+            DbSystemValues.REDIS.value,
+        )
+        self.assertEqual(
+            span.attributes[SpanAttributes.DB_REDIS_DATABASE_INDEX], 1
+        )
+        self.assertEqual(
+            span.attributes[SpanAttributes.NET_PEER_NAME], "1.1.1.1"
+        )
+        self.assertEqual(span.attributes[SpanAttributes.NET_PEER_PORT], 6380)
+        self.assertEqual(
+            span.attributes[SpanAttributes.NET_TRANSPORT],
+            NetTransportValues.IP_TCP.value,
+        )
+
+    def test_attributes_unix_socket(self):
+        redis_client = redis.Redis.from_url(
+            "unix://foo@/path/to/socket.sock?db=3&password=bar"
+        )
+
+        with mock.patch.object(redis_client, "connection"):
+            redis_client.set("key", "value")
+
+        spans = self.memory_exporter.get_finished_spans()
+        self.assertEqual(len(spans), 1)
+
+        span = spans[0]
+        self.assertEqual(
+            span.attributes[SpanAttributes.DB_SYSTEM],
+            DbSystemValues.REDIS.value,
+        )
+        self.assertEqual(
+            span.attributes[SpanAttributes.DB_REDIS_DATABASE_INDEX], 3
+        )
+        self.assertEqual(
+            span.attributes[SpanAttributes.NET_PEER_NAME],
+            "/path/to/socket.sock",
+        )
+        self.assertEqual(
+            span.attributes[SpanAttributes.NET_TRANSPORT],
+            NetTransportValues.OTHER.value,
+        )

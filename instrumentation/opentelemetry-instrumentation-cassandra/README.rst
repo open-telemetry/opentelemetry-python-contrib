@@ -1,5 +1,5 @@
 OpenTelemetry Cassandra Instrumentation
-===================================
+=======================================
 
 |pypi|
 

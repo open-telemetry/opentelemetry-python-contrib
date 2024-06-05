@@ -19,3 +19,8 @@ def handler(event, context):
 
 def rest_api_handler(event, context):
     return {"statusCode": 200, "body": "200 ok"}
+
+
+def handler_exc(event, context):
+    # pylint: disable=broad-exception-raised
+    raise Exception("500 internal server error")

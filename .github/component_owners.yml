@@ -67,3 +67,12 @@ components:
 
   instrumentation/opentelemetry-instrumentation-cassandra:
     - mattcontinisio
+
+  instrumentation/opentelemetry-instrumentation-asyncio:
+    - bourbonkk
+
+  instrumentation/opentelemetry-instrumentation-psycopg:
+    - federicobond
+
+  processor/opentelemetry-processor-baggage:
+    - codeboten
