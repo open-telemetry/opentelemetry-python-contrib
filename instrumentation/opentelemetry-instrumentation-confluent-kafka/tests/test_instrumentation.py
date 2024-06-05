@@ -14,13 +14,6 @@
 
 # pylint: disable=no-name-in-module
 
-from opentelemetry.semconv.trace import (
-    SpanAttributes,
-    MessagingDestinationKindValues,
-)
-from opentelemetry.test.test_base import TestBase
-from .utils import MockConsumer, MockedMessage
-
 from confluent_kafka import Consumer, Producer
 
 from opentelemetry.instrumentation.confluent_kafka import (
@@ -32,6 +25,13 @@ from opentelemetry.instrumentation.confluent_kafka.utils import (
     KafkaContextGetter,
     KafkaContextSetter,
 )
+from opentelemetry.semconv.trace import (
+    MessagingDestinationKindValues,
+    SpanAttributes,
+)
+from opentelemetry.test.test_base import TestBase
+
+from .utils import MockConsumer, MockedMessage, MockedProducer
 
 
 class TestConfluentKafka(TestBase):
@@ -284,3 +284,35 @@ class TestConfluentKafka(TestBase):
                 self.assertEqual(
                     expected_attribute_value, span.attributes[attribute_key]
                 )
+
+    def test_producer_poll(self) -> None:
+        instrumentation = ConfluentKafkaInstrumentor()
+        message_queue = []
+
+        producer = MockedProducer(
+            message_queue,
+            {
+                "bootstrap.servers": "localhost:29092",
+            },
+        )
+
+        producer = instrumentation.instrument_producer(producer)
+        producer.produce(topic="topic-1", key="key-1", value="value-1")
+        msg = producer.poll()
+        self.assertIsNotNone(msg)
+
+    def test_producer_flush(self) -> None:
+        instrumentation = ConfluentKafkaInstrumentor()
+        message_queue = []
+
+        producer = MockedProducer(
+            message_queue,
+            {
+                "bootstrap.servers": "localhost:29092",
+            },
+        )
+
+        producer = instrumentation.instrument_producer(producer)
+        producer.produce(topic="topic-1", key="key-1", value="value-1")
+        msg = producer.flush()
+        self.assertIsNotNone(msg)

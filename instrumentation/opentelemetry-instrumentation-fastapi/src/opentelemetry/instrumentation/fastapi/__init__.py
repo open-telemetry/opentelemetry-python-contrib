@@ -59,20 +59,20 @@ This instrumentation supports request and response hooks. These are functions th
 right after a span is created for a request and right before the span is finished for the response.
 
 - The server request hook is passed a server span and ASGI scope object for every incoming request.
-- The client request hook is called with the internal span and an ASGI scope when the method ``receive`` is called.
-- The client response hook is called with the internal span and an ASGI event when the method ``send`` is called.
+- The client request hook is called with the internal span, and ASGI scope and event when the method ``receive`` is called.
+- The client response hook is called with the internal span, and ASGI scope and event when the method ``send`` is called.
 
 .. code-block:: python
 
-    def server_request_hook(span: Span, scope: dict):
+    def server_request_hook(span: Span, scope: dict[str, Any]):
         if span and span.is_recording():
             span.set_attribute("custom_user_attribute_from_request_hook", "some-value")
 
-    def client_request_hook(span: Span, scope: dict):
+    def client_request_hook(span: Span, scope: dict[str, Any], message: dict[str, Any]):
         if span and span.is_recording():
             span.set_attribute("custom_user_attribute_from_client_request_hook", "some-value")
 
-    def client_response_hook(span: Span, message: dict):
+    def client_response_hook(span: Span, scope: dict[str, Any], message: dict[str, Any]):
         if span and span.is_recording():
             span.set_attribute("custom_user_attribute_from_response_hook", "some-value")
 
@@ -172,27 +172,26 @@ API
 ---
 """
 import logging
-import typing
 from typing import Collection
 
 import fastapi
 from starlette.routing import Match
 
 from opentelemetry.instrumentation.asgi import OpenTelemetryMiddleware
+from opentelemetry.instrumentation.asgi.types import (
+    ClientRequestHook,
+    ClientResponseHook,
+    ServerRequestHook,
+)
 from opentelemetry.instrumentation.fastapi.package import _instruments
 from opentelemetry.instrumentation.fastapi.version import __version__
 from opentelemetry.instrumentation.instrumentor import BaseInstrumentor
 from opentelemetry.metrics import get_meter
 from opentelemetry.semconv.trace import SpanAttributes
-from opentelemetry.trace import Span
 from opentelemetry.util.http import get_excluded_urls, parse_excluded_urls
 
 _excluded_urls_from_env = get_excluded_urls("FASTAPI")
 _logger = logging.getLogger(__name__)
-
-_ServerRequestHookT = typing.Optional[typing.Callable[[Span, dict], None]]
-_ClientRequestHookT = typing.Optional[typing.Callable[[Span, dict], None]]
-_ClientResponseHookT = typing.Optional[typing.Callable[[Span, dict], None]]
 
 
 class FastAPIInstrumentor(BaseInstrumentor):
@@ -206,9 +205,9 @@ class FastAPIInstrumentor(BaseInstrumentor):
     @staticmethod
     def instrument_app(
         app: fastapi.FastAPI,
-        server_request_hook: _ServerRequestHookT = None,
-        client_request_hook: _ClientRequestHookT = None,
-        client_response_hook: _ClientResponseHookT = None,
+        server_request_hook: ServerRequestHook = None,
+        client_request_hook: ClientRequestHook = None,
+        client_response_hook: ClientResponseHook = None,
         tracer_provider=None,
         meter_provider=None,
         excluded_urls=None,
@@ -222,7 +221,12 @@ class FastAPIInstrumentor(BaseInstrumentor):
                 excluded_urls = _excluded_urls_from_env
             else:
                 excluded_urls = parse_excluded_urls(excluded_urls)
-            meter = get_meter(__name__, __version__, meter_provider)
+            meter = get_meter(
+                __name__,
+                __version__,
+                meter_provider,
+                schema_url="https://opentelemetry.io/schemas/1.11.0",
+            )
 
             app.add_middleware(
                 OpenTelemetryMiddleware,
@@ -287,15 +291,18 @@ class _InstrumentedFastAPI(fastapi.FastAPI):
     _tracer_provider = None
     _meter_provider = None
     _excluded_urls = None
-    _server_request_hook: _ServerRequestHookT = None
-    _client_request_hook: _ClientRequestHookT = None
-    _client_response_hook: _ClientResponseHookT = None
+    _server_request_hook: ServerRequestHook = None
+    _client_request_hook: ClientRequestHook = None
+    _client_response_hook: ClientResponseHook = None
     _instrumented_fastapi_apps = set()
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
         meter = get_meter(
-            __name__, __version__, _InstrumentedFastAPI._meter_provider
+            __name__,
+            __version__,
+            _InstrumentedFastAPI._meter_provider,
+            schema_url="https://opentelemetry.io/schemas/1.11.0",
         )
         self.add_middleware(
             OpenTelemetryMiddleware,

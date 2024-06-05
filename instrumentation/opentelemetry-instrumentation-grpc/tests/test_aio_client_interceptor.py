@@ -31,7 +31,7 @@ import grpc
 import pytest
 
 import opentelemetry.instrumentation.grpc
-from opentelemetry import context, trace
+from opentelemetry import trace
 from opentelemetry.instrumentation.grpc import (
     GrpcAioInstrumentorClient,
     aio_client_interceptors,
@@ -39,7 +39,7 @@ from opentelemetry.instrumentation.grpc import (
 from opentelemetry.instrumentation.grpc._aio_client import (
     UnaryUnaryAioClientInterceptor,
 )
-from opentelemetry.instrumentation.utils import _SUPPRESS_INSTRUMENTATION_KEY
+from opentelemetry.instrumentation.utils import suppress_instrumentation
 from opentelemetry.propagate import get_global_textmap, set_global_textmap
 from opentelemetry.semconv.trace import SpanAttributes
 from opentelemetry.test.mock_textmap import MockTextMapPropagator
@@ -305,62 +305,41 @@ class TestAioClientInterceptor(TestBase, IsolatedAsyncioTestCase):
             await simple_method(stub)
 
             metadata = recording_interceptor.recorded_details.metadata
-            assert len(metadata) == 2
-            assert metadata[0][0] == "mock-traceid"
-            assert metadata[0][1] == "0"
-            assert metadata[1][0] == "mock-spanid"
-            assert metadata[1][1] == "0"
+            assert len(metadata) == 3
+            assert metadata.get_all("key") == ["value"]
+            assert metadata.get_all("mock-traceid") == ["0"]
+            assert metadata.get_all("mock-spanid") == ["0"]
         finally:
             set_global_textmap(previous_propagator)
 
     async def test_unary_unary_with_suppress_key(self):
-        token = context.attach(
-            context.set_value(_SUPPRESS_INSTRUMENTATION_KEY, True)
-        )
-        try:
+        with suppress_instrumentation():
             response = await simple_method(self._stub)
             assert response.response_data == "data"
 
             spans = self.memory_exporter.get_finished_spans()
             self.assertEqual(len(spans), 0)
-        finally:
-            context.detach(token)
 
     async def test_unary_stream_with_suppress_key(self):
-        token = context.attach(
-            context.set_value(_SUPPRESS_INSTRUMENTATION_KEY, True)
-        )
-        try:
+        with suppress_instrumentation():
             async for response in server_streaming_method(self._stub):
                 self.assertEqual(response.response_data, "data")
 
             spans = self.memory_exporter.get_finished_spans()
             self.assertEqual(len(spans), 0)
-        finally:
-            context.detach(token)
 
     async def test_stream_unary_with_suppress_key(self):
-        token = context.attach(
-            context.set_value(_SUPPRESS_INSTRUMENTATION_KEY, True)
-        )
-        try:
+        with suppress_instrumentation():
             response = await client_streaming_method(self._stub)
             assert response.response_data == "data"
 
             spans = self.memory_exporter.get_finished_spans()
             self.assertEqual(len(spans), 0)
-        finally:
-            context.detach(token)
 
     async def test_stream_stream_with_suppress_key(self):
-        token = context.attach(
-            context.set_value(_SUPPRESS_INSTRUMENTATION_KEY, True)
-        )
-        try:
+        with suppress_instrumentation():
             async for response in bidirectional_streaming_method(self._stub):
                 self.assertEqual(response.response_data, "data")
 
             spans = self.memory_exporter.get_finished_spans()
             self.assertEqual(len(spans), 0)
-        finally:
-            context.detach(token)

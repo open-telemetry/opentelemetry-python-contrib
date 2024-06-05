@@ -254,13 +254,21 @@ class _InstrumentedFalconAPI(getattr(falcon, _instrument_app)):
             self._middlewares_list = [self._middlewares_list]
 
         self._otel_tracer = trace.get_tracer(
-            __name__, __version__, tracer_provider
+            __name__,
+            __version__,
+            tracer_provider,
+            schema_url="https://opentelemetry.io/schemas/1.11.0",
         )
-        self._otel_meter = get_meter(__name__, __version__, meter_provider)
+        self._otel_meter = get_meter(
+            __name__,
+            __version__,
+            meter_provider,
+            schema_url="https://opentelemetry.io/schemas/1.11.0",
+        )
         self.duration_histogram = self._otel_meter.create_histogram(
             name=MetricInstruments.HTTP_SERVER_DURATION,
             unit="ms",
-            description="measures the duration of the inbound HTTP request",
+            description="Duration of HTTP client requests.",
         )
         self.active_requests_counter = self._otel_meter.create_up_down_counter(
             name=MetricInstruments.HTTP_SERVER_ACTIVE_REQUESTS,
@@ -374,9 +382,9 @@ class _InstrumentedFalconAPI(getattr(falcon, _instrument_app)):
             raise
         finally:
             if span.is_recording():
-                duration_attrs[
-                    SpanAttributes.HTTP_STATUS_CODE
-                ] = span.attributes.get(SpanAttributes.HTTP_STATUS_CODE)
+                duration_attrs[SpanAttributes.HTTP_STATUS_CODE] = (
+                    span.attributes.get(SpanAttributes.HTTP_STATUS_CODE)
+                )
             duration = max(round((default_timer() - start) * 1000), 0)
             self.duration_histogram.record(duration, duration_attrs)
             self.active_requests_counter.add(-1, active_requests_count_attrs)

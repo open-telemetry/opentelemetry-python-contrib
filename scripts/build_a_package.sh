@@ -22,7 +22,7 @@ set -ev
 
 if [ -z $GITHUB_REF ]; then
   echo 'Failed to run script, missing workflow env variable GITHUB_REF.'
-  exit -1
+  exit 1
 fi
 
 pkg_name_and_version=${GITHUB_REF#refs/tags/*}
@@ -40,13 +40,13 @@ cd $basedir
 
 distdir=${basedir}/dist
 mkdir -p $distdir
-rm -rf $distdir/*
+rm -rf ${distdir:?}/*
 
 pyproject_toml_file_path=$(ls **/$pkg_name/pyproject.toml)
 
 if [ -z $pyproject_toml_file_path ]; then
   echo "Error! pyproject.toml not found for $pkg_name, can't build."
-  exit -1
+  exit 1
 fi
 
 directory_with_package=$(dirname $pyproject_toml_file_path)
@@ -61,7 +61,7 @@ pkg_tar_gz_file=${pkg_name}-${pkg_version}.tar.gz
 
 if ! [ -f $pkg_tar_gz_file ]; then
   echo 'Error! Tag version does not match version built using latest package files.'
-  exit -1
+  exit 1
 fi
 
 # Build a wheel for the source distribution

@@ -16,3 +16,5 @@
 _instruments = tuple()
 
 _supports_metrics = True
+
+_semconv_status = "migration"

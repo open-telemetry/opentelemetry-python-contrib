@@ -19,12 +19,12 @@ import httpretty
 import urllib3
 import urllib3.exceptions
 
-from opentelemetry import context, trace
-
-# FIXME: fix the importing of this private attribute when the location of the _SUPPRESS_HTTP_INSTRUMENTATION_KEY is defined.
-from opentelemetry.context import _SUPPRESS_HTTP_INSTRUMENTATION_KEY
+from opentelemetry import trace
 from opentelemetry.instrumentation.urllib3 import URLLib3Instrumentor
-from opentelemetry.instrumentation.utils import _SUPPRESS_INSTRUMENTATION_KEY
+from opentelemetry.instrumentation.utils import (
+    suppress_http_instrumentation,
+    suppress_instrumentation,
+)
 from opentelemetry.propagate import get_global_textmap, set_global_textmap
 from opentelemetry.semconv.trace import SpanAttributes
 from opentelemetry.test.mock_textmap import MockTextMapPropagator
@@ -138,6 +138,17 @@ class TestURLLib3Instrumentor(TestBase):
 
         self.assert_success_span(response, self.HTTPS_URL)
 
+    def test_schema_url(self):
+        pool = urllib3.HTTPSConnectionPool("mock")
+        response = pool.request("GET", "/status/200")
+
+        self.assertEqual(b"Hello!", response.data)
+        span = self.assert_span()
+        self.assertEqual(
+            span.instrumentation_info.schema_url,
+            "https://opentelemetry.io/schemas/1.11.0",
+        )
+
     def test_basic_not_found(self):
         url_404 = "http://mock/status/404"
         httpretty.register_uri(httpretty.GET, url_404, status=404)
@@ -214,20 +225,17 @@ class TestURLLib3Instrumentor(TestBase):
         URLLib3Instrumentor().instrument()
 
     def test_suppress_instrumentation(self):
-        suppression_keys = (
-            _SUPPRESS_HTTP_INSTRUMENTATION_KEY,
-            _SUPPRESS_INSTRUMENTATION_KEY,
+        suppression_cms = (
+            suppress_instrumentation,
+            suppress_http_instrumentation,
         )
-        for key in suppression_keys:
+        for cm in suppression_cms:
             self.memory_exporter.clear()
 
-            with self.subTest(key=key):
-                token = context.attach(context.set_value(key, True))
-                try:
+            with self.subTest(cm=cm):
+                with cm():
                     response = self.perform_request(self.HTTP_URL)
                     self.assertEqual(b"Hello!", response.data)
-                finally:
-                    context.detach(token)
 
                 self.assert_span(num_spans=0)
 
