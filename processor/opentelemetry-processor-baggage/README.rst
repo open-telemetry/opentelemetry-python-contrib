@@ -1,9 +1,21 @@
 OpenTelemetry Baggage Span Processor
 ====================================
 
+|pypi|
+
+.. |pypi| image:: https://badge.fury.io/py/opentelemetry-processor-baggage.svg
+   :target: https://pypi.org/project/opentelemetry-processor-baggage/
+
 The BaggageSpanProcessor reads entries stored in Baggage
 from the parent context and adds the baggage entries' keys and
 values to the span as attributes on span start.
+
+Installation
+------------
+
+::
+
+    pip install opentelemetry-processor-baggage
 
 Add this span processor to a tracer provider.
 
