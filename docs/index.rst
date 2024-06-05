@@ -22,7 +22,7 @@ installed separately via pip:
 
     pip install opentelemetry-exporter-{exporter}
     pip install opentelemetry-instrumentation-{instrumentation}
-    pip install opentelemetry-sdk-extension-{sdkextension}
+    pip install opentelemetry-sdk-extension-{sdk-extension}
 
 A complete list of packages can be found at the 
 `Contrib repo instrumentation <https://github.com/open-telemetry/opentelemetry-python-contrib/tree/main/instrumentation>`_

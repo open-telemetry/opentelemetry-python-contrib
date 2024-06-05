@@ -14,17 +14,15 @@
 
 import functools
 import logging
-from collections import OrderedDict
 
 import grpc
-from grpc.aio import ClientCallDetails
+from grpc.aio import ClientCallDetails, Metadata
 
-from opentelemetry import context
 from opentelemetry.instrumentation.grpc._client import (
     OpenTelemetryClientInterceptor,
     _carrier_setter,
 )
-from opentelemetry.instrumentation.utils import _SUPPRESS_INSTRUMENTATION_KEY
+from opentelemetry.instrumentation.utils import is_instrumentation_enabled
 from opentelemetry.propagate import inject
 from opentelemetry.semconv.trace import SpanAttributes
 from opentelemetry.trace.status import Status, StatusCode
@@ -56,20 +54,19 @@ def _unary_done_callback(span, code, details, response_hook):
 
 class _BaseAioClientInterceptor(OpenTelemetryClientInterceptor):
     @staticmethod
-    def propagate_trace_in_details(client_call_details):
+    def propagate_trace_in_details(client_call_details: ClientCallDetails):
         metadata = client_call_details.metadata
         if not metadata:
-            mutable_metadata = OrderedDict()
+            mutable_metadata = Metadata()
         else:
-            mutable_metadata = OrderedDict(metadata)
+            mutable_metadata = Metadata(*tuple(metadata))
 
         inject(mutable_metadata, setter=_carrier_setter)
-        metadata = tuple(mutable_metadata.items())
 
         return ClientCallDetails(
             client_call_details.method,
             client_call_details.timeout,
-            metadata,
+            mutable_metadata,
             client_call_details.credentials,
             client_call_details.wait_for_ready,
         )
@@ -139,9 +136,10 @@ class _BaseAioClientInterceptor(OpenTelemetryClientInterceptor):
             span.end()
 
     def tracing_skipped(self, client_call_details):
-        return context.get_value(
-            _SUPPRESS_INSTRUMENTATION_KEY
-        ) or not self.rpc_matches_filters(client_call_details)
+        return (
+            not is_instrumentation_enabled()
+            or not self.rpc_matches_filters(client_call_details)
+        )
 
     def rpc_matches_filters(self, client_call_details):
         return self._filter is None or self._filter(client_call_details)

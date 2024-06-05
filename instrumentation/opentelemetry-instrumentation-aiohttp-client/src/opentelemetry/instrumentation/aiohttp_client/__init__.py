@@ -94,8 +94,8 @@ from opentelemetry.instrumentation.aiohttp_client.package import _instruments
 from opentelemetry.instrumentation.aiohttp_client.version import __version__
 from opentelemetry.instrumentation.instrumentor import BaseInstrumentor
 from opentelemetry.instrumentation.utils import (
-    _SUPPRESS_INSTRUMENTATION_KEY,
     http_status_to_status_code,
+    is_instrumentation_enabled,
     unwrap,
 )
 from opentelemetry.propagate import inject
@@ -163,7 +163,12 @@ def create_trace_config(
     # Explicitly specify the type for the `request_hook` and `response_hook` param and rtype to work
     # around this issue.
 
-    tracer = get_tracer(__name__, __version__, tracer_provider)
+    tracer = get_tracer(
+        __name__,
+        __version__,
+        tracer_provider,
+        schema_url="https://opentelemetry.io/schemas/1.11.0",
+    )
 
     def _end_trace(trace_config_ctx: types.SimpleNamespace):
         context_api.detach(trace_config_ctx.token)
@@ -174,7 +179,7 @@ def create_trace_config(
         trace_config_ctx: types.SimpleNamespace,
         params: aiohttp.TraceRequestStartParams,
     ):
-        if context_api.get_value(_SUPPRESS_INSTRUMENTATION_KEY):
+        if not is_instrumentation_enabled():
             trace_config_ctx.span = None
             return
 
@@ -277,7 +282,7 @@ def _instrument(
 
     # pylint:disable=unused-argument
     def instrumented_init(wrapped, instance, args, kwargs):
-        if context_api.get_value(_SUPPRESS_INSTRUMENTATION_KEY):
+        if not is_instrumentation_enabled():
             return wrapped(*args, **kwargs)
 
         client_trace_configs = list(kwargs.get("trace_configs") or [])

@@ -55,20 +55,22 @@ This instrumentation supports request and response hooks. These are functions th
 right after a span is created for a request and right before the span is finished for the response.
 
 - The server request hook is passed a server span and ASGI scope object for every incoming request.
-- The client request hook is called with the internal span and an ASGI scope when the method ``receive`` is called.
-- The client response hook is called with the internal span and an ASGI event when the method ``send`` is called.
+- The client request hook is called with the internal span, and ASGI scope and event when the method ``receive`` is called.
+- The client response hook is called with the internal span, and ASGI scope and event when the method ``send`` is called.
 
 For example,
 
 .. code-block:: python
 
-    def server_request_hook(span: Span, scope: dict):
+    def server_request_hook(span: Span, scope: dict[str, Any]):
         if span and span.is_recording():
             span.set_attribute("custom_user_attribute_from_request_hook", "some-value")
-    def client_request_hook(span: Span, scope: dict):
+
+    def client_request_hook(span: Span, scope: dict[str, Any], message: dict[str, Any]):
         if span and span.is_recording():
             span.set_attribute("custom_user_attribute_from_client_request_hook", "some-value")
-    def client_response_hook(span: Span, message: dict):
+
+    def client_response_hook(span: Span, scope: dict[str, Any], message: dict[str, Any]):
         if span and span.is_recording():
             span.set_attribute("custom_user_attribute_from_response_hook", "some-value")
 
@@ -167,26 +169,25 @@ Note:
 API
 ---
 """
-import typing
 from typing import Collection
 
 from starlette import applications
 from starlette.routing import Match
 
 from opentelemetry.instrumentation.asgi import OpenTelemetryMiddleware
+from opentelemetry.instrumentation.asgi.types import (
+    ClientRequestHook,
+    ClientResponseHook,
+    ServerRequestHook,
+)
 from opentelemetry.instrumentation.instrumentor import BaseInstrumentor
 from opentelemetry.instrumentation.starlette.package import _instruments
 from opentelemetry.instrumentation.starlette.version import __version__
 from opentelemetry.metrics import get_meter
 from opentelemetry.semconv.trace import SpanAttributes
-from opentelemetry.trace import Span
 from opentelemetry.util.http import get_excluded_urls
 
 _excluded_urls = get_excluded_urls("STARLETTE")
-
-_ServerRequestHookT = typing.Optional[typing.Callable[[Span, dict], None]]
-_ClientRequestHookT = typing.Optional[typing.Callable[[Span, dict], None]]
-_ClientResponseHookT = typing.Optional[typing.Callable[[Span, dict], None]]
 
 
 class StarletteInstrumentor(BaseInstrumentor):
@@ -200,14 +201,19 @@ class StarletteInstrumentor(BaseInstrumentor):
     @staticmethod
     def instrument_app(
         app: applications.Starlette,
-        server_request_hook: _ServerRequestHookT = None,
-        client_request_hook: _ClientRequestHookT = None,
-        client_response_hook: _ClientResponseHookT = None,
+        server_request_hook: ServerRequestHook = None,
+        client_request_hook: ClientRequestHook = None,
+        client_response_hook: ClientResponseHook = None,
         meter_provider=None,
         tracer_provider=None,
     ):
         """Instrument an uninstrumented Starlette application."""
-        meter = get_meter(__name__, __version__, meter_provider)
+        meter = get_meter(
+            __name__,
+            __version__,
+            meter_provider,
+            schema_url="https://opentelemetry.io/schemas/1.11.0",
+        )
         if not getattr(app, "is_instrumented_by_opentelemetry", False):
             app.add_middleware(
                 OpenTelemetryMiddleware,
@@ -265,15 +271,18 @@ class StarletteInstrumentor(BaseInstrumentor):
 class _InstrumentedStarlette(applications.Starlette):
     _tracer_provider = None
     _meter_provider = None
-    _server_request_hook: _ServerRequestHookT = None
-    _client_request_hook: _ClientRequestHookT = None
-    _client_response_hook: _ClientResponseHookT = None
+    _server_request_hook: ServerRequestHook = None
+    _client_request_hook: ClientRequestHook = None
+    _client_response_hook: ClientResponseHook = None
     _instrumented_starlette_apps = set()
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
         meter = get_meter(
-            __name__, __version__, _InstrumentedStarlette._meter_provider
+            __name__,
+            __version__,
+            _InstrumentedStarlette._meter_provider,
+            schema_url="https://opentelemetry.io/schemas/1.11.0",
         )
         self.add_middleware(
             OpenTelemetryMiddleware,
