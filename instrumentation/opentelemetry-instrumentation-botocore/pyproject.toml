@@ -30,7 +30,7 @@ dependencies = [
   "opentelemetry-propagator-aws-xray == 1.0.1",
 ]
 
-[project.optional-dependencies]
+[tool.opentelemetry-bootstrap]
 instruments = [
   "botocore ~= 1.0",
 ]

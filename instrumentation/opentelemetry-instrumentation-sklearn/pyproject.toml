@@ -28,7 +28,7 @@ dependencies = [
   "opentelemetry-instrumentation == 0.47b0.dev",
 ]
 
-[project.optional-dependencies]
+[tool.opentelemetry-bootstrap]
 instruments = [
   "scikit-learn ~= 0.24.0",
 ]

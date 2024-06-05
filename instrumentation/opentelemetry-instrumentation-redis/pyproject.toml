@@ -30,7 +30,7 @@ dependencies = [
   "wrapt >= 1.12.1",
 ]
 
-[project.optional-dependencies]
+[tool.opentelemetry-bootstrap]
 instruments = [
   "redis >= 2.6",
 ]

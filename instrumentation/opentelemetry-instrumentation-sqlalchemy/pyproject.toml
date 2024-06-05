@@ -31,7 +31,7 @@ dependencies = [
   "wrapt >= 1.11.2",
 ]
 
-[project.optional-dependencies]
+[tool.opentelemetry-bootstrap]
 instruments = [
   "sqlalchemy",
 ]

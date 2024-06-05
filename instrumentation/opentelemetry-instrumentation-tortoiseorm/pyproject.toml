@@ -29,7 +29,7 @@ dependencies = [
   "opentelemetry-semantic-conventions == 0.47b0.dev",
 ]
 
-[project.optional-dependencies]
+[tool.opentelemetry-bootstrap]
 instruments = [
   "tortoise-orm >= 0.17.0",
   "pydantic >= 1.10.2"

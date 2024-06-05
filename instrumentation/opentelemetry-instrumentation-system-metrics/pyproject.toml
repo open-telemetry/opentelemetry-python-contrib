@@ -29,7 +29,7 @@ dependencies = [
   "psutil ~= 5.9",
 ]
 
-[project.optional-dependencies]
+[tool.opentelemetry-bootstrap]
 instruments = [
   "psutil >= 5",
 ]

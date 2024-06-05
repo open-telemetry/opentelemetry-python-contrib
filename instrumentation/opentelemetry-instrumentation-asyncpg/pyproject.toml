@@ -29,7 +29,7 @@ dependencies = [
   "opentelemetry-semantic-conventions == 0.47b0.dev",
 ]
 
-[project.optional-dependencies]
+[tool.opentelemetry-bootstrap]
 instruments = [
   "asyncpg >= 0.12.0",
 ]
