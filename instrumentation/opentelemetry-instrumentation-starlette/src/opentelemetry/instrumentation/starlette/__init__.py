@@ -230,6 +230,7 @@ class StarletteInstrumentor(BaseInstrumentor):
                 client_request_hook=client_request_hook,
                 client_response_hook=client_response_hook,
                 # Pass in tracer/meter to get __name__and __version__ of starlette instrumentation
+                tracer=tracer,
                 meter=meter,
             )
             app.is_instrumented_by_opentelemetry = True
