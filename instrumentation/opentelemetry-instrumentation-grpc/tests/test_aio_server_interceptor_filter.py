@@ -11,25 +11,10 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-try:
-    from unittest import IsolatedAsyncioTestCase
-except ImportError:
-    # unittest.IsolatedAsyncioTestCase was introduced in Python 3.8. It's use
-    # simplifies the following tests. Without it, the amount of test code
-    # increases significantly, with most of the additional code handling
-    # the asyncio set up.
-    from unittest import TestCase
-
-    class IsolatedAsyncioTestCase(TestCase):
-        def run(self, result=None):
-            self.skipTest(
-                "This test requires Python 3.8 for unittest.IsolatedAsyncioTestCase"
-            )
-
+from unittest import IsolatedAsyncioTestCase
 
 import grpc
 import grpc.aio
-import pytest
 
 from opentelemetry import trace
 from opentelemetry.instrumentation.grpc import (
@@ -68,7 +53,6 @@ async def run_with_test_server(
     return resp
 
 
-@pytest.mark.asyncio
 class TestOpenTelemetryAioServerInterceptor(TestBase, IsolatedAsyncioTestCase):
     async def test_instrumentor(self):
         """Check that automatic instrumentation configures the interceptor"""
