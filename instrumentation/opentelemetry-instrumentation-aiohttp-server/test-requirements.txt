@@ -5,7 +5,7 @@ async-timeout==4.0.3
 attrs==23.2.0
 Deprecated==1.2.14
 frozenlist==1.4.1
-idna==3.6
+idna==3.7
 importlib-metadata==6.11.0
 iniconfig==2.0.0
 multidict==6.0.5
