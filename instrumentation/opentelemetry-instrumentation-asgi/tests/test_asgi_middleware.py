@@ -269,7 +269,6 @@ class TestAsgiApplication(AsgiTestBase):
                 "name": "GET / http receive",
                 "kind": trace_api.SpanKind.INTERNAL,
                 "attributes": {"asgi.event.type": "http.request"},
-                "instrumentation_scope.name": "opentelemetry.instrumentation.asgi",
             },
             {
                 "name": "GET / http send",
@@ -278,13 +277,11 @@ class TestAsgiApplication(AsgiTestBase):
                     SpanAttributes.HTTP_STATUS_CODE: 200,
                     "asgi.event.type": "http.response.start",
                 },
-                "instrumentation_scope.name": "opentelemetry.instrumentation.asgi",
             },
             {
                 "name": "GET / http send",
                 "kind": trace_api.SpanKind.INTERNAL,
                 "attributes": {"asgi.event.type": "http.response.body"},
-                "instrumentation_scope.name": "opentelemetry.instrumentation.asgi",
             },
             {
                 "name": "GET /",
@@ -301,7 +298,6 @@ class TestAsgiApplication(AsgiTestBase):
                     SpanAttributes.NET_PEER_PORT: 32767,
                     SpanAttributes.HTTP_STATUS_CODE: 200,
                 },
-                "instrumentation_scope.name": "opentelemetry.instrumentation.asgi",
             },
         ]
         # Run our expected modifiers
@@ -315,7 +311,7 @@ class TestAsgiApplication(AsgiTestBase):
             self.assertDictEqual(dict(span.attributes), expected["attributes"])
             self.assertEqual(
                 span.instrumentation_scope.name,
-                expected["instrumentation_scope.name"],
+                "opentelemetry.instrumentation.asgi",
             )
 
     def test_basic_asgi_call(self):
