@@ -363,6 +363,7 @@ class TestAutoInstrumentation(TestStarletteManualInstrumentation):
         self._instrumentor.uninstrument()
 
         tracer_provider = NoOpTracerProvider()
+        self._instrumentor = otel_starlette.StarletteInstrumentor()
         self._instrumentor.instrument(tracer_provider=tracer_provider)
 
         self._client.get("/foobar")
