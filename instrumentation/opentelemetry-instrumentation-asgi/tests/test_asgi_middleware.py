@@ -269,6 +269,7 @@ class TestAsgiApplication(AsgiTestBase):
                 "name": "GET / http receive",
                 "kind": trace_api.SpanKind.INTERNAL,
                 "attributes": {"asgi.event.type": "http.request"},
+                "instrumentation_scope.name": "opentelemetry.instrumentation.asgi",
             },
             {
                 "name": "GET / http send",
@@ -309,6 +310,7 @@ class TestAsgiApplication(AsgiTestBase):
             self.assertEqual(span.name, expected["name"])
             self.assertEqual(span.kind, expected["kind"])
             self.assertDictEqual(dict(span.attributes), expected["attributes"])
+            self.assertEqual(span.instrumentation_scope.name, expected["instrumentation_scope.name"])
 
     def test_basic_asgi_call(self):
         """Test that spans are emitted as expected."""
@@ -728,6 +730,10 @@ class TestAsgiApplication(AsgiTestBase):
             self.assertTrue(len(resource_metric.scope_metrics) != 0)
             for scope_metric in resource_metric.scope_metrics:
                 self.assertTrue(len(scope_metric.metrics) != 0)
+                self.assertEqual(
+                    scope_metric.scope.name,
+                    "opentelemetry.instrumentation.asgi",
+                )
                 for metric in scope_metric.metrics:
                     self.assertIn(metric.name, _expected_metric_names)
                     data_points = list(metric.data.data_points)
