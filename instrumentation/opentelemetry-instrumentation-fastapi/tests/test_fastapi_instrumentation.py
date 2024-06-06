@@ -119,7 +119,7 @@ class TestFastAPIManualInstrumentation(TestBase):
             self.assertIn("GET /foobar", span.name)
             self.assertEqual(
                 span.instrumentation_scope.name,
-                "opentelemetry.instrumentation.fastapi"
+                "opentelemetry.instrumentation.fastapi",
             )
 
     def test_uninstrument_app(self):

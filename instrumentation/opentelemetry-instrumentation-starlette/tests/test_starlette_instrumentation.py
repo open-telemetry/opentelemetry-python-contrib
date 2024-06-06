@@ -100,7 +100,7 @@ class TestStarletteManualInstrumentation(TestBase):
             self.assertIn("GET /foobar", span.name)
             self.assertEqual(
                 span.instrumentation_scope.name,
-                "opentelemetry.instrumentation.starlette"
+                "opentelemetry.instrumentation.starlette",
             )
 
     def test_starlette_route_attribute_added(self):
