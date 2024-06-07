@@ -76,6 +76,7 @@ from urllib.parse import urlencode
 
 from wrapt import wrap_function_wrapper
 
+from opentelemetry import context as context_api
 from opentelemetry.context.context import Context
 from opentelemetry.instrumentation.aws_lambda.package import _instruments
 from opentelemetry.instrumentation.aws_lambda.version import __version__
@@ -303,65 +304,75 @@ def _instrument(
             schema_url="https://opentelemetry.io/schemas/1.11.0",
         )
 
-        with tracer.start_as_current_span(
-            name=orig_handler_name,
-            context=parent_context,
-            kind=span_kind,
-        ) as span:
-            if span.is_recording():
-                lambda_context = args[1]
-                # NOTE: The specs mention an exception here, allowing the
-                # `SpanAttributes.CLOUD_RESOURCE_ID` attribute to be set as a span
-                # attribute instead of a resource attribute.
-                #
-                # See more:
-                # https://github.com/open-telemetry/semantic-conventions/blob/main/docs/faas/aws-lambda.md#resource-detector
-                span.set_attribute(
-                    SpanAttributes.CLOUD_RESOURCE_ID,
-                    lambda_context.invoked_function_arn,
-                )
-                span.set_attribute(
-                    SpanAttributes.FAAS_INVOCATION_ID,
-                    lambda_context.aws_request_id,
-                )
-
-                # NOTE: `cloud.account.id` can be parsed from the ARN as the fifth item when splitting on `:`
-                #
-                # See more:
-                # https://github.com/open-telemetry/semantic-conventions/blob/main/docs/faas/aws-lambda.md#all-triggers
-                account_id = lambda_context.invoked_function_arn.split(":")[4]
-                span.set_attribute(
-                    ResourceAttributes.CLOUD_ACCOUNT_ID,
-                    account_id,
-                )
-
-            exception = None
-            result = None
-            try:
-                result = call_wrapped(*args, **kwargs)
-            except Exception as exc:  # pylint: disable=W0703
-                exception = exc
-                span.set_status(Status(StatusCode.ERROR))
-                span.record_exception(exception)
-
-            # If the request came from an API Gateway, extract http attributes from the event
-            # https://github.com/open-telemetry/opentelemetry-specification/blob/main/specification/trace/semantic_conventions/instrumentation/aws-lambda.md#api-gateway
-            # https://github.com/open-telemetry/opentelemetry-specification/blob/main/specification/trace/semantic_conventions/http.md#http-server-semantic-conventions
-            if isinstance(lambda_event, dict) and lambda_event.get(
-                "requestContext"
-            ):
-                span.set_attribute(SpanAttributes.FAAS_TRIGGER, "http")
-
-                if lambda_event.get("version") == "2.0":
-                    _set_api_gateway_v2_proxy_attributes(lambda_event, span)
-                else:
-                    _set_api_gateway_v1_proxy_attributes(lambda_event, span)
-
-                if isinstance(result, dict) and result.get("statusCode"):
+        token = context_api.attach(parent_context)
+        try:
+            with tracer.start_as_current_span(
+                name=orig_handler_name,
+                context=parent_context,
+                kind=span_kind,
+            ) as span:
+                if span.is_recording():
+                    lambda_context = args[1]
+                    # NOTE: The specs mention an exception here, allowing the
+                    # `SpanAttributes.CLOUD_RESOURCE_ID` attribute to be set as a span
+                    # attribute instead of a resource attribute.
+                    #
+                    # See more:
+                    # https://github.com/open-telemetry/semantic-conventions/blob/main/docs/faas/aws-lambda.md#resource-detector
                     span.set_attribute(
-                        SpanAttributes.HTTP_STATUS_CODE,
-                        result.get("statusCode"),
+                        SpanAttributes.CLOUD_RESOURCE_ID,
+                        lambda_context.invoked_function_arn,
                     )
+                    span.set_attribute(
+                        SpanAttributes.FAAS_INVOCATION_ID,
+                        lambda_context.aws_request_id,
+                    )
+
+                    # NOTE: `cloud.account.id` can be parsed from the ARN as the fifth item when splitting on `:`
+                    #
+                    # See more:
+                    # https://github.com/open-telemetry/semantic-conventions/blob/main/docs/faas/aws-lambda.md#all-triggers
+                    account_id = lambda_context.invoked_function_arn.split(
+                        ":"
+                    )[4]
+                    span.set_attribute(
+                        ResourceAttributes.CLOUD_ACCOUNT_ID,
+                        account_id,
+                    )
+
+                exception = None
+                result = None
+                try:
+                    result = call_wrapped(*args, **kwargs)
+                except Exception as exc:  # pylint: disable=W0703
+                    exception = exc
+                    span.set_status(Status(StatusCode.ERROR))
+                    span.record_exception(exception)
+
+                # If the request came from an API Gateway, extract http attributes from the event
+                # https://github.com/open-telemetry/opentelemetry-specification/blob/main/specification/trace/semantic_conventions/instrumentation/aws-lambda.md#api-gateway
+                # https://github.com/open-telemetry/opentelemetry-specification/blob/main/specification/trace/semantic_conventions/http.md#http-server-semantic-conventions
+                if isinstance(lambda_event, dict) and lambda_event.get(
+                    "requestContext"
+                ):
+                    span.set_attribute(SpanAttributes.FAAS_TRIGGER, "http")
+
+                    if lambda_event.get("version") == "2.0":
+                        _set_api_gateway_v2_proxy_attributes(
+                            lambda_event, span
+                        )
+                    else:
+                        _set_api_gateway_v1_proxy_attributes(
+                            lambda_event, span
+                        )
+
+                    if isinstance(result, dict) and result.get("statusCode"):
+                        span.set_attribute(
+                            SpanAttributes.HTTP_STATUS_CODE,
+                            result.get("statusCode"),
+                        )
+        finally:
+            context_api.detach(token)
 
         now = time.time()
         _tracer_provider = tracer_provider or get_tracer_provider()
