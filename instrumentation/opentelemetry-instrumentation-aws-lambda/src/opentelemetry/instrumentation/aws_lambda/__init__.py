@@ -350,6 +350,8 @@ class ALBWrapper(EventWrapper):
         Returns: Headers for the Application Load Balancer event.
         """
 
+        # This approach was adapted from the Mangum project:
+        # https://github.com/jordaneremieff/mangum
         headers: List[Tuple[bytes, bytes]] = []
 
         if "multiValueHeaders" in self._event:
@@ -671,6 +673,8 @@ def get_event_wrapper(event: LambdaEvent, context: Any) -> EventWrapper:
 
     default_wrapper = EventWrapper(event=event, context=context)
 
+    # The logic behind this flow was adapted from work done by the Mangum project:
+    # https://github.com/jordaneremieff/mangum
     if not event:
         return default_wrapper
     elif "requestContext" in event and "elb" in event["requestContext"]:
