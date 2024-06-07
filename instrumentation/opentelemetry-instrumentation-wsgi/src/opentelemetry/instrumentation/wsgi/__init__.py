@@ -533,6 +533,8 @@ class OpenTelemetryMiddleware:
                        incoming request.
         tracer_provider: Optional tracer provider to use. If omitted the current
                          globally configured one is used.
+        meter_provider: Optional meter provider to use. If omitted the current
+                         globally configured one is used.
     """
 
     def __init__(
