@@ -12,9 +12,14 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import json
+
+from opentelemetry import baggage as baggage_api
+
 
 def handler(event, context):
-    return "200 ok"
+    baggage_content = dict(baggage_api.get_all().items())
+    return json.dumps({"baggage_content": baggage_content})
 
 
 def rest_api_handler(event, context):
