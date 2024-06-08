@@ -23,6 +23,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - `opentelemetry-instrumentation-asgi`, `opentelemetry-instrumentation-fastapi`, `opentelemetry-instrumentation-starlette` Use `tracer` and `meter` of originating components instead of one from `asgi` middleware
   ([#2580](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/2580))
+- `opentelemetry-instrumentation-aws-lambda` If providing an `event_context_extractor` `kwarg` to the instrumentation, the callable should now accept a child of the `EventWrapper` class.
+  ([#2585](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/2585))
 
 ### Fixed
 
