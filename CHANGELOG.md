@@ -7,6 +7,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## Unreleased
 
+- `opentelemetry-instrumentation-aiohttp-server`, `opentelemetry-instrumentation-httpx`, `opentelemetry-resource-detector-azure` Ensure consistently use of suppress_instrumentation utils; adapt `opentelemetry.instrumentation.utils` util functions `suppress_instrumentation` and `is_instrumentation_enabled` to also check the old plain string key "suppress_instrumentation" for backward compatibility
+  ([#2590](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/2590))
+
 ### Breaking changes
 
 - `opentelemetry-instrumentation-asgi`, `opentelemetry-instrumentation-fastapi`, `opentelemetry-instrumentation-starlette` Use `tracer` and `meter` of originating components instead of one from `asgi` middleware
