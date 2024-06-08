@@ -65,8 +65,8 @@ async def default_handler(request, status=200):
     return aiohttp.web.Response(status=status)
 
 
-@pytest.fixture
-def suppress():
+@pytest.fixture(name="suppress")
+def fixture_suppress():
     return False
 
 
@@ -78,11 +78,11 @@ async def fixture_server_fixture(tracer, aiohttp_server, suppress):
 
     app = aiohttp.web.Application()
     app.add_routes([aiohttp.web.get("/test-path", default_handler)])
-    if not suppress:
-        server = await aiohttp_server(app)
-    else:
+    if suppress:
         with suppress_http_instrumentation():
             server = await aiohttp_server(app)
+    else:
+        server = await aiohttp_server(app)
 
     yield server, app
 

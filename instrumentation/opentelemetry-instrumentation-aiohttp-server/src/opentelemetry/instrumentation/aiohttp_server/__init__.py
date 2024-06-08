@@ -193,7 +193,9 @@ getter = AiohttpGetter()
 @web.middleware
 async def middleware(request, handler):
     """Middleware for aiohttp implementing tracing logic"""
-    if not is_http_instrumentation_enabled():
+    if not is_http_instrumentation_enabled() or _excluded_urls.url_disabled(
+        request.url.path
+    ):
         return await handler(request)
 
     span_name, additional_attributes = get_default_span_details(request)
