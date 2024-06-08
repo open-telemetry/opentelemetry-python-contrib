@@ -328,7 +328,7 @@ class _InterceptorChannel(grpc.Channel):
     ):
         if _registered_method:
             base_callable = self._channel.stream_unary(
-                method, request_serializer, response_deserializer
+                method, request_serializer, response_deserializer, _register_method
             )
         else:
             base_callable = self._channel.stream_unary(
