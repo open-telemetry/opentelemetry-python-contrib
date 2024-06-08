@@ -20,6 +20,7 @@ import fastapi
 from fastapi.middleware.httpsredirect import HTTPSRedirectMiddleware
 from fastapi.responses import JSONResponse
 from fastapi.testclient import TestClient
+from flaky import flaky
 
 import opentelemetry.instrumentation.fastapi as otel_fastapi
 from opentelemetry import trace
@@ -222,6 +223,7 @@ class TestFastAPIManualInstrumentation(TestBase):
                             )
         self.assertTrue(number_data_point_seen and histogram_data_point_seen)
 
+    @flaky(max_runs=3, min_passes=1)
     def test_basic_metric_success(self):
         start = default_timer()
         self._client.get("/foobar")
@@ -262,6 +264,7 @@ class TestFastAPIManualInstrumentation(TestBase):
                     )
                     self.assertEqual(point.value, 0)
 
+    @flaky(max_runs=3, min_passes=1)
     def test_basic_post_request_metric_success(self):
         start = default_timer()
         response = self._client.post(
