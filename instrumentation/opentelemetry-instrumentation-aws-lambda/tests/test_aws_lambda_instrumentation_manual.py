@@ -279,48 +279,51 @@ class TestAwsLambdaInstrumentor(TestBase):
             ),
         ]
         for test in tests:
-            print(f"Executing test: {test.name}")
-            test_env_patch = mock.patch.dict(
-                "os.environ",
-                {
-                    **os.environ,
-                    # NOT Active Tracing
-                    _X_AMZN_TRACE_ID: test.xray_traceid,
-                    OTEL_LAMBDA_DISABLE_AWS_CONTEXT_PROPAGATION: test.disable_aws_context_propagation_envvar,
-                    # NOT using the X-Ray Propagator
-                    OTEL_PROPAGATORS: "tracecontext",
-                },
-            )
-            test_env_patch.start()
-            AwsLambdaInstrumentor().instrument(
-                event_context_extractor=test.custom_extractor,
-                disable_aws_context_propagation=test.disable_aws_context_propagation,
-            )
-            mock_execute_lambda(test.context)
-            spans = self.memory_exporter.get_finished_spans()
-            assert spans
-            self.assertEqual(len(spans), 1)
-            span = spans[0]
-            self.assertEqual(
-                span.get_span_context().trace_id, test.expected_traceid
-            )
+            with self.subTest(test_name=test.name):
+                test_env_patch = mock.patch.dict(
+                    "os.environ",
+                    {
+                        **os.environ,
+                        # NOT Active Tracing
+                        _X_AMZN_TRACE_ID: test.xray_traceid,
+                        OTEL_LAMBDA_DISABLE_AWS_CONTEXT_PROPAGATION: test.disable_aws_context_propagation_envvar,
+                        # NOT using the X-Ray Propagator
+                        OTEL_PROPAGATORS: "tracecontext",
+                    },
+                )
+                test_env_patch.start()
+                AwsLambdaInstrumentor().instrument(
+                    event_context_extractor=test.custom_extractor,
+                    disable_aws_context_propagation=test.disable_aws_context_propagation,
+                )
+                mock_execute_lambda(test.context)
+                spans = self.memory_exporter.get_finished_spans()
+                assert spans
+                self.assertEqual(len(spans), 1)
+                span = spans[0]
+                self.assertEqual(
+                    span.get_span_context().trace_id, test.expected_traceid
+                )
 
-            parent_context = span.parent
-            self.assertEqual(
-                parent_context.trace_id, span.get_span_context().trace_id
-            )
-            self.assertEqual(parent_context.span_id, test.expected_parentid)
-            self.assertEqual(
-                len(parent_context.trace_state), test.expected_trace_state_len
-            )
-            self.assertEqual(
-                parent_context.trace_state.get(MOCK_W3C_TRACE_STATE_KEY),
-                test.expected_state_value,
-            )
-            self.assertTrue(parent_context.is_remote)
-            self.memory_exporter.clear()
-            AwsLambdaInstrumentor().uninstrument()
-            test_env_patch.stop()
+                parent_context = span.parent
+                self.assertEqual(
+                    parent_context.trace_id, span.get_span_context().trace_id
+                )
+                self.assertEqual(
+                    parent_context.span_id, test.expected_parentid
+                )
+                self.assertEqual(
+                    len(parent_context.trace_state),
+                    test.expected_trace_state_len,
+                )
+                self.assertEqual(
+                    parent_context.trace_state.get(MOCK_W3C_TRACE_STATE_KEY),
+                    test.expected_state_value,
+                )
+                self.assertTrue(parent_context.is_remote)
+                self.memory_exporter.clear()
+                AwsLambdaInstrumentor().uninstrument()
+                test_env_patch.stop()
 
     def test_lambda_no_error_with_invalid_flush_timeout(self):
         test_env_patch = mock.patch.dict(
