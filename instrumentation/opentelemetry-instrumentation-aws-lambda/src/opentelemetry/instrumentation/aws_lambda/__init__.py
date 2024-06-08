@@ -125,10 +125,11 @@ class FlushableMeterProvider(MeterProvider):
         Force flush all meter data.
 
         Args:
-            timeout: The maximum amount of time to wait for the flush to complete,
-            in milliseconds.
+            timeout (int): The maximum amount of time to wait for the flush to complete,
+                in milliseconds.
 
-        Returns: None
+        Returns:
+            None
         """
 
         ...
@@ -141,13 +142,14 @@ class FlushableTracerProvider(TracerProvider):
 
     def force_flush(self, timeout: int) -> None:
         """
-        Force flush all tracer data.
+        Force flush all meter data.
 
         Args:
-            timeout: The maximum amount of time to wait for the flush to complete,
-            in milliseconds.
+            timeout (int): The maximum amount of time to wait for the flush to complete,
+                in milliseconds.
 
-        Returns: None
+        Returns:
+            None
         """
 
         ...
