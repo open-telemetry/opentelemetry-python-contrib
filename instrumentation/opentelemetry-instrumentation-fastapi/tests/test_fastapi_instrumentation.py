@@ -117,6 +117,10 @@ class TestFastAPIManualInstrumentation(TestBase):
         self.assertEqual(len(spans), 3)
         for span in spans:
             self.assertIn("GET /foobar", span.name)
+            self.assertEqual(
+                span.instrumentation_scope.name,
+                "opentelemetry.instrumentation.fastapi",
+            )
 
     def test_uninstrument_app(self):
         self._client.get("/foobar")
@@ -197,6 +201,10 @@ class TestFastAPIManualInstrumentation(TestBase):
         for resource_metric in metrics_list.resource_metrics:
             self.assertTrue(len(resource_metric.scope_metrics) == 1)
             for scope_metric in resource_metric.scope_metrics:
+                self.assertEqual(
+                    scope_metric.scope.name,
+                    "opentelemetry.instrumentation.fastapi",
+                )
                 self.assertTrue(len(scope_metric.metrics) == 3)
                 for metric in scope_metric.metrics:
                     self.assertIn(metric.name, _expected_metric_names)
@@ -342,23 +350,23 @@ class TestFastAPIManualInstrumentationHooks(TestFastAPIManualInstrumentation):
         if self._server_request_hook is not None:
             self._server_request_hook(span, scope)
 
-    def client_request_hook(self, receive_span, request):
+    def client_request_hook(self, receive_span, scope, message):
         if self._client_request_hook is not None:
-            self._client_request_hook(receive_span, request)
+            self._client_request_hook(receive_span, scope, message)
 
-    def client_response_hook(self, send_span, response):
+    def client_response_hook(self, send_span, scope, message):
         if self._client_response_hook is not None:
-            self._client_response_hook(send_span, response)
+            self._client_response_hook(send_span, scope, message)
 
     def test_hooks(self):
         def server_request_hook(span, scope):
             span.update_name("name from server hook")
 
-        def client_request_hook(receive_span, request):
+        def client_request_hook(receive_span, scope, message):
             receive_span.update_name("name from client hook")
             receive_span.set_attribute("attr-from-request-hook", "set")
 
-        def client_response_hook(send_span, response):
+        def client_response_hook(send_span, scope, message):
             send_span.update_name("name from response hook")
             send_span.set_attribute("attr-from-response-hook", "value")
 

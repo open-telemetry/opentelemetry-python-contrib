@@ -9,6 +9,18 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Breaking changes
 
+- `opentelemetry-instrumentation-asgi`, `opentelemetry-instrumentation-fastapi`, `opentelemetry-instrumentation-starlette` Use `tracer` and `meter` of originating components instead of one from `asgi` middleware
+  ([#2580](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/2580))
+
+### Fixed
+
+- `opentelemetry-instrumentation-httpx` Ensure httpx.get or httpx.request like methods are instrumented
+  ([#2538](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/2538))
+
+## Version 1.25.0/0.46b0 (2024-05-31)
+
+### Breaking changes
+
 - Add return statement to Confluent kafka Producer poll() and flush() calls when instrumented by ConfluentKafkaInstrumentor().instrument_producer() ([#2527](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/2527))
 - Rename `type` attribute to `asgi.event.type` in `opentelemetry-instrumentation-asgi`
   ([#2300](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/2300))
@@ -20,6 +32,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   ([#2425](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/2425))
 - `opentelemetry-instrumentation-flask` Add `http.method` to `span.name`
   ([#2454](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/2454))
+- ASGI, FastAPI, Starlette: provide both send and receive hooks with `scope` and `message` for internal spans ([#2546](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/2546))
 
 ### Added
 
@@ -44,8 +57,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - `opentelemetry-instrumentation-dbapi` Fix compatibility with Psycopg3 to extract libpq build version
   ([#2500](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/2500))
-- `opentelemetry-instrumentation-httpx` Ensure httpx.get or httpx.request like methods are instrumented
-  ([#2538](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/2538))
 - `opentelemetry-instrumentation-grpc` AioClientInterceptor should propagate with a Metadata object
   ([#2363](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/2363))
 - `opentelemetry-instrumentation-boto3sqs` Instrument Session and resource
