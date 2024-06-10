@@ -31,7 +31,7 @@ dependencies = [
   "wrapt >= 1.0.0, < 2.0.0",
 ]
 
-[project.optional-dependencies]
+[tool.opentelemetry-bootstrap]
 instruments = [
   "aiohttp ~= 3.0",
 ]

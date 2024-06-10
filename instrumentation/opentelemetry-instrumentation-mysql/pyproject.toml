@@ -29,7 +29,7 @@ dependencies = [
   "opentelemetry-instrumentation-dbapi == 0.47b0.dev",
 ]
 
-[project.optional-dependencies]
+[tool.opentelemetry-bootstrap]
 instruments = [
   "mysql-connector-python ~= 8.0",
 ]

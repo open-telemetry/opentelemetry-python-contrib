@@ -173,11 +173,7 @@ libraries = [
         "instrumentation": "opentelemetry-instrumentation-tornado==0.47b0.dev",
     },
     {
-        "library": "tortoise-orm >= 0.17.0",
-        "instrumentation": "opentelemetry-instrumentation-tortoiseorm==0.47b0.dev",
-    },
-    {
-        "library": "pydantic >= 1.10.2",
+        "library": ["tortoise-orm >= 0.17.0", "pydantic >= 1.10.2"],
         "instrumentation": "opentelemetry-instrumentation-tortoiseorm==0.47b0.dev",
     },
     {

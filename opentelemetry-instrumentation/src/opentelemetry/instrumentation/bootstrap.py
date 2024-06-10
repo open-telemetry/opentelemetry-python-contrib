@@ -113,7 +113,12 @@ def _find_installed_libraries():
         yield lib
 
     for lib in libraries:
-        if _is_installed(lib["library"]):
+        # lists are used to express AND'ed requirements
+        if not isinstance(list, lib["library"]):
+            libs = [lib["library"]]
+        else:
+            libs = lib["library"]
+        if all(_is_installed(_lib) for _lib in libs):
             yield lib["instrumentation"]
 
 

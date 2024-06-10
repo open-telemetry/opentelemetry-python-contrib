@@ -33,7 +33,7 @@ dependencies = [
   "importlib-metadata >= 4.0",
 ]
 
-[project.optional-dependencies]
+[tool.opentelemetry-bootstrap]
 instruments = [
   "flask >= 1.0",
 ]

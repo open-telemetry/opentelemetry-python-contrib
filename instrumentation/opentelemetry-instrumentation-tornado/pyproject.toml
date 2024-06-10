@@ -29,7 +29,7 @@ dependencies = [
   "opentelemetry-util-http == 0.47b0.dev",
 ]
 
-[project.optional-dependencies]
+[tool.opentelemetry-bootstrap]
 instruments = [
   "tornado >= 5.1.1",
 ]

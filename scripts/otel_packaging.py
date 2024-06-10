@@ -49,7 +49,7 @@ def get_instrumentation_packages():
         instrumentation = {
             "name": pyproject_toml["project"]["name"],
             "version": version.strip(),
-            "instruments": pyproject_toml["project"]["optional-dependencies"][
+            "instruments": pyproject_toml["tool"]["opentelemetry-bootstrap"][
                 "instruments"
             ],
         }
