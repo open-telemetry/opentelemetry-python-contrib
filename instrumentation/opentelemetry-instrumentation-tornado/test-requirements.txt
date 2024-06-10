@@ -22,7 +22,7 @@ tomli==2.0.1
 tornado==6.4
 typing_extensions==4.9.0
 urllib3==2.2.1
-Werkzeug==3.0.1
+Werkzeug==3.0.3
 wrapt==1.16.0
 zipp==3.17.0
 -e opentelemetry-instrumentation

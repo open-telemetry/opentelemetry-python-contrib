@@ -15,7 +15,7 @@ pytest==7.4.4
 pytest-benchmark==4.0.0
 tomli==2.0.1
 typing_extensions==4.9.0
-Werkzeug==3.0.1
+Werkzeug==3.0.3
 wrapt==1.16.0
 zipp==3.17.0
 -e opentelemetry-instrumentation
