@@ -9,7 +9,7 @@ env:
   CORE_REPO_SHA: 141a6a2e473ef7f0ec4915dfb71e3c0fa595283e
 
 jobs:
-  lint-3_11:
+  lint-3_12:
     strategy:
       fail-fast: false  # ensures the entire test matrix is run, even if one permutation fails
       matrix:
