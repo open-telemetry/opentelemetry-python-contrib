@@ -167,7 +167,6 @@ def _determine_parent_context(
     """
     parent_context = None
 
-    xray_env_var = os.environ.get(_X_AMZN_TRACE_ID)
 
     if xray_env_var:
         parent_context = AwsXRayPropagator().extract(
