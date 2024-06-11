@@ -21,7 +21,6 @@ body:
         Python version: (e.g., Python 3.8.10)
         SDK version: (e.g., 1.25.0)
         API version: (e.g., 1.25.0)
-        Instrumentation-specific version: (e.g., 1.25.0)
   
   - type: textarea
     attributes:
