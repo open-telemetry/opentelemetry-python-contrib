@@ -329,14 +329,10 @@ class AwsXRayPropagator(TextMapPropagator):
 
 
 class AwsXrayLambdaPropagator(AwsXRayPropagator):
-
-    _instance = None
-
-    def __new__(cls, *args, **kwargs):
-        if cls._instance is None:
-            cls._instance = super().__new__(cls, *args, **kwargs)
-
-        return cls._instance
+    """Implementation of the AWS X-Ray Trace Header propagation protocol but
+    with special handling for Lambda's ``_X_AMZN_TRACE_ID` environment
+    variable.
+    """
 
     def extract(
         self,
