@@ -13,16 +13,16 @@
 # limitations under the License.
 import os
 from dataclasses import dataclass
-from importlib import import_module
+from importlib import import_module, reload
 from typing import Any, Callable, Dict
 from unittest import mock
 
+from opentelemetry import propagate
 from opentelemetry.environment_variables import OTEL_PROPAGATORS
 from opentelemetry.instrumentation.aws_lambda import (
     _HANDLER,
     _X_AMZN_TRACE_ID,
     OTEL_INSTRUMENTATION_AWS_LAMBDA_FLUSH_TIMEOUT,
-    OTEL_LAMBDA_DISABLE_AWS_CONTEXT_PROPAGATION,
     AwsLambdaInstrumentor,
 )
 from opentelemetry.propagate import get_global_textmap
@@ -56,6 +56,7 @@ MOCK_LAMBDA_CONTEXT = MockLambdaContext(
 )
 
 MOCK_XRAY_TRACE_ID = 0x5FB7331105E8BB83207FA31D4D9CDB4C
+
 MOCK_XRAY_TRACE_ID_STR = f"{MOCK_XRAY_TRACE_ID:x}"
 MOCK_XRAY_PARENT_SPAN_ID = 0x3328B8445A6DBAD2
 MOCK_XRAY_TRACE_CONTEXT_COMMON = f"Root={TRACE_ID_VERSION}-{MOCK_XRAY_TRACE_ID_STR[:TRACE_ID_FIRST_PART_LENGTH]}-{MOCK_XRAY_TRACE_ID_STR[TRACE_ID_FIRST_PART_LENGTH:]};Parent={MOCK_XRAY_PARENT_SPAN_ID:x}"
@@ -81,6 +82,7 @@ def mock_execute_lambda(event=None):
     """Mocks the AWS Lambda execution.
 
     NOTE: We don't use `moto`'s `mock_lambda` because we are not instrumenting
+
     calls to AWS Lambda using the AWS SDK. Instead, we are instrumenting AWS
     Lambda itself.
 
@@ -122,10 +124,13 @@ class TestAwsLambdaInstrumentor(TestBase):
             {
                 **os.environ,
                 # Using Active tracing
+                OTEL_PROPAGATORS: "xray_lambda",
                 _X_AMZN_TRACE_ID: MOCK_XRAY_TRACE_CONTEXT_SAMPLED,
             },
         )
+
         test_env_patch.start()
+        reload(propagate)
 
         AwsLambdaInstrumentor().instrument()
 
@@ -173,8 +178,7 @@ class TestAwsLambdaInstrumentor(TestBase):
             xray_traceid: str
             expected_state_value: str = None
             expected_trace_state_len: int = 0
-            disable_aws_context_propagation: bool = False
-            disable_aws_context_propagation_envvar: str = ""
+            propagators: str = "tracecontext"
 
         def custom_event_context_extractor(lambda_event):
             return get_global_textmap().extract(lambda_event["foo"]["headers"])
@@ -226,9 +230,10 @@ class TestAwsLambdaInstrumentor(TestBase):
                 expected_traceid=MOCK_XRAY_TRACE_ID,
                 expected_parentid=MOCK_XRAY_PARENT_SPAN_ID,
                 xray_traceid=MOCK_XRAY_TRACE_CONTEXT_SAMPLED,
+                propagators="xray_lambda",
             ),
             TestCase(
-                name="custom_extractor_sampled_xray_disable_aws_propagation",
+                name="custom_extractor_sampled_xray",
                 custom_extractor=custom_event_context_extractor,
                 context={
                     "foo": {
@@ -238,7 +243,6 @@ class TestAwsLambdaInstrumentor(TestBase):
                         }
                     }
                 },
-                disable_aws_context_propagation=True,
                 expected_traceid=MOCK_W3C_TRACE_ID,
                 expected_parentid=MOCK_W3C_PARENT_SPAN_ID,
                 expected_trace_state_len=3,
@@ -246,7 +250,7 @@ class TestAwsLambdaInstrumentor(TestBase):
                 xray_traceid=MOCK_XRAY_TRACE_CONTEXT_SAMPLED,
             ),
             TestCase(
-                name="no_custom_extractor_xray_disable_aws_propagation_via_env_var",
+                name="no_custom_extractor_xray",
                 custom_extractor=None,
                 context={
                     "headers": {
@@ -254,8 +258,6 @@ class TestAwsLambdaInstrumentor(TestBase):
                         TraceContextTextMapPropagator._TRACESTATE_HEADER_NAME: f"{MOCK_W3C_TRACE_STATE_KEY}={MOCK_W3C_TRACE_STATE_VALUE},foo=1,bar=2",
                     }
                 },
-                disable_aws_context_propagation=False,
-                disable_aws_context_propagation_envvar="true",
                 expected_traceid=MOCK_W3C_TRACE_ID,
                 expected_parentid=MOCK_W3C_PARENT_SPAN_ID,
                 expected_trace_state_len=3,
@@ -264,21 +266,21 @@ class TestAwsLambdaInstrumentor(TestBase):
             ),
         ]
         for test in tests:
+
             test_env_patch = mock.patch.dict(
                 "os.environ",
                 {
                     **os.environ,
                     # NOT Active Tracing
                     _X_AMZN_TRACE_ID: test.xray_traceid,
-                    OTEL_LAMBDA_DISABLE_AWS_CONTEXT_PROPAGATION: test.disable_aws_context_propagation_envvar,
-                    # NOT using the X-Ray Propagator
-                    OTEL_PROPAGATORS: "tracecontext",
+                    OTEL_PROPAGATORS: test.propagators,
                 },
             )
             test_env_patch.start()
+            reload(propagate)
+
             AwsLambdaInstrumentor().instrument(
                 event_context_extractor=test.custom_extractor,
-                disable_aws_context_propagation=test.disable_aws_context_propagation,
             )
             mock_execute_lambda(test.context)
             spans = self.memory_exporter.get_finished_spans()
@@ -374,6 +376,7 @@ class TestAwsLambdaInstrumentor(TestBase):
             },
         )
         test_env_patch.start()
+        reload(propagate)
 
         AwsLambdaInstrumentor().instrument()
 
