@@ -72,7 +72,6 @@ from opentelemetry.propagators.textmap import (
 )
 
 TRACE_HEADER_KEY = "X-Amzn-Trace-Id"
-AWS_TRACE_HEADER_PROP = "com.amazonaws.xray.traceHeader"
 AWS_TRACE_HEADER_ENV_KEY = "_X_AMZN_TRACE_ID"
 KV_PAIR_DELIMITER = ";"
 KEY_AND_VALUE_DELIMITER = "="
@@ -351,9 +350,7 @@ class AwsXrayLambdaPropagator(AwsXRayPropagator):
         if trace.get_current_span(context=context).get_span_context().is_valid:
             return xray_context
 
-        trace_header = environ.get(AWS_TRACE_HEADER_PROP) or environ.get(
-            AWS_TRACE_HEADER_ENV_KEY
-        )
+        trace_header = environ.get(AWS_TRACE_HEADER_ENV_KEY)
 
         if trace_header is None:
             return xray_context
