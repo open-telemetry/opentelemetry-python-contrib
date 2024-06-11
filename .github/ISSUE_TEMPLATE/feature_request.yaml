@@ -44,7 +44,7 @@ body:
     attributes:
       label: Would you like to implement a fix?
       description: |
-        For guidance on how to get started, refer to the [contribution guide](https://github.com/open-telemetry/opentelemetry-python/blob/main/CONTRIBUTING.md).
+        For guidance on how to get started, refer to the [contribution guide](https://github.com/open-telemetry/opentelemetry-python-contrib/blob/main/CONTRIBUTING.md).
       options:
         - "No"
         - "Yes"
