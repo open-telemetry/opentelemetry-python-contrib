@@ -83,10 +83,6 @@ from opentelemetry.instrumentation.instrumentor import BaseInstrumentor
 from opentelemetry.instrumentation.utils import unwrap
 from opentelemetry.metrics import MeterProvider, get_meter_provider
 from opentelemetry.propagate import get_global_textmap
-from opentelemetry.propagators.aws.aws_xray_propagator import (
-    TRACE_HEADER_KEY,
-    AwsXRayPropagator,
-)
 from opentelemetry.semconv.resource import ResourceAttributes
 from opentelemetry.semconv.trace import SpanAttributes
 from opentelemetry.trace import (
@@ -166,8 +162,6 @@ def _determine_parent_context(
         A Context with configuration found in the carrier.
     """
     parent_context = None
-
-
 
     if (
         parent_context
