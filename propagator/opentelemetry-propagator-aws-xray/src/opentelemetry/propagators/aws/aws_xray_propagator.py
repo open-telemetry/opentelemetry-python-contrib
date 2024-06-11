@@ -351,10 +351,8 @@ class AwsXrayLambdaPropagator(AwsXRayPropagator):
         if trace_header is None:
             return xray_context
 
-        result = super().extract(
+        return super().extract(
             {TRACE_HEADER_KEY: trace_header},
             context=xray_context,
             getter=getter,
         )
-
-        return result
