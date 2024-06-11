@@ -208,6 +208,7 @@ API
 """
 
 import functools
+import os
 import typing
 import wsgiref.util as wsgiref_util
 from timeit import default_timer
@@ -225,6 +226,7 @@ from opentelemetry.instrumentation._semconv import (
     _report_new,
     _report_old,
     _server_active_requests_count_attrs_new,
+    _server_duration_attrs_new_with_server_attributes,
     _server_active_requests_count_attrs_old,
     _server_duration_attrs_new,
     _server_duration_attrs_old,
@@ -463,7 +465,9 @@ def _parse_duration_attrs(
     return _filter_semconv_duration_attrs(
         req_attrs,
         _server_duration_attrs_old,
-        _server_duration_attrs_new,
+        _server_duration_attrs_new_with_server_attributes
+        if os.environ.get("OTEL_ENABLE_SERVER_ATTRIBUTES_FOR_REQUEST_DURATION")
+        else _server_duration_attrs_new,
         sem_conv_opt_in_mode,
     )
 
