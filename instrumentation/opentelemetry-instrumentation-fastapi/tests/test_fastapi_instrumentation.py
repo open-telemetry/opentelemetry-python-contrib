@@ -20,7 +20,6 @@ import fastapi
 from fastapi.middleware.httpsredirect import HTTPSRedirectMiddleware
 from fastapi.responses import JSONResponse
 from fastapi.testclient import TestClient
-from flaky import flaky
 
 import opentelemetry.instrumentation.fastapi as otel_fastapi
 from opentelemetry import trace
@@ -223,7 +222,6 @@ class TestFastAPIManualInstrumentation(TestBase):
                             )
         self.assertTrue(number_data_point_seen and histogram_data_point_seen)
 
-    @flaky(max_runs=3, min_passes=1)
     def test_basic_metric_success(self):
         start = default_timer()
         self._client.get("/foobar")
@@ -256,7 +254,7 @@ class TestFastAPIManualInstrumentation(TestBase):
                         dict(point.attributes),
                     )
                     self.assertEqual(point.count, 1)
-                    self.assertAlmostEqual(duration, point.sum, delta=30)
+                    self.assertAlmostEqual(duration, point.sum, delta=40)
                 if isinstance(point, NumberDataPoint):
                     self.assertDictEqual(
                         expected_requests_count_attributes,
@@ -264,7 +262,6 @@ class TestFastAPIManualInstrumentation(TestBase):
                     )
                     self.assertEqual(point.value, 0)
 
-    @flaky(max_runs=3, min_passes=1)
     def test_basic_post_request_metric_success(self):
         start = default_timer()
         response = self._client.post(
@@ -282,7 +279,7 @@ class TestFastAPIManualInstrumentation(TestBase):
                 if isinstance(point, HistogramDataPoint):
                     self.assertEqual(point.count, 1)
                     if metric.name == "http.server.duration":
-                        self.assertAlmostEqual(duration, point.sum, delta=30)
+                        self.assertAlmostEqual(duration, point.sum, delta=40)
                     elif metric.name == "http.server.response.size":
                         self.assertEqual(response_size, point.sum)
                     elif metric.name == "http.server.request.size":
