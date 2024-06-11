@@ -7,7 +7,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## Unreleased
 
-- `opentelemetry-instrumentation-aiohttp-server`, `opentelemetry-instrumentation-httpx`, `opentelemetry-resource-detector-azure` Ensure consistently use of suppress_instrumentation utils
+- `opentelemetry-instrumentation-aiohttp-server`, `opentelemetry-instrumentation-httpx` Ensure consistently use of suppress_instrumentation utils
   ([#2590](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/2590))
 
 ### Breaking changes
