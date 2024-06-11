@@ -461,6 +461,8 @@ class OpenTelemetryMiddleware:
                       scope and event which are sent as dictionaries for when the method send is called.
         tracer_provider: The optional tracer provider to use. If omitted
             the current globally configured one is used.
+        meter_provider: The optional meter provider to use. If omitted
+            the current globally configured one is used.
     """
 
     # pylint: disable=too-many-branches
@@ -474,17 +476,22 @@ class OpenTelemetryMiddleware:
         client_response_hook: ClientResponseHook = None,
         tracer_provider=None,
         meter_provider=None,
+        tracer=None,
         meter=None,
         http_capture_headers_server_request: list[str] | None = None,
         http_capture_headers_server_response: list[str] | None = None,
         http_capture_headers_sanitize_fields: list[str] | None = None,
     ):
         self.app = guarantee_single_callable(app)
-        self.tracer = trace.get_tracer(
-            __name__,
-            __version__,
-            tracer_provider,
-            schema_url="https://opentelemetry.io/schemas/1.11.0",
+        self.tracer = (
+            trace.get_tracer(
+                __name__,
+                __version__,
+                tracer_provider,
+                schema_url="https://opentelemetry.io/schemas/1.11.0",
+            )
+            if tracer is None
+            else tracer
         )
         self.meter = (
             get_meter(

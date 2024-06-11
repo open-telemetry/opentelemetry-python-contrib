@@ -188,6 +188,7 @@ from opentelemetry.instrumentation.fastapi.version import __version__
 from opentelemetry.instrumentation.instrumentor import BaseInstrumentor
 from opentelemetry.metrics import get_meter
 from opentelemetry.semconv.trace import SpanAttributes
+from opentelemetry.trace import get_tracer
 from opentelemetry.util.http import get_excluded_urls, parse_excluded_urls
 
 _excluded_urls_from_env = get_excluded_urls("FASTAPI")
@@ -221,6 +222,12 @@ class FastAPIInstrumentor(BaseInstrumentor):
                 excluded_urls = _excluded_urls_from_env
             else:
                 excluded_urls = parse_excluded_urls(excluded_urls)
+            tracer = get_tracer(
+                __name__,
+                __version__,
+                tracer_provider,
+                schema_url="https://opentelemetry.io/schemas/1.11.0",
+            )
             meter = get_meter(
                 __name__,
                 __version__,
@@ -235,7 +242,8 @@ class FastAPIInstrumentor(BaseInstrumentor):
                 server_request_hook=server_request_hook,
                 client_request_hook=client_request_hook,
                 client_response_hook=client_response_hook,
-                tracer_provider=tracer_provider,
+                # Pass in tracer/meter to get __name__and __version__ of fastapi instrumentation
+                tracer=tracer,
                 meter=meter,
             )
             app._is_instrumented_by_opentelemetry = True
@@ -298,6 +306,12 @@ class _InstrumentedFastAPI(fastapi.FastAPI):
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
+        tracer = get_tracer(
+            __name__,
+            __version__,
+            _InstrumentedFastAPI._tracer_provider,
+            schema_url="https://opentelemetry.io/schemas/1.11.0",
+        )
         meter = get_meter(
             __name__,
             __version__,
@@ -311,7 +325,8 @@ class _InstrumentedFastAPI(fastapi.FastAPI):
             server_request_hook=_InstrumentedFastAPI._server_request_hook,
             client_request_hook=_InstrumentedFastAPI._client_request_hook,
             client_response_hook=_InstrumentedFastAPI._client_response_hook,
-            tracer_provider=_InstrumentedFastAPI._tracer_provider,
+            # Pass in tracer/meter to get __name__and __version__ of fastapi instrumentation
+            tracer=tracer,
             meter=meter,
         )
         self._is_instrumented_by_opentelemetry = True
