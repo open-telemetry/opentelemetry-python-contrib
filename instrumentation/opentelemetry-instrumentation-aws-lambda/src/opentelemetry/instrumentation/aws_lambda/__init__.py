@@ -83,6 +83,7 @@ from opentelemetry.instrumentation.instrumentor import BaseInstrumentor
 from opentelemetry.instrumentation.utils import unwrap
 from opentelemetry.metrics import MeterProvider, get_meter_provider
 from opentelemetry.propagate import get_global_textmap
+from opentelemetry.environment_variables import OTEL_PROPAGATORS
 from opentelemetry.propagators.aws.aws_xray_propagator import (
     TRACE_HEADER_KEY,
     AwsXRayPropagator,
@@ -167,7 +168,7 @@ def _determine_parent_context(
     """
     parent_context = None
 
-    if not disable_aws_context_propagation:
+    if "_X_AMZN_TRACE_ID" in os.environ.get(OTEL_PROPAGATORS, ""):
         xray_env_var = os.environ.get(_X_AMZN_TRACE_ID)
 
         if xray_env_var:
