@@ -168,10 +168,6 @@ def _determine_parent_context(
     parent_context = None
 
 
-    if xray_env_var:
-        parent_context = AwsXRayPropagator().extract(
-            {TRACE_HEADER_KEY: xray_env_var}
-        )
 
     if (
         parent_context
