@@ -17,10 +17,10 @@ from unittest import mock
 import pymysql
 
 import opentelemetry.instrumentation.pymysql
+from opentelemetry import trace as trace_api
 from opentelemetry.instrumentation.pymysql import PyMySQLInstrumentor
 from opentelemetry.sdk import resources
 from opentelemetry.test.test_base import TestBase
-from opentelemetry import trace as trace_api
 
 
 class TestPyMysqlIntegration(TestBase):
