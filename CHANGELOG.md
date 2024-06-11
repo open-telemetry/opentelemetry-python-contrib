@@ -19,6 +19,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - `opentelemetry-instrumentation-httpx` Ensure httpx.get or httpx.request like methods are instrumented
   ([#2538](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/2538))
+- Add Python 3.12 support
+  ([#2572](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/2572))
 
 ## Version 1.25.0/0.46b0 (2024-05-31)
 
@@ -50,7 +52,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   ([#2253](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/2253))
 - `opentelemetry-instrumentation-pika` Instrumentation for `channel.consume()` (supported
   only for global, non channel specific instrumentation)
-  ([#2397](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/2397)))
+  ([#2397](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/2397))
 - `opentelemetry-processor-baggage` Initial release
   ([#2436](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/2436))
 - `opentelemetry-processor-baggage` Add baggage key predicate
@@ -132,6 +134,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## Version 1.22.0/0.43b0 (2023-12-14)
 
 ### Added
+
 - `opentelemetry-instrumentation-asyncio` Add support for asyncio
   ([#1919](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/1943))
 - `opentelemetry-instrumentation` Added Otel semantic convention opt-in mechanism
