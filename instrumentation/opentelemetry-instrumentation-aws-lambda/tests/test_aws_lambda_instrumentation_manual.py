@@ -127,6 +127,9 @@ class TestAwsLambdaInstrumentor(TestBase):
         )
         test_env_patch.start()
 
+        from ipdb import set_trace
+        set_trace()
+
         AwsLambdaInstrumentor().instrument()
 
         mock_execute_lambda()
