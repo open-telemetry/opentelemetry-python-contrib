@@ -10,9 +10,9 @@ body:
   - type: textarea
     id: related-problem
     attributes:
-      label: Is your feature request related to a problem?
+      label: What problem do you want to solve?
       description: Is your feature request related to a problem? If so, provide a concise description of the problem.
-      placeholder: Include the Issue ID from this or other repos.
+      placeholder: Describe the problem and include relevant issue IDs
     validations:
       required: true
   - type: textarea

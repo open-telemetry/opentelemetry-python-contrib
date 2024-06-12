@@ -19,8 +19,7 @@ body:
       value: |
         OS: (e.g, Ubuntu)
         Python version: (e.g., Python 3.8.10)
-        SDK version: (e.g., 1.25.0)
-        API version: (e.g., 1.25.0)
+        Package version: (e.g., 0.46.0)
   
   - type: textarea
     attributes:
