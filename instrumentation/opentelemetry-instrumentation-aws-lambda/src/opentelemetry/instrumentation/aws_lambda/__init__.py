@@ -132,8 +132,6 @@ class FlushableMeterProvider(MeterProvider):
             None
         """
 
-        ...
-
 
 class FlushableTracerProvider(TracerProvider):
     """
@@ -152,8 +150,6 @@ class FlushableTracerProvider(TracerProvider):
             None
         """
 
-        ...
-
 
 def provider_warning(provider_type: str):
     """
@@ -166,9 +162,10 @@ def provider_warning(provider_type: str):
     """
 
     return lambda timeout: logger.warning(
-        f"{provider_type} was missing `force_flush` method. "
+        "%s was missing `force_flush` method. "
         "This is necessary in case of a Lambda freeze and would exist in the "
-        "OTel SDK implementation."
+        "OTel SDK implementation.",
+        provider_type,
     )
 
 
@@ -260,6 +257,10 @@ class EventWrapper:
     General purpose wrapper for Lambda events.
     """
 
+    # This class is intended to be subclassed, so it has methods that are not, or partially implemented.
+    # Keeping the signatures consistent for the subclasses to implement.
+    # pylint:disable=R0201
+
     def __init__(self, event, context):
         self._event = event
         self._context = context
@@ -274,8 +275,8 @@ class EventWrapper:
 
         if self._event and "headers" in self._event:
             return self._event["headers"]
-        else:
-            return {}
+
+        return {}
 
     @property
     def span_kind(self) -> SpanKind:
@@ -357,12 +358,12 @@ class ALBWrapper(EventWrapper):
         headers: List[Tuple[bytes, bytes]] = []
 
         if "multiValueHeaders" in self._event:
-            for k, v in self._event["multiValueHeaders"].items():
-                for inner_v in v:
-                    headers.append((k.lower().encode(), inner_v.encode()))
+            for key, value in self._event["multiValueHeaders"].items():
+                for inner_v in value:
+                    headers.append((key.lower().encode(), inner_v.encode()))
         else:
-            for k, v in self._event["headers"].items():
-                headers.append((k.lower().encode(), v.encode()))
+            for key, value in self._event["headers"].items():
+                headers.append((key.lower().encode(), value.encode()))
 
         # Unique headers. If there are duplicates, it will use the last defined.
         uq_headers = {k.decode(): v.decode() for k, v in headers}
@@ -677,6 +678,8 @@ def get_event_wrapper(event: LambdaEvent, context: Any) -> EventWrapper:
 
     # The logic behind this flow was adapted from work done by the Mangum project:
     # https://github.com/jordaneremieff/mangum
+    # To reduce cognitive load, preserving if/elif structure.
+    # pylint:disable=R1705
     if not event:
         return default_wrapper
     elif "requestContext" in event and "elb" in event["requestContext"]:
@@ -766,7 +769,6 @@ def flush(
             logger.exception("MeterProvider failed to flush metrics")
 
 
-# pylint: disable=too-many-statements
 def _instrument(
     wrapped_module_name,
     wrapped_function_name,
@@ -775,8 +777,6 @@ def _instrument(
     tracer_provider: FlushableTracerProvider,
     meter_provider: FlushableMeterProvider,
 ):
-    # pylint: disable=too-many-locals
-    # pylint: disable=too-many-statements
     def _instrumented_lambda_handler_call(  # noqa pylint: disable=too-many-branches
         call_wrapped, instance, args, kwargs
     ):

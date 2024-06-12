@@ -24,20 +24,20 @@ from opentelemetry.instrumentation.aws_lambda import (
 )
 
 
-class TestDetermineFlushTimeout:
+class TestDetermineFlushTimeout(TestCase):
     default = 30000
     timeout_var = OTEL_INSTRUMENTATION_AWS_LAMBDA_FLUSH_TIMEOUT
 
     def test_flush_timeout_default(self):
-        assert determine_flush_timeout() == self.default
+        self.assertEqual(determine_flush_timeout(), self.default)
 
     @patch.dict("os.environ", {timeout_var: "1000"})
     def test_flush_timeout_env_var(self):
-        assert determine_flush_timeout() == 1000
+        self.assertEqual(determine_flush_timeout(), 1000)
 
     @patch.dict("os.environ", {timeout_var: "abc"})
     def test_flush_timeout_env_var_invalid(self):
-        assert determine_flush_timeout() == self.default
+        self.assertEqual(determine_flush_timeout(), self.default)
 
 
 class TestIsAWSContextPropagationDisabled(TestCase):
@@ -87,7 +87,6 @@ class TestIsAWSContextPropagationDisabled(TestCase):
 
 
 class TestFlush(TestCase):
-
     @patch("time.time", return_value=0)
     @patch(
         "opentelemetry.instrumentation.aws_lambda.determine_flush_timeout",
@@ -101,7 +100,9 @@ class TestFlush(TestCase):
 
         flush(tracer_provider, meter_provider)
 
+        self.assertEqual(tracer_provider.force_flush.call_count, 1)
         tracer_provider.force_flush.assert_called_once_with(1000)
+        self.assertEqual(meter_provider.force_flush.call_count, 1)
         meter_provider.force_flush.assert_called_once_with(1000)
 
     @patch("time.time", return_value=0)
@@ -119,7 +120,7 @@ class TestFlush(TestCase):
 
         flush(tracer_provider, meter_provider)
 
-        assert "force_flush" not in dir(tracer_provider)
+        self.assertNotIn("force_flush", dir(tracer_provider))
         meter_provider.force_flush.assert_called_once_with(1000)
 
     @patch("time.time", return_value=0)
@@ -137,7 +138,7 @@ class TestFlush(TestCase):
 
         flush(tracer_provider, meter_provider)
 
-        assert "force_flush" not in dir(meter_provider)
+        self.assertNotIn("force_flush", dir(meter_provider))
         tracer_provider.force_flush.assert_called_once_with(1000)
 
     @patch("time.time", return_value=0)
@@ -157,6 +158,7 @@ class TestFlush(TestCase):
 
         flush(tracer_provider, meter_provider)
 
+        self.assertEqual(meter_provider.force_flush.call_count, 1)
         meter_provider.force_flush.assert_called_once_with(1000)
 
     @patch("time.time", return_value=0)
@@ -176,4 +178,5 @@ class TestFlush(TestCase):
 
         flush(tracer_provider, meter_provider)
 
+        self.assertEqual(tracer_provider.force_flush.call_count, 1)
         tracer_provider.force_flush.assert_called_once_with(1000)
