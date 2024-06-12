@@ -25,19 +25,23 @@ from opentelemetry.propagators.aws.aws_xray_propagator import (
 )
 from opentelemetry.propagators.textmap import DefaultGetter
 from opentelemetry.sdk.trace import ReadableSpan
-from opentelemetry.trace import Link, TraceState, get_current_span
+from opentelemetry.trace import (
+    Link,
+    TraceState,
+    get_current_span,
+    NonRecordingSpan,
+    SpanContext,
+    use_span
+)
 
 
 class AwsXRayLambdaPropagatorTest(TestCase):
 
     def test_extract_no_environment_variable(self):
-        propagator = AwsXrayLambdaPropagator()
-
-        default_getter = DefaultGetter()
 
         actual_context = get_current_span(
-            propagator.extract(
-                {}, context=get_current(), getter=default_getter
+            AwsXrayLambdaPropagator().extract(
+                {}, context=get_current(), getter=DefaultGetter()
             )
         ).get_span_context()
 
@@ -50,6 +54,27 @@ class AwsXRayLambdaPropagatorTest(TestCase):
         )
         self.assertEqual(actual_context.trace_state, TraceState.get_default())
 
+    def test_extract_no_environment_variable_valid_context(self):
+
+        with use_span(NonRecordingSpan(SpanContext(1, 2, False))):
+
+            actual_context = get_current_span(
+                AwsXrayLambdaPropagator().extract(
+                    {}, context=get_current(), getter=DefaultGetter()
+                )
+            ).get_span_context()
+
+            self.assertEqual(
+                hex(actual_context.trace_id), "0x1"
+            )
+            self.assertEqual(hex(actual_context.span_id), "0x2")
+            self.assertFalse(
+                actual_context.trace_flags.sampled,
+            )
+            self.assertEqual(
+                actual_context.trace_state, TraceState.get_default()
+            )
+
     @patch.dict(
         environ,
         {
@@ -60,13 +85,10 @@ class AwsXRayLambdaPropagatorTest(TestCase):
         },
     )
     def test_extract_from_environment_variable(self):
-        propagator = AwsXrayLambdaPropagator()
-
-        default_getter = DefaultGetter()
 
         actual_context = get_current_span(
-            propagator.extract(
-                {}, context=get_current(), getter=default_getter
+            AwsXrayLambdaPropagator().extract(
+                {}, context=get_current(), getter=DefaultGetter()
             )
         ).get_span_context()
 
