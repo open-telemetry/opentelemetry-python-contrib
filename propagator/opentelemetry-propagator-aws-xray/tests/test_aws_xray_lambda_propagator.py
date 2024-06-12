@@ -27,11 +27,11 @@ from opentelemetry.propagators.textmap import DefaultGetter
 from opentelemetry.sdk.trace import ReadableSpan
 from opentelemetry.trace import (
     Link,
-    TraceState,
-    get_current_span,
     NonRecordingSpan,
     SpanContext,
-    use_span
+    TraceState,
+    get_current_span,
+    use_span,
 )
 
 
@@ -45,9 +45,7 @@ class AwsXRayLambdaPropagatorTest(TestCase):
             )
         ).get_span_context()
 
-        self.assertEqual(
-            hex(actual_context.trace_id), "0x0"
-        )
+        self.assertEqual(hex(actual_context.trace_id), "0x0")
         self.assertEqual(hex(actual_context.span_id), "0x0")
         self.assertFalse(
             actual_context.trace_flags.sampled,
@@ -64,9 +62,7 @@ class AwsXRayLambdaPropagatorTest(TestCase):
                 )
             ).get_span_context()
 
-            self.assertEqual(
-                hex(actual_context.trace_id), "0x1"
-            )
+            self.assertEqual(hex(actual_context.trace_id), "0x1")
             self.assertEqual(hex(actual_context.span_id), "0x2")
             self.assertFalse(
                 actual_context.trace_flags.sampled,
