@@ -70,6 +70,7 @@ for example:
 import logging
 import os
 import time
+from ipdb import set_trace
 from importlib import import_module
 from typing import Any, Callable, Collection
 from urllib.parse import urlencode
@@ -94,6 +95,7 @@ from opentelemetry.trace import (
 )
 from opentelemetry.trace.propagation import get_current_span
 from opentelemetry.trace.status import Status, StatusCode
+from opentelemetry.propagate import extract
 
 logger = logging.getLogger(__name__)
 
@@ -126,6 +128,7 @@ def _default_event_context_extractor(lambda_event: Any) -> Context:
     Returns:
         A Context with configuration found in the event.
     """
+    set_trace()
     headers = None
     try:
         headers = lambda_event["headers"]
@@ -161,7 +164,9 @@ def _determine_parent_context(
     Returns:
         A Context with configuration found in the carrier.
     """
+    set_trace()
     parent_context = None
+    extract
 
     if (
         parent_context
@@ -171,7 +176,7 @@ def _determine_parent_context(
     ):
         return parent_context
 
-    if event_context_extractor:
+    if event_context_extractor is not None:
         parent_context = event_context_extractor(lambda_event)
     else:
         parent_context = _default_event_context_extractor(lambda_event)
@@ -277,11 +282,15 @@ def _instrument(
     disable_aws_context_propagation: bool = False,
     meter_provider: MeterProvider = None,
 ):
+
+    set_trace()
+
     # pylint: disable=too-many-locals
     # pylint: disable=too-many-statements
     def _instrumented_lambda_handler_call(  # noqa pylint: disable=too-many-branches
         call_wrapped, instance, args, kwargs
     ):
+        set_trace()
         orig_handler_name = ".".join(
             [wrapped_module_name, wrapped_function_name]
         )
