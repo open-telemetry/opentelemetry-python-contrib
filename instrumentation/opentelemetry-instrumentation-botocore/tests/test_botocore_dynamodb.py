@@ -225,6 +225,24 @@ class TestDynamoDbExtension(TestBase):
         self.assert_item_col_metrics(span)
 
     @mock_dynamodb2
+    def test_transact_write_items(self):
+        self._create_prepared_table()
+
+        self.client.transact_write_items(
+            TransactItems=[
+                {"Put": {"TableName": self.default_table_name, "Item": {"id": {"S": "123"}}}},
+                {"Put": {"TableName": self.default_table_name, "Item": {"id": {"S": "456"}}}},
+            ],
+            ReturnConsumedCapacity="TOTAL",
+            ReturnItemCollectionMetrics="SIZE",
+        )
+
+        span = self.assert_span("TransactWriteItems")
+        # moto does not seem to return these:
+        # self.assert_consumed_capacity(span, self.default_table_name)
+        self.assert_item_col_metrics(span)
+
+    @mock_dynamodb2
     def test_create_table(self):
         local_sec_idx = {
             "IndexName": "local_sec_idx",
