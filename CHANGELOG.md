@@ -7,6 +7,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## Unreleased
 
+### Added
+
+- `opentelemetry-sdk-extension-aws` Add AwsXrayLambdaPropagator
+  ([#2573](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/2573))
+
 ### Breaking changes
 
 - `opentelemetry-instrumentation-asgi`, `opentelemetry-instrumentation-fastapi`, `opentelemetry-instrumentation-starlette` Use `tracer` and `meter` of originating components instead of one from `asgi` middleware
@@ -18,6 +23,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   ([#2538](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/2538))
 - Add Python 3.12 support
   ([#2572](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/2572))
+- `opentelemetry-instrumentation-aiohttp-server`, `opentelemetry-instrumentation-httpx` Ensure consistently use of suppress_instrumentation utils
+  ([#2590](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/2590))
 
 ## Version 1.25.0/0.46b0 (2024-05-31)
 
