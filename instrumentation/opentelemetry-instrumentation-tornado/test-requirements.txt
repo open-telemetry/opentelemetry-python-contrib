@@ -19,7 +19,7 @@ pytest==7.4.4
 pytest-benchmark==4.0.0
 requests==2.32.3
 tomli==2.0.1
-tornado==6.4
+tornado==6.4.1
 typing_extensions==4.9.0
 urllib3==2.2.1
 Werkzeug==3.0.3
