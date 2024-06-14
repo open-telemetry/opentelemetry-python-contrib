@@ -13,8 +13,8 @@ importlib-metadata==6.11.0
 iniconfig==2.0.0
 Jinja2==3.1.4
 jmespath==1.0.1
-MarkupSafe==2.0.1
-moto==3.1.19
+MarkupSafe==2.1.5
+moto==5.0.9
 packaging==24.0
 pluggy==1.5.0
 py-cpuinfo==9.0.0
@@ -31,7 +31,7 @@ six==1.16.0
 tomli==2.0.1
 typing_extensions==4.9.0
 urllib3==1.26.18
-Werkzeug==2.1.2
+Werkzeug==3.0.3
 wrapt==1.16.0
 xmltodict==0.13.0
 zipp==3.17.0
