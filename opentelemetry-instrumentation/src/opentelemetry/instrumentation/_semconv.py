@@ -18,6 +18,19 @@ from enum import Enum
 
 from opentelemetry.instrumentation.utils import http_status_to_status_code
 from opentelemetry.semconv.attributes.error_attributes import ERROR_TYPE
+from opentelemetry.semconv.attributes.http_attributes import (
+    HTTP_REQUEST_METHOD,
+    HTTP_RESPONSE_STATUS_CODE,
+    HTTP_ROUTE,
+)
+from opentelemetry.semconv.attributes.network_attributes import (
+    NETWORK_PROTOCOL_VERSION,
+)
+from opentelemetry.semconv.attributes.server_attributes import (
+    SERVER_ADDRESS,
+    SERVER_PORT,
+)
+from opentelemetry.semconv.attributes.url_attributes import URL_SCHEME
 from opentelemetry.semconv.trace import SpanAttributes
 from opentelemetry.trace.status import Status, StatusCode
 
@@ -33,13 +46,13 @@ _client_duration_attrs_old = [
 
 _client_duration_attrs_new = [
     ERROR_TYPE,
-    SpanAttributes.HTTP_REQUEST_METHOD,
-    SpanAttributes.HTTP_RESPONSE_STATUS_CODE,
-    SpanAttributes.NETWORK_PROTOCOL_VERSION,
-    SpanAttributes.SERVER_ADDRESS,
-    SpanAttributes.SERVER_PORT,
+    HTTP_REQUEST_METHOD,
+    HTTP_RESPONSE_STATUS_CODE,
+    NETWORK_PROTOCOL_VERSION,
+    SERVER_ADDRESS,
+    SERVER_PORT,
     # TODO: Support opt-in for scheme in new semconv
-    # SpanAttributes.URL_SCHEME,
+    # URL_SCHEME,
 ]
 
 _server_duration_attrs_old = [
@@ -55,11 +68,11 @@ _server_duration_attrs_old = [
 
 _server_duration_attrs_new = [
     ERROR_TYPE,
-    SpanAttributes.HTTP_REQUEST_METHOD,
-    SpanAttributes.HTTP_RESPONSE_STATUS_CODE,
-    SpanAttributes.HTTP_ROUTE,
-    SpanAttributes.NETWORK_PROTOCOL_VERSION,
-    SpanAttributes.URL_SCHEME,
+    HTTP_REQUEST_METHOD,
+    HTTP_RESPONSE_STATUS_CODE,
+    HTTP_ROUTE,
+    NETWORK_PROTOCOL_VERSION,
+    URL_SCHEME,
 ]
 
 _server_active_requests_count_attrs_old = [
@@ -73,8 +86,8 @@ _server_active_requests_count_attrs_old = [
 ]
 
 _server_active_requests_count_attrs_new = [
-    SpanAttributes.HTTP_REQUEST_METHOD,
-    SpanAttributes.URL_SCHEME,
+    HTTP_REQUEST_METHOD,
+    URL_SCHEME,
 ]
 
 OTEL_SEMCONV_STABILITY_OPT_IN = "OTEL_SEMCONV_STABILITY_OPT_IN"
