@@ -37,6 +37,10 @@ from opentelemetry.trace.propagation.tracecontext import (
 
 propagator = TraceContextTextMapPropagator()
 
+_SUPPRESS_INSTRUMENTATION_KEY_PLAIN = (
+    "suppress_instrumentation"  # Set for backward compatibility
+)
+
 
 def extract_attributes_from_object(
     obj: any, attributes: Sequence[str], existing: Dict[str, str] = None
@@ -161,9 +165,10 @@ def _python_path_without_directory(python_path, directory, path_separator):
 
 
 def is_instrumentation_enabled() -> bool:
-    if context.get_value(_SUPPRESS_INSTRUMENTATION_KEY):
-        return False
-    return True
+    return not (
+        context.get_value(_SUPPRESS_INSTRUMENTATION_KEY)
+        or context.get_value(_SUPPRESS_INSTRUMENTATION_KEY_PLAIN)
+    )
 
 
 def is_http_instrumentation_enabled() -> bool:
@@ -188,7 +193,9 @@ def _suppress_instrumentation(*keys: str) -> Iterable[None]:
 @contextmanager
 def suppress_instrumentation() -> Iterable[None]:
     """Suppress instrumentation within the context."""
-    with _suppress_instrumentation(_SUPPRESS_INSTRUMENTATION_KEY):
+    with _suppress_instrumentation(
+        _SUPPRESS_INSTRUMENTATION_KEY, _SUPPRESS_INSTRUMENTATION_KEY_PLAIN
+    ):
         yield
 
 
