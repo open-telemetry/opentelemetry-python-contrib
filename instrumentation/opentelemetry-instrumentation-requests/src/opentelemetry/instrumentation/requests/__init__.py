@@ -60,7 +60,6 @@ from requests.structures import CaseInsensitiveDict
 
 from opentelemetry.instrumentation._semconv import (
     _METRIC_ATTRIBUTES_CLIENT_DURATION_NAME,
-    _SPAN_ATTRIBUTES_ERROR_TYPE,
     _SPAN_ATTRIBUTES_NETWORK_PEER_ADDRESS,
     _SPAN_ATTRIBUTES_NETWORK_PEER_PORT,
     _client_duration_attrs_new,
@@ -91,6 +90,7 @@ from opentelemetry.instrumentation.utils import (
 )
 from opentelemetry.metrics import Histogram, get_meter
 from opentelemetry.propagate import inject
+from opentelemetry.semconv.attributes.error_attributes import ERROR_TYPE
 from opentelemetry.semconv.metrics import MetricInstruments
 from opentelemetry.trace import SpanKind, Tracer, get_tracer
 from opentelemetry.trace.span import Span
@@ -250,10 +250,10 @@ def _instrument(
                         _report_new(sem_conv_opt_in_mode)
                         and status_code is StatusCode.ERROR
                     ):
-                        span_attributes[_SPAN_ATTRIBUTES_ERROR_TYPE] = str(
+                        span_attributes[ERROR_TYPE] = str(
                             result.status_code
                         )
-                        metric_labels[_SPAN_ATTRIBUTES_ERROR_TYPE] = str(
+                        metric_labels[ERROR_TYPE] = str(
                             result.status_code
                         )
 
@@ -279,9 +279,9 @@ def _instrument(
 
             if exception is not None and _report_new(sem_conv_opt_in_mode):
                 span.set_attribute(
-                    _SPAN_ATTRIBUTES_ERROR_TYPE, type(exception).__qualname__
+                    ERROR_TYPE, type(exception).__qualname__
                 )
-                metric_labels[_SPAN_ATTRIBUTES_ERROR_TYPE] = type(
+                metric_labels[ERROR_TYPE] = type(
                     exception
                 ).__qualname__
 

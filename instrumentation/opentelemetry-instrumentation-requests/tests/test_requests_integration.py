@@ -23,7 +23,6 @@ from requests.models import Response
 import opentelemetry.instrumentation.requests
 from opentelemetry import trace
 from opentelemetry.instrumentation._semconv import (
-    _SPAN_ATTRIBUTES_ERROR_TYPE,
     _SPAN_ATTRIBUTES_NETWORK_PEER_ADDRESS,
     _SPAN_ATTRIBUTES_NETWORK_PEER_PORT,
     OTEL_SEMCONV_STABILITY_OPT_IN,
@@ -36,6 +35,7 @@ from opentelemetry.instrumentation.utils import (
 )
 from opentelemetry.propagate import get_global_textmap, set_global_textmap
 from opentelemetry.sdk import resources
+from opentelemetry.semconv.attributes.error_attributes import ERROR_TYPE
 from opentelemetry.semconv.trace import SpanAttributes
 from opentelemetry.test.mock_textmap import MockTextMapPropagator
 from opentelemetry.test.test_base import TestBase
@@ -332,7 +332,7 @@ class RequestsIntegrationTestBase(abc.ABC):
             span.attributes.get(SpanAttributes.HTTP_RESPONSE_STATUS_CODE), 404
         )
         self.assertEqual(
-            span.attributes.get(_SPAN_ATTRIBUTES_ERROR_TYPE), "404"
+            span.attributes.get(ERROR_TYPE), "404"
         )
 
         self.assertIs(
@@ -359,7 +359,7 @@ class RequestsIntegrationTestBase(abc.ABC):
             span.attributes.get(SpanAttributes.HTTP_RESPONSE_STATUS_CODE), 404
         )
         self.assertEqual(
-            span.attributes.get(_SPAN_ATTRIBUTES_ERROR_TYPE), "404"
+            span.attributes.get(ERROR_TYPE), "404"
         )
 
         self.assertIs(
@@ -533,7 +533,7 @@ class RequestsIntegrationTestBase(abc.ABC):
                 SpanAttributes.SERVER_PORT: 80,
                 _SPAN_ATTRIBUTES_NETWORK_PEER_PORT: 80,
                 _SPAN_ATTRIBUTES_NETWORK_PEER_ADDRESS: "mock",
-                _SPAN_ATTRIBUTES_ERROR_TYPE: "RequestException",
+                ERROR_TYPE: "RequestException",
             },
         )
         self.assertEqual(span.status.status_code, StatusCode.ERROR)

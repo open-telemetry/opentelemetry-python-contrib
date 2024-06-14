@@ -215,7 +215,6 @@ from timeit import default_timer
 from opentelemetry import context, trace
 from opentelemetry.instrumentation._semconv import (
     _METRIC_ATTRIBUTES_SERVER_DURATION_NAME,
-    _SPAN_ATTRIBUTES_ERROR_TYPE,
     _filter_semconv_active_request_count_attr,
     _filter_semconv_duration_attrs,
     _get_schema_url,
@@ -244,6 +243,7 @@ from opentelemetry.instrumentation.utils import _start_internal_or_server_span
 from opentelemetry.instrumentation.wsgi.version import __version__
 from opentelemetry.metrics import get_meter
 from opentelemetry.propagators.textmap import Getter
+from opentelemetry.semconv.attributes.error_attributes import ERROR_TYPE
 from opentelemetry.semconv.metrics import MetricInstruments
 from opentelemetry.semconv.trace import SpanAttributes
 from opentelemetry.trace.status import Status, StatusCode
@@ -670,10 +670,10 @@ class OpenTelemetryMiddleware:
                 return _end_span_after_iterating(iterable, span, token)
         except Exception as ex:
             if _report_new(self._sem_conv_opt_in_mode):
-                req_attrs[_SPAN_ATTRIBUTES_ERROR_TYPE] = type(ex).__qualname__
+                req_attrs[ERROR_TYPE] = type(ex).__qualname__
                 if span.is_recording():
                     span.set_attribute(
-                        _SPAN_ATTRIBUTES_ERROR_TYPE, type(ex).__qualname__
+                        ERROR_TYPE, type(ex).__qualname__
                     )
                 span.set_status(Status(StatusCode.ERROR, str(ex)))
             span.end()

@@ -17,11 +17,11 @@ import threading
 from enum import Enum
 
 from opentelemetry.instrumentation.utils import http_status_to_status_code
+from opentelemetry.semconv.attributes.error_attributes import ERROR_TYPE
 from opentelemetry.semconv.trace import SpanAttributes
 from opentelemetry.trace.status import Status, StatusCode
 
 # TODO: will come through semconv package once updated
-_SPAN_ATTRIBUTES_ERROR_TYPE = "error.type"
 _SPAN_ATTRIBUTES_NETWORK_PEER_ADDRESS = "network.peer.address"
 _SPAN_ATTRIBUTES_NETWORK_PEER_PORT = "network.peer.port"
 _METRIC_ATTRIBUTES_CLIENT_DURATION_NAME = "http.client.request.duration"
@@ -38,7 +38,7 @@ _client_duration_attrs_old = [
 ]
 
 _client_duration_attrs_new = [
-    _SPAN_ATTRIBUTES_ERROR_TYPE,
+    ERROR_TYPE,
     SpanAttributes.HTTP_REQUEST_METHOD,
     SpanAttributes.HTTP_RESPONSE_STATUS_CODE,
     SpanAttributes.NETWORK_PROTOCOL_VERSION,
@@ -60,7 +60,7 @@ _server_duration_attrs_old = [
 ]
 
 _server_duration_attrs_new = [
-    _SPAN_ATTRIBUTES_ERROR_TYPE,
+    ERROR_TYPE,
     SpanAttributes.HTTP_REQUEST_METHOD,
     SpanAttributes.HTTP_RESPONSE_STATUS_CODE,
     SpanAttributes.HTTP_ROUTE,
@@ -347,8 +347,8 @@ def _set_status(
 ):
     if status_code < 0:
         if _report_new(sem_conv_opt_in_mode):
-            span.set_attribute(_SPAN_ATTRIBUTES_ERROR_TYPE, status_code_str)
-            metrics_attributes[_SPAN_ATTRIBUTES_ERROR_TYPE] = status_code_str
+            span.set_attribute(ERROR_TYPE, status_code_str)
+            metrics_attributes[ERROR_TYPE] = status_code_str
 
         span.set_status(
             Status(
@@ -371,9 +371,9 @@ def _set_status(
             )
             if status == StatusCode.ERROR:
                 span.set_attribute(
-                    _SPAN_ATTRIBUTES_ERROR_TYPE, status_code_str
+                    ERROR_TYPE, status_code_str
                 )
-                metrics_attributes[_SPAN_ATTRIBUTES_ERROR_TYPE] = (
+                metrics_attributes[ERROR_TYPE] = (
                     status_code_str
                 )
         span.set_status(Status(status))
