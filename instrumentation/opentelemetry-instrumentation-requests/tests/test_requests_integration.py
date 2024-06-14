@@ -34,10 +34,20 @@ from opentelemetry.instrumentation.utils import (
 from opentelemetry.propagate import get_global_textmap, set_global_textmap
 from opentelemetry.sdk import resources
 from opentelemetry.semconv.attributes.error_attributes import ERROR_TYPE
+from opentelemetry.semconv.attributes.http_attributes import (
+    HTTP_REQUEST_METHOD,
+    HTTP_RESPONSE_STATUS_CODE,
+)
 from opentelemetry.semconv.attributes.network_attributes import (
     NETWORK_PEER_ADDRESS,
     NETWORK_PEER_PORT,
+    NETWORK_PROTOCOL_VERSION,
 )
+from opentelemetry.semconv.attributes.server_attributes import (
+    SERVER_ADDRESS,
+    SERVER_PORT,
+)
+from opentelemetry.semconv.attributes.url_attributes import URL_FULL
 from opentelemetry.semconv.trace import SpanAttributes
 from opentelemetry.test.mock_textmap import MockTextMapPropagator
 from opentelemetry.test.test_base import TestBase
@@ -178,13 +188,13 @@ class RequestsIntegrationTestBase(abc.ABC):
         self.assertEqual(
             span.attributes,
             {
-                SpanAttributes.HTTP_REQUEST_METHOD: "GET",
-                SpanAttributes.URL_FULL: url_with_port,
-                SpanAttributes.SERVER_ADDRESS: "mock",
+                HTTP_REQUEST_METHOD: "GET",
+                URL_FULL: url_with_port,
+                SERVER_ADDRESS: "mock",
                 NETWORK_PEER_ADDRESS: "mock",
-                SpanAttributes.HTTP_RESPONSE_STATUS_CODE: 200,
-                SpanAttributes.NETWORK_PROTOCOL_VERSION: "1.1",
-                SpanAttributes.SERVER_PORT: 80,
+                HTTP_RESPONSE_STATUS_CODE: 200,
+                NETWORK_PROTOCOL_VERSION: "1.1",
+                SERVER_PORT: 80,
                 NETWORK_PEER_PORT: 80,
             },
         )
@@ -215,18 +225,18 @@ class RequestsIntegrationTestBase(abc.ABC):
             span.attributes,
             {
                 SpanAttributes.HTTP_METHOD: "GET",
-                SpanAttributes.HTTP_REQUEST_METHOD: "GET",
+                HTTP_REQUEST_METHOD: "GET",
                 SpanAttributes.HTTP_URL: url_with_port,
-                SpanAttributes.URL_FULL: url_with_port,
+                URL_FULL: url_with_port,
                 SpanAttributes.HTTP_HOST: "mock",
-                SpanAttributes.SERVER_ADDRESS: "mock",
+                SERVER_ADDRESS: "mock",
                 NETWORK_PEER_ADDRESS: "mock",
                 SpanAttributes.NET_PEER_PORT: 80,
                 SpanAttributes.HTTP_STATUS_CODE: 200,
-                SpanAttributes.HTTP_RESPONSE_STATUS_CODE: 200,
+                HTTP_RESPONSE_STATUS_CODE: 200,
                 SpanAttributes.HTTP_FLAVOR: "1.1",
-                SpanAttributes.NETWORK_PROTOCOL_VERSION: "1.1",
-                SpanAttributes.SERVER_PORT: 80,
+                NETWORK_PROTOCOL_VERSION: "1.1",
+                SERVER_PORT: 80,
                 NETWORK_PEER_PORT: 80,
             },
         )
@@ -331,7 +341,7 @@ class RequestsIntegrationTestBase(abc.ABC):
         span = self.assert_span()
 
         self.assertEqual(
-            span.attributes.get(SpanAttributes.HTTP_RESPONSE_STATUS_CODE), 404
+            span.attributes.get(HTTP_RESPONSE_STATUS_CODE), 404
         )
         self.assertEqual(span.attributes.get(ERROR_TYPE), "404")
 
@@ -356,7 +366,7 @@ class RequestsIntegrationTestBase(abc.ABC):
             span.attributes.get(SpanAttributes.HTTP_STATUS_CODE), 404
         )
         self.assertEqual(
-            span.attributes.get(SpanAttributes.HTTP_RESPONSE_STATUS_CODE), 404
+            span.attributes.get(HTTP_RESPONSE_STATUS_CODE), 404
         )
         self.assertEqual(span.attributes.get(ERROR_TYPE), "404")
 
@@ -525,10 +535,10 @@ class RequestsIntegrationTestBase(abc.ABC):
         self.assertEqual(
             span.attributes,
             {
-                SpanAttributes.HTTP_REQUEST_METHOD: "GET",
-                SpanAttributes.URL_FULL: url_with_port,
-                SpanAttributes.SERVER_ADDRESS: "mock",
-                SpanAttributes.SERVER_PORT: 80,
+                HTTP_REQUEST_METHOD: "GET",
+                URL_FULL: url_with_port,
+                SERVER_ADDRESS: "mock",
+                SERVER_PORT: 80,
                 NETWORK_PEER_PORT: 80,
                 NETWORK_PEER_ADDRESS: "mock",
                 ERROR_TYPE: "RequestException",
@@ -722,11 +732,11 @@ class TestRequestsIntergrationMetric(TestBase):
         self.perform_request(self.URL)
 
         expected_attributes = {
-            SpanAttributes.HTTP_RESPONSE_STATUS_CODE: 200,
-            SpanAttributes.SERVER_ADDRESS: "examplehost",
-            SpanAttributes.SERVER_PORT: 8000,
-            SpanAttributes.HTTP_REQUEST_METHOD: "GET",
-            SpanAttributes.NETWORK_PROTOCOL_VERSION: "1.1",
+            HTTP_RESPONSE_STATUS_CODE: 200,
+            SERVER_ADDRESS: "examplehost",
+            SERVER_PORT: 8000,
+            HTTP_REQUEST_METHOD: "GET",
+            NETWORK_PROTOCOL_VERSION: "1.1",
         }
         for (
             resource_metrics
@@ -758,11 +768,11 @@ class TestRequestsIntergrationMetric(TestBase):
         }
 
         expected_attributes_new = {
-            SpanAttributes.HTTP_RESPONSE_STATUS_CODE: 200,
-            SpanAttributes.SERVER_ADDRESS: "examplehost",
-            SpanAttributes.SERVER_PORT: 8000,
-            SpanAttributes.HTTP_REQUEST_METHOD: "GET",
-            SpanAttributes.NETWORK_PROTOCOL_VERSION: "1.1",
+            HTTP_RESPONSE_STATUS_CODE: 200,
+            SERVER_ADDRESS: "examplehost",
+            SERVER_PORT: 8000,
+            HTTP_REQUEST_METHOD: "GET",
+            NETWORK_PROTOCOL_VERSION: "1.1",
         }
 
         for (

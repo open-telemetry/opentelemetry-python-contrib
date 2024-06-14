@@ -88,14 +88,14 @@ from opentelemetry.instrumentation.utils import (
 from opentelemetry.metrics import Histogram, get_meter
 from opentelemetry.propagate import inject
 from opentelemetry.semconv.attributes.error_attributes import ERROR_TYPE
-from opentelemetry.semconv.metrics.http_metrics import (
-    HTTP_CLIENT_REQUEST_DURATION,
-)
 from opentelemetry.semconv.attributes.network_attributes import (
     NETWORK_PEER_ADDRESS,
     NETWORK_PEER_PORT,
 )
 from opentelemetry.semconv.metrics import MetricInstruments
+from opentelemetry.semconv.metrics.http_metrics import (
+    HTTP_CLIENT_REQUEST_DURATION,
+)
 from opentelemetry.trace import SpanKind, Tracer, get_tracer
 from opentelemetry.trace.span import Span
 from opentelemetry.trace.status import StatusCode
