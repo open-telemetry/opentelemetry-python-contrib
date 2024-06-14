@@ -244,7 +244,9 @@ from opentelemetry.metrics import get_meter
 from opentelemetry.propagators.textmap import Getter
 from opentelemetry.semconv.attributes.error_attributes import ERROR_TYPE
 from opentelemetry.semconv.metrics import MetricInstruments
-from opentelemetry.semconv.metrics.http_metrics import HTTP_SERVER_REQUEST_DURATION
+from opentelemetry.semconv.metrics.http_metrics import (
+    HTTP_SERVER_REQUEST_DURATION,
+)
 from opentelemetry.semconv.trace import SpanAttributes
 from opentelemetry.trace.status import Status, StatusCode
 from opentelemetry.util.http import (
@@ -672,9 +674,7 @@ class OpenTelemetryMiddleware:
             if _report_new(self._sem_conv_opt_in_mode):
                 req_attrs[ERROR_TYPE] = type(ex).__qualname__
                 if span.is_recording():
-                    span.set_attribute(
-                        ERROR_TYPE, type(ex).__qualname__
-                    )
+                    span.set_attribute(ERROR_TYPE, type(ex).__qualname__)
                 span.set_status(Status(StatusCode.ERROR, str(ex)))
             span.end()
             if token is not None:

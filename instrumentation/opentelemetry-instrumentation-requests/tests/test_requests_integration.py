@@ -333,9 +333,7 @@ class RequestsIntegrationTestBase(abc.ABC):
         self.assertEqual(
             span.attributes.get(SpanAttributes.HTTP_RESPONSE_STATUS_CODE), 404
         )
-        self.assertEqual(
-            span.attributes.get(ERROR_TYPE), "404"
-        )
+        self.assertEqual(span.attributes.get(ERROR_TYPE), "404")
 
         self.assertIs(
             span.status.status_code,
@@ -360,9 +358,7 @@ class RequestsIntegrationTestBase(abc.ABC):
         self.assertEqual(
             span.attributes.get(SpanAttributes.HTTP_RESPONSE_STATUS_CODE), 404
         )
-        self.assertEqual(
-            span.attributes.get(ERROR_TYPE), "404"
-        )
+        self.assertEqual(span.attributes.get(ERROR_TYPE), "404")
 
         self.assertIs(
             span.status.status_code,

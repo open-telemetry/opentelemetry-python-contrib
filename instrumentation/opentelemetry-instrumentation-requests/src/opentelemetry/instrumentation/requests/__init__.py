@@ -88,7 +88,9 @@ from opentelemetry.instrumentation.utils import (
 from opentelemetry.metrics import Histogram, get_meter
 from opentelemetry.propagate import inject
 from opentelemetry.semconv.attributes.error_attributes import ERROR_TYPE
-from opentelemetry.semconv.metrics.http_metrics import HTTP_CLIENT_REQUEST_DURATION
+from opentelemetry.semconv.metrics.http_metrics import (
+    HTTP_CLIENT_REQUEST_DURATION,
+)
 from opentelemetry.semconv.attributes.network_attributes import (
     NETWORK_PEER_ADDRESS,
     NETWORK_PEER_PORT,
@@ -193,9 +195,7 @@ def _instrument(
                         sem_conv_opt_in_mode,
                     )
                     # Use semconv library when available
-                    span_attributes[NETWORK_PEER_ADDRESS] = (
-                        parsed_url.hostname
-                    )
+                    span_attributes[NETWORK_PEER_ADDRESS] = parsed_url.hostname
             if parsed_url.port:
                 _set_http_peer_port_client(
                     metric_labels, parsed_url.port, sem_conv_opt_in_mode
@@ -205,9 +205,7 @@ def _instrument(
                         span_attributes, parsed_url.port, sem_conv_opt_in_mode
                     )
                     # Use semconv library when available
-                    span_attributes[NETWORK_PEER_PORT] = (
-                        parsed_url.port
-                    )
+                    span_attributes[NETWORK_PEER_PORT] = parsed_url.port
         except ValueError:
             pass
 
@@ -252,12 +250,8 @@ def _instrument(
                         _report_new(sem_conv_opt_in_mode)
                         and status_code is StatusCode.ERROR
                     ):
-                        span_attributes[ERROR_TYPE] = str(
-                            result.status_code
-                        )
-                        metric_labels[ERROR_TYPE] = str(
-                            result.status_code
-                        )
+                        span_attributes[ERROR_TYPE] = str(result.status_code)
+                        metric_labels[ERROR_TYPE] = str(result.status_code)
 
                 if result.raw is not None:
                     version = getattr(result.raw, "version", None)
@@ -280,12 +274,8 @@ def _instrument(
                     response_hook(span, request, result)
 
             if exception is not None and _report_new(sem_conv_opt_in_mode):
-                span.set_attribute(
-                    ERROR_TYPE, type(exception).__qualname__
-                )
-                metric_labels[ERROR_TYPE] = type(
-                    exception
-                ).__qualname__
+                span.set_attribute(ERROR_TYPE, type(exception).__qualname__)
+                metric_labels[ERROR_TYPE] = type(exception).__qualname__
 
             if duration_histogram_old is not None:
                 duration_attrs_old = _filter_semconv_duration_attrs(
