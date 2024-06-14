@@ -243,6 +243,7 @@ from opentelemetry.util.http import (
     normalise_request_header_name,
     normalise_response_header_name,
     remove_url_credentials,
+    sanitize_method,
 )
 
 
@@ -528,7 +529,7 @@ class OpenTelemetryMiddleware:
             self.duration_histogram = self.meter.create_histogram(
                 name=MetricInstruments.HTTP_SERVER_DURATION,
                 unit="ms",
-                description="Duration of HTTP client requests.",
+                description="Duration of HTTP server requests.",
             )
         self.duration_histogram_new = None
         if _report_new(sem_conv_opt_in_mode):
