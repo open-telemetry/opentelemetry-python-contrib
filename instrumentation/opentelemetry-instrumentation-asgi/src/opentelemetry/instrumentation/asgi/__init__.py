@@ -205,6 +205,13 @@ from opentelemetry.instrumentation.asgi.types import (
     ClientResponseHook,
     ServerRequestHook,
 )
+from opentelemetry.instrumentation._semconv import (
+    _get_schema_url,
+    _OpenTelemetrySemanticConventionStability,
+    _OpenTelemetryStabilitySignalType,
+    _report_new,
+    _report_old,
+)
 from opentelemetry.instrumentation.asgi.version import __version__  # noqa
 from opentelemetry.instrumentation.propagators import (
     get_global_response_propagator,
@@ -215,6 +222,12 @@ from opentelemetry.instrumentation.utils import (
 )
 from opentelemetry.metrics import get_meter
 from opentelemetry.propagators.textmap import Getter, Setter
+from opentelemetry.semconv._incubating.metrics.http_metrics import (
+    create_http_server_active_requests,
+    create_http_server_request_body_size,
+    create_http_server_request_duration,
+    create_http_server_response_body_size,
+)
 from opentelemetry.semconv.metrics import MetricInstruments
 from opentelemetry.semconv.trace import SpanAttributes
 from opentelemetry.trace import set_span_in_context
@@ -408,7 +421,9 @@ def get_default_span_details(scope: dict) -> Tuple[str, dict]:
         a tuple of the span name, and any attributes to attach to the span.
     """
     path = scope.get("path", "").strip()
-    method = scope.get("method", "").strip()
+    method = sanitize_method(scope.get("method", "").strip())
+    if method == "_OTHER":
+        method = "HTTP"
     if method and path:  # http
         return f"{method} {path}", {}
     if path:  # websocket
@@ -482,13 +497,18 @@ class OpenTelemetryMiddleware:
         http_capture_headers_server_response: list[str] | None = None,
         http_capture_headers_sanitize_fields: list[str] | None = None,
     ):
+        # initialize semantic conventions opt-in if needed
+        _OpenTelemetrySemanticConventionStability._initialize()
+        sem_conv_opt_in_mode = _OpenTelemetrySemanticConventionStability._get_opentelemetry_stability_opt_in_mode(
+            _OpenTelemetryStabilitySignalType.HTTP,
+        )
         self.app = guarantee_single_callable(app)
         self.tracer = (
             trace.get_tracer(
                 __name__,
                 __version__,
                 tracer_provider,
-                schema_url="https://opentelemetry.io/schemas/1.11.0",
+                schema_url=_get_schema_url(sem_conv_opt_in_mode),
             )
             if tracer is None
             else tracer
@@ -498,31 +518,42 @@ class OpenTelemetryMiddleware:
                 __name__,
                 __version__,
                 meter_provider,
-                schema_url="https://opentelemetry.io/schemas/1.11.0",
+                schema_url=_get_schema_url(sem_conv_opt_in_mode),
             )
             if meter is None
             else meter
         )
-        self.duration_histogram = self.meter.create_histogram(
-            name=MetricInstruments.HTTP_SERVER_DURATION,
-            unit="ms",
-            description="Duration of HTTP client requests.",
-        )
-        self.server_response_size_histogram = self.meter.create_histogram(
-            name=MetricInstruments.HTTP_SERVER_RESPONSE_SIZE,
-            unit="By",
-            description="measures the size of HTTP response messages (compressed).",
-        )
-        self.server_request_size_histogram = self.meter.create_histogram(
-            name=MetricInstruments.HTTP_SERVER_REQUEST_SIZE,
-            unit="By",
-            description="Measures the size of HTTP request messages (compressed).",
-        )
-        self.active_requests_counter = self.meter.create_up_down_counter(
-            name=MetricInstruments.HTTP_SERVER_ACTIVE_REQUESTS,
-            unit="requests",
-            description="measures the number of concurrent HTTP requests that are currently in-flight",
-        )
+        self.duration_histogram = None
+        if _report_old(sem_conv_opt_in_mode):
+            self.duration_histogram = self.meter.create_histogram(
+                name=MetricInstruments.HTTP_SERVER_DURATION,
+                unit="ms",
+                description="Duration of HTTP client requests.",
+            )
+        self.duration_histogram_new = None
+        if _report_new(sem_conv_opt_in_mode):
+            self.duration_histogram_new = create_http_server_request_duration(self.meter)
+        self.server_response_size_histogram = None
+        if _report_old(sem_conv_opt_in_mode):
+            self.server_response_size_histogram = self.meter.create_histogram(
+                name=MetricInstruments.HTTP_SERVER_RESPONSE_SIZE,
+                unit="By",
+                description="measures the size of HTTP response messages (compressed).",
+            )
+        self.server_response_body_size_histogram = None
+        if _report_new(sem_conv_opt_in_mode):
+            self.server_response_body_size_histogram = create_http_server_response_body_size(self.meter)
+        self.server_request_size_histogram = None
+        if _report_old(sem_conv_opt_in_mode):
+            self.server_request_size_histogram = self.meter.create_histogram(
+                name=MetricInstruments.HTTP_SERVER_REQUEST_SIZE,
+                unit="By",
+                description="Measures the size of HTTP request messages (compressed).",
+            )
+        self.server_request_body_size_histogram = None
+        if _report_new(sem_conv_opt_in_mode):
+            self.server_request_body_size_histogram = create_http_server_request_body_size(self.meter)
+        self.active_requests_counter = create_http_server_active_requests(self.meter)
         self.excluded_urls = excluded_urls
         self.default_span_details = (
             default_span_details or get_default_span_details
