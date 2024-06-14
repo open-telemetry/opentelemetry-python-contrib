@@ -59,9 +59,6 @@ from requests.sessions import Session
 from requests.structures import CaseInsensitiveDict
 
 from opentelemetry.instrumentation._semconv import (
-    _METRIC_ATTRIBUTES_CLIENT_DURATION_NAME,
-    _SPAN_ATTRIBUTES_NETWORK_PEER_ADDRESS,
-    _SPAN_ATTRIBUTES_NETWORK_PEER_PORT,
     _client_duration_attrs_new,
     _client_duration_attrs_old,
     _filter_semconv_duration_attrs,
@@ -91,6 +88,11 @@ from opentelemetry.instrumentation.utils import (
 from opentelemetry.metrics import Histogram, get_meter
 from opentelemetry.propagate import inject
 from opentelemetry.semconv.attributes.error_attributes import ERROR_TYPE
+from opentelemetry.semconv.metrics.http_metrics import HTTP_CLIENT_REQUEST_DURATION
+from opentelemetry.semconv.attributes.network_attributes import (
+    NETWORK_PEER_ADDRESS,
+    NETWORK_PEER_PORT,
+)
 from opentelemetry.semconv.metrics import MetricInstruments
 from opentelemetry.trace import SpanKind, Tracer, get_tracer
 from opentelemetry.trace.span import Span
@@ -191,7 +193,7 @@ def _instrument(
                         sem_conv_opt_in_mode,
                     )
                     # Use semconv library when available
-                    span_attributes[_SPAN_ATTRIBUTES_NETWORK_PEER_ADDRESS] = (
+                    span_attributes[NETWORK_PEER_ADDRESS] = (
                         parsed_url.hostname
                     )
             if parsed_url.port:
@@ -203,7 +205,7 @@ def _instrument(
                         span_attributes, parsed_url.port, sem_conv_opt_in_mode
                     )
                     # Use semconv library when available
-                    span_attributes[_SPAN_ATTRIBUTES_NETWORK_PEER_PORT] = (
+                    span_attributes[NETWORK_PEER_PORT] = (
                         parsed_url.port
                     )
         except ValueError:
@@ -403,7 +405,7 @@ class RequestsInstrumentor(BaseInstrumentor):
         duration_histogram_new = None
         if _report_new(semconv_opt_in_mode):
             duration_histogram_new = meter.create_histogram(
-                name=_METRIC_ATTRIBUTES_CLIENT_DURATION_NAME,
+                name=HTTP_CLIENT_REQUEST_DURATION,
                 unit="s",
                 description="Duration of HTTP client requests.",
             )

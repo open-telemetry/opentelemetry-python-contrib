@@ -23,8 +23,6 @@ from requests.models import Response
 import opentelemetry.instrumentation.requests
 from opentelemetry import trace
 from opentelemetry.instrumentation._semconv import (
-    _SPAN_ATTRIBUTES_NETWORK_PEER_ADDRESS,
-    _SPAN_ATTRIBUTES_NETWORK_PEER_PORT,
     OTEL_SEMCONV_STABILITY_OPT_IN,
     _OpenTelemetrySemanticConventionStability,
 )
@@ -36,6 +34,10 @@ from opentelemetry.instrumentation.utils import (
 from opentelemetry.propagate import get_global_textmap, set_global_textmap
 from opentelemetry.sdk import resources
 from opentelemetry.semconv.attributes.error_attributes import ERROR_TYPE
+from opentelemetry.semconv.attributes.network_attributes import (
+    NETWORK_PEER_ADDRESS,
+    NETWORK_PEER_PORT,
+)
 from opentelemetry.semconv.trace import SpanAttributes
 from opentelemetry.test.mock_textmap import MockTextMapPropagator
 from opentelemetry.test.test_base import TestBase
@@ -179,11 +181,11 @@ class RequestsIntegrationTestBase(abc.ABC):
                 SpanAttributes.HTTP_REQUEST_METHOD: "GET",
                 SpanAttributes.URL_FULL: url_with_port,
                 SpanAttributes.SERVER_ADDRESS: "mock",
-                _SPAN_ATTRIBUTES_NETWORK_PEER_ADDRESS: "mock",
+                NETWORK_PEER_ADDRESS: "mock",
                 SpanAttributes.HTTP_RESPONSE_STATUS_CODE: 200,
                 SpanAttributes.NETWORK_PROTOCOL_VERSION: "1.1",
                 SpanAttributes.SERVER_PORT: 80,
-                _SPAN_ATTRIBUTES_NETWORK_PEER_PORT: 80,
+                NETWORK_PEER_PORT: 80,
             },
         )
 
@@ -218,14 +220,14 @@ class RequestsIntegrationTestBase(abc.ABC):
                 SpanAttributes.URL_FULL: url_with_port,
                 SpanAttributes.HTTP_HOST: "mock",
                 SpanAttributes.SERVER_ADDRESS: "mock",
-                _SPAN_ATTRIBUTES_NETWORK_PEER_ADDRESS: "mock",
+                NETWORK_PEER_ADDRESS: "mock",
                 SpanAttributes.NET_PEER_PORT: 80,
                 SpanAttributes.HTTP_STATUS_CODE: 200,
                 SpanAttributes.HTTP_RESPONSE_STATUS_CODE: 200,
                 SpanAttributes.HTTP_FLAVOR: "1.1",
                 SpanAttributes.NETWORK_PROTOCOL_VERSION: "1.1",
                 SpanAttributes.SERVER_PORT: 80,
-                _SPAN_ATTRIBUTES_NETWORK_PEER_PORT: 80,
+                NETWORK_PEER_PORT: 80,
             },
         )
 
@@ -531,8 +533,8 @@ class RequestsIntegrationTestBase(abc.ABC):
                 SpanAttributes.URL_FULL: url_with_port,
                 SpanAttributes.SERVER_ADDRESS: "mock",
                 SpanAttributes.SERVER_PORT: 80,
-                _SPAN_ATTRIBUTES_NETWORK_PEER_PORT: 80,
-                _SPAN_ATTRIBUTES_NETWORK_PEER_ADDRESS: "mock",
+                NETWORK_PEER_PORT: 80,
+                NETWORK_PEER_ADDRESS: "mock",
                 ERROR_TYPE: "RequestException",
             },
         )

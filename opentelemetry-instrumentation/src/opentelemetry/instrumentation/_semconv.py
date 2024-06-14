@@ -21,12 +21,6 @@ from opentelemetry.semconv.attributes.error_attributes import ERROR_TYPE
 from opentelemetry.semconv.trace import SpanAttributes
 from opentelemetry.trace.status import Status, StatusCode
 
-# TODO: will come through semconv package once updated
-_SPAN_ATTRIBUTES_NETWORK_PEER_ADDRESS = "network.peer.address"
-_SPAN_ATTRIBUTES_NETWORK_PEER_PORT = "network.peer.port"
-_METRIC_ATTRIBUTES_CLIENT_DURATION_NAME = "http.client.request.duration"
-_METRIC_ATTRIBUTES_SERVER_DURATION_NAME = "http.server.request.duration"
-
 _client_duration_attrs_old = [
     SpanAttributes.HTTP_STATUS_CODE,
     SpanAttributes.HTTP_HOST,

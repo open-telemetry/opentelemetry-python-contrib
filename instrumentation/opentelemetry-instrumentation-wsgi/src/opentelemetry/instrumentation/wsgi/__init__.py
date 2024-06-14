@@ -214,7 +214,6 @@ from timeit import default_timer
 
 from opentelemetry import context, trace
 from opentelemetry.instrumentation._semconv import (
-    _METRIC_ATTRIBUTES_SERVER_DURATION_NAME,
     _filter_semconv_active_request_count_attr,
     _filter_semconv_duration_attrs,
     _get_schema_url,
@@ -245,6 +244,7 @@ from opentelemetry.metrics import get_meter
 from opentelemetry.propagators.textmap import Getter
 from opentelemetry.semconv.attributes.error_attributes import ERROR_TYPE
 from opentelemetry.semconv.metrics import MetricInstruments
+from opentelemetry.semconv.metrics.http_metrics import HTTP_SERVER_REQUEST_DURATION
 from opentelemetry.semconv.trace import SpanAttributes
 from opentelemetry.trace.status import Status, StatusCode
 from opentelemetry.util.http import (
@@ -573,7 +573,7 @@ class OpenTelemetryMiddleware:
         self.duration_histogram_new = None
         if _report_new(sem_conv_opt_in_mode):
             self.duration_histogram_new = self.meter.create_histogram(
-                name=_METRIC_ATTRIBUTES_SERVER_DURATION_NAME,
+                name=HTTP_SERVER_REQUEST_DURATION,
                 unit="s",
                 description="measures the duration of the inbound HTTP request",
             )
