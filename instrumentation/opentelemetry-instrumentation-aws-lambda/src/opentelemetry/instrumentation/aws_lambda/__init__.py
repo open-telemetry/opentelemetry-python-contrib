@@ -919,9 +919,7 @@ def determine_context_extractor(
     Returns: A context extractor function.
     """
 
-    if context_extractor_override and isinstance(
-        context_extractor_override, Callable
-    ):
+    if callable(context_extractor_override):
         return context_extractor_override
 
     return lambda event: get_global_textmap().extract(event.headers)
