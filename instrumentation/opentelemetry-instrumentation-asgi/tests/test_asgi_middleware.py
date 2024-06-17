@@ -628,6 +628,7 @@ class TestAsgiApplication(AsgiTestBase):
                     SpanAttributes.NET_PEER_IP: self.scope["client"][0],
                     SpanAttributes.NET_PEER_PORT: self.scope["client"][1],
                     SpanAttributes.HTTP_STATUS_CODE: 200,
+                    SpanAttributes.HTTP_METHOD: self.scope["method"],
                 },
             },
         ]
