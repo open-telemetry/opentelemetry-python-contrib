@@ -307,7 +307,9 @@ def _instrument(
         )
 
         try:
-            event_source = lambda_event["Records"][0].get("eventSource") or lambda_event["Records"][0].get("EventSource")
+            event_source = lambda_event["Records"][0].get(
+                "eventSource"
+            ) or lambda_event["Records"][0].get("EventSource")
             if event_source in {
                 "aws:sqs",
                 "aws:s3",

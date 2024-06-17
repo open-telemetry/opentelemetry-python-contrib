@@ -383,7 +383,9 @@ class TestAwsLambdaInstrumentor(TestBase):
 
         assert spans
         assert len(spans) == 1
-        assert spans[0].kind == SpanKind.SERVER  # Default to SERVER for unknown sources
+        assert (
+            spans[0].kind == SpanKind.SERVER
+        )  # Default to SERVER for unknown sources
 
         test_env_patch.stop()
 
