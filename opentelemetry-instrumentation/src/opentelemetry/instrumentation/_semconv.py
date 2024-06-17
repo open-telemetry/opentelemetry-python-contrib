@@ -374,7 +374,7 @@ def _set_status(
             )
             if status == StatusCode.ERROR:
                 span.set_attribute(ERROR_TYPE, status_code_str)
-                metrics_attributes[ERROR_TYPE] = (status_code_str)
+                metrics_attributes[ERROR_TYPE] = status_code_str
         span.set_status(Status(status))
 
 
