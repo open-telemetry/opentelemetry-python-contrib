@@ -14,7 +14,7 @@ bleach==4.1.0 # transient dependency for readme-renderer
 protobuf~=3.13
 markupsafe>=2.0.1
 codespell==2.1.0
-requests==2.31.0
+requests==2.32.3
 ruamel.yaml==0.17.21
 flaky==3.7.0
 pre-commit==3.7.0; python_version >= '3.9'
