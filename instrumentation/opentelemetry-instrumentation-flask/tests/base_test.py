@@ -85,6 +85,7 @@ class InstrumentationTest:
         resp.headers["My-Custom-Regex-Header-2"] = (
             "my-custom-regex-value-3,my-custom-regex-value-4"
         )
+        resp.headers["my-secret-header"] = "my-secret-value"
         return resp
 
     @staticmethod

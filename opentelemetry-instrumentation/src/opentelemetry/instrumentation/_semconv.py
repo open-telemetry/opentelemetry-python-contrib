@@ -213,25 +213,19 @@ def _set_http_method(result, original, normalized, sem_conv_opt_in_mode):
     # See https://github.com/open-telemetry/semantic-conventions/blob/main/docs/http/http-spans.md#common-attributes
     # Method is case sensitive. "http.request.method_original" should not be sanitized or automatically capitalized.
     if original != normalized and _report_new(sem_conv_opt_in_mode):
-        set_string_attribute(
-            result, HTTP_REQUEST_METHOD_ORIGINAL, original
-        )
+        set_string_attribute(result, HTTP_REQUEST_METHOD_ORIGINAL, original)
 
     if _report_old(sem_conv_opt_in_mode):
         set_string_attribute(result, SpanAttributes.HTTP_METHOD, normalized)
     if _report_new(sem_conv_opt_in_mode):
-        set_string_attribute(
-            result, HTTP_REQUEST_METHOD, normalized
-        )
+        set_string_attribute(result, HTTP_REQUEST_METHOD, normalized)
 
 
 def _set_http_status_code(result, code, sem_conv_opt_in_mode):
     if _report_old(sem_conv_opt_in_mode):
         set_int_attribute(result, SpanAttributes.HTTP_STATUS_CODE, code)
     if _report_new(sem_conv_opt_in_mode):
-        set_int_attribute(
-            result, HTTP_RESPONSE_STATUS_CODE, code
-        )
+        set_int_attribute(result, HTTP_RESPONSE_STATUS_CODE, code)
 
 
 def _set_http_url(result, url, sem_conv_opt_in_mode):
@@ -276,9 +270,7 @@ def _set_http_network_protocol_version(result, version, sem_conv_opt_in_mode):
     if _report_old(sem_conv_opt_in_mode):
         set_string_attribute(result, SpanAttributes.HTTP_FLAVOR, version)
     if _report_new(sem_conv_opt_in_mode):
-        set_string_attribute(
-            result, NETWORK_PROTOCOL_VERSION, version
-        )
+        set_string_attribute(result, NETWORK_PROTOCOL_VERSION, version)
 
 
 # Server
@@ -381,12 +373,8 @@ def _set_status(
                 status_code
             )
             if status == StatusCode.ERROR:
-                span.set_attribute(
-                    ERROR_TYPE, status_code_str
-                )
-                metrics_attributes[ERROR_TYPE] = (
-                    status_code_str
-                )
+                span.set_attribute(ERROR_TYPE, status_code_str)
+                metrics_attributes[ERROR_TYPE] = (status_code_str)
         span.set_status(Status(status))
 
 

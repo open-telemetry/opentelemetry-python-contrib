@@ -40,7 +40,9 @@ from opentelemetry.semconv.attributes.http_attributes import (
     HTTP_REQUEST_METHOD,
     HTTP_RESPONSE_STATUS_CODE,
 )
-from opentelemetry.semconv.attributes.network_attributes import NETWORK_PROTOCOL_VERSION
+from opentelemetry.semconv.attributes.network_attributes import (
+    NETWORK_PROTOCOL_VERSION,
+)
 from opentelemetry.semconv.attributes.server_attributes import (
     SERVER_ADDRESS,
     SERVER_PORT,
@@ -268,9 +270,7 @@ class TestWsgiApplication(WsgiTestBase):
             if old_sem_conv:
                 expected_attributes[SpanAttributes.HTTP_METHOD] = http_method
             if new_sem_conv:
-                expected_attributes[
-                    HTTP_REQUEST_METHOD
-                ] = http_method
+                expected_attributes[HTTP_REQUEST_METHOD] = http_method
         self.assertEqual(span_list[0].attributes, expected_attributes)
 
     def test_basic_wsgi_call(self):
@@ -558,8 +558,7 @@ class TestWsgiAttributes(unittest.TestCase):
             SpanAttributes.HTTP_SERVER_NAME: parts.hostname,  # Not true in the general case, but for all tests.
         }
         expected_new = {
-            SERVER_PORT: parts.port
-            or (80 if parts.scheme == "http" else 443),
+            SERVER_PORT: parts.port or (80 if parts.scheme == "http" else 443),
             SERVER_ADDRESS: parts.hostname,
             URL_PATH: parts.path,
             URL_QUERY: parts.query,
@@ -575,13 +574,11 @@ class TestWsgiAttributes(unittest.TestCase):
                 expected_old[SpanAttributes.HTTP_HOST] = parts.hostname
         if new_semconv:
             if raw:
-                expected_new[URL_PATH] = expected_url.split(
-                    parts.path, 1
-                )[1]
+                expected_new[URL_PATH] = expected_url.split(parts.path, 1)[1]
                 if parts.query:
-                    expected_new[
-                        URL_QUERY
-                    ] = expected_url.split(parts.query, 1)[1]
+                    expected_new[URL_QUERY] = expected_url.split(
+                        parts.query, 1
+                    )[1]
             else:
                 expected_new[URL_FULL] = expected_url
             if has_host:
@@ -727,9 +724,9 @@ class TestWsgiAttributes(unittest.TestCase):
     def test_request_attributes_with_full_request_uri(self):
         self.environ["HTTP_HOST"] = "127.0.0.1:8080"
         self.environ["REQUEST_METHOD"] = "CONNECT"
-        self.environ[
-            "REQUEST_URI"
-        ] = "http://docs.python.org:80/3/library/urllib.parse.html?highlight=params#url-parsing"  # Might happen in a CONNECT request
+        self.environ["REQUEST_URI"] = (
+            "http://docs.python.org:80/3/library/urllib.parse.html?highlight=params#url-parsing"  # Might happen in a CONNECT request
+        )
         expected_old = {
             SpanAttributes.HTTP_HOST: "127.0.0.1:8080",
             SpanAttributes.HTTP_TARGET: "http://docs.python.org:80/3/library/urllib.parse.html?highlight=params#url-parsing",
