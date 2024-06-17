@@ -251,7 +251,6 @@ from packaging import version as package_version
 import opentelemetry.instrumentation.wsgi as otel_wsgi
 from opentelemetry import context, trace
 from opentelemetry.instrumentation._semconv import (
-    _METRIC_ATTRIBUTES_SERVER_DURATION_NAME,
     _get_schema_url,
     _HTTPStabilityMode,
     _OpenTelemetrySemanticConventionStability,
@@ -268,6 +267,9 @@ from opentelemetry.instrumentation.propagators import (
 from opentelemetry.instrumentation.utils import _start_internal_or_server_span
 from opentelemetry.metrics import get_meter
 from opentelemetry.semconv.metrics import MetricInstruments
+from opentelemetry.semconv.metrics.http_metrics import (
+    HTTP_SERVER_REQUEST_DURATION,
+)
 from opentelemetry.semconv.trace import SpanAttributes
 from opentelemetry.util.http import (
     get_excluded_urls,
@@ -553,7 +555,7 @@ class _InstrumentedFlask(flask.Flask):
         duration_histogram_new = None
         if _report_new(_InstrumentedFlask._sem_conv_opt_in_mode):
             duration_histogram_new = meter.create_histogram(
-                name=_METRIC_ATTRIBUTES_SERVER_DURATION_NAME,
+                name=HTTP_SERVER_REQUEST_DURATION,
                 unit="s",
                 description="measures the duration of the inbound HTTP request",
             )
@@ -684,7 +686,7 @@ class FlaskInstrumentor(BaseInstrumentor):
             duration_histogram_new = None
             if _report_new(sem_conv_opt_in_mode):
                 duration_histogram_new = meter.create_histogram(
-                    name=_METRIC_ATTRIBUTES_SERVER_DURATION_NAME,
+                    name=HTTP_SERVER_REQUEST_DURATION,
                     unit="s",
                     description="measures the duration of the inbound HTTP request",
                 )
