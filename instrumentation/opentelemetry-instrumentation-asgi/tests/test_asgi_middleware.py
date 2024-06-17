@@ -565,6 +565,7 @@ class TestAsgiApplication(AsgiTestBase):
 
     def test_websocket(self):
         self.scope = {
+            "method": "GET",
             "type": "websocket",
             "http_version": "1.1",
             "scheme": "ws",
@@ -584,17 +585,17 @@ class TestAsgiApplication(AsgiTestBase):
         self.assertEqual(len(span_list), 6)
         expected = [
             {
-                "name": "/ websocket receive",
+                "name": "GET / websocket receive",
                 "kind": trace_api.SpanKind.INTERNAL,
                 "attributes": {"asgi.event.type": "websocket.connect"},
             },
             {
-                "name": "/ websocket send",
+                "name": "GET / websocket send",
                 "kind": trace_api.SpanKind.INTERNAL,
                 "attributes": {"asgi.event.type": "websocket.accept"},
             },
             {
-                "name": "/ websocket receive",
+                "name": "GET / websocket receive",
                 "kind": trace_api.SpanKind.INTERNAL,
                 "attributes": {
                     "asgi.event.type": "websocket.receive",
@@ -602,7 +603,7 @@ class TestAsgiApplication(AsgiTestBase):
                 },
             },
             {
-                "name": "/ websocket send",
+                "name": "GET / websocket send",
                 "kind": trace_api.SpanKind.INTERNAL,
                 "attributes": {
                     "asgi.event.type": "websocket.send",
@@ -610,12 +611,12 @@ class TestAsgiApplication(AsgiTestBase):
                 },
             },
             {
-                "name": "/ websocket receive",
+                "name": "GET / websocket receive",
                 "kind": trace_api.SpanKind.INTERNAL,
                 "attributes": {"asgi.event.type": "websocket.disconnect"},
             },
             {
-                "name": "/",
+                "name": "GET /",
                 "kind": trace_api.SpanKind.SERVER,
                 "attributes": {
                     SpanAttributes.HTTP_SCHEME: self.scope["scheme"],
