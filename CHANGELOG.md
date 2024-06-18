@@ -27,6 +27,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   ([#2590](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/2590))
 - Reference symbols from generated semantic conventions
   ([#2611](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/2611))
+- `opentelemetry-instrumentation-grpc` Fixes the issue with the gRPC instrumentation not working with the 1.63.0 and higher version of gRPC
+  ([#2483](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/2484))
 
 ## Version 1.25.0/0.46b0 (2024-05-31)
 
@@ -90,8 +92,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   ([#2553](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/2553))
 - `opentelemetry-util-http` Preserve brackets around literal IPv6 hosts ([#2552](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/2552))
 - `opentelemetry-util-redis` Fix net peer attribute for unix socket connection ([#2493](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/2493))
-- `opentelemetry-instrumentation-grpc` Fixes the issue with the gRPC instrumentation not working with the 1.63.0 and higher version of gRPC
-  ([#2483](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/2484))
 
 ## Version 1.24.0/0.45b0 (2024-03-28)
 
