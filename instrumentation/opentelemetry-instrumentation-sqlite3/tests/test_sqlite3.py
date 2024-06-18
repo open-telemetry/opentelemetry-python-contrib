@@ -100,3 +100,15 @@ class TestSQLite3(TestBase):
         ):
             self._cursor.callproc("test", ())
             self.validate_spans("test")
+            
+    def test_no_op_tracer_provider(self):
+        """Should not create any spans when using NoOpTracerProvider"""
+        SQLite3Instrumentor().uninstrument()
+        SQLite3Instrumentor().instrument(tracer_provider=trace_api.NoOpTracerProvider())
+        self._create_tables()
+        stmt = "INSERT INTO test (id) VALUES (?)"
+        data = [("1",), ("2",), ("3",)]
+        with self._tracer.start_as_current_span("rootSpan"):
+            self._cursor.executemany(stmt, data)
+        spans = self.memory_exporter.get_finished_spans()
+        self.assertEqual(len(spans), 0)
