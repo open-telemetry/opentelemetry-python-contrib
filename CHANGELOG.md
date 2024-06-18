@@ -25,6 +25,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   ([#2572](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/2572))
 - `opentelemetry-instrumentation-aiohttp-server`, `opentelemetry-instrumentation-httpx` Ensure consistently use of suppress_instrumentation utils
   ([#2590](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/2590))
+- Reference symbols from generated semantic conventions
+  ([#2611](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/2611))
 
 ## Version 1.25.0/0.46b0 (2024-05-31)
 
