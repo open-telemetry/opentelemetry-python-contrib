@@ -24,6 +24,7 @@ from opentelemetry.instrumentation.logging import (  # pylint: disable=no-name-i
 )
 from opentelemetry.test.test_base import TestBase
 from opentelemetry.trace import ProxyTracer, get_tracer
+from opentelemetry import trace as trace_api
 
 
 class FakeTracerProvider:
@@ -198,6 +199,21 @@ class TestLoggingInstrumentor(TestBase):
             span_id = format(span.get_span_context().span_id, "016x")
             trace_id = format(span.get_span_context().trace_id, "032x")
             trace_sampled = span.get_span_context().trace_flags.sampled
+            with self.caplog.at_level(level=logging.INFO):
+                logger = logging.getLogger("test logger")
+                logger.info("hello")
+                self.assertEqual(len(self.caplog.records), 1)
+                record = self.caplog.records[0]
+                self.assertFalse(hasattr(record, "otelSpanID"))
+                self.assertFalse(hasattr(record, "otelTraceID"))
+                self.assertFalse(hasattr(record, "otelServiceName"))
+                self.assertFalse(hasattr(record, "otelTraceSampled"))
+
+    def test_no_op_tracer_provider(self):
+        LoggingInstrumentor().uninstrument()
+        LoggingInstrumentor().instrument(tracer_provider=trace_api.NoOpTracerProvider())
+
+        with self.tracer.start_as_current_span("s1") as span:
             with self.caplog.at_level(level=logging.INFO):
                 logger = logging.getLogger("test logger")
                 logger.info("hello")
