@@ -162,14 +162,14 @@ def _get_address_attributes(instance):
             host, port = instance.server
             address_attributes[SpanAttributes.NET_PEER_NAME] = host
             address_attributes[SpanAttributes.NET_PEER_PORT] = port
-            address_attributes[
-                SpanAttributes.NET_TRANSPORT
-            ] = NetTransportValues.IP_TCP.value
+            address_attributes[SpanAttributes.NET_TRANSPORT] = (
+                NetTransportValues.IP_TCP.value
+            )
         elif isinstance(instance.server, str):
             address_attributes[SpanAttributes.NET_PEER_NAME] = instance.server
-            address_attributes[
-                SpanAttributes.NET_TRANSPORT
-            ] = NetTransportValues.OTHER.value
+            address_attributes[SpanAttributes.NET_TRANSPORT] = (
+                NetTransportValues.OTHER.value
+            )
 
     return address_attributes
 

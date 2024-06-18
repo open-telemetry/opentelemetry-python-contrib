@@ -12,6 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+# pylint: disable=too-many-lines
 from timeit import default_timer
 from unittest.mock import Mock, patch
 
@@ -19,7 +20,11 @@ from flask import Flask, request
 
 from opentelemetry import trace
 from opentelemetry.instrumentation._semconv import (
+    OTEL_SEMCONV_STABILITY_OPT_IN,
+    _OpenTelemetrySemanticConventionStability,
+    _server_active_requests_count_attrs_new,
     _server_active_requests_count_attrs_old,
+    _server_duration_attrs_new,
     _server_duration_attrs_old,
 )
 from opentelemetry.instrumentation.flask import FlaskInstrumentor
@@ -34,6 +39,7 @@ from opentelemetry.sdk.metrics.export import (
     NumberDataPoint,
 )
 from opentelemetry.sdk.resources import Resource
+from opentelemetry.semconv.attributes.error_attributes import ERROR_TYPE
 from opentelemetry.semconv.trace import SpanAttributes
 from opentelemetry.test.wsgitestutil import WsgiTestBase
 from opentelemetry.util.http import (
@@ -65,26 +71,71 @@ def expected_attributes(override_attributes):
     return default_attributes
 
 
-_expected_metric_names = [
+def expected_attributes_new(override_attributes):
+    default_attributes = {
+        SpanAttributes.HTTP_REQUEST_METHOD: "GET",
+        SpanAttributes.SERVER_PORT: 80,
+        SpanAttributes.SERVER_ADDRESS: "localhost",
+        SpanAttributes.URL_PATH: "/hello/123",
+        SpanAttributes.NETWORK_PROTOCOL_VERSION: "1.1",
+        SpanAttributes.HTTP_RESPONSE_STATUS_CODE: 200,
+    }
+    for key, val in override_attributes.items():
+        default_attributes[key] = val
+    return default_attributes
+
+
+_expected_metric_names_old = [
     "http.server.active_requests",
     "http.server.duration",
 ]
-_recommended_attrs = {
+_expected_metric_names_new = [
+    "http.server.active_requests",
+    "http.server.request.duration",
+]
+_recommended_metrics_attrs_old = {
     "http.server.active_requests": _server_active_requests_count_attrs_old,
     "http.server.duration": _server_duration_attrs_old,
 }
+_recommended_metrics_attrs_new = {
+    "http.server.active_requests": _server_active_requests_count_attrs_new,
+    "http.server.request.duration": _server_duration_attrs_new,
+}
+_server_active_requests_count_attrs_both = (
+    _server_active_requests_count_attrs_old
+)
+_server_active_requests_count_attrs_both.extend(
+    _server_active_requests_count_attrs_new
+)
+_recommended_metrics_attrs_both = {
+    "http.server.active_requests": _server_active_requests_count_attrs_both,
+    "http.server.duration": _server_duration_attrs_old,
+    "http.server.request.duration": _server_duration_attrs_new,
+}
 
 
+# pylint: disable=too-many-public-methods
 class TestProgrammatic(InstrumentationTest, WsgiTestBase):
     def setUp(self):
         super().setUp()
 
+        test_name = ""
+        if hasattr(self, "_testMethodName"):
+            test_name = self._testMethodName
+        sem_conv_mode = "default"
+        if "new_semconv" in test_name:
+            sem_conv_mode = "http"
+        elif "both_semconv" in test_name:
+            sem_conv_mode = "http/dup"
+
         self.env_patch = patch.dict(
             "os.environ",
             {
-                "OTEL_PYTHON_FLASK_EXCLUDED_URLS": "http://localhost/env_excluded_arg/123,env_excluded_noarg"
+                "OTEL_PYTHON_FLASK_EXCLUDED_URLS": "http://localhost/env_excluded_arg/123,env_excluded_noarg",
+                OTEL_SEMCONV_STABILITY_OPT_IN: sem_conv_mode,
             },
         )
+        _OpenTelemetrySemanticConventionStability._initialized = False
         self.env_patch.start()
 
         self.exclude_patch = patch(
@@ -170,7 +221,45 @@ class TestProgrammatic(InstrumentationTest, WsgiTestBase):
 
         span_list = self.memory_exporter.get_finished_spans()
         self.assertEqual(len(span_list), 1)
-        self.assertEqual(span_list[0].name, "/hello/<int:helloid>")
+        self.assertEqual(span_list[0].name, "GET /hello/<int:helloid>")
+        self.assertEqual(span_list[0].kind, trace.SpanKind.SERVER)
+        self.assertEqual(span_list[0].attributes, expected_attrs)
+
+    def test_simple_new_semconv(self):
+        expected_attrs = expected_attributes_new(
+            {
+                SpanAttributes.HTTP_ROUTE: "/hello/<int:helloid>",
+                SpanAttributes.URL_SCHEME: "http",
+            }
+        )
+        self.client.get("/hello/123")
+
+        span_list = self.memory_exporter.get_finished_spans()
+        self.assertEqual(len(span_list), 1)
+        self.assertEqual(span_list[0].name, "GET /hello/<int:helloid>")
+        self.assertEqual(span_list[0].kind, trace.SpanKind.SERVER)
+        self.assertEqual(span_list[0].attributes, expected_attrs)
+
+    def test_simple_both_semconv(self):
+        expected_attrs = expected_attributes(
+            {
+                SpanAttributes.HTTP_TARGET: "/hello/123",
+                SpanAttributes.HTTP_ROUTE: "/hello/<int:helloid>",
+            }
+        )
+        expected_attrs.update(
+            expected_attributes_new(
+                {
+                    SpanAttributes.HTTP_ROUTE: "/hello/<int:helloid>",
+                    SpanAttributes.URL_SCHEME: "http",
+                }
+            )
+        )
+        self.client.get("/hello/123")
+
+        span_list = self.memory_exporter.get_finished_spans()
+        self.assertEqual(len(span_list), 1)
+        self.assertEqual(span_list[0].name, "GET /hello/<int:helloid>")
         self.assertEqual(span_list[0].kind, trace.SpanKind.SERVER)
         self.assertEqual(span_list[0].attributes, expected_attrs)
 
@@ -220,6 +309,53 @@ class TestProgrammatic(InstrumentationTest, WsgiTestBase):
         self.assertEqual(span_list[0].kind, trace.SpanKind.SERVER)
         self.assertEqual(span_list[0].attributes, expected_attrs)
 
+    def test_404_new_semconv(self):
+        expected_attrs = expected_attributes_new(
+            {
+                SpanAttributes.HTTP_REQUEST_METHOD: "POST",
+                SpanAttributes.HTTP_RESPONSE_STATUS_CODE: 404,
+                SpanAttributes.URL_PATH: "/bye",
+                SpanAttributes.URL_SCHEME: "http",
+            }
+        )
+
+        resp = self.client.post("/bye")
+        self.assertEqual(404, resp.status_code)
+        resp.close()
+        span_list = self.memory_exporter.get_finished_spans()
+        self.assertEqual(len(span_list), 1)
+        self.assertEqual(span_list[0].name, "POST /bye")
+        self.assertEqual(span_list[0].kind, trace.SpanKind.SERVER)
+        self.assertEqual(span_list[0].attributes, expected_attrs)
+
+    def test_404_both_semconv(self):
+        expected_attrs = expected_attributes(
+            {
+                SpanAttributes.HTTP_METHOD: "POST",
+                SpanAttributes.HTTP_TARGET: "/bye",
+                SpanAttributes.HTTP_STATUS_CODE: 404,
+            }
+        )
+        expected_attrs.update(
+            expected_attributes_new(
+                {
+                    SpanAttributes.HTTP_REQUEST_METHOD: "POST",
+                    SpanAttributes.HTTP_RESPONSE_STATUS_CODE: 404,
+                    SpanAttributes.URL_PATH: "/bye",
+                    SpanAttributes.URL_SCHEME: "http",
+                }
+            )
+        )
+
+        resp = self.client.post("/bye")
+        self.assertEqual(404, resp.status_code)
+        resp.close()
+        span_list = self.memory_exporter.get_finished_spans()
+        self.assertEqual(len(span_list), 1)
+        self.assertEqual(span_list[0].name, "POST /bye")
+        self.assertEqual(span_list[0].kind, trace.SpanKind.SERVER)
+        self.assertEqual(span_list[0].attributes, expected_attrs)
+
     def test_internal_error(self):
         expected_attrs = expected_attributes(
             {
@@ -233,7 +369,53 @@ class TestProgrammatic(InstrumentationTest, WsgiTestBase):
         resp.close()
         span_list = self.memory_exporter.get_finished_spans()
         self.assertEqual(len(span_list), 1)
-        self.assertEqual(span_list[0].name, "/hello/<int:helloid>")
+        self.assertEqual(span_list[0].name, "GET /hello/<int:helloid>")
+        self.assertEqual(span_list[0].kind, trace.SpanKind.SERVER)
+        self.assertEqual(span_list[0].attributes, expected_attrs)
+
+    def test_internal_error_new_semconv(self):
+        expected_attrs = expected_attributes_new(
+            {
+                SpanAttributes.URL_PATH: "/hello/500",
+                SpanAttributes.HTTP_ROUTE: "/hello/<int:helloid>",
+                SpanAttributes.HTTP_RESPONSE_STATUS_CODE: 500,
+                ERROR_TYPE: "500",
+                SpanAttributes.URL_SCHEME: "http",
+            }
+        )
+        resp = self.client.get("/hello/500")
+        self.assertEqual(500, resp.status_code)
+        resp.close()
+        span_list = self.memory_exporter.get_finished_spans()
+        self.assertEqual(len(span_list), 1)
+        self.assertEqual(span_list[0].name, "GET /hello/<int:helloid>")
+        self.assertEqual(span_list[0].kind, trace.SpanKind.SERVER)
+        self.assertEqual(span_list[0].attributes, expected_attrs)
+
+    def test_internal_error_both_semconv(self):
+        expected_attrs = expected_attributes(
+            {
+                SpanAttributes.HTTP_TARGET: "/hello/500",
+                SpanAttributes.HTTP_ROUTE: "/hello/<int:helloid>",
+                SpanAttributes.HTTP_STATUS_CODE: 500,
+            }
+        )
+        expected_attrs.update(
+            expected_attributes_new(
+                {
+                    SpanAttributes.URL_PATH: "/hello/500",
+                    SpanAttributes.HTTP_RESPONSE_STATUS_CODE: 500,
+                    ERROR_TYPE: "500",
+                    SpanAttributes.URL_SCHEME: "http",
+                }
+            )
+        )
+        resp = self.client.get("/hello/500")
+        self.assertEqual(500, resp.status_code)
+        resp.close()
+        span_list = self.memory_exporter.get_finished_spans()
+        self.assertEqual(len(span_list), 1)
+        self.assertEqual(span_list[0].name, "GET /hello/<int:helloid>")
         self.assertEqual(span_list[0].kind, trace.SpanKind.SERVER)
         self.assertEqual(span_list[0].attributes, expected_attrs)
 
@@ -291,7 +473,7 @@ class TestProgrammatic(InstrumentationTest, WsgiTestBase):
             for scope_metric in resource_metric.scope_metrics:
                 self.assertTrue(len(scope_metric.metrics) != 0)
                 for metric in scope_metric.metrics:
-                    self.assertIn(metric.name, _expected_metric_names)
+                    self.assertIn(metric.name, _expected_metric_names_old)
                     data_points = list(metric.data.data_points)
                     self.assertEqual(len(data_points), 1)
                     for point in data_points:
@@ -305,7 +487,42 @@ class TestProgrammatic(InstrumentationTest, WsgiTestBase):
                             number_data_point_seen = True
                         for attr in point.attributes:
                             self.assertIn(
-                                attr, _recommended_attrs[metric.name]
+                                attr,
+                                _recommended_metrics_attrs_old[metric.name],
+                            )
+        self.assertTrue(number_data_point_seen and histogram_data_point_seen)
+
+    def test_flask_metrics_new_semconv(self):
+        start = default_timer()
+        self.client.get("/hello/123")
+        self.client.get("/hello/321")
+        self.client.get("/hello/756")
+        duration = max(round((default_timer() - start) * 1000), 0)
+        metrics_list = self.memory_metrics_reader.get_metrics_data()
+        number_data_point_seen = False
+        histogram_data_point_seen = False
+        self.assertTrue(len(metrics_list.resource_metrics) != 0)
+        for resource_metric in metrics_list.resource_metrics:
+            self.assertTrue(len(resource_metric.scope_metrics) != 0)
+            for scope_metric in resource_metric.scope_metrics:
+                self.assertTrue(len(scope_metric.metrics) != 0)
+                for metric in scope_metric.metrics:
+                    self.assertIn(metric.name, _expected_metric_names_new)
+                    data_points = list(metric.data.data_points)
+                    self.assertEqual(len(data_points), 1)
+                    for point in data_points:
+                        if isinstance(point, HistogramDataPoint):
+                            self.assertEqual(point.count, 3)
+                            self.assertAlmostEqual(
+                                duration, point.sum, delta=10
+                            )
+                            histogram_data_point_seen = True
+                        if isinstance(point, NumberDataPoint):
+                            number_data_point_seen = True
+                        for attr in point.attributes:
+                            self.assertIn(
+                                attr,
+                                _recommended_metrics_attrs_new[metric.name],
                             )
         self.assertTrue(number_data_point_seen and histogram_data_point_seen)
 
@@ -375,6 +592,23 @@ class TestProgrammatic(InstrumentationTest, WsgiTestBase):
             expected_requests_count_attributes,
         )
 
+    def test_basic_metric_success_new_semconv(self):
+        self.client.get("/hello/756")
+        expected_duration_attributes = {
+            "http.request.method": "GET",
+            "url.scheme": "http",
+            "network.protocol.version": "1.1",
+            "http.response.status_code": 200,
+        }
+        expected_requests_count_attributes = {
+            "http.request.method": "GET",
+            "url.scheme": "http",
+        }
+        self._assert_basic_metric(
+            expected_duration_attributes,
+            expected_requests_count_attributes,
+        )
+
     def test_basic_metric_nonstandard_http_method_success(self):
         self.client.open("/hello/756", method="NONSTANDARD")
         expected_duration_attributes = {
@@ -401,32 +635,42 @@ class TestProgrammatic(InstrumentationTest, WsgiTestBase):
             expected_requests_count_attributes,
         )
 
+    def test_basic_metric_nonstandard_http_method_success_new_semconv(self):
+        self.client.open("/hello/756", method="NONSTANDARD")
+        expected_duration_attributes = {
+            "http.request.method": "_OTHER",
+            "url.scheme": "http",
+            "network.protocol.version": "1.1",
+            "http.response.status_code": 405,
+        }
+        expected_requests_count_attributes = {
+            "http.request.method": "_OTHER",
+            "url.scheme": "http",
+        }
+        self._assert_basic_metric(
+            expected_duration_attributes,
+            expected_requests_count_attributes,
+        )
+
     @patch.dict(
         "os.environ",
         {
             OTEL_PYTHON_INSTRUMENTATION_HTTP_CAPTURE_ALL_METHODS: "1",
         },
     )
-    def test_basic_metric_nonstandard_http_method_allowed_success(self):
+    def test_basic_metric_nonstandard_http_method_allowed_success_new_semconv(
+        self,
+    ):
         self.client.open("/hello/756", method="NONSTANDARD")
         expected_duration_attributes = {
-            "http.method": "NONSTANDARD",
-            "http.host": "localhost",
-            "http.scheme": "http",
-            "http.flavor": "1.1",
-            "http.server_name": "localhost",
-            "net.host.port": 80,
-            "http.status_code": 405,
-            "net.host.name": "localhost",
+            "http.request.method": "NONSTANDARD",
+            "url.scheme": "http",
+            "network.protocol.version": "1.1",
+            "http.response.status_code": 405,
         }
         expected_requests_count_attributes = {
-            "http.method": "NONSTANDARD",
-            "http.host": "localhost",
-            "http.scheme": "http",
-            "http.flavor": "1.1",
-            "http.server_name": "localhost",
-            "net.host.name": "localhost",
-            "net.host.port": 80,
+            "http.request.method": "NONSTANDARD",
+            "url.scheme": "http",
         }
         self._assert_basic_metric(
             expected_duration_attributes,
