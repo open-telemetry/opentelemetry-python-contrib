@@ -111,4 +111,4 @@ class TestSQLite3(TestBase):
         with self._tracer.start_as_current_span("rootSpan"):
             self._cursor.executemany(stmt, data)
         spans = self.memory_exporter.get_finished_spans()
-        self.assertEqual(len(spans), 0)
+        self.assertEqual(len(spans), 2)
