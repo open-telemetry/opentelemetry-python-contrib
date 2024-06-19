@@ -20,7 +20,6 @@ from flask import Flask, request
 
 from opentelemetry import trace
 from opentelemetry.instrumentation._semconv import (
-    _SPAN_ATTRIBUTES_ERROR_TYPE,
     OTEL_SEMCONV_STABILITY_OPT_IN,
     _OpenTelemetrySemanticConventionStability,
     _server_active_requests_count_attrs_new,
@@ -40,6 +39,7 @@ from opentelemetry.sdk.metrics.export import (
     NumberDataPoint,
 )
 from opentelemetry.sdk.resources import Resource
+from opentelemetry.semconv.attributes.error_attributes import ERROR_TYPE
 from opentelemetry.semconv.trace import SpanAttributes
 from opentelemetry.test.wsgitestutil import WsgiTestBase
 from opentelemetry.util.http import (
@@ -379,7 +379,7 @@ class TestProgrammatic(InstrumentationTest, WsgiTestBase):
                 SpanAttributes.URL_PATH: "/hello/500",
                 SpanAttributes.HTTP_ROUTE: "/hello/<int:helloid>",
                 SpanAttributes.HTTP_RESPONSE_STATUS_CODE: 500,
-                _SPAN_ATTRIBUTES_ERROR_TYPE: "500",
+                ERROR_TYPE: "500",
                 SpanAttributes.URL_SCHEME: "http",
             }
         )
@@ -405,7 +405,7 @@ class TestProgrammatic(InstrumentationTest, WsgiTestBase):
                 {
                     SpanAttributes.URL_PATH: "/hello/500",
                     SpanAttributes.HTTP_RESPONSE_STATUS_CODE: 500,
-                    _SPAN_ATTRIBUTES_ERROR_TYPE: "500",
+                    ERROR_TYPE: "500",
                     SpanAttributes.URL_SCHEME: "http",
                 }
             )
@@ -459,6 +459,7 @@ class TestProgrammatic(InstrumentationTest, WsgiTestBase):
         self.assertEqual(len(span_list), 1)
 
     def test_flask_metrics(self):
+        _server_duration_attrs_old.append("http.route")
         start = default_timer()
         self.client.get("/hello/123")
         self.client.get("/hello/321")
@@ -570,6 +571,7 @@ class TestProgrammatic(InstrumentationTest, WsgiTestBase):
         self.client.get("/hello/756")
         expected_duration_attributes = {
             "http.method": "GET",
+            "http.route": "/hello/<int:helloid>",
             "http.host": "localhost",
             "http.scheme": "http",
             "http.flavor": "1.1",
@@ -597,6 +599,7 @@ class TestProgrammatic(InstrumentationTest, WsgiTestBase):
         expected_duration_attributes = {
             "http.request.method": "GET",
             "url.scheme": "http",
+            "http.route": "/hello/<int:helloid>",
             "network.protocol.version": "1.1",
             "http.response.status_code": 200,
         }

@@ -22,6 +22,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- `opentelemetry-instrumentation-flask` Add http route to metric attributes
+  ([#2506](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/2506))
 - `opentelemetry-sdk-extension-aws` Register AWS resource detectors under the
   `opentelemetry_resource_detector` entry point
   ([#2382](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/2382))
