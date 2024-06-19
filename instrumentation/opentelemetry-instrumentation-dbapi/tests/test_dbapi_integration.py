@@ -275,6 +275,32 @@ class TestDBApiIntegration(TestBase):
             r"Select 1 /\*dbapi_threadsafety=123,driver_paramstyle='test',libpq_version=123,traceparent='\d{1,2}-[a-zA-Z0-9_]{32}-[a-zA-Z0-9_]{16}-\d{1,2}'\*/;",
         )
 
+    def test_compatible_build_version_psycopg_psycopg2_libpq(self):
+        connect_module = mock.MagicMock()
+        connect_module.__version__ = mock.MagicMock()
+        connect_module.pq = mock.MagicMock()
+        connect_module.pq.__build_version__ = 123
+        connect_module.apilevel = 123
+        connect_module.threadsafety = 123
+        connect_module.paramstyle = "test"
+
+        db_integration = dbapi.DatabaseApiIntegration(
+            "testname",
+            "testcomponent",
+            enable_commenter=True,
+            commenter_options={"db_driver": False, "dbapi_level": False},
+            connect_module=connect_module,
+        )
+        mock_connection = db_integration.wrapped_connection(
+            mock_connect, {}, {}
+        )
+        cursor = mock_connection.cursor()
+        cursor.executemany("Select 1;")
+        self.assertRegex(
+            cursor.query,
+            r"Select 1 /\*dbapi_threadsafety=123,driver_paramstyle='test',libpq_version=123,traceparent='\d{1,2}-[a-zA-Z0-9_]{32}-[a-zA-Z0-9_]{16}-\d{1,2}'\*/;",
+        )
+
     def test_executemany_flask_integration_comment(self):
         connect_module = mock.MagicMock()
         connect_module.__version__ = mock.MagicMock()
@@ -393,11 +419,13 @@ class MockCursor:
     # pylint: disable=unused-argument, no-self-use
     def execute(self, query, params=None, throw_exception=False):
         if throw_exception:
+            # pylint: disable=broad-exception-raised
             raise Exception("Test Exception")
 
     # pylint: disable=unused-argument, no-self-use
     def executemany(self, query, params=None, throw_exception=False):
         if throw_exception:
+            # pylint: disable=broad-exception-raised
             raise Exception("Test Exception")
         self.query = query
         self.params = params
@@ -405,4 +433,5 @@ class MockCursor:
     # pylint: disable=unused-argument, no-self-use
     def callproc(self, query, params=None, throw_exception=False):
         if throw_exception:
+            # pylint: disable=broad-exception-raised
             raise Exception("Test Exception")
