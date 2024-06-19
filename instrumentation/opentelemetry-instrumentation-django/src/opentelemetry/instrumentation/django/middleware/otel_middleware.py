@@ -168,23 +168,23 @@ class _DjangoMiddleware(MiddlewareMixin):
     )
 
     @staticmethod
-    def _get_span_name(request):
+    def _get_span_name_and_route(request):
+        span_name = request.method
+        route = None
         try:
             if getattr(request, "resolver_match"):
                 match = request.resolver_match
             else:
                 match = resolve(request.path)
 
-            if hasattr(match, "route") and match.route:
-                return f"{request.method} {match.route}"
-
-            if hasattr(match, "url_name") and match.url_name:
-                return f"{request.method} {match.url_name}"
-
-            return request.method
-
+            if route := getattr(match, "route", None):
+                span_name += f" {route}"
+            elif url_name := getattr(match, "url_name", None):
+                span_name += f" {url_name}"
         except Resolver404:
-            return request.method
+            pass
+
+        return span_name, route
 
     # pylint: disable=too-many-locals
     def process_request(self, request):
@@ -213,9 +213,12 @@ class _DjangoMiddleware(MiddlewareMixin):
             collect_request_attributes = wsgi_collect_request_attributes
 
         attributes = collect_request_attributes(carrier)
+        span_name, route = self._get_span_name_and_route(request)
+        if route:
+            attributes[SpanAttributes.HTTP_ROUTE] = route
         span, token = _start_internal_or_server_span(
             tracer=self._tracer,
-            span_name=self._get_span_name(request),
+            span_name=span_name,
             start_time=request_meta.get(
                 "opentelemetry-instrumentor-django.starttime_key"
             ),
@@ -289,26 +292,6 @@ class _DjangoMiddleware(MiddlewareMixin):
             _DjangoMiddleware._otel_request_hook(  # pylint: disable=not-callable
                 span, request
             )
-
-    # pylint: disable=unused-argument
-    def process_view(self, request, view_func, *args, **kwargs):
-        # Process view is executed before the view function, here we get the
-        # route template from request.resolver_match.  It is not set yet in process_request
-        if self._excluded_urls.url_disabled(request.build_absolute_uri("?")):
-            return
-
-        if (
-            self._environ_activation_key in request.META.keys()
-            and self._environ_span_key in request.META.keys()
-        ):
-            span = request.META[self._environ_span_key]
-
-            if span.is_recording():
-                match = getattr(request, "resolver_match", None)
-                if match:
-                    route = getattr(match, "route", None)
-                    if route:
-                        span.set_attribute(SpanAttributes.HTTP_ROUTE, route)
 
     def process_exception(self, request, exception):
         if self._excluded_urls.url_disabled(request.build_absolute_uri("?")):

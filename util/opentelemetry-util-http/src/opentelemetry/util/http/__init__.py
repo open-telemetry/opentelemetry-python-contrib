@@ -45,6 +45,7 @@ _duration_attrs = {
     SpanAttributes.HTTP_STATUS_CODE,
     SpanAttributes.HTTP_FLAVOR,
     SpanAttributes.HTTP_SERVER_NAME,
+    SpanAttributes.HTTP_ROUTE,
     SpanAttributes.NET_HOST_NAME,
     SpanAttributes.NET_HOST_PORT,
 }
