@@ -346,7 +346,9 @@ def _rewrapped_app(
                 or not excluded_urls.url_disabled(flask.request.url)
             ):
                 if flask.request.url_rule:
-                    wrapped_app_environ[_ENVIRON_REQUEST_ROUTE_KEY] = str(flask.request.url_rule)
+                    wrapped_app_environ[_ENVIRON_REQUEST_ROUTE_KEY] = str(
+                        flask.request.url_rule
+                    )
 
                 span = flask.request.environ.get(_ENVIRON_SPAN_KEY)
 
@@ -392,7 +394,9 @@ def _rewrapped_app(
             )
 
             if wrapped_app_environ.get(_ENVIRON_REQUEST_ROUTE_KEY, None):
-                duration_attrs_old[SpanAttributes.HTTP_ROUTE] = wrapped_app_environ.get(_ENVIRON_REQUEST_ROUTE_KEY)
+                duration_attrs_old[SpanAttributes.HTTP_ROUTE] = (
+                    wrapped_app_environ.get(_ENVIRON_REQUEST_ROUTE_KEY)
+                )
 
             duration_histogram_old.record(
                 max(round(duration_s * 1000), 0), duration_attrs_old
@@ -403,7 +407,9 @@ def _rewrapped_app(
             )
 
             if wrapped_app_environ.get(_ENVIRON_REQUEST_ROUTE_KEY, None):
-                duration_attrs_new[SpanAttributes.HTTP_ROUTE] = wrapped_app_environ.get(_ENVIRON_REQUEST_ROUTE_KEY)
+                duration_attrs_new[SpanAttributes.HTTP_ROUTE] = (
+                    wrapped_app_environ.get(_ENVIRON_REQUEST_ROUTE_KEY)
+                )
 
             duration_histogram_new.record(
                 max(duration_s, 0), duration_attrs_new
