@@ -208,6 +208,7 @@ class TestProgrammatic(InstrumentationTest, WsgiTestBase):
             exception_attributes.EXCEPTION_MESSAGE: "error message",
         }
         self.assertEqual(span_list[0].events[0].name, "exception")
+        # Ensure exception event has specific attributes, but allow additional ones
         self.assertLess(
             expected_error_event_attrs.items(),
             dict(span_list[0].events[0].attributes).items(),
