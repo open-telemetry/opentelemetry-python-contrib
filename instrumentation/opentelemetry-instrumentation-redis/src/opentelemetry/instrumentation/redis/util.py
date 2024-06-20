@@ -29,7 +29,12 @@ def _extract_conn_attributes(conn_kwargs):
     }
     db = conn_kwargs.get("db", 0)
     attributes[SpanAttributes.DB_REDIS_DATABASE_INDEX] = db
-    try:
+    if "path" in conn_kwargs:
+        attributes[SpanAttributes.NET_PEER_NAME] = conn_kwargs.get("path", "")
+        attributes[SpanAttributes.NET_TRANSPORT] = (
+            NetTransportValues.OTHER.value
+        )
+    else:
         attributes[SpanAttributes.NET_PEER_NAME] = conn_kwargs.get(
             "host", "localhost"
         )
@@ -38,11 +43,6 @@ def _extract_conn_attributes(conn_kwargs):
         )
         attributes[SpanAttributes.NET_TRANSPORT] = (
             NetTransportValues.IP_TCP.value
-        )
-    except KeyError:
-        attributes[SpanAttributes.NET_PEER_NAME] = conn_kwargs.get("path", "")
-        attributes[SpanAttributes.NET_TRANSPORT] = (
-            NetTransportValues.OTHER.value
         )
 
     return attributes
