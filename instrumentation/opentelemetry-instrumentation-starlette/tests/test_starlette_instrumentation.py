@@ -434,6 +434,7 @@ class TestBaseWithCustomHeaders(TestBase):
 
         @app.route("/foobar")
         def _(request):
+            print(request.headers)
             return PlainTextResponse(
                 content="hi",
                 headers={
@@ -489,17 +490,17 @@ class TestHTTPAppWithCustomHeaders(TestBaseWithCustomHeaders):
 
     def test_custom_request_headers_in_span_attributes(self):
         expected = {
-            "http.request.header.custom_test_header_1": (
+            "http.request.header.custom-test-header-1": (
                 "test-header-value-1",
             ),
-            "http.request.header.custom_test_header_2": (
+            "http.request.header.custom-test-header-2": (
                 "test-header-value-2",
             ),
-            "http.request.header.regex_test_header_1": ("Regex Test Value 1",),
-            "http.request.header.regex_test_header_2": (
+            "http.request.header.regex-test-header-1": ("Regex Test Value 1",),
+            "http.request.header.regex-test-header-2": (
                 "RegexTestValue2,RegexTestValue3",
             ),
-            "http.request.header.my_secret_header": ("[REDACTED]",),
+            "http.request.header.my-secret-header": ("[REDACTED]",),
         }
         resp = self._client.get(
             "/foobar",
@@ -530,7 +531,7 @@ class TestHTTPAppWithCustomHeaders(TestBaseWithCustomHeaders):
     )
     def test_custom_request_headers_not_in_span_attributes(self):
         not_expected = {
-            "http.request.header.custom_test_header_3": (
+            "http.request.header.custom-test-header-3": (
                 "test-header-value-3",
             ),
         }
@@ -557,19 +558,19 @@ class TestHTTPAppWithCustomHeaders(TestBaseWithCustomHeaders):
 
     def test_custom_response_headers_in_span_attributes(self):
         expected = {
-            "http.response.header.custom_test_header_1": (
+            "http.response.header.custom-test-header-1": (
                 "test-header-value-1",
             ),
-            "http.response.header.custom_test_header_2": (
+            "http.response.header.custom-test-header-2": (
                 "test-header-value-2",
             ),
-            "http.response.header.my_custom_regex_header_1": (
+            "http.response.header.my-custom-regex-header-1": (
                 "my-custom-regex-value-1,my-custom-regex-value-2",
             ),
-            "http.response.header.my_custom_regex_header_2": (
+            "http.response.header.my-custom-regex-header-2": (
                 "my-custom-regex-value-3,my-custom-regex-value-4",
             ),
-            "http.response.header.my_secret_header": ("[REDACTED]",),
+            "http.response.header.my-secret-header": ("[REDACTED]",),
         }
         resp = self._client.get("/foobar")
         self.assertEqual(200, resp.status_code)
@@ -584,7 +585,7 @@ class TestHTTPAppWithCustomHeaders(TestBaseWithCustomHeaders):
 
     def test_custom_response_headers_not_in_span_attributes(self):
         not_expected = {
-            "http.response.header.custom_test_header_3": (
+            "http.response.header.custom-test-header-3": (
                 "test-header-value-3",
             ),
         }
@@ -615,17 +616,17 @@ class TestWebSocketAppWithCustomHeaders(TestBaseWithCustomHeaders):
 
     def test_custom_request_headers_in_span_attributes(self):
         expected = {
-            "http.request.header.custom_test_header_1": (
+            "http.request.header.custom-test-header-1": (
                 "test-header-value-1",
             ),
-            "http.request.header.custom_test_header_2": (
+            "http.request.header.custom-test-header-2": (
                 "test-header-value-2",
             ),
-            "http.request.header.regex_test_header_1": ("Regex Test Value 1",),
-            "http.request.header.regex_test_header_2": (
+            "http.request.header.regex-test-header-1": ("Regex Test Value 1",),
+            "http.request.header.regex-test-header-2": (
                 "RegexTestValue2,RegexTestValue3",
             ),
-            "http.request.header.my_secret_header": ("[REDACTED]",),
+            "http.request.header.my-secret-header": ("[REDACTED]",),
         }
         with self._client.websocket_connect(
             "/foobar_web",
@@ -650,7 +651,7 @@ class TestWebSocketAppWithCustomHeaders(TestBaseWithCustomHeaders):
 
     def test_custom_request_headers_not_in_span_attributes(self):
         not_expected = {
-            "http.request.header.custom_test_header_3": (
+            "http.request.header.custom-test-header-3": (
                 "test-header-value-3",
             ),
         }
@@ -679,19 +680,19 @@ class TestWebSocketAppWithCustomHeaders(TestBaseWithCustomHeaders):
 
     def test_custom_response_headers_in_span_attributes(self):
         expected = {
-            "http.response.header.custom_test_header_1": (
+            "http.response.header.custom-test-header-1": (
                 "test-header-value-1",
             ),
-            "http.response.header.custom_test_header_2": (
+            "http.response.header.custom-test-header-2": (
                 "test-header-value-2",
             ),
-            "http.response.header.my_custom_regex_header_1": (
+            "http.response.header.my-custom-regex-header-1": (
                 "my-custom-regex-value-1,my-custom-regex-value-2",
             ),
-            "http.response.header.my_custom_regex_header_2": (
+            "http.response.header.my-custom-regex-header-2": (
                 "my-custom-regex-value-3,my-custom-regex-value-4",
             ),
-            "http.response.header.my_secret_header": ("[REDACTED]",),
+            "http.response.header.my-secret-header": ("[REDACTED]",),
         }
         with self._client.websocket_connect("/foobar_web") as websocket:
             data = websocket.receive_json()
@@ -708,7 +709,7 @@ class TestWebSocketAppWithCustomHeaders(TestBaseWithCustomHeaders):
 
     def test_custom_response_headers_not_in_span_attributes(self):
         not_expected = {
-            "http.response.header.custom_test_header_3": (
+            "http.response.header.custom-test-header-3": (
                 "test-header-value-3",
             ),
         }

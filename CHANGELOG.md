@@ -132,6 +132,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - `opentelemetry-resource-detector-azure` Suppress instrumentation for `urllib` call
   ([#2178](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/2178))
 - AwsLambdaInstrumentor handles and re-raises function exception ([#2245](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/2245))
+- Fix HTTP header normalization so underscores are no longer replaced with dashes ([#2260](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/2260))
 
 ### Added
 
