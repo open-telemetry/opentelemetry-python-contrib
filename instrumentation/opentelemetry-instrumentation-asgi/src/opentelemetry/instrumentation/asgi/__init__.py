@@ -207,6 +207,7 @@ from opentelemetry.instrumentation.asgi.types import (
 )
 from opentelemetry.instrumentation._semconv import (
     _get_schema_url,
+    _HTTPStabilityMode,
     _OpenTelemetrySemanticConventionStability,
     _OpenTelemetryStabilitySignalType,
     _report_new,
@@ -228,9 +229,18 @@ from opentelemetry.semconv._incubating.metrics.http_metrics import (
     create_http_server_response_body_size,
 )
 from opentelemetry.semconv.metrics import MetricInstruments
-from opentelemetry.semconv.attributes.client_attributes import CLIENT_PORT
 from opentelemetry.semconv.metrics.http_metrics import (
     HTTP_SERVER_REQUEST_DURATION,
+)
+from opentelemetry.semconv.attributes.client_attributes import (
+    CLIENT_ADDRESS,
+    CLIENT_PORT,
+)
+from opentelemetry.semconv.attributes.http_attributes import (
+    HTTP_REQUEST_METHOD,
+)
+from opentelemetry.semconv.attributes.network_attributes import (
+    NETWORK_PROTOCOL_VERSION
 )
 from opentelemetry.semconv.attributes.server_attributes import (
     SERVER_ADDRESS,
@@ -239,6 +249,9 @@ from opentelemetry.semconv.attributes.server_attributes import (
 from opentelemetry.semconv.attributes.url_attributes import (
     URL_FULL,
     URL_SCHEME,
+)
+from opentelemetry.semconv.attributes.user_agent_attributes import (
+    USER_AGENT_ORIGINAL,
 )
 from opentelemetry.semconv.trace import SpanAttributes
 from opentelemetry.trace import set_span_in_context
@@ -319,7 +332,7 @@ class ASGISetter(Setter[dict]):
 asgi_setter = ASGISetter()
 
 
-def collect_request_attributes(scope, sem_conv_opt_in_mode):
+def collect_request_attributes(scope, sem_conv_opt_in_mode=_HTTPStabilityMode.DEFAULT):
     """Collects HTTP request attributes from the ASGI scope and returns a
     dictionary to be used as span creation attributes."""
     server_host, port, http_url = get_host_port_url_tuple(scope)
@@ -371,7 +384,7 @@ def collect_request_attributes(scope, sem_conv_opt_in_mode):
             result[SpanAttributes.NET_PEER_IP] = scope.get("client")[0]
             result[SpanAttributes.NET_PEER_PORT] = scope.get("client")[1]
         if _report_new(sem_conv_opt_in_mode):
-            result[CLIENT_SOCKET_ADDRESS] = scope.get("client")[0]
+            result[CLIENT_ADDRESS] = scope.get("client")[0]
             result[CLIENT_PORT] = scope.get("client")[1]
 
     # remove None values
