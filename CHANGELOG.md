@@ -12,6 +12,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- `opentelemetry-instrumentation-pyramid` Record exceptions raised when serving a request
+  ([#2622](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/2622))
 - `opentelemetry-sdk-extension-aws` Add AwsXrayLambdaPropagator
   ([#2573](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/2573))
 

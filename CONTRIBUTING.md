@@ -55,7 +55,7 @@ some aspects of development, including testing against multiple Python versions.
 To install `tox`, run:
 
 ```sh
-pip install tox
+$ pip install tox
 ```
 
 You can run `tox` with the following arguments:
@@ -128,13 +128,14 @@ pull requests (PRs).
 To create a new PR, fork the project in GitHub and clone the upstream repo:
 
 ```sh
-git clone https://github.com/open-telemetry/opentelemetry-python-contrib.git
+$ git clone https://github.com/open-telemetry/opentelemetry-python-contrib.git
+$ cd opentelemetry-python-contrib
 ```
 
 Add your fork as an origin:
 
 ```sh
-git remote add fork https://github.com/YOUR_GITHUB_USERNAME/opentelemetry-python-contrib.git
+$ git remote add fork https://github.com/YOUR_GITHUB_USERNAME/opentelemetry-python-contrib.git
 ```
 
 Run tests:
@@ -148,10 +149,10 @@ $ tox  # execute in the root of the repository
 Check out a new branch, make modifications and push the branch to your fork:
 
 ```sh
-git checkout -b feature
+$ git checkout -b feature
 # edit files
-git commit
-git push fork feature
+$ git commit
+$ git push fork feature
 ```
 
 Open a pull request against the main `opentelemetry-python-contrib` repo.
