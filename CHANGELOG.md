@@ -9,6 +9,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - `opentelemetry-instrumentation-aws-lambda` Bugfix: AWS Lambda event source key incorrect for SNS in instrumentation library. 
   ([#2612](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/2612))
+- `opentelemetry-instrumentation-asgi` Bugfix: Middleware did not set status code attribute on duration metrics for non-recording spans. 
+  ([#2627](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/2627))
 
 ### Added
 
