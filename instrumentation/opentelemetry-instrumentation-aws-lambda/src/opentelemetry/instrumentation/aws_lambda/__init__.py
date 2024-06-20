@@ -283,7 +283,6 @@ def _instrument(
     meter_provider: MeterProvider = None,
 ):
 
-    set_trace()
 
     # pylint: disable=too-many-locals
     # pylint: disable=too-many-statements
