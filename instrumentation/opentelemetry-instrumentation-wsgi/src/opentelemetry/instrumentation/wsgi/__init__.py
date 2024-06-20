@@ -466,7 +466,7 @@ def _parse_duration_attrs(
         req_attrs,
         _server_duration_attrs_old,
         _server_duration_attrs_new_with_server_attributes
-        if os.environ.get("OTEL_ENABLE_SERVER_ATTRIBUTES_FOR_REQUEST_DURATION")
+        if os.environ.get("OTEL_PYTHON_ENABLE_SERVER_ATTRIBUTES_FOR_REQUEST_DURATION")
         else _server_duration_attrs_new,
         sem_conv_opt_in_mode,
     )

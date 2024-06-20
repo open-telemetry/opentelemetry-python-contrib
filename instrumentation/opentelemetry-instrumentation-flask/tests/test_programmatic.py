@@ -133,7 +133,7 @@ class TestProgrammatic(InstrumentationTest, WsgiTestBase):
             "os.environ",
             {
                 "OTEL_PYTHON_FLASK_EXCLUDED_URLS": "http://localhost/env_excluded_arg/123,env_excluded_noarg",
-                "OTEL_ENABLE_SERVER_ATTRIBUTES_FOR_REQUEST_DURATION": "true",
+                "OTEL_PYTHON_ENABLE_SERVER_ATTRIBUTES_FOR_REQUEST_DURATION": "true",
                 OTEL_SEMCONV_STABILITY_OPT_IN: sem_conv_mode,
             },
         )
