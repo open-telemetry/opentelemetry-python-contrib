@@ -16,6 +16,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   ([#2622](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/2622))
 - `opentelemetry-sdk-extension-aws` Add AwsXrayLambdaPropagator
   ([#2573](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/2573))
+- `opentelemetry-instrumentation-confluent-kafka` Add support for version 2.4.0 of confluent_kafka
+  ([#2616](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/2616))
 
 ### Breaking changes
 
