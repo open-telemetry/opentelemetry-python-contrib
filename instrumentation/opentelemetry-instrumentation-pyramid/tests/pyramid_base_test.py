@@ -30,7 +30,7 @@ class InstrumentationTest:
         if helloid == 204:
             raise exc.HTTPNoContent()
         if helloid == 900:
-            raise NotImplementedError()
+            raise NotImplementedError("error message")
         return Response("Hello: " + str(helloid))
 
     @staticmethod
