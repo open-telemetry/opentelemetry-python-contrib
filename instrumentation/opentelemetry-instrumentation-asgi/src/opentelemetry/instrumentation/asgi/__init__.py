@@ -349,6 +349,7 @@ def collect_request_attributes(scope, sem_conv_opt_in_mode=_HTTPStabilityMode.DE
         _set_http_flavor_version(result, flavor, sem_conv_opt_in_mode)
     path = scope.get("path")
     if path:
+        target = path
         if query_string:
             target = path + query_string
         _set_http_target(result, target, path, query_string, sem_conv_opt_in_mode)
