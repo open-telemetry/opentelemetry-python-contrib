@@ -206,12 +206,28 @@ from opentelemetry.instrumentation.asgi.types import (
     ServerRequestHook,
 )
 from opentelemetry.instrumentation._semconv import (
+    _filter_semconv_active_request_count_attr,
+    _filter_semconv_duration_attrs,
     _get_schema_url,
     _HTTPStabilityMode,
     _OpenTelemetrySemanticConventionStability,
     _OpenTelemetryStabilitySignalType,
     _report_new,
     _report_old,
+    _server_active_requests_count_attrs_new,
+    _server_active_requests_count_attrs_old,
+    _server_duration_attrs_new,
+    _server_duration_attrs_old,
+    _set_http_host,
+    _set_http_flavor_version,
+    _set_http_method,
+    _set_http_net_host_port,
+    _set_http_peer_ip,
+    _set_http_peer_port_server,
+    _set_http_scheme,
+    _set_http_target,
+    _set_http_url,
+    _set_http_user_agent,
 )
 from opentelemetry.instrumentation.asgi.version import __version__  # noqa
 from opentelemetry.instrumentation.propagators import (
@@ -232,37 +248,15 @@ from opentelemetry.semconv.metrics import MetricInstruments
 from opentelemetry.semconv.metrics.http_metrics import (
     HTTP_SERVER_REQUEST_DURATION,
 )
-from opentelemetry.semconv.attributes.client_attributes import (
-    CLIENT_ADDRESS,
-    CLIENT_PORT,
-)
-from opentelemetry.semconv.attributes.http_attributes import (
-    HTTP_REQUEST_METHOD,
-)
-from opentelemetry.semconv.attributes.network_attributes import (
-    NETWORK_PROTOCOL_VERSION
-)
-from opentelemetry.semconv.attributes.server_attributes import (
-    SERVER_ADDRESS,
-    SERVER_PORT,
-)
-from opentelemetry.semconv.attributes.url_attributes import (
-    URL_FULL,
-    URL_SCHEME,
-)
-from opentelemetry.semconv.attributes.user_agent_attributes import (
-    USER_AGENT_ORIGINAL,
-)
 from opentelemetry.semconv.trace import SpanAttributes
 from opentelemetry.trace import set_span_in_context
 from opentelemetry.trace.status import Status, StatusCode
 from opentelemetry.util.http import (
+    _parse_url_query,
     OTEL_INSTRUMENTATION_HTTP_CAPTURE_HEADERS_SANITIZE_FIELDS,
     OTEL_INSTRUMENTATION_HTTP_CAPTURE_HEADERS_SERVER_REQUEST,
     OTEL_INSTRUMENTATION_HTTP_CAPTURE_HEADERS_SERVER_RESPONSE,
     SanitizeValue,
-    _parse_active_request_count_attrs,
-    _parse_duration_attrs,
     get_custom_headers,
     normalise_request_header_name,
     normalise_response_header_name,
@@ -343,49 +337,41 @@ def collect_request_attributes(scope, sem_conv_opt_in_mode=_HTTPStabilityMode.DE
         http_url += "?" + urllib.parse.unquote(query_string)
     result = {}
 
-    if _report_old(sem_conv_opt_in_mode):
-        result[SpanAttributes.HTTP_SCHEME] = scope.get("scheme")
-        result[SpanAttributes.HTTP_HOST] = server_host
-        result[SpanAttributes.NET_HOST_PORT] = port
-        result[SpanAttributes.HTTP_FLAVOR] = scope.get("http_version")
-        result[SpanAttributes.HTTP_TARGET] = scope.get("path")
-        result[SpanAttributes.HTTP_URL] = remove_url_credentials(http_url)
-
-    if _report_new(sem_conv_opt_in_mode):
-        result[URL_SCHEME] = scope.get("scheme")
-        result[SERVER_ADDRESS] = server_host
-        result[SERVER_PORT] = port
-        result[NETWORK_PROTOCOL_VERSION] = scope.get("http_version")
-        result[URL_FULL] = scope.get("path")
+    scheme = scope.get("scheme")
+    if scheme:
+        _set_http_scheme(result, scheme, sem_conv_opt_in_mode)
+    if server_host:
+        _set_http_host(result, server_host, sem_conv_opt_in_mode)
+    if port:
+        _set_http_net_host_port(result, port, sem_conv_opt_in_mode)
+    flavor = scope.get("http_version")
+    if flavor:
+        _set_http_flavor_version(result, flavor, sem_conv_opt_in_mode)
+    path = scope.get("path")
+    if path:
+        if query_string:
+            target = path + query_string
+        _set_http_target(result, target, path, query_string, sem_conv_opt_in_mode)
+    if http_url:
+        _set_http_url(result, remove_url_credentials(http_url), sem_conv_opt_in_mode)
 
     http_method = scope.get("method")
     if http_method:
-        if _report_old(sem_conv_opt_in_mode):
-            result[SpanAttributes.HTTP_METHOD] = http_method
-        if _report_new(sem_conv_opt_in_mode):
-            result[HTTP_REQUEST_METHOD] = http_method
+        _set_http_method(result, http_method, sem_conv_opt_in_mode)
 
     http_host_value_list = asgi_getter.get(scope, "host")
     if http_host_value_list:
-        result[SpanAttributes.HTTP_SERVER_NAME] = ",".join(
-            http_host_value_list
-        )
+        if _report_old(sem_conv_opt_in_mode):
+            result[SpanAttributes.HTTP_SERVER_NAME] = ",".join(
+                http_host_value_list
+            )
     http_user_agent = asgi_getter.get(scope, "user-agent")
     if http_user_agent:
-        if _report_old(sem_conv_opt_in_mode):
-            result[SpanAttributes.HTTP_USER_AGENT] = http_user_agent[0]
-        if _report_new(sem_conv_opt_in_mode):
-            result[USER_AGENT_ORIGINAL] = http_user_agent[0]
+        _set_http_user_agent(result, http_user_agent[0], sem_conv_opt_in_mode)
 
     if "client" in scope and scope["client"] is not None:
-        result[SpanAttributes.NET_PEER_IP] = scope.get("client")[0]
-        result[SpanAttributes.NET_PEER_PORT] = scope.get("client")[1]
-        if _report_old(sem_conv_opt_in_mode):
-            result[SpanAttributes.NET_PEER_IP] = scope.get("client")[0]
-            result[SpanAttributes.NET_PEER_PORT] = scope.get("client")[1]
-        if _report_new(sem_conv_opt_in_mode):
-            result[CLIENT_ADDRESS] = scope.get("client")[0]
-            result[CLIENT_PORT] = scope.get("client")[1]
+        _set_http_peer_ip(result, scope.get("client")[0], sem_conv_opt_in_mode)
+        _set_http_peer_port_server(result, scope.get("client")[1], sem_conv_opt_in_mode)
 
     # remove None values
     result = {k: v for k, v in result.items() if v is not None}
@@ -568,9 +554,9 @@ class OpenTelemetryMiddleware:
             if meter is None
             else meter
         )
-        self.duration_histogram = None
+        self.duration_histogram_old = None
         if _report_old(sem_conv_opt_in_mode):
-            self.duration_histogram = self.meter.create_histogram(
+            self.duration_histogram_old = self.meter.create_histogram(
                 name=MetricInstruments.HTTP_SERVER_DURATION,
                 unit="ms",
                 description="Duration of HTTP server requests.",
@@ -678,7 +664,6 @@ class OpenTelemetryMiddleware:
         active_requests_count_attrs = _parse_active_request_count_attrs(
             attributes
         )
-        duration_attrs = _parse_duration_attrs(attributes)
 
         if scope["type"] == "http":
             self.active_requests_counter.add(1, active_requests_count_attrs)
@@ -714,7 +699,7 @@ class OpenTelemetryMiddleware:
                     span_name,
                     scope,
                     send,
-                    duration_attrs,
+                    attributes,
                 )
 
                 await self.app(scope, otel_receive, otel_send)
@@ -722,16 +707,28 @@ class OpenTelemetryMiddleware:
             if scope["type"] == "http":
                 target = _collect_target_attribute(scope)
                 if target:
-                    duration_attrs[SpanAttributes.HTTP_TARGET] = target
+                    path, query = _parse_url_query(target)
+                    _set_http_target(attributes, target, path, query, self._sem_conv_opt_in_mode)
                 duration = max(round((default_timer() - start) * 1000), 0)
-                self.duration_histogram.record(duration, duration_attrs)
+                duration_attrs_old = _parse_duration_attrs(attributes, _HTTPStabilityMode.DEFAULT)
+                duration_attrs_new = _parse_duration_attrs(attributes, _HTTPStabilityMode.HTTP)
+                if self.duration_histogram_old:
+                    self.duration_histogram_old.record(duration, duration_attrs_old)
+                if self.duration_histogram_new:
+                    self.duration_histogram_new.record(duration, duration_attrs_new)
                 self.active_requests_counter.add(
                     -1, active_requests_count_attrs
                 )
                 if self.content_length_header:
-                    self.server_response_size_histogram.record(
-                        self.content_length_header, duration_attrs
-                    )
+                    if self.server_response_size_histogram:
+                        self.server_response_size_histogram.record(
+                            self.content_length_header, duration_attrs_old
+                        )
+                    if self.server_response_body_size_histogram:
+                        self.server_response_body_size_histogram.record(
+                            self.content_length_header, duration_attrs_new
+                        )
+
                 request_size = asgi_getter.get(scope, "content-length")
                 if request_size:
                     try:
@@ -739,9 +736,14 @@ class OpenTelemetryMiddleware:
                     except ValueError:
                         pass
                     else:
-                        self.server_request_size_histogram.record(
-                            request_size_amount, duration_attrs
-                        )
+                        if self.server_request_size_histogram:
+                            self.server_request_size_histogram.record(
+                                request_size_amount, duration_attrs_old
+                            )
+                        if self.server_request_body_size_histogram:
+                            self.server_request_size_histogram.record(
+                                request_size_amount, duration_attrs_new
+                            )
             if token:
                 context.detach(token)
             if span.is_recording():
@@ -769,7 +771,7 @@ class OpenTelemetryMiddleware:
         return otel_receive
 
     def _get_otel_send(
-        self, server_span, server_span_name, scope, send, duration_attrs
+        self, server_span, server_span_name, scope, send, duration_attrs,
     ):
         expecting_trailers = False
 
@@ -787,9 +789,11 @@ class OpenTelemetryMiddleware:
                         duration_attrs[SpanAttributes.HTTP_STATUS_CODE] = (
                             status_code
                         )
+                        duration_attrs[SpanAttributes.HTTP_RESPONSE_STATUS_CODE] = (
+                            status_code
+                        )
                         set_status_code(server_span, status_code)
                         set_status_code(send_span, status_code)
-
                         expecting_trailers = message.get("trailers", False)
                     elif message["type"] == "websocket.send":
                         set_status_code(server_span, 200)
@@ -846,3 +850,25 @@ class OpenTelemetryMiddleware:
                 server_span.end()
 
         return otel_send
+
+
+def _parse_duration_attrs(
+    req_attrs, sem_conv_opt_in_mode=_HTTPStabilityMode.DEFAULT
+):
+    return _filter_semconv_duration_attrs(
+        req_attrs,
+        _server_duration_attrs_old,
+        _server_duration_attrs_new,
+        sem_conv_opt_in_mode,
+    )
+
+
+def _parse_active_request_count_attrs(
+    req_attrs, sem_conv_opt_in_mode=_HTTPStabilityMode.DEFAULT
+):
+    return _filter_semconv_active_request_count_attr(
+        req_attrs,
+        _server_active_requests_count_attrs_old,
+        _server_active_requests_count_attrs_new,
+        sem_conv_opt_in_mode,
+    )

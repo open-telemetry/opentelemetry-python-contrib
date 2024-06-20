@@ -73,6 +73,7 @@ _server_duration_attrs_old = [
     SpanAttributes.HTTP_HOST,
     SpanAttributes.HTTP_SCHEME,
     SpanAttributes.HTTP_STATUS_CODE,
+    SpanAttributes.HTTP_TARGET,
     SpanAttributes.HTTP_FLAVOR,
     SpanAttributes.HTTP_SERVER_NAME,
     SpanAttributes.NET_HOST_NAME,
@@ -85,6 +86,8 @@ _server_duration_attrs_new = [
     HTTP_RESPONSE_STATUS_CODE,
     HTTP_ROUTE,
     NETWORK_PROTOCOL_VERSION,
+    URL_PATH,
+    URL_QUERY,
     URL_SCHEME,
 ]
 
