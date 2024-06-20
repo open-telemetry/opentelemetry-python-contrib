@@ -700,19 +700,21 @@ class OpenTelemetryMiddleware:
             ) as send_span:
                 if callable(self.client_response_hook):
                     self.client_response_hook(send_span, scope, message)
+
+                status_code = None
+                if message["type"] == "http.response.start":
+                    status_code = message["status"]
+                elif message["type"] == "websocket.send":
+                    status_code = 200
+                if status_code:
+                    duration_attrs[SpanAttributes.HTTP_STATUS_CODE] = status_code
+
                 if send_span.is_recording():
                     if message["type"] == "http.response.start":
-                        status_code = message["status"]
-                        duration_attrs[SpanAttributes.HTTP_STATUS_CODE] = (
-                            status_code
-                        )
+                        expecting_trailers = message.get("trailers", False)
+                    if status_code:
                         set_status_code(server_span, status_code)
                         set_status_code(send_span, status_code)
-
-                        expecting_trailers = message.get("trailers", False)
-                    elif message["type"] == "websocket.send":
-                        set_status_code(server_span, 200)
-                        set_status_code(send_span, 200)
                     send_span.set_attribute("asgi.event.type", message["type"])
                     if (
                         server_span.is_recording()
