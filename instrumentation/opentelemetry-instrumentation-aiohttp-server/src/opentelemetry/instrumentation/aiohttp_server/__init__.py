@@ -213,7 +213,7 @@ async def middleware(request, handler):
     active_requests_counter = meter.create_up_down_counter(
         name=MetricInstruments.HTTP_SERVER_ACTIVE_REQUESTS,
         unit="requests",
-        description="measures the number of concurrent HTTP requests those are currently in flight",
+        description="measures the number of concurrent HTTP requests that are currently in-flight",
     )
 
     with tracer.start_as_current_span(
