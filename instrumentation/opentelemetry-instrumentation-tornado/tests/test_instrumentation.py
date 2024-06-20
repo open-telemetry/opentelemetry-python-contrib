@@ -13,9 +13,12 @@
 # limitations under the License.
 
 
+import logging
 from unittest.mock import Mock, patch
 
 from http_server_mock import HttpServerMock
+import tornado.web
+from tornado.log import app_log
 from tornado.testing import AsyncHTTPTestCase
 
 from opentelemetry import trace
@@ -771,3 +774,52 @@ class TestTornadoCustomRequestResponseHeadersNotAddedWithInternalSpan(
         self.assertEqual(tornado_span.kind, trace.SpanKind.INTERNAL)
         for key, _ in not_expected.items():
             self.assertNotIn(key, tornado_span.attributes)
+
+
+class ExpectNoLog(logging.Filter):
+    """
+    Constructs an ExpectLog context manager to assert that no logs have been
+    made.
+
+    The reverse of https://github.com/tornadoweb/tornado/blob/master/tornado/testing.py#L658
+    """
+    def __init__(self, logger):
+        self.logger = logger
+        self.has_logs = False
+
+    def filter(self, record):
+        self.has_logs = True
+        return True
+
+    def __enter__(self):
+        self.logger.addFilter(self)
+        return self
+
+    def __exit__(
+        self,
+        typ,
+        _,
+        __,
+    ):
+        self.logger.removeFilter(self)
+        if not typ and self.has_logs:
+            raise Exception("received log messages")
+
+
+class TestTornadoXSRFHandler(TornadoTest):
+    def get_app(self):
+        tracer = trace.get_tracer(__name__)
+        app = tornado.web.Application(
+            [
+                (r"/", MainHandler),
+            ],
+            xsrf_cookies=True,
+        )
+        app.tracer = tracer
+        return app
+
+    def test_post_missing_xsrf_cookie(self):
+        with ExpectNoLog(app_log):
+            response = self.fetch("/", method="POST", body="")
+
+        self.assertEqual(response.code, 403)
