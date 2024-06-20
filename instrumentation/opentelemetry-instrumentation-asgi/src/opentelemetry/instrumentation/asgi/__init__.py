@@ -129,10 +129,10 @@ To capture all request headers, set ``OTEL_INSTRUMENTATION_HTTP_CAPTURE_HEADERS_
 
 The name of the added span attribute will follow the format ``http.request.header.<header_name>`` where ``<header_name>``
 is the normalized HTTP header name (lowercase, with ``-`` replaced by ``_``). The value of the attribute will be a
-single item list containing all the header values.
+list containing the header values.
 
 For example:
-``http.request.header.custom_request_header = ["<value1>,<value2>"]``
+``http.request.header.custom_request_header = ["<value1>", "<value2>"]``
 
 Response headers
 ****************
@@ -163,10 +163,10 @@ To capture all response headers, set ``OTEL_INSTRUMENTATION_HTTP_CAPTURE_HEADERS
 
 The name of the added span attribute will follow the format ``http.response.header.<header_name>`` where ``<header_name>``
 is the normalized HTTP header name (lowercase, with ``-`` replaced by ``_``). The value of the attribute will be a
-single item list containing all the header values.
+list containing the header values.
 
 For example:
-``http.response.header.custom_response_header = ["<value1>,<value2>"]``
+``http.response.header.custom_response_header = ["<value1>", "<value2>"]``
 
 Sanitizing headers
 ******************
@@ -193,9 +193,10 @@ from __future__ import annotations
 
 import typing
 import urllib
+from collections import defaultdict
 from functools import wraps
 from timeit import default_timer
-from typing import Any, Awaitable, Callable, Tuple
+from typing import Any, Awaitable, Callable, DefaultDict, Tuple
 
 from asgiref.compatibility import guarantee_single_callable
 
@@ -340,24 +341,19 @@ def collect_custom_headers_attributes(
     sanitize: SanitizeValue,
     header_regexes: list[str],
     normalize_names: Callable[[str], str],
-) -> dict[str, str]:
+) -> dict[str, list[str]]:
     """
     Returns custom HTTP request or response headers to be added into SERVER span as span attributes.
 
     Refer specifications:
      - https://github.com/open-telemetry/opentelemetry-specification/blob/main/specification/trace/semantic_conventions/http.md#http-request-and-response-headers
     """
-    # Decode headers before processing.
-    headers: dict[str, str] = {}
+    headers: DefaultDict[str, list[str]] = defaultdict(list)
     raw_headers = scope_or_response_message.get("headers")
     if raw_headers:
-        for _key, _value in raw_headers:
-            key = _key.decode().lower()
-            value = _value.decode()
-            if key in headers:
-                headers[key] += f",{value}"
-            else:
-                headers[key] = value
+        for key, value in raw_headers:
+            # Decode headers before processing.
+            headers[key.decode()].append(value.decode())
 
     return sanitize.sanitize_header_values(
         headers,
