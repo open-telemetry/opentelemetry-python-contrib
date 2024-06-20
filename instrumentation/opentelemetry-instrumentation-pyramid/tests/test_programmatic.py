@@ -171,7 +171,7 @@ class TestProgrammatic(InstrumentationTest, WsgiTestBase):
         self.assertEqual(
             span_list[0].status.status_code, trace.StatusCode.ERROR
         )
-        self.assertLess(
+        self.assertIn(
             "HTTPInternalServerError", span_list[0].status.description
         )
         self.assertEqual(
