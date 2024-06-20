@@ -225,10 +225,21 @@ from opentelemetry.propagators.textmap import Getter, Setter
 from opentelemetry.semconv._incubating.metrics.http_metrics import (
     create_http_server_active_requests,
     create_http_server_request_body_size,
-    create_http_server_request_duration,
     create_http_server_response_body_size,
 )
 from opentelemetry.semconv.metrics import MetricInstruments
+from opentelemetry.semconv.attributes.client_attributes import CLIENT_PORT
+from opentelemetry.semconv.metrics.http_metrics import (
+    HTTP_SERVER_REQUEST_DURATION,
+)
+from opentelemetry.semconv.attributes.server_attributes import (
+    SERVER_ADDRESS,
+    SERVER_PORT,
+)
+from opentelemetry.semconv.attributes.url_attributes import (
+    URL_FULL,
+    URL_SCHEME,
+)
 from opentelemetry.semconv.trace import SpanAttributes
 from opentelemetry.trace import set_span_in_context
 from opentelemetry.trace.status import Status, StatusCode
@@ -308,7 +319,7 @@ class ASGISetter(Setter[dict]):
 asgi_setter = ASGISetter()
 
 
-def collect_request_attributes(scope):
+def collect_request_attributes(scope, sem_conv_opt_in_mode):
     """Collects HTTP request attributes from the ASGI scope and returns a
     dictionary to be used as span creation attributes."""
     server_host, port, http_url = get_host_port_url_tuple(scope)
@@ -317,18 +328,29 @@ def collect_request_attributes(scope):
         if isinstance(query_string, bytes):
             query_string = query_string.decode("utf8")
         http_url += "?" + urllib.parse.unquote(query_string)
+    result = {}
 
-    result = {
-        SpanAttributes.HTTP_SCHEME: scope.get("scheme"),
-        SpanAttributes.HTTP_HOST: server_host,
-        SpanAttributes.NET_HOST_PORT: port,
-        SpanAttributes.HTTP_FLAVOR: scope.get("http_version"),
-        SpanAttributes.HTTP_TARGET: scope.get("path"),
-        SpanAttributes.HTTP_URL: remove_url_credentials(http_url),
-    }
+    if _report_old(sem_conv_opt_in_mode):
+        result[SpanAttributes.HTTP_SCHEME] = scope.get("scheme")
+        result[SpanAttributes.HTTP_HOST] = server_host
+        result[SpanAttributes.NET_HOST_PORT] = port
+        result[SpanAttributes.HTTP_FLAVOR] = scope.get("http_version")
+        result[SpanAttributes.HTTP_TARGET] = scope.get("path")
+        result[SpanAttributes.HTTP_URL] = remove_url_credentials(http_url)
+
+    if _report_new(sem_conv_opt_in_mode):
+        result[URL_SCHEME] = scope.get("scheme")
+        result[SERVER_ADDRESS] = server_host
+        result[SERVER_PORT] = port
+        result[NETWORK_PROTOCOL_VERSION] = scope.get("http_version")
+        result[URL_FULL] = scope.get("path")
+
     http_method = scope.get("method")
     if http_method:
-        result[SpanAttributes.HTTP_METHOD] = http_method
+        if _report_old(sem_conv_opt_in_mode):
+            result[SpanAttributes.HTTP_METHOD] = http_method
+        if _report_new(sem_conv_opt_in_mode):
+            result[HTTP_REQUEST_METHOD] = http_method
 
     http_host_value_list = asgi_getter.get(scope, "host")
     if http_host_value_list:
@@ -337,11 +359,20 @@ def collect_request_attributes(scope):
         )
     http_user_agent = asgi_getter.get(scope, "user-agent")
     if http_user_agent:
-        result[SpanAttributes.HTTP_USER_AGENT] = http_user_agent[0]
+        if _report_old(sem_conv_opt_in_mode):
+            result[SpanAttributes.HTTP_USER_AGENT] = http_user_agent[0]
+        if _report_new(sem_conv_opt_in_mode):
+            result[USER_AGENT_ORIGINAL] = http_user_agent[0]
 
     if "client" in scope and scope["client"] is not None:
         result[SpanAttributes.NET_PEER_IP] = scope.get("client")[0]
         result[SpanAttributes.NET_PEER_PORT] = scope.get("client")[1]
+        if _report_old(sem_conv_opt_in_mode):
+            result[SpanAttributes.NET_PEER_IP] = scope.get("client")[0]
+            result[SpanAttributes.NET_PEER_PORT] = scope.get("client")[1]
+        if _report_new(sem_conv_opt_in_mode):
+            result[CLIENT_SOCKET_ADDRESS] = scope.get("client")[0]
+            result[CLIENT_PORT] = scope.get("client")[1]
 
     # remove None values
     result = {k: v for k, v in result.items() if v is not None}
@@ -533,7 +564,11 @@ class OpenTelemetryMiddleware:
             )
         self.duration_histogram_new = None
         if _report_new(sem_conv_opt_in_mode):
-            self.duration_histogram_new = create_http_server_request_duration(self.meter)
+            self.duration_histogram_new = self.meter.create_histogram(
+                name=HTTP_SERVER_REQUEST_DURATION,
+                description="Duration of HTTP server requests.",
+                unit="s",
+            )
         self.server_response_size_histogram = None
         if _report_old(sem_conv_opt_in_mode):
             self.server_response_size_histogram = self.meter.create_histogram(
@@ -563,6 +598,7 @@ class OpenTelemetryMiddleware:
         self.client_request_hook = client_request_hook
         self.client_response_hook = client_response_hook
         self.content_length_header = None
+        self._sem_conv_opt_in_mode = sem_conv_opt_in_mode
 
         # Environment variables as constructor parameters
         self.http_capture_headers_server_request = (
@@ -616,7 +652,7 @@ class OpenTelemetryMiddleware:
 
         span_name, additional_attributes = self.default_span_details(scope)
 
-        attributes = collect_request_attributes(scope)
+        attributes = collect_request_attributes(scope, self._sem_conv_opt_in_mode)
         attributes.update(additional_attributes)
         span, token = _start_internal_or_server_span(
             tracer=self.tracer,

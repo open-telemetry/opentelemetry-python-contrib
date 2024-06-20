@@ -17,6 +17,10 @@ import threading
 from enum import Enum
 
 from opentelemetry.instrumentation.utils import http_status_to_status_code
+from opentelemetry.semconv.attributes.client_attributes import (
+    CLIENT_ADDRESS,
+    CLIENT_PORT,
+)
 from opentelemetry.semconv.attributes.error_attributes import ERROR_TYPE
 from opentelemetry.semconv.attributes.http_attributes import (
     HTTP_REQUEST_METHOD,
@@ -33,7 +37,12 @@ from opentelemetry.semconv.attributes.server_attributes import (
 )
 from opentelemetry.semconv.attributes.url_attributes import (
     URL_FULL,
+    URL_PATH,
+    URL_QUERY,
     URL_SCHEME,
+)
+from opentelemetry.semconv.attributes.user_agent_attributes import (
+    USER_AGENT_ORIGINAL,
 )
 from opentelemetry.semconv.trace import SpanAttributes
 from opentelemetry.trace.status import Status, StatusCode
@@ -280,14 +289,14 @@ def _set_http_net_host(result, host, sem_conv_opt_in_mode):
     if _report_old(sem_conv_opt_in_mode):
         set_string_attribute(result, SpanAttributes.NET_HOST_NAME, host)
     if _report_new(sem_conv_opt_in_mode):
-        set_string_attribute(result, SpanAttributes.SERVER_ADDRESS, host)
+        set_string_attribute(result, SERVER_ADDRESS, host)
 
 
 def _set_http_net_host_port(result, port, sem_conv_opt_in_mode):
     if _report_old(sem_conv_opt_in_mode):
         set_int_attribute(result, SpanAttributes.NET_HOST_PORT, port)
     if _report_new(sem_conv_opt_in_mode):
-        set_int_attribute(result, SpanAttributes.SERVER_PORT, port)
+        set_int_attribute(result, SERVER_PORT, port)
 
 
 def _set_http_target(result, target, path, query, sem_conv_opt_in_mode):
@@ -295,23 +304,23 @@ def _set_http_target(result, target, path, query, sem_conv_opt_in_mode):
         set_string_attribute(result, SpanAttributes.HTTP_TARGET, target)
     if _report_new(sem_conv_opt_in_mode):
         if path:
-            set_string_attribute(result, SpanAttributes.URL_PATH, path)
+            set_string_attribute(result, URL_PATH, path)
         if query:
-            set_string_attribute(result, SpanAttributes.URL_QUERY, query)
+            set_string_attribute(result, URL_QUERY, query)
 
 
 def _set_http_peer_ip(result, ip, sem_conv_opt_in_mode):
     if _report_old(sem_conv_opt_in_mode):
         set_string_attribute(result, SpanAttributes.NET_PEER_IP, ip)
     if _report_new(sem_conv_opt_in_mode):
-        set_string_attribute(result, SpanAttributes.CLIENT_ADDRESS, ip)
+        set_string_attribute(result, CLIENT_ADDRESS, ip)
 
 
 def _set_http_peer_port_server(result, port, sem_conv_opt_in_mode):
     if _report_old(sem_conv_opt_in_mode):
         set_int_attribute(result, SpanAttributes.NET_PEER_PORT, port)
     if _report_new(sem_conv_opt_in_mode):
-        set_int_attribute(result, SpanAttributes.CLIENT_PORT, port)
+        set_int_attribute(result, CLIENT_PORT, port)
 
 
 def _set_http_user_agent(result, user_agent, sem_conv_opt_in_mode):
@@ -321,7 +330,7 @@ def _set_http_user_agent(result, user_agent, sem_conv_opt_in_mode):
         )
     if _report_new(sem_conv_opt_in_mode):
         set_string_attribute(
-            result, SpanAttributes.USER_AGENT_ORIGINAL, user_agent
+            result, USER_AGENT_ORIGINAL, user_agent
         )
 
 
@@ -329,7 +338,7 @@ def _set_http_net_peer_name_server(result, name, sem_conv_opt_in_mode):
     if _report_old(sem_conv_opt_in_mode):
         set_string_attribute(result, SpanAttributes.NET_PEER_NAME, name)
     if _report_new(sem_conv_opt_in_mode):
-        set_string_attribute(result, SpanAttributes.CLIENT_ADDRESS, name)
+        set_string_attribute(result, CLIENT_ADDRESS, name)
 
 
 def _set_http_flavor_version(result, version, sem_conv_opt_in_mode):
@@ -337,7 +346,7 @@ def _set_http_flavor_version(result, version, sem_conv_opt_in_mode):
         set_string_attribute(result, SpanAttributes.HTTP_FLAVOR, version)
     if _report_new(sem_conv_opt_in_mode):
         set_string_attribute(
-            result, SpanAttributes.NETWORK_PROTOCOL_VERSION, version
+            result, NETWORK_PROTOCOL_VERSION, version
         )
 
 
