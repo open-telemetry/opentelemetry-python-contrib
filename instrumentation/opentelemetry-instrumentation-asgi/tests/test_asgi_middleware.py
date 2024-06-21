@@ -789,6 +789,8 @@ class TestAsgiApplication(AsgiTestBase):
             "http.host": "127.0.0.1",
             "http.scheme": "http",
             "http.flavor": "1.0",
+            "http.server.name"
+            "net.host.port": 80,
         }
         metrics_list = self.memory_metrics_reader.get_metrics_data()
         # pylint: disable=too-many-nested-blocks
