@@ -710,6 +710,8 @@ class OpenTelemetryMiddleware:
                     _set_http_target(attributes, target, path, query, self._sem_conv_opt_in_mode)
                 duration = max(round((default_timer() - start) * 1000), 0)
                 duration_attrs_old = _parse_duration_attrs(attributes, _HTTPStabilityMode.DEFAULT)
+                if target:
+                    duration_attrs_old[SpanAttributes.HTTP_TARGET] = target
                 duration_attrs_new = _parse_duration_attrs(attributes, _HTTPStabilityMode.HTTP)
                 if self.duration_histogram_old:
                     self.duration_histogram_old.record(duration, duration_attrs_old)

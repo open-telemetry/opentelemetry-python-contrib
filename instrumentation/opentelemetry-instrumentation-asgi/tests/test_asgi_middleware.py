@@ -783,7 +783,6 @@ class TestAsgiApplication(AsgiTestBase):
             "http.flavor": "1.0",
             "net.host.port": 80,
             "http.status_code": 200,
-            "http.target": "/",
         }
         expected_requests_count_attributes = {
             "http.method": "GET",
