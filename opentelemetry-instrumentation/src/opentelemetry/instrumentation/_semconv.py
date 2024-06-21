@@ -87,8 +87,6 @@ _server_duration_attrs_new = [
     HTTP_RESPONSE_STATUS_CODE,
     HTTP_ROUTE,
     NETWORK_PROTOCOL_VERSION,
-    URL_PATH,
-    URL_QUERY,
     URL_SCHEME,
 ]
 
