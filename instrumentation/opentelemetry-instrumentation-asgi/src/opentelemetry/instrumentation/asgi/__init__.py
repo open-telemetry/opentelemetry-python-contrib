@@ -356,9 +356,9 @@ def collect_request_attributes(scope, sem_conv_opt_in_mode=_HTTPStabilityMode.DE
     if http_url:
         _set_http_url(result, remove_url_credentials(http_url), sem_conv_opt_in_mode)
 
-    http_method = scope.get("method")
+    http_method = scope.get("method", "")
     if http_method:
-        _set_http_method(result, http_method, sem_conv_opt_in_mode)
+        _set_http_method(result, http_method, sanitize_method(http_method), sem_conv_opt_in_mode)
 
     http_host_value_list = asgi_getter.get(scope, "host")
     if http_host_value_list:
