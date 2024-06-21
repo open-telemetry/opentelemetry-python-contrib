@@ -28,6 +28,69 @@ from opentelemetry.semconv.trace import (
 from opentelemetry.test.test_base import TestBase
 from opentelemetry.trace import SpanKind
 
+default_cluster_slots = [
+    [0, 8191, ["1.1.1.1", 6380, "node_0"], ["1.1.1.1", 6383, "node_3"]],
+    [8192, 16383, ["1.1.1.1", 6381, "node_1"], ["1.1.1.1", 6382, "node_2"]],
+]
+
+
+def get_mocked_redis_cluster_client(
+    func=None, cluster_slots_raise_error=False, *args, **kwargs
+):
+    """
+    Return a stable RedisCluster object that have deterministic
+    nodes and slots setup to remove the problem of different IP addresses
+    on different installations and machines.
+    """
+    cluster_slots = kwargs.pop("cluster_slots", default_cluster_slots)
+    coverage_res = kwargs.pop("coverage_result", "yes")
+    cluster_enabled = kwargs.pop("cluster_enabled", True)
+    with mock.patch.object(
+        redis.Redis, "execute_command"
+    ) as execute_command_mock:
+
+        def execute_command(*_args, **_kwargs):
+            if _args[0] == "CLUSTER SLOTS":
+                if cluster_slots_raise_error:
+                    raise redis.exceptions.ResponseError()
+                else:
+                    mock_cluster_slots = cluster_slots
+                    return mock_cluster_slots
+            elif _args[0] == "COMMAND":
+                return {"get": [], "set": []}
+            elif _args[0] == "INFO":
+                return {"cluster_enabled": cluster_enabled}
+            elif (
+                len(_args) > 1 and _args[1] == "cluster-require-full-coverage"
+            ):
+                return {"cluster-require-full-coverage": coverage_res}
+            elif func is not None:
+                return func(*args, **kwargs)
+            else:
+                return execute_command_mock(*_args, **_kwargs)
+
+        execute_command_mock.side_effect = execute_command
+
+        with mock.patch.object(
+            redis._parsers.CommandsParser, "initialize", autospec=True
+        ) as cmd_parser_initialize:
+
+            def cmd_init_mock(self, r):
+                self.commands = {
+                    "get": {
+                        "name": "get",
+                        "arity": 2,
+                        "flags": ["readonly", "fast"],
+                        "first_key_pos": 1,
+                        "last_key_pos": 1,
+                        "step_count": 1,
+                    }
+                }
+
+            cmd_parser_initialize.side_effect = cmd_init_mock
+
+            return redis.RedisCluster(*args, **kwargs)
+
 
 class TestRedis(TestBase):
     def setUp(self):
@@ -310,4 +373,66 @@ class TestRedis(TestBase):
         self.assertEqual(
             span.attributes[SpanAttributes.NET_TRANSPORT],
             NetTransportValues.OTHER.value,
+        )
+
+    def test_attributes_redis_cluster(self):
+        with mock.patch.object(redis.RedisCluster, "from_url") as from_url:
+
+            def from_url_mocked(_url, **_kwargs):
+                return get_mocked_redis_cluster_client(url=_url, **_kwargs)
+
+            from_url.side_effect = from_url_mocked
+            redis_client = redis.RedisCluster.from_url(
+                "redis://foo:bar@1.1.1.1:6380/0"
+            )
+
+        with mock.patch.object(
+            redis._parsers.CommandsParser, "initialize", autospec=True
+        ) as cmd_parser_initialize:
+
+            def cmd_init_mock(self, r):
+                self.commands = {
+                    "get": {
+                        "name": "get",
+                        "arity": 2,
+                        "flags": ["readonly", "fast"],
+                        "first_key_pos": 1,
+                        "last_key_pos": 1,
+                        "step_count": 1,
+                    },
+                    "set": {
+                        "name": "set",
+                        "arity": -3,
+                        "flags": ["write", "denyoom"],
+                        "first_key_pos": 1,
+                        "last_key_pos": 1,
+                        "step_count": 1,
+                    },
+                }
+
+            cmd_parser_initialize.side_effect = cmd_init_mock
+            with mock.patch.object(
+                redis.connection.ConnectionPool, "get_connection"
+            ) as get_connection:
+                get_connection.return_value = mock.MagicMock()
+                redis_client.set("key", "value")
+
+        spans = self.memory_exporter.get_finished_spans()
+        self.assertEqual(len(spans), 1)
+
+        span = spans[0]
+        self.assertEqual(
+            span.attributes[SpanAttributes.DB_SYSTEM],
+            DbSystemValues.REDIS.value,
+        )
+        self.assertEqual(
+            span.attributes[SpanAttributes.DB_REDIS_DATABASE_INDEX], 0
+        )
+        self.assertEqual(
+            span.attributes[SpanAttributes.NET_PEER_NAME], "1.1.1.1"
+        )
+        self.assertEqual(span.attributes[SpanAttributes.NET_PEER_PORT], 6380)
+        self.assertEqual(
+            span.attributes[SpanAttributes.NET_TRANSPORT],
+            NetTransportValues.IP_TCP.value,
         )
