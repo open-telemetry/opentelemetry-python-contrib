@@ -584,8 +584,6 @@ class TestProgrammatic(InstrumentationTest, WsgiTestBase):
             "http.scheme": "http",
             "http.flavor": "1.1",
             "http.server_name": "localhost",
-            "net.host.name": "localhost",
-            "net.host.port": 80,
         }
         self._assert_basic_metric(
             expected_duration_attributes,
@@ -627,8 +625,6 @@ class TestProgrammatic(InstrumentationTest, WsgiTestBase):
             "http.scheme": "http",
             "http.flavor": "1.1",
             "http.server_name": "localhost",
-            "net.host.name": "localhost",
-            "net.host.port": 80,
         }
         self._assert_basic_metric(
             expected_duration_attributes,

@@ -223,8 +223,6 @@ class TestAutomatic(InstrumentationTest, WsgiTestBase):
             "http.scheme": "http",
             "http.flavor": "1.1",
             "http.server_name": "localhost",
-            "net.host.name": "localhost",
-            "net.host.port": 80,
         }
         metrics_list = self.memory_metrics_reader.get_metrics_data()
         for metric in (
