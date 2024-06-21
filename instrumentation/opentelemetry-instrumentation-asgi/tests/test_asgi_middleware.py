@@ -23,6 +23,12 @@ from unittest import mock
 
 import opentelemetry.instrumentation.asgi as otel_asgi
 from opentelemetry import trace as trace_api
+from opentelemetry.instrumentation._semconv import (
+    _server_active_requests_count_attrs_new,
+    _server_active_requests_count_attrs_old,
+    _server_duration_attrs_new,
+    _server_duration_attrs_old,
+)
 from opentelemetry.instrumentation.propagators import (
     TraceResponsePropagator,
     get_global_response_propagator,
@@ -40,22 +46,32 @@ from opentelemetry.test.asgitestutil import (
 )
 from opentelemetry.test.test_base import TestBase
 from opentelemetry.trace import SpanKind, format_span_id, format_trace_id
-from opentelemetry.util.http import (
-    _active_requests_count_attrs,
-    _duration_attrs,
-)
 
-_expected_metric_names = [
+_expected_metric_names_old = [
     "http.server.active_requests",
     "http.server.duration",
     "http.server.response.size",
     "http.server.request.size",
 ]
-_recommended_attrs = {
-    "http.server.active_requests": _active_requests_count_attrs,
-    "http.server.duration": _duration_attrs,
-    "http.server.response.size": _duration_attrs,
-    "http.server.request.size": _duration_attrs,
+_expected_metric_names_new = [
+    "http.server.active_requests",
+    "http.server.request.duration",
+    "http.server.response.body.size",
+    "http.server.request.body.size",
+]
+
+_recommended_attrs_old = {
+    "http.server.active_requests": _server_active_requests_count_attrs_old,
+    "http.server.duration": _server_duration_attrs_old,
+    "http.server.response.size": _server_duration_attrs_old,
+    "http.server.request.size": _server_duration_attrs_old,
+}
+
+_recommended_attrs_new = {
+    "http.server.active_requests": _server_active_requests_count_attrs_new,
+    "http.server.request.duration": _server_duration_attrs_new,
+    "http.server.response.body.size": _server_duration_attrs_new,
+    "http.server.request.body.size": _server_duration_attrs_new,
 }
 
 _SIMULATED_BACKGROUND_TASK_EXECUTION_TIME_S = 0.01
@@ -739,7 +755,7 @@ class TestAsgiApplication(AsgiTestBase):
                     "opentelemetry.instrumentation.asgi",
                 )
                 for metric in scope_metric.metrics:
-                    self.assertIn(metric.name, _expected_metric_names)
+                    self.assertIn(metric.name, _expected_metric_names_old)
                     data_points = list(metric.data.data_points)
                     self.assertEqual(len(data_points), 1)
                     for point in data_points:
@@ -750,7 +766,7 @@ class TestAsgiApplication(AsgiTestBase):
                             number_data_point_seen = True
                         for attr in point.attributes:
                             self.assertIn(
-                                attr, _recommended_attrs[metric.name]
+                                attr, _recommended_attrs_old[metric.name]
                             )
         self.assertTrue(number_data_point_seen and histogram_data_point_seen)
 
