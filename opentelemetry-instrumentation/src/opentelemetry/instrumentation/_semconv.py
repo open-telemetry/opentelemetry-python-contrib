@@ -47,6 +47,8 @@ from opentelemetry.semconv.attributes.user_agent_attributes import (
 from opentelemetry.semconv.trace import SpanAttributes
 from opentelemetry.trace.status import Status, StatusCode
 
+# These lists represent attributes for metrics that are currently supported
+
 _client_duration_attrs_old = [
     SpanAttributes.HTTP_STATUS_CODE,
     SpanAttributes.HTTP_HOST,
@@ -96,13 +98,12 @@ _server_active_requests_count_attrs_old = [
     SpanAttributes.HTTP_SCHEME,
     SpanAttributes.HTTP_FLAVOR,
     SpanAttributes.HTTP_SERVER_NAME,
-    SpanAttributes.NET_HOST_NAME,
-    SpanAttributes.NET_HOST_PORT,
 ]
 
 _server_active_requests_count_attrs_new = [
     HTTP_REQUEST_METHOD,
     URL_SCHEME,
+    # TODO: Support SERVER_ADDRESS AND SERVER_PORT
 ]
 
 OTEL_SEMCONV_STABILITY_OPT_IN = "OTEL_SEMCONV_STABILITY_OPT_IN"
