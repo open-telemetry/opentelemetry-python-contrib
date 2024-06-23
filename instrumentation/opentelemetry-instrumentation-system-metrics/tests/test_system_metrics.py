@@ -118,12 +118,13 @@ class TestSystemMetrics(TestBase):
             f"process.runtime.{self.implementation}.thread_count",
             f"process.runtime.{self.implementation}.context_switches",
             f"process.runtime.{self.implementation}.cpu.utilization",
+            f"process.runtime.{self.implementation}.open_file_descriptor.count"
         ]
 
         if self.implementation == "pypy":
-            self.assertEqual(len(metric_names), 20)
-        else:
             self.assertEqual(len(metric_names), 21)
+        else:
+            self.assertEqual(len(metric_names), 22)
         observer_names.append(
             f"process.runtime.{self.implementation}.gc_count",
         )
@@ -139,6 +140,7 @@ class TestSystemMetrics(TestBase):
             "process.runtime.thread_count": None,
             "process.runtime.cpu.utilization": None,
             "process.runtime.context_switches": ["involuntary", "voluntary"],
+            "process.runtime.open_file_descriptor.count": None,
         }
 
         if self.implementation != "pypy":
@@ -161,12 +163,13 @@ class TestSystemMetrics(TestBase):
             f"process.runtime.{self.implementation}.thread_count",
             f"process.runtime.{self.implementation}.context_switches",
             f"process.runtime.{self.implementation}.cpu.utilization",
+            f"process.runtime.{self.implementation}.open_file_descriptor.count",
         ]
 
         if self.implementation == "pypy":
-            self.assertEqual(len(metric_names), 5)
-        else:
             self.assertEqual(len(metric_names), 6)
+        else:
+            self.assertEqual(len(metric_names), 7)
         observer_names.append(
             f"process.runtime.{self.implementation}.gc_count"
         )
@@ -842,3 +845,11 @@ class TestSystemMetrics(TestBase):
         self._test_metrics(
             f"process.runtime.{self.implementation}.cpu.utilization", expected
         )
+    @mock.patch("psutil.Process.num_fds")
+    def test_open_file_descriptor_count(self, mock_open_fd_count):
+    # Configure the mock to return a specific number of open file descriptors
+        mock_open_fd_count.return_value = 100
+        expected = [_SystemMetricsResult({}, 100)]
+        self._test_metrics(
+            f"process.runtime.{self.implementation}.open_file_descriptor.count", expected
+    )

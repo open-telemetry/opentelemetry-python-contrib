@@ -40,6 +40,7 @@ following metrics are configured:
         "process.runtime.thread_count": None,
         "process.runtime.cpu.utilization": None,
         "process.runtime.context_switches": ["involuntary", "voluntary"],
+        "process.runtime.open_file_descriptor.count": None,
     }
 
 Usage
@@ -68,6 +69,7 @@ Usage
         "process.runtime.memory": ["rss", "vms"],
         "process.runtime.cpu.time": ["user", "system"],
         "process.runtime.context_switches": ["involuntary", "voluntary"],
+        "process.runtime.open_file_descriptor.count": None,
     }
     SystemMetricsInstrumentor(config=configuration).instrument()
 
@@ -117,6 +119,7 @@ _DEFAULT_CONFIG = {
     "process.runtime.thread_count": None,
     "process.runtime.cpu.utilization": None,
     "process.runtime.context_switches": ["involuntary", "voluntary"],
+    "process.runtime.open_file_descriptor.count": None,
 }
 
 if sys.platform == "darwin":
@@ -169,6 +172,8 @@ class SystemMetricsInstrumentor(BaseInstrumentor):
         self._runtime_thread_count_labels = self._labels.copy()
         self._runtime_cpu_utilization_labels = self._labels.copy()
         self._runtime_context_switches_labels = self._labels.copy()
+        self._runtime_open_file_descriptor_count_labels = self._labels.copy()
+
 
     def instrumentation_dependencies(self) -> Collection[str]:
         return _instruments
@@ -393,6 +398,14 @@ class SystemMetricsInstrumentor(BaseInstrumentor):
                 callbacks=[self._get_runtime_context_switches],
                 description="Runtime context switches",
                 unit="switches",
+            )
+
+        if "process.runtime.open_file_descriptor.count" in self._config:
+            self._meter.create_observable_gauge(
+                name=f"process.runtime.{self._python_implementation}.open_file_descriptor.count",
+                callbacks=[self._get_runtime_open_file_descriptor_count],
+                description="Number of open file descriptors",
+                unit="1",
             )
 
     def _uninstrument(self, **__):
@@ -727,3 +740,12 @@ class SystemMetricsInstrumentor(BaseInstrumentor):
                     getattr(ctx_switches, metric),
                     self._runtime_context_switches_labels.copy(),
                 )
+    
+    def _get_runtime_open_file_descriptor_count(
+	    self, options: CallbackOptions
+	) -> Iterable[Observation]:
+       """Observer callback for process open file descriptor count"""
+       fd_count = self._proc.num_fds()
+       yield Observation(
+           fd_count, self._runtime_open_file_descriptor_count_labels.copy(),
+    )
