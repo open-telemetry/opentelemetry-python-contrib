@@ -327,7 +327,9 @@ class TestAsgiApplication(AsgiTestBase):
         mock_span = mock.Mock()
         mock_span.is_recording.return_value = False
         mock_tracer.start_as_current_span.return_value = mock_span
-        mock_tracer.start_as_current_span.return_value.__enter__ = mock.Mock(return_value=mock_span)
+        mock_tracer.start_as_current_span.return_value.__enter__ = mock.Mock(
+            return_value=mock_span
+        )
         mock_tracer.start_as_current_span.return_value.__exit__ = mock_span
         with mock.patch("opentelemetry.trace.get_tracer") as tracer:
             tracer.return_value = mock_tracer
@@ -804,7 +806,9 @@ class TestAsgiApplication(AsgiTestBase):
         mock_span = mock.Mock()
         mock_span.is_recording.return_value = False
         mock_tracer.start_as_current_span.return_value = mock_span
-        mock_tracer.start_as_current_span.return_value.__enter__ = mock.Mock(return_value=mock_span)
+        mock_tracer.start_as_current_span.return_value.__enter__ = mock.Mock(
+            return_value=mock_span
+        )
         mock_tracer.start_as_current_span.return_value.__exit__ = mock_span
         with mock.patch("opentelemetry.trace.get_tracer") as tracer:
             tracer.return_value = mock_tracer
@@ -843,7 +847,9 @@ class TestAsgiApplication(AsgiTestBase):
                                     self.assertAlmostEqual(
                                         duration, point.sum, delta=5
                                     )
-                                elif metric.name == "http.server.response.size":
+                                elif (
+                                    metric.name == "http.server.response.size"
+                                ):
                                     self.assertEqual(1024, point.sum)
                                 elif metric.name == "http.server.request.size":
                                     self.assertEqual(128, point.sum)
