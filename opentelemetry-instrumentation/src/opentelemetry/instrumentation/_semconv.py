@@ -354,8 +354,8 @@ def _set_http_flavor_version(result, version, sem_conv_opt_in_mode):
 def _set_status(
     span,
     metrics_attributes,
-    status_code_str,
     status_code,
+    status_code_str,
     sem_conv_opt_in_mode,
 ):
     if status_code < 0:

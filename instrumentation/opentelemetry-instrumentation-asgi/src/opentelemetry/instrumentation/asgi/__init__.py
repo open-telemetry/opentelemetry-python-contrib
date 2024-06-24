@@ -228,6 +228,7 @@ from opentelemetry.instrumentation._semconv import (
     _set_http_target,
     _set_http_url,
     _set_http_user_agent,
+    _set_status,
 )
 from opentelemetry.instrumentation.asgi.version import __version__  # noqa
 from opentelemetry.instrumentation.propagators import (
@@ -419,25 +420,31 @@ def get_host_port_url_tuple(scope):
     return server_host, port, http_url
 
 
-def set_status_code(span, status_code):
+def set_status_code(
+    span,
+    status_code,
+    metric_attributes=None,
+    sem_conv_opt_in_mode=_HTTPStabilityMode.DEFAULT,
+):
     """Adds HTTP response attributes to span using the status_code argument."""
     if not span.is_recording():
         return
+    status_code_str = repr(status_code)
+    
+    status_code = 0
     try:
         status_code = int(status_code)
     except ValueError:
-        span.set_status(
-            Status(
-                StatusCode.ERROR,
-                "Non-integer HTTP status: " + repr(status_code),
-            )
-        )
-    else:
-        span.set_attribute(SpanAttributes.HTTP_STATUS_CODE, status_code)
-        span.set_status(
-            Status(http_status_to_status_code(status_code, server_span=True))
-        )
-
+        status_code = -1
+    if metric_attributes is None:
+        metric_attributes = {}
+    _set_status(
+        span,
+        metric_attributes,
+        status_code,
+        status_code_str,
+        sem_conv_opt_in_mode,
+    )
 
 def get_default_span_details(scope: dict) -> Tuple[str, dict]:
     """
@@ -787,18 +794,33 @@ class OpenTelemetryMiddleware:
                 if send_span.is_recording():
                     if message["type"] == "http.response.start":
                         status_code = message["status"]
-                        duration_attrs[SpanAttributes.HTTP_STATUS_CODE] = (
-                            status_code
+                        # We record metrics only once
+                        set_status_code(
+                            server_span,
+                            status_code,
+                            duration_attrs,
+                            self._sem_conv_opt_in_mode,
                         )
-                        duration_attrs[SpanAttributes.HTTP_RESPONSE_STATUS_CODE] = (
-                            status_code
+                        set_status_code(
+                            send_span,
+                            status_code,
+                            None,
+                            self._sem_conv_opt_in_mode,
                         )
-                        set_status_code(server_span, status_code)
-                        set_status_code(send_span, status_code)
                         expecting_trailers = message.get("trailers", False)
                     elif message["type"] == "websocket.send":
-                        set_status_code(server_span, 200)
-                        set_status_code(send_span, 200)
+                        set_status_code(
+                            server_span,
+                            200,
+                            duration_attrs,
+                            self._sem_conv_opt_in_mode,
+                        )
+                        set_status_code(
+                            send_span,
+                            200,
+                            None,
+                            self._sem_conv_opt_in_mode,
+                        )
                     send_span.set_attribute("asgi.event.type", message["type"])
                     if (
                         server_span.is_recording()
