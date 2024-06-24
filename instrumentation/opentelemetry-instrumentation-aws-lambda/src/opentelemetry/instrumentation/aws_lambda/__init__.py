@@ -70,6 +70,7 @@ for example:
 import logging
 import os
 import time
+from ipdb import set_trace
 from importlib import import_module
 from typing import Any, Callable, Collection
 from urllib.parse import urlencode
@@ -83,10 +84,6 @@ from opentelemetry.instrumentation.instrumentor import BaseInstrumentor
 from opentelemetry.instrumentation.utils import unwrap
 from opentelemetry.metrics import MeterProvider, get_meter_provider
 from opentelemetry.propagate import get_global_textmap
-from opentelemetry.propagators.aws.aws_xray_propagator import (
-    TRACE_HEADER_KEY,
-    AwsXRayPropagator,
-)
 from opentelemetry.semconv.resource import ResourceAttributes
 from opentelemetry.semconv.trace import SpanAttributes
 from opentelemetry.trace import (
@@ -98,6 +95,7 @@ from opentelemetry.trace import (
 )
 from opentelemetry.trace.propagation import get_current_span
 from opentelemetry.trace.status import Status, StatusCode
+from opentelemetry.propagate import extract
 
 logger = logging.getLogger(__name__)
 
@@ -130,6 +128,7 @@ def _default_event_context_extractor(lambda_event: Any) -> Context:
     Returns:
         A Context with configuration found in the event.
     """
+    set_trace()
     headers = None
     try:
         headers = lambda_event["headers"]
@@ -165,15 +164,9 @@ def _determine_parent_context(
     Returns:
         A Context with configuration found in the carrier.
     """
+    set_trace()
     parent_context = None
-
-    if not disable_aws_context_propagation:
-        xray_env_var = os.environ.get(_X_AMZN_TRACE_ID)
-
-        if xray_env_var:
-            parent_context = AwsXRayPropagator().extract(
-                {TRACE_HEADER_KEY: xray_env_var}
-            )
+    extract
 
     if (
         parent_context
@@ -183,7 +176,7 @@ def _determine_parent_context(
     ):
         return parent_context
 
-    if event_context_extractor:
+    if event_context_extractor is not None:
         parent_context = event_context_extractor(lambda_event)
     else:
         parent_context = _default_event_context_extractor(lambda_event)
@@ -289,11 +282,14 @@ def _instrument(
     disable_aws_context_propagation: bool = False,
     meter_provider: MeterProvider = None,
 ):
+
+
     # pylint: disable=too-many-locals
     # pylint: disable=too-many-statements
     def _instrumented_lambda_handler_call(  # noqa pylint: disable=too-many-branches
         call_wrapped, instance, args, kwargs
     ):
+        set_trace()
         orig_handler_name = ".".join(
             [wrapped_module_name, wrapped_function_name]
         )

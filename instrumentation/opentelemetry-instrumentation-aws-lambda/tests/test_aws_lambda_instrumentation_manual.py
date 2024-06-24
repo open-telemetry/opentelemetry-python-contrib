@@ -122,6 +122,7 @@ class TestAwsLambdaInstrumentor(TestBase):
             {
                 **os.environ,
                 # Using Active tracing
+                OTEL_PROPAGATORS: "xray_lambda",
                 _X_AMZN_TRACE_ID: MOCK_XRAY_TRACE_CONTEXT_SAMPLED,
             },
         )
