@@ -184,7 +184,7 @@ class AsyncPGInstrumentor(BaseInstrumentor):
         return result
 
     async def _do_cursor_execute(self, func, instance, args, kwargs):
-        """Wrap curser based functions. For every call this will generate a new span."""
+        """Wrap cursor based functions. For every call this will generate a new span."""
         exception = None
         params = getattr(instance._connection, "_params", {})
         name = (
