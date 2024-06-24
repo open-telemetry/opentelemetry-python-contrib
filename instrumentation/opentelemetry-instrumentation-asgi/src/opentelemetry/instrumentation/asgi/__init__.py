@@ -431,7 +431,6 @@ def set_status_code(
         return
     status_code_str = repr(status_code)
     
-    status_code = 0
     try:
         status_code = int(status_code)
     except ValueError:
