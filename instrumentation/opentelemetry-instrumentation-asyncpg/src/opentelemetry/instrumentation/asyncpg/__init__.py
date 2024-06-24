@@ -139,9 +139,12 @@ class AsyncPGInstrumentor(BaseInstrumentor):
 
     def _uninstrument(self, **__):
         for cls, methods in [
-            (asyncpg.connection.Connection, ("execute", "executemany", "fetch", "fetchval", "fetchrow")),
-            (asyncpg.cursor.Cursor, ("forward", "fetch", "fetchrow")), 
-            (asyncpg.cursor.CursorIterator, ("__anext__", ))
+            (
+                asyncpg.connection.Connection,
+                ("execute", "executemany", "fetch", "fetchval", "fetchrow"),
+            ),
+            (asyncpg.cursor.Cursor, ("forward", "fetch", "fetchrow")),
+            (asyncpg.cursor.CursorIterator, ("__anext__",)),
         ]:
             for method_name in methods:
                 unwrap(cls, method_name)
@@ -181,11 +184,14 @@ class AsyncPGInstrumentor(BaseInstrumentor):
         return result
 
     async def _do_cursor_execute(self, func, instance, args, kwargs):
-        """ Wrap curser based functions. For every call this will generate a new span.
-        """
+        """Wrap curser based functions. For every call this will generate a new span."""
         exception = None
         params = getattr(instance._connection, "_params", {})
-        name = instance._query if instance._query else params.get("database", "postgresql")
+        name = (
+            instance._query
+            if instance._query
+            else params.get("database", "postgresql")
+        )
 
         try:
             # Strip leading comments so we get the operation name.
@@ -195,7 +201,8 @@ class AsyncPGInstrumentor(BaseInstrumentor):
 
         stop = False
         with self._tracer.start_as_current_span(
-            f"CURSOR: {name}", kind=SpanKind.CLIENT,
+            f"CURSOR: {name}",
+            kind=SpanKind.CLIENT,
         ) as span:
             if span.is_recording():
                 span_attributes = _hydrate_span_from_args(
