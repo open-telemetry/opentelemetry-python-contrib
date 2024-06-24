@@ -43,13 +43,15 @@ class TestAsyncPGInstrumentation(TestBase):
     def test_cursor_instrumentation(self):
         def assert_wrapped(assert_fnc):
             for cls, methods in [
-                (cursor.Cursor, ("forward", "fetch", "fetchrow")), 
-                (cursor.CursorIterator, ("__anext__", ))
+                (cursor.Cursor, ("forward", "fetch", "fetchrow")),
+                (cursor.CursorIterator, ("__anext__",)),
             ]:
                 for method_name in methods:
                     method = getattr(cls, method_name, None)
-                    assert_fnc(isinstance(method, ObjectProxy), f"{method} isinstance {type(method)}")
-
+                    assert_fnc(
+                        isinstance(method, ObjectProxy),
+                        f"{method} isinstance {type(method)}",
+                    )
 
         assert_wrapped(self.assertFalse)
         AsyncPGInstrumentor().instrument()
@@ -58,8 +60,8 @@ class TestAsyncPGInstrumentation(TestBase):
         assert_wrapped(self.assertFalse)
 
     def test_cursor_span_creation(self):
-        """ Test the cursor wrapper if it creates spans correctly.
-        """
+        """Test the cursor wrapper if it creates spans correctly."""
+
         # Mock out all interaction with postgres
         async def bind_mock(*args, **kwargs):
             return []
@@ -84,7 +86,7 @@ class TestAsyncPGInstrumentation(TestBase):
 
         # init the cursor and fetch a single record
         crs = cursor.Cursor(conn, "SELECT * FROM test", state, [], Record)
-        asyncio.run(crs._init(1))        
+        asyncio.run(crs._init(1))
         asyncio.run(crs.fetch(1))
 
         spans = self.memory_exporter.get_finished_spans()
@@ -93,7 +95,9 @@ class TestAsyncPGInstrumentation(TestBase):
         self.assertTrue(spans[0].status.is_ok)
 
         # Now test that the StopAsyncIteration of the cursor does not get recorded as an ERROR
-        crs_iter = cursor.CursorIterator(conn, "SELECT * FROM test", state, [], Record, 1, 1)
+        crs_iter = cursor.CursorIterator(
+            conn, "SELECT * FROM test", state, [], Record, 1, 1
+        )
 
         with pytest.raises(StopAsyncIteration):
             asyncio.run(crs_iter.__anext__())
