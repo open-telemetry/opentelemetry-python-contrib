@@ -121,6 +121,7 @@ class TestAutomatic(InstrumentationTest, WsgiTestBase):
         span_list = self.memory_exporter.get_finished_spans()
         self.assertEqual(len(span_list), 1)
         self.assertEqual(span_list[0].status.status_code, StatusCode.UNSET)
+        self.assertEqual(len(span_list[0].events), 0)
 
         PyramidInstrumentor().uninstrument()
 
@@ -245,7 +246,7 @@ class TestAutomatic(InstrumentationTest, WsgiTestBase):
                     )
                     self.assertEqual(point.value, 0)
 
-    def test_metric_uninstruemnt(self):
+    def test_metric_uninstrument(self):
         self.client.get("/hello/756")
         PyramidInstrumentor().uninstrument()
         self.config = Configurator()

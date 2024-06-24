@@ -22,6 +22,7 @@ classifiers = [
   "Programming Language :: Python :: 3.9",
   "Programming Language :: Python :: 3.10",
   "Programming Language :: Python :: 3.11",
+  "Programming Language :: Python :: 3.12",
 ]
 dependencies = [
   "opentelemetry-api ~= 1.12",
@@ -29,6 +30,7 @@ dependencies = [
 
 [project.entry-points.opentelemetry_propagator]
 xray = "opentelemetry.propagators.aws:AwsXRayPropagator"
+xray_lambda = "opentelemetry.propagators.aws:AwsXRayLambdaPropagator"
 
 [project.urls]
 Homepage = "https://github.com/open-telemetry/opentelemetry-python-contrib/tree/main/propagator/opentelemetry-propagator-aws-xray"
