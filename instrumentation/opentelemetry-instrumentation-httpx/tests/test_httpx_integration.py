@@ -22,6 +22,10 @@ import respx
 
 import opentelemetry.instrumentation.httpx
 from opentelemetry import trace
+from opentelemetry.instrumentation._semconv import (
+    OTEL_SEMCONV_STABILITY_OPT_IN,
+    _OpenTelemetrySemanticConventionStability,
+)
 from opentelemetry.instrumentation.httpx import (
     AsyncOpenTelemetryTransport,
     HTTPXClientInstrumentor,
@@ -30,6 +34,21 @@ from opentelemetry.instrumentation.httpx import (
 from opentelemetry.instrumentation.utils import suppress_http_instrumentation
 from opentelemetry.propagate import get_global_textmap, set_global_textmap
 from opentelemetry.sdk import resources
+from opentelemetry.semconv.attributes.error_attributes import ERROR_TYPE
+from opentelemetry.semconv.attributes.http_attributes import (
+    HTTP_REQUEST_METHOD,
+    HTTP_RESPONSE_STATUS_CODE,
+)
+from opentelemetry.semconv.attributes.network_attributes import (
+    NETWORK_PEER_ADDRESS,
+    NETWORK_PEER_PORT,
+    NETWORK_PROTOCOL_VERSION,
+)
+from opentelemetry.semconv.attributes.server_attributes import (
+    SERVER_ADDRESS,
+    SERVER_PORT,
+)
+from opentelemetry.semconv.attributes.url_attributes import URL_FULL
 from opentelemetry.semconv.trace import SpanAttributes
 from opentelemetry.test.mock_textmap import MockTextMapPropagator
 from opentelemetry.test.test_base import TestBase
@@ -115,12 +134,35 @@ class BaseTestCases:
         # pylint: disable=invalid-name
         def setUp(self):
             super().setUp()
+            test_name = ""
+            if hasattr(self, "_testMethodName"):
+                test_name = self._testMethodName
+            sem_conv_mode = "default"
+            if "new_semconv" in test_name:
+                sem_conv_mode = "http"
+            elif "both_semconv" in test_name:
+                sem_conv_mode = "http/dup"
+            self.env_patch = mock.patch.dict(
+                "os.environ",
+                {
+                    OTEL_SEMCONV_STABILITY_OPT_IN: sem_conv_mode,
+                },
+            )
+            self.env_patch.start()
+            _OpenTelemetrySemanticConventionStability._initialized = False
             respx.start()
-            respx.get(self.URL).mock(httpx.Response(200, text="Hello!"))
+            respx.get(self.URL).mock(
+                httpx.Response(
+                    200,
+                    text="Hello!",
+                    extensions={"http_version": b"HTTP/1.1"},
+                )
+            )
 
         # pylint: disable=invalid-name
         def tearDown(self):
             super().tearDown()
+            self.env_patch.stop()
             respx.stop()
 
         def assert_span(
@@ -169,6 +211,87 @@ class BaseTestCases:
                 span, opentelemetry.instrumentation.httpx
             )
 
+        def test_basic_new_semconv(self):
+            url = "http://mock:8080/status/200"
+            respx.get(url).mock(
+                httpx.Response(
+                    200,
+                    text="Hello!",
+                    extensions={"http_version": b"HTTP/1.1"},
+                )
+            )
+            result = self.perform_request(url)
+            self.assertEqual(result.text, "Hello!")
+            span = self.assert_span()
+
+            self.assertIs(span.kind, trace.SpanKind.CLIENT)
+            self.assertEqual(span.name, "GET")
+
+            self.assertEqual(
+                span.instrumentation_scope.schema_url,
+                SpanAttributes.SCHEMA_URL,
+            )
+            self.assertEqual(
+                span.attributes,
+                {
+                    HTTP_REQUEST_METHOD: "GET",
+                    URL_FULL: url,
+                    SERVER_ADDRESS: "mock",
+                    NETWORK_PEER_ADDRESS: "mock",
+                    HTTP_RESPONSE_STATUS_CODE: 200,
+                    NETWORK_PROTOCOL_VERSION: "1.1",
+                    SERVER_PORT: 8080,
+                    NETWORK_PEER_PORT: 8080,
+                },
+            )
+
+            self.assertIs(span.status.status_code, trace.StatusCode.UNSET)
+
+            self.assertEqualSpanInstrumentationInfo(
+                span, opentelemetry.instrumentation.httpx
+            )
+
+        def test_basic_both_semconv(self):
+            url = "http://mock:8080/status/200"  # 8080 because httpx returns None for common ports (http, https, wss)
+            respx.get(url).mock(httpx.Response(200, text="Hello!"))
+            result = self.perform_request(url)
+            self.assertEqual(result.text, "Hello!")
+            span = self.assert_span()
+
+            self.assertIs(span.kind, trace.SpanKind.CLIENT)
+            self.assertEqual(span.name, "GET")
+
+            self.assertEqual(
+                span.instrumentation_scope.schema_url,
+                SpanAttributes.SCHEMA_URL,
+            )
+
+            self.assertEqual(
+                span.attributes,
+                {
+                    SpanAttributes.HTTP_METHOD: "GET",
+                    HTTP_REQUEST_METHOD: "GET",
+                    SpanAttributes.HTTP_URL: url,
+                    URL_FULL: url,
+                    SpanAttributes.HTTP_HOST: "mock",
+                    SERVER_ADDRESS: "mock",
+                    NETWORK_PEER_ADDRESS: "mock",
+                    SpanAttributes.NET_PEER_PORT: 8080,
+                    SpanAttributes.HTTP_STATUS_CODE: 200,
+                    HTTP_RESPONSE_STATUS_CODE: 200,
+                    SpanAttributes.HTTP_FLAVOR: "1.1",
+                    NETWORK_PROTOCOL_VERSION: "1.1",
+                    SERVER_PORT: 8080,
+                    NETWORK_PEER_PORT: 8080,
+                },
+            )
+
+            self.assertIs(span.status.status_code, trace.StatusCode.UNSET)
+
+            self.assertEqualSpanInstrumentationInfo(
+                span, opentelemetry.instrumentation.httpx
+            )
+
         def test_basic_multiple(self):
             self.perform_request(self.URL)
             self.perform_request(self.URL)
@@ -186,6 +309,48 @@ class BaseTestCases:
             self.assertEqual(
                 span.attributes.get(SpanAttributes.HTTP_STATUS_CODE), 404
             )
+            self.assertIs(
+                span.status.status_code,
+                trace.StatusCode.ERROR,
+            )
+
+        def test_not_foundbasic_new_semconv(self):
+            url_404 = "http://mock/status/404"
+
+            with respx.mock:
+                respx.get(url_404).mock(httpx.Response(404))
+                result = self.perform_request(url_404)
+
+            self.assertEqual(result.status_code, 404)
+            span = self.assert_span()
+            self.assertEqual(
+                span.attributes.get(HTTP_RESPONSE_STATUS_CODE), 404
+            )
+            # new in semconv
+            self.assertEqual(span.attributes.get(ERROR_TYPE), "404")
+
+            self.assertIs(
+                span.status.status_code,
+                trace.StatusCode.ERROR,
+            )
+
+        def test_not_foundbasic_both_semconv(self):
+            url_404 = "http://mock/status/404"
+
+            with respx.mock:
+                respx.get(url_404).mock(httpx.Response(404))
+                result = self.perform_request(url_404)
+
+            self.assertEqual(result.status_code, 404)
+            span = self.assert_span()
+            self.assertEqual(
+                span.attributes.get(SpanAttributes.HTTP_STATUS_CODE), 404
+            )
+            self.assertEqual(
+                span.attributes.get(HTTP_RESPONSE_STATUS_CODE), 404
+            )
+            self.assertEqual(span.attributes.get(ERROR_TYPE), "404")
+
             self.assertIs(
                 span.status.status_code,
                 trace.StatusCode.ERROR,
@@ -244,6 +409,83 @@ class BaseTestCases:
                 self.perform_request(self.URL)
 
             span = self.assert_span()
+            self.assertEqual(span.status.status_code, StatusCode.ERROR)
+            self.assertIn("Exception", span.status.description)
+            self.assertEqual(
+                span.events[0].attributes["exception.type"], "Exception"
+            )
+            self.assertIsNone(span.attributes.get(ERROR_TYPE))
+
+        def test_requests_basic_exception_new_semconv(self):
+            with respx.mock, self.assertRaises(Exception):
+                respx.get(self.URL).mock(side_effect=Exception)
+                self.perform_request(self.URL)
+
+            span = self.assert_span()
+            self.assertEqual(span.status.status_code, StatusCode.ERROR)
+            self.assertIn("Exception", span.status.description)
+            self.assertEqual(
+                span.events[0].attributes["exception.type"], "Exception"
+            )
+            self.assertEqual(span.attributes.get(ERROR_TYPE), "Exception")
+
+        def test_requests_basic_exception_both_semconv(self):
+            with respx.mock, self.assertRaises(Exception):
+                respx.get(self.URL).mock(side_effect=Exception)
+                self.perform_request(self.URL)
+
+            span = self.assert_span()
+            self.assertEqual(span.status.status_code, StatusCode.ERROR)
+            self.assertIn("Exception", span.status.description)
+            self.assertEqual(
+                span.events[0].attributes["exception.type"], "Exception"
+            )
+            self.assertEqual(span.attributes.get(ERROR_TYPE), "Exception")
+
+        def test_requests_timeout_exception_new_semconv(self):
+            url = "http://mock:8080/exception"
+            with respx.mock, self.assertRaises(httpx.TimeoutException):
+                respx.get(url).mock(side_effect=httpx.TimeoutException)
+                self.perform_request(url)
+
+            span = self.assert_span()
+            self.assertEqual(
+                span.attributes,
+                {
+                    HTTP_REQUEST_METHOD: "GET",
+                    URL_FULL: url,
+                    SERVER_ADDRESS: "mock",
+                    SERVER_PORT: 8080,
+                    NETWORK_PEER_PORT: 8080,
+                    NETWORK_PEER_ADDRESS: "mock",
+                    ERROR_TYPE: "TimeoutException",
+                },
+            )
+            self.assertEqual(span.status.status_code, StatusCode.ERROR)
+
+        def test_requests_timeout_exception_both_semconv(self):
+            url = "http://mock:8080/exception"
+            with respx.mock, self.assertRaises(httpx.TimeoutException):
+                respx.get(url).mock(side_effect=httpx.TimeoutException)
+                self.perform_request(url)
+
+            span = self.assert_span()
+            self.assertEqual(
+                span.attributes,
+                {
+                    SpanAttributes.HTTP_METHOD: "GET",
+                    HTTP_REQUEST_METHOD: "GET",
+                    SpanAttributes.HTTP_URL: url,
+                    URL_FULL: url,
+                    SpanAttributes.HTTP_HOST: "mock",
+                    SERVER_ADDRESS: "mock",
+                    NETWORK_PEER_ADDRESS: "mock",
+                    SpanAttributes.NET_PEER_PORT: 8080,
+                    SERVER_PORT: 8080,
+                    NETWORK_PEER_PORT: 8080,
+                    ERROR_TYPE: "TimeoutException",
+                },
+            )
             self.assertEqual(span.status.status_code, StatusCode.ERROR)
 
         def test_requests_timeout_exception(self):
