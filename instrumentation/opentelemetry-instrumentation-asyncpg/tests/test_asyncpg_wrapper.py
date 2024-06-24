@@ -96,7 +96,7 @@ class TestAsyncPGInstrumentation(TestBase):
         crs_iter = cursor.CursorIterator(conn, "SELECT * FROM test", state, [], Record, 1, 1)
 
         with pytest.raises(StopAsyncIteration):
-            asyncio.run(anext(crs_iter))
+            asyncio.run(crs_iter.__anext__())
 
         spans = self.memory_exporter.get_finished_spans()
         self.assertEqual(len(spans), 2)
