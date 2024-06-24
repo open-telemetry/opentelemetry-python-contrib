@@ -586,7 +586,6 @@ class TestProgrammatic(InstrumentationTest, WsgiTestBase):
             "http.method": "GET",
             "http.host": "localhost",
             "http.scheme": "http",
-
             "http.flavor": "1.1",
             "http.server_name": "localhost",
             "net.host.name": "localhost",

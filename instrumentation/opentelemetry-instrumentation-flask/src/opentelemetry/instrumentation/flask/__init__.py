@@ -266,11 +266,11 @@ from opentelemetry.instrumentation.propagators import (
 )
 from opentelemetry.instrumentation.utils import _start_internal_or_server_span
 from opentelemetry.metrics import get_meter
+from opentelemetry.semconv.attributes.http_attributes import HTTP_ROUTE
 from opentelemetry.semconv.metrics import MetricInstruments
 from opentelemetry.semconv.metrics.http_metrics import (
     HTTP_SERVER_REQUEST_DURATION,
 )
-from opentelemetry.semconv.trace import SpanAttributes
 from opentelemetry.util.http import (
     get_excluded_urls,
     parse_excluded_urls,
@@ -284,7 +284,7 @@ _ENVIRON_SPAN_KEY = "opentelemetry-flask.span_key"
 _ENVIRON_ACTIVATION_KEY = "opentelemetry-flask.activation_key"
 _ENVIRON_REQCTX_REF_KEY = "opentelemetry-flask.reqctx_ref_key"
 _ENVIRON_TOKEN = "opentelemetry-flask.token"
-_ENVIRON_REQUEST_ROUTE_KEY = "request-route_key"
+_ENVIRON_REQUEST_ROUTE_KEY = "opentelemetry-flask.request-route_key"
 
 _excluded_urls_from_env = get_excluded_urls("FLASK")
 
@@ -396,8 +396,8 @@ def _rewrapped_app(
             )
 
             if wrapped_app_environ.get(_ENVIRON_REQUEST_ROUTE_KEY, None):
-                duration_attrs_old[SpanAttributes.HTTP_ROUTE] = (
-                    wrapped_app_environ.get(_ENVIRON_REQUEST_ROUTE_KEY)
+                duration_attrs_old[HTTP_ROUTE] = wrapped_app_environ.get(
+                    _ENVIRON_REQUEST_ROUTE_KEY
                 )
 
             duration_histogram_old.record(
@@ -409,8 +409,8 @@ def _rewrapped_app(
             )
 
             if wrapped_app_environ.get(_ENVIRON_REQUEST_ROUTE_KEY, None):
-                duration_attrs_new[SpanAttributes.HTTP_ROUTE] = (
-                    wrapped_app_environ.get(_ENVIRON_REQUEST_ROUTE_KEY)
+                duration_attrs_new[HTTP_ROUTE] = wrapped_app_environ.get(
+                    _ENVIRON_REQUEST_ROUTE_KEY
                 )
 
             duration_histogram_new.record(
@@ -443,7 +443,7 @@ def _wrapped_before_request(
         if flask.request.url_rule:
             # For 404 that result from no route found, etc, we
             # don't have a url_rule.
-            attributes[SpanAttributes.HTTP_ROUTE] = flask.request.url_rule.rule
+            attributes[HTTP_ROUTE] = flask.request.url_rule.rule
         span, token = _start_internal_or_server_span(
             tracer=tracer,
             span_name=span_name,
