@@ -18,6 +18,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   ([#2573](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/2573))
 - `opentelemetry-instrumentation-confluent-kafka` Add support for version 2.4.0 of confluent_kafka
   ([#2616](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/2616))
+- `opentelemetry-instrumentation-asyncpg` Add instrumentation to cursor based queries
+  ([#2501](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/2501))
 
 ### Breaking changes
 
