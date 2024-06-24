@@ -1,9 +1,9 @@
-from unittest import mock
 import asyncio
+from unittest import mock
 
-from asyncpg import Connection, cursor, Record
-from wrapt import ObjectProxy
 import pytest
+from asyncpg import Connection, Record, cursor
+from wrapt import ObjectProxy
 
 from opentelemetry.instrumentation.asyncpg import AsyncPGInstrumentor
 from opentelemetry.test.test_base import TestBase
