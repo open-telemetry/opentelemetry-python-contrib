@@ -462,7 +462,6 @@ class TestProgrammatic(InstrumentationTest, WsgiTestBase):
         self.assertEqual(len(span_list), 1)
 
     def test_flask_metrics(self):
-        _server_duration_attrs_old.append("http.route")
         start = default_timer()
         self.client.get("/hello/123")
         self.client.get("/hello/321")
@@ -587,6 +586,7 @@ class TestProgrammatic(InstrumentationTest, WsgiTestBase):
             "http.method": "GET",
             "http.host": "localhost",
             "http.scheme": "http",
+
             "http.flavor": "1.1",
             "http.server_name": "localhost",
             "net.host.name": "localhost",
