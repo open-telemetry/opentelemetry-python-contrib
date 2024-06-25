@@ -224,7 +224,7 @@ Some tests can be slow due to pre-steps that do dependencies installs. To help w
 ```console
 tox -e py312-test-instrumentation-aiopg
 ```
-2. Run tests again withou pre-steps:
+2. Run tests again without pre-steps:
 ```console
 .tox/py312-test-instrumentation-aiopg/bin/pytest instrumentation/opentelemetry-instrumentation-aiopg
 ```
