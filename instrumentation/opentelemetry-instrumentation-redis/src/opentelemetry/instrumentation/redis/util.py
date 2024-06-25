@@ -68,3 +68,17 @@ def _format_command_args(args):
         out_str = ""
 
     return out_str
+
+
+def _set_span_attribute(span, name, value):
+    if value is not None:
+        if value != "":
+            span.set_attribute(name, value)
+    return
+
+
+def _args_or_none(args, n):
+    try:
+        return args[n]
+    except IndexError:
+        return None
