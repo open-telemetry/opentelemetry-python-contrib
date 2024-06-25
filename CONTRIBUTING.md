@@ -60,13 +60,13 @@ $ pip install tox
 
 You can run `tox` with the following arguments:
 
-- `tox` to run all existing tox commands, including unit tests for all packages
+* `tox` to run all existing tox commands, including unit tests for all packages
   under multiple Python versions
-- `tox -e docs` to regenerate the API docs
-- `tox -e py312-test-instrumentation-aiopg` to e.g. run the aiopg instrumentation unit tests under a specific
+* `tox -e docs` to regenerate the API docs
+* `tox -e py312-test-instrumentation-aiopg` to e.g. run the aiopg instrumentation unit tests under a specific
   Python version
-- `tox -e spellcheck` to run a spellcheck on all the code
-- `tox -e lint-some-package` to run lint checks on `some-package`
+* `tox -e spellcheck` to run a spellcheck on all the code
+* `tox -e lint-some-package` to run lint checks on `some-package`
 
 `black` and `isort` are executed when `tox -e lint` is run. The reported errors can be tedious to fix manually.
 An easier way to do so is:
@@ -84,6 +84,7 @@ You can also configure it to run lint tools automatically before committing with
 
 ```console
 $ pre-commit install
+```
 
 See
 [`tox.ini`](https://github.com/open-telemetry/opentelemetry-python-contrib/blob/main/tox.ini)
@@ -161,6 +162,7 @@ Open a pull request against the main `opentelemetry-python-contrib` repo.
 
 * If the PR is not ready for review, please put `[WIP]` in the title, tag it
   as `work-in-progress`, or mark it as [`draft`](https://github.blog/2019-02-14-introducing-draft-pull-requests/).
+* Make sure tests and lint are passing locally before requesting a review.
 * Make sure CLA is signed and CI is clear.
 
 ### How to Get PRs Reviewed
@@ -216,13 +218,26 @@ For a deeper discussion, see: https://github.com/open-telemetry/opentelemetry-sp
 2. Make sure you have `tox` installed. `pip install tox`.
 3. Run `tox` without any arguments to run tests for all the packages. Read more about [tox](https://tox.readthedocs.io/en/latest/).
 
+Some tests can be slow due to pre-steps that do dependencies installs. To help with that, you can run tox a first time, and after that run the tests using previous installed dependencies in toxdir as following:
+
+1. First time run (e.g., opentelemetry-instrumentation-aiopg)
+```console
+tox -e py312-test-instrumentation-aiopg
+```
+2. Run tests again withou pre-steps:
+```console
+.tox/py312-test-instrumentation-aiopg/bin/pytest instrumentation/opentelemetry-instrumentation-aiopg
+```
+
 ### Testing against a different Core repo branch/commit
 
 Some of the tox targets install packages from the [OpenTelemetry Python Core Repository](https://github.com/open-telemetry/opentelemetry-python) via pip. The version of the packages installed defaults to the main branch in that repository when tox is run locally. It is possible to install packages tagged with a specific git commit hash by setting an environment variable before running tox as per the following example:
 
+```sh
 CORE_REPO_SHA=c49ad57bfe35cfc69bfa863d74058ca9bec55fc3 tox
+```
 
-The continuation integration overrides that environment variable with as per the configuration [here](https://github.com/open-telemetry/opentelemetry-python-contrib/blob/2518a4ac07cb62ad6587dd8f6cbb5f8663a7e179/.github/workflows/test.yml#L9).
+The continuous integration overrides that environment variable with as per the configuration [here](https://github.com/open-telemetry/opentelemetry-python-contrib/blob/main/.github/workflows/test.yml#L9).
 
 ## Style Guide
 
