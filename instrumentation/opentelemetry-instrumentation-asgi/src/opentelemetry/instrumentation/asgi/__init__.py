@@ -698,14 +698,19 @@ class OpenTelemetryMiddleware:
                     self.client_response_hook(send_span, scope, message)
 
                 status_code = None
-                if message["type"] == "http.response.start":
-                    status_code = message["status"]
-                elif message["type"] == "websocket.send":
-                    status_code = 200
-                if status_code:
-                    duration_attrs[SpanAttributes.HTTP_STATUS_CODE] = (
-                        status_code
+                if message["type"] in {
+                    "http.response.start",
+                    "websocket.send",
+                }:
+                    status_code = (
+                        message["status"]
+                        if message["type"] == "http.response.start"
+                        else 200
                     )
+                    if status_code:
+                        duration_attrs[SpanAttributes.HTTP_STATUS_CODE] = (
+                            status_code
+                        )
 
                 if send_span.is_recording():
                     if message["type"] == "http.response.start":
