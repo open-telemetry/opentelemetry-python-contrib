@@ -21,7 +21,7 @@ from opentelemetry import trace
 from opentelemetry.instrumentation.utils import http_status_to_status_code
 from opentelemetry.propagate import inject
 from opentelemetry.semconv.trace import SpanAttributes
-from opentelemetry.trace.status import Status
+from opentelemetry.trace.status import Status, StatusCode
 from opentelemetry.util.http import remove_url_credentials
 
 
@@ -107,6 +107,7 @@ def _finish_tracing_callback(
 ):
     response = None
     status_code = None
+    status = None
     description = None
 
     exc = future.exception()
@@ -115,18 +116,26 @@ def _finish_tracing_callback(
         if isinstance(exc, HTTPError):
             response = exc.response
             status_code = response.code
-    else:
-        response = future.result()
-        status_code = response.code
-
-    if status_code is not None:
-        span.set_attribute(SpanAttributes.HTTP_STATUS_CODE, status_code)
-        span.set_status(
-            Status(
+            status = Status(
                 status_code=http_status_to_status_code(status_code),
                 description=description,
             )
+        else:
+            status = Status(
+                status_code=StatusCode.ERROR,
+                description=description,
+            )
+    else:
+        response = future.result()
+        status_code = response.code
+        status = Status(
+            status_code=http_status_to_status_code(status_code),
+            description=description,
         )
+
+    if status_code is not None:
+        span.set_attribute(SpanAttributes.HTTP_STATUS_CODE, status_code)
+    span.set_status(status)
 
     if response is not None:
         metric_attributes = _create_metric_attributes(response)
