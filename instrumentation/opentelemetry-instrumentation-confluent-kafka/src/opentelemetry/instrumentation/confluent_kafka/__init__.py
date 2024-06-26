@@ -184,8 +184,7 @@ class ProxiedConsumer(Consumer):
 
     def close(self):
         return ConfluentKafkaInstrumentor.wrap_close(
-            self._consumer.close,
-            self
+            self._consumer.close, self
         )
 
     def committed(self, partitions, timeout=-1):
@@ -311,9 +310,7 @@ class ConfluentKafkaInstrumentor(BaseInstrumentor):
             )
 
         def _inner_wrap_close(func, instance):
-            return ConfluentKafkaInstrumentor.wrap_close(
-                func, instance
-            )
+            return ConfluentKafkaInstrumentor.wrap_close(func, instance)
 
         wrapt.wrap_function_wrapper(
             AutoInstrumentedProducer,
