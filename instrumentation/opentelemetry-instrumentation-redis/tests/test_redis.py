@@ -35,8 +35,8 @@ default_cluster_slots = [
 
 
 def get_mocked_redis_cluster_client(
-    func=None, cluster_slots_raise_error=False, *args, **kwargs
-):
+    *args, func=None, cluster_slots_raise_error=False, **kwargs
+):  # noqa
     """
     Return a stable RedisCluster object that have deterministic
     nodes and slots setup to remove the problem of different IP addresses
@@ -53,21 +53,17 @@ def get_mocked_redis_cluster_client(
             if _args[0] == "CLUSTER SLOTS":
                 if cluster_slots_raise_error:
                     raise redis.exceptions.ResponseError()
-                else:
-                    mock_cluster_slots = cluster_slots
-                    return mock_cluster_slots
-            elif _args[0] == "COMMAND":
+                mock_cluster_slots = cluster_slots
+                return mock_cluster_slots
+            if _args[0] == "COMMAND":
                 return {"get": [], "set": []}
-            elif _args[0] == "INFO":
+            if _args[0] == "INFO":
                 return {"cluster_enabled": cluster_enabled}
-            elif (
-                len(_args) > 1 and _args[1] == "cluster-require-full-coverage"
-            ):
+            if len(_args) > 1 and _args[1] == "cluster-require-full-coverage":
                 return {"cluster-require-full-coverage": coverage_res}
-            elif func is not None:
+            if func is not None:
                 return func(*args, **kwargs)
-            else:
-                return execute_command_mock(*_args, **_kwargs)
+            return execute_command_mock(*_args, **_kwargs)
 
         execute_command_mock.side_effect = execute_command
 
