@@ -275,3 +275,24 @@ Below is a checklist of things to be mindful of when implementing a new instrume
 ## Expectations from contributors
 
 OpenTelemetry is an open source community, and as such, greatly encourages contributions from anyone interested in the project. With that being said, there is a certain level of expectation from contributors even after a pull request is merged, specifically pertaining to instrumentations. The OpenTelemetry Python community expects contributors to maintain a level of support and interest in the instrumentations they contribute. This is to ensure that the instrumentation does not become stale and still functions the way the original contributor intended. Some instrumentations also pertain to libraries that the current members of the community are not so familiar with, so it is necessary to rely on the expertise of the original contributing parties.
+
+## Updating supported Python versions
+
+### Bumping the Python baseline
+
+When updating the minimum supported Python version remember to:
+
+- Remove the version in `pyproject.toml` trove classifiers
+- Remove the version from `tox.ini`
+- Search for `sys.version_info` usage and remove code for unsupported versions
+- Bump `py-version` in `.pylintrc` for Python version dependent checks
+
+### Adding support for a new Python release
+
+When adding support for a new Python release remember to:
+
+- Add the version in `tox.ini`
+- Add the version in `pyproject.toml` trove classifiers
+- Update github workflows accordingly; lint and benchmarks use the latest supported version
+- Update `.pre-commit-config.yaml`
+- Update tox examples in the documentation
