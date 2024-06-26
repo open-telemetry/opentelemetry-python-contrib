@@ -302,6 +302,7 @@ class TestAsgiApplication(AsgiTestBase):
 
         self.env_patch.start()
 
+    # pylint: disable=too-many-locals
     def validate_outputs(
         self,
         outputs,
