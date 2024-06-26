@@ -254,7 +254,7 @@ class TestConfluentKafka(TestBase):
                     SpanAttributes.MESSAGING_DESTINATION_KIND: MessagingDestinationKindValues.QUEUE.value,
                     SpanAttributes.MESSAGING_MESSAGE_ID: "topic-a.0.0",
                 },
-            }
+            },
         ]
 
         consumer = MockConsumer(
