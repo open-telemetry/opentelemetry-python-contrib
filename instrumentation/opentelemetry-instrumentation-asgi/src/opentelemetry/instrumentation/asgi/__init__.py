@@ -646,7 +646,7 @@ class OpenTelemetryMiddleware:
             or []
         )
 
-    # pylint: disable=too-many-branches
+    # pylint: disable=too-many-statements
     async def __call__(
         self,
         scope: dict[str, Any],
