@@ -102,6 +102,7 @@ from opentelemetry.instrumentation.instrumentor import BaseInstrumentor
 from opentelemetry.instrumentation.redis.package import _instruments
 from opentelemetry.instrumentation.redis.util import (
     _args_or_none,
+    _check_skip,
     _extract_conn_attributes,
     _format_command_args,
     _set_span_attribute,
@@ -184,7 +185,8 @@ def _instrument(
     def _traced_execute_command(func, instance, args, kwargs):
         query = _format_command_args(args)
         name = _build_span_name(instance, args)
-
+        if _check_skip(name):
+            return func(*args, **kwargs)
         with tracer.start_as_current_span(
             name, kind=trace.SpanKind.CLIENT
         ) as span:
@@ -205,7 +207,8 @@ def _instrument(
             resource,
             span_name,
         ) = _build_span_meta_data_for_pipeline(instance)
-
+        if _check_skip(span_name):
+            return func(*args, **kwargs)
         with tracer.start_as_current_span(
             span_name, kind=trace.SpanKind.CLIENT
         ) as span:

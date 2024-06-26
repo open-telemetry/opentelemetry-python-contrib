@@ -70,6 +70,14 @@ def _format_command_args(args):
     return out_str
 
 
+def _check_skip(name):
+    skip_list = ["FT.SEARCH", "FT.CREATE", "FT.AGGREGATE"]
+    for method in skip_list:
+        if method in name:
+            return True
+    return False
+
+
 def _set_span_attribute(span, name, value):
     if value is not None:
         if value != "":
