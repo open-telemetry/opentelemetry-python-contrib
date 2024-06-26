@@ -7,6 +7,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## Unreleased
 
+- `opentelemetry-instrumentation-redis` Bugfix: handle connection attributes of redis.cluster.RedisCluster
+  ([#2626](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/2626)
+
 - `opentelemetry-instrumentation-aws-lambda` Bugfix: AWS Lambda event source key incorrect for SNS in instrumentation library. 
   ([#2612](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/2612))
 
