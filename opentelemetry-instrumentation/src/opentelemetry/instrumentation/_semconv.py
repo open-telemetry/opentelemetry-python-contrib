@@ -330,9 +330,7 @@ def _set_http_user_agent(result, user_agent, sem_conv_opt_in_mode):
             result, SpanAttributes.HTTP_USER_AGENT, user_agent
         )
     if _report_new(sem_conv_opt_in_mode):
-        set_string_attribute(
-            result, USER_AGENT_ORIGINAL, user_agent
-        )
+        set_string_attribute(result, USER_AGENT_ORIGINAL, user_agent)
 
 
 def _set_http_net_peer_name_server(result, name, sem_conv_opt_in_mode):
@@ -346,9 +344,7 @@ def _set_http_flavor_version(result, version, sem_conv_opt_in_mode):
     if _report_old(sem_conv_opt_in_mode):
         set_string_attribute(result, SpanAttributes.HTTP_FLAVOR, version)
     if _report_new(sem_conv_opt_in_mode):
-        set_string_attribute(
-            result, NETWORK_PROTOCOL_VERSION, version
-        )
+        set_string_attribute(result, NETWORK_PROTOCOL_VERSION, version)
 
 
 def _set_status(
@@ -376,12 +372,8 @@ def _set_status(
             span.set_attribute(SpanAttributes.HTTP_STATUS_CODE, status_code)
             metrics_attributes[SpanAttributes.HTTP_STATUS_CODE] = status_code
         if _report_new(sem_conv_opt_in_mode):
-            span.set_attribute(
-                SpanAttributes.HTTP_RESPONSE_STATUS_CODE, status_code
-            )
-            metrics_attributes[SpanAttributes.HTTP_RESPONSE_STATUS_CODE] = (
-                status_code
-            )
+            span.set_attribute(HTTP_RESPONSE_STATUS_CODE, status_code)
+            metrics_attributes[HTTP_RESPONSE_STATUS_CODE] = status_code
             if status == StatusCode.ERROR:
                 span.set_attribute(ERROR_TYPE, status_code_str)
                 metrics_attributes[ERROR_TYPE] = status_code_str
