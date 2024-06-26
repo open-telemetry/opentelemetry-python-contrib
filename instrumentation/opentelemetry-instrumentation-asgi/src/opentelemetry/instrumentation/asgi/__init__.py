@@ -323,6 +323,7 @@ class ASGISetter(Setter[dict]):
 
 asgi_setter = ASGISetter()
 
+
 # pylint: disable=too-many-branches
 def collect_request_attributes(
     scope, sem_conv_opt_in_mode=_HTTPStabilityMode.DEFAULT
