@@ -200,11 +200,6 @@ from typing import Any, Awaitable, Callable, Tuple
 from asgiref.compatibility import guarantee_single_callable
 
 from opentelemetry import context, trace
-from opentelemetry.instrumentation.asgi.types import (
-    ClientRequestHook,
-    ClientResponseHook,
-    ServerRequestHook,
-)
 from opentelemetry.instrumentation._semconv import (
     _filter_semconv_active_request_count_attr,
     _filter_semconv_duration_attrs,
@@ -218,8 +213,8 @@ from opentelemetry.instrumentation._semconv import (
     _server_active_requests_count_attrs_old,
     _server_duration_attrs_new,
     _server_duration_attrs_old,
-    _set_http_host,
     _set_http_flavor_version,
+    _set_http_host,
     _set_http_method,
     _set_http_net_host_port,
     _set_http_peer_ip,
@@ -229,6 +224,11 @@ from opentelemetry.instrumentation._semconv import (
     _set_http_url,
     _set_http_user_agent,
     _set_status,
+)
+from opentelemetry.instrumentation.asgi.types import (
+    ClientRequestHook,
+    ClientResponseHook,
+    ServerRequestHook,
 )
 from opentelemetry.instrumentation.asgi.version import __version__  # noqa
 from opentelemetry.instrumentation.propagators import (
@@ -253,11 +253,11 @@ from opentelemetry.semconv.trace import SpanAttributes
 from opentelemetry.trace import set_span_in_context
 from opentelemetry.trace.status import Status, StatusCode
 from opentelemetry.util.http import (
-    _parse_url_query,
     OTEL_INSTRUMENTATION_HTTP_CAPTURE_HEADERS_SANITIZE_FIELDS,
     OTEL_INSTRUMENTATION_HTTP_CAPTURE_HEADERS_SERVER_REQUEST,
     OTEL_INSTRUMENTATION_HTTP_CAPTURE_HEADERS_SERVER_RESPONSE,
     SanitizeValue,
+    _parse_url_query,
     get_custom_headers,
     normalise_request_header_name,
     normalise_response_header_name,

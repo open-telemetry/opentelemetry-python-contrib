@@ -24,6 +24,9 @@ from unittest import mock
 import opentelemetry.instrumentation.asgi as otel_asgi
 from opentelemetry import trace as trace_api
 from opentelemetry.instrumentation._semconv import (
+    OTEL_SEMCONV_STABILITY_OPT_IN,
+    _HTTPStabilityMode,
+    _OpenTelemetrySemanticConventionStability,
     _server_active_requests_count_attrs_new,
     _server_active_requests_count_attrs_old,
     _server_duration_attrs_new,
@@ -33,11 +36,6 @@ from opentelemetry.instrumentation.propagators import (
     TraceResponsePropagator,
     get_global_response_propagator,
     set_global_response_propagator,
-)
-from opentelemetry.instrumentation._semconv import (
-    _HTTPStabilityMode,
-    _OpenTelemetrySemanticConventionStability,
-    OTEL_SEMCONV_STABILITY_OPT_IN,
 )
 from opentelemetry.sdk import resources
 from opentelemetry.sdk.metrics.export import (
