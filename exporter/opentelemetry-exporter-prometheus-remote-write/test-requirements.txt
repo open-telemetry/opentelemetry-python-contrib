@@ -16,7 +16,7 @@ python-snappy==0.7.1
 requests==2.32.3
 tomli==2.0.1
 typing_extensions==4.10.0
-urllib3==2.2.1
+urllib3==2.2.2
 wrapt==1.16.0
 zipp==3.17.0
 -e exporter/opentelemetry-exporter-prometheus-remote-write
