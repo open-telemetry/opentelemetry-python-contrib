@@ -19,12 +19,14 @@ from typing import Dict, List, Tuple, Union
 from aiohttp import web
 from multidict import CIMultiDictProxy
 
-from opentelemetry import context, metrics, trace
-from opentelemetry.context import _SUPPRESS_HTTP_INSTRUMENTATION_KEY
+from opentelemetry import metrics, trace
 from opentelemetry.instrumentation.aiohttp_server.package import _instruments
 from opentelemetry.instrumentation.aiohttp_server.version import __version__
 from opentelemetry.instrumentation.instrumentor import BaseInstrumentor
-from opentelemetry.instrumentation.utils import http_status_to_status_code
+from opentelemetry.instrumentation.utils import (
+    http_status_to_status_code,
+    is_http_instrumentation_enabled,
+)
 from opentelemetry.propagate import extract
 from opentelemetry.propagators.textmap import Getter
 from opentelemetry.semconv.metrics import MetricInstruments
@@ -191,10 +193,8 @@ getter = AiohttpGetter()
 @web.middleware
 async def middleware(request, handler):
     """Middleware for aiohttp implementing tracing logic"""
-    if (
-        context.get_value("suppress_instrumentation")
-        or context.get_value(_SUPPRESS_HTTP_INSTRUMENTATION_KEY)
-        or _excluded_urls.url_disabled(request.url.path)
+    if not is_http_instrumentation_enabled() or _excluded_urls.url_disabled(
+        request.url.path
     ):
         return await handler(request)
 

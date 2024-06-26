@@ -23,6 +23,7 @@ from opentelemetry import trace as trace_api
 from opentelemetry.instrumentation.aiohttp_server import (
     AioHttpServerInstrumentor,
 )
+from opentelemetry.instrumentation.utils import suppress_http_instrumentation
 from opentelemetry.semconv.trace import SpanAttributes
 from opentelemetry.test.globals_test import reset_trace_globals
 from opentelemetry.test.test_base import TestBase
@@ -64,16 +65,25 @@ async def default_handler(request, status=200):
     return aiohttp.web.Response(status=status)
 
 
+@pytest.fixture(name="suppress")
+def fixture_suppress():
+    return False
+
+
 @pytest_asyncio.fixture(name="server_fixture")
-async def fixture_server_fixture(tracer, aiohttp_server):
+async def fixture_server_fixture(tracer, aiohttp_server, suppress):
     _, memory_exporter = tracer
 
     AioHttpServerInstrumentor().instrument()
 
     app = aiohttp.web.Application()
     app.add_routes([aiohttp.web.get("/test-path", default_handler)])
+    if suppress:
+        with suppress_http_instrumentation():
+            server = await aiohttp_server(app)
+    else:
+        server = await aiohttp_server(app)
 
-    server = await aiohttp_server(app)
     yield server, app
 
     memory_exporter.clear()
@@ -128,3 +138,18 @@ async def test_status_code_instrumentation(
         f"http://{server.host}:{server.port}{url}"
         == span.attributes[SpanAttributes.HTTP_URL]
     )
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize("suppress", [True])
+async def test_suppress_instrumentation(
+    tracer, server_fixture, aiohttp_client
+):
+    _, memory_exporter = tracer
+    server, _ = server_fixture
+    assert len(memory_exporter.get_finished_spans()) == 0
+
+    client = await aiohttp_client(server)
+    await client.get("/test-path")
+
+    assert len(memory_exporter.get_finished_spans()) == 0
