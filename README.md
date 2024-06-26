@@ -46,7 +46,6 @@ The Python auto-instrumentation libraries for [OpenTelemetry](https://openteleme
 * [Releasing](#releasing)
   * [Releasing a package as `1.0` stable](#releasing-a-package-as-10-stable)
 * [Contributing](#contributing)
-* [Running Tests Locally](#running-tests-locally)
 * [Thanks to all the people who already contributed](#thanks-to-all-the-people-who-already-contributed)
 
 ## Installation
@@ -142,14 +141,6 @@ Emeritus Maintainers:
 - [Yusuke Tsutsumi](https://github.com/toumorokoshi), Google
 
 *Find more about the maintainer role in [community repository](https://github.com/open-telemetry/community/blob/main/community-membership.md#maintainer).*
-
-## Running Tests Locally
-
-1. Go to your Contrib repo directory. `cd ~/git/opentelemetry-python-contrib`.
-2. Create a virtual env in your Contrib repo directory. `python3 -m venv my_test_venv`.
-3. Activate your virtual env. `source my_test_venv/bin/activate`.
-4. Make sure you have `tox` installed. `pip install tox`.
-5. Run tests for a package. (e.g. `tox -e test-instrumentation-flask`.)
 
 ### Thanks to all the people who already contributed
 
