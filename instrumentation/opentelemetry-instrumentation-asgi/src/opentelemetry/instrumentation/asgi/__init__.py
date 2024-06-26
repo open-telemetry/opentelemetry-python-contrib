@@ -235,10 +235,7 @@ from opentelemetry.instrumentation.asgi.version import __version__  # noqa
 from opentelemetry.instrumentation.propagators import (
     get_global_response_propagator,
 )
-from opentelemetry.instrumentation.utils import (
-    _start_internal_or_server_span,
-    http_status_to_status_code,
-)
+from opentelemetry.instrumentation.utils import _start_internal_or_server_span
 from opentelemetry.metrics import get_meter
 from opentelemetry.propagators.textmap import Getter, Setter
 from opentelemetry.semconv._incubating.metrics.http_metrics import (
@@ -252,7 +249,6 @@ from opentelemetry.semconv.metrics.http_metrics import (
 )
 from opentelemetry.semconv.trace import SpanAttributes
 from opentelemetry.trace import set_span_in_context
-from opentelemetry.trace.status import Status, StatusCode
 from opentelemetry.util.http import (
     OTEL_INSTRUMENTATION_HTTP_CAPTURE_HEADERS_SANITIZE_FIELDS,
     OTEL_INSTRUMENTATION_HTTP_CAPTURE_HEADERS_SERVER_REQUEST,
