@@ -105,17 +105,17 @@ def _finish_tracing_callback(
     request_size_histogram,
     response_size_histogram,
 ):
+    response = None
     status_code = None
     description = None
+
     exc = future.exception()
-
-    if span.is_recording() and exc:
-        if isinstance(exc, HTTPError):
-            status_code = exc.code
+    if exc:
         description = f"{type(exc).__name__}: {exc}"
-
-    response = None
-    if not exc:
+        if isinstance(exc, HTTPError):
+            response = exc.response
+            status_code = response.code
+    else:
         response = future.result()
         status_code = response.code
 

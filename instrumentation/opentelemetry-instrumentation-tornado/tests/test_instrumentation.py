@@ -33,7 +33,7 @@ from opentelemetry.instrumentation.tornado import (
 from opentelemetry.semconv.trace import SpanAttributes
 from opentelemetry.test.test_base import TestBase
 from opentelemetry.test.wsgitestutil import WsgiTestBase
-from opentelemetry.trace import SpanKind
+from opentelemetry.trace import SpanKind, StatusCode
 from opentelemetry.util.http import (
     OTEL_INSTRUMENTATION_HTTP_CAPTURE_HEADERS_SERVER_REQUEST,
     OTEL_INSTRUMENTATION_HTTP_CAPTURE_HEADERS_SERVER_RESPONSE,
@@ -494,7 +494,6 @@ class TestTornadoInstrumentation(TornadoTest, WsgiTestBase):
         self.assertEqual(len(spans), 3)
         self.assertTraceResponseHeaderMatchesSpan(response.headers, spans[1])
 
-        self.memory_exporter.clear()
         set_global_response_propagator(orig)
 
     def test_credential_removal(self):
@@ -614,6 +613,7 @@ class TestTornadoHTTPClientInstrumentation(TornadoTest, WsgiTestBase):
         self.assertEqual(manual.name, "manual")
         self.assertEqual(server.name, "GET /")
         self.assertEqual(client.name, "GET")
+        self.assertEqual(client.status.status_code, StatusCode.UNSET)
         self.memory_exporter.clear()
 
     def test_http_client_failed_response(self):
@@ -626,6 +626,7 @@ class TestTornadoHTTPClientInstrumentation(TornadoTest, WsgiTestBase):
         server, client = self.sorted_spans(spans)
         self.assertEqual(server.name, "GET /some-404")
         self.assertEqual(client.name, "GET")
+        self.assertEqual(client.status.status_code, StatusCode.ERROR)
         self.memory_exporter.clear()
 
         # when an exception is thrown
@@ -633,13 +634,14 @@ class TestTornadoHTTPClientInstrumentation(TornadoTest, WsgiTestBase):
             response = self.fetch("/some-404", raise_error=True)
             self.assertEqual(response.code, 404)
         except HTTPClientError:
-            pass
+            pass  # expected exception - continue
 
         spans = self.memory_exporter.get_finished_spans()
         self.assertEqual(len(spans), 2)
         server, client = self.sorted_spans(spans)
         self.assertEqual(server.name, "GET /some-404")
         self.assertEqual(client.name, "GET")
+        self.assertEqual(client.status.status_code, StatusCode.ERROR)
         self.memory_exporter.clear()
 
 
