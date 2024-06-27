@@ -268,7 +268,7 @@ def _instrument(
             _set_span_attribute(
                 span,
                 "redis.commands.aggregate.query",
-                query.query_string(),
+                query._query,
             )
             response = func(*args, **kwargs)
             _set_span_attribute(
