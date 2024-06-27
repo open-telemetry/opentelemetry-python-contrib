@@ -238,7 +238,7 @@ def _instrument(
             )
         response = func(*args, **kwargs)
         return response
-    
+
     def _traced_search(func, instance, args, kwargs):
         span_name = "redis.search"
         with tracer.start_as_current_span(span_name) as span:
@@ -250,20 +250,14 @@ def _instrument(
             )
             response = func(*args, **kwargs)
             _set_span_attribute(
-                span,
-                "redis.commands.search.total",
-                response.total
+                span, "redis.commands.search.total", response.total
             )
             _set_span_attribute(
-                span,
-                "redis.commands.search.duration",
-                response.duration
+                span, "redis.commands.search.duration", response.duration
             )
             for index, doc in enumerate(response.docs):
                 _set_span_attribute(
-                    span,
-                    f"redis.commands.search.xdoc_{index}",
-                    doc.__str__()
+                    span, f"redis.commands.search.xdoc_{index}", doc.__str__()
                 )
         return response
 
@@ -278,9 +272,7 @@ def _instrument(
             )
             response = func(*args, **kwargs)
             _set_span_attribute(
-                span,
-                "redis.commands.aggregate.results",
-                str(response.rows)
+                span, "redis.commands.aggregate.results", str(response.rows)
             )
         return response
 
