@@ -87,14 +87,14 @@ created span and some other contextual information. Example:
     # will be called after a outgoing request made with
     # `tornado.httpclient.AsyncHTTPClient.fetch` finishes.
     # `response`` is an instance of ``Future[tornado.httpclient.HTTPResponse]`.
-    def client_resposne_hook(span, future):
+    def client_response_hook(span, future):
         pass
 
     # apply tornado instrumentation with hooks
     TornadoInstrumentor().instrument(
         server_request_hook=server_request_hook,
         client_request_hook=client_request_hook,
-        client_response_hook=client_resposne_hook
+        client_response_hook=client_response_hook
     )
 
 Capture HTTP request and response headers

@@ -19,16 +19,20 @@ classifiers = [
   "Programming Language :: Python",
   "Programming Language :: Python :: 3",
   "Programming Language :: Python :: 3.8",
+  "Programming Language :: Python :: 3.9",
+  "Programming Language :: Python :: 3.10",
+  "Programming Language :: Python :: 3.11",
+  "Programming Language :: Python :: 3.12",
 ]
 dependencies = [
-  "opentelemetry-instrumentation == 0.46b0.dev",
+  "opentelemetry-instrumentation == 0.47b0.dev",
   "opentelemetry-api ~= 1.12",
   "wrapt >= 1.0.0, < 2.0.0",
 ]
 
 [project.optional-dependencies]
 instruments = [
-  "confluent-kafka >= 1.8.2, <= 2.3.0",
+  "confluent-kafka >= 1.8.2, <= 2.4.0",
 ]
 
 [project.entry-points.opentelemetry_instrumentor]

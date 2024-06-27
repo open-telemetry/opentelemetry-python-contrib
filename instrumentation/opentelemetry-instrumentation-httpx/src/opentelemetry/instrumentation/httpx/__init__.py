@@ -196,11 +196,13 @@ from types import TracebackType
 
 import httpx
 
-from opentelemetry import context
 from opentelemetry.instrumentation.httpx.package import _instruments
 from opentelemetry.instrumentation.httpx.version import __version__
 from opentelemetry.instrumentation.instrumentor import BaseInstrumentor
-from opentelemetry.instrumentation.utils import http_status_to_status_code
+from opentelemetry.instrumentation.utils import (
+    http_status_to_status_code,
+    is_http_instrumentation_enabled,
+)
 from opentelemetry.propagate import inject
 from opentelemetry.semconv.trace import SpanAttributes
 from opentelemetry.trace import SpanKind, TracerProvider, get_tracer
@@ -347,7 +349,7 @@ class SyncOpenTelemetryTransport(httpx.BaseTransport):
         httpx.Response,
     ]:
         """Add request info to span."""
-        if context.get_value("suppress_instrumentation"):
+        if not is_http_instrumentation_enabled():
             return self._transport.handle_request(*args, **kwargs)
 
         method, url, headers, stream, extensions = _extract_parameters(
@@ -438,7 +440,7 @@ class AsyncOpenTelemetryTransport(httpx.AsyncBaseTransport):
         httpx.Response,
     ]:
         """Add request info to span."""
-        if context.get_value("suppress_instrumentation"):
+        if not is_http_instrumentation_enabled():
             return await self._transport.handle_async_request(*args, **kwargs)
 
         method, url, headers, stream, extensions = _extract_parameters(
@@ -564,11 +566,13 @@ class HTTPXClientInstrumentor(BaseInstrumentor):
         tracer_provider = kwargs.get("tracer_provider")
         _InstrumentedClient._tracer_provider = tracer_provider
         _InstrumentedAsyncClient._tracer_provider = tracer_provider
-        httpx.Client = _InstrumentedClient
+        # Intentionally using a private attribute here, see:
+        # https://github.com/open-telemetry/opentelemetry-python-contrib/pull/2538#discussion_r1610603719
+        httpx.Client = httpx._api.Client = _InstrumentedClient
         httpx.AsyncClient = _InstrumentedAsyncClient
 
     def _uninstrument(self, **kwargs):
-        httpx.Client = self._original_client
+        httpx.Client = httpx._api.Client = self._original_client
         httpx.AsyncClient = self._original_async_client
         _InstrumentedClient._tracer_provider = None
         _InstrumentedClient._request_hook = None

@@ -22,13 +22,14 @@ classifiers = [
   "Programming Language :: Python :: 3.9",
   "Programming Language :: Python :: 3.10",
   "Programming Language :: Python :: 3.11",
+  "Programming Language :: Python :: 3.12",
 ]
 dependencies = [
   "opentelemetry-api ~= 1.12",
-  "opentelemetry-instrumentation == 0.46b0.dev",
-  "opentelemetry-instrumentation-wsgi == 0.46b0.dev",
-  "opentelemetry-semantic-conventions == 0.46b0.dev",
-  "opentelemetry-util-http == 0.46b0.dev",
+  "opentelemetry-instrumentation == 0.47b0.dev",
+  "opentelemetry-instrumentation-wsgi == 0.47b0.dev",
+  "opentelemetry-semantic-conventions == 0.47b0.dev",
+  "opentelemetry-util-http == 0.47b0.dev",
   "packaging >= 21.0",
   "importlib-metadata >= 4.0",
 ]

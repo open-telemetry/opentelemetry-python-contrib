@@ -12,6 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+from typing import Optional
 from os import environ
 
 from opentelemetry.sdk.resources import Resource, ResourceDetector
@@ -20,13 +21,14 @@ from opentelemetry.semconv.resource import (
     CloudProviderValues,
     ResourceAttributes,
 )
+from opentelemetry.resource.detector.azure._utils import _get_azure_resource_uri
 
 from ._constants import (
     _APP_SERVICE_ATTRIBUTE_ENV_VARS,
-    _WEBSITE_OWNER_NAME,
-    _WEBSITE_RESOURCE_GROUP,
     _WEBSITE_SITE_NAME,
 )
+
+from opentelemetry.resource.detector.azure._utils import _is_on_functions
 
 
 class AzureAppServiceResourceDetector(ResourceDetector):
@@ -34,15 +36,17 @@ class AzureAppServiceResourceDetector(ResourceDetector):
         attributes = {}
         website_site_name = environ.get(_WEBSITE_SITE_NAME)
         if website_site_name:
-            attributes[ResourceAttributes.SERVICE_NAME] = website_site_name
+            # Functions resource detector takes priority with `service.name` and `cloud.platform`
+            if not _is_on_functions():
+                attributes[ResourceAttributes.SERVICE_NAME] = website_site_name
+                attributes[ResourceAttributes.CLOUD_PLATFORM] = (
+                    CloudPlatformValues.AZURE_APP_SERVICE.value
+                )
             attributes[ResourceAttributes.CLOUD_PROVIDER] = (
                 CloudProviderValues.AZURE.value
             )
-            attributes[ResourceAttributes.CLOUD_PLATFORM] = (
-                CloudPlatformValues.AZURE_APP_SERVICE.value
-            )
 
-            azure_resource_uri = _get_azure_resource_uri(website_site_name)
+            azure_resource_uri = _get_azure_resource_uri()
             if azure_resource_uri:
                 attributes[ResourceAttributes.CLOUD_RESOURCE_ID] = (
                     azure_resource_uri
@@ -53,17 +57,3 @@ class AzureAppServiceResourceDetector(ResourceDetector):
                     attributes[key] = value
 
         return Resource(attributes)
-
-
-def _get_azure_resource_uri(website_site_name):
-    website_resource_group = environ.get(_WEBSITE_RESOURCE_GROUP)
-    website_owner_name = environ.get(_WEBSITE_OWNER_NAME)
-
-    subscription_id = website_owner_name
-    if website_owner_name and "+" in website_owner_name:
-        subscription_id = website_owner_name[0 : website_owner_name.index("+")]
-
-    if not (website_resource_group and subscription_id):
-        return None
-
-    return f"/subscriptions/{subscription_id}/resourceGroups/{website_resource_group}/providers/Microsoft.Web/sites/{website_site_name}"
