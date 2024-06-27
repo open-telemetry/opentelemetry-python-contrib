@@ -757,8 +757,6 @@ class OpenTelemetryMiddleware:
                 self.active_requests_counter.add(
                     -1, active_requests_count_attrs
                 )
-                print(attributes)
-                print(active_requests_count_attrs)
                 if self.content_length_header:
                     if self.server_response_size_histogram:
                         self.server_response_size_histogram.record(
