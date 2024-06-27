@@ -1,3 +1,5 @@
+from collections.abc import Mapping
+from typing import Tuple
 from unittest.mock import patch
 
 import fastapi
@@ -13,6 +15,24 @@ from opentelemetry.util.http import (
     OTEL_INSTRUMENTATION_HTTP_CAPTURE_HEADERS_SERVER_REQUEST,
     OTEL_INSTRUMENTATION_HTTP_CAPTURE_HEADERS_SERVER_RESPONSE,
 )
+
+
+class MultiMapping(Mapping):
+
+    def __init__(self, *items: Tuple[str, str]):
+        self._items = items
+
+    def __len__(self):
+        return len(self._items)
+
+    def __getitem__(self, __key):
+        raise NotImplementedError("use .items() instead")
+
+    def __iter__(self):
+        raise NotImplementedError("use .items() instead")
+
+    def items(self):
+        return self._items
 
 
 @patch.dict(
@@ -41,13 +61,15 @@ class TestHTTPAppWithCustomHeaders(TestBase):
 
         @app.get("/foobar")
         async def _():
-            headers = {
-                "custom-test-header-1": "test-header-value-1",
-                "custom-test-header-2": "test-header-value-2",
-                "my-custom-regex-header-1": "my-custom-regex-value-1,my-custom-regex-value-2",
-                "My-Custom-Regex-Header-2": "my-custom-regex-value-3,my-custom-regex-value-4",
-                "My-Secret-Header": "My Secret Value",
-            }
+            headers = MultiMapping(
+                ("custom-test-header-1", "test-header-value-1"),
+                ("custom-test-header-2", "test-header-value-2"),
+                ("my-custom-regex-header-1", "my-custom-regex-value-1"),
+                ("my-custom-regex-header-1", "my-custom-regex-value-2"),
+                ("My-Custom-Regex-Header-2", "my-custom-regex-value-3"),
+                ("My-Custom-Regex-Header-2", "my-custom-regex-value-4"),
+                ("My-Secret-Header", "My Secret Value"),
+            )
             content = {"message": "hello world"}
             return JSONResponse(content=content, headers=headers)
 
@@ -123,10 +145,12 @@ class TestHTTPAppWithCustomHeaders(TestBase):
                 "test-header-value-2",
             ),
             "http.response.header.my_custom_regex_header_1": (
-                "my-custom-regex-value-1,my-custom-regex-value-2",
+                "my-custom-regex-value-1",
+                "my-custom-regex-value-2",
             ),
             "http.response.header.my_custom_regex_header_2": (
-                "my-custom-regex-value-3,my-custom-regex-value-4",
+                "my-custom-regex-value-3",
+                "my-custom-regex-value-4",
             ),
             "http.response.header.my_secret_header": ("[REDACTED]",),
         }

@@ -12,9 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 import unittest
-from collections.abc import Mapping
 from timeit import default_timer
-from typing import Tuple
 from unittest.mock import patch
 
 import fastapi
@@ -22,7 +20,6 @@ from fastapi.middleware.httpsredirect import HTTPSRedirectMiddleware
 from fastapi.testclient import TestClient
 
 import opentelemetry.instrumentation.fastapi as otel_fastapi
-from opentelemetry import trace
 from opentelemetry.instrumentation.asgi import OpenTelemetryMiddleware
 from opentelemetry.sdk.metrics.export import (
     HistogramDataPoint,
@@ -57,7 +54,7 @@ _recommended_attrs = {
 }
 
 
-class TestFastAPIManualInstrumentation(TestBase):
+class BaseFastAPI:
     def _create_app(self):
         app = self._create_fastapi_app()
         self._instrumentor.instrument_app(
@@ -105,6 +102,137 @@ class TestFastAPIManualInstrumentation(TestBase):
             self._instrumentor.uninstrument()
             self._instrumentor.uninstrument_app(self._app)
 
+    @staticmethod
+    def _create_fastapi_app():
+        app = fastapi.FastAPI()
+        sub_app = fastapi.FastAPI()
+
+        @sub_app.get("/home")
+        async def _():
+            return {"message": "sub hi"}
+
+        @app.get("/foobar")
+        async def _():
+            return {"message": "hello world"}
+
+        @app.get("/user/{username}")
+        async def _(username: str):
+            return {"message": username}
+
+        @app.get("/exclude/{param}")
+        async def _(param: str):
+            return {"message": param}
+
+        @app.get("/healthzz")
+        async def _():
+            return {"message": "ok"}
+
+        app.mount("/sub", app=sub_app)
+
+        return app
+
+
+class BaseManualFastAPI(BaseFastAPI):
+
+    def test_sub_app_fastapi_call(self):
+        """
+        This test is to ensure that a span in case of a sub app targeted contains the correct server url
+
+        As this test case covers manual instrumentation, we won't see any additional spans for the sub app.
+        In this case all generated spans might suffice the requirements for the attributes already
+        (as the testcase is not setting a root_path for the outer app here)
+        """
+
+        self._client.get("/sub/home")
+        spans = self.memory_exporter.get_finished_spans()
+        self.assertEqual(len(spans), 3)
+        for span in spans:
+            # As we are only looking to the "outer" app, we would see only the "GET /sub" spans
+            self.assertIn("GET /sub", span.name)
+
+        # We now want to specifically test all spans including the
+        # - HTTP_TARGET
+        # - HTTP_URL
+        # attributes to be populated with the expected values
+        spans_with_http_attributes = [
+            span
+            for span in spans
+            if (
+                SpanAttributes.HTTP_URL in span.attributes
+                or SpanAttributes.HTTP_TARGET in span.attributes
+            )
+        ]
+
+        # We expect only one span to have the HTTP attributes set (the SERVER span from the app itself)
+        # the sub app is not instrumented with manual instrumentation tests.
+        self.assertEqual(1, len(spans_with_http_attributes))
+
+        for span in spans_with_http_attributes:
+            self.assertEqual(
+                "/sub/home", span.attributes[SpanAttributes.HTTP_TARGET]
+            )
+        self.assertEqual(
+            "https://testserver:443/sub/home",
+            span.attributes[SpanAttributes.HTTP_URL],
+        )
+
+
+class BaseAutoFastAPI(BaseFastAPI):
+
+    def test_sub_app_fastapi_call(self):
+        """
+        This test is to ensure that a span in case of a sub app targeted contains the correct server url
+
+        As this test case covers auto instrumentation, we will see additional spans for the sub app.
+        In this case all generated spans might suffice the requirements for the attributes already
+        (as the testcase is not setting a root_path for the outer app here)
+        """
+
+        self._client.get("/sub/home")
+        spans = self.memory_exporter.get_finished_spans()
+        self.assertEqual(len(spans), 6)
+
+        for span in spans:
+            # As we are only looking to the "outer" app, we would see only the "GET /sub" spans
+            #   -> the outer app is not aware of the sub_apps internal routes
+            sub_in = "GET /sub" in span.name
+            # The sub app spans are named GET /home as from the sub app perspective the request targets /home
+            #   -> the sub app is technically not aware of the /sub prefix
+            home_in = "GET /home" in span.name
+
+            # We expect the spans to be either from the outer app or the sub app
+            self.assertTrue(
+                sub_in or home_in,
+                f"Span {span.name} does not have /sub or /home in its name",
+            )
+
+        # We now want to specifically test all spans including the
+        # - HTTP_TARGET
+        # - HTTP_URL
+        # attributes to be populated with the expected values
+        spans_with_http_attributes = [
+            span
+            for span in spans
+            if (
+                SpanAttributes.HTTP_URL in span.attributes
+                or SpanAttributes.HTTP_TARGET in span.attributes
+            )
+        ]
+
+        # We now expect spans with attributes from both the app and its sub app
+        self.assertEqual(2, len(spans_with_http_attributes))
+
+        for span in spans_with_http_attributes:
+            self.assertEqual(
+                "/sub/home", span.attributes[SpanAttributes.HTTP_TARGET]
+            )
+        self.assertEqual(
+            "https://testserver:443/sub/home",
+            span.attributes[SpanAttributes.HTTP_URL],
+        )
+
+
+class TestFastAPIManualInstrumentation(BaseManualFastAPI, TestBase):
     def test_instrument_app_with_instrument(self):
         if not isinstance(self, TestAutoInstrumentation):
             self._instrumentor.instrument()
@@ -314,48 +442,6 @@ class TestFastAPIManualInstrumentation(TestBase):
                 if isinstance(point, NumberDataPoint):
                     self.assertEqual(point.value, 0)
 
-    def test_sub_app_fastapi_call(self):
-        """
-        This test is to ensure that a span in case of a sub app targeted contains the correct server url
-
-        As this test case covers manual instrumentation, we won't see any additional spans for the sub app.
-        In this case all generated spans might suffice the requirements for the attributes already
-        (as the testcase is not setting a root_path for the outer app here)
-        """
-
-        self._client.get("/sub/home")
-        spans = self.memory_exporter.get_finished_spans()
-        self.assertEqual(len(spans), 3)
-        for span in spans:
-            # As we are only looking to the "outer" app, we would see only the "GET /sub" spans
-            self.assertIn("GET /sub", span.name)
-
-        # We now want to specifically test all spans including the
-        # - HTTP_TARGET
-        # - HTTP_URL
-        # attributes to be populated with the expected values
-        spans_with_http_attributes = [
-            span
-            for span in spans
-            if (
-                SpanAttributes.HTTP_URL in span.attributes
-                or SpanAttributes.HTTP_TARGET in span.attributes
-            )
-        ]
-
-        # We expect only one span to have the HTTP attributes set (the SERVER span from the app itself)
-        # the sub app is not instrumented with manual instrumentation tests.
-        self.assertEqual(1, len(spans_with_http_attributes))
-
-        for span in spans_with_http_attributes:
-            self.assertEqual(
-                "/sub/home", span.attributes[SpanAttributes.HTTP_TARGET]
-            )
-        self.assertEqual(
-            "https://testserver:443/sub/home",
-            span.attributes[SpanAttributes.HTTP_URL],
-        )
-
     @staticmethod
     def _create_fastapi_app():
         app = fastapi.FastAPI()
@@ -386,7 +472,7 @@ class TestFastAPIManualInstrumentation(TestBase):
         return app
 
 
-class TestFastAPIManualInstrumentationHooks(TestFastAPIManualInstrumentation):
+class TestFastAPIManualInstrumentationHooks(BaseManualFastAPI, TestBase):
     _server_request_hook = None
     _client_request_hook = None
     _client_response_hook = None
@@ -436,7 +522,7 @@ class TestFastAPIManualInstrumentationHooks(TestFastAPIManualInstrumentation):
             )
 
 
-class TestAutoInstrumentation(TestFastAPIManualInstrumentation):
+class TestAutoInstrumentation(BaseAutoFastAPI, TestBase):
     """Test the auto-instrumented variant
 
     Extending the manual instrumentation as most test cases apply
@@ -550,7 +636,7 @@ class TestAutoInstrumentation(TestFastAPIManualInstrumentation):
         )
 
 
-class TestAutoInstrumentationHooks(TestFastAPIManualInstrumentationHooks):
+class TestAutoInstrumentationHooks(BaseAutoFastAPI, TestBase):
     """
     Test the auto-instrumented variant for request and response hooks
 
@@ -659,412 +745,3 @@ class TestAutoInstrumentationLogic(unittest.TestCase):
 
         should_be_original = fastapi.FastAPI
         self.assertIs(original, should_be_original)
-
-
-class TestWrappedApplication(TestBase):
-    def setUp(self):
-        super().setUp()
-
-        self.app = fastapi.FastAPI()
-
-        @self.app.get("/foobar")
-        async def _():
-            return {"message": "hello world"}
-
-        otel_fastapi.FastAPIInstrumentor().instrument_app(self.app)
-        self.client = TestClient(self.app)
-        self.tracer = self.tracer_provider.get_tracer(__name__)
-
-    def tearDown(self) -> None:
-        super().tearDown()
-        with self.disable_logging():
-            otel_fastapi.FastAPIInstrumentor().uninstrument_app(self.app)
-
-    def test_mark_span_internal_in_presence_of_span_from_other_framework(self):
-        with self.tracer.start_as_current_span(
-            "test", kind=trace.SpanKind.SERVER
-        ) as parent_span:
-            resp = self.client.get("/foobar")
-            self.assertEqual(200, resp.status_code)
-
-        span_list = self.memory_exporter.get_finished_spans()
-        for span in span_list:
-            print(str(span.__class__) + ": " + str(span.__dict__))
-
-        # there should be 4 spans - single SERVER "test" and three INTERNAL "FastAPI"
-        self.assertEqual(trace.SpanKind.INTERNAL, span_list[0].kind)
-        self.assertEqual(trace.SpanKind.INTERNAL, span_list[1].kind)
-        # main INTERNAL span - child of test
-        self.assertEqual(trace.SpanKind.INTERNAL, span_list[2].kind)
-        self.assertEqual(
-            parent_span.context.span_id, span_list[2].parent.span_id
-        )
-        # SERVER "test"
-        self.assertEqual(trace.SpanKind.SERVER, span_list[3].kind)
-        self.assertEqual(
-            parent_span.context.span_id, span_list[3].context.span_id
-        )
-
-
-class MultiMapping(Mapping):
-
-    def __init__(self, *items: Tuple[str, str]):
-        self._items = items
-
-    def __len__(self):
-        return len(self._items)
-
-    def __getitem__(self, __key):
-        raise NotImplementedError("use .items() instead")
-
-    def __iter__(self):
-        raise NotImplementedError("use .items() instead")
-
-    def items(self):
-        return self._items
-
-
-@patch.dict(
-    "os.environ",
-    {
-        OTEL_INSTRUMENTATION_HTTP_CAPTURE_HEADERS_SANITIZE_FIELDS: ".*my-secret.*",
-        OTEL_INSTRUMENTATION_HTTP_CAPTURE_HEADERS_SERVER_REQUEST: "Custom-Test-Header-1,Custom-Test-Header-2,Custom-Test-Header-3,Regex-Test-Header-.*,Regex-Invalid-Test-Header-.*,.*my-secret.*",
-        OTEL_INSTRUMENTATION_HTTP_CAPTURE_HEADERS_SERVER_RESPONSE: "Custom-Test-Header-1,Custom-Test-Header-2,Custom-Test-Header-3,my-custom-regex-header-.*,invalid-regex-header-.*,.*my-secret.*",
-    },
-)
-class TestHTTPAppWithCustomHeaders(TestBase):
-    def setUp(self):
-        super().setUp()
-        self.app = self._create_app()
-        otel_fastapi.FastAPIInstrumentor().instrument_app(self.app)
-        self.client = TestClient(self.app)
-
-    def tearDown(self) -> None:
-        super().tearDown()
-        with self.disable_logging():
-            otel_fastapi.FastAPIInstrumentor().uninstrument_app(self.app)
-
-    @staticmethod
-    def _create_app():
-        app = fastapi.FastAPI()
-
-        @app.get("/foobar")
-        async def _():
-            headers = MultiMapping(
-                ("custom-test-header-1", "test-header-value-1"),
-                ("custom-test-header-2", "test-header-value-2"),
-                ("my-custom-regex-header-1", "my-custom-regex-value-1"),
-                ("my-custom-regex-header-1", "my-custom-regex-value-2"),
-                ("My-Custom-Regex-Header-2", "my-custom-regex-value-3"),
-                ("My-Custom-Regex-Header-2", "my-custom-regex-value-4"),
-                ("My-Secret-Header", "My Secret Value"),
-            )
-            content = {"message": "hello world"}
-            return JSONResponse(content=content, headers=headers)
-
-        return app
-
-    def test_http_custom_request_headers_in_span_attributes(self):
-        expected = {
-            "http.request.header.custom_test_header_1": (
-                "test-header-value-1",
-            ),
-            "http.request.header.custom_test_header_2": (
-                "test-header-value-2",
-            ),
-            "http.request.header.regex_test_header_1": ("Regex Test Value 1",),
-            "http.request.header.regex_test_header_2": (
-                "RegexTestValue2,RegexTestValue3",
-            ),
-            "http.request.header.my_secret_header": ("[REDACTED]",),
-        }
-        resp = self.client.get(
-            "/foobar",
-            headers={
-                "custom-test-header-1": "test-header-value-1",
-                "custom-test-header-2": "test-header-value-2",
-                "Regex-Test-Header-1": "Regex Test Value 1",
-                "regex-test-header-2": "RegexTestValue2,RegexTestValue3",
-                "My-Secret-Header": "My Secret Value",
-            },
-        )
-        self.assertEqual(200, resp.status_code)
-        span_list = self.memory_exporter.get_finished_spans()
-        self.assertEqual(len(span_list), 3)
-
-        server_span = [
-            span for span in span_list if span.kind == trace.SpanKind.SERVER
-        ][0]
-
-        self.assertSpanHasAttributes(server_span, expected)
-
-    def test_http_custom_request_headers_not_in_span_attributes(self):
-        not_expected = {
-            "http.request.header.custom_test_header_3": (
-                "test-header-value-3",
-            ),
-        }
-        resp = self.client.get(
-            "/foobar",
-            headers={
-                "custom-test-header-1": "test-header-value-1",
-                "custom-test-header-2": "test-header-value-2",
-                "Regex-Test-Header-1": "Regex Test Value 1",
-                "regex-test-header-2": "RegexTestValue2,RegexTestValue3",
-                "My-Secret-Header": "My Secret Value",
-            },
-        )
-        self.assertEqual(200, resp.status_code)
-        span_list = self.memory_exporter.get_finished_spans()
-        self.assertEqual(len(span_list), 3)
-
-        server_span = [
-            span for span in span_list if span.kind == trace.SpanKind.SERVER
-        ][0]
-
-        for key, _ in not_expected.items():
-            self.assertNotIn(key, server_span.attributes)
-
-    def test_http_custom_response_headers_in_span_attributes(self):
-        expected = {
-            "http.response.header.custom_test_header_1": (
-                "test-header-value-1",
-            ),
-            "http.response.header.custom_test_header_2": (
-                "test-header-value-2",
-            ),
-            "http.response.header.my_custom_regex_header_1": (
-                "my-custom-regex-value-1",
-                "my-custom-regex-value-2",
-            ),
-            "http.response.header.my_custom_regex_header_2": (
-                "my-custom-regex-value-3",
-                "my-custom-regex-value-4",
-            ),
-            "http.response.header.my_secret_header": ("[REDACTED]",),
-        }
-        resp = self.client.get("/foobar")
-        self.assertEqual(200, resp.status_code)
-        span_list = self.memory_exporter.get_finished_spans()
-        self.assertEqual(len(span_list), 3)
-
-        server_span = [
-            span for span in span_list if span.kind == trace.SpanKind.SERVER
-        ][0]
-        self.assertSpanHasAttributes(server_span, expected)
-
-    def test_http_custom_response_headers_not_in_span_attributes(self):
-        not_expected = {
-            "http.response.header.custom_test_header_3": (
-                "test-header-value-3",
-            ),
-        }
-        resp = self.client.get("/foobar")
-        self.assertEqual(200, resp.status_code)
-        span_list = self.memory_exporter.get_finished_spans()
-        self.assertEqual(len(span_list), 3)
-
-        server_span = [
-            span for span in span_list if span.kind == trace.SpanKind.SERVER
-        ][0]
-
-        for key, _ in not_expected.items():
-            self.assertNotIn(key, server_span.attributes)
-
-
-@patch.dict(
-    "os.environ",
-    {
-        OTEL_INSTRUMENTATION_HTTP_CAPTURE_HEADERS_SANITIZE_FIELDS: ".*my-secret.*",
-        OTEL_INSTRUMENTATION_HTTP_CAPTURE_HEADERS_SERVER_REQUEST: "Custom-Test-Header-1,Custom-Test-Header-2,Custom-Test-Header-3,Regex-Test-Header-.*,Regex-Invalid-Test-Header-.*,.*my-secret.*",
-        OTEL_INSTRUMENTATION_HTTP_CAPTURE_HEADERS_SERVER_RESPONSE: "Custom-Test-Header-1,Custom-Test-Header-2,Custom-Test-Header-3,my-custom-regex-header-.*,invalid-regex-header-.*,.*my-secret.*",
-    },
-)
-class TestWebSocketAppWithCustomHeaders(TestBase):
-    def setUp(self):
-        super().setUp()
-        self.app = self._create_app()
-        otel_fastapi.FastAPIInstrumentor().instrument_app(self.app)
-        self.client = TestClient(self.app)
-
-    def tearDown(self) -> None:
-        super().tearDown()
-        with self.disable_logging():
-            otel_fastapi.FastAPIInstrumentor().uninstrument_app(self.app)
-
-    @staticmethod
-    def _create_app():
-        app = fastapi.FastAPI()
-
-        @app.websocket("/foobar_web")
-        async def _(websocket: fastapi.WebSocket):
-            message = await websocket.receive()
-            if message.get("type") == "websocket.connect":
-                await websocket.send(
-                    {
-                        "type": "websocket.accept",
-                        "headers": [
-                            (b"custom-test-header-1", b"test-header-value-1"),
-                            (b"custom-test-header-2", b"test-header-value-2"),
-                            (b"Regex-Test-Header-1", b"Regex Test Value 1"),
-                            (
-                                b"regex-test-header-2",
-                                b"RegexTestValue2,RegexTestValue3",
-                            ),
-                            (b"My-Secret-Header", b"My Secret Value"),
-                        ],
-                    }
-                )
-                await websocket.send_json({"message": "hello world"})
-                await websocket.close()
-            if message.get("type") == "websocket.disconnect":
-                pass
-
-        return app
-
-    def test_web_socket_custom_request_headers_in_span_attributes(self):
-        expected = {
-            "http.request.header.custom_test_header_1": (
-                "test-header-value-1",
-            ),
-            "http.request.header.custom_test_header_2": (
-                "test-header-value-2",
-            ),
-        }
-
-        with self.client.websocket_connect(
-            "/foobar_web",
-            headers={
-                "custom-test-header-1": "test-header-value-1",
-                "custom-test-header-2": "test-header-value-2",
-            },
-        ) as websocket:
-            data = websocket.receive_json()
-            self.assertEqual(data, {"message": "hello world"})
-
-        span_list = self.memory_exporter.get_finished_spans()
-        self.assertEqual(len(span_list), 5)
-
-        server_span = [
-            span for span in span_list if span.kind == trace.SpanKind.SERVER
-        ][0]
-
-        self.assertSpanHasAttributes(server_span, expected)
-
-    @patch.dict(
-        "os.environ",
-        {
-            OTEL_INSTRUMENTATION_HTTP_CAPTURE_HEADERS_SANITIZE_FIELDS: ".*my-secret.*",
-            OTEL_INSTRUMENTATION_HTTP_CAPTURE_HEADERS_SERVER_REQUEST: "Custom-Test-Header-1,Custom-Test-Header-2,Custom-Test-Header-3,Regex-Test-Header-.*,Regex-Invalid-Test-Header-.*,.*my-secret.*",
-        },
-    )
-    def test_web_socket_custom_request_headers_not_in_span_attributes(self):
-        not_expected = {
-            "http.request.header.custom_test_header_3": (
-                "test-header-value-3",
-            ),
-        }
-
-        with self.client.websocket_connect(
-            "/foobar_web",
-            headers={
-                "custom-test-header-1": "test-header-value-1",
-                "custom-test-header-2": "test-header-value-2",
-            },
-        ) as websocket:
-            data = websocket.receive_json()
-            self.assertEqual(data, {"message": "hello world"})
-
-        span_list = self.memory_exporter.get_finished_spans()
-        self.assertEqual(len(span_list), 5)
-
-        server_span = [
-            span for span in span_list if span.kind == trace.SpanKind.SERVER
-        ][0]
-
-        for key, _ in not_expected.items():
-            self.assertNotIn(key, server_span.attributes)
-
-    def test_web_socket_custom_response_headers_in_span_attributes(self):
-        expected = {
-            "http.response.header.custom_test_header_1": (
-                "test-header-value-1",
-            ),
-            "http.response.header.custom_test_header_2": (
-                "test-header-value-2",
-            ),
-        }
-
-        with self.client.websocket_connect("/foobar_web") as websocket:
-            data = websocket.receive_json()
-            self.assertEqual(data, {"message": "hello world"})
-
-        span_list = self.memory_exporter.get_finished_spans()
-        self.assertEqual(len(span_list), 5)
-
-        server_span = [
-            span for span in span_list if span.kind == trace.SpanKind.SERVER
-        ][0]
-
-        self.assertSpanHasAttributes(server_span, expected)
-
-    def test_web_socket_custom_response_headers_not_in_span_attributes(self):
-        not_expected = {
-            "http.response.header.custom_test_header_3": (
-                "test-header-value-3",
-            ),
-        }
-
-        with self.client.websocket_connect("/foobar_web") as websocket:
-            data = websocket.receive_json()
-            self.assertEqual(data, {"message": "hello world"})
-
-        span_list = self.memory_exporter.get_finished_spans()
-        self.assertEqual(len(span_list), 5)
-
-        server_span = [
-            span for span in span_list if span.kind == trace.SpanKind.SERVER
-        ][0]
-
-        for key, _ in not_expected.items():
-            self.assertNotIn(key, server_span.attributes)
-
-
-@patch.dict(
-    "os.environ",
-    {
-        OTEL_INSTRUMENTATION_HTTP_CAPTURE_HEADERS_SERVER_REQUEST: "Custom-Test-Header-1,Custom-Test-Header-2,Custom-Test-Header-3",
-    },
-)
-class TestNonRecordingSpanWithCustomHeaders(TestBase):
-    def setUp(self):
-        super().setUp()
-        self.app = fastapi.FastAPI()
-
-        @self.app.get("/foobar")
-        async def _():
-            return {"message": "hello world"}
-
-        reset_trace_globals()
-        tracer_provider = trace.NoOpTracerProvider()
-        trace.set_tracer_provider(tracer_provider=tracer_provider)
-
-        self._instrumentor = otel_fastapi.FastAPIInstrumentor()
-        self._instrumentor.instrument_app(self.app)
-        self.client = TestClient(self.app)
-
-    def tearDown(self) -> None:
-        super().tearDown()
-        with self.disable_logging():
-            self._instrumentor.uninstrument_app(self.app)
-
-    def test_custom_header_not_present_in_non_recording_span(self):
-        resp = self.client.get(
-            "/foobar",
-            headers={
-                "custom-test-header-1": "test-header-value-1",
-            },
-        )
-        self.assertEqual(200, resp.status_code)
-        span_list = self.memory_exporter.get_finished_spans()
-        self.assertEqual(len(span_list), 0)
