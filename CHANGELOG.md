@@ -15,6 +15,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   ([#2612](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/2612))
 - `opentelemetry-instrumentation-system-metrics` Permit to use psutil 6.0+.
   ([#2630](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/2630))
+- `opentelemetry-instrumentation-asgi` Fix generation of `http.target` and `http.url` attributes for ASGI apps
+  using sub apps
+  ([#2477](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/2477))
+
 
 ### Added
 
@@ -90,9 +94,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - `opentelemetry-instrumentation-dbapi` Fix compatibility with Psycopg3 to extract libpq build version
   ([#2500](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/2500))
-- `opentelemetry-instrumentation-asgi` Fix generation of `http.target` and `http.url` attributes for ASGI apps
-  using sub apps
-  ([#2477](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/2477))
 - `opentelemetry-instrumentation-grpc` AioClientInterceptor should propagate with a Metadata object
   ([#2363](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/2363))
 - `opentelemetry-instrumentation-boto3sqs` Instrument Session and resource
