@@ -54,7 +54,7 @@ _recommended_attrs = {
 }
 
 
-class BaseFastAPI:
+class TestBaseFastAPI(TestBase):
     def _create_app(self):
         app = self._create_fastapi_app()
         self._instrumentor.instrument_app(
@@ -76,6 +76,15 @@ class BaseFastAPI:
             client_response_hook=getattr(self, "client_response_hook", None),
         )
         return app
+
+    @classmethod
+    def setUpClass(cls):
+        if cls is TestBaseFastAPI:
+            raise unittest.SkipTest(
+                f"{cls.__name__} is an abstract base class"
+            )
+
+        super(TestBaseFastAPI, cls).setUpClass()
 
     def setUp(self):
         super().setUp()
@@ -132,7 +141,16 @@ class BaseFastAPI:
         return app
 
 
-class BaseManualFastAPI(BaseFastAPI):
+class TestBaseManualFastAPI(TestBaseFastAPI):
+
+    @classmethod
+    def setUpClass(cls):
+        if cls is TestBaseManualFastAPI:
+            raise unittest.SkipTest(
+                f"{cls.__name__} is an abstract base class"
+            )
+
+        super(TestBaseManualFastAPI, cls).setUpClass()
 
     def test_sub_app_fastapi_call(self):
         """
@@ -177,7 +195,16 @@ class BaseManualFastAPI(BaseFastAPI):
         )
 
 
-class BaseAutoFastAPI(BaseFastAPI):
+class TestBaseAutoFastAPI(TestBaseFastAPI):
+
+    @classmethod
+    def setUpClass(cls):
+        if cls is TestBaseAutoFastAPI:
+            raise unittest.SkipTest(
+                f"{cls.__name__} is an abstract base class"
+            )
+
+        super(TestBaseAutoFastAPI, cls).setUpClass()
 
     def test_sub_app_fastapi_call(self):
         """
@@ -232,7 +259,7 @@ class BaseAutoFastAPI(BaseFastAPI):
         )
 
 
-class TestFastAPIManualInstrumentation(BaseManualFastAPI, TestBase):
+class TestFastAPIManualInstrumentation(TestBaseManualFastAPI, TestBase):
     def test_instrument_app_with_instrument(self):
         if not isinstance(self, TestAutoInstrumentation):
             self._instrumentor.instrument()
@@ -472,7 +499,7 @@ class TestFastAPIManualInstrumentation(BaseManualFastAPI, TestBase):
         return app
 
 
-class TestFastAPIManualInstrumentationHooks(BaseManualFastAPI, TestBase):
+class TestFastAPIManualInstrumentationHooks(TestBaseManualFastAPI, TestBase):
     _server_request_hook = None
     _client_request_hook = None
     _client_response_hook = None
@@ -522,7 +549,7 @@ class TestFastAPIManualInstrumentationHooks(BaseManualFastAPI, TestBase):
             )
 
 
-class TestAutoInstrumentation(BaseAutoFastAPI, TestBase):
+class TestAutoInstrumentation(TestBaseAutoFastAPI, TestBase):
     """Test the auto-instrumented variant
 
     Extending the manual instrumentation as most test cases apply
@@ -636,7 +663,7 @@ class TestAutoInstrumentation(BaseAutoFastAPI, TestBase):
         )
 
 
-class TestAutoInstrumentationHooks(BaseAutoFastAPI, TestBase):
+class TestAutoInstrumentationHooks(TestBaseAutoFastAPI, TestBase):
     """
     Test the auto-instrumented variant for request and response hooks
 
