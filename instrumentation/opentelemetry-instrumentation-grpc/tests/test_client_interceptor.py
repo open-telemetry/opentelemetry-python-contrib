@@ -12,6 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 # pylint:disable=cyclic-import
+import logging
 from time import sleep
 
 from unittest import mock
@@ -100,9 +101,7 @@ class TestClientProto(TestBase):
         self.server.start()
         # use a user defined interceptor along with the opentelemetry client interceptor
         interceptors = [Interceptor()]
-        self.channel = grpc.insecure_channel("localhost:25565", options=[
-            # (grpc.experimental.ChannelOptions.SingleThreadedUnaryStream, 1)
-        ])
+        self.channel = grpc.insecure_channel("localhost:25565")
         self.channel = grpc.intercept_channel(self.channel, *interceptors)
         self._stub = test_server_pb2_grpc.GRPCTestServerStub(self.channel)
 
@@ -175,14 +174,16 @@ class TestClientProto(TestBase):
         )
 
     def test_unary_stream_can_be_cancel(self):
-        responses = server_streaming_method(self._stub)
+        responses = server_streaming_method(self._stub, serialize=False)
         for i, _ in enumerate(responses):
             if i == 1:
                 responses.cancel()
                 break
-        sleep(10)
-        self.server.stop(None)
-        self.channel.close()
+        self.assertEqual(responses.code(), grpc.StatusCode.CANCELLED)
+        # self.server.stop(None)
+        # self.channel.close()
+        logging.exception("Getting spans")
+        # sleep(10)
         spans = self.memory_exporter.get_finished_spans()
         self.assertEqual(len(spans), 1)
         span = spans[0]

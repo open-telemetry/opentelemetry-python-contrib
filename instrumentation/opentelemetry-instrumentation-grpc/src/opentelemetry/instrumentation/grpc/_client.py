@@ -217,6 +217,7 @@ class OpenTelemetryClientInterceptor(
             stream = invoker(request_or_iterator, metadata)
 
             def done_callback(future, span_):
+                logger.exception("done_callback")
                 try:
                     future.result()
                 except grpc.FutureCancelledError:
