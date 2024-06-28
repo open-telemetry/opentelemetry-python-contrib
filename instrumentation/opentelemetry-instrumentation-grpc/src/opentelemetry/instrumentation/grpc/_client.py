@@ -79,25 +79,20 @@ def _safe_invoke(function: Callable, *args):
         )
 
 
-# pylint:disable=abstract-method
 class OpenTelemetryStreamWrapper(wrapt.ObjectProxy):
     def __init__(self, wrapped, span: trace.Span):
         super().__init__(wrapped)
         self._self_span = span
-        self._span_ended = False
 
     def _end_span_if_not_already_ended(self, status_code=None, status=None):
-        if self._span_ended:
-            return
-
-        if status_code is not None:
-            self._self_span.set_attribute(
-                SpanAttributes.RPC_GRPC_STATUS_CODE, status_code
-            )
-        if status is not None:
-            self._self_span.set_status(status)
-        self._span_ended = True
-        self._self_span.end()
+        if self._self_span.end_time is None:
+            self._self_span.end()
+            if status_code is not None:
+                self._self_span.set_attribute(
+                    SpanAttributes.RPC_GRPC_STATUS_CODE, status_code
+                )
+            if status is not None:
+                self._self_span.set_status(status)
 
     def __del__(self):
         self._end_span_if_not_already_ended()
