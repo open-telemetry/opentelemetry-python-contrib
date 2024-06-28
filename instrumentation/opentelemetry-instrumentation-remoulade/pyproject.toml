@@ -22,21 +22,17 @@ classifiers = [
   "Programming Language :: Python :: 3.9",
   "Programming Language :: Python :: 3.10",
   "Programming Language :: Python :: 3.11",
+  "Programming Language :: Python :: 3.12",
 ]
 dependencies = [
   "opentelemetry-api ~= 1.12",
-  "opentelemetry-instrumentation == 0.45b0.dev",
-  "opentelemetry-semantic-conventions == 0.45b0.dev",
+  "opentelemetry-instrumentation == 0.47b0.dev",
+  "opentelemetry-semantic-conventions == 0.47b0.dev",
 ]
 
 [project.optional-dependencies]
 instruments = [
   "remoulade >= 0.50",
-]
-test = [
-  "opentelemetry-instrumentation-remoulade[instruments]",
-  "opentelemetry-test-utils == 0.45b0.dev",
-  "opentelemetry-sdk ~= 1.10"
 ]
 
 [project.entry-points.opentelemetry_instrumentor]

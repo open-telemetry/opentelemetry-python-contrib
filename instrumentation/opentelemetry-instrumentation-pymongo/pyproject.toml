@@ -22,20 +22,17 @@ classifiers = [
   "Programming Language :: Python :: 3.9",
   "Programming Language :: Python :: 3.10",
   "Programming Language :: Python :: 3.11",
+  "Programming Language :: Python :: 3.12",
 ]
 dependencies = [
   "opentelemetry-api ~= 1.12",
-  "opentelemetry-instrumentation == 0.45b0.dev",
-  "opentelemetry-semantic-conventions == 0.45b0.dev",
+  "opentelemetry-instrumentation == 0.47b0.dev",
+  "opentelemetry-semantic-conventions == 0.47b0.dev",
 ]
 
 [project.optional-dependencies]
 instruments = [
   "pymongo >= 3.1, < 5.0",
-]
-test = [
-  "opentelemetry-instrumentation-pymongo[instruments]",
-  "opentelemetry-test-utils == 0.45b0.dev",
 ]
 
 [project.entry-points.opentelemetry_instrumentor]

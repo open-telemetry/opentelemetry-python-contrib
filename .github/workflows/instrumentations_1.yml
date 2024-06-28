@@ -6,7 +6,7 @@ on:
     - 'release/*'
   pull_request:
 env:
-  CORE_REPO_SHA: a1253585f66d63e7c05a19f070f3bfe0ab6460c1
+  CORE_REPO_SHA: 141a6a2e473ef7f0ec4915dfb71e3c0fa595283e
 
 jobs:
   instrumentations-1:
@@ -16,43 +16,42 @@ jobs:
       py39: 3.9
       py310: "3.10"
       py311: "3.11"
+      py312: "3.12"
       pypy3: pypy-3.8
       RUN_MATRIX_COMBINATION: ${{ matrix.python-version }}-${{ matrix.package }}-${{ matrix.os }}
     runs-on: ${{ matrix.os }}
     strategy:
       fail-fast: false  # ensures the entire test matrix is run, even if one permutation fails
       matrix:
-        python-version: [py38, py39, py310, py311, pypy3]
+        python-version: [py38, py39, py310, py311, py312, pypy3]
         package:
           - "urllib"
-          - "urllib3v"
+          - "urllib3"
           - "wsgi"
           - "distro"
           - "richconsole"
           - "psycopg"
           - "prometheus-remote-write"
-          - "sdkextension-aws"
+          - "sdk-extension-aws"
           - "propagator-aws-xray"
           - "propagator-ot-trace"
           - "resource-detector-container"
         os: [ubuntu-20.04]
         exclude:
-          - python-version: py311
-            package: "prometheus-remote-write"
           - python-version: pypy3
             package: "prometheus-remote-write"
     steps:
       - name: Checkout Contrib Repo @ SHA - ${{ github.sha }}
-        uses: actions/checkout@v2
+        uses: actions/checkout@v4
       - name: Set up Python ${{ env[matrix.python-version] }}
-        uses: actions/setup-python@v4
+        uses: actions/setup-python@v5
         with:
           python-version: ${{ env[matrix.python-version] }}
       - name: Install tox
         run: pip install tox
       - name: Cache tox environment
         # Preserves .tox directory between runs for faster installs
-        uses: actions/cache@v1
+        uses: actions/cache@v4
         with:
           path: |
             .tox

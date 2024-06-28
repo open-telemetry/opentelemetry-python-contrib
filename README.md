@@ -36,11 +36,19 @@
 
 ---
 
-## OpenTelemetry Python Contrib
+# OpenTelemetry Python Contrib
 
 The Python auto-instrumentation libraries for [OpenTelemetry](https://opentelemetry.io/) (per [OTEP 0001](https://github.com/open-telemetry/oteps/blob/main/text/0001-telemetry-without-manual-instrumentation.md))
 
-### Installation
+## Index
+
+* [Installation](#installation)
+* [Releasing](#releasing)
+  * [Releasing a package as `1.0` stable](#releasing-a-package-as-10-stable)
+* [Contributing](#contributing)
+* [Thanks to all the people who already contributed](#thanks-to-all-the-people-who-already-contributed)
+
+## Installation
 
 This repository includes installable packages for each instrumented library. Libraries that produce telemetry data should only depend on `opentelemetry-api`,
 and defer the choice of the SDK to the application developer. Applications may
@@ -79,6 +87,7 @@ To resolve this, members of the community are encouraged to commit to becoming a
 ### Releasing a package as `1.0` stable
 
 To release a package as `1.0` stable, the package:
+
 - SHOULD have a CODEOWNER. To become one, submit an issue and explain why you meet the responsibilities found in [CODEOWNERS](.github/CODEOWNERS).
 - MUST have unit tests that cover all supported versions of the instrumented library.
   - e.g. Instrumentation packages might use different techniques to instrument different major versions of python packages
@@ -86,11 +95,15 @@ To release a package as `1.0` stable, the package:
   - e.g. If an instrumentation package uses flags, a token as context, or parameters that are not typical of the `BaseInstrumentor` class, these are documented
 - After the release of `1.0`, a CODEOWNER may no longer feel like they have the bandwidth to meet the responsibilities of maintaining the package. That's not a problem at all, life happens! However, if that is the case, we ask that the CODEOWNER please raise an issue indicating that they would like to be removed as a CODEOWNER so that they don't get pinged on future PRs. Ultimately, we hope to use that issue to find a new CODEOWNER.
 
+## Semantic Convention status of instrumentations
+
+In our efforts to maintain optimal user experience and prevent breaking changes for transitioning into stable semantic conventions, OpenTelemetry Python is adopting the [semantic convention migration plan](https://github.com/open-telemetry/semantic-conventions/blob/main/docs/http/migration-guide.md) for several instrumentations. Currently this plan is only being adopted for HTTP-related instrumentations, but will eventually cover all types. Please refer to the `semconv status` column of the [instrumentation README](instrumentation/README.md) of the current status of instrumentations' semantic conventions. The possible values are `experimental`, `stable` and `migration` referring to [status](https://github.com/open-telemetry/opentelemetry-specification/blob/v1.31.0/specification/document-status.md#lifecycle-status) of that particular semantic convention. `Migration` refers to an instrumentation that currently supports the migration plan.
+
 ## Contributing
 
 See [CONTRIBUTING.md](CONTRIBUTING.md)
 
-We meet weekly on Thursday, and the time of the meeting alternates between 9AM PT and 4PM PT. The meeting is subject to change depending on contributors' availability. Check the [OpenTelemetry community calendar](https://calendar.google.com/calendar/embed?src=google.com_b79e3e90j7bbsa2n2p5an5lf60%40group.calendar.google.com) for specific dates and for the Zoom link.
+We meet weekly on Thursday at 9AM PT. The meeting is subject to change depending on contributors' availability. Check the [OpenTelemetry community calendar](https://calendar.google.com/calendar/embed?src=c_2bf73e3b6b530da4babd444e72b76a6ad893a5c3f43cf40467abc7a9a897f977%40group.calendar.google.com) for specific dates and for the Zoom link.
 
 Meeting notes are available as a public [Google doc](https://docs.google.com/document/d/1CIMGoIOZ-c3-igzbd6_Pnxx1SjAkjwqoYSUWxPY8XIs/edit). For edit access, get in touch on [GitHub Discussions](https://github.com/open-telemetry/opentelemetry-python/discussions).
 
@@ -98,14 +111,20 @@ Approvers ([@open-telemetry/python-approvers](https://github.com/orgs/open-telem
 
 - [Aaron Abbott](https://github.com/aabmass), Google
 - [Jeremy Voss](https://github.com/jeremydvoss), Microsoft
+- [Owais Lone](https://github.com/owais), Splunk
+- [Pablo Collins](https://github.com/pmcollins), Splunk
+- [Riccardo Magliocchetti](https://github.com/xrmx), Elastic
 - [Sanket Mehta](https://github.com/sanketmehta28), Cisco
+- [Srikanth Chekuri](https://github.com/srikanthccv), signoz.io
+- [Tammy Baylis](https://github.com/tammy-baylis-swi), SolarWinds
 
 Emeritus Approvers:
 
-- [Héctor Hernández](https://github.com/hectorhdzg), Microsoft
-- [Yusuke Tsutsumi](https://github.com/toumorokoshi), Google
-- [Nathaniel Ruiz Nowell](https://github.com/NathanielRN), AWS
 - [Ashutosh Goel](https://github.com/ashu658), Cisco
+- [Héctor Hernández](https://github.com/hectorhdzg), Microsoft
+- [Nikolay Sokolik](https://github.com/oxeye-nikolay), Oxeye
+- [Nikolay Sokolik](https://github.com/nikosokolik), Oxeye
+- [Nathaniel Ruiz Nowell](https://github.com/NathanielRN), AWS
 
 *Find more about the approver role in [community repository](https://github.com/open-telemetry/community/blob/main/community-membership.md#approver).*
 
@@ -119,21 +138,12 @@ Emeritus Maintainers:
 
 - [Alex Boten](https://github.com/codeboten), Lightstep
 - [Owais Lone](https://github.com/owais), Splunk
-- [Srikanth Chekuri](https://github.com/srikanthccv), signoz.io
+- [Yusuke Tsutsumi](https://github.com/toumorokoshi), Google
 
 *Find more about the maintainer role in [community repository](https://github.com/open-telemetry/community/blob/main/community-membership.md#maintainer).*
 
-## Running Tests Locally
-
-1. Go to your Contrib repo directory. `cd ~/git/opentelemetry-python-contrib`.
-2. Create a virtual env in your Contrib repo directory. `python3 -m venv my_test_venv`.
-3. Activate your virtual env. `source my_test_venv/bin/activate`.
-4. Make sure you have `tox` installed. `pip install tox`.
-5. Run tests for a package. (e.g. `tox -e test-instrumentation-flask`.)
-
-### Thanks to all the people who already contributed!
+### Thanks to all the people who already contributed
 
 <a href="https://github.com/open-telemetry/opentelemetry-python-contrib/graphs/contributors">
   <img src="https://contributors-img.web.app/image?repo=open-telemetry/opentelemetry-python-contrib" />
 </a>
-

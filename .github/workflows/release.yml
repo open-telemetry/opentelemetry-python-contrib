@@ -12,7 +12,7 @@ jobs:
             exit 1
           fi
 
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v4
 
       - name: Set environment variables
         run: |
@@ -56,15 +56,15 @@ jobs:
 
       # check out main branch to verify there won't be problems with merging the change log
       # at the end of this workflow
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v4
         with:
           ref: main
 
         # back to the release branch
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v4
 
         # next few steps publish to pypi
-      - uses: actions/setup-python@v1
+      - uses: actions/setup-python@v5
         with:
           python-version: '3.8'
 
@@ -81,12 +81,14 @@ jobs:
       # rejected by pypi (e.g "3 - Beta"). This would cause a failure during the
       # middle of the package upload causing the action to fail, and certain packages
       # might have already been updated, this would be bad.
-      - name: Publish to TestPyPI
-        env:
-          TWINE_USERNAME: '__token__'
-          TWINE_PASSWORD: ${{ secrets.test_pypi_token }}
-        run: |
-          twine upload --repository testpypi --skip-existing --verbose dist/*
+      # EDIT: 5/31/2024 - TestPypi now requires a verified email. Commenting out as a temporary measure
+      # until we found TestPypi credentials.
+      # - name: Publish to TestPyPI
+      #   env:
+      #     TWINE_USERNAME: '__token__'
+      #     TWINE_PASSWORD: ${{ secrets.test_pypi_token }}
+      #   run: |
+      #     twine upload --repository testpypi --skip-existing --verbose dist/*
 
       - name: Publish to PyPI
         env:
@@ -127,7 +129,7 @@ jobs:
                             --discussion-category announcements \
                             v$UNSTABLE_VERSION
 
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v4
         with:
           # the step below is creating a pull request against main
           ref: main
