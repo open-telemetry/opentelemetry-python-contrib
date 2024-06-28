@@ -21,12 +21,13 @@ import httpx
 import respx
 
 import opentelemetry.instrumentation.httpx
-from opentelemetry import context, trace
+from opentelemetry import trace
 from opentelemetry.instrumentation.httpx import (
     AsyncOpenTelemetryTransport,
     HTTPXClientInstrumentor,
     SyncOpenTelemetryTransport,
 )
+from opentelemetry.instrumentation.utils import suppress_http_instrumentation
 from opentelemetry.propagate import get_global_textmap, set_global_textmap
 from opentelemetry.sdk import resources
 from opentelemetry.semconv.trace import SpanAttributes
@@ -51,12 +52,18 @@ if typing.TYPE_CHECKING:
 HTTP_RESPONSE_BODY = "http.response.body"
 
 
+def _is_url_tuple(request: "RequestInfo"):
+    """Determine if request url format is for httpx versions < 0.20.0."""
+    return isinstance(request[1], tuple) and len(request[1]) == 4
+
+
 def _async_call(coro: typing.Coroutine) -> asyncio.Task:
     loop = asyncio.get_event_loop()
     return loop.run_until_complete(coro)
 
 
 def _response_hook(span, request: "RequestInfo", response: "ResponseInfo"):
+    assert _is_url_tuple(request) or isinstance(request.url, httpx.URL)
     span.set_attribute(
         HTTP_RESPONSE_BODY,
         b"".join(response[2]),
@@ -66,6 +73,7 @@ def _response_hook(span, request: "RequestInfo", response: "ResponseInfo"):
 async def _async_response_hook(
     span: "Span", request: "RequestInfo", response: "ResponseInfo"
 ):
+    assert _is_url_tuple(request) or isinstance(request.url, httpx.URL)
     span.set_attribute(
         HTTP_RESPONSE_BODY,
         b"".join([part async for part in response[2]]),
@@ -73,11 +81,13 @@ async def _async_response_hook(
 
 
 def _request_hook(span: "Span", request: "RequestInfo"):
+    assert _is_url_tuple(request) or isinstance(request.url, httpx.URL)
     url = httpx.URL(request[1])
     span.update_name("GET" + str(url))
 
 
 async def _async_request_hook(span: "Span", request: "RequestInfo"):
+    assert _is_url_tuple(request) or isinstance(request.url, httpx.URL)
     url = httpx.URL(request[1])
     span.update_name("GET" + str(url))
 
@@ -182,14 +192,9 @@ class BaseTestCases:
             )
 
         def test_suppress_instrumentation(self):
-            token = context.attach(
-                context.set_value("suppress_instrumentation", True)
-            )
-            try:
+            with suppress_http_instrumentation():
                 result = self.perform_request(self.URL)
                 self.assertEqual(result.text, "Hello!")
-            finally:
-                context.detach(token)
 
             self.assert_span(num_spans=0)
 
@@ -503,15 +508,10 @@ class BaseTestCases:
 
         def test_suppress_instrumentation_new_client(self):
             HTTPXClientInstrumentor().instrument()
-            token = context.attach(
-                context.set_value("suppress_instrumentation", True)
-            )
-            try:
+            with suppress_http_instrumentation():
                 client = self.create_client()
                 result = self.perform_request(self.URL, client=client)
                 self.assertEqual(result.text, "Hello!")
-            finally:
-                context.detach(token)
 
             self.assert_span(num_spans=0)
             HTTPXClientInstrumentor().uninstrument()
@@ -523,12 +523,36 @@ class BaseTestCases:
             self.assertEqual(result.text, "Hello!")
             self.assert_span(num_spans=1)
 
+        def test_instrumentation_without_client(self):
+
+            HTTPXClientInstrumentor().instrument()
+            results = [
+                httpx.get(self.URL),
+                httpx.request("GET", self.URL),
+            ]
+            with httpx.stream("GET", self.URL) as stream:
+                stream.read()
+                results.append(stream)
+
+            spans = self.assert_span(num_spans=len(results))
+            for idx, res in enumerate(results):
+                with self.subTest(idx=idx, res=res):
+                    self.assertEqual(res.text, "Hello!")
+                    self.assertEqual(
+                        spans[idx].attributes[SpanAttributes.HTTP_URL],
+                        self.URL,
+                    )
+
+            HTTPXClientInstrumentor().uninstrument()
+
         def test_uninstrument(self):
             HTTPXClientInstrumentor().instrument()
             HTTPXClientInstrumentor().uninstrument()
             client = self.create_client()
             result = self.perform_request(self.URL, client=client)
+            result_no_client = httpx.get(self.URL)
             self.assertEqual(result.text, "Hello!")
+            self.assertEqual(result_no_client.text, "Hello!")
             self.assert_span(num_spans=0)
 
         def test_uninstrument_client(self):

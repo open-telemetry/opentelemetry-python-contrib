@@ -22,21 +22,18 @@ classifiers = [
   "Programming Language :: Python :: 3.9",
   "Programming Language :: Python :: 3.10",
   "Programming Language :: Python :: 3.11",
+  "Programming Language :: Python :: 3.12",
 ]
 dependencies = [
   "opentelemetry-api ~= 1.12",
-  "opentelemetry-instrumentation == 0.44b0.dev",
-  "opentelemetry-semantic-conventions == 0.44b0.dev",
+  "opentelemetry-instrumentation == 0.47b0.dev",
+  "opentelemetry-semantic-conventions == 0.47b0.dev",
 ]
 
 [project.optional-dependencies]
 instruments = [
   "tortoise-orm >= 0.17.0",
   "pydantic >= 1.10.2"
-]
-test = [
-  "opentelemetry-instrumentation-tortoiseorm[instruments]",
-  "opentelemetry-test-utils == 0.44b0.dev",
 ]
 
 [project.entry-points.opentelemetry_instrumentor]

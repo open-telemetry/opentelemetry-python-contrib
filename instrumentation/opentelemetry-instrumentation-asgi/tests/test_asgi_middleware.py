@@ -268,20 +268,20 @@ class TestAsgiApplication(AsgiTestBase):
             {
                 "name": "GET / http receive",
                 "kind": trace_api.SpanKind.INTERNAL,
-                "attributes": {"type": "http.request"},
+                "attributes": {"asgi.event.type": "http.request"},
             },
             {
                 "name": "GET / http send",
                 "kind": trace_api.SpanKind.INTERNAL,
                 "attributes": {
                     SpanAttributes.HTTP_STATUS_CODE: 200,
-                    "type": "http.response.start",
+                    "asgi.event.type": "http.response.start",
                 },
             },
             {
                 "name": "GET / http send",
                 "kind": trace_api.SpanKind.INTERNAL,
-                "attributes": {"type": "http.response.body"},
+                "attributes": {"asgi.event.type": "http.response.body"},
             },
             {
                 "name": "GET /",
@@ -309,6 +309,10 @@ class TestAsgiApplication(AsgiTestBase):
             self.assertEqual(span.name, expected["name"])
             self.assertEqual(span.kind, expected["kind"])
             self.assertDictEqual(dict(span.attributes), expected["attributes"])
+            self.assertEqual(
+                span.instrumentation_scope.name,
+                "opentelemetry.instrumentation.asgi",
+            )
 
     def test_basic_asgi_call(self):
         """Test that spans are emitted as expected."""
@@ -358,7 +362,7 @@ class TestAsgiApplication(AsgiTestBase):
             more_body_span = {
                 "name": "GET / http send",
                 "kind": trace_api.SpanKind.INTERNAL,
-                "attributes": {"type": "http.response.body"},
+                "attributes": {"asgi.event.type": "http.response.body"},
             }
             extra_spans = [more_body_span] * 3
             expected[2:2] = extra_spans
@@ -396,12 +400,12 @@ class TestAsgiApplication(AsgiTestBase):
             body_span = {
                 "name": "GET / http send",
                 "kind": trace_api.SpanKind.INTERNAL,
-                "attributes": {"type": "http.response.body"},
+                "attributes": {"asgi.event.type": "http.response.body"},
             }
             trailer_span = {
                 "name": "GET / http send",
                 "kind": trace_api.SpanKind.INTERNAL,
-                "attributes": {"type": "http.response.trailers"},
+                "attributes": {"asgi.event.type": "http.response.trailers"},
             }
             expected[2:2] = [body_span]
             expected[4:4] = [trailer_span] * 2
@@ -582,18 +586,18 @@ class TestAsgiApplication(AsgiTestBase):
             {
                 "name": "/ websocket receive",
                 "kind": trace_api.SpanKind.INTERNAL,
-                "attributes": {"type": "websocket.connect"},
+                "attributes": {"asgi.event.type": "websocket.connect"},
             },
             {
                 "name": "/ websocket send",
                 "kind": trace_api.SpanKind.INTERNAL,
-                "attributes": {"type": "websocket.accept"},
+                "attributes": {"asgi.event.type": "websocket.accept"},
             },
             {
                 "name": "/ websocket receive",
                 "kind": trace_api.SpanKind.INTERNAL,
                 "attributes": {
-                    "type": "websocket.receive",
+                    "asgi.event.type": "websocket.receive",
                     SpanAttributes.HTTP_STATUS_CODE: 200,
                 },
             },
@@ -601,14 +605,14 @@ class TestAsgiApplication(AsgiTestBase):
                 "name": "/ websocket send",
                 "kind": trace_api.SpanKind.INTERNAL,
                 "attributes": {
-                    "type": "websocket.send",
+                    "asgi.event.type": "websocket.send",
                     SpanAttributes.HTTP_STATUS_CODE: 200,
                 },
             },
             {
                 "name": "/ websocket receive",
                 "kind": trace_api.SpanKind.INTERNAL,
-                "attributes": {"type": "websocket.disconnect"},
+                "attributes": {"asgi.event.type": "websocket.disconnect"},
             },
             {
                 "name": "/",
@@ -683,10 +687,10 @@ class TestAsgiApplication(AsgiTestBase):
         def server_request_hook(span, scope):
             span.update_name("name from server hook")
 
-        def client_request_hook(recieve_span, request):
-            recieve_span.update_name("name from client request hook")
+        def client_request_hook(receive_span, scope, message):
+            receive_span.update_name("name from client request hook")
 
-        def client_response_hook(send_span, response):
+        def client_response_hook(send_span, scope, message):
             send_span.set_attribute("attr-from-hook", "value")
 
         def update_expected_hook_results(expected):
@@ -728,6 +732,10 @@ class TestAsgiApplication(AsgiTestBase):
             self.assertTrue(len(resource_metric.scope_metrics) != 0)
             for scope_metric in resource_metric.scope_metrics:
                 self.assertTrue(len(scope_metric.metrics) != 0)
+                self.assertEqual(
+                    scope_metric.scope.name,
+                    "opentelemetry.instrumentation.asgi",
+                )
                 for metric in scope_metric.metrics:
                     self.assertIn(metric.name, _expected_metric_names)
                     data_points = list(metric.data.data_points)

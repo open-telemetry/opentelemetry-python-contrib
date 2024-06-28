@@ -26,15 +26,10 @@ classifiers = [
   "Programming Language :: Python :: 3.9",
   "Programming Language :: Python :: 3.10",
   "Programming Language :: Python :: 3.11",
+  "Programming Language :: Python :: 3.12",
 ]
 dependencies = [
   "opentelemetry-api ~= 1.12",
-]
-
-[project.optional-dependencies]
-test = [
-  # add any test dependencies here
-  "<REPLACE ME>",
 ]
 
 [project.entry-points.opentelemetry_instrumentor]

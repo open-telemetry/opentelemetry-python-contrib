@@ -22,8 +22,10 @@ classifiers = [
   "Programming Language :: Python :: 3.9",
   "Programming Language :: Python :: 3.10",
   "Programming Language :: Python :: 3.11",
+  "Programming Language :: Python :: 3.12",
 ]
 dependencies = [
+  "opentelemetry-instrumentation == 0.47b0.dev",
   "opentelemetry-api ~= 1.5",
   "packaging >= 20.0",
   "wrapt >= 1.0.0, < 2.0.0",
@@ -32,12 +34,6 @@ dependencies = [
 [project.optional-dependencies]
 instruments = [
   "pika >= 0.12.0",
-]
-test = [
-  "opentelemetry-instrumentation-pika[instruments]",
-  "opentelemetry-test-utils == 0.44b0.dev",
-  "pytest",
-  "wrapt >= 1.0.0, < 2.0.0",
 ]
 
 [project.entry-points.opentelemetry_instrumentor]
