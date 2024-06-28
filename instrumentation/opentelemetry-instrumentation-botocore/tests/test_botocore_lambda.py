@@ -19,7 +19,7 @@ import zipfile
 from unittest import mock
 
 import botocore.session
-from moto import mock_iam, mock_lambda  # pylint: disable=import-error
+from moto import mock_aws  # pylint: disable=import-error
 from pytest import mark
 
 from opentelemetry.instrumentation.botocore import BotocoreInstrumentor
@@ -96,12 +96,12 @@ class TestLambdaExtension(TestBase):
         mock_call_context = mock.MagicMock(operation=operation, params={})
         return _LambdaExtension(mock_call_context)
 
-    @mock_lambda
+    @mock_aws
     def test_list_functions(self):
         self.client.list_functions()
         self.assert_span("ListFunctions")
 
-    @mock_iam
+    @mock_aws
     def _create_role_and_get_arn(self) -> str:
         return self.iam_client.create_role(
             RoleName="my-role",
@@ -131,7 +131,7 @@ class TestLambdaExtension(TestBase):
         sys.platform == "win32",
         reason="requires docker and Github CI Windows does not have docker installed by default",
     )
-    @mock_lambda
+    @mock_aws
     def test_invoke(self):
         previous_propagator = get_global_textmap()
         try:

@@ -121,6 +121,7 @@ class TestAutomatic(InstrumentationTest, WsgiTestBase):
         span_list = self.memory_exporter.get_finished_spans()
         self.assertEqual(len(span_list), 1)
         self.assertEqual(span_list[0].status.status_code, StatusCode.UNSET)
+        self.assertEqual(len(span_list[0].events), 0)
 
         PyramidInstrumentor().uninstrument()
 

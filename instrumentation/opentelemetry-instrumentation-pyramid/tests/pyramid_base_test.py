@@ -14,12 +14,7 @@
 
 import pyramid.httpexceptions as exc
 from pyramid.response import Response
-from werkzeug.test import Client
-
-# opentelemetry-instrumentation-pyramid uses werkzeug==0.16.1 which has
-# werkzeug.wrappers.BaseResponse. This is not the case for newer versions of
-# werkzeug like the one lint uses.
-from werkzeug.wrappers import BaseResponse  # pylint: disable=no-name-in-module
+from werkzeug.test import Client, TestResponse
 
 
 class InstrumentationTest:
@@ -35,7 +30,7 @@ class InstrumentationTest:
         if helloid == 204:
             raise exc.HTTPNoContent()
         if helloid == 900:
-            raise NotImplementedError()
+            raise NotImplementedError("error message")
         return Response("Hello: " + str(helloid))
 
     @staticmethod
@@ -77,4 +72,4 @@ class InstrumentationTest:
         )
 
         # pylint: disable=attribute-defined-outside-init
-        self.client = Client(config.make_wsgi_app(), BaseResponse)
+        self.client = Client(config.make_wsgi_app(), TestResponse)

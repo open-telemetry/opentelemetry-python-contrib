@@ -15,10 +15,20 @@
 import unittest
 from http import HTTPStatus
 
+from opentelemetry.context import (
+    _SUPPRESS_HTTP_INSTRUMENTATION_KEY,
+    _SUPPRESS_INSTRUMENTATION_KEY,
+    get_current,
+    get_value,
+)
 from opentelemetry.instrumentation.sqlcommenter_utils import _add_sql_comment
 from opentelemetry.instrumentation.utils import (
     _python_path_without_directory,
     http_status_to_status_code,
+    is_http_instrumentation_enabled,
+    is_instrumentation_enabled,
+    suppress_http_instrumentation,
+    suppress_instrumentation,
 )
 from opentelemetry.trace import StatusCode
 
@@ -186,3 +196,47 @@ class TestUtils(unittest.TestCase):
         )
 
         self.assertEqual(commented_sql_without_semicolon, "Select 1")
+
+    def test_is_instrumentation_enabled_by_default(self):
+        self.assertTrue(is_instrumentation_enabled())
+        self.assertTrue(is_http_instrumentation_enabled())
+
+    def test_suppress_instrumentation(self):
+        with suppress_instrumentation():
+            self.assertFalse(is_instrumentation_enabled())
+            self.assertFalse(is_http_instrumentation_enabled())
+
+        self.assertTrue(is_instrumentation_enabled())
+        self.assertTrue(is_http_instrumentation_enabled())
+
+    def test_suppress_http_instrumentation(self):
+        with suppress_http_instrumentation():
+            self.assertFalse(is_http_instrumentation_enabled())
+            self.assertTrue(is_instrumentation_enabled())
+
+        self.assertTrue(is_instrumentation_enabled())
+        self.assertTrue(is_http_instrumentation_enabled())
+
+    def test_suppress_instrumentation_key(self):
+        self.assertIsNone(get_value(_SUPPRESS_INSTRUMENTATION_KEY))
+        self.assertIsNone(get_value("suppress_instrumentation"))
+
+        with suppress_instrumentation():
+            ctx = get_current()
+            self.assertIn(_SUPPRESS_INSTRUMENTATION_KEY, ctx)
+            self.assertIn("suppress_instrumentation", ctx)
+            self.assertTrue(get_value(_SUPPRESS_INSTRUMENTATION_KEY))
+            self.assertTrue(get_value("suppress_instrumentation"))
+
+        self.assertIsNone(get_value(_SUPPRESS_INSTRUMENTATION_KEY))
+        self.assertIsNone(get_value("suppress_instrumentation"))
+
+    def test_suppress_http_instrumentation_key(self):
+        self.assertIsNone(get_value(_SUPPRESS_HTTP_INSTRUMENTATION_KEY))
+
+        with suppress_http_instrumentation():
+            ctx = get_current()
+            self.assertIn(_SUPPRESS_HTTP_INSTRUMENTATION_KEY, ctx)
+            self.assertTrue(get_value(_SUPPRESS_HTTP_INSTRUMENTATION_KEY))
+
+        self.assertIsNone(get_value(_SUPPRESS_HTTP_INSTRUMENTATION_KEY))

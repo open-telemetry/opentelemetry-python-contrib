@@ -17,12 +17,7 @@ from logging import getLogger
 from urllib.error import URLError
 from urllib.request import Request, urlopen
 
-from opentelemetry.context import (
-    _SUPPRESS_INSTRUMENTATION_KEY,
-    attach,
-    detach,
-    set_value,
-)
+from opentelemetry.instrumentation.utils import suppress_instrumentation
 from opentelemetry.sdk.resources import Resource, ResourceDetector
 from opentelemetry.semconv.resource import (
     CloudPlatformValues,
@@ -46,15 +41,14 @@ class AzureVMResourceDetector(ResourceDetector):
     def detect(self) -> "Resource":
         attributes = {}
         if not _can_ignore_vm_detect():
-            token = attach(set_value(_SUPPRESS_INSTRUMENTATION_KEY, True))
-            metadata_json = _get_azure_vm_metadata()
-            if not metadata_json:
-                return Resource(attributes)
-            for attribute_key in _EXPECTED_AZURE_AMS_ATTRIBUTES:
-                attributes[attribute_key] = _get_attribute_from_metadata(
-                    metadata_json, attribute_key
-                )
-            detach(token)
+            with suppress_instrumentation():
+                metadata_json = _get_azure_vm_metadata()
+                if not metadata_json:
+                    return Resource(attributes)
+                for attribute_key in _EXPECTED_AZURE_AMS_ATTRIBUTES:
+                    attributes[attribute_key] = _get_attribute_from_metadata(
+                        metadata_json, attribute_key
+                    )
         return Resource(attributes)
 
 

@@ -18,7 +18,7 @@ from unittest import mock
 
 import botocore.session
 from botocore.awsrequest import AWSResponse
-from moto import mock_sns
+from moto import mock_aws
 
 from opentelemetry.instrumentation.botocore import BotocoreInstrumentor
 from opentelemetry.semconv.trace import (
@@ -91,11 +91,11 @@ class TestSnsExtension(TestBase):
         self.assertEqual(span_context.trace_id, int(trace_parent[1], 16))
         self.assertEqual(span_context.span_id, int(trace_parent[2], 16))
 
-    @mock_sns
+    @mock_aws
     def test_publish_to_topic_arn(self):
         self._test_publish_to_arn("TopicArn")
 
-    @mock_sns
+    @mock_aws
     def test_publish_to_target_arn(self):
         self._test_publish_to_arn("TargetArn")
 
@@ -125,7 +125,7 @@ class TestSnsExtension(TestBase):
             span.attributes["messaging.destination.name"],
         )
 
-    @mock_sns
+    @mock_aws
     def test_publish_to_phone_number(self):
         phone_number = "+10000000000"
         self.client.publish(
@@ -138,7 +138,7 @@ class TestSnsExtension(TestBase):
             phone_number, span.attributes[SpanAttributes.MESSAGING_DESTINATION]
         )
 
-    @mock_sns
+    @mock_aws
     def test_publish_injects_span(self):
         message_attrs = {}
         topic_arn = self._create_topic()

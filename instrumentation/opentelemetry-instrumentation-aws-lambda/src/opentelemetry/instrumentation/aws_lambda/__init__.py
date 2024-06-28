@@ -306,9 +306,11 @@ def _instrument(
             disable_aws_context_propagation,
         )
 
-        span_kind = None
         try:
-            if lambda_event["Records"][0]["eventSource"] in {
+            event_source = lambda_event["Records"][0].get(
+                "eventSource"
+            ) or lambda_event["Records"][0].get("EventSource")
+            if event_source in {
                 "aws:sqs",
                 "aws:s3",
                 "aws:sns",

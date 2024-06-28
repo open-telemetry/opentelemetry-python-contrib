@@ -17,6 +17,7 @@ from unittest import mock
 import pymysql
 
 import opentelemetry.instrumentation.pymysql
+from opentelemetry import trace as trace_api
 from opentelemetry.instrumentation.pymysql import PyMySQLInstrumentor
 from opentelemetry.sdk import resources
 from opentelemetry.test.test_base import TestBase
@@ -77,6 +78,20 @@ class TestPyMysqlIntegration(TestBase):
         span = spans_list[0]
 
         self.assertIs(span.resource, resource)
+
+    @mock.patch("pymysql.connect")
+    # pylint: disable=unused-argument
+    def test_no_op_tracer_provider(self, mock_connect):
+        PyMySQLInstrumentor().instrument(
+            tracer_provider=trace_api.NoOpTracerProvider()
+        )
+        cnx = pymysql.connect(database="test")
+        cursor = cnx.cursor()
+        query = "SELECT * FROM test"
+        cursor.execute(query)
+
+        spans_list = self.memory_exporter.get_finished_spans()
+        self.assertEqual(len(spans_list), 0)
 
     @mock.patch("pymysql.connect")
     # pylint: disable=unused-argument

@@ -59,10 +59,6 @@ from requests.sessions import Session
 from requests.structures import CaseInsensitiveDict
 
 from opentelemetry.instrumentation._semconv import (
-    _METRIC_ATTRIBUTES_CLIENT_DURATION_NAME,
-    _SPAN_ATTRIBUTES_ERROR_TYPE,
-    _SPAN_ATTRIBUTES_NETWORK_PEER_ADDRESS,
-    _SPAN_ATTRIBUTES_NETWORK_PEER_PORT,
     _client_duration_attrs_new,
     _client_duration_attrs_old,
     _filter_semconv_duration_attrs,
@@ -91,7 +87,15 @@ from opentelemetry.instrumentation.utils import (
 )
 from opentelemetry.metrics import Histogram, get_meter
 from opentelemetry.propagate import inject
+from opentelemetry.semconv.attributes.error_attributes import ERROR_TYPE
+from opentelemetry.semconv.attributes.network_attributes import (
+    NETWORK_PEER_ADDRESS,
+    NETWORK_PEER_PORT,
+)
 from opentelemetry.semconv.metrics import MetricInstruments
+from opentelemetry.semconv.metrics.http_metrics import (
+    HTTP_CLIENT_REQUEST_DURATION,
+)
 from opentelemetry.trace import SpanKind, Tracer, get_tracer
 from opentelemetry.trace.span import Span
 from opentelemetry.trace.status import StatusCode
@@ -191,9 +195,7 @@ def _instrument(
                         sem_conv_opt_in_mode,
                     )
                     # Use semconv library when available
-                    span_attributes[_SPAN_ATTRIBUTES_NETWORK_PEER_ADDRESS] = (
-                        parsed_url.hostname
-                    )
+                    span_attributes[NETWORK_PEER_ADDRESS] = parsed_url.hostname
             if parsed_url.port:
                 _set_http_peer_port_client(
                     metric_labels, parsed_url.port, sem_conv_opt_in_mode
@@ -203,9 +205,7 @@ def _instrument(
                         span_attributes, parsed_url.port, sem_conv_opt_in_mode
                     )
                     # Use semconv library when available
-                    span_attributes[_SPAN_ATTRIBUTES_NETWORK_PEER_PORT] = (
-                        parsed_url.port
-                    )
+                    span_attributes[NETWORK_PEER_PORT] = parsed_url.port
         except ValueError:
             pass
 
@@ -250,12 +250,8 @@ def _instrument(
                         _report_new(sem_conv_opt_in_mode)
                         and status_code is StatusCode.ERROR
                     ):
-                        span_attributes[_SPAN_ATTRIBUTES_ERROR_TYPE] = str(
-                            result.status_code
-                        )
-                        metric_labels[_SPAN_ATTRIBUTES_ERROR_TYPE] = str(
-                            result.status_code
-                        )
+                        span_attributes[ERROR_TYPE] = str(result.status_code)
+                        metric_labels[ERROR_TYPE] = str(result.status_code)
 
                 if result.raw is not None:
                     version = getattr(result.raw, "version", None)
@@ -278,12 +274,8 @@ def _instrument(
                     response_hook(span, request, result)
 
             if exception is not None and _report_new(sem_conv_opt_in_mode):
-                span.set_attribute(
-                    _SPAN_ATTRIBUTES_ERROR_TYPE, type(exception).__qualname__
-                )
-                metric_labels[_SPAN_ATTRIBUTES_ERROR_TYPE] = type(
-                    exception
-                ).__qualname__
+                span.set_attribute(ERROR_TYPE, type(exception).__qualname__)
+                metric_labels[ERROR_TYPE] = type(exception).__qualname__
 
             if duration_histogram_old is not None:
                 duration_attrs_old = _filter_semconv_duration_attrs(
@@ -403,7 +395,7 @@ class RequestsInstrumentor(BaseInstrumentor):
         duration_histogram_new = None
         if _report_new(semconv_opt_in_mode):
             duration_histogram_new = meter.create_histogram(
-                name=_METRIC_ATTRIBUTES_CLIENT_DURATION_NAME,
+                name=HTTP_CLIENT_REQUEST_DURATION,
                 unit="s",
                 description="Duration of HTTP client requests.",
             )

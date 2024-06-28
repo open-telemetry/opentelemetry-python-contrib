@@ -20,7 +20,6 @@ from flask import Flask, request
 
 from opentelemetry import trace
 from opentelemetry.instrumentation._semconv import (
-    _SPAN_ATTRIBUTES_ERROR_TYPE,
     OTEL_SEMCONV_STABILITY_OPT_IN,
     _OpenTelemetrySemanticConventionStability,
     _server_active_requests_count_attrs_new,
@@ -40,6 +39,7 @@ from opentelemetry.sdk.metrics.export import (
     NumberDataPoint,
 )
 from opentelemetry.sdk.resources import Resource
+from opentelemetry.semconv.attributes.error_attributes import ERROR_TYPE
 from opentelemetry.semconv.trace import SpanAttributes
 from opentelemetry.test.wsgitestutil import WsgiTestBase
 from opentelemetry.util.http import (
@@ -379,7 +379,7 @@ class TestProgrammatic(InstrumentationTest, WsgiTestBase):
                 SpanAttributes.URL_PATH: "/hello/500",
                 SpanAttributes.HTTP_ROUTE: "/hello/<int:helloid>",
                 SpanAttributes.HTTP_RESPONSE_STATUS_CODE: 500,
-                _SPAN_ATTRIBUTES_ERROR_TYPE: "500",
+                ERROR_TYPE: "500",
                 SpanAttributes.URL_SCHEME: "http",
             }
         )
@@ -405,7 +405,7 @@ class TestProgrammatic(InstrumentationTest, WsgiTestBase):
                 {
                     SpanAttributes.URL_PATH: "/hello/500",
                     SpanAttributes.HTTP_RESPONSE_STATUS_CODE: 500,
-                    _SPAN_ATTRIBUTES_ERROR_TYPE: "500",
+                    ERROR_TYPE: "500",
                     SpanAttributes.URL_SCHEME: "http",
                 }
             )

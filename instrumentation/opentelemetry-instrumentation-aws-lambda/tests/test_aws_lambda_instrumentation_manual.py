@@ -349,12 +349,43 @@ class TestAwsLambdaInstrumentor(TestBase):
 
         mock_execute_lambda({"Records": [{"eventSource": "aws:sqs"}]})
         mock_execute_lambda({"Records": [{"eventSource": "aws:s3"}]})
-        mock_execute_lambda({"Records": [{"eventSource": "aws:sns"}]})
+        mock_execute_lambda({"Records": [{"EventSource": "aws:sns"}]})
         mock_execute_lambda({"Records": [{"eventSource": "aws:dynamodb"}]})
 
         spans = self.memory_exporter.get_finished_spans()
 
         assert spans
+        assert len(spans) == 4
+
+        for span in spans:
+            assert span.kind == SpanKind.CONSUMER
+
+        test_env_patch.stop()
+
+    def test_lambda_handles_invalid_event_source(self):
+        test_env_patch = mock.patch.dict(
+            "os.environ",
+            {
+                **os.environ,
+                # NOT Active Tracing
+                _X_AMZN_TRACE_ID: MOCK_XRAY_TRACE_CONTEXT_NOT_SAMPLED,
+                # NOT using the X-Ray Propagator
+                OTEL_PROPAGATORS: "tracecontext",
+            },
+        )
+        test_env_patch.start()
+
+        AwsLambdaInstrumentor().instrument()
+
+        mock_execute_lambda({"Records": [{"eventSource": "invalid_source"}]})
+
+        spans = self.memory_exporter.get_finished_spans()
+
+        assert spans
+        assert len(spans) == 1
+        assert (
+            spans[0].kind == SpanKind.SERVER
+        )  # Default to SERVER for unknown sources
 
         test_env_patch.stop()
 

@@ -1,5 +1,5 @@
 import botocore.session
-from moto import mock_sqs
+from moto import mock_aws
 
 from opentelemetry.instrumentation.botocore import BotocoreInstrumentor
 from opentelemetry.semconv.trace import SpanAttributes
@@ -22,7 +22,7 @@ class TestSqsExtension(TestBase):
         super().tearDown()
         BotocoreInstrumentor().uninstrument()
 
-    @mock_sqs
+    @mock_aws
     def test_sqs_messaging_send_message(self):
         create_queue_result = self.client.create_queue(
             QueueName="test_queue_name"
@@ -51,7 +51,7 @@ class TestSqsExtension(TestBase):
             response["MessageId"],
         )
 
-    @mock_sqs
+    @mock_aws
     def test_sqs_messaging_send_message_batch(self):
         create_queue_result = self.client.create_queue(
             QueueName="test_queue_name"
@@ -85,7 +85,7 @@ class TestSqsExtension(TestBase):
             response["Successful"][0]["MessageId"],
         )
 
-    @mock_sqs
+    @mock_aws
     def test_sqs_messaging_receive_message(self):
         create_queue_result = self.client.create_queue(
             QueueName="test_queue_name"
@@ -116,7 +116,7 @@ class TestSqsExtension(TestBase):
             message_result["Messages"][0]["MessageId"],
         )
 
-    @mock_sqs
+    @mock_aws
     def test_sqs_messaging_failed_operation(self):
         with self.assertRaises(Exception):
             self.client.send_message(
