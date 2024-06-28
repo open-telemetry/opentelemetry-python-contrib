@@ -55,20 +55,22 @@ This instrumentation supports request and response hooks. These are functions th
 right after a span is created for a request and right before the span is finished for the response.
 
 - The server request hook is passed a server span and ASGI scope object for every incoming request.
-- The client request hook is called with the internal span and an ASGI scope when the method ``receive`` is called.
-- The client response hook is called with the internal span and an ASGI event when the method ``send`` is called.
+- The client request hook is called with the internal span, and ASGI scope and event when the method ``receive`` is called.
+- The client response hook is called with the internal span, and ASGI scope and event when the method ``send`` is called.
 
 For example,
 
 .. code-block:: python
 
-    def server_request_hook(span: Span, scope: dict):
+    def server_request_hook(span: Span, scope: dict[str, Any]):
         if span and span.is_recording():
             span.set_attribute("custom_user_attribute_from_request_hook", "some-value")
-    def client_request_hook(span: Span, scope: dict):
+
+    def client_request_hook(span: Span, scope: dict[str, Any], message: dict[str, Any]):
         if span and span.is_recording():
             span.set_attribute("custom_user_attribute_from_client_request_hook", "some-value")
-    def client_response_hook(span: Span, message: dict):
+
+    def client_response_hook(span: Span, scope: dict[str, Any], message: dict[str, Any]):
         if span and span.is_recording():
             span.set_attribute("custom_user_attribute_from_response_hook", "some-value")
 
@@ -108,10 +110,10 @@ Additionally, the special keyword ``all`` can be used to capture all request hea
 
 The name of the added span attribute will follow the format ``http.request.header.<header_name>`` where ``<header_name>``
 is the normalized HTTP header name (lowercase, with ``-`` replaced by ``_``). The value of the attribute will be a
-single item list containing all the header values.
+list containing the header values.
 
 For example:
-``http.request.header.custom_request_header = ["<value1>,<value2>"]``
+``http.request.header.custom_request_header = ["<value1>", "<value2>"]``
 
 Response headers
 ****************
@@ -142,10 +144,10 @@ Additionally, the special keyword ``all`` can be used to capture all response he
 
 The name of the added span attribute will follow the format ``http.response.header.<header_name>`` where ``<header_name>``
 is the normalized HTTP header name (lowercase, with ``-`` replaced by ``_``). The value of the attribute will be a
-single item list containing all the header values.
+list containing the header values.
 
 For example:
-``http.response.header.custom_response_header = ["<value1>,<value2>"]``
+``http.response.header.custom_response_header = ["<value1>", "<value2>"]``
 
 Sanitizing headers
 ******************
@@ -167,26 +169,26 @@ Note:
 API
 ---
 """
-import typing
 from typing import Collection
 
 from starlette import applications
 from starlette.routing import Match
 
 from opentelemetry.instrumentation.asgi import OpenTelemetryMiddleware
+from opentelemetry.instrumentation.asgi.types import (
+    ClientRequestHook,
+    ClientResponseHook,
+    ServerRequestHook,
+)
 from opentelemetry.instrumentation.instrumentor import BaseInstrumentor
 from opentelemetry.instrumentation.starlette.package import _instruments
 from opentelemetry.instrumentation.starlette.version import __version__
 from opentelemetry.metrics import get_meter
 from opentelemetry.semconv.trace import SpanAttributes
-from opentelemetry.trace import Span
+from opentelemetry.trace import get_tracer
 from opentelemetry.util.http import get_excluded_urls
 
 _excluded_urls = get_excluded_urls("STARLETTE")
-
-_ServerRequestHookT = typing.Optional[typing.Callable[[Span, dict], None]]
-_ClientRequestHookT = typing.Optional[typing.Callable[[Span, dict], None]]
-_ClientResponseHookT = typing.Optional[typing.Callable[[Span, dict], None]]
 
 
 class StarletteInstrumentor(BaseInstrumentor):
@@ -200,13 +202,19 @@ class StarletteInstrumentor(BaseInstrumentor):
     @staticmethod
     def instrument_app(
         app: applications.Starlette,
-        server_request_hook: _ServerRequestHookT = None,
-        client_request_hook: _ClientRequestHookT = None,
-        client_response_hook: _ClientResponseHookT = None,
+        server_request_hook: ServerRequestHook = None,
+        client_request_hook: ClientRequestHook = None,
+        client_response_hook: ClientResponseHook = None,
         meter_provider=None,
         tracer_provider=None,
     ):
         """Instrument an uninstrumented Starlette application."""
+        tracer = get_tracer(
+            __name__,
+            __version__,
+            tracer_provider,
+            schema_url="https://opentelemetry.io/schemas/1.11.0",
+        )
         meter = get_meter(
             __name__,
             __version__,
@@ -221,7 +229,8 @@ class StarletteInstrumentor(BaseInstrumentor):
                 server_request_hook=server_request_hook,
                 client_request_hook=client_request_hook,
                 client_response_hook=client_response_hook,
-                tracer_provider=tracer_provider,
+                # Pass in tracer/meter to get __name__and __version__ of starlette instrumentation
+                tracer=tracer,
                 meter=meter,
             )
             app.is_instrumented_by_opentelemetry = True
@@ -270,13 +279,19 @@ class StarletteInstrumentor(BaseInstrumentor):
 class _InstrumentedStarlette(applications.Starlette):
     _tracer_provider = None
     _meter_provider = None
-    _server_request_hook: _ServerRequestHookT = None
-    _client_request_hook: _ClientRequestHookT = None
-    _client_response_hook: _ClientResponseHookT = None
+    _server_request_hook: ServerRequestHook = None
+    _client_request_hook: ClientRequestHook = None
+    _client_response_hook: ClientResponseHook = None
     _instrumented_starlette_apps = set()
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
+        tracer = get_tracer(
+            __name__,
+            __version__,
+            _InstrumentedStarlette._tracer_provider,
+            schema_url="https://opentelemetry.io/schemas/1.11.0",
+        )
         meter = get_meter(
             __name__,
             __version__,
@@ -290,7 +305,8 @@ class _InstrumentedStarlette(applications.Starlette):
             server_request_hook=_InstrumentedStarlette._server_request_hook,
             client_request_hook=_InstrumentedStarlette._client_request_hook,
             client_response_hook=_InstrumentedStarlette._client_response_hook,
-            tracer_provider=_InstrumentedStarlette._tracer_provider,
+            # Pass in tracer/meter to get __name__and __version__ of starlette instrumentation
+            tracer=tracer,
             meter=meter,
         )
         self._is_instrumented_by_opentelemetry = True

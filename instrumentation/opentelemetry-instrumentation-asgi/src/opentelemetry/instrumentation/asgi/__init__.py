@@ -81,15 +81,15 @@ For example,
 
 .. code-block:: python
 
-    def server_request_hook(span: Span, scope: dict):
+    def server_request_hook(span: Span, scope: dict[str, Any]):
         if span and span.is_recording():
             span.set_attribute("custom_user_attribute_from_request_hook", "some-value")
 
-    def client_request_hook(span: Span, scope: dict):
+    def client_request_hook(span: Span, scope: dict[str, Any], message: dict[str, Any]):
         if span and span.is_recording():
             span.set_attribute("custom_user_attribute_from_client_request_hook", "some-value")
 
-    def client_response_hook(span: Span, message: dict):
+    def client_response_hook(span: Span, scope: dict[str, Any], message: dict[str, Any]):
         if span and span.is_recording():
             span.set_attribute("custom_user_attribute_from_response_hook", "some-value")
 
@@ -129,10 +129,10 @@ To capture all request headers, set ``OTEL_INSTRUMENTATION_HTTP_CAPTURE_HEADERS_
 
 The name of the added span attribute will follow the format ``http.request.header.<header_name>`` where ``<header_name>``
 is the normalized HTTP header name (lowercase, with ``-`` replaced by ``_``). The value of the attribute will be a
-single item list containing all the header values.
+list containing the header values.
 
 For example:
-``http.request.header.custom_request_header = ["<value1>,<value2>"]``
+``http.request.header.custom_request_header = ["<value1>", "<value2>"]``
 
 Response headers
 ****************
@@ -163,10 +163,10 @@ To capture all response headers, set ``OTEL_INSTRUMENTATION_HTTP_CAPTURE_HEADERS
 
 The name of the added span attribute will follow the format ``http.response.header.<header_name>`` where ``<header_name>``
 is the normalized HTTP header name (lowercase, with ``-`` replaced by ``_``). The value of the attribute will be a
-single item list containing all the header values.
+list containing the header values.
 
 For example:
-``http.response.header.custom_response_header = ["<value1>,<value2>"]``
+``http.response.header.custom_response_header = ["<value1>", "<value2>"]``
 
 Sanitizing headers
 ******************
@@ -193,13 +193,19 @@ from __future__ import annotations
 
 import typing
 import urllib
+from collections import defaultdict
 from functools import wraps
 from timeit import default_timer
-from typing import Any, Awaitable, Callable, Tuple
+from typing import Any, Awaitable, Callable, DefaultDict, Tuple
 
 from asgiref.compatibility import guarantee_single_callable
 
 from opentelemetry import context, trace
+from opentelemetry.instrumentation.asgi.types import (
+    ClientRequestHook,
+    ClientResponseHook,
+    ServerRequestHook,
+)
 from opentelemetry.instrumentation.asgi.version import __version__  # noqa
 from opentelemetry.instrumentation.propagators import (
     get_global_response_propagator,
@@ -212,7 +218,7 @@ from opentelemetry.metrics import get_meter
 from opentelemetry.propagators.textmap import Getter, Setter
 from opentelemetry.semconv.metrics import MetricInstruments
 from opentelemetry.semconv.trace import SpanAttributes
-from opentelemetry.trace import Span, set_span_in_context
+from opentelemetry.trace import set_span_in_context
 from opentelemetry.trace.status import Status, StatusCode
 from opentelemetry.util.http import (
     OTEL_INSTRUMENTATION_HTTP_CAPTURE_HEADERS_SANITIZE_FIELDS,
@@ -226,10 +232,6 @@ from opentelemetry.util.http import (
     normalise_response_header_name,
     remove_url_credentials,
 )
-
-_ServerRequestHookT = typing.Optional[typing.Callable[[Span, dict], None]]
-_ClientRequestHookT = typing.Optional[typing.Callable[[Span, dict], None]]
-_ClientResponseHookT = typing.Optional[typing.Callable[[Span, dict], None]]
 
 
 class ASGIGetter(Getter[dict]):
@@ -339,24 +341,19 @@ def collect_custom_headers_attributes(
     sanitize: SanitizeValue,
     header_regexes: list[str],
     normalize_names: Callable[[str], str],
-) -> dict[str, str]:
+) -> dict[str, list[str]]:
     """
     Returns custom HTTP request or response headers to be added into SERVER span as span attributes.
 
     Refer specifications:
      - https://github.com/open-telemetry/opentelemetry-specification/blob/main/specification/trace/semantic_conventions/http.md#http-request-and-response-headers
     """
-    # Decode headers before processing.
-    headers: dict[str, str] = {}
+    headers: DefaultDict[str, list[str]] = defaultdict(list)
     raw_headers = scope_or_response_message.get("headers")
     if raw_headers:
-        for _key, _value in raw_headers:
-            key = _key.decode().lower()
-            value = _value.decode()
-            if key in headers:
-                headers[key] += f",{value}"
-            else:
-                headers[key] = value
+        for key, value in raw_headers:
+            # Decode headers before processing.
+            headers[key.decode()].append(value.decode())
 
     return sanitize.sanitize_header_values(
         headers,
@@ -454,11 +451,13 @@ class OpenTelemetryMiddleware:
                       Optional: Defaults to get_default_span_details.
         server_request_hook: Optional callback which is called with the server span and ASGI
                       scope object for every incoming request.
-        client_request_hook: Optional callback which is called with the internal span and an ASGI
-                      scope which is sent as a dictionary for when the method receive is called.
-        client_response_hook: Optional callback which is called with the internal span and an ASGI
-                      event which is sent as a dictionary for when the method send is called.
+        client_request_hook: Optional callback which is called with the internal span, and ASGI
+                      scope and event which are sent as dictionaries for when the method receive is called.
+        client_response_hook: Optional callback which is called with the internal span, and ASGI
+                      scope and event which are sent as dictionaries for when the method send is called.
         tracer_provider: The optional tracer provider to use. If omitted
+            the current globally configured one is used.
+        meter_provider: The optional meter provider to use. If omitted
             the current globally configured one is used.
     """
 
@@ -468,22 +467,27 @@ class OpenTelemetryMiddleware:
         app,
         excluded_urls=None,
         default_span_details=None,
-        server_request_hook: _ServerRequestHookT = None,
-        client_request_hook: _ClientRequestHookT = None,
-        client_response_hook: _ClientResponseHookT = None,
+        server_request_hook: ServerRequestHook = None,
+        client_request_hook: ClientRequestHook = None,
+        client_response_hook: ClientResponseHook = None,
         tracer_provider=None,
         meter_provider=None,
+        tracer=None,
         meter=None,
         http_capture_headers_server_request: list[str] | None = None,
         http_capture_headers_server_response: list[str] | None = None,
         http_capture_headers_sanitize_fields: list[str] | None = None,
     ):
         self.app = guarantee_single_callable(app)
-        self.tracer = trace.get_tracer(
-            __name__,
-            __version__,
-            tracer_provider,
-            schema_url="https://opentelemetry.io/schemas/1.11.0",
+        self.tracer = (
+            trace.get_tracer(
+                __name__,
+                __version__,
+                tracer_provider,
+                schema_url="https://opentelemetry.io/schemas/1.11.0",
+            )
+            if tracer is None
+            else tracer
         )
         self.meter = (
             get_meter(
@@ -666,9 +670,9 @@ class OpenTelemetryMiddleware:
             with self.tracer.start_as_current_span(
                 " ".join((server_span_name, scope["type"], "receive"))
             ) as receive_span:
-                if callable(self.client_request_hook):
-                    self.client_request_hook(receive_span, scope)
                 message = await receive()
+                if callable(self.client_request_hook):
+                    self.client_request_hook(receive_span, scope, message)
                 if receive_span.is_recording():
                     if message["type"] == "websocket.receive":
                         set_status_code(receive_span, 200)
@@ -691,13 +695,13 @@ class OpenTelemetryMiddleware:
                 " ".join((server_span_name, scope["type"], "send"))
             ) as send_span:
                 if callable(self.client_response_hook):
-                    self.client_response_hook(send_span, message)
+                    self.client_response_hook(send_span, scope, message)
                 if send_span.is_recording():
                     if message["type"] == "http.response.start":
                         status_code = message["status"]
-                        duration_attrs[
-                            SpanAttributes.HTTP_STATUS_CODE
-                        ] = status_code
+                        duration_attrs[SpanAttributes.HTTP_STATUS_CODE] = (
+                            status_code
+                        )
                         set_status_code(server_span, status_code)
                         set_status_code(send_span, status_code)
 

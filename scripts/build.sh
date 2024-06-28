@@ -8,15 +8,15 @@ set -ev
 # Get the latest versions of packaging tools
 python3 -m pip install --upgrade pip build setuptools wheel
 
-BASEDIR=$(dirname $(readlink -f $(dirname $0)))
+BASEDIR=$(dirname "$(readlink -f "$(dirname $0)")")
 DISTDIR=dist
 
 (
   cd $BASEDIR
   mkdir -p $DISTDIR
-  rm -rf $DISTDIR/*
+  rm -rf ${DISTDIR:?}/*
 
- for d in exporter/*/ opentelemetry-instrumentation/ opentelemetry-contrib-instrumentations/ opentelemetry-distro/ instrumentation/*/ propagator/*/ resource/*/ sdk-extension/*/ util/*/ ; do
+ for d in exporter/*/ opentelemetry-instrumentation/ opentelemetry-contrib-instrumentations/ opentelemetry-distro/ instrumentation/*/ processor/*/ propagator/*/ resource/*/ sdk-extension/*/ util/*/ ; do
    (
      echo "building $d"
      cd "$d"

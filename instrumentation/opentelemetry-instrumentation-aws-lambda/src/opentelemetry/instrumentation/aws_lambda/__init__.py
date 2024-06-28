@@ -306,9 +306,11 @@ def _instrument(
             disable_aws_context_propagation,
         )
 
-        span_kind = None
         try:
-            if lambda_event["Records"][0]["eventSource"] in {
+            event_source = lambda_event["Records"][0].get(
+                "eventSource"
+            ) or lambda_event["Records"][0].get("EventSource")
+            if event_source in {
                 "aws:sqs",
                 "aws:s3",
                 "aws:sns",
@@ -340,17 +342,17 @@ def _instrument(
             if span.is_recording():
                 lambda_context = args[1]
                 # NOTE: The specs mention an exception here, allowing the
-                # `ResourceAttributes.FAAS_ID` attribute to be set as a span
+                # `SpanAttributes.CLOUD_RESOURCE_ID` attribute to be set as a span
                 # attribute instead of a resource attribute.
                 #
                 # See more:
-                # https://github.com/open-telemetry/opentelemetry-specification/blob/main/specification/trace/semantic_conventions/faas.md#example
+                # https://github.com/open-telemetry/semantic-conventions/blob/main/docs/faas/aws-lambda.md#resource-detector
                 span.set_attribute(
-                    ResourceAttributes.FAAS_ID,
+                    SpanAttributes.CLOUD_RESOURCE_ID,
                     lambda_context.invoked_function_arn,
                 )
                 span.set_attribute(
-                    SpanAttributes.FAAS_EXECUTION,
+                    SpanAttributes.FAAS_INVOCATION_ID,
                     lambda_context.aws_request_id,
                 )
 
@@ -365,6 +367,7 @@ def _instrument(
                 )
 
             exception = None
+            result = None
             try:
                 result = call_wrapped(*args, **kwargs)
             except Exception as exc:  # pylint: disable=W0703

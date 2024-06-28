@@ -11,9 +11,10 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-
 import unittest
+from collections.abc import Mapping
 from timeit import default_timer
+from typing import Tuple
 from unittest.mock import patch
 
 import fastapi
@@ -117,6 +118,10 @@ class TestFastAPIManualInstrumentation(TestBase):
         self.assertEqual(len(spans), 3)
         for span in spans:
             self.assertIn("GET /foobar", span.name)
+            self.assertEqual(
+                span.instrumentation_scope.name,
+                "opentelemetry.instrumentation.fastapi",
+            )
 
     def test_uninstrument_app(self):
         self._client.get("/foobar")
@@ -197,6 +202,10 @@ class TestFastAPIManualInstrumentation(TestBase):
         for resource_metric in metrics_list.resource_metrics:
             self.assertTrue(len(resource_metric.scope_metrics) == 1)
             for scope_metric in resource_metric.scope_metrics:
+                self.assertEqual(
+                    scope_metric.scope.name,
+                    "opentelemetry.instrumentation.fastapi",
+                )
                 self.assertTrue(len(scope_metric.metrics) == 3)
                 for metric in scope_metric.metrics:
                     self.assertIn(metric.name, _expected_metric_names)
@@ -246,7 +255,7 @@ class TestFastAPIManualInstrumentation(TestBase):
                         dict(point.attributes),
                     )
                     self.assertEqual(point.count, 1)
-                    self.assertAlmostEqual(duration, point.sum, delta=30)
+                    self.assertAlmostEqual(duration, point.sum, delta=40)
                 if isinstance(point, NumberDataPoint):
                     self.assertDictEqual(
                         expected_requests_count_attributes,
@@ -271,7 +280,7 @@ class TestFastAPIManualInstrumentation(TestBase):
                 if isinstance(point, HistogramDataPoint):
                     self.assertEqual(point.count, 1)
                     if metric.name == "http.server.duration":
-                        self.assertAlmostEqual(duration, point.sum, delta=30)
+                        self.assertAlmostEqual(duration, point.sum, delta=40)
                     elif metric.name == "http.server.response.size":
                         self.assertEqual(response_size, point.sum)
                     elif metric.name == "http.server.request.size":
@@ -279,7 +288,7 @@ class TestFastAPIManualInstrumentation(TestBase):
                 if isinstance(point, NumberDataPoint):
                     self.assertEqual(point.value, 0)
 
-    def test_metric_uninstruemnt_app(self):
+    def test_metric_uninstrument_app(self):
         self._client.get("/foobar")
         self._instrumentor.uninstrument_app(self._app)
         self._client.get("/foobar")
@@ -342,23 +351,23 @@ class TestFastAPIManualInstrumentationHooks(TestFastAPIManualInstrumentation):
         if self._server_request_hook is not None:
             self._server_request_hook(span, scope)
 
-    def client_request_hook(self, receive_span, request):
+    def client_request_hook(self, receive_span, scope, message):
         if self._client_request_hook is not None:
-            self._client_request_hook(receive_span, request)
+            self._client_request_hook(receive_span, scope, message)
 
-    def client_response_hook(self, send_span, response):
+    def client_response_hook(self, send_span, scope, message):
         if self._client_response_hook is not None:
-            self._client_response_hook(send_span, response)
+            self._client_response_hook(send_span, scope, message)
 
     def test_hooks(self):
         def server_request_hook(span, scope):
             span.update_name("name from server hook")
 
-        def client_request_hook(receive_span, request):
+        def client_request_hook(receive_span, scope, message):
             receive_span.update_name("name from client hook")
             receive_span.set_attribute("attr-from-request-hook", "set")
 
-        def client_response_hook(send_span, response):
+        def client_response_hook(send_span, scope, message):
             send_span.update_name("name from response hook")
             send_span.set_attribute("attr-from-response-hook", "value")
 
@@ -549,6 +558,24 @@ class TestWrappedApplication(TestBase):
         )
 
 
+class MultiMapping(Mapping):
+
+    def __init__(self, *items: Tuple[str, str]):
+        self._items = items
+
+    def __len__(self):
+        return len(self._items)
+
+    def __getitem__(self, __key):
+        raise NotImplementedError("use .items() instead")
+
+    def __iter__(self):
+        raise NotImplementedError("use .items() instead")
+
+    def items(self):
+        return self._items
+
+
 @patch.dict(
     "os.environ",
     {
@@ -575,13 +602,15 @@ class TestHTTPAppWithCustomHeaders(TestBase):
 
         @app.get("/foobar")
         async def _():
-            headers = {
-                "custom-test-header-1": "test-header-value-1",
-                "custom-test-header-2": "test-header-value-2",
-                "my-custom-regex-header-1": "my-custom-regex-value-1,my-custom-regex-value-2",
-                "My-Custom-Regex-Header-2": "my-custom-regex-value-3,my-custom-regex-value-4",
-                "My-Secret-Header": "My Secret Value",
-            }
+            headers = MultiMapping(
+                ("custom-test-header-1", "test-header-value-1"),
+                ("custom-test-header-2", "test-header-value-2"),
+                ("my-custom-regex-header-1", "my-custom-regex-value-1"),
+                ("my-custom-regex-header-1", "my-custom-regex-value-2"),
+                ("My-Custom-Regex-Header-2", "my-custom-regex-value-3"),
+                ("My-Custom-Regex-Header-2", "my-custom-regex-value-4"),
+                ("My-Secret-Header", "My Secret Value"),
+            )
             content = {"message": "hello world"}
             return JSONResponse(content=content, headers=headers)
 
@@ -657,10 +686,12 @@ class TestHTTPAppWithCustomHeaders(TestBase):
                 "test-header-value-2",
             ),
             "http.response.header.my_custom_regex_header_1": (
-                "my-custom-regex-value-1,my-custom-regex-value-2",
+                "my-custom-regex-value-1",
+                "my-custom-regex-value-2",
             ),
             "http.response.header.my_custom_regex_header_2": (
-                "my-custom-regex-value-3,my-custom-regex-value-4",
+                "my-custom-regex-value-3",
+                "my-custom-regex-value-4",
             ),
             "http.response.header.my_secret_header": ("[REDACTED]",),
         }

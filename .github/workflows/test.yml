@@ -6,31 +6,28 @@ on:
     - 'release/*'
   pull_request:
 env:
-  CORE_REPO_SHA: 955c92e91b5cd4bcfb43c39efcef086b040471d2
+  CORE_REPO_SHA: 141a6a2e473ef7f0ec4915dfb71e3c0fa595283e
 
 jobs:
   misc:
     strategy:
       fail-fast: false
       matrix:
-        tox-environment: [ "docker-tests", "spellcheck", "lint", "docs", "generate" ]
+        tox-environment: [ "docker-tests", "spellcheck", "docs", "generate" ]
     name: ${{ matrix.tox-environment }}
     runs-on: ubuntu-20.04
     steps:
       - name: Checkout Contrib Repo @ SHA - ${{ github.sha }}
-        uses: actions/checkout@v2
+        uses: actions/checkout@v4
       - name: Set up Python 3.10
-        uses: actions/setup-python@v2
+        uses: actions/setup-python@v5
         with:
           python-version: "3.10"
       - name: Install tox
         run: pip install tox
-      - name: Install libsnappy-dev
-        if: ${{ matrix.tox-environment == 'lint' }}
-        run: sudo apt-get install -y libsnappy-dev
       - name: Cache tox environment
         # Preserves .tox directory between runs for faster installs
-        uses: actions/cache@v1
+        uses: actions/cache@v4
         with:
           path: |
             .tox

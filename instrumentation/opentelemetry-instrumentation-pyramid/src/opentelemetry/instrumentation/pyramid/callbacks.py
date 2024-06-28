@@ -31,6 +31,7 @@ from opentelemetry.instrumentation.utils import _start_internal_or_server_span
 from opentelemetry.metrics import get_meter
 from opentelemetry.semconv.metrics import MetricInstruments
 from opentelemetry.semconv.trace import SpanAttributes
+from opentelemetry.trace.status import Status, StatusCode
 from opentelemetry.util.http import get_excluded_urls
 
 TWEEN_NAME = "opentelemetry.instrumentation.pyramid.trace_tween_factory"
@@ -106,9 +107,9 @@ def _before_traversal(event):
     if span.is_recording():
         attributes = otel_wsgi.collect_request_attributes(request_environ)
         if request.matched_route:
-            attributes[
-                SpanAttributes.HTTP_ROUTE
-            ] = request.matched_route.pattern
+            attributes[SpanAttributes.HTTP_ROUTE] = (
+                request.matched_route.pattern
+            )
         for key, value in attributes.items():
             span.set_attribute(key, value)
         if span.kind == trace.SpanKind.SERVER:
@@ -180,6 +181,7 @@ def trace_tween_factory(handler, registry):
 
         response = None
         status = None
+        recordable_exc = None
 
         try:
             response = handler(request)
@@ -190,20 +192,23 @@ def trace_tween_factory(handler, registry):
             # As described in docs, Pyramid exceptions are all valid
             # response types
             response = exc
+            if isinstance(exc, HTTPServerError):
+                recordable_exc = exc
             raise
-        except BaseException:
+        except BaseException as exc:
             # In the case that a non-HTTPException is bubbled up we
             # should infer a internal server error and raise
             status = "500 InternalServerError"
+            recordable_exc = exc
             raise
         finally:
             duration = max(round((default_timer() - start) * 1000), 0)
             status = getattr(response, "status", status)
             status_code = otel_wsgi._parse_status_code(status)
             if status_code is not None:
-                duration_attrs[
-                    SpanAttributes.HTTP_STATUS_CODE
-                ] = otel_wsgi._parse_status_code(status)
+                duration_attrs[SpanAttributes.HTTP_STATUS_CODE] = (
+                    otel_wsgi._parse_status_code(status)
+                )
             duration_histogram.record(duration, duration_attrs)
             active_requests_counter.add(-1, active_requests_count_attrs)
             span = request.environ.get(_ENVIRON_SPAN_KEY)
@@ -221,6 +226,12 @@ def trace_tween_factory(handler, registry):
                         status,
                         getattr(response, "headerlist", None),
                     )
+
+                    if recordable_exc is not None:
+                        span.set_status(
+                            Status(StatusCode.ERROR, str(recordable_exc))
+                        )
+                        span.record_exception(recordable_exc)
 
                 if span.is_recording() and span.kind == trace.SpanKind.SERVER:
                     custom_attributes = (

@@ -17,13 +17,6 @@ from importlib import import_module
 from typing import Any, Callable, Dict
 from unittest import mock
 
-from tests.mocks.api_gateway_http_api_event import (
-    MOCK_LAMBDA_API_GATEWAY_HTTP_API_EVENT,
-)
-from tests.mocks.api_gateway_proxy_event import (
-    MOCK_LAMBDA_API_GATEWAY_PROXY_EVENT,
-)
-
 from opentelemetry.environment_variables import OTEL_PROPAGATORS
 from opentelemetry.instrumentation.aws_lambda import (
     _HANDLER,
@@ -44,6 +37,11 @@ from opentelemetry.trace import NoOpTracerProvider, SpanKind, StatusCode
 from opentelemetry.trace.propagation.tracecontext import (
     TraceContextTextMapPropagator,
 )
+
+from .mocks.api_gateway_http_api_event import (
+    MOCK_LAMBDA_API_GATEWAY_HTTP_API_EVENT,
+)
+from .mocks.api_gateway_proxy_event import MOCK_LAMBDA_API_GATEWAY_PROXY_EVENT
 
 
 class MockLambdaContext:
@@ -145,8 +143,8 @@ class TestAwsLambdaInstrumentor(TestBase):
         self.assertSpanHasAttributes(
             span,
             {
-                ResourceAttributes.FAAS_ID: MOCK_LAMBDA_CONTEXT.invoked_function_arn,
-                SpanAttributes.FAAS_EXECUTION: MOCK_LAMBDA_CONTEXT.aws_request_id,
+                SpanAttributes.CLOUD_RESOURCE_ID: MOCK_LAMBDA_CONTEXT.invoked_function_arn,
+                SpanAttributes.FAAS_INVOCATION_ID: MOCK_LAMBDA_CONTEXT.aws_request_id,
                 ResourceAttributes.CLOUD_ACCOUNT_ID: MOCK_LAMBDA_CONTEXT.invoked_function_arn.split(
                     ":"
                 )[
@@ -351,12 +349,43 @@ class TestAwsLambdaInstrumentor(TestBase):
 
         mock_execute_lambda({"Records": [{"eventSource": "aws:sqs"}]})
         mock_execute_lambda({"Records": [{"eventSource": "aws:s3"}]})
-        mock_execute_lambda({"Records": [{"eventSource": "aws:sns"}]})
+        mock_execute_lambda({"Records": [{"EventSource": "aws:sns"}]})
         mock_execute_lambda({"Records": [{"eventSource": "aws:dynamodb"}]})
 
         spans = self.memory_exporter.get_finished_spans()
 
         assert spans
+        assert len(spans) == 4
+
+        for span in spans:
+            assert span.kind == SpanKind.CONSUMER
+
+        test_env_patch.stop()
+
+    def test_lambda_handles_invalid_event_source(self):
+        test_env_patch = mock.patch.dict(
+            "os.environ",
+            {
+                **os.environ,
+                # NOT Active Tracing
+                _X_AMZN_TRACE_ID: MOCK_XRAY_TRACE_CONTEXT_NOT_SAMPLED,
+                # NOT using the X-Ray Propagator
+                OTEL_PROPAGATORS: "tracecontext",
+            },
+        )
+        test_env_patch.start()
+
+        AwsLambdaInstrumentor().instrument()
+
+        mock_execute_lambda({"Records": [{"eventSource": "invalid_source"}]})
+
+        spans = self.memory_exporter.get_finished_spans()
+
+        assert spans
+        assert len(spans) == 1
+        assert (
+            spans[0].kind == SpanKind.SERVER
+        )  # Default to SERVER for unknown sources
 
         test_env_patch.stop()
 
@@ -425,6 +454,31 @@ class TestAwsLambdaInstrumentor(TestBase):
         # instrumentor re-raises the exception
         with self.assertRaises(Exception):
             mock_execute_lambda()
+
+        spans = self.memory_exporter.get_finished_spans()
+        self.assertEqual(len(spans), 1)
+        span = spans[0]
+        self.assertEqual(span.status.status_code, StatusCode.ERROR)
+        self.assertEqual(len(span.events), 1)
+        event = span.events[0]
+        self.assertEqual(event.name, "exception")
+
+        exc_env_patch.stop()
+
+    def test_lambda_handles_handler_exception_with_api_gateway_proxy_event(
+        self,
+    ):
+        exc_env_patch = mock.patch.dict(
+            "os.environ",
+            {_HANDLER: "tests.mocks.lambda_function.handler_exc"},
+        )
+        exc_env_patch.start()
+        AwsLambdaInstrumentor().instrument()
+        # instrumentor re-raises the exception
+        with self.assertRaises(Exception):
+            mock_execute_lambda(
+                {"requestContext": {"http": {"method": "GET"}}}
+            )
 
         spans = self.memory_exporter.get_finished_spans()
         self.assertEqual(len(spans), 1)
