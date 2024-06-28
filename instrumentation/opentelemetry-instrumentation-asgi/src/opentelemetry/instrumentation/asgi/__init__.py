@@ -372,6 +372,19 @@ def get_host_port_url_tuple(scope):
     return server_host, port, http_url
 
 
+def maybe_inject_context(message, server_span, setter):
+    """Inject the context if there's a global propagator."""
+    propagator = get_global_response_propagator()
+    if propagator:
+        propagator.inject(
+            message,
+            context=set_span_in_context(
+                server_span, trace.context_api.Context()
+            ),
+            setter=setter,
+        )
+
+
 def set_status_code(span, status_code):
     """Adds HTTP response attributes to span using the status_code argument."""
     if not span.is_recording():
@@ -698,19 +711,14 @@ class OpenTelemetryMiddleware:
                     self.client_response_hook(send_span, scope, message)
 
                 status_code = None
-                if message["type"] in {
-                    "http.response.start",
-                    "websocket.send",
-                }:
-                    status_code = (
-                        message["status"]
-                        if message["type"] == "http.response.start"
-                        else 200
+                if message["type"] == "http.response.start":
+                    status_code = message["status"]
+                elif message["type"] == "websocket.send":
+                    status_code = 200
+                if status_code:
+                    duration_attrs[SpanAttributes.HTTP_STATUS_CODE] = (
+                        status_code
                     )
-                    if status_code:
-                        duration_attrs[SpanAttributes.HTTP_STATUS_CODE] = (
-                            status_code
-                        )
 
                 if send_span.is_recording():
                     if message["type"] == "http.response.start":
@@ -739,15 +747,11 @@ class OpenTelemetryMiddleware:
                                 custom_response_attributes
                             )
 
-                propagator = get_global_response_propagator()
-                if propagator:
-                    propagator.inject(
-                        message,
-                        context=set_span_in_context(
-                            server_span, trace.context_api.Context()
-                        ),
-                        setter=asgi_setter,
-                    )
+                maybe_inject_context(
+                    message,
+                    server_span=server_span,
+                    setter=asgi_setter,
+                )
 
                 content_length = asgi_getter.get(message, "content-length")
                 if content_length:
