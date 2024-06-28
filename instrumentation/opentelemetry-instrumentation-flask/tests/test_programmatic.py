@@ -497,8 +497,7 @@ class TestProgrammatic(InstrumentationTest, WsgiTestBase):
         self.client.get("/hello/123")
         self.client.get("/hello/321")
         self.client.get("/hello/756")
-        # new semconv Unit: ms -> s
-        duration = max(default_timer() - start, 0)
+        duration_s = max(default_timer() - start, 0)
         metrics_list = self.memory_metrics_reader.get_metrics_data()
         number_data_point_seen = False
         histogram_data_point_seen = False
@@ -515,7 +514,7 @@ class TestProgrammatic(InstrumentationTest, WsgiTestBase):
                         if isinstance(point, HistogramDataPoint):
                             self.assertEqual(point.count, 3)
                             self.assertAlmostEqual(
-                                duration, point.sum, delta=10
+                                duration_s, point.sum, delta=10
                             )
                             histogram_data_point_seen = True
                         if isinstance(point, NumberDataPoint):
