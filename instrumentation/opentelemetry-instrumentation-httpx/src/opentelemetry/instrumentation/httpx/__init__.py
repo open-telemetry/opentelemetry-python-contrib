@@ -307,20 +307,18 @@ def _extract_response(
     ]
 ) -> typing.Tuple[int, Headers, httpx.SyncByteStream, dict, str]:
     if isinstance(response, httpx.Response):
-        return (
-            response.status_code,
-            response.headers,
-            response.stream,
-            response.extensions,
-            response.http_version,
-        )
-
-    if isinstance(response, tuple):
+        status_code = response.status_code
+        headers = response.headers
+        stream = response.stream
+        extensions = response.extensions
+        http_version = response.http_version
+    else:
         status_code, headers, stream, extensions = response
         http_version = extensions.get("http_version", b"HTTP/1.1").decode(
             "ascii", errors="ignore"
         )
-        return (status_code, headers, stream, extensions, http_version)
+
+    return (status_code, headers, stream, extensions, http_version)
 
 
 def _apply_request_client_attributes_to_span(
@@ -420,6 +418,7 @@ class SyncOpenTelemetryTransport(httpx.BaseTransport):
     ) -> None:
         self._transport.__exit__(exc_type, exc_value, traceback)
 
+    # pylint: disable=R0914
     def handle_request(
         self,
         *args,
@@ -456,7 +455,7 @@ class SyncOpenTelemetryTransport(httpx.BaseTransport):
 
             try:
                 response = self._transport.handle_request(*args, **kwargs)
-            except Exception as exc:
+            except Exception as exc:  # pylint: disable=W0703
                 exception = exc
                 response = getattr(exc, "response", None)
 
@@ -536,6 +535,7 @@ class AsyncOpenTelemetryTransport(httpx.AsyncBaseTransport):
     ) -> None:
         await self._transport.__aexit__(exc_type, exc_value, traceback)
 
+    # pylint: disable=R0914
     async def handle_async_request(self, *args, **kwargs) -> typing.Union[
         typing.Tuple[int, "Headers", httpx.AsyncByteStream, dict],
         httpx.Response,
@@ -570,7 +570,7 @@ class AsyncOpenTelemetryTransport(httpx.AsyncBaseTransport):
                 response = await self._transport.handle_async_request(
                     *args, **kwargs
                 )
-            except Exception as exc:
+            except Exception as exc:  # pylint: disable=W0703
                 exception = exc
                 response = getattr(exc, "response", None)
 

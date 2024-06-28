@@ -12,6 +12,8 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+# pylint: disable=too-many-lines
+
 import abc
 import asyncio
 import typing
@@ -117,6 +119,9 @@ def _no_update_request_hook(span: "Span", request: "RequestInfo"):
 
 async def _async_no_update_request_hook(span: "Span", request: "RequestInfo"):
     return 123
+
+
+# pylint: disable=too-many-public-methods
 
 
 # Using this wrapper class to have a base class for the tests while also not
