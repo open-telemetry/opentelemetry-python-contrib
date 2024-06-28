@@ -259,7 +259,7 @@ class TestBaseAutoFastAPI(TestBaseFastAPI):
         )
 
 
-class TestFastAPIManualInstrumentation(TestBaseManualFastAPI, TestBase):
+class TestFastAPIManualInstrumentation(TestBaseManualFastAPI):
     def test_instrument_app_with_instrument(self):
         if not isinstance(self, TestAutoInstrumentation):
             self._instrumentor.instrument()
@@ -499,7 +499,7 @@ class TestFastAPIManualInstrumentation(TestBaseManualFastAPI, TestBase):
         return app
 
 
-class TestFastAPIManualInstrumentationHooks(TestBaseManualFastAPI, TestBase):
+class TestFastAPIManualInstrumentationHooks(TestBaseManualFastAPI):
     _server_request_hook = None
     _client_request_hook = None
     _client_response_hook = None
@@ -549,7 +549,7 @@ class TestFastAPIManualInstrumentationHooks(TestBaseManualFastAPI, TestBase):
             )
 
 
-class TestAutoInstrumentation(TestBaseAutoFastAPI, TestBase):
+class TestAutoInstrumentation(TestBaseAutoFastAPI):
     """Test the auto-instrumented variant
 
     Extending the manual instrumentation as most test cases apply
@@ -663,7 +663,7 @@ class TestAutoInstrumentation(TestBaseAutoFastAPI, TestBase):
         )
 
 
-class TestAutoInstrumentationHooks(TestBaseAutoFastAPI, TestBase):
+class TestAutoInstrumentationHooks(TestBaseAutoFastAPI):
     """
     Test the auto-instrumented variant for request and response hooks
 
