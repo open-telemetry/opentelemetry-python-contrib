@@ -22,6 +22,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   ([#2616](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/2616))
 - `opentelemetry-instrumentation-asyncpg` Add instrumentation to cursor based queries
   ([#2501](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/2501))
+- `opentelemetry-instrumentation-confluent-kafka` Add support for produce purge
+  ([#2638](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/2638))
 
 ### Breaking changes
 
