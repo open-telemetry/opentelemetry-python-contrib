@@ -57,7 +57,7 @@ def server_streaming_method(stub, error=False, serialize=True):
     return response_iterator
 
 
-def bidirectional_streaming_method(stub, error=False, serialize=True):
+def bidirectional_streaming_method(stub, error=False):
     def request_messages():
         for _ in range(5):
             request = Request(
@@ -68,6 +68,5 @@ def bidirectional_streaming_method(stub, error=False, serialize=True):
     response_iterator = stub.ServerStreamingMethod(
         request, metadata=(("key", "value"),)
     )
-    if serialize:
-        list(response_iterator)
-    return response_iterator
+
+    list(response_iterator)
