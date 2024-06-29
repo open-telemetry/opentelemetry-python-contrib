@@ -11,7 +11,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   ([#2612](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/2612))
 - `opentelemetry-instrumentation-system-metrics` Permit to use psutil 6.0+.
   ([#2630](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/2630))
-- `opentelemetry-instrumentation-psycopg` Bugfix: Handle empty statement. ([#2644](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/2644))
 
 ### Added
 
@@ -39,6 +38,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   ([#2590](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/2590))
 - Reference symbols from generated semantic conventions
   ([#2611](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/2611))
+- `opentelemetry-instrumentation-psycopg` Bugfix: Handle empty statement.
+  ([#2644](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/2644))
 
 ## Version 1.25.0/0.46b0 (2024-05-31)
 
