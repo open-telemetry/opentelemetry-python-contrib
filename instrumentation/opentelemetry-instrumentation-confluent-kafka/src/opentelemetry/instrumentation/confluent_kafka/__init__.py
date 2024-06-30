@@ -156,6 +156,9 @@ class ProxiedProducer(Producer):
     def poll(self, timeout=-1):
         return self._producer.poll(timeout)
 
+    def purge(self, in_queue=True, in_flight=True, blocking=True):
+        self._producer.purge(in_queue, in_flight, blocking)
+
     def produce(
         self, topic, value=None, *args, **kwargs
     ):  # pylint: disable=keyword-arg-before-vararg
