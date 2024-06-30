@@ -19,9 +19,16 @@ from os import environ
 from re import IGNORECASE as RE_IGNORECASE
 from re import compile as re_compile
 from re import search
-from typing import Callable, Iterable, Optional
+from typing import Callable, Dict, Iterable, Optional
 from urllib.parse import urlparse, urlunparse
 
+from opentelemetry.instrumentation._semconv import (
+    _HTTPStabilityMode,
+    _OpenTelemetrySemanticConventionStability,
+    _OpenTelemetryStabilitySignalType,
+    _server_active_requests_count_attrs_new,
+    _server_duration_attrs_new,
+)
 from opentelemetry.semconv.trace import SpanAttributes
 
 OTEL_INSTRUMENTATION_HTTP_CAPTURE_HEADERS_SANITIZE_FIELDS = (
@@ -228,20 +235,44 @@ def get_custom_headers(env_var: str) -> list[str]:
     return []
 
 
-def _parse_active_request_count_attrs(req_attrs):
-    active_requests_count_attrs = {
-        key: req_attrs[key]
-        for key in _active_requests_count_attrs.intersection(req_attrs.keys())
+def _parse_active_request_count_attrs(
+    req_attrs: Dict[str, str]
+) -> Dict[str, str]:
+    _OpenTelemetrySemanticConventionStability._initialize()
+    stability_mode = _OpenTelemetrySemanticConventionStability._get_opentelemetry_stability_opt_in_mode(
+        _OpenTelemetryStabilitySignalType.HTTP
+    )
+
+    if stability_mode == _HTTPStabilityMode.DEFAULT:
+        attrs_set = _active_requests_count_attrs
+    elif stability_mode == _HTTPStabilityMode.HTTP:
+        attrs_set = _server_active_requests_count_attrs_new
+    else:  # HTTP_DUP
+        attrs_set = _active_requests_count_attrs.union(
+            _server_active_requests_count_attrs_new
+        )
+
+    return {
+        key: req_attrs[key] for key in attrs_set.intersection(req_attrs.keys())
     }
-    return active_requests_count_attrs
 
 
-def _parse_duration_attrs(req_attrs):
-    duration_attrs = {
-        key: req_attrs[key]
-        for key in _duration_attrs.intersection(req_attrs.keys())
+def _parse_duration_attrs(req_attrs: Dict[str, str]) -> Dict[str, str]:
+    _OpenTelemetrySemanticConventionStability._initialize()
+    stability_mode = _OpenTelemetrySemanticConventionStability._get_opentelemetry_stability_opt_in_mode(
+        _OpenTelemetryStabilitySignalType.HTTP
+    )
+
+    if stability_mode == _HTTPStabilityMode.DEFAULT:
+        attrs_set = _duration_attrs
+    elif stability_mode == _HTTPStabilityMode.HTTP:
+        attrs_set = _server_duration_attrs_new
+    else:  # HTTP_DUP
+        attrs_set = _duration_attrs.union(_server_duration_attrs_new)
+
+    return {
+        key: req_attrs[key] for key in attrs_set.intersection(req_attrs.keys())
     }
-    return duration_attrs
 
 
 def _parse_url_query(url: str):
