@@ -17,6 +17,7 @@ from unittest.mock import AsyncMock
 
 import redis
 import redis.asyncio
+from redis.exceptions import WatchError
 
 from opentelemetry import trace
 from opentelemetry.instrumentation.redis import RedisInstrumentor
@@ -26,7 +27,7 @@ from opentelemetry.semconv.trace import (
     SpanAttributes,
 )
 from opentelemetry.test.test_base import TestBase
-from opentelemetry.trace import SpanKind
+from opentelemetry.trace import SpanKind, StatusCode
 
 
 class TestRedis(TestBase):
@@ -311,3 +312,41 @@ class TestRedis(TestBase):
             span.attributes[SpanAttributes.NET_TRANSPORT],
             NetTransportValues.OTHER.value,
         )
+
+    def test_watch_error(self):
+        redis_client = redis.Redis()
+
+        # Mock the pipeline to raise a WatchError
+        mock_pipeline = mock.MagicMock()
+        mock_pipeline.watch.return_value = None
+        mock_pipeline.multi.return_value = mock_pipeline
+        mock_pipeline.execute.side_effect = WatchError("Watched variable changed")
+
+        with mock.patch.object(redis_client, "pipeline", return_value=mock_pipeline):
+            try:
+                with redis_client.pipeline() as pipe:
+                    pipe.watch("key")
+                    pipe.multi()
+                    pipe.set("key", "value")
+                    pipe.execute()
+            except WatchError:
+                pass  # We expect this exception to be raised
+
+        spans = self.memory_exporter.get_finished_spans()
+        self.assertEqual(len(spans), 1)
+        span = spans[0]
+
+        # Check that the span is not marked as an error
+        self.assertIsNone(span.status.status_code)
+
+        # Check that the WatchError is recorded as an event, not an exception
+        events = span.events
+        self.assertEqual(len(events), 1)
+        self.assertEqual(events[0].name, "exception")
+        self.assertEqual(events[0].attributes["exception.type"], "WatchError")
+        self.assertIn("Watched variable changed", events[0].attributes["exception.message"])
+
+        # Verify other span properties
+        self.assertEqual(span.name, "MULTI")
+        self.assertEqual(span.kind, SpanKind.CLIENT)
+        self.assertEqual(span.attributes.get("db.system"), "redis")
