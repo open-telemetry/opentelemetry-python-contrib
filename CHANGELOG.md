@@ -177,6 +177,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - `opentelemetry-resource-detector-azure` Added dependency for Cloud Resource ID attribute
   ([#2072](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/2072))
 
+### Fixed
+
+- `opentelemetry-instrumentation-fastapi` Removed upper version bound for fastapi.
+  ([#1934](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/1934))
+
 ## Version 1.21.0/0.42b0 (2023-11-01)
 
 ### Added
