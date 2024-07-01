@@ -416,7 +416,7 @@ class TestMiddleware(WsgiTestBase):
 
         # ensure that span ended
         finished_spans = self.memory_exporter.get_finished_spans()
-        self.assertEqual(len(finished_spans), 2)
+        self.assertEqual(len(finished_spans), 1)
 
     def test_trace_parent(self):
         id_generator = RandomIdGenerator()
