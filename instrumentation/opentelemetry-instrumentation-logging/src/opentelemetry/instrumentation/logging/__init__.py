@@ -46,6 +46,26 @@ LEVELS = {
 }
 
 
+def apply_log_settings(
+    format: str, level: int  # pylint: disable=redefined-builtin
+) -> None:
+    """
+    Apply the logging format to the root logger.
+
+    Ensures that the logging format is applied either by calling logging.basicConfig
+    or by setting the logging format on the root logger.
+    This is required in case of auto-instrumentation, where the root logger is configured
+    before we can inject the logging format here.
+    """
+    root_logger = logging.getLogger()
+    if root_logger.hasHandlers():
+        root_logger.setLevel(level)
+        for handler in root_logger.handlers:
+            handler.setFormatter(logging.Formatter(format))
+    else:
+        logging.basicConfig(format=format, level=level)
+
+
 class LoggingInstrumentor(BaseInstrumentor):  # pylint: disable=empty-docstring
     __doc__ = f"""An instrumentor for stdlib logging module.
 
@@ -77,6 +97,8 @@ class LoggingInstrumentor(BaseInstrumentor):  # pylint: disable=empty-docstring
 
     _old_factory = None
     _log_hook = None
+    _old_level = None
+    _old_format = None
 
     def instrumentation_dependencies(self) -> Collection[str]:
         return _instruments
@@ -84,6 +106,8 @@ class LoggingInstrumentor(BaseInstrumentor):  # pylint: disable=empty-docstring
     def _instrument(self, **kwargs):
         provider = kwargs.get("tracer_provider", None) or get_tracer_provider()
         old_factory = logging.getLogRecordFactory()
+        self._old_level = logging.getLogger().level
+        self._old_format = logging.getLogger().handlers[0].formatter._fmt
         LoggingInstrumentor._old_factory = old_factory
         LoggingInstrumentor._log_hook = kwargs.get("log_hook", None)
 
@@ -144,9 +168,10 @@ class LoggingInstrumentor(BaseInstrumentor):  # pylint: disable=empty-docstring
             )
             log_level = log_level or logging.INFO
 
-            logging.basicConfig(format=log_format, level=log_level)
+            apply_log_settings(format=log_format, level=log_level)
 
     def _uninstrument(self, **kwargs):
         if LoggingInstrumentor._old_factory:
             logging.setLogRecordFactory(LoggingInstrumentor._old_factory)
             LoggingInstrumentor._old_factory = None
+        apply_log_settings(self._old_format, self._old_level or logging.NOTSET)

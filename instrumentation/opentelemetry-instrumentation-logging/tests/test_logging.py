@@ -21,6 +21,7 @@ import pytest
 from opentelemetry.instrumentation.logging import (  # pylint: disable=no-name-in-module
     DEFAULT_LOGGING_FORMAT,
     LoggingInstrumentor,
+    apply_log_settings,
 )
 from opentelemetry.test.test_base import TestBase
 from opentelemetry.trace import ProxyTracer, get_tracer
@@ -106,11 +107,11 @@ class TestLoggingInstrumentor(TestBase):
     def test_trace_context_injection_without_span(self):
         self.assert_trace_context_injected("0", "0", False)
 
-    @mock.patch("logging.basicConfig")
-    def test_basic_config_called(self, basic_config_mock):
+    @mock.patch("opentelemetry.instrumentation.logging.apply_log_settings")
+    def test_basic_config_called(self, apply_log_settings_mock):
         LoggingInstrumentor().uninstrument()
         LoggingInstrumentor().instrument()
-        self.assertFalse(basic_config_mock.called)
+        self.assertTrue(apply_log_settings_mock.called)
         LoggingInstrumentor().uninstrument()
 
         env_patch = mock.patch.dict(
@@ -118,16 +119,16 @@ class TestLoggingInstrumentor(TestBase):
         )
         env_patch.start()
         LoggingInstrumentor().instrument()
-        basic_config_mock.assert_called_with(
+        apply_log_settings_mock.assert_called_with(
             format=DEFAULT_LOGGING_FORMAT, level=logging.INFO
         )
         env_patch.stop()
 
-    @mock.patch("logging.basicConfig")
-    def test_custom_format_and_level_env(self, basic_config_mock):
+    @mock.patch("opentelemetry.instrumentation.logging.apply_log_settings")
+    def test_custom_format_and_level_env(self, apply_log_settings_mock):
         LoggingInstrumentor().uninstrument()
         LoggingInstrumentor().instrument()
-        self.assertFalse(basic_config_mock.called)
+        self.assertTrue(apply_log_settings_mock.called)
         LoggingInstrumentor().uninstrument()
 
         env_patch = mock.patch.dict(
@@ -140,14 +141,14 @@ class TestLoggingInstrumentor(TestBase):
         )
         env_patch.start()
         LoggingInstrumentor().instrument()
-        basic_config_mock.assert_called_with(
+        apply_log_settings_mock.assert_called_with(
             format="%(message)s %(otelSpanID)s", level=logging.ERROR
         )
         env_patch.stop()
 
-    @mock.patch("logging.basicConfig")
+    @mock.patch("opentelemetry.instrumentation.logging.apply_log_settings")
     def test_custom_format_and_level_api(
-        self, basic_config_mock
+        self, apply_log_settings_mock
     ):  # pylint: disable=no-self-use
         LoggingInstrumentor().uninstrument()
         LoggingInstrumentor().instrument(
@@ -155,7 +156,7 @@ class TestLoggingInstrumentor(TestBase):
             logging_format="%(message)s span_id=%(otelSpanID)s",
             log_level=logging.WARNING,
         )
-        basic_config_mock.assert_called_with(
+        apply_log_settings_mock.assert_called_with(
             format="%(message)s span_id=%(otelSpanID)s", level=logging.WARNING
         )
 
@@ -207,3 +208,77 @@ class TestLoggingInstrumentor(TestBase):
                 self.assertFalse(hasattr(record, "otelTraceID"))
                 self.assertFalse(hasattr(record, "otelServiceName"))
                 self.assertFalse(hasattr(record, "otelTraceSampled"))
+
+
+class TestLogSetup(TestBase):
+    """
+    Tests the apply_log_settings function
+    """
+
+    @mock.patch("logging.Formatter")
+    @mock.patch("logging.getLogger")
+    @mock.patch("logging.basicConfig")
+    def test_apply_log_settings_initialized(
+        self,
+        basic_config_mock,
+        get_logger_mock,
+        formatter_mock,  # pylint: disable=no-self-use
+    ):
+        """
+        Tests that apply_log_settings tries to apply format and loglevel to the
+        configured logging module if the logging module has already been initialized
+        """
+        # Prepare
+        log_level = logging.DEBUG
+        log_format = "custom %(message)s"
+        formatter = "formatter"
+
+        formatter_mock.return_value = formatter
+
+        handler_mock = mock.MagicMock()
+
+        root_logger_mock = mock.MagicMock()
+        root_logger_mock.hasHandlers.return_value = True
+        root_logger_mock.handlers = [handler_mock]
+
+        get_logger_mock.return_value = root_logger_mock
+
+        # Act
+        apply_log_settings(log_format, log_level)
+
+        # Assert
+        get_logger_mock.assert_called_once_with()
+        root_logger_mock.hasHandlers.assert_called_once()
+        root_logger_mock.setLevel.assert_called_once_with(log_level)
+        handler_mock.setFormatter.assert_called_once_with(formatter)
+        formatter_mock.assert_called_once_with(log_format)
+
+        self.assertFalse(basic_config_mock.called)
+
+    @mock.patch("logging.getLogger")
+    @mock.patch("logging.basicConfig")
+    def test_apply_log_settings_uninitialized(
+        self, basic_config_mock, get_logger_mock  # pylint: disable=no-self-use
+    ):
+        """
+        Tests that apply_log_settings calls logging.basicConfig with the
+        provided format and level when the logging module has not been
+        initialized
+        """
+        log_level = logging.DEBUG
+        log_format = "custom %(message)s"
+
+        root_logger_mock = mock.MagicMock()
+        root_logger_mock.hasHandlers.return_value = False
+
+        get_logger_mock.return_value = root_logger_mock
+
+        apply_log_settings(log_format, log_level)
+
+        root_logger_mock.hasHandlers.assert_called_once()
+        get_logger_mock.assert_called_once_with()
+
+        self.assertTrue(basic_config_mock.called)
+        basic_config_mock.assert_called_once_with(
+            format=log_format, level=log_level
+        )
