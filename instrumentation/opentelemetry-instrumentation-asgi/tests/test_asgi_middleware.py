@@ -1347,7 +1347,7 @@ class TestAsgiApplication(AsgiTestBase):
         self.seed_app(app)
         start = default_timer()
         self.send_default_request()
-        duration = max(round((default_timer() - start) * 1000), 0)
+        duration_s = max(default_timer() - start, 0)
         expected_duration_attributes = {
             "http.request.method": "GET",
             "url.scheme": "http",
@@ -1372,7 +1372,7 @@ class TestAsgiApplication(AsgiTestBase):
                             self.assertEqual(point.count, 1)
                             if metric.name == "http.server.request.duration":
                                 self.assertAlmostEqual(
-                                    duration, point.sum, delta=5
+                                    duration_s, point.sum, places=2
                                 )
                             elif (
                                 metric.name == "http.server.response.body.size"
@@ -1395,6 +1395,7 @@ class TestAsgiApplication(AsgiTestBase):
         start = default_timer()
         self.send_default_request()
         duration = max(round((default_timer() - start) * 1000), 0)
+        duration_s = max(default_timer() - start, 0)
         expected_duration_attributes_old = {
             "http.method": "GET",
             "http.host": "127.0.0.1",
@@ -1427,7 +1428,7 @@ class TestAsgiApplication(AsgiTestBase):
                             self.assertEqual(point.count, 1)
                             if metric.name == "http.server.request.duration":
                                 self.assertAlmostEqual(
-                                    duration, point.sum, delta=5
+                                    duration_s, point.sum, places=2
                                 )
                                 self.assertDictEqual(
                                     expected_duration_attributes_new,

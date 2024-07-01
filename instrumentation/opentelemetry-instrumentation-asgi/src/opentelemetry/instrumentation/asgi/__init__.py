@@ -737,7 +737,7 @@ class OpenTelemetryMiddleware:
                         query,
                         self._sem_conv_opt_in_mode,
                     )
-                duration = max(round((default_timer() - start) * 1000), 0)
+                duration_s = default_timer() - start
                 duration_attrs_old = _parse_duration_attrs(
                     attributes, _HTTPStabilityMode.DEFAULT
                 )
@@ -748,11 +748,11 @@ class OpenTelemetryMiddleware:
                 )
                 if self.duration_histogram_old:
                     self.duration_histogram_old.record(
-                        duration, duration_attrs_old
+                        max(round(duration_s * 1000), 0), duration_attrs_old
                     )
                 if self.duration_histogram_new:
                     self.duration_histogram_new.record(
-                        duration, duration_attrs_new
+                        max(duration_s, 0), duration_attrs_new
                     )
                 self.active_requests_counter.add(
                     -1, active_requests_count_attrs
