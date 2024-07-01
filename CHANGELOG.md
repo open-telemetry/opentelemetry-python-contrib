@@ -6,7 +6,8 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## Unreleased
-
+- `opentelemetry-instrumentation-flask` Add `http.route` to metric attributes
+  ([#2621](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/2621))
 - `opentelemetry-instrumentation-aws-lambda` Bugfix: AWS Lambda event source key incorrect for SNS in instrumentation library. 
   ([#2612](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/2612))
 - `opentelemetry-instrumentation-system-metrics` Permit to use psutil 6.0+.
@@ -61,8 +62,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
-- `opentelemetry-instrumentation-flask` Add `http.route` to metric attributes
-  ([#2506](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/2506))
 - `opentelemetry-sdk-extension-aws` Register AWS resource detectors under the
   `opentelemetry_resource_detector` entry point
   ([#2382](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/2382))
