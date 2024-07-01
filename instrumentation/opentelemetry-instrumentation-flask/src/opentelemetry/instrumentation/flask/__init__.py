@@ -313,6 +313,13 @@ def get_default_span_name():
     return span_name
 
 
+def add_route(attributes):
+    if flask.request.url_rule:
+        # For 404 that result from no route found, etc, we
+        # don't have a url_rule.
+        attributes[SpanAttributes.HTTP_ROUTE] = flask.request.url_rule.rule
+
+
 def _rewrapped_app(
     wsgi_app,
     active_requests_counter,
@@ -346,6 +353,7 @@ def _rewrapped_app(
                 excluded_urls is None
                 or not excluded_urls.url_disabled(flask.request.url)
             ):
+                add_route(attributes)
                 span = flask.request.environ.get(_ENVIRON_SPAN_KEY)
 
                 propagator = get_global_response_propagator()
@@ -422,10 +430,7 @@ def _wrapped_before_request(
             flask_request_environ,
             sem_conv_opt_in_mode=sem_conv_opt_in_mode,
         )
-        if flask.request.url_rule:
-            # For 404 that result from no route found, etc, we
-            # don't have a url_rule.
-            attributes[SpanAttributes.HTTP_ROUTE] = flask.request.url_rule.rule
+        add_route(attributes)
         span, token = _start_internal_or_server_span(
             tracer=tracer,
             span_name=span_name,
