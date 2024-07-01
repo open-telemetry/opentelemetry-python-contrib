@@ -311,3 +311,4 @@ class TestRedis(TestBase):
             span.attributes[SpanAttributes.NET_TRANSPORT],
             NetTransportValues.OTHER.value,
         )
+
