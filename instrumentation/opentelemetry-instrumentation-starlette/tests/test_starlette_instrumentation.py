@@ -354,6 +354,20 @@ class TestAutoInstrumentation(TestStarletteManualInstrumentation):
         spans = self.memory_exporter.get_finished_spans()
         self.assertEqual(len(spans), 0)
 
+    def test_no_op_tracer_provider(self):
+        self._client.get("/foobar")
+        spans = self.memory_exporter.get_finished_spans()
+        self.assertEqual(len(spans), 3)
+
+        self.memory_exporter.clear()
+        self._instrumentor.uninstrument()
+
+        tracer_provider = NoOpTracerProvider()
+        self._instrumentor.instrument(tracer_provider=tracer_provider)
+
+        self._client.get("/foobar")
+        spans = self.memory_exporter.get_finished_spans()
+        self.assertEqual(len(spans), 0)
 
 class TestAutoInstrumentationHooks(TestStarletteManualInstrumentationHooks):
     """
