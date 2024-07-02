@@ -36,6 +36,7 @@ jobs:
           - "propagator-aws-xray"
           - "propagator-ot-trace"
           - "resource-detector-container"
+          - "util-http"
         os: [ubuntu-20.04]
         exclude:
           - python-version: pypy3
