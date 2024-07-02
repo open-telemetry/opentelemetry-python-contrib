@@ -68,6 +68,7 @@ jobs:
           - "processor-baggage"
           - "propagator-aws-xray"
           - "propagator-ot-trace"
+          - "resource-detector-azure"
           - "resource-detector-container"
           - "sdk-extension-aws"
         os: [ubuntu-20.04]
