@@ -280,8 +280,11 @@ class AsyncioInstrumentor(BaseInstrumentor):
         # CancelledError is raised when a coroutine is cancelled
         # before it has a chance to run. We don't want to record
         # this as an error.
+        # Still it needs to be raised in order for `asyncio.wait_for`
+        # to properly work with timeout and raise accordingly `asyncio.TimeoutError`
         except asyncio.CancelledError:
             attr["state"] = "cancelled"
+            raise
         except Exception as exc:
             exception = exc
             state = determine_state(exception)
