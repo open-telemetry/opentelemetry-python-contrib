@@ -68,6 +68,19 @@ class TestAsyncioWait(TestBase):
         spans = self.memory_exporter.get_finished_spans()
         self.assertEqual(len(spans), 2)
 
+    def test_asyncio_wait_for_with_timeout(self):
+        expected_timeout_error = None
+
+        async def main():
+            nonlocal expected_timeout_error
+            try:
+                await asyncio.wait_for(async_func(), 0.01)
+            except asyncio.TimeoutError as timeout_error:
+                expected_timeout_error = timeout_error
+
+        asyncio.run(main())
+        self.assertNotEqual(expected_timeout_error, None)
+
     def test_asyncio_as_completed(self):
         async def main():
             if sys.version_info >= (3, 11):
