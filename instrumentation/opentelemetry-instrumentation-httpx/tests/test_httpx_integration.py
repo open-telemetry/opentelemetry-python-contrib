@@ -625,7 +625,7 @@ class BaseTestCases:
         def test_not_recording_not_set_attribute_in_exception_new_semconv(
             self,
         ):
-            respx.get(self.URL).mock(side_effect=Exception)
+            respx.get(self.URL).mock(side_effect=httpx.TimeoutException)
             with mock.patch("opentelemetry.trace.INVALID_SPAN") as mock_span:
                 transport = self.create_transport(
                     tracer_provider=trace.NoOpTracerProvider()
@@ -634,7 +634,7 @@ class BaseTestCases:
                 mock_span.is_recording.return_value = False
                 try:
                     self.perform_request(self.URL, client=client)
-                except Exception:
+                except httpx.TimeoutException:
                     pass
 
                 self.assert_span(None, 0)
