@@ -392,6 +392,32 @@ class TestMiddleware(WsgiTestBase):
         self.assertIsInstance(response_hook_args[2], HttpResponse)
         self.assertEqual(response_hook_args[2], response)
 
+    def test_request_hook_exception(self):
+        def request_hook(span, request):
+            # pylint: disable=broad-exception-raised
+            raise Exception("request hook exception")
+
+        _DjangoMiddleware._otel_request_hook = request_hook
+        Client().get("/span_name/1234/")
+        _DjangoMiddleware._otel_request_hook = None
+
+        # ensure that span ended
+        finished_spans = self.memory_exporter.get_finished_spans()
+        self.assertEqual(len(finished_spans), 1)
+
+    def test_response_hook_exception(self):
+        def response_hook(span, request, response):
+            # pylint: disable=broad-exception-raised
+            raise Exception("response hook exception")
+
+        _DjangoMiddleware._otel_response_hook = response_hook
+        Client().get("/span_name/1234/")
+        _DjangoMiddleware._otel_response_hook = None
+
+        # ensure that span ended
+        finished_spans = self.memory_exporter.get_finished_spans()
+        self.assertEqual(len(finished_spans), 1)
+
     def test_trace_parent(self):
         id_generator = RandomIdGenerator()
         trace_id = format_trace_id(id_generator.generate_trace_id())
