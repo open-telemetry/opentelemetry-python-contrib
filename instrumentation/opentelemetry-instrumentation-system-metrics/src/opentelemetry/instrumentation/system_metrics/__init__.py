@@ -398,7 +398,7 @@ class SystemMetricsInstrumentor(BaseInstrumentor):
             )
 
         if "process.open_file_descriptor.count" in self._config:
-            self._meter.create_observable_counter(
+            self._meter.create_observable_up_down_counter(
                 name=f"process.{self._python_implementation}.open_file_descriptor.count",
                 callbacks=[self._get_open_file_descriptors],
                 description="Number of open file descriptors",
