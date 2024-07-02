@@ -235,6 +235,7 @@ class TestFastAPIManualInstrumentation(TestBase):
             "net.host.port": 443,
             "http.status_code": 200,
             "http.target": "/foobar",
+            "http.route": "/foobar",
         }
         expected_requests_count_attributes = {
             "http.method": "GET",
