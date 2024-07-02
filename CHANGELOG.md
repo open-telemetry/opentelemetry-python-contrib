@@ -40,6 +40,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   ([#2590](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/2590))
 - Reference symbols from generated semantic conventions
   ([#2611](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/2611))
+- `opentelemetry-instrumentation-psycopg` Bugfix: Handle empty statement.
+  ([#2644](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/2644))
 - `opentelemetry-instrumentation-confluent-kafka` Confluent Kafka: Ensure consume span is ended when consumer is closed
   ([#2640](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/2640))
 
