@@ -12,23 +12,20 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from typing import Optional
 from os import environ
 
+from opentelemetry.resource.detector.azure._utils import (
+    _get_azure_resource_uri,
+    _is_on_functions,
+)
 from opentelemetry.sdk.resources import Resource, ResourceDetector
 from opentelemetry.semconv.resource import (
     CloudPlatformValues,
     CloudProviderValues,
     ResourceAttributes,
 )
-from opentelemetry.resource.detector.azure._utils import _get_azure_resource_uri
 
-from ._constants import (
-    _APP_SERVICE_ATTRIBUTE_ENV_VARS,
-    _WEBSITE_SITE_NAME,
-)
-
-from opentelemetry.resource.detector.azure._utils import _is_on_functions
+from ._constants import _APP_SERVICE_ATTRIBUTE_ENV_VARS, _WEBSITE_SITE_NAME
 
 
 class AzureAppServiceResourceDetector(ResourceDetector):
