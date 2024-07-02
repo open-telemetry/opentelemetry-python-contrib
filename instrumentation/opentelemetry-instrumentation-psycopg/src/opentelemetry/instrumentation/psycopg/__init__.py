@@ -269,7 +269,8 @@ class CursorTracer(dbapi.CursorTracer):
         if isinstance(statement, Composed):
             statement = statement.as_string(cursor)
 
-        if isinstance(statement, str):
+        # `statement` can be empty string. See #2643
+        if statement and isinstance(statement, str):
             # Strip leading comments so we get the operation name.
             return self._leading_comment_remover.sub("", statement).split()[0]
 
