@@ -80,6 +80,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- `opentelemetry-instrumentation-celery` propagates baggage
+  ([#2385](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/2385))
 - `opentelemetry-instrumentation-dbapi` Fix compatibility with Psycopg3 to extract libpq build version
   ([#2500](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/2500))
 - `opentelemetry-instrumentation-grpc` AioClientInterceptor should propagate with a Metadata object
@@ -104,6 +106,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   ([#2553](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/2553))
 - `opentelemetry-util-http` Preserve brackets around literal IPv6 hosts ([#2552](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/2552))
 - `opentelemetry-util-redis` Fix net peer attribute for unix socket connection ([#2493](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/2493))
+
 
 ## Version 1.24.0/0.45b0 (2024-03-28)
 
