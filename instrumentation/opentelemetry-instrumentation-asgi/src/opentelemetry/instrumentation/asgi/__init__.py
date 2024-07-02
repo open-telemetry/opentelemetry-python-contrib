@@ -403,13 +403,9 @@ def get_default_span_details(scope: dict) -> Tuple[str, dict]:
     Returns:
         a tuple of the span name, and any attributes to attach to the span.
     """
-    path = scope.get("path", "").strip()
-    method = scope.get("method", "").strip()
-    if method and path:  # http
-        return f"{method} {path}", {}
-    if path:  # websocket
-        return path, {}
-    return method, {}  # http with no path
+    if scope.get("type") == "http":
+        return scope.get("method", ""), {}
+    return scope.get("type", ""), {}
 
 
 def _collect_target_attribute(
