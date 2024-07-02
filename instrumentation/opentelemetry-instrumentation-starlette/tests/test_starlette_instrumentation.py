@@ -163,6 +163,7 @@ class TestStarletteManualInstrumentation(TestBase):
             "http.flavor": "1.1",
             "http.host": "testserver",
             "http.method": "POST",
+            "http.route": "/foobar",
             "http.scheme": "http",
             "http.server_name": "testserver",
             "http.status_code": 405,
