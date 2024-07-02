@@ -245,14 +245,18 @@ class TestPostgresqlIntegration(PostgresqlIntegrationTestMixin, TestBase):
         cursor.execute("/* leading comment */ query")
         cursor.execute("/* leading comment */ query /* trailing comment */")
         cursor.execute("query /* trailing comment */")
+        cursor.execute("")
+        cursor.execute("--")
         spans_list = self.memory_exporter.get_finished_spans()
-        self.assertEqual(len(spans_list), 6)
+        self.assertEqual(len(spans_list), 8)
         self.assertEqual(spans_list[0].name, "Test")
         self.assertEqual(spans_list[1].name, "multi")
         self.assertEqual(spans_list[2].name, "tab")
         self.assertEqual(spans_list[3].name, "query")
         self.assertEqual(spans_list[4].name, "query")
         self.assertEqual(spans_list[5].name, "query")
+        self.assertEqual(spans_list[6].name, "postgresql")
+        self.assertEqual(spans_list[7].name, "--")
 
     # pylint: disable=unused-argument
     def test_not_recording(self):

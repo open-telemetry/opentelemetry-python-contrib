@@ -237,7 +237,44 @@ class TestConfluentKafka(TestBase):
         span_list = self.memory_exporter.get_finished_spans()
         self._compare_spans(span_list, expected_spans)
 
+    def test_close(self) -> None:
+        instrumentation = ConfluentKafkaInstrumentor()
+        mocked_messages = [
+            MockedMessage("topic-a", 0, 0, []),
+        ]
+        expected_spans = [
+            {"name": "recv", "attributes": {}},
+            {
+                "name": "topic-a process",
+                "attributes": {
+                    SpanAttributes.MESSAGING_OPERATION: "process",
+                    SpanAttributes.MESSAGING_KAFKA_PARTITION: 0,
+                    SpanAttributes.MESSAGING_SYSTEM: "kafka",
+                    SpanAttributes.MESSAGING_DESTINATION: "topic-a",
+                    SpanAttributes.MESSAGING_DESTINATION_KIND: MessagingDestinationKindValues.QUEUE.value,
+                    SpanAttributes.MESSAGING_MESSAGE_ID: "topic-a.0.0",
+                },
+            },
+        ]
+
+        consumer = MockConsumer(
+            mocked_messages,
+            {
+                "bootstrap.servers": "localhost:29092",
+                "group.id": "mygroup",
+                "auto.offset.reset": "earliest",
+            },
+        )
+        self.memory_exporter.clear()
+        consumer = instrumentation.instrument_consumer(consumer)
+        consumer.poll()
+        consumer.close()
+
+        span_list = self.memory_exporter.get_finished_spans()
+        self._compare_spans(span_list, expected_spans)
+
     def _compare_spans(self, spans, expected_spans):
+        self.assertEqual(len(spans), len(expected_spans))
         for span, expected_span in zip(spans, expected_spans):
             self.assertEqual(expected_span["name"], span.name)
             for attribute_key, expected_attribute_value in expected_span[
