@@ -292,7 +292,8 @@ class _DjangoMiddleware(MiddlewareMixin):
                     span, request
                 )
             except Exception:  # pylint: disable=broad-exception-caught
-                # process_response() will not be called, so we need to clean up
+                # Raising an exception here would leak the request span since process_response
+                # would not be called. Log the exception instead.
                 _logger.exception("Exception raised by request_hook")
 
     # pylint: disable=unused-argument
