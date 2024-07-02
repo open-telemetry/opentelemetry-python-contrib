@@ -367,7 +367,13 @@ def get_host_port_url_tuple(scope):
     server = scope.get("server") or ["0.0.0.0", 80]
     port = server[1]
     server_host = server[0] + (":" + str(port) if str(port) != "80" else "")
-    full_path = scope.get("root_path", "") + scope.get("path", "")
+    # using the scope path is enough, see:
+    # - https://asgi.readthedocs.io/en/latest/specs/www.html#http-connection-scope (see: root_path and path)
+    # - https://asgi.readthedocs.io/en/latest/specs/www.html#wsgi-compatibility (see: PATH_INFO)
+    #       PATH_INFO can be derived by stripping root_path from path
+    #       -> that means that the path should contain the root_path already, so prefixing it again is not necessary
+    # - https://wsgi.readthedocs.io/en/latest/definitions.html#envvar-PATH_INFO
+    full_path = scope.get("path", "")
     http_url = scope.get("scheme", "http") + "://" + server_host + full_path
     return server_host, port, http_url
 
