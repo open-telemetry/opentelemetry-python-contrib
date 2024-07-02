@@ -198,6 +198,7 @@ import httpx
 
 from opentelemetry.instrumentation._semconv import (
     _get_schema_url,
+    _HTTPStabilityMode,
     _OpenTelemetrySemanticConventionStability,
     _OpenTelemetryStabilitySignalType,
     _report_new,
@@ -281,7 +282,7 @@ def _extract_parameters(args, kwargs):
     else:
         # In httpx < 0.20.0, handle_request receives the parameters separately
         method = args[0]
-        url = httpx.URL(args[1])
+        url = args[1]
         headers = kwargs.get("headers", args[2] if len(args) > 2 else None)
         stream = kwargs.get("stream", args[3] if len(args) > 3 else None)
         extensions = kwargs.get(
@@ -322,32 +323,39 @@ def _extract_response(
 
 
 def _apply_request_client_attributes_to_span(
-    span_attributes, url, method_original, span_name, semconv
+    span_attributes: dict,
+    url: typing.Union[str, URL],
+    method_original: str,
+    span_name: str,
+    semconv: _HTTPStabilityMode,
 ):
+    url = httpx.URL(url)
     # http semconv transition: http.method -> http.request.method
     _set_http_method(span_attributes, method_original, span_name, semconv)
     # http semconv transition: http.url -> url.full
     _set_http_url(span_attributes, str(url), semconv)
-    try:
-        if _report_new(semconv):
-            if url.host:
-                # http semconv transition: http.host -> server.address
-                _set_http_host(span_attributes, url.host, semconv)
-                # http semconv transition: net.sock.peer.addr -> network.peer.address
-                span_attributes[NETWORK_PEER_ADDRESS] = url.host
-            if url.port:
-                # http semconv transition: net.sock.peer.port -> network.peer.port
-                _set_http_peer_port_client(span_attributes, url.port, semconv)
-                span_attributes[NETWORK_PEER_PORT] = url.port
-    except ValueError:
-        _logger.warning("Failed to parse attributes from URL: %s", url)
+
+    if _report_new(semconv):
+        if url.host:
+            # http semconv transition: http.host -> server.address
+            _set_http_host(span_attributes, url.host, semconv)
+            # http semconv transition: net.sock.peer.addr -> network.peer.address
+            span_attributes[NETWORK_PEER_ADDRESS] = url.host
+        if url.port:
+            # http semconv transition: net.sock.peer.port -> network.peer.port
+            _set_http_peer_port_client(span_attributes, url.port, semconv)
+            span_attributes[NETWORK_PEER_PORT] = url.port
 
 
 def _apply_response_client_attributes_to_span(
-    span, status_code, http_version, semconv
+    span: Span,
+    status_code: int,
+    http_version: str,
+    semconv: _HTTPStabilityMode,
 ):
-    span_attributes = {}
     # http semconv transition: http.status_code -> http.response.status_code
+    # TODO: use _set_status when it's stable for http clients
+    span_attributes = {}
     _set_http_status_code(
         span_attributes,
         status_code,
@@ -356,7 +364,7 @@ def _apply_response_client_attributes_to_span(
     http_status_code = http_status_to_status_code(status_code)
     span.set_status(http_status_code)
 
-    if http_status_code is StatusCode.ERROR and _report_new(semconv):
+    if http_status_code == StatusCode.ERROR and _report_new(semconv):
         # http semconv transition: new error.type
         span_attributes[ERROR_TYPE] = str(status_code)
 
@@ -392,7 +400,7 @@ class SyncOpenTelemetryTransport(httpx.BaseTransport):
         response_hook: typing.Optional[ResponseHook] = None,
     ):
         _OpenTelemetrySemanticConventionStability._initialize()
-        self.semconv = _OpenTelemetrySemanticConventionStability._get_opentelemetry_stability_opt_in_mode(
+        self._sem_conv_opt_in_mode = _OpenTelemetrySemanticConventionStability._get_opentelemetry_stability_opt_in_mode(
             _OpenTelemetryStabilitySignalType.HTTP,
         )
 
@@ -401,7 +409,7 @@ class SyncOpenTelemetryTransport(httpx.BaseTransport):
             __name__,
             instrumenting_library_version=__version__,
             tracer_provider=tracer_provider,
-            schema_url=_get_schema_url(self.semconv),
+            schema_url=_get_schema_url(self._sem_conv_opt_in_mode),
         )
         self._request_hook = request_hook
         self._response_hook = response_hook
@@ -439,7 +447,11 @@ class SyncOpenTelemetryTransport(httpx.BaseTransport):
         span_attributes = {}
         # apply http client response attributes according to semconv
         _apply_request_client_attributes_to_span(
-            span_attributes, url, method_original, span_name, self.semconv
+            span_attributes,
+            url,
+            method_original,
+            span_name,
+            self._sem_conv_opt_in_mode,
         )
 
         request_info = RequestInfo(method, url, headers, stream, extensions)
@@ -467,9 +479,11 @@ class SyncOpenTelemetryTransport(httpx.BaseTransport):
                 if span.is_recording():
                     # apply http client response attributes according to semconv
                     _apply_response_client_attributes_to_span(
-                        span, status_code, http_version, self.semconv
+                        span,
+                        status_code,
+                        http_version,
+                        self._sem_conv_opt_in_mode,
                     )
-
                 if callable(self._response_hook):
                     self._response_hook(
                         span,
@@ -477,10 +491,13 @@ class SyncOpenTelemetryTransport(httpx.BaseTransport):
                         ResponseInfo(status_code, headers, stream, extensions),
                     )
 
-            if exception and _report_new(self.semconv):
-                span.set_attribute(ERROR_TYPE, type(exception).__qualname__)
-
             if exception:
+                if span.is_recording() and _report_new(
+                    self._sem_conv_opt_in_mode
+                ):
+                    span.set_attribute(
+                        ERROR_TYPE, type(exception).__qualname__
+                    )
                 raise exception.with_traceback(exception.__traceback__)
 
         return response
@@ -509,7 +526,7 @@ class AsyncOpenTelemetryTransport(httpx.AsyncBaseTransport):
         response_hook: typing.Optional[AsyncResponseHook] = None,
     ):
         _OpenTelemetrySemanticConventionStability._initialize()
-        self.semconv = _OpenTelemetrySemanticConventionStability._get_opentelemetry_stability_opt_in_mode(
+        self._sem_conv_opt_in_mode = _OpenTelemetrySemanticConventionStability._get_opentelemetry_stability_opt_in_mode(
             _OpenTelemetryStabilitySignalType.HTTP,
         )
 
@@ -518,7 +535,7 @@ class AsyncOpenTelemetryTransport(httpx.AsyncBaseTransport):
             __name__,
             instrumenting_library_version=__version__,
             tracer_provider=tracer_provider,
-            schema_url=_get_schema_url(self.semconv),
+            schema_url=_get_schema_url(self._sem_conv_opt_in_mode),
         )
         self._request_hook = request_hook
         self._response_hook = response_hook
@@ -552,7 +569,11 @@ class AsyncOpenTelemetryTransport(httpx.AsyncBaseTransport):
         span_attributes = {}
         # apply http client response attributes according to semconv
         _apply_request_client_attributes_to_span(
-            span_attributes, url, method_original, span_name, self.semconv
+            span_attributes,
+            url,
+            method_original,
+            span_name,
+            self._sem_conv_opt_in_mode,
         )
 
         request_info = RequestInfo(method, url, headers, stream, extensions)
@@ -582,7 +603,10 @@ class AsyncOpenTelemetryTransport(httpx.AsyncBaseTransport):
                 if span.is_recording():
                     # apply http client response attributes according to semconv
                     _apply_response_client_attributes_to_span(
-                        span, status_code, http_version, self.semconv
+                        span,
+                        status_code,
+                        http_version,
+                        self._sem_conv_opt_in_mode,
                     )
 
                 if callable(self._response_hook):
@@ -592,10 +616,13 @@ class AsyncOpenTelemetryTransport(httpx.AsyncBaseTransport):
                         ResponseInfo(status_code, headers, stream, extensions),
                     )
 
-            if exception and _report_new(self.semconv):
-                span.set_attribute(ERROR_TYPE, type(exception).__qualname__)
-
             if exception:
+                if span.is_recording() and _report_new(
+                    self._sem_conv_opt_in_mode
+                ):
+                    span.set_attribute(
+                        ERROR_TYPE, type(exception).__qualname__
+                    )
                 raise exception.with_traceback(exception.__traceback__)
 
         return response

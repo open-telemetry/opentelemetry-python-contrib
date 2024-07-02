@@ -136,6 +136,7 @@ class BaseTestCases:
         request_hook = staticmethod(_request_hook)
         no_update_request_hook = staticmethod(_no_update_request_hook)
 
+        # TODO: make this more explicit to tests
         # pylint: disable=invalid-name
         def setUp(self):
             super().setUp()
@@ -614,6 +615,28 @@ class BaseTestCases:
                 result = self.perform_request(self.URL, client=client)
 
                 self.assertEqual(result.text, "Hello!")
+                self.assert_span(None, 0)
+                self.assertFalse(mock_span.is_recording())
+                self.assertTrue(mock_span.is_recording.called)
+                self.assertFalse(mock_span.set_attribute.called)
+                self.assertFalse(mock_span.set_status.called)
+
+        @respx.mock
+        def test_not_recording_not_set_attribute_in_exception_new_semconv(
+            self,
+        ):
+            respx.get(self.URL).mock(side_effect=Exception)
+            with mock.patch("opentelemetry.trace.INVALID_SPAN") as mock_span:
+                transport = self.create_transport(
+                    tracer_provider=trace.NoOpTracerProvider()
+                )
+                client = self.create_client(transport)
+                mock_span.is_recording.return_value = False
+                try:
+                    self.perform_request(self.URL, client=client)
+                except Exception:
+                    pass
+
                 self.assert_span(None, 0)
                 self.assertFalse(mock_span.is_recording())
                 self.assertTrue(mock_span.is_recording.called)
