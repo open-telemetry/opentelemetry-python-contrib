@@ -27,6 +27,12 @@ from typing import Collection
 import wrapt
 
 from opentelemetry import context
+from opentelemetry.instrumentation._semconv import (
+    _OpenTelemetrySemanticConventionStability,
+    _OpenTelemetryStabilitySignalType,
+    _report_new,
+    _report_old,
+)
 from opentelemetry.instrumentation.instrumentor import BaseInstrumentor
 from opentelemetry.instrumentation.utils import unwrap
 from opentelemetry.semconv.trace import SpanAttributes
@@ -104,8 +110,15 @@ def trysetip(conn: http.client.HTTPConnection, loglevel=logging.DEBUG) -> bool:
             stack_info=True,
         )
     else:
+        _OpenTelemetrySemanticConventionStability._initialize()
+        stability_mode = _OpenTelemetrySemanticConventionStability._get_opentelemetry_stability_opt_in_mode(
+            _OpenTelemetryStabilitySignalType.HTTP
+        )
         for span in spanlist:
-            span.set_attribute(SpanAttributes.NET_PEER_IP, ip)
+            if _report_old(stability_mode):
+                span.set_attribute(SpanAttributes.NET_PEER_IP, ip)
+            if _report_new(stability_mode):
+                span.set_attribute(SpanAttributes.CLIENT_ADDRESS, ip)
     return True
 
 
