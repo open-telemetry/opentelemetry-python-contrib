@@ -324,7 +324,7 @@ def _extract_response(
 
 def _apply_request_client_attributes_to_span(
     span_attributes: dict,
-    url: typing.Union[str, URL],
+    url: typing.Union[str, URL, httpx.URL],
     method_original: str,
     span_name: str,
     semconv: _HTTPStabilityMode,
