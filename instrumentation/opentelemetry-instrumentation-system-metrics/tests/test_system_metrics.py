@@ -122,7 +122,7 @@ class TestSystemMetrics(TestBase):
         ]
 
         if self.implementation == "pypy":
-            self.assertEqual(len(metric_names), 20)
+            self.assertEqual(len(metric_names), 21)
         else:
             self.assertEqual(len(metric_names), 22)
         observer_names.append(
