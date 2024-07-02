@@ -117,6 +117,7 @@ _DEFAULT_CONFIG = {
     "process.runtime.thread_count": None,
     "process.runtime.cpu.utilization": None,
     "process.runtime.context_switches": ["involuntary", "voluntary"],
+    "process.open_file_descriptor.count": None,
 }
 
 if sys.platform == "darwin":
@@ -169,6 +170,7 @@ class SystemMetricsInstrumentor(BaseInstrumentor):
         self._runtime_thread_count_labels = self._labels.copy()
         self._runtime_cpu_utilization_labels = self._labels.copy()
         self._runtime_context_switches_labels = self._labels.copy()
+        self._open_file_descriptor_count_labels = self._labels.copy()
 
     def instrumentation_dependencies(self) -> Collection[str]:
         return _instruments
@@ -395,8 +397,24 @@ class SystemMetricsInstrumentor(BaseInstrumentor):
                 unit="switches",
             )
 
+        if "process.open_file_descriptor.count" in self._config:
+            self._meter.create_observable_counter(
+                name=f"process.{self._python_implementation}.open_file_descriptor.count",
+                callbacks=[self._get_open_file_descriptors],
+                description="Number of open file descriptors",
+            )
+
     def _uninstrument(self, **__):
         pass
+
+    def _get_open_file_descriptors(
+        self, options: CallbackOptions
+    ) -> Iterable[Observation]:
+        """Observer callback for Number of file descriptors in use by the process"""
+        yield Observation(
+            self._proc.num_fds(),
+            self._open_file_descriptor_count_labels.copy(),
+        )
 
     def _get_system_cpu_time(
         self, options: CallbackOptions
