@@ -32,7 +32,7 @@ class TestLoad(TestCase):
     @patch(
         "opentelemetry.instrumentation.auto_instrumentation._load.iter_entry_points"
     )
-    def test_load_configurators(self, iter_mock):
+    def test_load_configurators(self, iter_mock):  # pylint: disable=no-self-use
         # Add multiple entry points but only specify the 2nd in the environment variable.
         ep_mock1 = Mock()
         ep_mock1.name = "custom_configurator1"
@@ -61,10 +61,7 @@ class TestLoad(TestCase):
     @patch(
         "opentelemetry.instrumentation.auto_instrumentation._load.iter_entry_points"
     )
-    def test_load_configurators_no_ep(
-        self,
-        iter_mock,
-    ):
+    def test_load_configurators_no_ep(self, iter_mock):  # pylint: disable=no-self-use
         iter_mock.return_value = ()
         # Confirm method does not crash if not entry points exist.
         _load._load_configurators()
@@ -214,6 +211,7 @@ class TestLoad(TestCase):
     )
     def test_load_instrumentors(self, iter_mock, dep_mock):
         # Mock opentelemetry_pre_instrument entry points
+        # pylint: disable=too-many-locals
         pre_ep_mock1 = Mock()
         pre_ep_mock1.name = "pre1"
         pre_mock1 = Mock()
@@ -285,7 +283,7 @@ class TestLoad(TestCase):
     @patch(
         "opentelemetry.instrumentation.auto_instrumentation._load.iter_entry_points"
     )
-    def test_load_instrumentors_dep_conflict(self, iter_mock, dep_mock):
+    def test_load_instrumentors_dep_conflict(self, iter_mock, dep_mock):  # pylint: disable=no-self-use
         ep_mock1 = Mock()
         ep_mock1.name = "instr1"
 
