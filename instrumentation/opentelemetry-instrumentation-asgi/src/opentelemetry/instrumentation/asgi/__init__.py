@@ -431,7 +431,6 @@ def get_host_port_url_tuple(scope):
     return server_host, port, http_url
 
 
-<<<<<<< middleware-always-set-status-code-on-duration-attrs
 def maybe_inject_context(message, server_span, setter):
     """Inject the context if there's a global propagator."""
     propagator = get_global_response_propagator()
@@ -445,15 +444,12 @@ def maybe_inject_context(message, server_span, setter):
         )
 
 
-def set_status_code(span, status_code):
-=======
 def set_status_code(
     span,
     status_code,
     metric_attributes=None,
     sem_conv_opt_in_mode=_HTTPStabilityMode.DEFAULT,
 ):
->>>>>>> main
     """Adds HTTP response attributes to span using the status_code argument."""
     if not span.is_recording():
         return
@@ -859,48 +855,10 @@ class OpenTelemetryMiddleware:
                     status_code = message["status"]
                 elif message["type"] == "websocket.send":
                     status_code = 200
-                if status_code:
-                    duration_attrs[SpanAttributes.HTTP_STATUS_CODE] = (
-                        status_code
-                    )
 
                 if send_span.is_recording():
                     if message["type"] == "http.response.start":
-<<<<<<< middleware-always-set-status-code-on-duration-attrs
                         expecting_trailers = message.get("trailers", False)
-                    if status_code:
-                        set_status_code(server_span, status_code)
-                        set_status_code(send_span, status_code)
-=======
-                        status_code = message["status"]
-                        # We record metrics only once
-                        set_status_code(
-                            server_span,
-                            status_code,
-                            duration_attrs,
-                            self._sem_conv_opt_in_mode,
-                        )
-                        set_status_code(
-                            send_span,
-                            status_code,
-                            None,
-                            self._sem_conv_opt_in_mode,
-                        )
-                        expecting_trailers = message.get("trailers", False)
-                    elif message["type"] == "websocket.send":
-                        set_status_code(
-                            server_span,
-                            200,
-                            duration_attrs,
-                            self._sem_conv_opt_in_mode,
-                        )
-                        set_status_code(
-                            send_span,
-                            200,
-                            None,
-                            self._sem_conv_opt_in_mode,
-                        )
->>>>>>> main
                     send_span.set_attribute("asgi.event.type", message["type"])
                     if (
                         server_span.is_recording()
@@ -921,7 +879,21 @@ class OpenTelemetryMiddleware:
                             server_span.set_attributes(
                                 custom_response_attributes
                             )
-
+                if status_code:
+                    # We record metrics only once
+                    set_status_code(
+                        server_span,
+                        status_code,
+                        duration_attrs,
+                        self._sem_conv_opt_in_mode,
+                    )
+                    set_status_code(
+                        send_span,
+                        status_code,
+                        None,
+                        self._sem_conv_opt_in_mode,
+                    )
+                        
                 maybe_inject_context(
                     message,
                     server_span=server_span,
