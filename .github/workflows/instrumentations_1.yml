@@ -35,6 +35,7 @@ jobs:
           - "sdk-extension-aws"
           - "propagator-aws-xray"
           - "propagator-ot-trace"
+          - "resource-detector-azure"
           - "resource-detector-container"
           - "util-http"
         os: [ubuntu-20.04]
