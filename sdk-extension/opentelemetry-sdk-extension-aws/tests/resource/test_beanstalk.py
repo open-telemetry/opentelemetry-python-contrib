@@ -16,7 +16,7 @@ import unittest
 from collections import OrderedDict
 from unittest.mock import mock_open, patch
 
-from opentelemetry.sdk.extension.aws.resource.beanstalk import (
+from opentelemetry.sdk.extension.aws.resource.beanstalk import (  # pylint: disable=no-name-in-module
     AwsBeanstalkResourceDetector,
 )
 from opentelemetry.semconv.resource import (
