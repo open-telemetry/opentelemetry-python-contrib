@@ -118,7 +118,7 @@ class TestSystemMetrics(TestBase):
             f"process.runtime.{self.implementation}.thread_count",
             f"process.runtime.{self.implementation}.context_switches",
             f"process.runtime.{self.implementation}.cpu.utilization",
-            f"process.{self.implementation}.open_file_descriptor.count",
+            "process.open_file_descriptor.count",
         ]
 
         if self.implementation == "pypy":
@@ -850,7 +850,7 @@ class TestSystemMetrics(TestBase):
 
         expected = [_SystemMetricsResult({}, 3)]
         self._test_metrics(
-            f"process.{self.implementation}.open_file_descriptor.count",
+            "process.open_file_descriptor.count",
             expected,
         )
         mock_process_num_fds.assert_called()
