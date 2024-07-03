@@ -7,19 +7,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## Unreleased
 
-- `opentelemetry-instrumentation-django` Handle exceptions from request/response hooks
-  ([#2153](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/2153))
-- `opentelemetry-instrumentation-asyncio` instrumented `asyncio.wait_for` properly raises `asyncio.TimeoutError` as expected
-  ([#2637](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/2637))
-- `opentelemetry-instrumentation-aws-lambda` Bugfix: AWS Lambda event source key incorrect for SNS in instrumentation library. 
-  ([#2612](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/2612))
-- `opentelemetry-instrumentation-system-metrics` Permit to use psutil 6.0+.
-  ([#2630](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/2630))
-- `opentelemetry-instrumentation-asgi` Fix generation of `http.target` and `http.url` attributes for ASGI apps
-  using sub apps
-  ([#2477](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/2477))
-
-
 ### Added
 
 - `opentelemetry-instrumentation-pyramid` Record exceptions raised when serving a request
@@ -30,6 +17,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   ([#2616](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/2616))
 - `opentelemetry-instrumentation-confluent-kafka` Add support for produce purge
   ([#2638](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/2638))
+- `opentelemetry-instrumentation-system-metrics` Permit to use psutil 6.0+.
+  ([#2630](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/2630))
 
 ### Breaking changes
 
@@ -57,6 +46,18 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   ([#2644](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/2644))
 - `opentelemetry-instrumentation-confluent-kafka` Confluent Kafka: Ensure consume span is ended when consumer is closed
   ([#2640](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/2640))
+- `opentelemetry-instrumentation-asgi` Fix generation of `http.target` and `http.url` attributes for ASGI apps
+  using sub apps
+  ([#2477](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/2477))
+- `opentelemetry-instrumentation-aws-lambda` Bugfix: AWS Lambda event source key incorrect for SNS in instrumentation library. 
+  ([#2612](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/2612))
+- `opentelemetry-instrumentation-asyncio` instrumented `asyncio.wait_for` properly raises `asyncio.TimeoutError` as expected
+  ([#2637](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/2637))
+- `opentelemetry-instrumentation-django` Handle exceptions from request/response hooks
+  ([#2153](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/2153))
+- `opentelemetry-instrumentation-asgi` Removed `NET_HOST_NAME` AND `NET_HOST_PORT` from active requests count attribute
+  ([#2610](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/2610))
+
 
 ## Version 1.25.0/0.46b0 (2024-05-31)
 
