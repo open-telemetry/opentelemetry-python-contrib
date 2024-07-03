@@ -350,9 +350,8 @@ def collect_request_attributes(
         _set_http_flavor_version(result, flavor, sem_conv_opt_in_mode)
     path = scope.get("path")
     if path:
-        target = path
         _set_http_target(
-            result, target, path, query_string, sem_conv_opt_in_mode
+            result, path, path, query_string, sem_conv_opt_in_mode
         )
     if http_url:
         _set_http_url(
@@ -435,7 +434,7 @@ def set_status_code(
     """Adds HTTP response attributes to span using the status_code argument."""
     if not span.is_recording():
         return
-    status_code_str = repr(status_code)
+    status_code_str = str(status_code)
 
     try:
         status_code = int(status_code)
