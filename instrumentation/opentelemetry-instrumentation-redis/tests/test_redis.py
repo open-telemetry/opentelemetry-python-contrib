@@ -12,9 +12,11 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 import asyncio
+import logging
 from unittest import mock
-from unittest.mock import AsyncMock
+from unittest.mock import AsyncMock, patch
 
+import pytest
 import redis
 import redis.asyncio
 from redis.exceptions import WatchError
@@ -144,7 +146,7 @@ class TestRedis(TestBase):
 
         with mock.patch.object(connection, "send_command"):
             with mock.patch.object(
-                redis_client, "parse_response", return_value=test_value
+                    redis_client, "parse_response", return_value=test_value
             ):
                 redis_client.get("key")
 
@@ -176,7 +178,7 @@ class TestRedis(TestBase):
 
         with mock.patch.object(connection, "send_command"):
             with mock.patch.object(
-                redis_client, "parse_response", return_value=test_value
+                    redis_client, "parse_response", return_value=test_value
             ):
                 redis_client.get("key")
 
@@ -313,6 +315,50 @@ class TestRedis(TestBase):
             NetTransportValues.OTHER.value,
         )
 
+    def test_successful_transaction(self):
+        redis_client = redis.Redis()
+
+        # Create a mock pipeline
+        mock_pipeline = mock.MagicMock()
+        mock_pipeline.__enter__.return_value = mock_pipeline  # Ensure __enter__ returns the mock_pipeline
+        mock_pipeline.watch.return_value = None
+        mock_pipeline.multi.return_value = mock_pipeline
+        mock_pipeline.execute.return_value = ["OK"]  # This is what we want to return
+
+        with mock.patch.object(redis_client, "pipeline", return_value=mock_pipeline):
+            with redis_client.pipeline() as pipe:
+                pipe.watch("key")
+                pipe.multi()
+                pipe.set("key", "value")
+                result = pipe.execute()
+
+        # Check that the transaction was successful
+        print(f"Result: {result}")
+        self.assertEqual(result, ["OK"])
+
+        spans = self.memory_exporter.get_finished_spans()
+        self.assertEqual(len(spans), 1)
+        span = spans[0]
+
+        # Check that the span is not marked as an error
+        self.assertIsNone(span.status.status_code)
+
+        # Check that there are no exception events
+        events = span.events
+        self.assertEqual(len(events), 0)
+
+        # Verify other span properties
+        self.assertEqual(span.name, "MULTI")
+        self.assertEqual(span.kind, SpanKind.CLIENT)
+        self.assertEqual(span.attributes.get("db.system"), "redis")
+
+        # Verify that the SET command is recorded in the span
+        self.assertIn("SET", span.attributes.get("db.statement", ""))
+
+        # Optionally, check for any additional attributes specific to your instrumentation
+        # For example, you might want to verify that the database index is correctly recorded
+        self.assertEqual(span.attributes.get("db.redis.database_index"), 0)
+
     def test_watch_error(self):
         redis_client = redis.Redis()
 
@@ -350,3 +396,77 @@ class TestRedis(TestBase):
         self.assertEqual(span.name, "MULTI")
         self.assertEqual(span.kind, SpanKind.CLIENT)
         self.assertEqual(span.attributes.get("db.system"), "redis")
+
+
+import pytest
+import redis.asyncio
+from redis.exceptions import WatchError
+from opentelemetry import trace
+from opentelemetry.semconv.trace import SpanAttributes
+from opentelemetry.instrumentation.redis import RedisInstrumentor
+from opentelemetry.sdk.trace import TracerProvider
+from opentelemetry.sdk.trace.export import SimpleSpanProcessor
+from opentelemetry.sdk.trace.export.in_memory_span_exporter import \
+    InMemorySpanExporter  # This is the correct import for MemorySpanExporter
+
+
+class Test_Redis:
+    @pytest.fixture(autouse=True)
+    def setup_and_teardown(self):
+        # Setup
+        self.tracer_provider = TracerProvider()
+        self.memory_exporter = InMemorySpanExporter()
+        span_processor = SimpleSpanProcessor(self.memory_exporter)
+        self.tracer_provider.add_span_processor(span_processor)
+        trace.set_tracer_provider(self.tracer_provider)
+
+        RedisInstrumentor().instrument(tracer_provider=self.tracer_provider)
+
+        yield
+
+        # Teardown
+        RedisInstrumentor().uninstrument()
+
+    @pytest.mark.asyncio
+    async def test_watch_error(self):
+        r = redis.asyncio.Redis()
+        await r.set("a", "0")
+
+        try:
+            async with r.pipeline(transaction=False) as pipe:
+                await pipe.watch("a")
+                a = await pipe.get("a")
+
+                # Simulate a change by another client
+                await r.set("a", "bad")
+
+                pipe.multi()
+                await pipe.set("a", str(int(a) + 1))
+
+                await pipe.execute()
+        except WatchError:
+            print("WatchError caught as expected")
+        else:
+            pytest.fail("WatchError was not raised")
+
+        spans = self.memory_exporter.get_finished_spans()
+        assert len(spans) > 0, "No spans were recorded"
+
+        # Check the last span for WatchError evidence
+        last_span = spans[-1]
+
+        # The span itself should not be marked as an error
+        assert last_span.status.status_code is None
+
+        # Check for WatchError in span events
+        watch_error_events = [event for event in last_span.events
+                              if event.name == "exception" and
+                              event.attributes.get("exception.type") == "WatchError"]
+        assert len(watch_error_events) > 0, "WatchError event not found in span"
+
+        # Verify that the value in Redis wasn't changed due to the WatchError
+        final_value = await r.get("a")
+        assert final_value == b"bad"
+
+        # Clean up
+        await r.delete("a")
