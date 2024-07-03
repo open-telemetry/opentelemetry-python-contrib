@@ -5,7 +5,7 @@
 | [opentelemetry-instrumentation-aiohttp-client](./opentelemetry-instrumentation-aiohttp-client) | aiohttp ~= 3.0 | No | experimental
 | [opentelemetry-instrumentation-aiohttp-server](./opentelemetry-instrumentation-aiohttp-server) | aiohttp ~= 3.0 | No | experimental
 | [opentelemetry-instrumentation-aiopg](./opentelemetry-instrumentation-aiopg) | aiopg >= 0.13.0, < 2.0.0 | No | experimental
-| [opentelemetry-instrumentation-asgi](./opentelemetry-instrumentation-asgi) | asgiref ~= 3.0 | No | experimental
+| [opentelemetry-instrumentation-asgi](./opentelemetry-instrumentation-asgi) | asgiref ~= 3.0 | Yes | migration
 | [opentelemetry-instrumentation-asyncio](./opentelemetry-instrumentation-asyncio) | asyncio | No | experimental
 | [opentelemetry-instrumentation-asyncpg](./opentelemetry-instrumentation-asyncpg) | asyncpg >= 0.12.0 | No | experimental
 | [opentelemetry-instrumentation-aws-lambda](./opentelemetry-instrumentation-aws-lambda) | aws_lambda | No | experimental
@@ -22,7 +22,7 @@
 | [opentelemetry-instrumentation-fastapi](./opentelemetry-instrumentation-fastapi) | fastapi ~= 0.58 | Yes | experimental
 | [opentelemetry-instrumentation-flask](./opentelemetry-instrumentation-flask) | flask >= 1.0 | Yes | migration
 | [opentelemetry-instrumentation-grpc](./opentelemetry-instrumentation-grpc) | grpcio ~= 1.27 | No | experimental
-| [opentelemetry-instrumentation-httpx](./opentelemetry-instrumentation-httpx) | httpx >= 0.18.0 | No | experimental
+| [opentelemetry-instrumentation-httpx](./opentelemetry-instrumentation-httpx) | httpx >= 0.18.0 | No | migration
 | [opentelemetry-instrumentation-jinja2](./opentelemetry-instrumentation-jinja2) | jinja2 >= 2.7, < 4.0 | No | experimental
 | [opentelemetry-instrumentation-kafka-python](./opentelemetry-instrumentation-kafka-python) | kafka-python >= 2.0 | No | experimental
 | [opentelemetry-instrumentation-logging](./opentelemetry-instrumentation-logging) | logging | No | experimental
