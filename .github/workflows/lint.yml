@@ -71,6 +71,7 @@ jobs:
           - "resource-detector-azure"
           - "resource-detector-container"
           - "sdk-extension-aws"
+          - "util-http"
         os: [ubuntu-20.04]
     runs-on: ubuntu-20.04
     steps:
