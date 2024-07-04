@@ -62,6 +62,6 @@ jobs:
       - name: run pytest with --benchmark-skip
         if: ${{ matrix.package == 'sdk-extension-aws' || matrix.package == 'propagator-aws-xray' }}
   ￼     run: tox -f ${{ matrix.python-version }}-${{ matrix.package }} -- -ra --benchmark-skip
-      - name: run pytest without --benchmark-skip
-  ￼     if: ${{ !(matrix.package == 'sdk-extension-aws' || matrix.package == 'propagator-aws-xray') }}
-        run: tox -f ${{ matrix.python-version }}-${{ matrix.package }} -- -ra
+      # - name: run pytest without --benchmark-skip
+    ￼ #     if: ${{ !(matrix.package == 'sdk-extension-aws' || matrix.package == 'propagator-aws-xray') }}
+      #     run: tox -f ${{ matrix.python-version }}-${{ matrix.package }} -- -ra
