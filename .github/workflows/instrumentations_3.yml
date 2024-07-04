@@ -26,14 +26,18 @@ jobs:
 
       - name: Generate Matrix
         id: generate-matrix
-        run: python .github/workflows/generate_matrix.py
+        run: python .github/workflows/generate_matrix.py >> $GITHUB_OUTPUT
 
-  instrumentations-3:
+      - name: echo stuff
+        run: echo $GITHUB_OUTPUT
+
+  use-matrix:
     needs: generate-matrix
+    runs-on: ubuntu-latest
     strategy:
       matrix:
         value: ${{ fromJson(needs.generate-matrix.outputs.matrix) }}
-    runs-on: ${{ matrix.value.os }}
+    # runs-on: ${{ matrix.value.os }}
 
     steps:
       - name: echo stuff
