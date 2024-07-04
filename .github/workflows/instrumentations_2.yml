@@ -9,7 +9,7 @@ env:
   CORE_REPO_SHA: 141a6a2e473ef7f0ec4915dfb71e3c0fa595283e
 
 jobs:
-  instrumentations-1:
+  instrumentations-2:
     env:
       # We use these variables to convert between tox and GHA version literals
       py38: 3.8
@@ -25,22 +25,10 @@ jobs:
       matrix:
         python-version: [py38, py39, py310, py311, py312, pypy3]
         package:
-          # Only add here packages that do not have benchmark tests
-          - "urllib"
-          - "urllib3"
-          - "wsgi"
-          - "distro"
-          - "richconsole"
-          - "psycopg"
-          - "prometheus-remote-write"
-          - "propagator-ot-trace"
-          - "resource-detector-azure"
-          - "resource-detector-container"
-          - "util-http"
+          # Only add here packages that have benchmark tests
+          - "sdk-extension-aws"
+          - "propagator-aws-xray"
         os: [ubuntu-20.04]
-        exclude:
-          - python-version: pypy3
-            package: "prometheus-remote-write"
     steps:
       - name: Checkout Contrib Repo @ SHA - ${{ github.sha }}
         uses: actions/checkout@v4
@@ -58,5 +46,5 @@ jobs:
             .tox
             ~/.cache/pip
           key: v7-build-tox-cache-${{ env.RUN_MATRIX_COMBINATION }}-${{ hashFiles('tox.ini', 'gen-requirements.txt', 'dev-requirements.txt') }}
-      - name: run pytest without --benchmark-skip
-        run: tox -f ${{ matrix.python-version }}-${{ matrix.package }} -- -ra
+      - name: run pytest with --benchmark-skip
+        run: tox -f ${{ matrix.python-version }}-${{ matrix.package }} -- -ra --benchmark-skip
