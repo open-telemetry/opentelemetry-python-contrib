@@ -1,0 +1,40 @@
+name: Contrib Repo Tests
+
+on:
+  push:
+    branches-ignore:
+      - 'release/*'
+  pull_request:
+
+env:
+  CORE_REPO_SHA: 141a6a2e473ef7f0ec4915dfb71e3c0fa595283e
+
+jobs:
+
+  generate-matrix:
+    runs-on: ubuntu-latest
+    outputs:
+      matrix: ${{ steps.generate-matrix.outputs.matrix }}
+    steps:
+      - name: Checkout Contrib Repo @ SHA - ${{ github.sha }}
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Generate Matrix
+        id: generate-matrix
+        run: python .github/workflows/generate_matrix.py
+
+  instrumentations-3:
+    needs: generate-matrix
+    strategy:
+      matrix:
+        value: ${{ fromJson(needs.generate-matrix.outputs.matrix) }}
+    runs-on: ${{ matrix.value.os }}
+
+    steps:
+      - name: echo stuff
+        run: echo "${{ matrix.value.os }}
