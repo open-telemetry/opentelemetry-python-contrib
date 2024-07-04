@@ -12,6 +12,7 @@ class GRPCTestServerStub:
         Args:
             channel: A grpc.Channel.
         """
+        # pylint: disable=invalid-name
         self.SimpleMethod = channel.unary_unary(
             "/GRPCTestServer/SimpleMethod",
             request_serializer=test__server__pb2.Request.SerializeToString,
@@ -36,6 +37,9 @@ class GRPCTestServerStub:
 
 class GRPCTestServerServicer:
     """Missing associated documentation comment in .proto file"""
+
+    # pylint: disable=invalid-name
+    # pylint: disable=no-self-use
 
     def SimpleMethod(self, request, context):
         """Missing associated documentation comment in .proto file"""
@@ -62,7 +66,9 @@ class GRPCTestServerServicer:
         raise NotImplementedError("Method not implemented!")
 
 
-def add_GRPCTestServerServicer_to_server(servicer, server):
+def add_GRPCTestServerServicer_to_server(
+    servicer, server
+):  # pylint: disable=invalid-name
     rpc_method_handlers = {
         "SimpleMethod": grpc.unary_unary_rpc_method_handler(
             servicer.SimpleMethod,
@@ -95,6 +101,7 @@ def add_GRPCTestServerServicer_to_server(servicer, server):
 class GRPCTestServer:
     """Missing associated documentation comment in .proto file"""
 
+    # pylint: disable=invalid-name
     @staticmethod
     def SimpleMethod(
         request,

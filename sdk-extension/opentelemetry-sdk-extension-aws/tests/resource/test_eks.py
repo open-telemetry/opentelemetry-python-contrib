@@ -16,7 +16,9 @@ import unittest
 from collections import OrderedDict
 from unittest.mock import mock_open, patch
 
-from opentelemetry.sdk.extension.aws.resource.eks import AwsEksResourceDetector
+from opentelemetry.sdk.extension.aws.resource.eks import (  # pylint: disable=no-name-in-module
+    AwsEksResourceDetector,
+)
 from opentelemetry.semconv.resource import (
     CloudPlatformValues,
     CloudProviderValues,
