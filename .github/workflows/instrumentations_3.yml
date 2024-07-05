@@ -14,7 +14,7 @@ jobs:
   generatematrixjob:
     runs-on: ubuntu-latest
     outputs:
-      generatematrixoutput: ${{ steps.generatematrixstep.outputs.matrix }}
+      generatematrixoutput: ${{ steps.generatematrixstep.outputs.python_versions }}
     steps:
       - name: Checkout Contrib Repo @ SHA - ${{ github.sha }}
         uses: actions/checkout@v4
@@ -38,9 +38,10 @@ jobs:
     runs-on: ${{ matrix.value.os }}
     strategy:
       matrix:
-        value: ${{ fromJson(needs.generatematrixjob.outputs.generatematrixoutput) }}
+        os: [ubuntu-20.04, windows-2019]
+        python-version: ${{ fromJson(needs.generatematrixjob.outputs.generatematrixoutput) }}
     # runs-on: ${{ matrix.value.os }}
 
     steps:
       - name: echo stuff
-        run: echo "${{ matrix.value.os }}"
+        run: echo "${{ matrix.os }} ${{ matrix.python-version }}"
