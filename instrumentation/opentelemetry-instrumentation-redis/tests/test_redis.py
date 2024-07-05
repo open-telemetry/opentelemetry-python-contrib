@@ -328,10 +328,10 @@ class TestRedisAsync(TestBase, IsolatedAsyncioTestCase):
     async def test_redis_operations(self):
         async def redis_operations():
             try:
-                r = redis_async.Redis()
-                async with r.pipeline(transaction=False) as pipe:
+                redis_client = redis_async.Redis()
+                async with redis_client.pipeline(transaction=False) as pipe:
                     await pipe.watch("a")
-                    await r.set("a", "bad")
+                    await redis_client.set("a", "bad")
                     pipe.multi()
                     await pipe.set("a", "1")
                     await pipe.execute()

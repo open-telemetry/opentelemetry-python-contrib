@@ -213,6 +213,7 @@ def _instrument(
                     "db.redis.pipeline_length", len(command_stack)
                 )
 
+            response = None
             try:
                 response = func(*args, **kwargs)
             except redis.WatchError:
@@ -288,6 +289,7 @@ def _instrument(
                     "db.redis.pipeline_length", len(command_stack)
                 )
 
+            response = None
             try:
                 response = func(*args, **kwargs)
             except redis.WatchError:
