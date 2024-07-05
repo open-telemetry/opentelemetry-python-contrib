@@ -12,13 +12,13 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 import asyncio
+from unittest import IsolatedAsyncioTestCase, mock
+from unittest.mock import AsyncMock
 
 import pytest
 import redis
 import redis.asyncio as redis_async
 from redis.exceptions import WatchError
-from unittest import mock, IsolatedAsyncioTestCase
-from unittest.mock import AsyncMock
 
 from opentelemetry import trace
 from opentelemetry.instrumentation.redis import RedisInstrumentor
@@ -145,7 +145,7 @@ class TestRedis(TestBase):
 
         with mock.patch.object(connection, "send_command"):
             with mock.patch.object(
-                    redis_client, "parse_response", return_value=test_value
+                redis_client, "parse_response", return_value=test_value
             ):
                 redis_client.get("key")
 
@@ -177,7 +177,7 @@ class TestRedis(TestBase):
 
         with mock.patch.object(connection, "send_command"):
             with mock.patch.object(
-                    redis_client, "parse_response", return_value=test_value
+                redis_client, "parse_response", return_value=test_value
             ):
                 redis_client.get("key")
 

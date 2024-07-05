@@ -223,7 +223,6 @@ def _instrument(
 
             return response
 
-
     pipeline_class = (
         "BasePipeline" if redis.VERSION < (3, 0, 0) else "Pipeline"
     )
