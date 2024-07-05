@@ -34,7 +34,8 @@ jobs:
 
   usematrixjob:
     needs: generatematrixjob
-    runs-on: ubuntu-latest
+    # runs-on: ubuntu-latest
+    runs-on: ${{ matrix.value.os }}
     strategy:
       matrix:
         value: ${{ fromJson(needs.generatematrixjob.outputs.generatematrixoutput) }}
