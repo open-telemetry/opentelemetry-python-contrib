@@ -14,7 +14,7 @@ jobs:
   generatematrixjob:
     runs-on: ubuntu-latest
     outputs:
-      generatematrixoutput: ${{ steps.generatematrixstep.outputs.python_versions }}
+      generatematrixoutput: ${{ steps.generatematrixstep.outputs.package_python_versions }}
     steps:
       - name: Checkout Contrib Repo @ SHA - ${{ github.sha }}
         uses: actions/checkout@v4
@@ -27,7 +27,7 @@ jobs:
       - name: Generate Matrix
         id: generatematrixstep
         run: |
-          python .github/workflows/generate_matrix.py
+          python .github/workflows/get_package_python_versions.py
 
       - name: echo stuff
         run: echo $GITHUB_OUTPUT
@@ -39,9 +39,9 @@ jobs:
     strategy:
       matrix:
         os: [ubuntu-20.04, windows-2019]
-        python-version: ${{ fromJson(needs.generatematrixjob.outputs.generatematrixoutput) }}
+        package-python-version: ${{ fromJson(needs.generatematrixjob.outputs.generatematrixoutput) }}
     # runs-on: ${{ matrix.value.os }}
 
     steps:
       - name: echo stuff
-        run: echo "${{ matrix.os }} ${{ matrix.python-version }}"
+        run: echo "${{ matrix.os }} ${{ matrix.package-python-version.tox_ini_directory }} ${{ matrix.package-python-version.python_version }}"
