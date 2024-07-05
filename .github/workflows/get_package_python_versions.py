@@ -50,9 +50,13 @@ for tox_ini_path in tox_ini_paths:
         raise Exception(f"No python versions found in {tox_ini_path}")
 
     for python_version in python_versions:
+
         package_python_versions.append(
             {
-                "tox_ini_directory": str(tox_ini_path.parent),
+                "tox_ini_directory": join(
+                    tox_ini_path.parent.parent.name,
+                    tox_ini_path.parent.name
+                ),
                 "python_version": python_version
             }
         )
