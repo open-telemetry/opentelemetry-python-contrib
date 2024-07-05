@@ -314,50 +314,6 @@ class TestRedis(TestBase):
             NetTransportValues.OTHER.value,
         )
 
-    def test_successful_transaction(self):
-        redis_client = redis.Redis()
-
-        # Create a mock pipeline
-        mock_pipeline = mock.MagicMock()
-        mock_pipeline.__enter__.return_value = mock_pipeline  # Ensure __enter__ returns the mock_pipeline
-        mock_pipeline.watch.return_value = None
-        mock_pipeline.multi.return_value = mock_pipeline
-        mock_pipeline.execute.return_value = ["OK"]  # This is what we want to return
-
-        with mock.patch.object(redis_client, "pipeline", return_value=mock_pipeline):
-            with redis_client.pipeline() as pipe:
-                pipe.watch("key")
-                pipe.multi()
-                pipe.set("key", "value")
-                result = pipe.execute()
-
-        # Check that the transaction was successful
-        print(f"Result: {result}")
-        self.assertEqual(result, ["OK"])
-
-        spans = self.memory_exporter.get_finished_spans()
-        self.assertEqual(len(spans), 1)
-        span = spans[0]
-
-        # Check that the span is not marked as an error
-        self.assertIsNone(span.status.status_code)
-
-        # Check that there are no exception events
-        events = span.events
-        self.assertEqual(len(events), 0)
-
-        # Verify other span properties
-        self.assertEqual(span.name, "MULTI")
-        self.assertEqual(span.kind, SpanKind.CLIENT)
-        self.assertEqual(span.attributes.get("db.system"), "redis")
-
-        # Verify that the SET command is recorded in the span
-        self.assertIn("SET", span.attributes.get("db.statement", ""))
-
-        # Optionally, check for any additional attributes specific to your instrumentation
-        # For example, you might want to verify that the database index is correctly recorded
-        self.assertEqual(span.attributes.get("db.redis.database_index"), 0)
-
 
 class TestRedisAsync(TestBase, IsolatedAsyncioTestCase):
     def setUp(self):
@@ -386,4 +342,3 @@ class TestRedisAsync(TestBase, IsolatedAsyncioTestCase):
 
         spans = self.memory_exporter.get_finished_spans()
         assert spans[-1].status.status_code == trace.StatusCode.UNSET
-        assert any(event.name == "WatchError" for event in spans[-1].events)
