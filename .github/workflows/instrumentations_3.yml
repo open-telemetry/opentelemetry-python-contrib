@@ -35,7 +35,7 @@ jobs:
   usematrixjob:
     needs: generatematrixjob
     # runs-on: ubuntu-latest
-    runs-on: ${{ matrix.value.os }}
+    runs-on: ${{ matrix.os }}
     strategy:
       matrix:
         os: [ubuntu-20.04, windows-2019]
