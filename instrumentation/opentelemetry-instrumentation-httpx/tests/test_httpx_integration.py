@@ -530,6 +530,7 @@ class BaseTestCases:
             tracer_provider: typing.Optional["TracerProvider"] = None,
             request_hook: typing.Optional["RequestHook"] = None,
             response_hook: typing.Optional["ResponseHook"] = None,
+            **kwargs,
         ):
             pass
 
@@ -539,6 +540,7 @@ class BaseTestCases:
             transport: typing.Union[
                 SyncOpenTelemetryTransport, AsyncOpenTelemetryTransport, None
             ] = None,
+            **kwargs,
         ):
             pass
 
@@ -643,6 +645,30 @@ class BaseTestCases:
                 self.assertFalse(mock_span.set_attribute.called)
                 self.assertFalse(mock_span.set_status.called)
 
+        @respx.mock
+        def test_client_mounts_with_otel_transport(self):
+            https_url = "https://mock/status/200"
+            respx.get(https_url).mock(httpx.Response(200))
+            proxy_mounts = {
+                "http://": self.create_transport(
+                    proxy=httpx.Proxy("http://localhost:8080")
+                ),
+                "https://": self.create_transport(
+                    proxy=httpx.Proxy("http://localhost:8443")
+                ),
+            }
+            client1 = self.create_client(mounts=proxy_mounts)
+            client2 = self.create_client(mounts=proxy_mounts)
+            self.perform_request(self.URL, client=client1)
+            self.perform_request(https_url, client=client2)
+            spans = self.assert_span(num_spans=2)
+            self.assertEqual(
+                spans[0].attributes[SpanAttributes.HTTP_URL], self.URL
+            )
+            self.assertEqual(
+                spans[1].attributes[SpanAttributes.HTTP_URL], https_url
+            )
+
     class BaseInstrumentorTest(BaseTest, metaclass=abc.ABCMeta):
         @abc.abstractmethod
         def create_client(
@@ -650,7 +676,12 @@ class BaseTestCases:
             transport: typing.Union[
                 SyncOpenTelemetryTransport, AsyncOpenTelemetryTransport, None
             ] = None,
+            **kwargs,
         ):
+            pass
+
+        @abc.abstractmethod
+        def create_proxy_transport(self, url: str):
             pass
 
         def setUp(self):
@@ -855,6 +886,113 @@ class BaseTestCases:
             self.assertEqual(result.text, "Hello!")
             self.assert_span()
 
+        def test_instrument_proxy(self):
+            HTTPXClientInstrumentor().instrument()
+            proxy_mounts = {
+                "http://": self.create_proxy_transport(
+                    "http://localhost:8080"
+                ),
+                "https://": self.create_proxy_transport(
+                    "http://localhost:8080"
+                ),
+            }
+            client = self.create_client(mounts=proxy_mounts)
+            self.perform_request(self.URL, client=client)
+            self.assert_span(num_spans=1)
+            self.assertEqual(len(client._mounts), 2)
+            for transport in client._mounts.values():
+                with self.subTest(transport):
+                    self.assertIsInstance(
+                        transport,
+                        (
+                            SyncOpenTelemetryTransport,
+                            AsyncOpenTelemetryTransport,
+                        ),
+                    )
+            HTTPXClientInstrumentor().uninstrument()
+
+        def test_instrument_client_with_proxy(self):
+            proxy_mounts = {
+                "http://": self.create_proxy_transport(
+                    "http://localhost:8080"
+                ),
+                "https://": self.create_proxy_transport(
+                    "http://localhost:8080"
+                ),
+            }
+
+            client = self.create_client(mounts=proxy_mounts)
+            self.assertEqual(len(client._mounts), 2)
+            for transport in client._mounts.values():
+                with self.subTest(transport):
+                    self.assertIsInstance(
+                        transport,
+                        (httpx.HTTPTransport, httpx.AsyncHTTPTransport),
+                    )
+
+            HTTPXClientInstrumentor().instrument_client(client)
+            result = self.perform_request(self.URL, client=client)
+            self.assertEqual(result.text, "Hello!")
+            self.assert_span(num_spans=1)
+            self.assertEqual(len(client._mounts), 2)
+            for transport in client._mounts.values():
+                with self.subTest(transport):
+                    self.assertIsInstance(
+                        transport,
+                        (
+                            SyncOpenTelemetryTransport,
+                            AsyncOpenTelemetryTransport,
+                        ),
+                    )
+            HTTPXClientInstrumentor().uninstrument_client(client)
+
+        def test_uninstrument_client_with_proxy(self):
+            proxy_mounts = {
+                "http://": self.create_proxy_transport(
+                    "http://localhost:8080"
+                ),
+                "https://": self.create_proxy_transport(
+                    "http://localhost:8080"
+                ),
+            }
+            HTTPXClientInstrumentor().instrument()
+            client = self.create_client(mounts=proxy_mounts)
+            self.assertEqual(len(client._mounts), 2)
+            for transport in client._mounts.values():
+                with self.subTest(transport):
+                    self.assertIsInstance(
+                        transport,
+                        (
+                            SyncOpenTelemetryTransport,
+                            AsyncOpenTelemetryTransport,
+                        ),
+                    )
+
+            HTTPXClientInstrumentor().uninstrument_client(client)
+            result = self.perform_request(self.URL, client=client)
+            self.assertEqual(result.text, "Hello!")
+            self.assert_span(num_spans=0)
+            self.assertEqual(len(client._mounts), 2)
+            for transport in client._mounts.values():
+                with self.subTest(transport):
+                    self.assertIsInstance(
+                        transport,
+                        (httpx.HTTPTransport, httpx.AsyncHTTPTransport),
+                    )
+
+            # Test that other clients as well as instance client is still
+            # instrumented
+            client2 = self.create_client()
+            result = self.perform_request(self.URL, client=client2)
+            self.assertEqual(result.text, "Hello!")
+            self.assert_span()
+
+            self.memory_exporter.clear()
+
+            result = self.perform_request(self.URL)
+            self.assertEqual(result.text, "Hello!")
+            self.assert_span()
+
 
 class TestSyncIntegration(BaseTestCases.BaseManualTest):
     def setUp(self):
@@ -871,8 +1009,9 @@ class TestSyncIntegration(BaseTestCases.BaseManualTest):
         tracer_provider: typing.Optional["TracerProvider"] = None,
         request_hook: typing.Optional["RequestHook"] = None,
         response_hook: typing.Optional["ResponseHook"] = None,
+        **kwargs,
     ):
-        transport = httpx.HTTPTransport()
+        transport = httpx.HTTPTransport(**kwargs)
         telemetry_transport = SyncOpenTelemetryTransport(
             transport,
             tracer_provider=tracer_provider,
@@ -884,8 +1023,9 @@ class TestSyncIntegration(BaseTestCases.BaseManualTest):
     def create_client(
         self,
         transport: typing.Optional[SyncOpenTelemetryTransport] = None,
+        **kwargs,
     ):
-        return httpx.Client(transport=transport)
+        return httpx.Client(transport=transport, **kwargs)
 
     def perform_request(
         self,
@@ -921,8 +1061,9 @@ class TestAsyncIntegration(BaseTestCases.BaseManualTest):
         tracer_provider: typing.Optional["TracerProvider"] = None,
         request_hook: typing.Optional["AsyncRequestHook"] = None,
         response_hook: typing.Optional["AsyncResponseHook"] = None,
+        **kwargs,
     ):
-        transport = httpx.AsyncHTTPTransport()
+        transport = httpx.AsyncHTTPTransport(**kwargs)
         telemetry_transport = AsyncOpenTelemetryTransport(
             transport,
             tracer_provider=tracer_provider,
@@ -934,8 +1075,9 @@ class TestAsyncIntegration(BaseTestCases.BaseManualTest):
     def create_client(
         self,
         transport: typing.Optional[AsyncOpenTelemetryTransport] = None,
+        **kwargs,
     ):
-        return httpx.AsyncClient(transport=transport)
+        return httpx.AsyncClient(transport=transport, **kwargs)
 
     def perform_request(
         self,
@@ -977,8 +1119,9 @@ class TestSyncInstrumentationIntegration(BaseTestCases.BaseInstrumentorTest):
     def create_client(
         self,
         transport: typing.Optional[SyncOpenTelemetryTransport] = None,
+        **kwargs,
     ):
-        return httpx.Client()
+        return httpx.Client(**kwargs)
 
     def perform_request(
         self,
@@ -990,6 +1133,9 @@ class TestSyncInstrumentationIntegration(BaseTestCases.BaseInstrumentorTest):
         if client is None:
             return self.client.request(method, url, headers=headers)
         return client.request(method, url, headers=headers)
+
+    def create_proxy_transport(self, url):
+        return httpx.HTTPTransport(proxy=httpx.Proxy(url))
 
 
 class TestAsyncInstrumentationIntegration(BaseTestCases.BaseInstrumentorTest):
@@ -1007,8 +1153,9 @@ class TestAsyncInstrumentationIntegration(BaseTestCases.BaseInstrumentorTest):
     def create_client(
         self,
         transport: typing.Optional[AsyncOpenTelemetryTransport] = None,
+        **kwargs,
     ):
-        return httpx.AsyncClient()
+        return httpx.AsyncClient(**kwargs)
 
     def perform_request(
         self,
@@ -1026,6 +1173,9 @@ class TestAsyncInstrumentationIntegration(BaseTestCases.BaseInstrumentorTest):
                 return await _client.request(method, url, headers=headers)
 
         return _async_call(_perform_request())
+
+    def create_proxy_transport(self, url):
+        return httpx.AsyncHTTPTransport(proxy=httpx.Proxy(url))
 
     def test_basic_multiple(self):
         # We need to create separate clients because in httpx >= 0.19,
