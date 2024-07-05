@@ -33,14 +33,13 @@ jobs:
         run: echo $GITHUB_OUTPUT
 
   usematrixjob:
+    run-name: sdfsdfsd
     needs: generatematrixjob
-    # runs-on: ubuntu-latest
     runs-on: ${{ matrix.os }}
     strategy:
       matrix:
         os: [ubuntu-20.04, windows-2019]
         package-python-version: ${{ fromJson(needs.generatematrixjob.outputs.generatematrixoutput) }}
-    # runs-on: ${{ matrix.value.os }}
 
     steps:
       - name: echo stuff
