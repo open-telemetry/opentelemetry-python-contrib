@@ -1,4 +1,4 @@
-name: Contrib Repo Tests
+name: Tests
 
 on:
   push:
@@ -11,11 +11,11 @@ env:
 
 jobs:
 
-  generatematrixjob:
+  get_package_python_versions:
     name: Get Python versions for each package
     runs-on: ubuntu-latest
     outputs:
-      generatematrixoutput: ${{ steps.generatematrixstep.outputs.package_python_versions }}
+      package_python_versions: ${{ steps.run_get_package_python_versions_py.outputs.package_python_versions }}
     steps:
       - name: Checkout Contrib Repo @ SHA - ${{ github.sha }}
         uses: actions/checkout@v4
@@ -25,22 +25,22 @@ jobs:
         with:
           python-version: "3.12"
 
-      - name: Generate Matrix
-        id: generatematrixstep
+      - name: Run get_package_python_versions.py
+        id: run_get_package_python_versions_py
         run: |
           python .github/workflows/get_package_python_versions.py
 
       - name: echo stuff
         run: echo $GITHUB_OUTPUT
 
-  usematrixjob:
-    needs: generatematrixjob
+  run_tests:
+    needs: get_package_python_versions
     runs-on: ${{ matrix.os }}
     strategy:
       matrix:
         os: [ubuntu-20.04, windows-2019]
-        package-python-version: ${{ fromJson(needs.generatematrixjob.outputs.generatematrixoutput) }}
+        package-python-versions: ${{ fromJson(needs.get_package_python_versions.outputs.package_python_versions) }}
 
     steps:
       - name: echo stuff
-        run: echo "${{ matrix.os }} ${{ matrix.package-python-version.tox_ini_directory }} ${{ matrix.package-python-version.python_version }}"
+        run: echo "${{ matrix.os }} ${{ matrix.package-python-versions.tox_ini_directory }} ${{ matrix.package-python-versions.python_version }}"
