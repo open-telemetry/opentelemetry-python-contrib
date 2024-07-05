@@ -12,6 +12,7 @@ env:
 jobs:
 
   generatematrixjob:
+    name: Get Python versions for each package
     runs-on: ubuntu-latest
     outputs:
       generatematrixoutput: ${{ steps.generatematrixstep.outputs.package_python_versions }}
@@ -34,13 +35,11 @@ jobs:
 
   usematrixjob:
     needs: generatematrixjob
-    # runs-on: ubuntu-latest
     runs-on: ${{ matrix.os }}
     strategy:
       matrix:
         os: [ubuntu-20.04, windows-2019]
         package-python-version: ${{ fromJson(needs.generatematrixjob.outputs.generatematrixoutput) }}
-    # runs-on: ${{ matrix.value.os }}
 
     steps:
       - name: echo stuff
