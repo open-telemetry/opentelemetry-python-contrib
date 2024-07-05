@@ -52,7 +52,7 @@ for tox_ini_path in tox_ini_paths:
     for python_version in python_versions:
         package_python_versions.append(
             {
-                "tox_ini_directory": tox_ini_path.parent,
+                "tox_ini_directory": str(tox_ini_path.parent),
                 "python_version": python_version
             }
         )
