@@ -32,8 +32,8 @@ jobs:
       - name: echo stuff
         run: echo $GITHUB_OUTPUT
 
-  use-matrix:
-    needs: generatematrix
+  usematrixjob:
+    needs: generatematrixjob
     runs-on: ubuntu-latest
     strategy:
       matrix:
@@ -42,4 +42,4 @@ jobs:
 
     steps:
       - name: echo stuff
-        run: echo "${{ matrix.value.os }}
+        run: echo "${{ matrix.value.os }}"
