@@ -38,6 +38,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - `opentelemetry-instrumentation-asgi` Implement new semantic convention opt-in with stable http semantic conventions
   ([#2610](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/2610))
 
+### Added
+
+- `opentelemtry-instrumentation-botocore` Adds test case for NoOpTracerProvider ([#2586](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/2586))
+
 ### Fixed
 
 - `opentelemetry-instrumentation-httpx` Ensure httpx.get or httpx.request like methods are instrumented
