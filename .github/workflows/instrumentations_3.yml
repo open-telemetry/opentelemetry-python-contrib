@@ -34,6 +34,7 @@ jobs:
         run: echo $GITHUB_OUTPUT
 
   run_tests:
+    name: Run tests
     needs: get_package_python_versions
     runs-on: ${{ matrix.os }}
     strategy:
