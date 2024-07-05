@@ -25,6 +25,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   ([#2630](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/2630))
 - `opentelemetry-instrumentation-system-metrics` Add support for capture open file descriptors
   ([#2652](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/2652))
+- `opentelemetry-instrumentation-httpx` Add support for instrument client with proxy
+  ([#2664](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/2664))
 
 ### Breaking changes
 
