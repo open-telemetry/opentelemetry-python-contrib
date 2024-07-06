@@ -17,6 +17,7 @@ from unittest.mock import AsyncMock
 
 import pytest
 import redis
+import redis.asyncio
 from fakeredis.aioredis import FakeRedis
 from redis.exceptions import WatchError
 
