@@ -17,7 +17,7 @@ from unittest.mock import AsyncMock
 
 import pytest
 import redis
-import redis.asyncio as redis_async
+from fakeredis.aioredis import FakeRedis
 from redis.exceptions import WatchError
 
 from opentelemetry import trace
@@ -328,7 +328,7 @@ class TestRedisAsync(TestBase, IsolatedAsyncioTestCase):
     async def test_redis_operations(self):
         async def redis_operations():
             try:
-                redis_client = redis_async.Redis()
+                redis_client = FakeRedis()
                 async with redis_client.pipeline(transaction=False) as pipe:
                     await pipe.watch("a")
                     await redis_client.set("a", "bad")
