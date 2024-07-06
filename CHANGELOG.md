@@ -63,6 +63,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   ([#2153](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/2153))
 - `opentelemetry-instrumentation-asgi` Removed `NET_HOST_NAME` AND `NET_HOST_PORT` from active requests count attribute
   ([#2610](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/2610))
+- `opentelemetry-instrumentation-logging` Fix emitting logs when Logger propagation is disabled for a logger
+  ([#2672](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/2672))
 
 
 ## Version 1.25.0/0.46b0 (2024-05-31)

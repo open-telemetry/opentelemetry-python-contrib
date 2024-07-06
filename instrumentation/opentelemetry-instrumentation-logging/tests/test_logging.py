@@ -22,6 +22,7 @@ from opentelemetry.instrumentation.logging import (  # pylint: disable=no-name-i
     DEFAULT_LOGGING_FORMAT,
     LoggingInstrumentor,
 )
+from opentelemetry.sdk._logs import LoggingHandler
 from opentelemetry.test.test_base import TestBase
 from opentelemetry.trace import ProxyTracer, get_tracer
 
@@ -81,7 +82,8 @@ class TestLoggingInstrumentor(TestBase):
 
     def tearDown(self):
         super().tearDown()
-        LoggingInstrumentor().uninstrument()
+        if LoggingInstrumentor().is_instrumented_by_opentelemetry:
+            LoggingInstrumentor().uninstrument()
 
     def assert_trace_context_injected(self, span_id, trace_id, trace_sampled):
         with self.caplog.at_level(level=logging.INFO):
@@ -207,3 +209,225 @@ class TestLoggingInstrumentor(TestBase):
                 self.assertFalse(hasattr(record, "otelTraceID"))
                 self.assertFalse(hasattr(record, "otelServiceName"))
                 self.assertFalse(hasattr(record, "otelTraceSampled"))
+
+
+class TestLoggingInstrumentorLoggerPropagation(TestBase):
+    def setUp(self):
+        super().setUp()
+
+        self.root_handler_mock = mock.Mock(
+            spec=LoggingHandler, level=logging.NOTSET
+        )
+        logging.getLogger().addHandler(self.root_handler_mock)
+
+        self.env_patch = mock.patch.dict(
+            "os.environ",
+            {"OTEL_PYTHON_LOGGING_AUTO_INSTRUMENTATION_ENABLED": "true"},
+            clear=True,
+        )
+        self.env_patch.start()
+
+        LoggingInstrumentor().instrument()
+
+    def tearDown(self):
+        super().tearDown()
+
+        if LoggingInstrumentor().is_instrumented_by_opentelemetry:
+            LoggingInstrumentor().uninstrument()
+        logging.getLogger().removeHandler(self.root_handler_mock)
+        self.root_handler_mock = None
+        self.env_patch.stop()
+
+    def test_instrumented(self):
+        self.assertTrue(LoggingInstrumentor._instrumented_loggers)
+        self.assertTrue(hasattr(logging.Logger, "propagate"))
+
+    def test_instrument_not_propagated(self):
+        LoggingInstrumentor().uninstrument()
+
+        logger = logging.getLogger(
+            "test logger test_instrument_not_propagated"
+        )
+        logger.propagate = False
+        self.assertFalse(logger.propagate)
+        self.assertFalse(
+            any(
+                isinstance(handler, LoggingHandler)
+                for handler in logger.handlers
+            )
+        )
+
+        LoggingInstrumentor().instrument()
+
+        self.assertFalse(logger.propagate)
+        self.assertTrue(
+            any(
+                isinstance(handler, LoggingHandler)
+                for handler in logger.handlers
+            )
+        )
+
+    def test_logger_propagation(self):
+        logger = logging.getLogger("test logger test_logger_propagation")
+        self.assertTrue(logger.propagate)
+        self.assertFalse(
+            any(
+                isinstance(handler, LoggingHandler)
+                for handler in logger.handlers
+            )
+        )
+
+        logger.propagate = False
+        self.assertTrue(
+            any(
+                isinstance(handler, LoggingHandler)
+                for handler in logger.handlers
+            )
+        )
+
+        logger.propagate = True
+        self.assertFalse(
+            any(
+                isinstance(handler, LoggingHandler)
+                for handler in logger.handlers
+            )
+        )
+
+    def test_custom_handler_not_replaced(self):
+        logger = logging.getLogger(
+            "test logger test_custom_handler_not_replaced"
+        )
+        self.assertTrue(logger.propagate)
+        self.assertFalse(
+            any(
+                isinstance(handler, LoggingHandler)
+                for handler in logger.handlers
+            )
+        )
+
+        logging_handler = mock.Mock(spec=LoggingHandler, level=logging.NOTSET)
+        logger.addHandler(logging_handler)
+
+        self.assertIn(logging_handler, logger.handlers)
+        self.assertEqual(
+            1,
+            len(
+                list(
+                    isinstance(handler, LoggingHandler)
+                    for handler in logger.handlers
+                )
+            ),
+        )
+
+        logger.propagate = False
+
+        self.assertIn(logging_handler, logger.handlers)
+        self.assertEqual(
+            1,
+            len(
+                list(
+                    isinstance(handler, LoggingHandler)
+                    for handler in logger.handlers
+                )
+            ),
+        )
+
+        logger.propagate = True
+
+        self.assertIn(logging_handler, logger.handlers)
+        self.assertEqual(
+            1,
+            len(
+                list(
+                    isinstance(handler, LoggingHandler)
+                    for handler in logger.handlers
+                )
+            ),
+        )
+
+        LoggingInstrumentor().uninstrument()
+
+        self.assertIn(logging_handler, logger.handlers)
+        self.assertEqual(
+            1,
+            len(
+                list(
+                    isinstance(handler, LoggingHandler)
+                    for handler in logger.handlers
+                )
+            ),
+        )
+
+    def test_custom_handler_not_reinstrumented(self):
+        LoggingInstrumentor().uninstrument()
+
+        logger = logging.getLogger(
+            "test logger test_custom_handler_not_reinstrumented"
+        )
+
+        logging_handler = mock.Mock(spec=LoggingHandler, level=logging.NOTSET)
+        logger.addHandler(logging_handler)
+        logger.propagate = False
+
+        self.assertIn(logging_handler, logger.handlers)
+        self.assertEqual(
+            1,
+            len(
+                list(
+                    isinstance(handler, LoggingHandler)
+                    for handler in logger.handlers
+                )
+            ),
+        )
+
+        LoggingInstrumentor().instrument()
+
+        self.assertIn(logging_handler, logger.handlers)
+        self.assertEqual(
+            1,
+            len(
+                list(
+                    isinstance(handler, LoggingHandler)
+                    for handler in logger.handlers
+                )
+            ),
+        )
+
+    def test_uninstrumented(self):
+        logger = logging.getLogger("test logger test_uninstrumented")
+        self.assertTrue(hasattr(logger, "_otel_propagate"))
+
+        LoggingInstrumentor().uninstrument()
+
+        self.assertFalse(hasattr(logging.Logger, "propagate"))
+        self.assertFalse(hasattr(logger, "_otel_propagate"))
+        self.assertFalse(hasattr(logger, "_otel_handler"))
+        self.assertTrue(hasattr(logger, "propagate"))
+        self.assertTrue(logger.propagate)
+
+    def test_uninstrumented_not_propagated(self):
+        logger = logging.getLogger(
+            "test logger test_uninstrumented_not_propagated"
+        )
+        logger.propagate = False
+        self.assertFalse(logger.propagate)
+        self.assertTrue(
+            any(
+                isinstance(handler, LoggingHandler)
+                for handler in logger.handlers
+            )
+        )
+
+        LoggingInstrumentor().uninstrument()
+
+        self.assertFalse(
+            any(
+                isinstance(handler, LoggingHandler)
+                for handler in logger.handlers
+            )
+        )
+        self.assertFalse(hasattr(logging.Logger, "propagate"))
+        self.assertFalse(hasattr(logger, "_otel_propagate"))
+        self.assertFalse(hasattr(logger, "_otel_handler"))
+        self.assertTrue(hasattr(logger, "propagate"))
+        self.assertFalse(logger.propagate)
