@@ -12,26 +12,10 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 import asyncio
-
-try:
-    from unittest import IsolatedAsyncioTestCase
-except ImportError:
-    # unittest.IsolatedAsyncioTestCase was introduced in Python 3.8. It's use
-    # simplifies the following tests. Without it, the amount of test code
-    # increases significantly, with most of the additional code handling
-    # the asyncio set up.
-    from unittest import TestCase
-
-    class IsolatedAsyncioTestCase(TestCase):
-        def run(self, result=None):
-            self.skipTest(
-                "This test requires Python 3.8 for unittest.IsolatedAsyncioTestCase"
-            )
-
+from unittest import IsolatedAsyncioTestCase
 
 import grpc
 import grpc.aio
-import pytest
 
 import opentelemetry.instrumentation.grpc
 from opentelemetry import trace
@@ -97,7 +81,6 @@ async def run_with_test_server(
     return resp
 
 
-@pytest.mark.asyncio
 class TestOpenTelemetryAioServerInterceptor(TestBase, IsolatedAsyncioTestCase):
     async def test_instrumentor(self):
         """Check that automatic instrumentation configures the interceptor"""
@@ -507,9 +490,7 @@ class TestOpenTelemetryAioServerInterceptor(TestBase, IsolatedAsyncioTestCase):
         class AbortServicer(GRPCTestServerServicer):
             # pylint:disable=C0103
             async def SimpleMethod(self, request, context):
-                await context.abort(
-                    grpc.StatusCode.FAILED_PRECONDITION, failure_message
-                )
+                await context.abort(grpc.StatusCode.INTERNAL, failure_message)
 
         testcase = self
 
@@ -520,9 +501,7 @@ class TestOpenTelemetryAioServerInterceptor(TestBase, IsolatedAsyncioTestCase):
             with testcase.assertRaises(grpc.RpcError) as cm:
                 await channel.unary_unary(rpc_call)(msg)
 
-            self.assertEqual(
-                cm.exception.code(), grpc.StatusCode.FAILED_PRECONDITION
-            )
+            self.assertEqual(cm.exception.code(), grpc.StatusCode.INTERNAL)
             self.assertEqual(cm.exception.details(), failure_message)
 
         await run_with_test_server(request, servicer=AbortServicer())
@@ -543,7 +522,7 @@ class TestOpenTelemetryAioServerInterceptor(TestBase, IsolatedAsyncioTestCase):
         self.assertEqual(span.status.status_code, StatusCode.ERROR)
         self.assertEqual(
             span.status.description,
-            f"{grpc.StatusCode.FAILED_PRECONDITION}:{failure_message}",
+            f"{grpc.StatusCode.INTERNAL}:{failure_message}",
         )
 
         # Check attributes
@@ -555,7 +534,7 @@ class TestOpenTelemetryAioServerInterceptor(TestBase, IsolatedAsyncioTestCase):
                 SpanAttributes.RPC_METHOD: "SimpleMethod",
                 SpanAttributes.RPC_SERVICE: "GRPCTestServer",
                 SpanAttributes.RPC_SYSTEM: "grpc",
-                SpanAttributes.RPC_GRPC_STATUS_CODE: grpc.StatusCode.FAILED_PRECONDITION.value[
+                SpanAttributes.RPC_GRPC_STATUS_CODE: grpc.StatusCode.INTERNAL.value[
                     0
                 ],
             },
@@ -605,11 +584,8 @@ class TestOpenTelemetryAioServerInterceptor(TestBase, IsolatedAsyncioTestCase):
         )
 
         # make sure this span errored, with the right status and detail
-        self.assertEqual(span.status.status_code, StatusCode.ERROR)
-        self.assertEqual(
-            span.status.description,
-            f"{grpc.StatusCode.FAILED_PRECONDITION}:{failure_message}",
-        )
+        self.assertEqual(span.status.status_code, StatusCode.UNSET)
+        self.assertEqual(span.status.description, None)
 
         # Check attributes
         self.assertSpanHasAttributes(

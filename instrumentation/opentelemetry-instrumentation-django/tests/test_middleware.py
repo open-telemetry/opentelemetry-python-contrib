@@ -155,9 +155,11 @@ class TestMiddleware(WsgiTestBase):
 
         self.assertEqual(
             span.name,
-            "GET ^route/(?P<year>[0-9]{4})/template/$"
-            if DJANGO_2_2
-            else "GET",
+            (
+                "GET ^route/(?P<year>[0-9]{4})/template/$"
+                if DJANGO_2_2
+                else "GET"
+            ),
         )
         self.assertEqual(span.kind, SpanKind.SERVER)
         self.assertEqual(span.status.status_code, StatusCode.UNSET)
@@ -390,7 +392,33 @@ class TestMiddleware(WsgiTestBase):
         self.assertIsInstance(response_hook_args[2], HttpResponse)
         self.assertEqual(response_hook_args[2], response)
 
-    async def test_trace_parent(self):
+    def test_request_hook_exception(self):
+        def request_hook(span, request):
+            # pylint: disable=broad-exception-raised
+            raise Exception("request hook exception")
+
+        _DjangoMiddleware._otel_request_hook = request_hook
+        Client().get("/span_name/1234/")
+        _DjangoMiddleware._otel_request_hook = None
+
+        # ensure that span ended
+        finished_spans = self.memory_exporter.get_finished_spans()
+        self.assertEqual(len(finished_spans), 1)
+
+    def test_response_hook_exception(self):
+        def response_hook(span, request, response):
+            # pylint: disable=broad-exception-raised
+            raise Exception("response hook exception")
+
+        _DjangoMiddleware._otel_response_hook = response_hook
+        Client().get("/span_name/1234/")
+        _DjangoMiddleware._otel_response_hook = None
+
+        # ensure that span ended
+        finished_spans = self.memory_exporter.get_finished_spans()
+        self.assertEqual(len(finished_spans), 1)
+
+    def test_trace_parent(self):
         id_generator = RandomIdGenerator()
         trace_id = format_trace_id(id_generator.generate_trace_id())
         span_id = format_span_id(id_generator.generate_span_id())
@@ -398,7 +426,7 @@ class TestMiddleware(WsgiTestBase):
 
         Client().get(
             "/span_name/1234/",
-            traceparent=traceparent_value,
+            HTTP_TRACEPARENT=traceparent_value,
         )
         span = self.memory_exporter.get_finished_spans()[0]
 
