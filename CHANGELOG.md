@@ -23,6 +23,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   ([#2631](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/2631))
 - `opentelemetry-instrumentation-system-metrics` Permit to use psutil 6.0+.
   ([#2630](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/2630))
+- `opentelemetry-instrumentation-system-metrics` Add support for capture open file descriptors
+  ([#2652](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/2652))
 
 ### Breaking changes
 
