@@ -646,7 +646,7 @@ class BaseTestCases:
                 self.assertFalse(mock_span.set_status.called)
 
         @respx.mock
-        def test_client_mounts_with_otel_transport(self):
+        def test_client_mounts_with_instrumented_transport(self):
             https_url = "https://mock/status/200"
             respx.get(https_url).mock(httpx.Response(200))
             proxy_mounts = {
@@ -689,6 +689,25 @@ class BaseTestCases:
             HTTPXClientInstrumentor().instrument()
             self.client = self.create_client()
             HTTPXClientInstrumentor().uninstrument()
+
+        def create_proxy_mounts(self):
+            return {
+                "http://": self.create_proxy_transport(
+                    "http://localhost:8080"
+                ),
+                "https://": self.create_proxy_transport(
+                    "http://localhost:8080"
+                ),
+            }
+
+        def assert_proxy_mounts(self, mounts, num_mounts, transport_type):
+            self.assertEqual(len(mounts), num_mounts)
+            for transport in mounts:
+                with self.subTest(transport):
+                    self.assertIsInstance(
+                        transport,
+                        transport_type,
+                    )
 
         def test_custom_tracer_provider(self):
             resource = resources.Resource.create({})
@@ -887,99 +906,57 @@ class BaseTestCases:
             self.assert_span()
 
         def test_instrument_proxy(self):
+            proxy_mounts = self.create_proxy_mounts()
             HTTPXClientInstrumentor().instrument()
-            proxy_mounts = {
-                "http://": self.create_proxy_transport(
-                    "http://localhost:8080"
-                ),
-                "https://": self.create_proxy_transport(
-                    "http://localhost:8080"
-                ),
-            }
             client = self.create_client(mounts=proxy_mounts)
             self.perform_request(self.URL, client=client)
             self.assert_span(num_spans=1)
-            self.assertEqual(len(client._mounts), 2)
-            for transport in client._mounts.values():
-                with self.subTest(transport):
-                    self.assertIsInstance(
-                        transport,
-                        (
-                            SyncOpenTelemetryTransport,
-                            AsyncOpenTelemetryTransport,
-                        ),
-                    )
+            self.assert_proxy_mounts(
+                client._mounts.values(),
+                2,
+                (SyncOpenTelemetryTransport, AsyncOpenTelemetryTransport),
+            )
             HTTPXClientInstrumentor().uninstrument()
 
         def test_instrument_client_with_proxy(self):
-            proxy_mounts = {
-                "http://": self.create_proxy_transport(
-                    "http://localhost:8080"
-                ),
-                "https://": self.create_proxy_transport(
-                    "http://localhost:8080"
-                ),
-            }
-
+            proxy_mounts = self.create_proxy_mounts()
             client = self.create_client(mounts=proxy_mounts)
-            self.assertEqual(len(client._mounts), 2)
-            for transport in client._mounts.values():
-                with self.subTest(transport):
-                    self.assertIsInstance(
-                        transport,
-                        (httpx.HTTPTransport, httpx.AsyncHTTPTransport),
-                    )
-
+            self.assert_proxy_mounts(
+                client._mounts.values(),
+                2,
+                (httpx.HTTPTransport, httpx.AsyncHTTPTransport),
+            )
             HTTPXClientInstrumentor().instrument_client(client)
             result = self.perform_request(self.URL, client=client)
             self.assertEqual(result.text, "Hello!")
             self.assert_span(num_spans=1)
-            self.assertEqual(len(client._mounts), 2)
-            for transport in client._mounts.values():
-                with self.subTest(transport):
-                    self.assertIsInstance(
-                        transport,
-                        (
-                            SyncOpenTelemetryTransport,
-                            AsyncOpenTelemetryTransport,
-                        ),
-                    )
+            self.assert_proxy_mounts(
+                client._mounts.values(),
+                2,
+                (SyncOpenTelemetryTransport, AsyncOpenTelemetryTransport),
+            )
             HTTPXClientInstrumentor().uninstrument_client(client)
 
         def test_uninstrument_client_with_proxy(self):
-            proxy_mounts = {
-                "http://": self.create_proxy_transport(
-                    "http://localhost:8080"
-                ),
-                "https://": self.create_proxy_transport(
-                    "http://localhost:8080"
-                ),
-            }
+            proxy_mounts = self.create_proxy_mounts()
             HTTPXClientInstrumentor().instrument()
             client = self.create_client(mounts=proxy_mounts)
-            self.assertEqual(len(client._mounts), 2)
-            for transport in client._mounts.values():
-                with self.subTest(transport):
-                    self.assertIsInstance(
-                        transport,
-                        (
-                            SyncOpenTelemetryTransport,
-                            AsyncOpenTelemetryTransport,
-                        ),
-                    )
+            self.assert_proxy_mounts(
+                client._mounts.values(),
+                2,
+                (SyncOpenTelemetryTransport, AsyncOpenTelemetryTransport),
+            )
 
             HTTPXClientInstrumentor().uninstrument_client(client)
             result = self.perform_request(self.URL, client=client)
+
             self.assertEqual(result.text, "Hello!")
             self.assert_span(num_spans=0)
-            self.assertEqual(len(client._mounts), 2)
-            for transport in client._mounts.values():
-                with self.subTest(transport):
-                    self.assertIsInstance(
-                        transport,
-                        (httpx.HTTPTransport, httpx.AsyncHTTPTransport),
-                    )
-
+            self.assert_proxy_mounts(
+                client._mounts.values(),
+                2,
+                (httpx.HTTPTransport, httpx.AsyncHTTPTransport),
+            )
             # Test that other clients as well as instance client is still
             # instrumented
             client2 = self.create_client()
