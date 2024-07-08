@@ -14,8 +14,8 @@ jobs:
   get_package_python_versions:
     name: Get Python versions for each package
     runs-on: ubuntu-latest
-    # outputs:
-    #   package_python_versions: ${{ steps.run_get_package_python_versions_py.outputs.package_python_versions }}
+    outputs:
+      package_python_versions: ${{ steps.run_get_package_python_versions_py.outputs.package_python_versions }}
     steps:
       - name: Checkout Contrib Repo @ SHA - ${{ github.sha }}
         uses: actions/checkout@v4
