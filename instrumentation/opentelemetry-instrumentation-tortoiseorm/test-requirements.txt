@@ -12,7 +12,6 @@ pydantic==2.6.2
 pydantic_core==2.16.3
 pypika-tortoise==0.1.6
 pytest==7.4.4
-pytest-benchmark==4.0.0
 pytz==2024.1
 tomli==2.0.1
 tortoise-orm==0.20.0
