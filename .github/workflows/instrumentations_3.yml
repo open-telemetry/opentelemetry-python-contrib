@@ -31,7 +31,7 @@ jobs:
           python .github/workflows/get_package_python_versions.py >> $GITHUB_OUTPUT
 
   run_tests:
-    name: Run tests
+    name: Run tests ${{ matrix.os }}
     needs: get_package_python_versions
     runs-on: ${{ matrix.os }}
     strategy:
