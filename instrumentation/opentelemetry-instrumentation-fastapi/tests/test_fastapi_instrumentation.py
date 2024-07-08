@@ -22,6 +22,10 @@ from fastapi.testclient import TestClient
 from opentelemetry.instrumentation._semconv import (
     OTEL_SEMCONV_STABILITY_OPT_IN,
     _OpenTelemetrySemanticConventionStability,
+    _server_active_requests_count_attrs_new,
+    _server_active_requests_count_attrs_old,
+    _server_duration_attrs_new,
+    _server_duration_attrs_old,
 )
 import opentelemetry.instrumentation.fastapi as otel_fastapi
 from opentelemetry.instrumentation.asgi import OpenTelemetryMiddleware
@@ -30,6 +34,28 @@ from opentelemetry.sdk.metrics.export import (
     NumberDataPoint,
 )
 from opentelemetry.sdk.resources import Resource
+from opentelemetry.semconv.attributes.client_attributes import (
+    CLIENT_ADDRESS,
+    CLIENT_PORT,
+)
+from opentelemetry.semconv.attributes.http_attributes import (
+    HTTP_REQUEST_METHOD,
+    HTTP_RESPONSE_STATUS_CODE,
+    HTTP_ROUTE,
+)
+from opentelemetry.semconv.attributes.network_attributes import (
+    NETWORK_PROTOCOL_VERSION,
+)
+from opentelemetry.semconv.attributes.server_attributes import (
+    SERVER_ADDRESS,
+    SERVER_PORT,
+)
+from opentelemetry.semconv.attributes.url_attributes import (
+    URL_FULL,
+    URL_PATH,
+    URL_QUERY,
+    URL_SCHEME,
+)
 from opentelemetry.semconv.trace import SpanAttributes
 from opentelemetry.test.test_base import TestBase
 from opentelemetry.util.http import (
@@ -38,25 +64,40 @@ from opentelemetry.util.http import (
     get_excluded_urls,
 )
 
-_expected_metric_names = [
+_expected_metric_names_old = [
     "http.server.active_requests",
     "http.server.duration",
     "http.server.response.size",
     "http.server.request.size",
 ]
-_recommended_attrs = {
-    "http.server.active_requests": _active_requests_count_attrs,
-    "http.server.duration": {*_duration_attrs, SpanAttributes.HTTP_TARGET},
-    "http.server.response.size": {
-        *_duration_attrs,
-        SpanAttributes.HTTP_TARGET,
-    },
-    "http.server.request.size": {
-        *_duration_attrs,
-        SpanAttributes.HTTP_TARGET,
-    },
+_expected_metric_names_new = [
+    "http.server.active_requests",
+    "http.server.request.duration",
+    "http.server.response.body.size",
+    "http.server.request.body.size",
+]
+_expected_metric_names_both = _expected_metric_names_old
+_expected_metric_names_both.extend(_expected_metric_names_new)
+
+_recommended_attrs_old = {
+    "http.server.active_requests": _server_active_requests_count_attrs_old,
+    "http.server.duration": {*_server_duration_attrs_old, SpanAttributes.HTTP_TARGET},
+    "http.server.response.size": {*_server_duration_attrs_old, SpanAttributes.HTTP_TARGET},
+    "http.server.request.size": {*_server_duration_attrs_old, SpanAttributes.HTTP_TARGET},
 }
 
+_recommended_attrs_new = {
+    "http.server.active_requests": _server_active_requests_count_attrs_new,
+    "http.server.request.duration": _server_duration_attrs_new,
+    "http.server.response.body.size": _server_duration_attrs_new,
+    "http.server.request.body.size": _server_duration_attrs_new,
+}
+
+_recommended_attrs_both = _recommended_attrs_old.copy()
+_recommended_attrs_both.update(_recommended_attrs_new)
+_recommended_attrs_both["http.server.active_requests"].extend(
+    _server_active_requests_count_attrs_old
+)
 
 class TestBaseFastAPI(TestBase):
     def _create_app(self):
@@ -375,7 +416,7 @@ class TestFastAPIManualInstrumentation(TestBaseManualFastAPI):
                 )
                 self.assertTrue(len(scope_metric.metrics) == 3)
                 for metric in scope_metric.metrics:
-                    self.assertIn(metric.name, _expected_metric_names)
+                    self.assertIn(metric.name, _expected_metric_names_old)
                     data_points = list(metric.data.data_points)
                     self.assertEqual(len(data_points), 1)
                     for point in data_points:
@@ -386,7 +427,71 @@ class TestFastAPIManualInstrumentation(TestBaseManualFastAPI):
                             number_data_point_seen = True
                         for attr in point.attributes:
                             self.assertIn(
-                                attr, _recommended_attrs[metric.name]
+                                attr, _recommended_attrs_old[metric.name]
+                            )
+        self.assertTrue(number_data_point_seen and histogram_data_point_seen)
+
+    def test_fastapi_metrics_new_semconv(self):
+        self._client.get("/foobar")
+        self._client.get("/foobar")
+        self._client.get("/foobar")
+        metrics_list = self.memory_metrics_reader.get_metrics_data()
+        number_data_point_seen = False
+        histogram_data_point_seen = False
+        self.assertTrue(len(metrics_list.resource_metrics) == 1)
+        for resource_metric in metrics_list.resource_metrics:
+            self.assertTrue(len(resource_metric.scope_metrics) == 1)
+            for scope_metric in resource_metric.scope_metrics:
+                self.assertEqual(
+                    scope_metric.scope.name,
+                    "opentelemetry.instrumentation.fastapi",
+                )
+                self.assertTrue(len(scope_metric.metrics) == 3)
+                for metric in scope_metric.metrics:
+                    self.assertIn(metric.name, _expected_metric_names_new)
+                    data_points = list(metric.data.data_points)
+                    self.assertEqual(len(data_points), 1)
+                    for point in data_points:
+                        if isinstance(point, HistogramDataPoint):
+                            self.assertEqual(point.count, 3)
+                            histogram_data_point_seen = True
+                        if isinstance(point, NumberDataPoint):
+                            number_data_point_seen = True
+                        for attr in point.attributes:
+                            self.assertIn(
+                                attr, _recommended_attrs_new[metric.name]
+                            )
+        self.assertTrue(number_data_point_seen and histogram_data_point_seen)
+
+    def test_fastapi_metrics_both_semconv(self):
+        self._client.get("/foobar")
+        self._client.get("/foobar")
+        self._client.get("/foobar")
+        metrics_list = self.memory_metrics_reader.get_metrics_data()
+        number_data_point_seen = False
+        histogram_data_point_seen = False
+        self.assertTrue(len(metrics_list.resource_metrics) == 1)
+        for resource_metric in metrics_list.resource_metrics:
+            self.assertTrue(len(resource_metric.scope_metrics) == 1)
+            for scope_metric in resource_metric.scope_metrics:
+                self.assertEqual(
+                    scope_metric.scope.name,
+                    "opentelemetry.instrumentation.fastapi",
+                )
+                self.assertTrue(len(scope_metric.metrics) == 5)
+                for metric in scope_metric.metrics:
+                    self.assertIn(metric.name, _expected_metric_names_both)
+                    data_points = list(metric.data.data_points)
+                    self.assertEqual(len(data_points), 1)
+                    for point in data_points:
+                        if isinstance(point, HistogramDataPoint):
+                            self.assertEqual(point.count, 3)
+                            histogram_data_point_seen = True
+                        if isinstance(point, NumberDataPoint):
+                            number_data_point_seen = True
+                        for attr in point.attributes:
+                            self.assertIn(
+                                attr, _recommended_attrs_both[metric.name]
                             )
         self.assertTrue(number_data_point_seen and histogram_data_point_seen)
 
@@ -395,21 +500,21 @@ class TestFastAPIManualInstrumentation(TestBaseManualFastAPI):
         self._client.get("/foobar")
         duration = max(round((default_timer() - start) * 1000), 0)
         expected_duration_attributes = {
-            "http.method": "GET",
-            "http.host": "testserver:443",
-            "http.scheme": "https",
-            "http.flavor": "1.1",
-            "http.server_name": "testserver",
-            "net.host.port": 443,
-            "http.status_code": 200,
-            "http.target": "/foobar",
+            SpanAttributes.HTTP_METHOD: "GET",
+            SpanAttributes.HTTP_HOST: "testserver:443",
+            SpanAttributes.HTTP_SCHEME: "https",
+            SpanAttributes.HTTP_FLAVOR: "1.1",
+            SpanAttributes.HTTP_SERVER_NAME: "testserver",
+            SpanAttributes.NET_HOST_PORT: 443,
+            SpanAttributes.HTTP_STATUS_CODE: 200,
+            SpanAttributes.HTTP_TARGET: "/foobar",
         }
         expected_requests_count_attributes = {
-            "http.method": "GET",
-            "http.host": "testserver:443",
-            "http.scheme": "https",
-            "http.flavor": "1.1",
-            "http.server_name": "testserver",
+            SpanAttributes.HTTP_METHOD: "GET",
+            SpanAttributes.HTTP_HOST: "testserver:443",
+            SpanAttributes.HTTP_SCHEME: "https",
+            SpanAttributes.HTTP_FLAVOR: "1.1",
+            SpanAttributes.HTTP_SERVER_NAME: "testserver",
         }
         metrics_list = self.memory_metrics_reader.get_metrics_data()
         for metric in (
@@ -423,6 +528,130 @@ class TestFastAPIManualInstrumentation(TestBaseManualFastAPI):
                     )
                     self.assertEqual(point.count, 1)
                     self.assertAlmostEqual(duration, point.sum, delta=40)
+                if isinstance(point, NumberDataPoint):
+                    self.assertDictEqual(
+                        expected_requests_count_attributes,
+                        dict(point.attributes),
+                    )
+                    self.assertEqual(point.value, 0)
+
+    def test_basic_metric_success_new_semconv(self):
+        start = default_timer()
+        self._client.get("/foobar")
+        duration_s = max(default_timer() - start, 0)
+        expected_duration_attributes = {
+            HTTP_REQUEST_METHOD: "GET",
+            URL_SCHEME: "https",
+            NETWORK_PROTOCOL_VERSION: "1.1",
+            HTTP_RESPONSE_STATUS_CODE: 200,
+            HTTP_ROUTE: "/foobar",
+        }
+        expected_requests_count_attributes = {
+            HTTP_REQUEST_METHOD: "GET",
+            URL_SCHEME: "https",
+        }
+        metrics_list = self.memory_metrics_reader.get_metrics_data()
+        for metric in (
+            metrics_list.resource_metrics[0].scope_metrics[0].metrics
+        ):
+            for point in list(metric.data.data_points):
+                if isinstance(point, HistogramDataPoint):
+                    self.assertDictEqual(
+                        expected_duration_attributes,
+                        dict(point.attributes),
+                    )
+                    self.assertEqual(point.count, 1)
+                    if metric.name == "http.server.request.duration":
+                        self.assertAlmostEqual(
+                            duration_s, point.sum, places=2
+                        )
+                    elif (
+                        metric.name == "http.server.response.body.size"
+                    ):
+                        self.assertEqual(25, point.sum)
+                    elif (
+                        metric.name == "http.server.request.body.size"
+                    ):
+                        self.assertEqual(25, point.sum)
+                if isinstance(point, NumberDataPoint):
+                    self.assertDictEqual(
+                        expected_requests_count_attributes,
+                        dict(point.attributes),
+                    )
+                    self.assertEqual(point.value, 0)
+
+    def test_basic_metric_success_both_semconv(self):
+        start = default_timer()
+        self._client.get("/foobar")
+        duration = max(round((default_timer() - start) * 1000), 0)
+        duration_s = max(default_timer() - start, 0)
+        expected_duration_attributes_old = {
+            SpanAttributes.HTTP_METHOD: "GET",
+            SpanAttributes.HTTP_HOST: "testserver:443",
+            SpanAttributes.HTTP_SCHEME: "https",
+            SpanAttributes.HTTP_FLAVOR: "1.1",
+            SpanAttributes.HTTP_SERVER_NAME: "testserver",
+            SpanAttributes.NET_HOST_PORT: 443,
+            SpanAttributes.HTTP_STATUS_CODE: 200,
+            SpanAttributes.HTTP_TARGET: "/foobar",
+        }
+        expected_duration_attributes_new = {
+            HTTP_REQUEST_METHOD: "GET",
+            URL_SCHEME: "https",
+            NETWORK_PROTOCOL_VERSION: "1.1",
+            HTTP_RESPONSE_STATUS_CODE: 200,
+            HTTP_ROUTE: "/foobar",
+        }
+        expected_requests_count_attributes = {
+            SpanAttributes.HTTP_METHOD: "GET",
+            SpanAttributes.HTTP_HOST: "testserver:443",
+            SpanAttributes.HTTP_SCHEME: "https",
+            SpanAttributes.HTTP_FLAVOR: "1.1",
+            SpanAttributes.HTTP_SERVER_NAME: "testserver",
+            HTTP_REQUEST_METHOD: "GET",
+            URL_SCHEME: "https",
+        }
+        metrics_list = self.memory_metrics_reader.get_metrics_data()
+        for metric in (
+            metrics_list.resource_metrics[0].scope_metrics[0].metrics
+        ):
+            for point in list(metric.data.data_points):
+                if isinstance(point, HistogramDataPoint):
+                    self.assertEqual(point.count, 1)
+                    self.assertAlmostEqual(duration, point.sum, delta=40)
+                    if metric.name == "http.server.request.duration":
+                        self.assertDictEqual(
+                            expected_duration_attributes_new,
+                            dict(point.attributes),
+                        )
+                    elif (
+                        metric.name == "http.server.response.body.size"
+                    ):
+                        self.assertDictEqual(
+                            expected_duration_attributes_new,
+                            dict(point.attributes),
+                        )
+                    elif (
+                        metric.name == "http.server.request.body.size"
+                    ):
+                        self.assertDictEqual(
+                            expected_duration_attributes_new,
+                            dict(point.attributes),
+                        )
+                    elif metric.name == "http.server.duration":
+                        self.assertDictEqual(
+                            expected_duration_attributes_old,
+                            dict(point.attributes),
+                        )
+                    elif metric.name == "http.server.response.size":
+                        self.assertDictEqual(
+                            expected_duration_attributes_old,
+                            dict(point.attributes),
+                        )
+                        self.assertDictEqual(
+                            expected_duration_attributes_old,
+                            dict(point.attributes),
+                        )
                 if isinstance(point, NumberDataPoint):
                     self.assertDictEqual(
                         expected_requests_count_attributes,
@@ -448,6 +677,63 @@ class TestFastAPIManualInstrumentation(TestBaseManualFastAPI):
                     self.assertEqual(point.count, 1)
                     if metric.name == "http.server.duration":
                         self.assertAlmostEqual(duration, point.sum, delta=40)
+                    elif metric.name == "http.server.response.size":
+                        self.assertEqual(response_size, point.sum)
+                    elif metric.name == "http.server.request.size":
+                        self.assertEqual(request_size, point.sum)
+                if isinstance(point, NumberDataPoint):
+                    self.assertEqual(point.value, 0)
+
+    def test_basic_post_request_metric_success_new_semconv(self):
+        start = default_timer()
+        response = self._client.post(
+            "/foobar",
+            json={"foo": "bar"},
+        )
+        duration_s = max(default_timer() - start, 0)
+        response_size = int(response.headers.get("content-length"))
+        request_size = int(response.request.headers.get("content-length"))
+        metrics_list = self.memory_metrics_reader.get_metrics_data()
+        for metric in (
+            metrics_list.resource_metrics[0].scope_metrics[0].metrics
+        ):
+            for point in list(metric.data.data_points):
+                if isinstance(point, HistogramDataPoint):
+                    self.assertEqual(point.count, 1)
+                    if metric.name == "http.server.request.duration":
+                        self.assertAlmostEqual(duration_s, point.sum, places=2)
+                    elif metric.name == "http.server.response.body.size":
+                        self.assertEqual(response_size, point.sum)
+                    elif metric.name == "http.server.request.body.size":
+                        self.assertEqual(request_size, point.sum)
+                if isinstance(point, NumberDataPoint):
+                    self.assertEqual(point.value, 0)
+
+    def test_basic_post_request_metric_success_both_semconv(self):
+        start = default_timer()
+        response = self._client.post(
+            "/foobar",
+            json={"foo": "bar"},
+        )
+        duration = max(round((default_timer() - start) * 1000), 0)
+        duration_s = max(default_timer() - start, 0)
+        response_size = int(response.headers.get("content-length"))
+        request_size = int(response.request.headers.get("content-length"))
+        metrics_list = self.memory_metrics_reader.get_metrics_data()
+        for metric in (
+            metrics_list.resource_metrics[0].scope_metrics[0].metrics
+        ):
+            for point in list(metric.data.data_points):
+                if isinstance(point, HistogramDataPoint):
+                    self.assertEqual(point.count, 1)
+                    if metric.name == "http.server.request.duration":
+                        self.assertAlmostEqual(duration_s, point.sum, places=2)
+                    elif metric.name == "http.server.response.body.size":
+                        self.assertEqual(response_size, point.sum)
+                    elif metric.name == "http.server.request.body.size":
+                        self.assertEqual(request_size, point.sum)
+                    elif metric.name == "http.server.duration":
+                        self.assertAlmostEqual(duration, point.sum, delta=5)
                     elif metric.name == "http.server.response.size":
                         self.assertEqual(response_size, point.sum)
                     elif metric.name == "http.server.request.size":
