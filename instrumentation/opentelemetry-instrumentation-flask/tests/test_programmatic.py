@@ -497,7 +497,7 @@ class TestProgrammatic(InstrumentationTest, WsgiTestBase):
         self.client.get("/hello/123")
         self.client.get("/hello/321")
         self.client.get("/hello/756")
-        duration = max(round((default_timer() - start) * 1000), 0)
+        duration_s = max(default_timer() - start, 0)
         metrics_list = self.memory_metrics_reader.get_metrics_data()
         number_data_point_seen = False
         histogram_data_point_seen = False
@@ -514,7 +514,7 @@ class TestProgrammatic(InstrumentationTest, WsgiTestBase):
                         if isinstance(point, HistogramDataPoint):
                             self.assertEqual(point.count, 3)
                             self.assertAlmostEqual(
-                                duration, point.sum, delta=10
+                                duration_s, point.sum, places=2
                             )
                             histogram_data_point_seen = True
                         if isinstance(point, NumberDataPoint):
@@ -584,8 +584,6 @@ class TestProgrammatic(InstrumentationTest, WsgiTestBase):
             "http.scheme": "http",
             "http.flavor": "1.1",
             "http.server_name": "localhost",
-            "net.host.name": "localhost",
-            "net.host.port": 80,
         }
         self._assert_basic_metric(
             expected_duration_attributes,
@@ -627,8 +625,6 @@ class TestProgrammatic(InstrumentationTest, WsgiTestBase):
             "http.scheme": "http",
             "http.flavor": "1.1",
             "http.server_name": "localhost",
-            "net.host.name": "localhost",
-            "net.host.port": 80,
         }
         self._assert_basic_metric(
             expected_duration_attributes,

@@ -20,7 +20,6 @@ pluggy==1.5.0
 py-cpuinfo==9.0.0
 pycparser==2.21
 pytest==7.4.4
-pytest-benchmark==4.0.0
 python-dateutil==2.8.2
 pytz==2024.1
 PyYAML==6.0.1
