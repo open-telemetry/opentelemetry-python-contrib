@@ -177,6 +177,12 @@ from typing import Collection
 import fastapi
 from starlette.routing import Match
 
+from opentelemetry.instrumentation._semconv import (
+    _get_schema_url,
+    _HTTPStabilityMode,
+    _OpenTelemetrySemanticConventionStability,
+    _OpenTelemetryStabilitySignalType,
+)
 from opentelemetry.instrumentation.asgi import OpenTelemetryMiddleware
 from opentelemetry.instrumentation.asgi.types import (
     ClientRequestHook,
@@ -189,7 +195,11 @@ from opentelemetry.instrumentation.instrumentor import BaseInstrumentor
 from opentelemetry.metrics import get_meter
 from opentelemetry.semconv.trace import SpanAttributes
 from opentelemetry.trace import get_tracer
-from opentelemetry.util.http import get_excluded_urls, parse_excluded_urls
+from opentelemetry.util.http import (
+    get_excluded_urls,
+    parse_excluded_urls,
+    sanitize_method,
+)
 
 _excluded_urls_from_env = get_excluded_urls("FASTAPI")
 _logger = logging.getLogger(__name__)
@@ -218,6 +228,11 @@ class FastAPIInstrumentor(BaseInstrumentor):
             app._is_instrumented_by_opentelemetry = False
 
         if not getattr(app, "_is_instrumented_by_opentelemetry", False):
+            # initialize semantic conventions opt-in if needed
+            _OpenTelemetrySemanticConventionStability._initialize()
+            sem_conv_opt_in_mode = _OpenTelemetrySemanticConventionStability._get_opentelemetry_stability_opt_in_mode(
+                _OpenTelemetryStabilitySignalType.HTTP,
+            )
             if excluded_urls is None:
                 excluded_urls = _excluded_urls_from_env
             else:
@@ -226,13 +241,13 @@ class FastAPIInstrumentor(BaseInstrumentor):
                 __name__,
                 __version__,
                 tracer_provider,
-                schema_url="https://opentelemetry.io/schemas/1.11.0",
+                schema_url=_get_schema_url(sem_conv_opt_in_mode),
             )
             meter = get_meter(
                 __name__,
                 __version__,
                 meter_provider,
-                schema_url="https://opentelemetry.io/schemas/1.11.0",
+                schema_url=_get_schema_url(sem_conv_opt_in_mode),
             )
 
             app.add_middleware(
@@ -303,6 +318,7 @@ class _InstrumentedFastAPI(fastapi.FastAPI):
     _client_request_hook: ClientRequestHook = None
     _client_response_hook: ClientResponseHook = None
     _instrumented_fastapi_apps = set()
+    _sem_conv_opt_in_mode = _HTTPStabilityMode.DEFAULT
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
@@ -310,13 +326,13 @@ class _InstrumentedFastAPI(fastapi.FastAPI):
             __name__,
             __version__,
             _InstrumentedFastAPI._tracer_provider,
-            schema_url="https://opentelemetry.io/schemas/1.11.0",
+            schema_url=_get_schema_url(_InstrumentedFastAPI._sem_conv_opt_in_mode),
         )
         meter = get_meter(
             __name__,
             __version__,
             _InstrumentedFastAPI._meter_provider,
-            schema_url="https://opentelemetry.io/schemas/1.11.0",
+            schema_url=_get_schema_url(_InstrumentedFastAPI._sem_conv_opt_in_mode),
         )
         self.add_middleware(
             OpenTelemetryMiddleware,
@@ -373,8 +389,10 @@ def _get_default_span_details(scope):
         A tuple of span name and attributes
     """
     route = _get_route_details(scope)
-    method = scope.get("method", "")
+    method = sanitize_method(scope.get("method", "").strip())
     attributes = {}
+    if method == "_OTHER":
+        method = "HTTP"
     if route:
         attributes[SpanAttributes.HTTP_ROUTE] = route
     if method and route:  # http

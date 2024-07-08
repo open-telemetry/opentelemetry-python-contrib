@@ -19,6 +19,10 @@ import fastapi
 from fastapi.middleware.httpsredirect import HTTPSRedirectMiddleware
 from fastapi.testclient import TestClient
 
+from opentelemetry.instrumentation._semconv import (
+    OTEL_SEMCONV_STABILITY_OPT_IN,
+    _OpenTelemetrySemanticConventionStability,
+)
 import opentelemetry.instrumentation.fastapi as otel_fastapi
 from opentelemetry.instrumentation.asgi import OpenTelemetryMiddleware
 from opentelemetry.sdk.metrics.export import (
@@ -88,10 +92,23 @@ class TestBaseFastAPI(TestBase):
 
     def setUp(self):
         super().setUp()
+
+        test_name = ""
+        if hasattr(self, "_testMethodName"):
+            test_name = self._testMethodName
+        sem_conv_mode = "default"
+        if "new_semconv" in test_name:
+            sem_conv_mode = "http"
+        elif "both_semconv" in test_name:
+            sem_conv_mode = "http/dup"
         self.env_patch = patch.dict(
             "os.environ",
-            {"OTEL_PYTHON_FASTAPI_EXCLUDED_URLS": "/exclude/123,healthzz"},
+            {
+                "OTEL_PYTHON_FASTAPI_EXCLUDED_URLS": "/exclude/123,healthzz",
+                OTEL_SEMCONV_STABILITY_OPT_IN: sem_conv_mode,
+            },
         )
+        _OpenTelemetrySemanticConventionStability._initialized = False
         self.env_patch.start()
         self.exclude_patch = patch(
             "opentelemetry.instrumentation.fastapi._excluded_urls_from_env",

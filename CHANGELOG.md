@@ -30,12 +30,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - `opentelemetry-instrumentation-asgi`, `opentelemetry-instrumentation-fastapi`, `opentelemetry-instrumentation-starlette` Use `tracer` and `meter` of originating components instead of one from `asgi` middleware
   ([#2580](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/2580))
-- Populate `{method}` as `HTTP` on `_OTHER` methods from scope
+- Populate `{method}` as `HTTP` on `_OTHER` methods from scope for `asgi` middleware
+  ([#2610](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/2610))
+  - Populate `{method}` as `HTTP` on `_OTHER` methods from scope for `fastapi` middleware
   ([#2610](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/2610))
 
 ### Added
 
 - `opentelemetry-instrumentation-asgi` Implement new semantic convention opt-in with stable http semantic conventions
+  ([#2610](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/2610))
+- `opentelemetry-instrumentation-fastapi` Implement new semantic convention opt-in with stable http semantic conventions
   ([#2610](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/2610))
 
 ### Fixed
