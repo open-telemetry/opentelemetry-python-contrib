@@ -275,18 +275,6 @@ def create_trace_config(
                 type(params.exception).__qualname__,
                 sem_conv_opt_in_mode,
             )
-            # # if _report_new(sem_conv_opt_in_mode):
-            # #     trace_config_ctx.set_attribute(ERROR_TYPE, exception_type)
-
-            # # trace_config_ctx.span.set_status(Status(StatusCode.ERROR,exception_type))
-            # _set_status(
-            #     trace_config_ctx.span,
-            #     metrics_attributes,
-            #     status_code,
-            #     exception_type,
-            #     server_span,
-            #     sem_conv_opt_in_mode,
-            # )
             trace_config_ctx.span.record_exception(params.exception)
 
         if callable(response_hook):
