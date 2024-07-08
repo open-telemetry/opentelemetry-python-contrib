@@ -543,7 +543,9 @@ class _InstrumentedFlask(flask.Flask):
             __name__,
             __version__,
             _InstrumentedFlask._meter_provider,
-            schema_url=_get_schema_url(_InstrumentedFlask._sem_conv_opt_in_mode),
+            schema_url=_get_schema_url(
+                _InstrumentedFlask._sem_conv_opt_in_mode
+            ),
         )
         duration_histogram_old = None
         if _report_old(_InstrumentedFlask._sem_conv_opt_in_mode):
@@ -579,7 +581,9 @@ class _InstrumentedFlask(flask.Flask):
             __name__,
             __version__,
             _InstrumentedFlask._tracer_provider,
-            schema_url=_get_schema_url(_InstrumentedFlask._sem_conv_opt_in_mode),
+            schema_url=_get_schema_url(
+                _InstrumentedFlask._sem_conv_opt_in_mode
+            ),
         )
 
         _before_request = _wrapped_before_request(

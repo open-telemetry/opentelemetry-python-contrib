@@ -326,13 +326,17 @@ class _InstrumentedFastAPI(fastapi.FastAPI):
             __name__,
             __version__,
             _InstrumentedFastAPI._tracer_provider,
-            schema_url=_get_schema_url(_InstrumentedFastAPI._sem_conv_opt_in_mode),
+            schema_url=_get_schema_url(
+                _InstrumentedFastAPI._sem_conv_opt_in_mode
+            ),
         )
         meter = get_meter(
             __name__,
             __version__,
             _InstrumentedFastAPI._meter_provider,
-            schema_url=_get_schema_url(_InstrumentedFastAPI._sem_conv_opt_in_mode),
+            schema_url=_get_schema_url(
+                _InstrumentedFastAPI._sem_conv_opt_in_mode
+            ),
         )
         self.add_middleware(
             OpenTelemetryMiddleware,

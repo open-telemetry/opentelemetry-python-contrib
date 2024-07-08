@@ -81,9 +81,18 @@ _expected_metric_names_both.extend(_expected_metric_names_new)
 
 _recommended_attrs_old = {
     "http.server.active_requests": _server_active_requests_count_attrs_old,
-    "http.server.duration": {*_server_duration_attrs_old, SpanAttributes.HTTP_TARGET},
-    "http.server.response.size": {*_server_duration_attrs_old, SpanAttributes.HTTP_TARGET},
-    "http.server.request.size": {*_server_duration_attrs_old, SpanAttributes.HTTP_TARGET},
+    "http.server.duration": {
+        *_server_duration_attrs_old,
+        SpanAttributes.HTTP_TARGET,
+    },
+    "http.server.response.size": {
+        *_server_duration_attrs_old,
+        SpanAttributes.HTTP_TARGET,
+    },
+    "http.server.request.size": {
+        *_server_duration_attrs_old,
+        SpanAttributes.HTTP_TARGET,
+    },
 }
 
 _recommended_attrs_new = {
@@ -98,6 +107,7 @@ _recommended_attrs_both.update(_recommended_attrs_new)
 _recommended_attrs_both["http.server.active_requests"].extend(
     _server_active_requests_count_attrs_old
 )
+
 
 class TestBaseFastAPI(TestBase):
     def _create_app(self):
@@ -200,7 +210,6 @@ class TestBaseFastAPI(TestBase):
 
 
 class TestBaseManualFastAPI(TestBaseFastAPI):
-
     @classmethod
     def setUpClass(cls):
         if cls is TestBaseManualFastAPI:
@@ -254,7 +263,6 @@ class TestBaseManualFastAPI(TestBaseFastAPI):
 
 
 class TestBaseAutoFastAPI(TestBaseFastAPI):
-
     @classmethod
     def setUpClass(cls):
         if cls is TestBaseAutoFastAPI:
@@ -562,16 +570,10 @@ class TestFastAPIManualInstrumentation(TestBaseManualFastAPI):
                     )
                     self.assertEqual(point.count, 1)
                     if metric.name == "http.server.request.duration":
-                        self.assertAlmostEqual(
-                            duration_s, point.sum, places=2
-                        )
-                    elif (
-                        metric.name == "http.server.response.body.size"
-                    ):
+                        self.assertAlmostEqual(duration_s, point.sum, places=2)
+                    elif metric.name == "http.server.response.body.size":
                         self.assertEqual(25, point.sum)
-                    elif (
-                        metric.name == "http.server.request.body.size"
-                    ):
+                    elif metric.name == "http.server.request.body.size":
                         self.assertEqual(25, point.sum)
                 if isinstance(point, NumberDataPoint):
                     self.assertDictEqual(
@@ -624,16 +626,12 @@ class TestFastAPIManualInstrumentation(TestBaseManualFastAPI):
                             expected_duration_attributes_new,
                             dict(point.attributes),
                         )
-                    elif (
-                        metric.name == "http.server.response.body.size"
-                    ):
+                    elif metric.name == "http.server.response.body.size":
                         self.assertDictEqual(
                             expected_duration_attributes_new,
                             dict(point.attributes),
                         )
-                    elif (
-                        metric.name == "http.server.request.body.size"
-                    ):
+                    elif metric.name == "http.server.request.body.size":
                         self.assertDictEqual(
                             expected_duration_attributes_new,
                             dict(point.attributes),
