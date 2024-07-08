@@ -11,11 +11,11 @@ env:
 
 jobs:
 
-  get_package_python_versions:
-    name: Get Python versions for each package
+  get_tox_ini_directory_python_versions:
+    name: Get Python versions for each tox_ini_directory
     runs-on: ubuntu-latest
     outputs:
-      package_python_versions: ${{ steps.run_get_package_python_versions_py.outputs.package_python_versions }}
+      tox_ini_directory_python_versions: ${{ steps.run_get_tox_ini_directory_python_versions_py.outputs.tox_ini_directory_python_versions }}
     steps:
       - name: Checkout Contrib Repo @ SHA - ${{ github.sha }}
         uses: actions/checkout@v4
@@ -25,20 +25,20 @@ jobs:
         with:
           python-version: "3.12"
 
-      - name: Run get_package_python_versions.py
-        id: run_get_package_python_versions_py
+      - name: Run get_tox_ini_directory_python_versions.py
+        id: run_get_tox_ini_directory_python_versions_py
         run: |
-          python .github/workflows/get_package_python_versions.py >> $GITHUB_OUTPUT
+          python .github/workflows/get_tox_ini_directory_python_versions.py >> $GITHUB_OUTPUT
 
   run_tests:
-    name: Run tests ${{ matrix.os }}
-    needs: get_package_python_versions
+    name: ${{ matrix.tox_ini_directory_python_versions.tox_ini_directory }} ${{ matrix.tox_ini_directory_python_versions.python_version }} ${{ matrix.os }}
+    needs: get_tox_ini_directory_python_versions
     runs-on: ${{ matrix.os }}
     strategy:
       matrix:
         os: [ubuntu-20.04, windows-2019]
-        package-python-versions: ${{ fromJson(needs.get_package_python_versions.outputs.package_python_versions) }}
+        tox_ini_directory_python_versions: ${{ fromJson(needs.get_tox_ini_directory_python_versions.outputs.tox_ini_directory_python_versions) }}
 
     steps:
       - name: echo stuff
-        run: echo "${{ matrix.os }} ${{ matrix.package-python-versions.tox_ini_directory }} ${{ matrix.package-python-versions.python_version }}"
+        run: echo "${{ matrix.os }} ${{ matrix.tox_ini_directory_python_versions.tox_ini_directory }} ${{ matrix.tox_ini_directory_python_versions.python_version }}"

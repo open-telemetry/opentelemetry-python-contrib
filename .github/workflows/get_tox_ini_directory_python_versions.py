@@ -20,7 +20,7 @@ for root, directories, files in walk(root_directory):
 
 config_parser = ConfigParser()
 
-package_python_versions = []
+tox_ini_directory_python_versions = []
 
 for tox_ini_path in tox_ini_paths:
     config_parser.read(tox_ini_path)
@@ -51,7 +51,7 @@ for tox_ini_path in tox_ini_paths:
 
     for python_version in python_versions:
 
-        package_python_versions.append(
+        tox_ini_directory_python_versions.append(
             {
                 "tox_ini_directory": join(
                     tox_ini_path.parent.parent.name,
@@ -61,4 +61,4 @@ for tox_ini_path in tox_ini_paths:
             }
         )
 
-print(f"package_python_versions={dumps(package_python_versions)}")
+print(f"tox_ini_directory_python_versions={dumps(tox_ini_directory_python_versions)}")
