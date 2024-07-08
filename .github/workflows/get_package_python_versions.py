@@ -61,13 +61,4 @@ for tox_ini_path in tox_ini_paths:
             }
         )
 
-# matrix_values = [{"os": "ubuntu-latest"}]
-# matrix_values = [{"python_versions": ["py38", "py312"]}]
-# python_versions = ["py38", "py312"]
-
-# print(f"name=matrix::{dumps(matrix_values)}")
-
-print(
-    "::set-output name=package_python_versions::"
-    f"{dumps(package_python_versions)}"
-)
+print(f"package_python_versions={dumps(package_python_versions)}")

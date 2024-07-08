@@ -14,8 +14,8 @@ jobs:
   get_package_python_versions:
     name: Get Python versions for each package
     runs-on: ubuntu-latest
-    outputs:
-      package_python_versions: ${{ steps.run_get_package_python_versions_py.outputs.package_python_versions }}
+    # outputs:
+    #   package_python_versions: ${{ steps.run_get_package_python_versions_py.outputs.package_python_versions }}
     steps:
       - name: Checkout Contrib Repo @ SHA - ${{ github.sha }}
         uses: actions/checkout@v4
@@ -28,10 +28,7 @@ jobs:
       - name: Run get_package_python_versions.py
         id: run_get_package_python_versions_py
         run: |
-          python .github/workflows/get_package_python_versions.py
-
-      - name: echo stuff
-        run: echo $GITHUB_OUTPUT
+          python .github/workflows/get_package_python_versions.py >> $GITHUB_OUTPUT
 
   run_tests:
     name: Run tests
