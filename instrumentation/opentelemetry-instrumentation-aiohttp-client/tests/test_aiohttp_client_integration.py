@@ -263,7 +263,7 @@ class TestAioHttpIntegration(TestBase):
                 [
                     (
                         "GET",
-                        (expected_status, None),
+                        (expected_status, "ClientConnectorError"),
                         {
                             SpanAttributes.HTTP_METHOD: "GET",
                             SpanAttributes.HTTP_URL: url,
@@ -290,7 +290,7 @@ class TestAioHttpIntegration(TestBase):
             [
                 (
                     "GET",
-                    (StatusCode.ERROR, None),
+                    (StatusCode.ERROR, "ServerTimeoutError"),
                     {
                         SpanAttributes.HTTP_METHOD: "GET",
                         SpanAttributes.HTTP_URL: f"http://{host}:{port}/test_timeout",
@@ -317,7 +317,7 @@ class TestAioHttpIntegration(TestBase):
             [
                 (
                     "GET",
-                    (StatusCode.ERROR, None),
+                    (StatusCode.ERROR, "TooManyRedirects"),
                     {
                         SpanAttributes.HTTP_METHOD: "GET",
                         SpanAttributes.HTTP_URL: f"http://{host}:{port}/test_too_many_redirects",
