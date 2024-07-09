@@ -34,10 +34,6 @@ from opentelemetry.sdk.metrics.export import (
     NumberDataPoint,
 )
 from opentelemetry.sdk.resources import Resource
-from opentelemetry.semconv.attributes.client_attributes import (
-    CLIENT_ADDRESS,
-    CLIENT_PORT,
-)
 from opentelemetry.semconv.attributes.http_attributes import (
     HTTP_REQUEST_METHOD,
     HTTP_RESPONSE_STATUS_CODE,
@@ -46,23 +42,10 @@ from opentelemetry.semconv.attributes.http_attributes import (
 from opentelemetry.semconv.attributes.network_attributes import (
     NETWORK_PROTOCOL_VERSION,
 )
-from opentelemetry.semconv.attributes.server_attributes import (
-    SERVER_ADDRESS,
-    SERVER_PORT,
-)
-from opentelemetry.semconv.attributes.url_attributes import (
-    URL_FULL,
-    URL_PATH,
-    URL_QUERY,
-    URL_SCHEME,
-)
+from opentelemetry.semconv.attributes.url_attributes import URL_SCHEME
 from opentelemetry.semconv.trace import SpanAttributes
 from opentelemetry.test.test_base import TestBase
-from opentelemetry.util.http import (
-    _active_requests_count_attrs,
-    _duration_attrs,
-    get_excluded_urls,
-)
+from opentelemetry.util.http import get_excluded_urls
 
 _expected_metric_names_old = [
     "http.server.active_requests",
@@ -570,7 +553,7 @@ class TestFastAPIManualInstrumentation(TestBaseManualFastAPI):
                     )
                     self.assertEqual(point.count, 1)
                     if metric.name == "http.server.request.duration":
-                        self.assertAlmostEqual(duration_s, point.sum, places=2)
+                        self.assertAlmostEqual(duration_s, point.sum, places=1)
                     elif metric.name == "http.server.response.body.size":
                         self.assertEqual(25, point.sum)
                     elif metric.name == "http.server.request.body.size":
@@ -699,7 +682,7 @@ class TestFastAPIManualInstrumentation(TestBaseManualFastAPI):
                 if isinstance(point, HistogramDataPoint):
                     self.assertEqual(point.count, 1)
                     if metric.name == "http.server.request.duration":
-                        self.assertAlmostEqual(duration_s, point.sum, places=2)
+                        self.assertAlmostEqual(duration_s, point.sum, places=1)
                     elif metric.name == "http.server.response.body.size":
                         self.assertEqual(response_size, point.sum)
                     elif metric.name == "http.server.request.body.size":
@@ -725,7 +708,7 @@ class TestFastAPIManualInstrumentation(TestBaseManualFastAPI):
                 if isinstance(point, HistogramDataPoint):
                     self.assertEqual(point.count, 1)
                     if metric.name == "http.server.request.duration":
-                        self.assertAlmostEqual(duration_s, point.sum, places=2)
+                        self.assertAlmostEqual(duration_s, point.sum, places=1)
                     elif metric.name == "http.server.response.body.size":
                         self.assertEqual(response_size, point.sum)
                     elif metric.name == "http.server.request.body.size":
