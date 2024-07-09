@@ -95,7 +95,7 @@ from opentelemetry.instrumentation._semconv import (
     _HTTPStabilityMode,
     _OpenTelemetrySemanticConventionStability,
     _OpenTelemetryStabilitySignalType,
-    _set_error_type,
+    _report_new,
     _set_http_method,
     _set_http_url,
     _set_status,
@@ -108,7 +108,9 @@ from opentelemetry.instrumentation.utils import (
     unwrap,
 )
 from opentelemetry.propagate import inject
+from opentelemetry.semconv.attributes.error_attributes import ERROR_TYPE
 from opentelemetry.trace import Span, SpanKind, TracerProvider, get_tracer
+from opentelemetry.trace.status import Status, StatusCode
 from opentelemetry.util.http import remove_url_credentials, sanitize_method
 
 _UrlFilterT = typing.Optional[typing.Callable[[yarl.URL], str]]
@@ -129,7 +131,7 @@ _ResponseHookT = typing.Optional[
 ]
 
 
-def _get_default_span_name(method: str) -> str:
+def _get_span_name(method: str) -> str:
     method = sanitize_method(method.upper().strip())
     if method == "_OTHER":
         method = "HTTP"
@@ -188,7 +190,6 @@ def create_trace_config(
 
     # TODO: Use this when we have durations for aiohttp-client
     metrics_attributes = {}
-    server_span = False
 
     def _end_trace(trace_config_ctx: types.SimpleNamespace):
         context_api.detach(trace_config_ctx.token)
@@ -204,7 +205,7 @@ def create_trace_config(
             return
 
         http_method = params.method
-        request_span_name = _get_default_span_name(http_method)
+        request_span_name = _get_span_name(http_method)
         request_url = (
             remove_url_credentials(trace_config_ctx.url_filter(params.url))
             if callable(trace_config_ctx.url_filter)
@@ -245,11 +246,12 @@ def create_trace_config(
             response_hook(trace_config_ctx.span, params)
 
         if trace_config_ctx.span.is_recording():
-            status_code_str = str(params.response.status)
             try:
-                status_code = int(status_code_str)
+                status_code = int(params.response.status)
             except ValueError:
                 status_code = -1
+            status_code_str = str(params.response.status)
+            server_span = False
             _set_status(
                 trace_config_ctx.span,
                 metrics_attributes,
@@ -269,11 +271,12 @@ def create_trace_config(
             return
 
         if trace_config_ctx.span.is_recording() and params.exception:
-            _set_error_type(
-                trace_config_ctx.span,
-                metrics_attributes,
-                type(params.exception).__qualname__,
-                sem_conv_opt_in_mode,
+            exc_type = type(params.exception).__qualname__
+            if _report_new(sem_conv_opt_in_mode):
+                trace_config_ctx.span.set_attribute(ERROR_TYPE, exc_type)
+
+            trace_config_ctx.span.set_status(
+                Status(StatusCode.ERROR, exc_type)
             )
             trace_config_ctx.span.record_exception(params.exception)
 
