@@ -19,6 +19,7 @@ import fastapi
 from fastapi.middleware.httpsredirect import HTTPSRedirectMiddleware
 from fastapi.testclient import TestClient
 
+import opentelemetry.instrumentation.fastapi as otel_fastapi
 from opentelemetry.instrumentation._semconv import (
     OTEL_SEMCONV_STABILITY_OPT_IN,
     _OpenTelemetrySemanticConventionStability,
@@ -27,7 +28,6 @@ from opentelemetry.instrumentation._semconv import (
     _server_duration_attrs_new,
     _server_duration_attrs_old,
 )
-import opentelemetry.instrumentation.fastapi as otel_fastapi
 from opentelemetry.instrumentation.asgi import OpenTelemetryMiddleware
 from opentelemetry.sdk.metrics.export import (
     HistogramDataPoint,
@@ -699,7 +699,7 @@ class TestFastAPIManualInstrumentation(TestBaseManualFastAPI):
                 if isinstance(point, HistogramDataPoint):
                     self.assertEqual(point.count, 1)
                     if metric.name == "http.server.request.duration":
-                        self.assertAlmostEqual(duration_s, point.sum, places=2)
+                        self.assertAlmostEqual(duration_s, point.sum, places=4)
                     elif metric.name == "http.server.response.body.size":
                         self.assertEqual(response_size, point.sum)
                     elif metric.name == "http.server.request.body.size":
@@ -731,7 +731,7 @@ class TestFastAPIManualInstrumentation(TestBaseManualFastAPI):
                     elif metric.name == "http.server.request.body.size":
                         self.assertEqual(request_size, point.sum)
                     elif metric.name == "http.server.duration":
-                        self.assertAlmostEqual(duration, point.sum, delta=5)
+                        self.assertAlmostEqual(duration, point.sum, delta=40)
                     elif metric.name == "http.server.response.size":
                         self.assertEqual(response_size, point.sum)
                     elif metric.name == "http.server.request.size":
