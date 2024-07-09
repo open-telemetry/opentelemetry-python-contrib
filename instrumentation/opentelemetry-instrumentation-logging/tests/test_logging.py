@@ -20,9 +20,9 @@ import pytest
 
 from opentelemetry.instrumentation.logging import (  # pylint: disable=no-name-in-module
     DEFAULT_LOGGING_FORMAT,
+    LoggingHandler,
     LoggingInstrumentor,
 )
-from opentelemetry.sdk._logs import LoggingHandler
 from opentelemetry.test.test_base import TestBase
 from opentelemetry.trace import ProxyTracer, get_tracer
 

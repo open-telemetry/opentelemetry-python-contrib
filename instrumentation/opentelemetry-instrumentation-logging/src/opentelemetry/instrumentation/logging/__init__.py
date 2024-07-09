@@ -28,12 +28,10 @@ from opentelemetry.instrumentation.logging.environment_variables import (
     OTEL_PYTHON_LOG_CORRELATION,
     OTEL_PYTHON_LOG_FORMAT,
     OTEL_PYTHON_LOG_LEVEL,
+    OTEL_PYTHON_LOGGING_AUTO_INSTRUMENTATION_ENABLED,
 )
+from opentelemetry.instrumentation.logging.handler import LoggingHandler
 from opentelemetry.instrumentation.logging.package import _instruments
-from opentelemetry.sdk._logs import LoggingHandler
-from opentelemetry.sdk.environment_variables import (
-    _OTEL_PYTHON_LOGGING_AUTO_INSTRUMENTATION_ENABLED,
-)
 from opentelemetry.trace import (
     INVALID_SPAN,
     INVALID_SPAN_CONTEXT,
@@ -83,6 +81,7 @@ class LoggingInstrumentor(BaseInstrumentor):  # pylint: disable=empty-docstring
     _old_factory = None
     _log_hook = None
     _instrumented_loggers = None
+    _instrumented_root_logger_handler = None
 
     def instrumentation_dependencies(self) -> Collection[str]:
         return _instruments
@@ -192,14 +191,28 @@ class LoggingInstrumentor(BaseInstrumentor):  # pylint: disable=empty-docstring
         logging_enabled = kwargs.get(
             "logging_enabled",
             environ.get(
-                _OTEL_PYTHON_LOGGING_AUTO_INSTRUMENTATION_ENABLED, "false"
+                OTEL_PYTHON_LOGGING_AUTO_INSTRUMENTATION_ENABLED, "false"
             ).lower()
             == "true",
         )
 
         if logging_enabled:
+            root_logger = logging.getLogger()
+            # Root logger has LoggingHandler independently on the propagate value
+            if not any(
+                (
+                    isinstance(handler, LoggingHandler)
+                    for handler in root_logger.handlers
+                )
+            ):
+                root_logging_handler = LoggingHandler()
+                root_logger.addHandler(root_logging_handler)
+                LoggingInstrumentor._instrumented_root_logger_handler = (
+                    root_logging_handler
+                )
+
             for instrument_logger in chain(
-                (logging.getLogger(),),
+                (root_logger,),
                 (
                     logging.getLogger(name)
                     for name in logging.root.manager.loggerDict
@@ -225,10 +238,21 @@ class LoggingInstrumentor(BaseInstrumentor):  # pylint: disable=empty-docstring
         if LoggingInstrumentor._instrumented_loggers:
             LoggingInstrumentor._instrumented_loggers = False
 
+            root_logger = logging.getLogger()
+
+            if (
+                LoggingInstrumentor._instrumented_root_logger_handler
+                is not None
+            ):
+                root_logger.removeHandler(
+                    LoggingInstrumentor._instrumented_root_logger_handler
+                )
+                LoggingInstrumentor._instrumented_root_logger_handler = None
+
             del logging.Logger.propagate
 
             for uninstrument_logger in chain(
-                (logging.getLogger(),),
+                (root_logger,),
                 (
                     logging.getLogger(name)
                     for name in logging.root.manager.loggerDict
