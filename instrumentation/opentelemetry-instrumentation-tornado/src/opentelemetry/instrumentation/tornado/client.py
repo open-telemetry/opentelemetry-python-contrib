@@ -115,7 +115,7 @@ def _finish_tracing_callback(
         description = f"{type(exc).__name__}: {exc}"
         if isinstance(exc, HTTPError):
             response = exc.response
-            status_code = response.code
+            status_code = exc.code
             status = Status(
                 status_code=http_status_to_status_code(status_code),
                 description=description,
