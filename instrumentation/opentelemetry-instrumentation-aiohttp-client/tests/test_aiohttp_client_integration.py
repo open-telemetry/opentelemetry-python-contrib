@@ -142,7 +142,7 @@ class TestAioHttpIntegration(TestBase):
                 attributes = {
                     SpanAttributes.HTTP_METHOD: "GET",
                     SpanAttributes.HTTP_URL: url,
-                    SpanAttributes.HTTP_STATUS_CODE: int(status_code),
+                    SpanAttributes.HTTP_STATUS_CODE: status_code,
                 }
                 spans = [("GET", (span_status, None), attributes)]
                 self.assert_spans(spans)
@@ -163,10 +163,10 @@ class TestAioHttpIntegration(TestBase):
                 attributes = {
                     HTTP_REQUEST_METHOD: "GET",
                     URL_FULL: url,
-                    HTTP_RESPONSE_STATUS_CODE: int(status_code),
+                    HTTP_RESPONSE_STATUS_CODE: status_code,
                 }
                 if status_code >= 400:
-                    attributes[ERROR_TYPE] = str(status_code)
+                    attributes[ERROR_TYPE] = str(status_code.value)
                 spans = [("GET", (span_status, None), attributes)]
                 self.assert_spans(spans)
                 self.memory_exporter.clear()
@@ -188,11 +188,11 @@ class TestAioHttpIntegration(TestBase):
                     SpanAttributes.HTTP_METHOD: "GET",
                     URL_FULL: url,
                     SpanAttributes.HTTP_URL: url,
-                    HTTP_RESPONSE_STATUS_CODE: int(status_code),
-                    SpanAttributes.HTTP_STATUS_CODE: int(status_code),
+                    HTTP_RESPONSE_STATUS_CODE: status_code,
+                    SpanAttributes.HTTP_STATUS_CODE: status_code,
                 }
                 if status_code >= 400:
-                    attributes[ERROR_TYPE] = str(status_code)
+                    attributes[ERROR_TYPE] = str(status_code.value)
 
                 spans = [("GET", (span_status, None), attributes)]
                 self.assert_spans(spans, 1)
