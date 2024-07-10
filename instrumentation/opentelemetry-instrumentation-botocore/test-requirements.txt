@@ -33,7 +33,7 @@ urllib3==1.26.19
 Werkzeug==3.0.3
 wrapt==1.16.0
 xmltodict==0.13.0
-zipp==3.17.0
+zipp==3.19.2
 -e opentelemetry-instrumentation
 -e propagator/opentelemetry-propagator-aws-xray
 -e instrumentation/opentelemetry-instrumentation-botocore
