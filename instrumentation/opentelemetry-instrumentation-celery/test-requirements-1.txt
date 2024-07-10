@@ -23,6 +23,6 @@ tzdata==2024.1
 vine==5.1.0
 wcwidth==0.2.13
 wrapt==1.16.0
-zipp==3.17.0
+zipp==3.19.2
 -e opentelemetry-instrumentation
 -e instrumentation/opentelemetry-instrumentation-celery
