@@ -15,11 +15,12 @@ import asyncio
 from unittest import IsolatedAsyncioTestCase, mock
 from unittest.mock import AsyncMock
 
+import fakeredis
 import pytest
 import redis
 import redis.asyncio
 from fakeredis.aioredis import FakeRedis
-from redis.exceptions import WatchError
+from redis.exceptions import ConnectionError, WatchError
 
 from opentelemetry import trace
 from opentelemetry.instrumentation.redis import RedisInstrumentor
@@ -315,6 +316,46 @@ class TestRedis(TestBase):
             NetTransportValues.OTHER.value,
         )
 
+    def test_connection_error(self):
+        server = fakeredis.FakeServer()
+        server.connected = False
+        redis_client = fakeredis.FakeStrictRedis(server=server)
+        try:
+            redis_client.set("foo", "bar")
+        except ConnectionError:
+            pass
+
+        spans = self.memory_exporter.get_finished_spans()
+        self.assertEqual(len(spans), 1)
+        span = spans[0]
+
+        self.assertEqual(span.name, "SET")
+        self.assertEqual(span.kind, SpanKind.CLIENT)
+        self.assertEqual(span.status.status_code, trace.StatusCode.ERROR)
+
+    def test_response_error(self):
+        redis_client = fakeredis.FakeStrictRedis()
+        redis_client.lpush("mylist", "value")
+        try:
+            redis_client.incr(
+                "mylist"
+            )  # Trying to increment a list, which is invalid
+        except redis.ResponseError:
+            pass
+
+        spans = self.memory_exporter.get_finished_spans()
+        self.assertEqual(len(spans), 2)
+
+        span = spans[0]
+        self.assertEqual(span.name, "LPUSH")
+        self.assertEqual(span.kind, SpanKind.CLIENT)
+        self.assertEqual(span.status.status_code, trace.StatusCode.UNSET)
+
+        span = spans[1]
+        self.assertEqual(span.name, "INCRBY")
+        self.assertEqual(span.kind, SpanKind.CLIENT)
+        self.assertEqual(span.status.status_code, trace.StatusCode.ERROR)
+
 
 class TestRedisAsync(TestBase, IsolatedAsyncioTestCase):
     def setUp(self):
@@ -326,7 +367,7 @@ class TestRedisAsync(TestBase, IsolatedAsyncioTestCase):
         RedisInstrumentor().uninstrument()
 
     @pytest.mark.asyncio
-    async def test_redis_operations(self):
+    async def test_watch_error(self):
         async def redis_operations():
             try:
                 redis_client = FakeRedis()
@@ -347,6 +388,10 @@ class TestRedisAsync(TestBase, IsolatedAsyncioTestCase):
         self.assertEqual(len(spans), 3)
 
         self.assertEqual(spans[0].attributes.get("db.statement"), "WATCH ?")
-        self.assertEqual(spans[1].attributes.get("db.statement"), "SET ? ?")
-        self.assertEqual(spans[2].attributes.get("db.statement"), "SET ? ?")
-        self.assertEqual(spans[2].status.status_code, trace.StatusCode.UNSET)
+        self.assertEqual(spans[0].kind, SpanKind.CLIENT)
+        self.assertEqual(spans[0].status.status_code, trace.StatusCode.UNSET)
+
+        for span in spans[1:]:
+            self.assertEqual(span.attributes.get("db.statement"), "SET ? ?")
+            self.assertEqual(span.kind, SpanKind.CLIENT)
+            self.assertEqual(span.status.status_code, trace.StatusCode.UNSET)
