@@ -20,7 +20,8 @@ import pytest
 import redis
 import redis.asyncio
 from fakeredis.aioredis import FakeRedis
-from redis.exceptions import ConnectionError, WatchError
+from redis.exceptions import ConnectionError as redis_ConnectionError
+from redis.exceptions import WatchError
 
 from opentelemetry import trace
 from opentelemetry.instrumentation.redis import RedisInstrumentor
@@ -322,7 +323,7 @@ class TestRedis(TestBase):
         redis_client = fakeredis.FakeStrictRedis(server=server)
         try:
             redis_client.set("foo", "bar")
-        except ConnectionError:
+        except redis_ConnectionError:
             pass
 
         spans = self.memory_exporter.get_finished_spans()
