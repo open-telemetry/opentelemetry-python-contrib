@@ -1,6 +1,6 @@
 anyio==3.7.1
 asgiref==3.7.2
-certifi==2024.2.2
+certifi==2024.7.4
 Deprecated==1.2.14
 exceptiongroup==1.2.0
 h11==0.12.0

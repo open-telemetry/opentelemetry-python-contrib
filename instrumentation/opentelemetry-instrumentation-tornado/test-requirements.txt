@@ -1,6 +1,6 @@
 asgiref==3.7.2
 blinker==1.7.0
-certifi==2024.2.2
+certifi==2024.7.4
 charset-normalizer==3.3.2
 click==8.1.7
 Deprecated==1.2.14
