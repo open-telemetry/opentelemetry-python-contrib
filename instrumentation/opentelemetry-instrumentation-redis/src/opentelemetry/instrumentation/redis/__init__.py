@@ -291,7 +291,7 @@ def _instrument(
 
             response = None
             try:
-                response = func(*args, **kwargs)
+                response = await func(*args, **kwargs)
             except redis.WatchError:
                 span.set_status(StatusCode.UNSET)
 

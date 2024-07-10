@@ -357,6 +357,36 @@ class TestRedis(TestBase):
         self.assertEqual(span.kind, SpanKind.CLIENT)
         self.assertEqual(span.status.status_code, trace.StatusCode.ERROR)
 
+    def test_watch_error_sync(self):
+        def redis_operations():
+            try:
+                redis_client = fakeredis.FakeStrictRedis()
+                pipe = redis_client.pipeline(transaction=True)
+                pipe.watch("a")
+                redis_client.set("a", "bad")  # This will cause the WatchError
+                pipe.multi()
+                pipe.set("a", "1")
+                pipe.execute()
+            except WatchError:
+                pass
+
+        redis_operations()
+
+        spans = self.memory_exporter.get_finished_spans()
+        self.assertEqual(len(spans), 3)
+
+        # there should be 3 tests, we start watch operation and have 2 set operation on same key
+        self.assertEqual(len(spans), 3)
+
+        self.assertEqual(spans[0].attributes.get("db.statement"), "WATCH ?")
+        self.assertEqual(spans[0].kind, SpanKind.CLIENT)
+        self.assertEqual(spans[0].status.status_code, trace.StatusCode.UNSET)
+
+        for span in spans[1:]:
+            self.assertEqual(span.attributes.get("db.statement"), "SET ? ?")
+            self.assertEqual(span.kind, SpanKind.CLIENT)
+            self.assertEqual(span.status.status_code, trace.StatusCode.UNSET)
+
 
 class TestRedisAsync(TestBase, IsolatedAsyncioTestCase):
     def setUp(self):
@@ -368,7 +398,7 @@ class TestRedisAsync(TestBase, IsolatedAsyncioTestCase):
         RedisInstrumentor().uninstrument()
 
     @pytest.mark.asyncio
-    async def test_watch_error(self):
+    async def test_watch_error_async(self):
         async def redis_operations():
             try:
                 redis_client = FakeRedis()
