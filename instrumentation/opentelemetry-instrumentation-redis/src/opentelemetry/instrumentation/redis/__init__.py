@@ -218,9 +218,9 @@ def _instrument(
                 response = func(*args, **kwargs)
             except redis.WatchError:
                 span.set_status(StatusCode.UNSET)
-            finally:
-                if callable(response_hook):
-                    response_hook(span, instance, response)
+
+            if callable(response_hook):
+                response_hook(span, instance, response)
 
             return response
 
@@ -294,9 +294,9 @@ def _instrument(
                 response = func(*args, **kwargs)
             except redis.WatchError:
                 span.set_status(StatusCode.UNSET)
-            finally:
-                if callable(response_hook):
-                    response_hook(span, instance, response)
+
+            if callable(response_hook):
+                response_hook(span, instance, response)
             return response
 
     if redis.VERSION >= _REDIS_ASYNCIO_VERSION:

@@ -342,4 +342,11 @@ class TestRedisAsync(TestBase, IsolatedAsyncioTestCase):
         await redis_operations()
 
         spans = self.memory_exporter.get_finished_spans()
-        assert spans[-1].status.status_code == trace.StatusCode.UNSET
+
+        # there should be 3 tests, we start watch operation and have 2 set operation on same key
+        self.assertEqual(len(spans), 3)
+
+        self.assertEqual(spans[0].attributes.get("db.statement"), "WATCH ?")
+        self.assertEqual(spans[1].attributes.get("db.statement"), "SET ? ?")
+        self.assertEqual(spans[2].attributes.get("db.statement"), "SET ? ?")
+        self.assertEqual(spans[2].status.status_code, trace.StatusCode.UNSET)
