@@ -605,30 +605,37 @@ class TestFastAPIManualInstrumentation(TestBaseManualFastAPI):
                     self.assertEqual(point.count, 1)
                     self.assertAlmostEqual(duration, point.sum, delta=40)
                     if metric.name == "http.server.request.duration":
+                        self.assertAlmostEqual(duration_s, point.sum, places=1)
                         self.assertDictEqual(
                             expected_duration_attributes_new,
                             dict(point.attributes),
                         )
                     elif metric.name == "http.server.response.body.size":
+                        self.assertEqual(25, point.sum)
                         self.assertDictEqual(
                             expected_duration_attributes_new,
                             dict(point.attributes),
                         )
                     elif metric.name == "http.server.request.body.size":
+                        self.assertEqual(25, point.sum)
                         self.assertDictEqual(
                             expected_duration_attributes_new,
                             dict(point.attributes),
                         )
                     elif metric.name == "http.server.duration":
+                        self.assertAlmostEqual(duration, point.sum, delta=40)
                         self.assertDictEqual(
                             expected_duration_attributes_old,
                             dict(point.attributes),
                         )
                     elif metric.name == "http.server.response.size":
+                        self.assertEqual(25, point.sum)
                         self.assertDictEqual(
                             expected_duration_attributes_old,
                             dict(point.attributes),
                         )
+                    elif metric.name == "http.server.request.size":
+                        self.assertEqual(25, point.sum)
                         self.assertDictEqual(
                             expected_duration_attributes_old,
                             dict(point.attributes),
