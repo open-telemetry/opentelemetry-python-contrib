@@ -152,7 +152,8 @@ class TestCustomHeaders(AsgiTestBase, TestBase):
         span_list = self.exporter.get_finished_spans()
         expected = {
             "http.request.header.custom_test_header_1": (
-                "test-header-value-1,test-header-value-2",
+                "test-header-value-1",
+                "test-header-value-2",
             ),
         }
         span = next(span for span in span_list if span.kind == SpanKind.SERVER)
@@ -225,7 +226,8 @@ class TestCustomHeaders(AsgiTestBase, TestBase):
         span_list = self.exporter.get_finished_spans()
         expected = {
             "http.response.header.custom_test_header_1": (
-                "test-header-value-1,test-header-value-2",
+                "test-header-value-1",
+                "test-header-value-2",
             ),
         }
         span = next(span for span in span_list if span.kind == SpanKind.SERVER)

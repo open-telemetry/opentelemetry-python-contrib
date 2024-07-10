@@ -12,7 +12,9 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from opentelemetry.sdk.extension.aws.trace import AwsXRayIdGenerator
+from opentelemetry.sdk.extension.aws.trace import (  # pylint: disable=no-name-in-module
+    AwsXRayIdGenerator,
+)
 
 id_generator = AwsXRayIdGenerator()
 

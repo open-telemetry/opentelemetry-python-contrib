@@ -9,13 +9,32 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- `opentelemetry-instrumentation-pyramid` Record exceptions raised when serving a request
+  ([#2622](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/2622))
 - `opentelemetry-sdk-extension-aws` Add AwsXrayLambdaPropagator
   ([#2573](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/2573))
+- `opentelemetry-instrumentation-confluent-kafka` Add support for version 2.4.0 of confluent_kafka
+  ([#2616](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/2616))
+- `opentelemetry-instrumentation-asyncpg` Add instrumentation to cursor based queries
+  ([#2501](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/2501))
+- `opentelemetry-instrumentation-confluent-kafka` Add support for produce purge
+  ([#2638](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/2638))
+- `opentelemetry-instrumentation-asgi` Implement new semantic convention opt-in with stable http semantic conventions
+  ([#2610](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/2610))
+- `opentelemetry-instrumentation-httpx` Implement new semantic convention opt-in migration with stable http semantic conventions
+  ([#2631](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/2631))
+- `opentelemetry-instrumentation-system-metrics` Permit to use psutil 6.0+.
+  ([#2630](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/2630))
+- `opentelemetry-instrumentation-system-metrics` Add support for capture open file descriptors
+  ([#2652](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/2652))
 
 ### Breaking changes
 
 - `opentelemetry-instrumentation-asgi`, `opentelemetry-instrumentation-fastapi`, `opentelemetry-instrumentation-starlette` Use `tracer` and `meter` of originating components instead of one from `asgi` middleware
   ([#2580](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/2580))
+- Populate `{method}` as `HTTP` on `_OTHER` methods from scope
+  ([#2610](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/2610))
+
 
 ### Fixed
 
@@ -27,8 +46,24 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   ([#2590](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/2590))
 - Reference symbols from generated semantic conventions
   ([#2611](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/2611))
+- `opentelemetry-instrumentation-psycopg` Bugfix: Handle empty statement.
+  ([#2644](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/2644))
+- `opentelemetry-instrumentation-confluent-kafka` Confluent Kafka: Ensure consume span is ended when consumer is closed
+  ([#2640](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/2640))
+- `opentelemetry-instrumentation-asgi` Fix generation of `http.target` and `http.url` attributes for ASGI apps
+  using sub apps
+  ([#2477](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/2477))
+- `opentelemetry-instrumentation-aws-lambda` Bugfix: AWS Lambda event source key incorrect for SNS in instrumentation library. 
+  ([#2612](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/2612))
+- `opentelemetry-instrumentation-asyncio` instrumented `asyncio.wait_for` properly raises `asyncio.TimeoutError` as expected
+  ([#2637](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/2637))
+- `opentelemetry-instrumentation-django` Handle exceptions from request/response hooks
+  ([#2153](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/2153))
+- `opentelemetry-instrumentation-asgi` Removed `NET_HOST_NAME` AND `NET_HOST_PORT` from active requests count attribute
+  ([#2610](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/2610))
 - `opentelemetry-instrumentation-tornado` Handle http client exception and record exception info into span
   ([#2563](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/2563))
+
 
 ## Version 1.25.0/0.46b0 (2024-05-31)
 
@@ -39,13 +74,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   ([#2300](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/2300))
 - Rename AwsLambdaInstrumentor span attributes `faas.id` to `cloud.resource_id`, `faas.execution` to `faas.invocation_id`
   ([#2372](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/2372))
-- Drop support for instrumenting elasticsearch client < 6`
+- Drop support for instrumenting elasticsearch client < 6
   ([#2422](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/2422))
 - `opentelemetry-instrumentation-wsgi` Add `http.method` to `span.name`
   ([#2425](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/2425))
 - `opentelemetry-instrumentation-flask` Add `http.method` to `span.name`
   ([#2454](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/2454))
-- ASGI, FastAPI, Starlette: provide both send and receive hooks with `scope` and `message` for internal spans ([#2546](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/2546))
+- Record repeated HTTP headers in lists, rather than a comma separate strings for ASGI based web frameworks
+  ([#2361](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/2361))
+- ASGI, FastAPI, Starlette: provide both send and receive hooks with `scope` and `message` for internal spans
+- ([#2546](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/2546))
 
 ### Added
 
@@ -133,7 +171,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   ([#2136](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/2136))
 - `opentelemetry-resource-detector-azure` Suppress instrumentation for `urllib` call
   ([#2178](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/2178))
-- AwsLambdaInstrumentor handles and re-raises function exception ([#2245](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/2245))
+- AwsLambdaInstrumentor handles and re-raises function exception
+  ([#2245](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/2245))
 
 ### Added
 
