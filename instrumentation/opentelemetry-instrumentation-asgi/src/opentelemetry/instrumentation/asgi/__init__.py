@@ -886,7 +886,7 @@ class OpenTelemetryMiddleware:
                         context=set_span_in_context(
                             server_span, trace.context_api.Context()
                         ),
-                        setter=setter,
+                        setter=asgi_setter,
                     )
 
                 content_length = asgi_getter.get(message, "content-length")
