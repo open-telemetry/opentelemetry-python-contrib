@@ -6,16 +6,9 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## Unreleased
-- `opentelemetry-instrumentation-django` Handle exceptions from request/response hooks
-  ([#2153](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/2153))
-- `opentelemetry-instrumentation-asyncio` instrumented `asyncio.wait_for` properly raises `asyncio.TimeoutError` as expected
-  ([#2637](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/2637))
-- `opentelemetry-instrumentation-aws-lambda` Bugfix: AWS Lambda event source key incorrect for SNS in instrumentation library. 
-  ([#2612](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/2612))
-- `opentelemetry-instrumentation-system-metrics` Permit to use psutil 6.0+.
-  ([#2630](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/2630))
 
 ### Added
+
 - `opentelemetry-instrumentation-flask` Add `http.route` to metric attributes
   ([#2621](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/2621))
 - `opentelemetry-instrumentation-pyramid` Record exceptions raised when serving a request
