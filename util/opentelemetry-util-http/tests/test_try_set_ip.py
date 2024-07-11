@@ -59,10 +59,11 @@ class TestTrySetIP(unittest.TestCase):
     def test_exception_during_ip_retrieval(self):
         self.conn.sock.getpeername.side_effect = Exception("Test Exception")
 
-        success = trysetip(self.conn, loglevel=logging.DEBUG)
-
-        self.assertIn('Failed to get peer address', self.stream.getvalue())
-        self.assertTrue(success)
+        with self.assertLogs(level=logging.WARNING) as warning:
+            success = trysetip(self.conn, loglevel=logging.WARNING)
+            self.assertEqual(len(warning.records), 1)
+            self.assertIn('Failed to get peer address', warning.records[0].message)
+            self.assertTrue(success)
 
     def tearDown(self):
         self.mock_getstate.stop()
