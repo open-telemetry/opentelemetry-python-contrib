@@ -355,17 +355,16 @@ def _set_status(
     sem_conv_opt_in_mode,
 ):
     if status_code < 0:
+        metrics_attributes[ERROR_TYPE] = status_code_str
+        if span.is_recording():
         if _report_new(sem_conv_opt_in_mode):
-            if span.is_recording():
-                span.set_attribute(ERROR_TYPE, status_code_str)
-            metrics_attributes[ERROR_TYPE] = status_code_str
-
-        span.set_status(
-            Status(
-                StatusCode.ERROR,
-                "Non-integer HTTP status: " + status_code_str,
+            span.set_attribute(ERROR_TYPE, status_code_str)
+            span.set_status(
+                Status(
+                    StatusCode.ERROR,
+                    "Non-integer HTTP status: " + status_code_str,
+                )
             )
-        )
     else:
         status = http_status_to_status_code(status_code, server_span=True)
 
@@ -381,7 +380,8 @@ def _set_status(
                 if span.is_recording():
                     span.set_attribute(ERROR_TYPE, status_code_str)
                 metrics_attributes[ERROR_TYPE] = status_code_str
-        span.set_status(Status(status))
+        if span.is_recording():
+            span.set_status(Status(status))
 
 
 # Get schema version based off of opt-in mode
