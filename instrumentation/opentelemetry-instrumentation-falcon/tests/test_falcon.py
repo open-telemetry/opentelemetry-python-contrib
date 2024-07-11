@@ -345,8 +345,6 @@ class TestFalconInstrumentation(TestFalconBase, WsgiTestBase):
             "http.scheme": "http",
             "http.flavor": "1.1",
             "http.server_name": "falconframework.org",
-            "net.host.name": "falconframework.org",
-            "net.host.port": 80,
         }
         start = default_timer()
         self.client().simulate_get("/hello/756")
