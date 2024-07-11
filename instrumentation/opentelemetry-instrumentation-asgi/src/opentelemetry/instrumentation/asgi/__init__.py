@@ -431,19 +431,6 @@ def get_host_port_url_tuple(scope):
     return server_host, port, http_url
 
 
-def maybe_inject_context(message, server_span, setter):
-    """Inject the context if there's a global propagator."""
-    propagator = get_global_response_propagator()
-    if propagator:
-        propagator.inject(
-            message,
-            context=set_span_in_context(
-                server_span, trace.context_api.Context()
-            ),
-            setter=setter,
-        )
-
-
 def set_status_code(
     span,
     status_code,
@@ -451,8 +438,6 @@ def set_status_code(
     sem_conv_opt_in_mode=_HTTPStabilityMode.DEFAULT,
 ):
     """Adds HTTP response attributes to span using the status_code argument."""
-    if not span.is_recording():
-        return
     status_code_str = str(status_code)
 
     try:
@@ -893,12 +878,16 @@ class OpenTelemetryMiddleware:
                         None,
                         self._sem_conv_opt_in_mode,
                     )
-                        
-                maybe_inject_context(
-                    message,
-                    server_span=server_span,
-                    setter=asgi_setter,
-                )
+
+                propagator = get_global_response_propagator()
+                if propagator:
+                    propagator.inject(
+                        message,
+                        context=set_span_in_context(
+                            server_span, trace.context_api.Context()
+                        ),
+                        setter=setter,
+                    )
 
                 content_length = asgi_getter.get(message, "content-length")
                 if content_length:
