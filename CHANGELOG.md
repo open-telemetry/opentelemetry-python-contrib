@@ -28,6 +28,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   ([#2501](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/2501))
 - `opentelemetry-instrumentation-confluent-kafka` Add support for produce purge
   ([#2638](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/2638))
+- `opentelemetry-instrumentation-asgi` Implement new semantic convention opt-in with stable http semantic conventions
+  ([#2610](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/2610))
 - `opentelemetry-instrumentation-httpx` Implement new semantic convention opt-in migration with stable http semantic conventions
   ([#2631](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/2631))
 - `opentelemetry-instrumentation-system-metrics` Permit to use psutil 6.0+.
@@ -42,10 +44,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Populate `{method}` as `HTTP` on `_OTHER` methods from scope
   ([#2610](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/2610))
 
-### Added
-
-- `opentelemetry-instrumentation-asgi` Implement new semantic convention opt-in with stable http semantic conventions
-  ([#2610](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/2610))
 
 ### Fixed
 

@@ -96,9 +96,7 @@ for more detail on available tox commands.
 
 ### Benchmarks
 
-Performance progression of benchmarks for packages distributed by OpenTelemetry Python can be viewed as a [graph of throughput vs commit history](https://opentelemetry-python-contrib.readthedocs.io/en/latest/performance/benchmarks.html). From the linked page, you can download a JSON file with the performance results.
-
-Running the `tox` tests also runs the performance tests if any are available. Benchmarking tests are done with `pytest-benchmark` and they output a table with results to the console.
+Some packages have benchmark tests. To run them, run `tox -f benchmark`. Benchmark tests use `pytest-benchmark` and they output a table with results to the console.
 
 To write benchmarks, simply use the [pytest benchmark fixture](https://pytest-benchmark.readthedocs.io/en/latest/usage.html#usage) like the following:
 
@@ -114,10 +112,10 @@ def test_simple_start_span(benchmark):
     benchmark(benchmark_start_as_current_span, "benchmarkedSpan", 42)
 ```
 
-Make sure the test file is under the `tests/performance/benchmarks/` folder of
+Make sure the test file is under the `benchmarks/` folder of
 the package it is benchmarking and further has a path that corresponds to the
 file in the package it is testing. Make sure that the file name begins with
-`test_benchmark_`. (e.g. `propagator/opentelemetry-propagator-aws-xray/tests/performance/benchmarks/trace/propagation/test_benchmark_aws_xray_propagator.py`)
+`test_benchmark_`. (e.g. `propagator/opentelemetry-propagator-aws-xray/benchmarks/trace/propagation/test_benchmark_aws_xray_propagator.py`)
 
 ## Pull Requests
 
@@ -271,6 +269,9 @@ Below is a checklist of things to be mindful of when implementing a new instrume
   - ex. <https://github.com/open-telemetry/opentelemetry-python-contrib/blob/2518a4ac07cb62ad6587dd8f6cbb5f8663a7e179/instrumentation/opentelemetry-instrumentation-requests/src/opentelemetry/instrumentation/requests/__init__.py#L234>
 - Appropriate error handling
   - ex. <https://github.com/open-telemetry/opentelemetry-python-contrib/blob/2518a4ac07cb62ad6587dd8f6cbb5f8663a7e179/instrumentation/opentelemetry-instrumentation-requests/src/opentelemetry/instrumentation/requests/__init__.py#L220>
+- Isolate sync and async test
+  - For synchronous tests, the typical test case class is inherited from `opentelemetry.test.test_base.TestBase`. However, if you want to write asynchronous tests, the test case class should inherit also from `IsolatedAsyncioTestCase`. Adding asynchronous tests to a common test class can lead to tests passing without actually running, which can be misleading.
+  - ex. <https://github.com/open-telemetry/opentelemetry-python-contrib/blob/60fb936b7e5371b3e5587074906c49fb873cbd76/instrumentation/opentelemetry-instrumentation-grpc/tests/test_aio_server_interceptor.py#L84>
 
 ## Expectations from contributors
 
