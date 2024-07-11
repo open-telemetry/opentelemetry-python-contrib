@@ -270,7 +270,7 @@ Below is a checklist of things to be mindful of when implementing a new instrume
 - Appropriate error handling
   - ex. <https://github.com/open-telemetry/opentelemetry-python-contrib/blob/2518a4ac07cb62ad6587dd8f6cbb5f8663a7e179/instrumentation/opentelemetry-instrumentation-requests/src/opentelemetry/instrumentation/requests/__init__.py#L220>
 - Isolate sync and async test
-  - For synchronous tests, the typical test class structure is `class TestXxxxXxxx(TestBase)`. However, if you want to write asynchronous tests, you should create a new class that inherits from `IsolatedAsyncioTestCase` instead. Adding asynchronous tests to a common test class can lead to tests passing without actually running, which can be misleading.
+  - For synchronous tests, the typical test case class is inherited from `opentelemetry.test.test_base.TestBase`. However, if you want to write asynchronous tests, the test case class should inherit also from `IsolatedAsyncioTestCase`. Adding asynchronous tests to a common test class can lead to tests passing without actually running, which can be misleading.
   - ex. <https://github.com/open-telemetry/opentelemetry-python-contrib/blob/60fb936b7e5371b3e5587074906c49fb873cbd76/instrumentation/opentelemetry-instrumentation-grpc/tests/test_aio_server_interceptor.py#L84>
 
 ## Expectations from contributors
