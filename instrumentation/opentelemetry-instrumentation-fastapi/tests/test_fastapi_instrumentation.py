@@ -311,6 +311,7 @@ class TestBaseAutoFastAPI(TestBaseFastAPI):
         )
 
 
+# pylint: disable=too-many-public-methods
 class TestFastAPIManualInstrumentation(TestBaseManualFastAPI):
     def test_instrument_app_with_instrument(self):
         if not isinstance(self, TestAutoInstrumentation):
