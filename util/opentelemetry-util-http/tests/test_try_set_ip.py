@@ -12,7 +12,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import io
 import logging
 import socket
 import unittest
@@ -35,13 +34,6 @@ class TestTrySetIP(unittest.TestCase):
             return_value=self.mock_state,
         )
         self.mock_getstate.start()
-
-        # Setup the logger to capture output
-        self.stream = io.StringIO()
-        self.handler = logging.StreamHandler(self.stream)
-        self.logger = logging.getLogger("opentelemetry.util.http.httplib")
-        self.logger.addHandler(self.handler)
-        self.logger.setLevel(logging.DEBUG)
 
     def test_ip_set_successfully(self):
         self.conn.sock.getpeername.return_value = ("192.168.1.1", 8080)
@@ -73,8 +65,3 @@ class TestTrySetIP(unittest.TestCase):
                 "Failed to get peer address", warning.records[0].message
             )
             self.assertTrue(success)
-
-    def tearDown(self):
-        self.mock_getstate.stop()
-        self.logger.removeHandler(self.handler)
-        self.handler.close()
