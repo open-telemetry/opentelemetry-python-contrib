@@ -14,6 +14,6 @@ threadpoolctl==3.3.0
 tomli==2.0.1
 typing_extensions==4.10.0
 wrapt==1.16.0
-zipp==3.17.0
+zipp==3.19.2
 -e opentelemetry-instrumentation
 -e instrumentation/opentelemetry-instrumentation-sklearn

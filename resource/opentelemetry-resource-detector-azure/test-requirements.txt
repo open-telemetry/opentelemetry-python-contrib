@@ -8,6 +8,6 @@ py-cpuinfo==9.0.0
 pytest==7.4.4
 typing_extensions==4.10.0
 wrapt==1.16.0
-zipp==3.17.0
+zipp==3.19.2
 -e opentelemetry-instrumentation
 -e resource/opentelemetry-resource-detector-azure
