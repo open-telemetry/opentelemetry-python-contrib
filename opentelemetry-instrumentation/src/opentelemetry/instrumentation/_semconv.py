@@ -356,7 +356,8 @@ def _set_status(
 ):
     if status_code < 0:
         if _report_new(sem_conv_opt_in_mode):
-            span.set_attribute(ERROR_TYPE, status_code_str)
+            if span.is_recording():
+                span.set_attribute(ERROR_TYPE, status_code_str)
             metrics_attributes[ERROR_TYPE] = status_code_str
 
         span.set_status(
@@ -369,13 +370,16 @@ def _set_status(
         status = http_status_to_status_code(status_code, server_span=True)
 
         if _report_old(sem_conv_opt_in_mode):
-            span.set_attribute(SpanAttributes.HTTP_STATUS_CODE, status_code)
+            if span.is_recording():
+                span.set_attribute(SpanAttributes.HTTP_STATUS_CODE, status_code)
             metrics_attributes[SpanAttributes.HTTP_STATUS_CODE] = status_code
         if _report_new(sem_conv_opt_in_mode):
-            span.set_attribute(HTTP_RESPONSE_STATUS_CODE, status_code)
+            if span.is_recording():
+                span.set_attribute(HTTP_RESPONSE_STATUS_CODE, status_code)
             metrics_attributes[HTTP_RESPONSE_STATUS_CODE] = status_code
             if status == StatusCode.ERROR:
-                span.set_attribute(ERROR_TYPE, status_code_str)
+                if span.is_recording():
+                    span.set_attribute(ERROR_TYPE, status_code_str)
                 metrics_attributes[ERROR_TYPE] = status_code_str
         span.set_status(Status(status))
 
