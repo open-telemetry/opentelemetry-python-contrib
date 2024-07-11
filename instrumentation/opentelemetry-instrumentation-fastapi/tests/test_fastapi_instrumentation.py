@@ -650,6 +650,167 @@ class TestFastAPIManualInstrumentation(TestBaseManualFastAPI):
                     )
                     self.assertEqual(point.value, 0)
 
+    def test_basic_metric_nonstandard_http_method_success(self):
+        start = default_timer()
+        self._client.request("NONSTANDARD", "/foobar")
+        duration = max(round((default_timer() - start) * 1000), 0)
+        expected_duration_attributes = {
+            SpanAttributes.HTTP_METHOD: "_OTHER",
+            SpanAttributes.HTTP_HOST: "testserver:443",
+            SpanAttributes.HTTP_SCHEME: "https",
+            SpanAttributes.HTTP_FLAVOR: "1.1",
+            SpanAttributes.HTTP_SERVER_NAME: "testserver",
+            SpanAttributes.NET_HOST_PORT: 443,
+            SpanAttributes.HTTP_STATUS_CODE: 405,
+            SpanAttributes.HTTP_TARGET: "/foobar",
+        }
+        expected_requests_count_attributes = {
+            SpanAttributes.HTTP_METHOD: "_OTHER",
+            SpanAttributes.HTTP_HOST: "testserver:443",
+            SpanAttributes.HTTP_SCHEME: "https",
+            SpanAttributes.HTTP_FLAVOR: "1.1",
+            SpanAttributes.HTTP_SERVER_NAME: "testserver",
+        }
+        metrics_list = self.memory_metrics_reader.get_metrics_data()
+        for metric in (
+            metrics_list.resource_metrics[0].scope_metrics[0].metrics
+        ):
+            for point in list(metric.data.data_points):
+                if isinstance(point, HistogramDataPoint):
+                    self.assertDictEqual(
+                        expected_duration_attributes,
+                        dict(point.attributes),
+                    )
+                    self.assertEqual(point.count, 1)
+                    self.assertAlmostEqual(duration, point.sum, delta=40)
+                if isinstance(point, NumberDataPoint):
+                    self.assertDictEqual(
+                        expected_requests_count_attributes,
+                        dict(point.attributes),
+                    )
+                    self.assertEqual(point.value, 0)
+
+    def test_basic_metric_nonstandard_http_method_success_new_semconv(self):
+        start = default_timer()
+        self._client.request("NONSTANDARD", "/foobar")
+        duration_s = max(default_timer() - start, 0)
+        expected_duration_attributes = {
+            HTTP_REQUEST_METHOD: "_OTHER",
+            URL_SCHEME: "https",
+            NETWORK_PROTOCOL_VERSION: "1.1",
+            HTTP_RESPONSE_STATUS_CODE: 405,
+            HTTP_ROUTE: "/foobar",
+        }
+        expected_requests_count_attributes = {
+            HTTP_REQUEST_METHOD: "_OTHER",
+            URL_SCHEME: "https",
+        }
+        metrics_list = self.memory_metrics_reader.get_metrics_data()
+        for metric in (
+            metrics_list.resource_metrics[0].scope_metrics[0].metrics
+        ):
+            for point in list(metric.data.data_points):
+                if isinstance(point, HistogramDataPoint):
+                    self.assertDictEqual(
+                        expected_duration_attributes,
+                        dict(point.attributes),
+                    )
+                    self.assertEqual(point.count, 1)
+                    if metric.name == "http.server.request.duration":
+                        self.assertAlmostEqual(duration_s, point.sum, places=1)
+                    elif metric.name == "http.server.response.body.size":
+                        self.assertEqual(31, point.sum)
+                    elif metric.name == "http.server.request.body.size":
+                        self.assertEqual(25, point.sum)
+                if isinstance(point, NumberDataPoint):
+                    self.assertDictEqual(
+                        expected_requests_count_attributes,
+                        dict(point.attributes),
+                    )
+                    self.assertEqual(point.value, 0)
+
+    def test_basic_metric_nonstandard_http_method_success_both_semconv(self):
+        start = default_timer()
+        self._client.request("NONSTANDARD", "/foobar")
+        duration = max(round((default_timer() - start) * 1000), 0)
+        duration_s = max(default_timer() - start, 0)
+        expected_duration_attributes_old = {
+            SpanAttributes.HTTP_METHOD: "_OTHER",
+            SpanAttributes.HTTP_HOST: "testserver:443",
+            SpanAttributes.HTTP_SCHEME: "https",
+            SpanAttributes.HTTP_FLAVOR: "1.1",
+            SpanAttributes.HTTP_SERVER_NAME: "testserver",
+            SpanAttributes.NET_HOST_PORT: 443,
+            SpanAttributes.HTTP_STATUS_CODE: 405,
+            SpanAttributes.HTTP_TARGET: "/foobar",
+        }
+        expected_duration_attributes_new = {
+            HTTP_REQUEST_METHOD: "_OTHER",
+            URL_SCHEME: "https",
+            NETWORK_PROTOCOL_VERSION: "1.1",
+            HTTP_RESPONSE_STATUS_CODE: 405,
+            HTTP_ROUTE: "/foobar",
+        }
+        expected_requests_count_attributes = {
+            SpanAttributes.HTTP_METHOD: "_OTHER",
+            SpanAttributes.HTTP_HOST: "testserver:443",
+            SpanAttributes.HTTP_SCHEME: "https",
+            SpanAttributes.HTTP_FLAVOR: "1.1",
+            SpanAttributes.HTTP_SERVER_NAME: "testserver",
+            HTTP_REQUEST_METHOD: "_OTHER",
+            URL_SCHEME: "https",
+        }
+        metrics_list = self.memory_metrics_reader.get_metrics_data()
+        for metric in (
+            metrics_list.resource_metrics[0].scope_metrics[0].metrics
+        ):
+            for point in list(metric.data.data_points):
+                if isinstance(point, HistogramDataPoint):
+                    self.assertEqual(point.count, 1)
+                    self.assertAlmostEqual(duration, point.sum, delta=40)
+                    if metric.name == "http.server.request.duration":
+                        self.assertAlmostEqual(duration_s, point.sum, places=1)
+                        self.assertDictEqual(
+                            expected_duration_attributes_new,
+                            dict(point.attributes),
+                        )
+                    elif metric.name == "http.server.response.body.size":
+                        self.assertEqual(31, point.sum)
+                        self.assertDictEqual(
+                            expected_duration_attributes_new,
+                            dict(point.attributes),
+                        )
+                    elif metric.name == "http.server.request.body.size":
+                        self.assertEqual(25, point.sum)
+                        self.assertDictEqual(
+                            expected_duration_attributes_new,
+                            dict(point.attributes),
+                        )
+                    elif metric.name == "http.server.duration":
+                        self.assertAlmostEqual(duration, point.sum, delta=40)
+                        self.assertDictEqual(
+                            expected_duration_attributes_old,
+                            dict(point.attributes),
+                        )
+                    elif metric.name == "http.server.response.size":
+                        self.assertEqual(31, point.sum)
+                        self.assertDictEqual(
+                            expected_duration_attributes_old,
+                            dict(point.attributes),
+                        )
+                    elif metric.name == "http.server.request.size":
+                        self.assertEqual(25, point.sum)
+                        self.assertDictEqual(
+                            expected_duration_attributes_old,
+                            dict(point.attributes),
+                        )
+                if isinstance(point, NumberDataPoint):
+                    self.assertDictEqual(
+                        expected_requests_count_attributes,
+                        dict(point.attributes),
+                    )
+                    self.assertEqual(point.value, 0)
+
     def test_basic_post_request_metric_success(self):
         start = default_timer()
         response = self._client.post(
