@@ -18,7 +18,7 @@ venusian==3.1.0
 WebOb==1.8.7
 Werkzeug==3.0.3
 wrapt==1.16.0
-zipp==3.17.0
+zipp==3.19.2
 zope.deprecation==5.0
 zope.interface==6.2
 -e opentelemetry-instrumentation
