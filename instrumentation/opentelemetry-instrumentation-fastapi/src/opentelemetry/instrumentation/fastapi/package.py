@@ -16,3 +16,5 @@
 _instruments = ("fastapi ~= 0.58",)
 
 _supports_metrics = True
+
+_semconv_status = "migration"
