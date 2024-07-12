@@ -40,6 +40,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- `opentelemetry-instrumentation-fastapi` Add dependency support for fastapi-slim
+  ([#2702](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/2702))
 - `opentelemetry-instrumentation-httpx` Ensure httpx.get or httpx.request like methods are instrumented
   ([#2538](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/2538))
 - Add Python 3.12 support
