@@ -34,9 +34,13 @@ dependencies = [
 
 [project.optional-dependencies]
 instruments = [
-    "fastapi ~= 0.58.0",
+    "fastapi >= 0.58.0",
     "fastapi-slim ~= 0.111.0",
 ]
+
+[instruments-all]
+fastapi = ">= 0.58.0"
+fastapi-slim = "~ 0.111.0"
 
 [project.entry-points.opentelemetry_instrumentor]
 fastapi = "opentelemetry.instrumentation.fastapi:FastAPIInstrumentor"
