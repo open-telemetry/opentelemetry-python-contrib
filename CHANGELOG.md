@@ -29,6 +29,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   ([#2630](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/2630))
 - `opentelemetry-instrumentation-system-metrics` Add support for capture open file descriptors
   ([#2652](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/2652))
+- `opentelemetry-instrumentation-aio-pika` Bump aio-pika semantic convention schema version from 1.11.0 to 1.26.0
+  ([#2705](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/2705))
 
 ### Breaking changes
 
@@ -56,7 +58,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - `opentelemetry-instrumentation-asgi` Fix generation of `http.target` and `http.url` attributes for ASGI apps
   using sub apps
   ([#2477](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/2477))
-- `opentelemetry-instrumentation-aws-lambda` Bugfix: AWS Lambda event source key incorrect for SNS in instrumentation library. 
+- `opentelemetry-instrumentation-aws-lambda` Bugfix: AWS Lambda event source key incorrect for SNS in instrumentation library.
   ([#2612](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/2612))
 - `opentelemetry-instrumentation-asyncio` instrumented `asyncio.wait_for` properly raises `asyncio.TimeoutError` as expected
   ([#2637](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/2637))
@@ -64,7 +66,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   ([#2153](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/2153))
 - `opentelemetry-instrumentation-asgi` Removed `NET_HOST_NAME` AND `NET_HOST_PORT` from active requests count attribute
   ([#2610](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/2610))
-- `opentelemetry-instrumentation-asgi` Bugfix: Middleware did not set status code attribute on duration metrics for non-recording spans. 
+- `opentelemetry-instrumentation-asgi` Bugfix: Middleware did not set status code attribute on duration metrics for non-recording spans.
   ([#2627](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/2627))
 
 
