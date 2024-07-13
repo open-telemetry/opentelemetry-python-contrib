@@ -649,15 +649,21 @@ class _InstrumentedClient(httpx.Client):
             request_hook=_InstrumentedClient._request_hook,
             response_hook=_InstrumentedClient._response_hook,
         )
-        if self._mounts:
-            for url_pattern, transport in self._mounts.items():
-                if transport is not None:
-                    self._mounts[url_pattern] = SyncOpenTelemetryTransport(
+        self._mounts.update(
+            {
+                url_pattern: (
+                    SyncOpenTelemetryTransport(
                         transport,
                         tracer_provider=_InstrumentedClient._tracer_provider,
                         request_hook=_InstrumentedClient._request_hook,
                         response_hook=_InstrumentedClient._response_hook,
                     )
+                    if transport is not None
+                    else transport
+                )
+                for url_pattern, transport in self._original_mounts.items()
+            }
+        )
 
 
 class _InstrumentedAsyncClient(httpx.AsyncClient):
@@ -679,15 +685,21 @@ class _InstrumentedAsyncClient(httpx.AsyncClient):
             response_hook=_InstrumentedAsyncClient._response_hook,
         )
 
-        if self._mounts:
-            for url_pattern, transport in self._mounts.items():
-                if transport is not None:
-                    self._mounts[url_pattern] = AsyncOpenTelemetryTransport(
+        self._mounts.update(
+            {
+                url_pattern: (
+                    AsyncOpenTelemetryTransport(
                         transport,
                         tracer_provider=_InstrumentedAsyncClient._tracer_provider,
                         request_hook=_InstrumentedAsyncClient._request_hook,
                         response_hook=_InstrumentedAsyncClient._response_hook,
                     )
+                    if transport is not None
+                    else transport
+                )
+                for url_pattern, transport in self._original_mounts.items()
+            }
+        )
 
 
 class HTTPXClientInstrumentor(BaseInstrumentor):
@@ -782,17 +794,21 @@ class HTTPXClientInstrumentor(BaseInstrumentor):
                     response_hook=response_hook,
                 )
                 client._is_instrumented_by_opentelemetry = True
-                if client._mounts:
-                    for url_pattern, transport in client._mounts.items():
-                        if transport is not None:
-                            client._mounts[url_pattern] = (
-                                SyncOpenTelemetryTransport(
-                                    transport,
-                                    tracer_provider=tracer_provider,
-                                    request_hook=request_hook,
-                                    response_hook=response_hook,
-                                )
+                client._mounts.update(
+                    {
+                        url_pattern: (
+                            SyncOpenTelemetryTransport(
+                                transport,
+                                tracer_provider=tracer_provider,
+                                request_hook=request_hook,
+                                response_hook=response_hook,
                             )
+                            if transport is not None
+                            else transport
+                        )
+                        for url_pattern, transport in client._original_mounts.items()
+                    }
+                )
 
             if isinstance(client, httpx.AsyncClient):
                 transport = client._transport or httpx.AsyncHTTPTransport()
@@ -804,17 +820,21 @@ class HTTPXClientInstrumentor(BaseInstrumentor):
                     response_hook=response_hook,
                 )
                 client._is_instrumented_by_opentelemetry = True
-                if client._mounts:
-                    for url_pattern, transport in client._mounts.items():
-                        if transport is not None:
-                            client._mounts[url_pattern] = (
-                                AsyncOpenTelemetryTransport(
-                                    transport,
-                                    tracer_provider=tracer_provider,
-                                    request_hook=request_hook,
-                                    response_hook=response_hook,
-                                )
+                client._mounts.update(
+                    {
+                        url_pattern: (
+                            AsyncOpenTelemetryTransport(
+                                transport,
+                                tracer_provider=tracer_provider,
+                                request_hook=request_hook,
+                                response_hook=response_hook,
                             )
+                            if transport is not None
+                            else transport
+                        )
+                        for url_pattern, transport in client._original_mounts.items()
+                    }
+                )
         else:
             _logger.warning(
                 "Attempting to instrument Httpx client while already instrumented"
@@ -833,6 +853,7 @@ class HTTPXClientInstrumentor(BaseInstrumentor):
             client._transport = client._original_transport
             del client._original_transport
             client._is_instrumented_by_opentelemetry = False
+        if hasattr(client, "_original_mounts"):
             client._mounts = client._original_mounts.copy()
             del client._original_mounts
         else:
