@@ -16,14 +16,13 @@ from typing import Optional
 from aio_pika.abc import AbstractChannel, AbstractMessage
 
 from opentelemetry.instrumentation.utils import is_instrumentation_enabled
-
-from opentelemetry.semconv.trace import (
-    MessagingOperationValues,
+from opentelemetry.semconv._incubating.attributes import (
+    messaging_attributes as SpanAttributes,
 )
-# opentelemetry-semantic-conventions/src/opentelemetry/semconv/_incubating/attributes/messaging_attributes.py
-from opentelemetry.semconv._incubating.attributes import messaging_attributes as SpanAttributes
-from opentelemetry.semconv._incubating.attributes import net_attributes as NetAttributes
-
+from opentelemetry.semconv._incubating.attributes import (
+    net_attributes as NetAttributes,
+)
+from opentelemetry.semconv.trace import MessagingOperationValues
 from opentelemetry.trace import Span, SpanKind, Tracer
 
 _DEFAULT_ATTRIBUTES = {SpanAttributes.MESSAGING_SYSTEM: "rabbitmq"}
@@ -48,7 +47,9 @@ class SpanBuilder:
 
     def set_destination(self, destination: str):
         self._destination = destination
-        self._attributes[SpanAttributes.MESSAGING_DESTINATION_NAME] = destination
+        self._attributes[SpanAttributes.MESSAGING_DESTINATION_NAME] = (
+            destination
+        )
 
     def set_channel(self, channel: AbstractChannel):
         if hasattr(channel, "_connection"):
@@ -73,9 +74,9 @@ class SpanBuilder:
     def set_message(self, message: AbstractMessage):
         properties = message.properties
         if properties.message_id:
-            self._attributes[
-                SpanAttributes.MESSAGING_MESSAGE_ID
-            ] = properties.message_id
+            self._attributes[SpanAttributes.MESSAGING_MESSAGE_ID] = (
+                properties.message_id
+            )
         if properties.correlation_id:
             self._attributes[
                 SpanAttributes.MESSAGING_MESSAGE_CONVERSATION_ID
@@ -85,11 +86,17 @@ class SpanBuilder:
         if not is_instrumentation_enabled():
             return None
         if self._operation:
-            self._attributes[SpanAttributes.MESSAGING_OPERATION_TYPE] = self._operation.value
+            self._attributes[SpanAttributes.MESSAGING_OPERATION_TYPE] = (
+                self._operation.value
+            )
         else:
-            self._attributes[SpanAttributes.MESSAGING_DESTINATION_TEMPORARY] = True
+            self._attributes[
+                SpanAttributes.MESSAGING_DESTINATION_TEMPORARY
+            ] = True
         span = self._tracer.start_span(
-            self._generate_span_name(), kind=self._kind, attributes=self._attributes
+            self._generate_span_name(),
+            kind=self._kind,
+            attributes=self._attributes,
         )
         return span
 
