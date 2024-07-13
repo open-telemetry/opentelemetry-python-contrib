@@ -23,6 +23,7 @@ from opentelemetry.instrumentation._semconv import (
     OTEL_SEMCONV_STABILITY_OPT_IN,
     _OpenTelemetrySemanticConventionStability,
     _server_active_requests_count_attrs_new,
+    _server_duration_attrs_new_with_server_attributes,
     _server_active_requests_count_attrs_old,
     _server_duration_attrs_new,
     _server_duration_attrs_old,
@@ -99,7 +100,7 @@ _recommended_metrics_attrs_old = {
 }
 _recommended_metrics_attrs_new = {
     "http.server.active_requests": _server_active_requests_count_attrs_new,
-    "http.server.request.duration": _server_duration_attrs_new,
+    "http.server.request.duration": _server_duration_attrs_new_with_server_attributes,
 }
 _server_active_requests_count_attrs_both = (
     _server_active_requests_count_attrs_old
@@ -132,6 +133,7 @@ class TestProgrammatic(InstrumentationTest, WsgiTestBase):
             "os.environ",
             {
                 "OTEL_PYTHON_FLASK_EXCLUDED_URLS": "http://localhost/env_excluded_arg/123,env_excluded_noarg",
+                "OTEL_PYTHON_ENABLE_SERVER_ATTRIBUTES_FOR_REQUEST_DURATION": "true",
                 OTEL_SEMCONV_STABILITY_OPT_IN: sem_conv_mode,
             },
         )
@@ -519,6 +521,9 @@ class TestProgrammatic(InstrumentationTest, WsgiTestBase):
                             histogram_data_point_seen = True
                         if isinstance(point, NumberDataPoint):
                             number_data_point_seen = True
+                        for attr in _recommended_metrics_attrs_new[metric.name]:
+                            if attr != _SPAN_ATTRIBUTES_ERROR_TYPE:
+                                self.assertIn(attr, point.attributes)
                         for attr in point.attributes:
                             self.assertIn(
                                 attr,
@@ -594,9 +599,12 @@ class TestProgrammatic(InstrumentationTest, WsgiTestBase):
         self.client.get("/hello/756")
         expected_duration_attributes = {
             "http.request.method": "GET",
+            "http.route": "/hello/<int:helloid>",
             "url.scheme": "http",
             "network.protocol.version": "1.1",
             "http.response.status_code": 200,
+            "server.address": "localhost",
+            "server.port": 80,
         }
         expected_requests_count_attributes = {
             "http.request.method": "GET",
@@ -638,6 +646,8 @@ class TestProgrammatic(InstrumentationTest, WsgiTestBase):
             "url.scheme": "http",
             "network.protocol.version": "1.1",
             "http.response.status_code": 405,
+            "server.address": "localhost",
+            "server.port": 80,
         }
         expected_requests_count_attributes = {
             "http.request.method": "_OTHER",
@@ -663,6 +673,8 @@ class TestProgrammatic(InstrumentationTest, WsgiTestBase):
             "url.scheme": "http",
             "network.protocol.version": "1.1",
             "http.response.status_code": 405,
+            "server.address": "localhost",
+            "server.port": 80,
         }
         expected_requests_count_attributes = {
             "http.request.method": "NONSTANDARD",

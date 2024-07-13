@@ -90,6 +90,17 @@ _server_duration_attrs_new = [
     URL_SCHEME,
 ]
 
+_server_duration_attrs_new_with_server_attributes = [
+    _SPAN_ATTRIBUTES_ERROR_TYPE,
+    SpanAttributes.HTTP_REQUEST_METHOD,
+    SpanAttributes.HTTP_RESPONSE_STATUS_CODE,
+    SpanAttributes.HTTP_ROUTE,
+    SpanAttributes.NETWORK_PROTOCOL_VERSION,
+    SpanAttributes.URL_SCHEME,
+    SpanAttributes.SERVER_ADDRESS,
+    SpanAttributes.SERVER_PORT,
+]
+
 _server_active_requests_count_attrs_old = [
     SpanAttributes.HTTP_METHOD,
     SpanAttributes.HTTP_HOST,
