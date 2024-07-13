@@ -21,10 +21,14 @@ from aio_pika import Exchange, RobustExchange
 from opentelemetry.instrumentation.aio_pika.publish_decorator import (
     PublishDecorator,
 )
+from opentelemetry.semconv._incubating.attributes import (
+    messaging_attributes as SpanAttributes,
+)
+from opentelemetry.semconv._incubating.attributes import (
+    net_attributes as NetAttributes,
+)
 from opentelemetry.trace import SpanKind, get_tracer
 
-from opentelemetry.semconv._incubating.attributes import messaging_attributes as SpanAttributes
-from opentelemetry.semconv._incubating.attributes import net_attributes as NetAttributes
 from .consts import (
     AIOPIKA_VERSION_INFO,
     CHANNEL_7,
@@ -46,7 +50,8 @@ from .consts import (
 class TestInstrumentedExchangeAioRmq7(TestCase):
     EXPECTED_ATTRIBUTES = {
         SpanAttributes.MESSAGING_SYSTEM: MESSAGING_SYSTEM,
-        SpanAttributes.MESSAGING_DESTINATION_NAME: f"{EXCHANGE_NAME},{ROUTING_KEY}", # TODO: FIXIT - split name & key
+        SpanAttributes.MESSAGING_DESTINATION_NAME: EXCHANGE_NAME,
+        SpanAttributes.MESSAGING_RABBITMQ_DESTINATION_ROUTING_KEY: ROUTING_KEY,
         NetAttributes.NET_PEER_NAME: SERVER_HOST,
         NetAttributes.NET_PEER_PORT: SERVER_PORT,
         SpanAttributes.MESSAGING_MESSAGE_ID: MESSAGE_ID,
@@ -125,7 +130,8 @@ class TestInstrumentedExchangeAioRmq7(TestCase):
 class TestInstrumentedExchangeAioRmq8(TestCase):
     EXPECTED_ATTRIBUTES = {
         SpanAttributes.MESSAGING_SYSTEM: MESSAGING_SYSTEM,
-        SpanAttributes.MESSAGING_DESTINATION_NAME: f"{EXCHANGE_NAME},{ROUTING_KEY}", # TODO: fixit
+        SpanAttributes.MESSAGING_DESTINATION_NAME: EXCHANGE_NAME,
+        SpanAttributes.MESSAGING_RABBITMQ_DESTINATION_ROUTING_KEY: ROUTING_KEY,
         NetAttributes.NET_PEER_NAME: SERVER_HOST,
         NetAttributes.NET_PEER_PORT: SERVER_PORT,
         SpanAttributes.MESSAGING_MESSAGE_ID: MESSAGE_ID,

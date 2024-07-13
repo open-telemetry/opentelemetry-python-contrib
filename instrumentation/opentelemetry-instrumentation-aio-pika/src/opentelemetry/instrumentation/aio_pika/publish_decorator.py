@@ -32,7 +32,10 @@ class PublishDecorator:
     ) -> Optional[Span]:
         builder = SpanBuilder(self._tracer)
         builder.set_as_producer()
-        builder.set_destination(f"{self._exchange.name},{routing_key}")
+        builder.set_destination(
+            exchange_name=self._exchange.name,
+            routing_key=routing_key,
+        )
         builder.set_channel(self._exchange.channel)
         builder.set_message(message)
         return builder.build()

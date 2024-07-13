@@ -19,9 +19,13 @@ from aio_pika import Queue
 from opentelemetry.instrumentation.aio_pika.callback_decorator import (
     CallbackDecorator,
 )
+from opentelemetry.semconv._incubating.attributes import (
+    messaging_attributes as SpanAttributes,
+)
+from opentelemetry.semconv._incubating.attributes import (
+    net_attributes as NetAttributes,
+)
 from opentelemetry.trace import SpanKind, get_tracer
-from opentelemetry.semconv._incubating.attributes import messaging_attributes as SpanAttributes
-from opentelemetry.semconv._incubating.attributes import net_attributes as NetAttributes
 
 from .consts import (
     AIOPIKA_VERSION_INFO,
@@ -33,6 +37,7 @@ from .consts import (
     MESSAGE_ID,
     MESSAGING_SYSTEM,
     QUEUE_NAME,
+    ROUTING_KEY,
     SERVER_HOST,
     SERVER_PORT,
 )
@@ -43,6 +48,7 @@ class TestInstrumentedQueueAioRmq7(TestCase):
     EXPECTED_ATTRIBUTES = {
         SpanAttributes.MESSAGING_SYSTEM: MESSAGING_SYSTEM,
         SpanAttributes.MESSAGING_DESTINATION_NAME: EXCHANGE_NAME,
+        SpanAttributes.MESSAGING_RABBITMQ_DESTINATION_ROUTING_KEY: ROUTING_KEY,
         NetAttributes.NET_PEER_NAME: SERVER_HOST,
         NetAttributes.NET_PEER_PORT: SERVER_PORT,
         SpanAttributes.MESSAGING_MESSAGE_ID: MESSAGE_ID,
@@ -60,7 +66,7 @@ class TestInstrumentedQueueAioRmq7(TestCase):
         tracer = mock.MagicMock()
         CallbackDecorator(tracer, queue)._get_span(MESSAGE)
         tracer.start_span.assert_called_once_with(
-            f"{EXCHANGE_NAME} receive",
+            f"{EXCHANGE_NAME},{ROUTING_KEY} receive",
             kind=SpanKind.CONSUMER,
             attributes=self.EXPECTED_ATTRIBUTES,
         )
@@ -83,6 +89,7 @@ class TestInstrumentedQueueAioRmq8(TestCase):
     EXPECTED_ATTRIBUTES = {
         SpanAttributes.MESSAGING_SYSTEM: MESSAGING_SYSTEM,
         SpanAttributes.MESSAGING_DESTINATION_NAME: EXCHANGE_NAME,
+        SpanAttributes.MESSAGING_RABBITMQ_DESTINATION_ROUTING_KEY: ROUTING_KEY,
         NetAttributes.NET_PEER_NAME: SERVER_HOST,
         NetAttributes.NET_PEER_PORT: SERVER_PORT,
         SpanAttributes.MESSAGING_MESSAGE_ID: MESSAGE_ID,
@@ -100,7 +107,7 @@ class TestInstrumentedQueueAioRmq8(TestCase):
         tracer = mock.MagicMock()
         CallbackDecorator(tracer, queue)._get_span(MESSAGE)
         tracer.start_span.assert_called_once_with(
-            f"{EXCHANGE_NAME} receive",
+            f"{EXCHANGE_NAME},{ROUTING_KEY} receive",
             kind=SpanKind.CONSUMER,
             attributes=self.EXPECTED_ATTRIBUTES,
         )

@@ -32,7 +32,10 @@ class CallbackDecorator:
         builder = SpanBuilder(self._tracer)
         builder.set_as_consumer()
         builder.set_operation(MessagingOperationValues.RECEIVE)
-        builder.set_destination(message.exchange or message.routing_key)
+        builder.set_destination(
+            exchange_name=message.exchange,
+            routing_key=message.routing_key,
+        )
         builder.set_channel(self._queue.channel)
         builder.set_message(message)
         return builder.build()

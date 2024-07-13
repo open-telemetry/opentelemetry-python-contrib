@@ -29,12 +29,18 @@ _DEFAULT_ATTRIBUTES = {SpanAttributes.MESSAGING_SYSTEM: "rabbitmq"}
 
 
 class SpanBuilder:
+    """
+    https://opentelemetry.io/docs/specs/semconv/messaging/messaging-spans/#messaging-attributes
+    https://opentelemetry.io/docs/specs/semconv/messaging/rabbitmq/#rabbitmq-attributes
+    """
+
     def __init__(self, tracer: Tracer):
         self._tracer = tracer
         self._attributes = _DEFAULT_ATTRIBUTES.copy()
         self._operation: MessagingOperationValues = None
         self._kind: SpanKind = None
-        self._destination: str = None
+        self._exchange_name: str = None
+        self._routing_key: str = None
 
     def set_as_producer(self):
         self._kind = SpanKind.PRODUCER
@@ -45,11 +51,17 @@ class SpanBuilder:
     def set_operation(self, operation: MessagingOperationValues):
         self._operation = operation
 
-    def set_destination(self, destination: str):
-        self._destination = destination
+    def set_destination(self, exchange_name: str, routing_key: str):
+        self._exchange_name = exchange_name
+        self._routing_key = routing_key
+        # messaging.destination.name MUST be set to the name of the exchange.
         self._attributes[SpanAttributes.MESSAGING_DESTINATION_NAME] = (
-            destination
+            exchange_name
         )
+        if routing_key:
+            self._attributes[
+                SpanAttributes.MESSAGING_RABBITMQ_DESTINATION_ROUTING_KEY
+            ] = routing_key
 
     def set_channel(self, channel: AbstractChannel):
         if hasattr(channel, "_connection"):
@@ -102,4 +114,4 @@ class SpanBuilder:
 
     def _generate_span_name(self) -> str:
         operation_value = self._operation.value if self._operation else "send"
-        return f"{self._destination} {operation_value}"
+        return f"{self._exchange_name},{self._routing_key} {operation_value}"
