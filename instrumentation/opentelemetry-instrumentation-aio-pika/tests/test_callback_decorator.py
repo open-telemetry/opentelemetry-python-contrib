@@ -19,8 +19,9 @@ from aio_pika import Queue
 from opentelemetry.instrumentation.aio_pika.callback_decorator import (
     CallbackDecorator,
 )
-from opentelemetry.semconv.trace import SpanAttributes
 from opentelemetry.trace import SpanKind, get_tracer
+from opentelemetry.semconv._incubating.attributes import messaging_attributes as SpanAttributes
+from opentelemetry.semconv._incubating.attributes import net_attributes as NetAttributes
 
 from .consts import (
     AIOPIKA_VERSION_INFO,
@@ -41,12 +42,12 @@ from .consts import (
 class TestInstrumentedQueueAioRmq7(TestCase):
     EXPECTED_ATTRIBUTES = {
         SpanAttributes.MESSAGING_SYSTEM: MESSAGING_SYSTEM,
-        SpanAttributes.MESSAGING_DESTINATION: EXCHANGE_NAME,
-        SpanAttributes.NET_PEER_NAME: SERVER_HOST,
-        SpanAttributes.NET_PEER_PORT: SERVER_PORT,
+        SpanAttributes.MESSAGING_DESTINATION_NAME: EXCHANGE_NAME,
+        NetAttributes.NET_PEER_NAME: SERVER_HOST,
+        NetAttributes.NET_PEER_PORT: SERVER_PORT,
         SpanAttributes.MESSAGING_MESSAGE_ID: MESSAGE_ID,
-        SpanAttributes.MESSAGING_CONVERSATION_ID: CORRELATION_ID,
-        SpanAttributes.MESSAGING_OPERATION: "receive",
+        SpanAttributes.MESSAGING_MESSAGE_CONVERSATION_ID: CORRELATION_ID,
+        SpanAttributes.MESSAGING_OPERATION_TYPE: "receive",
     }
 
     def setUp(self):
@@ -81,12 +82,12 @@ class TestInstrumentedQueueAioRmq7(TestCase):
 class TestInstrumentedQueueAioRmq8(TestCase):
     EXPECTED_ATTRIBUTES = {
         SpanAttributes.MESSAGING_SYSTEM: MESSAGING_SYSTEM,
-        SpanAttributes.MESSAGING_DESTINATION: EXCHANGE_NAME,
-        SpanAttributes.NET_PEER_NAME: SERVER_HOST,
-        SpanAttributes.NET_PEER_PORT: SERVER_PORT,
+        SpanAttributes.MESSAGING_DESTINATION_NAME: EXCHANGE_NAME,
+        NetAttributes.NET_PEER_NAME: SERVER_HOST,
+        NetAttributes.NET_PEER_PORT: SERVER_PORT,
         SpanAttributes.MESSAGING_MESSAGE_ID: MESSAGE_ID,
-        SpanAttributes.MESSAGING_CONVERSATION_ID: CORRELATION_ID,
-        SpanAttributes.MESSAGING_OPERATION: "receive",
+        SpanAttributes.MESSAGING_MESSAGE_CONVERSATION_ID: CORRELATION_ID,
+        SpanAttributes.MESSAGING_OPERATION_TYPE: "receive",
     }
 
     def setUp(self):
