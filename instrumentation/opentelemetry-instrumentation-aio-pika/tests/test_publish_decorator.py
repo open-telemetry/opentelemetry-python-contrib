@@ -21,7 +21,12 @@ from aio_pika import Exchange, RobustExchange
 from opentelemetry.instrumentation.aio_pika.publish_decorator import (
     PublishDecorator,
 )
-from opentelemetry.semconv.trace import SpanAttributes
+from opentelemetry.semconv._incubating.attributes import (
+    messaging_attributes as SpanAttributes,
+)
+from opentelemetry.semconv._incubating.attributes import (
+    net_attributes as NetAttributes,
+)
 from opentelemetry.trace import SpanKind, get_tracer
 
 from .consts import (
@@ -45,12 +50,13 @@ from .consts import (
 class TestInstrumentedExchangeAioRmq7(TestCase):
     EXPECTED_ATTRIBUTES = {
         SpanAttributes.MESSAGING_SYSTEM: MESSAGING_SYSTEM,
-        SpanAttributes.MESSAGING_DESTINATION: f"{EXCHANGE_NAME},{ROUTING_KEY}",
-        SpanAttributes.NET_PEER_NAME: SERVER_HOST,
-        SpanAttributes.NET_PEER_PORT: SERVER_PORT,
+        SpanAttributes.MESSAGING_DESTINATION_NAME: EXCHANGE_NAME,
+        SpanAttributes.MESSAGING_RABBITMQ_DESTINATION_ROUTING_KEY: ROUTING_KEY,
+        NetAttributes.NET_PEER_NAME: SERVER_HOST,
+        NetAttributes.NET_PEER_PORT: SERVER_PORT,
         SpanAttributes.MESSAGING_MESSAGE_ID: MESSAGE_ID,
-        SpanAttributes.MESSAGING_CONVERSATION_ID: CORRELATION_ID,
-        SpanAttributes.MESSAGING_TEMP_DESTINATION: True,
+        SpanAttributes.MESSAGING_MESSAGE_CONVERSATION_ID: CORRELATION_ID,
+        SpanAttributes.MESSAGING_DESTINATION_TEMPORARY: True,
     }
 
     def setUp(self):
@@ -124,12 +130,13 @@ class TestInstrumentedExchangeAioRmq7(TestCase):
 class TestInstrumentedExchangeAioRmq8(TestCase):
     EXPECTED_ATTRIBUTES = {
         SpanAttributes.MESSAGING_SYSTEM: MESSAGING_SYSTEM,
-        SpanAttributes.MESSAGING_DESTINATION: f"{EXCHANGE_NAME},{ROUTING_KEY}",
-        SpanAttributes.NET_PEER_NAME: SERVER_HOST,
-        SpanAttributes.NET_PEER_PORT: SERVER_PORT,
+        SpanAttributes.MESSAGING_DESTINATION_NAME: EXCHANGE_NAME,
+        SpanAttributes.MESSAGING_RABBITMQ_DESTINATION_ROUTING_KEY: ROUTING_KEY,
+        NetAttributes.NET_PEER_NAME: SERVER_HOST,
+        NetAttributes.NET_PEER_PORT: SERVER_PORT,
         SpanAttributes.MESSAGING_MESSAGE_ID: MESSAGE_ID,
-        SpanAttributes.MESSAGING_CONVERSATION_ID: CORRELATION_ID,
-        SpanAttributes.MESSAGING_TEMP_DESTINATION: True,
+        SpanAttributes.MESSAGING_MESSAGE_CONVERSATION_ID: CORRELATION_ID,
+        SpanAttributes.MESSAGING_DESTINATION_TEMPORARY: True,
     }
 
     def setUp(self):

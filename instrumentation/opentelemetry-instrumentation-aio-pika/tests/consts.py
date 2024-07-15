@@ -21,10 +21,14 @@ CONNECTION_7 = Namespace(connection=Namespace(url=SERVER_URL))
 CONNECTION_8 = Namespace(url=SERVER_URL)
 CHANNEL_7 = Namespace(connection=CONNECTION_7, loop=None)
 CHANNEL_8 = Namespace(connection=CONNECTION_8, loop=None)
+
 MESSAGE = Namespace(
+    # https://github.com/mosquito/aio-pika/blob/master/aio_pika/abc.py
+    # https://aio-pika.readthedocs.io/en/latest/_modules/aio_pika/message.html
     properties=Namespace(
         message_id=MESSAGE_ID, correlation_id=CORRELATION_ID, headers={}
     ),
     exchange=EXCHANGE_NAME,
+    routing_key=ROUTING_KEY,
     headers={},
 )

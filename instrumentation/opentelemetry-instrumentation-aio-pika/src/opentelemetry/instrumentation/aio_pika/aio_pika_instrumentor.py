@@ -67,7 +67,7 @@ class AioPikaInstrumentor(BaseInstrumentor):
             _INSTRUMENTATION_MODULE_NAME,
             __version__,
             tracer_provider,
-            schema_url="https://opentelemetry.io/schemas/1.11.0",
+            schema_url="https://opentelemetry.io/schemas/1.26.0",
         )
         self._instrument_queue(tracer)
         self._instrument_exchange(tracer)

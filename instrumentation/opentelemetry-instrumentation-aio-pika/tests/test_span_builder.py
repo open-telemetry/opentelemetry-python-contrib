@@ -16,11 +16,15 @@ from unittest import TestCase
 from opentelemetry.instrumentation.aio_pika.span_builder import SpanBuilder
 from opentelemetry.trace import Span, get_tracer
 
+from .consts import EXCHANGE_NAME, ROUTING_KEY
+
 
 class TestBuilder(TestCase):
     def test_build(self):
         builder = SpanBuilder(get_tracer(__name__))
         builder.set_as_consumer()
-        builder.set_destination("destination")
+        builder.set_destination(
+            exchange_name=EXCHANGE_NAME, routing_key=ROUTING_KEY
+        )
         span = builder.build()
         self.assertTrue(isinstance(span, Span))
