@@ -446,13 +446,13 @@ def set_status_code(
         status_code = -1
     if metric_attributes is None:
         metric_attributes = {}
-    server_span = True
+    status_server_span = True
     _set_status(
         span,
         metric_attributes,
         status_code,
         status_code_str,
-        server_span,
+        status_server_span,
         sem_conv_opt_in_mode,
     )
 

@@ -21,11 +21,7 @@ from http import HTTPStatus
 from unittest import mock
 
 import aiohttp
-import aiohttp.client_exceptions
-import aiohttp.http_exceptions
 import aiohttp.test_utils
-import aiohttp.web
-import aiohttp.web_exceptions
 import yarl
 from http_server_mock import HttpServerMock
 from pkg_resources import iter_entry_points

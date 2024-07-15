@@ -245,21 +245,24 @@ def create_trace_config(
         if callable(response_hook):
             response_hook(trace_config_ctx.span, params)
 
-        if trace_config_ctx.span.is_recording():
-            try:
-                status_code = int(params.response.status)
-            except ValueError:
-                status_code = -1
-            status_code_str = str(params.response.status)
-            server_span = False
-            _set_status(
-                trace_config_ctx.span,
-                metrics_attributes,
-                status_code,
-                status_code_str,
-                server_span,
-                sem_conv_opt_in_mode,
-            )
+        status_code_str = str(params.response.status)
+
+        try:
+            status_code = int(params.response.status)
+        except ValueError:
+            status_code = -1
+        # When we have durations we should set metrics only once
+        # Also the decision to include status code on a histogram should
+        # not be dependent on tracing decisions.
+        server_span = False
+        _set_status(
+            trace_config_ctx.span,
+            metrics_attributes,
+            status_code,
+            status_code_str,
+            server_span,
+            sem_conv_opt_in_mode,
+        )
         _end_trace(trace_config_ctx)
 
     async def on_request_exception(
