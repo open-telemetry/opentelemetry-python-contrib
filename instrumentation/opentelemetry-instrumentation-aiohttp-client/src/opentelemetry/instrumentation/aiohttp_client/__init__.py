@@ -139,6 +139,32 @@ def _get_span_name(method: str) -> str:
     return method
 
 
+def _set_http_status_code_attribute(
+    span,
+    status_code,
+    metric_attributes=None,
+    sem_conv_opt_in_mode=_HTTPStabilityMode.DEFAULT,
+):
+    status_code_str = str(status_code)
+    try:
+        status_code = int(status_code)
+    except ValueError:
+        status_code = -1
+    if metric_attributes is None:
+        metric_attributes = {}
+    # When we have durations we should set metrics only once
+    # Also the decision to include status code on a histogram should
+    # not be dependent on tracing decisions.
+    _set_status(
+        span,
+        metric_attributes,
+        status_code,
+        status_code_str,
+        server_span=False,
+        sem_conv_opt_in_mode=sem_conv_opt_in_mode,
+    )
+
+
 def create_trace_config(
     url_filter: _UrlFilterT = None,
     request_hook: _RequestHookT = None,
@@ -189,7 +215,7 @@ def create_trace_config(
     )
 
     # TODO: Use this when we have durations for aiohttp-client
-    metrics_attributes = {}
+    metric_attributes = {}
 
     def _end_trace(trace_config_ctx: types.SimpleNamespace):
         context_api.detach(trace_config_ctx.token)
@@ -244,25 +270,13 @@ def create_trace_config(
 
         if callable(response_hook):
             response_hook(trace_config_ctx.span, params)
-
-        status_code_str = str(params.response.status)
-
-        try:
-            status_code = int(params.response.status)
-        except ValueError:
-            status_code = -1
-        # When we have durations we should set metrics only once
-        # Also the decision to include status code on a histogram should
-        # not be dependent on tracing decisions.
-        server_span = False
-        _set_status(
+        _set_http_status_code_attribute(
             trace_config_ctx.span,
-            metrics_attributes,
-            status_code,
-            status_code_str,
-            server_span,
+            params.response.status,
+            metric_attributes,
             sem_conv_opt_in_mode,
         )
+
         _end_trace(trace_config_ctx)
 
     async def on_request_exception(

@@ -491,14 +491,13 @@ def add_response_attributes(
         status_code = -1
     if duration_attrs is None:
         duration_attrs = {}
-    server_span = True
     _set_status(
         span,
         duration_attrs,
         status_code,
         status_code_str,
-        server_span,
-        sem_conv_opt_in_mode,
+        server_span=True,
+        sem_conv_opt_in_mode=sem_conv_opt_in_mode,
     )
 
 
