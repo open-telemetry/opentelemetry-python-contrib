@@ -21,6 +21,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   ([#2638](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/2638))
 - `opentelemetry-instrumentation-asgi` Implement new semantic convention opt-in with stable http semantic conventions
   ([#2610](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/2610))
+- `opentelemetry-instrumentation-fastapi` Implement new semantic convention opt-in with stable http semantic conventions
+  ([#2682](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/2682))
 - `opentelemetry-instrumentation-httpx` Implement new semantic convention opt-in migration with stable http semantic conventions
   ([#2631](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/2631))
 - `opentelemetry-instrumentation-system-metrics` Permit to use psutil 6.0+.
@@ -32,9 +34,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - `opentelemetry-instrumentation-asgi`, `opentelemetry-instrumentation-fastapi`, `opentelemetry-instrumentation-starlette` Use `tracer` and `meter` of originating components instead of one from `asgi` middleware
   ([#2580](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/2580))
-- Populate `{method}` as `HTTP` on `_OTHER` methods from scope
+- Populate `{method}` as `HTTP` on `_OTHER` methods from scope for `asgi` middleware
   ([#2610](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/2610))
-
+  - Populate `{method}` as `HTTP` on `_OTHER` methods from scope for `fastapi` middleware
+  ([#2682](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/2682))
 
 ### Fixed
 
@@ -63,6 +66,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   ([#2153](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/2153))
 - `opentelemetry-instrumentation-asgi` Removed `NET_HOST_NAME` AND `NET_HOST_PORT` from active requests count attribute
   ([#2610](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/2610))
+- `opentelemetry-instrumentation-asgi` Bugfix: Middleware did not set status code attribute on duration metrics for non-recording spans. 
+  ([#2627](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/2627))
 
 
 ## Version 1.25.0/0.46b0 (2024-05-31)
