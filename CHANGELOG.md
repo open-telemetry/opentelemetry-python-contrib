@@ -9,6 +9,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- `opentelemetry-instrumentation-httplib` Implement new semantic convention opt-in migration with stable http semantic conventions
+  ([#2648](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/2648))
 - `opentelemetry-instrumentation-pyramid` Record exceptions raised when serving a request
   ([#2622](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/2622))
 - `opentelemetry-sdk-extension-aws` Add AwsXrayLambdaPropagator

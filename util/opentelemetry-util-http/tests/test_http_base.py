@@ -13,6 +13,7 @@
 # limitations under the License.
 
 from http.client import HTTPConnection, HTTPResponse, HTTPSConnection
+from typing import Tuple
 
 from opentelemetry import trace
 from opentelemetry.test.httptest import HttpTestBase
@@ -103,7 +104,7 @@ class TestHttpBase(TestBase, HttpTestBase):
         assert body == b"Hello!"
         self.assert_span(num_spans=0)
 
-    def perform_request(self, secure=False) -> HTTPResponse:
+    def perform_request(self, secure=False) -> Tuple[HTTPResponse, bytes]:
         conn_cls = HTTPSConnection if secure else HTTPConnection
         conn = conn_cls(self.server.server_address[0], self.server.server_port)
         resp = None
