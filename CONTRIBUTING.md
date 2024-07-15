@@ -92,13 +92,14 @@ for more detail on available tox commands.
 
 ### Tox UV support (experimental)
 
-You can run tox wi th `uv` support with the following commands:
+You can run tox with `uv` support using the following commands:
 ```sh
-pip install tox-uv
+$ pip install tox-uv
 ```
 
 ```sh
-TOX_UV="uv" tox -e py312-test-instrumentation-aiopg
+# Will use uv
+$ TOX_UV="uv" tox -e py312-test-instrumentation-aiopg
 ```
 
 ### Troubleshooting
