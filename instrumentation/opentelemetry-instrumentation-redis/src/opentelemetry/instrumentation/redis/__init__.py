@@ -106,7 +106,7 @@ from opentelemetry.instrumentation.redis.util import (
 from opentelemetry.instrumentation.redis.version import __version__
 from opentelemetry.instrumentation.utils import unwrap
 from opentelemetry.semconv.trace import SpanAttributes
-from opentelemetry.trace import Span
+from opentelemetry.trace import Span, StatusCode
 
 _DEFAULT_SERVICE = "redis"
 
@@ -212,9 +212,16 @@ def _instrument(
                 span.set_attribute(
                     "db.redis.pipeline_length", len(command_stack)
                 )
-            response = func(*args, **kwargs)
+
+            response = None
+            try:
+                response = func(*args, **kwargs)
+            except redis.WatchError:
+                span.set_status(StatusCode.UNSET)
+
             if callable(response_hook):
                 response_hook(span, instance, response)
+
             return response
 
     pipeline_class = (
@@ -281,7 +288,13 @@ def _instrument(
                 span.set_attribute(
                     "db.redis.pipeline_length", len(command_stack)
                 )
-            response = await func(*args, **kwargs)
+
+            response = None
+            try:
+                response = await func(*args, **kwargs)
+            except redis.WatchError:
+                span.set_status(StatusCode.UNSET)
+
             if callable(response_hook):
                 response_hook(span, instance, response)
             return response
