@@ -28,10 +28,21 @@ from pkg_resources import iter_entry_points
 
 from opentelemetry import trace as trace_api
 from opentelemetry.instrumentation import aiohttp_client
+from opentelemetry.instrumentation._semconv import (
+    OTEL_SEMCONV_STABILITY_OPT_IN,
+    _HTTPStabilityMode,
+    _OpenTelemetrySemanticConventionStability,
+)
 from opentelemetry.instrumentation.aiohttp_client import (
     AioHttpClientInstrumentor,
 )
 from opentelemetry.instrumentation.utils import suppress_instrumentation
+from opentelemetry.semconv.attributes.error_attributes import ERROR_TYPE
+from opentelemetry.semconv.attributes.http_attributes import (
+    HTTP_REQUEST_METHOD,
+    HTTP_RESPONSE_STATUS_CODE,
+)
+from opentelemetry.semconv.attributes.url_attributes import URL_FULL
 from opentelemetry.semconv.trace import SpanAttributes
 from opentelemetry.test.test_base import TestBase
 from opentelemetry.trace import Span, StatusCode
@@ -59,7 +70,23 @@ def run_with_test_server(
 
 
 class TestAioHttpIntegration(TestBase):
-    def assert_spans(self, spans):
+
+    _test_status_codes = (
+        (HTTPStatus.OK, StatusCode.UNSET),
+        (HTTPStatus.TEMPORARY_REDIRECT, StatusCode.UNSET),
+        (HTTPStatus.NOT_FOUND, StatusCode.ERROR),
+        (HTTPStatus.BAD_REQUEST, StatusCode.ERROR),
+        (HTTPStatus.SERVICE_UNAVAILABLE, StatusCode.ERROR),
+        (HTTPStatus.GATEWAY_TIMEOUT, StatusCode.ERROR),
+    )
+
+    def setUp(self):
+        super().setUp()
+        _OpenTelemetrySemanticConventionStability._initialized = False
+
+    def assert_spans(self, spans, num_spans=1):
+        finished_spans = self.memory_exporter.get_finished_spans()
+        self.assertEqual(num_spans, len(finished_spans))
         self.assertEqual(
             [
                 (
@@ -67,7 +94,7 @@ class TestAioHttpIntegration(TestBase):
                     (span.status.status_code, span.status.description),
                     dict(span.attributes),
                 )
-                for span in self.memory_exporter.get_finished_spans()
+                for span in finished_spans
             ],
             spans,
         )
@@ -99,39 +126,72 @@ class TestAioHttpIntegration(TestBase):
         return run_with_test_server(client_request, url, handler)
 
     def test_status_codes(self):
-        for status_code, span_status in (
-            (HTTPStatus.OK, StatusCode.UNSET),
-            (HTTPStatus.TEMPORARY_REDIRECT, StatusCode.UNSET),
-            (HTTPStatus.SERVICE_UNAVAILABLE, StatusCode.ERROR),
-            (
-                HTTPStatus.GATEWAY_TIMEOUT,
-                StatusCode.ERROR,
-            ),
-        ):
+        for status_code, span_status in self._test_status_codes:
             with self.subTest(status_code=status_code):
+                path = "test-path?query=param#foobar"
                 host, port = self._http_request(
                     trace_config=aiohttp_client.create_trace_config(),
-                    url="/test-path?query=param#foobar",
+                    url=f"/{path}",
                     status_code=status_code,
                 )
+                url = f"http://{host}:{port}/{path}"
+                attributes = {
+                    SpanAttributes.HTTP_METHOD: "GET",
+                    SpanAttributes.HTTP_URL: url,
+                    SpanAttributes.HTTP_STATUS_CODE: status_code,
+                }
+                spans = [("GET", (span_status, None), attributes)]
+                self.assert_spans(spans)
+                self.memory_exporter.clear()
 
-                url = f"http://{host}:{port}/test-path?query=param#foobar"
-                self.assert_spans(
-                    [
-                        (
-                            "GET",
-                            (span_status, None),
-                            {
-                                SpanAttributes.HTTP_METHOD: "GET",
-                                SpanAttributes.HTTP_URL: url,
-                                SpanAttributes.HTTP_STATUS_CODE: int(
-                                    status_code
-                                ),
-                            },
-                        )
-                    ]
+    def test_status_codes_new_semconv(self):
+        for status_code, span_status in self._test_status_codes:
+            with self.subTest(status_code=status_code):
+                path = "test-path?query=param#foobar"
+                host, port = self._http_request(
+                    trace_config=aiohttp_client.create_trace_config(
+                        sem_conv_opt_in_mode=_HTTPStabilityMode.HTTP
+                    ),
+                    url=f"/{path}",
+                    status_code=status_code,
                 )
+                url = f"http://{host}:{port}/{path}"
+                attributes = {
+                    HTTP_REQUEST_METHOD: "GET",
+                    URL_FULL: url,
+                    HTTP_RESPONSE_STATUS_CODE: status_code,
+                }
+                if status_code >= 400:
+                    attributes[ERROR_TYPE] = str(status_code.value)
+                spans = [("GET", (span_status, None), attributes)]
+                self.assert_spans(spans)
+                self.memory_exporter.clear()
 
+    def test_status_codes_both_semconv(self):
+        for status_code, span_status in self._test_status_codes:
+            with self.subTest(status_code=status_code):
+                path = "test-path?query=param#foobar"
+                host, port = self._http_request(
+                    trace_config=aiohttp_client.create_trace_config(
+                        sem_conv_opt_in_mode=_HTTPStabilityMode.HTTP_DUP
+                    ),
+                    url=f"/{path}",
+                    status_code=status_code,
+                )
+                url = f"http://{host}:{port}/{path}"
+                attributes = {
+                    HTTP_REQUEST_METHOD: "GET",
+                    SpanAttributes.HTTP_METHOD: "GET",
+                    URL_FULL: url,
+                    SpanAttributes.HTTP_URL: url,
+                    HTTP_RESPONSE_STATUS_CODE: status_code,
+                    SpanAttributes.HTTP_STATUS_CODE: status_code,
+                }
+                if status_code >= 400:
+                    attributes[ERROR_TYPE] = str(status_code.value)
+
+                spans = [("GET", (span_status, None), attributes)]
+                self.assert_spans(spans, 1)
                 self.memory_exporter.clear()
 
     def test_schema_url(self):
@@ -146,6 +206,40 @@ class TestAioHttpIntegration(TestBase):
             self.assertEqual(
                 span.instrumentation_info.schema_url,
                 "https://opentelemetry.io/schemas/1.11.0",
+            )
+            self.memory_exporter.clear()
+
+    def test_schema_url_new_semconv(self):
+        with self.subTest(status_code=200):
+            self._http_request(
+                trace_config=aiohttp_client.create_trace_config(
+                    sem_conv_opt_in_mode=_HTTPStabilityMode.HTTP
+                ),
+                url="/test-path?query=param#foobar",
+                status_code=200,
+            )
+
+            span = self.memory_exporter.get_finished_spans()[0]
+            self.assertEqual(
+                span.instrumentation_info.schema_url,
+                "https://opentelemetry.io/schemas/v1.21.0",
+            )
+            self.memory_exporter.clear()
+
+    def test_schema_url_both_semconv(self):
+        with self.subTest(status_code=200):
+            self._http_request(
+                trace_config=aiohttp_client.create_trace_config(
+                    sem_conv_opt_in_mode=_HTTPStabilityMode.HTTP_DUP
+                ),
+                url="/test-path?query=param#foobar",
+                status_code=200,
+            )
+
+            span = self.memory_exporter.get_finished_spans()[0]
+            self.assertEqual(
+                span.instrumentation_info.schema_url,
+                "https://opentelemetry.io/schemas/v1.21.0",
             )
             self.memory_exporter.clear()
 
@@ -263,7 +357,7 @@ class TestAioHttpIntegration(TestBase):
                 [
                     (
                         "GET",
-                        (expected_status, None),
+                        (expected_status, "ClientConnectorError"),
                         {
                             SpanAttributes.HTTP_METHOD: "GET",
                             SpanAttributes.HTTP_URL: url,
@@ -272,6 +366,89 @@ class TestAioHttpIntegration(TestBase):
                 ]
             )
             self.memory_exporter.clear()
+
+    def test_basic_exception(self):
+        async def request_handler(request):
+            assert "traceparent" in request.headers
+
+        host, port = self._http_request(
+            trace_config=aiohttp_client.create_trace_config(),
+            url="/test",
+            request_handler=request_handler,
+        )
+        span = self.memory_exporter.get_finished_spans()[0]
+        self.assertEqual(len(span.events), 1)
+        self.assertEqual(span.events[0].name, "exception")
+        self.assert_spans(
+            [
+                (
+                    "GET",
+                    (StatusCode.ERROR, "ServerDisconnectedError"),
+                    {
+                        SpanAttributes.HTTP_METHOD: "GET",
+                        SpanAttributes.HTTP_URL: f"http://{host}:{port}/test",
+                    },
+                )
+            ]
+        )
+
+    def test_basic_exception_new_semconv(self):
+        async def request_handler(request):
+            assert "traceparent" in request.headers
+
+        host, port = self._http_request(
+            trace_config=aiohttp_client.create_trace_config(
+                sem_conv_opt_in_mode=_HTTPStabilityMode.HTTP
+            ),
+            url="/test",
+            request_handler=request_handler,
+        )
+        span = self.memory_exporter.get_finished_spans()[0]
+        self.assertEqual(len(span.events), 1)
+        self.assertEqual(span.events[0].name, "exception")
+        self.assert_spans(
+            [
+                (
+                    "GET",
+                    (StatusCode.ERROR, "ServerDisconnectedError"),
+                    {
+                        HTTP_REQUEST_METHOD: "GET",
+                        URL_FULL: f"http://{host}:{port}/test",
+                        ERROR_TYPE: "ServerDisconnectedError",
+                    },
+                )
+            ]
+        )
+
+    def test_basic_exception_both_semconv(self):
+        async def request_handler(request):
+            assert "traceparent" in request.headers
+
+        host, port = self._http_request(
+            trace_config=aiohttp_client.create_trace_config(
+                sem_conv_opt_in_mode=_HTTPStabilityMode.HTTP_DUP
+            ),
+            url="/test",
+            request_handler=request_handler,
+        )
+        span = self.memory_exporter.get_finished_spans()[0]
+        self.assertEqual(len(span.events), 1)
+        self.assertEqual(span.events[0].name, "exception")
+        self.assert_spans(
+            [
+                (
+                    "GET",
+                    (StatusCode.ERROR, "ServerDisconnectedError"),
+                    {
+                        HTTP_REQUEST_METHOD: "GET",
+                        URL_FULL: f"http://{host}:{port}/test",
+                        ERROR_TYPE: "ServerDisconnectedError",
+                        SpanAttributes.HTTP_METHOD: "GET",
+                        SpanAttributes.HTTP_URL: f"http://{host}:{port}/test",
+                    },
+                )
+            ]
+        )
 
     def test_timeout(self):
         async def request_handler(request):
@@ -290,7 +467,7 @@ class TestAioHttpIntegration(TestBase):
             [
                 (
                     "GET",
-                    (StatusCode.ERROR, None),
+                    (StatusCode.ERROR, "ServerTimeoutError"),
                     {
                         SpanAttributes.HTTP_METHOD: "GET",
                         SpanAttributes.HTTP_URL: f"http://{host}:{port}/test_timeout",
@@ -317,7 +494,7 @@ class TestAioHttpIntegration(TestBase):
             [
                 (
                     "GET",
-                    (StatusCode.ERROR, None),
+                    (StatusCode.ERROR, "TooManyRedirects"),
                     {
                         SpanAttributes.HTTP_METHOD: "GET",
                         SpanAttributes.HTTP_URL: f"http://{host}:{port}/test_too_many_redirects",
@@ -374,6 +551,7 @@ class TestAioHttpClientInstrumentor(TestBase):
     def setUp(self):
         super().setUp()
         AioHttpClientInstrumentor().instrument()
+        _OpenTelemetrySemanticConventionStability._initialized = False
 
     def tearDown(self):
         super().tearDown()
@@ -413,6 +591,46 @@ class TestAioHttpClientInstrumentor(TestBase):
             span.attributes[SpanAttributes.HTTP_URL],
         )
         self.assertEqual(200, span.attributes[SpanAttributes.HTTP_STATUS_CODE])
+
+    def test_instrument_new_semconv(self):
+        AioHttpClientInstrumentor().uninstrument()
+        with mock.patch.dict(
+            "os.environ", {OTEL_SEMCONV_STABILITY_OPT_IN: "http"}
+        ):
+            AioHttpClientInstrumentor().instrument()
+            host, port = run_with_test_server(
+                self.get_default_request(), self.URL, self.default_handler
+            )
+            span = self.assert_spans(1)
+            self.assertEqual("GET", span.name)
+            self.assertEqual("GET", span.attributes[HTTP_REQUEST_METHOD])
+            self.assertEqual(
+                f"http://{host}:{port}/test-path",
+                span.attributes[URL_FULL],
+            )
+            self.assertEqual(200, span.attributes[HTTP_RESPONSE_STATUS_CODE])
+
+    def test_instrument_both_semconv(self):
+        AioHttpClientInstrumentor().uninstrument()
+        with mock.patch.dict(
+            "os.environ", {OTEL_SEMCONV_STABILITY_OPT_IN: "http/dup"}
+        ):
+            AioHttpClientInstrumentor().instrument()
+            host, port = run_with_test_server(
+                self.get_default_request(), self.URL, self.default_handler
+            )
+            url = f"http://{host}:{port}/test-path"
+            attributes = {
+                HTTP_REQUEST_METHOD: "GET",
+                SpanAttributes.HTTP_METHOD: "GET",
+                URL_FULL: url,
+                SpanAttributes.HTTP_URL: url,
+                HTTP_RESPONSE_STATUS_CODE: 200,
+                SpanAttributes.HTTP_STATUS_CODE: 200,
+            }
+            span = self.assert_spans(1)
+            self.assertEqual("GET", span.name)
+            self.assertEqual(span.attributes, attributes)
 
     def test_instrument_with_custom_trace_config(self):
         trace_config = aiohttp.TraceConfig()

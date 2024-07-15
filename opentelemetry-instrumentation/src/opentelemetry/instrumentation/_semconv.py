@@ -349,10 +349,11 @@ def _set_http_flavor_version(result, version, sem_conv_opt_in_mode):
 
 def _set_status(
     span,
-    metrics_attributes,
-    status_code,
-    status_code_str,
-    sem_conv_opt_in_mode,
+    metrics_attributes: dict,
+    status_code: int,
+    status_code_str: str,
+    server_span: bool = True,
+    sem_conv_opt_in_mode: _HTTPStabilityMode = _HTTPStabilityMode.DEFAULT,
 ):
     if status_code < 0:
         metrics_attributes[ERROR_TYPE] = status_code_str
@@ -366,7 +367,9 @@ def _set_status(
                 )
             )
     else:
-        status = http_status_to_status_code(status_code, server_span=True)
+        status = http_status_to_status_code(
+            status_code, server_span=server_span
+        )
 
         if _report_old(sem_conv_opt_in_mode):
             if span.is_recording():

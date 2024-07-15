@@ -29,6 +29,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   ([#2630](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/2630))
 - `opentelemetry-instrumentation-system-metrics` Add support for capture open file descriptors
   ([#2652](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/2652))
+- `opentelemetry-instrumentation-aiohttp-client` Implement new semantic convention opt-in migration
+  ([#2673](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/2673))
 
 ### Breaking changes
 
@@ -43,6 +45,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - `opentelemetry-instrumentation-fastapi` Add dependency support for fastapi-slim
   ([#2702](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/2702))
+- Handle `redis.exceptions.WatchError` as a non-error event in redis instrumentation
+  ([#2668](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/2668))
 - `opentelemetry-instrumentation-httpx` Ensure httpx.get or httpx.request like methods are instrumented
   ([#2538](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/2538))
 - Add Python 3.12 support
