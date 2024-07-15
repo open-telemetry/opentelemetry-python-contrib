@@ -90,6 +90,17 @@ See
 [`tox.ini`](https://github.com/open-telemetry/opentelemetry-python-contrib/blob/main/tox.ini)
 for more detail on available tox commands.
 
+### Tox UV support (experimental)
+
+You can run tox wi th `uv` support with the following commands:
+```sh
+pip install tox-uv
+```
+
+```sh
+TOX_UV="uv" tox -e py312-test-instrumentation-aiopg
+```
+
 ### Troubleshooting
 
 > Some packages may require additional system wide dependencies to be installed. For example, you may need to install `libpq-dev` to run the postgresql client libraries instrumentation tests. or `libsnappy-dev` to run the prometheus exporter tests. If you encounter a build error, please check the installation instructions for the package you are trying to run tests for.
@@ -141,7 +152,7 @@ Run tests:
 
 ```sh
 # make sure you have all supported versions of Python installed
-$ pip install tox  # only first time.
+$ pip install tox tox-uv  # only first time.
 $ tox  # execute in the root of the repository
 ```
 
@@ -213,7 +224,7 @@ For a deeper discussion, see: https://github.com/open-telemetry/opentelemetry-sp
 ## Running Tests Locally
 
 1. Go to your Contrib repo directory. `git clone git@github.com:open-telemetry/opentelemetry-python-contrib.git && cd opentelemetry-python-contrib`.
-2. Make sure you have `tox` installed. `pip install tox`.
+2. Make sure you have `tox` installed. `pip install tox tox-uv`.
 3. Run `tox` without any arguments to run tests for all the packages. Read more about [tox](https://tox.readthedocs.io/en/latest/).
 
 Some tests can be slow due to pre-steps that do dependencies installs. To help with that, you can run tox a first time, and after that run the tests using previous installed dependencies in toxdir as following:
