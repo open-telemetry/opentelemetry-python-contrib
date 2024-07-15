@@ -31,6 +31,30 @@ Usage
 Configuration
 -------------
 
+Request/Response hooks
+**********************
+
+The requests instrumentation supports extending tracing behavior with the help of
+request and response hooks. These are functions that are called back by the instrumentation
+right after a Span is created for a request and right before the span is finished processing a response respectively.
+The hooks can be configured as follows:
+
+.. code:: python
+
+    # `request_obj` is an instance of requests.PreparedRequest
+    def request_hook(span, request_obj):
+        pass
+
+    # `request_obj` is an instance of requests.PreparedRequest
+    # `response` is an instance of requests.Response
+    def response_hook(span, request_obj, response)
+        pass
+
+    RequestsInstrumentor().instrument(
+        request_hook=request_hook, response_hook=response_hook)
+    )
+
+
 Exclude lists
 *************
 To exclude certain URLs from being tracked, set the environment variable ``OTEL_PYTHON_REQUESTS_EXCLUDED_URLS``
