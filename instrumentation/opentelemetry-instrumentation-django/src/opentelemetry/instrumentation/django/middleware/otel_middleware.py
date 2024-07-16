@@ -318,6 +318,8 @@ class _DjangoMiddleware(MiddlewareMixin):
                         duration_attrs = request.META[
                             self._environ_duration_attr_key
                         ]
+                        # Metrics currently use the 1.11.0 schema, which puts the route in `http.target`.
+                        # TODO: use `http.route` when the user sets `OTEL_SEMCONV_STABILITY_OPT_IN`.
                         duration_attrs[SpanAttributes.HTTP_TARGET] = route
 
     def process_exception(self, request, exception):
