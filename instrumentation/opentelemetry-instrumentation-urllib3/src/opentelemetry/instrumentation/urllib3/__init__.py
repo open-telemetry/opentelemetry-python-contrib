@@ -87,6 +87,25 @@ from typing import Collection
 import urllib3.connectionpool
 import wrapt
 
+from opentelemetry.instrumentation._semconv import (
+    _client_duration_attrs_new,
+    _client_duration_attrs_old,
+    _filter_semconv_duration_attrs,
+    _get_schema_url,
+    _HTTPStabilityMode,
+    _OpenTelemetrySemanticConventionStability,
+    _OpenTelemetryStabilitySignalType,
+    _report_new,
+    _report_old,
+    _set_http_host,
+    _set_http_method,
+    _set_http_net_peer_name_client,
+    _set_http_network_protocol_version,
+    _set_http_peer_port_client,
+    _set_http_scheme,
+    _set_http_status_code,
+    _set_http_url,
+)
 from opentelemetry.instrumentation.instrumentor import BaseInstrumentor
 from opentelemetry.instrumentation.urllib3.package import _instruments
 from opentelemetry.instrumentation.urllib3.version import __version__
@@ -98,7 +117,15 @@ from opentelemetry.instrumentation.utils import (
 )
 from opentelemetry.metrics import Histogram, get_meter
 from opentelemetry.propagate import inject
+from opentelemetry.semconv.attributes.error_attributes import ERROR_TYPE
+from opentelemetry.semconv.attributes.network_attributes import (
+    NETWORK_PEER_ADDRESS,
+    NETWORK_PEER_PORT,
+)
 from opentelemetry.semconv.metrics import MetricInstruments
+from opentelemetry.semconv.metrics.http_metrics import (
+    HTTP_CLIENT_REQUEST_DURATION,
+)
 from opentelemetry.semconv.trace import SpanAttributes
 from opentelemetry.trace import Span, SpanKind, Tracer, get_tracer
 from opentelemetry.trace.status import Status
@@ -106,6 +133,7 @@ from opentelemetry.util.http import (
     ExcludeList,
     get_excluded_urls,
     parse_excluded_urls,
+    sanitize_method,
 )
 from opentelemetry.util.http.httplib import set_ip_on_next_http_connection
 
@@ -158,12 +186,18 @@ class URLLib3Instrumentor(BaseInstrumentor):
                 ``excluded_urls``: A string containing a comma-delimited
                     list of regexes used to exclude URLs from tracking
         """
+        # initialize semantic conventions opt-in if needed
+        _OpenTelemetrySemanticConventionStability._initialize()
+        sem_conv_opt_in_mode = _OpenTelemetrySemanticConventionStability._get_opentelemetry_stability_opt_in_mode(
+            _OpenTelemetryStabilitySignalType.HTTP,
+        )
+        schema_url = _get_schema_url(sem_conv_opt_in_mode)
         tracer_provider = kwargs.get("tracer_provider")
         tracer = get_tracer(
             __name__,
             __version__,
             tracer_provider,
-            schema_url="https://opentelemetry.io/schemas/1.11.0",
+            schema_url=schema_url,
         )
 
         excluded_urls = kwargs.get("excluded_urls")
@@ -173,7 +207,7 @@ class URLLib3Instrumentor(BaseInstrumentor):
             __name__,
             __version__,
             meter_provider,
-            schema_url="https://opentelemetry.io/schemas/1.11.0",
+            schema_url=schema_url,
         )
 
         duration_histogram = meter.create_histogram(
@@ -205,6 +239,7 @@ class URLLib3Instrumentor(BaseInstrumentor):
                 if excluded_urls is None
                 else parse_excluded_urls(excluded_urls)
             ),
+            sem_conv_opt_in_mode=sem_conv_opt_in_mode,
         )
 
     def _uninstrument(self, **kwargs):
@@ -220,6 +255,7 @@ def _instrument(
     response_hook: _ResponseHookT = None,
     url_filter: _UrlFilterT = None,
     excluded_urls: ExcludeList = None,
+    sem_conv_opt_in_mode: _HTTPStabilityMode = _HTTPStabilityMode.DEFAULT,
 ):
     def instrumented_urlopen(wrapped, instance, args, kwargs):
         if not is_http_instrumentation_enabled():
@@ -233,7 +269,7 @@ def _instrument(
         headers = _prepare_headers(kwargs)
         body = _get_url_open_arg("body", args, kwargs)
 
-        span_name = method.strip()
+        span_name = sanitize_method(method.strip())
         span_attributes = {
             SpanAttributes.HTTP_METHOD: method,
             SpanAttributes.HTTP_URL: url,
@@ -282,7 +318,9 @@ def _instrument(
     )
 
 
-def _get_url_open_arg(name: str, args: typing.List, kwargs: typing.Mapping):
+def _get_url_open_arg(
+    name: str, args: typing.List, kwargs: typing.Mapping
+) -> str:
     arg_idx = _URL_OPEN_ARG_TO_INDEX_MAPPING.get(name)
     if arg_idx is not None:
         try:
