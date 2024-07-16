@@ -231,6 +231,8 @@ class _DjangoMiddleware(MiddlewareMixin):
             attributes
         )
         duration_attrs = _parse_duration_attrs(attributes)
+        if route:
+            duration_attrs[SpanAttributes.HTTP_TARGET] = route
 
         request.META[self._environ_active_request_attr_key] = (
             active_requests_count_attrs

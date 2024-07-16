@@ -454,7 +454,8 @@ class TestMiddleware(WsgiTestBase):
         ]
         _recommended_attrs = {
             "http.server.active_requests": _active_requests_count_attrs,
-            "http.server.duration": _duration_attrs,
+            "http.server.duration": _duration_attrs
+            | {SpanAttributes.HTTP_TARGET},
         }
         start = default_timer()
         for _ in range(3):
