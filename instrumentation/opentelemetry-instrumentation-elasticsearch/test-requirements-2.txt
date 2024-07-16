@@ -9,13 +9,12 @@ packaging==24.0
 pluggy==1.5.0
 py-cpuinfo==9.0.0
 pytest==7.4.4
-pytest-benchmark==4.0.0
 python-dateutil==2.8.2
 six==1.16.0
 tomli==2.0.1
 typing_extensions==4.10.0
 urllib3==2.2.2
 wrapt==1.16.0
-zipp==3.17.0
+zipp==3.19.2
 -e opentelemetry-instrumentation
 -e instrumentation/opentelemetry-instrumentation-elasticsearch
