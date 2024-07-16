@@ -149,6 +149,28 @@ class TestURLLib3Instrumentor(TestBase):
             "https://opentelemetry.io/schemas/1.11.0",
         )
 
+    def test_schema_url_new_semconv(self):
+        pool = urllib3.HTTPSConnectionPool("mock")
+        response = pool.request("GET", "/status/200")
+
+        self.assertEqual(b"Hello!", response.data)
+        span = self.assert_span()
+        self.assertEqual(
+            span.instrumentation_info.schema_url,
+            "https://opentelemetry.io/schemas/1.21.0",
+        )
+
+    def test_schema_url_both_semconv(self):
+        pool = urllib3.HTTPSConnectionPool("mock")
+        response = pool.request("GET", "/status/200")
+
+        self.assertEqual(b"Hello!", response.data)
+        span = self.assert_span()
+        self.assertEqual(
+            span.instrumentation_info.schema_url,
+            "https://opentelemetry.io/schemas/1.21.0",
+        )
+
     def test_basic_not_found(self):
         url_404 = "http://mock/status/404"
         httpretty.register_uri(httpretty.GET, url_404, status=404)
