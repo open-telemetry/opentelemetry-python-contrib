@@ -349,7 +349,7 @@ class SystemMetricsInstrumentor(BaseInstrumentor):
             self._meter.create_observable_up_down_counter(
                 name="process.memory",
                 callbacks=[self._get_process_memory],
-                description="The amount of memory in use",
+                description="The amount of physical memory in use",
                 unit="bytes",
             )
 
