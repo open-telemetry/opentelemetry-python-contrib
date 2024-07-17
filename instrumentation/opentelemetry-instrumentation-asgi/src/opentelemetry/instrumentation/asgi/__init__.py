@@ -438,8 +438,6 @@ def set_status_code(
     sem_conv_opt_in_mode=_HTTPStabilityMode.DEFAULT,
 ):
     """Adds HTTP response attributes to span using the status_code argument."""
-    if not span.is_recording():
-        return
     status_code_str = str(status_code)
 
     try:
@@ -453,7 +451,8 @@ def set_status_code(
         metric_attributes,
         status_code,
         status_code_str,
-        sem_conv_opt_in_mode,
+        server_span=True,
+        sem_conv_opt_in_mode=sem_conv_opt_in_mode,
     )
 
 
@@ -836,36 +835,16 @@ class OpenTelemetryMiddleware:
             ) as send_span:
                 if callable(self.client_response_hook):
                     self.client_response_hook(send_span, scope, message)
+
+                status_code = None
+                if message["type"] == "http.response.start":
+                    status_code = message["status"]
+                elif message["type"] == "websocket.send":
+                    status_code = 200
+
                 if send_span.is_recording():
                     if message["type"] == "http.response.start":
-                        status_code = message["status"]
-                        # We record metrics only once
-                        set_status_code(
-                            server_span,
-                            status_code,
-                            duration_attrs,
-                            self._sem_conv_opt_in_mode,
-                        )
-                        set_status_code(
-                            send_span,
-                            status_code,
-                            None,
-                            self._sem_conv_opt_in_mode,
-                        )
                         expecting_trailers = message.get("trailers", False)
-                    elif message["type"] == "websocket.send":
-                        set_status_code(
-                            server_span,
-                            200,
-                            duration_attrs,
-                            self._sem_conv_opt_in_mode,
-                        )
-                        set_status_code(
-                            send_span,
-                            200,
-                            None,
-                            self._sem_conv_opt_in_mode,
-                        )
                     send_span.set_attribute("asgi.event.type", message["type"])
                     if (
                         server_span.is_recording()
@@ -886,6 +865,20 @@ class OpenTelemetryMiddleware:
                             server_span.set_attributes(
                                 custom_response_attributes
                             )
+                if status_code:
+                    # We record metrics only once
+                    set_status_code(
+                        server_span,
+                        status_code,
+                        duration_attrs,
+                        self._sem_conv_opt_in_mode,
+                    )
+                    set_status_code(
+                        send_span,
+                        status_code,
+                        None,
+                        self._sem_conv_opt_in_mode,
+                    )
 
                 propagator = get_global_response_propagator()
                 if propagator:
