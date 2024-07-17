@@ -732,10 +732,10 @@ class OpenTelemetryMiddleware:
                 self._sem_conv_opt_in_mode
             ):
                 _set_status(
-                    span,
-                    attributes,
-                    -1,
-                    type(exception).__qualname__,
+                    span=span,
+                    metrics_attributes=attributes,
+                    status_code=-1,
+                    status_code_str=type(exception).__qualname__,
                     server_span=True,
                     sem_conv_opt_in_mode=self._sem_conv_opt_in_mode,
                 )

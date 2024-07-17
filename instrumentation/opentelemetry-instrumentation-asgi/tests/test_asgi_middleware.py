@@ -285,12 +285,8 @@ async def exception_app(scope, receive, send):
     raise ValueError("An unexpected error occurred")
 
 
-async def send_simple_input(communicator):
-    await communicator.send_input(
-        {
-            "type": "http.request",
-        }
-    )
+async def send_simple_input_and_receive(communicator: ApplicationCommunicator):
+    await communicator.send_input({"type": "http.request", "body": b""})
     await communicator.receive_output(0)
 
 
@@ -533,7 +529,7 @@ class TestAsgiApplication(AsgiTestBase):
 
         with self.assertRaises(ValueError) as ctx:
             asyncio.get_event_loop().run_until_complete(
-                send_simple_input(communicator)
+                send_simple_input_and_receive(communicator)
             )
 
         self.assertEqual(str(ctx.exception), "An unexpected error occurred")
@@ -575,15 +571,15 @@ class TestAsgiApplication(AsgiTestBase):
 
         with self.assertRaises(ValueError) as ctx:
             asyncio.get_event_loop().run_until_complete(
-                send_simple_input(communicator)
-            )
-            self.assertEqual(
-                str(ctx.exception), "An unexpected error occurred"
+                send_simple_input_and_receive(communicator)
             )
 
+        self.assertEqual(str(ctx.exception), "An unexpected error occurred")
+
         span_list = self.memory_exporter.get_finished_spans()
-        self.assertEqual(len(span_list), 1)
         span = span_list[0]
+        self.assertEqual(len(span_list), 1)
+
         self.assertEqual(span.kind, trace_api.SpanKind.SERVER)
         self.assertEqual(span.status.status_code, trace_api.StatusCode.ERROR)
         self.assertEqual(
@@ -619,11 +615,9 @@ class TestAsgiApplication(AsgiTestBase):
 
         with self.assertRaises(ValueError) as ctx:
             asyncio.get_event_loop().run_until_complete(
-                send_simple_input(communicator)
+                send_simple_input_and_receive(communicator)
             )
-            self.assertEqual(
-                str(ctx.exception), "An unexpected error occurred"
-            )
+        self.assertEqual(str(ctx.exception), "An unexpected error occurred")
 
         span_list = self.memory_exporter.get_finished_spans()
         self.assertEqual(len(span_list), 1)
