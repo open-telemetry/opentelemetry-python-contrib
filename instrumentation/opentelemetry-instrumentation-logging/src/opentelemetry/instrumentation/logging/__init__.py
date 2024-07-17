@@ -132,11 +132,12 @@ class LoggingInstrumentor(BaseInstrumentor):  # pylint: disable=empty-docstring
 
             return record
 
-        def record_factory_with_hook(*args, **kwargs):
+        def record_factory_with_hook(*args, **kwargs) -> logging.LogRecord:
             record = record_factory(*args, **kwargs)
             span = get_current_span()
             with suppress(Exception):
                 log_hook(span, record)
+            return record
 
         _factory = record_factory_with_hook if log_hook else record_factory
         logging.setLogRecordFactory(_factory)
