@@ -549,23 +549,18 @@ class OpenTelemetryMiddleware:
         sem_conv_opt_in_mode = _OpenTelemetrySemanticConventionStability._get_opentelemetry_stability_opt_in_mode(
             _OpenTelemetryStabilitySignalType.HTTP,
         )
+        schema_url = _get_schema_url(sem_conv_opt_in_mode)
         self.app = guarantee_single_callable(app)
         self.tracer = (
             trace.get_tracer(
-                __name__,
-                __version__,
-                tracer_provider,
-                schema_url=_get_schema_url(sem_conv_opt_in_mode),
+                __name__, __version__, tracer_provider, schema_url=schema_url
             )
             if tracer is None
             else tracer
         )
         self.meter = (
             get_meter(
-                __name__,
-                __version__,
-                meter_provider,
-                schema_url=_get_schema_url(sem_conv_opt_in_mode),
+                __name__, __version__, meter_provider, schema_url=schema_url
             )
             if meter is None
             else meter
@@ -693,6 +688,7 @@ class OpenTelemetryMiddleware:
 
         if scope["type"] == "http":
             self.active_requests_counter.add(1, active_requests_count_attrs)
+        exception = None
         try:
             with trace.use_span(span, end_on_exit=False) as current_span:
                 if current_span.is_recording():
@@ -729,7 +725,20 @@ class OpenTelemetryMiddleware:
                 )
 
                 await self.app(scope, otel_receive, otel_send)
+        except Exception as exc:  # pylint: disable=broad-except
+            exception = exc
         finally:
+            if exception is not None and _report_new(
+                self._sem_conv_opt_in_mode
+            ):
+                _set_status(
+                    span,
+                    attributes,
+                    -1,
+                    type(exception).__qualname__,
+                    server_span=True,
+                    sem_conv_opt_in_mode=self._sem_conv_opt_in_mode,
+                )
             if scope["type"] == "http":
                 target = _collect_target_attribute(scope)
                 if target:
@@ -790,6 +799,9 @@ class OpenTelemetryMiddleware:
                 context.detach(token)
             if span.is_recording():
                 span.end()
+
+            if exception is not None:
+                raise exception.with_traceback(exception.__traceback__)
 
     # pylint: enable=too-many-branches
 
