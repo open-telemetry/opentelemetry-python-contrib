@@ -451,7 +451,8 @@ def set_status_code(
         metric_attributes,
         status_code,
         status_code_str,
-        sem_conv_opt_in_mode,
+        server_span=True,
+        sem_conv_opt_in_mode=sem_conv_opt_in_mode,
     )
 
 

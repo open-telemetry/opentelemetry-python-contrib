@@ -153,10 +153,6 @@ libraries = [
         "instrumentation": "opentelemetry-instrumentation-requests==0.47b0.dev",
     },
     {
-        "library": "scikit-learn ~= 0.24.0",
-        "instrumentation": "opentelemetry-instrumentation-sklearn==0.47b0.dev",
-    },
-    {
         "library": "sqlalchemy",
         "instrumentation": "opentelemetry-instrumentation-sqlalchemy==0.47b0.dev",
     },
