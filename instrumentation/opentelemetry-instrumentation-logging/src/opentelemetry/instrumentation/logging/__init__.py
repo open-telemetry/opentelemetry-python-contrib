@@ -17,7 +17,7 @@
 import logging  # pylint: disable=import-self
 from contextlib import suppress
 from os import environ
-from typing import Callable, Collection, Optional
+from typing import Callable, Collection, Optional, Tuple
 
 from opentelemetry.instrumentation.instrumentor import BaseInstrumentor
 from opentelemetry.instrumentation.logging.constants import (
@@ -34,6 +34,7 @@ from opentelemetry.sdk.resources import Resource
 from opentelemetry.trace import (
     INVALID_SPAN,
     INVALID_SPAN_CONTEXT,
+    Span,
     TracerProvider,
     get_current_span,
     get_tracer_provider,
@@ -81,36 +82,31 @@ class LoggingInstrumentor(BaseInstrumentor):  # pylint: disable=empty-docstring
     See `BaseInstrumentor`
     """
 
-    SPAN_ID_FIELD = "otelSpanID"
-    TRACE_ID_FIELD = "otelTraceID"
-    TRACE_SAMPLED_FIELD = "otelTraceSampled"
-    SERVICE_NAME_FIELD = "otelServiceName"
-
     _old_factory: Callable[..., logging.LogRecord] = None
 
     def instrumentation_dependencies(self) -> Collection[str]:
+        """Return python packages that the will be instrumented."""
         return _instruments
 
-    def _get_service_name(self, provider: TracerProvider) -> str:
-        """Get service name from provider."""
-        resource: Optional[Resource] = getattr(provider, "resource", None)
-        if resource is None:
-            return ""
+    def _instrument(
+        self,
+        tracer_provider: Optional[TracerProvider] = None,
+        log_hook: Optional[Callable[Tuple[Span, logging.LogRecord]]] = None,
+        trace_id_field: str = "otelTraceID",
+        span_id_field: str = "otelSpanID",
+        trace_sampled_field: str = "otelTraceSampled",
+        service_name_field: str = "otelServiceName",
+        **_kwargs,
+    ) -> None:
+        """Replace original log factory."""
+        if tracer_provider is None:
+            tracer_provider = get_tracer_provider()
 
-        return resource.attributes.get("service.name", "")
-
-    def _instrument(self, **_kwargs):
-        provider = _kwargs.get("tracer_provider", get_tracer_provider())
-        service_name = self._get_service_name(provider)
+        service_name = self._get_service_name(tracer_provider)
         old_factory = self._get_old_factory()
-        log_hook: Optional[Callable] = _kwargs.get("log_hook", None)
-
-        service_name_field = self.SERVICE_NAME_FIELD
-        trace_id_field = self.TRACE_ID_FIELD
-        trace_sampled_field = self.TRACE_SAMPLED_FIELD
-        span_id_field = self.SPAN_ID_FIELD
 
         def record_factory(*args, **kwargs) -> logging.LogRecord:
+            """Create log record and fill tracing info to the fields."""
             record = old_factory(*args, **kwargs)
 
             setattr(record, service_name_field, service_name)
@@ -133,6 +129,7 @@ class LoggingInstrumentor(BaseInstrumentor):  # pylint: disable=empty-docstring
             return record
 
         def record_factory_with_hook(*args, **kwargs) -> logging.LogRecord:
+            """Create record and call log hook."""
             record = record_factory(*args, **kwargs)
             span = get_current_span()
             with suppress(Exception):
@@ -141,10 +138,21 @@ class LoggingInstrumentor(BaseInstrumentor):  # pylint: disable=empty-docstring
 
         _factory = record_factory_with_hook if log_hook else record_factory
         logging.setLogRecordFactory(_factory)
+
         self._set_logging_format(**_kwargs)
 
-    def _uninstrument(self, **kwargs):
+    def _uninstrument(self, **kwargs) -> None:
+        """Turn back old log record factory."""
         self._set_old_factory()
+
+    @staticmethod
+    def _get_service_name(provider: TracerProvider) -> str:
+        """Get service name from provider."""
+        resource: Optional[Resource] = getattr(provider, "resource", None)
+        if resource is None:
+            return ""
+
+        return resource.attributes.get("service.name", "")
 
     def _get_old_factory(self) -> Callable[..., logging.LogRecord]:
         """Get and store original log factory."""
@@ -161,7 +169,9 @@ class LoggingInstrumentor(BaseInstrumentor):  # pylint: disable=empty-docstring
         logging.setLogRecordFactory(old_factory)
         self.__class__._old_factory = None
 
-    def _set_logging_format(self, **kwargs):
+    @staticmethod
+    def _set_logging_format(**kwargs) -> None:
+        """Set logging format, if it's enabled."""
         set_logging_format = kwargs.get(
             "set_logging_format",
             environ.get(OTEL_PYTHON_LOG_CORRELATION, "false").lower()
