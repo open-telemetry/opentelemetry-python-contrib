@@ -17,7 +17,7 @@
 import logging  # pylint: disable=import-self
 from contextlib import suppress
 from os import environ
-from typing import Callable, Collection, Optional, Tuple
+from typing import Callable, Collection, Optional
 
 from opentelemetry.instrumentation.instrumentor import BaseInstrumentor
 from opentelemetry.instrumentation.logging.constants import (
@@ -91,9 +91,7 @@ class LoggingInstrumentor(BaseInstrumentor):  # pylint: disable=empty-docstring
     def _instrument(
         self,
         tracer_provider: Optional[TracerProvider] = None,
-        log_hook: Optional[
-            Callable[Tuple[Span, logging.LogRecord], None]
-        ] = None,
+        log_hook: Optional[Callable[[Span, logging.LogRecord], None]] = None,
         set_logging_format: Optional[bool] = None,
         logging_format: Optional[str] = None,
         log_level: Optional[str] = None,
