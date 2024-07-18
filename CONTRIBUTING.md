@@ -90,9 +90,9 @@ See
 [`tox.ini`](https://github.com/open-telemetry/opentelemetry-python-contrib/blob/main/tox.ini)
 for more detail on available tox commands.
 
-### Tox UV support (experimental)
+### Run tests with tox-uv (experimental)
 
-You can run tox with `uv` support using the following commands:
+You can speedup the tests by run tox with `uv` support using the following commands:
 ```sh
 $ pip install tox-uv
 ```
