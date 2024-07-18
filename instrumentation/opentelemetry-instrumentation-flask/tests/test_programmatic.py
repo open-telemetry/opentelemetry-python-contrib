@@ -86,11 +86,10 @@ def expected_attributes_new(override_attributes):
 
 
 _server_duration_attrs_old_copy = _server_duration_attrs_old.copy()
-_server_duration_attrs_old_copy.append("http.route")
 _server_duration_attrs_old_copy.append("http.target")
 
 _server_duration_attrs_new_copy = _server_duration_attrs_new.copy()
-_server_duration_attrs_new_copy.append("http.target")
+_server_duration_attrs_new_copy.append("http.route")
 
 _expected_metric_names_old = [
     "http.server.active_requests",
@@ -577,7 +576,6 @@ class TestProgrammatic(InstrumentationTest, WsgiTestBase):
         self.client.get("/hello/756")
         expected_duration_attributes = {
             "http.method": "GET",
-            "http.route": "/hello/<int:helloid>",
             "http.target": "/hello/<int:helloid>",
             "http.host": "localhost",
             "http.scheme": "http",
@@ -605,7 +603,6 @@ class TestProgrammatic(InstrumentationTest, WsgiTestBase):
             "http.request.method": "GET",
             "url.scheme": "http",
             "http.route": "/hello/<int:helloid>",
-            "http.target": "/hello/<int:helloid>",
             "network.protocol.version": "1.1",
             "http.response.status_code": 200,
         }

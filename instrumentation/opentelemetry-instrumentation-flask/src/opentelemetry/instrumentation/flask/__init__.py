@@ -399,9 +399,6 @@ def _rewrapped_app(
             )
 
             if wrapped_app_environ.get(_ENVIRON_REQUEST_ROUTE_KEY, None):
-                duration_attrs_old[HTTP_ROUTE] = wrapped_app_environ.get(
-                    _ENVIRON_REQUEST_ROUTE_KEY
-                )
                 duration_attrs_old[HTTP_TARGET] = wrapped_app_environ.get(
                     _ENVIRON_REQUEST_ROUTE_KEY
                 )
@@ -416,9 +413,6 @@ def _rewrapped_app(
 
             if wrapped_app_environ.get(_ENVIRON_REQUEST_ROUTE_KEY, None):
                 duration_attrs_new[HTTP_ROUTE] = wrapped_app_environ.get(
-                    _ENVIRON_REQUEST_ROUTE_KEY
-                )
-                duration_attrs_new[HTTP_TARGET] = wrapped_app_environ.get(
                     _ENVIRON_REQUEST_ROUTE_KEY
                 )
 
