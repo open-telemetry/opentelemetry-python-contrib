@@ -91,7 +91,9 @@ class LoggingInstrumentor(BaseInstrumentor):  # pylint: disable=empty-docstring
     def _instrument(
         self,
         tracer_provider: Optional[TracerProvider] = None,
-        log_hook: Optional[Callable[Tuple[Span, logging.LogRecord]]] = None,
+        log_hook: Optional[
+            Callable[Tuple[Span, logging.LogRecord], None]
+        ] = None,
         set_logging_format: Optional[bool] = None,
         logging_format: Optional[str] = None,
         log_level: Optional[str] = None,
