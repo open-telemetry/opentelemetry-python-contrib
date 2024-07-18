@@ -11,6 +11,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - `opentelemetry-instrumentation-flask` Add `http.route` and `http.target` to metric attributes
   ([#2621](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/2621))
+- `opentelemetry-instrumentation-sklearn` Deprecated the sklearn instrumentation
+  ([#2708](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/2708))
 - `opentelemetry-instrumentation-pyramid` Record exceptions raised when serving a request
   ([#2622](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/2622))
 - `opentelemetry-sdk-extension-aws` Add AwsXrayLambdaPropagator
@@ -31,6 +33,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   ([#2630](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/2630))
 - `opentelemetry-instrumentation-system-metrics` Add support for capture open file descriptors
   ([#2652](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/2652))
+- `opentelemetry-instrumentation-httpx` Add support for instrument client with proxy
+  ([#2664](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/2664))
+- `opentelemetry-instrumentation-aiohttp-client` Implement new semantic convention opt-in migration
+  ([#2673](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/2673))
+- `opentelemetry-instrumentation-django` Add `http.target` to Django duration metric attributes
+  ([#2624](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/2624))
 
 ### Breaking changes
 
@@ -42,7 +50,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   ([#2682](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/2682))
 
 ### Fixed
-
+- Handle `redis.exceptions.WatchError` as a non-error event in redis instrumentation
+  ([#2668](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/2668))
 - `opentelemetry-instrumentation-httpx` Ensure httpx.get or httpx.request like methods are instrumented
   ([#2538](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/2538))
 - Add Python 3.12 support
@@ -58,7 +67,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - `opentelemetry-instrumentation-asgi` Fix generation of `http.target` and `http.url` attributes for ASGI apps
   using sub apps
   ([#2477](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/2477))
-- `opentelemetry-instrumentation-aws-lambda` Bugfix: AWS Lambda event source key incorrect for SNS in instrumentation library. 
+- `opentelemetry-instrumentation-aws-lambda` Bugfix: AWS Lambda event source key incorrect for SNS in instrumentation library.
   ([#2612](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/2612))
 - `opentelemetry-instrumentation-asyncio` instrumented `asyncio.wait_for` properly raises `asyncio.TimeoutError` as expected
   ([#2637](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/2637))
