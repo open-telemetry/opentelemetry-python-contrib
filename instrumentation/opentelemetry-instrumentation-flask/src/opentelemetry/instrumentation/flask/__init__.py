@@ -266,14 +266,12 @@ from opentelemetry.instrumentation.propagators import (
 )
 from opentelemetry.instrumentation.utils import _start_internal_or_server_span
 from opentelemetry.metrics import get_meter
-from opentelemetry.semconv._incubating.attributes.http_attributes import (
-    HTTP_TARGET,
-)
 from opentelemetry.semconv.attributes.http_attributes import HTTP_ROUTE
 from opentelemetry.semconv.metrics import MetricInstruments
 from opentelemetry.semconv.metrics.http_metrics import (
     HTTP_SERVER_REQUEST_DURATION,
 )
+from opentelemetry.semconv.trace import SpanAttributes
 from opentelemetry.util.http import (
     get_excluded_urls,
     parse_excluded_urls,
@@ -399,10 +397,9 @@ def _rewrapped_app(
             )
 
             if wrapped_app_environ.get(_ENVIRON_REQUEST_ROUTE_KEY, None):
-                duration_attrs_old[HTTP_TARGET] = wrapped_app_environ.get(
-                    _ENVIRON_REQUEST_ROUTE_KEY
+                duration_attrs_old[SpanAttributes.HTTP_TARGET] = (
+                    wrapped_app_environ.get(_ENVIRON_REQUEST_ROUTE_KEY)
                 )
-
             duration_histogram_old.record(
                 max(round(duration_s * 1000), 0), duration_attrs_old
             )
