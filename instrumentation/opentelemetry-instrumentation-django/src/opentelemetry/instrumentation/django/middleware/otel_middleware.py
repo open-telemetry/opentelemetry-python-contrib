@@ -80,6 +80,7 @@ from opentelemetry.util.http import (
     get_traced_request_attrs,
     normalise_request_header_name,
     normalise_response_header_name,
+    sanitize_method,
 )
 
 try:
@@ -177,6 +178,9 @@ class _DjangoMiddleware(MiddlewareMixin):
 
     @staticmethod
     def _get_span_name(request):
+        method = sanitize_method(request.method.strip())
+        if method == "_OTHER":
+            return "HTTP"
         try:
             if getattr(request, "resolver_match"):
                 match = request.resolver_match
@@ -184,10 +188,10 @@ class _DjangoMiddleware(MiddlewareMixin):
                 match = resolve(request.path)
 
             if hasattr(match, "route") and match.route:
-                return f"{request.method} {match.route}"
+                return f"{method} {match.route}"
 
             if hasattr(match, "url_name") and match.url_name:
-                return f"{request.method} {match.url_name}"
+                return f"{method} {match.url_name}"
 
             return request.method
 
@@ -221,7 +225,10 @@ class _DjangoMiddleware(MiddlewareMixin):
             carrier_getter = wsgi_getter
             collect_request_attributes = wsgi_collect_request_attributes
 
-        attributes = collect_request_attributes(carrier)
+        attributes = collect_request_attributes(
+            carrier,
+            self._sem_conv_opt_in_mode,
+        )
         span, token = _start_internal_or_server_span(
             tracer=self._tracer,
             span_name=self._get_span_name(request),
