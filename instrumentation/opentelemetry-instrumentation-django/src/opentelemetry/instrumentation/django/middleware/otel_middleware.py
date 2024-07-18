@@ -172,9 +172,9 @@ class _DjangoMiddleware(MiddlewareMixin):
     _sem_conv_opt_in_mode = _HTTPStabilityMode.DEFAULT
 
     _otel_request_hook: Callable[[Span, HttpRequest], None] = None
-    _otel_response_hook: Callable[
-        [Span, HttpRequest, HttpResponse], None
-    ] = None
+    _otel_response_hook: Callable[[Span, HttpRequest, HttpResponse], None] = (
+        None
+    )
 
     @staticmethod
     def _get_span_name(request):
@@ -245,9 +245,9 @@ class _DjangoMiddleware(MiddlewareMixin):
             self._sem_conv_opt_in_mode,
         )
 
-        request.META[
-            self._environ_active_request_attr_key
-        ] = active_requests_count_attrs
+        request.META[self._environ_active_request_attr_key] = (
+            active_requests_count_attrs
+        )
         # Pass all of attributes to duration key because we will filter during response
         request.META[self._environ_duration_attr_key] = attributes
         self._active_request_counter.add(1, active_requests_count_attrs)
