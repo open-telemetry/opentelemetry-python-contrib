@@ -276,9 +276,7 @@ class TestMiddlewareAsgi(SimpleTestCase, TestBase):
         self.assertEqual(span.attributes[SERVER_PORT], 80)
         self.assertEqual(span.attributes[CLIENT_ADDRESS], "127.0.0.1")
         self.assertEqual(span.attributes[NETWORK_PROTOCOL_VERSION], "1.1")
-        self.assertEqual(
-            span.attributes[HTTP_ROUTE], "^traced/"
-        )
+        self.assertEqual(span.attributes[HTTP_ROUTE], "^traced/")
         self.assertEqual(span.attributes[HTTP_RESPONSE_STATUS_CODE], 200)
 
     async def test_traced_get_both_semconv(self):
@@ -304,9 +302,7 @@ class TestMiddlewareAsgi(SimpleTestCase, TestBase):
         self.assertEqual(span.attributes[SERVER_PORT], 80)
         self.assertEqual(span.attributes[CLIENT_ADDRESS], "127.0.0.1")
         self.assertEqual(span.attributes[NETWORK_PROTOCOL_VERSION], "1.1")
-        self.assertEqual(
-            span.attributes[HTTP_ROUTE], "^traced/"
-        )
+        self.assertEqual(span.attributes[HTTP_ROUTE], "^traced/")
         self.assertEqual(span.attributes[HTTP_RESPONSE_STATUS_CODE], 200)
 
     async def test_not_recording(self):
@@ -360,10 +356,8 @@ class TestMiddlewareAsgi(SimpleTestCase, TestBase):
         self.assertEqual(span.attributes[SERVER_PORT], 80)
         self.assertEqual(span.attributes[CLIENT_ADDRESS], "127.0.0.1")
         self.assertEqual(span.attributes[NETWORK_PROTOCOL_VERSION], "1.1")
-        self.assertEqual(
-            span.attributes[HTTP_ROUTE], "^traced/"
-        )
-        self.assertEqual(span.attributes[HTTP_RESPONSE_STATUS_CODE], 200)   
+        self.assertEqual(span.attributes[HTTP_ROUTE], "^traced/")
+        self.assertEqual(span.attributes[HTTP_RESPONSE_STATUS_CODE], 200)
 
     async def test_traced_post_both_semconv(self):
         await self.async_client.post("/traced/")
@@ -388,10 +382,8 @@ class TestMiddlewareAsgi(SimpleTestCase, TestBase):
         self.assertEqual(span.attributes[SERVER_PORT], 80)
         self.assertEqual(span.attributes[CLIENT_ADDRESS], "127.0.0.1")
         self.assertEqual(span.attributes[NETWORK_PROTOCOL_VERSION], "1.1")
-        self.assertEqual(
-            span.attributes[HTTP_ROUTE], "^traced/"
-        )
-        self.assertEqual(span.attributes[HTTP_RESPONSE_STATUS_CODE], 200)  
+        self.assertEqual(span.attributes[HTTP_ROUTE], "^traced/")
+        self.assertEqual(span.attributes[HTTP_RESPONSE_STATUS_CODE], 200)
 
     async def test_error(self):
         with self.assertRaises(ValueError):
@@ -423,7 +415,7 @@ class TestMiddlewareAsgi(SimpleTestCase, TestBase):
         self.assertEqual(
             event.attributes[SpanAttributes.EXCEPTION_MESSAGE], "error"
         )
-    
+
     async def test_error_new_semconv(self):
         with self.assertRaises(ValueError):
             await self.async_client.get("/error/")
@@ -437,21 +429,15 @@ class TestMiddlewareAsgi(SimpleTestCase, TestBase):
         self.assertEqual(span.kind, SpanKind.SERVER)
         self.assertEqual(span.status.status_code, StatusCode.ERROR)
         self.assertEqual(span.attributes[HTTP_REQUEST_METHOD], "GET")
-        self.assertEqual(
-            span.attributes[HTTP_ROUTE], "^error/"
-        )
+        self.assertEqual(span.attributes[HTTP_ROUTE], "^error/")
         self.assertEqual(span.attributes[URL_SCHEME], "http")
         self.assertEqual(span.attributes[HTTP_RESPONSE_STATUS_CODE], 500)
 
         self.assertEqual(len(span.events), 1)
         event = span.events[0]
         self.assertEqual(event.name, "exception")
-        self.assertEqual(
-            event.attributes[EXCEPTION_TYPE], "ValueError"
-        )
-        self.assertEqual(
-            event.attributes[EXCEPTION_MESSAGE], "error"
-        )
+        self.assertEqual(event.attributes[EXCEPTION_TYPE], "ValueError")
+        self.assertEqual(event.attributes[EXCEPTION_MESSAGE], "error")
 
     async def test_error_both_semconv(self):
         with self.assertRaises(ValueError):
@@ -470,27 +456,19 @@ class TestMiddlewareAsgi(SimpleTestCase, TestBase):
             span.attributes[SpanAttributes.HTTP_URL],
             "http://127.0.0.1/error/",
         )
-        self.assertEqual(
-            span.attributes[SpanAttributes.HTTP_ROUTE], "^error/"
-        )
+        self.assertEqual(span.attributes[SpanAttributes.HTTP_ROUTE], "^error/")
         self.assertEqual(span.attributes[SpanAttributes.HTTP_SCHEME], "http")
         self.assertEqual(span.attributes[SpanAttributes.HTTP_STATUS_CODE], 500)
         self.assertEqual(span.attributes[HTTP_REQUEST_METHOD], "GET")
-        self.assertEqual(
-            span.attributes[HTTP_ROUTE], "^error/"
-        )
+        self.assertEqual(span.attributes[HTTP_ROUTE], "^error/")
         self.assertEqual(span.attributes[URL_SCHEME], "http")
         self.assertEqual(span.attributes[HTTP_RESPONSE_STATUS_CODE], 500)
 
         self.assertEqual(len(span.events), 1)
         event = span.events[0]
         self.assertEqual(event.name, "exception")
-        self.assertEqual(
-            event.attributes[EXCEPTION_TYPE], "ValueError"
-        )
-        self.assertEqual(
-            event.attributes[EXCEPTION_MESSAGE], "error"
-        )
+        self.assertEqual(event.attributes[EXCEPTION_TYPE], "ValueError")
+        self.assertEqual(event.attributes[EXCEPTION_MESSAGE], "error")
 
     async def test_exclude_lists(self):
         await self.async_client.get("/excluded_arg/123")
@@ -538,7 +516,9 @@ class TestMiddlewareAsgi(SimpleTestCase, TestBase):
         self.assertEqual(span.name, "GET")
 
     async def test_nonstandard_http_method_span_name(self):
-        await self.async_client.request(method="NONSTANDARD", path="/span_name/1234/")
+        await self.async_client.request(
+            method="NONSTANDARD", path="/span_name/1234/"
+        )
         span_list = self.memory_exporter.get_finished_spans()
         self.assertEqual(len(span_list), 1)
 

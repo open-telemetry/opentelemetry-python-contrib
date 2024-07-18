@@ -353,8 +353,8 @@ class DjangoInstrumentor(BaseInstrumentor):
                 description="Duration of HTTP server requests.",
                 unit="s",
             )
-        _DjangoMiddleware._active_request_counter = create_http_server_active_requests(
-            meter
+        _DjangoMiddleware._active_request_counter = (
+            create_http_server_active_requests(meter)
         )
         # This can not be solved, but is an inherent problem of this approach:
         # the order of middleware entries matters, and here you have no control

@@ -253,9 +253,7 @@ class TestMiddleware(WsgiTestBase):
         self.assertEqual(span.attributes[CLIENT_ADDRESS], "127.0.0.1")
         self.assertEqual(span.attributes[NETWORK_PROTOCOL_VERSION], "1.1")
         if DJANGO_2_2:
-            self.assertEqual(
-                span.attributes[HTTP_ROUTE], "^traced/"
-            )
+            self.assertEqual(span.attributes[HTTP_ROUTE], "^traced/")
         self.assertEqual(span.attributes[HTTP_RESPONSE_STATUS_CODE], 200)
 
     def test_traced_get_both_semconv(self):
@@ -286,9 +284,7 @@ class TestMiddleware(WsgiTestBase):
         self.assertEqual(span.attributes[CLIENT_ADDRESS], "127.0.0.1")
         self.assertEqual(span.attributes[NETWORK_PROTOCOL_VERSION], "1.1")
         if DJANGO_2_2:
-            self.assertEqual(
-                span.attributes[HTTP_ROUTE], "^traced/"
-            )
+            self.assertEqual(span.attributes[HTTP_ROUTE], "^traced/")
         self.assertEqual(span.attributes[HTTP_RESPONSE_STATUS_CODE], 200)
 
     def test_not_recording(self):
@@ -354,9 +350,7 @@ class TestMiddleware(WsgiTestBase):
         self.assertEqual(span.attributes[CLIENT_ADDRESS], "127.0.0.1")
         self.assertEqual(span.attributes[NETWORK_PROTOCOL_VERSION], "1.1")
         if DJANGO_2_2:
-            self.assertEqual(
-                span.attributes[HTTP_ROUTE], "^traced/"
-            )
+            self.assertEqual(span.attributes[HTTP_ROUTE], "^traced/")
         self.assertEqual(span.attributes[HTTP_RESPONSE_STATUS_CODE], 200)
 
     def test_traced_post_both_semconv(self):
@@ -383,9 +377,7 @@ class TestMiddleware(WsgiTestBase):
         self.assertEqual(span.attributes[CLIENT_ADDRESS], "127.0.0.1")
         self.assertEqual(span.attributes[NETWORK_PROTOCOL_VERSION], "1.1")
         if DJANGO_2_2:
-            self.assertEqual(
-                span.attributes[HTTP_ROUTE], "^traced/"
-            )
+            self.assertEqual(span.attributes[HTTP_ROUTE], "^traced/")
         self.assertEqual(span.attributes[HTTP_RESPONSE_STATUS_CODE], 200)
 
     def test_error(self):
@@ -436,21 +428,15 @@ class TestMiddleware(WsgiTestBase):
         self.assertEqual(span.status.status_code, StatusCode.ERROR)
         self.assertEqual(span.attributes[HTTP_REQUEST_METHOD], "GET")
         if DJANGO_2_2:
-            self.assertEqual(
-                span.attributes[HTTP_ROUTE], "^error/"
-            )
+            self.assertEqual(span.attributes[HTTP_ROUTE], "^error/")
         self.assertEqual(span.attributes[URL_SCHEME], "http")
         self.assertEqual(span.attributes[HTTP_RESPONSE_STATUS_CODE], 500)
 
         self.assertEqual(len(span.events), 1)
         event = span.events[0]
         self.assertEqual(event.name, "exception")
-        self.assertEqual(
-            event.attributes[EXCEPTION_TYPE], "ValueError"
-        )
-        self.assertEqual(
-            event.attributes[EXCEPTION_MESSAGE], "error"
-        )
+        self.assertEqual(event.attributes[EXCEPTION_TYPE], "ValueError")
+        self.assertEqual(event.attributes[EXCEPTION_MESSAGE], "error")
 
     def test_error_both_semconv(self):
         with self.assertRaises(ValueError):
@@ -477,21 +463,15 @@ class TestMiddleware(WsgiTestBase):
         self.assertEqual(span.attributes[SpanAttributes.HTTP_STATUS_CODE], 500)
         self.assertEqual(span.attributes[HTTP_REQUEST_METHOD], "GET")
         if DJANGO_2_2:
-            self.assertEqual(
-                span.attributes[HTTP_ROUTE], "^error/"
-            )
+            self.assertEqual(span.attributes[HTTP_ROUTE], "^error/")
         self.assertEqual(span.attributes[URL_SCHEME], "http")
         self.assertEqual(span.attributes[HTTP_RESPONSE_STATUS_CODE], 500)
 
         self.assertEqual(len(span.events), 1)
         event = span.events[0]
         self.assertEqual(event.name, "exception")
-        self.assertEqual(
-            event.attributes[EXCEPTION_TYPE], "ValueError"
-        )
-        self.assertEqual(
-            event.attributes[EXCEPTION_MESSAGE], "error"
-        )
+        self.assertEqual(event.attributes[EXCEPTION_TYPE], "ValueError")
+        self.assertEqual(event.attributes[EXCEPTION_MESSAGE], "error")
 
     def test_exclude_lists(self):
         client = Client()
@@ -558,7 +538,9 @@ class TestMiddleware(WsgiTestBase):
         self.assertEqual(span.name, "GET")
 
     def test_nonstandard_http_method_span_name(self):
-        Client().request(REQUEST_METHOD="NONSTANDARD", PATH_INFO="/span_name/1234/")
+        Client().request(
+            REQUEST_METHOD="NONSTANDARD", PATH_INFO="/span_name/1234/"
+        )
         span_list = self.memory_exporter.get_finished_spans()
         self.assertEqual(len(span_list), 1)
 
