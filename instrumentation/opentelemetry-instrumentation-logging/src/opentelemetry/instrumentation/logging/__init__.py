@@ -92,6 +92,9 @@ class LoggingInstrumentor(BaseInstrumentor):  # pylint: disable=empty-docstring
         self,
         tracer_provider: Optional[TracerProvider] = None,
         log_hook: Optional[Callable[Tuple[Span, logging.LogRecord]]] = None,
+        set_logging_format: Optional[bool] = None,
+        logging_format: Optional[str] = None,
+        log_level: Optional[str] = None,
         trace_id_field: str = "otelTraceID",
         span_id_field: str = "otelSpanID",
         trace_sampled_field: str = "otelTraceSampled",
@@ -139,7 +142,8 @@ class LoggingInstrumentor(BaseInstrumentor):  # pylint: disable=empty-docstring
         _factory = record_factory_with_hook if log_hook else record_factory
         logging.setLogRecordFactory(_factory)
 
-        self._set_logging_format(**_kwargs)
+        if self._logging_format_is_enabled(set_logging_format):
+            self._set_logging_format(logging_format, log_level)
 
     def _uninstrument(self, **kwargs) -> None:
         """Turn back old log record factory."""
@@ -170,24 +174,31 @@ class LoggingInstrumentor(BaseInstrumentor):  # pylint: disable=empty-docstring
         self.__class__._old_factory = None
 
     @staticmethod
-    def _set_logging_format(**kwargs) -> None:
-        """Set logging format, if it's enabled."""
-        set_logging_format = kwargs.get(
-            "set_logging_format",
-            environ.get(OTEL_PYTHON_LOG_CORRELATION, "false").lower()
-            == "true",
-        )
-        if not set_logging_format:
-            return
+    def _logging_format_is_enabled(
+        set_logging_format: Optional[bool] = None,
+    ) -> bool:
+        """Check logging format is enabled."""
+        if set_logging_format is None:
+            env_value = environ.get(
+                OTEL_PYTHON_LOG_CORRELATION, "false"
+            ).lower()
+            return env_value == "true"
 
-        log_format = kwargs.get(
-            "logging_format", environ.get(OTEL_PYTHON_LOG_FORMAT, None)
-        )
-        log_format = log_format or DEFAULT_LOGGING_FORMAT
+        return set_logging_format
 
-        log_level = kwargs.get(
-            "log_level", LEVELS.get(environ.get(OTEL_PYTHON_LOG_LEVEL))
-        )
+    @staticmethod
+    def _set_logging_format(
+        logging_format: Optional[str] = None,
+        log_level: Optional[str] = None,
+    ) -> None:
+        """Set logging format."""
+        if logging_format is None:
+            logging_format = environ.get(OTEL_PYTHON_LOG_FORMAT, None)
+        log_format = logging_format or DEFAULT_LOGGING_FORMAT
+
+        if log_level is None:
+            env_value = environ.get(OTEL_PYTHON_LOG_LEVEL, "")
+            log_level = LEVELS.get(env_value.lower())
         log_level = log_level or logging.INFO
 
         logging.basicConfig(format=log_format, level=log_level)
