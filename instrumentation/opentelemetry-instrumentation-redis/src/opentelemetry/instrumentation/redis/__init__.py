@@ -203,6 +203,8 @@ def _instrument(
             span_name,
         ) = _build_span_meta_data_for_pipeline(instance)
 
+        exception = None
+
         with tracer.start_as_current_span(
             span_name, kind=trace.SpanKind.CLIENT
         ) as span:
@@ -216,13 +218,17 @@ def _instrument(
             response = None
             try:
                 response = func(*args, **kwargs)
-            except redis.WatchError:
+            except redis.WatchError as watch_exception:
                 span.set_status(StatusCode.UNSET)
+                exception = watch_exception
 
             if callable(response_hook):
                 response_hook(span, instance, response)
 
-            return response
+        if exception:
+            raise exception
+
+        return response
 
     pipeline_class = (
         "BasePipeline" if redis.VERSION < (3, 0, 0) else "Pipeline"
@@ -279,6 +285,8 @@ def _instrument(
             span_name,
         ) = _build_span_meta_data_for_pipeline(instance)
 
+        exception = None
+
         with tracer.start_as_current_span(
             span_name, kind=trace.SpanKind.CLIENT
         ) as span:
@@ -292,12 +300,17 @@ def _instrument(
             response = None
             try:
                 response = await func(*args, **kwargs)
-            except redis.WatchError:
+            except redis.WatchError as watch_exception:
                 span.set_status(StatusCode.UNSET)
+                exception = watch_exception
 
             if callable(response_hook):
                 response_hook(span, instance, response)
-            return response
+
+        if exception:
+            raise exception
+
+        return response
 
     if redis.VERSION >= _REDIS_ASYNCIO_VERSION:
         wrap_function_wrapper(
