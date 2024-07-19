@@ -350,7 +350,7 @@ def _rewrapped_app(
             ):
                 if flask.request.url_rule:
                     nonlocal request_route
-                    request_route = str(flask.request.url_rule)
+                    request_route = flask.request.url_rule
 
                 span = flask.request.environ.get(_ENVIRON_SPAN_KEY)
 
@@ -396,7 +396,9 @@ def _rewrapped_app(
             )
 
             if request_route:
-                duration_attrs_old[SpanAttributes.HTTP_TARGET] = request_route
+                duration_attrs_old[SpanAttributes.HTTP_TARGET] = str(
+                    request_route
+                )
 
             duration_histogram_old.record(
                 max(round(duration_s * 1000), 0), duration_attrs_old
@@ -407,7 +409,7 @@ def _rewrapped_app(
             )
 
             if request_route:
-                duration_attrs_new[HTTP_ROUTE] = request_route
+                duration_attrs_new[HTTP_ROUTE] = str(request_route)
 
             duration_histogram_new.record(
                 max(duration_s, 0), duration_attrs_new
