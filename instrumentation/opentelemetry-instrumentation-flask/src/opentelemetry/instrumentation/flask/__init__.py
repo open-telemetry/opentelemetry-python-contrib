@@ -285,7 +285,6 @@ _ENVIRON_SPAN_KEY = "opentelemetry-flask.span_key"
 _ENVIRON_ACTIVATION_KEY = "opentelemetry-flask.activation_key"
 _ENVIRON_REQCTX_REF_KEY = "opentelemetry-flask.reqctx_ref_key"
 _ENVIRON_TOKEN = "opentelemetry-flask.token"
-_ENVIRON_REQUEST_ROUTE_KEY = "opentelemetry-flask.request-route_key"
 
 _excluded_urls_from_env = get_excluded_urls("FLASK")
 
@@ -342,6 +341,7 @@ def _rewrapped_app(
         )
 
         active_requests_counter.add(1, active_requests_count_attrs)
+        request_route = None
 
         def _start_response(status, response_headers, *args, **kwargs):
             if flask.request and (
@@ -349,9 +349,8 @@ def _rewrapped_app(
                 or not excluded_urls.url_disabled(flask.request.url)
             ):
                 if flask.request.url_rule:
-                    wrapped_app_environ[_ENVIRON_REQUEST_ROUTE_KEY] = str(
-                        flask.request.url_rule
-                    )
+                    nonlocal request_route
+                    request_route = str(flask.request.url_rule)
 
                 span = flask.request.environ.get(_ENVIRON_SPAN_KEY)
 
@@ -396,10 +395,9 @@ def _rewrapped_app(
                 attributes, _HTTPStabilityMode.DEFAULT
             )
 
-            if wrapped_app_environ.get(_ENVIRON_REQUEST_ROUTE_KEY, None):
-                duration_attrs_old[SpanAttributes.HTTP_TARGET] = (
-                    wrapped_app_environ.get(_ENVIRON_REQUEST_ROUTE_KEY)
-                )
+            if request_route:
+                duration_attrs_old[SpanAttributes.HTTP_TARGET] = request_route
+
             duration_histogram_old.record(
                 max(round(duration_s * 1000), 0), duration_attrs_old
             )
@@ -408,10 +406,8 @@ def _rewrapped_app(
                 attributes, _HTTPStabilityMode.HTTP
             )
 
-            if wrapped_app_environ.get(_ENVIRON_REQUEST_ROUTE_KEY, None):
-                duration_attrs_new[HTTP_ROUTE] = wrapped_app_environ.get(
-                    _ENVIRON_REQUEST_ROUTE_KEY
-                )
+            if request_route:
+                duration_attrs_new[HTTP_ROUTE] = request_route
 
             duration_histogram_new.record(
                 max(duration_s, 0), duration_attrs_new
