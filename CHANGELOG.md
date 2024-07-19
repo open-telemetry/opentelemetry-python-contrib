@@ -37,7 +37,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   ([#2673](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/2673))
 - `opentelemetry-instrumentation-django` Add `http.target` to Django duration metric attributes
   ([#2624](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/2624))
-  - `opentelemetry-instrumentation-django` Implement new semantic convention opt-in with stable http semantic conventions
+- `opentelemetry-instrumentation-django` Implement new semantic convention opt-in with stable http semantic conventions
   ([#2714](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/2714))
 
 ### Breaking changes
