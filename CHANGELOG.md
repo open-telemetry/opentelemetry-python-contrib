@@ -46,7 +46,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   ([#2580](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/2580))
 - Populate `{method}` as `HTTP` on `_OTHER` methods from scope for `asgi` middleware
   ([#2610](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/2610))
-  - Populate `{method}` as `HTTP` on `_OTHER` methods from scope for `fastapi` instrumentation
+- Populate `{method}` as `HTTP` on `_OTHER` methods from scope for `fastapi` instrumentation
   ([#2682](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/2682))
     - Populate `{method}` as `HTTP` on `_OTHER` methods from scope for `django` middleware
   ([#2714](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/2714))
