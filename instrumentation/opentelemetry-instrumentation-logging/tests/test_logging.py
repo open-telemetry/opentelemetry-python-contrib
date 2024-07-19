@@ -23,7 +23,7 @@ from opentelemetry.instrumentation.logging import (  # pylint: disable=no-name-i
     LoggingInstrumentor,
 )
 from opentelemetry.test.test_base import TestBase
-from opentelemetry.trace import ProxyTracer, get_tracer, NoOpTracerProvider
+from opentelemetry.trace import NoOpTracerProvider, ProxyTracer, get_tracer
 
 
 class FakeTracerProvider:
@@ -209,16 +209,16 @@ class TestLoggingInstrumentor(TestBase):
                 self.assertFalse(hasattr(record, "otelTraceSampled"))
 
     def test_no_op_tracer_provider(self):
-            LoggingInstrumentor().uninstrument()
-            LoggingInstrumentor().instrument(tracer_provider=NoOpTracerProvider())
-    
-            with self.caplog.at_level(level=logging.INFO):
-                logger = logging.getLogger("test logger")
-                logger.info("hello")
-    
-                self.assertEqual(len(self.caplog.records), 1)
-                record = self.caplog.records[0]
-                self.assertEqual(record.otelSpanID, "0")
-                self.assertEqual(record.otelTraceID, "0")
-                self.assertEqual(record.otelServiceName, "")
-                self.assertEqual(record.otelTraceSampled, False)
+        LoggingInstrumentor().uninstrument()
+        LoggingInstrumentor().instrument(tracer_provider=NoOpTracerProvider())
+
+        with self.caplog.at_level(level=logging.INFO):
+            logger = logging.getLogger("test logger")
+            logger.info("hello")
+
+            self.assertEqual(len(self.caplog.records), 1)
+            record = self.caplog.records[0]
+            self.assertEqual(record.otelSpanID, "0")
+            self.assertEqual(record.otelTraceID, "0")
+            self.assertEqual(record.otelServiceName, "")
+            self.assertEqual(record.otelTraceSampled, False)
