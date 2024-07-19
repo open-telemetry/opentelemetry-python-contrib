@@ -47,14 +47,19 @@ The hooks can be configured as follows:
 
 .. code:: python
 
-    # `request` is an instance of urllib3.connectionpool.HTTPConnectionPool
-    def request_hook(span, request):
-        pass
+    def request_hook(
+        span: Span,
+        pool: urllib3.connectionpool.HTTPConnectionPool,
+        request_info: RequestInfo,
+    ) -> Any:
+        ...
 
-    # `request` is an instance of urllib3.connectionpool.HTTPConnectionPool
-    # `response` is an instance of urllib3.response.HTTPResponse
-    def response_hook(span, request, response):
-        pass
+    def response_hook(
+        span: Span,
+        pool: urllib3.connectionpool.HTTPConnectionPool,
+        response: urllib3.response.HTTPResponse,
+    ) -> Any:
+        ...
 
     URLLib3Instrumentor().instrument(
         request_hook=request_hook, response_hook=response_hook
@@ -81,6 +86,7 @@ API
 import collections.abc
 import io
 import typing
+from dataclasses import dataclass
 from timeit import default_timer
 from typing import Collection
 
@@ -135,14 +141,29 @@ from opentelemetry.util.http.httplib import set_ip_on_next_http_connection
 
 _excluded_urls_from_env = get_excluded_urls("URLLIB3")
 
+
+@dataclass
+class RequestInfo:
+    """Arguments that were passed to the ``urlopen()`` call."""
+
+    __slots__ = ("method", "url", "headers", "body")
+
+    # The type annotations here come from ``HTTPConnectionPool.urlopen()``.
+    method: str
+    url: str
+    headers: typing.Optional[typing.Mapping[str, str]]
+    body: typing.Union[
+        bytes, typing.IO[typing.Any], typing.Iterable[bytes], str, None
+    ]
+
+
 _UrlFilterT = typing.Optional[typing.Callable[[str], str]]
 _RequestHookT = typing.Optional[
     typing.Callable[
         [
             Span,
             urllib3.connectionpool.HTTPConnectionPool,
-            typing.Dict,
-            typing.Optional[str],
+            RequestInfo,
         ],
         None,
     ]
@@ -317,7 +338,16 @@ def _instrument(
             span_name, kind=SpanKind.CLIENT, attributes=span_attributes
         ) as span, set_ip_on_next_http_connection(span):
             if callable(request_hook):
-                request_hook(span, instance, headers, body)
+                request_hook(
+                    span,
+                    instance,
+                    RequestInfo(
+                        method=method,
+                        url=url,
+                        headers=headers,
+                        body=body,
+                    ),
+                )
             inject(headers)
             # TODO: add error handling to also set exception `error.type` in new semconv
             with suppress_http_instrumentation():
