@@ -153,7 +153,7 @@ Run tests:
 
 ```sh
 # make sure you have all supported versions of Python installed
-$ pip install tox tox-uv  # only first time.
+$ pip install tox  # only first time.
 $ tox  # execute in the root of the repository
 ```
 
@@ -225,7 +225,7 @@ For a deeper discussion, see: https://github.com/open-telemetry/opentelemetry-sp
 ## Running Tests Locally
 
 1. Go to your Contrib repo directory. `git clone git@github.com:open-telemetry/opentelemetry-python-contrib.git && cd opentelemetry-python-contrib`.
-2. Make sure you have `tox` installed. `pip install tox tox-uv`.
+2. Make sure you have `tox` installed. `pip install tox`.
 3. Run `tox` without any arguments to run tests for all the packages. Read more about [tox](https://tox.readthedocs.io/en/latest/).
 
 Some tests can be slow due to pre-steps that do dependencies installs. To help with that, you can run tox a first time, and after that run the tests using previous installed dependencies in toxdir as following:
