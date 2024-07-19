@@ -99,7 +99,7 @@ $ pip install tox-uv
 
 ```sh
 # Will use uv
-$ TOX_ENV="uv" tox -e py312-test-instrumentation-aiopg
+$ TOX_RUNNER="uv" tox -e py312-test-instrumentation-aiopg
 ```
 
 ### Troubleshooting
