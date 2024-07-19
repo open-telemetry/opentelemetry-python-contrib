@@ -39,27 +39,21 @@ from opentelemetry.instrumentation.propagators import (
 from opentelemetry.sdk import resources
 from opentelemetry.sdk.trace import Span
 from opentelemetry.sdk.trace.id_generator import RandomIdGenerator
-from opentelemetry.semconv.attributes.client_attributes import (
-    CLIENT_ADDRESS,
+from opentelemetry.semconv.attributes.client_attributes import CLIENT_ADDRESS
+from opentelemetry.semconv.attributes.exception_attributes import (
+    EXCEPTION_MESSAGE,
+    EXCEPTION_TYPE,
 )
 from opentelemetry.semconv.attributes.http_attributes import (
     HTTP_REQUEST_METHOD,
     HTTP_RESPONSE_STATUS_CODE,
     HTTP_ROUTE,
 )
-from opentelemetry.semconv.attributes.exception_attributes import (
-    EXCEPTION_MESSAGE,
-    EXCEPTION_TYPE,
-)
 from opentelemetry.semconv.attributes.network_attributes import (
     NETWORK_PROTOCOL_VERSION,
 )
-from opentelemetry.semconv.attributes.server_attributes import (
-    SERVER_PORT,
-)
-from opentelemetry.semconv.attributes.url_attributes import (
-    URL_SCHEME,
-)
+from opentelemetry.semconv.attributes.server_attributes import SERVER_PORT
+from opentelemetry.semconv.attributes.url_attributes import URL_SCHEME
 from opentelemetry.semconv.trace import SpanAttributes
 from opentelemetry.test.test_base import TestBase
 from opentelemetry.trace import (

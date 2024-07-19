@@ -734,7 +734,7 @@ class TestMiddleware(WsgiTestBase):
         for _ in range(3):
             response = Client().get("/span_name/1234/")
             self.assertEqual(response.status_code, 200)
-        duration = default_timer() - start
+        duration_s = default_timer() - start
         metrics_list = self.memory_metrics_reader.get_metrics_data()
         number_data_point_seen = False
         histrogram_data_point_seen = False
@@ -753,7 +753,7 @@ class TestMiddleware(WsgiTestBase):
                             self.assertEqual(point.count, 3)
                             histrogram_data_point_seen = True
                             self.assertAlmostEqual(
-                                duration, point.sum, places=2
+                                duration_s, point.sum, places=2
                             )
                         if isinstance(point, NumberDataPoint):
                             number_data_point_seen = True
