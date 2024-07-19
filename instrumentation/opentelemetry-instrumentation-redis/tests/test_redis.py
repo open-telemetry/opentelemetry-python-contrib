@@ -359,7 +359,7 @@ class TestRedis(TestBase):
 
     def test_watch_error_sync(self):
         def redis_operations():
-            try:
+            with pytest.raises(WatchError):
                 redis_client = fakeredis.FakeStrictRedis()
                 pipe = redis_client.pipeline(transaction=True)
                 pipe.watch("a")
@@ -367,8 +367,6 @@ class TestRedis(TestBase):
                 pipe.multi()
                 pipe.set("a", "1")
                 pipe.execute()
-            except WatchError:
-                pass
 
         redis_operations()
 
@@ -400,7 +398,7 @@ class TestRedisAsync(TestBase, IsolatedAsyncioTestCase):
     @pytest.mark.asyncio
     async def test_watch_error_async(self):
         async def redis_operations():
-            try:
+            with pytest.raises(WatchError):
                 redis_client = FakeRedis()
                 async with redis_client.pipeline(transaction=False) as pipe:
                     await pipe.watch("a")
@@ -408,8 +406,6 @@ class TestRedisAsync(TestBase, IsolatedAsyncioTestCase):
                     pipe.multi()
                     await pipe.set("a", "1")
                     await pipe.execute()
-            except WatchError:
-                pass
 
         await redis_operations()
 
