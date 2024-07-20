@@ -348,9 +348,8 @@ def _rewrapped_app(
                 excluded_urls is None
                 or not excluded_urls.url_disabled(flask.request.url)
             ):
-                if flask.request.url_rule:
-                    nonlocal request_route
-                    request_route = flask.request.url_rule
+                nonlocal request_route
+                request_route = flask.request.url_rule
 
                 span = flask.request.environ.get(_ENVIRON_SPAN_KEY)
 
