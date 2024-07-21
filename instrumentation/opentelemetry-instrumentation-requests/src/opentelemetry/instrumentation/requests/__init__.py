@@ -188,13 +188,19 @@ def _instrument(
 
         span_attributes = {}
         _set_http_method(
-            span_attributes, method, span_name, sem_conv_opt_in_mode
+            span_attributes,
+            method,
+            sanitize_method(method),
+            sem_conv_opt_in_mode,
         )
         _set_http_url(span_attributes, url, sem_conv_opt_in_mode)
 
         metric_labels = {}
         _set_http_method(
-            metric_labels, method, span_name, sem_conv_opt_in_mode
+            metric_labels,
+            method,
+            sanitize_method(method),
+            sem_conv_opt_in_mode,
         )
 
         try:
