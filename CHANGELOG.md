@@ -37,6 +37,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   ([#2673](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/2673))
 - `opentelemetry-instrumentation-django` Add `http.target` to Django duration metric attributes
   ([#2624](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/2624))
+- `opentelemetry-instrumentation-urllib3` Implement new semantic convention opt-in migration
+  ([#2715](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/2715))
 
 ### Breaking changes
 
@@ -44,8 +46,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   ([#2580](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/2580))
 - Populate `{method}` as `HTTP` on `_OTHER` methods from scope for `asgi` middleware
   ([#2610](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/2610))
-  - Populate `{method}` as `HTTP` on `_OTHER` methods from scope for `fastapi` middleware
+- Populate `{method}` as `HTTP` on `_OTHER` methods from scope for `fastapi` middleware
   ([#2682](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/2682))
+- `opentelemetry-instrumentation-urllib3` Populate `{method}` as `HTTP` on `_OTHER` methods for span name
+  ([#2715](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/2715))
 
 ### Fixed
 - Handle `redis.exceptions.WatchError` as a non-error event in redis instrumentation
@@ -73,7 +77,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   ([#2153](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/2153))
 - `opentelemetry-instrumentation-asgi` Removed `NET_HOST_NAME` AND `NET_HOST_PORT` from active requests count attribute
   ([#2610](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/2610))
-- `opentelemetry-instrumentation-asgi` Bugfix: Middleware did not set status code attribute on duration metrics for non-recording spans. 
+- `opentelemetry-instrumentation-asgi` Bugfix: Middleware did not set status code attribute on duration metrics for non-recording spans.
   ([#2627](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/2627))
 
 
