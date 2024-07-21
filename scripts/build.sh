@@ -32,7 +32,7 @@ DISTDIR=dist
    cd $DISTDIR
    for x in * ; do
     # FIXME: Remove this logic once these packages are available in Pypi
-    if echo "$x" | grep -Eq "^opentelemetry_(instrumentation_aiohttp_server|resource_detector_container).*(\.tar\.gz|\.whl)$"; then
+    if echo "$x" | grep -Eq "^opentelemetry_resource_detector_container.*(\.tar\.gz|\.whl)$"; then
       echo "Skipping $x because of erroneous uploads. See: https://github.com/open-telemetry/opentelemetry-python-contrib/issues/2053"
       rm $x
     # FIXME: Remove this once opentelemetry-resource-detector-azure package goes 1.X
