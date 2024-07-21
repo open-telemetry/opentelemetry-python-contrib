@@ -14,13 +14,30 @@
 
 import io
 from timeit import default_timer
+from unittest import mock
 
 import httpretty
 import urllib3
 import urllib3.exceptions
 from urllib3 import encode_multipart_formdata
 
+from opentelemetry.instrumentation._semconv import (
+    OTEL_SEMCONV_STABILITY_OPT_IN,
+    _OpenTelemetrySemanticConventionStability,
+)
 from opentelemetry.instrumentation.urllib3 import URLLib3Instrumentor
+from opentelemetry.semconv.attributes.http_attributes import (
+    HTTP_REQUEST_METHOD,
+    HTTP_RESPONSE_STATUS_CODE,
+)
+from opentelemetry.semconv.attributes.network_attributes import (
+    NETWORK_PROTOCOL_VERSION,
+)
+from opentelemetry.semconv.attributes.server_attributes import (
+    SERVER_ADDRESS,
+    SERVER_PORT,
+)
+from opentelemetry.semconv.trace import SpanAttributes
 from opentelemetry.test.httptest import HttpTestBase
 from opentelemetry.test.test_base import TestBase
 
@@ -30,14 +47,34 @@ class TestURLLib3InstrumentorMetric(HttpTestBase, TestBase):
 
     def setUp(self):
         super().setUp()
+
+        test_name = ""
+        if hasattr(self, "_testMethodName"):
+            test_name = self._testMethodName
+        sem_conv_mode = "default"
+        if "new_semconv" in test_name:
+            sem_conv_mode = "http"
+        elif "both_semconv" in test_name:
+            sem_conv_mode = "http/dup"
+
+        self.env_patch = mock.patch.dict(
+            "os.environ",
+            {
+                OTEL_SEMCONV_STABILITY_OPT_IN: sem_conv_mode,
+            },
+        )
+        _OpenTelemetrySemanticConventionStability._initialized = False
+        self.env_patch.start()
         URLLib3Instrumentor().instrument()
         httpretty.enable(allow_net_connect=False)
         httpretty.register_uri(httpretty.GET, self.HTTP_URL, body="Hello!")
         httpretty.register_uri(httpretty.POST, self.HTTP_URL, body="Hello!")
+        httpretty.register_uri("NONSTANDARD", self.HTTP_URL, body="Hello!")
         self.pool = urllib3.PoolManager()
 
     def tearDown(self):
         super().tearDown()
+        self.env_patch.stop()
         self.pool.clear()
         URLLib3Instrumentor().uninstrument()
 
@@ -47,7 +84,7 @@ class TestURLLib3InstrumentorMetric(HttpTestBase, TestBase):
     def test_basic_metrics(self):
         start_time = default_timer()
         response = self.pool.request("GET", self.HTTP_URL)
-        client_duration_estimated = (default_timer() - start_time) * 1000
+        duration_ms = max(round((default_timer() - start_time) * 1000), 0)
 
         metrics = self.get_sorted_metrics()
 
@@ -57,75 +94,210 @@ class TestURLLib3InstrumentorMetric(HttpTestBase, TestBase):
             client_response_size,
         ) = metrics
 
-        self.assertEqual(client_duration.name, "http.client.duration")
-        self.assert_metric_expected(
+        data_points = (
             client_duration,
-            [
-                self.create_histogram_data_point(
-                    count=1,
-                    sum_data_point=client_duration_estimated,
-                    max_data_point=client_duration_estimated,
-                    min_data_point=client_duration_estimated,
-                    attributes={
-                        "http.flavor": "1.1",
-                        "http.host": "mock",
-                        "http.method": "GET",
-                        "http.scheme": "http",
-                        "http.status_code": 200,
-                        "net.peer.name": "mock",
-                        "net.peer.port": 80,
-                    },
-                )
-            ],
-            est_value_delta=200,
+            client_request_size,
+            client_response_size,
         )
 
-        self.assertEqual(client_request_size.name, "http.client.request.size")
-        self.assert_metric_expected(
-            client_request_size,
-            [
+        attributes = {
+            SpanAttributes.HTTP_STATUS_CODE: 200,
+            SpanAttributes.HTTP_HOST: "mock",
+            SpanAttributes.NET_PEER_PORT: 80,
+            SpanAttributes.NET_PEER_NAME: "mock",
+            SpanAttributes.HTTP_METHOD: "GET",
+            SpanAttributes.HTTP_FLAVOR: "1.1",
+            SpanAttributes.HTTP_SCHEME: "http",
+        }
+
+        metrics_names = (
+            "http.client.duration",
+            "http.client.request.size",
+            "http.client.response.size",
+        )
+
+        expected_size = len(response.data)
+        expected_data_points = (
+            (
+                self.create_histogram_data_point(
+                    count=1,
+                    sum_data_point=duration_ms,
+                    max_data_point=duration_ms,
+                    min_data_point=duration_ms,
+                    attributes=attributes,
+                ),
+                10,
+            ),
+            (
                 self.create_histogram_data_point(
                     count=1,
                     sum_data_point=0,
                     max_data_point=0,
                     min_data_point=0,
-                    attributes={
-                        "http.flavor": "1.1",
-                        "http.host": "mock",
-                        "http.method": "GET",
-                        "http.scheme": "http",
-                        "http.status_code": 200,
-                        "net.peer.name": "mock",
-                        "net.peer.port": 80,
-                    },
-                )
-            ],
-        )
-
-        expected_size = len(response.data)
-        self.assertEqual(
-            client_response_size.name, "http.client.response.size"
-        )
-        self.assert_metric_expected(
-            client_response_size,
-            [
+                    attributes=attributes,
+                ),
+                0,
+            ),
+            (
                 self.create_histogram_data_point(
                     count=1,
                     sum_data_point=expected_size,
                     max_data_point=expected_size,
                     min_data_point=expected_size,
-                    attributes={
-                        "http.flavor": "1.1",
-                        "http.host": "mock",
-                        "http.method": "GET",
-                        "http.scheme": "http",
-                        "http.status_code": 200,
-                        "net.peer.name": "mock",
-                        "net.peer.port": 80,
-                    },
-                )
-            ],
+                    attributes=attributes,
+                ),
+                0,
+            ),
         )
+        for name, result, expected in zip(
+            metrics_names, data_points, expected_data_points
+        ):
+            self.assertEqual(result.name, name)
+            data_point, delta = expected
+            self.assert_metric_expected(result, [data_point], delta)
+
+    @mock.patch("httpretty.http.HttpBaseClass.METHODS", ("NONSTANDARD",))
+    def test_basic_metrics_nonstandard_http_method_new_semconv(self):
+        start_time = default_timer()
+        response = self.pool.request("NONSTANDARD", self.HTTP_URL)
+        duration_s = max(default_timer() - start_time, 0)
+
+        attributes = {
+            NETWORK_PROTOCOL_VERSION: "1.1",
+            SERVER_ADDRESS: "mock",
+            SERVER_PORT: 80,
+            HTTP_REQUEST_METHOD: "_OTHER",
+            HTTP_RESPONSE_STATUS_CODE: 200,
+            # TODO: add URL_SCHEME to tests when supported in the implementation
+        }
+
+        metrics = self.get_sorted_metrics()
+        (
+            client_request_size,
+            client_duration,
+            client_response_size,
+        ) = metrics
+
+        metrics_names = (
+            "http.client.request.duration",
+            "http.client.request.body.size",
+            "http.client.response.body.size",
+        )
+        data_points = (
+            client_duration,
+            client_request_size,
+            client_response_size,
+        )
+        expected_size = len(response.data)
+        expected_data_points = (
+            (
+                self.create_histogram_data_point(
+                    count=1,
+                    sum_data_point=duration_s,
+                    max_data_point=duration_s,
+                    min_data_point=duration_s,
+                    attributes=attributes,
+                ),
+                10 / 1e3,
+            ),
+            (
+                self.create_histogram_data_point(
+                    count=1,
+                    sum_data_point=0,
+                    max_data_point=0,
+                    min_data_point=0,
+                    attributes=attributes,
+                ),
+                0,
+            ),
+            (
+                self.create_histogram_data_point(
+                    count=1,
+                    sum_data_point=expected_size,
+                    max_data_point=expected_size,
+                    min_data_point=expected_size,
+                    attributes=attributes,
+                ),
+                0,
+            ),
+        )
+        for name, result, expected in zip(
+            metrics_names, data_points, expected_data_points
+        ):
+            self.assertEqual(result.name, name)
+            data_point, delta = expected
+            self.assert_metric_expected(result, [data_point], delta)
+
+    def test_basic_metrics_new_semconv(self):
+        start_time = default_timer()
+        response = self.pool.request("GET", self.HTTP_URL)
+        duration_s = max(default_timer() - start_time, 0)
+
+        attributes = {
+            NETWORK_PROTOCOL_VERSION: "1.1",
+            SERVER_ADDRESS: "mock",
+            SERVER_PORT: 80,
+            HTTP_REQUEST_METHOD: "GET",
+            HTTP_RESPONSE_STATUS_CODE: 200,
+            # TODO: add URL_SCHEME to tests when supported in the implementation
+        }
+
+        metrics = self.get_sorted_metrics()
+        (
+            client_request_size,
+            client_duration,
+            client_response_size,
+        ) = metrics
+
+        metrics_names = (
+            "http.client.request.duration",
+            "http.client.request.body.size",
+            "http.client.response.body.size",
+        )
+        data_points = (
+            client_duration,
+            client_request_size,
+            client_response_size,
+        )
+        expected_size = len(response.data)
+        expected_data_points = (
+            (
+                self.create_histogram_data_point(
+                    count=1,
+                    sum_data_point=duration_s,
+                    max_data_point=duration_s,
+                    min_data_point=duration_s,
+                    attributes=attributes,
+                ),
+                10 / 1e3,
+            ),
+            (
+                self.create_histogram_data_point(
+                    count=1,
+                    sum_data_point=0,
+                    max_data_point=0,
+                    min_data_point=0,
+                    attributes=attributes,
+                ),
+                0,
+            ),
+            (
+                self.create_histogram_data_point(
+                    count=1,
+                    sum_data_point=expected_size,
+                    max_data_point=expected_size,
+                    min_data_point=expected_size,
+                    attributes=attributes,
+                ),
+                0,
+            ),
+        )
+        for name, result, expected in zip(
+            metrics_names, data_points, expected_data_points
+        ):
+            self.assertEqual(result.name, name)
+            data_point, delta = expected
+            self.assert_metric_expected(result, [data_point], delta)
 
     def test_str_request_body_size_metrics(self):
         self.pool.request("POST", self.HTTP_URL, body="foobar")
@@ -274,3 +446,5 @@ class TestURLLib3InstrumentorMetric(HttpTestBase, TestBase):
         for metric in metrics:
             for point in list(metric.data.data_points):
                 self.assertEqual(point.count, 1)
+        # instrument again to avoid warning message on tearDown
+        URLLib3Instrumentor().instrument()
