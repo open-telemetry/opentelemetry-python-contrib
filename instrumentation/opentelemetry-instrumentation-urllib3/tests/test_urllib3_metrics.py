@@ -69,7 +69,6 @@ class TestURLLib3InstrumentorMetric(HttpTestBase, TestBase):
         httpretty.enable(allow_net_connect=False)
         httpretty.register_uri(httpretty.GET, self.HTTP_URL, body="Hello!")
         httpretty.register_uri(httpretty.POST, self.HTTP_URL, body="Hello!")
-        httpretty.register_uri("NONSTANDARD", self.HTTP_URL, body="Hello!")
         self.pool = urllib3.PoolManager()
 
     def tearDown(self):
@@ -85,7 +84,6 @@ class TestURLLib3InstrumentorMetric(HttpTestBase, TestBase):
         start_time = default_timer()
         response = self.pool.request("GET", self.HTTP_URL)
         duration_ms = max(round((default_timer() - start_time) * 1000), 0)
-
         metrics = self.get_sorted_metrics()
 
         (
@@ -94,13 +92,7 @@ class TestURLLib3InstrumentorMetric(HttpTestBase, TestBase):
             client_response_size,
         ) = metrics
 
-        data_points = (
-            client_duration,
-            client_request_size,
-            client_response_size,
-        )
-
-        attributes = {
+        attrs_old = {
             SpanAttributes.HTTP_STATUS_CODE: 200,
             SpanAttributes.HTTP_HOST: "mock",
             SpanAttributes.NET_PEER_PORT: 80,
@@ -110,66 +102,56 @@ class TestURLLib3InstrumentorMetric(HttpTestBase, TestBase):
             SpanAttributes.HTTP_SCHEME: "http",
         }
 
-        metrics_names = (
-            "http.client.duration",
-            "http.client.request.size",
-            "http.client.response.size",
-        )
-
-        expected_size = len(response.data)
-        expected_data_points = (
-            (
+        self.assertEqual(client_duration.name, "http.client.duration")
+        self.assert_metric_expected(
+            client_duration,
+            [
                 self.create_histogram_data_point(
                     count=1,
                     sum_data_point=duration_ms,
                     max_data_point=duration_ms,
                     min_data_point=duration_ms,
-                    attributes=attributes,
-                ),
-                10,
-            ),
-            (
+                    attributes=attrs_old,
+                )
+            ],
+            est_value_delta=40,
+        )
+
+        self.assertEqual(client_request_size.name, "http.client.request.size")
+        self.assert_metric_expected(
+            client_request_size,
+            [
                 self.create_histogram_data_point(
                     count=1,
                     sum_data_point=0,
                     max_data_point=0,
                     min_data_point=0,
-                    attributes=attributes,
-                ),
-                0,
-            ),
-            (
+                    attributes=attrs_old,
+                )
+            ],
+        )
+
+        expected_size = len(response.data)
+        self.assertEqual(
+            client_response_size.name, "http.client.response.size"
+        )
+        self.assert_metric_expected(
+            client_response_size,
+            [
                 self.create_histogram_data_point(
                     count=1,
                     sum_data_point=expected_size,
                     max_data_point=expected_size,
                     min_data_point=expected_size,
-                    attributes=attributes,
-                ),
-                0,
-            ),
+                    attributes=attrs_old,
+                )
+            ],
         )
-        for name, result, expected in zip(
-            metrics_names, data_points, expected_data_points
-        ):
-            self.assertEqual(result.name, name)
-            data_point, delta = expected
-            self.assert_metric_expected(result, [data_point], delta)
 
-    @mock.patch("httpretty.http.HttpBaseClass.METHODS", ("NONSTANDARD",))
-    def test_basic_metrics_nonstandard_http_method_new_semconv(self):
+    def test_basic_metrics_new_semconv(self):
         start_time = default_timer()
-        response = self.pool.request("NONSTANDARD", self.HTTP_URL)
+        response = self.pool.request("GET", self.HTTP_URL)
         duration_s = max(default_timer() - start_time, 0)
-
-        attributes = {
-            NETWORK_PROTOCOL_VERSION: "1.1",
-            SERVER_ADDRESS: "mock",
-            SERVER_PORT: 80,
-            HTTP_REQUEST_METHOD: "_OTHER",
-            HTTP_RESPONSE_STATUS_CODE: 200,
-            # TODO: add URL_SCHEME to tests when supported in the implementation
-        }
 
         metrics = self.get_sorted_metrics()
         (
@@ -178,62 +160,7 @@ class TestURLLib3InstrumentorMetric(HttpTestBase, TestBase):
             client_response_size,
         ) = metrics
 
-        metrics_names = (
-            "http.client.request.duration",
-            "http.client.request.body.size",
-            "http.client.response.body.size",
-        )
-        data_points = (
-            client_duration,
-            client_request_size,
-            client_response_size,
-        )
-        expected_size = len(response.data)
-        expected_data_points = (
-            (
-                self.create_histogram_data_point(
-                    count=1,
-                    sum_data_point=duration_s,
-                    max_data_point=duration_s,
-                    min_data_point=duration_s,
-                    attributes=attributes,
-                ),
-                10 / 1e3,
-            ),
-            (
-                self.create_histogram_data_point(
-                    count=1,
-                    sum_data_point=0,
-                    max_data_point=0,
-                    min_data_point=0,
-                    attributes=attributes,
-                ),
-                0,
-            ),
-            (
-                self.create_histogram_data_point(
-                    count=1,
-                    sum_data_point=expected_size,
-                    max_data_point=expected_size,
-                    min_data_point=expected_size,
-                    attributes=attributes,
-                ),
-                0,
-            ),
-        )
-        for name, result, expected in zip(
-            metrics_names, data_points, expected_data_points
-        ):
-            self.assertEqual(result.name, name)
-            data_point, delta = expected
-            self.assert_metric_expected(result, [data_point], delta)
-
-    def test_basic_metrics_new_semconv(self):
-        start_time = default_timer()
-        response = self.pool.request("GET", self.HTTP_URL)
-        duration_s = max(default_timer() - start_time, 0)
-
-        attributes = {
+        attrs_new = {
             NETWORK_PROTOCOL_VERSION: "1.1",
             SERVER_ADDRESS: "mock",
             SERVER_PORT: 80,
@@ -242,62 +169,202 @@ class TestURLLib3InstrumentorMetric(HttpTestBase, TestBase):
             # TODO: add URL_SCHEME to tests when supported in the implementation
         }
 
+        self.assertEqual(client_duration.name, "http.client.request.duration")
+        self.assert_metric_expected(
+            client_duration,
+            [
+                self.create_histogram_data_point(
+                    count=1,
+                    sum_data_point=duration_s,
+                    max_data_point=duration_s,
+                    min_data_point=duration_s,
+                    attributes=attrs_new,
+                )
+            ],
+            est_value_delta=40 / 1000,
+        )
+
+        self.assertEqual(
+            client_request_size.name, "http.client.request.body.size"
+        )
+        self.assert_metric_expected(
+            client_request_size,
+            [
+                self.create_histogram_data_point(
+                    count=1,
+                    sum_data_point=0,
+                    max_data_point=0,
+                    min_data_point=0,
+                    attributes=attrs_new,
+                )
+            ],
+        )
+
+        expected_size = len(response.data)
+        self.assertEqual(
+            client_response_size.name, "http.client.response.body.size"
+        )
+        self.assert_metric_expected(
+            client_response_size,
+            [
+                self.create_histogram_data_point(
+                    count=1,
+                    sum_data_point=expected_size,
+                    max_data_point=expected_size,
+                    min_data_point=expected_size,
+                    attributes=attrs_new,
+                )
+            ],
+        )
+
+    @mock.patch("httpretty.http.HttpBaseClass.METHODS", ("NONSTANDARD",))
+    def test_basic_metrics_nonstandard_http_method(self):
+        httpretty.register_uri(
+            "NONSTANDARD", self.HTTP_URL, body="", status=405
+        )
+
+        start_time = default_timer()
+        response = self.pool.request("NONSTANDARD", self.HTTP_URL)
+        duration_ms = max(round((default_timer() - start_time) * 1000), 0)
+
         metrics = self.get_sorted_metrics()
+
+        (
+            client_duration,
+            client_request_size,
+            client_response_size,
+        ) = metrics
+
+        attrs_old = {
+            SpanAttributes.HTTP_STATUS_CODE: 405,
+            SpanAttributes.HTTP_HOST: "mock",
+            SpanAttributes.NET_PEER_PORT: 80,
+            SpanAttributes.NET_PEER_NAME: "mock",
+            SpanAttributes.HTTP_METHOD: "_OTHER",
+            SpanAttributes.HTTP_FLAVOR: "1.1",
+            SpanAttributes.HTTP_SCHEME: "http",
+        }
+
+        self.assertEqual(client_duration.name, "http.client.duration")
+        self.assert_metric_expected(
+            client_duration,
+            [
+                self.create_histogram_data_point(
+                    count=1,
+                    sum_data_point=duration_ms,
+                    max_data_point=duration_ms,
+                    min_data_point=duration_ms,
+                    attributes=attrs_old,
+                )
+            ],
+            est_value_delta=40,
+        )
+
+        self.assertEqual(client_request_size.name, "http.client.request.size")
+        self.assert_metric_expected(
+            client_request_size,
+            [
+                self.create_histogram_data_point(
+                    count=1,
+                    sum_data_point=0,
+                    max_data_point=0,
+                    min_data_point=0,
+                    attributes=attrs_old,
+                )
+            ],
+        )
+
+        expected_size = len(response.data)
+        self.assertEqual(
+            client_response_size.name, "http.client.response.size"
+        )
+        self.assert_metric_expected(
+            client_response_size,
+            [
+                self.create_histogram_data_point(
+                    count=1,
+                    sum_data_point=expected_size,
+                    max_data_point=expected_size,
+                    min_data_point=expected_size,
+                    attributes=attrs_old,
+                )
+            ],
+        )
+
+    @mock.patch("httpretty.http.HttpBaseClass.METHODS", ("NONSTANDARD",))
+    def test_basic_metrics_nonstandard_http_method_new_semconv(self):
+        httpretty.register_uri(
+            "NONSTANDARD", self.HTTP_URL, body="", status=405
+        )
+        start_time = default_timer()
+        response = self.pool.request("NONSTANDARD", self.HTTP_URL)
+        duration_s = max(default_timer() - start_time, 0)
+
+        metrics = self.get_sorted_metrics()
+
         (
             client_request_size,
             client_duration,
             client_response_size,
         ) = metrics
 
-        metrics_names = (
-            "http.client.request.duration",
-            "http.client.request.body.size",
-            "http.client.response.body.size",
-        )
-        data_points = (
+        attrs_new = {
+            NETWORK_PROTOCOL_VERSION: "1.1",
+            SERVER_ADDRESS: "mock",
+            SERVER_PORT: 80,
+            HTTP_REQUEST_METHOD: "_OTHER",
+            HTTP_RESPONSE_STATUS_CODE: 405,
+            "error.type": "405",
+            # TODO: add URL_SCHEME to tests when supported in the implementation
+        }
+
+        self.assertEqual(client_duration.name, "http.client.request.duration")
+        self.assert_metric_expected(
             client_duration,
-            client_request_size,
-            client_response_size,
-        )
-        expected_size = len(response.data)
-        expected_data_points = (
-            (
+            [
                 self.create_histogram_data_point(
                     count=1,
                     sum_data_point=duration_s,
                     max_data_point=duration_s,
                     min_data_point=duration_s,
-                    attributes=attributes,
-                ),
-                10 / 1e3,
-            ),
-            (
+                    attributes=attrs_new,
+                )
+            ],
+            est_value_delta=40 / 1000,
+        )
+
+        self.assertEqual(
+            client_request_size.name, "http.client.request.body.size"
+        )
+        self.assert_metric_expected(
+            client_request_size,
+            [
                 self.create_histogram_data_point(
                     count=1,
                     sum_data_point=0,
                     max_data_point=0,
                     min_data_point=0,
-                    attributes=attributes,
-                ),
-                0,
-            ),
-            (
+                    attributes=attrs_new,
+                )
+            ],
+        )
+
+        expected_size = len(response.data)
+        self.assertEqual(
+            client_response_size.name, "http.client.response.body.size"
+        )
+        self.assert_metric_expected(
+            client_response_size,
+            [
                 self.create_histogram_data_point(
                     count=1,
                     sum_data_point=expected_size,
                     max_data_point=expected_size,
                     min_data_point=expected_size,
-                    attributes=attributes,
-                ),
-                0,
-            ),
+                    attributes=attrs_new,
+                )
+            ],
         )
-        for name, result, expected in zip(
-            metrics_names, data_points, expected_data_points
-        ):
-            self.assertEqual(result.name, name)
-            data_point, delta = expected
-            self.assert_metric_expected(result, [data_point], delta)
 
     def test_str_request_body_size_metrics(self):
         self.pool.request("POST", self.HTTP_URL, body="foobar")

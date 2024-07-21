@@ -304,8 +304,7 @@ def _instrument(
 
         span_name = _get_span_name(method)
         span_attributes = {}
-        # If the HTTP request method is not known to instrumentation,
-        # it MUST set the http.request.method attribute to _OTHER.
+
         _set_http_method(
             span_attributes,
             method,
@@ -320,13 +319,11 @@ def _instrument(
             if callable(request_hook):
                 request_hook(span, instance, headers, body)
             inject(headers)
-
             # TODO: add error handling to set `error.type` in new semconv
             with suppress_http_instrumentation():
                 start_time = default_timer()
                 response = wrapped(*args, **kwargs)
                 duration_s = default_timer() - start_time
-
             # set http status code based on semconv
             metric_attributes = {}
             _set_status_code_attribute(
@@ -358,6 +355,7 @@ def _instrument(
                 duration_s,
                 request_size,
                 response_size,
+                sem_conv_opt_in_mode,
             )
 
             return response
@@ -431,11 +429,10 @@ def _prepare_headers(urlopen_kwargs: typing.Dict) -> typing.Dict:
     return headers
 
 
-# response: urllib3.response.HTTPResponse
 def _set_status_code_attribute(
     span: Span,
     status_code: int,
-    metric_attributes: typing.Optional[typing.Dict] = None,
+    metric_attributes: dict = None,
     sem_conv_opt_in_mode: _HTTPStabilityMode = _HTTPStabilityMode.DEFAULT,
 ) -> None:
 
@@ -488,23 +485,33 @@ def _set_metric_attributes(
             metric_attributes, http_version, sem_conv_opt_in_mode
         )
 
-    # return metric_attributes
 
-
-def _parse_duration_attrs(
-    attributes,
+def _filter_attributes_semconv(
+    metric_attributes,
     sem_conv_opt_in_mode: _HTTPStabilityMode = _HTTPStabilityMode.DEFAULT,
 ):
-    return _filter_semconv_duration_attrs(
-        attributes,
-        _client_duration_attrs_old,
-        _client_duration_attrs_new,
-        sem_conv_opt_in_mode,
-    )
+    duration_attrs_old = None
+    duration_attrs_new = None
+    if _report_old(sem_conv_opt_in_mode):
+        duration_attrs_old = _filter_semconv_duration_attrs(
+            metric_attributes,
+            _client_duration_attrs_old,
+            _client_duration_attrs_new,
+            _HTTPStabilityMode.DEFAULT,
+        )
+    if _report_new(sem_conv_opt_in_mode):
+        duration_attrs_new = _filter_semconv_duration_attrs(
+            metric_attributes,
+            _client_duration_attrs_old,
+            _client_duration_attrs_new,
+            _HTTPStabilityMode.HTTP,
+        )
+
+    return (duration_attrs_old, duration_attrs_new)
 
 
 def _record_metrics(
-    attributes: dict,
+    metric_attributes: dict,
     duration_histogram_old: Histogram,
     duration_histogram_new: Histogram,
     request_size_histogram_old: Histogram,
@@ -514,50 +521,41 @@ def _record_metrics(
     duration_s: float,
     request_size: typing.Optional[int],
     response_size: int,
+    sem_conv_opt_in_mode: _HTTPStabilityMode = _HTTPStabilityMode.DEFAULT,
 ):
-    duration_attrs_old = None
-    duration_attrs_new = None
-
+    attrs_old, attrs_new = _filter_attributes_semconv(
+        metric_attributes, sem_conv_opt_in_mode
+    )
     if duration_histogram_old:
-        duration_attrs_old = _parse_duration_attrs(
-            attributes, _HTTPStabilityMode.DEFAULT
-        )
         # Default behavior is to record the duration in milliseconds
         duration_histogram_old.record(
             max(round(duration_s * 1000), 0),
-            attributes=duration_attrs_old,
+            attributes=attrs_old,
         )
 
     if duration_histogram_new:
-        duration_attrs_new = _parse_duration_attrs(
-            attributes, _HTTPStabilityMode.HTTP
-        )
         # New semconv record the duration in seconds
         duration_histogram_new.record(
             duration_s,
-            attributes=duration_attrs_new,
+            attributes=attrs_new,
         )
 
     if request_size is not None:
         if request_size_histogram_old:
             request_size_histogram_old.record(
-                request_size, attributes=duration_attrs_old
-            ),
+                request_size, attributes=attrs_old
+            )
 
         if request_size_histogram_new:
             request_size_histogram_new.record(
-                request_size, attributes=duration_attrs_new
+                request_size, attributes=attrs_new
             )
 
     if response_size_histogram_old:
-        response_size_histogram_old.record(
-            response_size, attributes=duration_attrs_old
-        )
+        response_size_histogram_old.record(response_size, attributes=attrs_old)
 
     if response_size_histogram_new:
-        response_size_histogram_new.record(
-            response_size, attributes=duration_attrs_new
-        )
+        response_size_histogram_new.record(response_size, attributes=attrs_new)
 
 
 def _uninstrument():
