@@ -371,7 +371,7 @@ def get_default_span_name(method):
     Returns:
         span name
     """
-    method = sanitize_method(method.upper().strip())
+    method = sanitize_method(method.strip())
     if method == "_OTHER":
         return "HTTP"
     return method
