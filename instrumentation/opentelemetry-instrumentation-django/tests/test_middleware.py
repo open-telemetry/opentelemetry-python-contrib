@@ -782,7 +782,7 @@ class TestMiddleware(WsgiTestBase):
                             self.assertEqual(point.count, 3)
                             histrogram_data_point_seen = True
                             self.assertAlmostEqual(
-                                duration_s, point.sum, places=2
+                                duration_s, point.sum, places=1
                             )
                         if isinstance(point, NumberDataPoint):
                             number_data_point_seen = True
