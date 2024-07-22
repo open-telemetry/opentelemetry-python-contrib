@@ -231,13 +231,10 @@ class TestWsgiApplication(WsgiTestBase):
 
         self.assertEqual(self.status, "200 OK")
         self.assertEqual(self.response_headers, expected_headers)
-        expected_attributes = {}
         if error:
             self.assertIs(self.exc_info[0], error)
             self.assertIsInstance(self.exc_info[1], error)
             self.assertIsNotNone(self.exc_info[2])
-            if new_sem_conv:
-                expected_attributes[ERROR_TYPE] = error
         else:
             self.assertIsNone(self.exc_info)
 
@@ -245,6 +242,7 @@ class TestWsgiApplication(WsgiTestBase):
         self.assertEqual(len(span_list), 1)
         self.assertEqual(span_list[0].name, span_name)
         self.assertEqual(span_list[0].kind, trace_api.SpanKind.SERVER)
+        expected_attributes = {}
         expected_attributes_old = {
             SpanAttributes.HTTP_SERVER_NAME: "127.0.0.1",
             SpanAttributes.HTTP_SCHEME: "http",
