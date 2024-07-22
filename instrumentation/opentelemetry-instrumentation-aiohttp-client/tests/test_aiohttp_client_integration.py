@@ -58,7 +58,7 @@ def run_with_test_server(
         app.add_routes([aiohttp.web.get(parsed_url.path, handler)])
         app.add_routes([aiohttp.web.post(parsed_url.path, handler)])
         app.add_routes([aiohttp.web.patch(parsed_url.path, handler)])
-        app.add_routes([aiohttp.web.route("*", "/nonstandard", handler)])
+
         with contextlib.suppress(aiohttp.ClientError):
             async with aiohttp.test_utils.TestServer(app) as server:
                 netloc = (server.host, server.port)
