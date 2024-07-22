@@ -24,6 +24,10 @@ from django.test import SimpleTestCase
 from django.test.utils import setup_test_environment, teardown_test_environment
 
 from opentelemetry import trace as trace_api
+from opentelemetry.instrumentation._semconv import (
+    OTEL_SEMCONV_STABILITY_OPT_IN,
+    _OpenTelemetrySemanticConventionStability,
+)
 from opentelemetry.instrumentation.django import (
     DjangoInstrumentor,
     _DjangoMiddleware,
@@ -35,6 +39,22 @@ from opentelemetry.instrumentation.propagators import (
 from opentelemetry.sdk import resources
 from opentelemetry.sdk.trace import Span
 from opentelemetry.sdk.trace.id_generator import RandomIdGenerator
+from opentelemetry.semconv.attributes.client_attributes import CLIENT_ADDRESS
+from opentelemetry.semconv.attributes.exception_attributes import (
+    EXCEPTION_MESSAGE,
+    EXCEPTION_TYPE,
+)
+from opentelemetry.semconv.attributes.http_attributes import (
+    HTTP_REQUEST_METHOD,
+    HTTP_REQUEST_METHOD_ORIGINAL,
+    HTTP_RESPONSE_STATUS_CODE,
+    HTTP_ROUTE,
+)
+from opentelemetry.semconv.attributes.network_attributes import (
+    NETWORK_PROTOCOL_VERSION,
+)
+from opentelemetry.semconv.attributes.server_attributes import SERVER_PORT
+from opentelemetry.semconv.attributes.url_attributes import URL_SCHEME
 from opentelemetry.semconv.trace import SpanAttributes
 from opentelemetry.test.test_base import TestBase
 from opentelemetry.trace import (
@@ -87,6 +107,7 @@ _django_instrumentor = DjangoInstrumentor()
 @pytest.mark.skipif(
     not DJANGO_3_1, reason="AsyncClient implemented since Django 3.1"
 )
+# pylint: disable=too-many-public-methods
 class TestMiddlewareAsgi(SimpleTestCase, TestBase):
     @classmethod
     def setUpClass(cls):
@@ -96,15 +117,25 @@ class TestMiddlewareAsgi(SimpleTestCase, TestBase):
     def setUp(self):
         super().setUp()
         setup_test_environment()
-        _django_instrumentor.instrument()
+        test_name = ""
+        if hasattr(self, "_testMethodName"):
+            test_name = self._testMethodName
+        sem_conv_mode = "default"
+        if "new_semconv" in test_name:
+            sem_conv_mode = "http"
+        elif "both_semconv" in test_name:
+            sem_conv_mode = "http/dup"
         self.env_patch = patch.dict(
             "os.environ",
             {
                 "OTEL_PYTHON_DJANGO_EXCLUDED_URLS": "http://testserver/excluded_arg/123,excluded_noarg",
                 "OTEL_PYTHON_DJANGO_TRACED_REQUEST_ATTRS": "path_info,content_type,non_existing_variable",
+                OTEL_SEMCONV_STABILITY_OPT_IN: sem_conv_mode,
             },
         )
+        _OpenTelemetrySemanticConventionStability._initialized = False
         self.env_patch.start()
+        _django_instrumentor.instrument()
         self.exclude_patch = patch(
             "opentelemetry.instrumentation.django.middleware.otel_middleware._DjangoMiddleware._excluded_urls",
             get_excluded_urls("DJANGO"),
@@ -152,6 +183,57 @@ class TestMiddlewareAsgi(SimpleTestCase, TestBase):
         self.assertEqual(span.attributes[SpanAttributes.HTTP_SCHEME], "http")
         self.assertEqual(span.attributes[SpanAttributes.HTTP_STATUS_CODE], 200)
 
+    async def test_templated_route_get_new_semconv(self):
+        await self.async_client.get("/route/2020/template/")
+
+        spans = self.memory_exporter.get_finished_spans()
+        self.assertEqual(len(spans), 1)
+
+        span = spans[0]
+
+        self.assertEqual(span.name, "GET ^route/(?P<year>[0-9]{4})/template/$")
+        self.assertEqual(span.kind, SpanKind.SERVER)
+        self.assertEqual(span.status.status_code, StatusCode.UNSET)
+        self.assertEqual(span.attributes[HTTP_REQUEST_METHOD], "GET")
+        self.assertEqual(span.attributes[SERVER_PORT], 80)
+        self.assertEqual(span.attributes[CLIENT_ADDRESS], "127.0.0.1")
+        self.assertEqual(span.attributes[NETWORK_PROTOCOL_VERSION], "1.1")
+        self.assertEqual(
+            span.attributes[HTTP_ROUTE],
+            "^route/(?P<year>[0-9]{4})/template/$",
+        )
+        self.assertEqual(span.attributes[URL_SCHEME], "http")
+        self.assertEqual(span.attributes[HTTP_RESPONSE_STATUS_CODE], 200)
+
+    async def test_templated_route_get_both_semconv(self):
+        await self.async_client.get("/route/2020/template/")
+
+        spans = self.memory_exporter.get_finished_spans()
+        self.assertEqual(len(spans), 1)
+
+        span = spans[0]
+
+        self.assertEqual(span.name, "GET ^route/(?P<year>[0-9]{4})/template/$")
+        self.assertEqual(span.kind, SpanKind.SERVER)
+        self.assertEqual(span.status.status_code, StatusCode.UNSET)
+        self.assertEqual(span.attributes[SpanAttributes.HTTP_METHOD], "GET")
+        self.assertEqual(
+            span.attributes[SpanAttributes.HTTP_URL],
+            "http://127.0.0.1/route/2020/template/",
+        )
+        self.assertEqual(span.attributes[SpanAttributes.HTTP_SCHEME], "http")
+        self.assertEqual(span.attributes[SpanAttributes.HTTP_STATUS_CODE], 200)
+        self.assertEqual(span.attributes[HTTP_REQUEST_METHOD], "GET")
+        self.assertEqual(span.attributes[SERVER_PORT], 80)
+        self.assertEqual(span.attributes[CLIENT_ADDRESS], "127.0.0.1")
+        self.assertEqual(span.attributes[NETWORK_PROTOCOL_VERSION], "1.1")
+        self.assertEqual(
+            span.attributes[HTTP_ROUTE],
+            "^route/(?P<year>[0-9]{4})/template/$",
+        )
+        self.assertEqual(span.attributes[URL_SCHEME], "http")
+        self.assertEqual(span.attributes[HTTP_RESPONSE_STATUS_CODE], 200)
+
     async def test_traced_get(self):
         await self.async_client.get("/traced/")
 
@@ -173,6 +255,51 @@ class TestMiddlewareAsgi(SimpleTestCase, TestBase):
         )
         self.assertEqual(span.attributes[SpanAttributes.HTTP_SCHEME], "http")
         self.assertEqual(span.attributes[SpanAttributes.HTTP_STATUS_CODE], 200)
+
+    async def test_traced_get_new_semconv(self):
+        await self.async_client.get("/traced/")
+
+        spans = self.memory_exporter.get_finished_spans()
+        self.assertEqual(len(spans), 1)
+
+        span = spans[0]
+
+        self.assertEqual(span.name, "GET ^traced/")
+        self.assertEqual(span.kind, SpanKind.SERVER)
+        self.assertEqual(span.status.status_code, StatusCode.UNSET)
+        self.assertEqual(span.attributes[HTTP_REQUEST_METHOD], "GET")
+        self.assertEqual(span.attributes[URL_SCHEME], "http")
+        self.assertEqual(span.attributes[SERVER_PORT], 80)
+        self.assertEqual(span.attributes[CLIENT_ADDRESS], "127.0.0.1")
+        self.assertEqual(span.attributes[NETWORK_PROTOCOL_VERSION], "1.1")
+        self.assertEqual(span.attributes[HTTP_ROUTE], "^traced/")
+        self.assertEqual(span.attributes[HTTP_RESPONSE_STATUS_CODE], 200)
+
+    async def test_traced_get_both_semconv(self):
+        await self.async_client.get("/traced/")
+
+        spans = self.memory_exporter.get_finished_spans()
+        self.assertEqual(len(spans), 1)
+
+        span = spans[0]
+
+        self.assertEqual(span.name, "GET ^traced/")
+        self.assertEqual(span.kind, SpanKind.SERVER)
+        self.assertEqual(span.status.status_code, StatusCode.UNSET)
+        self.assertEqual(span.attributes[SpanAttributes.HTTP_METHOD], "GET")
+        self.assertEqual(
+            span.attributes[SpanAttributes.HTTP_URL],
+            "http://127.0.0.1/traced/",
+        )
+        self.assertEqual(span.attributes[SpanAttributes.HTTP_SCHEME], "http")
+        self.assertEqual(span.attributes[SpanAttributes.HTTP_STATUS_CODE], 200)
+        self.assertEqual(span.attributes[HTTP_REQUEST_METHOD], "GET")
+        self.assertEqual(span.attributes[URL_SCHEME], "http")
+        self.assertEqual(span.attributes[SERVER_PORT], 80)
+        self.assertEqual(span.attributes[CLIENT_ADDRESS], "127.0.0.1")
+        self.assertEqual(span.attributes[NETWORK_PROTOCOL_VERSION], "1.1")
+        self.assertEqual(span.attributes[HTTP_ROUTE], "^traced/")
+        self.assertEqual(span.attributes[HTTP_RESPONSE_STATUS_CODE], 200)
 
     async def test_not_recording(self):
         mock_tracer = Mock()
@@ -209,6 +336,51 @@ class TestMiddlewareAsgi(SimpleTestCase, TestBase):
         self.assertEqual(span.attributes[SpanAttributes.HTTP_SCHEME], "http")
         self.assertEqual(span.attributes[SpanAttributes.HTTP_STATUS_CODE], 200)
 
+    async def test_traced_post_new_semconv(self):
+        await self.async_client.post("/traced/")
+
+        spans = self.memory_exporter.get_finished_spans()
+        self.assertEqual(len(spans), 1)
+
+        span = spans[0]
+
+        self.assertEqual(span.name, "POST ^traced/")
+        self.assertEqual(span.kind, SpanKind.SERVER)
+        self.assertEqual(span.status.status_code, StatusCode.UNSET)
+        self.assertEqual(span.attributes[HTTP_REQUEST_METHOD], "POST")
+        self.assertEqual(span.attributes[URL_SCHEME], "http")
+        self.assertEqual(span.attributes[SERVER_PORT], 80)
+        self.assertEqual(span.attributes[CLIENT_ADDRESS], "127.0.0.1")
+        self.assertEqual(span.attributes[NETWORK_PROTOCOL_VERSION], "1.1")
+        self.assertEqual(span.attributes[HTTP_ROUTE], "^traced/")
+        self.assertEqual(span.attributes[HTTP_RESPONSE_STATUS_CODE], 200)
+
+    async def test_traced_post_both_semconv(self):
+        await self.async_client.post("/traced/")
+
+        spans = self.memory_exporter.get_finished_spans()
+        self.assertEqual(len(spans), 1)
+
+        span = spans[0]
+
+        self.assertEqual(span.name, "POST ^traced/")
+        self.assertEqual(span.kind, SpanKind.SERVER)
+        self.assertEqual(span.status.status_code, StatusCode.UNSET)
+        self.assertEqual(span.attributes[SpanAttributes.HTTP_METHOD], "POST")
+        self.assertEqual(
+            span.attributes[SpanAttributes.HTTP_URL],
+            "http://127.0.0.1/traced/",
+        )
+        self.assertEqual(span.attributes[SpanAttributes.HTTP_SCHEME], "http")
+        self.assertEqual(span.attributes[SpanAttributes.HTTP_STATUS_CODE], 200)
+        self.assertEqual(span.attributes[HTTP_REQUEST_METHOD], "POST")
+        self.assertEqual(span.attributes[URL_SCHEME], "http")
+        self.assertEqual(span.attributes[SERVER_PORT], 80)
+        self.assertEqual(span.attributes[CLIENT_ADDRESS], "127.0.0.1")
+        self.assertEqual(span.attributes[NETWORK_PROTOCOL_VERSION], "1.1")
+        self.assertEqual(span.attributes[HTTP_ROUTE], "^traced/")
+        self.assertEqual(span.attributes[HTTP_RESPONSE_STATUS_CODE], 200)
+
     async def test_error(self):
         with self.assertRaises(ValueError):
             await self.async_client.get("/error/")
@@ -239,6 +411,60 @@ class TestMiddlewareAsgi(SimpleTestCase, TestBase):
         self.assertEqual(
             event.attributes[SpanAttributes.EXCEPTION_MESSAGE], "error"
         )
+
+    async def test_error_new_semconv(self):
+        with self.assertRaises(ValueError):
+            await self.async_client.get("/error/")
+
+        spans = self.memory_exporter.get_finished_spans()
+        self.assertEqual(len(spans), 1)
+
+        span = spans[0]
+
+        self.assertEqual(span.name, "GET ^error/")
+        self.assertEqual(span.kind, SpanKind.SERVER)
+        self.assertEqual(span.status.status_code, StatusCode.ERROR)
+        self.assertEqual(span.attributes[HTTP_REQUEST_METHOD], "GET")
+        self.assertEqual(span.attributes[HTTP_ROUTE], "^error/")
+        self.assertEqual(span.attributes[URL_SCHEME], "http")
+        self.assertEqual(span.attributes[HTTP_RESPONSE_STATUS_CODE], 500)
+
+        self.assertEqual(len(span.events), 1)
+        event = span.events[0]
+        self.assertEqual(event.name, "exception")
+        self.assertEqual(event.attributes[EXCEPTION_TYPE], "ValueError")
+        self.assertEqual(event.attributes[EXCEPTION_MESSAGE], "error")
+
+    async def test_error_both_semconv(self):
+        with self.assertRaises(ValueError):
+            await self.async_client.get("/error/")
+
+        spans = self.memory_exporter.get_finished_spans()
+        self.assertEqual(len(spans), 1)
+
+        span = spans[0]
+
+        self.assertEqual(span.name, "GET ^error/")
+        self.assertEqual(span.kind, SpanKind.SERVER)
+        self.assertEqual(span.status.status_code, StatusCode.ERROR)
+        self.assertEqual(span.attributes[SpanAttributes.HTTP_METHOD], "GET")
+        self.assertEqual(
+            span.attributes[SpanAttributes.HTTP_URL],
+            "http://127.0.0.1/error/",
+        )
+        self.assertEqual(span.attributes[SpanAttributes.HTTP_ROUTE], "^error/")
+        self.assertEqual(span.attributes[SpanAttributes.HTTP_SCHEME], "http")
+        self.assertEqual(span.attributes[SpanAttributes.HTTP_STATUS_CODE], 500)
+        self.assertEqual(span.attributes[HTTP_REQUEST_METHOD], "GET")
+        self.assertEqual(span.attributes[HTTP_ROUTE], "^error/")
+        self.assertEqual(span.attributes[URL_SCHEME], "http")
+        self.assertEqual(span.attributes[HTTP_RESPONSE_STATUS_CODE], 500)
+
+        self.assertEqual(len(span.events), 1)
+        event = span.events[0]
+        self.assertEqual(event.name, "exception")
+        self.assertEqual(event.attributes[EXCEPTION_TYPE], "ValueError")
+        self.assertEqual(event.attributes[EXCEPTION_MESSAGE], "error")
 
     async def test_exclude_lists(self):
         await self.async_client.get("/excluded_arg/123")
@@ -284,6 +510,45 @@ class TestMiddlewareAsgi(SimpleTestCase, TestBase):
 
         span = span_list[0]
         self.assertEqual(span.name, "GET")
+
+    async def test_nonstandard_http_method_span_name(self):
+        await self.async_client.request(
+            method="NONSTANDARD", path="/span_name/1234/"
+        )
+        span_list = self.memory_exporter.get_finished_spans()
+        self.assertEqual(len(span_list), 1)
+
+        span = span_list[0]
+        self.assertEqual(span.name, "HTTP")
+
+    async def test_nonstandard_http_method_span_name_new_semconv(self):
+        await self.async_client.request(
+            method="NONSTANDARD", path="/span_name/1234/"
+        )
+        span_list = self.memory_exporter.get_finished_spans()
+        self.assertEqual(len(span_list), 1)
+
+        span = span_list[0]
+        self.assertEqual(span.name, "HTTP")
+        self.assertEqual(span.attributes[HTTP_REQUEST_METHOD], "_OTHER")
+        self.assertEqual(
+            span.attributes[HTTP_REQUEST_METHOD_ORIGINAL], "NONSTANDARD"
+        )
+
+    async def test_nonstandard_http_method_span_name_both_semconv(self):
+        await self.async_client.request(
+            method="NONSTANDARD", path="/span_name/1234/"
+        )
+        span_list = self.memory_exporter.get_finished_spans()
+        self.assertEqual(len(span_list), 1)
+
+        span = span_list[0]
+        self.assertEqual(span.name, "HTTP")
+        self.assertEqual(span.attributes[SpanAttributes.HTTP_METHOD], "_OTHER")
+        self.assertEqual(span.attributes[HTTP_REQUEST_METHOD], "_OTHER")
+        self.assertEqual(
+            span.attributes[HTTP_REQUEST_METHOD_ORIGINAL], "NONSTANDARD"
+        )
 
     async def test_traced_request_attrs(self):
         await self.async_client.get("/span_name/1234/", CONTENT_TYPE="test/ct")
