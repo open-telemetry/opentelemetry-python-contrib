@@ -9,6 +9,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- `opentelemetry-instrumentation-flask` Add `http.route` and `http.target` to metric attributes
+  ([#2621](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/2621))
 - `opentelemetry-instrumentation-sklearn` Deprecated the sklearn instrumentation
   ([#2708](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/2708))
 - `opentelemetry-instrumentation-pyramid` Record exceptions raised when serving a request
@@ -31,10 +33,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   ([#2630](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/2630))
 - `opentelemetry-instrumentation-system-metrics` Add support for capture open file descriptors
   ([#2652](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/2652))
+- `opentelemetry-instrumentation-httpx` Add support for instrument client with proxy
+  ([#2664](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/2664))
 - `opentelemetry-instrumentation-aiohttp-client` Implement new semantic convention opt-in migration
   ([#2673](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/2673))
 - `opentelemetry-instrumentation-django` Add `http.target` to Django duration metric attributes
   ([#2624](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/2624))
+- `opentelemetry-instrumentation-django` Implement new semantic convention opt-in with stable http semantic conventions
+  ([#2714](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/2714))
 - `opentelemetry-instrumentation-logging` Added the ability to set custom log field names
   ([#2718](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/2718))
 
@@ -44,8 +50,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   ([#2580](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/2580))
 - Populate `{method}` as `HTTP` on `_OTHER` methods from scope for `asgi` middleware
   ([#2610](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/2610))
-  - Populate `{method}` as `HTTP` on `_OTHER` methods from scope for `fastapi` middleware
+- Populate `{method}` as `HTTP` on `_OTHER` methods from scope for `fastapi` instrumentation
   ([#2682](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/2682))
+- Populate `{method}` as `HTTP` on `_OTHER` methods from scope for `django` middleware
+  ([#2714](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/2714))
+- `opentelemetry-instrumentation-httpx`, `opentelemetry-instrumentation-aiohttp-client`,
+  `opentelemetry-instrumentation-requests` Populate `{method}` as `HTTP` on `_OTHER` methods
+  ([#2726](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/2726))
 
 ### Fixed
 - Handle `redis.exceptions.WatchError` as a non-error event in redis instrumentation
@@ -65,7 +76,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - `opentelemetry-instrumentation-asgi` Fix generation of `http.target` and `http.url` attributes for ASGI apps
   using sub apps
   ([#2477](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/2477))
-- `opentelemetry-instrumentation-aws-lambda` Bugfix: AWS Lambda event source key incorrect for SNS in instrumentation library. 
+- `opentelemetry-instrumentation-aws-lambda` Bugfix: AWS Lambda event source key incorrect for SNS in instrumentation library.
   ([#2612](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/2612))
 - `opentelemetry-instrumentation-asyncio` instrumented `asyncio.wait_for` properly raises `asyncio.TimeoutError` as expected
   ([#2637](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/2637))
@@ -73,7 +84,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   ([#2153](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/2153))
 - `opentelemetry-instrumentation-asgi` Removed `NET_HOST_NAME` AND `NET_HOST_PORT` from active requests count attribute
   ([#2610](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/2610))
-- `opentelemetry-instrumentation-asgi` Bugfix: Middleware did not set status code attribute on duration metrics for non-recording spans. 
+- `opentelemetry-instrumentation-asgi` Bugfix: Middleware did not set status code attribute on duration metrics for non-recording spans.
   ([#2627](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/2627))
 - `opentelemetry-instrumentation-logging` Removed unnecessary calls in logging factory
   ([#2718](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/2718))

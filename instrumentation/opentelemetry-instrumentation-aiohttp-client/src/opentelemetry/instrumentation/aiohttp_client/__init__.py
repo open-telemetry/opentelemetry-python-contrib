@@ -132,10 +132,9 @@ _ResponseHookT = typing.Optional[
 
 
 def _get_span_name(method: str) -> str:
-    method = sanitize_method(method.upper().strip())
+    method = sanitize_method(method.strip())
     if method == "_OTHER":
         method = "HTTP"
-
     return method
 
 
@@ -230,8 +229,8 @@ def create_trace_config(
             trace_config_ctx.span = None
             return
 
-        http_method = params.method
-        request_span_name = _get_span_name(http_method)
+        method = params.method
+        request_span_name = _get_span_name(method)
         request_url = (
             remove_url_credentials(trace_config_ctx.url_filter(params.url))
             if callable(trace_config_ctx.url_filter)
@@ -241,8 +240,8 @@ def create_trace_config(
         span_attributes = {}
         _set_http_method(
             span_attributes,
-            http_method,
-            request_span_name,
+            method,
+            sanitize_method(method),
             sem_conv_opt_in_mode,
         )
         _set_http_url(span_attributes, request_url, sem_conv_opt_in_mode)
