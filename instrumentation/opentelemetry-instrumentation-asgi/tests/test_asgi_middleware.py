@@ -21,6 +21,8 @@ import unittest
 from timeit import default_timer
 from unittest import mock
 
+from asgiref.testing import ApplicationCommunicator
+
 import opentelemetry.instrumentation.asgi as otel_asgi
 from opentelemetry import trace as trace_api
 from opentelemetry.instrumentation._semconv import (
@@ -46,6 +48,7 @@ from opentelemetry.semconv.attributes.client_attributes import (
     CLIENT_ADDRESS,
     CLIENT_PORT,
 )
+from opentelemetry.semconv.attributes.error_attributes import ERROR_TYPE
 from opentelemetry.semconv.attributes.http_attributes import (
     HTTP_REQUEST_METHOD,
     HTTP_RESPONSE_STATUS_CODE,
@@ -278,6 +281,15 @@ async def error_asgi(scope, receive, send):
         await send({"type": "http.response.body", "body": b"*"})
 
 
+async def exception_app(scope, receive, send):
+    raise ValueError("An unexpected error occurred")
+
+
+async def send_simple_input_and_receive(communicator: ApplicationCommunicator):
+    await communicator.send_input({"type": "http.request", "body": b""})
+    await communicator.receive_output(0)
+
+
 # pylint: disable=too-many-public-methods
 class TestAsgiApplication(AsgiTestBase):
     def setUp(self):
@@ -508,6 +520,143 @@ class TestAsgiApplication(AsgiTestBase):
         self.send_default_request()
         outputs = self.get_all_output()
         self.validate_outputs(outputs, old_sem_conv=True, new_sem_conv=True)
+
+    def test_basic_asgi_exception(self):
+        """Test that an exception is properly handled."""
+
+        app = otel_asgi.OpenTelemetryMiddleware(exception_app)
+        communicator = ApplicationCommunicator(app, self.scope)
+
+        with self.assertRaises(ValueError) as ctx:
+            asyncio.get_event_loop().run_until_complete(
+                send_simple_input_and_receive(communicator)
+            )
+
+        self.assertEqual(str(ctx.exception), "An unexpected error occurred")
+
+        span_list = self.memory_exporter.get_finished_spans()
+        self.assertEqual(len(span_list), 1)
+        span = span_list[0]
+        self.assertEqual(span.kind, trace_api.SpanKind.SERVER)
+        self.assertEqual(span.status.status_code, trace_api.StatusCode.ERROR)
+        self.assertEqual(
+            span.status.description, "ValueError: An unexpected error occurred"
+        )
+        self.assertEqual(len(span.events), 1)
+        self.assertEqual(span.events[0].name, "exception")
+        self.assertIn(
+            "ValueError: An unexpected error occurred",
+            span.events[0].attributes["exception.stacktrace"],
+        )
+        self.assertDictEqual(
+            dict(span.attributes),
+            {
+                SpanAttributes.HTTP_METHOD: "GET",
+                SpanAttributes.HTTP_SCHEME: "http",
+                SpanAttributes.NET_HOST_PORT: 80,
+                SpanAttributes.HTTP_HOST: "127.0.0.1",
+                SpanAttributes.HTTP_FLAVOR: "1.0",
+                SpanAttributes.HTTP_TARGET: "/",
+                SpanAttributes.HTTP_URL: "http://127.0.0.1/",
+                SpanAttributes.NET_PEER_IP: "127.0.0.1",
+                SpanAttributes.NET_PEER_PORT: 32767,
+            },
+        )
+
+    def test_basic_asgi_exception_new_semconv(self):
+        """Test that an exception is properly handled."""
+
+        app = otel_asgi.OpenTelemetryMiddleware(exception_app)
+        communicator = ApplicationCommunicator(app, self.scope)
+
+        with self.assertRaises(ValueError) as ctx:
+            asyncio.get_event_loop().run_until_complete(
+                send_simple_input_and_receive(communicator)
+            )
+
+        self.assertEqual(str(ctx.exception), "An unexpected error occurred")
+
+        span_list = self.memory_exporter.get_finished_spans()
+        span = span_list[0]
+        self.assertEqual(len(span_list), 1)
+
+        self.assertEqual(span.kind, trace_api.SpanKind.SERVER)
+        self.assertEqual(span.status.status_code, trace_api.StatusCode.ERROR)
+        self.assertEqual(
+            span.status.description, "Non-integer HTTP status: ValueError"
+        )
+        self.assertEqual(len(span.events), 1)
+        self.assertEqual(span.events[0].name, "exception")
+        self.assertIn(
+            "ValueError: An unexpected error occurred",
+            span.events[0].attributes["exception.stacktrace"],
+        )
+        self.assertDictEqual(
+            dict(span.attributes),
+            {
+                HTTP_REQUEST_METHOD: "GET",
+                URL_SCHEME: "http",
+                SERVER_PORT: 80,
+                SERVER_ADDRESS: "127.0.0.1",
+                NETWORK_PROTOCOL_VERSION: "1.0",
+                URL_PATH: "/",
+                URL_FULL: "http://127.0.0.1/",
+                CLIENT_ADDRESS: "127.0.0.1",
+                CLIENT_PORT: 32767,
+                ERROR_TYPE: "ValueError",
+            },
+        )
+
+    def test_basic_asgi_exception_both_semconv(self):
+        """Test that an exception is properly handled."""
+
+        app = otel_asgi.OpenTelemetryMiddleware(exception_app)
+        communicator = ApplicationCommunicator(app, self.scope)
+
+        with self.assertRaises(ValueError) as ctx:
+            asyncio.get_event_loop().run_until_complete(
+                send_simple_input_and_receive(communicator)
+            )
+        self.assertEqual(str(ctx.exception), "An unexpected error occurred")
+
+        span_list = self.memory_exporter.get_finished_spans()
+        self.assertEqual(len(span_list), 1)
+        span = span_list[0]
+        self.assertEqual(span.kind, trace_api.SpanKind.SERVER)
+        self.assertEqual(span.status.status_code, trace_api.StatusCode.ERROR)
+        self.assertEqual(
+            span.status.description, "Non-integer HTTP status: ValueError"
+        )
+        self.assertEqual(len(span.events), 1)
+        self.assertEqual(span.events[0].name, "exception")
+        self.assertIn(
+            "ValueError: An unexpected error occurred",
+            span.events[0].attributes["exception.stacktrace"],
+        )
+        self.assertDictEqual(
+            dict(span.attributes),
+            {
+                SpanAttributes.HTTP_METHOD: "GET",
+                SpanAttributes.HTTP_SCHEME: "http",
+                SpanAttributes.NET_HOST_PORT: 80,
+                SpanAttributes.HTTP_HOST: "127.0.0.1",
+                SpanAttributes.HTTP_FLAVOR: "1.0",
+                SpanAttributes.HTTP_TARGET: "/",
+                SpanAttributes.HTTP_URL: "http://127.0.0.1/",
+                SpanAttributes.NET_PEER_IP: "127.0.0.1",
+                SpanAttributes.NET_PEER_PORT: 32767,
+                HTTP_REQUEST_METHOD: "GET",
+                URL_SCHEME: "http",
+                SERVER_PORT: 80,
+                SERVER_ADDRESS: "127.0.0.1",
+                NETWORK_PROTOCOL_VERSION: "1.0",
+                URL_PATH: "/",
+                URL_FULL: "http://127.0.0.1/",
+                CLIENT_ADDRESS: "127.0.0.1",
+                CLIENT_PORT: 32767,
+                ERROR_TYPE: "ValueError",
+            },
+        )
 
     def test_asgi_not_recording(self):
         mock_tracer = mock.Mock()
