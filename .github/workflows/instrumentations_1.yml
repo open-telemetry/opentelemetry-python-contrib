@@ -43,8 +43,6 @@ jobs:
         exclude:
           - python-version: pypy3
             package: "prometheus-remote-write"
-          - python-version: pypy3
-            package: "fastapi-slim"
     steps:
       - name: Checkout Contrib Repo @ SHA - ${{ github.sha }}
         uses: actions/checkout@v4
