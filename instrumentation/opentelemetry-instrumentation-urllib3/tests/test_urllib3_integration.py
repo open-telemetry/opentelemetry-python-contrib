@@ -35,6 +35,7 @@ from opentelemetry.instrumentation.utils import (
 from opentelemetry.propagate import get_global_textmap, set_global_textmap
 from opentelemetry.semconv.attributes.http_attributes import (
     HTTP_REQUEST_METHOD,
+    HTTP_REQUEST_METHOD_ORIGINAL,
     HTTP_RESPONSE_STATUS_CODE,
 )
 from opentelemetry.semconv.attributes.url_attributes import URL_FULL
@@ -314,6 +315,9 @@ class TestURLLib3Instrumentor(TestBase):
         span = self.assert_span()
         self.assertEqual("HTTP", span.name)
         self.assertEqual(span.attributes.get(HTTP_REQUEST_METHOD), "_OTHER")
+        self.assertEqual(
+            span.attributes.get(HTTP_REQUEST_METHOD_ORIGINAL), "NONSTANDARD"
+        )
         self.assertEqual(span.attributes.get(HTTP_RESPONSE_STATUS_CODE), 405)
 
     @mock.patch("httpretty.http.HttpBaseClass.METHODS", ("NONSTANDARD",))
@@ -331,6 +335,9 @@ class TestURLLib3Instrumentor(TestBase):
             span.attributes.get(SpanAttributes.HTTP_STATUS_CODE), 405
         )
         self.assertEqual(span.attributes.get(HTTP_REQUEST_METHOD), "_OTHER")
+        self.assertEqual(
+            span.attributes.get(HTTP_REQUEST_METHOD_ORIGINAL), "NONSTANDARD"
+        )
         self.assertEqual(span.attributes.get(HTTP_RESPONSE_STATUS_CODE), 405)
 
     def test_basic_http_non_default_port(self):
