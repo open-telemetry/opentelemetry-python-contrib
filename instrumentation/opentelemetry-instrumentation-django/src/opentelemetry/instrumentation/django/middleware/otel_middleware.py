@@ -421,18 +421,18 @@ class _DjangoMiddleware(MiddlewareMixin):
                 activation.__exit__(None, None, None)
 
         if request_start_time is not None:
-            duration_attrs_old = _parse_duration_attrs(
-                duration_attrs, _HTTPStabilityMode.DEFAULT
-            )
-            duration_attrs_new = _parse_duration_attrs(
-                duration_attrs, _HTTPStabilityMode.HTTP
-            )
             duration_s = default_timer() - request_start_time
             if self._duration_histogram_old:
+                duration_attrs_old = _parse_duration_attrs(
+                    duration_attrs, _HTTPStabilityMode.DEFAULT
+                )
                 self._duration_histogram_old.record(
                     max(round(duration_s * 1000), 0), duration_attrs_old
                 )
             if self._duration_histogram_new:
+                duration_attrs_new = _parse_duration_attrs(
+                    duration_attrs, _HTTPStabilityMode.HTTP
+                )
                 self._duration_histogram_new.record(
                     max(duration_s, 0), duration_attrs_new
                 )

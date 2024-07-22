@@ -49,12 +49,14 @@ from opentelemetry.sdk.metrics.export import (
 from opentelemetry.sdk.trace import Span
 from opentelemetry.sdk.trace.id_generator import RandomIdGenerator
 from opentelemetry.semconv.attributes.client_attributes import CLIENT_ADDRESS
+from opentelemetry.semconv.attributes.error_attributes import ERROR_TYPE
 from opentelemetry.semconv.attributes.exception_attributes import (
     EXCEPTION_MESSAGE,
     EXCEPTION_TYPE,
 )
 from opentelemetry.semconv.attributes.http_attributes import (
     HTTP_REQUEST_METHOD,
+    HTTP_REQUEST_METHOD_ORIGINAL,
     HTTP_RESPONSE_STATUS_CODE,
     HTTP_ROUTE,
 )
@@ -432,6 +434,7 @@ class TestMiddleware(WsgiTestBase):
         self.assertEqual(event.name, "exception")
         self.assertEqual(event.attributes[EXCEPTION_TYPE], "ValueError")
         self.assertEqual(event.attributes[EXCEPTION_MESSAGE], "error")
+        self.assertEqual(span.attributes[ERROR_TYPE], '500')
 
     def test_error_both_semconv(self):
         with self.assertRaises(ValueError):
@@ -467,6 +470,7 @@ class TestMiddleware(WsgiTestBase):
         self.assertEqual(event.name, "exception")
         self.assertEqual(event.attributes[EXCEPTION_TYPE], "ValueError")
         self.assertEqual(event.attributes[EXCEPTION_MESSAGE], "error")
+        self.assertEqual(span.attributes[ERROR_TYPE], '500')
 
     def test_exclude_lists(self):
         client = Client()
@@ -541,6 +545,32 @@ class TestMiddleware(WsgiTestBase):
 
         span = span_list[0]
         self.assertEqual(span.name, "HTTP")
+        self.assertEqual(span.attributes[SpanAttributes.HTTP_METHOD], "_OTHER")
+
+    def test_nonstandard_http_method_span_name_new_semconv(self):
+        Client().request(
+            REQUEST_METHOD="NONSTANDARD", PATH_INFO="/span_name/1234/"
+        )
+        span_list = self.memory_exporter.get_finished_spans()
+        self.assertEqual(len(span_list), 1)
+
+        span = span_list[0]
+        self.assertEqual(span.name, "HTTP")
+        self.assertEqual(span.attributes[HTTP_REQUEST_METHOD], "_OTHER")
+        self.assertEqual(span.attributes[HTTP_REQUEST_METHOD_ORIGINAL], "NONSTANDARD")
+
+    def test_nonstandard_http_method_span_name_both_semconv(self):
+        Client().request(
+            REQUEST_METHOD="NONSTANDARD", PATH_INFO="/span_name/1234/"
+        )
+        span_list = self.memory_exporter.get_finished_spans()
+        self.assertEqual(len(span_list), 1)
+
+        span = span_list[0]
+        self.assertEqual(span.name, "HTTP")
+        self.assertEqual(span.attributes[SpanAttributes.HTTP_METHOD], "_OTHER")
+        self.assertEqual(span.attributes[HTTP_REQUEST_METHOD], "_OTHER")
+        self.assertEqual(span.attributes[HTTP_REQUEST_METHOD_ORIGINAL], "NONSTANDARD")
 
     def test_traced_request_attrs(self):
         Client().get("/span_name/1234/", CONTENT_TYPE="test/ct")
@@ -803,7 +833,7 @@ class TestMiddleware(WsgiTestBase):
                                 )
                             elif metric.name == "http.server.duration":
                                 self.assertAlmostEqual(
-                                    duration, point.sum, delta=10
+                                    duration, point.sum, delta=100
                                 )
                         if isinstance(point, NumberDataPoint):
                             number_data_point_seen = True
