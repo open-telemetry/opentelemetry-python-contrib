@@ -367,9 +367,7 @@ def _instrument(
     )
 
 
-def _get_url_open_arg(
-    name: str, args: typing.List, kwargs: typing.Mapping
-) -> str:
+def _get_url_open_arg(name: str, args: typing.List, kwargs: typing.Mapping):
     arg_idx = _URL_OPEN_ARG_TO_INDEX_MAPPING.get(name)
     if arg_idx is not None:
         try:
