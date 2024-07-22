@@ -88,6 +88,7 @@ class LoggingInstrumentor(BaseInstrumentor):  # pylint: disable=empty-docstring
         """Return python packages that the will be instrumented."""
         return _instruments
 
+    # pylint: disable=R0914
     def _instrument(
         self,
         tracer_provider: Optional[TracerProvider] = None,
