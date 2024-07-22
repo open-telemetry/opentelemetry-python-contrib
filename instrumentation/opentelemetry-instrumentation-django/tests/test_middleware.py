@@ -434,7 +434,7 @@ class TestMiddleware(WsgiTestBase):
         self.assertEqual(event.name, "exception")
         self.assertEqual(event.attributes[EXCEPTION_TYPE], "ValueError")
         self.assertEqual(event.attributes[EXCEPTION_MESSAGE], "error")
-        self.assertEqual(span.attributes[ERROR_TYPE], '500')
+        self.assertEqual(span.attributes[ERROR_TYPE], "500")
 
     def test_error_both_semconv(self):
         with self.assertRaises(ValueError):
@@ -470,7 +470,7 @@ class TestMiddleware(WsgiTestBase):
         self.assertEqual(event.name, "exception")
         self.assertEqual(event.attributes[EXCEPTION_TYPE], "ValueError")
         self.assertEqual(event.attributes[EXCEPTION_MESSAGE], "error")
-        self.assertEqual(span.attributes[ERROR_TYPE], '500')
+        self.assertEqual(span.attributes[ERROR_TYPE], "500")
 
     def test_exclude_lists(self):
         client = Client()
@@ -557,7 +557,9 @@ class TestMiddleware(WsgiTestBase):
         span = span_list[0]
         self.assertEqual(span.name, "HTTP")
         self.assertEqual(span.attributes[HTTP_REQUEST_METHOD], "_OTHER")
-        self.assertEqual(span.attributes[HTTP_REQUEST_METHOD_ORIGINAL], "NONSTANDARD")
+        self.assertEqual(
+            span.attributes[HTTP_REQUEST_METHOD_ORIGINAL], "NONSTANDARD"
+        )
 
     def test_nonstandard_http_method_span_name_both_semconv(self):
         Client().request(
@@ -570,7 +572,9 @@ class TestMiddleware(WsgiTestBase):
         self.assertEqual(span.name, "HTTP")
         self.assertEqual(span.attributes[SpanAttributes.HTTP_METHOD], "_OTHER")
         self.assertEqual(span.attributes[HTTP_REQUEST_METHOD], "_OTHER")
-        self.assertEqual(span.attributes[HTTP_REQUEST_METHOD_ORIGINAL], "NONSTANDARD")
+        self.assertEqual(
+            span.attributes[HTTP_REQUEST_METHOD_ORIGINAL], "NONSTANDARD"
+        )
 
     def test_traced_request_attrs(self):
         Client().get("/span_name/1234/", CONTENT_TYPE="test/ct")
