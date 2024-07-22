@@ -319,7 +319,7 @@ def _instrument(
             if callable(request_hook):
                 request_hook(span, instance, headers, body)
             inject(headers)
-            # TODO: add error handling to set `error.type` in new semconv
+            # TODO: add error handling to also set exception `error.type` in new semconv
             with suppress_http_instrumentation():
                 start_time = default_timer()
                 response = wrapped(*args, **kwargs)
