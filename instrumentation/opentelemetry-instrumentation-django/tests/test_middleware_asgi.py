@@ -46,6 +46,7 @@ from opentelemetry.semconv.attributes.exception_attributes import (
 )
 from opentelemetry.semconv.attributes.http_attributes import (
     HTTP_REQUEST_METHOD,
+    HTTP_REQUEST_METHOD_ORIGINAL,
     HTTP_RESPONSE_STATUS_CODE,
     HTTP_ROUTE,
 )
@@ -519,6 +520,35 @@ class TestMiddlewareAsgi(SimpleTestCase, TestBase):
 
         span = span_list[0]
         self.assertEqual(span.name, "HTTP")
+
+    async def test_nonstandard_http_method_span_name_new_semconv(self):
+        await self.async_client.request(
+            method="NONSTANDARD", path="/span_name/1234/"
+        )
+        span_list = self.memory_exporter.get_finished_spans()
+        self.assertEqual(len(span_list), 1)
+
+        span = span_list[0]
+        self.assertEqual(span.name, "HTTP")
+        self.assertEqual(span.attributes[HTTP_REQUEST_METHOD], "_OTHER")
+        self.assertEqual(
+            span.attributes[HTTP_REQUEST_METHOD_ORIGINAL], "NONSTANDARD"
+        )
+
+    async def test_nonstandard_http_method_span_name_both_semconv(self):
+        await self.async_client.request(
+            method="NONSTANDARD", path="/span_name/1234/"
+        )
+        span_list = self.memory_exporter.get_finished_spans()
+        self.assertEqual(len(span_list), 1)
+
+        span = span_list[0]
+        self.assertEqual(span.name, "HTTP")
+        self.assertEqual(span.attributes[SpanAttributes.HTTP_METHOD], "_OTHER")
+        self.assertEqual(span.attributes[HTTP_REQUEST_METHOD], "_OTHER")
+        self.assertEqual(
+            span.attributes[HTTP_REQUEST_METHOD_ORIGINAL], "NONSTANDARD"
+        )
 
     async def test_traced_request_attrs(self):
         await self.async_client.get("/span_name/1234/", CONTENT_TYPE="test/ct")

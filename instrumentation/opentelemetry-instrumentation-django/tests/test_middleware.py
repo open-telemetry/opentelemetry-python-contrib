@@ -812,8 +812,8 @@ class TestMiddleware(WsgiTestBase):
         for _ in range(3):
             response = Client().get("/span_name/1234/")
             self.assertEqual(response.status_code, 200)
-        duration = max(round((default_timer() - start) * 1000), 0)
         duration_s = max(default_timer() - start, 0)
+        duration = max(round(duration_s * 1000), 0)
         metrics_list = self.memory_metrics_reader.get_metrics_data()
         number_data_point_seen = False
         histrogram_data_point_seen = False
