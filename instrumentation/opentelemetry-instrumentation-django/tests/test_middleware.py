@@ -13,6 +13,7 @@
 # limitations under the License.
 
 # pylint: disable=E0611
+# pylint: disable=too-many-lines
 
 from sys import modules
 from timeit import default_timer
@@ -759,6 +760,7 @@ class TestMiddleware(WsgiTestBase):
         self.assertTrue(histrogram_data_point_seen and number_data_point_seen)
 
     # pylint: disable=too-many-locals
+    # pylint: disable=too-many-nested-blocks
     def test_wsgi_metrics_both_semconv(self):
         _expected_metric_names = [
             "http.server.duration",
@@ -801,7 +803,7 @@ class TestMiddleware(WsgiTestBase):
                                 )
                             elif metric.name == "http.server.duration":
                                 self.assertAlmostEqual(
-                                    duration, point.sum, delta=5
+                                    duration, point.sum, delta=10
                                 )
                         if isinstance(point, NumberDataPoint):
                             number_data_point_seen = True

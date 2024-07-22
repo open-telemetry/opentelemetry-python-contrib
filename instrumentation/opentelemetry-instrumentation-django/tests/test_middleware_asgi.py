@@ -106,6 +106,7 @@ _django_instrumentor = DjangoInstrumentor()
 @pytest.mark.skipif(
     not DJANGO_3_1, reason="AsyncClient implemented since Django 3.1"
 )
+# pylint: disable=too-many-public-methods
 class TestMiddlewareAsgi(SimpleTestCase, TestBase):
     @classmethod
     def setUpClass(cls):
