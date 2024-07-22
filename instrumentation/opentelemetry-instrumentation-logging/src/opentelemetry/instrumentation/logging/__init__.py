@@ -114,8 +114,8 @@ class LoggingInstrumentor(BaseInstrumentor):  # pylint: disable=empty-docstring
 
             setattr(record, service_name_field, service_name)
             setattr(record, trace_id_field, "0")
-            setattr(record, trace_sampled_field, "0")
-            setattr(record, span_id_field, False)
+            setattr(record, trace_sampled_field, False)
+            setattr(record, span_id_field, "0")
 
             span = get_current_span()
             if span == INVALID_SPAN:
