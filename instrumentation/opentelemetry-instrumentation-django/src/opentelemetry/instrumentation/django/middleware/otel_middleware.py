@@ -25,27 +25,13 @@ from opentelemetry.context import detach
 from opentelemetry.instrumentation._semconv import (
     _filter_semconv_active_request_count_attr,
     _filter_semconv_duration_attrs,
-    _get_schema_url,
     _HTTPStabilityMode,
-    _OpenTelemetrySemanticConventionStability,
-    _OpenTelemetryStabilitySignalType,
     _report_new,
     _report_old,
     _server_active_requests_count_attrs_new,
     _server_active_requests_count_attrs_old,
     _server_duration_attrs_new,
     _server_duration_attrs_old,
-    _set_http_flavor_version,
-    _set_http_host,
-    _set_http_method,
-    _set_http_net_host_port,
-    _set_http_peer_ip,
-    _set_http_peer_port_server,
-    _set_http_scheme,
-    _set_http_target,
-    _set_http_url,
-    _set_http_user_agent,
-    _set_status,
 )
 from opentelemetry.instrumentation.propagators import (
     get_global_response_propagator,
@@ -65,9 +51,7 @@ from opentelemetry.instrumentation.wsgi import (
     collect_request_attributes as wsgi_collect_request_attributes,
 )
 from opentelemetry.instrumentation.wsgi import wsgi_getter
-from opentelemetry.semconv.attributes.http_attributes import (
-    HTTP_ROUTE,
-)
+from opentelemetry.semconv.attributes.http_attributes import HTTP_ROUTE
 from opentelemetry.semconv.trace import SpanAttributes
 from opentelemetry.trace import Span, SpanKind, use_span
 from opentelemetry.util.http import (

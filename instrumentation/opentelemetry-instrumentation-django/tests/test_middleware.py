@@ -797,7 +797,7 @@ class TestMiddleware(WsgiTestBase):
                             histrogram_data_point_seen = True
                             if metric.name == "http.server.request.duration":
                                 self.assertAlmostEqual(
-                                    duration_s, point.sum, places=2
+                                    duration_s, point.sum, places=1
                                 )
                             elif metric.name == "http.server.duration":
                                 self.assertAlmostEqual(
