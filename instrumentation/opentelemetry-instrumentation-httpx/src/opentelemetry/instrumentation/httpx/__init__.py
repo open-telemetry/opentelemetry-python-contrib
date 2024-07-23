@@ -259,7 +259,7 @@ class ResponseInfo(typing.NamedTuple):
 
 
 def _get_default_span_name(method: str) -> str:
-    method = sanitize_method(method.upper().strip())
+    method = sanitize_method(method.strip())
     if method == "_OTHER":
         method = "HTTP"
 
@@ -326,12 +326,16 @@ def _apply_request_client_attributes_to_span(
     span_attributes: dict,
     url: typing.Union[str, URL, httpx.URL],
     method_original: str,
-    span_name: str,
     semconv: _HTTPStabilityMode,
 ):
     url = httpx.URL(url)
     # http semconv transition: http.method -> http.request.method
-    _set_http_method(span_attributes, method_original, span_name, semconv)
+    _set_http_method(
+        span_attributes,
+        method_original,
+        sanitize_method(method_original),
+        semconv,
+    )
     # http semconv transition: http.url -> url.full
     _set_http_url(span_attributes, str(url), semconv)
 
@@ -450,7 +454,6 @@ class SyncOpenTelemetryTransport(httpx.BaseTransport):
             span_attributes,
             url,
             method_original,
-            span_name,
             self._sem_conv_opt_in_mode,
         )
 
@@ -572,7 +575,6 @@ class AsyncOpenTelemetryTransport(httpx.AsyncBaseTransport):
             span_attributes,
             url,
             method_original,
-            span_name,
             self._sem_conv_opt_in_mode,
         )
 
