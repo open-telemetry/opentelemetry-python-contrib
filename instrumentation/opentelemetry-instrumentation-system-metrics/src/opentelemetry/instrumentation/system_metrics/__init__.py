@@ -187,6 +187,8 @@ class SystemMetricsInstrumentor(BaseInstrumentor):
             meter_provider,
             schema_url="https://opentelemetry.io/schemas/1.11.0",
         )
+        
+        sanitized_config = {key: urllib.parse.unquote(value) if isinstance(value, str) else value for key, value in self._config.items()}
 
         if "system.cpu.time" in self._config:
             self._meter.create_observable_counter(
@@ -254,8 +256,8 @@ class SystemMetricsInstrumentor(BaseInstrumentor):
         #     unit="operations",
         #     value_type=int,
         # )
-
-        if "system.disk.io" in self._config:
+        
+        if any("system.disk.io" in value for value in sanitized_config.values()):
             self._meter.create_observable_counter(
                 name="system.disk.io",
                 callbacks=[self._get_system_disk_io],
@@ -325,7 +327,6 @@ class SystemMetricsInstrumentor(BaseInstrumentor):
                 unit="errors",
             )
 
-        sanitized_config = {key: urllib.parse.unquote(value) if isinstance(value, str) else value for key, value in self._config.items()}
         
         if any("system.network.io" in value for value in sanitized_config.values()):
             self._meter.create_observable_counter(
