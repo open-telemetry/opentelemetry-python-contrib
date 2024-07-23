@@ -55,8 +55,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - `opentelemetry-instrumentation-httpx`, `opentelemetry-instrumentation-aiohttp-client`,
   `opentelemetry-instrumentation-requests` Populate `{method}` as `HTTP` on `_OTHER` methods
   ([#2726](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/2726))
+- `opentelemetry-instrumentation-fastapi` Add dependency support for fastapi-slim
+  ([#2702](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/2702))
 
 ### Fixed
+
 - Handle `redis.exceptions.WatchError` as a non-error event in redis instrumentation
   ([#2668](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/2668))
 - `opentelemetry-instrumentation-httpx` Ensure httpx.get or httpx.request like methods are instrumented
