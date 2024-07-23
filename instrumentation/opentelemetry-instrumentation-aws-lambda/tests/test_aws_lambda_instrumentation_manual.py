@@ -11,6 +11,7 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
+
 import os
 from dataclasses import dataclass
 from importlib import import_module, reload
@@ -37,6 +38,7 @@ from opentelemetry.trace import NoOpTracerProvider, SpanKind, StatusCode
 from opentelemetry.trace.propagation.tracecontext import (
     TraceContextTextMapPropagator,
 )
+from opentelemetry.util._importlib_metadata import entry_points
 
 from .mocks.api_gateway_http_api_event import (
     MOCK_LAMBDA_API_GATEWAY_HTTP_API_EVENT,
@@ -516,3 +518,15 @@ class TestAwsLambdaInstrumentor(TestBase):
         spans = self.memory_exporter.get_finished_spans()
         assert spans is not None
         self.assertEqual(len(spans), 0)
+
+    def test_load_entry_point(self):
+        self.assertIs(
+            next(
+                iter(
+                    entry_points(
+                        group="opentelemetry_instrumentor", name="aws_lambda"
+                    )
+                )
+            ).load(),
+            AwsLambdaInstrumentor,
+        )
