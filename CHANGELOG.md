@@ -9,6 +9,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- `opentelemetry-instrumentation-flask` Add `http.route` and `http.target` to metric attributes
+  ([#2621](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/2621))
 - `opentelemetry-instrumentation-sklearn` Deprecated the sklearn instrumentation
   ([#2708](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/2708))
 - `opentelemetry-instrumentation-pyramid` Record exceptions raised when serving a request
@@ -39,6 +41,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   ([#2624](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/2624))
 - `opentelemetry-instrumentation-urllib3` Implement new semantic convention opt-in migration
   ([#2715](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/2715))
+- `opentelemetry-instrumentation-django` Implement new semantic convention opt-in with stable http semantic conventions
+  ([#2714](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/2714))
 
 ### Breaking changes
 
@@ -50,6 +54,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   ([#2682](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/2682))
 - `opentelemetry-instrumentation-urllib3` Populate `{method}` as `HTTP` on `_OTHER` methods for span name
   ([#2715](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/2715))
+- Populate `{method}` as `HTTP` on `_OTHER` methods from scope for `fastapi` instrumentation
+  ([#2682](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/2682))
+- Populate `{method}` as `HTTP` on `_OTHER` methods from scope for `django` middleware
+  ([#2714](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/2714))
+- `opentelemetry-instrumentation-httpx`, `opentelemetry-instrumentation-aiohttp-client`,
+  `opentelemetry-instrumentation-requests` Populate `{method}` as `HTTP` on `_OTHER` methods
+  ([#2726](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/2726))
 
 ### Fixed
 - Handle `redis.exceptions.WatchError` as a non-error event in redis instrumentation
