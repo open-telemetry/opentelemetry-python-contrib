@@ -223,7 +223,7 @@ class TestAioHttpIntegration(TestBase):
             span = self.memory_exporter.get_finished_spans()[0]
             self.assertEqual(
                 span.instrumentation_info.schema_url,
-                "https://opentelemetry.io/schemas/v1.21.0",
+                "https://opentelemetry.io/schemas/1.21.0",
             )
             self.memory_exporter.clear()
 
@@ -240,7 +240,7 @@ class TestAioHttpIntegration(TestBase):
             span = self.memory_exporter.get_finished_spans()[0]
             self.assertEqual(
                 span.instrumentation_info.schema_url,
-                "https://opentelemetry.io/schemas/v1.21.0",
+                "https://opentelemetry.io/schemas/1.21.0",
             )
             self.memory_exporter.clear()
 
