@@ -239,7 +239,7 @@ class TestURLLib3Instrumentor(TestBase):
         span = self.assert_span()
         self.assertEqual(
             span.instrumentation_scope.schema_url,
-            "https://opentelemetry.io/schemas/v1.21.0",
+            "https://opentelemetry.io/schemas/1.21.0",
         )
 
     def test_schema_url_both_semconv(self):
@@ -250,7 +250,7 @@ class TestURLLib3Instrumentor(TestBase):
         span = self.assert_span()
         self.assertEqual(
             span.instrumentation_scope.schema_url,
-            "https://opentelemetry.io/schemas/v1.21.0",
+            "https://opentelemetry.io/schemas/1.21.0",
         )
 
     def test_basic_not_found(self):
