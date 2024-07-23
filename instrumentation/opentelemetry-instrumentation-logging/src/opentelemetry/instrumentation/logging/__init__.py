@@ -67,10 +67,9 @@ class LoggingInstrumentor(BaseInstrumentor):  # pylint: disable=empty-docstring
     Args:
         tracer_provider: Tracer provider instance that can be used to fetch a tracer.
         set_logging_format: When set to True, it calls logging.basicConfig() and sets
-        a logging format.
+            a logging format.
         logging_format: Accepts a string and sets it as the logging format when
-        set_logging_format
-            is set to True.
+            set_logging_format is set to True.
         log_level: Accepts one of the following values and sets the logging level to it.
             logging.INFO
             logging.DEBUG
