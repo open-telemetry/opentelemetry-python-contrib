@@ -82,6 +82,7 @@ import sys
 import threading
 from platform import python_implementation
 from typing import Collection, Dict, Iterable, List, Optional
+import urllib.parse
 
 import psutil
 
@@ -176,6 +177,8 @@ class SystemMetricsInstrumentor(BaseInstrumentor):
         return _instruments
 
     def _instrument(self, **kwargs):
+        
+        
         # pylint: disable=too-many-branches
         meter_provider = kwargs.get("meter_provider")
         self._meter = get_meter(
@@ -322,7 +325,9 @@ class SystemMetricsInstrumentor(BaseInstrumentor):
                 unit="errors",
             )
 
-        if "system.network.io" in self._config:
+        sanitized_config = {key: urllib.parse.unquote(value) if isinstance(value, str) else value for key, value in self._config.items()}
+        
+        if any("system.network.io" in value for value in sanitized_config.values()):
             self._meter.create_observable_counter(
                 name="system.network.io",
                 callbacks=[self._get_system_network_io],
