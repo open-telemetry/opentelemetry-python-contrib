@@ -274,7 +274,7 @@ class TestAwsLambdaInstrumentor(TestBase):
                 xray_traceid=MOCK_XRAY_TRACE_CONTEXT_SAMPLED,
             ),
             TestCase(
-                name="baggae_propagation",
+                name="baggage_propagation",
                 custom_extractor=None,
                 context={
                     "headers": {

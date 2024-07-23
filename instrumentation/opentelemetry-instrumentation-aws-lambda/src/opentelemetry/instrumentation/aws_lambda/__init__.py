@@ -308,7 +308,6 @@ def _instrument(
         try:
             with tracer.start_as_current_span(
                 name=orig_handler_name,
-                context=parent_context,
                 kind=span_kind,
             ) as span:
                 if span.is_recording():
