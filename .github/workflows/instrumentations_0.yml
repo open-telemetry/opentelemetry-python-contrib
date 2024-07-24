@@ -72,7 +72,7 @@ jobs:
           - "system-metrics"
           - "tornado"
           - "tortoiseorm"
-        os: [ubuntu-24.04]
+        os: [ubuntu-20.04]
         exclude:
           - python-version: py312
             package: "boto"
