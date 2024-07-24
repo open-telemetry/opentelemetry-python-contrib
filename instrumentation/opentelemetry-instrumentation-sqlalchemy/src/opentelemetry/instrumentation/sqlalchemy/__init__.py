@@ -137,6 +137,7 @@ class SQLAlchemyInstrumentor(BaseInstrumentor):
                 ``meter_provider``: a MeterProvider, defaults to global
                 ``enable_commenter``: bool to enable sqlcommenter, defaults to False
                 ``commenter_options``: dict of sqlcommenter config, defaults to {}
+                ``attrs_provider``: a zero-argument callable that returns attributes to be added to all spans, defaults to None
 
         Returns:
             An instrumented engine if passed in as an argument or list of instrumented engines, None otherwise.
