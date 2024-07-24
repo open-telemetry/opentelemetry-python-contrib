@@ -165,25 +165,26 @@ class SQLAlchemyInstrumentor(BaseInstrumentor):
 
         enable_commenter = kwargs.get("enable_commenter", False)
         commenter_options = kwargs.get("commenter_options", {})
+        attrs_provider = kwargs.get("attrs_provider")
 
         _w(
             "sqlalchemy",
             "create_engine",
             _wrap_create_engine(
-                tracer, connections_usage, enable_commenter, commenter_options
+                tracer, connections_usage, enable_commenter, commenter_options, attrs_provider
             ),
         )
         _w(
             "sqlalchemy.engine",
             "create_engine",
             _wrap_create_engine(
-                tracer, connections_usage, enable_commenter, commenter_options
+                tracer, connections_usage, enable_commenter, commenter_options, attrs_provider
             ),
         )
         _w(
             "sqlalchemy.engine.base",
             "Engine.connect",
-            _wrap_connect(tracer),
+            _wrap_connect(tracer, attrs_provider),
         )
         if parse_version(sqlalchemy.__version__).release >= (1, 4):
             _w(

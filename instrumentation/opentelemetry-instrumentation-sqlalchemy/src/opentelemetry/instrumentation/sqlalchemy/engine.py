@@ -27,7 +27,10 @@ from opentelemetry.instrumentation.utils import _get_opentelemetry_values
 from opentelemetry.semconv.trace import NetTransportValues, SpanAttributes
 from opentelemetry.trace.status import Status, StatusCode
 
-
+def _get_provided_attributes(attrs_provider):
+    if attrs_provider is None:
+        return None
+    return attrs_provider()
 def _normalize_vendor(vendor):
     """Return a canonical name for a type of database."""
     if not vendor:
@@ -43,7 +46,7 @@ def _normalize_vendor(vendor):
 
 
 def _wrap_create_async_engine(
-    tracer, connections_usage, enable_commenter=False, commenter_options=None
+    tracer, connections_usage, enable_commenter=False, commenter_options=None, attrs_provider=None,
 ):
     # pylint: disable=unused-argument
     def _wrap_create_async_engine_internal(func, module, args, kwargs):
@@ -57,6 +60,7 @@ def _wrap_create_async_engine(
             connections_usage,
             enable_commenter,
             commenter_options,
+            attrs_provider=attrs_provider,
         )
         return engine
 
@@ -64,7 +68,7 @@ def _wrap_create_async_engine(
 
 
 def _wrap_create_engine(
-    tracer, connections_usage, enable_commenter=False, commenter_options=None
+    tracer, connections_usage, enable_commenter=False, commenter_options=None, attrs_provider=None,
 ):
     def _wrap_create_engine_internal(func, _module, args, kwargs):
         """Trace the SQLAlchemy engine, creating an `EngineTracer`
@@ -77,17 +81,18 @@ def _wrap_create_engine(
             connections_usage,
             enable_commenter,
             commenter_options,
+            attrs_provider,
         )
         return engine
 
     return _wrap_create_engine_internal
 
 
-def _wrap_connect(tracer):
+def _wrap_connect(tracer, attrs_provider):
     # pylint: disable=unused-argument
     def _wrap_connect_internal(func, module, args, kwargs):
         with tracer.start_as_current_span(
-            "connect", kind=trace.SpanKind.CLIENT
+            "connect", kind=trace.SpanKind.CLIENT, attributes=_get_provided_attributes(attrs_provider)
         ) as span:
             if span.is_recording():
                 attrs, _ = _get_attributes_from_url(module.url)
@@ -110,6 +115,7 @@ class EngineTracer:
         connections_usage,
         enable_commenter=False,
         commenter_options=None,
+        attrs_provider=None,
     ):
         self.tracer = tracer
         self.connections_usage = connections_usage
@@ -118,6 +124,7 @@ class EngineTracer:
         self.commenter_options = commenter_options if commenter_options else {}
         self._engine_attrs = _get_attributes_from_engine(engine)
         self._leading_comment_remover = re.compile(r"^/\*.*?\*/")
+        self._attrs_provider = attrs_provider
 
         self._register_event_listener(
             engine, "before_cursor_execute", self._before_cur_exec, retval=True
@@ -213,9 +220,11 @@ class EngineTracer:
             attrs = _get_attributes_from_cursor(self.vendor, cursor, attrs)
 
         db_name = attrs.get(SpanAttributes.DB_NAME, "")
+        attributes=_get_provided_attributes(self._attrs_provider)
         span = self.tracer.start_span(
             self._operation_name(db_name, statement),
             kind=trace.SpanKind.CLIENT,
+            attributes=attributes
         )
         with trace.use_span(span, end_on_exit=False):
             if span.is_recording():
