@@ -172,6 +172,7 @@ API
 ---
 """
 import logging
+from importlib.util import find_spec
 from typing import Collection
 
 import fastapi
@@ -189,7 +190,11 @@ from opentelemetry.instrumentation.asgi.types import (
     ClientResponseHook,
     ServerRequestHook,
 )
-from opentelemetry.instrumentation.fastapi.package import _instruments
+from opentelemetry.instrumentation.fastapi.package import (
+    _fastapi,
+    _fastapi_slim,
+    _instruments,
+)
 from opentelemetry.instrumentation.fastapi.version import __version__
 from opentelemetry.instrumentation.instrumentor import BaseInstrumentor
 from opentelemetry.metrics import get_meter
@@ -280,6 +285,11 @@ class FastAPIInstrumentor(BaseInstrumentor):
         app._is_instrumented_by_opentelemetry = False
 
     def instrumentation_dependencies(self) -> Collection[str]:
+        if find_spec("fastapi") is not None:
+            return (_fastapi,)
+        if find_spec("fastapi_slim") is not None:
+            return (_fastapi_slim,)
+        # If neither is installed, return both as potential dependencies
         return _instruments
 
     def _instrument(self, **kwargs):
