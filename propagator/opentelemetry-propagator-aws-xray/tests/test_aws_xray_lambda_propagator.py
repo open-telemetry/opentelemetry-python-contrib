@@ -17,7 +17,6 @@ from unittest import TestCase
 from unittest.mock import patch
 
 from requests.structures import CaseInsensitiveDict
-from opentelemetry.util._importlib_metadata import entry_points
 
 from opentelemetry.context import get_current
 from opentelemetry.propagators.aws.aws_xray_propagator import (
@@ -34,6 +33,7 @@ from opentelemetry.trace import (
     get_current_span,
     use_span,
 )
+from opentelemetry.util._importlib_metadata import entry_points
 
 
 class AwsXRayLambdaPropagatorTest(TestCase):
