@@ -126,7 +126,7 @@ class TestAwsLambdaInstrumentor(TestBase):
             {
                 **os.environ,
                 # Using Active tracing
-                OTEL_PROPAGATORS: "xray_lambda",
+                OTEL_PROPAGATORS: "xray-lambda",
                 _X_AMZN_TRACE_ID: MOCK_XRAY_TRACE_CONTEXT_SAMPLED,
             },
         )
@@ -232,7 +232,7 @@ class TestAwsLambdaInstrumentor(TestBase):
                 expected_traceid=MOCK_XRAY_TRACE_ID,
                 expected_parentid=MOCK_XRAY_PARENT_SPAN_ID,
                 xray_traceid=MOCK_XRAY_TRACE_CONTEXT_SAMPLED,
-                propagators="xray_lambda",
+                propagators="xray-lambda",
             ),
             TestCase(
                 name="custom_extractor_sampled_xray",
