@@ -9,6 +9,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- `opentelemetry-instrumentation-sqlalchemy` Add `attrs_provider` to allow providing attributes to span start functions
+  ([#2733](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/2733))
 - `opentelemetry-instrumentation-flask` Add `http.route` and `http.target` to metric attributes
   ([#2621](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/2621))
 - `opentelemetry-instrumentation-sklearn` Deprecated the sklearn instrumentation
