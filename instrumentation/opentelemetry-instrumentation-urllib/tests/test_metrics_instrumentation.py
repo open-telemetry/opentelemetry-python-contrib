@@ -71,12 +71,13 @@ class TestUrllibMetricsInstrumentation(TestBase):
             self.assertEqual(
                 client_duration.name, MetricInstruments.HTTP_CLIENT_DURATION
             )
+
             self.assert_metric_expected(
                 client_duration,
                 self.create_histogram_data_points(
                     client_duration_estimated,
                     attributes={
-                        "http.status_code": str(result.code),
+                        "http.status_code": int(result.code),
                         "http.method": "GET",
                         "http.url": str(result.url),
                         "http.flavor": "1.1",
@@ -94,7 +95,7 @@ class TestUrllibMetricsInstrumentation(TestBase):
                 self.create_histogram_data_points(
                     0,
                     attributes={
-                        "http.status_code": str(result.code),
+                        "http.status_code": int(result.code),
                         "http.method": "GET",
                         "http.url": str(result.url),
                         "http.flavor": "1.1",
@@ -111,7 +112,7 @@ class TestUrllibMetricsInstrumentation(TestBase):
                 self.create_histogram_data_points(
                     result.length,
                     attributes={
-                        "http.status_code": str(result.code),
+                        "http.status_code": int(result.code),
                         "http.method": "GET",
                         "http.url": str(result.url),
                         "http.flavor": "1.1",
@@ -144,7 +145,7 @@ class TestUrllibMetricsInstrumentation(TestBase):
                 self.create_histogram_data_points(
                     client_duration_estimated,
                     attributes={
-                        "http.status_code": str(result.code),
+                        "http.status_code": int(result.code),
                         "http.method": "POST",
                         "http.url": str(result.url),
                         "http.flavor": "1.1",
@@ -162,7 +163,7 @@ class TestUrllibMetricsInstrumentation(TestBase):
                 self.create_histogram_data_points(
                     len(data_encoded),
                     attributes={
-                        "http.status_code": str(result.code),
+                        "http.status_code": int(result.code),
                         "http.method": "POST",
                         "http.url": str(result.url),
                         "http.flavor": "1.1",
@@ -179,7 +180,7 @@ class TestUrllibMetricsInstrumentation(TestBase):
                 self.create_histogram_data_points(
                     result.length,
                     attributes={
-                        "http.status_code": str(result.code),
+                        "http.status_code": int(result.code),
                         "http.method": "POST",
                         "http.url": str(result.url),
                         "http.flavor": "1.1",
