@@ -427,3 +427,21 @@ class TestSqlalchemyInstrumentation(TestBase):
 
         gc.collect()
         assert callback.call_count == 5
+
+
+    def test_attribute_provider(self):
+        SQLAlchemyInstrumentor().instrument(attr_provider=lambda: {"my_attr": "my_val"})
+        from sqlalchemy import create_engine  # pylint: disable-all
+
+        engine = create_engine("sqlite:///:memory:")
+        cnx = engine.connect()
+        cnx.execute("SELECT	1 + 1;").fetchall()
+        spans = self.memory_exporter.get_finished_spans()
+
+        self.assertEqual(len(spans), 2)
+        self.assertEqual(
+            spans[0].resource.attributes["my_attr"], "my_val"
+        )
+        self.assertEqual(
+            spans[1].resource.attributes["my_attr"], "my_val"
+        )
