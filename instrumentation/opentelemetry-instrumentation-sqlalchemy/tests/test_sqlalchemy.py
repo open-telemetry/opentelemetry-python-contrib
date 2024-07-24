@@ -430,7 +430,7 @@ class TestSqlalchemyInstrumentation(TestBase):
 
 
     def test_attribute_provider(self):
-        SQLAlchemyInstrumentor().instrument(attr_provider=lambda: {"my_attr": "my_val"})
+        SQLAlchemyInstrumentor().instrument(attrs_provider=lambda: {"my_attr": "my_val"})
         from sqlalchemy import create_engine  # pylint: disable-all
 
         engine = create_engine("sqlite:///:memory:")
@@ -440,10 +440,10 @@ class TestSqlalchemyInstrumentation(TestBase):
 
         self.assertEqual(len(spans), 2)
         self.assertEqual(
-            spans[0].resource.attributes["my_attr"], "my_val"
+            spans[0].attributes["my_attr"], "my_val"
         )
         self.assertEqual(
-            spans[1].resource.attributes["my_attr"], "my_val"
+            spans[1].attributes["my_attr"], "my_val"
         )
 
     @pytest.mark.skipif(
@@ -458,14 +458,14 @@ class TestSqlalchemyInstrumentation(TestBase):
 
             engine = create_async_engine("sqlite+aiosqlite:///:memory:")
             SQLAlchemyInstrumentor().instrument(
-                engine=engine.sync_engine, tracer_provider=self.tracer_provider, attr_provider=lambda: {"my_attr": "my_val"}
+                engine=engine.sync_engine, tracer_provider=self.tracer_provider, attrs_provider=lambda: {"my_attr": "my_val"}
             )
             async with engine.connect() as cnx:
                 await cnx.execute(sqlalchemy.text("SELECT	1 + 1;"))
             spans = self.memory_exporter.get_finished_spans()
             self.assertEqual(len(spans), 2)
             # first span - the connection to the db
-            self.assertEqual(spans[0].my_attr, "my_val")
-            self.assertEqual(spans[1].my_attr, "my_val")
+            self.assertEqual(spans[0].attributes["my_attr"], "my_val")
+            self.assertEqual(spans[1].attributes["my_attr"], "my_val")
 
         asyncio.get_event_loop().run_until_complete(run())

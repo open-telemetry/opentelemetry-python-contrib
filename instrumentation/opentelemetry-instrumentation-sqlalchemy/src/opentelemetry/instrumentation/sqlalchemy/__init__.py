@@ -196,6 +196,7 @@ class SQLAlchemyInstrumentor(BaseInstrumentor):
                     connections_usage,
                     enable_commenter,
                     commenter_options,
+                    attrs_provider,
                 ),
             )
         if kwargs.get("engine") is not None:
@@ -205,6 +206,7 @@ class SQLAlchemyInstrumentor(BaseInstrumentor):
                 connections_usage,
                 kwargs.get("enable_commenter", False),
                 kwargs.get("commenter_options", {}),
+                kwargs.get("attrs_provider"),
             )
         if kwargs.get("engines") is not None and isinstance(
             kwargs.get("engines"), Sequence
@@ -216,6 +218,7 @@ class SQLAlchemyInstrumentor(BaseInstrumentor):
                     connections_usage,
                     kwargs.get("enable_commenter", False),
                     kwargs.get("commenter_options", {}),
+                    kwargs.get("attrs_provider"),
                 )
                 for engine in kwargs.get("engines")
             ]

@@ -96,7 +96,8 @@ def _wrap_connect(tracer, attrs_provider):
         ) as span:
             if span.is_recording():
                 attrs, _ = _get_attributes_from_url(module.url)
-                span.set_attributes(attrs)
+                for key, value in attrs.items():
+                    span.set_attribute(key, value)
                 span.set_attribute(
                     SpanAttributes.DB_SYSTEM, _normalize_vendor(module.name)
                 )
