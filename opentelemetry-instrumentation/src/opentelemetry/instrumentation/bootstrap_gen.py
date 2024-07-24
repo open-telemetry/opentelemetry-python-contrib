@@ -85,6 +85,10 @@ libraries = [
         "instrumentation": "opentelemetry-instrumentation-fastapi==0.47b0.dev",
     },
     {
+        "library": "fastapi-slim ~= 0.111.0",
+        "instrumentation": "opentelemetry-instrumentation-fastapi==0.47b0.dev",
+    },
+    {
         "library": "flask >= 1.0",
         "instrumentation": "opentelemetry-instrumentation-flask==0.47b0.dev",
     },
