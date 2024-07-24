@@ -524,7 +524,7 @@ class TestAwsLambdaInstrumentor(TestBase):
             next(
                 iter(
                     entry_points(
-                        group="opentelemetry_instrumentor", name="aws_lambda"
+                        group="opentelemetry_instrumentor", name="aws-lambda"
                     )
                 )
             ).load(),
