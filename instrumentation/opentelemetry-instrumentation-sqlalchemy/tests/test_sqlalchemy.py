@@ -445,3 +445,27 @@ class TestSqlalchemyInstrumentation(TestBase):
         self.assertEqual(
             spans[1].resource.attributes["my_attr"], "my_val"
         )
+
+    @pytest.mark.skipif(
+        not sqlalchemy.__version__.startswith("1.4"),
+        reason="only run async tests for 1.4",
+    )
+    def test_async_attribute_provider(self):
+        async def run():
+            from sqlalchemy.ext.asyncio import (  # pylint: disable-all
+                create_async_engine,
+            )
+
+            engine = create_async_engine("sqlite+aiosqlite:///:memory:")
+            SQLAlchemyInstrumentor().instrument(
+                engine=engine.sync_engine, tracer_provider=self.tracer_provider, attr_provider=lambda: {"my_attr": "my_val"}
+            )
+            async with engine.connect() as cnx:
+                await cnx.execute(sqlalchemy.text("SELECT	1 + 1;"))
+            spans = self.memory_exporter.get_finished_spans()
+            self.assertEqual(len(spans), 2)
+            # first span - the connection to the db
+            self.assertEqual(spans[0].my_attr, "my_val")
+            self.assertEqual(spans[1].my_attr, "my_val")
+
+        asyncio.get_event_loop().run_until_complete(run())
