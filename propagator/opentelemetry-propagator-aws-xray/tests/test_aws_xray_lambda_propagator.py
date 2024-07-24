@@ -17,6 +17,7 @@ from unittest import TestCase
 from unittest.mock import patch
 
 from requests.structures import CaseInsensitiveDict
+from opentelemetry.util._importlib_metadata import entry_points
 
 from opentelemetry.context import get_current
 from opentelemetry.propagators.aws.aws_xray_propagator import (
@@ -161,4 +162,16 @@ class AwsXRayLambdaPropagatorTest(TestCase):
         )
         self.assertEqual(
             span_link_context.trace_state, TraceState.get_default()
+        )
+
+    def test_load_entry_point(self):
+        self.assertIs(
+            next(
+                iter(
+                    entry_points(
+                        group="opentelemetry_propagator", name="xray-lambda"
+                    )
+                )
+            ).load(),
+            AwsXRayLambdaPropagator,
         )
