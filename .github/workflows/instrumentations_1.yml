@@ -6,7 +6,7 @@ on:
     - 'release/*'
   pull_request:
 env:
-  CORE_REPO_SHA: main
+  CORE_REPO_SHA: bf1b5ecc8af3064db80f6989816accc3951c8187
 
 jobs:
   instrumentations-1:

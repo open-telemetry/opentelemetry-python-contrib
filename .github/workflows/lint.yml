@@ -6,7 +6,7 @@ on:
     - 'release/*'
   pull_request:
 env:
-  CORE_REPO_SHA: main
+  CORE_REPO_SHA: bf1b5ecc8af3064db80f6989816accc3951c8187
 
 jobs:
   lint-3_12:
@@ -90,6 +90,6 @@ jobs:
           path: |
             .tox
             ~/.cache/pip
-          key: v7-build-tox-cache-${{ matrix.package }}-${{ hashFiles('tox.ini', 'gen-requirements.txt', 'dev-requirements.txt') }}
+          key: v7-build-tox-cache-${{ matrix.package }}-${{ hashFiles('gen-requirements.txt', 'dev-requirements.txt') }}
       - name: run tox
         run: tox -e lint-${{ matrix.package }}
