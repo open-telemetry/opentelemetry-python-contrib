@@ -17,7 +17,7 @@ jobs:
       py310: "3.10"
       py311: "3.11"
       py312: "3.12"
-      py312: "3.13"
+      py313: "3.13"
       pypy3: pypy-3.8
       RUN_MATRIX_COMBINATION: ${{ matrix.python-version }}-${{ matrix.package }}-${{ matrix.os }}
     runs-on: ${{ matrix.os }}
