@@ -178,7 +178,10 @@ class URLLibInstrumentor(BaseInstrumentor):
             schema_url=schema_url,
         )
 
-        histograms = _create_client_histograms(meter)
+        histograms = _create_client_histograms(
+            meter,
+            sem_conv_opt_in_mode
+        )
 
         _instrument(
             tracer,
@@ -248,6 +251,10 @@ def _instrument(
         span_name = _get_span_name(method)
 
         url = remove_url_credentials(url)
+
+        data = getattr(request, "data", None)
+        request_size = 0 if data is None else len(data)
+        
         labels = {}
 
         _set_http_method(
@@ -277,8 +284,9 @@ def _instrument(
                     result = getattr(exc, "file", None)
                 finally:
                     duration_s = default_timer() - start_time
-
+            response_size = 0
             if result is not None:
+                response_size = int(result.headers.get("Content-Length", 0))
                 code_ = result.getcode()
                 # set http status code based on semconv
                 if code_:
@@ -297,19 +305,27 @@ def _instrument(
                 span.set_attribute(ERROR_TYPE, type(exception).__qualname__)
                 labels[ERROR_TYPE] = type(exception).__qualname__
 
-            duration_attrs = _filter_semconv_duration_attrs(
+            duration_attrs_old = _filter_semconv_duration_attrs(
                 labels,
                 _client_duration_attrs_old,
-                _client_duration_attrs_new
+                _client_duration_attrs_new,
+                sem_conv_opt_in_mode = _HTTPStabilityMode.DEFAULT,
             )
-            if _report_old(sem_conv_opt_in_mode):
-                duration_attrs[SpanAttributes.HTTP_URL] = url
+            duration_attrs_new = _filter_semconv_duration_attrs(
+                labels,
+                _client_duration_attrs_old,
+                _client_duration_attrs_new,
+                sem_conv_opt_in_mode = _HTTPStabilityMode.HTTP,
+            )
+
+            duration_attrs_old[SpanAttributes.HTTP_URL] = url
 
             _record_histograms(
                 histograms,
-                duration_attrs,
-                request,
-                result,
+                duration_attrs_old,
+                duration_attrs_new,
+                request_size,
+                response_size,
                 duration_s,
                 sem_conv_opt_in_mode,
             )
@@ -413,42 +429,36 @@ def _create_client_histograms(meter, sem_conv_opt_in_mode = _HTTPStabilityMode.D
             meter
         )
 
-
     return histograms
 
 
 def _record_histograms(
     histograms: Histogram,
-    metric_attributes: dict,
-    request,
-    response,
+    metric_attributes_old: dict,
+    metric_attributes_new: dict,
+    request_size: int,
+    response_size: int,
     duration_s: float,
-    sem_conv_opt_in_mode = _HTTPStabilityMode.DEFAULT,
+    sem_conv_opt_in_mode: _HTTPStabilityMode = _HTTPStabilityMode.DEFAULT,
 ):
     duration = max(round(duration_s * 1000), 0)
-    data = getattr(request, "data", None)
-    request_size = 0 if data is None else len(data)
     if _report_old(sem_conv_opt_in_mode):
         histograms[MetricInstruments.HTTP_CLIENT_DURATION].record(
-            duration, attributes=metric_attributes
+            duration, attributes=metric_attributes_old
         )
         histograms[MetricInstruments.HTTP_CLIENT_REQUEST_SIZE].record(
-            request_size, attributes=metric_attributes
+            request_size, attributes=metric_attributes_old
         )
-        if response is not None:
-            response_size = int(response.headers.get("Content-Length", 0))
-            histograms[MetricInstruments.HTTP_CLIENT_RESPONSE_SIZE].record(
-                response_size, attributes=metric_attributes
-            )
+        histograms[MetricInstruments.HTTP_CLIENT_RESPONSE_SIZE].record(
+            response_size, attributes=metric_attributes_old
+        )
     if _report_new(sem_conv_opt_in_mode):
         histograms[HTTP_CLIENT_REQUEST_DURATION].record(
-            duration_s, attributes=metric_attributes
+            duration_s, attributes=metric_attributes_new
         )
         histograms[HTTP_CLIENT_REQUEST_BODY_SIZE].record(
-            request_size, attributes=metric_attributes
+            request_size, attributes=metric_attributes_new
         )
-        if response is not None:
-            response_size = int(response.headers.get("Content-Length", 0))
-            histograms[HTTP_CLIENT_RESPONSE_BODY_SIZE].record(
-                response_size, attributes=metric_attributes
-            )
+        histograms[HTTP_CLIENT_RESPONSE_BODY_SIZE].record(
+            response_size, attributes=metric_attributes_new
+        )

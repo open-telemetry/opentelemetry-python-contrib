@@ -44,7 +44,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - `opentelemetry-instrumentation-django` Implement new semantic convention opt-in with stable http semantic conventions
   ([#2714](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/2714))
   - `opentelemetry-instrumentation-urllib` Implement new semantic convention opt-in migration
-  ([#2715](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/2715))
+  ([#2736](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/2736))
 
 ### Breaking changes
 
@@ -61,7 +61,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Populate `{method}` as `HTTP` on `_OTHER` methods from scope for `django` middleware
   ([#2714](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/2714))
   - Populate `{method}` as `HTTP` on `_OTHER` methods from scope for `urllib` instrumentation
-  ([#2714](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/2714))
+  ([#2736](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/2736))
 - `opentelemetry-instrumentation-httpx`, `opentelemetry-instrumentation-aiohttp-client`,
   `opentelemetry-instrumentation-requests` Populate `{method}` as `HTTP` on `_OTHER` methods
   ([#2726](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/2726))
