@@ -40,6 +40,7 @@ from opentelemetry.instrumentation.utils import suppress_instrumentation
 from opentelemetry.semconv.attributes.error_attributes import ERROR_TYPE
 from opentelemetry.semconv.attributes.http_attributes import (
     HTTP_REQUEST_METHOD,
+    HTTP_REQUEST_METHOD_ORIGINAL,
     HTTP_RESPONSE_STATUS_CODE,
 )
 from opentelemetry.semconv.attributes.url_attributes import URL_FULL
@@ -222,7 +223,7 @@ class TestAioHttpIntegration(TestBase):
             span = self.memory_exporter.get_finished_spans()[0]
             self.assertEqual(
                 span.instrumentation_info.schema_url,
-                "https://opentelemetry.io/schemas/v1.21.0",
+                "https://opentelemetry.io/schemas/1.21.0",
             )
             self.memory_exporter.clear()
 
@@ -239,7 +240,7 @@ class TestAioHttpIntegration(TestBase):
             span = self.memory_exporter.get_finished_spans()[0]
             self.assertEqual(
                 span.instrumentation_info.schema_url,
-                "https://opentelemetry.io/schemas/v1.21.0",
+                "https://opentelemetry.io/schemas/1.21.0",
             )
             self.memory_exporter.clear()
 
@@ -502,6 +503,92 @@ class TestAioHttpIntegration(TestBase):
                 )
             ]
         )
+
+    def test_nonstandard_http_method(self):
+        trace_configs = [aiohttp_client.create_trace_config()]
+        app = HttpServerMock("nonstandard_method")
+
+        @app.route("/status/200", methods=["NONSTANDARD"])
+        def index():
+            return ("", 405, {})
+
+        url = "http://localhost:5000/status/200"
+
+        with app.run("localhost", 5000):
+            with self.subTest(url=url):
+
+                async def do_request(url):
+                    async with aiohttp.ClientSession(
+                        trace_configs=trace_configs,
+                    ) as session:
+                        async with session.request("NONSTANDARD", url):
+                            pass
+
+                loop = asyncio.get_event_loop()
+                loop.run_until_complete(do_request(url))
+
+        self.assert_spans(
+            [
+                (
+                    "HTTP",
+                    (StatusCode.ERROR, None),
+                    {
+                        SpanAttributes.HTTP_METHOD: "_OTHER",
+                        SpanAttributes.HTTP_URL: url,
+                        SpanAttributes.HTTP_STATUS_CODE: int(
+                            HTTPStatus.METHOD_NOT_ALLOWED
+                        ),
+                    },
+                )
+            ]
+        )
+        self.memory_exporter.clear()
+
+    def test_nonstandard_http_method_new_semconv(self):
+        trace_configs = [
+            aiohttp_client.create_trace_config(
+                sem_conv_opt_in_mode=_HTTPStabilityMode.HTTP
+            )
+        ]
+        app = HttpServerMock("nonstandard_method")
+
+        @app.route("/status/200", methods=["NONSTANDARD"])
+        def index():
+            return ("", 405, {})
+
+        url = "http://localhost:5000/status/200"
+
+        with app.run("localhost", 5000):
+            with self.subTest(url=url):
+
+                async def do_request(url):
+                    async with aiohttp.ClientSession(
+                        trace_configs=trace_configs,
+                    ) as session:
+                        async with session.request("NONSTANDARD", url):
+                            pass
+
+                loop = asyncio.get_event_loop()
+                loop.run_until_complete(do_request(url))
+
+        self.assert_spans(
+            [
+                (
+                    "HTTP",
+                    (StatusCode.ERROR, None),
+                    {
+                        HTTP_REQUEST_METHOD: "_OTHER",
+                        URL_FULL: url,
+                        HTTP_RESPONSE_STATUS_CODE: int(
+                            HTTPStatus.METHOD_NOT_ALLOWED
+                        ),
+                        HTTP_REQUEST_METHOD_ORIGINAL: "NONSTANDARD",
+                        ERROR_TYPE: "405",
+                    },
+                )
+            ]
+        )
+        self.memory_exporter.clear()
 
     def test_credential_removal(self):
         trace_configs = [aiohttp_client.create_trace_config()]
