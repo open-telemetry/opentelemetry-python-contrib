@@ -354,7 +354,9 @@ def collect_request_attributes(
             result, path, path, query_string, sem_conv_opt_in_mode
         )
     if http_url:
-        if _report_old(sem_conv_opt_in_mode) or (sem_conv_opt_in_mode == _HTTPStabilityMode.HTTP_DUP):
+        if _report_old(sem_conv_opt_in_mode) or (
+            sem_conv_opt_in_mode == _HTTPStabilityMode.HTTP_DUP
+        ):
             _set_http_url(
                 result, remove_url_credentials(http_url), sem_conv_opt_in_mode
             )
