@@ -187,7 +187,7 @@ class SystemMetricsInstrumentor(BaseInstrumentor):
         )
         
         sanitized_config = {
-            key: [urllib.parse.unquote(item) for item in value] if isinstance(value, list) else value
+            key: [urllib.parse.unquote(item) for item in value]
             for key, value in self._config.items()
         }
 
@@ -258,7 +258,7 @@ class SystemMetricsInstrumentor(BaseInstrumentor):
         #     value_type=int,
         # )
         
-        if any("system.disk.io" in value for value in sanitized_config.values()):
+        if any("system.disk.io" in url for urls in sanitized_config.values() for url in urls):
             self._meter.create_observable_counter(
                 name="system.disk.io",
                 callbacks=[self._get_system_disk_io],
@@ -329,7 +329,7 @@ class SystemMetricsInstrumentor(BaseInstrumentor):
             )
 
         
-        if any("system.network.io" in value for value in sanitized_config.values()):
+        if any("system.network.io" in url for urls in sanitized_config.values() for url in urls):
             self._meter.create_observable_counter(
                 name="system.network.io",
                 callbacks=[self._get_system_network_io],
