@@ -289,6 +289,7 @@ class TestAwsLambdaInstrumentor(TestBase):
                 expected_state_value=MOCK_W3C_TRACE_STATE_VALUE,
                 xray_traceid=MOCK_XRAY_TRACE_CONTEXT_NOT_SAMPLED,
                 expected_baggage=MOCK_W3C_BAGGAGE_VALUE,
+                propagators="tracecontext,baggage",
             ),
         ]
         for test in tests:
