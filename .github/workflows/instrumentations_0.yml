@@ -17,7 +17,7 @@ jobs:
       py310: "3.10"
       py311: "3.11"
       py312: "3.12"
-      pypy3: pypy-3.8
+      pypy3: pypy-3.9
       RUN_MATRIX_COMBINATION: ${{ matrix.python-version }}-${{ matrix.package }}-${{ matrix.os }}
     runs-on: ${{ matrix.os }}
     strategy:
@@ -106,7 +106,7 @@ jobs:
         with:
           python-version: ${{ env[matrix.python-version] }}
       - name: Install tox
-        run: pip install tox
+        run: pip install -U pip && pip install tox
       - name: Cache tox environment
         # Preserves .tox directory between runs for faster installs
         uses: actions/cache@v4
