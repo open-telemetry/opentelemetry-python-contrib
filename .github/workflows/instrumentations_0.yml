@@ -106,7 +106,7 @@ jobs:
         with:
           python-version: ${{ env[matrix.python-version] }}
       - name: Install tox
-        run: pip cache purge && pip install tox
+        run: pip install tox
       - name: Cache tox environment
         # Preserves .tox directory between runs for faster installs
         uses: actions/cache@v4
@@ -116,4 +116,4 @@ jobs:
             ~/.cache/pip
           key: v8-build-tox-cache-${{ env.RUN_MATRIX_COMBINATION }}-${{ hashFiles('gen-requirements.txt', 'dev-requirements.txt') }}
       - name: run tox
-        run: tox -f ${{ matrix.python-version }}-${{ matrix.package }} -- -ra
+        run: tox -f ${{ matrix.python-version }}-${{ matrix.package }} -r -- -ra
