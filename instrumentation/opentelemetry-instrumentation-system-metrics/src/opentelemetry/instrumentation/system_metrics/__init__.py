@@ -177,8 +177,6 @@ class SystemMetricsInstrumentor(BaseInstrumentor):
         return _instruments
 
     def _instrument(self, **kwargs):
-        
-        
         # pylint: disable=too-many-branches
         meter_provider = kwargs.get("meter_provider")
         self._meter = get_meter(
