@@ -513,7 +513,9 @@ class TestAsgiApplication(AsgiTestBase):
         mock_span = mock.Mock()
         mock_span.is_recording.return_value = False
         mock_tracer.start_as_current_span.return_value = mock_span
-        mock_tracer.start_as_current_span.return_value.__enter__ = mock_span
+        mock_tracer.start_as_current_span.return_value.__enter__ = mock.Mock(
+            return_value=mock_span
+        )
         mock_tracer.start_as_current_span.return_value.__exit__ = mock_span
         with mock.patch("opentelemetry.trace.get_tracer") as tracer:
             tracer.return_value = mock_tracer
@@ -1338,6 +1340,65 @@ class TestAsgiApplication(AsgiTestBase):
                                 dict(point.attributes),
                             )
                             self.assertEqual(point.value, 0)
+
+    def test_basic_metric_success_nonrecording_span(self):
+        mock_tracer = mock.Mock()
+        mock_span = mock.Mock()
+        mock_span.is_recording.return_value = False
+        mock_tracer.start_as_current_span.return_value = mock_span
+        mock_tracer.start_as_current_span.return_value.__enter__ = mock.Mock(
+            return_value=mock_span
+        )
+        mock_tracer.start_as_current_span.return_value.__exit__ = mock_span
+        with mock.patch("opentelemetry.trace.get_tracer") as tracer:
+            tracer.return_value = mock_tracer
+            app = otel_asgi.OpenTelemetryMiddleware(simple_asgi)
+            self.seed_app(app)
+            start = default_timer()
+            self.send_default_request()
+            duration = max(round((default_timer() - start) * 1000), 0)
+            expected_duration_attributes = {
+                "http.method": "GET",
+                "http.host": "127.0.0.1",
+                "http.scheme": "http",
+                "http.flavor": "1.0",
+                "net.host.port": 80,
+                "http.status_code": 200,
+            }
+            expected_requests_count_attributes = {
+                "http.method": "GET",
+                "http.host": "127.0.0.1",
+                "http.scheme": "http",
+                "http.flavor": "1.0",
+            }
+            metrics_list = self.memory_metrics_reader.get_metrics_data()
+            # pylint: disable=too-many-nested-blocks
+            for resource_metric in metrics_list.resource_metrics:
+                for scope_metrics in resource_metric.scope_metrics:
+                    for metric in scope_metrics.metrics:
+                        for point in list(metric.data.data_points):
+                            if isinstance(point, HistogramDataPoint):
+                                self.assertDictEqual(
+                                    expected_duration_attributes,
+                                    dict(point.attributes),
+                                )
+                                self.assertEqual(point.count, 1)
+                                if metric.name == "http.server.duration":
+                                    self.assertAlmostEqual(
+                                        duration, point.sum, delta=5
+                                    )
+                                elif (
+                                    metric.name == "http.server.response.size"
+                                ):
+                                    self.assertEqual(1024, point.sum)
+                                elif metric.name == "http.server.request.size":
+                                    self.assertEqual(128, point.sum)
+                            elif isinstance(point, NumberDataPoint):
+                                self.assertDictEqual(
+                                    expected_requests_count_attributes,
+                                    dict(point.attributes),
+                                )
+                                self.assertEqual(point.value, 0)
 
     def test_basic_metric_success_new_semconv(self):
         app = otel_asgi.OpenTelemetryMiddleware(simple_asgi)

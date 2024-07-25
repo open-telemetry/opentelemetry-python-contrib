@@ -36,6 +36,7 @@ from opentelemetry.sdk import resources
 from opentelemetry.semconv.attributes.error_attributes import ERROR_TYPE
 from opentelemetry.semconv.attributes.http_attributes import (
     HTTP_REQUEST_METHOD,
+    HTTP_REQUEST_METHOD_ORIGINAL,
     HTTP_RESPONSE_STATUS_CODE,
 )
 from opentelemetry.semconv.attributes.network_attributes import (
@@ -246,6 +247,48 @@ class RequestsIntegrationTestBase(abc.ABC):
         self.assertEqualSpanInstrumentationScope(
             span, opentelemetry.instrumentation.requests
         )
+
+    @mock.patch("httpretty.http.HttpBaseClass.METHODS", ("NONSTANDARD",))
+    def test_nonstandard_http_method(self):
+        httpretty.register_uri("NONSTANDARD", self.URL, status=405)
+        session = requests.Session()
+        session.request("NONSTANDARD", self.URL)
+        span = self.assert_span()
+        self.assertIs(span.kind, trace.SpanKind.CLIENT)
+        self.assertEqual(span.name, "HTTP")
+        self.assertEqual(
+            span.attributes,
+            {
+                SpanAttributes.HTTP_METHOD: "_OTHER",
+                SpanAttributes.HTTP_URL: self.URL,
+                SpanAttributes.HTTP_STATUS_CODE: 405,
+            },
+        )
+
+        self.assertIs(span.status.status_code, trace.StatusCode.ERROR)
+
+    @mock.patch("httpretty.http.HttpBaseClass.METHODS", ("NONSTANDARD",))
+    def test_nonstandard_http_method_new_semconv(self):
+        httpretty.register_uri("NONSTANDARD", self.URL, status=405)
+        session = requests.Session()
+        session.request("NONSTANDARD", self.URL)
+        span = self.assert_span()
+        self.assertIs(span.kind, trace.SpanKind.CLIENT)
+        self.assertEqual(span.name, "HTTP")
+        self.assertEqual(
+            span.attributes,
+            {
+                HTTP_REQUEST_METHOD: "_OTHER",
+                URL_FULL: self.URL,
+                SERVER_ADDRESS: "mock",
+                NETWORK_PEER_ADDRESS: "mock",
+                HTTP_RESPONSE_STATUS_CODE: 405,
+                NETWORK_PROTOCOL_VERSION: "1.1",
+                ERROR_TYPE: "405",
+                HTTP_REQUEST_METHOD_ORIGINAL: "NONSTANDARD",
+            },
+        )
+        self.assertIs(span.status.status_code, trace.StatusCode.ERROR)
 
     def test_hooks(self):
         def request_hook(span, request_obj):

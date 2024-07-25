@@ -85,6 +85,10 @@ libraries = [
         "instrumentation": "opentelemetry-instrumentation-fastapi==0.47b0.dev",
     },
     {
+        "library": "fastapi-slim ~= 0.111.0",
+        "instrumentation": "opentelemetry-instrumentation-fastapi==0.47b0.dev",
+    },
+    {
         "library": "flask >= 1.0",
         "instrumentation": "opentelemetry-instrumentation-flask==0.47b0.dev",
     },
@@ -151,10 +155,6 @@ libraries = [
     {
         "library": "requests ~= 2.0",
         "instrumentation": "opentelemetry-instrumentation-requests==0.47b0.dev",
-    },
-    {
-        "library": "scikit-learn ~= 0.24.0",
-        "instrumentation": "opentelemetry-instrumentation-sklearn==0.47b0.dev",
     },
     {
         "library": "sqlalchemy",
