@@ -72,7 +72,7 @@ jobs:
           - "system-metrics"
           - "tornado"
           - "tortoiseorm"
-        os: [ubuntu-20.04]
+        os: [ubuntu-latest]
         exclude:
           - python-version: py312
             package: "boto"
@@ -114,6 +114,6 @@ jobs:
           path: |
             .tox
             ~/.cache/pip
-          key: v8-build-tox-cache-${{ env.RUN_MATRIX_COMBINATION }}-${{ hashFiles('gen-requirements.txt', 'dev-requirements.txt') }}
+          key: v9-build-tox-cache-${{ env.RUN_MATRIX_COMBINATION }}-${{ hashFiles('gen-requirements.txt', 'dev-requirements.txt') }}
       - name: run tox
-        run: tox -f ${{ matrix.python-version }}-${{ matrix.package }} -- -ra
+        run: PIP_RUNNER=uv tox -f ${{ matrix.python-version }}-${{ matrix.package }} -- -ra
