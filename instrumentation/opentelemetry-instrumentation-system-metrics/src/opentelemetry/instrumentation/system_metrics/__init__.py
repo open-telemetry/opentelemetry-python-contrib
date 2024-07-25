@@ -188,7 +188,10 @@ class SystemMetricsInstrumentor(BaseInstrumentor):
             schema_url="https://opentelemetry.io/schemas/1.11.0",
         )
         
-        sanitized_config = {key: urllib.parse.unquote(value) if isinstance(value, str) else value for key, value in self._config.items()}
+        sanitized_config = {
+            key: [urllib.parse.unquote(item) for item in value] if isinstance(value, list) else value
+            for key, value in self._config.items()
+        }
 
         if "system.cpu.time" in self._config:
             self._meter.create_observable_counter(
