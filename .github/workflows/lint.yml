@@ -90,6 +90,6 @@ jobs:
           path: |
             .tox
             ~/.cache/pip
-          key: v7-build-tox-cache-${{ matrix.package }}-${{ hashFiles('tox.ini', 'gen-requirements.txt', 'dev-requirements.txt') }}
+          key: v7-build-tox-cache-${{ matrix.package }}-${{ hashFiles('gen-requirements.txt', 'dev-requirements.txt') }}
       - name: run tox
         run: tox -e lint-${{ matrix.package }}
