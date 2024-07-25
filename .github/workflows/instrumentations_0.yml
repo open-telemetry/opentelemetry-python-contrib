@@ -99,6 +99,8 @@ jobs:
           - python-version: pypy3
             package: "grpc"
     steps:
+      - name: Delete unnecessary tools folder
+        run: rm -rf /opt/hostedtoolcache
       - name: Checkout Contrib Repo @ SHA - ${{ github.sha }}
         uses: actions/checkout@v4
       - name: Set up Python ${{ env[matrix.python-version] }}
