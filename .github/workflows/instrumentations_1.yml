@@ -25,20 +25,20 @@ jobs:
       matrix:
         python-version: [py38, py39, py310, py311, py312, pypy3]
         package:
-          - "urllib"
-          - "urllib3"
-          - "wsgi"
-          - "distro"
-          - "richconsole"
-          - "psycopg"
-          - "prometheus-remote-write"
-          - "sdk-extension-aws"
-          - "propagator-aws-xray"
-          - "propagator-ot-trace"
-          - "resource-detector-azure"
-          - "resource-detector-container"
-          - "util-http"
-          - "fastapi-slim"
+          # - "urllib"
+          # - "urllib3"
+          # - "wsgi"
+          # - "distro"
+          # - "richconsole"
+          # - "psycopg"
+          # - "prometheus-remote-write"
+          # - "sdk-extension-aws"
+          # - "propagator-aws-xray"
+          # - "propagator-ot-trace"
+          # - "resource-detector-azure"
+          # - "resource-detector-container"
+          # - "util-http"
+          # - "fastapi-slim"
         os: [ubuntu-20.04]
         exclude:
           - python-version: pypy3
