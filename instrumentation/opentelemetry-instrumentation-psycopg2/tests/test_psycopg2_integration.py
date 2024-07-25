@@ -18,6 +18,7 @@ from unittest import mock
 import psycopg2
 
 import opentelemetry.instrumentation.psycopg2
+from opentelemetry import trace
 from opentelemetry.instrumentation.psycopg2 import Psycopg2Instrumentor
 from opentelemetry.sdk import resources
 from opentelemetry.test.test_base import TestBase
@@ -254,6 +255,18 @@ class TestPostgresqlIntegration(TestBase):
     def test_sqlcommenter_enabled(self, event_mocked):
         cnx = psycopg2.connect(database="test")
         Psycopg2Instrumentor().instrument(enable_commenter=True)
+        query = "SELECT * FROM test"
+        cursor = cnx.cursor()
+        cursor.execute(query)
+        kwargs = event_mocked.call_args[1]
+        self.assertEqual(kwargs["enable_commenter"], True)
+
+    @mock.patch("opentelemetry.instrumentation.dbapi.wrap_connect")
+    def test_sqlcommenter_enabled_no_op_tracer(self, event_mocked):
+        tracer_provider = trace.NoOpTracerProvider()
+        trace.set_tracer_provider(tracer_provider)
+        cnx = psycopg2.connect(database="test")
+        Psycopg2Instrumentor().instrument(tracer_provider=tracer_provider, enable_commenter=True)
         query = "SELECT * FROM test"
         cursor = cnx.cursor()
         cursor.execute(query)
