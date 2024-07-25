@@ -114,6 +114,6 @@ jobs:
           path: |
             .tox
             ~/.cache/pip
-          key: v8-build-tox-cache-${{ env.RUN_MATRIX_COMBINATION }}-${{ hashFiles('gen-requirements.txt', 'dev-requirements.txt') }}
+          key: v10-build-tox-cache-${{ env.RUN_MATRIX_COMBINATION }}-${{ hashFiles('gen-requirements.txt', 'dev-requirements.txt') }}
       - name: run tox
-        run: tox -f ${{ matrix.python-version }}-${{ matrix.package }} -r -- -ra
+        run: rm -rf .tox && tox -f ${{ matrix.python-version }}-${{ matrix.package }} -r -- -ra
