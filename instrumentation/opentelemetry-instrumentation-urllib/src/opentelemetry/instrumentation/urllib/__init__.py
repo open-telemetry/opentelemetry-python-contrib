@@ -203,6 +203,7 @@ class URLLibInstrumentor(BaseInstrumentor):
         _uninstrument_from(opener, restore_as_bound_func=True)
 
 
+# pylint: disable=too-many-statements
 def _instrument(
     tracer,
     histograms: Dict[str, Histogram],
