@@ -428,10 +428,10 @@ def _create_client_histograms(
             description="Duration of HTTP client requests.",
         )
         histograms[HTTP_CLIENT_REQUEST_BODY_SIZE] = (
-           create_http_client_request_body_size(meter)
+            create_http_client_request_body_size(meter)
         )
         histograms[HTTP_CLIENT_RESPONSE_BODY_SIZE] = (
-           create_http_client_response_body_size(meter)
+            create_http_client_response_body_size(meter)
         )
 
     return histograms
