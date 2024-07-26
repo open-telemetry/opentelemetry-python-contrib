@@ -349,35 +349,44 @@ def _set_http_flavor_version(result, version, sem_conv_opt_in_mode):
 
 def _set_status(
     span,
-    metrics_attributes,
-    status_code,
-    status_code_str,
-    sem_conv_opt_in_mode,
+    metrics_attributes: dict,
+    status_code: int,
+    status_code_str: str,
+    server_span: bool = True,
+    sem_conv_opt_in_mode: _HTTPStabilityMode = _HTTPStabilityMode.DEFAULT,
 ):
     if status_code < 0:
-        if _report_new(sem_conv_opt_in_mode):
-            span.set_attribute(ERROR_TYPE, status_code_str)
-            metrics_attributes[ERROR_TYPE] = status_code_str
-
-        span.set_status(
-            Status(
-                StatusCode.ERROR,
-                "Non-integer HTTP status: " + status_code_str,
+        metrics_attributes[ERROR_TYPE] = status_code_str
+        if span.is_recording():
+            if _report_new(sem_conv_opt_in_mode):
+                span.set_attribute(ERROR_TYPE, status_code_str)
+            span.set_status(
+                Status(
+                    StatusCode.ERROR,
+                    "Non-integer HTTP status: " + status_code_str,
+                )
             )
-        )
     else:
-        status = http_status_to_status_code(status_code, server_span=True)
+        status = http_status_to_status_code(
+            status_code, server_span=server_span
+        )
 
         if _report_old(sem_conv_opt_in_mode):
-            span.set_attribute(SpanAttributes.HTTP_STATUS_CODE, status_code)
+            if span.is_recording():
+                span.set_attribute(
+                    SpanAttributes.HTTP_STATUS_CODE, status_code
+                )
             metrics_attributes[SpanAttributes.HTTP_STATUS_CODE] = status_code
         if _report_new(sem_conv_opt_in_mode):
-            span.set_attribute(HTTP_RESPONSE_STATUS_CODE, status_code)
+            if span.is_recording():
+                span.set_attribute(HTTP_RESPONSE_STATUS_CODE, status_code)
             metrics_attributes[HTTP_RESPONSE_STATUS_CODE] = status_code
             if status == StatusCode.ERROR:
-                span.set_attribute(ERROR_TYPE, status_code_str)
+                if span.is_recording():
+                    span.set_attribute(ERROR_TYPE, status_code_str)
                 metrics_attributes[ERROR_TYPE] = status_code_str
-        span.set_status(Status(status))
+        if span.is_recording():
+            span.set_status(Status(status))
 
 
 # Get schema version based off of opt-in mode

@@ -13,6 +13,11 @@
 # limitations under the License.
 
 
-_instruments = ("fastapi ~= 0.58",)
+_fastapi = "fastapi ~= 0.58"
+_fastapi_slim = "fastapi-slim ~= 0.111.0"
+
+_instruments = (_fastapi, _fastapi_slim)
 
 _supports_metrics = True
+
+_semconv_status = "migration"
