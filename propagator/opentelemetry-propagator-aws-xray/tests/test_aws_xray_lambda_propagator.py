@@ -21,7 +21,7 @@ from requests.structures import CaseInsensitiveDict
 from opentelemetry.context import get_current
 from opentelemetry.propagators.aws.aws_xray_propagator import (
     TRACE_HEADER_KEY,
-    AwsXrayLambdaPropagator,
+    AwsXRayLambdaPropagator,
 )
 from opentelemetry.propagators.textmap import DefaultGetter
 from opentelemetry.sdk.trace import ReadableSpan
@@ -33,6 +33,7 @@ from opentelemetry.trace import (
     get_current_span,
     use_span,
 )
+from opentelemetry.util._importlib_metadata import entry_points
 
 
 class AwsXRayLambdaPropagatorTest(TestCase):
@@ -40,7 +41,7 @@ class AwsXRayLambdaPropagatorTest(TestCase):
     def test_extract_no_environment_variable(self):
 
         actual_context = get_current_span(
-            AwsXrayLambdaPropagator().extract(
+            AwsXRayLambdaPropagator().extract(
                 {}, context=get_current(), getter=DefaultGetter()
             )
         ).get_span_context()
@@ -57,7 +58,7 @@ class AwsXRayLambdaPropagatorTest(TestCase):
         with use_span(NonRecordingSpan(SpanContext(1, 2, False))):
 
             actual_context = get_current_span(
-                AwsXrayLambdaPropagator().extract(
+                AwsXRayLambdaPropagator().extract(
                     {}, context=get_current(), getter=DefaultGetter()
                 )
             ).get_span_context()
@@ -83,7 +84,7 @@ class AwsXRayLambdaPropagatorTest(TestCase):
     def test_extract_from_environment_variable(self):
 
         actual_context = get_current_span(
-            AwsXrayLambdaPropagator().extract(
+            AwsXRayLambdaPropagator().extract(
                 {}, context=get_current(), getter=DefaultGetter()
             )
         ).get_span_context()
@@ -108,7 +109,7 @@ class AwsXRayLambdaPropagatorTest(TestCase):
     )
     def test_add_link_from_environment_variable(self):
 
-        propagator = AwsXrayLambdaPropagator()
+        propagator = AwsXRayLambdaPropagator()
 
         default_getter = DefaultGetter()
 
@@ -161,4 +162,16 @@ class AwsXRayLambdaPropagatorTest(TestCase):
         )
         self.assertEqual(
             span_link_context.trace_state, TraceState.get_default()
+        )
+
+    def test_load_entry_point(self):
+        self.assertIs(
+            next(
+                iter(
+                    entry_points(
+                        group="opentelemetry_propagator", name="xray-lambda"
+                    )
+                )
+            ).load(),
+            AwsXRayLambdaPropagator,
         )
