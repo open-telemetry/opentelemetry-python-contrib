@@ -294,9 +294,9 @@ def _instrument(
                 if _report_old(sem_conv_opt_in_mode):
                     ver_ = str(getattr(result, "version", ""))
                     if ver_:
-                        labels[
-                            SpanAttributes.HTTP_FLAVOR
-                        ] = f"{ver_[:1]}.{ver_[:-1]}"
+                        labels[SpanAttributes.HTTP_FLAVOR] = (
+                            f"{ver_[:1]}.{ver_[:-1]}"
+                        )
 
             if exception is not None and _report_new(sem_conv_opt_in_mode):
                 span.set_attribute(ERROR_TYPE, type(exception).__qualname__)
@@ -400,26 +400,26 @@ def _create_client_histograms(
 ) -> Dict[str, Histogram]:
     histograms = {}
     if _report_old(sem_conv_opt_in_mode):
-        histograms[
-            MetricInstruments.HTTP_CLIENT_DURATION
-        ] = meter.create_histogram(
-            name=MetricInstruments.HTTP_CLIENT_DURATION,
-            unit="ms",
-            description="Measures the duration of the outbound HTTP request",
+        histograms[MetricInstruments.HTTP_CLIENT_DURATION] = (
+            meter.create_histogram(
+                name=MetricInstruments.HTTP_CLIENT_DURATION,
+                unit="ms",
+                description="Measures the duration of the outbound HTTP request",
+            )
         )
-        histograms[
-            MetricInstruments.HTTP_CLIENT_REQUEST_SIZE
-        ] = meter.create_histogram(
-            name=MetricInstruments.HTTP_CLIENT_REQUEST_SIZE,
-            unit="By",
-            description="Measures the size of HTTP request messages.",
+        histograms[MetricInstruments.HTTP_CLIENT_REQUEST_SIZE] = (
+            meter.create_histogram(
+                name=MetricInstruments.HTTP_CLIENT_REQUEST_SIZE,
+                unit="By",
+                description="Measures the size of HTTP request messages.",
+            )
         )
-        histograms[
-            MetricInstruments.HTTP_CLIENT_RESPONSE_SIZE
-        ] = meter.create_histogram(
-            name=MetricInstruments.HTTP_CLIENT_RESPONSE_SIZE,
-            unit="By",
-            description="Measures the size of HTTP response messages.",
+        histograms[MetricInstruments.HTTP_CLIENT_RESPONSE_SIZE] = (
+            meter.create_histogram(
+                name=MetricInstruments.HTTP_CLIENT_RESPONSE_SIZE,
+                unit="By",
+                description="Measures the size of HTTP response messages.",
+            )
         )
     if _report_new(sem_conv_opt_in_mode):
         histograms[HTTP_CLIENT_REQUEST_DURATION] = meter.create_histogram(
@@ -427,12 +427,12 @@ def _create_client_histograms(
             unit="s",
             description="Duration of HTTP client requests.",
         )
-        histograms[
-            HTTP_CLIENT_REQUEST_BODY_SIZE
-        ] = create_http_client_request_body_size(meter)
-        histograms[
-            HTTP_CLIENT_RESPONSE_BODY_SIZE
-        ] = create_http_client_response_body_size(meter)
+        histograms[HTTP_CLIENT_REQUEST_BODY_SIZE] = (
+           create_http_client_request_body_size(meter)
+        )
+        histograms[HTTP_CLIENT_RESPONSE_BODY_SIZE] = (
+           create_http_client_response_body_size(meter)
+        )
 
     return histograms
 
