@@ -120,6 +120,9 @@ urlpatterns = [
 _django_instrumentor = DjangoInstrumentor()
 
 
+_django_old_server_duration_attrs = _server_duration_attrs_old.copy()
+_django_old_server_duration_attrs.append(SpanAttributes.HTTP_TARGET)
+
 # pylint: disable=too-many-public-methods
 class TestMiddleware(WsgiTestBase):
     @classmethod
@@ -713,7 +716,7 @@ class TestMiddleware(WsgiTestBase):
         ]
         _recommended_attrs = {
             "http.server.active_requests": _server_active_requests_count_attrs_old,
-            "http.server.duration": _server_duration_attrs_old,
+            "http.server.duration": _django_old_server_duration_attrs,
         }
         start = default_timer()
         for _ in range(3):
@@ -806,7 +809,7 @@ class TestMiddleware(WsgiTestBase):
         _recommended_attrs = {
             "http.server.active_requests": active_count_both_attrs,
             "http.server.request.duration": _server_duration_attrs_new,
-            "http.server.duration": _server_duration_attrs_old,
+            "http.server.duration": _django_old_server_duration_attrs,
         }
         start = default_timer()
         for _ in range(3):
@@ -842,6 +845,7 @@ class TestMiddleware(WsgiTestBase):
                         if isinstance(point, NumberDataPoint):
                             number_data_point_seen = True
                             self.assertEqual(point.value, 0)
+                        print(metric.name)
                         for attr in point.attributes:
                             self.assertIn(
                                 attr, _recommended_attrs[metric.name]

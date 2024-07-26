@@ -7,6 +7,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## Unreleased
 
+### Fixed
+
+- `opentelemetry-instrumentation-django` Fix regression - `http.target` re-added back to old semconv duration metrics
+  ([#2714](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/2714))
+
 ## Version 1.26.0/0.47b0 (2024-07-23)
 
 ### Added
