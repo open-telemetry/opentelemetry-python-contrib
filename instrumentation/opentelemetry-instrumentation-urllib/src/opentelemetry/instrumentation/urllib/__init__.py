@@ -109,10 +109,10 @@ from opentelemetry.instrumentation.utils import (
 from opentelemetry.metrics import Histogram, get_meter
 from opentelemetry.propagate import inject
 from opentelemetry.semconv._incubating.metrics.http_metrics import (
-    create_http_client_request_body_size,
-    create_http_client_response_body_size,
     HTTP_CLIENT_REQUEST_BODY_SIZE,
     HTTP_CLIENT_RESPONSE_BODY_SIZE,
+    create_http_client_request_body_size,
+    create_http_client_response_body_size,
 )
 from opentelemetry.semconv.attributes.error_attributes import ERROR_TYPE
 from opentelemetry.semconv.metrics import MetricInstruments
