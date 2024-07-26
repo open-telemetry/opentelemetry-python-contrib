@@ -71,6 +71,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   ([#2726](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/2726))
 - `opentelemetry-instrumentation-fastapi` Add dependency support for fastapi-slim
   ([#2702](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/2702))
+- `opentelemetry-instrumentation-urllib3` improve request_hook, replacing `headers` and `body` parameters with a single `request_info: RequestInfo` parameter that now contains the `method` and `url` ([#2711](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/2711))
 
 ### Fixed
 
