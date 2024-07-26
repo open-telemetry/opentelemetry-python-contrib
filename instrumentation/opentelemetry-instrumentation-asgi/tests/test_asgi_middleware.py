@@ -394,12 +394,12 @@ class TestAsgiApplication(AsgiTestBase):
         span_list = self.memory_exporter.get_finished_spans()
         expected_old = [
             {
-                "name": "GET http receive",
+                "name": "GET receive",
                 "kind": trace_api.SpanKind.INTERNAL,
                 "attributes": {"asgi.event.type": "http.request"},
             },
             {
-                "name": "GET http send",
+                "name": "GET send",
                 "kind": trace_api.SpanKind.INTERNAL,
                 "attributes": {
                     SpanAttributes.HTTP_STATUS_CODE: 200,
@@ -407,7 +407,7 @@ class TestAsgiApplication(AsgiTestBase):
                 },
             },
             {
-                "name": "GET http send",
+                "name": "GET send",
                 "kind": trace_api.SpanKind.INTERNAL,
                 "attributes": {"asgi.event.type": "http.response.body"},
             },
@@ -430,12 +430,12 @@ class TestAsgiApplication(AsgiTestBase):
         ]
         expected_new = [
             {
-                "name": "GET / http receive",
+                "name": "GET receive",
                 "kind": trace_api.SpanKind.INTERNAL,
                 "attributes": {"asgi.event.type": "http.request"},
             },
             {
-                "name": "GET / http send",
+                "name": "GET send",
                 "kind": trace_api.SpanKind.INTERNAL,
                 "attributes": {
                     HTTP_RESPONSE_STATUS_CODE: 200,
@@ -443,12 +443,12 @@ class TestAsgiApplication(AsgiTestBase):
                 },
             },
             {
-                "name": "GET / http send",
+                "name": "GET send",
                 "kind": trace_api.SpanKind.INTERNAL,
                 "attributes": {"asgi.event.type": "http.response.body"},
             },
             {
-                "name": "GET /",
+                "name": "GET",
                 "kind": trace_api.SpanKind.SERVER,
                 "attributes": {
                     HTTP_REQUEST_METHOD: "GET",
@@ -466,12 +466,12 @@ class TestAsgiApplication(AsgiTestBase):
         ]
         expected_both = [
             {
-                "name": "GET / http receive",
+                "name": "GET receive",
                 "kind": trace_api.SpanKind.INTERNAL,
                 "attributes": {"asgi.event.type": "http.request"},
             },
             {
-                "name": "GET / http send",
+                "name": "GET send",
                 "kind": trace_api.SpanKind.INTERNAL,
                 "attributes": {
                     SpanAttributes.HTTP_STATUS_CODE: 200,
@@ -480,12 +480,12 @@ class TestAsgiApplication(AsgiTestBase):
                 },
             },
             {
-                "name": "GET / http send",
+                "name": "GET send",
                 "kind": trace_api.SpanKind.INTERNAL,
                 "attributes": {"asgi.event.type": "http.response.body"},
             },
             {
-                "name": "GET /",
+                "name": "GET",
                 "kind": trace_api.SpanKind.SERVER,
                 "attributes": {
                     HTTP_REQUEST_METHOD: "GET",
@@ -596,7 +596,7 @@ class TestAsgiApplication(AsgiTestBase):
 
         def add_more_body_spans(expected: list):
             more_body_span = {
-                "name": "GET http send",
+                "name": "GET send",
                 "kind": trace_api.SpanKind.INTERNAL,
                 "attributes": {"asgi.event.type": "http.response.body"},
             }
@@ -634,12 +634,12 @@ class TestAsgiApplication(AsgiTestBase):
 
         def add_body_and_trailer_span(expected: list):
             body_span = {
-                "name": "GET http send",
+                "name": "GET send",
                 "kind": trace_api.SpanKind.INTERNAL,
                 "attributes": {"asgi.event.type": "http.response.body"},
             }
             trailer_span = {
-                "name": "GET http send",
+                "name": "GET send",
                 "kind": trace_api.SpanKind.INTERNAL,
                 "attributes": {"asgi.event.type": "http.response.trailers"},
             }
@@ -943,17 +943,17 @@ class TestAsgiApplication(AsgiTestBase):
         self.assertEqual(len(span_list), 6)
         expected = [
             {
-                "name": "GET / websocket receive",
+                "name": "websocket receive",
                 "kind": trace_api.SpanKind.INTERNAL,
                 "attributes": {"asgi.event.type": "websocket.connect"},
             },
             {
-                "name": "GET / websocket send",
+                "name": "websocket send",
                 "kind": trace_api.SpanKind.INTERNAL,
                 "attributes": {"asgi.event.type": "websocket.accept"},
             },
             {
-                "name": "GET / websocket receive",
+                "name": "websocket receive",
                 "kind": trace_api.SpanKind.INTERNAL,
                 "attributes": {
                     "asgi.event.type": "websocket.receive",
@@ -961,7 +961,7 @@ class TestAsgiApplication(AsgiTestBase):
                 },
             },
             {
-                "name": "GET / websocket send",
+                "name": "websocket send",
                 "kind": trace_api.SpanKind.INTERNAL,
                 "attributes": {
                     "asgi.event.type": "websocket.send",
@@ -969,12 +969,12 @@ class TestAsgiApplication(AsgiTestBase):
                 },
             },
             {
-                "name": "GET / websocket receive",
+                "name": "websocket receive",
                 "kind": trace_api.SpanKind.INTERNAL,
                 "attributes": {"asgi.event.type": "websocket.disconnect"},
             },
             {
-                "name": "GET /",
+                "name": "websocket",
                 "kind": trace_api.SpanKind.SERVER,
                 "attributes": {
                     SpanAttributes.HTTP_SCHEME: self.scope["scheme"],
@@ -1017,17 +1017,17 @@ class TestAsgiApplication(AsgiTestBase):
         self.assertEqual(len(span_list), 6)
         expected = [
             {
-                "name": "GET / websocket receive",
+                "name": "websocket receive",
                 "kind": trace_api.SpanKind.INTERNAL,
                 "attributes": {"asgi.event.type": "websocket.connect"},
             },
             {
-                "name": "GET / websocket send",
+                "name": "websocket send",
                 "kind": trace_api.SpanKind.INTERNAL,
                 "attributes": {"asgi.event.type": "websocket.accept"},
             },
             {
-                "name": "GET / websocket receive",
+                "name": "websocket receive",
                 "kind": trace_api.SpanKind.INTERNAL,
                 "attributes": {
                     "asgi.event.type": "websocket.receive",
@@ -1035,7 +1035,7 @@ class TestAsgiApplication(AsgiTestBase):
                 },
             },
             {
-                "name": "GET / websocket send",
+                "name": "websocket send",
                 "kind": trace_api.SpanKind.INTERNAL,
                 "attributes": {
                     "asgi.event.type": "websocket.send",
@@ -1043,12 +1043,12 @@ class TestAsgiApplication(AsgiTestBase):
                 },
             },
             {
-                "name": "GET / websocket receive",
+                "name": "websocket receive",
                 "kind": trace_api.SpanKind.INTERNAL,
                 "attributes": {"asgi.event.type": "websocket.disconnect"},
             },
             {
-                "name": "GET /",
+                "name": "websocket",
                 "kind": trace_api.SpanKind.SERVER,
                 "attributes": {
                     URL_SCHEME: self.scope["scheme"],
@@ -1091,17 +1091,17 @@ class TestAsgiApplication(AsgiTestBase):
         self.assertEqual(len(span_list), 6)
         expected = [
             {
-                "name": "GET / websocket receive",
+                "name": "websocket receive",
                 "kind": trace_api.SpanKind.INTERNAL,
                 "attributes": {"asgi.event.type": "websocket.connect"},
             },
             {
-                "name": "GET / websocket send",
+                "name": "websocket send",
                 "kind": trace_api.SpanKind.INTERNAL,
                 "attributes": {"asgi.event.type": "websocket.accept"},
             },
             {
-                "name": "GET / websocket receive",
+                "name": "websocket receive",
                 "kind": trace_api.SpanKind.INTERNAL,
                 "attributes": {
                     "asgi.event.type": "websocket.receive",
@@ -1110,7 +1110,7 @@ class TestAsgiApplication(AsgiTestBase):
                 },
             },
             {
-                "name": "GET / websocket send",
+                "name": "websocket send",
                 "kind": trace_api.SpanKind.INTERNAL,
                 "attributes": {
                     "asgi.event.type": "websocket.send",
@@ -1119,12 +1119,12 @@ class TestAsgiApplication(AsgiTestBase):
                 },
             },
             {
-                "name": "GET / websocket receive",
+                "name": "websocket receive",
                 "kind": trace_api.SpanKind.INTERNAL,
                 "attributes": {"asgi.event.type": "websocket.disconnect"},
             },
             {
-                "name": "GET /",
+                "name": "websocket",
                 "kind": trace_api.SpanKind.SERVER,
                 "attributes": {
                     SpanAttributes.HTTP_SCHEME: self.scope["scheme"],
@@ -1217,9 +1217,9 @@ class TestAsgiApplication(AsgiTestBase):
             for entry in expected:
                 if entry["kind"] == trace_api.SpanKind.SERVER:
                     entry["name"] = "name from server hook"
-                elif entry["name"] == "GET http receive":
+                elif entry["name"] == "GET receive":
                     entry["name"] = "name from client request hook"
-                elif entry["name"] == "GET http send":
+                elif entry["name"] == "GET send":
                     entry["attributes"].update({"attr-from-hook": "value"})
             return expected
 
