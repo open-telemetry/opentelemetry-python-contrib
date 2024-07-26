@@ -27,7 +27,10 @@ from opentelemetry.instrumentation._semconv import (
     _HTTPStabilityMode,
     _OpenTelemetrySemanticConventionStability,
 )
-from opentelemetry.instrumentation.urllib3 import URLLib3Instrumentor
+from opentelemetry.instrumentation.urllib3 import (
+    RequestInfo,
+    URLLib3Instrumentor,
+)
 from opentelemetry.instrumentation.utils import (
     suppress_http_instrumentation,
     suppress_instrumentation,
@@ -42,6 +45,7 @@ from opentelemetry.semconv.attributes.url_attributes import URL_FULL
 from opentelemetry.semconv.trace import SpanAttributes
 from opentelemetry.test.mock_textmap import MockTextMapPropagator
 from opentelemetry.test.test_base import TestBase
+from opentelemetry.trace import Span
 from opentelemetry.util.http import get_excluded_urls
 
 # pylint: disable=too-many-public-methods
@@ -521,10 +525,10 @@ class TestURLLib3Instrumentor(TestBase):
         self.assert_success_span(response, self.HTTP_URL)
 
     def test_hooks(self):
-        def request_hook(span, request, body, headers):
+        def request_hook(span, pool, request_info):
             span.update_name("name set from hook")
 
-        def response_hook(span, request, response):
+        def response_hook(span, pool, response):
             span.set_attribute("response_hook_attr", "value")
 
         URLLib3Instrumentor().uninstrument()
@@ -541,11 +545,17 @@ class TestURLLib3Instrumentor(TestBase):
         self.assertEqual(span.attributes["response_hook_attr"], "value")
 
     def test_request_hook_params(self):
-        def request_hook(span, request, headers, body):
+        def request_hook(
+            span: Span,
+            _pool: urllib3.connectionpool.ConnectionPool,
+            request_info: RequestInfo,
+        ) -> None:
+            span.set_attribute("request_hook_method", request_info.method)
+            span.set_attribute("request_hook_url", request_info.url)
             span.set_attribute(
-                "request_hook_headers", json.dumps(dict(headers))
+                "request_hook_headers", json.dumps(dict(request_info.headers))
             )
-            span.set_attribute("request_hook_body", body)
+            span.set_attribute("request_hook_body", request_info.body)
 
         URLLib3Instrumentor().uninstrument()
         URLLib3Instrumentor().instrument(
@@ -564,6 +574,10 @@ class TestURLLib3Instrumentor(TestBase):
 
         span = self.assert_span()
 
+        self.assertEqual(span.attributes["request_hook_method"], "POST")
+        self.assertEqual(
+            span.attributes["request_hook_url"], "http://mock/status/200"
+        )
         self.assertIn("request_hook_headers", span.attributes)
         self.assertEqual(
             span.attributes["request_hook_headers"], json.dumps(headers)
@@ -572,8 +586,12 @@ class TestURLLib3Instrumentor(TestBase):
         self.assertEqual(span.attributes["request_hook_body"], body)
 
     def test_request_positional_body(self):
-        def request_hook(span, request, headers, body):
-            span.set_attribute("request_hook_body", body)
+        def request_hook(
+            span: Span,
+            _pool: urllib3.connectionpool.ConnectionPool,
+            request_info: RequestInfo,
+        ) -> None:
+            span.set_attribute("request_hook_body", request_info.body)
 
         URLLib3Instrumentor().uninstrument()
         URLLib3Instrumentor().instrument(
