@@ -123,6 +123,7 @@ _django_instrumentor = DjangoInstrumentor()
 _django_old_server_duration_attrs = _server_duration_attrs_old.copy()
 _django_old_server_duration_attrs.append(SpanAttributes.HTTP_TARGET)
 
+
 # pylint: disable=too-many-public-methods
 class TestMiddleware(WsgiTestBase):
     @classmethod
@@ -845,7 +846,6 @@ class TestMiddleware(WsgiTestBase):
                         if isinstance(point, NumberDataPoint):
                             number_data_point_seen = True
                             self.assertEqual(point.value, 0)
-                        print(metric.name)
                         for attr in point.attributes:
                             self.assertIn(
                                 attr, _recommended_attrs[metric.name]
