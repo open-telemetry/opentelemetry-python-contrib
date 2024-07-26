@@ -178,10 +178,7 @@ class URLLibInstrumentor(BaseInstrumentor):
             schema_url=schema_url,
         )
 
-        histograms = _create_client_histograms(
-            meter,
-            sem_conv_opt_in_mode
-        )
+        histograms = _create_client_histograms(meter, sem_conv_opt_in_mode)
 
         _instrument(
             tracer,
@@ -254,7 +251,7 @@ def _instrument(
 
         data = getattr(request, "data", None)
         request_size = 0 if data is None else len(data)
-        
+
         labels = {}
 
         _set_http_method(
@@ -297,9 +294,9 @@ def _instrument(
                 if _report_old(sem_conv_opt_in_mode):
                     ver_ = str(getattr(result, "version", ""))
                     if ver_:
-                        labels[SpanAttributes.HTTP_FLAVOR] = (
-                            f"{ver_[:1]}.{ver_[:-1]}"
-                        )
+                        labels[
+                            SpanAttributes.HTTP_FLAVOR
+                        ] = f"{ver_[:1]}.{ver_[:-1]}"
 
             if exception is not None and _report_new(sem_conv_opt_in_mode):
                 span.set_attribute(ERROR_TYPE, type(exception).__qualname__)
@@ -309,13 +306,13 @@ def _instrument(
                 labels,
                 _client_duration_attrs_old,
                 _client_duration_attrs_new,
-                sem_conv_opt_in_mode = _HTTPStabilityMode.DEFAULT,
+                sem_conv_opt_in_mode=_HTTPStabilityMode.DEFAULT,
             )
             duration_attrs_new = _filter_semconv_duration_attrs(
                 labels,
                 _client_duration_attrs_old,
                 _client_duration_attrs_new,
-                sem_conv_opt_in_mode = _HTTPStabilityMode.HTTP,
+                sem_conv_opt_in_mode=_HTTPStabilityMode.HTTP,
             )
 
             duration_attrs_old[SpanAttributes.HTTP_URL] = url
@@ -398,20 +395,28 @@ def _set_status_code_attribute(
     )
 
 
-def _create_client_histograms(meter, sem_conv_opt_in_mode = _HTTPStabilityMode.DEFAULT) -> Dict[str, Histogram]:
+def _create_client_histograms(
+    meter, sem_conv_opt_in_mode=_HTTPStabilityMode.DEFAULT
+) -> Dict[str, Histogram]:
     histograms = {}
     if _report_old(sem_conv_opt_in_mode):
-        histograms[MetricInstruments.HTTP_CLIENT_DURATION] = meter.create_histogram(
+        histograms[
+            MetricInstruments.HTTP_CLIENT_DURATION
+        ] = meter.create_histogram(
             name=MetricInstruments.HTTP_CLIENT_DURATION,
             unit="ms",
             description="Measures the duration of the outbound HTTP request",
         )
-        histograms[MetricInstruments.HTTP_CLIENT_REQUEST_SIZE] = meter.create_histogram(
+        histograms[
+            MetricInstruments.HTTP_CLIENT_REQUEST_SIZE
+        ] = meter.create_histogram(
             name=MetricInstruments.HTTP_CLIENT_REQUEST_SIZE,
             unit="By",
             description="Measures the size of HTTP request messages.",
         )
-        histograms[MetricInstruments.HTTP_CLIENT_RESPONSE_SIZE] = meter.create_histogram(
+        histograms[
+            MetricInstruments.HTTP_CLIENT_RESPONSE_SIZE
+        ] = meter.create_histogram(
             name=MetricInstruments.HTTP_CLIENT_RESPONSE_SIZE,
             unit="By",
             description="Measures the size of HTTP response messages.",
@@ -422,12 +427,12 @@ def _create_client_histograms(meter, sem_conv_opt_in_mode = _HTTPStabilityMode.D
             unit="s",
             description="Duration of HTTP client requests.",
         )
-        histograms[HTTP_CLIENT_REQUEST_BODY_SIZE] = create_http_client_request_body_size(
-            meter
-        )
-        histograms[HTTP_CLIENT_RESPONSE_BODY_SIZE] = create_http_client_response_body_size(
-            meter
-        )
+        histograms[
+            HTTP_CLIENT_REQUEST_BODY_SIZE
+        ] = create_http_client_request_body_size(meter)
+        histograms[
+            HTTP_CLIENT_RESPONSE_BODY_SIZE
+        ] = create_http_client_response_body_size(meter)
 
     return histograms
 

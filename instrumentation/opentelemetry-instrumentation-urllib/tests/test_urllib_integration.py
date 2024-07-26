@@ -286,9 +286,7 @@ class URLLibIntegrationTestBase(abc.ABC):
 
         span = self.assert_span()
 
-        self.assertEqual(
-            span.attributes.get(HTTP_RESPONSE_STATUS_CODE), 404
-        )
+        self.assertEqual(span.attributes.get(HTTP_RESPONSE_STATUS_CODE), 404)
 
         self.assertIs(
             span.status.status_code,
@@ -315,9 +313,7 @@ class URLLibIntegrationTestBase(abc.ABC):
         self.assertEqual(
             span.attributes.get(SpanAttributes.HTTP_STATUS_CODE), 404
         )
-        self.assertEqual(
-            span.attributes.get(HTTP_RESPONSE_STATUS_CODE), 404
-        )
+        self.assertEqual(span.attributes.get(HTTP_RESPONSE_STATUS_CODE), 404)
 
         self.assertIs(
             span.status.status_code,
