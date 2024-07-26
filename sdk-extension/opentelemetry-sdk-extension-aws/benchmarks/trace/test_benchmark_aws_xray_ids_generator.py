@@ -1,4 +1,4 @@
-# Copyright 2020, OpenTelemetry Authors
+# Copyright The OpenTelemetry Authors
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -12,5 +12,16 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+from opentelemetry.sdk.extension.aws.trace import (  # pylint: disable=no-name-in-module
+    AwsXRayIdGenerator,
+)
 
-_instruments = ("scikit-learn ~= 0.24.0",)
+id_generator = AwsXRayIdGenerator()
+
+
+def test_generate_xray_trace_id(benchmark):
+    benchmark(id_generator.generate_trace_id)
+
+
+def test_generate_xray_span_id(benchmark):
+    benchmark(id_generator.generate_span_id)

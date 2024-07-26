@@ -494,9 +494,10 @@ def add_response_attributes(
     _set_status(
         span,
         duration_attrs,
-        status_code_str,
         status_code,
-        sem_conv_opt_in_mode,
+        status_code_str,
+        server_span=True,
+        sem_conv_opt_in_mode=sem_conv_opt_in_mode,
     )
 
 
