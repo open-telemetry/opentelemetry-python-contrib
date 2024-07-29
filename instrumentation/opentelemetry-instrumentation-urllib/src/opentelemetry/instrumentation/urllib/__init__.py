@@ -447,8 +447,8 @@ def _record_histograms(
     duration_s: float,
     sem_conv_opt_in_mode: _HTTPStabilityMode = _HTTPStabilityMode.DEFAULT,
 ):
-    duration = max(round(duration_s * 1000), 0)
     if _report_old(sem_conv_opt_in_mode):
+        duration = max(round(duration_s * 1000), 0)
         histograms[MetricInstruments.HTTP_CLIENT_DURATION].record(
             duration, attributes=metric_attributes_old
         )
