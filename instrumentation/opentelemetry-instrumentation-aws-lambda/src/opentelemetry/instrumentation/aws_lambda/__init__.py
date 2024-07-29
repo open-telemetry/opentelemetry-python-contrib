@@ -426,7 +426,7 @@ class AwsLambdaInstrumentor(BaseInstrumentor):
             logger.warning(
                 (
                     "Could not find the ORIG_HANDLER or _HANDLER in the environment variables. ",
-                    "Is the instrumentation runnning inside an AWS Lambda?",
+                    "Is the instrumentation running inside an AWS Lambda?",
                 )
             )
             return
