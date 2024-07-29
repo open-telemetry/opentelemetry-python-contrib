@@ -28,10 +28,6 @@ from opentelemetry import trace
 from opentelemetry.instrumentation._semconv import (
     OTEL_SEMCONV_STABILITY_OPT_IN,
     _OpenTelemetrySemanticConventionStability,
-    _server_active_requests_count_attrs_new,
-    _server_active_requests_count_attrs_old,
-    _server_duration_attrs_new,
-    _server_duration_attrs_old,
 )
 from opentelemetry.instrumentation.django import (
     DjangoInstrumentor,
@@ -101,10 +97,6 @@ urlpatterns = [
     path("", traced, name="empty"),
 ]
 _django_instrumentor = DjangoInstrumentor()
-
-
-_django_old_server_duration_attrs = _server_duration_attrs_old.copy()
-_django_old_server_duration_attrs.append(SpanAttributes.HTTP_TARGET)
 
 
 # pylint: disable=too-many-public-methods
