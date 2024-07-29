@@ -495,6 +495,22 @@ class TestAwsLambdaInstrumentor(TestBase):
 
         exc_env_patch.stop()
 
+    def test_lambda_handles_raises_exception_when_environment_variables_not_present(
+        self,
+    ):
+        exc_env_patch = mock.patch.dict(
+            "os.environ",
+            {_HANDLER: ""},
+        )
+        exc_env_patch.start()
+
+        with self.assertRaises(Exception):
+            AwsLambdaInstrumentor().instrument()
+
+        spans = self.memory_exporter.get_finished_spans()
+        self.assertEqual(len(spans), 0)
+        exc_env_patch.stop()
+
     def test_uninstrument(self):
         AwsLambdaInstrumentor().instrument()
 

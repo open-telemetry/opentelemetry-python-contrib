@@ -422,6 +422,13 @@ class AwsLambdaInstrumentor(BaseInstrumentor):
                     request.
         """
         lambda_handler = os.environ.get(ORIG_HANDLER, os.environ.get(_HANDLER))
+        if not lambda_handler:
+            raise ValueError(
+                (
+                    "Could not find the ORIG_HANDLER or _HANDLER in the environment variables. ",
+                    "This instrumentation is runnning inside an aws lambda?",
+                )
+            )
         # pylint: disable=attribute-defined-outside-init
         (
             self._wrapped_module_name,
