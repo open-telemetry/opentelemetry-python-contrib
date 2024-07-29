@@ -214,9 +214,7 @@ class TestMiddleware(WsgiTestBase):
             "http://testserver/traced/",
         )
         if DJANGO_2_2:
-            self.assertEqual(
-                span.attributes["http.route"], "^traced/"
-            )
+            self.assertEqual(span.attributes["http.route"], "^traced/")
         self.assertEqual(span.attributes["http.scheme"], "http")
         self.assertEqual(span.attributes["http.status_code"], 200)
 
@@ -257,9 +255,7 @@ class TestMiddleware(WsgiTestBase):
             "http://testserver/traced/",
         )
         if DJANGO_2_2:
-            self.assertEqual(
-                span.attributes["http.route"], "^traced/"
-            )
+            self.assertEqual(span.attributes["http.route"], "^traced/")
         self.assertEqual(span.attributes["http.scheme"], "http")
         self.assertEqual(span.attributes["http.status_code"], 200)
         self.assertEqual(span.attributes["http.request.method"], "GET")
@@ -311,9 +307,7 @@ class TestMiddleware(WsgiTestBase):
             "http://testserver/traced/",
         )
         if DJANGO_2_2:
-            self.assertEqual(
-                span.attributes["http.route"], "^traced/"
-            )
+            self.assertEqual(span.attributes["http.route"], "^traced/")
         self.assertEqual(span.attributes["http.scheme"], "http")
         self.assertEqual(span.attributes["http.status_code"], 200)
 
@@ -382,21 +376,15 @@ class TestMiddleware(WsgiTestBase):
             "http://testserver/error/",
         )
         if DJANGO_2_2:
-            self.assertEqual(
-                span.attributes["http.route"], "^error/"
-            )
+            self.assertEqual(span.attributes["http.route"], "^error/")
         self.assertEqual(span.attributes["http.scheme"], "http")
         self.assertEqual(span.attributes["http.status_code"], 500)
 
         self.assertEqual(len(span.events), 1)
         event = span.events[0]
         self.assertEqual(event.name, "exception")
-        self.assertEqual(
-            event.attributes["exception.type"], "ValueError"
-        )
-        self.assertEqual(
-            event.attributes["exception.message"], "error"
-        )
+        self.assertEqual(event.attributes["exception.type"], "ValueError")
+        self.assertEqual(event.attributes["exception.message"], "error")
 
     def test_error_new_semconv(self):
         with self.assertRaises(ValueError):
@@ -441,9 +429,7 @@ class TestMiddleware(WsgiTestBase):
             "http://testserver/error/",
         )
         if DJANGO_2_2:
-            self.assertEqual(
-                span.attributes["http.route"], "^error/"
-            )
+            self.assertEqual(span.attributes["http.route"], "^error/")
         self.assertEqual(span.attributes["http.scheme"], "http")
         self.assertEqual(span.attributes["http.status_code"], 500)
         self.assertEqual(span.attributes["http.request.method"], "GET")
@@ -949,9 +935,7 @@ class TestMiddlewareWithTracerProvider(WsgiTestBase):
             Client().get("/span_name/1234/")
             span_list = self.exporter.get_finished_spans()
             print(span_list)
-            self.assertEqual(
-                span_list[0].attributes["http.status_code"], 200
-            )
+            self.assertEqual(span_list[0].attributes["http.status_code"], 200)
             self.assertEqual(trace.SpanKind.INTERNAL, span_list[0].kind)
             self.assertEqual(
                 parent_span.get_span_context().span_id,
