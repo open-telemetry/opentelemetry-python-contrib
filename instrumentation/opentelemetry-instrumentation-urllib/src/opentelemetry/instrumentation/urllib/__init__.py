@@ -439,7 +439,7 @@ def _create_client_histograms(
 
 
 def _record_histograms(
-    histograms: Histogram,
+    histograms: Dict[str, Histogram],
     metric_attributes_old: dict,
     metric_attributes_new: dict,
     request_size: int,
