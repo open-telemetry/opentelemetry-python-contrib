@@ -296,9 +296,7 @@ def _instrument(
                 ver_ = str(getattr(result, "version", ""))
                 if ver_:
                     _set_http_flavor_version(
-                        labels,
-                        f"{ver_[:1]}.{ver_[:-1]}",
-                        sem_conv_opt_in_mode
+                        labels, f"{ver_[:1]}.{ver_[:-1]}", sem_conv_opt_in_mode
                     )
 
             if exception is not None and _report_new(sem_conv_opt_in_mode):
