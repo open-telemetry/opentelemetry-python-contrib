@@ -426,6 +426,10 @@ class _DjangoMiddleware(MiddlewareMixin):
                 duration_attrs_old = _parse_duration_attrs(
                     duration_attrs, _HTTPStabilityMode.DEFAULT
                 )
+                # http.target to be included in old semantic conventions
+                target = duration_attrs.get(SpanAttributes.HTTP_TARGET)
+                if target:
+                    duration_attrs_old[SpanAttributes.HTTP_TARGET] = target
                 self._duration_histogram_old.record(
                     max(round(duration_s * 1000), 0), duration_attrs_old
                 )
@@ -447,19 +451,12 @@ class _DjangoMiddleware(MiddlewareMixin):
 def _parse_duration_attrs(
     req_attrs, sem_conv_opt_in_mode=_HTTPStabilityMode.DEFAULT
 ):
-    # http.target to be included in old semantic conventions
-    target = None
-    if sem_conv_opt_in_mode is _HTTPStabilityMode.DEFAULT:
-        target = req_attrs.get(SpanAttributes.HTTP_TARGET)
-    filtered_duration_attrs = _filter_semconv_duration_attrs(
+    return _filter_semconv_duration_attrs(
         req_attrs,
         _server_duration_attrs_old,
         _server_duration_attrs_new,
         sem_conv_opt_in_mode,
     )
-    if target is not None:
-        filtered_duration_attrs[SpanAttributes.HTTP_TARGET] = target
-    return filtered_duration_attrs
 
 
 def _parse_active_request_count_attrs(
