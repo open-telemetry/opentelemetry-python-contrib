@@ -44,7 +44,6 @@ from opentelemetry.sdk.metrics.export import (
 )
 from opentelemetry.sdk.trace import Span
 from opentelemetry.sdk.trace.id_generator import RandomIdGenerator
-from opentelemetry.semconv.trace import SpanAttributes
 from opentelemetry.test.wsgitestutil import WsgiTestBase
 from opentelemetry.trace import (
     SpanKind,
