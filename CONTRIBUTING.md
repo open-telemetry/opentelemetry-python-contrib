@@ -90,6 +90,18 @@ See
 [`tox.ini`](https://github.com/open-telemetry/opentelemetry-python-contrib/blob/main/tox.ini)
 for more detail on available tox commands.
 
+### Run tests with tox-uv (experimental)
+
+You can speedup the tests by run tox with `uv` support using the following commands:
+```sh
+$ pip install tox-uv
+```
+
+```sh
+# Will use uv
+$ PIP_RUNNER="uv" tox -e py312-test-instrumentation-aiopg
+```
+
 ### Troubleshooting
 
 > Some packages may require additional system wide dependencies to be installed. For example, you may need to install `libpq-dev` to run the postgresql client libraries instrumentation tests. or `libsnappy-dev` to run the prometheus exporter tests. If you encounter a build error, please check the installation instructions for the package you are trying to run tests for.
