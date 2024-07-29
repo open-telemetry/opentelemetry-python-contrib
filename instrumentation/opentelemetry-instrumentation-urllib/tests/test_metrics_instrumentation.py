@@ -174,6 +174,7 @@ class TestUrllibMetricsInstrumentation(TestBase):
                     attributes={
                         "http.response.status_code": int(result.code),
                         "http.request.method": "GET",
+                        "network.protocol.version": "1.1",
                     },
                 ),
                 est_value_delta=40,
@@ -190,6 +191,7 @@ class TestUrllibMetricsInstrumentation(TestBase):
                     attributes={
                         "http.response.status_code": int(result.code),
                         "http.request.method": "GET",
+                        "network.protocol.version": "1.1",
                     },
                 ),
             )
@@ -205,6 +207,7 @@ class TestUrllibMetricsInstrumentation(TestBase):
                     attributes={
                         "http.response.status_code": int(result.code),
                         "http.request.method": "GET",
+                        "network.protocol.version": "1.1",
                     },
                 ),
             )
@@ -290,6 +293,7 @@ class TestUrllibMetricsInstrumentation(TestBase):
                     attributes={
                         "http.response.status_code": int(result.code),
                         "http.request.method": "GET",
+                        "network.protocol.version": "1.1",
                     },
                 ),
                 est_value_delta=40,
@@ -306,6 +310,7 @@ class TestUrllibMetricsInstrumentation(TestBase):
                     attributes={
                         "http.response.status_code": int(result.code),
                         "http.request.method": "GET",
+                        "network.protocol.version": "1.1",
                     },
                 ),
             )
@@ -321,6 +326,7 @@ class TestUrllibMetricsInstrumentation(TestBase):
                     attributes={
                         "http.response.status_code": int(result.code),
                         "http.request.method": "GET",
+                        "network.protocol.version": "1.1",
                     },
                 ),
             )
