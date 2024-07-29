@@ -26,6 +26,10 @@ from opentelemetry.instrumentation._semconv import (
     _OpenTelemetrySemanticConventionStability,
 )
 from opentelemetry.instrumentation.urllib3 import URLLib3Instrumentor
+from opentelemetry.semconv._incubating.metrics.http_metrics import (
+    HTTP_CLIENT_REQUEST_BODY_SIZE,
+    HTTP_CLIENT_RESPONSE_BODY_SIZE,
+)
 from opentelemetry.semconv.attributes.http_attributes import (
     HTTP_REQUEST_METHOD,
     HTTP_RESPONSE_STATUS_CODE,
@@ -36,6 +40,10 @@ from opentelemetry.semconv.attributes.network_attributes import (
 from opentelemetry.semconv.attributes.server_attributes import (
     SERVER_ADDRESS,
     SERVER_PORT,
+)
+from opentelemetry.semconv.metrics import MetricInstruments
+from opentelemetry.semconv.metrics.http_metrics import (
+    HTTP_CLIENT_REQUEST_DURATION,
 )
 from opentelemetry.semconv.trace import SpanAttributes
 from opentelemetry.test.httptest import HttpTestBase
@@ -85,6 +93,7 @@ class TestURLLib3InstrumentorMetric(HttpTestBase, TestBase):
         response = self.pool.request("GET", self.HTTP_URL)
         duration_ms = max(round((default_timer() - start_time) * 1000), 0)
         metrics = self.get_sorted_metrics()
+        self.assertEqual(len(metrics), 3)
 
         (
             client_duration,
@@ -102,7 +111,9 @@ class TestURLLib3InstrumentorMetric(HttpTestBase, TestBase):
             SpanAttributes.HTTP_SCHEME: "http",
         }
 
-        self.assertEqual(client_duration.name, "http.client.duration")
+        self.assertEqual(
+            client_duration.name, MetricInstruments.HTTP_CLIENT_DURATION
+        )
         self.assert_metric_expected(
             client_duration,
             [
@@ -117,7 +128,10 @@ class TestURLLib3InstrumentorMetric(HttpTestBase, TestBase):
             est_value_delta=40,
         )
 
-        self.assertEqual(client_request_size.name, "http.client.request.size")
+        self.assertEqual(
+            client_request_size.name,
+            MetricInstruments.HTTP_CLIENT_REQUEST_SIZE,
+        )
         self.assert_metric_expected(
             client_request_size,
             [
@@ -133,7 +147,8 @@ class TestURLLib3InstrumentorMetric(HttpTestBase, TestBase):
 
         expected_size = len(response.data)
         self.assertEqual(
-            client_response_size.name, "http.client.response.size"
+            client_response_size.name,
+            MetricInstruments.HTTP_CLIENT_RESPONSE_SIZE,
         )
         self.assert_metric_expected(
             client_response_size,
@@ -154,6 +169,7 @@ class TestURLLib3InstrumentorMetric(HttpTestBase, TestBase):
         duration_s = max(default_timer() - start_time, 0)
 
         metrics = self.get_sorted_metrics()
+        self.assertEqual(len(metrics), 3)
         (
             client_request_size,
             client_duration,
@@ -213,6 +229,145 @@ class TestURLLib3InstrumentorMetric(HttpTestBase, TestBase):
                     max_data_point=expected_size,
                     min_data_point=expected_size,
                     attributes=attrs_new,
+                )
+            ],
+        )
+
+    def test_basic_metrics_both_semconv(self):
+        start_time = default_timer()
+        response = self.pool.request("GET", self.HTTP_URL)
+        duration_s = max(default_timer() - start_time, 0)
+        duration = max(round(duration_s * 1000), 0)
+        expected_size = len(response.data)
+
+        metrics = self.get_sorted_metrics()
+        self.assertEqual(len(metrics), 6)
+
+        (
+            client_duration,
+            client_request_body_size,
+            client_request_duration,
+            client_request_size,
+            client_response_body_size,
+            client_response_size,
+        ) = metrics[:6]
+
+        attrs_new = {
+            NETWORK_PROTOCOL_VERSION: "1.1",
+            SERVER_ADDRESS: "mock",
+            SERVER_PORT: 80,
+            HTTP_REQUEST_METHOD: "GET",
+            HTTP_RESPONSE_STATUS_CODE: 200,
+            # TODO: add URL_SCHEME to tests when supported in the implementation
+        }
+
+        attrs_old = {
+            SpanAttributes.HTTP_STATUS_CODE: 200,
+            SpanAttributes.HTTP_HOST: "mock",
+            SpanAttributes.NET_PEER_PORT: 80,
+            SpanAttributes.NET_PEER_NAME: "mock",
+            SpanAttributes.HTTP_METHOD: "GET",
+            SpanAttributes.HTTP_FLAVOR: "1.1",
+            SpanAttributes.HTTP_SCHEME: "http",
+        }
+
+        # assert new semconv metrics
+        self.assertEqual(
+            client_request_duration.name, HTTP_CLIENT_REQUEST_DURATION
+        )
+        self.assert_metric_expected(
+            client_request_duration,
+            [
+                self.create_histogram_data_point(
+                    count=1,
+                    sum_data_point=duration_s,
+                    max_data_point=duration_s,
+                    min_data_point=duration_s,
+                    attributes=attrs_new,
+                )
+            ],
+            est_value_delta=40 / 1000,
+        )
+
+        self.assertEqual(
+            client_request_body_size.name, HTTP_CLIENT_REQUEST_BODY_SIZE
+        )
+        self.assert_metric_expected(
+            client_request_body_size,
+            [
+                self.create_histogram_data_point(
+                    count=1,
+                    sum_data_point=0,
+                    max_data_point=0,
+                    min_data_point=0,
+                    attributes=attrs_new,
+                )
+            ],
+        )
+
+        self.assertEqual(
+            client_response_body_size.name, HTTP_CLIENT_RESPONSE_BODY_SIZE
+        )
+        self.assert_metric_expected(
+            client_response_body_size,
+            [
+                self.create_histogram_data_point(
+                    count=1,
+                    sum_data_point=expected_size,
+                    max_data_point=expected_size,
+                    min_data_point=expected_size,
+                    attributes=attrs_new,
+                )
+            ],
+        )
+        # assert old semconv metrics
+        self.assertEqual(
+            client_duration.name, MetricInstruments.HTTP_CLIENT_DURATION
+        )
+        self.assert_metric_expected(
+            client_duration,
+            [
+                self.create_histogram_data_point(
+                    count=1,
+                    sum_data_point=duration,
+                    max_data_point=duration,
+                    min_data_point=duration,
+                    attributes=attrs_old,
+                )
+            ],
+            est_value_delta=40,
+        )
+
+        self.assertEqual(
+            client_request_size.name,
+            MetricInstruments.HTTP_CLIENT_REQUEST_SIZE,
+        )
+        self.assert_metric_expected(
+            client_request_size,
+            [
+                self.create_histogram_data_point(
+                    count=1,
+                    sum_data_point=0,
+                    max_data_point=0,
+                    min_data_point=0,
+                    attributes=attrs_old,
+                )
+            ],
+        )
+
+        self.assertEqual(
+            client_response_size.name,
+            MetricInstruments.HTTP_CLIENT_RESPONSE_SIZE,
+        )
+        self.assert_metric_expected(
+            client_response_size,
+            [
+                self.create_histogram_data_point(
+                    count=1,
+                    sum_data_point=expected_size,
+                    max_data_point=expected_size,
+                    min_data_point=expected_size,
+                    attributes=attrs_old,
                 )
             ],
         )
