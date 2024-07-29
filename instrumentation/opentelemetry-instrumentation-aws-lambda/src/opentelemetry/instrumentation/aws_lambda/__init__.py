@@ -102,6 +102,7 @@ ORIG_HANDLER = "ORIG_HANDLER"
 OTEL_INSTRUMENTATION_AWS_LAMBDA_FLUSH_TIMEOUT = (
     "OTEL_INSTRUMENTATION_AWS_LAMBDA_FLUSH_TIMEOUT"
 )
+DOCKER_SHELL_HANDLER = '/bin/sh'
 
 
 def _default_event_context_extractor(lambda_event: Any) -> Context:
@@ -422,7 +423,7 @@ class AwsLambdaInstrumentor(BaseInstrumentor):
                     request.
         """
         lambda_handler = os.environ.get(ORIG_HANDLER, os.environ.get(_HANDLER))
-        if not lambda_handler:
+        if not lambda_handler or lambda_handler == DOCKER_SHELL_HANDLER:
             return
         # pylint: disable=attribute-defined-outside-init
         (
