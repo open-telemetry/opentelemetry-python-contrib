@@ -95,6 +95,7 @@ from opentelemetry.instrumentation._semconv import (
     _OpenTelemetryStabilitySignalType,
     _report_new,
     _report_old,
+    _set_http_flavor_version,
     _set_http_method,
     _set_http_url,
     _set_status,
@@ -292,12 +293,13 @@ def _instrument(
                         span, code_, labels, sem_conv_opt_in_mode
                     )
 
-                if _report_old(sem_conv_opt_in_mode):
-                    ver_ = str(getattr(result, "version", ""))
-                    if ver_:
-                        labels[SpanAttributes.HTTP_FLAVOR] = (
-                            f"{ver_[:1]}.{ver_[:-1]}"
-                        )
+                ver_ = str(getattr(result, "version", ""))
+                if ver_:
+                    _set_http_flavor_version(
+                        labels,
+                        f"{ver_[:1]}.{ver_[:-1]}",
+                        sem_conv_opt_in_mode
+                    )
 
             if exception is not None and _report_new(sem_conv_opt_in_mode):
                 span.set_attribute(ERROR_TYPE, type(exception).__qualname__)

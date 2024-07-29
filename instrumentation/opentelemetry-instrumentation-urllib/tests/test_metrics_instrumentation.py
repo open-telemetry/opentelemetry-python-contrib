@@ -112,7 +112,7 @@ class TestUrllibMetricsInstrumentation(TestBase):
                         "http.flavor": "1.1",
                     },
                 ),
-                est_value_delta=200,
+                est_value_delta=40,
             )
 
             self.assertEqual(
@@ -176,7 +176,7 @@ class TestUrllibMetricsInstrumentation(TestBase):
                         "http.request.method": "GET",
                     },
                 ),
-                est_value_delta=200,
+                est_value_delta=40,
             )
 
             self.assertEqual(
@@ -242,7 +242,7 @@ class TestUrllibMetricsInstrumentation(TestBase):
                         "http.flavor": "1.1",
                     },
                 ),
-                est_value_delta=200,
+                est_value_delta=40,
             )
 
             self.assertEqual(
@@ -292,7 +292,7 @@ class TestUrllibMetricsInstrumentation(TestBase):
                         "http.request.method": "GET",
                     },
                 ),
-                est_value_delta=200,
+                est_value_delta=40,
             )
 
             self.assertEqual(
@@ -356,7 +356,7 @@ class TestUrllibMetricsInstrumentation(TestBase):
                         "http.flavor": "1.1",
                     },
                 ),
-                est_value_delta=200,
+                est_value_delta=40,
             )
 
             self.assertEqual(
