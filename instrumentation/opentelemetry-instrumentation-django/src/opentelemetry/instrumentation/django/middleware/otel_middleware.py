@@ -316,13 +316,13 @@ class _DjangoMiddleware(MiddlewareMixin):
                     if span.is_recording():
                         # http.route is present for both old and new semconv
                         span.set_attribute(SpanAttributes.HTTP_ROUTE, route)
-                    duration_attrs = request.META[
-                        self._environ_duration_attr_key
-                    ]
                     if _report_old(self._sem_conv_opt_in_mode):
                         duration_attrs[SpanAttributes.HTTP_TARGET] = route
                     if _report_new(self._sem_conv_opt_in_mode):
                         duration_attrs[HTTP_ROUTE] = route
+                    duration_attrs = request.META[
+                        self._environ_duration_attr_key
+                    ]
 
     def process_exception(self, request, exception):
         if self._excluded_urls.url_disabled(request.build_absolute_uri("?")):
