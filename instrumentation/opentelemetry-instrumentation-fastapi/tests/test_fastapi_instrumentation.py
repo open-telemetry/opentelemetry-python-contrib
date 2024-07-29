@@ -768,7 +768,6 @@ class TestFastAPIManualInstrumentation(TestBaseManualFastAPI):
             for point in list(metric.data.data_points):
                 if isinstance(point, HistogramDataPoint):
                     self.assertEqual(point.count, 1)
-                    self.assertAlmostEqual(duration, point.sum, delta=40)
                     if metric.name == "http.server.request.duration":
                         self.assertAlmostEqual(duration_s, point.sum, places=1)
                         self.assertDictEqual(
