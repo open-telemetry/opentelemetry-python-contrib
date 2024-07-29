@@ -410,7 +410,7 @@ class AwsLambdaInstrumentor(BaseInstrumentor):
         """Instruments Lambda Handlers on AWS Lambda.
 
         See more:
-        https://github.com/open-telemetry/opentelemetry-specification/blob/main/specification/trace/semantic_conventions/instrumentation/aws-lambda.md#instrumenting-aws-lambda
+        https://github.com/open-telemetry/semantic-conventions/blob/main/docs/faas/aws-lambda.md
 
         Args:
             **kwargs: Optional arguments
