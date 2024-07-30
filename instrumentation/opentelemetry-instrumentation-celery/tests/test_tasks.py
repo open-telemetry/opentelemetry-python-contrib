@@ -71,7 +71,9 @@ class TestCeleryInstrumentation(TestBase):
 
         self.assertEqual(0, len(consumer.events))
 
-        self.assertEqual(producer.name, "apply_async/tests.celery_test_tasks.task_add")
+        self.assertEqual(
+            producer.name, "apply_async/tests.celery_test_tasks.task_add"
+        )
         self.assertEqual(producer.kind, SpanKind.PRODUCER)
         self.assertSpanHasAttributes(
             producer,
@@ -103,7 +105,9 @@ class TestCeleryInstrumentation(TestBase):
 
         consumer, producer = spans
 
-        self.assertEqual(consumer.name, "run/tests.celery_test_tasks.task_raises")
+        self.assertEqual(
+            consumer.name, "run/tests.celery_test_tasks.task_raises"
+        )
         self.assertEqual(consumer.kind, SpanKind.CONSUMER)
         self.assertSpanHasAttributes(
             consumer,
@@ -123,7 +127,9 @@ class TestCeleryInstrumentation(TestBase):
         self.assertIn(SpanAttributes.EXCEPTION_STACKTRACE, event.attributes)
 
         # TODO: use plain assertEqual after 1.25 is released (https://github.com/open-telemetry/opentelemetry-python/pull/3837)
-        self.assertIn("CustomError", event.attributes[SpanAttributes.EXCEPTION_TYPE])
+        self.assertIn(
+            "CustomError", event.attributes[SpanAttributes.EXCEPTION_TYPE]
+        )
 
         self.assertEqual(
             event.attributes[SpanAttributes.EXCEPTION_MESSAGE],
@@ -219,7 +225,9 @@ class TestCelerySignatureTask(TestBase):
         self.assertEqual(consumer.name, "run/tests.test_tasks.hidden_task")
         self.assertEqual(consumer.kind, SpanKind.CONSUMER)
 
-        self.assertEqual(producer.name, "apply_async/tests.test_tasks.hidden_task")
+        self.assertEqual(
+            producer.name, "apply_async/tests.test_tasks.hidden_task"
+        )
         self.assertEqual(producer.kind, SpanKind.PRODUCER)
 
         self.assertNotEqual(consumer.parent, producer.context)
