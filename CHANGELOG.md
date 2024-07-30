@@ -52,6 +52,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   ([#2715](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/2715))
 - `opentelemetry-instrumentation-django` Implement new semantic convention opt-in with stable http semantic conventions
   ([#2714](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/2714))
+- `opentelemetry-instrumentation-logging` Added the ability to set custom log field names
+  ([#2718](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/2718))
 
 ### Breaking changes
 
@@ -103,7 +105,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   ([#2610](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/2610))
 - `opentelemetry-instrumentation-asgi` Bugfix: Middleware did not set status code attribute on duration metrics for non-recording spans.
   ([#2627](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/2627))
-
+- `opentelemetry-instrumentation-logging` Removed unnecessary calls in logging factory
+  ([#2718](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/2718))
 
 ## Version 1.25.0/0.46b0 (2024-05-31)
 

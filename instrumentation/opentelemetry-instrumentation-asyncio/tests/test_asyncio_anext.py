@@ -53,7 +53,7 @@ class TestAsyncioAnext(TestBase):
                     yield it
 
             async_gen_instance = async_gen()
-            agen = anext(async_gen_instance)
+            agen = anext(async_gen_instance)  # noqa: F821
             await asyncio.create_task(agen)
 
         asyncio.run(main())
