@@ -95,9 +95,9 @@ from opentelemetry.instrumentation._semconv import (
     _OpenTelemetryStabilitySignalType,
     _report_new,
     _report_old,
-    _set_http_flavor_version,
     _set_http_method,
     _set_http_url,
+    _set_http_network_protocol_version,
     _set_status,
 )
 from opentelemetry.instrumentation.instrumentor import BaseInstrumentor
