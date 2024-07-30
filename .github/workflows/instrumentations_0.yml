@@ -79,6 +79,10 @@ jobs:
             package: "boto"
           - python-version: py312
             package: "kafka-python"
+          - python-version: py313
+            package: "boto"
+          - python-version: py313
+            package: "kafka-python"
           - python-version: pypy3
             package: "aiopg"
           - python-version: pypy3
