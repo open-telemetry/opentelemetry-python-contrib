@@ -40,6 +40,7 @@ jobs:
           - "resource-detector-container"
           - "util-http"
           - "fastapi-slim"
+          - "processor-baggage"
         os: [ubuntu-20.04]
         exclude:
           - python-version: pypy3
