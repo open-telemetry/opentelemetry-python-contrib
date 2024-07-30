@@ -295,7 +295,7 @@ def _instrument(
 
                 ver_ = str(getattr(result, "version", ""))
                 if ver_:
-                    _set_http_flavor_version(
+                    _set_http_network_protocol_version(
                         labels, f"{ver_[:1]}.{ver_[:-1]}", sem_conv_opt_in_mode
                     )
 
