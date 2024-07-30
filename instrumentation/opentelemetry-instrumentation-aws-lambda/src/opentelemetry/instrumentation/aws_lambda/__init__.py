@@ -410,7 +410,7 @@ class AwsLambdaInstrumentor(BaseInstrumentor):
         """Instruments Lambda Handlers on AWS Lambda.
 
         See more:
-        https://github.com/open-telemetry/opentelemetry-specification/blob/main/specification/trace/semantic_conventions/instrumentation/aws-lambda.md#instrumenting-aws-lambda
+        https://github.com/open-telemetry/semantic-conventions/blob/main/docs/faas/aws-lambda.md
 
         Args:
             **kwargs: Optional arguments
@@ -422,6 +422,14 @@ class AwsLambdaInstrumentor(BaseInstrumentor):
                     request.
         """
         lambda_handler = os.environ.get(ORIG_HANDLER, os.environ.get(_HANDLER))
+        if not lambda_handler:
+            logger.warning(
+                (
+                    "Could not find the ORIG_HANDLER or _HANDLER in the environment variables. ",
+                    "This instrumentation requires the OpenTelemetry Lambda extension installed.",
+                )
+            )
+            return
         # pylint: disable=attribute-defined-outside-init
         (
             self._wrapped_module_name,
