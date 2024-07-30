@@ -16,6 +16,7 @@ import unittest
 from unittest import mock
 
 from celery import Celery
+from celery.backends.amqp import Exchange, Queue
 
 from opentelemetry import trace as trace_api
 from opentelemetry.instrumentation.celery import utils
@@ -157,6 +158,23 @@ class TestUtils(unittest.TestCase):
         utils.set_attributes_from_context(span, context)
 
         self.assertEqual(len(span.attributes), 0)
+
+    def test_set_attributes_from_context_celery_classes(self):
+        # according Celery docs, exchange and queue
+        # could be initilized as kombu.Exchange and konbu.Queue classes
+        context = {
+            "correlation_id": None,
+            "exchange": Exchange("celery_exchange"),
+            "timelimit": (None, None),
+            "retries": 0,
+            "queue": Queue("celery_queue"),
+        }
+
+        span = trace._Span("name", mock.Mock(spec=trace_api.SpanContext))
+        utils.set_attributes_from_context(span, context)
+
+        self.assertEqual(span.attributes.get("celery.exchange"), "celery_queue")
+        self.assertEqual(span.attributes.get("celery.queue"), "celery_queue")
 
     def test_span_propagation(self):
         # ensure spans getter and setter works properly
