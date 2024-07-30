@@ -426,7 +426,7 @@ class AwsLambdaInstrumentor(BaseInstrumentor):
             logger.warning(
                 (
                     "Could not find the ORIG_HANDLER or _HANDLER in the environment variables. ",
-                    "Is the instrumentation running inside an AWS Lambda?",
+                    "This instrumentation requires the OpenTelemetry Lambda extension installed.",
                 )
             )
             return
