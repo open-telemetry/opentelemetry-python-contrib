@@ -11,6 +11,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - `opentelemetry-instrumentation-django` Fix regression - `http.target` re-added back to old semconv duration metrics
   ([#2746](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/2746))
+- `opentelemetry-instrumentation-grpc` Fixes the issue with the gRPC instrumentation not working with the 1.63.0 and higher version of gRPC
+  ([#2483](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/2484))
 
 ## Version 1.26.0/0.47b0 (2024-07-23)
 
@@ -103,7 +105,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   ([#2610](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/2610))
 - `opentelemetry-instrumentation-asgi` Bugfix: Middleware did not set status code attribute on duration metrics for non-recording spans.
   ([#2627](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/2627))
-
 
 ## Version 1.25.0/0.46b0 (2024-05-31)
 
