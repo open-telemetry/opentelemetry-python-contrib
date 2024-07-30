@@ -6,7 +6,7 @@ on:
     - 'release/*'
   pull_request:
 env:
-  CORE_REPO_SHA: f31903a03721ce90c338be33131222d4cba37325
+  CORE_REPO_SHA: main
 
 jobs:
   lint-3_12:
