@@ -176,6 +176,7 @@ from importlib.util import find_spec
 from typing import Collection
 
 import fastapi
+from pkg_resources import get_distribution
 from starlette.routing import Match
 
 from opentelemetry.instrumentation._semconv import (
@@ -285,10 +286,16 @@ class FastAPIInstrumentor(BaseInstrumentor):
         app._is_instrumented_by_opentelemetry = False
 
     def instrumentation_dependencies(self) -> Collection[str]:
+        # need to use get_distribution because find_spec("fastapi") will return
+        # something even with just fastapi-slim installed
+        try:
+            get_distribution("fastapi-slim")
+            return (_fastapi_slim,)
+        except Exception:  # pylint: disable=broad-exception-caught
+            pass
+
         if find_spec("fastapi") is not None:
             return (_fastapi,)
-        if find_spec("fastapi_slim") is not None:
-            return (_fastapi_slim,)
         # If neither is installed, return both as potential dependencies
         return _instruments
 
