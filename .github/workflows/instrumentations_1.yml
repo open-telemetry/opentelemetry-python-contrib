@@ -6,7 +6,7 @@ on:
     - 'release/*'
   pull_request:
 env:
-  CORE_REPO_SHA: 141a6a2e473ef7f0ec4915dfb71e3c0fa595283e
+  CORE_REPO_SHA: f31903a03721ce90c338be33131222d4cba37325
 
 jobs:
   instrumentations-1:
@@ -35,7 +35,11 @@ jobs:
           - "sdk-extension-aws"
           - "propagator-aws-xray"
           - "propagator-ot-trace"
+          - "resource-detector-azure"
           - "resource-detector-container"
+          - "util-http"
+          - "fastapi-slim"
+          - "processor-baggage"
         os: [ubuntu-20.04]
         exclude:
           - python-version: pypy3
@@ -56,6 +60,6 @@ jobs:
           path: |
             .tox
             ~/.cache/pip
-          key: v7-build-tox-cache-${{ env.RUN_MATRIX_COMBINATION }}-${{ hashFiles('tox.ini', 'gen-requirements.txt', 'dev-requirements.txt') }}
+          key: v7-build-tox-cache-${{ env.RUN_MATRIX_COMBINATION }}-${{ hashFiles('gen-requirements.txt', 'dev-requirements.txt') }}
       - name: run tox
-        run: tox -f ${{ matrix.python-version }}-${{ matrix.package }} -- -ra --benchmark-json=${{ env.RUN_MATRIX_COMBINATION }}-benchmark.json
+        run: tox -f ${{ matrix.python-version }}-${{ matrix.package }} -- -ra

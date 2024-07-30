@@ -207,7 +207,7 @@ async def middleware(request, handler):
     duration_histogram = meter.create_histogram(
         name=MetricInstruments.HTTP_SERVER_DURATION,
         unit="ms",
-        description="Duration of HTTP client requests.",
+        description="Duration of HTTP server requests.",
     )
 
     active_requests_counter = meter.create_up_down_counter(

@@ -6,7 +6,7 @@ on:
     - 'release/*'
   pull_request:
 env:
-  CORE_REPO_SHA: 141a6a2e473ef7f0ec4915dfb71e3c0fa595283e
+  CORE_REPO_SHA: f31903a03721ce90c338be33131222d4cba37325
 
 jobs:
   instrumentations-0:
@@ -66,7 +66,6 @@ jobs:
           - "redis"
           - "remoulade"
           - "requests"
-          - "sklearn"
           - "sqlalchemy"
           - "sqlite3"
           - "starlette"
@@ -75,14 +74,6 @@ jobs:
           - "tortoiseorm"
         os: [ubuntu-20.04]
         exclude:
-          - python-version: py39
-            package: "sklearn"
-          - python-version: py310
-            package: "sklearn"
-          - python-version: py311
-            package: "sklearn"
-          - python-version: py312
-            package: "sklearn"
           - python-version: py312
             package: "boto"
           - python-version: py312
@@ -104,8 +95,6 @@ jobs:
           - python-version: pypy3
             package: "requests"
           - python-version: pypy3
-            package: "sklearn"
-          - python-version: pypy3
             package: "confluent-kafka"
           - python-version: pypy3
             package: "grpc"
@@ -125,6 +114,6 @@ jobs:
           path: |
             .tox
             ~/.cache/pip
-          key: v7-build-tox-cache-${{ env.RUN_MATRIX_COMBINATION }}-${{ hashFiles('tox.ini', 'gen-requirements.txt', 'dev-requirements.txt') }}
+          key: v7-build-tox-cache-${{ env.RUN_MATRIX_COMBINATION }}-${{ hashFiles('gen-requirements.txt', 'dev-requirements.txt') }}
       - name: run tox
-        run: tox -f ${{ matrix.python-version }}-${{ matrix.package }} -- -ra --benchmark-json=${{ env.RUN_MATRIX_COMBINATION }}-benchmark.json
+        run: tox -f ${{ matrix.python-version }}-${{ matrix.package }} -- -ra

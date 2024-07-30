@@ -23,7 +23,7 @@ from opentelemetry.trace import Span
 BaggageKeyPredicateT = Callable[[str], bool]
 
 # A BaggageKeyPredicate that always returns True, allowing all baggage keys to be added to spans
-ALLOW_ALL_BAGGAGE_KEYS: BaggageKeyPredicateT = lambda _: True
+ALLOW_ALL_BAGGAGE_KEYS: BaggageKeyPredicateT = lambda _: True  # noqa: E731
 
 
 class BaggageSpanProcessor(SpanProcessor):

@@ -15,7 +15,6 @@ pluggy==1.5.0
 prompt-toolkit==3.0.43
 py-cpuinfo==9.0.0
 pytest==7.4.4
-pytest-benchmark==4.0.0
 python-dateutil==2.8.2
 six==1.16.0
 tomli==2.0.1
@@ -24,6 +23,6 @@ tzdata==2024.1
 vine==5.1.0
 wcwidth==0.2.13
 wrapt==1.16.0
-zipp==3.17.0
+zipp==3.19.2
 -e opentelemetry-instrumentation
 -e instrumentation/opentelemetry-instrumentation-celery
