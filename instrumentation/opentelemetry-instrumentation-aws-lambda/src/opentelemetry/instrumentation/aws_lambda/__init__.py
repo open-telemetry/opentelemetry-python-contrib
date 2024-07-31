@@ -138,19 +138,21 @@ def _default_event_context_extractor(lambda_event: Any) -> Context:
     Returns:
         A Context with configuration found in the event.
     """
-    headers = lambda_event.get("headers")
-    if headers and isinstance(headers, dict):
-        return get_global_textmap().extract(headers)
+    try:
+        headers = lambda_event.get("headers")
+        if headers and isinstance(headers, dict):
+            return get_global_textmap().extract(headers)
 
-    records = lambda_event.get("Records")
-    if records and isinstance(records, list) and len(records) == 1:
-        message_attributes = records[0]['messageAttributes']
-        if message_attributes and isinstance(message_attributes, dict):
-            return get_global_textmap().extract(message_attributes, getter=LambdaSqsGetter())
+        records = lambda_event.get("Records")
+        if records and isinstance(records, list) and len(records) == 1:
+            message_attributes = records[0]['messageAttributes']
+            if message_attributes and isinstance(message_attributes, dict):
+                return get_global_textmap().extract(message_attributes, getter=LambdaSqsGetter())
+    except (TypeError, KeyError, AttributeError):
+        logger.debug(
+            "Extracting context from Lambda Event failed: either enable X-Ray active tracing or configure API Gateway to trigger this Lambda function as a pure proxy. Otherwise, generated spans will have an invalid (empty) parent context."
+        )
 
-    logger.debug(
-        "Extracting context from Lambda Event failed: either enable X-Ray active tracing or configure API Gateway to trigger this Lambda function as a pure proxy. Otherwise, generated spans will have an invalid (empty) parent context."
-    )
     return get_global_textmap().extract({})
 
 
