@@ -109,7 +109,7 @@ libraries = [
         "instrumentation": "opentelemetry-instrumentation-kafka-python==0.48b0.dev",
     },
     {
-        "library": "mysql-connector-python ~= 8.0",
+        "library": "mysql-connector-python >= 8.0, < 10.0",
         "instrumentation": "opentelemetry-instrumentation-mysql==0.48b0.dev",
     },
     {
