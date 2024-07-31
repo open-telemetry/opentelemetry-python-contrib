@@ -172,7 +172,6 @@ API
 ---
 """
 import logging
-from importlib.util import find_spec
 from typing import Collection
 
 import fastapi
@@ -294,8 +293,12 @@ class FastAPIInstrumentor(BaseInstrumentor):
         except Exception:  # pylint: disable=broad-exception-caught
             pass
 
-        if find_spec("fastapi") is not None:
+        try:
+            get_distribution("fastapi")
             return (_fastapi,)
+        except Exception:  # pylint: disable=broad-exception-caught
+            pass
+
         # If neither is installed, return both as potential dependencies
         return _instruments
 
