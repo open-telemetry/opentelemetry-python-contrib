@@ -235,7 +235,7 @@ class TestPostgresqlIntegration(TestBase):
     # pylint: disable=unused-argument
     def test_uninstrument_connection_with_instrument_connection(self):
         cnx = psycopg2.connect(database="test")
-        Psycopg2Instrumentor().instrument_connection(cnx)
+        cnx = Psycopg2Instrumentor().instrument_connection(cnx)
         query = "SELECT * FROM test"
         cursor = cnx.cursor()
         cursor.execute(query)

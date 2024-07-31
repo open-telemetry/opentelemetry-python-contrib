@@ -158,33 +158,40 @@ class Psycopg2Instrumentor(BaseInstrumentor):
         dbapi.unwrap_connect(psycopg2, "connect")
 
     # TODO(owais): check if core dbapi can do this for all dbapi implementations e.g, pymysql and mysql
-    @staticmethod
-    def instrument_connection(connection, tracer_provider=None):
-        if not hasattr(connection, "_is_instrumented_by_opentelemetry"):
-            connection._is_instrumented_by_opentelemetry = False
+    # TODO: comment out below codes to fix issue #2522, will try to set the properties later.
+    def instrument_connection(self, connection, tracer_provider=None):
+        # if not hasattr(connection, "_is_instrumented_by_opentelemetry"):
+        #     connection._is_instrumented_by_opentelemetry = False
 
-        if not connection._is_instrumented_by_opentelemetry:
-            setattr(
-                connection, _OTEL_CURSOR_FACTORY_KEY, connection.cursor_factory
-            )
-            connection.cursor_factory = _new_cursor_factory(
-                tracer_provider=tracer_provider
-            )
-            connection._is_instrumented_by_opentelemetry = True
-        else:
-            _logger.warning(
-                "Attempting to instrument Psycopg connection while already instrumented"
-            )
-        return connection
+        # if not connection._is_instrumented_by_opentelemetry:
+        #     setattr(
+        #         connection, _OTEL_CURSOR_FACTORY_KEY, connection.cursor_factory
+        #     )
+        #     connection.cursor_factory = _new_cursor_factory(
+        #         tracer_provider=tracer_provider
+        #     )
+        #     connection._is_instrumented_by_opentelemetry = True
+        # else:
+        #     _logger.warning(
+        #         "Attempting to instrument Psycopg connection while already instrumented"
+        #     )
+        # return connection
+        return dbapi.instrument_connection(
+            __name__,
+            connection,
+            self._DATABASE_SYSTEM,
+            self._CONNECTION_ATTRIBUTES,
+            version=__version__,
+            tracer_provider=tracer_provider,
+        )
 
     # TODO(owais): check if core dbapi can do this for all dbapi implementations e.g, pymysql and mysql
-    @staticmethod
-    def uninstrument_connection(connection):
+    def uninstrument_connection(self, connection):
         connection.cursor_factory = getattr(
             connection, _OTEL_CURSOR_FACTORY_KEY, None
         )
 
-        return connection
+        return dbapi.uninstrument_connection(connection)
 
 
 # TODO(owais): check if core dbapi can do this for all dbapi implementations e.g, pymysql and mysql
