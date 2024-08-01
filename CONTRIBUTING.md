@@ -250,8 +250,9 @@ The continuous integration overrides that environment variable with as per the c
 Below is a checklist of things to be mindful of when implementing a new instrumentation or working on a specific instrumentation. It is one of our goals as a community to keep the implementation specific details of instrumentations as similar across the board as possible for ease of testing and feature parity. It is also good to abstract as much common functionality as possible.
 
 - Follow semantic conventions
-  - The instrumentation should follow the semantic conventions defined [here](https://github.com/open-telemetry/semantic-conventions/tree/main/docs)
-  - To ensure quality and consistency, we seek to avoid supporting multiple outdated versions of HTTP semantic conventions. Contributions related to outdated HTTP semantic conventions will likely be discouraged, as they increase complexity and the potential for misconceptions. However, we are still open to considering exceptional cases where changes are well justified.
+  - The instrumentation should follow the semantic conventions defined [here](https://github.com/open-telemetry/semantic-conventions/tree/main/docs).
+  - To ensure consistency, we encourage contributions that align with the stable semantic conventions. This approach helps us avoid potential confusion and reduces the need to support multiple outdated versions of semantic conventions. However, we are still open to considering exceptional cases where changes are well justified.
+  - We seek to avoid supporting multiple outdated versions of HTTP semantic conventions. Contributions related to outdated HTTP semantic conventions will likely be discouraged, as they increase complexity and the potential for misconceptions.
 - Contains a name that is not already claimed in [Pypi](https://pypi.org/). Contact a maintainer, bring the issue up in the weekly Python SIG or create a ticket in Pypi if a desired name has already been taken.
 - Extends from [BaseInstrumentor](https://github.com/open-telemetry/opentelemetry-python-contrib/blob/2518a4ac07cb62ad6587dd8f6cbb5f8663a7e179/opentelemetry-instrumentation/src/opentelemetry/instrumentation/instrumentor.py#L35)
 - Supports auto-instrumentation
