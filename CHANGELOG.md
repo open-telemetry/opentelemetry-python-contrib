@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## Unreleased
 
+## Added
+
+## Breaking changes
+
 ## Fixed
 
 - `opentelemetry-instrumentation-aws-lambda` Avoid exception when a handler is not present.
@@ -17,6 +21,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   ([#2483](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/2484))
 - `opentelemetry-instrumentation-fastapi` Fix fastapi-slim support
   ([#2756](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/2756))
+- `opentelemetry-instrumentation-aws-lambda` Fixing w3c baggage support
+  ([#2589](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/2589))
 
 ## Version 1.26.0/0.47b0 (2024-07-23)
 
@@ -113,7 +119,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   ([#2610](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/2610))
 - `opentelemetry-instrumentation-asgi` Bugfix: Middleware did not set status code attribute on duration metrics for non-recording spans.
   ([#2627](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/2627))
+<<<<<<< HEAD
 - `opentelemetry-instrumentation-mysql` Add support for `mysql-connector-python` v9 ([#2751](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/2751))
+=======
+>>>>>>> 5a623233 (Changelog update)
 
 ## Version 1.25.0/0.46b0 (2024-05-31)
 

@@ -11,7 +11,7 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-
+import json
 import os
 from dataclasses import dataclass
 from importlib import import_module, reload
@@ -19,6 +19,7 @@ from typing import Any, Callable, Dict
 from unittest import mock
 
 from opentelemetry import propagate
+from opentelemetry.baggage.propagation import W3CBaggagePropagator
 from opentelemetry.environment_variables import OTEL_PROPAGATORS
 from opentelemetry.instrumentation.aws_lambda import (
     _HANDLER,
@@ -79,6 +80,9 @@ MOCK_W3C_TRACE_CONTEXT_SAMPLED = (
 MOCK_W3C_TRACE_STATE_KEY = "vendor_specific_key"
 MOCK_W3C_TRACE_STATE_VALUE = "test_value"
 
+MOCK_W3C_BAGGAGE_KEY = "baggage_key"
+MOCK_W3C_BAGGAGE_VALUE = "baggage_value"
+
 
 def mock_execute_lambda(event=None):
     """Mocks the AWS Lambda execution.
@@ -97,7 +101,7 @@ def mock_execute_lambda(event=None):
 
     module_name, handler_name = os.environ[_HANDLER].rsplit(".", 1)
     handler_module = import_module(module_name.replace("/", "."))
-    getattr(handler_module, handler_name)(event, MOCK_LAMBDA_CONTEXT)
+    return getattr(handler_module, handler_name)(event, MOCK_LAMBDA_CONTEXT)
 
 
 class TestAwsLambdaInstrumentor(TestBase):
@@ -181,6 +185,9 @@ class TestAwsLambdaInstrumentor(TestBase):
             expected_state_value: str = None
             expected_trace_state_len: int = 0
             propagators: str = "tracecontext"
+            expected_baggage: str = None
+            disable_aws_context_propagation: bool = False
+            disable_aws_context_propagation_envvar: str = ""
 
         def custom_event_context_extractor(lambda_event):
             return get_global_textmap().extract(lambda_event["foo"]["headers"])
@@ -266,6 +273,24 @@ class TestAwsLambdaInstrumentor(TestBase):
                 expected_state_value=MOCK_W3C_TRACE_STATE_VALUE,
                 xray_traceid=MOCK_XRAY_TRACE_CONTEXT_SAMPLED,
             ),
+            TestCase(
+                name="baggage_propagation",
+                custom_extractor=None,
+                context={
+                    "headers": {
+                        TraceContextTextMapPropagator._TRACEPARENT_HEADER_NAME: MOCK_W3C_TRACE_CONTEXT_SAMPLED,
+                        TraceContextTextMapPropagator._TRACESTATE_HEADER_NAME: f"{MOCK_W3C_TRACE_STATE_KEY}={MOCK_W3C_TRACE_STATE_VALUE},foo=1,bar=2",
+                        W3CBaggagePropagator._BAGGAGE_HEADER_NAME: f"{MOCK_W3C_BAGGAGE_KEY}={MOCK_W3C_BAGGAGE_VALUE}",
+                    }
+                },
+                expected_traceid=MOCK_W3C_TRACE_ID,
+                expected_parentid=MOCK_W3C_PARENT_SPAN_ID,
+                expected_trace_state_len=3,
+                expected_state_value=MOCK_W3C_TRACE_STATE_VALUE,
+                xray_traceid=MOCK_XRAY_TRACE_CONTEXT_NOT_SAMPLED,
+                expected_baggage=MOCK_W3C_BAGGAGE_VALUE,
+                propagators="tracecontext,baggage",
+            ),
         ]
         for test in tests:
 
@@ -284,7 +309,9 @@ class TestAwsLambdaInstrumentor(TestBase):
             AwsLambdaInstrumentor().instrument(
                 event_context_extractor=test.custom_extractor,
             )
-            mock_execute_lambda(test.context)
+            result = mock_execute_lambda(test.context)
+            result = json.loads(result)
+
             spans = self.memory_exporter.get_finished_spans()
             assert spans
             self.assertEqual(len(spans), 1)
@@ -304,6 +331,10 @@ class TestAwsLambdaInstrumentor(TestBase):
             self.assertEqual(
                 parent_context.trace_state.get(MOCK_W3C_TRACE_STATE_KEY),
                 test.expected_state_value,
+            )
+            self.assertEqual(
+                result["baggage_content"].get(MOCK_W3C_BAGGAGE_KEY),
+                test.expected_baggage,
             )
             self.assertTrue(parent_context.is_remote)
             self.memory_exporter.clear()
