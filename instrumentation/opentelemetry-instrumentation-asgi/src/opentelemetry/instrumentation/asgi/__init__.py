@@ -225,6 +225,7 @@ from opentelemetry.instrumentation._semconv import (
     _set_http_url,
     _set_http_user_agent,
     _set_status,
+    set_string_attribute,
 )
 from opentelemetry.instrumentation.asgi.types import (
     ClientRequestHook,
@@ -354,13 +355,12 @@ def collect_request_attributes(
             result, path, path, query_string, sem_conv_opt_in_mode
         )
     if http_url:
-        if _report_old(sem_conv_opt_in_mode) or (
-            sem_conv_opt_in_mode == _HTTPStabilityMode.HTTP_DUP
-        ):
-            _set_http_url(
-                result, remove_url_credentials(http_url), sem_conv_opt_in_mode
+        if _report_old(sem_conv_opt_in_mode):
+            set_string_attribute(
+                result,
+                SpanAttributes.HTTP_URL,
+                remove_url_credentials(http_url),
             )
-
     http_method = scope.get("method", "")
     if http_method:
         _set_http_method(
