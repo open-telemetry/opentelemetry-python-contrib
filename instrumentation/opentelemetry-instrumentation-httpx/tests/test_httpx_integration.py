@@ -56,7 +56,6 @@ from opentelemetry.semconv.trace import SpanAttributes
 from opentelemetry.test.mock_textmap import MockTextMapPropagator
 from opentelemetry.test.test_base import TestBase
 from opentelemetry.trace import StatusCode
-from opentelemetry import trace as trace_api
 
 if typing.TYPE_CHECKING:
     from opentelemetry.instrumentation.httpx import (
@@ -1219,9 +1218,9 @@ class TestAsyncInstrumentationIntegration(BaseTestCases.BaseInstrumentorTest):
     async def test_no_op_tracer_provider(self):
         HTTPXClientInstrumentor().uninstrument()
         HTTPXClientInstrumentor().instrument(
-            tracer_provider=trace_api.NoOpTracerProvider()
+            tracer_provider=trace.NoOpTracerProvider()
         )
         async with httpx.AsyncClient() as client:
-            await client.get('http://test.com')
+            await client.get("http://test.com")
         spans = self.memory_exporter.get_finished_spans()
         self.assertEqual(len(spans), 0)
