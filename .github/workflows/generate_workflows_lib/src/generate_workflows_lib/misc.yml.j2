@@ -19,6 +19,11 @@ jobs:
   {{ job_data }}:
     name: {{ job_data }}
     runs-on: ubuntu-latest
+    {%- if job_data == "generate-workflows" %}
+    if: |
+      !contains(github.event.pull_request.labels.*.name, 'Skip generate-workflows')
+      && github.actor != 'opentelemetrybot'
+    {%- endif %}
     steps:
       - name: Checkout repo @ SHA - ${% raw %}{{ github.sha }}{% endraw %}
         uses: actions/checkout@v4
