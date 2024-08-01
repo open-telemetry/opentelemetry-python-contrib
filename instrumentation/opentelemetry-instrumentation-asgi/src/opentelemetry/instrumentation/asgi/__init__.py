@@ -356,10 +356,10 @@ def collect_request_attributes(
         )
     if http_url:
         if _report_old(sem_conv_opt_in_mode):
-            set_string_attribute(
+            _set_http_url(
                 result,
-                SpanAttributes.HTTP_URL,
                 remove_url_credentials(http_url),
+                _HTTPStabilityMode.DEFAULT,
             )
     http_method = scope.get("method", "")
     if http_method:
