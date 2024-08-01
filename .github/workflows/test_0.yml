@@ -2283,8 +2283,8 @@ jobs:
       - name: Run tests
         run: tox -e py312-test-instrumentation-fastapi -- -ra
 
-  py38-test-instrumentation-fastapi-slim_ubuntu-latest:
-    name: instrumentation-fastapi-slim 3.8 Ubuntu
+  py38-test-instrumentation-fastapislim_ubuntu-latest:
+    name: instrumentation-fastapislim 3.8 Ubuntu
     runs-on: ubuntu-latest
     steps:
       - name: Checkout repo @ SHA - ${{ github.sha }}
@@ -2299,10 +2299,10 @@ jobs:
         run: pip install tox
 
       - name: Run tests
-        run: tox -e py38-test-instrumentation-fastapi-slim -- -ra
+        run: tox -e py38-test-instrumentation-fastapislim -- -ra
 
-  py39-test-instrumentation-fastapi-slim_ubuntu-latest:
-    name: instrumentation-fastapi-slim 3.9 Ubuntu
+  py39-test-instrumentation-fastapislim_ubuntu-latest:
+    name: instrumentation-fastapislim 3.9 Ubuntu
     runs-on: ubuntu-latest
     steps:
       - name: Checkout repo @ SHA - ${{ github.sha }}
@@ -2317,10 +2317,10 @@ jobs:
         run: pip install tox
 
       - name: Run tests
-        run: tox -e py39-test-instrumentation-fastapi-slim -- -ra
+        run: tox -e py39-test-instrumentation-fastapislim -- -ra
 
-  py310-test-instrumentation-fastapi-slim_ubuntu-latest:
-    name: instrumentation-fastapi-slim 3.10 Ubuntu
+  py310-test-instrumentation-fastapislim_ubuntu-latest:
+    name: instrumentation-fastapislim 3.10 Ubuntu
     runs-on: ubuntu-latest
     steps:
       - name: Checkout repo @ SHA - ${{ github.sha }}
@@ -2335,10 +2335,10 @@ jobs:
         run: pip install tox
 
       - name: Run tests
-        run: tox -e py310-test-instrumentation-fastapi-slim -- -ra
+        run: tox -e py310-test-instrumentation-fastapislim -- -ra
 
-  py311-test-instrumentation-fastapi-slim_ubuntu-latest:
-    name: instrumentation-fastapi-slim 3.11 Ubuntu
+  py311-test-instrumentation-fastapislim_ubuntu-latest:
+    name: instrumentation-fastapislim 3.11 Ubuntu
     runs-on: ubuntu-latest
     steps:
       - name: Checkout repo @ SHA - ${{ github.sha }}
@@ -2353,10 +2353,10 @@ jobs:
         run: pip install tox
 
       - name: Run tests
-        run: tox -e py311-test-instrumentation-fastapi-slim -- -ra
+        run: tox -e py311-test-instrumentation-fastapislim -- -ra
 
-  py312-test-instrumentation-fastapi-slim_ubuntu-latest:
-    name: instrumentation-fastapi-slim 3.12 Ubuntu
+  py312-test-instrumentation-fastapislim_ubuntu-latest:
+    name: instrumentation-fastapislim 3.12 Ubuntu
     runs-on: ubuntu-latest
     steps:
       - name: Checkout repo @ SHA - ${{ github.sha }}
@@ -2371,7 +2371,7 @@ jobs:
         run: pip install tox
 
       - name: Run tests
-        run: tox -e py312-test-instrumentation-fastapi-slim -- -ra
+        run: tox -e py312-test-instrumentation-fastapislim -- -ra
 
   pypy3-test-instrumentation-fastapi_ubuntu-latest:
     name: instrumentation-fastapi pypy-3.8 Ubuntu
@@ -2391,8 +2391,8 @@ jobs:
       - name: Run tests
         run: tox -e pypy3-test-instrumentation-fastapi -- -ra
 
-  pypy3-test-instrumentation-fastapi-slim_ubuntu-latest:
-    name: instrumentation-fastapi-slim pypy-3.8 Ubuntu
+  pypy3-test-instrumentation-fastapislim_ubuntu-latest:
+    name: instrumentation-fastapislim pypy-3.8 Ubuntu
     runs-on: ubuntu-latest
     steps:
       - name: Checkout repo @ SHA - ${{ github.sha }}
@@ -2407,7 +2407,7 @@ jobs:
         run: pip install tox
 
       - name: Run tests
-        run: tox -e pypy3-test-instrumentation-fastapi-slim -- -ra
+        run: tox -e pypy3-test-instrumentation-fastapislim -- -ra
 
   py38-test-instrumentation-flask-0_ubuntu-latest:
     name: instrumentation-flask-0 3.8 Ubuntu
