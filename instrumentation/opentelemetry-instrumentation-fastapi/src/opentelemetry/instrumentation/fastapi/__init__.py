@@ -172,7 +172,7 @@ API
 ---
 """
 import logging
-from importlib.util import find_spec
+from importlib.metadata import PackageNotFoundError, distribution
 from typing import Collection
 
 import fastapi
@@ -285,10 +285,20 @@ class FastAPIInstrumentor(BaseInstrumentor):
         app._is_instrumented_by_opentelemetry = False
 
     def instrumentation_dependencies(self) -> Collection[str]:
-        if find_spec("fastapi") is not None:
-            return (_fastapi,)
-        if find_spec("fastapi_slim") is not None:
+        # need to use distribution because find_spec("fastapi") will return
+        # something even with just fastapi-slim installed
+        try:
+            distribution("fastapi-slim")
             return (_fastapi_slim,)
+        except PackageNotFoundError:
+            pass
+
+        try:
+            distribution("fastapi")
+            return (_fastapi,)
+        except PackageNotFoundError:
+            pass
+
         # If neither is installed, return both as potential dependencies
         return _instruments
 

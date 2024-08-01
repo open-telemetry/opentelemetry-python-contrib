@@ -15,6 +15,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   ([#2746](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/2746))
 - `opentelemetry-instrumentation-grpc` Fixes the issue with the gRPC instrumentation not working with the 1.63.0 and higher version of gRPC
   ([#2483](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/2484))
+- `opentelemetry-instrumentation-fastapi` Fix fastapi-slim support
+  ([#2756](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/2756))
 
 ## Version 1.26.0/0.47b0 (2024-07-23)
 
