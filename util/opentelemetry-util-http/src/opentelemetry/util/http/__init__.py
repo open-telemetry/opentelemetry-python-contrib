@@ -12,11 +12,14 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+from __future__ import annotations
+
+from collections.abc import Mapping
 from os import environ
 from re import IGNORECASE as RE_IGNORECASE
 from re import compile as re_compile
 from re import search
-from typing import Iterable, List
+from typing import Callable, Iterable, Optional
 from urllib.parse import urlparse, urlunparse
 
 from opentelemetry.semconv.trace import SpanAttributes
@@ -29,6 +32,10 @@ OTEL_INSTRUMENTATION_HTTP_CAPTURE_HEADERS_SERVER_REQUEST = (
 )
 OTEL_INSTRUMENTATION_HTTP_CAPTURE_HEADERS_SERVER_RESPONSE = (
     "OTEL_INSTRUMENTATION_HTTP_CAPTURE_HEADERS_SERVER_RESPONSE"
+)
+
+OTEL_PYTHON_INSTRUMENTATION_HTTP_CAPTURE_ALL_METHODS = (
+    "OTEL_PYTHON_INSTRUMENTATION_HTTP_CAPTURE_ALL_METHODS"
 )
 
 # List of recommended metrics attributes
@@ -80,30 +87,33 @@ class SanitizeValue:
         )
 
     def sanitize_header_values(
-        self, headers: dict, header_regexes: list, normalize_function: callable
-    ) -> dict:
-        values = {}
+        self,
+        headers: Mapping[str, str | list[str]],
+        header_regexes: list[str],
+        normalize_function: Callable[[str], str],
+    ) -> dict[str, list[str]]:
+        values: dict[str, list[str]] = {}
 
         if header_regexes:
             header_regexes_compiled = re_compile(
-                "|".join("^" + i + "$" for i in header_regexes),
+                "|".join(header_regexes),
                 RE_IGNORECASE,
             )
 
-            for header_name in list(
-                filter(
-                    header_regexes_compiled.match,
-                    headers.keys(),
-                )
-            ):
-                header_values = headers.get(header_name)
-                if header_values:
+            for header_name, header_value in headers.items():
+                if header_regexes_compiled.fullmatch(header_name):
                     key = normalize_function(header_name.lower())
-                    values[key] = [
-                        self.sanitize_header_value(
-                            header=header_name, value=header_values
-                        )
-                    ]
+                    if isinstance(header_value, str):
+                        values[key] = [
+                            self.sanitize_header_value(
+                                header_name, header_value
+                            )
+                        ]
+                    else:
+                        values[key] = [
+                            self.sanitize_header_value(header_name, value)
+                            for value in header_value
+                        ]
 
         return values
 
@@ -157,11 +167,7 @@ def remove_url_credentials(url: str) -> str:
         parsed = urlparse(url)
         if all([parsed.scheme, parsed.netloc]):  # checks for valid url
             parsed_url = urlparse(url)
-            netloc = (
-                (":".join(((parsed_url.hostname or ""), str(parsed_url.port))))
-                if parsed_url.port
-                else (parsed_url.hostname or "")
-            )
+            _, _, netloc = parsed.netloc.rpartition("@")
             return urlunparse(
                 (
                     parsed_url.scheme,
@@ -187,14 +193,39 @@ def normalise_response_header_name(header: str) -> str:
     return f"http.response.header.{key}"
 
 
-def get_custom_headers(env_var: str) -> List[str]:
-    custom_headers = environ.get(env_var, [])
+def sanitize_method(method: Optional[str]) -> Optional[str]:
+    if method is None:
+        return None
+    method = method.upper()
+    if (
+        environ.get(OTEL_PYTHON_INSTRUMENTATION_HTTP_CAPTURE_ALL_METHODS)
+        or
+        # Based on https://www.rfc-editor.org/rfc/rfc7231#section-4.1 and https://www.rfc-editor.org/rfc/rfc5789#section-2.
+        method
+        in [
+            "GET",
+            "HEAD",
+            "POST",
+            "PUT",
+            "DELETE",
+            "CONNECT",
+            "OPTIONS",
+            "TRACE",
+            "PATCH",
+        ]
+    ):
+        return method
+    return "_OTHER"
+
+
+def get_custom_headers(env_var: str) -> list[str]:
+    custom_headers = environ.get(env_var, None)
     if custom_headers:
-        custom_headers = [
+        return [
             custom_headers.strip()
             for custom_headers in custom_headers.split(",")
         ]
-    return custom_headers
+    return []
 
 
 def _parse_active_request_count_attrs(req_attrs):
@@ -211,3 +242,10 @@ def _parse_duration_attrs(req_attrs):
         for key in _duration_attrs.intersection(req_attrs.keys())
     }
     return duration_attrs
+
+
+def _parse_url_query(url: str):
+    parsed_url = urlparse(url)
+    path = parsed_url.path
+    query_params = parsed_url.query
+    return path, query_params

@@ -16,7 +16,7 @@ import json
 from unittest import mock
 
 import botocore.session
-from moto import mock_dynamodb2  # pylint: disable=import-error
+from moto import mock_aws  # pylint: disable=import-error
 
 from opentelemetry.instrumentation.botocore import BotocoreInstrumentor
 from opentelemetry.instrumentation.botocore.extensions.dynamodb import (
@@ -184,7 +184,7 @@ class TestDynamoDbExtension(TestBase):
         )
         self.assert_item_col_metrics(span)
 
-    @mock_dynamodb2
+    @mock_aws
     def test_batch_get_item(self):
         table_name1 = "test_table1"
         table_name2 = "test_table2"
@@ -203,7 +203,7 @@ class TestDynamoDbExtension(TestBase):
         self.assert_table_names(span, table_name1, table_name2)
         self.assert_consumed_capacity(span, table_name1, table_name2)
 
-    @mock_dynamodb2
+    @mock_aws
     def test_batch_write_item(self):
         table_name1 = "test_table1"
         table_name2 = "test_table2"
@@ -224,7 +224,7 @@ class TestDynamoDbExtension(TestBase):
         self.assert_consumed_capacity(span, table_name1, table_name2)
         self.assert_item_col_metrics(span)
 
-    @mock_dynamodb2
+    @mock_aws
     def test_create_table(self):
         local_sec_idx = {
             "IndexName": "local_sec_idx",
@@ -268,7 +268,7 @@ class TestDynamoDbExtension(TestBase):
         )
         self.assert_provisioned_read_cap(span, 42)
 
-    @mock_dynamodb2
+    @mock_aws
     def test_delete_item(self):
         self._create_prepared_table()
 
@@ -297,7 +297,7 @@ class TestDynamoDbExtension(TestBase):
     def test_delete_item_item_collection_metrics(self):
         self.assert_extension_item_col_metrics("DeleteItem")
 
-    @mock_dynamodb2
+    @mock_aws
     def test_delete_table(self):
         self._create_prepared_table()
 
@@ -306,7 +306,7 @@ class TestDynamoDbExtension(TestBase):
         span = self.assert_span("DeleteTable")
         self.assert_table_names(span, self.default_table_name)
 
-    @mock_dynamodb2
+    @mock_aws
     def test_describe_table(self):
         self._create_prepared_table()
 
@@ -315,26 +315,42 @@ class TestDynamoDbExtension(TestBase):
         span = self.assert_span("DescribeTable")
         self.assert_table_names(span, self.default_table_name)
 
-    @mock_dynamodb2
-    def test_get_item(self):
+    @mock_aws
+    def test_get_item_expression(self):
         self._create_prepared_table()
 
         self.client.get_item(
             TableName=self.default_table_name,
             Key={"id": {"S": "1"}},
             ConsistentRead=True,
-            AttributesToGet=["id"],
-            ProjectionExpression="1,2",
+            ProjectionExpression="PE",
             ReturnConsumedCapacity="TOTAL",
         )
 
         span = self.assert_span("GetItem")
         self.assert_table_names(span, self.default_table_name)
         self.assert_consistent_read(span, True)
-        self.assert_projection(span, "1,2")
         self.assert_consumed_capacity(span, self.default_table_name)
 
-    @mock_dynamodb2
+    @mock_aws
+    def test_get_item_non_expression(self):
+        self._create_prepared_table()
+
+        self.client.get_item(
+            TableName=self.default_table_name,
+            Key={"id": {"S": "1"}},
+            ConsistentRead=True,
+            ProjectionExpression="PE",
+            ReturnConsumedCapacity="TOTAL",
+        )
+
+        span = self.assert_span("GetItem")
+        self.assert_table_names(span, self.default_table_name)
+        self.assert_consistent_read(span, True)
+        self.assert_projection(span, "PE")
+        self.assert_consumed_capacity(span, self.default_table_name)
+
+    @mock_aws
     def test_list_tables(self):
         self._create_table(TableName="my_table")
         self._create_prepared_table()
@@ -351,7 +367,7 @@ class TestDynamoDbExtension(TestBase):
         )
         self.assertEqual(5, span.attributes[SpanAttributes.AWS_DYNAMODB_LIMIT])
 
-    @mock_dynamodb2
+    @mock_aws
     def test_put_item(self):
         table = "test_table"
         self._create_prepared_table(TableName=table)
@@ -372,7 +388,7 @@ class TestDynamoDbExtension(TestBase):
     def test_put_item_item_collection_metrics(self):
         self.assert_extension_item_col_metrics("PutItem")
 
-    @mock_dynamodb2
+    @mock_aws
     def test_query(self):
         self._create_prepared_table()
 
@@ -390,7 +406,7 @@ class TestDynamoDbExtension(TestBase):
                 }
             },
             ScanIndexForward=True,
-            ProjectionExpression="1,2",
+            ProjectionExpression="PE",
             ReturnConsumedCapacity="TOTAL",
         )
 
@@ -403,11 +419,11 @@ class TestDynamoDbExtension(TestBase):
         self.assert_consistent_read(span, True)
         self.assert_index_name(span, "lsi")
         self.assert_limit(span, 42)
-        self.assert_projection(span, "1,2")
+        self.assert_projection(span, "PE")
         self.assert_select(span, "ALL_ATTRIBUTES")
         self.assert_consumed_capacity(span, self.default_table_name)
 
-    @mock_dynamodb2
+    @mock_aws
     def test_scan(self):
         self._create_prepared_table()
 
@@ -419,7 +435,7 @@ class TestDynamoDbExtension(TestBase):
             Select="ALL_ATTRIBUTES",
             TotalSegments=17,
             Segment=21,
-            ProjectionExpression="1,2",
+            ProjectionExpression="PE",
             ConsistentRead=True,
             ReturnConsumedCapacity="TOTAL",
         )
@@ -440,11 +456,11 @@ class TestDynamoDbExtension(TestBase):
         self.assert_consistent_read(span, True)
         self.assert_index_name(span, "lsi")
         self.assert_limit(span, 42)
-        self.assert_projection(span, "1,2")
+        self.assert_projection(span, "PE")
         self.assert_select(span, "ALL_ATTRIBUTES")
         self.assert_consumed_capacity(span, self.default_table_name)
 
-    @mock_dynamodb2
+    @mock_aws
     def test_update_item(self):
         self._create_prepared_table()
 
@@ -465,7 +481,7 @@ class TestDynamoDbExtension(TestBase):
     def test_update_item_item_collection_metrics(self):
         self.assert_extension_item_col_metrics("UpdateItem")
 
-    @mock_dynamodb2
+    @mock_aws
     def test_update_table(self):
         self._create_prepared_table()
 

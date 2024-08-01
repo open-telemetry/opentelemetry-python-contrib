@@ -17,6 +17,7 @@ from unittest import mock
 from unittest.mock import MagicMock
 
 import aiopg
+import psycopg2
 
 import opentelemetry.instrumentation.aiopg
 from opentelemetry import trace as trace_api
@@ -76,7 +77,7 @@ class TestAiopgInstrumentor(TestBase):
         cnx = async_call(aiopg.connect(database="test"))
         cursor = async_call(cnx.cursor())
         query = "SELECT * FROM test"
-        cursor.execute(query)
+        async_call(cursor.execute(query))
 
         spans_list = self.memory_exporter.get_finished_spans()
         self.assertEqual(len(spans_list), 1)
@@ -127,7 +128,7 @@ class TestAiopgInstrumentor(TestBase):
         cnx = async_call(pool.acquire())
         cursor = async_call(cnx.cursor())
         query = "SELECT * FROM test"
-        cursor.execute(query)
+        async_call(cursor.execute(query))
 
         spans_list = self.memory_exporter.get_finished_spans()
         self.assertEqual(len(spans_list), 1)
@@ -384,7 +385,9 @@ class TestAiopgIntegration(TestBase):
             span.attributes[SpanAttributes.DB_STATEMENT], "Test query"
         )
         self.assertIs(span.status.status_code, trace_api.StatusCode.ERROR)
-        self.assertEqual(span.status.description, "Exception: Test Exception")
+        self.assertEqual(
+            span.status.description, "ProgrammingError: Test Exception"
+        )
 
     def test_executemany(self):
         db_integration = AiopgIntegration(self.tracer, "testcomponent")
@@ -570,17 +573,17 @@ class MockCursor:
     # pylint: disable=unused-argument, no-self-use
     async def execute(self, query, params=None, throw_exception=False):
         if throw_exception:
-            raise Exception("Test Exception")
+            raise psycopg2.ProgrammingError("Test Exception")
 
     # pylint: disable=unused-argument, no-self-use
     async def executemany(self, query, params=None, throw_exception=False):
         if throw_exception:
-            raise Exception("Test Exception")
+            raise psycopg2.ProgrammingError("Test Exception")
 
     # pylint: disable=unused-argument, no-self-use
     async def callproc(self, query, params=None, throw_exception=False):
         if throw_exception:
-            raise Exception("Test Exception")
+            raise psycopg2.ProgrammingError("Test Exception")
 
     def close(self):
         pass

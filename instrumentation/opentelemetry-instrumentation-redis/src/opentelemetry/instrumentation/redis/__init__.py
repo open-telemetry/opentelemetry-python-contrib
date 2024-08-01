@@ -106,7 +106,7 @@ from opentelemetry.instrumentation.redis.util import (
 from opentelemetry.instrumentation.redis.version import __version__
 from opentelemetry.instrumentation.utils import unwrap
 from opentelemetry.semconv.trace import SpanAttributes
-from opentelemetry.trace import Span
+from opentelemetry.trace import Span, StatusCode
 
 _DEFAULT_SERVICE = "redis"
 
@@ -203,6 +203,8 @@ def _instrument(
             span_name,
         ) = _build_span_meta_data_for_pipeline(instance)
 
+        exception = None
+
         with tracer.start_as_current_span(
             span_name, kind=trace.SpanKind.CLIENT
         ) as span:
@@ -212,10 +214,21 @@ def _instrument(
                 span.set_attribute(
                     "db.redis.pipeline_length", len(command_stack)
                 )
-            response = func(*args, **kwargs)
+
+            response = None
+            try:
+                response = func(*args, **kwargs)
+            except redis.WatchError as watch_exception:
+                span.set_status(StatusCode.UNSET)
+                exception = watch_exception
+
             if callable(response_hook):
                 response_hook(span, instance, response)
-            return response
+
+        if exception:
+            raise exception
+
+        return response
 
     pipeline_class = (
         "BasePipeline" if redis.VERSION < (3, 0, 0) else "Pipeline"
@@ -272,6 +285,8 @@ def _instrument(
             span_name,
         ) = _build_span_meta_data_for_pipeline(instance)
 
+        exception = None
+
         with tracer.start_as_current_span(
             span_name, kind=trace.SpanKind.CLIENT
         ) as span:
@@ -281,10 +296,21 @@ def _instrument(
                 span.set_attribute(
                     "db.redis.pipeline_length", len(command_stack)
                 )
-            response = await func(*args, **kwargs)
+
+            response = None
+            try:
+                response = await func(*args, **kwargs)
+            except redis.WatchError as watch_exception:
+                span.set_status(StatusCode.UNSET)
+                exception = watch_exception
+
             if callable(response_hook):
                 response_hook(span, instance, response)
-            return response
+
+        if exception:
+            raise exception
+
+        return response
 
     if redis.VERSION >= _REDIS_ASYNCIO_VERSION:
         wrap_function_wrapper(
@@ -333,7 +359,10 @@ class RedisInstrumentor(BaseInstrumentor):
         """
         tracer_provider = kwargs.get("tracer_provider")
         tracer = trace.get_tracer(
-            __name__, __version__, tracer_provider=tracer_provider
+            __name__,
+            __version__,
+            tracer_provider=tracer_provider,
+            schema_url="https://opentelemetry.io/schemas/1.11.0",
         )
         _instrument(
             tracer,

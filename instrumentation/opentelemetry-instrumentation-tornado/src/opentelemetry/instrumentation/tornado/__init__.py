@@ -87,14 +87,14 @@ created span and some other contextual information. Example:
     # will be called after a outgoing request made with
     # `tornado.httpclient.AsyncHTTPClient.fetch` finishes.
     # `response`` is an instance of ``Future[tornado.httpclient.HTTPResponse]`.
-    def client_resposne_hook(span, future):
+    def client_response_hook(span, future):
         pass
 
     # apply tornado instrumentation with hooks
     TornadoInstrumentor().instrument(
         server_request_hook=server_request_hook,
         client_request_hook=client_request_hook,
-        client_response_hook=client_resposne_hook
+        client_response_hook=client_response_hook
     )
 
 Capture HTTP request and response headers
@@ -236,10 +236,20 @@ class TornadoInstrumentor(BaseInstrumentor):
         process lifetime.
         """
         tracer_provider = kwargs.get("tracer_provider")
-        tracer = trace.get_tracer(__name__, __version__, tracer_provider)
+        tracer = trace.get_tracer(
+            __name__,
+            __version__,
+            tracer_provider,
+            schema_url="https://opentelemetry.io/schemas/1.11.0",
+        )
 
         meter_provider = kwargs.get("meter_provider")
-        meter = get_meter(__name__, __version__, meter_provider)
+        meter = get_meter(
+            __name__,
+            __version__,
+            meter_provider,
+            schema_url="https://opentelemetry.io/schemas/1.11.0",
+        )
 
         client_histograms = _create_client_histograms(meter)
         server_histograms = _create_server_histograms(meter)
@@ -286,7 +296,7 @@ def _create_server_histograms(meter) -> Dict[str, Histogram]:
         MetricInstruments.HTTP_SERVER_DURATION: meter.create_histogram(
             name=MetricInstruments.HTTP_SERVER_DURATION,
             unit="ms",
-            description="measures the duration outbound HTTP requests",
+            description="Duration of HTTP server requests.",
         ),
         MetricInstruments.HTTP_SERVER_REQUEST_SIZE: meter.create_histogram(
             name=MetricInstruments.HTTP_SERVER_REQUEST_SIZE,
@@ -445,9 +455,9 @@ def _get_attributes_from_request(request):
         if hasattr(request.connection, "context") and getattr(
             request.connection.context, "_orig_remote_ip", None
         ):
-            attrs[
-                SpanAttributes.NET_PEER_IP
-            ] = request.connection.context._orig_remote_ip
+            attrs[SpanAttributes.NET_PEER_IP] = (
+                request.connection.context._orig_remote_ip
+            )
 
     return extract_attributes_from_object(
         request, _traced_request_attrs, attrs

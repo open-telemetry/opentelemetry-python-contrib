@@ -3,6 +3,7 @@ components:
   docs/instrumentation:
     - nemoshlag
 
+
   instrumentation/opentelemetry-instrumentation-aio-pika:
     - ofek1weiss
 
@@ -34,6 +35,7 @@ components:
   sdk-extension/opentelemetry-sdk-extension-aws:
     - NathanielRN
     - Kausik-A
+    - srprash
 
   instrumentation/opentelemetry-instrumentation-tortoiseorm:
     - tonybaloney
@@ -63,3 +65,15 @@ components:
 
   instrumentation/opentelemetry-instrumentation-requests:
     - ocelotl
+
+  instrumentation/opentelemetry-instrumentation-cassandra:
+    - mattcontinisio
+
+  instrumentation/opentelemetry-instrumentation-asyncio:
+    - bourbonkk
+
+  instrumentation/opentelemetry-instrumentation-psycopg:
+    - federicobond
+
+  processor/opentelemetry-processor-baggage:
+    - codeboten

@@ -21,14 +21,34 @@ from requests.adapters import BaseAdapter
 from requests.models import Response
 
 import opentelemetry.instrumentation.requests
-from opentelemetry import context, trace
-
-# FIXME: fix the importing of this private attribute when the location of the _SUPPRESS_HTTP_INSTRUMENTATION_KEY is defined.
-from opentelemetry.context import _SUPPRESS_HTTP_INSTRUMENTATION_KEY
+from opentelemetry import trace
+from opentelemetry.instrumentation._semconv import (
+    OTEL_SEMCONV_STABILITY_OPT_IN,
+    _OpenTelemetrySemanticConventionStability,
+)
 from opentelemetry.instrumentation.requests import RequestsInstrumentor
-from opentelemetry.instrumentation.utils import _SUPPRESS_INSTRUMENTATION_KEY
+from opentelemetry.instrumentation.utils import (
+    suppress_http_instrumentation,
+    suppress_instrumentation,
+)
 from opentelemetry.propagate import get_global_textmap, set_global_textmap
 from opentelemetry.sdk import resources
+from opentelemetry.semconv.attributes.error_attributes import ERROR_TYPE
+from opentelemetry.semconv.attributes.http_attributes import (
+    HTTP_REQUEST_METHOD,
+    HTTP_REQUEST_METHOD_ORIGINAL,
+    HTTP_RESPONSE_STATUS_CODE,
+)
+from opentelemetry.semconv.attributes.network_attributes import (
+    NETWORK_PEER_ADDRESS,
+    NETWORK_PEER_PORT,
+    NETWORK_PROTOCOL_VERSION,
+)
+from opentelemetry.semconv.attributes.server_attributes import (
+    SERVER_ADDRESS,
+    SERVER_PORT,
+)
+from opentelemetry.semconv.attributes.url_attributes import URL_FULL
 from opentelemetry.semconv.trace import SpanAttributes
 from opentelemetry.test.mock_textmap import MockTextMapPropagator
 from opentelemetry.test.test_base import TestBase
@@ -69,12 +89,24 @@ class RequestsIntegrationTestBase(abc.ABC):
     def setUp(self):
         super().setUp()
 
+        test_name = ""
+        if hasattr(self, "_testMethodName"):
+            test_name = self._testMethodName
+        sem_conv_mode = "default"
+        if "new_semconv" in test_name:
+            sem_conv_mode = "http"
+        elif "both_semconv" in test_name:
+            sem_conv_mode = "http/dup"
         self.env_patch = mock.patch.dict(
             "os.environ",
             {
-                "OTEL_PYTHON_REQUESTS_EXCLUDED_URLS": "http://localhost/env_excluded_arg/123,env_excluded_noarg"
+                "OTEL_PYTHON_REQUESTS_EXCLUDED_URLS": "http://localhost/env_excluded_arg/123,env_excluded_noarg",
+                OTEL_SEMCONV_STABILITY_OPT_IN: sem_conv_mode,
             },
         )
+
+        _OpenTelemetrySemanticConventionStability._initialized = False
+
         self.env_patch.start()
 
         self.exclude_patch = mock.patch(
@@ -119,6 +151,11 @@ class RequestsIntegrationTestBase(abc.ABC):
         self.assertEqual(span.name, "GET")
 
         self.assertEqual(
+            span.instrumentation_scope.schema_url,
+            "https://opentelemetry.io/schemas/1.11.0",
+        )
+
+        self.assertEqual(
             span.attributes,
             {
                 SpanAttributes.HTTP_METHOD: "GET",
@@ -132,6 +169,126 @@ class RequestsIntegrationTestBase(abc.ABC):
         self.assertEqualSpanInstrumentationInfo(
             span, opentelemetry.instrumentation.requests
         )
+
+    def test_basic_new_semconv(self):
+        url_with_port = "http://mock:80/status/200"
+        httpretty.register_uri(
+            httpretty.GET, url_with_port, status=200, body="Hello!"
+        )
+        result = self.perform_request(url_with_port)
+        self.assertEqual(result.text, "Hello!")
+        span = self.assert_span()
+
+        self.assertIs(span.kind, trace.SpanKind.CLIENT)
+        self.assertEqual(span.name, "GET")
+
+        self.assertEqual(
+            span.instrumentation_scope.schema_url,
+            SpanAttributes.SCHEMA_URL,
+        )
+        self.assertEqual(
+            span.attributes,
+            {
+                HTTP_REQUEST_METHOD: "GET",
+                URL_FULL: url_with_port,
+                SERVER_ADDRESS: "mock",
+                NETWORK_PEER_ADDRESS: "mock",
+                HTTP_RESPONSE_STATUS_CODE: 200,
+                NETWORK_PROTOCOL_VERSION: "1.1",
+                SERVER_PORT: 80,
+                NETWORK_PEER_PORT: 80,
+            },
+        )
+
+        self.assertIs(span.status.status_code, trace.StatusCode.UNSET)
+
+        self.assertEqualSpanInstrumentationScope(
+            span, opentelemetry.instrumentation.requests
+        )
+
+    def test_basic_both_semconv(self):
+        url_with_port = "http://mock:80/status/200"
+        httpretty.register_uri(
+            httpretty.GET, url_with_port, status=200, body="Hello!"
+        )
+        result = self.perform_request(url_with_port)
+        self.assertEqual(result.text, "Hello!")
+        span = self.assert_span()
+
+        self.assertIs(span.kind, trace.SpanKind.CLIENT)
+        self.assertEqual(span.name, "GET")
+
+        self.assertEqual(
+            span.instrumentation_scope.schema_url,
+            SpanAttributes.SCHEMA_URL,
+        )
+        self.assertEqual(
+            span.attributes,
+            {
+                SpanAttributes.HTTP_METHOD: "GET",
+                HTTP_REQUEST_METHOD: "GET",
+                SpanAttributes.HTTP_URL: url_with_port,
+                URL_FULL: url_with_port,
+                SpanAttributes.HTTP_HOST: "mock",
+                SERVER_ADDRESS: "mock",
+                NETWORK_PEER_ADDRESS: "mock",
+                SpanAttributes.NET_PEER_PORT: 80,
+                SpanAttributes.HTTP_STATUS_CODE: 200,
+                HTTP_RESPONSE_STATUS_CODE: 200,
+                SpanAttributes.HTTP_FLAVOR: "1.1",
+                NETWORK_PROTOCOL_VERSION: "1.1",
+                SERVER_PORT: 80,
+                NETWORK_PEER_PORT: 80,
+            },
+        )
+
+        self.assertIs(span.status.status_code, trace.StatusCode.UNSET)
+
+        self.assertEqualSpanInstrumentationScope(
+            span, opentelemetry.instrumentation.requests
+        )
+
+    @mock.patch("httpretty.http.HttpBaseClass.METHODS", ("NONSTANDARD",))
+    def test_nonstandard_http_method(self):
+        httpretty.register_uri("NONSTANDARD", self.URL, status=405)
+        session = requests.Session()
+        session.request("NONSTANDARD", self.URL)
+        span = self.assert_span()
+        self.assertIs(span.kind, trace.SpanKind.CLIENT)
+        self.assertEqual(span.name, "HTTP")
+        self.assertEqual(
+            span.attributes,
+            {
+                SpanAttributes.HTTP_METHOD: "_OTHER",
+                SpanAttributes.HTTP_URL: self.URL,
+                SpanAttributes.HTTP_STATUS_CODE: 405,
+            },
+        )
+
+        self.assertIs(span.status.status_code, trace.StatusCode.ERROR)
+
+    @mock.patch("httpretty.http.HttpBaseClass.METHODS", ("NONSTANDARD",))
+    def test_nonstandard_http_method_new_semconv(self):
+        httpretty.register_uri("NONSTANDARD", self.URL, status=405)
+        session = requests.Session()
+        session.request("NONSTANDARD", self.URL)
+        span = self.assert_span()
+        self.assertIs(span.kind, trace.SpanKind.CLIENT)
+        self.assertEqual(span.name, "HTTP")
+        self.assertEqual(
+            span.attributes,
+            {
+                HTTP_REQUEST_METHOD: "_OTHER",
+                URL_FULL: self.URL,
+                SERVER_ADDRESS: "mock",
+                NETWORK_PEER_ADDRESS: "mock",
+                HTTP_RESPONSE_STATUS_CODE: 405,
+                NETWORK_PROTOCOL_VERSION: "1.1",
+                ERROR_TYPE: "405",
+                HTTP_REQUEST_METHOD_ORIGINAL: "NONSTANDARD",
+            },
+        )
+        self.assertIs(span.status.status_code, trace.StatusCode.ERROR)
 
     def test_hooks(self):
         def request_hook(span, request_obj):
@@ -214,6 +371,49 @@ class RequestsIntegrationTestBase(abc.ABC):
             trace.StatusCode.ERROR,
         )
 
+    def test_not_foundbasic_new_semconv(self):
+        url_404 = "http://mock/status/404"
+        httpretty.register_uri(
+            httpretty.GET,
+            url_404,
+            status=404,
+        )
+        result = self.perform_request(url_404)
+        self.assertEqual(result.status_code, 404)
+
+        span = self.assert_span()
+
+        self.assertEqual(span.attributes.get(HTTP_RESPONSE_STATUS_CODE), 404)
+        self.assertEqual(span.attributes.get(ERROR_TYPE), "404")
+
+        self.assertIs(
+            span.status.status_code,
+            trace.StatusCode.ERROR,
+        )
+
+    def test_not_foundbasic_both_semconv(self):
+        url_404 = "http://mock/status/404"
+        httpretty.register_uri(
+            httpretty.GET,
+            url_404,
+            status=404,
+        )
+        result = self.perform_request(url_404)
+        self.assertEqual(result.status_code, 404)
+
+        span = self.assert_span()
+
+        self.assertEqual(
+            span.attributes.get(SpanAttributes.HTTP_STATUS_CODE), 404
+        )
+        self.assertEqual(span.attributes.get(HTTP_RESPONSE_STATUS_CODE), 404)
+        self.assertEqual(span.attributes.get(ERROR_TYPE), "404")
+
+        self.assertIs(
+            span.status.status_code,
+            trace.StatusCode.ERROR,
+        )
+
     def test_uninstrument(self):
         RequestsInstrumentor().uninstrument()
         result = self.perform_request(self.URL)
@@ -244,26 +444,16 @@ class RequestsIntegrationTestBase(abc.ABC):
         self.assert_span()
 
     def test_suppress_instrumentation(self):
-        token = context.attach(
-            context.set_value(_SUPPRESS_INSTRUMENTATION_KEY, True)
-        )
-        try:
+        with suppress_instrumentation():
             result = self.perform_request(self.URL)
             self.assertEqual(result.text, "Hello!")
-        finally:
-            context.detach(token)
 
         self.assert_span(num_spans=0)
 
     def test_suppress_http_instrumentation(self):
-        token = context.attach(
-            context.set_value(_SUPPRESS_HTTP_INSTRUMENTATION_KEY, True)
-        )
-        try:
+        with suppress_http_instrumentation():
             result = self.perform_request(self.URL)
             self.assertEqual(result.text, "Hello!")
-        finally:
-            context.detach(token)
 
         self.assert_span(num_spans=0)
 
@@ -368,6 +558,33 @@ class RequestsIntegrationTestBase(abc.ABC):
         )
         self.assertEqual(span.status.status_code, StatusCode.ERROR)
 
+    @mock.patch(
+        "requests.adapters.HTTPAdapter.send",
+        side_effect=requests.RequestException,
+    )
+    def test_requests_exception_new_semconv(self, *_, **__):
+        url_with_port = "http://mock:80/status/200"
+        httpretty.register_uri(
+            httpretty.GET, url_with_port, status=200, body="Hello!"
+        )
+        with self.assertRaises(requests.RequestException):
+            self.perform_request(url_with_port)
+
+        span = self.assert_span()
+        self.assertEqual(
+            span.attributes,
+            {
+                HTTP_REQUEST_METHOD: "GET",
+                URL_FULL: url_with_port,
+                SERVER_ADDRESS: "mock",
+                SERVER_PORT: 80,
+                NETWORK_PEER_PORT: 80,
+                NETWORK_PEER_ADDRESS: "mock",
+                ERROR_TYPE: "RequestException",
+            },
+        )
+        self.assertEqual(span.status.status_code, StatusCode.ERROR)
+
     mocked_response = requests.Response()
     mocked_response.status_code = 500
     mocked_response.reason = "Internal Server Error"
@@ -456,7 +673,7 @@ class TestRequestsIntegration(RequestsIntegrationTestBase, TestBase):
     @staticmethod
     def perform_request(url: str, session: requests.Session = None):
         if session is None:
-            return requests.get(url)
+            return requests.get(url, timeout=5)
         return session.get(url)
 
     def test_credential_removal(self):
@@ -467,7 +684,7 @@ class TestRequestsIntegration(RequestsIntegrationTestBase, TestBase):
         self.assertEqual(span.attributes[SpanAttributes.HTTP_URL], self.URL)
 
     def test_if_headers_equals_none(self):
-        result = requests.get(self.URL, headers=None)
+        result = requests.get(self.URL, headers=None, timeout=5)
         self.assertEqual(result.text, "Hello!")
         self.assert_span()
 
@@ -489,6 +706,22 @@ class TestRequestsIntergrationMetric(TestBase):
 
     def setUp(self):
         super().setUp()
+        test_name = ""
+        if hasattr(self, "_testMethodName"):
+            test_name = self._testMethodName
+        sem_conv_mode = "default"
+        if "new_semconv" in test_name:
+            sem_conv_mode = "http"
+        elif "both_semconv" in test_name:
+            sem_conv_mode = "http/dup"
+        self.env_patch = mock.patch.dict(
+            "os.environ",
+            {
+                OTEL_SEMCONV_STABILITY_OPT_IN: sem_conv_mode,
+            },
+        )
+        self.env_patch.start()
+        _OpenTelemetrySemanticConventionStability._initialized = False
         RequestsInstrumentor().instrument(meter_provider=self.meter_provider)
 
         httpretty.enable()
@@ -496,33 +729,106 @@ class TestRequestsIntergrationMetric(TestBase):
 
     def tearDown(self):
         super().tearDown()
+        self.env_patch.stop()
         RequestsInstrumentor().uninstrument()
         httpretty.disable()
 
     @staticmethod
     def perform_request(url: str) -> requests.Response:
-        return requests.get(url)
+        return requests.get(url, timeout=5)
 
     def test_basic_metric_success(self):
         self.perform_request(self.URL)
 
         expected_attributes = {
-            "http.status_code": 200,
-            "http.host": "examplehost",
-            "net.peer.port": 8000,
-            "net.peer.name": "examplehost",
-            "http.method": "GET",
-            "http.flavor": "1.1",
-            "http.scheme": "http",
+            SpanAttributes.HTTP_STATUS_CODE: 200,
+            SpanAttributes.HTTP_HOST: "examplehost",
+            SpanAttributes.NET_PEER_PORT: 8000,
+            SpanAttributes.NET_PEER_NAME: "examplehost",
+            SpanAttributes.HTTP_METHOD: "GET",
+            SpanAttributes.HTTP_FLAVOR: "1.1",
+            SpanAttributes.HTTP_SCHEME: "http",
         }
 
         for (
             resource_metrics
         ) in self.memory_metrics_reader.get_metrics_data().resource_metrics:
             for scope_metrics in resource_metrics.scope_metrics:
+                self.assertEqual(len(scope_metrics.metrics), 1)
                 for metric in scope_metrics.metrics:
+                    self.assertEqual(metric.unit, "ms")
+                    self.assertEqual(
+                        metric.description,
+                        "measures the duration of the outbound HTTP request",
+                    )
                     for data_point in metric.data.data_points:
                         self.assertDictEqual(
                             expected_attributes, dict(data_point.attributes)
                         )
+                        self.assertEqual(data_point.count, 1)
+
+    def test_basic_metric_new_semconv(self):
+        self.perform_request(self.URL)
+
+        expected_attributes = {
+            HTTP_RESPONSE_STATUS_CODE: 200,
+            SERVER_ADDRESS: "examplehost",
+            SERVER_PORT: 8000,
+            HTTP_REQUEST_METHOD: "GET",
+            NETWORK_PROTOCOL_VERSION: "1.1",
+        }
+        for (
+            resource_metrics
+        ) in self.memory_metrics_reader.get_metrics_data().resource_metrics:
+            for scope_metrics in resource_metrics.scope_metrics:
+                self.assertEqual(len(scope_metrics.metrics), 1)
+                for metric in scope_metrics.metrics:
+                    self.assertEqual(metric.unit, "s")
+                    self.assertEqual(
+                        metric.description, "Duration of HTTP client requests."
+                    )
+                    for data_point in metric.data.data_points:
+                        self.assertDictEqual(
+                            expected_attributes, dict(data_point.attributes)
+                        )
+                        self.assertEqual(data_point.count, 1)
+
+    def test_basic_metric_both_semconv(self):
+        self.perform_request(self.URL)
+
+        expected_attributes_old = {
+            SpanAttributes.HTTP_STATUS_CODE: 200,
+            SpanAttributes.HTTP_HOST: "examplehost",
+            SpanAttributes.NET_PEER_PORT: 8000,
+            SpanAttributes.NET_PEER_NAME: "examplehost",
+            SpanAttributes.HTTP_METHOD: "GET",
+            SpanAttributes.HTTP_FLAVOR: "1.1",
+            SpanAttributes.HTTP_SCHEME: "http",
+        }
+
+        expected_attributes_new = {
+            HTTP_RESPONSE_STATUS_CODE: 200,
+            SERVER_ADDRESS: "examplehost",
+            SERVER_PORT: 8000,
+            HTTP_REQUEST_METHOD: "GET",
+            NETWORK_PROTOCOL_VERSION: "1.1",
+        }
+
+        for (
+            resource_metrics
+        ) in self.memory_metrics_reader.get_metrics_data().resource_metrics:
+            for scope_metrics in resource_metrics.scope_metrics:
+                self.assertEqual(len(scope_metrics.metrics), 2)
+                for metric in scope_metrics.metrics:
+                    for data_point in metric.data.data_points:
+                        if metric.unit == "ms":
+                            self.assertDictEqual(
+                                expected_attributes_old,
+                                dict(data_point.attributes),
+                            )
+                        else:
+                            self.assertDictEqual(
+                                expected_attributes_new,
+                                dict(data_point.attributes),
+                            )
                         self.assertEqual(data_point.count, 1)

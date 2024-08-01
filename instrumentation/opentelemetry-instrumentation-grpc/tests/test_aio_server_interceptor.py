@@ -12,26 +12,10 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 import asyncio
-
-try:
-    from unittest import IsolatedAsyncioTestCase
-except ImportError:
-    # unittest.IsolatedAsyncioTestCase was introduced in Python 3.8. It's use
-    # simplifies the following tests. Without it, the amount of test code
-    # increases significantly, with most of the additional code handling
-    # the asyncio set up.
-    from unittest import TestCase
-
-    class IsolatedAsyncioTestCase(TestCase):
-        def run(self, result=None):
-            self.skipTest(
-                "This test requires Python 3.8 for unittest.IsolatedAsyncioTestCase"
-            )
-
+from unittest import IsolatedAsyncioTestCase
 
 import grpc
 import grpc.aio
-import pytest
 
 import opentelemetry.instrumentation.grpc
 from opentelemetry import trace
@@ -88,13 +72,15 @@ async def run_with_test_server(
     channel = grpc.aio.insecure_channel(f"localhost:{port:d}")
 
     await server.start()
-    resp = await runnable(channel)
-    await server.stop(1000)
+
+    try:
+        resp = await runnable(channel)
+    finally:
+        await server.stop(1000)
 
     return resp
 
 
-@pytest.mark.asyncio
 class TestOpenTelemetryAioServerInterceptor(TestBase, IsolatedAsyncioTestCase):
     async def test_instrumentor(self):
         """Check that automatic instrumentation configures the interceptor"""
@@ -504,9 +490,7 @@ class TestOpenTelemetryAioServerInterceptor(TestBase, IsolatedAsyncioTestCase):
         class AbortServicer(GRPCTestServerServicer):
             # pylint:disable=C0103
             async def SimpleMethod(self, request, context):
-                await context.abort(
-                    grpc.StatusCode.FAILED_PRECONDITION, failure_message
-                )
+                await context.abort(grpc.StatusCode.INTERNAL, failure_message)
 
         testcase = self
 
@@ -514,8 +498,11 @@ class TestOpenTelemetryAioServerInterceptor(TestBase, IsolatedAsyncioTestCase):
             request = Request(client_id=1, request_data=failure_message)
             msg = request.SerializeToString()
 
-            with testcase.assertRaises(Exception):
+            with testcase.assertRaises(grpc.RpcError) as cm:
                 await channel.unary_unary(rpc_call)(msg)
+
+            self.assertEqual(cm.exception.code(), grpc.StatusCode.INTERNAL)
+            self.assertEqual(cm.exception.details(), failure_message)
 
         await run_with_test_server(request, servicer=AbortServicer())
 
@@ -535,8 +522,70 @@ class TestOpenTelemetryAioServerInterceptor(TestBase, IsolatedAsyncioTestCase):
         self.assertEqual(span.status.status_code, StatusCode.ERROR)
         self.assertEqual(
             span.status.description,
-            f"{grpc.StatusCode.FAILED_PRECONDITION}:{failure_message}",
+            f"{grpc.StatusCode.INTERNAL}:{failure_message}",
         )
+
+        # Check attributes
+        self.assertSpanHasAttributes(
+            span,
+            {
+                SpanAttributes.NET_PEER_IP: "[::1]",
+                SpanAttributes.NET_PEER_NAME: "localhost",
+                SpanAttributes.RPC_METHOD: "SimpleMethod",
+                SpanAttributes.RPC_SERVICE: "GRPCTestServer",
+                SpanAttributes.RPC_SYSTEM: "grpc",
+                SpanAttributes.RPC_GRPC_STATUS_CODE: grpc.StatusCode.INTERNAL.value[
+                    0
+                ],
+            },
+        )
+
+    async def test_abort_with_trailing_metadata(self):
+        """Check that we can catch an abort properly when trailing_metadata provided"""
+        rpc_call = "/GRPCTestServer/SimpleMethod"
+        failure_message = "failure message"
+
+        class AbortServicer(GRPCTestServerServicer):
+            # pylint:disable=C0103
+            async def SimpleMethod(self, request, context):
+                metadata = (("meta", "data"),)
+                await context.abort(
+                    grpc.StatusCode.FAILED_PRECONDITION,
+                    failure_message,
+                    trailing_metadata=metadata,
+                )
+
+        testcase = self
+
+        async def request(channel):
+            request = Request(client_id=1, request_data=failure_message)
+            msg = request.SerializeToString()
+
+            with testcase.assertRaises(grpc.RpcError) as cm:
+                await channel.unary_unary(rpc_call)(msg)
+
+            self.assertEqual(
+                cm.exception.code(), grpc.StatusCode.FAILED_PRECONDITION
+            )
+            self.assertEqual(cm.exception.details(), failure_message)
+
+        await run_with_test_server(request, servicer=AbortServicer())
+
+        spans_list = self.memory_exporter.get_finished_spans()
+        self.assertEqual(len(spans_list), 1)
+        span = spans_list[0]
+
+        self.assertEqual(span.name, rpc_call)
+        self.assertIs(span.kind, trace.SpanKind.SERVER)
+
+        # Check version and name in span's instrumentation info
+        self.assertEqualSpanInstrumentationInfo(
+            span, opentelemetry.instrumentation.grpc
+        )
+
+        # make sure this span errored, with the right status and detail
+        self.assertEqual(span.status.status_code, StatusCode.UNSET)
+        self.assertEqual(span.status.description, None)
 
         # Check attributes
         self.assertSpanHasAttributes(
