@@ -19,6 +19,9 @@ import jinja2
 from packaging import version
 
 from opentelemetry import trace as trace_api
+from opentelemetry.instrumentation._semconv import (
+    _OpenTelemetrySemanticConventionStability,
+)
 from opentelemetry.instrumentation.jinja2 import Jinja2Instrumentor
 from opentelemetry.test.test_base import TestBase
 from opentelemetry.trace import get_tracer
@@ -30,6 +33,7 @@ TMPL_DIR = os.path.join(TEST_DIR, "templates")
 class TestJinja2Instrumentor(TestBase):
     def setUp(self):
         super().setUp()
+        _OpenTelemetrySemanticConventionStability._initialized = False
         Jinja2Instrumentor().instrument()
         # prevent cache effects when using Template('code...')
         if version.parse(jinja2.__version__) >= version.parse("3.0.0"):

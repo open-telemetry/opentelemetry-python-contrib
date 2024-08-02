@@ -14,3 +14,7 @@
 
 
 _instruments = ("jinja2 >= 2.7, < 4.0",)
+
+_supports_metrics = False
+
+_semconv_status = "migration"

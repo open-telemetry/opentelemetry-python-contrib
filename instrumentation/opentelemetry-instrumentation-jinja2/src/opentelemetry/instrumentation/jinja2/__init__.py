@@ -45,6 +45,11 @@ from typing import Collection
 import jinja2
 from wrapt import wrap_function_wrapper as _wrap
 
+from opentelemetry.instrumentation._semconv import (
+    _get_schema_url,
+    _HTTPStabilityMode,
+    _OpenTelemetrySemanticConventionStability,
+)
 from opentelemetry.instrumentation.instrumentor import BaseInstrumentor
 from opentelemetry.instrumentation.jinja2.package import _instruments
 from opentelemetry.instrumentation.jinja2.version import __version__
@@ -125,16 +130,20 @@ class Jinja2Instrumentor(BaseInstrumentor):
     See `BaseInstrumentor`
     """
 
+    def __init__(self):
+        self._sem_conv_opt_in_mode = _HTTPStabilityMode.DEFAULT
+
     def instrumentation_dependencies(self) -> Collection[str]:
         return _instruments
 
     def _instrument(self, **kwargs):
+        _OpenTelemetrySemanticConventionStability._initialize()
         tracer_provider = kwargs.get("tracer_provider")
         tracer = get_tracer(
             __name__,
             __version__,
             tracer_provider,
-            schema_url="https://opentelemetry.io/schemas/1.11.0",
+            schema_url=_get_schema_url(self._sem_conv_opt_in_mode),
         )
 
         _wrap(jinja2, "environment.Template.render", _wrap_render(tracer))
