@@ -1683,13 +1683,6 @@ class TestAsgiAttributes(unittest.TestCase):
             attrs[SpanAttributes.HTTP_URL], "http://127.0.0.1/?foo=bar"
         )
 
-    def test_query_string_new_semconv(self):
-        self.scope["query_string"] = b"foo=bar"
-        attrs = otel_asgi.collect_request_attributes(
-            self.scope,
-            _HTTPStabilityMode.HTTP,
-        )
-
     def test_query_string_both_semconv(self):
         self.scope["query_string"] = b"foo=bar"
         attrs = otel_asgi.collect_request_attributes(
