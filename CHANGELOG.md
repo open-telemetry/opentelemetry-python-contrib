@@ -7,11 +7,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## Unreleased
 
-- `opentelemetry-instrumentation-tornado` Handle http client exception and record exception info into span
-  ([#2563](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/2563))
 
 ## Added
 
+- `opentelemetry-instrumentation-tornado` Handle http client exception and record exception info into span
+  ([#2563](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/2563))
 ## Breaking changes
 
 ## Fixed
