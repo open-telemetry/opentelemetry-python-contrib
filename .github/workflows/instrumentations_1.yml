@@ -38,7 +38,6 @@ jobs:
           - "resource-detector-azure"
           - "resource-detector-container"
           - "util-http"
-          - "fastapislim"
           - "processor-baggage"
         os: [ubuntu-20.04]
         exclude:
