@@ -26,7 +26,7 @@ classifiers = [
 ]
 dependencies = [
   "opentelemetry-instrumentation == 0.48b0.dev",
-  "opentelemetry-propagator-aws-xray == 1.0.1",
+  "opentelemetry-propagator-aws-xray ~= 1.0.1",
   "opentelemetry-semantic-conventions == 0.48b0.dev",
 ]
 
