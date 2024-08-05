@@ -39,6 +39,7 @@ jobs:
           - "resource-detector-container"
           - "util-http"
           - "processor-baggage"
+          - "kafka-pythonng"
         os: [ubuntu-20.04]
         exclude:
           - python-version: pypy3
