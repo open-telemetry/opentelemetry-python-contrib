@@ -1,7 +1,7 @@
 import os
 
 import opentelemetry.instrumentation.asgi as otel_asgi
-from opentelemetry.test.asgitestutil import AsgiTestBase
+from opentelemetry.test.asgitestutil import AsyncAsgiTestBase
 from opentelemetry.test.test_base import TestBase
 from opentelemetry.trace import SpanKind
 from opentelemetry.util.http import (
@@ -90,7 +90,7 @@ async def websocket_app_with_custom_headers(scope, receive, send):
             break
 
 
-class TestCustomHeaders(AsgiTestBase, TestBase):
+class TestCustomHeaders(AsyncAsgiTestBase):
     constructor_params = {}
     __test__ = False
 
@@ -108,7 +108,7 @@ class TestCustomHeaders(AsgiTestBase, TestBase):
             **self.constructor_params,
         )
 
-    def test_http_custom_request_headers_in_span_attributes(self):
+    async def test_http_custom_request_headers_in_span_attributes(self):
         self.scope["headers"].extend(
             [
                 (b"custom-test-header-1", b"test-header-value-1"),
@@ -119,8 +119,8 @@ class TestCustomHeaders(AsgiTestBase, TestBase):
             ]
         )
         self.seed_app(self.app)
-        self.send_default_request()
-        self.get_all_output()
+        await self.send_default_request()
+        await self.get_all_output()
         span_list = self.exporter.get_finished_spans()
         expected = {
             "http.request.header.custom_test_header_1": (
@@ -139,7 +139,7 @@ class TestCustomHeaders(AsgiTestBase, TestBase):
             if span.kind == SpanKind.SERVER:
                 self.assertSpanHasAttributes(span, expected)
 
-    def test_http_repeat_request_headers_in_span_attributes(self):
+    async def test_http_repeat_request_headers_in_span_attributes(self):
         self.scope["headers"].extend(
             [
                 (b"custom-test-header-1", b"test-header-value-1"),
@@ -147,8 +147,8 @@ class TestCustomHeaders(AsgiTestBase, TestBase):
             ]
         )
         self.seed_app(self.app)
-        self.send_default_request()
-        self.get_all_output()
+        await self.send_default_request()
+        await self.get_all_output()
         span_list = self.exporter.get_finished_spans()
         expected = {
             "http.request.header.custom_test_header_1": (
@@ -159,15 +159,15 @@ class TestCustomHeaders(AsgiTestBase, TestBase):
         span = next(span for span in span_list if span.kind == SpanKind.SERVER)
         self.assertSpanHasAttributes(span, expected)
 
-    def test_http_custom_request_headers_not_in_span_attributes(self):
+    async def test_http_custom_request_headers_not_in_span_attributes(self):
         self.scope["headers"].extend(
             [
                 (b"custom-test-header-1", b"test-header-value-1"),
             ]
         )
         self.seed_app(self.app)
-        self.send_default_request()
-        self.get_all_output()
+        await self.send_default_request()
+        await self.get_all_output()
         span_list = self.exporter.get_finished_spans()
         expected = {
             "http.request.header.custom_test_header_1": (
@@ -185,15 +185,15 @@ class TestCustomHeaders(AsgiTestBase, TestBase):
                 for key, _ in not_expected.items():
                     self.assertNotIn(key, span.attributes)
 
-    def test_http_custom_response_headers_in_span_attributes(self):
+    async def test_http_custom_response_headers_in_span_attributes(self):
         self.app = otel_asgi.OpenTelemetryMiddleware(
             http_app_with_custom_headers,
             tracer_provider=self.tracer_provider,
             **self.constructor_params,
         )
         self.seed_app(self.app)
-        self.send_default_request()
-        self.get_all_output()
+        await self.send_default_request()
+        await self.get_all_output()
         span_list = self.exporter.get_finished_spans()
         expected = {
             "http.response.header.custom_test_header_1": (
@@ -214,15 +214,15 @@ class TestCustomHeaders(AsgiTestBase, TestBase):
             if span.kind == SpanKind.SERVER:
                 self.assertSpanHasAttributes(span, expected)
 
-    def test_http_repeat_response_headers_in_span_attributes(self):
+    async def test_http_repeat_response_headers_in_span_attributes(self):
         self.app = otel_asgi.OpenTelemetryMiddleware(
             http_app_with_repeat_headers,
             tracer_provider=self.tracer_provider,
             **self.constructor_params,
         )
         self.seed_app(self.app)
-        self.send_default_request()
-        self.get_all_output()
+        await self.send_default_request()
+        await self.get_all_output()
         span_list = self.exporter.get_finished_spans()
         expected = {
             "http.response.header.custom_test_header_1": (
@@ -233,15 +233,15 @@ class TestCustomHeaders(AsgiTestBase, TestBase):
         span = next(span for span in span_list if span.kind == SpanKind.SERVER)
         self.assertSpanHasAttributes(span, expected)
 
-    def test_http_custom_response_headers_not_in_span_attributes(self):
+    async def test_http_custom_response_headers_not_in_span_attributes(self):
         self.app = otel_asgi.OpenTelemetryMiddleware(
             http_app_with_custom_headers,
             tracer_provider=self.tracer_provider,
             **self.constructor_params,
         )
         self.seed_app(self.app)
-        self.send_default_request()
-        self.get_all_output()
+        await self.send_default_request()
+        await self.get_all_output()
         span_list = self.exporter.get_finished_spans()
         not_expected = {
             "http.response.header.custom_test_header_3": (
@@ -253,7 +253,7 @@ class TestCustomHeaders(AsgiTestBase, TestBase):
                 for key, _ in not_expected.items():
                     self.assertNotIn(key, span.attributes)
 
-    def test_websocket_custom_request_headers_in_span_attributes(self):
+    async def test_websocket_custom_request_headers_in_span_attributes(self):
         self.scope = {
             "type": "websocket",
             "http_version": "1.1",
@@ -271,11 +271,11 @@ class TestCustomHeaders(AsgiTestBase, TestBase):
             "server": ("127.0.0.1", 80),
         }
         self.seed_app(self.app)
-        self.send_input({"type": "websocket.connect"})
-        self.send_input({"type": "websocket.receive", "text": "ping"})
-        self.send_input({"type": "websocket.disconnect"})
+        await self.send_input({"type": "websocket.connect"})
+        await self.send_input({"type": "websocket.receive", "text": "ping"})
+        await self.send_input({"type": "websocket.disconnect"})
 
-        self.get_all_output()
+        await self.get_all_output()
         span_list = self.exporter.get_finished_spans()
         expected = {
             "http.request.header.custom_test_header_1": (
@@ -294,7 +294,9 @@ class TestCustomHeaders(AsgiTestBase, TestBase):
             if span.kind == SpanKind.SERVER:
                 self.assertSpanHasAttributes(span, expected)
 
-    def test_websocket_custom_request_headers_not_in_span_attributes(self):
+    async def test_websocket_custom_request_headers_not_in_span_attributes(
+        self,
+    ):
         self.scope = {
             "type": "websocket",
             "http_version": "1.1",
@@ -309,11 +311,11 @@ class TestCustomHeaders(AsgiTestBase, TestBase):
             "server": ("127.0.0.1", 80),
         }
         self.seed_app(self.app)
-        self.send_input({"type": "websocket.connect"})
-        self.send_input({"type": "websocket.receive", "text": "ping"})
-        self.send_input({"type": "websocket.disconnect"})
+        await self.send_input({"type": "websocket.connect"})
+        await self.send_input({"type": "websocket.receive", "text": "ping"})
+        await self.send_input({"type": "websocket.disconnect"})
 
-        self.get_all_output()
+        await self.get_all_output()
         span_list = self.exporter.get_finished_spans()
         not_expected = {
             "http.request.header.custom_test_header_3": (
@@ -325,7 +327,7 @@ class TestCustomHeaders(AsgiTestBase, TestBase):
                 for key, _ in not_expected.items():
                     self.assertNotIn(key, span.attributes)
 
-    def test_websocket_custom_response_headers_in_span_attributes(self):
+    async def test_websocket_custom_response_headers_in_span_attributes(self):
         self.scope = {
             "type": "websocket",
             "http_version": "1.1",
@@ -342,10 +344,10 @@ class TestCustomHeaders(AsgiTestBase, TestBase):
             **self.constructor_params,
         )
         self.seed_app(self.app)
-        self.send_input({"type": "websocket.connect"})
-        self.send_input({"type": "websocket.receive", "text": "ping"})
-        self.send_input({"type": "websocket.disconnect"})
-        self.get_all_output()
+        await self.send_input({"type": "websocket.connect"})
+        await self.send_input({"type": "websocket.receive", "text": "ping"})
+        await self.send_input({"type": "websocket.disconnect"})
+        await self.get_all_output()
         span_list = self.exporter.get_finished_spans()
         expected = {
             "http.response.header.custom_test_header_1": (
@@ -366,7 +368,9 @@ class TestCustomHeaders(AsgiTestBase, TestBase):
             if span.kind == SpanKind.SERVER:
                 self.assertSpanHasAttributes(span, expected)
 
-    def test_websocket_custom_response_headers_not_in_span_attributes(self):
+    async def test_websocket_custom_response_headers_not_in_span_attributes(
+        self,
+    ):
         self.scope = {
             "type": "websocket",
             "http_version": "1.1",
@@ -383,10 +387,10 @@ class TestCustomHeaders(AsgiTestBase, TestBase):
             **self.constructor_params,
         )
         self.seed_app(self.app)
-        self.send_input({"type": "websocket.connect"})
-        self.send_input({"type": "websocket.receive", "text": "ping"})
-        self.send_input({"type": "websocket.disconnect"})
-        self.get_all_output()
+        await self.send_input({"type": "websocket.connect"})
+        await self.send_input({"type": "websocket.receive", "text": "ping"})
+        await self.send_input({"type": "websocket.disconnect"})
+        await self.get_all_output()
         span_list = self.exporter.get_finished_spans()
         not_expected = {
             "http.response.header.custom_test_header_3": (
