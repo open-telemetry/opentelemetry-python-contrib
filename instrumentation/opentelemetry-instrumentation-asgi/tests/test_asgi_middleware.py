@@ -14,7 +14,6 @@
 
 # pylint: disable=too-many-lines
 
-import asyncio
 import sys
 import time
 import unittest
@@ -68,7 +67,7 @@ from opentelemetry.semconv.attributes.user_agent_attributes import (
 )
 from opentelemetry.semconv.trace import SpanAttributes
 from opentelemetry.test.asgitestutil import (
-    AsgiTestBase,
+    AsyncAsgiTestBase,
     setup_testing_defaults,
 )
 from opentelemetry.test.test_base import TestBase
@@ -279,7 +278,7 @@ async def error_asgi(scope, receive, send):
 
 
 # pylint: disable=too-many-public-methods
-class TestAsgiApplication(AsgiTestBase):
+class TestAsgiApplication(AsyncAsgiTestBase):
     def setUp(self):
         super().setUp()
 
@@ -485,31 +484,31 @@ class TestAsgiApplication(AsgiTestBase):
                 "opentelemetry.instrumentation.asgi",
             )
 
-    def test_basic_asgi_call(self):
+    async def test_basic_asgi_call(self):
         """Test that spans are emitted as expected."""
         app = otel_asgi.OpenTelemetryMiddleware(simple_asgi)
         self.seed_app(app)
-        self.send_default_request()
-        outputs = self.get_all_output()
+        await self.send_default_request()
+        outputs = await self.get_all_output()
         self.validate_outputs(outputs)
 
-    def test_basic_asgi_call_new_semconv(self):
+    async def test_basic_asgi_call_new_semconv(self):
         """Test that spans are emitted as expected."""
         app = otel_asgi.OpenTelemetryMiddleware(simple_asgi)
         self.seed_app(app)
-        self.send_default_request()
-        outputs = self.get_all_output()
+        await self.send_default_request()
+        outputs = await self.get_all_output()
         self.validate_outputs(outputs, old_sem_conv=False, new_sem_conv=True)
 
-    def test_basic_asgi_call_both_semconv(self):
+    async def test_basic_asgi_call_both_semconv(self):
         """Test that spans are emitted as expected."""
         app = otel_asgi.OpenTelemetryMiddleware(simple_asgi)
         self.seed_app(app)
-        self.send_default_request()
-        outputs = self.get_all_output()
+        await self.send_default_request()
+        outputs = await self.get_all_output()
         self.validate_outputs(outputs, old_sem_conv=True, new_sem_conv=True)
 
-    def test_asgi_not_recording(self):
+    async def test_asgi_not_recording(self):
         mock_tracer = mock.Mock()
         mock_span = mock.Mock()
         mock_span.is_recording.return_value = False
@@ -522,21 +521,21 @@ class TestAsgiApplication(AsgiTestBase):
             tracer.return_value = mock_tracer
             app = otel_asgi.OpenTelemetryMiddleware(simple_asgi)
             self.seed_app(app)
-            self.send_default_request()
+            await self.send_default_request()
             self.assertFalse(mock_span.is_recording())
             self.assertTrue(mock_span.is_recording.called)
             self.assertFalse(mock_span.set_attribute.called)
             self.assertFalse(mock_span.set_status.called)
 
-    def test_asgi_exc_info(self):
+    async def test_asgi_exc_info(self):
         """Test that exception information is emitted as expected."""
         app = otel_asgi.OpenTelemetryMiddleware(error_asgi)
         self.seed_app(app)
-        self.send_default_request()
-        outputs = self.get_all_output()
+        await self.send_default_request()
+        outputs = await self.get_all_output()
         self.validate_outputs(outputs, error=ValueError)
 
-    def test_long_response(self):
+    async def test_long_response(self):
         """Test that the server span is ended on the final response body message.
 
         If the server span is ended early then this test will fail due
@@ -544,8 +543,8 @@ class TestAsgiApplication(AsgiTestBase):
         """
         app = otel_asgi.OpenTelemetryMiddleware(long_response_asgi)
         self.seed_app(app)
-        self.send_default_request()
-        outputs = self.get_all_output()
+        await self.send_default_request()
+        outputs = await self.get_all_output()
 
         def add_more_body_spans(expected: list):
             more_body_span = {
@@ -559,12 +558,12 @@ class TestAsgiApplication(AsgiTestBase):
 
         self.validate_outputs(outputs, modifiers=[add_more_body_spans])
 
-    def test_background_execution(self):
+    async def test_background_execution(self):
         """Test that the server span is ended BEFORE the background task is finished."""
         app = otel_asgi.OpenTelemetryMiddleware(background_execution_asgi)
         self.seed_app(app)
-        self.send_default_request()
-        outputs = self.get_all_output()
+        await self.send_default_request()
+        outputs = await self.get_all_output()
         self.validate_outputs(outputs)
         span_list = self.memory_exporter.get_finished_spans()
         server_span = span_list[-1]
@@ -575,15 +574,15 @@ class TestAsgiApplication(AsgiTestBase):
             _SIMULATED_BACKGROUND_TASK_EXECUTION_TIME_S * 10**9,
         )
 
-    def test_trailers(self):
+    async def test_trailers(self):
         """Test that trailers are emitted as expected and that the server span is ended
         BEFORE the background task is finished."""
         app = otel_asgi.OpenTelemetryMiddleware(
             background_execution_trailers_asgi
         )
         self.seed_app(app)
-        self.send_default_request()
-        outputs = self.get_all_output()
+        await self.send_default_request()
+        outputs = await self.get_all_output()
 
         def add_body_and_trailer_span(expected: list):
             body_span = {
@@ -610,7 +609,7 @@ class TestAsgiApplication(AsgiTestBase):
             _SIMULATED_BACKGROUND_TASK_EXECUTION_TIME_S * 10**9,
         )
 
-    def test_override_span_name(self):
+    async def test_override_span_name(self):
         """Test that default span_names can be overwritten by our callback function."""
         span_name = "Dymaxion"
 
@@ -631,11 +630,11 @@ class TestAsgiApplication(AsgiTestBase):
             simple_asgi, default_span_details=get_predefined_span_details
         )
         self.seed_app(app)
-        self.send_default_request()
-        outputs = self.get_all_output()
+        await self.send_default_request()
+        outputs = await self.get_all_output()
         self.validate_outputs(outputs, modifiers=[update_expected_span_name])
 
-    def test_custom_tracer_provider_otel_asgi(self):
+    async def test_custom_tracer_provider_otel_asgi(self):
         resource = resources.Resource.create({"service-test-key": "value"})
         result = TestBase.create_tracer_provider(resource=resource)
         tracer_provider, exporter = result
@@ -644,28 +643,28 @@ class TestAsgiApplication(AsgiTestBase):
             simple_asgi, tracer_provider=tracer_provider
         )
         self.seed_app(app)
-        self.send_default_request()
+        await self.send_default_request()
         span_list = exporter.get_finished_spans()
         for span in span_list:
             self.assertEqual(
                 span.resource.attributes["service-test-key"], "value"
             )
 
-    def test_no_op_tracer_provider_otel_asgi(self):
+    async def test_no_op_tracer_provider_otel_asgi(self):
         app = otel_asgi.OpenTelemetryMiddleware(
             simple_asgi, tracer_provider=trace_api.NoOpTracerProvider()
         )
         self.seed_app(app)
-        self.send_default_request()
+        await self.send_default_request()
 
-        response_start, response_body, *_ = self.get_all_output()
+        response_start, response_body, *_ = await self.get_all_output()
         self.assertEqual(response_body["body"], b"*")
         self.assertEqual(response_start["status"], 200)
 
         span_list = self.memory_exporter.get_finished_spans()
         self.assertEqual(len(span_list), 0)
 
-    def test_behavior_with_scope_server_as_none(self):
+    async def test_behavior_with_scope_server_as_none(self):
         """Test that middleware is ok when server is none in scope."""
 
         def update_expected_server(expected):
@@ -681,11 +680,11 @@ class TestAsgiApplication(AsgiTestBase):
         self.scope["server"] = None
         app = otel_asgi.OpenTelemetryMiddleware(simple_asgi)
         self.seed_app(app)
-        self.send_default_request()
-        outputs = self.get_all_output()
+        await self.send_default_request()
+        outputs = await self.get_all_output()
         self.validate_outputs(outputs, modifiers=[update_expected_server])
 
-    def test_behavior_with_scope_server_as_none_new_semconv(self):
+    async def test_behavior_with_scope_server_as_none_new_semconv(self):
         """Test that middleware is ok when server is none in scope."""
 
         def update_expected_server(expected):
@@ -701,8 +700,8 @@ class TestAsgiApplication(AsgiTestBase):
         self.scope["server"] = None
         app = otel_asgi.OpenTelemetryMiddleware(simple_asgi)
         self.seed_app(app)
-        self.send_default_request()
-        outputs = self.get_all_output()
+        await self.send_default_request()
+        outputs = await self.get_all_output()
         self.validate_outputs(
             outputs,
             modifiers=[update_expected_server],
@@ -710,7 +709,7 @@ class TestAsgiApplication(AsgiTestBase):
             new_sem_conv=True,
         )
 
-    def test_behavior_with_scope_server_as_none_both_semconv(self):
+    async def test_behavior_with_scope_server_as_none_both_semconv(self):
         """Test that middleware is ok when server is none in scope."""
 
         def update_expected_server(expected):
@@ -729,8 +728,8 @@ class TestAsgiApplication(AsgiTestBase):
         self.scope["server"] = None
         app = otel_asgi.OpenTelemetryMiddleware(simple_asgi)
         self.seed_app(app)
-        self.send_default_request()
-        outputs = self.get_all_output()
+        await self.send_default_request()
+        outputs = await self.get_all_output()
         self.validate_outputs(
             outputs,
             modifiers=[update_expected_server],
@@ -738,7 +737,7 @@ class TestAsgiApplication(AsgiTestBase):
             new_sem_conv=True,
         )
 
-    def test_host_header(self):
+    async def test_host_header(self):
         """Test that host header is converted to http.server_name."""
         hostname = b"server_name_1"
 
@@ -751,11 +750,11 @@ class TestAsgiApplication(AsgiTestBase):
         self.scope["headers"].append([b"host", hostname])
         app = otel_asgi.OpenTelemetryMiddleware(simple_asgi)
         self.seed_app(app)
-        self.send_default_request()
-        outputs = self.get_all_output()
+        await self.send_default_request()
+        outputs = await self.get_all_output()
         self.validate_outputs(outputs, modifiers=[update_expected_server])
 
-    def test_host_header_both_semconv(self):
+    async def test_host_header_both_semconv(self):
         """Test that host header is converted to http.server_name."""
         hostname = b"server_name_1"
 
@@ -768,8 +767,8 @@ class TestAsgiApplication(AsgiTestBase):
         self.scope["headers"].append([b"host", hostname])
         app = otel_asgi.OpenTelemetryMiddleware(simple_asgi)
         self.seed_app(app)
-        self.send_default_request()
-        outputs = self.get_all_output()
+        await self.send_default_request()
+        outputs = await self.get_all_output()
         self.validate_outputs(
             outputs,
             modifiers=[update_expected_server],
@@ -777,7 +776,7 @@ class TestAsgiApplication(AsgiTestBase):
             new_sem_conv=True,
         )
 
-    def test_user_agent(self):
+    async def test_user_agent(self):
         """Test that host header is converted to http.server_name."""
         user_agent = b"test-agent"
 
@@ -790,11 +789,11 @@ class TestAsgiApplication(AsgiTestBase):
         self.scope["headers"].append([b"user-agent", user_agent])
         app = otel_asgi.OpenTelemetryMiddleware(simple_asgi)
         self.seed_app(app)
-        self.send_default_request()
-        outputs = self.get_all_output()
+        await self.send_default_request()
+        outputs = await self.get_all_output()
         self.validate_outputs(outputs, modifiers=[update_expected_user_agent])
 
-    def test_user_agent_new_semconv(self):
+    async def test_user_agent_new_semconv(self):
         """Test that host header is converted to http.server_name."""
         user_agent = b"test-agent"
 
@@ -807,8 +806,8 @@ class TestAsgiApplication(AsgiTestBase):
         self.scope["headers"].append([b"user-agent", user_agent])
         app = otel_asgi.OpenTelemetryMiddleware(simple_asgi)
         self.seed_app(app)
-        self.send_default_request()
-        outputs = self.get_all_output()
+        await self.send_default_request()
+        outputs = await self.get_all_output()
         self.validate_outputs(
             outputs,
             modifiers=[update_expected_user_agent],
@@ -816,7 +815,7 @@ class TestAsgiApplication(AsgiTestBase):
             new_sem_conv=True,
         )
 
-    def test_user_agent_both_semconv(self):
+    async def test_user_agent_both_semconv(self):
         """Test that host header is converted to http.server_name."""
         user_agent = b"test-agent"
 
@@ -832,8 +831,8 @@ class TestAsgiApplication(AsgiTestBase):
         self.scope["headers"].append([b"user-agent", user_agent])
         app = otel_asgi.OpenTelemetryMiddleware(simple_asgi)
         self.seed_app(app)
-        self.send_default_request()
-        outputs = self.get_all_output()
+        await self.send_default_request()
+        outputs = await self.get_all_output()
         self.validate_outputs(
             outputs,
             modifiers=[update_expected_user_agent],
@@ -841,7 +840,7 @@ class TestAsgiApplication(AsgiTestBase):
             new_sem_conv=True,
         )
 
-    def test_traceresponse_header(self):
+    async def test_traceresponse_header(self):
         """Test a traceresponse header is sent when a global propagator is set."""
 
         orig = get_global_response_propagator()
@@ -849,12 +848,12 @@ class TestAsgiApplication(AsgiTestBase):
 
         app = otel_asgi.OpenTelemetryMiddleware(simple_asgi)
         self.seed_app(app)
-        self.send_default_request()
+        await self.send_default_request()
 
         span = self.memory_exporter.get_finished_spans()[-1]
         self.assertEqual(trace_api.SpanKind.SERVER, span.kind)
 
-        response_start, response_body, *_ = self.get_all_output()
+        response_start, response_body, *_ = await self.get_all_output()
         self.assertEqual(response_body["body"], b"*")
         self.assertEqual(response_start["status"], 200)
 
@@ -874,7 +873,7 @@ class TestAsgiApplication(AsgiTestBase):
 
         set_global_response_propagator(orig)
 
-    def test_websocket(self):
+    async def test_websocket(self):
         self.scope = {
             "method": "GET",
             "type": "websocket",
@@ -888,10 +887,10 @@ class TestAsgiApplication(AsgiTestBase):
         }
         app = otel_asgi.OpenTelemetryMiddleware(simple_asgi)
         self.seed_app(app)
-        self.send_input({"type": "websocket.connect"})
-        self.send_input({"type": "websocket.receive", "text": "ping"})
-        self.send_input({"type": "websocket.disconnect"})
-        self.get_all_output()
+        await self.send_input({"type": "websocket.connect"})
+        await self.send_input({"type": "websocket.receive", "text": "ping"})
+        await self.send_input({"type": "websocket.disconnect"})
+        await self.get_all_output()
         span_list = self.memory_exporter.get_finished_spans()
         self.assertEqual(len(span_list), 6)
         expected = [
@@ -948,7 +947,7 @@ class TestAsgiApplication(AsgiTestBase):
             self.assertEqual(span.kind, expected["kind"])
             self.assertDictEqual(dict(span.attributes), expected["attributes"])
 
-    def test_websocket_new_semconv(self):
+    async def test_websocket_new_semconv(self):
         self.scope = {
             "method": "GET",
             "type": "websocket",
@@ -962,10 +961,10 @@ class TestAsgiApplication(AsgiTestBase):
         }
         app = otel_asgi.OpenTelemetryMiddleware(simple_asgi)
         self.seed_app(app)
-        self.send_input({"type": "websocket.connect"})
-        self.send_input({"type": "websocket.receive", "text": "ping"})
-        self.send_input({"type": "websocket.disconnect"})
-        self.get_all_output()
+        await self.send_input({"type": "websocket.connect"})
+        await self.send_input({"type": "websocket.receive", "text": "ping"})
+        await self.send_input({"type": "websocket.disconnect"})
+        await self.get_all_output()
         span_list = self.memory_exporter.get_finished_spans()
         self.assertEqual(len(span_list), 6)
         expected = [
@@ -1022,7 +1021,7 @@ class TestAsgiApplication(AsgiTestBase):
             self.assertEqual(span.kind, expected["kind"])
             self.assertDictEqual(dict(span.attributes), expected["attributes"])
 
-    def test_websocket_both_semconv(self):
+    async def test_websocket_both_semconv(self):
         self.scope = {
             "method": "GET",
             "type": "websocket",
@@ -1036,10 +1035,10 @@ class TestAsgiApplication(AsgiTestBase):
         }
         app = otel_asgi.OpenTelemetryMiddleware(simple_asgi)
         self.seed_app(app)
-        self.send_input({"type": "websocket.connect"})
-        self.send_input({"type": "websocket.receive", "text": "ping"})
-        self.send_input({"type": "websocket.disconnect"})
-        self.get_all_output()
+        await self.send_input({"type": "websocket.connect"})
+        await self.send_input({"type": "websocket.receive", "text": "ping"})
+        await self.send_input({"type": "websocket.disconnect"})
+        await self.get_all_output()
         span_list = self.memory_exporter.get_finished_spans()
         self.assertEqual(len(span_list), 6)
         expected = [
@@ -1108,7 +1107,7 @@ class TestAsgiApplication(AsgiTestBase):
             self.assertEqual(span.kind, expected["kind"])
             self.assertDictEqual(dict(span.attributes), expected["attributes"])
 
-    def test_websocket_traceresponse_header(self):
+    async def test_websocket_traceresponse_header(self):
         """Test a traceresponse header is set for websocket messages"""
 
         orig = get_global_response_propagator()
@@ -1126,10 +1125,10 @@ class TestAsgiApplication(AsgiTestBase):
         }
         app = otel_asgi.OpenTelemetryMiddleware(simple_asgi)
         self.seed_app(app)
-        self.send_input({"type": "websocket.connect"})
-        self.send_input({"type": "websocket.receive", "text": "ping"})
-        self.send_input({"type": "websocket.disconnect"})
-        _, socket_send, *_ = self.get_all_output()
+        await self.send_input({"type": "websocket.connect"})
+        await self.send_input({"type": "websocket.receive", "text": "ping"})
+        await self.send_input({"type": "websocket.disconnect"})
+        _, socket_send, *_ = await self.get_all_output()
 
         span = self.memory_exporter.get_finished_spans()[-1]
         self.assertEqual(trace_api.SpanKind.SERVER, span.kind)
@@ -1148,15 +1147,15 @@ class TestAsgiApplication(AsgiTestBase):
 
         set_global_response_propagator(orig)
 
-    def test_lifespan(self):
+    async def test_lifespan(self):
         self.scope["type"] = "lifespan"
         app = otel_asgi.OpenTelemetryMiddleware(simple_asgi)
         self.seed_app(app)
-        self.send_default_request()
+        await self.send_default_request()
         span_list = self.memory_exporter.get_finished_spans()
         self.assertEqual(len(span_list), 0)
 
-    def test_hooks(self):
+    async def test_hooks(self):
         def server_request_hook(span, scope):
             span.update_name("name from server hook")
 
@@ -1183,20 +1182,20 @@ class TestAsgiApplication(AsgiTestBase):
             client_response_hook=client_response_hook,
         )
         self.seed_app(app)
-        self.send_default_request()
-        outputs = self.get_all_output()
+        await self.send_default_request()
+        outputs = await self.get_all_output()
         self.validate_outputs(
             outputs, modifiers=[update_expected_hook_results]
         )
 
-    def test_asgi_metrics(self):
+    async def test_asgi_metrics(self):
         app = otel_asgi.OpenTelemetryMiddleware(simple_asgi)
         self.seed_app(app)
-        self.send_default_request()
+        await self.send_default_request()
         self.seed_app(app)
-        self.send_default_request()
+        await self.send_default_request()
         self.seed_app(app)
-        self.send_default_request()
+        await self.send_default_request()
         metrics_list = self.memory_metrics_reader.get_metrics_data()
         number_data_point_seen = False
         histogram_data_point_seen = False
@@ -1225,14 +1224,14 @@ class TestAsgiApplication(AsgiTestBase):
                             )
         self.assertTrue(number_data_point_seen and histogram_data_point_seen)
 
-    def test_asgi_metrics_new_semconv(self):
+    async def test_asgi_metrics_new_semconv(self):
         app = otel_asgi.OpenTelemetryMiddleware(simple_asgi)
         self.seed_app(app)
-        self.send_default_request()
+        await self.send_default_request()
         self.seed_app(app)
-        self.send_default_request()
+        await self.send_default_request()
         self.seed_app(app)
-        self.send_default_request()
+        await self.send_default_request()
         metrics_list = self.memory_metrics_reader.get_metrics_data()
         number_data_point_seen = False
         histogram_data_point_seen = False
@@ -1261,14 +1260,14 @@ class TestAsgiApplication(AsgiTestBase):
                             )
         self.assertTrue(number_data_point_seen and histogram_data_point_seen)
 
-    def test_asgi_metrics_both_semconv(self):
+    async def test_asgi_metrics_both_semconv(self):
         app = otel_asgi.OpenTelemetryMiddleware(simple_asgi)
         self.seed_app(app)
-        self.send_default_request()
+        await self.send_default_request()
         self.seed_app(app)
-        self.send_default_request()
+        await self.send_default_request()
         self.seed_app(app)
-        self.send_default_request()
+        await self.send_default_request()
         metrics_list = self.memory_metrics_reader.get_metrics_data()
         number_data_point_seen = False
         histogram_data_point_seen = False
@@ -1297,11 +1296,11 @@ class TestAsgiApplication(AsgiTestBase):
                             )
         self.assertTrue(number_data_point_seen and histogram_data_point_seen)
 
-    def test_basic_metric_success(self):
+    async def test_basic_metric_success(self):
         app = otel_asgi.OpenTelemetryMiddleware(simple_asgi)
         self.seed_app(app)
         start = default_timer()
-        self.send_default_request()
+        await self.send_default_request()
         duration = max(round((default_timer() - start) * 1000), 0)
         expected_duration_attributes = {
             "http.method": "GET",
@@ -1344,7 +1343,7 @@ class TestAsgiApplication(AsgiTestBase):
                             )
                             self.assertEqual(point.value, 0)
 
-    def test_basic_metric_success_nonrecording_span(self):
+    async def test_basic_metric_success_nonrecording_span(self):
         mock_tracer = mock.Mock()
         mock_span = mock.Mock()
         mock_span.is_recording.return_value = False
@@ -1358,7 +1357,7 @@ class TestAsgiApplication(AsgiTestBase):
             app = otel_asgi.OpenTelemetryMiddleware(simple_asgi)
             self.seed_app(app)
             start = default_timer()
-            self.send_default_request()
+            await self.send_default_request()
             duration = max(round((default_timer() - start) * 1000), 0)
             expected_duration_attributes = {
                 "http.method": "GET",
@@ -1403,11 +1402,11 @@ class TestAsgiApplication(AsgiTestBase):
                                 )
                                 self.assertEqual(point.value, 0)
 
-    def test_basic_metric_success_new_semconv(self):
+    async def test_basic_metric_success_new_semconv(self):
         app = otel_asgi.OpenTelemetryMiddleware(simple_asgi)
         self.seed_app(app)
         start = default_timer()
-        self.send_default_request()
+        await self.send_default_request()
         duration_s = max(default_timer() - start, 0)
         expected_duration_attributes = {
             "http.request.method": "GET",
@@ -1450,11 +1449,11 @@ class TestAsgiApplication(AsgiTestBase):
                             )
                             self.assertEqual(point.value, 0)
 
-    def test_basic_metric_success_both_semconv(self):
+    async def test_basic_metric_success_both_semconv(self):
         app = otel_asgi.OpenTelemetryMiddleware(simple_asgi)
         self.seed_app(app)
         start = default_timer()
-        self.send_default_request()
+        await self.send_default_request()
         duration = max(round((default_timer() - start) * 1000), 0)
         duration_s = max(default_timer() - start, 0)
         expected_duration_attributes_old = {
@@ -1538,7 +1537,7 @@ class TestAsgiApplication(AsgiTestBase):
                             )
                             self.assertEqual(point.value, 0)
 
-    def test_metric_target_attribute(self):
+    async def test_metric_target_attribute(self):
         expected_target = "/api/user/{id}"
 
         class TestRoute:
@@ -1554,7 +1553,7 @@ class TestAsgiApplication(AsgiTestBase):
 
         app = otel_asgi.OpenTelemetryMiddleware(target_asgi)
         self.seed_app(app)
-        self.send_default_request()
+        await self.send_default_request()
         metrics_list = self.memory_metrics_reader.get_metrics_data()
         assertions = 0
         for resource_metric in metrics_list.resource_metrics:
@@ -1571,7 +1570,7 @@ class TestAsgiApplication(AsgiTestBase):
                             assertions += 1
         self.assertEqual(assertions, 3)
 
-    def test_no_metric_for_websockets(self):
+    async def test_no_metric_for_websockets(self):
         self.scope = {
             "type": "websocket",
             "http_version": "1.1",
@@ -1584,10 +1583,10 @@ class TestAsgiApplication(AsgiTestBase):
         }
         app = otel_asgi.OpenTelemetryMiddleware(simple_asgi)
         self.seed_app(app)
-        self.send_input({"type": "websocket.connect"})
-        self.send_input({"type": "websocket.receive", "text": "ping"})
-        self.send_input({"type": "websocket.disconnect"})
-        self.get_all_output()
+        await self.send_input({"type": "websocket.connect"})
+        await self.send_input({"type": "websocket.receive", "text": "ping"})
+        await self.send_input({"type": "websocket.disconnect"})
+        await self.get_all_output()
         self.assertIsNone(self.memory_metrics_reader.get_metrics_data())
 
 
@@ -1802,8 +1801,10 @@ class TestAsgiAttributes(unittest.TestCase):
         )
 
 
-class TestWrappedApplication(AsgiTestBase):
-    def test_mark_span_internal_in_presence_of_span_from_other_framework(self):
+class TestWrappedApplication(AsyncAsgiTestBase):
+    async def test_mark_span_internal_in_presence_of_span_from_other_framework(
+        self,
+    ):
         tracer_provider, exporter = TestBase.create_tracer_provider()
         tracer = tracer_provider.get_tracer(__name__)
         app = otel_asgi.OpenTelemetryMiddleware(
@@ -1818,7 +1819,8 @@ class TestWrappedApplication(AsgiTestBase):
                 await app(scope, receive, send)
 
         self.seed_app(wrapped_app)
-        self.send_default_request()
+        await self.send_default_request()
+        await self.get_all_output()
         span_list = exporter.get_finished_spans()
 
         self.assertEqual(SpanKind.INTERNAL, span_list[0].kind)
@@ -1835,11 +1837,11 @@ class TestWrappedApplication(AsgiTestBase):
         )
 
 
-class TestAsgiApplicationRaisingError(AsgiTestBase):
+class TestAsgiApplicationRaisingError(AsyncAsgiTestBase):
     def tearDown(self):
         pass
 
-    def test_asgi_issue_1883(self):
+    async def test_asgi_issue_1883(self):
         """
         Test that exception UnboundLocalError local variable 'start' referenced before assignment is not raised
         See https://github.com/open-telemetry/opentelemetry-python-contrib/issues/1883
@@ -1850,11 +1852,9 @@ class TestAsgiApplicationRaisingError(AsgiTestBase):
 
         app = otel_asgi.OpenTelemetryMiddleware(bad_app)
         self.seed_app(app)
-        self.send_default_request()
+        await self.send_default_request()
         try:
-            asyncio.get_event_loop().run_until_complete(
-                self.communicator.stop()
-            )
+            await self.communicator.wait()
         except ValueError as exc_info:
             self.assertEqual(exc_info.args[0], "whatever")
         except Exception as exc_info:  # pylint: disable=W0703
