@@ -333,6 +333,7 @@ class _DjangoMiddleware(MiddlewareMixin):
 
     # pylint: disable=too-many-branches
     # pylint: disable=too-many-locals
+    # pylint: disable=too-many-statements
     def process_response(self, request, response):
         if self._excluded_urls.url_disabled(request.build_absolute_uri("?")):
             return response
@@ -426,6 +427,10 @@ class _DjangoMiddleware(MiddlewareMixin):
                 duration_attrs_old = _parse_duration_attrs(
                     duration_attrs, _HTTPStabilityMode.DEFAULT
                 )
+                # http.target to be included in old semantic conventions
+                target = duration_attrs.get(SpanAttributes.HTTP_TARGET)
+                if target:
+                    duration_attrs_old[SpanAttributes.HTTP_TARGET] = target
                 self._duration_histogram_old.record(
                     max(round(duration_s * 1000), 0), duration_attrs_old
                 )
