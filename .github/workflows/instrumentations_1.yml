@@ -39,8 +39,8 @@ jobs:
           - "resource-detector-azure"
           - "resource-detector-container"
           - "util-http"
-          - "fastapi-slim"
           - "processor-baggage"
+          - "kafka-pythonng"
         os: [ubuntu-20.04]
         exclude:
           - python-version: pypy3
