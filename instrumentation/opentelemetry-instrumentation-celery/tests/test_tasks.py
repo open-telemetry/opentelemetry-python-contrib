@@ -15,12 +15,13 @@
 import threading
 import time
 
+from opentelemetry import baggage, context
 from opentelemetry.instrumentation.celery import CeleryInstrumentor
 from opentelemetry.semconv.trace import SpanAttributes
 from opentelemetry.test.test_base import TestBase
 from opentelemetry.trace import SpanKind, StatusCode
 
-from .celery_test_tasks import app, task_add, task_raises
+from .celery_test_tasks import app, task_add, task_raises, task_returns_baggage
 
 
 class TestCeleryInstrumentation(TestBase):
@@ -167,6 +168,22 @@ class TestCeleryInstrumentation(TestBase):
 
         spans = self.memory_exporter.get_finished_spans()
         self.assertEqual(len(spans), 0)
+
+    def test_baggage(self):
+        CeleryInstrumentor().instrument()
+
+        ctx = baggage.set_baggage("key", "value")
+        context.attach(ctx)
+
+        task = task_returns_baggage.delay()
+
+        timeout = time.time() + 60 * 1  # 1 minutes from now
+        while not task.ready():
+            if time.time() > timeout:
+                break
+            time.sleep(0.05)
+
+        self.assertEqual(task.result, {"key": "value"})
 
 
 class TestCelerySignatureTask(TestBase):

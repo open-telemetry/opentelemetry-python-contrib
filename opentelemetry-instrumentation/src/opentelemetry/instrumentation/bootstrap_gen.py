@@ -85,7 +85,7 @@ libraries = [
         "instrumentation": "opentelemetry-instrumentation-fastapi==0.48b0.dev",
     },
     {
-        "library": "fastapi-slim ~= 0.111.0",
+        "library": "fastapi-slim ~= 0.111",
         "instrumentation": "opentelemetry-instrumentation-fastapi==0.48b0.dev",
     },
     {
@@ -105,11 +105,15 @@ libraries = [
         "instrumentation": "opentelemetry-instrumentation-jinja2==0.48b0.dev",
     },
     {
-        "library": "kafka-python >= 2.0",
+        "library": "kafka-python >= 2.0, < 3.0",
         "instrumentation": "opentelemetry-instrumentation-kafka-python==0.48b0.dev",
     },
     {
-        "library": "mysql-connector-python ~= 8.0",
+        "library": "kafka-python-ng >= 2.0, < 3.0",
+        "instrumentation": "opentelemetry-instrumentation-kafka-python==0.48b0.dev",
+    },
+    {
+        "library": "mysql-connector-python >= 8.0, < 10.0",
         "instrumentation": "opentelemetry-instrumentation-mysql==0.48b0.dev",
     },
     {
