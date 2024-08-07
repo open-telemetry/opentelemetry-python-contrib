@@ -18,7 +18,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## Fixed
 
 - `opentelemetry-instrumentation-fastapi` fix `fastapi` auto-instrumentation by removing `fastapi-slim` support, `fastapi-slim` itself is discontinued from maintainers
-  ([???](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/???))
+  ([2783](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/2783))
 - `opentelemetry-instrumentation-aws-lambda` Avoid exception when a handler is not present.
   ([#2750](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/2750))
 - `opentelemetry-instrumentation-django` Fix regression - `http.target` re-added back to old semconv duration metrics
