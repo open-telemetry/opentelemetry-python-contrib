@@ -53,12 +53,16 @@ gen_path = os.path.join(
     "bootstrap_gen.py",
 )
 
+packages_to_ignore = "opentelemetry-instrumentation-aws-lambda"
+
 
 def main():
     # pylint: disable=no-member
     default_instrumentations = ast.List(elts=[])
     libraries = ast.List(elts=[])
     for pkg in get_instrumentation_packages():
+        if pkg.get("name") in packages_to_ignore:
+            continue
         if not pkg["instruments"]:
             default_instrumentations.elts.append(ast.Str(pkg["requirement"]))
         for target_pkg in pkg["instruments"]:
