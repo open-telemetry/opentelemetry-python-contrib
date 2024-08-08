@@ -53,7 +53,7 @@ gen_path = os.path.join(
     "bootstrap_gen.py",
 )
 
-packages_to_ignore = "opentelemetry-instrumentation-aws-lambda"
+packages_to_ignore = ["opentelemetry-instrumentation-aws-lambda"]
 
 
 def main():
