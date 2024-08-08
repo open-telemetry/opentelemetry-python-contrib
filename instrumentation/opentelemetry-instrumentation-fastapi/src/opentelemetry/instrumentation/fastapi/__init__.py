@@ -179,7 +179,6 @@ API
 from __future__ import annotations
 
 import logging
-from importlib.metadata import PackageNotFoundError, distribution
 from typing import Collection
 
 import fastapi
@@ -197,11 +196,7 @@ from opentelemetry.instrumentation.asgi.types import (
     ClientResponseHook,
     ServerRequestHook,
 )
-from opentelemetry.instrumentation.fastapi.package import (
-    _fastapi,
-    _fastapi_slim,
-    _instruments,
-)
+from opentelemetry.instrumentation.fastapi.package import _instruments
 from opentelemetry.instrumentation.fastapi.version import __version__
 from opentelemetry.instrumentation.instrumentor import BaseInstrumentor
 from opentelemetry.metrics import get_meter
@@ -298,21 +293,6 @@ class FastAPIInstrumentor(BaseInstrumentor):
         app._is_instrumented_by_opentelemetry = False
 
     def instrumentation_dependencies(self) -> Collection[str]:
-        # need to use distribution because find_spec("fastapi") will return
-        # something even with just fastapi-slim installed
-        try:
-            distribution("fastapi-slim")
-            return (_fastapi_slim,)
-        except PackageNotFoundError:
-            pass
-
-        try:
-            distribution("fastapi")
-            return (_fastapi,)
-        except PackageNotFoundError:
-            pass
-
-        # If neither is installed, return both as potential dependencies
         return _instruments
 
     def _instrument(self, **kwargs):
