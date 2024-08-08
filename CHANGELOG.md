@@ -16,7 +16,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## Breaking changes
 
 - `opentelemetry-bootstrap` Remove `opentelemetry-instrumentation-aws-lambda` from the defaults instrumentations
-  ([#2537](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/2537))
+  ([#2786](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/2786))
 
 ## Fixed
 
