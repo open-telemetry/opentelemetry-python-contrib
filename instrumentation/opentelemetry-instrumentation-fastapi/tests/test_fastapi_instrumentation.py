@@ -1069,6 +1069,18 @@ class TestAutoInstrumentation(TestBaseAutoFastAPI):
         spans = self.memory_exporter.get_finished_spans()
         self.assertEqual(len(spans), 3)
 
+    def test_no_op_tracer_provider(self):
+        self._instrumentor.uninstrument()
+        self._instrumentor.instrument(
+            tracer_provider=trace.NoOpTracerProvider()
+        )
+
+        app = self._create_fastapi_app()
+        client = TestClient(app)
+        client.get("/foobar")
+        spans = self.memory_exporter.get_finished_spans()
+        self.assertEqual(len(spans), 0)
+
     def tearDown(self):
         self._instrumentor.uninstrument()
         super().tearDown()
