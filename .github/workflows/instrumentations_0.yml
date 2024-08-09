@@ -75,13 +75,33 @@ jobs:
           - "tortoiseorm"
         os: [ubuntu-20.04]
         exclude:
-          - python-version: py312
-            package: "boto"
-          - python-version: py312
-            package: "kafka-python"
+          - python-version: py313
+            package: "aiopg"
+          - python-version: pypy3
+            package: "asyncpg"
           - python-version: py313
             package: "boto"
           - python-version: py313
+            package: "celery"
+          - python-version: py313
+            package: "confluent-kafka"
+          - python-version: py313
+            package: "django"
+          - python-version: py313
+            package: "falcon"
+          - python-version: py313
+            package: "grpcio"
+          - python-version: py313
+            package: "httpx"
+          - python-version: py313
+            package: "psyocpg2"
+          - python-version: py313
+            package: "pyramid"
+          - python-version: py313
+            package: "sqlalchemy"
+          - python-version: py312
+            package: "boto"
+          - python-version: py312
             package: "kafka-python"
           - python-version: pypy3
             package: "aiopg"
