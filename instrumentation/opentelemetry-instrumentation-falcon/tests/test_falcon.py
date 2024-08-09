@@ -186,7 +186,16 @@ class TestFalconInstrumentation(TestFalconBase, WsgiTestBase):
         self.assertEqual(span.name, "GET /error")
         self.assertFalse(span.status.is_ok)
         self.assertEqual(span.status.status_code, StatusCode.ERROR)
-        self.assertEqual(span.status.description, None)
+
+        _parsed_falcon_version = package_version.parse(_falcon_version)
+        if _parsed_falcon_version < package_version.parse("3.0.0"):
+            self.assertEqual(
+                span.status.description,
+                "NameError: name 'non_existent_var' is not defined",
+            )
+        else:
+            self.assertEqual(span.status.description, None)
+
         self.assertSpanHasAttributes(
             span,
             {
