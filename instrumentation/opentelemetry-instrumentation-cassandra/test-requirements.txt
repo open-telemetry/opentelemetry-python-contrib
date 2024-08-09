@@ -1,5 +1,6 @@
 asgiref==3.7.2
 cassandra-driver==3.29.0
+pyasyncore==1.0.4  # for python 3.13 (should removed when cassandra-driver replaces asyncore with recommended asyncio)
 click==8.1.7
 Deprecated==1.2.14
 geomet==0.2.1.post1
