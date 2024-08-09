@@ -17,6 +17,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## Fixed
 
+- Add Python 3.13 support
+  ([#2724](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/2724))
 - `opentelemetry-instrumentation-fastapi` fix `fastapi` auto-instrumentation by removing `fastapi-slim` support, `fastapi-slim` itself is discontinued from maintainers
   ([2783](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/2783))
 - `opentelemetry-instrumentation-aws-lambda` Avoid exception when a handler is not present.
