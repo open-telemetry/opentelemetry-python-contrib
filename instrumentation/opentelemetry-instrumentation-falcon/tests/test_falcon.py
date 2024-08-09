@@ -22,7 +22,9 @@ from packaging import version as package_version
 
 from opentelemetry import trace
 from opentelemetry.instrumentation._semconv import (
+    _server_active_requests_count_attrs_new,
     _server_active_requests_count_attrs_old,
+    _server_duration_attrs_new,
     _server_duration_attrs_old,
 )
 from opentelemetry.instrumentation.falcon import FalconInstrumentor
@@ -53,8 +55,10 @@ _expected_metric_names = [
     "http.server.duration",
 ]
 _recommended_attrs = {
-    "http.server.active_requests": _server_active_requests_count_attrs_old,
-    "http.server.duration": _server_duration_attrs_old,
+    "http.server.active_requests": _server_active_requests_count_attrs_new
+    + _server_active_requests_count_attrs_old,
+    "http.server.duration": _server_duration_attrs_new
+    + _server_duration_attrs_old,
 }
 
 
@@ -66,6 +70,7 @@ class TestFalconBase(TestBase):
             {
                 "OTEL_PYTHON_FALCON_EXCLUDED_URLS": "ping",
                 "OTEL_PYTHON_FALCON_TRACED_REQUEST_ATTRS": "query_string",
+                "OTEL_SEMCONV_STABILITY_OPT_IN": "http/dup",
             },
         )
         self.env_patch.start()
@@ -129,6 +134,7 @@ class TestFalconInstrumentation(TestFalconBase, WsgiTestBase):
                 SpanAttributes.HTTP_FLAVOR: "1.1",
                 "falcon.resource": "HelloWorldResource",
                 SpanAttributes.HTTP_STATUS_CODE: 201,
+                SpanAttributes.HTTP_ROUTE: "/hello",
             },
         )
         # In falcon<3, NET_PEER_IP is always set by default to 127.0.0.1
@@ -180,10 +186,7 @@ class TestFalconInstrumentation(TestFalconBase, WsgiTestBase):
         self.assertEqual(span.name, "GET /error")
         self.assertFalse(span.status.is_ok)
         self.assertEqual(span.status.status_code, StatusCode.ERROR)
-        self.assertEqual(
-            span.status.description,
-            "NameError: name 'non_existent_var' is not defined",
-        )
+        self.assertEqual(span.status.description, None)
         self.assertSpanHasAttributes(
             span,
             {
@@ -196,6 +199,7 @@ class TestFalconInstrumentation(TestFalconBase, WsgiTestBase):
                 SpanAttributes.NET_PEER_PORT: 65133,
                 SpanAttributes.HTTP_FLAVOR: "1.1",
                 SpanAttributes.HTTP_STATUS_CODE: 500,
+                SpanAttributes.HTTP_ROUTE: "/error",
             },
         )
         # In falcon<3, NET_PEER_IP is always set by default to 127.0.0.1
@@ -230,6 +234,7 @@ class TestFalconInstrumentation(TestFalconBase, WsgiTestBase):
                 SpanAttributes.HTTP_FLAVOR: "1.1",
                 "falcon.resource": "UserResource",
                 SpanAttributes.HTTP_STATUS_CODE: 200,
+                SpanAttributes.HTTP_ROUTE: "/user/{user_id}",
             },
         )
 
@@ -338,6 +343,7 @@ class TestFalconInstrumentation(TestFalconBase, WsgiTestBase):
             "net.host.port": 80,
             "net.host.name": "falconframework.org",
             "http.status_code": 404,
+            "http.response.status_code": 404,
         }
         expected_requests_count_attributes = {
             "http.method": "GET",
