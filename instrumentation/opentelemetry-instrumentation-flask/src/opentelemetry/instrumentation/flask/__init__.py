@@ -395,6 +395,7 @@ def _rewrapped_app(
             )
 
             if request_route:
+                # http.target to be included in old semantic conventions
                 duration_attrs_old[SpanAttributes.HTTP_TARGET] = str(
                     request_route
                 )
