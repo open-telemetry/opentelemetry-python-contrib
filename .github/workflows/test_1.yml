@@ -16,6 +16,564 @@ env:
 
 jobs:
 
+  py38-test-instrumentation-psycopg_ubuntu-latest:
+    name: instrumentation-psycopg 3.8 Ubuntu
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repo @ SHA - ${{ github.sha }}
+        uses: actions/checkout@v4
+
+      - name: Set up Python 3.8
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.8"
+
+      - name: Install tox
+        run: pip install tox
+
+      - name: Run tests
+        run: tox -e py38-test-instrumentation-psycopg -- -ra
+
+  py39-test-instrumentation-psycopg_ubuntu-latest:
+    name: instrumentation-psycopg 3.9 Ubuntu
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repo @ SHA - ${{ github.sha }}
+        uses: actions/checkout@v4
+
+      - name: Set up Python 3.9
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.9"
+
+      - name: Install tox
+        run: pip install tox
+
+      - name: Run tests
+        run: tox -e py39-test-instrumentation-psycopg -- -ra
+
+  py310-test-instrumentation-psycopg_ubuntu-latest:
+    name: instrumentation-psycopg 3.10 Ubuntu
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repo @ SHA - ${{ github.sha }}
+        uses: actions/checkout@v4
+
+      - name: Set up Python 3.10
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.10"
+
+      - name: Install tox
+        run: pip install tox
+
+      - name: Run tests
+        run: tox -e py310-test-instrumentation-psycopg -- -ra
+
+  py311-test-instrumentation-psycopg_ubuntu-latest:
+    name: instrumentation-psycopg 3.11 Ubuntu
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repo @ SHA - ${{ github.sha }}
+        uses: actions/checkout@v4
+
+      - name: Set up Python 3.11
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Install tox
+        run: pip install tox
+
+      - name: Run tests
+        run: tox -e py311-test-instrumentation-psycopg -- -ra
+
+  py312-test-instrumentation-psycopg_ubuntu-latest:
+    name: instrumentation-psycopg 3.12 Ubuntu
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repo @ SHA - ${{ github.sha }}
+        uses: actions/checkout@v4
+
+      - name: Set up Python 3.12
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install tox
+        run: pip install tox
+
+      - name: Run tests
+        run: tox -e py312-test-instrumentation-psycopg -- -ra
+
+  py313-test-instrumentation-psycopg_ubuntu-latest:
+    name: instrumentation-psycopg 3.13 Ubuntu
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repo @ SHA - ${{ github.sha }}
+        uses: actions/checkout@v4
+
+      - name: Set up Python 3.13
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.13"
+
+      - name: Install tox
+        run: pip install tox
+
+      - name: Run tests
+        run: tox -e py313-test-instrumentation-psycopg -- -ra
+
+  pypy3-test-instrumentation-psycopg_ubuntu-latest:
+    name: instrumentation-psycopg pypy-3.8 Ubuntu
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repo @ SHA - ${{ github.sha }}
+        uses: actions/checkout@v4
+
+      - name: Set up Python pypy-3.8
+        uses: actions/setup-python@v5
+        with:
+          python-version: "pypy-3.8"
+
+      - name: Install tox
+        run: pip install tox
+
+      - name: Run tests
+        run: tox -e pypy3-test-instrumentation-psycopg -- -ra
+
+  py38-test-instrumentation-pymemcache-0_ubuntu-latest:
+    name: instrumentation-pymemcache-0 3.8 Ubuntu
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repo @ SHA - ${{ github.sha }}
+        uses: actions/checkout@v4
+
+      - name: Set up Python 3.8
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.8"
+
+      - name: Install tox
+        run: pip install tox
+
+      - name: Run tests
+        run: tox -e py38-test-instrumentation-pymemcache-0 -- -ra
+
+  py38-test-instrumentation-pymemcache-1_ubuntu-latest:
+    name: instrumentation-pymemcache-1 3.8 Ubuntu
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repo @ SHA - ${{ github.sha }}
+        uses: actions/checkout@v4
+
+      - name: Set up Python 3.8
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.8"
+
+      - name: Install tox
+        run: pip install tox
+
+      - name: Run tests
+        run: tox -e py38-test-instrumentation-pymemcache-1 -- -ra
+
+  py38-test-instrumentation-pymemcache-2_ubuntu-latest:
+    name: instrumentation-pymemcache-2 3.8 Ubuntu
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repo @ SHA - ${{ github.sha }}
+        uses: actions/checkout@v4
+
+      - name: Set up Python 3.8
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.8"
+
+      - name: Install tox
+        run: pip install tox
+
+      - name: Run tests
+        run: tox -e py38-test-instrumentation-pymemcache-2 -- -ra
+
+  py38-test-instrumentation-pymemcache-3_ubuntu-latest:
+    name: instrumentation-pymemcache-3 3.8 Ubuntu
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repo @ SHA - ${{ github.sha }}
+        uses: actions/checkout@v4
+
+      - name: Set up Python 3.8
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.8"
+
+      - name: Install tox
+        run: pip install tox
+
+      - name: Run tests
+        run: tox -e py38-test-instrumentation-pymemcache-3 -- -ra
+
+  py38-test-instrumentation-pymemcache-4_ubuntu-latest:
+    name: instrumentation-pymemcache-4 3.8 Ubuntu
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repo @ SHA - ${{ github.sha }}
+        uses: actions/checkout@v4
+
+      - name: Set up Python 3.8
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.8"
+
+      - name: Install tox
+        run: pip install tox
+
+      - name: Run tests
+        run: tox -e py38-test-instrumentation-pymemcache-4 -- -ra
+
+  py39-test-instrumentation-pymemcache-0_ubuntu-latest:
+    name: instrumentation-pymemcache-0 3.9 Ubuntu
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repo @ SHA - ${{ github.sha }}
+        uses: actions/checkout@v4
+
+      - name: Set up Python 3.9
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.9"
+
+      - name: Install tox
+        run: pip install tox
+
+      - name: Run tests
+        run: tox -e py39-test-instrumentation-pymemcache-0 -- -ra
+
+  py39-test-instrumentation-pymemcache-1_ubuntu-latest:
+    name: instrumentation-pymemcache-1 3.9 Ubuntu
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repo @ SHA - ${{ github.sha }}
+        uses: actions/checkout@v4
+
+      - name: Set up Python 3.9
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.9"
+
+      - name: Install tox
+        run: pip install tox
+
+      - name: Run tests
+        run: tox -e py39-test-instrumentation-pymemcache-1 -- -ra
+
+  py39-test-instrumentation-pymemcache-2_ubuntu-latest:
+    name: instrumentation-pymemcache-2 3.9 Ubuntu
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repo @ SHA - ${{ github.sha }}
+        uses: actions/checkout@v4
+
+      - name: Set up Python 3.9
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.9"
+
+      - name: Install tox
+        run: pip install tox
+
+      - name: Run tests
+        run: tox -e py39-test-instrumentation-pymemcache-2 -- -ra
+
+  py39-test-instrumentation-pymemcache-3_ubuntu-latest:
+    name: instrumentation-pymemcache-3 3.9 Ubuntu
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repo @ SHA - ${{ github.sha }}
+        uses: actions/checkout@v4
+
+      - name: Set up Python 3.9
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.9"
+
+      - name: Install tox
+        run: pip install tox
+
+      - name: Run tests
+        run: tox -e py39-test-instrumentation-pymemcache-3 -- -ra
+
+  py39-test-instrumentation-pymemcache-4_ubuntu-latest:
+    name: instrumentation-pymemcache-4 3.9 Ubuntu
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repo @ SHA - ${{ github.sha }}
+        uses: actions/checkout@v4
+
+      - name: Set up Python 3.9
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.9"
+
+      - name: Install tox
+        run: pip install tox
+
+      - name: Run tests
+        run: tox -e py39-test-instrumentation-pymemcache-4 -- -ra
+
+  py310-test-instrumentation-pymemcache-0_ubuntu-latest:
+    name: instrumentation-pymemcache-0 3.10 Ubuntu
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repo @ SHA - ${{ github.sha }}
+        uses: actions/checkout@v4
+
+      - name: Set up Python 3.10
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.10"
+
+      - name: Install tox
+        run: pip install tox
+
+      - name: Run tests
+        run: tox -e py310-test-instrumentation-pymemcache-0 -- -ra
+
+  py310-test-instrumentation-pymemcache-1_ubuntu-latest:
+    name: instrumentation-pymemcache-1 3.10 Ubuntu
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repo @ SHA - ${{ github.sha }}
+        uses: actions/checkout@v4
+
+      - name: Set up Python 3.10
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.10"
+
+      - name: Install tox
+        run: pip install tox
+
+      - name: Run tests
+        run: tox -e py310-test-instrumentation-pymemcache-1 -- -ra
+
+  py310-test-instrumentation-pymemcache-2_ubuntu-latest:
+    name: instrumentation-pymemcache-2 3.10 Ubuntu
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repo @ SHA - ${{ github.sha }}
+        uses: actions/checkout@v4
+
+      - name: Set up Python 3.10
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.10"
+
+      - name: Install tox
+        run: pip install tox
+
+      - name: Run tests
+        run: tox -e py310-test-instrumentation-pymemcache-2 -- -ra
+
+  py310-test-instrumentation-pymemcache-3_ubuntu-latest:
+    name: instrumentation-pymemcache-3 3.10 Ubuntu
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repo @ SHA - ${{ github.sha }}
+        uses: actions/checkout@v4
+
+      - name: Set up Python 3.10
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.10"
+
+      - name: Install tox
+        run: pip install tox
+
+      - name: Run tests
+        run: tox -e py310-test-instrumentation-pymemcache-3 -- -ra
+
+  py310-test-instrumentation-pymemcache-4_ubuntu-latest:
+    name: instrumentation-pymemcache-4 3.10 Ubuntu
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repo @ SHA - ${{ github.sha }}
+        uses: actions/checkout@v4
+
+      - name: Set up Python 3.10
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.10"
+
+      - name: Install tox
+        run: pip install tox
+
+      - name: Run tests
+        run: tox -e py310-test-instrumentation-pymemcache-4 -- -ra
+
+  py311-test-instrumentation-pymemcache-0_ubuntu-latest:
+    name: instrumentation-pymemcache-0 3.11 Ubuntu
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repo @ SHA - ${{ github.sha }}
+        uses: actions/checkout@v4
+
+      - name: Set up Python 3.11
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Install tox
+        run: pip install tox
+
+      - name: Run tests
+        run: tox -e py311-test-instrumentation-pymemcache-0 -- -ra
+
+  py311-test-instrumentation-pymemcache-1_ubuntu-latest:
+    name: instrumentation-pymemcache-1 3.11 Ubuntu
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repo @ SHA - ${{ github.sha }}
+        uses: actions/checkout@v4
+
+      - name: Set up Python 3.11
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Install tox
+        run: pip install tox
+
+      - name: Run tests
+        run: tox -e py311-test-instrumentation-pymemcache-1 -- -ra
+
+  py311-test-instrumentation-pymemcache-2_ubuntu-latest:
+    name: instrumentation-pymemcache-2 3.11 Ubuntu
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repo @ SHA - ${{ github.sha }}
+        uses: actions/checkout@v4
+
+      - name: Set up Python 3.11
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Install tox
+        run: pip install tox
+
+      - name: Run tests
+        run: tox -e py311-test-instrumentation-pymemcache-2 -- -ra
+
+  py311-test-instrumentation-pymemcache-3_ubuntu-latest:
+    name: instrumentation-pymemcache-3 3.11 Ubuntu
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repo @ SHA - ${{ github.sha }}
+        uses: actions/checkout@v4
+
+      - name: Set up Python 3.11
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Install tox
+        run: pip install tox
+
+      - name: Run tests
+        run: tox -e py311-test-instrumentation-pymemcache-3 -- -ra
+
+  py311-test-instrumentation-pymemcache-4_ubuntu-latest:
+    name: instrumentation-pymemcache-4 3.11 Ubuntu
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repo @ SHA - ${{ github.sha }}
+        uses: actions/checkout@v4
+
+      - name: Set up Python 3.11
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Install tox
+        run: pip install tox
+
+      - name: Run tests
+        run: tox -e py311-test-instrumentation-pymemcache-4 -- -ra
+
+  py312-test-instrumentation-pymemcache-0_ubuntu-latest:
+    name: instrumentation-pymemcache-0 3.12 Ubuntu
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repo @ SHA - ${{ github.sha }}
+        uses: actions/checkout@v4
+
+      - name: Set up Python 3.12
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install tox
+        run: pip install tox
+
+      - name: Run tests
+        run: tox -e py312-test-instrumentation-pymemcache-0 -- -ra
+
+  py312-test-instrumentation-pymemcache-1_ubuntu-latest:
+    name: instrumentation-pymemcache-1 3.12 Ubuntu
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repo @ SHA - ${{ github.sha }}
+        uses: actions/checkout@v4
+
+      - name: Set up Python 3.12
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install tox
+        run: pip install tox
+
+      - name: Run tests
+        run: tox -e py312-test-instrumentation-pymemcache-1 -- -ra
+
+  py312-test-instrumentation-pymemcache-2_ubuntu-latest:
+    name: instrumentation-pymemcache-2 3.12 Ubuntu
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repo @ SHA - ${{ github.sha }}
+        uses: actions/checkout@v4
+
+      - name: Set up Python 3.12
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install tox
+        run: pip install tox
+
+      - name: Run tests
+        run: tox -e py312-test-instrumentation-pymemcache-2 -- -ra
+
+  py312-test-instrumentation-pymemcache-3_ubuntu-latest:
+    name: instrumentation-pymemcache-3 3.12 Ubuntu
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repo @ SHA - ${{ github.sha }}
+        uses: actions/checkout@v4
+
+      - name: Set up Python 3.12
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install tox
+        run: pip install tox
+
+      - name: Run tests
+        run: tox -e py312-test-instrumentation-pymemcache-3 -- -ra
+
   py312-test-instrumentation-pymemcache-4_ubuntu-latest:
     name: instrumentation-pymemcache-4 3.12 Ubuntu
     runs-on: ubuntu-latest
@@ -33,6 +591,96 @@ jobs:
 
       - name: Run tests
         run: tox -e py312-test-instrumentation-pymemcache-4 -- -ra
+
+  py313-test-instrumentation-pymemcache-0_ubuntu-latest:
+    name: instrumentation-pymemcache-0 3.13 Ubuntu
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repo @ SHA - ${{ github.sha }}
+        uses: actions/checkout@v4
+
+      - name: Set up Python 3.13
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.13"
+
+      - name: Install tox
+        run: pip install tox
+
+      - name: Run tests
+        run: tox -e py313-test-instrumentation-pymemcache-0 -- -ra
+
+  py313-test-instrumentation-pymemcache-1_ubuntu-latest:
+    name: instrumentation-pymemcache-1 3.13 Ubuntu
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repo @ SHA - ${{ github.sha }}
+        uses: actions/checkout@v4
+
+      - name: Set up Python 3.13
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.13"
+
+      - name: Install tox
+        run: pip install tox
+
+      - name: Run tests
+        run: tox -e py313-test-instrumentation-pymemcache-1 -- -ra
+
+  py313-test-instrumentation-pymemcache-2_ubuntu-latest:
+    name: instrumentation-pymemcache-2 3.13 Ubuntu
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repo @ SHA - ${{ github.sha }}
+        uses: actions/checkout@v4
+
+      - name: Set up Python 3.13
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.13"
+
+      - name: Install tox
+        run: pip install tox
+
+      - name: Run tests
+        run: tox -e py313-test-instrumentation-pymemcache-2 -- -ra
+
+  py313-test-instrumentation-pymemcache-3_ubuntu-latest:
+    name: instrumentation-pymemcache-3 3.13 Ubuntu
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repo @ SHA - ${{ github.sha }}
+        uses: actions/checkout@v4
+
+      - name: Set up Python 3.13
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.13"
+
+      - name: Install tox
+        run: pip install tox
+
+      - name: Run tests
+        run: tox -e py313-test-instrumentation-pymemcache-3 -- -ra
+
+  py313-test-instrumentation-pymemcache-4_ubuntu-latest:
+    name: instrumentation-pymemcache-4 3.13 Ubuntu
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repo @ SHA - ${{ github.sha }}
+        uses: actions/checkout@v4
+
+      - name: Set up Python 3.13
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.13"
+
+      - name: Install tox
+        run: pip install tox
+
+      - name: Run tests
+        run: tox -e py313-test-instrumentation-pymemcache-4 -- -ra
 
   pypy3-test-instrumentation-pymemcache-0_ubuntu-latest:
     name: instrumentation-pymemcache-0 pypy-3.8 Ubuntu
@@ -214,6 +862,24 @@ jobs:
       - name: Run tests
         run: tox -e py312-test-instrumentation-pymongo -- -ra
 
+  py313-test-instrumentation-pymongo_ubuntu-latest:
+    name: instrumentation-pymongo 3.13 Ubuntu
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repo @ SHA - ${{ github.sha }}
+        uses: actions/checkout@v4
+
+      - name: Set up Python 3.13
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.13"
+
+      - name: Install tox
+        run: pip install tox
+
+      - name: Run tests
+        run: tox -e py313-test-instrumentation-pymongo -- -ra
+
   pypy3-test-instrumentation-pymongo_ubuntu-latest:
     name: instrumentation-pymongo pypy-3.8 Ubuntu
     runs-on: ubuntu-latest
@@ -321,6 +987,24 @@ jobs:
 
       - name: Run tests
         run: tox -e py312-test-instrumentation-pymysql -- -ra
+
+  py313-test-instrumentation-pymysql_ubuntu-latest:
+    name: instrumentation-pymysql 3.13 Ubuntu
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repo @ SHA - ${{ github.sha }}
+        uses: actions/checkout@v4
+
+      - name: Set up Python 3.13
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.13"
+
+      - name: Install tox
+        run: pip install tox
+
+      - name: Run tests
+        run: tox -e py313-test-instrumentation-pymysql -- -ra
 
   pypy3-test-instrumentation-pymysql_ubuntu-latest:
     name: instrumentation-pymysql pypy-3.8 Ubuntu
@@ -538,6 +1222,24 @@ jobs:
       - name: Run tests
         run: tox -e py312-test-instrumentation-asgi -- -ra
 
+  py313-test-instrumentation-asgi_ubuntu-latest:
+    name: instrumentation-asgi 3.13 Ubuntu
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repo @ SHA - ${{ github.sha }}
+        uses: actions/checkout@v4
+
+      - name: Set up Python 3.13
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.13"
+
+      - name: Install tox
+        run: pip install tox
+
+      - name: Run tests
+        run: tox -e py313-test-instrumentation-asgi -- -ra
+
   pypy3-test-instrumentation-asgi_ubuntu-latest:
     name: instrumentation-asgi pypy-3.8 Ubuntu
     runs-on: ubuntu-latest
@@ -736,6 +1438,24 @@ jobs:
       - name: Run tests
         run: tox -e py312-test-instrumentation-sqlite3 -- -ra
 
+  py313-test-instrumentation-sqlite3_ubuntu-latest:
+    name: instrumentation-sqlite3 3.13 Ubuntu
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repo @ SHA - ${{ github.sha }}
+        uses: actions/checkout@v4
+
+      - name: Set up Python 3.13
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.13"
+
+      - name: Install tox
+        run: pip install tox
+
+      - name: Run tests
+        run: tox -e py313-test-instrumentation-sqlite3 -- -ra
+
   pypy3-test-instrumentation-sqlite3_ubuntu-latest:
     name: instrumentation-sqlite3 pypy-3.8 Ubuntu
     runs-on: ubuntu-latest
@@ -843,6 +1563,24 @@ jobs:
 
       - name: Run tests
         run: tox -e py312-test-instrumentation-wsgi -- -ra
+
+  py313-test-instrumentation-wsgi_ubuntu-latest:
+    name: instrumentation-wsgi 3.13 Ubuntu
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repo @ SHA - ${{ github.sha }}
+        uses: actions/checkout@v4
+
+      - name: Set up Python 3.13
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.13"
+
+      - name: Install tox
+        run: pip install tox
+
+      - name: Run tests
+        run: tox -e py313-test-instrumentation-wsgi -- -ra
 
   pypy3-test-instrumentation-wsgi_ubuntu-latest:
     name: instrumentation-wsgi pypy-3.8 Ubuntu
@@ -1258,6 +1996,24 @@ jobs:
       - name: Run tests
         run: tox -e py312-test-instrumentation-redis -- -ra
 
+  py313-test-instrumentation-redis_ubuntu-latest:
+    name: instrumentation-redis 3.13 Ubuntu
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repo @ SHA - ${{ github.sha }}
+        uses: actions/checkout@v4
+
+      - name: Set up Python 3.13
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.13"
+
+      - name: Install tox
+        run: pip install tox
+
+      - name: Run tests
+        run: tox -e py313-test-instrumentation-redis -- -ra
+
   pypy3-test-instrumentation-redis_ubuntu-latest:
     name: instrumentation-redis pypy-3.8 Ubuntu
     runs-on: ubuntu-latest
@@ -1365,6 +2121,24 @@ jobs:
 
       - name: Run tests
         run: tox -e py312-test-instrumentation-remoulade -- -ra
+
+  py313-test-instrumentation-remoulade_ubuntu-latest:
+    name: instrumentation-remoulade 3.13 Ubuntu
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repo @ SHA - ${{ github.sha }}
+        uses: actions/checkout@v4
+
+      - name: Set up Python 3.13
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.13"
+
+      - name: Install tox
+        run: pip install tox
+
+      - name: Run tests
+        run: tox -e py313-test-instrumentation-remoulade -- -ra
 
   py38-test-instrumentation-celery_ubuntu-latest:
     name: instrumentation-celery 3.8 Ubuntu
@@ -1564,6 +2338,24 @@ jobs:
       - name: Run tests
         run: tox -e py312-test-instrumentation-system-metrics -- -ra
 
+  py313-test-instrumentation-system-metrics_ubuntu-latest:
+    name: instrumentation-system-metrics 3.13 Ubuntu
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repo @ SHA - ${{ github.sha }}
+        uses: actions/checkout@v4
+
+      - name: Set up Python 3.13
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.13"
+
+      - name: Install tox
+        run: pip install tox
+
+      - name: Run tests
+        run: tox -e py313-test-instrumentation-system-metrics -- -ra
+
   pypy3-test-instrumentation-system-metrics_ubuntu-latest:
     name: instrumentation-system-metrics pypy-3.8 Ubuntu
     runs-on: ubuntu-latest
@@ -1671,6 +2463,24 @@ jobs:
 
       - name: Run tests
         run: tox -e py312-test-instrumentation-threading -- -ra
+
+  py313-test-instrumentation-threading_ubuntu-latest:
+    name: instrumentation-threading 3.13 Ubuntu
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repo @ SHA - ${{ github.sha }}
+        uses: actions/checkout@v4
+
+      - name: Set up Python 3.13
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.13"
+
+      - name: Install tox
+        run: pip install tox
+
+      - name: Run tests
+        run: tox -e py313-test-instrumentation-threading -- -ra
 
   pypy3-test-instrumentation-threading_ubuntu-latest:
     name: instrumentation-threading pypy-3.8 Ubuntu
@@ -1780,6 +2590,24 @@ jobs:
       - name: Run tests
         run: tox -e py312-test-instrumentation-tornado -- -ra
 
+  py313-test-instrumentation-tornado_ubuntu-latest:
+    name: instrumentation-tornado 3.13 Ubuntu
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repo @ SHA - ${{ github.sha }}
+        uses: actions/checkout@v4
+
+      - name: Set up Python 3.13
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.13"
+
+      - name: Install tox
+        run: pip install tox
+
+      - name: Run tests
+        run: tox -e py313-test-instrumentation-tornado -- -ra
+
   pypy3-test-instrumentation-tornado_ubuntu-latest:
     name: instrumentation-tornado pypy-3.8 Ubuntu
     runs-on: ubuntu-latest
@@ -1887,6 +2715,24 @@ jobs:
 
       - name: Run tests
         run: tox -e py312-test-instrumentation-tortoiseorm -- -ra
+
+  py313-test-instrumentation-tortoiseorm_ubuntu-latest:
+    name: instrumentation-tortoiseorm 3.13 Ubuntu
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repo @ SHA - ${{ github.sha }}
+        uses: actions/checkout@v4
+
+      - name: Set up Python 3.13
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.13"
+
+      - name: Install tox
+        run: pip install tox
+
+      - name: Run tests
+        run: tox -e py313-test-instrumentation-tortoiseorm -- -ra
 
   pypy3-test-instrumentation-tortoiseorm_ubuntu-latest:
     name: instrumentation-tortoiseorm pypy-3.8 Ubuntu
@@ -2212,6 +3058,24 @@ jobs:
       - name: Run tests
         run: tox -e py312-test-util-http -- -ra
 
+  py313-test-util-http_ubuntu-latest:
+    name: util-http 3.13 Ubuntu
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repo @ SHA - ${{ github.sha }}
+        uses: actions/checkout@v4
+
+      - name: Set up Python 3.13
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.13"
+
+      - name: Install tox
+        run: pip install tox
+
+      - name: Run tests
+        run: tox -e py313-test-util-http -- -ra
+
   pypy3-test-util-http_ubuntu-latest:
     name: util-http pypy-3.8 Ubuntu
     runs-on: ubuntu-latest
@@ -2320,6 +3184,24 @@ jobs:
       - name: Run tests
         run: tox -e py312-test-propagator-aws-xray -- -ra
 
+  py313-test-propagator-aws-xray_ubuntu-latest:
+    name: propagator-aws-xray 3.13 Ubuntu
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repo @ SHA - ${{ github.sha }}
+        uses: actions/checkout@v4
+
+      - name: Set up Python 3.13
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.13"
+
+      - name: Install tox
+        run: pip install tox
+
+      - name: Run tests
+        run: tox -e py313-test-propagator-aws-xray -- -ra
+
   pypy3-test-propagator-aws-xray_ubuntu-latest:
     name: propagator-aws-xray pypy-3.8 Ubuntu
     runs-on: ubuntu-latest
@@ -2427,6 +3309,24 @@ jobs:
 
       - name: Run tests
         run: tox -e py312-test-propagator-ot-trace -- -ra
+
+  py313-test-propagator-ot-trace_ubuntu-latest:
+    name: propagator-ot-trace 3.13 Ubuntu
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repo @ SHA - ${{ github.sha }}
+        uses: actions/checkout@v4
+
+      - name: Set up Python 3.13
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.13"
+
+      - name: Install tox
+        run: pip install tox
+
+      - name: Run tests
+        run: tox -e py313-test-propagator-ot-trace -- -ra
 
   pypy3-test-propagator-ot-trace_ubuntu-latest:
     name: propagator-ot-trace pypy-3.8 Ubuntu
@@ -2625,6 +3525,42 @@ jobs:
 
       - name: Run tests
         run: tox -e py312-test-instrumentation-sio-pika-1 -- -ra
+
+  py313-test-instrumentation-sio-pika-0_ubuntu-latest:
+    name: instrumentation-sio-pika-0 3.13 Ubuntu
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repo @ SHA - ${{ github.sha }}
+        uses: actions/checkout@v4
+
+      - name: Set up Python 3.13
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.13"
+
+      - name: Install tox
+        run: pip install tox
+
+      - name: Run tests
+        run: tox -e py313-test-instrumentation-sio-pika-0 -- -ra
+
+  py313-test-instrumentation-sio-pika-1_ubuntu-latest:
+    name: instrumentation-sio-pika-1 3.13 Ubuntu
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repo @ SHA - ${{ github.sha }}
+        uses: actions/checkout@v4
+
+      - name: Set up Python 3.13
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.13"
+
+      - name: Install tox
+        run: pip install tox
+
+      - name: Run tests
+        run: tox -e py313-test-instrumentation-sio-pika-1 -- -ra
 
   pypy3-test-instrumentation-sio-pika-0_ubuntu-latest:
     name: instrumentation-sio-pika-0 pypy-3.8 Ubuntu
@@ -3021,6 +3957,78 @@ jobs:
 
       - name: Run tests
         run: tox -e py312-test-instrumentation-aio-pika-3 -- -ra
+
+  py313-test-instrumentation-aio-pika-0_ubuntu-latest:
+    name: instrumentation-aio-pika-0 3.13 Ubuntu
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repo @ SHA - ${{ github.sha }}
+        uses: actions/checkout@v4
+
+      - name: Set up Python 3.13
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.13"
+
+      - name: Install tox
+        run: pip install tox
+
+      - name: Run tests
+        run: tox -e py313-test-instrumentation-aio-pika-0 -- -ra
+
+  py313-test-instrumentation-aio-pika-1_ubuntu-latest:
+    name: instrumentation-aio-pika-1 3.13 Ubuntu
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repo @ SHA - ${{ github.sha }}
+        uses: actions/checkout@v4
+
+      - name: Set up Python 3.13
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.13"
+
+      - name: Install tox
+        run: pip install tox
+
+      - name: Run tests
+        run: tox -e py313-test-instrumentation-aio-pika-1 -- -ra
+
+  py313-test-instrumentation-aio-pika-2_ubuntu-latest:
+    name: instrumentation-aio-pika-2 3.13 Ubuntu
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repo @ SHA - ${{ github.sha }}
+        uses: actions/checkout@v4
+
+      - name: Set up Python 3.13
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.13"
+
+      - name: Install tox
+        run: pip install tox
+
+      - name: Run tests
+        run: tox -e py313-test-instrumentation-aio-pika-2 -- -ra
+
+  py313-test-instrumentation-aio-pika-3_ubuntu-latest:
+    name: instrumentation-aio-pika-3 3.13 Ubuntu
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repo @ SHA - ${{ github.sha }}
+        uses: actions/checkout@v4
+
+      - name: Set up Python 3.13
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.13"
+
+      - name: Install tox
+        run: pip install tox
+
+      - name: Run tests
+        run: tox -e py313-test-instrumentation-aio-pika-3 -- -ra
 
   pypy3-test-instrumentation-aio-pika-0_ubuntu-latest:
     name: instrumentation-aio-pika-0 pypy-3.8 Ubuntu
@@ -3472,6 +4480,24 @@ jobs:
       - name: Run tests
         run: tox -e py312-test-instrumentation-asyncio -- -ra
 
+  py313-test-instrumentation-asyncio_ubuntu-latest:
+    name: instrumentation-asyncio 3.13 Ubuntu
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repo @ SHA - ${{ github.sha }}
+        uses: actions/checkout@v4
+
+      - name: Set up Python 3.13
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.13"
+
+      - name: Install tox
+        run: pip install tox
+
+      - name: Run tests
+        run: tox -e py313-test-instrumentation-asyncio -- -ra
+
   py38-test-instrumentation-cassandra_ubuntu-latest:
     name: instrumentation-cassandra 3.8 Ubuntu
     runs-on: ubuntu-latest
@@ -3489,201 +4515,3 @@ jobs:
 
       - name: Run tests
         run: tox -e py38-test-instrumentation-cassandra -- -ra
-
-  py39-test-instrumentation-cassandra_ubuntu-latest:
-    name: instrumentation-cassandra 3.9 Ubuntu
-    runs-on: ubuntu-latest
-    steps:
-      - name: Checkout repo @ SHA - ${{ github.sha }}
-        uses: actions/checkout@v4
-
-      - name: Set up Python 3.9
-        uses: actions/setup-python@v5
-        with:
-          python-version: "3.9"
-
-      - name: Install tox
-        run: pip install tox
-
-      - name: Run tests
-        run: tox -e py39-test-instrumentation-cassandra -- -ra
-
-  py310-test-instrumentation-cassandra_ubuntu-latest:
-    name: instrumentation-cassandra 3.10 Ubuntu
-    runs-on: ubuntu-latest
-    steps:
-      - name: Checkout repo @ SHA - ${{ github.sha }}
-        uses: actions/checkout@v4
-
-      - name: Set up Python 3.10
-        uses: actions/setup-python@v5
-        with:
-          python-version: "3.10"
-
-      - name: Install tox
-        run: pip install tox
-
-      - name: Run tests
-        run: tox -e py310-test-instrumentation-cassandra -- -ra
-
-  py311-test-instrumentation-cassandra_ubuntu-latest:
-    name: instrumentation-cassandra 3.11 Ubuntu
-    runs-on: ubuntu-latest
-    steps:
-      - name: Checkout repo @ SHA - ${{ github.sha }}
-        uses: actions/checkout@v4
-
-      - name: Set up Python 3.11
-        uses: actions/setup-python@v5
-        with:
-          python-version: "3.11"
-
-      - name: Install tox
-        run: pip install tox
-
-      - name: Run tests
-        run: tox -e py311-test-instrumentation-cassandra -- -ra
-
-  py312-test-instrumentation-cassandra_ubuntu-latest:
-    name: instrumentation-cassandra 3.12 Ubuntu
-    runs-on: ubuntu-latest
-    steps:
-      - name: Checkout repo @ SHA - ${{ github.sha }}
-        uses: actions/checkout@v4
-
-      - name: Set up Python 3.12
-        uses: actions/setup-python@v5
-        with:
-          python-version: "3.12"
-
-      - name: Install tox
-        run: pip install tox
-
-      - name: Run tests
-        run: tox -e py312-test-instrumentation-cassandra -- -ra
-
-  pypy3-test-instrumentation-cassandra_ubuntu-latest:
-    name: instrumentation-cassandra pypy-3.8 Ubuntu
-    runs-on: ubuntu-latest
-    steps:
-      - name: Checkout repo @ SHA - ${{ github.sha }}
-        uses: actions/checkout@v4
-
-      - name: Set up Python pypy-3.8
-        uses: actions/setup-python@v5
-        with:
-          python-version: "pypy-3.8"
-
-      - name: Install tox
-        run: pip install tox
-
-      - name: Run tests
-        run: tox -e pypy3-test-instrumentation-cassandra -- -ra
-
-  py38-test-processor-baggage_ubuntu-latest:
-    name: processor-baggage 3.8 Ubuntu
-    runs-on: ubuntu-latest
-    steps:
-      - name: Checkout repo @ SHA - ${{ github.sha }}
-        uses: actions/checkout@v4
-
-      - name: Set up Python 3.8
-        uses: actions/setup-python@v5
-        with:
-          python-version: "3.8"
-
-      - name: Install tox
-        run: pip install tox
-
-      - name: Run tests
-        run: tox -e py38-test-processor-baggage -- -ra
-
-  py39-test-processor-baggage_ubuntu-latest:
-    name: processor-baggage 3.9 Ubuntu
-    runs-on: ubuntu-latest
-    steps:
-      - name: Checkout repo @ SHA - ${{ github.sha }}
-        uses: actions/checkout@v4
-
-      - name: Set up Python 3.9
-        uses: actions/setup-python@v5
-        with:
-          python-version: "3.9"
-
-      - name: Install tox
-        run: pip install tox
-
-      - name: Run tests
-        run: tox -e py39-test-processor-baggage -- -ra
-
-  py310-test-processor-baggage_ubuntu-latest:
-    name: processor-baggage 3.10 Ubuntu
-    runs-on: ubuntu-latest
-    steps:
-      - name: Checkout repo @ SHA - ${{ github.sha }}
-        uses: actions/checkout@v4
-
-      - name: Set up Python 3.10
-        uses: actions/setup-python@v5
-        with:
-          python-version: "3.10"
-
-      - name: Install tox
-        run: pip install tox
-
-      - name: Run tests
-        run: tox -e py310-test-processor-baggage -- -ra
-
-  py311-test-processor-baggage_ubuntu-latest:
-    name: processor-baggage 3.11 Ubuntu
-    runs-on: ubuntu-latest
-    steps:
-      - name: Checkout repo @ SHA - ${{ github.sha }}
-        uses: actions/checkout@v4
-
-      - name: Set up Python 3.11
-        uses: actions/setup-python@v5
-        with:
-          python-version: "3.11"
-
-      - name: Install tox
-        run: pip install tox
-
-      - name: Run tests
-        run: tox -e py311-test-processor-baggage -- -ra
-
-  py312-test-processor-baggage_ubuntu-latest:
-    name: processor-baggage 3.12 Ubuntu
-    runs-on: ubuntu-latest
-    steps:
-      - name: Checkout repo @ SHA - ${{ github.sha }}
-        uses: actions/checkout@v4
-
-      - name: Set up Python 3.12
-        uses: actions/setup-python@v5
-        with:
-          python-version: "3.12"
-
-      - name: Install tox
-        run: pip install tox
-
-      - name: Run tests
-        run: tox -e py312-test-processor-baggage -- -ra
-
-  pypy3-test-processor-baggage_ubuntu-latest:
-    name: processor-baggage pypy-3.8 Ubuntu
-    runs-on: ubuntu-latest
-    steps:
-      - name: Checkout repo @ SHA - ${{ github.sha }}
-        uses: actions/checkout@v4
-
-      - name: Set up Python pypy-3.8
-        uses: actions/setup-python@v5
-        with:
-          python-version: "pypy-3.8"
-
-      - name: Install tox
-        run: pip install tox
-
-      - name: Run tests
-        run: tox -e pypy3-test-processor-baggage -- -ra
