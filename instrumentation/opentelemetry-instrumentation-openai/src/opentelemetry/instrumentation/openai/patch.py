@@ -366,13 +366,6 @@ class StreamWrapper:
     def __exit__(self, exc_type, exc_val, exc_tb):
         self.cleanup()
 
-    async def __aenter__(self):
-        self.setup()
-        return self
-
-    async def __aexit__(self, exc_type, exc_val, exc_tb):
-        self.cleanup()
-
     def __iter__(self):
         return self
 
@@ -384,18 +377,6 @@ class StreamWrapper:
         except StopIteration:
             self.cleanup()
             raise
-
-    def __aiter__(self):
-        return self
-
-    async def __anext__(self):
-        try:
-            chunk = await self.stream.__anext__()
-            self.process_chunk(chunk)
-            return chunk
-        except StopAsyncIteration:
-            self.cleanup()
-            raise StopAsyncIteration
 
     def process_chunk(self, chunk):
         if hasattr(chunk, "model") and chunk.model is not None:
