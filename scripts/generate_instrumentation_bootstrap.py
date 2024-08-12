@@ -53,7 +53,12 @@ gen_path = os.path.join(
     "bootstrap_gen.py",
 )
 
-packages_to_ignore = ["opentelemetry-instrumentation-aws-lambda"]
+# AWS Lambda instrumentation is excluded from the default list because it often
+# requires specific configurations and dependencies that may not be set up
+# in all environments. Instead, users who need AWS Lambda support can opt-in
+# by manually adding it to their environment.
+# See https://github.com/open-telemetry/opentelemetry-python-contrib/issues/2787
+packages_to_exclude = ["opentelemetry-instrumentation-aws-lambda"]
 
 
 def main():
@@ -61,7 +66,7 @@ def main():
     default_instrumentations = ast.List(elts=[])
     libraries = ast.List(elts=[])
     for pkg in get_instrumentation_packages():
-        if pkg.get("name") in packages_to_ignore:
+        if pkg.get("name") in packages_to_exclude:
             continue
         if not pkg["instruments"]:
             default_instrumentations.elts.append(ast.Str(pkg["requirement"]))
