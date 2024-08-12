@@ -1,5 +1,5 @@
 OpenTelemetry OpenAI Instrumentation
-===================================
+====================================    
 
 |pypi|
 

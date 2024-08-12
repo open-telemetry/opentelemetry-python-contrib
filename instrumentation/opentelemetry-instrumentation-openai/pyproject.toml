@@ -27,6 +27,9 @@ classifiers = [
 dependencies = [
   "opentelemetry-api ~= 1.12",
   "opentelemetry-instrumentation == 0.47b0",
+  "tiktoken>=0.1.1",
+  "pydantic>=1.8"
+
 ]
 
 [project.optional-dependencies]
