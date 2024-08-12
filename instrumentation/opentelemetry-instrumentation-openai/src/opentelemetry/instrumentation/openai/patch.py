@@ -19,7 +19,12 @@ from opentelemetry.trace.status import Status, StatusCode
 from opentelemetry.trace.propagation import set_span_in_context
 from openai._types import NOT_GIVEN
 from span_attributes import SpanAttributes, LLMSpanAttributes, Event
-from utils import estimate_tokens, silently_fail, extract_content, calculate_prompt_tokens
+from utils import (
+    estimate_tokens,
+    silently_fail,
+    extract_content,
+    calculate_prompt_tokens,
+)
 
 
 def chat_completions_create(original_method, version, tracer):
@@ -34,7 +39,11 @@ def chat_completions_create(original_method, version, tracer):
                 for tool_call in tools:
                     tool_call_dict = {
                         "id": tool_call.id if hasattr(tool_call, "id") else "",
-                        "type": tool_call.type if hasattr(tool_call, "type") else "",
+                        "type": (
+                            tool_call.type
+                            if hasattr(tool_call, "type")
+                            else ""
+                        ),
                     }
                     if hasattr(tool_call, "function"):
                         tool_call_dict["function"] = {
@@ -125,9 +134,14 @@ def _set_input_attributes(span, kwargs, attributes):
     for field, value in attributes.model_dump(by_alias=True).items():
         set_span_attribute(span, field, value)
 
-    if kwargs.get("functions") is not None and kwargs.get("functions") != NOT_GIVEN:
+    if (
+        kwargs.get("functions") is not None
+        and kwargs.get("functions") != NOT_GIVEN
+    ):
         for function in kwargs.get("functions"):
-            tools.append(json.dumps({"type": "function", "function": function}))
+            tools.append(
+                json.dumps({"type": "function", "function": function})
+            )
 
     if kwargs.get("tools") is not None and kwargs.get("tools") != NOT_GIVEN:
         tools.append(json.dumps(kwargs.get("tools")))
@@ -149,7 +163,11 @@ def _set_response_attributes(span, kwargs, result):
                 ),
                 "content": extract_content(choice),
                 **(
-                    {"content_filter_results": choice["content_filter_results"]}
+                    {
+                        "content_filter_results": choice[
+                            "content_filter_results"
+                        ]
+                    }
                     if "content_filter_results" in choice
                     else {}
                 ),
@@ -239,7 +257,9 @@ def is_streaming(kwargs):
     )
 
 
-def get_llm_request_attributes(kwargs, prompts=None, model=None, operation_name="chat"):
+def get_llm_request_attributes(
+    kwargs, prompts=None, model=None, operation_name="chat"
+):
 
     user = kwargs.get("user", None)
     if prompts is None:
@@ -267,7 +287,9 @@ def get_llm_request_attributes(kwargs, prompts=None, model=None, operation_name=
         SpanAttributes.LLM_USER: user,
         SpanAttributes.LLM_REQUEST_TOP_P: top_p,
         SpanAttributes.LLM_REQUEST_MAX_TOKENS: kwargs.get("max_tokens"),
-        SpanAttributes.LLM_SYSTEM_FINGERPRINT: kwargs.get("system_fingerprint"),
+        SpanAttributes.LLM_SYSTEM_FINGERPRINT: kwargs.get(
+            "system_fingerprint"
+        ),
         SpanAttributes.LLM_PRESENCE_PENALTY: kwargs.get("presence_penalty"),
         SpanAttributes.LLM_FREQUENCY_PENALTY: kwargs.get("frequency_penalty"),
         SpanAttributes.LLM_REQUEST_SEED: kwargs.get("seed"),
@@ -283,7 +305,12 @@ class StreamWrapper:
     span: Span
 
     def __init__(
-        self, stream, span, prompt_tokens, function_call=False, tool_calls=False
+        self,
+        stream,
+        span,
+        prompt_tokens,
+        function_call=False,
+        tool_calls=False,
     ):
         self.stream = stream
         self.span = span
@@ -416,7 +443,11 @@ class StreamWrapper:
                                 content.append(tool_call.function.arguments)
             set_event_completion_chunk(
                 self.span,
-                "".join(content) if len(content) > 0 and content[0] is not None else "",
+                (
+                    "".join(content)
+                    if len(content) > 0 and content[0] is not None
+                    else ""
+                ),
             )
             if content:
                 self.result_content.append(content[0])
@@ -427,12 +458,18 @@ class StreamWrapper:
             content = [chunk.text]
             set_event_completion_chunk(
                 self.span,
-                "".join(content) if len(content) > 0 and content[0] is not None else "",
+                (
+                    "".join(content)
+                    if len(content) > 0 and content[0] is not None
+                    else ""
+                ),
             )
 
             if content:
                 self.result_content.append(content[0])
 
         if hasattr(chunk, "usage_metadata"):
-            self.completion_tokens = chunk.usage_metadata.candidates_token_count
+            self.completion_tokens = (
+                chunk.usage_metadata.candidates_token_count
+            )
             self.prompt_tokens = chunk.usage_metadata.prompt_token_count

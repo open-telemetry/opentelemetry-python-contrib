@@ -56,7 +56,9 @@ def silently_fail(func):
             return func(*args, **kwargs)
         except Exception as exception:
             logger.warning(
-                "Failed to execute %s, error: %s", func.__name__, str(exception)
+                "Failed to execute %s, error: %s",
+                func.__name__,
+                str(exception),
             )
 
     return wrapper

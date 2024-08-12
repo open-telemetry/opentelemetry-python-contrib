@@ -48,7 +48,7 @@ from opentelemetry.instrumentation.openai.package import _instruments
 from opentelemetry.trace import get_tracer
 from wrapt import wrap_function_wrapper
 from langtrace_python_sdk.instrumentation.openai.patch import (
-    chat_completions_create
+    chat_completions_create,
 )
 
 
@@ -58,16 +58,16 @@ class OpenAIInstrumentor(BaseInstrumentor):
         return _instruments
 
     def _instrument(self, **kwargs):
-        """Enable OpenAI instrumentation.
-        """
+        """Enable OpenAI instrumentation."""
         tracer_provider = kwargs.get("tracer_provider")
         tracer = get_tracer(__name__, "", tracer_provider)
         version = importlib.metadata.version("openai")
-
         wrap_function_wrapper(
             "openai.resources.chat.completions",
             "Completions.create",
-            chat_completions_create("openai.chat.completions.create", version, tracer),
+            chat_completions_create(
+                "openai.chat.completions.create", version, tracer
+            ),
         )
 
     def _uninstrument(self, **kwargs):

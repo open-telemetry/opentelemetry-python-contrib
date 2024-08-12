@@ -26,12 +26,12 @@ classifiers = [
 ]
 dependencies = [
   "opentelemetry-api ~= 1.12",
-  "opentelemetry-instrumentation == 0.48b0.dev",
+  "opentelemetry-instrumentation == 0.47b0",
 ]
 
 [project.optional-dependencies]
 instruments = [
-  "openai ~= 1.37.1",
+  "openai >= 0.27.0",
 ]
 
 [project.entry-points.opentelemetry_instrumentor]
