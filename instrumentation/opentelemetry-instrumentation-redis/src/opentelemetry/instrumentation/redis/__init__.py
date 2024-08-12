@@ -110,7 +110,7 @@ from opentelemetry.instrumentation.redis.util import (
 from opentelemetry.instrumentation.redis.version import __version__
 from opentelemetry.instrumentation.utils import unwrap
 from opentelemetry.semconv.trace import SpanAttributes
-from opentelemetry.trace import Span
+from opentelemetry.trace import Span, StatusCode
 
 _DEFAULT_SERVICE = "redis"
 
@@ -207,6 +207,7 @@ def _instrument(
             resource,
             span_name,
         ) = _build_span_meta_data_for_pipeline(instance)
+        exception = None
         if _check_skip(span_name):
             return func(*args, **kwargs)
         with tracer.start_as_current_span(
@@ -218,10 +219,21 @@ def _instrument(
                 span.set_attribute(
                     "db.redis.pipeline_length", len(command_stack)
                 )
-            response = func(*args, **kwargs)
+
+            response = None
+            try:
+                response = func(*args, **kwargs)
+            except redis.WatchError as watch_exception:
+                span.set_status(StatusCode.UNSET)
+                exception = watch_exception
+
             if callable(response_hook):
                 response_hook(span, instance, response)
-            return response
+
+        if exception:
+            raise exception
+
+        return response
 
     def _traced_create_index(func, instance, args, kwargs):
         span_name = "redis.create_index"
@@ -346,6 +358,8 @@ def _instrument(
             span_name,
         ) = _build_span_meta_data_for_pipeline(instance)
 
+        exception = None
+
         with tracer.start_as_current_span(
             span_name, kind=trace.SpanKind.CLIENT
         ) as span:
@@ -355,10 +369,21 @@ def _instrument(
                 span.set_attribute(
                     "db.redis.pipeline_length", len(command_stack)
                 )
-            response = await func(*args, **kwargs)
+
+            response = None
+            try:
+                response = await func(*args, **kwargs)
+            except redis.WatchError as watch_exception:
+                span.set_status(StatusCode.UNSET)
+                exception = watch_exception
+
             if callable(response_hook):
                 response_hook(span, instance, response)
-            return response
+
+        if exception:
+            raise exception
+
+        return response
 
     if redis.VERSION >= _REDIS_ASYNCIO_VERSION:
         wrap_function_wrapper(

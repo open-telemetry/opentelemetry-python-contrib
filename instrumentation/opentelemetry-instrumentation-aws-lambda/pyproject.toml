@@ -25,13 +25,16 @@ classifiers = [
   "Programming Language :: Python :: 3.12",
 ]
 dependencies = [
-  "opentelemetry-instrumentation == 0.47b0.dev",
-  "opentelemetry-propagator-aws-xray == 1.0.1",
-  "opentelemetry-semantic-conventions == 0.47b0.dev",
+  "opentelemetry-instrumentation == 0.48b0.dev",
+  "opentelemetry-propagator-aws-xray ~= 1.0.1",
+  "opentelemetry-semantic-conventions == 0.48b0.dev",
 ]
 
 [project.optional-dependencies]
 instruments = []
+
+[project.entry-points.opentelemetry_instrumentor]
+aws-lambda = "opentelemetry.instrumentation.aws_lambda:AwsLambdaInstrumentor"
 
 [project.urls]
 Homepage = "https://github.com/open-telemetry/opentelemetry-python-contrib/tree/main/instrumentation/opentelemetry-instrumentation-aws-lambda"

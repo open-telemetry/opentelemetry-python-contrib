@@ -85,6 +85,12 @@ def expected_attributes_new(override_attributes):
     return default_attributes
 
 
+_server_duration_attrs_old_copy = _server_duration_attrs_old.copy()
+_server_duration_attrs_old_copy.append("http.target")
+
+_server_duration_attrs_new_copy = _server_duration_attrs_new.copy()
+_server_duration_attrs_new_copy.append("http.route")
+
 _expected_metric_names_old = [
     "http.server.active_requests",
     "http.server.duration",
@@ -95,11 +101,11 @@ _expected_metric_names_new = [
 ]
 _recommended_metrics_attrs_old = {
     "http.server.active_requests": _server_active_requests_count_attrs_old,
-    "http.server.duration": _server_duration_attrs_old,
+    "http.server.duration": _server_duration_attrs_old_copy,
 }
 _recommended_metrics_attrs_new = {
     "http.server.active_requests": _server_active_requests_count_attrs_new,
-    "http.server.request.duration": _server_duration_attrs_new,
+    "http.server.request.duration": _server_duration_attrs_new_copy,
 }
 _server_active_requests_count_attrs_both = (
     _server_active_requests_count_attrs_old
@@ -109,8 +115,8 @@ _server_active_requests_count_attrs_both.extend(
 )
 _recommended_metrics_attrs_both = {
     "http.server.active_requests": _server_active_requests_count_attrs_both,
-    "http.server.duration": _server_duration_attrs_old,
-    "http.server.request.duration": _server_duration_attrs_new,
+    "http.server.duration": _server_duration_attrs_old_copy,
+    "http.server.request.duration": _server_duration_attrs_new_copy,
 }
 
 
@@ -497,7 +503,7 @@ class TestProgrammatic(InstrumentationTest, WsgiTestBase):
         self.client.get("/hello/123")
         self.client.get("/hello/321")
         self.client.get("/hello/756")
-        duration = max(round((default_timer() - start) * 1000), 0)
+        duration_s = max(default_timer() - start, 0)
         metrics_list = self.memory_metrics_reader.get_metrics_data()
         number_data_point_seen = False
         histogram_data_point_seen = False
@@ -514,7 +520,7 @@ class TestProgrammatic(InstrumentationTest, WsgiTestBase):
                         if isinstance(point, HistogramDataPoint):
                             self.assertEqual(point.count, 3)
                             self.assertAlmostEqual(
-                                duration, point.sum, delta=10
+                                duration_s, point.sum, places=2
                             )
                             histogram_data_point_seen = True
                         if isinstance(point, NumberDataPoint):
@@ -570,6 +576,7 @@ class TestProgrammatic(InstrumentationTest, WsgiTestBase):
         self.client.get("/hello/756")
         expected_duration_attributes = {
             "http.method": "GET",
+            "http.target": "/hello/<int:helloid>",
             "http.host": "localhost",
             "http.scheme": "http",
             "http.flavor": "1.1",
@@ -584,8 +591,6 @@ class TestProgrammatic(InstrumentationTest, WsgiTestBase):
             "http.scheme": "http",
             "http.flavor": "1.1",
             "http.server_name": "localhost",
-            "net.host.name": "localhost",
-            "net.host.port": 80,
         }
         self._assert_basic_metric(
             expected_duration_attributes,
@@ -597,6 +602,7 @@ class TestProgrammatic(InstrumentationTest, WsgiTestBase):
         expected_duration_attributes = {
             "http.request.method": "GET",
             "url.scheme": "http",
+            "http.route": "/hello/<int:helloid>",
             "network.protocol.version": "1.1",
             "http.response.status_code": 200,
         }
@@ -627,8 +633,6 @@ class TestProgrammatic(InstrumentationTest, WsgiTestBase):
             "http.scheme": "http",
             "http.flavor": "1.1",
             "http.server_name": "localhost",
-            "net.host.name": "localhost",
-            "net.host.port": 80,
         }
         self._assert_basic_metric(
             expected_duration_attributes,
