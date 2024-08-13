@@ -185,11 +185,6 @@ class SystemMetricsInstrumentor(BaseInstrumentor):
             meter_provider,
             schema_url="https://opentelemetry.io/schemas/1.11.0",
         )
-        
-        sanitized_config = {
-            key: [urllib.parse.unquote(item) for item in value]
-            for key, value in self._config.items()
-        }
 
         if "system.cpu.time" in self._config:
             self._meter.create_observable_counter(
@@ -257,14 +252,28 @@ class SystemMetricsInstrumentor(BaseInstrumentor):
         #     unit="operations",
         #     value_type=int,
         # )
-        
-        if any("system.disk.io" in url for urls in sanitized_config.values() for url in urls):
-            self._meter.create_observable_counter(
-                name="system.disk.io",
-                callbacks=[self._get_system_disk_io],
-                description="System disk IO",
-                unit="bytes",
-            )
+
+        if self._config is not None:
+            sanitized_config = {
+                key: [urllib.parse.unquote(item) for item in value]
+                for key, value in self._config.items()
+            }
+
+            if any("system.disk.io" in url for urls in sanitized_config.values() for url in urls):
+                self._meter.create_observable_counter(
+                    name="system.disk.io",
+                    callbacks=[self._get_system_disk_io],
+                    description="System disk IO",
+                    unit="bytes",
+                )
+
+            if any("system.network.io" in url for urls in sanitized_config.values() for url in urls):
+                self._meter.create_observable_counter(
+                    name="system.network.io",
+                    callbacks=[self._get_system_network_io],
+                    description="System network IO",
+                    unit="bytes",
+                )
 
         if "system.disk.operations" in self._config:
             self._meter.create_observable_counter(
@@ -326,15 +335,6 @@ class SystemMetricsInstrumentor(BaseInstrumentor):
                 callbacks=[self._get_system_network_errors],
                 description="System network errors",
                 unit="errors",
-            )
-
-        
-        if any("system.network.io" in url for urls in sanitized_config.values() for url in urls):
-            self._meter.create_observable_counter(
-                name="system.network.io",
-                callbacks=[self._get_system_network_io],
-                description="System network io",
-                unit="bytes",
             )
 
         if "system.network.connections" in self._config:
