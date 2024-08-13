@@ -1683,6 +1683,17 @@ class TestAsgiAttributes(unittest.TestCase):
             attrs[SpanAttributes.HTTP_URL], "http://127.0.0.1/?foo=bar"
         )
 
+    def test_query_string_new_semconv(self):
+        self.scope["query_string"] = b"foo=bar"
+        attrs = otel_asgi.collect_request_attributes(
+            self.scope,
+            _HTTPStabilityMode.HTTP,
+        )
+        self.assertEqual(attrs[URL_SCHEME], "http")
+        self.assertEqual(attrs[SERVER_ADDRESS], "127.0.0.1")
+        self.assertEqual(attrs[URL_PATH], "/")
+        self.assertEqual(attrs[URL_QUERY], "foo=bar")
+
     def test_query_string_both_semconv(self):
         self.scope["query_string"] = b"foo=bar"
         attrs = otel_asgi.collect_request_attributes(
@@ -1692,6 +1703,10 @@ class TestAsgiAttributes(unittest.TestCase):
         self.assertEqual(
             attrs[SpanAttributes.HTTP_URL], "http://127.0.0.1/?foo=bar"
         )
+        self.assertEqual(attrs[URL_SCHEME], "http")
+        self.assertEqual(attrs[SERVER_ADDRESS], "127.0.0.1")
+        self.assertEqual(attrs[URL_PATH], "/")
+        self.assertEqual(attrs[URL_QUERY], "foo=bar")
 
     def test_query_string_percent_bytes(self):
         self.scope["query_string"] = b"foo%3Dbar"
