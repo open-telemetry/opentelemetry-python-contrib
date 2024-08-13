@@ -11,24 +11,29 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - `opentelemetry-instrumentation-kafka-python` Instrument temporary fork, kafka-python-ng
   inside kafka-python's instrumentation
-  ([#2537](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/2537)))
+  ([#2537](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/2537))
 
 ## Breaking changes
 
+- `opentelemetry-bootstrap` Remove `opentelemetry-instrumentation-aws-lambda` from the defaults instrumentations
+  ([#2786](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/2786))
+
 ## Fixed
 
+- `opentelemetry-instrumentation-fastapi` fix `fastapi` auto-instrumentation by removing `fastapi-slim` support, `fastapi-slim` itself is discontinued from maintainers
+  ([2783](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/2783))
 - `opentelemetry-instrumentation-aws-lambda` Avoid exception when a handler is not present.
   ([#2750](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/2750))
 - `opentelemetry-instrumentation-django` Fix regression - `http.target` re-added back to old semconv duration metrics
   ([#2746](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/2746))
 - `opentelemetry-instrumentation-grpc` Fixes the issue with the gRPC instrumentation not working with the 1.63.0 and higher version of gRPC
   ([#2483](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/2484))
-- `opentelemetry-instrumentation-fastapi` Fix fastapi-slim support
-  ([#2756](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/2756))
 - `opentelemetry-instrumentation-aws-lambda` Fixing w3c baggage support
   ([#2589](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/2589))
 - `opentelemetry-instrumentation-celery` propagates baggage
   ([#2385](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/2385))
+- `opentelemetry-instrumentation-asyncio` Fixes async generator coroutines not being awaited
+  ([#2792](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/2792))
 - `opentelemetry-instrumentation-tornado` Handle http client exception and record exception info into span
   ([#2563](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/2563))
 
