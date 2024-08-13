@@ -259,7 +259,11 @@ class SystemMetricsInstrumentor(BaseInstrumentor):
                 for key, value in self._config.items()
             }
 
-            if any("system.disk.io" in url for urls in sanitized_config.values() for url in urls):
+            if any(
+                "system.disk.io" in url
+                for urls in sanitized_config.values()
+                for url in urls
+            ):
                 self._meter.create_observable_counter(
                     name="system.disk.io",
                     callbacks=[self._get_system_disk_io],
@@ -267,7 +271,11 @@ class SystemMetricsInstrumentor(BaseInstrumentor):
                     unit="bytes",
                 )
 
-            if any("system.network.io" in url for urls in sanitized_config.values() for url in urls):
+            if any(
+                "system.network.io" in url
+                for urls in sanitized_config.values()
+                for url in urls
+            ):
                 self._meter.create_observable_counter(
                     name="system.network.io",
                     callbacks=[self._get_system_network_io],
