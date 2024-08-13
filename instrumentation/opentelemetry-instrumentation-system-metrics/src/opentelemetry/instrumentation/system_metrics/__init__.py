@@ -255,8 +255,8 @@ class SystemMetricsInstrumentor(BaseInstrumentor):
 
         if self._config is not None:
             sanitized_config = {
-                key: [urllib.parse.unquote(item) for item in value]
-                for key, value in self._config.items()
+                key: [urllib.parse.unquote(item) for item in value if item is not None]
+                for key, value in self._config.items() if value is not None
             }
 
             if any(
