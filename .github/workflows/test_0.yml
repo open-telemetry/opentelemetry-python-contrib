@@ -2194,8 +2194,8 @@ jobs:
       - name: Run tests
         run: tox -e pypy3-test-instrumentation-falcon-2 -- -ra
 
-  py38-test-instrumentation-fastapi-main_ubuntu-latest:
-    name: instrumentation-fastapi-main 3.8 Ubuntu
+  py38-test-instrumentation-fastapi_ubuntu-latest:
+    name: instrumentation-fastapi 3.8 Ubuntu
     runs-on: ubuntu-latest
     steps:
       - name: Checkout repo @ SHA - ${{ github.sha }}
@@ -2210,28 +2210,10 @@ jobs:
         run: pip install tox
 
       - name: Run tests
-        run: tox -e py38-test-instrumentation-fastapi-main -- -ra
+        run: tox -e py38-test-instrumentation-fastapi -- -ra
 
-  py38-test-instrumentation-fastapi-slim_ubuntu-latest:
-    name: instrumentation-fastapi-slim 3.8 Ubuntu
-    runs-on: ubuntu-latest
-    steps:
-      - name: Checkout repo @ SHA - ${{ github.sha }}
-        uses: actions/checkout@v4
-
-      - name: Set up Python 3.8
-        uses: actions/setup-python@v5
-        with:
-          python-version: "3.8"
-
-      - name: Install tox
-        run: pip install tox
-
-      - name: Run tests
-        run: tox -e py38-test-instrumentation-fastapi-slim -- -ra
-
-  py39-test-instrumentation-fastapi-main_ubuntu-latest:
-    name: instrumentation-fastapi-main 3.9 Ubuntu
+  py39-test-instrumentation-fastapi_ubuntu-latest:
+    name: instrumentation-fastapi 3.9 Ubuntu
     runs-on: ubuntu-latest
     steps:
       - name: Checkout repo @ SHA - ${{ github.sha }}
@@ -2246,28 +2228,10 @@ jobs:
         run: pip install tox
 
       - name: Run tests
-        run: tox -e py39-test-instrumentation-fastapi-main -- -ra
+        run: tox -e py39-test-instrumentation-fastapi -- -ra
 
-  py39-test-instrumentation-fastapi-slim_ubuntu-latest:
-    name: instrumentation-fastapi-slim 3.9 Ubuntu
-    runs-on: ubuntu-latest
-    steps:
-      - name: Checkout repo @ SHA - ${{ github.sha }}
-        uses: actions/checkout@v4
-
-      - name: Set up Python 3.9
-        uses: actions/setup-python@v5
-        with:
-          python-version: "3.9"
-
-      - name: Install tox
-        run: pip install tox
-
-      - name: Run tests
-        run: tox -e py39-test-instrumentation-fastapi-slim -- -ra
-
-  py310-test-instrumentation-fastapi-main_ubuntu-latest:
-    name: instrumentation-fastapi-main 3.10 Ubuntu
+  py310-test-instrumentation-fastapi_ubuntu-latest:
+    name: instrumentation-fastapi 3.10 Ubuntu
     runs-on: ubuntu-latest
     steps:
       - name: Checkout repo @ SHA - ${{ github.sha }}
@@ -2282,28 +2246,10 @@ jobs:
         run: pip install tox
 
       - name: Run tests
-        run: tox -e py310-test-instrumentation-fastapi-main -- -ra
+        run: tox -e py310-test-instrumentation-fastapi -- -ra
 
-  py310-test-instrumentation-fastapi-slim_ubuntu-latest:
-    name: instrumentation-fastapi-slim 3.10 Ubuntu
-    runs-on: ubuntu-latest
-    steps:
-      - name: Checkout repo @ SHA - ${{ github.sha }}
-        uses: actions/checkout@v4
-
-      - name: Set up Python 3.10
-        uses: actions/setup-python@v5
-        with:
-          python-version: "3.10"
-
-      - name: Install tox
-        run: pip install tox
-
-      - name: Run tests
-        run: tox -e py310-test-instrumentation-fastapi-slim -- -ra
-
-  py311-test-instrumentation-fastapi-main_ubuntu-latest:
-    name: instrumentation-fastapi-main 3.11 Ubuntu
+  py311-test-instrumentation-fastapi_ubuntu-latest:
+    name: instrumentation-fastapi 3.11 Ubuntu
     runs-on: ubuntu-latest
     steps:
       - name: Checkout repo @ SHA - ${{ github.sha }}
@@ -2318,28 +2264,10 @@ jobs:
         run: pip install tox
 
       - name: Run tests
-        run: tox -e py311-test-instrumentation-fastapi-main -- -ra
+        run: tox -e py311-test-instrumentation-fastapi -- -ra
 
-  py311-test-instrumentation-fastapi-slim_ubuntu-latest:
-    name: instrumentation-fastapi-slim 3.11 Ubuntu
-    runs-on: ubuntu-latest
-    steps:
-      - name: Checkout repo @ SHA - ${{ github.sha }}
-        uses: actions/checkout@v4
-
-      - name: Set up Python 3.11
-        uses: actions/setup-python@v5
-        with:
-          python-version: "3.11"
-
-      - name: Install tox
-        run: pip install tox
-
-      - name: Run tests
-        run: tox -e py311-test-instrumentation-fastapi-slim -- -ra
-
-  py312-test-instrumentation-fastapi-main_ubuntu-latest:
-    name: instrumentation-fastapi-main 3.12 Ubuntu
+  py312-test-instrumentation-fastapi_ubuntu-latest:
+    name: instrumentation-fastapi 3.12 Ubuntu
     runs-on: ubuntu-latest
     steps:
       - name: Checkout repo @ SHA - ${{ github.sha }}
@@ -2354,28 +2282,10 @@ jobs:
         run: pip install tox
 
       - name: Run tests
-        run: tox -e py312-test-instrumentation-fastapi-main -- -ra
+        run: tox -e py312-test-instrumentation-fastapi -- -ra
 
-  py312-test-instrumentation-fastapi-slim_ubuntu-latest:
-    name: instrumentation-fastapi-slim 3.12 Ubuntu
-    runs-on: ubuntu-latest
-    steps:
-      - name: Checkout repo @ SHA - ${{ github.sha }}
-        uses: actions/checkout@v4
-
-      - name: Set up Python 3.12
-        uses: actions/setup-python@v5
-        with:
-          python-version: "3.12"
-
-      - name: Install tox
-        run: pip install tox
-
-      - name: Run tests
-        run: tox -e py312-test-instrumentation-fastapi-slim -- -ra
-
-  pypy3-test-instrumentation-fastapi-main_ubuntu-latest:
-    name: instrumentation-fastapi-main pypy-3.8 Ubuntu
+  pypy3-test-instrumentation-fastapi_ubuntu-latest:
+    name: instrumentation-fastapi pypy-3.8 Ubuntu
     runs-on: ubuntu-latest
     steps:
       - name: Checkout repo @ SHA - ${{ github.sha }}
@@ -2390,25 +2300,7 @@ jobs:
         run: pip install tox
 
       - name: Run tests
-        run: tox -e pypy3-test-instrumentation-fastapi-main -- -ra
-
-  pypy3-test-instrumentation-fastapi-slim_ubuntu-latest:
-    name: instrumentation-fastapi-slim pypy-3.8 Ubuntu
-    runs-on: ubuntu-latest
-    steps:
-      - name: Checkout repo @ SHA - ${{ github.sha }}
-        uses: actions/checkout@v4
-
-      - name: Set up Python pypy-3.8
-        uses: actions/setup-python@v5
-        with:
-          python-version: "pypy-3.8"
-
-      - name: Install tox
-        run: pip install tox
-
-      - name: Run tests
-        run: tox -e pypy3-test-instrumentation-fastapi-slim -- -ra
+        run: tox -e pypy3-test-instrumentation-fastapi -- -ra
 
   py38-test-instrumentation-flask-0_ubuntu-latest:
     name: instrumentation-flask-0 3.8 Ubuntu
@@ -4515,3 +4407,111 @@ jobs:
 
       - name: Run tests
         run: tox -e py311-test-instrumentation-pymemcache-2 -- -ra
+
+  py311-test-instrumentation-pymemcache-3_ubuntu-latest:
+    name: instrumentation-pymemcache-3 3.11 Ubuntu
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repo @ SHA - ${{ github.sha }}
+        uses: actions/checkout@v4
+
+      - name: Set up Python 3.11
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Install tox
+        run: pip install tox
+
+      - name: Run tests
+        run: tox -e py311-test-instrumentation-pymemcache-3 -- -ra
+
+  py311-test-instrumentation-pymemcache-4_ubuntu-latest:
+    name: instrumentation-pymemcache-4 3.11 Ubuntu
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repo @ SHA - ${{ github.sha }}
+        uses: actions/checkout@v4
+
+      - name: Set up Python 3.11
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Install tox
+        run: pip install tox
+
+      - name: Run tests
+        run: tox -e py311-test-instrumentation-pymemcache-4 -- -ra
+
+  py312-test-instrumentation-pymemcache-0_ubuntu-latest:
+    name: instrumentation-pymemcache-0 3.12 Ubuntu
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repo @ SHA - ${{ github.sha }}
+        uses: actions/checkout@v4
+
+      - name: Set up Python 3.12
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install tox
+        run: pip install tox
+
+      - name: Run tests
+        run: tox -e py312-test-instrumentation-pymemcache-0 -- -ra
+
+  py312-test-instrumentation-pymemcache-1_ubuntu-latest:
+    name: instrumentation-pymemcache-1 3.12 Ubuntu
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repo @ SHA - ${{ github.sha }}
+        uses: actions/checkout@v4
+
+      - name: Set up Python 3.12
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install tox
+        run: pip install tox
+
+      - name: Run tests
+        run: tox -e py312-test-instrumentation-pymemcache-1 -- -ra
+
+  py312-test-instrumentation-pymemcache-2_ubuntu-latest:
+    name: instrumentation-pymemcache-2 3.12 Ubuntu
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repo @ SHA - ${{ github.sha }}
+        uses: actions/checkout@v4
+
+      - name: Set up Python 3.12
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install tox
+        run: pip install tox
+
+      - name: Run tests
+        run: tox -e py312-test-instrumentation-pymemcache-2 -- -ra
+
+  py312-test-instrumentation-pymemcache-3_ubuntu-latest:
+    name: instrumentation-pymemcache-3 3.12 Ubuntu
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repo @ SHA - ${{ github.sha }}
+        uses: actions/checkout@v4
+
+      - name: Set up Python 3.12
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install tox
+        run: pip install tox
+
+      - name: Run tests
+        run: tox -e py312-test-instrumentation-pymemcache-3 -- -ra
