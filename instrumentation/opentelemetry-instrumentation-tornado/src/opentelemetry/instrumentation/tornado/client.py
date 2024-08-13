@@ -125,6 +125,7 @@ def _finish_tracing_callback(
                 status_code=StatusCode.ERROR,
                 description=description,
             )
+            span.record_exception(exc)
     else:
         response = future.result()
         status_code = response.code
