@@ -7,8 +7,21 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## Unreleased
 
+## Added
+
+- `opentelemetry-instrumentation-kafka-python` Instrument temporary fork, kafka-python-ng
+  inside kafka-python's instrumentation
+  ([#2537](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/2537))
+
+## Breaking changes
+
+- `opentelemetry-bootstrap` Remove `opentelemetry-instrumentation-aws-lambda` from the defaults instrumentations
+  ([#2786](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/2786))
+
 ## Fixed
 
+- `opentelemetry-instrumentation-fastapi` fix `fastapi` auto-instrumentation by removing `fastapi-slim` support, `fastapi-slim` itself is discontinued from maintainers
+  ([2783](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/2783))
 - `opentelemetry-instrumentation-aws-lambda` Avoid exception when a handler is not present.
   ([#2750](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/2750))
 - `opentelemetry-instrumentation-django` Fix regression - `http.target` re-added back to old semconv duration metrics
@@ -17,6 +30,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   ([#2735](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/2735))
 - `opentelemetry-instrumentation-grpc` Fixes the issue with the gRPC instrumentation not working with the 1.63.0 and higher version of gRPC
   ([#2483](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/2484))
+- `opentelemetry-instrumentation-aws-lambda` Fixing w3c baggage support
+  ([#2589](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/2589))
+- `opentelemetry-instrumentation-celery` propagates baggage
+  ([#2385](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/2385))
+- `opentelemetry-instrumentation-asyncio` Fixes async generator coroutines not being awaited
+  ([#2792](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/2792))
 
 ## Version 1.26.0/0.47b0 (2024-07-23)
 
@@ -113,6 +132,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   ([#2610](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/2610))
 - `opentelemetry-instrumentation-asgi` Bugfix: Middleware did not set status code attribute on duration metrics for non-recording spans.
   ([#2627](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/2627))
+- `opentelemetry-instrumentation-mysql` Add support for `mysql-connector-python` v9
+  ([#2751](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/2751))
 
 ## Version 1.25.0/0.46b0 (2024-05-31)
 
@@ -206,6 +227,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   ([#2367](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/2367))
 
 
+### Added
+- `opentelemetry-instrumentation-fastapi` Add support for configuring header extraction via runtime constructor parameters
+  ([#2241](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/2241))
+
 ## Version 1.23.0/0.44b0 (2024-02-23)
 
 - Drop support for 3.7
@@ -226,6 +251,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Added
 
 - `opentelemetry-instrumentation-psycopg` Initial release for psycopg 3.x
+- `opentelemetry-instrumentation-asgi` Add support for configuring ASGI middleware header extraction via runtime constructor parameters
+  ([#2026](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/2026))
 
 ## Version 1.22.0/0.43b0 (2023-12-14)
 
@@ -265,8 +292,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   ([#1948](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/1948))
 - Added schema_url (`"https://opentelemetry.io/schemas/1.11.0"`) to all metrics and traces
   ([#1977](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/1977))
-- Add support for configuring ASGI middleware header extraction via runtime constructor parameters
-  ([#2026](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/2026))
 
 ### Fixed
 
