@@ -112,7 +112,7 @@ def _finish_tracing_callback(
 
     exc = future.exception()
     if exc:
-        description = f"{type(exc).__name__}: {exc}"
+        description = f"{type(exc).__qualname__}: {exc}"
         if isinstance(exc, HTTPError):
             response = exc.response
             status_code = exc.code
