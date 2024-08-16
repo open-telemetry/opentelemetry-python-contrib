@@ -225,7 +225,7 @@ class TestJinja2Instrumentor(TestBase):
         Jinja2Instrumentor().uninstrument()
         Jinja2Instrumentor().instrument(
             tracer_provider=trace_api.NoOpTracerProvider()
-            )
+        )
         template = jinja2.environment.Template("Hello {{name}}!")
         self.assertEqual(template.render(name="Jinja"), "Hello Jinja!")
         spans = self.memory_exporter.get_finished_spans()
