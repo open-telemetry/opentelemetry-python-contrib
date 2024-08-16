@@ -487,7 +487,7 @@ def get_default_span_details(scope: dict) -> Tuple[str, dict]:
 
 
 def _collect_target_attribute(
-    scope: typing.Dict[str, typing.Any]
+    scope: typing.Dict[str, typing.Any],
 ) -> typing.Optional[str]:
     """
     Returns the target path as defined by the Semantic Conventions.
@@ -814,6 +814,7 @@ class OpenTelemetryMiddleware:
     def _get_otel_receive(self, server_span_name, scope, receive):
         if self.exclude_receive_span:
             return receive
+
         @wraps(receive)
         async def otel_receive():
             with self.tracer.start_as_current_span(
@@ -858,7 +859,6 @@ class OpenTelemetryMiddleware:
             elif message["type"] == "websocket.send":
                 status_code = 200
 
-            # Conditional send_span creation
             if not self.exclude_send_span:
                 with self.tracer.start_as_current_span(
                     " ".join((server_span_name, scope["type"], "send"))
@@ -867,7 +867,11 @@ class OpenTelemetryMiddleware:
                         self.client_response_hook(send_span, scope, message)
 
                     if send_span.is_recording():
-                        send_span.set_attribute("asgi.event.type", message["type"])
+                        if message["type"] == "http.response.start":
+                            expecting_trailers = message.get("trailers", False)
+                        send_span.set_attribute(
+                            "asgi.event.type", message["type"]
+                        )
                         if status_code:
                             set_status_code(
                                 send_span,
@@ -876,40 +880,43 @@ class OpenTelemetryMiddleware:
                                 self._sem_conv_opt_in_mode,
                             )
 
-            # Server span logic always applied
-            if server_span.is_recording() and "headers" in message:
-                if server_span.kind == trace.SpanKind.SERVER:
-                    custom_response_attributes = (
-                        collect_custom_headers_attributes(
-                            message,
-                            self.http_capture_headers_sanitize_fields,
-                            self.http_capture_headers_server_response,
-                            normalise_response_header_name,
-                        )
-                        if self.http_capture_headers_server_response
-                        else {}
-                    )
-                    if len(custom_response_attributes) > 0:
-                        server_span.set_attributes(custom_response_attributes)
+                        if (
+                            server_span.is_recording()
+                            and server_span.kind == trace.SpanKind.SERVER
+                            and "headers" in message
+                        ):
+                            custom_response_attributes = (
+                                collect_custom_headers_attributes(
+                                    message,
+                                    self.http_capture_headers_sanitize_fields,
+                                    self.http_capture_headers_server_response,
+                                    normalise_response_header_name,
+                                )
+                                if self.http_capture_headers_server_response
+                                else {}
+                            )
+                            if len(custom_response_attributes) > 0:
+                                server_span.set_attributes(
+                                    custom_response_attributes
+                                )
 
-                if status_code:
-                    # We record metrics only once
-                    set_status_code(
-                        server_span,
-                        status_code,
-                        duration_attrs,
-                        self._sem_conv_opt_in_mode,
-                    )
+            if status_code:
+                set_status_code(
+                    server_span,
+                    status_code,
+                    duration_attrs,
+                    self._sem_conv_opt_in_mode,
+                )
 
-                propagator = get_global_response_propagator()
-                if propagator:
-                    propagator.inject(
-                        message,
-                        context=set_span_in_context(
-                            server_span, trace.context_api.Context()
-                        ),
-                        setter=asgi_setter,
-                    )
+            propagator = get_global_response_propagator()
+            if propagator:
+                propagator.inject(
+                    message,
+                    context=set_span_in_context(
+                        server_span, trace.context_api.Context()
+                    ),
+                    setter=asgi_setter,
+                )
 
             content_length = asgi_getter.get(message, "content-length")
             if content_length:
