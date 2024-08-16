@@ -58,7 +58,6 @@ from opentelemetry.semconv.attributes.server_attributes import (
     SERVER_PORT,
 )
 from opentelemetry.semconv.attributes.url_attributes import (
-    URL_FULL,
     URL_PATH,
     URL_QUERY,
     URL_SCHEME,
@@ -410,7 +409,6 @@ class TestAsgiApplication(AsgiTestBase):
                     SERVER_ADDRESS: "127.0.0.1",
                     NETWORK_PROTOCOL_VERSION: "1.0",
                     URL_PATH: "/",
-                    URL_FULL: "http://127.0.0.1/",
                     CLIENT_ADDRESS: "127.0.0.1",
                     CLIENT_PORT: 32767,
                     HTTP_RESPONSE_STATUS_CODE: 200,
@@ -447,7 +445,6 @@ class TestAsgiApplication(AsgiTestBase):
                     SERVER_ADDRESS: "127.0.0.1",
                     NETWORK_PROTOCOL_VERSION: "1.0",
                     URL_PATH: "/",
-                    URL_FULL: "http://127.0.0.1/",
                     CLIENT_ADDRESS: "127.0.0.1",
                     CLIENT_PORT: 32767,
                     HTTP_RESPONSE_STATUS_CODE: 200,
@@ -693,7 +690,6 @@ class TestAsgiApplication(AsgiTestBase):
                 {
                     SERVER_ADDRESS: "0.0.0.0",
                     SERVER_PORT: 80,
-                    URL_FULL: "http://0.0.0.0/",
                 }
             )
             return expected
@@ -721,7 +717,6 @@ class TestAsgiApplication(AsgiTestBase):
                     SpanAttributes.HTTP_URL: "http://0.0.0.0/",
                     SERVER_ADDRESS: "0.0.0.0",
                     SERVER_PORT: 80,
-                    URL_FULL: "http://0.0.0.0/",
                 }
             )
             return expected
@@ -1009,7 +1004,6 @@ class TestAsgiApplication(AsgiTestBase):
                     SERVER_ADDRESS: self.scope["server"][0],
                     NETWORK_PROTOCOL_VERSION: self.scope["http_version"],
                     URL_PATH: self.scope["path"],
-                    URL_FULL: f'{self.scope["scheme"]}://{self.scope["server"][0]}{self.scope["path"]}',
                     CLIENT_ADDRESS: self.scope["client"][0],
                     CLIENT_PORT: self.scope["client"][1],
                     HTTP_RESPONSE_STATUS_CODE: 200,
@@ -1095,7 +1089,6 @@ class TestAsgiApplication(AsgiTestBase):
                     SERVER_ADDRESS: self.scope["server"][0],
                     NETWORK_PROTOCOL_VERSION: self.scope["http_version"],
                     URL_PATH: self.scope["path"],
-                    URL_FULL: f'{self.scope["scheme"]}://{self.scope["server"][0]}{self.scope["path"]}',
                     CLIENT_ADDRESS: self.scope["client"][0],
                     CLIENT_PORT: self.scope["client"][1],
                     HTTP_RESPONSE_STATUS_CODE: 200,
@@ -1639,7 +1632,6 @@ class TestAsgiAttributes(unittest.TestCase):
                 SERVER_ADDRESS: "127.0.0.1",
                 URL_PATH: "/",
                 URL_QUERY: "foo=bar",
-                URL_FULL: "http://127.0.0.1/?foo=bar",
                 SERVER_PORT: 80,
                 URL_SCHEME: "http",
                 NETWORK_PROTOCOL_VERSION: "1.0",
@@ -1676,7 +1668,6 @@ class TestAsgiAttributes(unittest.TestCase):
                 SERVER_ADDRESS: "127.0.0.1",
                 URL_PATH: "/",
                 URL_QUERY: "foo=bar",
-                URL_FULL: "http://127.0.0.1/?foo=bar",
                 SERVER_PORT: 80,
                 URL_SCHEME: "http",
                 NETWORK_PROTOCOL_VERSION: "1.0",
@@ -1698,7 +1689,10 @@ class TestAsgiAttributes(unittest.TestCase):
             self.scope,
             _HTTPStabilityMode.HTTP,
         )
-        self.assertEqual(attrs[URL_FULL], "http://127.0.0.1/?foo=bar")
+        self.assertEqual(attrs[URL_SCHEME], "http")
+        self.assertEqual(attrs[SERVER_ADDRESS], "127.0.0.1")
+        self.assertEqual(attrs[URL_PATH], "/")
+        self.assertEqual(attrs[URL_QUERY], "foo=bar")
 
     def test_query_string_both_semconv(self):
         self.scope["query_string"] = b"foo=bar"
@@ -1706,10 +1700,13 @@ class TestAsgiAttributes(unittest.TestCase):
             self.scope,
             _HTTPStabilityMode.HTTP_DUP,
         )
-        self.assertEqual(attrs[URL_FULL], "http://127.0.0.1/?foo=bar")
         self.assertEqual(
             attrs[SpanAttributes.HTTP_URL], "http://127.0.0.1/?foo=bar"
         )
+        self.assertEqual(attrs[URL_SCHEME], "http")
+        self.assertEqual(attrs[SERVER_ADDRESS], "127.0.0.1")
+        self.assertEqual(attrs[URL_PATH], "/")
+        self.assertEqual(attrs[URL_QUERY], "foo=bar")
 
     def test_query_string_percent_bytes(self):
         self.scope["query_string"] = b"foo%3Dbar"
