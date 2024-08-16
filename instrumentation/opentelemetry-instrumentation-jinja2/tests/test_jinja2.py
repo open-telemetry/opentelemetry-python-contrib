@@ -219,7 +219,7 @@ class TestJinja2Instrumentor(TestBase):
         self.assertEqual(len(spans), 0)
 
         Jinja2Instrumentor().instrument()
-    
+
     def test_no_op_tracer_provider(self):
         self.memory_exporter.clear()
         Jinja2Instrumentor().uninstrument()
