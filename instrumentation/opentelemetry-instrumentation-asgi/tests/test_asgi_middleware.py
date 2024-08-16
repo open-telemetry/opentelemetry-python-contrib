@@ -572,6 +572,27 @@ class TestAsgiApplication(AsgiTestBase):
             _SIMULATED_BACKGROUND_TASK_EXECUTION_TIME_S * 10**9,
         )
 
+    def test_exclude_internal_spans(self):
+        """Test that internal spans are excluded from the emitted spans when
+        the `exclude_receive_span` or `exclude_send_span` attributes are set.
+        """
+        app = otel_asgi.OpenTelemetryMiddleware(simple_asgi)
+        self.seed_app(app)
+        cases = [
+            (True, True, ["GET / http receive", "GET / http send"]),
+            (False, True, ["GET / http send"]),
+            (True, False, ["GET / http receive"]),
+            (False, False, []),
+        ]
+        for exclude_receive_span, exclude_send_span, excluded_spans in cases:
+            app.exclude_receive_span = exclude_receive_span
+            app.exclude_send_span = exclude_send_span
+            self.send_default_request()
+            span_list = self.memory_exporter.get_finished_spans()
+            for span in span_list:
+                for excluded_span in excluded_spans:
+                    self.assertNotEqual(span.name, excluded_span)
+
     def test_trailers(self):
         """Test that trailers are emitted as expected and that the server span is ended
         BEFORE the background task is finished."""

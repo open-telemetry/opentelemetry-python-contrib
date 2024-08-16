@@ -185,6 +185,11 @@ will replace the value of headers such as ``session-id`` and ``set-cookie`` with
 Note:
     The environment variable names used to capture HTTP headers are still experimental, and thus are subject to change.
 
+Internal HTTP spans
+*****************************
+Internal HTTP send and receive spans are added by default. These can optionally be excluded by setting the boolean environment variables
+``OTEL_PYTHON_ASGI_EXCLUDE_SEND_SPAN`` and ``OTEL_PYTHON_ASGI_EXCLUDE_RECEIVE_SPAN`` to ``true``.
+
 API
 ---
 """
