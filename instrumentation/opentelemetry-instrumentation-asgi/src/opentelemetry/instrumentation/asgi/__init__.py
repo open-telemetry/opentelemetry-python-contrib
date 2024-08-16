@@ -191,9 +191,11 @@ API
 
 from __future__ import annotations
 
+import os
 import typing
 import urllib
 from collections import defaultdict
+from distutils.util import strtobool
 from functools import wraps
 from timeit import default_timer
 from typing import Any, Awaitable, Callable, DefaultDict, Tuple
@@ -225,6 +227,10 @@ from opentelemetry.instrumentation._semconv import (
     _set_http_url,
     _set_http_user_agent,
     _set_status,
+)
+from opentelemetry.instrumentation.asgi.environment_variables import (
+    OTEL_PYTHON_ASGI_EXCLUDE_RECEIVE_SPAN,
+    OTEL_PYTHON_ASGI_EXCLUDE_SEND_SPAN,
 )
 from opentelemetry.instrumentation.asgi.types import (
     ClientRequestHook,
@@ -527,6 +533,8 @@ class OpenTelemetryMiddleware:
             the current globally configured one is used.
         meter_provider: The optional meter provider to use. If omitted
             the current globally configured one is used.
+        exclude_receive_span: Optional flag to exclude the http receive span from the trace.
+        exclude_send_span: Optional flag to exclude the http send span from the trace.
     """
 
     # pylint: disable=too-many-branches
@@ -545,6 +553,8 @@ class OpenTelemetryMiddleware:
         http_capture_headers_server_request: list[str] | None = None,
         http_capture_headers_server_response: list[str] | None = None,
         http_capture_headers_sanitize_fields: list[str] | None = None,
+        exclude_receive_span: bool = False,
+        exclude_send_span: bool = False,
     ):
         # initialize semantic conventions opt-in if needed
         _OpenTelemetrySemanticConventionStability._initialize()
@@ -650,6 +660,12 @@ class OpenTelemetryMiddleware:
                 )
             )
             or []
+        )
+        self.exclude_receive_span = exclude_receive_span or strtobool(
+            os.getenv(OTEL_PYTHON_ASGI_EXCLUDE_RECEIVE_SPAN, "false")
+        )
+        self.exclude_send_span = exclude_send_span or strtobool(
+            os.getenv(OTEL_PYTHON_ASGI_EXCLUDE_SEND_SPAN, "false")
         )
 
     # pylint: disable=too-many-statements
@@ -796,6 +812,8 @@ class OpenTelemetryMiddleware:
     # pylint: enable=too-many-branches
 
     def _get_otel_receive(self, server_span_name, scope, receive):
+        if self.exclude_receive_span:
+            return receive
         @wraps(receive)
         async def otel_receive():
             with self.tracer.start_as_current_span(
@@ -832,53 +850,54 @@ class OpenTelemetryMiddleware:
         @wraps(send)
         async def otel_send(message: dict[str, Any]):
             nonlocal expecting_trailers
-            with self.tracer.start_as_current_span(
-                " ".join((server_span_name, scope["type"], "send"))
-            ) as send_span:
-                if callable(self.client_response_hook):
-                    self.client_response_hook(send_span, scope, message)
 
-                status_code = None
-                if message["type"] == "http.response.start":
-                    status_code = message["status"]
-                elif message["type"] == "websocket.send":
-                    status_code = 200
+            status_code = None
+            if message["type"] == "http.response.start":
+                status_code = message["status"]
+                expecting_trailers = message.get("trailers", False)
+            elif message["type"] == "websocket.send":
+                status_code = 200
 
-                if send_span.is_recording():
-                    if message["type"] == "http.response.start":
-                        expecting_trailers = message.get("trailers", False)
-                    send_span.set_attribute("asgi.event.type", message["type"])
-                    if (
-                        server_span.is_recording()
-                        and server_span.kind == trace.SpanKind.SERVER
-                        and "headers" in message
-                    ):
-                        custom_response_attributes = (
-                            collect_custom_headers_attributes(
-                                message,
-                                self.http_capture_headers_sanitize_fields,
-                                self.http_capture_headers_server_response,
-                                normalise_response_header_name,
+            # Conditional send_span creation
+            if not self.exclude_send_span:
+                with self.tracer.start_as_current_span(
+                    " ".join((server_span_name, scope["type"], "send"))
+                ) as send_span:
+                    if callable(self.client_response_hook):
+                        self.client_response_hook(send_span, scope, message)
+
+                    if send_span.is_recording():
+                        send_span.set_attribute("asgi.event.type", message["type"])
+                        if status_code:
+                            set_status_code(
+                                send_span,
+                                status_code,
+                                None,
+                                self._sem_conv_opt_in_mode,
                             )
-                            if self.http_capture_headers_server_response
-                            else {}
+
+            # Server span logic always applied
+            if server_span.is_recording() and "headers" in message:
+                if server_span.kind == trace.SpanKind.SERVER:
+                    custom_response_attributes = (
+                        collect_custom_headers_attributes(
+                            message,
+                            self.http_capture_headers_sanitize_fields,
+                            self.http_capture_headers_server_response,
+                            normalise_response_header_name,
                         )
-                        if len(custom_response_attributes) > 0:
-                            server_span.set_attributes(
-                                custom_response_attributes
-                            )
+                        if self.http_capture_headers_server_response
+                        else {}
+                    )
+                    if len(custom_response_attributes) > 0:
+                        server_span.set_attributes(custom_response_attributes)
+
                 if status_code:
                     # We record metrics only once
                     set_status_code(
                         server_span,
                         status_code,
                         duration_attrs,
-                        self._sem_conv_opt_in_mode,
-                    )
-                    set_status_code(
-                        send_span,
-                        status_code,
-                        None,
                         self._sem_conv_opt_in_mode,
                     )
 
@@ -892,14 +911,15 @@ class OpenTelemetryMiddleware:
                         setter=asgi_setter,
                     )
 
-                content_length = asgi_getter.get(message, "content-length")
-                if content_length:
-                    try:
-                        self.content_length_header = int(content_length[0])
-                    except ValueError:
-                        pass
+            content_length = asgi_getter.get(message, "content-length")
+            if content_length:
+                try:
+                    self.content_length_header = int(content_length[0])
+                except ValueError:
+                    pass
 
-                await send(message)
+            await send(message)
+
             # pylint: disable=too-many-boolean-expressions
             if (
                 not expecting_trailers
