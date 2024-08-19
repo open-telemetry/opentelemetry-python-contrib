@@ -185,11 +185,6 @@ will replace the value of headers such as ``session-id`` and ``set-cookie`` with
 Note:
     The environment variable names used to capture HTTP headers are still experimental, and thus are subject to change.
 
-Internal HTTP spans
-*****************************
-Internal HTTP send and receive spans are added by default. These can optionally be excluded by setting the boolean environment variables
-``OTEL_PYTHON_ASGI_EXCLUDE_SEND_SPAN`` and ``OTEL_PYTHON_ASGI_EXCLUDE_RECEIVE_SPAN`` to ``true``.
-
 API
 ---
 """
@@ -200,7 +195,6 @@ import os
 import typing
 import urllib
 from collections import defaultdict
-from distutils.util import strtobool
 from functools import wraps
 from timeit import default_timer
 from typing import Any, Awaitable, Callable, DefaultDict, Tuple
@@ -232,10 +226,6 @@ from opentelemetry.instrumentation._semconv import (
     _set_http_url,
     _set_http_user_agent,
     _set_status,
-)
-from opentelemetry.instrumentation.asgi.environment_variables import (
-    OTEL_PYTHON_ASGI_EXCLUDE_RECEIVE_SPAN,
-    OTEL_PYTHON_ASGI_EXCLUDE_SEND_SPAN,
 )
 from opentelemetry.instrumentation.asgi.types import (
     ClientRequestHook,
@@ -666,12 +656,8 @@ class OpenTelemetryMiddleware:
             )
             or []
         )
-        self.exclude_receive_span = exclude_receive_span or strtobool(
-            os.getenv(OTEL_PYTHON_ASGI_EXCLUDE_RECEIVE_SPAN, "false")
-        )
-        self.exclude_send_span = exclude_send_span or strtobool(
-            os.getenv(OTEL_PYTHON_ASGI_EXCLUDE_SEND_SPAN, "false")
-        )
+        self.exclude_receive_span = exclude_receive_span
+        self.exclude_send_span = exclude_send_span
 
     # pylint: disable=too-many-statements
     async def __call__(
