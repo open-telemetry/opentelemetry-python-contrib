@@ -232,8 +232,30 @@ class FastAPIInstrumentor(BaseInstrumentor):
         http_capture_headers_server_request: list[str] | None = None,
         http_capture_headers_server_response: list[str] | None = None,
         http_capture_headers_sanitize_fields: list[str] | None = None,
+        exclude_receive_span: bool = False,
+        exclude_send_span: bool = False,
     ):
-        """Instrument an uninstrumented FastAPI application."""
+        """Instrument an uninstrumented FastAPI application.
+
+        Args:
+            app: The ASGI application callable to forward requests to.
+            server_request_hook: Optional callback which is called with the server span and ASGI
+                          scope object for every incoming request.
+            client_request_hook: Optional callback which is called with the internal span, and ASGI
+                          scope and event which are sent as dictionaries for when the method receive is called.
+            client_response_hook: Optional callback which is called with the internal span, and ASGI
+                          scope and event which are sent as dictionaries for when the method send is called.
+            tracer_provider: The optional tracer provider to use. If omitted
+                the current globally configured one is used.
+            meter_provider: The optional meter provider to use. If omitted
+                the current globally configured one is used.
+            excluded_urls: Optional comma delimited string of regexes to match URLs that should not be traced.
+            http_capture_headers_server_request: Optional list of HTTP headers to capture from the request.
+            http_capture_headers_server_response: Optional list of HTTP headers to capture from the response.
+            http_capture_headers_sanitize_fields: Optional list of HTTP headers to sanitize.
+            exclude_receive_span: Optional flag to exclude the http receive span from the trace.
+            exclude_send_span: Optional flag to exclude the http send span from the trace.
+        """
         if not hasattr(app, "_is_instrumented_by_opentelemetry"):
             app._is_instrumented_by_opentelemetry = False
 
@@ -273,6 +295,8 @@ class FastAPIInstrumentor(BaseInstrumentor):
                 http_capture_headers_server_request=http_capture_headers_server_request,
                 http_capture_headers_server_response=http_capture_headers_server_response,
                 http_capture_headers_sanitize_fields=http_capture_headers_sanitize_fields,
+                exclude_receive_span=exclude_receive_span,
+                exclude_send_span=exclude_send_span,
             )
             app._is_instrumented_by_opentelemetry = True
             if app not in _InstrumentedFastAPI._instrumented_fastapi_apps:
@@ -373,6 +397,8 @@ class _InstrumentedFastAPI(fastapi.FastAPI):
             http_capture_headers_server_request=_InstrumentedFastAPI._http_capture_headers_server_request,
             http_capture_headers_server_response=_InstrumentedFastAPI._http_capture_headers_server_response,
             http_capture_headers_sanitize_fields=_InstrumentedFastAPI._http_capture_headers_sanitize_fields,
+            exclude_receive_span=False,
+            exclude_send_span=False,
         )
         self._is_instrumented_by_opentelemetry = True
         _InstrumentedFastAPI._instrumented_fastapi_apps.add(self)
