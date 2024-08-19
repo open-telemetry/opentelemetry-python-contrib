@@ -845,7 +845,6 @@ class OpenTelemetryMiddleware:
             status_code = None
             if message["type"] == "http.response.start":
                 status_code = message["status"]
-                expecting_trailers = message.get("trailers", False)
             elif message["type"] == "websocket.send":
                 status_code = 200
 
