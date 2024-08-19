@@ -191,7 +191,6 @@ API
 
 from __future__ import annotations
 
-import os
 import typing
 import urllib
 from collections import defaultdict
