@@ -192,6 +192,7 @@ API
 """
 import logging
 import typing
+from inspect import iscoroutinefunction
 from types import TracebackType
 
 import httpx
@@ -731,10 +732,16 @@ class HTTPXClientInstrumentor(BaseInstrumentor):
         self._original_async_client = httpx.AsyncClient
         request_hook = kwargs.get("request_hook")
         response_hook = kwargs.get("response_hook")
-        async_request_hook = kwargs.get(
-            "async_request_hook", self._wrap_async_request_hook(request_hook)
-        )
-        async_response_hook = kwargs.get("async_response_hook", response_hook)
+        if iscoroutinefunction(request_hook):
+            async_request_hook = kwargs.get("async_request_hook", request_hook)
+        else:
+            async_request_hook = kwargs.get("async_request_hook")
+        if iscoroutinefunction(response_hook):
+            async_response_hook = kwargs.get(
+                "async_response_hook", response_hook
+            )
+        else:
+            async_response_hook = kwargs.get("async_response_hook")
         if callable(request_hook):
             _InstrumentedClient._request_hook = request_hook
         if callable(async_request_hook):
@@ -750,16 +757,6 @@ class HTTPXClientInstrumentor(BaseInstrumentor):
         # https://github.com/open-telemetry/opentelemetry-python-contrib/pull/2538#discussion_r1610603719
         httpx.Client = httpx._api.Client = _InstrumentedClient
         httpx.AsyncClient = _InstrumentedAsyncClient
-
-    # Wrap a given request hook function and ensure it is asynchronous
-    def _wrap_async_request_hook(self, request_hook_func):
-        if request_hook_func is None:
-            return None
-
-        async def async_request_hook(span, req):
-            return request_hook_func(span, req)
-
-        return async_request_hook
 
     def _uninstrument(self, **kwargs):
         httpx.Client = httpx._api.Client = self._original_client

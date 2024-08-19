@@ -1214,3 +1214,27 @@ class TestAsyncInstrumentationIntegration(BaseTestCases.BaseInstrumentorTest):
         self.perform_request(self.URL, client=self.client)
         self.perform_request(self.URL, client=self.client2)
         self.assert_span(num_spans=2)
+
+    def test_async_request_hook_with_sync_hook_value_provided(self):
+        HTTPXClientInstrumentor().instrument(
+            tracer_provider=self.tracer_provider,
+            request_hook=_request_hook,
+        )
+        client = self.create_client()
+        result = self.perform_request(self.URL, client=client)
+        self.assertEqual(result.text, "Hello!")
+        span = self.assert_span()
+        self.assertEqual(span.name, "GET")
+        HTTPXClientInstrumentor().uninstrument()
+
+    def test_async_response_hook_with_sync_hook_value_provided(self):
+        HTTPXClientInstrumentor().instrument(
+            tracer_provider=self.tracer_provider,
+            response_hook=_response_hook,
+        )
+        client = self.create_client()
+        result = self.perform_request(self.URL, client=client)
+        self.assertEqual(result.text, "Hello!")
+        span = self.assert_span()
+        self.assertEqual(span.name, "GET")
+        HTTPXClientInstrumentor().uninstrument()

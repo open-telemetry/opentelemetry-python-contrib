@@ -7,6 +7,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## Unreleased
 
+## Fixed
+
+- Sync hook used as async hook in `opentelemetry-instrumentation-httpx` causing `TypeError`
+  ([#2794](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/2794))
+
 ## Version 1.26.0/0.47b0 (2024-07-23)
 
 ### Added
