@@ -21,7 +21,7 @@ from opentelemetry import trace
 from opentelemetry.instrumentation.utils import http_status_to_status_code
 from opentelemetry.propagate import inject
 from opentelemetry.semconv.trace import SpanAttributes
-from opentelemetry.trace.status import Status
+from opentelemetry.trace.status import Status, StatusCode
 from opentelemetry.util.http import remove_url_credentials
 
 
@@ -105,37 +105,53 @@ def _finish_tracing_callback(
     request_size_histogram,
     response_size_histogram,
 ):
+    response = None
     status_code = None
+    status = None
     description = None
+
     exc = future.exception()
-
-    response = future.result()
-
-    if span.is_recording() and exc:
+    if exc:
+        description = f"{type(exc).__qualname__}: {exc}"
         if isinstance(exc, HTTPError):
+            response = exc.response
             status_code = exc.code
-        description = f"{type(exc).__name__}: {exc}"
-    else:
-        status_code = response.code
-
-    if status_code is not None:
-        span.set_attribute(SpanAttributes.HTTP_STATUS_CODE, status_code)
-        span.set_status(
-            Status(
+            status = Status(
                 status_code=http_status_to_status_code(status_code),
                 description=description,
             )
+        else:
+            status = Status(
+                status_code=StatusCode.ERROR,
+                description=description,
+            )
+            span.record_exception(exc)
+    else:
+        response = future.result()
+        status_code = response.code
+        status = Status(
+            status_code=http_status_to_status_code(status_code),
+            description=description,
         )
 
-    metric_attributes = _create_metric_attributes(response)
-    request_size = int(response.request.headers.get("Content-Length", 0))
-    response_size = int(response.headers.get("Content-Length", 0))
+    if status_code is not None:
+        span.set_attribute(SpanAttributes.HTTP_STATUS_CODE, status_code)
+    span.set_status(status)
 
-    duration_histogram.record(
-        response.request_time, attributes=metric_attributes
-    )
-    request_size_histogram.record(request_size, attributes=metric_attributes)
-    response_size_histogram.record(response_size, attributes=metric_attributes)
+    if response is not None:
+        metric_attributes = _create_metric_attributes(response)
+        request_size = int(response.request.headers.get("Content-Length", 0))
+        response_size = int(response.headers.get("Content-Length", 0))
+
+        duration_histogram.record(
+            response.request_time, attributes=metric_attributes
+        )
+        request_size_histogram.record(
+            request_size, attributes=metric_attributes
+        )
+        response_size_histogram.record(
+            response_size, attributes=metric_attributes
+        )
 
     if response_hook:
         response_hook(span, future)
