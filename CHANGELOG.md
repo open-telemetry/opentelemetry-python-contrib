@@ -36,6 +36,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   ([#2385](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/2385))
 - `opentelemetry-instrumentation-asyncio` Fixes async generator coroutines not being awaited
   ([#2792](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/2792))
+- `opentelemetry-instrumentation-tornado` Handle http client exception and record exception info into span
+  ([#2563](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/2563))
 
 ## Version 1.26.0/0.47b0 (2024-07-23)
 
