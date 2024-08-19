@@ -12,7 +12,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - `opentelemetry-instrumentation-kafka-python` Instrument temporary fork, kafka-python-ng
   inside kafka-python's instrumentation
   ([#2537](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/2537))
-- `opentelemetry-instrumentation-asgi` Add ability to disable internal HTTP send and receive spans
+- `opentelemetry-instrumentation-asgi`, `opentelemetry-instrumentation-fastapi` Add ability to disable internal HTTP send and receive spans
   ([#2802](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/2802))
 
 ## Breaking changes
