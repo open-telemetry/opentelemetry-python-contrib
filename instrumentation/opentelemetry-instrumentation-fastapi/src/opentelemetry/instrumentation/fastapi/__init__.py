@@ -347,6 +347,12 @@ class FastAPIInstrumentor(BaseInstrumentor):
             else parse_excluded_urls(_excluded_urls)
         )
         _InstrumentedFastAPI._meter_provider = kwargs.get("meter_provider")
+        _InstrumentedFastAPI._exclude_receive_span = kwargs.get(
+            "exclude_receive_span"
+        )
+        _InstrumentedFastAPI._exclude_send_span = kwargs.get(
+            "exclude_send_span"
+        )
         fastapi.FastAPI = _InstrumentedFastAPI
 
     def _uninstrument(self, **kwargs):
@@ -397,8 +403,8 @@ class _InstrumentedFastAPI(fastapi.FastAPI):
             http_capture_headers_server_request=_InstrumentedFastAPI._http_capture_headers_server_request,
             http_capture_headers_server_response=_InstrumentedFastAPI._http_capture_headers_server_response,
             http_capture_headers_sanitize_fields=_InstrumentedFastAPI._http_capture_headers_sanitize_fields,
-            exclude_receive_span=False,
-            exclude_send_span=False,
+            exclude_receive_span=_InstrumentedFastAPI._exclude_receive_span,
+            exclude_send_span=_InstrumentedFastAPI._exclude_send_span,
         )
         self._is_instrumented_by_opentelemetry = True
         _InstrumentedFastAPI._instrumented_fastapi_apps.add(self)
