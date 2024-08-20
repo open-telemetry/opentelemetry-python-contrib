@@ -222,7 +222,7 @@ class FastAPIInstrumentor(BaseInstrumentor):
 
     @staticmethod
     def instrument_app(
-        app: fastapi.FastAPI,
+        app,
         server_request_hook: ServerRequestHook = None,
         client_request_hook: ClientRequestHook = None,
         client_response_hook: ClientResponseHook = None,
@@ -238,7 +238,7 @@ class FastAPIInstrumentor(BaseInstrumentor):
         """Instrument an uninstrumented FastAPI application.
 
         Args:
-            app: The ASGI application callable to forward requests to.
+            app: The fastapi ASGI application callable to forward requests to.
             server_request_hook: Optional callback which is called with the server span and ASGI
                           scope object for every incoming request.
             client_request_hook: Optional callback which is called with the internal span, and ASGI
