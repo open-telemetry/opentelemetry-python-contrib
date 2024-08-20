@@ -800,7 +800,6 @@ class OpenTelemetryMiddleware:
                 span.end()
 
     # pylint: enable=too-many-branches
-
     def _get_otel_receive(self, server_span_name, scope, receive):
         if self.exclude_receive_span:
             return receive
