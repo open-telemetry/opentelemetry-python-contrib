@@ -468,7 +468,7 @@ class TestAioHttpIntegration(TestBase):
             [
                 (
                     "GET",
-                    (StatusCode.ERROR, "ServerTimeoutError"),
+                    (StatusCode.ERROR, "SocketTimeoutError"),
                     {
                         SpanAttributes.HTTP_METHOD: "GET",
                         SpanAttributes.HTTP_URL: f"http://{host}:{port}/test_timeout",

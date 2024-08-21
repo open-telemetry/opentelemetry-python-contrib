@@ -22,6 +22,7 @@ classifiers = [
   "Programming Language :: Python :: 3.9",
   "Programming Language :: Python :: 3.10",
   "Programming Language :: Python :: 3.11",
+  "Programming Language :: Python :: 3.12",
 ]
 dependencies = [
   "opentelemetry-api ~= 1.5",
@@ -31,7 +32,8 @@ dependencies = [
 
 [project.optional-dependencies]
 instruments = [
-  "kafka-python >= 2.0",
+  "kafka-python >= 2.0, < 3.0",
+  "kafka-python-ng >= 2.0, < 3.0"
 ]
 
 [project.entry-points.opentelemetry_instrumentor]
