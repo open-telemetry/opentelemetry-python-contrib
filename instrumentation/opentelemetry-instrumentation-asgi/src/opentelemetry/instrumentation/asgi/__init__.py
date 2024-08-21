@@ -527,8 +527,7 @@ class OpenTelemetryMiddleware:
             the current globally configured one is used.
         meter_provider: The optional meter provider to use. If omitted
             the current globally configured one is used.
-        exclude_receive_span: Optional flag to exclude the http receive span from the trace.
-        exclude_send_span: Optional flag to exclude the http send span from the trace.
+        exclude_spans: Optionally exclude http `send` and/or `receive` span from the trace.
     """
 
     # pylint: disable=too-many-branches
@@ -547,8 +546,7 @@ class OpenTelemetryMiddleware:
         http_capture_headers_server_request: list[str] | None = None,
         http_capture_headers_server_response: list[str] | None = None,
         http_capture_headers_sanitize_fields: list[str] | None = None,
-        exclude_receive_span: bool = False,
-        exclude_send_span: bool = False,
+        exclude_spans: list[typing.Literal["receive", "send"]] | None = None,
     ):
         # initialize semantic conventions opt-in if needed
         _OpenTelemetrySemanticConventionStability._initialize()
@@ -655,8 +653,10 @@ class OpenTelemetryMiddleware:
             )
             or []
         )
-        self.exclude_receive_span = exclude_receive_span
-        self.exclude_send_span = exclude_send_span
+        self.exclude_receive_span = (
+            "receive" in exclude_spans if exclude_spans else False
+        )
+        self.exclude_send_span = "send" in exclude_spans if exclude_spans else False
 
     # pylint: disable=too-many-statements
     async def __call__(
