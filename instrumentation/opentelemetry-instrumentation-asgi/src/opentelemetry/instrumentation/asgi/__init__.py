@@ -215,7 +215,7 @@ from opentelemetry.instrumentation._semconv import (
     _server_duration_attrs_new,
     _server_duration_attrs_old,
     _set_http_flavor_version,
-    _set_http_host,
+    _set_http_host_server,
     _set_http_method,
     _set_http_net_host_port,
     _set_http_peer_ip,
@@ -342,7 +342,7 @@ def collect_request_attributes(
     if scheme:
         _set_http_scheme(result, scheme, sem_conv_opt_in_mode)
     if server_host:
-        _set_http_host(result, server_host, sem_conv_opt_in_mode)
+        _set_http_host_server(result, server_host, sem_conv_opt_in_mode)
     if port:
         _set_http_net_host_port(result, port, sem_conv_opt_in_mode)
     flavor = scope.get("http_version")
