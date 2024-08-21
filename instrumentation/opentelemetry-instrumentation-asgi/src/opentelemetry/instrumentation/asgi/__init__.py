@@ -868,25 +868,25 @@ class OpenTelemetryMiddleware:
                                 self._sem_conv_opt_in_mode,
                             )
 
-                        if (
-                            server_span.is_recording()
-                            and server_span.kind == trace.SpanKind.SERVER
-                            and "headers" in message
-                        ):
-                            custom_response_attributes = (
-                                collect_custom_headers_attributes(
-                                    message,
-                                    self.http_capture_headers_sanitize_fields,
-                                    self.http_capture_headers_server_response,
-                                    normalise_response_header_name,
-                                )
-                                if self.http_capture_headers_server_response
-                                else {}
-                            )
-                            if len(custom_response_attributes) > 0:
-                                server_span.set_attributes(
-                                    custom_response_attributes
-                                )
+            if (
+                server_span.is_recording()
+                and server_span.kind == trace.SpanKind.SERVER
+                and "headers" in message
+            ):
+                custom_response_attributes = (
+                    collect_custom_headers_attributes(
+                        message,
+                        self.http_capture_headers_sanitize_fields,
+                        self.http_capture_headers_server_response,
+                        normalise_response_header_name,
+                    )
+                    if self.http_capture_headers_server_response
+                    else {}
+                )
+                if len(custom_response_attributes) > 0:
+                    server_span.set_attributes(
+                        custom_response_attributes
+                    )
 
             if status_code:
                 set_status_code(
