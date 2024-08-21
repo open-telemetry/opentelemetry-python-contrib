@@ -252,7 +252,7 @@ class FastAPIInstrumentor(BaseInstrumentor):
             http_capture_headers_server_request: Optional list of HTTP headers to capture from the request.
             http_capture_headers_server_response: Optional list of HTTP headers to capture from the response.
             http_capture_headers_sanitize_fields: Optional list of HTTP headers to sanitize.
-            exclude_spans: Optionally exclude http `send` and/or `receive` span from the trace.
+            exclude_spans: Optionally exclude HTTP `send` and/or `receive` spans from the trace.
         """
         if not hasattr(app, "_is_instrumented_by_opentelemetry"):
             app._is_instrumented_by_opentelemetry = False

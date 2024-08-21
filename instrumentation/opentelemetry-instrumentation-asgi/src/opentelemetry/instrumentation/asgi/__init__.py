@@ -527,7 +527,7 @@ class OpenTelemetryMiddleware:
             the current globally configured one is used.
         meter_provider: The optional meter provider to use. If omitted
             the current globally configured one is used.
-        exclude_spans: Optionally exclude http `send` and/or `receive` span from the trace.
+        exclude_spans: Optionally exclude HTTP `send` and/or `receive` spans from the trace.
     """
 
     # pylint: disable=too-many-branches
