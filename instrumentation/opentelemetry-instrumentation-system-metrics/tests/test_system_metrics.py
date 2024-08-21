@@ -837,7 +837,7 @@ class TestSystemMetrics(TestBase):
 
     @mock.patch("psutil.Process.cpu_percent")
     def test_runtime_cpu_percent(self, mock_process_cpu_percent):
-        mock_process_cpu_percent.configure_mock(**{"return_value": 0.42})
+        mock_process_cpu_percent.configure_mock(**{"return_value": 42})
 
         expected = [_SystemMetricsResult({}, 0.42)]
         self._test_metrics(
