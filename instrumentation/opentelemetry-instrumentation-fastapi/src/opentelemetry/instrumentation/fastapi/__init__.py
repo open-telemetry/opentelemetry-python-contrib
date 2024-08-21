@@ -344,9 +344,7 @@ class FastAPIInstrumentor(BaseInstrumentor):
             else parse_excluded_urls(_excluded_urls)
         )
         _InstrumentedFastAPI._meter_provider = kwargs.get("meter_provider")
-        _InstrumentedFastAPI._exclude_spans = kwargs.get(
-            "exclude_spans"
-        )
+        _InstrumentedFastAPI._exclude_spans = kwargs.get("exclude_spans")
         fastapi.FastAPI = _InstrumentedFastAPI
 
     def _uninstrument(self, **kwargs):

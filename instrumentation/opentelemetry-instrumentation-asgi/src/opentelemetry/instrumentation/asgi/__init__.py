@@ -656,7 +656,9 @@ class OpenTelemetryMiddleware:
         self.exclude_receive_span = (
             "receive" in exclude_spans if exclude_spans else False
         )
-        self.exclude_send_span = "send" in exclude_spans if exclude_spans else False
+        self.exclude_send_span = (
+            "send" in exclude_spans if exclude_spans else False
+        )
 
     # pylint: disable=too-many-statements
     async def __call__(
@@ -884,9 +886,7 @@ class OpenTelemetryMiddleware:
                     else {}
                 )
                 if len(custom_response_attributes) > 0:
-                    server_span.set_attributes(
-                        custom_response_attributes
-                    )
+                    server_span.set_attributes(custom_response_attributes)
 
             if status_code:
                 set_status_code(
