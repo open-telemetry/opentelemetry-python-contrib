@@ -54,7 +54,6 @@ from opentelemetry.semconv.attributes.network_attributes import (
     NETWORK_PROTOCOL_VERSION,
 )
 from opentelemetry.semconv.attributes.server_attributes import (
-    SERVER_ADDRESS,
     SERVER_PORT,
 )
 from opentelemetry.semconv.attributes.url_attributes import (

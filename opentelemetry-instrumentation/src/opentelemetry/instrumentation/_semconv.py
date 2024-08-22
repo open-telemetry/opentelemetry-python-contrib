@@ -342,7 +342,8 @@ def _set_http_peer_ip_server(result, ip, sem_conv_opt_in_mode):
     if _report_old(sem_conv_opt_in_mode):
         set_string_attribute(result, SpanAttributes.NET_PEER_IP, ip)
     if _report_new(sem_conv_opt_in_mode):
-        if result.get(CLIENT_ADDRESS) is not None:
+        # Only populate if not already populated
+        if not result.get(CLIENT_ADDRESS):
             set_string_attribute(result, CLIENT_ADDRESS, ip)
 
 
