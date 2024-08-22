@@ -406,7 +406,6 @@ class TestAsgiApplication(AsgiTestBase):
                     HTTP_REQUEST_METHOD: "GET",
                     URL_SCHEME: "http",
                     SERVER_PORT: 80,
-                    SERVER_ADDRESS: "127.0.0.1",
                     NETWORK_PROTOCOL_VERSION: "1.0",
                     URL_PATH: "/",
                     CLIENT_ADDRESS: "127.0.0.1",
