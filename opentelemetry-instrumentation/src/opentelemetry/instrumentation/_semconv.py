@@ -254,6 +254,7 @@ def _set_http_scheme(result, scheme, sem_conv_opt_in_mode):
 
 # Client
 
+
 def _set_http_host_client(result, host, sem_conv_opt_in_mode):
     if _report_old(sem_conv_opt_in_mode):
         set_string_attribute(result, SpanAttributes.HTTP_HOST, host)
@@ -283,6 +284,7 @@ def _set_http_network_protocol_version(result, version, sem_conv_opt_in_mode):
 
 
 # Server
+
 
 def _set_http_net_host(result, host, sem_conv_opt_in_mode):
     if _report_old(sem_conv_opt_in_mode):
@@ -320,7 +322,7 @@ def _set_http_host_server(result, host, sem_conv_opt_in_mode):
 # net.sock.peer.addr -> client.socket.address for server spans (TODO) AND client.address
 # https://github.com/open-telemetry/semantic-conventions/blob/v1.21.0/CHANGELOG.md#v1210-2023-07-13
 # https://github.com/open-telemetry/semantic-conventions/blob/main/docs/non-normative/http-migration.md#common-attributes-across-http-client-and-server-spans
-def _set_http_peer_ip(result, ip, sem_conv_opt_in_mode):
+def _set_http_peer_ip_server(result, ip, sem_conv_opt_in_mode):
     if _report_old(sem_conv_opt_in_mode):
         set_string_attribute(result, SpanAttributes.NET_PEER_IP, ip)
     if _report_new(sem_conv_opt_in_mode):

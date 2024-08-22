@@ -1086,7 +1086,6 @@ class TestAsgiApplication(AsgiTestBase):
                     SpanAttributes.HTTP_METHOD: self.scope["method"],
                     URL_SCHEME: self.scope["scheme"],
                     SERVER_PORT: self.scope["server"][1],
-                    SERVER_ADDRESS: self.scope["server"][0],
                     NETWORK_PROTOCOL_VERSION: self.scope["http_version"],
                     URL_PATH: self.scope["path"],
                     CLIENT_ADDRESS: self.scope["client"][0],
@@ -1629,7 +1628,6 @@ class TestAsgiAttributes(unittest.TestCase):
             attrs,
             {
                 HTTP_REQUEST_METHOD: "GET",
-                SERVER_ADDRESS: "127.0.0.1",
                 URL_PATH: "/",
                 URL_QUERY: "foo=bar",
                 SERVER_PORT: 80,
@@ -1665,7 +1663,6 @@ class TestAsgiAttributes(unittest.TestCase):
                 SpanAttributes.NET_PEER_IP: "127.0.0.1",
                 SpanAttributes.NET_PEER_PORT: 32767,
                 HTTP_REQUEST_METHOD: "GET",
-                SERVER_ADDRESS: "127.0.0.1",
                 URL_PATH: "/",
                 URL_QUERY: "foo=bar",
                 SERVER_PORT: 80,
@@ -1690,7 +1687,7 @@ class TestAsgiAttributes(unittest.TestCase):
             _HTTPStabilityMode.HTTP,
         )
         self.assertEqual(attrs[URL_SCHEME], "http")
-        self.assertEqual(attrs[SERVER_ADDRESS], "127.0.0.1")
+        self.assertEqual(attrs[CLIENT_ADDRESS], "127.0.0.1")
         self.assertEqual(attrs[URL_PATH], "/")
         self.assertEqual(attrs[URL_QUERY], "foo=bar")
 
@@ -1704,7 +1701,7 @@ class TestAsgiAttributes(unittest.TestCase):
             attrs[SpanAttributes.HTTP_URL], "http://127.0.0.1/?foo=bar"
         )
         self.assertEqual(attrs[URL_SCHEME], "http")
-        self.assertEqual(attrs[SERVER_ADDRESS], "127.0.0.1")
+        self.assertEqual(attrs[CLIENT_ADDRESS], "127.0.0.1")
         self.assertEqual(attrs[URL_PATH], "/")
         self.assertEqual(attrs[URL_QUERY], "foo=bar")
 
