@@ -442,7 +442,6 @@ class TestAsgiApplication(AsgiTestBase):
                     HTTP_REQUEST_METHOD: "GET",
                     URL_SCHEME: "http",
                     SERVER_PORT: 80,
-                    SERVER_ADDRESS: "127.0.0.1",
                     NETWORK_PROTOCOL_VERSION: "1.0",
                     URL_PATH: "/",
                     CLIENT_ADDRESS: "127.0.0.1",
@@ -1001,7 +1000,6 @@ class TestAsgiApplication(AsgiTestBase):
                 "attributes": {
                     URL_SCHEME: self.scope["scheme"],
                     SERVER_PORT: self.scope["server"][1],
-                    SERVER_ADDRESS: self.scope["server"][0],
                     NETWORK_PROTOCOL_VERSION: self.scope["http_version"],
                     URL_PATH: self.scope["path"],
                     CLIENT_ADDRESS: self.scope["client"][0],
