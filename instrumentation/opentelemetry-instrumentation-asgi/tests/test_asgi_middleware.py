@@ -686,7 +686,6 @@ class TestAsgiApplication(AsgiTestBase):
         def update_expected_server(expected):
             expected[3]["attributes"].update(
                 {
-                    SERVER_ADDRESS: "0.0.0.0",
                     SERVER_PORT: 80,
                 }
             )
@@ -713,7 +712,6 @@ class TestAsgiApplication(AsgiTestBase):
                     SpanAttributes.HTTP_HOST: "0.0.0.0",
                     SpanAttributes.NET_HOST_PORT: 80,
                     SpanAttributes.HTTP_URL: "http://0.0.0.0/",
-                    SERVER_ADDRESS: "0.0.0.0",
                     SERVER_PORT: 80,
                 }
             )
