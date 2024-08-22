@@ -380,7 +380,9 @@ def collect_request_attributes(
         _set_http_user_agent(result, http_user_agent[0], sem_conv_opt_in_mode)
 
     if "client" in scope and scope["client"] is not None:
-        _set_http_peer_ip_server(result, scope.get("client")[0], sem_conv_opt_in_mode)
+        _set_http_peer_ip_server(
+            result, scope.get("client")[0], sem_conv_opt_in_mode
+        )
         _set_http_peer_port_server(
             result, scope.get("client")[1], sem_conv_opt_in_mode
         )
