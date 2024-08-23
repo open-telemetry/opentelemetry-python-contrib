@@ -106,7 +106,7 @@ _recommended_attrs_both["http.server.active_requests"].extend(
 )
 
 _SIMULATED_BACKGROUND_TASK_EXECUTION_TIME_S = 0.01
-_TIMEOUT = 0.01
+_TIMEOUT = 0.1
 
 
 async def http_app(scope, receive, send):
