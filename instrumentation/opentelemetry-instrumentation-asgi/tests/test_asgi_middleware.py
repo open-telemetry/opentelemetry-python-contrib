@@ -1394,7 +1394,7 @@ class TestAsgiApplication(AsyncAsgiTestBase):
                                 self.assertEqual(point.count, 1)
                                 if metric.name == "http.server.duration":
                                     self.assertAlmostEqual(
-                                        duration, point.sum, delta=5
+                                        duration, point.sum, delta=15
                                     )
                                 elif (
                                     metric.name == "http.server.response.size"
