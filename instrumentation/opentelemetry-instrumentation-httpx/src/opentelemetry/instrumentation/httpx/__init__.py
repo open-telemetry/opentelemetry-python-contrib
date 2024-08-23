@@ -202,7 +202,7 @@ from opentelemetry.instrumentation._semconv import (
     _OpenTelemetrySemanticConventionStability,
     _OpenTelemetryStabilitySignalType,
     _report_new,
-    _set_http_host,
+    _set_http_host_client,
     _set_http_method,
     _set_http_network_protocol_version,
     _set_http_peer_port_client,
@@ -342,7 +342,7 @@ def _apply_request_client_attributes_to_span(
     if _report_new(semconv):
         if url.host:
             # http semconv transition: http.host -> server.address
-            _set_http_host(span_attributes, url.host, semconv)
+            _set_http_host_client(span_attributes, url.host, semconv)
             # http semconv transition: net.sock.peer.addr -> network.peer.address
             span_attributes[NETWORK_PEER_ADDRESS] = url.host
         if url.port:
