@@ -565,7 +565,9 @@ class TestFastAPIManualInstrumentation(TestBaseManualFastAPI):
                     )
                     self.assertEqual(point.count, 1)
                     if metric.name == "http.server.request.duration":
-                        self.assertAlmostEqual(duration_s * 0.1, point.sum , places=1)
+                        self.assertAlmostEqual(
+                            duration_s * 0.1, point.sum, places=1
+                        )
                     elif metric.name == "http.server.response.body.size":
                         self.assertEqual(25, point.sum)
                     elif metric.name == "http.server.request.body.size":
@@ -617,7 +619,9 @@ class TestFastAPIManualInstrumentation(TestBaseManualFastAPI):
                     self.assertEqual(point.count, 1)
                     self.assertAlmostEqual(duration, point.sum, delta=350)
                     if metric.name == "http.server.request.duration":
-                        self.assertAlmostEqual(duration_s * 0.1, point.sum , places=1)
+                        self.assertAlmostEqual(
+                            duration_s * 0.1, point.sum, places=1
+                        )
                         self.assertDictEqual(
                             expected_duration_attributes_new,
                             dict(point.attributes),
@@ -726,7 +730,9 @@ class TestFastAPIManualInstrumentation(TestBaseManualFastAPI):
                     )
                     self.assertEqual(point.count, 1)
                     if metric.name == "http.server.request.duration":
-                        self.assertAlmostEqual(duration_s * 0.1, point.sum , places=1)
+                        self.assertAlmostEqual(
+                            duration_s * 0.1, point.sum, places=1
+                        )
                     elif metric.name == "http.server.response.body.size":
                         self.assertEqual(31, point.sum)
                     elif metric.name == "http.server.request.body.size":
@@ -777,7 +783,9 @@ class TestFastAPIManualInstrumentation(TestBaseManualFastAPI):
                 if isinstance(point, HistogramDataPoint):
                     self.assertEqual(point.count, 1)
                     if metric.name == "http.server.request.duration":
-                        self.assertAlmostEqual(duration_s * 0.1, point.sum , places=1)
+                        self.assertAlmostEqual(
+                            duration_s * 0.1, point.sum, places=1
+                        )
                         self.assertDictEqual(
                             expected_duration_attributes_new,
                             dict(point.attributes),
@@ -861,7 +869,9 @@ class TestFastAPIManualInstrumentation(TestBaseManualFastAPI):
                 if isinstance(point, HistogramDataPoint):
                     self.assertEqual(point.count, 1)
                     if metric.name == "http.server.request.duration":
-                        self.assertAlmostEqual(duration_s * 0.1, point.sum , places=1)
+                        self.assertAlmostEqual(
+                            duration_s * 0.1, point.sum, places=1
+                        )
                     elif metric.name == "http.server.response.body.size":
                         self.assertEqual(response_size, point.sum)
                     elif metric.name == "http.server.request.body.size":
@@ -887,7 +897,9 @@ class TestFastAPIManualInstrumentation(TestBaseManualFastAPI):
                 if isinstance(point, HistogramDataPoint):
                     self.assertEqual(point.count, 1)
                     if metric.name == "http.server.request.duration":
-                        self.assertAlmostEqual(duration_s * 0.1, point.sum , places=1)
+                        self.assertAlmostEqual(
+                            duration_s * 0.1, point.sum, places=1
+                        )
                     elif metric.name == "http.server.response.body.size":
                         self.assertEqual(response_size, point.sum)
                     elif metric.name == "http.server.request.body.size":
@@ -1068,6 +1080,18 @@ class TestAutoInstrumentation(TestBaseAutoFastAPI):
         client.get("/foobar")
         spans = self.memory_exporter.get_finished_spans()
         self.assertEqual(len(spans), 3)
+
+    def test_no_op_tracer_provider(self):
+        self._instrumentor.uninstrument()
+        self._instrumentor.instrument(
+            tracer_provider=trace.NoOpTracerProvider()
+        )
+
+        app = self._create_fastapi_app()
+        client = TestClient(app)
+        client.get("/foobar")
+        spans = self.memory_exporter.get_finished_spans()
+        self.assertEqual(len(spans), 0)
 
     def tearDown(self):
         self._instrumentor.uninstrument()
