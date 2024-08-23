@@ -45,10 +45,10 @@ class AsyncAsgiTestBase(TestBase, IsolatedAsyncioTestCase):
     async def send_default_request(self):
         await self.send_input({"type": "http.request", "body": b""})
 
-    async def get_output(self, timeout=0.001):
+    async def get_output(self, timeout=1):
         return await self.communicator.receive_output(timeout)
 
-    async def get_all_output(self, timeout=0.001):
+    async def get_all_output(self, timeout=1):
         outputs = []
         while True:
             try:
