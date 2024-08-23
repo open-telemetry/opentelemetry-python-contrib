@@ -28,6 +28,7 @@ from .test_asgi_middleware import simple_asgi
 
 _TIMEOUT = 0.01
 
+
 async def http_app_with_custom_headers(scope, receive, send):
     message = await receive()
     assert scope["type"] == "http"
