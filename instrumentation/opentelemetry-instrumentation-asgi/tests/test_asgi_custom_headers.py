@@ -1,3 +1,17 @@
+# Copyright The OpenTelemetry Authors
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
 import os
 
 import opentelemetry.instrumentation.asgi as otel_asgi
@@ -12,6 +26,7 @@ from opentelemetry.util.http import (
 
 from .test_asgi_middleware import simple_asgi
 
+_TIMEOUT = 0.01
 
 async def http_app_with_custom_headers(scope, receive, send):
     message = await receive()
@@ -120,7 +135,7 @@ class TestCustomHeaders(AsyncAsgiTestBase):
         )
         self.seed_app(self.app)
         await self.send_default_request()
-        await self.get_all_output()
+        await self.get_all_output(_TIMEOUT)
         span_list = self.exporter.get_finished_spans()
         expected = {
             "http.request.header.custom_test_header_1": (
@@ -148,7 +163,7 @@ class TestCustomHeaders(AsyncAsgiTestBase):
         )
         self.seed_app(self.app)
         await self.send_default_request()
-        await self.get_all_output()
+        await self.get_all_output(_TIMEOUT)
         span_list = self.exporter.get_finished_spans()
         expected = {
             "http.request.header.custom_test_header_1": (
@@ -167,7 +182,7 @@ class TestCustomHeaders(AsyncAsgiTestBase):
         )
         self.seed_app(self.app)
         await self.send_default_request()
-        await self.get_all_output()
+        await self.get_all_output(_TIMEOUT)
         span_list = self.exporter.get_finished_spans()
         expected = {
             "http.request.header.custom_test_header_1": (
@@ -193,7 +208,7 @@ class TestCustomHeaders(AsyncAsgiTestBase):
         )
         self.seed_app(self.app)
         await self.send_default_request()
-        await self.get_all_output()
+        await self.get_all_output(_TIMEOUT)
         span_list = self.exporter.get_finished_spans()
         expected = {
             "http.response.header.custom_test_header_1": (
@@ -222,7 +237,7 @@ class TestCustomHeaders(AsyncAsgiTestBase):
         )
         self.seed_app(self.app)
         await self.send_default_request()
-        await self.get_all_output()
+        await self.get_all_output(_TIMEOUT)
         span_list = self.exporter.get_finished_spans()
         expected = {
             "http.response.header.custom_test_header_1": (
@@ -241,7 +256,7 @@ class TestCustomHeaders(AsyncAsgiTestBase):
         )
         self.seed_app(self.app)
         await self.send_default_request()
-        await self.get_all_output()
+        await self.get_all_output(_TIMEOUT)
         span_list = self.exporter.get_finished_spans()
         not_expected = {
             "http.response.header.custom_test_header_3": (
@@ -275,7 +290,7 @@ class TestCustomHeaders(AsyncAsgiTestBase):
         await self.send_input({"type": "websocket.receive", "text": "ping"})
         await self.send_input({"type": "websocket.disconnect"})
 
-        await self.get_all_output()
+        await self.get_all_output(_TIMEOUT)
         span_list = self.exporter.get_finished_spans()
         expected = {
             "http.request.header.custom_test_header_1": (
@@ -315,7 +330,7 @@ class TestCustomHeaders(AsyncAsgiTestBase):
         await self.send_input({"type": "websocket.receive", "text": "ping"})
         await self.send_input({"type": "websocket.disconnect"})
 
-        await self.get_all_output()
+        await self.get_all_output(_TIMEOUT)
         span_list = self.exporter.get_finished_spans()
         not_expected = {
             "http.request.header.custom_test_header_3": (
@@ -347,7 +362,7 @@ class TestCustomHeaders(AsyncAsgiTestBase):
         await self.send_input({"type": "websocket.connect"})
         await self.send_input({"type": "websocket.receive", "text": "ping"})
         await self.send_input({"type": "websocket.disconnect"})
-        await self.get_all_output()
+        await self.get_all_output(_TIMEOUT)
         span_list = self.exporter.get_finished_spans()
         expected = {
             "http.response.header.custom_test_header_1": (
@@ -390,7 +405,7 @@ class TestCustomHeaders(AsyncAsgiTestBase):
         await self.send_input({"type": "websocket.connect"})
         await self.send_input({"type": "websocket.receive", "text": "ping"})
         await self.send_input({"type": "websocket.disconnect"})
-        await self.get_all_output()
+        await self.get_all_output(_TIMEOUT)
         span_list = self.exporter.get_finished_spans()
         not_expected = {
             "http.response.header.custom_test_header_3": (
