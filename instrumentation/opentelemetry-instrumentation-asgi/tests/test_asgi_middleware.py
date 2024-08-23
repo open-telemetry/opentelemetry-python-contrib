@@ -589,7 +589,7 @@ class TestAsgiApplication(AsgiTestBase):
             app.exclude_send_span = exclude_send_span
             self.send_default_request()
             span_list = self.memory_exporter.get_finished_spans()
-            assert span_list
+            self.assertTrue(span_list)
             for span in span_list:
                 for excluded_span in excluded_spans:
                     self.assertNotEqual(span.name, excluded_span)
