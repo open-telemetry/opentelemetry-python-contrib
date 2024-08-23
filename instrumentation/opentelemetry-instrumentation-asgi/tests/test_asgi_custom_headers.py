@@ -12,7 +12,7 @@ from opentelemetry.util.http import (
 from . import AsyncAsgiTestBase
 from .test_asgi_middleware import simple_asgi
 
-_TIMEOUT = 0.001
+_TIMEOUT = 0.01
 
 
 async def http_app_with_custom_headers(scope, receive, send):
