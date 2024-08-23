@@ -1092,7 +1092,7 @@ class TestAutoInstrumentation(TestBaseAutoFastAPI):
         client.get("/foobar")
         spans = self.memory_exporter.get_finished_spans()
         self.assertEqual(len(spans), 0)
-        
+
     def tearDown(self):
         self._instrumentor.uninstrument()
         super().tearDown()
