@@ -780,13 +780,15 @@ class BaseTestCases:
             HTTPXClientInstrumentor().uninstrument()
 
         def test_response_hook(self):
-            response_hook_key = "async_response_hook" if asyncio.iscoroutinefunction(self.response_hook) else "response_hook"
-            response_hook_kwargs = {
-               response_hook_key: self.response_hook
-            }
+            response_hook_key = (
+                "async_response_hook"
+                if asyncio.iscoroutinefunction(self.response_hook)
+                else "response_hook"
+            )
+            response_hook_kwargs = {response_hook_key: self.response_hook}
             HTTPXClientInstrumentor().instrument(
                 tracer_provider=self.tracer_provider,
-                **response_hook_kwargs
+                **response_hook_kwargs,
             )
             client = self.create_client()
             result = self.perform_request(self.URL, client=client)
@@ -827,10 +829,12 @@ class BaseTestCases:
             HTTPXClientInstrumentor().uninstrument()
 
         def test_request_hook(self):
-            request_hook_key = "async_request_hook" if asyncio.iscoroutinefunction(self.request_hook) else "request_hook"
-            request_hook_kwargs = {
-               request_hook_key: self.request_hook
-            }
+            request_hook_key = (
+                "async_request_hook"
+                if asyncio.iscoroutinefunction(self.request_hook)
+                else "request_hook"
+            )
+            request_hook_kwargs = {request_hook_key: self.request_hook}
             HTTPXClientInstrumentor().instrument(
                 tracer_provider=self.tracer_provider,
                 **request_hook_kwargs,
