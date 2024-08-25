@@ -723,6 +723,7 @@ class BaseTestCases:
                 spans[1].attributes[SpanAttributes.HTTP_URL], https_url
             )
 
+    @mock.patch.dict("os.environ", {"NO_PROXY": ""}, clear=True)
     class BaseInstrumentorTest(BaseTest, metaclass=abc.ABCMeta):
         @abc.abstractmethod
         def create_client(
