@@ -192,6 +192,7 @@ API
 """
 import logging
 import typing
+from asyncio import iscoroutinefunction
 from types import TracebackType
 
 import httpx
@@ -731,15 +732,15 @@ class HTTPXClientInstrumentor(BaseInstrumentor):
         self._original_async_client = httpx.AsyncClient
         request_hook = kwargs.get("request_hook")
         response_hook = kwargs.get("response_hook")
-        async_request_hook = kwargs.get("async_request_hook", request_hook)
-        async_response_hook = kwargs.get("async_response_hook", response_hook)
+        async_request_hook = kwargs.get("async_request_hook")
+        async_response_hook = kwargs.get("async_response_hook")
         if callable(request_hook):
             _InstrumentedClient._request_hook = request_hook
-        if callable(async_request_hook):
+        if callable(async_request_hook) and iscoroutinefunction(async_request_hook):
             _InstrumentedAsyncClient._request_hook = async_request_hook
         if callable(response_hook):
             _InstrumentedClient._response_hook = response_hook
-        if callable(async_response_hook):
+        if callable(async_response_hook) and iscoroutinefunction(async_response_hook):
             _InstrumentedAsyncClient._response_hook = async_response_hook
         tracer_provider = kwargs.get("tracer_provider")
         _InstrumentedClient._tracer_provider = tracer_provider
