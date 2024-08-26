@@ -237,7 +237,9 @@ def _instrument(
 
     def _traced_create_index(func, instance, args, kwargs):
         span_name = "redis.create_index"
-        with tracer.start_as_current_span(span_name, kind=trace.SpanKind.CLIENT) as span:
+        with tracer.start_as_current_span(
+            span_name, kind=trace.SpanKind.CLIENT
+        ) as span:
             _set_span_attribute(
                 span,
                 SpanAttributes.DB_SYSTEM,
@@ -247,7 +249,9 @@ def _instrument(
             if fields:
                 field_attribute = ""
                 for field in fields:
-                    field_attribute += f"Field(name: {field.name}, type: {field.args[0]});"
+                    field_attribute += (
+                        f"Field(name: {field.name}, type: {field.args[0]});"
+                    )
                 _set_span_attribute(
                     span,
                     "redis.create_index.fields",
@@ -258,7 +262,9 @@ def _instrument(
 
     def _traced_search(func, instance, args, kwargs):
         span_name = "redis.search"
-        with tracer.start_as_current_span(span_name, kind=trace.SpanKind.CLIENT) as span:
+        with tracer.start_as_current_span(
+            span_name, kind=trace.SpanKind.CLIENT
+        ) as span:
             _set_span_attribute(
                 span,
                 SpanAttributes.DB_SYSTEM,
@@ -285,7 +291,9 @@ def _instrument(
 
     def _traced_aggregate(func, instance, args, kwargs):
         span_name = "redis.aggregate"
-        with tracer.start_as_current_span(span_name, kind=trace.SpanKind.CLIENT) as span:
+        with tracer.start_as_current_span(
+            span_name, kind=trace.SpanKind.CLIENT
+        ) as span:
             _set_span_attribute(
                 span,
                 SpanAttributes.DB_SYSTEM,
