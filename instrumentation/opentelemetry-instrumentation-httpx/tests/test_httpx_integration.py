@@ -1214,3 +1214,13 @@ class TestAsyncInstrumentationIntegration(BaseTestCases.BaseInstrumentorTest):
         self.perform_request(self.URL, client=self.client)
         self.perform_request(self.URL, client=self.client2)
         self.assert_span(num_spans=2)
+
+    async def test_no_op_tracer_provider(self):
+        HTTPXClientInstrumentor().uninstrument()
+        HTTPXClientInstrumentor().instrument(
+            tracer_provider=trace.NoOpTracerProvider()
+        )
+        async with httpx.AsyncClient() as client:
+            await client.get("http://test.com")
+        spans = self.memory_exporter.get_finished_spans()
+        self.assertEqual(len(spans), 0)
