@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## Unreleased
 
+## Version 1.27.0/0.48b0 (2024-08-26)
+
 ### Added
 
 - `opentelemetry-instrumentation-kafka-python` Instrument temporary fork, kafka-python-ng
