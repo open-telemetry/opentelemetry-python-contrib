@@ -109,7 +109,7 @@ from opentelemetry.instrumentation.redis.util import (
 )
 from opentelemetry.instrumentation.redis.version import __version__
 from opentelemetry.instrumentation.utils import unwrap
-from opentelemetry.semconv.trace import SpanAttributes
+from opentelemetry.semconv.trace import SpanAttributes, DbSystemValues
 from opentelemetry.trace import Span, StatusCode
 
 _DEFAULT_SERVICE = "redis"
@@ -237,23 +237,33 @@ def _instrument(
 
     def _traced_create_index(func, instance, args, kwargs):
         span_name = "redis.create_index"
-        with tracer.start_as_current_span(span_name) as span:
+        with tracer.start_as_current_span(span_name, kind=trace.SpanKind.CLIENT) as span:
             _set_span_attribute(
                 span,
-                "redis.create_index.fields",
-                kwargs.get("fields").__str__(),
+                SpanAttributes.DB_SYSTEM,
+                DbSystemValues.REDIS.value,
             )
-            _set_span_attribute(
-                span,
-                "redis.create_index.definition",
-                kwargs.get("definition").__str__(),
-            )
+            fields = kwargs.get("fields") or _args_or_none(args, 0)
+            if fields:
+                field_attribute = ""
+                for field in fields:
+                    field_attribute += f"Field(name: {field.name}, type: {field.args[0]});"
+                _set_span_attribute(
+                    span,
+                    "redis.create_index.fields",
+                    field_attribute,
+                )
         response = func(*args, **kwargs)
         return response
 
     def _traced_search(func, instance, args, kwargs):
         span_name = "redis.search"
-        with tracer.start_as_current_span(span_name) as span:
+        with tracer.start_as_current_span(span_name, kind=trace.SpanKind.CLIENT) as span:
+            _set_span_attribute(
+                span,
+                SpanAttributes.DB_SYSTEM,
+                DbSystemValues.REDIS.value,
+            )
             query = kwargs.get("query") or _args_or_none(args, 0)
             _set_span_attribute(
                 span,
@@ -275,7 +285,12 @@ def _instrument(
 
     def _traced_aggregate(func, instance, args, kwargs):
         span_name = "redis.aggregate"
-        with tracer.start_as_current_span(span_name) as span:
+        with tracer.start_as_current_span(span_name, kind=trace.SpanKind.CLIENT) as span:
+            _set_span_attribute(
+                span,
+                SpanAttributes.DB_SYSTEM,
+                DbSystemValues.REDIS.value,
+            )
             query = kwargs.get("query") or _args_or_none(args, 0)
             _set_span_attribute(
                 span,
