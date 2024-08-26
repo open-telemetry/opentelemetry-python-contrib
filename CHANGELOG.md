@@ -7,7 +7,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## Unreleased
 
-## Added
+### Added
 
 - `opentelemetry-instrumentation-kafka-python` Instrument temporary fork, kafka-python-ng
   inside kafka-python's instrumentation
@@ -15,17 +15,19 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - `opentelemetry-instrumentation-asgi`, `opentelemetry-instrumentation-fastapi` Add ability to disable internal HTTP send and receive spans
   ([#2802](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/2802))
 
-## Breaking changes
+### Breaking changes
 
 - `opentelemetry-bootstrap` Remove `opentelemetry-instrumentation-aws-lambda` from the defaults instrumentations
   ([#2786](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/2786))
 
-## Fixed
+### Fixed
 
+- `opentelemetry-instrumentation-httpx` fix handling of async hooks
+  ([#2823](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/2823))
 - `opentelemetry-instrumentation-system-metrics` fix `process.runtime.cpu.utilization` values to be shown in range of 0 to 1
-  ([2812](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/2812))
+  ([#2812](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/2812))
 - `opentelemetry-instrumentation-fastapi` fix `fastapi` auto-instrumentation by removing `fastapi-slim` support, `fastapi-slim` itself is discontinued from maintainers
-  ([2783](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/2783))
+  ([#2783](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/2783))
 - `opentelemetry-instrumentation-aws-lambda` Avoid exception when a handler is not present.
   ([#2750](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/2750))
 - `opentelemetry-instrumentation-django` Fix regression - `http.target` re-added back to old semconv duration metrics
