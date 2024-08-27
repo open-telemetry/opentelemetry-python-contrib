@@ -70,7 +70,7 @@ pip install opentelemetry-instrumentation-{integration}
 
 To install the development versions of these packages instead, clone or fork
 this repo and do an [editable
-install](https://pip.pypa.io/en/stable/reference/pip_install/#editable-installs):
+install](https://pip.pypa.io/en/stable/topics/local-project-installs/#editable-installs):
 
 ```sh
 pip install -e ./instrumentation/opentelemetry-instrumentation-{integration}
