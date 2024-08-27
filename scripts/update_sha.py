@@ -43,7 +43,7 @@ def update_sha(sha):
     for workflow_file in workflow_files:
         with open(workflow_file, "r") as file:
             workflow = yaml.load(file)
-        workflow["env"]["CONTRIB_REPO_SHA"] = sha
+        workflow["env"]["CORE_REPO_SHA"] = sha
         with open(workflow_file, "w") as file:
             yaml.dump(workflow, file)
 
