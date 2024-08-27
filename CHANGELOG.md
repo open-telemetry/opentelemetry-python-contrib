@@ -29,6 +29,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   ([#2589](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/2589))
 - `opentelemetry-instrumentation-celery` propagates baggage
   ([#2385](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/2385))
+- `opentelemetry-instrumentation` Fix the description of `http.server.duration` and `http.server.request.duration`
+  ([#2753](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/2753))
 
 ## Version 1.26.0/0.47b0 (2024-07-23)
 
