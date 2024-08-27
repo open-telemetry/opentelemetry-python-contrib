@@ -1,8 +1,8 @@
+from importlib.metadata import Distribution, PackageNotFoundError, version
 from logging import getLogger
-from typing import Collection, Optional
+from typing import Collection, Optional, Union
 
-from packaging.requirements import Requirement, InvalidRequirement
-from importlib.metadata import PackageNotFoundError, Distribution, version
+from packaging.requirements import InvalidRequirement, Requirement
 
 logger = getLogger(__name__)
 
@@ -38,7 +38,7 @@ def get_dist_dependency_conflicts(
 
 
 def get_dependency_conflicts(
-    deps: Collection[str, Requirement],
+    deps: Collection[Union[str, Requirement]],
 ) -> Optional[DependencyConflict]:
     for dep in deps:
         if isinstance(dep, Requirement):
