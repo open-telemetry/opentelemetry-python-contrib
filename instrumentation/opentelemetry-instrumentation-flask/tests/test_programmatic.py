@@ -608,7 +608,6 @@ class TestProgrammatic(InstrumentationTest, WsgiTestBase):
         self.client.get("/hello/756")
         expected_duration_attributes = {
             "http.request.method": "GET",
-            "http.route": "/hello/<int:helloid>",
             "url.scheme": "http",
             "http.route": "/hello/<int:helloid>",
             "network.protocol.version": "1.1",

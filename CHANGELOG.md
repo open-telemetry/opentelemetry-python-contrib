@@ -7,6 +7,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## Unreleased
 
+### Added
+
+- Add `OTEL_PYTHON_HTTP_SERVER_REQUEST_DURATION_SERVER_ATTRIBUTES_ENABLED` flag to add 
+  `server.address` and `server.port` for `http.server.request.duration`
+- Add `OTEL_PYTHON_HTTP_SERVER_ACTIVE_REQUESTS_COUNT_SERVER_ATTRIBUTES_ENABLED` flag to add 
+  `server.address` and `server.port` for `http.server.active_requests`
+
 ## Version 1.27.0/0.48b0 ()
 
 ### Added
