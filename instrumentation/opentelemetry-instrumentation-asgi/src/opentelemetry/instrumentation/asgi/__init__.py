@@ -215,10 +215,10 @@ from opentelemetry.instrumentation._semconv import (
     _server_duration_attrs_new,
     _server_duration_attrs_old,
     _set_http_flavor_version,
-    _set_http_host,
+    _set_http_host_server,
     _set_http_method,
     _set_http_net_host_port,
-    _set_http_peer_ip,
+    _set_http_peer_ip_server,
     _set_http_peer_port_server,
     _set_http_scheme,
     _set_http_target,
@@ -342,7 +342,7 @@ def collect_request_attributes(
     if scheme:
         _set_http_scheme(result, scheme, sem_conv_opt_in_mode)
     if server_host:
-        _set_http_host(result, server_host, sem_conv_opt_in_mode)
+        _set_http_host_server(result, server_host, sem_conv_opt_in_mode)
     if port:
         _set_http_net_host_port(result, port, sem_conv_opt_in_mode)
     flavor = scope.get("http_version")
@@ -354,10 +354,12 @@ def collect_request_attributes(
             result, path, path, query_string, sem_conv_opt_in_mode
         )
     if http_url:
-        _set_http_url(
-            result, remove_url_credentials(http_url), sem_conv_opt_in_mode
-        )
-
+        if _report_old(sem_conv_opt_in_mode):
+            _set_http_url(
+                result,
+                remove_url_credentials(http_url),
+                _HTTPStabilityMode.DEFAULT,
+            )
     http_method = scope.get("method", "")
     if http_method:
         _set_http_method(
@@ -378,7 +380,9 @@ def collect_request_attributes(
         _set_http_user_agent(result, http_user_agent[0], sem_conv_opt_in_mode)
 
     if "client" in scope and scope["client"] is not None:
-        _set_http_peer_ip(result, scope.get("client")[0], sem_conv_opt_in_mode)
+        _set_http_peer_ip_server(
+            result, scope.get("client")[0], sem_conv_opt_in_mode
+        )
         _set_http_peer_port_server(
             result, scope.get("client")[1], sem_conv_opt_in_mode
         )
