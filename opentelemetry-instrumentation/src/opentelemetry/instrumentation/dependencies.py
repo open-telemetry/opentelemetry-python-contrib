@@ -52,7 +52,7 @@ def get_dependency_conflicts(
                     dep,
                     exc,
                 )
-                return DependencyConflict(dep)            
+                return DependencyConflict(dep)
 
         try:
             dist_version = version(req.name)
