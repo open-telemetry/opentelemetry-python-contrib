@@ -32,6 +32,7 @@ dependencies = [
     "opentelemetry-instrumentation-aio-pika==0.48b0.dev",
     "opentelemetry-instrumentation-aiohttp-client==0.48b0.dev",
     "opentelemetry-instrumentation-aiohttp-server==0.48b0.dev",
+    "opentelemetry-instrumentation-aiokafka==0.48b0.dev",
     "opentelemetry-instrumentation-aiopg==0.48b0.dev",
     "opentelemetry-instrumentation-asgi==0.48b0.dev",
     "opentelemetry-instrumentation-asyncio==0.48b0.dev",

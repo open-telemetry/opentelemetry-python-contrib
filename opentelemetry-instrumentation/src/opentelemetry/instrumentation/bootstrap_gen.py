@@ -29,6 +29,10 @@ libraries = [
         "instrumentation": "opentelemetry-instrumentation-aiohttp-server==0.48b0.dev",
     },
     {
+        "library": "aiokafka >= 0.8, < 1.0",
+        "instrumentation": "opentelemetry-instrumentation-aiokafka==0.48b0.dev",
+    },
+    {
         "library": "aiopg >= 0.13.0, < 2.0.0",
         "instrumentation": "opentelemetry-instrumentation-aiopg==0.48b0.dev",
     },
