@@ -13,13 +13,12 @@
 # limitations under the License.
 
 from argparse import REMAINDER, ArgumentParser
+from importlib.metadata import entry_points
 from logging import getLogger
 from os import environ, execl, getcwd
 from os.path import abspath, dirname, pathsep
 from re import sub
 from shutil import which
-
-from importlib.metadata import entry_points
 
 from opentelemetry.instrumentation.version import __version__
 
@@ -48,7 +47,9 @@ def run() -> None:
 
     argument_otel_environment_variable = {}
 
-    for entry_point in entry_points(group="opentelemetry_environment_variables"):
+    for entry_point in entry_points(
+        group="opentelemetry_environment_variables"
+    ):
         environment_variable_module = entry_point.load()
 
         for attribute in dir(environment_variable_module):

@@ -12,10 +12,9 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+from importlib.metadata import EntryPoint, distributions, entry_points
 from logging import getLogger
 from os import environ
-
-from importlib.metadata import entry_points, EntryPoint, distributions
 
 from opentelemetry.instrumentation.dependencies import (
     get_dist_dependency_conflicts,

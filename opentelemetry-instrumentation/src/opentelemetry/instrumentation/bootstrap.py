@@ -15,6 +15,7 @@
 import argparse
 import logging
 import sys
+from importlib.metadata import PackageNotFoundError, version
 from subprocess import (
     PIPE,
     CalledProcessError,
@@ -24,7 +25,6 @@ from subprocess import (
 )
 
 from packaging.requirements import Requirement
-from importlib.metadata import PackageNotFoundError, version
 
 from opentelemetry.instrumentation.bootstrap_gen import (
     default_instrumentations,
@@ -93,18 +93,18 @@ def _pip_check():
 
 def _is_installed(req):
     req = Requirement(req)
-    
+
     try:
         dist_version = version(req.name)
     except PackageNotFoundError:
         return False
-    
+
     if not req.specifier.filter(dist_version):
         logger.warning(
             "instrumentation for package %s is available"
             " but version %s is installed. Skipping.",
             req,
-            dist_version
+            dist_version,
         )
         return False
     return True
