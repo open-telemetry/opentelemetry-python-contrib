@@ -231,7 +231,7 @@ from opentelemetry.instrumentation._semconv import (
     _set_http_net_host,
     _set_http_net_host_port,
     _set_http_net_peer_name_server,
-    _set_http_peer_ip,
+    _set_http_peer_ip_server,
     _set_http_peer_port_server,
     _set_http_scheme,
     _set_http_target,
@@ -360,7 +360,7 @@ def collect_request_attributes(
 
     remote_addr = environ.get("REMOTE_ADDR")
     if remote_addr:
-        _set_http_peer_ip(result, remote_addr, sem_conv_opt_in_mode)
+        _set_http_peer_ip_server(result, remote_addr, sem_conv_opt_in_mode)
 
     peer_port = environ.get("REMOTE_PORT")
     if peer_port:

@@ -192,6 +192,7 @@ API
 """
 import logging
 import typing
+from asyncio import iscoroutinefunction
 from types import TracebackType
 
 import httpx
@@ -202,7 +203,7 @@ from opentelemetry.instrumentation._semconv import (
     _OpenTelemetrySemanticConventionStability,
     _OpenTelemetryStabilitySignalType,
     _report_new,
-    _set_http_host,
+    _set_http_host_client,
     _set_http_method,
     _set_http_network_protocol_version,
     _set_http_peer_port_client,
@@ -342,7 +343,7 @@ def _apply_request_client_attributes_to_span(
     if _report_new(semconv):
         if url.host:
             # http semconv transition: http.host -> server.address
-            _set_http_host(span_attributes, url.host, semconv)
+            _set_http_host_client(span_attributes, url.host, semconv)
             # http semconv transition: net.sock.peer.addr -> network.peer.address
             span_attributes[NETWORK_PEER_ADDRESS] = url.host
         if url.port:
@@ -731,15 +732,19 @@ class HTTPXClientInstrumentor(BaseInstrumentor):
         self._original_async_client = httpx.AsyncClient
         request_hook = kwargs.get("request_hook")
         response_hook = kwargs.get("response_hook")
-        async_request_hook = kwargs.get("async_request_hook", request_hook)
-        async_response_hook = kwargs.get("async_response_hook", response_hook)
+        async_request_hook = kwargs.get("async_request_hook")
+        async_response_hook = kwargs.get("async_response_hook")
         if callable(request_hook):
             _InstrumentedClient._request_hook = request_hook
-        if callable(async_request_hook):
+        if callable(async_request_hook) and iscoroutinefunction(
+            async_request_hook
+        ):
             _InstrumentedAsyncClient._request_hook = async_request_hook
         if callable(response_hook):
             _InstrumentedClient._response_hook = response_hook
-        if callable(async_response_hook):
+        if callable(async_response_hook) and iscoroutinefunction(
+            async_response_hook
+        ):
             _InstrumentedAsyncClient._response_hook = async_response_hook
         tracer_provider = kwargs.get("tracer_provider")
         _InstrumentedClient._tracer_provider = tracer_provider
