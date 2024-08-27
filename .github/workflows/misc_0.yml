@@ -3,9 +3,7 @@
 
 name: Misc 0
 
-on:
-  push:
-  pull_request:
+on: [push, pull_request]
 
 env:
   CORE_REPO_SHA: main
