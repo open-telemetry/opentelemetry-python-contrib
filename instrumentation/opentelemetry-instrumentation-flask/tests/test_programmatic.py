@@ -23,8 +23,10 @@ from opentelemetry.instrumentation._semconv import (
     OTEL_SEMCONV_STABILITY_OPT_IN,
     _OpenTelemetrySemanticConventionStability,
     _server_active_requests_count_attrs_new,
+    _server_active_requests_count_attrs_new_with_server_attributes,
     _server_active_requests_count_attrs_old,
     _server_duration_attrs_new,
+    _server_duration_attrs_new_with_server_attributes,
     _server_duration_attrs_old,
 )
 from opentelemetry.instrumentation.flask import FlaskInstrumentor
@@ -104,8 +106,8 @@ _recommended_metrics_attrs_old = {
     "http.server.duration": _server_duration_attrs_old_copy,
 }
 _recommended_metrics_attrs_new = {
-    "http.server.active_requests": _server_active_requests_count_attrs_new,
-    "http.server.request.duration": _server_duration_attrs_new_copy,
+    "http.server.active_requests": _server_active_requests_count_attrs_new_with_server_attributes,
+    "http.server.request.duration": _server_duration_attrs_new_with_server_attributes,
 }
 _server_active_requests_count_attrs_both = (
     _server_active_requests_count_attrs_old
@@ -138,6 +140,8 @@ class TestProgrammatic(InstrumentationTest, WsgiTestBase):
             "os.environ",
             {
                 "OTEL_PYTHON_FLASK_EXCLUDED_URLS": "http://localhost/env_excluded_arg/123,env_excluded_noarg",
+                "OTEL_PYTHON_HTTP_SERVER_REQUEST_DURATION_SERVER_ATTRIBUTES_ENABLED": "true",
+                "OTEL_PYTHON_HTTP_SERVER_ACTIVE_REQUESTS_COUNT_SERVER_ATTRIBUTES_ENABLED": "true",
                 OTEL_SEMCONV_STABILITY_OPT_IN: sem_conv_mode,
             },
         )
@@ -514,22 +518,25 @@ class TestProgrammatic(InstrumentationTest, WsgiTestBase):
                 self.assertTrue(len(scope_metric.metrics) != 0)
                 for metric in scope_metric.metrics:
                     self.assertIn(metric.name, _expected_metric_names_new)
-                    data_points = list(metric.data.data_points)
-                    self.assertEqual(len(data_points), 1)
-                    for point in data_points:
-                        if isinstance(point, HistogramDataPoint):
-                            self.assertEqual(point.count, 3)
-                            self.assertAlmostEqual(
-                                duration_s, point.sum, places=2
-                            )
-                            histogram_data_point_seen = True
-                        if isinstance(point, NumberDataPoint):
-                            number_data_point_seen = True
-                        for attr in point.attributes:
-                            self.assertIn(
-                                attr,
-                                _recommended_metrics_attrs_new[metric.name],
-                            )
+                    with self.subTest(metric=metric.name):
+                        data_points = list(metric.data.data_points)
+                        self.assertEqual(len(data_points), 1)
+                        for point in data_points:
+                            if isinstance(point, HistogramDataPoint):
+                                self.assertEqual(point.count, 3)
+                                self.assertAlmostEqual(
+                                    duration_s, point.sum, places=2
+                                )
+                                histogram_data_point_seen = True
+                            if isinstance(point, NumberDataPoint):
+                                number_data_point_seen = True
+                            for attr in point.attributes:
+                                self.assertIn(
+                                    attr,
+                                    _recommended_metrics_attrs_new[
+                                        metric.name
+                                    ],
+                                )
         self.assertTrue(number_data_point_seen and histogram_data_point_seen)
 
     def test_flask_metric_values(self):
@@ -601,14 +608,19 @@ class TestProgrammatic(InstrumentationTest, WsgiTestBase):
         self.client.get("/hello/756")
         expected_duration_attributes = {
             "http.request.method": "GET",
+            "http.route": "/hello/<int:helloid>",
             "url.scheme": "http",
             "http.route": "/hello/<int:helloid>",
             "network.protocol.version": "1.1",
             "http.response.status_code": 200,
+            "server.address": "localhost",
+            "server.port": 80,
         }
         expected_requests_count_attributes = {
             "http.request.method": "GET",
             "url.scheme": "http",
+            "server.address": "localhost",
+            "server.port": 80,
         }
         self._assert_basic_metric(
             expected_duration_attributes,
@@ -646,10 +658,14 @@ class TestProgrammatic(InstrumentationTest, WsgiTestBase):
             "url.scheme": "http",
             "network.protocol.version": "1.1",
             "http.response.status_code": 405,
+            "server.address": "localhost",
+            "server.port": 80,
         }
         expected_requests_count_attributes = {
             "http.request.method": "_OTHER",
             "url.scheme": "http",
+            "server.address": "localhost",
+            "server.port": 80,
         }
         self._assert_basic_metric(
             expected_duration_attributes,
@@ -671,10 +687,14 @@ class TestProgrammatic(InstrumentationTest, WsgiTestBase):
             "url.scheme": "http",
             "network.protocol.version": "1.1",
             "http.response.status_code": 405,
+            "server.address": "localhost",
+            "server.port": 80,
         }
         expected_requests_count_attributes = {
             "http.request.method": "NONSTANDARD",
             "url.scheme": "http",
+            "server.address": "localhost",
+            "server.port": 80,
         }
         self._assert_basic_metric(
             expected_duration_attributes,

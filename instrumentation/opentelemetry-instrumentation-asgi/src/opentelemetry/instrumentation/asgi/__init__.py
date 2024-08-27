@@ -202,18 +202,14 @@ from asgiref.compatibility import guarantee_single_callable
 
 from opentelemetry import context, trace
 from opentelemetry.instrumentation._semconv import (
-    _filter_semconv_active_request_count_attr,
-    _filter_semconv_duration_attrs,
+    _filter_semconv_active_server_request_count_attr,
+    _filter_semconv_server_duration_attrs,
     _get_schema_url,
     _HTTPStabilityMode,
     _OpenTelemetrySemanticConventionStability,
     _OpenTelemetryStabilitySignalType,
     _report_new,
     _report_old,
-    _server_active_requests_count_attrs_new,
-    _server_active_requests_count_attrs_old,
-    _server_duration_attrs_new,
-    _server_duration_attrs_old,
     _set_http_flavor_version,
     _set_http_host_server,
     _set_http_method,
@@ -962,10 +958,8 @@ class OpenTelemetryMiddleware:
 def _parse_duration_attrs(
     req_attrs, sem_conv_opt_in_mode=_HTTPStabilityMode.DEFAULT
 ):
-    return _filter_semconv_duration_attrs(
+    return _filter_semconv_server_duration_attrs(
         req_attrs,
-        _server_duration_attrs_old,
-        _server_duration_attrs_new,
         sem_conv_opt_in_mode,
     )
 
@@ -973,9 +967,7 @@ def _parse_duration_attrs(
 def _parse_active_request_count_attrs(
     req_attrs, sem_conv_opt_in_mode=_HTTPStabilityMode.DEFAULT
 ):
-    return _filter_semconv_active_request_count_attr(
+    return _filter_semconv_active_server_request_count_attr(
         req_attrs,
-        _server_active_requests_count_attrs_old,
-        _server_active_requests_count_attrs_new,
         sem_conv_opt_in_mode,
     )

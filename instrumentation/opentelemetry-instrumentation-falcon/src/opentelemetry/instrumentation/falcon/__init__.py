@@ -193,6 +193,11 @@ from packaging import version as package_version
 
 import opentelemetry.instrumentation.wsgi as otel_wsgi
 from opentelemetry import context, trace
+from opentelemetry.instrumentation._semconv import (
+    _filter_semconv_active_server_request_count_attr,
+    _filter_semconv_server_duration_attrs,
+    _HTTPStabilityMode,
+)
 from opentelemetry.instrumentation.falcon.package import _instruments
 from opentelemetry.instrumentation.falcon.version import __version__
 from opentelemetry.instrumentation.instrumentor import BaseInstrumentor
@@ -347,9 +352,14 @@ class _InstrumentedFalconAPI(getattr(falcon, _instrument_app)):
         )
         attributes = otel_wsgi.collect_request_attributes(env)
         active_requests_count_attrs = (
-            otel_wsgi._parse_active_request_count_attrs(attributes)
+            _filter_semconv_active_server_request_count_attr(
+                attributes,
+                _HTTPStabilityMode.DEFAULT,
+            )
         )
-        duration_attrs = otel_wsgi._parse_duration_attrs(attributes)
+        duration_attrs = _filter_semconv_server_duration_attrs(
+            attributes,
+        )
         self.active_requests_counter.add(1, active_requests_count_attrs)
 
         if span.is_recording():

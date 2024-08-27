@@ -94,9 +94,7 @@ import urllib3.connectionpool
 import wrapt
 
 from opentelemetry.instrumentation._semconv import (
-    _client_duration_attrs_new,
-    _client_duration_attrs_old,
-    _filter_semconv_duration_attrs,
+    _filter_semconv_client_duration_attrs,
     _get_schema_url,
     _HTTPStabilityMode,
     _OpenTelemetrySemanticConventionStability,
@@ -523,17 +521,12 @@ def _filter_attributes_semconv(
     duration_attrs_old = None
     duration_attrs_new = None
     if _report_old(sem_conv_opt_in_mode):
-        duration_attrs_old = _filter_semconv_duration_attrs(
+        duration_attrs_old = _filter_semconv_client_duration_attrs(
             metric_attributes,
-            _client_duration_attrs_old,
-            _client_duration_attrs_new,
-            _HTTPStabilityMode.DEFAULT,
         )
     if _report_new(sem_conv_opt_in_mode):
-        duration_attrs_new = _filter_semconv_duration_attrs(
+        duration_attrs_new = _filter_semconv_client_duration_attrs(
             metric_attributes,
-            _client_duration_attrs_old,
-            _client_duration_attrs_new,
             _HTTPStabilityMode.HTTP,
         )
 

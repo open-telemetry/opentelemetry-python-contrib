@@ -23,15 +23,11 @@ from django.http import HttpRequest, HttpResponse
 
 from opentelemetry.context import detach
 from opentelemetry.instrumentation._semconv import (
-    _filter_semconv_active_request_count_attr,
-    _filter_semconv_duration_attrs,
+    _filter_semconv_active_server_request_count_attr,
+    _filter_semconv_server_duration_attrs,
     _HTTPStabilityMode,
     _report_new,
     _report_old,
-    _server_active_requests_count_attrs_new,
-    _server_active_requests_count_attrs_old,
-    _server_duration_attrs_new,
-    _server_duration_attrs_old,
 )
 from opentelemetry.instrumentation.propagators import (
     get_global_response_propagator,
@@ -224,9 +220,11 @@ class _DjangoMiddleware(MiddlewareMixin):
             attributes=attributes,
         )
 
-        active_requests_count_attrs = _parse_active_request_count_attrs(
-            attributes,
-            self._sem_conv_opt_in_mode,
+        active_requests_count_attrs = (
+            _filter_semconv_active_server_request_count_attr(
+                attributes,
+                self._sem_conv_opt_in_mode,
+            )
         )
 
         request.META[self._environ_active_request_attr_key] = (
@@ -424,8 +422,8 @@ class _DjangoMiddleware(MiddlewareMixin):
         if request_start_time is not None:
             duration_s = default_timer() - request_start_time
             if self._duration_histogram_old:
-                duration_attrs_old = _parse_duration_attrs(
-                    duration_attrs, _HTTPStabilityMode.DEFAULT
+                duration_attrs_old = _filter_semconv_server_duration_attrs(
+                    duration_attrs,
                 )
                 # http.target to be included in old semantic conventions
                 target = duration_attrs.get(SpanAttributes.HTTP_TARGET)
@@ -435,8 +433,9 @@ class _DjangoMiddleware(MiddlewareMixin):
                     max(round(duration_s * 1000), 0), duration_attrs_old
                 )
             if self._duration_histogram_new:
-                duration_attrs_new = _parse_duration_attrs(
-                    duration_attrs, _HTTPStabilityMode.HTTP
+                duration_attrs_new = _filter_semconv_server_duration_attrs(
+                    duration_attrs,
+                    _HTTPStabilityMode.HTTP,
                 )
                 self._duration_histogram_new.record(
                     max(duration_s, 0), duration_attrs_new
@@ -447,25 +446,3 @@ class _DjangoMiddleware(MiddlewareMixin):
             request.META.pop(self._environ_token)
 
         return response
-
-
-def _parse_duration_attrs(
-    req_attrs, sem_conv_opt_in_mode=_HTTPStabilityMode.DEFAULT
-):
-    return _filter_semconv_duration_attrs(
-        req_attrs,
-        _server_duration_attrs_old,
-        _server_duration_attrs_new,
-        sem_conv_opt_in_mode,
-    )
-
-
-def _parse_active_request_count_attrs(
-    req_attrs, sem_conv_opt_in_mode=_HTTPStabilityMode.DEFAULT
-):
-    return _filter_semconv_active_request_count_attr(
-        req_attrs,
-        _server_active_requests_count_attrs_old,
-        _server_active_requests_count_attrs_new,
-        sem_conv_opt_in_mode,
-    )

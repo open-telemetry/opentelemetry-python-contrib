@@ -251,6 +251,8 @@ from packaging import version as package_version
 import opentelemetry.instrumentation.wsgi as otel_wsgi
 from opentelemetry import context, trace
 from opentelemetry.instrumentation._semconv import (
+    _filter_semconv_active_server_request_count_attr,
+    _filter_semconv_server_duration_attrs,
     _get_schema_url,
     _HTTPStabilityMode,
     _OpenTelemetrySemanticConventionStability,
@@ -334,7 +336,7 @@ def _rewrapped_app(
             wrapped_app_environ, sem_conv_opt_in_mode
         )
         active_requests_count_attrs = (
-            otel_wsgi._parse_active_request_count_attrs(
+            _filter_semconv_active_server_request_count_attr(
                 attributes,
                 sem_conv_opt_in_mode,
             )
@@ -390,8 +392,8 @@ def _rewrapped_app(
         result = wsgi_app(wrapped_app_environ, _start_response)
         duration_s = default_timer() - start
         if duration_histogram_old:
-            duration_attrs_old = otel_wsgi._parse_duration_attrs(
-                attributes, _HTTPStabilityMode.DEFAULT
+            duration_attrs_old = _filter_semconv_server_duration_attrs(
+                attributes,
             )
 
             if request_route:
@@ -404,8 +406,9 @@ def _rewrapped_app(
                 max(round(duration_s * 1000), 0), duration_attrs_old
             )
         if duration_histogram_new:
-            duration_attrs_new = otel_wsgi._parse_duration_attrs(
-                attributes, _HTTPStabilityMode.HTTP
+            duration_attrs_new = _filter_semconv_server_duration_attrs(
+                attributes,
+                _HTTPStabilityMode.HTTP,
             )
 
             if request_route:
