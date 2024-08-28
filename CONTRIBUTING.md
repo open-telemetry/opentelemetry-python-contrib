@@ -15,7 +15,7 @@ and [**Maintainer**](https://github.com/open-telemetry/community/blob/main/commu
 
 Before you can contribute, you will need to sign the [Contributor License Agreement](https://docs.linuxfoundation.org/lfx/easycla/contributors).
 
-Please also read the [OpenTelemetry Contributor Guide](https://github.com/open-telemetry/community/blob/main/CONTRIBUTING.md).
+Please also read the [OpenTelemetry Contributor Guide](https://github.com/open-telemetry/community/blob/main/guides/contributor/README.md).
 
 ## Index
 
@@ -235,7 +235,7 @@ Some of the tox targets install packages from the [OpenTelemetry Python Core Rep
 CORE_REPO_SHA=c49ad57bfe35cfc69bfa863d74058ca9bec55fc3 tox
 ```
 
-The continuous integration overrides that environment variable with as per the configuration [here](https://github.com/open-telemetry/opentelemetry-python-contrib/blob/main/.github/workflows/test.yml#L9).
+The continuous integration overrides that environment variable with as per the configuration [here](https://github.com/open-telemetry/opentelemetry-python-contrib/blob/main/.github/workflows/test_0.yml#L14).
 
 ## Style Guide
 
