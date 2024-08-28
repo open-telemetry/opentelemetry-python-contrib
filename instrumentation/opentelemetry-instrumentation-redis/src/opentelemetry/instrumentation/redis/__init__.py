@@ -94,18 +94,16 @@ import typing
 from typing import Any, Collection
 
 import redis
-import redis.commands
 from wrapt import wrap_function_wrapper
 
 from opentelemetry import trace
 from opentelemetry.instrumentation.instrumentor import BaseInstrumentor
 from opentelemetry.instrumentation.redis.package import _instruments
 from opentelemetry.instrumentation.redis.util import (
-    _args_or_none,
-    _check_skip,
     _extract_conn_attributes,
     _format_command_args,
     _set_span_attribute,
+    _value_or_none,
 )
 from opentelemetry.instrumentation.redis.version import __version__
 from opentelemetry.instrumentation.utils import unwrap
@@ -142,7 +140,12 @@ def _set_connection_attributes(span, conn):
 
 def _build_span_name(instance, cmd_args):
     if len(cmd_args) > 0 and cmd_args[0]:
-        name = cmd_args[0]
+        if cmd_args[0] == "FT.SEARCH":
+            name = "redis.search"
+        elif cmd_args[0] == "FT.CREATE":
+            name = "redis.create_index"
+        else:
+            name = cmd_args[0]
     else:
         name = instance.connection_pool.connection_kwargs.get("db", 0)
     return name
@@ -185,8 +188,6 @@ def _instrument(
     def _traced_execute_command(func, instance, args, kwargs):
         query = _format_command_args(args)
         name = _build_span_name(instance, args)
-        if _check_skip(name):
-            return func(*args, **kwargs)
         with tracer.start_as_current_span(
             name, kind=trace.SpanKind.CLIENT
         ) as span:
@@ -197,6 +198,10 @@ def _instrument(
             if callable(request_hook):
                 request_hook(span, instance, args, kwargs)
             response = func(*args, **kwargs)
+            if span.name == "redis.search":
+                _add_search_attributes(span, response, args)
+            if span.name == "redis.create_index":
+                _add_create_attributes(span, args)
             if callable(response_hook):
                 response_hook(span, instance, response)
             return response
@@ -208,8 +213,6 @@ def _instrument(
             span_name,
         ) = _build_span_meta_data_for_pipeline(instance)
         exception = None
-        if _check_skip(span_name):
-            return func(*args, **kwargs)
         with tracer.start_as_current_span(
             span_name, kind=trace.SpanKind.CLIENT
         ) as span:
@@ -235,81 +238,63 @@ def _instrument(
 
         return response
 
-    def _traced_create_index(func, instance, args, kwargs):
-        span_name = "redis.create_index"
-        with tracer.start_as_current_span(
-            span_name, kind=trace.SpanKind.CLIENT
-        ) as span:
-            _set_span_attribute(
-                span,
-                SpanAttributes.DB_SYSTEM,
-                DbSystemValues.REDIS.value,
-            )
-            fields = kwargs.get("fields") or _args_or_none(args, 0)
-            if fields:
-                field_attribute = ""
-                for field in fields:
-                    field_attribute += (
-                        f"Field(name: {field.name}, type: {field.args[0]});"
-                    )
-                _set_span_attribute(
-                    span,
-                    "redis.create_index.fields",
-                    field_attribute,
-                )
-        response = func(*args, **kwargs)
-        return response
+    def _add_create_attributes(span, args):
+        _set_span_attribute(
+            span,
+            "redis.create_index.index",
+            _value_or_none(args, 1)
+        )
+        # According to: https://github.com/redis/redis-py/blob/master/redis/commands/search/commands.py#L155 schema is last argument for execute command
+        try:
+            schema_index = args.index("SCHEMA")
+        except ValueError:
+            return
+        schema = args[schema_index:]
+        field_attribute = ""
+        # Schema in format:
+        # [first_field_name, first_field_type, first_field_some_attribute1, first_field_some_attribute2, second_field_name, ...]
+        field_types = ["NUMERIC", "TEXT" ,"GEO", "TAG", "VECTOR"]
+        for index in range(len(schema)):
+            if schema[index] in field_types:
+                field_attribute += f"Field(name: {schema[index-1]}, type: {schema[index]});"
+        _set_span_attribute(
+            span,
+            "redis.create_index.fields",
+            field_attribute,
+        )
 
-    def _traced_search(func, instance, args, kwargs):
-        span_name = "redis.search"
-        with tracer.start_as_current_span(
-            span_name, kind=trace.SpanKind.CLIENT
-        ) as span:
-            _set_span_attribute(
-                span,
-                SpanAttributes.DB_SYSTEM,
-                DbSystemValues.REDIS.value,
-            )
-            query = kwargs.get("query") or _args_or_none(args, 0)
-            _set_span_attribute(
-                span,
-                "redis.commands.search.query",
-                query.query_string(),
-            )
-            response = func(*args, **kwargs)
-            _set_span_attribute(
-                span, "redis.commands.search.total", response.total
-            )
-            _set_span_attribute(
-                span, "redis.commands.search.duration", response.duration
-            )
-            for index, doc in enumerate(response.docs):
-                _set_span_attribute(
-                    span, f"redis.commands.search.xdoc_{index}", doc.__str__()
-                )
-        return response
-
-    def _traced_aggregate(func, instance, args, kwargs):
-        span_name = "redis.aggregate"
-        with tracer.start_as_current_span(
-            span_name, kind=trace.SpanKind.CLIENT
-        ) as span:
-            _set_span_attribute(
-                span,
-                SpanAttributes.DB_SYSTEM,
-                DbSystemValues.REDIS.value,
-            )
-            query = kwargs.get("query") or _args_or_none(args, 0)
-            _set_span_attribute(
-                span,
-                "redis.commands.aggregate.query",
-                query._query,
-            )
-            response = func(*args, **kwargs)
-            _set_span_attribute(
-                span, "redis.commands.aggregate.results", str(response.rows)
-            )
-        return response
+    def _add_search_attributes(span, response, args):
+        _set_span_attribute(
+            span,
+            "redis.search.index",
+            _value_or_none(args, 1)
+        )
+        _set_span_attribute(
+            span,
+            "redis.search.query",
+            _value_or_none(args, 2)
+        )
+        # Parse response from search
+        # https://redis.io/docs/latest/commands/ft.search/
+        # Response in format:
+        # [number_of_returned_documents, index_of_first_returned_doc, first_doc(as a list), index_of_second_returned_doc, second_doc(as a list) ...]
+        # Returned documents in array format:
+        # [first_field_name, first_field_value, second_field_name, second_field_value ...]
+        number_of_returned_documents = _value_or_none(response, 0)
+        _set_span_attribute(
+            span, "redis.search.total", number_of_returned_documents
+        )
+        if "NOCONTENT" in args:
+            return
+        if number_of_returned_documents:
+            for document_number in range(number_of_returned_documents):
+                document_index = _value_or_none(response, 1+2*document_number)
+                if document_index:
+                    document = response[2+2*document_number]
+                    for attribute_name_index in range(0, len(document), 2):
+                        _set_span_attribute(
+                            span, f"redis.search.xdoc_{document_index}.{document[attribute_name_index]}", document[attribute_name_index+1]
+                        )
 
     pipeline_class = (
         "BasePipeline" if redis.VERSION < (3, 0, 0) else "Pipeline"
@@ -328,21 +313,6 @@ def _instrument(
         "redis.client",
         f"{pipeline_class}.immediate_execute_command",
         _traced_execute_command,
-    )
-    wrap_function_wrapper(
-        "redis.commands.search",
-        "Search.create_index",
-        _traced_create_index,
-    )
-    wrap_function_wrapper(
-        "redis.commands.search",
-        "Search.search",
-        _traced_search,
-    )
-    wrap_function_wrapper(
-        "redis.commands.search",
-        "Search.aggregate",
-        _traced_aggregate,
     )
     if redis.VERSION >= _REDIS_CLUSTER_VERSION:
         wrap_function_wrapper(
@@ -467,9 +437,6 @@ class RedisInstrumentor(BaseInstrumentor):
         )
 
     def _uninstrument(self, **kwargs):
-        unwrap(redis.commands.search.Search, "create_index")
-        unwrap(redis.commands.search.Search, "search")
-        unwrap(redis.commands.search.Search, "aggregate")
         if redis.VERSION < (3, 0, 0):
             unwrap(redis.StrictRedis, "execute_command")
             unwrap(redis.StrictRedis, "pipeline")

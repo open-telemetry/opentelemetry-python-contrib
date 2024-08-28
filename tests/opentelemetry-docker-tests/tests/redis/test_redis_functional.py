@@ -672,16 +672,7 @@ class TestRedisearchInstrument(TestBase):
     def test_redis_create_index(self):
         spans = self.memory_exporter.get_finished_spans()
         span = next(span for span in spans if span.name == "redis.create_index")
-        assert "redis.create_index.definition" in span.attributes
         assert "redis.create_index.fields" in span.attributes
-
-    def test_redis_aggregate(self):
-        query = "*"
-        self.redis_client.ft("idx:test_vss").aggregate(AggregateRequest(query).load())
-        spans = self.memory_exporter.get_finished_spans()
-        span = next(span for span in spans if span.name == "redis.aggregate")
-        assert span.attributes.get("redis.commands.aggregate.query") == query
-        assert "redis.commands.aggregate.results" in span.attributes
 
     def test_redis_query(self):
         query = "@name:test"
@@ -690,5 +681,5 @@ class TestRedisearchInstrument(TestBase):
         spans = self.memory_exporter.get_finished_spans()
         span = next(span for span in spans if span.name == "redis.search")
 
-        assert span.attributes.get("redis.commands.search.query") == query
-        assert span.attributes.get("redis.commands.search.total") == 1
+        assert span.attributes.get("redis.search.query") == query
+        assert span.attributes.get("redis.search.total") == 1
