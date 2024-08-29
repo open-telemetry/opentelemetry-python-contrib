@@ -255,7 +255,7 @@ def _instrument(
         for index in range(len(schema)):
             if schema[index] in field_types:
                 field_attribute += (
-                    f"Field(name: {schema[index-1]}, type: {schema[index]});"
+                    f"Field(name: {schema[index - 1]}, type: {schema[index]});"
                 )
         _set_span_attribute(
             span,
