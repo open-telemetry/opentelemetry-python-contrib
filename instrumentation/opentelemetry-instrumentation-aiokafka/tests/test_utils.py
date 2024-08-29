@@ -16,6 +16,8 @@
 from unittest import IsolatedAsyncioTestCase, mock
 
 from opentelemetry.instrumentation.aiokafka.utils import (
+    AIOKafkaContextGetter,
+    AIOKafkaContextSetter,
     AIOKafkaPropertiesExtractor,
     _aiokafka_getter,
     _aiokafka_setter,
@@ -34,6 +36,22 @@ class TestUtils(IsolatedAsyncioTestCase):
         self.args = [self.topic_name]
         self.headers = []
         self.kwargs = {"partition": 0, "headers": self.headers}
+
+    def test_context_setter(self) -> None:
+        context_setter = AIOKafkaContextSetter()
+
+        carrier_list = [("key1", b"val1")]
+        context_setter.set(carrier_list, "key2", "val2")
+        self.assertTrue(("key2", "val2".encode()) in carrier_list)
+
+    def test_context_getter(self) -> None:
+        context_setter = AIOKafkaContextSetter()
+        context_getter = AIOKafkaContextGetter()
+
+        carrier_list = []
+        context_setter.set(carrier_list, "key1", "val1")
+        self.assertEqual(context_getter.get(carrier_list, "key1"), ["val1"])
+        self.assertEqual(["key1"], context_getter.keys(carrier_list))
 
     @mock.patch(
         "opentelemetry.instrumentation.aiokafka.utils.AIOKafkaPropertiesExtractor.extract_bootstrap_servers"
