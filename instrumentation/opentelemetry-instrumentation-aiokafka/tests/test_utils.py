@@ -231,27 +231,23 @@ class TestUtils(IsolatedAsyncioTestCase):
         )
         detach.assert_called_once_with(attach.return_value)
 
-    @mock.patch(
-        "opentelemetry.instrumentation.aiokafka.utils.AIOKafkaPropertiesExtractor"
-    )
-    async def test_kafka_properties_extractor(
-        self,
-        kafka_properties_extractor: mock.MagicMock,
-    ):
-        kafka_properties_extractor._serialize.return_value = None, None
-        kafka_properties_extractor._partition.return_value = "partition"
+    async def test_kafka_properties_extractor(self):
+        aiokafka_instance_mock = mock.Mock()
+        aiokafka_instance_mock._serialize.return_value = None, None
+        aiokafka_instance_mock._partition.return_value = "partition"
+        aiokafka_instance_mock.client._wait_on_metadata = mock.AsyncMock()
         assert (
             await AIOKafkaPropertiesExtractor.extract_send_partition(
-                kafka_properties_extractor, self.args, self.kwargs
+                aiokafka_instance_mock, self.args, self.kwargs
             )
             == "partition"
         )
-        kafka_properties_extractor._wait_on_metadata.side_effect = Exception(
-            "mocked error"
+        aiokafka_instance_mock.client._wait_on_metadata.side_effect = (
+            Exception("mocked error")
         )
         assert (
             await AIOKafkaPropertiesExtractor.extract_send_partition(
-                kafka_properties_extractor, self.args, self.kwargs
+                aiokafka_instance_mock, self.args, self.kwargs
             )
             is None
         )
