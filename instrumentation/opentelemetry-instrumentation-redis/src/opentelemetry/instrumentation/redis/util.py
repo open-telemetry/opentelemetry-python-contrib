@@ -70,7 +70,7 @@ def _format_command_args(args):
     return out_str
 
 
-def _set_span_attribute(span, name, value):
+def _set_span_attribute_if_value(span, name, value):
     if value is not None and value != "":
         span.set_attribute(name, value)
     return
