@@ -395,6 +395,7 @@ def _rewrapped_app(
             )
 
             if request_route:
+                # http.target to be included in old semantic conventions
                 duration_attrs_old[SpanAttributes.HTTP_TARGET] = str(
                     request_route
                 )
@@ -567,14 +568,14 @@ class _InstrumentedFlask(flask.Flask):
             duration_histogram_old = meter.create_histogram(
                 name=MetricInstruments.HTTP_SERVER_DURATION,
                 unit="ms",
-                description="measures the duration of the inbound HTTP request",
+                description="Measures the duration of inbound HTTP requests.",
             )
         duration_histogram_new = None
         if _report_new(_InstrumentedFlask._sem_conv_opt_in_mode):
             duration_histogram_new = meter.create_histogram(
                 name=HTTP_SERVER_REQUEST_DURATION,
                 unit="s",
-                description="measures the duration of the inbound HTTP request",
+                description="Duration of HTTP server requests.",
             )
         active_requests_counter = meter.create_up_down_counter(
             name=MetricInstruments.HTTP_SERVER_ACTIVE_REQUESTS,
@@ -700,14 +701,14 @@ class FlaskInstrumentor(BaseInstrumentor):
                 duration_histogram_old = meter.create_histogram(
                     name=MetricInstruments.HTTP_SERVER_DURATION,
                     unit="ms",
-                    description="measures the duration of the inbound HTTP request",
+                    description="Measures the duration of inbound HTTP requests.",
                 )
             duration_histogram_new = None
             if _report_new(sem_conv_opt_in_mode):
                 duration_histogram_new = meter.create_histogram(
                     name=HTTP_SERVER_REQUEST_DURATION,
                     unit="s",
-                    description="measures the duration of the inbound HTTP request",
+                    description="Duration of HTTP server requests.",
                 )
             active_requests_counter = meter.create_up_down_counter(
                 name=MetricInstruments.HTTP_SERVER_ACTIVE_REQUESTS,

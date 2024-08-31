@@ -86,9 +86,10 @@ You can configure the agent to capture specified HTTP headers as span attributes
 Request headers
 ***************
 To capture HTTP request headers as span attributes, set the environment variable
-``OTEL_INSTRUMENTATION_HTTP_CAPTURE_HEADERS_SERVER_REQUEST`` to a comma delimited list of HTTP header names.
+``OTEL_INSTRUMENTATION_HTTP_CAPTURE_HEADERS_SERVER_REQUEST`` to a comma delimited list of HTTP header names,
+or pass the ``http_capture_headers_server_request`` keyword argument to the ``instrument_app`` method.
 
-For example,
+For example using the environment variable,
 ::
 
     export OTEL_INSTRUMENTATION_HTTP_CAPTURE_HEADERS_SERVER_REQUEST="content-type,custom_request_header"
@@ -120,9 +121,10 @@ For example:
 Response headers
 ****************
 To capture HTTP response headers as span attributes, set the environment variable
-``OTEL_INSTRUMENTATION_HTTP_CAPTURE_HEADERS_SERVER_RESPONSE`` to a comma delimited list of HTTP header names.
+``OTEL_INSTRUMENTATION_HTTP_CAPTURE_HEADERS_SERVER_RESPONSE`` to a comma delimited list of HTTP header names,
+or pass the ``http_capture_headers_server_response`` keyword argument to the ``instrument_app`` method.
 
-For example,
+For example using the environment variable,
 ::
 
     export OTEL_INSTRUMENTATION_HTTP_CAPTURE_HEADERS_SERVER_RESPONSE="content-type,custom_response_header"
@@ -155,10 +157,12 @@ Sanitizing headers
 ******************
 In order to prevent storing sensitive data such as personally identifiable information (PII), session keys, passwords,
 etc, set the environment variable ``OTEL_INSTRUMENTATION_HTTP_CAPTURE_HEADERS_SANITIZE_FIELDS``
-to a comma delimited list of HTTP header names to be sanitized.  Regexes may be used, and all header names will be
-matched in a case-insensitive manner.
+to a comma delimited list of HTTP header names to be sanitized, or pass the ``http_capture_headers_sanitize_fields``
+keyword argument to the ``instrument_app`` method.
 
-For example,
+Regexes may be used, and all header names will be matched in a case-insensitive manner.
+
+For example using the environment variable,
 ::
 
     export OTEL_INSTRUMENTATION_HTTP_CAPTURE_HEADERS_SANITIZE_FIELDS=".*session.*,set-cookie"
@@ -171,8 +175,10 @@ Note:
 API
 ---
 """
+
+from __future__ import annotations
+
 import logging
-from importlib.util import find_spec
 from typing import Collection
 
 import fastapi
@@ -190,11 +196,7 @@ from opentelemetry.instrumentation.asgi.types import (
     ClientResponseHook,
     ServerRequestHook,
 )
-from opentelemetry.instrumentation.fastapi.package import (
-    _fastapi,
-    _fastapi_slim,
-    _instruments,
-)
+from opentelemetry.instrumentation.fastapi.package import _instruments
 from opentelemetry.instrumentation.fastapi.version import __version__
 from opentelemetry.instrumentation.instrumentor import BaseInstrumentor
 from opentelemetry.metrics import get_meter
@@ -227,6 +229,9 @@ class FastAPIInstrumentor(BaseInstrumentor):
         tracer_provider=None,
         meter_provider=None,
         excluded_urls=None,
+        http_capture_headers_server_request: list[str] | None = None,
+        http_capture_headers_server_response: list[str] | None = None,
+        http_capture_headers_sanitize_fields: list[str] | None = None,
     ):
         """Instrument an uninstrumented FastAPI application."""
         if not hasattr(app, "_is_instrumented_by_opentelemetry"):
@@ -265,6 +270,9 @@ class FastAPIInstrumentor(BaseInstrumentor):
                 # Pass in tracer/meter to get __name__and __version__ of fastapi instrumentation
                 tracer=tracer,
                 meter=meter,
+                http_capture_headers_server_request=http_capture_headers_server_request,
+                http_capture_headers_server_response=http_capture_headers_server_response,
+                http_capture_headers_sanitize_fields=http_capture_headers_sanitize_fields,
             )
             app._is_instrumented_by_opentelemetry = True
             if app not in _InstrumentedFastAPI._instrumented_fastapi_apps:
@@ -285,11 +293,6 @@ class FastAPIInstrumentor(BaseInstrumentor):
         app._is_instrumented_by_opentelemetry = False
 
     def instrumentation_dependencies(self) -> Collection[str]:
-        if find_spec("fastapi") is not None:
-            return (_fastapi,)
-        if find_spec("fastapi_slim") is not None:
-            return (_fastapi_slim,)
-        # If neither is installed, return both as potential dependencies
         return _instruments
 
     def _instrument(self, **kwargs):
@@ -303,6 +306,15 @@ class FastAPIInstrumentor(BaseInstrumentor):
         )
         _InstrumentedFastAPI._client_response_hook = kwargs.get(
             "client_response_hook"
+        )
+        _InstrumentedFastAPI._http_capture_headers_server_request = kwargs.get(
+            "http_capture_headers_server_request"
+        )
+        _InstrumentedFastAPI._http_capture_headers_server_response = (
+            kwargs.get("http_capture_headers_server_response")
+        )
+        _InstrumentedFastAPI._http_capture_headers_sanitize_fields = (
+            kwargs.get("http_capture_headers_sanitize_fields")
         )
         _excluded_urls = kwargs.get("excluded_urls")
         _InstrumentedFastAPI._excluded_urls = (
@@ -358,6 +370,9 @@ class _InstrumentedFastAPI(fastapi.FastAPI):
             # Pass in tracer/meter to get __name__and __version__ of fastapi instrumentation
             tracer=tracer,
             meter=meter,
+            http_capture_headers_server_request=_InstrumentedFastAPI._http_capture_headers_server_request,
+            http_capture_headers_server_response=_InstrumentedFastAPI._http_capture_headers_server_response,
+            http_capture_headers_sanitize_fields=_InstrumentedFastAPI._http_capture_headers_sanitize_fields,
         )
         self._is_instrumented_by_opentelemetry = True
         _InstrumentedFastAPI._instrumented_fastapi_apps.add(self)
