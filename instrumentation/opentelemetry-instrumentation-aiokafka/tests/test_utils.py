@@ -18,10 +18,10 @@ from unittest import IsolatedAsyncioTestCase, mock
 from opentelemetry.instrumentation.aiokafka.utils import (
     AIOKafkaContextGetter,
     AIOKafkaContextSetter,
-    AIOKafkaPropertiesExtractor,
     _aiokafka_getter,
     _aiokafka_setter,
     _create_consumer_span,
+    _extract_send_partition,
     _get_span_name,
     _wrap_anext,
     _wrap_send,
@@ -54,10 +54,10 @@ class TestUtils(IsolatedAsyncioTestCase):
         self.assertEqual(["key1"], context_getter.keys(carrier_list))
 
     @mock.patch(
-        "opentelemetry.instrumentation.aiokafka.utils.AIOKafkaPropertiesExtractor.extract_bootstrap_servers"
+        "opentelemetry.instrumentation.aiokafka.utils._extract_bootstrap_servers"
     )
     @mock.patch(
-        "opentelemetry.instrumentation.aiokafka.utils.AIOKafkaPropertiesExtractor.extract_send_partition"
+        "opentelemetry.instrumentation.aiokafka.utils._extract_send_partition"
     )
     @mock.patch("opentelemetry.instrumentation.aiokafka.utils._enrich_span")
     @mock.patch("opentelemetry.trace.set_span_in_context")
@@ -79,10 +79,10 @@ class TestUtils(IsolatedAsyncioTestCase):
         )
 
     @mock.patch(
-        "opentelemetry.instrumentation.aiokafka.utils.AIOKafkaPropertiesExtractor.extract_bootstrap_servers"
+        "opentelemetry.instrumentation.aiokafka.utils._extract_bootstrap_servers"
     )
     @mock.patch(
-        "opentelemetry.instrumentation.aiokafka.utils.AIOKafkaPropertiesExtractor.extract_send_partition"
+        "opentelemetry.instrumentation.aiokafka.utils._extract_send_partition"
     )
     @mock.patch("opentelemetry.instrumentation.aiokafka.utils._enrich_span")
     @mock.patch("opentelemetry.trace.set_span_in_context")
@@ -160,7 +160,7 @@ class TestUtils(IsolatedAsyncioTestCase):
         "opentelemetry.instrumentation.aiokafka.utils._create_consumer_span"
     )
     @mock.patch(
-        "opentelemetry.instrumentation.aiokafka.utils.AIOKafkaPropertiesExtractor.extract_bootstrap_servers"
+        "opentelemetry.instrumentation.aiokafka.utils._extract_bootstrap_servers"
     )
     async def test_wrap_next(
         self,
@@ -255,7 +255,7 @@ class TestUtils(IsolatedAsyncioTestCase):
         aiokafka_instance_mock._partition.return_value = "partition"
         aiokafka_instance_mock.client._wait_on_metadata = mock.AsyncMock()
         assert (
-            await AIOKafkaPropertiesExtractor.extract_send_partition(
+            await _extract_send_partition(
                 aiokafka_instance_mock, self.args, self.kwargs
             )
             == "partition"
@@ -264,7 +264,7 @@ class TestUtils(IsolatedAsyncioTestCase):
             Exception("mocked error")
         )
         assert (
-            await AIOKafkaPropertiesExtractor.extract_send_partition(
+            await _extract_send_partition(
                 aiokafka_instance_mock, self.args, self.kwargs
             )
             is None
