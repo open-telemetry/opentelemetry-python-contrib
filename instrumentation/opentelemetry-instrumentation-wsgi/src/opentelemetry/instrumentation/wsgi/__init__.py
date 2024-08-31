@@ -571,14 +571,14 @@ class OpenTelemetryMiddleware:
             self.duration_histogram_old = self.meter.create_histogram(
                 name=MetricInstruments.HTTP_SERVER_DURATION,
                 unit="ms",
-                description="measures the duration of the inbound HTTP request",
+                description="Measures the duration of inbound HTTP requests.",
             )
         self.duration_histogram_new = None
         if _report_new(sem_conv_opt_in_mode):
             self.duration_histogram_new = self.meter.create_histogram(
                 name=HTTP_SERVER_REQUEST_DURATION,
                 unit="s",
-                description="measures the duration of the inbound HTTP request",
+                description="Duration of HTTP server requests.",
             )
         # We don't need a separate active request counter for old/new semantic conventions
         # because the new attributes are a subset of the old attributes
