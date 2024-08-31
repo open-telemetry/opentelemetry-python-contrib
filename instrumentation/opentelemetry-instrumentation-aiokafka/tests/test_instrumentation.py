@@ -19,7 +19,7 @@ from wrapt import BoundFunctionWrapper
 from opentelemetry.instrumentation.aiokafka import AIOKafkaInstrumentor
 
 
-class TestKafka(TestCase):
+class TestAIOKafka(TestCase):
     def test_instrument_api(self) -> None:
         instrumentation = AIOKafkaInstrumentor()
 

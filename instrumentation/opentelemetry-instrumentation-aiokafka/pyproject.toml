@@ -5,7 +5,7 @@ build-backend = "hatchling.build"
 [project]
 name = "opentelemetry-instrumentation-aiokafka"
 dynamic = ["version"]
-description = "OpenTelemetry AIOKafka instrumentation"
+description = "OpenTelemetry aiokafka instrumentation"
 readme = "README.rst"
 license = "Apache-2.0"
 requires-python = ">=3.8"
