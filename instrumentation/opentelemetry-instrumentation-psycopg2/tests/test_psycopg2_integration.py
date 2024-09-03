@@ -271,14 +271,13 @@ class TestPostgresqlIntegration(TestBase):
         kwargs = event_mocked.call_args[1]
         self.assertEqual(kwargs["enable_commenter"], False)
 
-    @mock.patch("opentelemetry.instrumentation.dbapi.wrap_connect")
-    def test_sqlcommenter_enabled_no_op_tracer(self, event_mocked):
-        cnx = psycopg2.connect(database="test")
+    def test_no_op_tracer_provider(self):
         Psycopg2Instrumentor().instrument(
-            tracer_provider=trace.NoOpTracerProvider(), enable_commenter=True
+            tracer_provider=trace.NoOpTracerProvider()
         )
-        query = "SELECT * FROM test"
+        cnx = psycopg2.connect(database="test")
         cursor = cnx.cursor()
+        query = "SELECT * FROM test"
         cursor.execute(query)
-        kwargs = event_mocked.call_args[1]
-        self.assertEqual(kwargs["enable_commenter"], True)
+        spans_list = self.memory_exporter.get_finished_spans()
+        self.assertEqual(len(spans_list), 0)
