@@ -359,6 +359,7 @@ class _InstrumentedFalconAPI(getattr(falcon, _instrument_app)):
         )
         duration_attrs = _filter_semconv_server_duration_attrs(
             attributes,
+            _HTTPStabilityMode.DEFAULT,
         )
         self.active_requests_counter.add(1, active_requests_count_attrs)
 

@@ -424,6 +424,7 @@ class _DjangoMiddleware(MiddlewareMixin):
             if self._duration_histogram_old:
                 duration_attrs_old = _filter_semconv_server_duration_attrs(
                     duration_attrs,
+                    _HTTPStabilityMode.DEFAULT,
                 )
                 # http.target to be included in old semantic conventions
                 target = duration_attrs.get(SpanAttributes.HTTP_TARGET)

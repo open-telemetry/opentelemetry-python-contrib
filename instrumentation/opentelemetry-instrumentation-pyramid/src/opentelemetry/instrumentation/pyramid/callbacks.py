@@ -26,6 +26,7 @@ from opentelemetry import context, trace
 from opentelemetry.instrumentation._semconv import (
     _filter_semconv_active_server_request_count_attr,
     _filter_semconv_server_duration_attrs,
+    _HTTPStabilityMode,
 )
 from opentelemetry.instrumentation.propagators import (
     get_global_response_propagator,
@@ -182,6 +183,7 @@ def trace_tween_factory(handler, registry):
         )
         duration_attrs = _filter_semconv_server_duration_attrs(
             attributes,
+            _HTTPStabilityMode.DEFAULT,
         )
 
         start = default_timer()

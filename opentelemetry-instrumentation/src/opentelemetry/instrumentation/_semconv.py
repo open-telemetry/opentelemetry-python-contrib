@@ -215,7 +215,7 @@ def _filter_semconv_client_duration_attrs(
 
 def _filter_semconv_server_duration_attrs(
     attrs,
-    sem_conv_opt_in_mode=_HTTPStabilityMode.DEFAULT,
+    sem_conv_opt_in_mode,
 ):
     return _filter_semconv_duration_attrs(
         attrs,

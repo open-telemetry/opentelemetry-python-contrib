@@ -394,6 +394,7 @@ def _rewrapped_app(
         if duration_histogram_old:
             duration_attrs_old = _filter_semconv_server_duration_attrs(
                 attributes,
+                _HTTPStabilityMode.DEFAULT,
             )
 
             if request_route:

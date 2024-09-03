@@ -662,6 +662,7 @@ class OpenTelemetryMiddleware:
             if self.duration_histogram_old:
                 duration_attrs_old = _filter_semconv_server_duration_attrs(
                     req_attrs,
+                    _HTTPStabilityMode.DEFAULT,
                 )
                 self.duration_histogram_old.record(
                     max(round(duration_s * 1000), 0), duration_attrs_old
