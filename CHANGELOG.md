@@ -16,8 +16,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
-- Deprecation of pkg_resource in favor of importlib.metadata
-  ([#2180](https://github.com/open-telemetry/opentelemetry-python-contrib/issues/2180))
 - `opentelemetry-instrumentation-kafka-python` Instrument temporary fork, kafka-python-ng inside kafka-python's instrumentation
   ([#2537](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/2537))
 
