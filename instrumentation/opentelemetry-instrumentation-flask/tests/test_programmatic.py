@@ -23,10 +23,8 @@ from opentelemetry.instrumentation._semconv import (
     OTEL_SEMCONV_STABILITY_OPT_IN,
     _OpenTelemetrySemanticConventionStability,
     _server_active_requests_count_attrs_new,
-    _server_active_requests_count_attrs_new_with_server_attributes,
     _server_active_requests_count_attrs_old,
     _server_duration_attrs_new,
-    _server_duration_attrs_new_with_server_attributes,
     _server_duration_attrs_old,
 )
 from opentelemetry.instrumentation.flask import FlaskInstrumentor
@@ -106,8 +104,8 @@ _recommended_metrics_attrs_old = {
     "http.server.duration": _server_duration_attrs_old_copy,
 }
 _recommended_metrics_attrs_new = {
-    "http.server.active_requests": _server_active_requests_count_attrs_new_with_server_attributes,
-    "http.server.request.duration": _server_duration_attrs_new_with_server_attributes,
+    "http.server.active_requests": _server_active_requests_count_attrs_new,
+    "http.server.request.duration": _server_duration_attrs_new_copy,
 }
 _server_active_requests_count_attrs_both = (
     _server_active_requests_count_attrs_old
@@ -140,8 +138,6 @@ class TestProgrammatic(InstrumentationTest, WsgiTestBase):
             "os.environ",
             {
                 "OTEL_PYTHON_FLASK_EXCLUDED_URLS": "http://localhost/env_excluded_arg/123,env_excluded_noarg",
-                "OTEL_PYTHON_HTTP_SERVER_REQUEST_DURATION_SERVER_ATTRIBUTES_ENABLED": "true",
-                "OTEL_PYTHON_HTTP_SERVER_ACTIVE_REQUESTS_COUNT_SERVER_ATTRIBUTES_ENABLED": "true",
                 OTEL_SEMCONV_STABILITY_OPT_IN: sem_conv_mode,
             },
         )
@@ -612,6 +608,31 @@ class TestProgrammatic(InstrumentationTest, WsgiTestBase):
             "http.route": "/hello/<int:helloid>",
             "network.protocol.version": "1.1",
             "http.response.status_code": 200,
+        }
+        expected_requests_count_attributes = {
+            "http.request.method": "GET",
+            "url.scheme": "http",
+        }
+        self._assert_basic_metric(
+            expected_duration_attributes,
+            expected_requests_count_attributes,
+        )
+
+    @patch.dict(
+        "os.environ",
+        {
+            "OTEL_PYTHON_HTTP_SERVER_REQUEST_DURATION_SERVER_ATTRIBUTES_ENABLED": "true",
+            "OTEL_PYTHON_HTTP_SERVER_ACTIVE_REQUESTS_COUNT_SERVER_ATTRIBUTES_ENABLED": "true",
+        },
+    )
+    def test_basic_metric_success_new_semconv_server_address(self):
+        self.client.get("/hello/756")
+        expected_duration_attributes = {
+            "http.request.method": "GET",
+            "url.scheme": "http",
+            "http.route": "/hello/<int:helloid>",
+            "network.protocol.version": "1.1",
+            "http.response.status_code": 200,
             "server.address": "localhost",
             "server.port": 80,
         }
@@ -657,14 +678,10 @@ class TestProgrammatic(InstrumentationTest, WsgiTestBase):
             "url.scheme": "http",
             "network.protocol.version": "1.1",
             "http.response.status_code": 405,
-            "server.address": "localhost",
-            "server.port": 80,
         }
         expected_requests_count_attributes = {
             "http.request.method": "_OTHER",
             "url.scheme": "http",
-            "server.address": "localhost",
-            "server.port": 80,
         }
         self._assert_basic_metric(
             expected_duration_attributes,
@@ -686,14 +703,10 @@ class TestProgrammatic(InstrumentationTest, WsgiTestBase):
             "url.scheme": "http",
             "network.protocol.version": "1.1",
             "http.response.status_code": 405,
-            "server.address": "localhost",
-            "server.port": 80,
         }
         expected_requests_count_attributes = {
             "http.request.method": "NONSTANDARD",
             "url.scheme": "http",
-            "server.address": "localhost",
-            "server.port": 80,
         }
         self._assert_basic_metric(
             expected_duration_attributes,

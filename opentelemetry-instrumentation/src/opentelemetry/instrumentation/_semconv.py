@@ -90,16 +90,14 @@ _server_duration_attrs_new = [
     URL_SCHEME,
 ]
 
-_server_duration_attrs_new_with_server_attributes = [
-    ERROR_TYPE,
-    HTTP_REQUEST_METHOD,
-    HTTP_RESPONSE_STATUS_CODE,
-    HTTP_ROUTE,
-    NETWORK_PROTOCOL_VERSION,
-    URL_SCHEME,
-    SERVER_ADDRESS,
-    SERVER_PORT,
-]
+_server_duration_attrs_new_with_server_attributes = (
+    _server_duration_attrs_new.extend(
+        [
+            SERVER_ADDRESS,
+            SERVER_PORT,
+        ]
+    )
+)
 
 _server_active_requests_count_attrs_old = [
     SpanAttributes.HTTP_METHOD,
