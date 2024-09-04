@@ -1,4 +1,4 @@
-asgiref==3.7.2
+asgiref==3.8.1
 Deprecated==1.2.14
 Django==4.2.15
 importlib-metadata==6.11.0
