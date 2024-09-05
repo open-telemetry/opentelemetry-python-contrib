@@ -7,21 +7,27 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## Unreleased
 
-## Added
+## Version 1.27.0/0.48b0 ()
+
+### Added
 
 - `opentelemetry-instrumentation-kafka-python` Instrument temporary fork, kafka-python-ng
   inside kafka-python's instrumentation
   ([#2537](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/2537))
 
-## Breaking changes
+### Breaking changes
 
 - `opentelemetry-bootstrap` Remove `opentelemetry-instrumentation-aws-lambda` from the defaults instrumentations
   ([#2786](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/2786))
 
-## Fixed
+### Fixed
 
+- `opentelemetry-instrumentation-httpx` fix handling of async hooks
+  ([#2823](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/2823))
+- `opentelemetry-instrumentation-system-metrics` fix `process.runtime.cpu.utilization` values to be shown in range of 0 to 1
+  ([#2812](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/2812))
 - `opentelemetry-instrumentation-fastapi` fix `fastapi` auto-instrumentation by removing `fastapi-slim` support, `fastapi-slim` itself is discontinued from maintainers
-  ([2783](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/2783))
+  ([#2783](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/2783))
 - `opentelemetry-instrumentation-aws-lambda` Avoid exception when a handler is not present.
   ([#2750](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/2750))
 - `opentelemetry-instrumentation-django` Fix regression - `http.target` re-added back to old semconv duration metrics
@@ -36,6 +42,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   ([#2385](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/2385))
 - `opentelemetry-instrumentation-asyncio` Fixes async generator coroutines not being awaited
   ([#2792](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/2792))
+- `opentelemetry-instrumentation-tornado` Handle http client exception and record exception info into span
+  ([#2563](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/2563))
+- `opentelemetry-instrumentation` fix `http.host` new http semantic convention mapping to depend on `kind` of span
+  ([#2814](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/2814))
+- `opentelemetry-instrumentation` Fix the description of `http.server.duration` and `http.server.request.duration`
+  ([#2753](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/2753))
 
 ## Version 1.26.0/0.47b0 (2024-07-23)
 
