@@ -16,7 +16,6 @@ import json
 import logging
 from typing import Optional, Union
 from openai import NOT_GIVEN
-from .span_attributes import SpanAttributes
 from opentelemetry.semconv._incubating.attributes import (
     gen_ai_attributes as GenAIAttributes,
 )
@@ -164,7 +163,6 @@ def get_llm_request_attributes(
     )
 
     top_p = kwargs.get("p") or kwargs.get("top_p")
-    tools = kwargs.get("tools")
 
     return {
         GenAIAttributes.GEN_AI_OPERATION_NAME: operation_name,
@@ -183,14 +181,4 @@ def get_llm_request_attributes(
         GenAIAttributes.GEN_AI_REQUEST_FREQUENCY_PENALTY: kwargs.get(
             "frequency_penalty"
         ),
-        SpanAttributes.LLM_SYSTEM_FINGERPRINT: kwargs.get(
-            "system_fingerprint"
-        ),
-        SpanAttributes.LLM_IS_STREAMING: kwargs.get("stream"),
-        SpanAttributes.LLM_USER: user,
-        SpanAttributes.LLM_TOOLS: json.dumps(tools) if tools else None,
-        SpanAttributes.LLM_TOOL_CHOICE: kwargs.get("tool_choice"),
-        SpanAttributes.LLM_REQUEST_LOGPROPS: kwargs.get("logprobs"),
-        SpanAttributes.LLM_REQUEST_LOGITBIAS: kwargs.get("logit_bias"),
-        SpanAttributes.LLM_REQUEST_TOP_LOGPROPS: kwargs.get("top_logprobs"),
     }

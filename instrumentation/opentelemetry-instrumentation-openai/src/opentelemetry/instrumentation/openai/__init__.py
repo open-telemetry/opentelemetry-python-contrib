@@ -40,13 +40,13 @@ API
 ---
 """
 
-import importlib.metadata
+
 from typing import Collection
 
 from opentelemetry.instrumentation.instrumentor import BaseInstrumentor
 from opentelemetry.instrumentation.openai.package import _instruments
 from opentelemetry.trace import get_tracer
-from wrapt import wrap_function_wrapper as _W
+from wrapt import wrap_function_wrapper
 from .patch import chat_completions_create
 
 
@@ -59,7 +59,7 @@ class OpenAIInstrumentor(BaseInstrumentor):
         """Enable OpenAI instrumentation."""
         tracer_provider = kwargs.get("tracer_provider")
         tracer = get_tracer(__name__, "", tracer_provider)
-        _W(
+        wrap_function_wrapper(
             module="openai.resources.chat.completions",
             name="Completions.create",
             wrapper=chat_completions_create(tracer),

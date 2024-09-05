@@ -13,62 +13,8 @@
 # limitations under the License.
 
 from __future__ import annotations
-from enum import Enum
 from typing import Dict, List, Optional
 from pydantic import BaseModel, ConfigDict, Field
-
-
-class SpanAttributes:
-
-    LLM_SYSTEM_FINGERPRINT = "gen_ai.system_fingerprint"
-    LLM_REQUEST_DOCUMENTS = "gen_ai.request.documents"
-    LLM_REQUEST_SEARCH_REQUIRED = "gen_ai.request.is_search_required"
-    LLM_PROMPTS = "gen_ai.prompt"
-    LLM_CONTENT_PROMPT = "gen_ai.content.prompt"
-    LLM_COMPLETIONS = "gen_ai.completion"
-    LLM_CONTENT_COMPLETION = "gen_ai.content.completion"
-    LLM_RESPONSE_MODEL = "gen_ai.response.model"
-    LLM_USAGE_COMPLETION_TOKENS = "gen_ai.usage.output_tokens"
-    LLM_USAGE_PROMPT_TOKENS = "gen_ai.usage.input_tokens"
-    LLM_USAGE_TOTAL_TOKENS = "gen_ai.request.total_tokens"
-    LLM_USAGE_TOKEN_TYPE = "gen_ai.usage.token_type"
-    LLM_USAGE_SEARCH_UNITS = "gen_ai.usage.search_units"
-    LLM_GENERATION_ID = "gen_ai.generation_id"
-    LLM_TOKEN_TYPE = "gen_ai.token.type"
-    LLM_RESPONSE_ID = "gen_ai.response_id"
-    LLM_URL = "url.full"
-    LLM_PATH = "url.path"
-    LLM_RESPONSE_FORMAT = "gen_ai.response.format"
-    LLM_IMAGE_SIZE = "gen_ai.image.size"
-    LLM_REQUEST_ENCODING_FORMATS = "gen_ai.request.encoding_formats"
-    LLM_REQUEST_DIMENSIONS = "gen_ai.request.dimensions"
-    LLM_REQUEST_SEED = "gen_ai.request.seed"
-    LLM_REQUEST_TOP_LOGPROPS = "gen_ai.request.top_props"
-    LLM_REQUEST_LOGPROPS = "gen_ai.request.log_props"
-    LLM_REQUEST_LOGITBIAS = "gen_ai.request.logit_bias"
-    LLM_REQUEST_TYPE = "gen_ai.request.type"
-    LLM_HEADERS = "gen_ai.headers"
-    LLM_USER = "gen_ai.user"
-    LLM_TOOLS = "gen_ai.request.tools"
-    LLM_TOOL_CHOICE = "gen_ai.request.tool_choice"
-    LLM_TOOL_RESULTS = "gen_ai.request.tool_results"
-    LLM_TOP_K = "gen_ai.request.top_k"
-    LLM_IS_STREAMING = "gen_ai.request.stream"
-    LLM_FREQUENCY_PENALTY = "gen_ai.request.frequency_penalty"
-    LLM_PRESENCE_PENALTY = "gen_ai.request.presence_penalty"
-    LLM_CHAT_STOP_SEQUENCES = "gen_ai.chat.stop_sequences"
-    LLM_REQUEST_FUNCTIONS = "gen_ai.request.functions"
-    LLM_REQUEST_REPETITION_PENALTY = "gen_ai.request.repetition_penalty"
-    LLM_RESPONSE_FINISH_REASON = "gen_ai.response.finish_reasons"
-    LLM_RESPONSE_STOP_REASON = "gen_ai.response.stop_reason"
-    LLM_CONTENT_COMPLETION_CHUNK = "gen_ai.completion.chunk"
-
-
-class Event(Enum):
-    STREAM_START = "stream.start"
-    STREAM_OUTPUT = "stream.output"
-    STREAM_END = "stream.end"
-    RESPONSE = "response"
 
 
 class LLMSpanAttributes(BaseModel):

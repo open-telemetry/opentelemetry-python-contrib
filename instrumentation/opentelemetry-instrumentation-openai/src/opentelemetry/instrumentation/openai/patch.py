@@ -17,8 +17,7 @@ from opentelemetry import trace
 from opentelemetry.trace import SpanKind, Span
 from opentelemetry.trace.status import Status, StatusCode
 from opentelemetry.trace.propagation import set_span_in_context
-
-from .span_attributes import LLMSpanAttributes, SpanAttributes
+from .span_attributes import LLMSpanAttributes
 from opentelemetry.semconv._incubating.attributes import (
     gen_ai_attributes as GenAIAttributes,
 )
@@ -94,7 +93,9 @@ def _set_response_attributes(span, result):
     set_span_attribute(
         span, GenAIAttributes.GEN_AI_RESPONSE_MODEL, result.model
     )
+    print(result)
     if getattr(result, "choices", None):
+        choices = result.choices
         responses = [
             {
                 "role": (
@@ -113,16 +114,19 @@ def _set_response_attributes(span, result):
                     else {}
                 ),
             }
-            for choice in result.choices
+            for choice in choices
         ]
+        for choice in choices:
+            if choice.finish_reason:
+                set_span_attribute(
+                    span,
+                    GenAIAttributes.GEN_AI_RESPONSE_FINISH_REASONS,
+                    choice.finish_reason,
+                )
         set_event_completion(span, responses)
 
-    if getattr(result, "system_fingerprint", None):
-        set_span_attribute(
-            span,
-            SpanAttributes.LLM_SYSTEM_FINGERPRINT,
-            result.system_fingerprint,
-        )
+    if getattr(result, "id", None):
+        set_span_attribute(span, GenAIAttributes.GEN_AI_RESPONSE_ID, result.id)
 
     # Get the usage
     if getattr(result, "usage", None):
@@ -145,6 +149,8 @@ def _set_response_attributes(span, result):
 
 class StreamWrapper:
     span: Span
+    response_id: str = ""
+    response_model: str = ""
 
     def __init__(
         self,
@@ -170,6 +176,20 @@ class StreamWrapper:
 
     def cleanup(self):
         if self._span_started:
+            if self.response_model:
+                set_span_attribute(
+                    self.span,
+                    GenAIAttributes.GEN_AI_RESPONSE_MODEL,
+                    self.response_model,
+                )
+
+            if self.response_id:
+                set_span_attribute(
+                    self.span,
+                    GenAIAttributes.GEN_AI_RESPONSE_ID,
+                    self.response_id,
+                )
+
             set_span_attribute(
                 self.span,
                 GenAIAttributes.GEN_AI_USAGE_INPUT_TOKENS,
@@ -218,50 +238,71 @@ class StreamWrapper:
             self.cleanup()
             raise
 
-    def process_chunk(self, chunk):
+    def set_response_model(self, chunk):
+        if self.response_model:
+            return
+
         if getattr(chunk, "model", None):
-            set_span_attribute(
-                self.span,
-                GenAIAttributes.GEN_AI_RESPONSE_MODEL,
-                chunk.model,
-            )
+            self.response_model = chunk.model
 
-        if getattr(chunk, "choices", None):
-            content = []
-            if not self.function_call and not self.tool_calls:
-                for choice in chunk.choices:
-                    if choice.delta and choice.delta.content is not None:
-                        content = [choice.delta.content]
-            elif self.function_call:
-                for choice in chunk.choices:
-                    if (
-                        choice.delta
-                        and choice.delta.function_call is not None
-                        and choice.delta.function_call.arguments is not None
-                    ):
-                        content = [choice.delta.function_call.arguments]
-            elif self.tool_calls:
-                for choice in chunk.choices:
-                    if choice.delta and choice.delta.tool_calls is not None:
-                        toolcalls = choice.delta.tool_calls
-                        content = []
-                        for tool_call in toolcalls:
-                            if (
-                                tool_call
-                                and tool_call.function is not None
-                                and tool_call.function.arguments is not None
-                            ):
-                                content.append(tool_call.function.arguments)
+    def set_response_id(self, chunk):
+        if self.response_id:
+            return
 
-            if content:
-                self.result_content.append(content[0])
+        if getattr(chunk, "id", None):
+            self.response_id = chunk.id
 
-        if getattr(chunk, "text", None):
-            content = [chunk.text]
+    def build_streaming_response(self, chunk):
+        if getattr(chunk, "choices", None) is None:
+            return
 
-            if content:
-                self.result_content.append(content[0])
+        choices = chunk.choices
+        content = []
+        if not self.function_call and not self.tool_calls:
+            for choice in choices:
+                if choice.delta and choice.delta.content is not None:
+                    content = [choice.delta.content]
 
+        elif self.function_call:
+            for choice in choices:
+                if (
+                    choice.delta
+                    and choice.delta.function_call is not None
+                    and choice.delta.function_call.arguments is not None
+                ):
+                    content = [choice.delta.function_call.arguments]
+
+        elif self.tool_calls:
+            for choice in choices:
+                if choice.delta and choice.delta.tool_calls is not None:
+                    toolcalls = choice.delta.tool_calls
+                    content = []
+                    for tool_call in toolcalls:
+                        if (
+                            tool_call
+                            and tool_call.function is not None
+                            and tool_call.function.arguments is not None
+                        ):
+                            content.append(tool_call.function.arguments)
+
+        for choice in choices:
+            finish_reason = choice.finish_reason
+            if finish_reason:
+                set_span_attribute(
+                    self.span,
+                    GenAIAttributes.GEN_AI_RESPONSE_FINISH_REASONS,
+                    finish_reason,
+                )
+        if content:
+            self.result_content.append(content[0])
+
+    def set_usage(self, chunk):
         if getattr(chunk, "usage", None):
             self.completion_tokens = chunk.usage.completion_tokens
             self.prompt_tokens = chunk.usage.prompt_tokens
+
+    def process_chunk(self, chunk):
+        self.set_response_id(chunk)
+        self.set_response_model(chunk)
+        self.build_streaming_response(chunk)
+        self.set_usage(chunk)
