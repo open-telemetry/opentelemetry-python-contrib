@@ -14,8 +14,8 @@
 
 # pylint: disable=protected-access
 
-from importlib.metadata import Distribution, requires
-from packaging.requirements import Requirement, InvalidRequirement
+from opentelemetry.util._importlib_metadata import Distribution, requires
+from packaging.requirements import Requirement
 import pytest
 
 from opentelemetry.instrumentation.dependencies import (
@@ -69,8 +69,8 @@ class TestDependencyConflicts(TestBase):
         def mock_requires(extras=()):
             if "instruments" in extras:
                 return requires(
-                        'test-pkg ~= 1.0; extra == "instruments"'
-                    )
+                    'test-pkg ~= 1.0; extra == "instruments"'
+                )
             return []
 
         dist = Distribution()
