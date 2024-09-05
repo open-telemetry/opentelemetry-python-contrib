@@ -12,36 +12,16 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import json
 import logging
-from tiktoken import get_encoding
+from typing import Optional, Union
+from openai import NOT_GIVEN
+from .span_attributes import SpanAttributes
+from opentelemetry.semconv._incubating.attributes import (
+    gen_ai_attributes as GenAIAttributes,
+)
 
-
-def estimate_tokens_using_tiktoken(prompt, model):
-    """
-    Estimate the number of tokens in a prompt using tiktoken."""
-    encoding = get_encoding(model)
-    tokens = encoding.encode(prompt)
-    return len(tokens)
-
-
-def estimate_tokens(prompt):
-    """
-    Estimate the number of tokens in a prompt."""
-    if prompt and len(prompt) > 0:
-        # Simplified token estimation: count the words.
-        return len([word for word in prompt.split() if word])
-    return 0
-
-
-TIKTOKEN_MODEL_MAPPING = {
-    "gpt-4": "cl100k_base",
-    "gpt-4-32k": "cl100k_base",
-    "gpt-4-0125-preview": "cl100k_base",
-    "gpt-4-1106-preview": "cl100k_base",
-    "gpt-4-1106-vision-preview": "cl100k_base",
-    "gpt-4o": "0200k_base",
-    "gpt-4o-mini": "0200k_base",
-}
+from opentelemetry.trace import Span
 
 
 def silently_fail(func):
@@ -65,20 +45,16 @@ def silently_fail(func):
 
 
 def extract_content(choice):
+    if getattr(choice, "message", None) is None:
+        return ""
+
     # Check if choice.message exists and has a content attribute
-    if (
-        hasattr(choice, "message")
-        and hasattr(choice.message, "content")
-        and choice.message.content is not None
-    ):
+    message = choice.message
+    if getattr(message, "content", None):
         return choice.message.content
 
     # Check if choice.message has tool_calls and extract information accordingly
-    elif (
-        hasattr(choice, "message")
-        and hasattr(choice.message, "tool_calls")
-        and choice.message.tool_calls is not None
-    ):
+    elif getattr(message, "tool_calls", None):
         result = [
             {
                 "id": tool_call.id,
@@ -93,11 +69,7 @@ def extract_content(choice):
         return result
 
     # Check if choice.message has a function_call and extract information accordingly
-    elif (
-        hasattr(choice, "message")
-        and hasattr(choice.message, "function_call")
-        and choice.message.function_call is not None
-    ):
+    elif getattr(message, "function_call", None):
         return {
             "name": choice.message.function_call.name,
             "arguments": choice.message.function_call.arguments,
@@ -108,12 +80,117 @@ def extract_content(choice):
         return ""
 
 
-def calculate_prompt_tokens(prompt_content, model):
-    """
-    Calculate the number of tokens in a prompt. If the model is supported by tiktoken, use it for the estimation.
-    """
-    try:
-        tiktoken_model = TIKTOKEN_MODEL_MAPPING[model]
-        return estimate_tokens_using_tiktoken(prompt_content, tiktoken_model)
-    except Exception:
-        return estimate_tokens(prompt_content)  # Fallback method
+def extract_tools_prompt(item):
+    tool_calls = getattr(item, "tool_calls", None)
+    if tool_calls is None:
+        return
+
+    calls = []
+    for tool_call in tool_calls:
+        tool_call_dict = {
+            "id": getattr(tool_call, "id", ""),
+            "type": getattr(tool_call, "type", ""),
+        }
+
+        if hasattr(tool_call, "function"):
+            tool_call_dict["function"] = {
+                "name": getattr(tool_call.function, "name", ""),
+                "arguments": getattr(tool_call.function, "arguments", ""),
+            }
+        calls.append(tool_call_dict)
+    return calls
+
+
+def set_event_prompt(span: Span, prompt):
+    span.add_event(
+        name="gen_ai.content.prompt",
+        attributes={
+            GenAIAttributes.GEN_AI_PROMPT: prompt,
+        },
+    )
+
+
+def set_span_attributes(span: Span, attributes: dict):
+    for field, value in attributes.model_dump(by_alias=True).items():
+        set_span_attribute(span, field, value)
+
+
+def set_event_completion(span: Span, result_content):
+    span.add_event(
+        name="gen_ai.content.completion",
+        attributes={
+            GenAIAttributes.GEN_AI_COMPLETION: json.dumps(result_content),
+        },
+    )
+
+
+def set_span_attribute(span: Span, name, value):
+    if non_numerical_value_is_set(value) is False:
+        return
+
+    if name == GenAIAttributes.GEN_AI_PROMPT:
+        set_event_prompt(span, value)
+    else:
+        span.set_attribute(name, value)
+
+
+def is_streaming(kwargs):
+    return non_numerical_value_is_set(kwargs.get("stream"))
+
+
+def non_numerical_value_is_set(value: Optional[Union[bool, str]]):
+    return bool(value) and value != NOT_GIVEN
+
+
+def get_llm_request_attributes(
+    kwargs,
+    prompts=None,
+    model=None,
+    operation_name=GenAIAttributes.GenAiOperationNameValues.CHAT.value,
+):
+
+    user = kwargs.get("user")
+    if prompts is None:
+        prompts = (
+            [{"role": user or "user", "content": kwargs.get("prompt")}]
+            if "prompt" in kwargs
+            else None
+        )
+    top_k = (
+        kwargs.get("n")
+        or kwargs.get("k")
+        or kwargs.get("top_k")
+        or kwargs.get("top_n")
+    )
+
+    top_p = kwargs.get("p") or kwargs.get("top_p")
+    tools = kwargs.get("tools")
+
+    return {
+        GenAIAttributes.GEN_AI_OPERATION_NAME: operation_name,
+        GenAIAttributes.GEN_AI_SYSTEM: GenAIAttributes.GenAiSystemValues.OPENAI.value,
+        GenAIAttributes.GEN_AI_REQUEST_MODEL: model or kwargs.get("model"),
+        GenAIAttributes.GEN_AI_REQUEST_TEMPERATURE: kwargs.get("temperature"),
+        GenAIAttributes.GEN_AI_REQUEST_TOP_K: top_k,
+        GenAIAttributes.GEN_AI_PROMPT: (
+            json.dumps(prompts) if prompts else None
+        ),
+        GenAIAttributes.GEN_AI_REQUEST_TOP_P: top_p,
+        GenAIAttributes.GEN_AI_REQUEST_MAX_TOKENS: kwargs.get("max_tokens"),
+        GenAIAttributes.GEN_AI_REQUEST_PRESENCE_PENALTY: kwargs.get(
+            "presence_penalty"
+        ),
+        GenAIAttributes.GEN_AI_REQUEST_FREQUENCY_PENALTY: kwargs.get(
+            "frequency_penalty"
+        ),
+        SpanAttributes.LLM_SYSTEM_FINGERPRINT: kwargs.get(
+            "system_fingerprint"
+        ),
+        SpanAttributes.LLM_IS_STREAMING: kwargs.get("stream"),
+        SpanAttributes.LLM_USER: user,
+        SpanAttributes.LLM_TOOLS: json.dumps(tools) if tools else None,
+        SpanAttributes.LLM_TOOL_CHOICE: kwargs.get("tool_choice"),
+        SpanAttributes.LLM_REQUEST_LOGPROPS: kwargs.get("logprobs"),
+        SpanAttributes.LLM_REQUEST_LOGITBIAS: kwargs.get("logit_bias"),
+        SpanAttributes.LLM_REQUEST_TOP_LOGPROPS: kwargs.get("top_logprobs"),
+    }

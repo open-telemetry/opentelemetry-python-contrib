@@ -14,17 +14,12 @@
 
 from __future__ import annotations
 from enum import Enum
-from typing import List, Optional
+from typing import Dict, List, Optional
 from pydantic import BaseModel, ConfigDict, Field
 
 
 class SpanAttributes:
-    LLM_SYSTEM = "gen_ai.system"
-    LLM_OPERATION_NAME = "gen_ai.operation.name"
-    LLM_REQUEST_MODEL = "gen_ai.request.model"
-    LLM_REQUEST_MAX_TOKENS = "gen_ai.request.max_tokens"
-    LLM_REQUEST_TEMPERATURE = "gen_ai.request.temperature"
-    LLM_REQUEST_TOP_P = "gen_ai.request.top_p"
+
     LLM_SYSTEM_FINGERPRINT = "gen_ai.system_fingerprint"
     LLM_REQUEST_DOCUMENTS = "gen_ai.request.documents"
     LLM_REQUEST_SEARCH_REQUIRED = "gen_ai.request.is_search_required"
@@ -98,7 +93,7 @@ class LLMSpanAttributes(BaseModel):
         alias="gen_ai.request.temperature",
         description="Temperature value from the input request",
     )
-    gen_ai_request_logit_bias: Optional[str] = Field(
+    gen_ai_request_logit_bias: Optional[Dict[str, int]] = Field(
         None,
         alias="gen_ai.request.logit_bias",
         description="Likelihood bias of the specified tokens the input request.",
