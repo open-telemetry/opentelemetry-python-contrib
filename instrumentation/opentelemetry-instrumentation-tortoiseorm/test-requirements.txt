@@ -2,7 +2,6 @@ aiosqlite==0.17.0
 annotated-types==0.6.0
 asgiref==3.8.1
 Deprecated==1.2.14
-importlib-metadata==6.11.0
 iniconfig==2.0.0
 iso8601==1.1.0
 packaging==24.0
