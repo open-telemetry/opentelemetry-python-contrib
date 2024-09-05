@@ -92,7 +92,7 @@ from opentelemetry.instrumentation._semconv import (
     _OpenTelemetryStabilitySignalType,
     _report_new,
     _report_old,
-    _set_http_host,
+    _set_http_host_client,
     _set_http_method,
     _set_http_net_peer_name_client,
     _set_http_network_protocol_version,
@@ -212,14 +212,14 @@ def _instrument(
                         metric_labels, parsed_url.scheme, sem_conv_opt_in_mode
                     )
             if parsed_url.hostname:
-                _set_http_host(
+                _set_http_host_client(
                     metric_labels, parsed_url.hostname, sem_conv_opt_in_mode
                 )
                 _set_http_net_peer_name_client(
                     metric_labels, parsed_url.hostname, sem_conv_opt_in_mode
                 )
                 if _report_new(sem_conv_opt_in_mode):
-                    _set_http_host(
+                    _set_http_host_client(
                         span_attributes,
                         parsed_url.hostname,
                         sem_conv_opt_in_mode,

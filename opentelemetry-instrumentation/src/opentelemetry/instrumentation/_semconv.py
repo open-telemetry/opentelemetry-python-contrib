@@ -252,14 +252,30 @@ def _set_http_scheme(result, scheme, sem_conv_opt_in_mode):
         set_string_attribute(result, URL_SCHEME, scheme)
 
 
-def _set_http_host(result, host, sem_conv_opt_in_mode):
+def _set_http_flavor_version(result, version, sem_conv_opt_in_mode):
+    if _report_old(sem_conv_opt_in_mode):
+        set_string_attribute(result, SpanAttributes.HTTP_FLAVOR, version)
+    if _report_new(sem_conv_opt_in_mode):
+        set_string_attribute(result, NETWORK_PROTOCOL_VERSION, version)
+
+
+def _set_http_user_agent(result, user_agent, sem_conv_opt_in_mode):
+    if _report_old(sem_conv_opt_in_mode):
+        set_string_attribute(
+            result, SpanAttributes.HTTP_USER_AGENT, user_agent
+        )
+    if _report_new(sem_conv_opt_in_mode):
+        set_string_attribute(result, USER_AGENT_ORIGINAL, user_agent)
+
+
+# Client
+
+
+def _set_http_host_client(result, host, sem_conv_opt_in_mode):
     if _report_old(sem_conv_opt_in_mode):
         set_string_attribute(result, SpanAttributes.HTTP_HOST, host)
     if _report_new(sem_conv_opt_in_mode):
         set_string_attribute(result, SERVER_ADDRESS, host)
-
-
-# Client
 
 
 def _set_http_net_peer_name_client(result, peer_name, sem_conv_opt_in_mode):
@@ -310,11 +326,25 @@ def _set_http_target(result, target, path, query, sem_conv_opt_in_mode):
             set_string_attribute(result, URL_QUERY, query)
 
 
-def _set_http_peer_ip(result, ip, sem_conv_opt_in_mode):
+def _set_http_host_server(result, host, sem_conv_opt_in_mode):
+    if _report_old(sem_conv_opt_in_mode):
+        set_string_attribute(result, SpanAttributes.HTTP_HOST, host)
+    if _report_new(sem_conv_opt_in_mode):
+        set_string_attribute(result, CLIENT_ADDRESS, host)
+
+
+# net.peer.ip -> net.sock.peer.addr
+# https://github.com/open-telemetry/semantic-conventions/blob/40db676ca0e735aa84f242b5a0fb14e49438b69b/schemas/1.15.0#L18
+# net.sock.peer.addr -> client.socket.address for server spans (TODO) AND client.address if missing
+# https://github.com/open-telemetry/semantic-conventions/blob/v1.21.0/CHANGELOG.md#v1210-2023-07-13
+# https://github.com/open-telemetry/semantic-conventions/blob/main/docs/non-normative/http-migration.md#common-attributes-across-http-client-and-server-spans
+def _set_http_peer_ip_server(result, ip, sem_conv_opt_in_mode):
     if _report_old(sem_conv_opt_in_mode):
         set_string_attribute(result, SpanAttributes.NET_PEER_IP, ip)
     if _report_new(sem_conv_opt_in_mode):
-        set_string_attribute(result, CLIENT_ADDRESS, ip)
+        # Only populate if not already populated
+        if not result.get(CLIENT_ADDRESS):
+            set_string_attribute(result, CLIENT_ADDRESS, ip)
 
 
 def _set_http_peer_port_server(result, port, sem_conv_opt_in_mode):
@@ -324,27 +354,11 @@ def _set_http_peer_port_server(result, port, sem_conv_opt_in_mode):
         set_int_attribute(result, CLIENT_PORT, port)
 
 
-def _set_http_user_agent(result, user_agent, sem_conv_opt_in_mode):
-    if _report_old(sem_conv_opt_in_mode):
-        set_string_attribute(
-            result, SpanAttributes.HTTP_USER_AGENT, user_agent
-        )
-    if _report_new(sem_conv_opt_in_mode):
-        set_string_attribute(result, USER_AGENT_ORIGINAL, user_agent)
-
-
 def _set_http_net_peer_name_server(result, name, sem_conv_opt_in_mode):
     if _report_old(sem_conv_opt_in_mode):
         set_string_attribute(result, SpanAttributes.NET_PEER_NAME, name)
     if _report_new(sem_conv_opt_in_mode):
         set_string_attribute(result, CLIENT_ADDRESS, name)
-
-
-def _set_http_flavor_version(result, version, sem_conv_opt_in_mode):
-    if _report_old(sem_conv_opt_in_mode):
-        set_string_attribute(result, SpanAttributes.HTTP_FLAVOR, version)
-    if _report_new(sem_conv_opt_in_mode):
-        set_string_attribute(result, NETWORK_PROTOCOL_VERSION, version)
 
 
 def _set_status(

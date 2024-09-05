@@ -1,5 +1,5 @@
 aiopg==1.4.0
-asgiref==3.7.2
+asgiref==3.8.1
 async-timeout==4.0.3
 Deprecated==1.2.14
 importlib-metadata==6.11.0

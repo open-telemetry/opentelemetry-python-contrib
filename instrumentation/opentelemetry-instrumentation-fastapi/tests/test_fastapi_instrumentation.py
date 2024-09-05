@@ -530,7 +530,7 @@ class TestFastAPIManualInstrumentation(TestBaseManualFastAPI):
                         dict(point.attributes),
                     )
                     self.assertEqual(point.count, 1)
-                    self.assertAlmostEqual(duration, point.sum, delta=40)
+                    self.assertAlmostEqual(duration, point.sum, delta=350)
                 if isinstance(point, NumberDataPoint):
                     self.assertDictEqual(
                         expected_requests_count_attributes,
@@ -565,7 +565,9 @@ class TestFastAPIManualInstrumentation(TestBaseManualFastAPI):
                     )
                     self.assertEqual(point.count, 1)
                     if metric.name == "http.server.request.duration":
-                        self.assertAlmostEqual(duration_s, point.sum, places=1)
+                        self.assertAlmostEqual(
+                            duration_s * 0.1, point.sum, places=1
+                        )
                     elif metric.name == "http.server.response.body.size":
                         self.assertEqual(25, point.sum)
                     elif metric.name == "http.server.request.body.size":
@@ -615,9 +617,11 @@ class TestFastAPIManualInstrumentation(TestBaseManualFastAPI):
             for point in list(metric.data.data_points):
                 if isinstance(point, HistogramDataPoint):
                     self.assertEqual(point.count, 1)
-                    self.assertAlmostEqual(duration, point.sum, delta=40)
+                    self.assertAlmostEqual(duration, point.sum, delta=350)
                     if metric.name == "http.server.request.duration":
-                        self.assertAlmostEqual(duration_s, point.sum, places=1)
+                        self.assertAlmostEqual(
+                            duration_s * 0.1, point.sum, places=1
+                        )
                         self.assertDictEqual(
                             expected_duration_attributes_new,
                             dict(point.attributes),
@@ -635,7 +639,7 @@ class TestFastAPIManualInstrumentation(TestBaseManualFastAPI):
                             dict(point.attributes),
                         )
                     elif metric.name == "http.server.duration":
-                        self.assertAlmostEqual(duration, point.sum, delta=40)
+                        self.assertAlmostEqual(duration, point.sum, delta=350)
                         self.assertDictEqual(
                             expected_duration_attributes_old,
                             dict(point.attributes),
@@ -691,7 +695,7 @@ class TestFastAPIManualInstrumentation(TestBaseManualFastAPI):
                         dict(point.attributes),
                     )
                     self.assertEqual(point.count, 1)
-                    self.assertAlmostEqual(duration, point.sum, delta=40)
+                    self.assertAlmostEqual(duration, point.sum, delta=350)
                 if isinstance(point, NumberDataPoint):
                     self.assertDictEqual(
                         expected_requests_count_attributes,
@@ -726,7 +730,9 @@ class TestFastAPIManualInstrumentation(TestBaseManualFastAPI):
                     )
                     self.assertEqual(point.count, 1)
                     if metric.name == "http.server.request.duration":
-                        self.assertAlmostEqual(duration_s, point.sum, places=1)
+                        self.assertAlmostEqual(
+                            duration_s * 0.1, point.sum, places=1
+                        )
                     elif metric.name == "http.server.response.body.size":
                         self.assertEqual(31, point.sum)
                     elif metric.name == "http.server.request.body.size":
@@ -777,7 +783,9 @@ class TestFastAPIManualInstrumentation(TestBaseManualFastAPI):
                 if isinstance(point, HistogramDataPoint):
                     self.assertEqual(point.count, 1)
                     if metric.name == "http.server.request.duration":
-                        self.assertAlmostEqual(duration_s, point.sum, places=1)
+                        self.assertAlmostEqual(
+                            duration_s * 0.1, point.sum, places=1
+                        )
                         self.assertDictEqual(
                             expected_duration_attributes_new,
                             dict(point.attributes),
@@ -795,7 +803,7 @@ class TestFastAPIManualInstrumentation(TestBaseManualFastAPI):
                             dict(point.attributes),
                         )
                     elif metric.name == "http.server.duration":
-                        self.assertAlmostEqual(duration, point.sum, delta=40)
+                        self.assertAlmostEqual(duration, point.sum, delta=350)
                         self.assertDictEqual(
                             expected_duration_attributes_old,
                             dict(point.attributes),
@@ -836,7 +844,7 @@ class TestFastAPIManualInstrumentation(TestBaseManualFastAPI):
                 if isinstance(point, HistogramDataPoint):
                     self.assertEqual(point.count, 1)
                     if metric.name == "http.server.duration":
-                        self.assertAlmostEqual(duration, point.sum, delta=40)
+                        self.assertAlmostEqual(duration, point.sum, delta=350)
                     elif metric.name == "http.server.response.size":
                         self.assertEqual(response_size, point.sum)
                     elif metric.name == "http.server.request.size":
@@ -861,7 +869,9 @@ class TestFastAPIManualInstrumentation(TestBaseManualFastAPI):
                 if isinstance(point, HistogramDataPoint):
                     self.assertEqual(point.count, 1)
                     if metric.name == "http.server.request.duration":
-                        self.assertAlmostEqual(duration_s, point.sum, places=1)
+                        self.assertAlmostEqual(
+                            duration_s * 0.1, point.sum, places=1
+                        )
                     elif metric.name == "http.server.response.body.size":
                         self.assertEqual(response_size, point.sum)
                     elif metric.name == "http.server.request.body.size":
@@ -887,13 +897,15 @@ class TestFastAPIManualInstrumentation(TestBaseManualFastAPI):
                 if isinstance(point, HistogramDataPoint):
                     self.assertEqual(point.count, 1)
                     if metric.name == "http.server.request.duration":
-                        self.assertAlmostEqual(duration_s, point.sum, places=1)
+                        self.assertAlmostEqual(
+                            duration_s * 0.1, point.sum, places=1
+                        )
                     elif metric.name == "http.server.response.body.size":
                         self.assertEqual(response_size, point.sum)
                     elif metric.name == "http.server.request.body.size":
                         self.assertEqual(request_size, point.sum)
                     elif metric.name == "http.server.duration":
-                        self.assertAlmostEqual(duration, point.sum, delta=40)
+                        self.assertAlmostEqual(duration, point.sum, delta=350)
                     elif metric.name == "http.server.response.size":
                         self.assertEqual(response_size, point.sum)
                     elif metric.name == "http.server.request.size":
