@@ -945,4 +945,7 @@ def _decode_header_item(value):
     try:
         return value.decode("utf-8")
     except ValueError:
-        return value.decode("latin-1")
+        # ASGI header encoding specs, see:
+        # - https://asgi.readthedocs.io/en/latest/specs/www.html#wsgi-encoding-differences (see: WSGI encoding differences)
+        # - https://docs.python.org/3/library/codecs.html#text-encodings (see: Text Encodings)
+        return value.decode("unicode_escape")
