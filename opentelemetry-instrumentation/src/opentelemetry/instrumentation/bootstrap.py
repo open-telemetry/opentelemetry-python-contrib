@@ -15,7 +15,9 @@
 import argparse
 import logging
 import sys
-from importlib.metadata import PackageNotFoundError, version
+from opentelemetry.util._importlib_metadata import (
+    PackageNotFoundError, version
+)
 from subprocess import (
     PIPE,
     CalledProcessError,

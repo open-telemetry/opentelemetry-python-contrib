@@ -18,7 +18,7 @@ OpenTelemetry Base Distribution (Distro)
 """
 
 from abc import ABC, abstractmethod
-from importlib.metadata import EntryPoint
+from opentelemetry.util._importlib_metadata import EntryPoint
 from logging import getLogger
 
 from opentelemetry.instrumentation.instrumentor import BaseInstrumentor
