@@ -11,8 +11,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - Add `OTEL_PYTHON_HTTP_SERVER_REQUEST_DURATION_SERVER_ATTRIBUTES_ENABLED` flag to add 
   `server.address` and `server.port` for `http.server.request.duration`
+  ([#2597](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/2597))
 - Add `OTEL_PYTHON_HTTP_SERVER_ACTIVE_REQUESTS_COUNT_SERVER_ATTRIBUTES_ENABLED` flag to add 
   `server.address` and `server.port` for `http.server.active_requests`
+  ([#2597](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/2597))
 
 ## Version 1.27.0/0.48b0 ()
 
