@@ -213,7 +213,6 @@ class CeleryInstrumentor(BaseInstrumentor):
         self.update_task_duration_time(task_id)
         labels = {"task": task.name, "worker": task.request.hostname}
         self._record_histograms(task_id, labels)
-        context_api.detach(token)
 
         # if the process sending the task is not instrumented
         # there's no incoming context and no token to detach
