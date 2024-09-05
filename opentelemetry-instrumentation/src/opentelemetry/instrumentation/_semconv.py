@@ -91,12 +91,11 @@ _server_duration_attrs_new = [
 ]
 
 _server_duration_attrs_new_with_server_attributes = (
-    _server_duration_attrs_new.extend(
-        [
-            SERVER_ADDRESS,
-            SERVER_PORT,
-        ]
-    )
+    _server_duration_attrs_new
+    + [
+        SERVER_ADDRESS,
+        SERVER_PORT,
+    ]
 )
 
 _server_active_requests_count_attrs_old = [
