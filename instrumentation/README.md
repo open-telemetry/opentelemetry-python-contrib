@@ -28,6 +28,7 @@
 | [opentelemetry-instrumentation-logging](./opentelemetry-instrumentation-logging) | logging | No | experimental
 | [opentelemetry-instrumentation-mysql](./opentelemetry-instrumentation-mysql) | mysql-connector-python >= 8.0, < 10.0 | No | experimental
 | [opentelemetry-instrumentation-mysqlclient](./opentelemetry-instrumentation-mysqlclient) | mysqlclient < 3 | No | experimental
+| [opentelemetry-instrumentation-openai](./opentelemetry-instrumentation-openai) | openai >= 0.27.0 | No | experimental
 | [opentelemetry-instrumentation-pika](./opentelemetry-instrumentation-pika) | pika >= 0.12.0 | No | experimental
 | [opentelemetry-instrumentation-psycopg](./opentelemetry-instrumentation-psycopg) | psycopg >= 3.1.0 | No | experimental
 | [opentelemetry-instrumentation-psycopg2](./opentelemetry-instrumentation-psycopg2) | psycopg2 >= 2.7.3.1 | No | experimental
