@@ -16,9 +16,11 @@
 from opentelemetry.trace import SpanKind, Span
 from opentelemetry.trace.status import Status, StatusCode
 from .span_attributes import LLMSpanAttributes
+from opentelemetry.semconv.attributes import (
+    error_attributes as ErrorAttributes,
+)
 from opentelemetry.semconv._incubating.attributes import (
     gen_ai_attributes as GenAIAttributes,
-    error_attributes as ErrorAttributes,
 )
 from .utils import (
     silently_fail,
@@ -28,8 +30,10 @@ from .utils import (
     set_span_attribute,
     set_event_completion,
     extract_tools_prompt,
+    set_event_prompt,
 )
 from opentelemetry.trace import Tracer
+import json
 
 
 def chat_completions_create(tracer: Tracer):
@@ -43,9 +47,7 @@ def chat_completions_create(tracer: Tracer):
             tools_prompt = extract_tools_prompt(item)
             llm_prompts.append(tools_prompt if tools_prompt else item)
 
-        span_attributes = {
-            **get_llm_request_attributes(kwargs, prompts=llm_prompts),
-        }
+        span_attributes = {**get_llm_request_attributes(kwargs)}
 
         attributes = LLMSpanAttributes(**span_attributes)
 
@@ -53,6 +55,7 @@ def chat_completions_create(tracer: Tracer):
 
         span = tracer.start_span(name=span_name, kind=SpanKind.CLIENT)
         _set_input_attributes(span, attributes)
+        set_event_prompt(span, json.dumps(llm_prompts))
 
         try:
             result = wrapped(*args, **kwargs)
@@ -112,13 +115,15 @@ def _set_response_attributes(span, result):
             }
             for choice in choices
         ]
+        finish_reasons = []
         for choice in choices:
-            if choice.finish_reason:
-                set_span_attribute(
-                    span,
-                    GenAIAttributes.GEN_AI_RESPONSE_FINISH_REASONS,
-                    choice.finish_reason,
-                )
+            finish_reasons.append(choice.finish_reason or "error")
+
+        set_span_attribute(
+            span,
+            GenAIAttributes.GEN_AI_RESPONSE_FINISH_REASONS,
+            finish_reasons,
+        )
         set_event_completion(span, responses)
 
     if getattr(result, "id", None):
@@ -270,14 +275,15 @@ class StreamWrapper:
                         ):
                             content.append(tool_call.function.arguments)
 
+        finish_reasons = []
         for choice in choices:
-            finish_reason = choice.finish_reason
-            if finish_reason:
-                set_span_attribute(
-                    self.span,
-                    GenAIAttributes.GEN_AI_RESPONSE_FINISH_REASONS,
-                    finish_reason,
-                )
+            finish_reasons.append(choice.finish_reason or "error")
+
+        set_span_attribute(
+            self.span,
+            GenAIAttributes.GEN_AI_RESPONSE_FINISH_REASONS,
+            finish_reasons,
+        )
         if content:
             self.result_content.append(content[0])
 

@@ -127,10 +127,7 @@ def set_span_attribute(span: Span, name, value):
     if non_numerical_value_is_set(value) is False:
         return
 
-    if name == GenAIAttributes.GEN_AI_PROMPT:
-        set_event_prompt(span, value)
-    else:
-        span.set_attribute(name, value)
+    span.set_attribute(name, value)
 
 
 def is_streaming(kwargs):
@@ -143,37 +140,17 @@ def non_numerical_value_is_set(value: Optional[Union[bool, str]]):
 
 def get_llm_request_attributes(
     kwargs,
-    prompts=None,
     model=None,
     operation_name=GenAIAttributes.GenAiOperationNameValues.CHAT.value,
 ):
-
-    user = kwargs.get("user")
-    if prompts is None:
-        prompts = (
-            [{"role": user or "user", "content": kwargs.get("prompt")}]
-            if "prompt" in kwargs
-            else None
-        )
-    top_k = (
-        kwargs.get("n")
-        or kwargs.get("k")
-        or kwargs.get("top_k")
-        or kwargs.get("top_n")
-    )
-
-    top_p = kwargs.get("p") or kwargs.get("top_p")
 
     return {
         GenAIAttributes.GEN_AI_OPERATION_NAME: operation_name,
         GenAIAttributes.GEN_AI_SYSTEM: GenAIAttributes.GenAiSystemValues.OPENAI.value,
         GenAIAttributes.GEN_AI_REQUEST_MODEL: model or kwargs.get("model"),
         GenAIAttributes.GEN_AI_REQUEST_TEMPERATURE: kwargs.get("temperature"),
-        GenAIAttributes.GEN_AI_REQUEST_TOP_K: top_k,
-        GenAIAttributes.GEN_AI_PROMPT: (
-            json.dumps(prompts) if prompts else None
-        ),
-        GenAIAttributes.GEN_AI_REQUEST_TOP_P: top_p,
+        GenAIAttributes.GEN_AI_REQUEST_TOP_P: kwargs.get("p")
+        or kwargs.get("top_p"),
         GenAIAttributes.GEN_AI_REQUEST_MAX_TOKENS: kwargs.get("max_tokens"),
         GenAIAttributes.GEN_AI_REQUEST_PRESENCE_PENALTY: kwargs.get(
             "presence_penalty"
