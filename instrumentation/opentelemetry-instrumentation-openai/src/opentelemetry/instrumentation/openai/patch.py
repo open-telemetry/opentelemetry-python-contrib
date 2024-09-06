@@ -13,13 +13,12 @@
 # limitations under the License.
 
 
-from opentelemetry import trace
 from opentelemetry.trace import SpanKind, Span
 from opentelemetry.trace.status import Status, StatusCode
-from opentelemetry.trace.propagation import set_span_in_context
 from .span_attributes import LLMSpanAttributes
 from opentelemetry.semconv._incubating.attributes import (
     gen_ai_attributes as GenAIAttributes,
+    error_attributes as ErrorAttributes,
 )
 from .utils import (
     silently_fail,
@@ -52,11 +51,7 @@ def chat_completions_create(tracer: Tracer):
 
         span_name = f"{attributes.gen_ai_operation_name} {attributes.gen_ai_request_model}"
 
-        span = tracer.start_span(
-            name=span_name,
-            kind=SpanKind.CLIENT,
-            context=set_span_in_context(trace.get_current_span()),
-        )
+        span = tracer.start_span(name=span_name, kind=SpanKind.CLIENT)
         _set_input_attributes(span, attributes)
 
         try:
@@ -75,7 +70,9 @@ def chat_completions_create(tracer: Tracer):
 
         except Exception as error:
             span.set_status(Status(StatusCode.ERROR, str(error)))
-            span.set_attribute("error.type", error.__class__.__name__)
+            span.set_attribute(
+                ErrorAttributes.ERROR_TYPE, type(error).__qualname__
+            )
             span.end()
             raise
 
@@ -93,7 +90,6 @@ def _set_response_attributes(span, result):
     set_span_attribute(
         span, GenAIAttributes.GEN_AI_RESPONSE_MODEL, result.model
     )
-    print(result)
     if getattr(result, "choices", None):
         choices = result.choices
         responses = [
@@ -139,11 +135,6 @@ def _set_response_attributes(span, result):
             span,
             GenAIAttributes.GEN_AI_USAGE_OUTPUT_TOKENS,
             result.usage.completion_tokens,
-        )
-        set_span_attribute(
-            span,
-            "gen_ai.usage.total_tokens",
-            result.usage.total_tokens,
         )
 
 
@@ -200,11 +191,6 @@ class StreamWrapper:
                 GenAIAttributes.GEN_AI_USAGE_OUTPUT_TOKENS,
                 self.completion_tokens,
             )
-            set_span_attribute(
-                self.span,
-                "gen_ai.usage.total_tokens",
-                self.prompt_tokens + self.completion_tokens,
-            )
             set_event_completion(
                 self.span,
                 [
@@ -215,7 +201,6 @@ class StreamWrapper:
                 ],
             )
 
-            self.span.set_status(StatusCode.OK)
             self.span.end()
             self._span_started = False
 

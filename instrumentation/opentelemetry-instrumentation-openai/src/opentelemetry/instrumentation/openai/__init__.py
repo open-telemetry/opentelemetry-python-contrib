@@ -58,7 +58,12 @@ class OpenAIInstrumentor(BaseInstrumentor):
     def _instrument(self, **kwargs):
         """Enable OpenAI instrumentation."""
         tracer_provider = kwargs.get("tracer_provider")
-        tracer = get_tracer(__name__, "", tracer_provider)
+        tracer = get_tracer(
+            __name__,
+            "",
+            tracer_provider,
+            schema_url="https://opentelemetry.io/schemas/1.27.0",
+        )
         wrap_function_wrapper(
             module="openai.resources.chat.completions",
             name="Completions.create",
