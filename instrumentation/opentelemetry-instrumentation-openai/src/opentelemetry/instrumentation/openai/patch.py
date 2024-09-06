@@ -13,27 +13,28 @@
 # limitations under the License.
 
 
-from opentelemetry.trace import SpanKind, Span
-from opentelemetry.trace.status import Status, StatusCode
-from .span_attributes import LLMSpanAttributes
-from opentelemetry.semconv.attributes import (
-    error_attributes as ErrorAttributes,
-)
+import json
+
 from opentelemetry.semconv._incubating.attributes import (
     gen_ai_attributes as GenAIAttributes,
 )
+from opentelemetry.semconv.attributes import (
+    error_attributes as ErrorAttributes,
+)
+from opentelemetry.trace import Span, SpanKind, Tracer
+from opentelemetry.trace.status import Status, StatusCode
+
+from .span_attributes import LLMSpanAttributes
 from .utils import (
-    silently_fail,
     extract_content,
+    extract_tools_prompt,
     get_llm_request_attributes,
     is_streaming,
-    set_span_attribute,
     set_event_completion,
-    extract_tools_prompt,
     set_event_prompt,
+    set_span_attribute,
+    silently_fail,
 )
-from opentelemetry.trace import Tracer
-import json
 
 
 def chat_completions_create(tracer: Tracer):

@@ -15,11 +15,12 @@
 import json
 import logging
 from typing import Optional, Union
+
 from openai import NOT_GIVEN
+
 from opentelemetry.semconv._incubating.attributes import (
     gen_ai_attributes as GenAIAttributes,
 )
-
 from opentelemetry.trace import Span
 
 

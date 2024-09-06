@@ -43,10 +43,12 @@ API
 
 from typing import Collection
 
+from wrapt import wrap_function_wrapper
+
 from opentelemetry.instrumentation.instrumentor import BaseInstrumentor
 from opentelemetry.instrumentation.openai.package import _instruments
 from opentelemetry.trace import get_tracer
-from wrapt import wrap_function_wrapper
+
 from .patch import chat_completions_create
 
 
