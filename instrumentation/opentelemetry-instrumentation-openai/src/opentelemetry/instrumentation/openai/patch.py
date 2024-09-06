@@ -214,7 +214,15 @@ class StreamWrapper:
         return self
 
     def __exit__(self, exc_type, exc_val, exc_tb):
-        self.cleanup()
+        try:
+            if exc_type is not None:
+                self.span.set_status(Status(StatusCode.ERROR, str(exc_val)))
+                self.span.set_attribute(
+                    ErrorAttributes.ERROR_TYPE, exc_type.__name__
+                )
+        finally:
+            self.cleanup()
+        return False  # Propagate the exception
 
     def __iter__(self):
         return self
@@ -225,6 +233,13 @@ class StreamWrapper:
             self.process_chunk(chunk)
             return chunk
         except StopIteration:
+            self.cleanup()
+            raise
+        except Exception as error:
+            self.span.set_status(Status(StatusCode.ERROR, str(error)))
+            self.span.set_attribute(
+                ErrorAttributes.ERROR_TYPE, type(error).__qualname__
+            )
             self.cleanup()
             raise
 
