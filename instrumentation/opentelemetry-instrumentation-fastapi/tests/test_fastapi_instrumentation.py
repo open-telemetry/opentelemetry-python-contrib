@@ -32,6 +32,10 @@ from fastapi.responses import JSONResponse
 from fastapi.testclient import TestClient
 
 import opentelemetry.instrumentation.fastapi as otel_fastapi
+from opentelemetry.instrumentation.dependencies import (
+    get_dist_dependency_conflicts,
+    get_dependency_conflicts
+)
 from opentelemetry import trace
 from opentelemetry.instrumentation.auto_instrumentation._load import _load_instrumentors
 from opentelemetry.instrumentation._semconv import (
@@ -1068,38 +1072,56 @@ class TestAutoInstrumentation(TestBaseAutoFastAPI):
     def test_entry_point_exists(self):
         eps = iter_entry_points("opentelemetry_instrumentor")
         ep = next(eps)
-        self.assertEquals(ep.dist.key, 'opentelemetry-instrumentation-fastapi')
-        self.assertEquals(ep.module_name, 'opentelemetry.instrumentation.fastapi')
-        self.assertEquals(ep.attrs, ('FastAPIInstrumentor',))
-        self.assertEquals(ep.name, 'fastapi')
+        self.assertEqual(ep.dist.key, 'opentelemetry-instrumentation-fastapi')
+        self.assertEqual(ep.module_name, 'opentelemetry.instrumentation.fastapi')
+        self.assertEqual(ep.attrs, ('FastAPIInstrumentor',))
+        self.assertEqual(ep.name, 'fastapi')
         self.assertIsNone(next(eps, None))
 
     # @patch("pkg_resources.get_distribution", side_effect=get_distribution_with_fastapi)
-    # def test_instruments_with_fastapi_installed(self, mock_get_distribution):
-    #     # Need to use matchers
-    #     # mock_get_distribution.side_effect = TestAutoInstrumentationget_distribution_with_fastapi
-    #     # mock_get_distribution("foobar").side_effect = DistributionNotFound()
-    #     # mock_get_distribution("fastapi-slim ~= 0.111").side_effect = DistributionNotFound()
-    #     # mock_get_distribution("fastapi ~= 0.58").return_value = None #Value does not matter. Only whether an exception is thrown
-    #     mock_distro = Mock()
-    #     _load_instrumentors(mock_distro)
-    #     print("JEREVOSS mock_get_distribution.call_args_list: %s" % mock_get_distribution.call_args_list)
-    #     # print("JEREVOSS mock_get_distribution().call_args_list: %s" % mock_get_distribution().call_args_list)
-    #     # mock_get_distribution.assert_called_once_with("fastapi ~= 0.58")
-    #     mock_distro.load_instrumentor.assert_called_once_with(self.entry_point, skip_dep_check=True)
+    @patch("opentelemetry.instrumentation.auto_instrumentation._load.get_dist_dependency_conflicts")
+    @patch("opentelemetry.instrumentation.dependencies.get_dependency_conflicts")
+    @patch("opentelemetry.instrumentation.dependencies.get_distribution")
+    def test_instruments_with_fastapi_installed(self, mock_get_distribution, mock_get_dependency_conflicts, mock_get_dist_dependency_conflicts):
+        # Need to use matchers
+        # mock_get_distribution.side_effect = TestAutoInstrumentationget_distribution_with_fastapi
+        # mock_get_distribution("foobar").side_effect = DistributionNotFound()
+        # mock_get_distribution("fastapi-slim ~= 0.111").side_effect = DistributionNotFound()
+        # mock_get_distribution("fastapi ~= 0.58").return_value = None #Value does not matter. Only whether an exception is thrown
+        mock_get_dist_dependency_conflicts.side_effect = get_dist_dependency_conflicts
+        mock_get_dependency_conflicts.side_effect = get_dependency_conflicts
+        mock_get_distribution.side_affect = get_distribution_with_fastapi
+        mock_distro = Mock()
+        _load_instrumentors(mock_distro)
+        print("JEREVOSS mock_get_dist_dependency_conflicts.call_args_list: %s" % mock_get_dist_dependency_conflicts.call_args_list)
+        print("JEREVOSS mock_get_dependency_conflicts.call_args_list: %s" % mock_get_dependency_conflicts.call_args_list)
+        print("JEREVOSS mock_get_distribution.call_args_list: %s" % mock_get_distribution.call_args_list)
+        mock_get_distribution.assert_called_once_with("fastapi~=0.58")
+        # print("JEREVOSS mock_get_distribution().call_args_list: %s" % mock_get_distribution().call_args_list)
+        # mock_get_distribution.assert_called_once_with("fastapi ~= 0.58")
+        mock_distro.load_instrumentor.assert_called_once_with(self.entry_point, skip_dep_check=True)
 
     # @patch("pkg_resources.get_distribution", side_effect=get_distribution_without_fastapi)
-    # def test_instruments_without_fastapi_installed(self, mock_get_distribution):
-    #     # mock_get_distribution.side_effect = get_distribution_without_fastapi
-    #     # mock_get_distribution("foobar").side_effect = DistributionNotFound()
-    #     # mock_get_distribution("fastapi-slim ~= 0.111").side_effect = DistributionNotFound()
-    #     # mock_get_distribution("fastapi ~= 0.58").side_effect = DistributionNotFound()
-    #     mock_distro = Mock()
-    #     _load_instrumentors(mock_distro)
-    #     print("JEREVOSS mock_get_distribution.call_args_list: %s" % mock_get_distribution.call_args_list)
-    #     # print("JEREVOSS mock_get_distribution().call_args_list: %s" % mock_get_distribution().call_args_list)
-    #     # mock_get_distribution.assert_called_once_with("fastapi ~= 0.58")
-    #     mock_distro.load_instrumentor.assert_not_called()
+    @patch("opentelemetry.instrumentation.auto_instrumentation._load.get_dist_dependency_conflicts")
+    @patch("opentelemetry.instrumentation.dependencies.get_dependency_conflicts")
+    @patch("opentelemetry.instrumentation.dependencies.get_distribution")
+    def test_instruments_without_fastapi_installed(self, mock_get_distribution, mock_get_dependency_conflicts, mock_get_dist_dependency_conflicts):
+        # mock_get_distribution.side_effect = get_distribution_without_fastapi
+        # mock_get_distribution("foobar").side_effect = DistributionNotFound()
+        # mock_get_distribution("fastapi-slim ~= 0.111").side_effect = DistributionNotFound()
+        # mock_get_distribution("fastapi ~= 0.58").side_effect = DistributionNotFound()
+        mock_get_dist_dependency_conflicts.side_effect = get_dist_dependency_conflicts
+        mock_get_dependency_conflicts.side_effect = get_dependency_conflicts
+        mock_get_distribution.side_affect = get_distribution_without_fastapi
+        mock_distro = Mock()
+        _load_instrumentors(mock_distro)
+        print("JEREVOSS mock_get_dist_dependency_conflicts.call_args_list: %s" % mock_get_dist_dependency_conflicts.call_args_list)
+        print("JEREVOSS mock_get_dependency_conflicts.call_args_list: %s" % mock_get_dependency_conflicts.call_args_list)
+        print("JEREVOSS mock_get_distribution.call_args_list: %s" % mock_get_distribution.call_args_list)
+        mock_get_distribution.assert_called_once_with("fastapi~=0.58")
+        # print("JEREVOSS mock_get_distribution().call_args_list: %s" % mock_get_distribution().call_args_list)
+        # mock_get_distribution.assert_called_once_with("fastapi ~= 0.58")
+        mock_distro.load_instrumentor.assert_not_called()
 
     def _create_app(self):
         # instrumentation is handled by the instrument call
