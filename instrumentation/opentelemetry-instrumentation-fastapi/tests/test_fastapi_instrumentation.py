@@ -14,26 +14,18 @@
 
 # pylint: disable=too-many-lines
 
-from pkg_resources import (
-    DistributionNotFound,
-    iter_entry_points,
-)
 import unittest
 from timeit import default_timer
-from unittest.mock import (
-    Mock,
-    patch,
-)
+from unittest.mock import Mock, patch
+
 import fastapi
 from fastapi.middleware.httpsredirect import HTTPSRedirectMiddleware
 from fastapi.responses import JSONResponse
 from fastapi.testclient import TestClient
+from pkg_resources import DistributionNotFound, iter_entry_points
 
 import opentelemetry.instrumentation.fastapi as otel_fastapi
 from opentelemetry import trace
-from opentelemetry.instrumentation.auto_instrumentation._load import (
-    _load_instrumentors,
-)
 from opentelemetry.instrumentation._semconv import (
     OTEL_SEMCONV_STABILITY_OPT_IN,
     _OpenTelemetrySemanticConventionStability,
@@ -43,6 +35,9 @@ from opentelemetry.instrumentation._semconv import (
     _server_duration_attrs_old,
 )
 from opentelemetry.instrumentation.asgi import OpenTelemetryMiddleware
+from opentelemetry.instrumentation.auto_instrumentation._load import (
+    _load_instrumentors,
+)
 from opentelemetry.sdk.metrics.export import (
     HistogramDataPoint,
     NumberDataPoint,
