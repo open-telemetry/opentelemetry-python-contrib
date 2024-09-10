@@ -89,7 +89,7 @@ libraries = [
         "instrumentation": "opentelemetry-instrumentation-flask==0.49b0.dev",
     },
     {
-        "library": "grpcio ~= 1.27",
+        "library": "grpcio >= 1.42.0",
         "instrumentation": "opentelemetry-instrumentation-grpc==0.49b0.dev",
     },
     {
