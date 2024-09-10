@@ -31,7 +31,9 @@ from fastapi.testclient import TestClient
 
 import opentelemetry.instrumentation.fastapi as otel_fastapi
 from opentelemetry import trace
-from opentelemetry.instrumentation.auto_instrumentation._load import _load_instrumentors
+from opentelemetry.instrumentation.auto_instrumentation._load import (
+    _load_instrumentors,
+)
 from opentelemetry.instrumentation._semconv import (
     OTEL_SEMCONV_STABILITY_OPT_IN,
     _OpenTelemetrySemanticConventionStability,
@@ -1034,8 +1036,10 @@ class TestFastAPIManualInstrumentationHooks(TestBaseManualFastAPI):
 def get_distribution_with_fastapi(*args, **kwargs):
     dist = args[0]
     if dist == "fastapi~=0.58":
-        return None #Value does not matter. Only whether an exception is thrown
+        # Value does not matter. Only whether an exception is thrown
+        return None
     raise DistributionNotFound()
+
 
 def get_distribution_without_fastapi(*args, **kwargs):
     raise DistributionNotFound()
@@ -1051,10 +1055,12 @@ class TestAutoInstrumentation(TestBaseAutoFastAPI):
     def test_entry_point_exists(self):
         eps = iter_entry_points("opentelemetry_instrumentor")
         ep = next(eps)
-        self.assertEqual(ep.dist.key, 'opentelemetry-instrumentation-fastapi')
-        self.assertEqual(ep.module_name, 'opentelemetry.instrumentation.fastapi')
-        self.assertEqual(ep.attrs, ('FastAPIInstrumentor',))
-        self.assertEqual(ep.name, 'fastapi')
+        self.assertEqual(ep.dist.key, "opentelemetry-instrumentation-fastapi")
+        self.assertEqual(
+            ep.module_name, "opentelemetry.instrumentation.fastapi"
+        )
+        self.assertEqual(ep.attrs, ("FastAPIInstrumentor",))
+        self.assertEqual(ep.name, "fastapi")
         self.assertIsNone(next(eps, None))
 
     @patch("opentelemetry.instrumentation.dependencies.get_distribution")
@@ -1066,13 +1072,17 @@ class TestAutoInstrumentation(TestBaseAutoFastAPI):
         self.assertEqual(len(mock_distro.load_instrumentor.call_args_list), 1)
         args = mock_distro.load_instrumentor.call_args.args
         ep = args[0]
-        self.assertEqual(ep.dist.key, 'opentelemetry-instrumentation-fastapi')
-        self.assertEqual(ep.module_name, 'opentelemetry.instrumentation.fastapi')
-        self.assertEqual(ep.attrs, ('FastAPIInstrumentor',))
-        self.assertEqual(ep.name, 'fastapi')
+        self.assertEqual(ep.dist.key, "opentelemetry-instrumentation-fastapi")
+        self.assertEqual(
+            ep.module_name, "opentelemetry.instrumentation.fastapi"
+        )
+        self.assertEqual(ep.attrs, ("FastAPIInstrumentor",))
+        self.assertEqual(ep.name, "fastapi")
 
     @patch("opentelemetry.instrumentation.dependencies.get_distribution")
-    def test_instruments_without_fastapi_installed(self, mock_get_distribution):
+    def test_instruments_without_fastapi_installed(
+        self, mock_get_distribution
+    ):
         mock_get_distribution.side_effect = get_distribution_without_fastapi
         mock_distro = Mock()
         _load_instrumentors(mock_distro)
