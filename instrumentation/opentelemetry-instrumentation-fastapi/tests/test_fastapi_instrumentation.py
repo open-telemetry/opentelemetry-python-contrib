@@ -16,15 +16,13 @@
 
 from pkg_resources import (
     DistributionNotFound,
-    EntryPoint,
-    get_distribution,
-    iter_entry_points
+    iter_entry_points,
 )
 import unittest
 from timeit import default_timer
 from unittest.mock import (
     Mock,
-    patch
+    patch,
 )
 import fastapi
 from fastapi.middleware.httpsredirect import HTTPSRedirectMiddleware
@@ -32,10 +30,6 @@ from fastapi.responses import JSONResponse
 from fastapi.testclient import TestClient
 
 import opentelemetry.instrumentation.fastapi as otel_fastapi
-from opentelemetry.instrumentation.dependencies import (
-    get_dist_dependency_conflicts,
-    get_dependency_conflicts
-)
 from opentelemetry import trace
 from opentelemetry.instrumentation.auto_instrumentation._load import _load_instrumentors
 from opentelemetry.instrumentation._semconv import (
@@ -1054,8 +1048,6 @@ class TestAutoInstrumentation(TestBaseAutoFastAPI):
     to both.
     """
 
-    entry_point = EntryPoint.parse('fastapi = opentelemetry.instrumentation.fastapi:FastAPIInstrumentor')
-
     def test_entry_point_exists(self):
         eps = iter_entry_points("opentelemetry_instrumentor")
         ep = next(eps)
@@ -1065,12 +1057,8 @@ class TestAutoInstrumentation(TestBaseAutoFastAPI):
         self.assertEqual(ep.name, 'fastapi')
         self.assertIsNone(next(eps, None))
 
-    @patch("opentelemetry.instrumentation.auto_instrumentation._load.get_dist_dependency_conflicts")
-    @patch("opentelemetry.instrumentation.dependencies.get_dependency_conflicts")
     @patch("opentelemetry.instrumentation.dependencies.get_distribution")
-    def test_instruments_with_fastapi_installed(self, mock_get_distribution, mock_get_dependency_conflicts, mock_get_dist_dependency_conflicts):
-        mock_get_dist_dependency_conflicts.side_effect = get_dist_dependency_conflicts
-        mock_get_dependency_conflicts.side_effect = get_dependency_conflicts
+    def test_instruments_with_fastapi_installed(self, mock_get_distribution):
         mock_get_distribution.side_effect = get_distribution_with_fastapi
         mock_distro = Mock()
         _load_instrumentors(mock_distro)
@@ -1083,12 +1071,8 @@ class TestAutoInstrumentation(TestBaseAutoFastAPI):
         self.assertEqual(ep.attrs, ('FastAPIInstrumentor',))
         self.assertEqual(ep.name, 'fastapi')
 
-    @patch("opentelemetry.instrumentation.auto_instrumentation._load.get_dist_dependency_conflicts")
-    @patch("opentelemetry.instrumentation.dependencies.get_dependency_conflicts")
     @patch("opentelemetry.instrumentation.dependencies.get_distribution")
-    def test_instruments_without_fastapi_installed(self, mock_get_distribution, mock_get_dependency_conflicts, mock_get_dist_dependency_conflicts):
-        mock_get_dist_dependency_conflicts.side_effect = get_dist_dependency_conflicts
-        mock_get_dependency_conflicts.side_effect = get_dependency_conflicts
+    def test_instruments_without_fastapi_installed(self, mock_get_distribution):
         mock_get_distribution.side_effect = get_distribution_without_fastapi
         mock_distro = Mock()
         _load_instrumentors(mock_distro)
