@@ -15,6 +15,9 @@
 import argparse
 import logging
 import sys
+from opentelemetry.util._importlib_metadata import (
+    PackageNotFoundError, version
+)
 from subprocess import (
     PIPE,
     CalledProcessError,
@@ -23,7 +26,7 @@ from subprocess import (
     check_call,
 )
 
-import pkg_resources
+from packaging.requirements import Requirement
 
 from opentelemetry.instrumentation.bootstrap_gen import (
     default_instrumentations,
@@ -91,18 +94,19 @@ def _pip_check():
 
 
 def _is_installed(req):
-    if req in sys.modules:
-        return True
+    req = Requirement(req)
 
     try:
-        pkg_resources.get_distribution(req)
-    except pkg_resources.DistributionNotFound:
+        dist_version = version(req.name)
+    except PackageNotFoundError:
         return False
-    except pkg_resources.VersionConflict as exc:
+
+    if not req.specifier.filter(dist_version):
         logger.warning(
-            "instrumentation for package %s is available but version %s is installed. Skipping.",
-            exc.req,
-            exc.dist.as_requirement(),  # pylint: disable=no-member
+            "instrumentation for package %s is available"
+            " but version %s is installed. Skipping.",
+            req,
+            dist_version,
         )
         return False
     return True

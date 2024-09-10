@@ -15,7 +15,7 @@
 
 from unittest import TestCase
 
-from pkg_resources import EntryPoint
+from opentelemetry.util._importlib_metadata import EntryPoint
 
 from opentelemetry.instrumentation.distro import BaseDistro
 from opentelemetry.instrumentation.instrumentor import BaseInstrumentor
@@ -51,7 +51,7 @@ class TestDistro(TestCase):
         distro = MockDistro()
 
         instrumentor = MockInstrumetor()
-        entry_point = MockEntryPoint(MockInstrumetor)
+        entry_point = MockEntryPoint(MockInstrumetor, value="opentelemetry", group="opentelemetry_distro")
 
         self.assertFalse(instrumentor._is_instrumented_by_opentelemetry)
         distro.load_instrumentor(entry_point)
