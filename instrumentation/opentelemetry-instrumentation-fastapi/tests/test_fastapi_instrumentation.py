@@ -1038,10 +1038,11 @@ class TestFastAPIManualInstrumentationHooks(TestBaseManualFastAPI):
 
 
 def get_distribution_with_fastapi(*args, **kwargs):
+    print("JEREVOSS get_distribution_with_fastapi")
     print("args: %s" % args)
     print("kwargs: %s" % kwargs)
     dist = args[0]
-    print("JEREVOSS get_distribution_with_fastapi: dist: %s" % s)
+    print("JEREVOSS get_distribution_with_fastapi: dist: %s" % dist)
     if dist == "fastapi~=0.58":
         return None #Value does not matter. Only whether an exception is thrown
     elif "fastapi-slim" in dist:
@@ -1050,15 +1051,18 @@ def get_distribution_with_fastapi(*args, **kwargs):
         return None #TODO: may want to change to not found
 
 def get_distribution_without_fastapi(*args, **kwargs):
+    print("JEREVOSS get_distribution_without_fastapi")
     print("args: %s" % args)
     print("kwargs: %s" % kwargs)
     dist = args[0]
-    print("JEREVOSS get_distribution_without_fastapi: dist: %s" % s)
+    print("JEREVOSS get_distribution_without_fastapi: dist: %s" % dist)
     if dist == "fastapi~=0.58":
-        return DistributionNotFound()
+        print("JEREVOSS get_distribution_without_fastapi IF: dist: %s" % dist)
+        raise DistributionNotFound()
     elif "fastapi-slim" in dist:
         raise DistributionNotFound()
     else:
+        print("JEREVOSS get_distribution_without_fastapi ELSE: dist: %s" % dist)
         return None #TODO: may want to change to not found
 
 
@@ -1092,7 +1096,7 @@ class TestAutoInstrumentation(TestBaseAutoFastAPI):
         # mock_get_distribution("fastapi ~= 0.58").return_value = None #Value does not matter. Only whether an exception is thrown
         mock_get_dist_dependency_conflicts.side_effect = get_dist_dependency_conflicts
         mock_get_dependency_conflicts.side_effect = get_dependency_conflicts
-        mock_get_distribution.side_affect = get_distribution_with_fastapi
+        mock_get_distribution.side_effect = get_distribution_with_fastapi
         mock_distro = Mock()
         _load_instrumentors(mock_distro)
         print("JEREVOSS mock_get_dist_dependency_conflicts.call_args_list: %s" % mock_get_dist_dependency_conflicts.call_args_list)
@@ -1101,9 +1105,12 @@ class TestAutoInstrumentation(TestBaseAutoFastAPI):
         mock_get_distribution.assert_called_once_with("fastapi~=0.58")
         # print("JEREVOSS mock_get_distribution().call_args_list: %s" % mock_get_distribution().call_args_list)
         self.assertEqual(len(mock_distro.load_instrumentor.call_args_list), 1)
-        call_args = mock_distro.load_instrumentor.call_args.args
-        print("JEREVOSS call_args: %s" % call_args)
-        ep = call_args[0]
+        call_args = mock_distro.load_instrumentor.call_args
+        call_args_args = call_args.args
+        print("JEREVOSS call_args: %s" % str(call_args))
+        print(call_args)
+        print("JEREVOSS call_args_args: %s" % call_args_args)
+        ep = call_args_args[0]
         self.assertEqual(ep.dist.key, 'opentelemetry-instrumentation-fastapi')
         self.assertEqual(ep.module_name, 'opentelemetry.instrumentation.fastapi')
         self.assertEqual(ep.attrs, ('FastAPIInstrumentor',))
@@ -1121,18 +1128,18 @@ class TestAutoInstrumentation(TestBaseAutoFastAPI):
         # mock_get_distribution("fastapi ~= 0.58").side_effect = DistributionNotFound()
         mock_get_dist_dependency_conflicts.side_effect = get_dist_dependency_conflicts
         mock_get_dependency_conflicts.side_effect = get_dependency_conflicts
-        mock_get_distribution.side_affect = get_distribution_without_fastapi
-        with self.assertRaises(DistributionNotFound):
-            mock_get_distribution("fastapi~=0.58")
+        mock_get_distribution.side_effect = get_distribution_without_fastapi
         mock_distro = Mock()
         _load_instrumentors(mock_distro)
         print("JEREVOSS mock_get_dist_dependency_conflicts.call_args_list: %s" % mock_get_dist_dependency_conflicts.call_args_list)
         print("JEREVOSS mock_get_dependency_conflicts.call_args_list: %s" % mock_get_dependency_conflicts.call_args_list)
         print("JEREVOSS mock_get_distribution.call_args_list: %s" % mock_get_distribution.call_args_list)
+        print("JEREVOSS mock_get_distribution.side_effect: %s" % mock_get_distribution.side_effect)
         mock_get_distribution.assert_called_once_with("fastapi~=0.58")
+        print("-----\nJEREVOSS about to test error")
+        with self.assertRaises(DistributionNotFound):
+            mock_get_distribution("fastapi~=0.58")
         self.assertEqual(len(mock_distro.load_instrumentor.call_args_list), 0)
-        call_args = mock_distro.load_instrumentor.call_args.args
-        print("JEREVOSS call_args: %s" % call_args)
         # print("JEREVOSS mock_get_distribution().call_args_list: %s" % mock_get_distribution().call_args_list)
         # mock_get_distribution.assert_called_once_with("fastapi ~= 0.58")
         mock_distro.load_instrumentor.assert_not_called()
