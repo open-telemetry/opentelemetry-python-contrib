@@ -1066,27 +1066,13 @@ class TestAutoInstrumentation(TestBaseAutoFastAPI):
     entry_point = EntryPoint.parse('fastapi = opentelemetry.instrumentation.fastapi:FastAPIInstrumentor')
 
     def test_entry_point_exists(self):
-        print("JEREVOSS eps")
-        for ep in iter_entry_points("opentelemetry_instrumentor"):
-            print("JEREVOSS ep: %s" % ep)
-            # if ep == TestAutoInstrumentation.entry_point: Doesn't work
-            # if ep.equals(TestAutoInstrumentation.entry_point):
-            if (
-                ep.dist.key == 'opentelemetry-instrumentation-fastapi' and
-                ep.module_name == 'opentelemetry.instrumentation.fastapi' and
-                ep.attrs == ('FastAPIInstrumentor',) and
-                ep.name == 'fastapi'
-            ):
-                print("JEREVOSS found ep")
-                return
         eps = iter_entry_points("opentelemetry_instrumentor")
-        ep = next(ep)
-        self.assertEquals(sep.dist.key, 'opentelemetry-instrumentation-fastapi')
+        ep = next(eps)
+        self.assertEquals(ep.dist.key, 'opentelemetry-instrumentation-fastapi')
         self.assertEquals(ep.module_name, 'opentelemetry.instrumentation.fastapi')
         self.assertEquals(ep.attrs, ('FastAPIInstrumentor',))
         self.assertEquals(ep.name, 'fastapi')
-        self.assertIsNone(next(ep, None))
-        self.fail("Entry point not found")
+        self.assertIsNone(next(eps, None))
 
     # @patch("pkg_resources.get_distribution", side_effect=get_distribution_with_fastapi)
     # def test_instruments_with_fastapi_installed(self, mock_get_distribution):
