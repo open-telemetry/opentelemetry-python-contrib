@@ -261,6 +261,26 @@ def _filter_semconv_active_server_request_count_attr(
     return filtered_attrs
 
 
+def _server_active_requests_count_attrs_new_effective():
+    return (
+        _server_active_requests_count_attrs_new_with_server_attributes
+        if os.environ.get(
+            "OTEL_PYTHON_HTTP_SERVER_ACTIVE_REQUESTS_COUNT_SERVER_ATTRIBUTES_ENABLED"
+        )
+        else _server_active_requests_count_attrs_new
+    )
+
+
+def _server_duration_attrs_new_effective():
+    return (
+        _server_duration_attrs_new_with_server_attributes
+        if os.environ.get(
+            "OTEL_PYTHON_HTTP_SERVER_REQUEST_DURATION_SERVER_ATTRIBUTES_ENABLED"
+        )
+        else _server_duration_attrs_new
+    )
+
+
 def set_string_attribute(result, key, value):
     if value:
         result[key] = value
