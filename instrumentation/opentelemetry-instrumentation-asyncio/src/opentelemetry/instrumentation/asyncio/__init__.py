@@ -14,7 +14,7 @@
 """
 .. asyncio: https://github.com/python/asyncio
 
-The opentelemetry-instrumentation-asycnio package allows tracing asyncio applications.
+The opentelemetry-instrumentation-asyncio package allows tracing asyncio applications.
 The metric for coroutine, future, is generated even if there is no setting to generate a span.
 
 Run instrumented application
