@@ -46,6 +46,10 @@ from opentelemetry.semconv.attributes.user_agent_attributes import (
 )
 from opentelemetry.semconv.trace import SpanAttributes
 from opentelemetry.trace.status import Status, StatusCode
+from opentelemetry.util.http import (
+    OTEL_PYTHON_HTTP_SERVER_ACTIVE_REQUESTS_COUNT_SERVER_ATTRIBUTES_ENABLED,
+    OTEL_PYTHON_HTTP_SERVER_REQUEST_DURATION_SERVER_ATTRIBUTES_ENABLED,
+)
 
 # These lists represent attributes for metrics that are currently supported
 
@@ -119,21 +123,26 @@ _server_active_requests_count_attrs_new_with_server_attributes = (
     ]
 )
 
-_server_active_requests_count_attrs_new_effective = (
-    _server_active_requests_count_attrs_new_with_server_attributes
-    if os.environ.get(
-        "OTEL_PYTHON_HTTP_SERVER_ACTIVE_REQUESTS_COUNT_SERVER_ATTRIBUTES_ENABLED"
-    )
-    else _server_active_requests_count_attrs_new
-)
 
-_server_duration_attrs_new_effective = (
-    _server_duration_attrs_new_with_server_attributes
-    if os.environ.get(
-        "OTEL_PYTHON_HTTP_SERVER_REQUEST_DURATION_SERVER_ATTRIBUTES_ENABLED"
+def _server_active_requests_count_attrs_new_effective():
+    return (
+        _server_active_requests_count_attrs_new_with_server_attributes
+        if os.environ.get(
+            OTEL_PYTHON_HTTP_SERVER_ACTIVE_REQUESTS_COUNT_SERVER_ATTRIBUTES_ENABLED
+        )
+        else _server_active_requests_count_attrs_new
     )
-    else _server_duration_attrs_new
-)
+
+
+def _server_duration_attrs_new_effective():
+    return (
+        _server_duration_attrs_new_with_server_attributes
+        if os.environ.get(
+            OTEL_PYTHON_HTTP_SERVER_REQUEST_DURATION_SERVER_ATTRIBUTES_ENABLED
+        )
+        else _server_duration_attrs_new
+    )
+
 
 OTEL_SEMCONV_STABILITY_OPT_IN = "OTEL_SEMCONV_STABILITY_OPT_IN"
 

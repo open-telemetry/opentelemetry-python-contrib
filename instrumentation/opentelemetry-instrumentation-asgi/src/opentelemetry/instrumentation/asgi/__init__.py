@@ -965,7 +965,7 @@ def _parse_duration_attrs(
     return _filter_semconv_duration_attrs(
         req_attrs,
         _server_duration_attrs_old,
-        _server_duration_attrs_new_effective,
+        _server_duration_attrs_new_effective(),
         sem_conv_opt_in_mode,
     )
 
@@ -976,6 +976,6 @@ def _parse_active_request_count_attrs(
     return _filter_semconv_active_request_count_attr(
         req_attrs,
         _server_active_requests_count_attrs_old,
-        _server_active_requests_count_attrs_new_effective,
+        _server_active_requests_count_attrs_new_effective(),
         sem_conv_opt_in_mode,
     )
