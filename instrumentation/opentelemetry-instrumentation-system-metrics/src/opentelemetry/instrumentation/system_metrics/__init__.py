@@ -331,11 +331,10 @@ class SystemMetricsInstrumentor(BaseInstrumentor):
             )
 
         if "system.network.connections" in self._config:
-            self._meter.create_observable_up_down_counter(
+            self._meter.create_observable_gauge(
                 name="system.network.connections",
                 callbacks=[self._get_system_network_connections],
                 description="System network connections",
-                unit="connections",
             )
 
         if "system.thread_count" in self._config:
@@ -346,7 +345,7 @@ class SystemMetricsInstrumentor(BaseInstrumentor):
             )
 
         if "process.runtime.memory" in self._config:
-            self._meter.create_observable_up_down_counter(
+            self._meter.create_observable_gauge(
                 name=f"process.runtime.{self._python_implementation}.memory",
                 callbacks=[self._get_runtime_memory],
                 description=f"Runtime {self._python_implementation} memory",
@@ -367,15 +366,14 @@ class SystemMetricsInstrumentor(BaseInstrumentor):
                     "The process.runtime.gc_count metric won't be collected because the interpreter is PyPy"
                 )
             else:
-                self._meter.create_observable_counter(
+                self._meter.create_observable_gauge(
                     name=f"process.runtime.{self._python_implementation}.gc_count",
                     callbacks=[self._get_runtime_gc_count],
                     description=f"Runtime {self._python_implementation} GC count",
-                    unit="bytes",
                 )
 
         if "process.runtime.thread_count" in self._config:
-            self._meter.create_observable_up_down_counter(
+            self._meter.create_observable_gauge(
                 name=f"process.runtime.{self._python_implementation}.thread_count",
                 callbacks=[self._get_runtime_thread_count],
                 description="Runtime active threads count",
@@ -398,7 +396,7 @@ class SystemMetricsInstrumentor(BaseInstrumentor):
             )
 
         if "process.open_file_descriptor.count" in self._config:
-            self._meter.create_observable_up_down_counter(
+            self._meter.create_observable_gauge(
                 name="process.open_file_descriptor.count",
                 callbacks=[self._get_open_file_descriptors],
                 description="Number of file descriptors in use by the process.",
