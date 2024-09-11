@@ -344,7 +344,7 @@ class DjangoInstrumentor(BaseInstrumentor):
             _DjangoMiddleware._duration_histogram_old = meter.create_histogram(
                 name=MetricInstruments.HTTP_SERVER_DURATION,
                 unit="ms",
-                description="Duration of HTTP server requests.",
+                description="Measures the duration of inbound HTTP requests.",
             )
         _DjangoMiddleware._duration_histogram_new = None
         if _report_new(sem_conv_opt_in_mode):
