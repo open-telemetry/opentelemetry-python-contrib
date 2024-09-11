@@ -388,10 +388,11 @@ class DjangoInstrumentor(BaseInstrumentor):
 
         is_sql_commentor_enabled = kwargs.pop("is_sql_commentor_enabled", None)
 
+        opentelemetry_middleware_index = getattr(settings, 'OTEL_MIDDLEWARE_INDEX', 0)
         if is_sql_commentor_enabled:
-            settings_middleware.insert(0, self._sql_commenter_middleware)
+            settings_middleware.insert(opentelemetry_middleware_index, self._sql_commenter_middleware)
 
-        settings_middleware.insert(0, self._opentelemetry_middleware)
+        settings_middleware.insert(opentelemetry_middleware_index, self._opentelemetry_middleware)
 
         setattr(settings, _middleware_setting, settings_middleware)
 
