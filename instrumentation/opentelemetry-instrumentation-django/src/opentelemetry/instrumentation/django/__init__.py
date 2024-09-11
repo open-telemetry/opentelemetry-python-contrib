@@ -251,7 +251,7 @@ from opentelemetry.instrumentation._semconv import (
     _report_old,
 )
 from opentelemetry.instrumentation.django.environment_variables import (
-    OTEL_PYTHON_DJANGO_INSTRUMENT,
+    OTEL_PYTHON_DJANGO_INSTRUMENT, OTEL_PYTHON_DJANGO_MIDDLEWARE_INDEX
 )
 from opentelemetry.instrumentation.django.middleware.otel_middleware import (
     _DjangoMiddleware,
@@ -389,9 +389,9 @@ class DjangoInstrumentor(BaseInstrumentor):
         is_sql_commentor_enabled = kwargs.pop("is_sql_commentor_enabled", None)
 
         if is_sql_commentor_enabled:
-            settings_middleware.insert(0, self._sql_commenter_middleware)
+            settings_middleware.insert(OTEL_PYTHON_DJANGO_MIDDLEWARE_INDEX, self._sql_commenter_middleware)
 
-        settings_middleware.insert(0, self._opentelemetry_middleware)
+        settings_middleware.insert(OTEL_PYTHON_DJANGO_MIDDLEWARE_INDEX, self._opentelemetry_middleware)
 
         setattr(settings, _middleware_setting, settings_middleware)
 
