@@ -23,11 +23,6 @@ from pyramid.tweens import EXCVIEW
 
 import opentelemetry.instrumentation.wsgi as otel_wsgi
 from opentelemetry import context, trace
-from opentelemetry.instrumentation._semconv import (
-    _filter_semconv_active_server_request_count_attr,
-    _filter_semconv_server_duration_attrs,
-    _HTTPStabilityMode,
-)
 from opentelemetry.instrumentation.propagators import (
     get_global_response_propagator,
 )
@@ -177,14 +172,9 @@ def trace_tween_factory(handler, registry):
         request.environ[_ENVIRON_ENABLED_KEY] = True
         request.environ[_ENVIRON_STARTTIME_KEY] = time_ns()
         active_requests_count_attrs = (
-            _filter_semconv_active_server_request_count_attr(
-                attributes,
-            )
+            otel_wsgi._parse_active_request_count_attrs(attributes)
         )
-        duration_attrs = _filter_semconv_server_duration_attrs(
-            attributes,
-            _HTTPStabilityMode.DEFAULT,
-        )
+        duration_attrs = otel_wsgi._parse_duration_attrs(attributes)
 
         start = default_timer()
         active_requests_counter.add(1, active_requests_count_attrs)

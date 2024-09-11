@@ -111,12 +111,29 @@ _server_active_requests_count_attrs_new = [
     URL_SCHEME,
 ]
 
-_server_active_requests_count_attrs_new_with_server_attributes = [
-    HTTP_REQUEST_METHOD,
-    URL_SCHEME,
-    SERVER_ADDRESS,
-    SERVER_PORT,
-]
+_server_active_requests_count_attrs_new_with_server_attributes = (
+    _server_active_requests_count_attrs_new
+    + [
+        SERVER_ADDRESS,
+        SERVER_PORT,
+    ]
+)
+
+_server_active_requests_count_attrs_new_effective = (
+    _server_active_requests_count_attrs_new_with_server_attributes
+    if os.environ.get(
+        "OTEL_PYTHON_HTTP_SERVER_ACTIVE_REQUESTS_COUNT_SERVER_ATTRIBUTES_ENABLED"
+    )
+    else _server_active_requests_count_attrs_new
+)
+
+_server_duration_attrs_new_effective = (
+    _server_duration_attrs_new_with_server_attributes
+    if os.environ.get(
+        "OTEL_PYTHON_HTTP_SERVER_REQUEST_DURATION_SERVER_ATTRIBUTES_ENABLED"
+    )
+    else _server_duration_attrs_new
+)
 
 OTEL_SEMCONV_STABILITY_OPT_IN = "OTEL_SEMCONV_STABILITY_OPT_IN"
 
@@ -168,23 +185,6 @@ class _OpenTelemetrySemanticConventionStability:
                 _OpenTelemetrySemanticConventionStability._OTEL_SEMCONV_STABILITY_SIGNAL_MAPPING[
                     _OpenTelemetryStabilitySignalType.HTTP
                 ] = http_opt_in
-
-                _OpenTelemetrySemanticConventionStability.server_duration_attrs_new_effective = (
-                    _server_duration_attrs_new_with_server_attributes
-                    if os.environ.get(
-                        "OTEL_PYTHON_HTTP_SERVER_REQUEST_DURATION_SERVER_ATTRIBUTES_ENABLED"
-                    )
-                    else _server_duration_attrs_new
-                )
-
-                _OpenTelemetrySemanticConventionStability.server_active_requests_count_attrs_new_effective = (
-                    _server_active_requests_count_attrs_new_with_server_attributes
-                    if os.environ.get(
-                        "OTEL_PYTHON_HTTP_SERVER_ACTIVE_REQUESTS_COUNT_SERVER_ATTRIBUTES_ENABLED"
-                    )
-                    else _server_active_requests_count_attrs_new
-                )
-
                 _OpenTelemetrySemanticConventionStability._initialized = True
 
     @classmethod
@@ -196,30 +196,6 @@ class _OpenTelemetrySemanticConventionStability:
         return _OpenTelemetrySemanticConventionStability._OTEL_SEMCONV_STABILITY_SIGNAL_MAPPING.get(
             signal_type, _HTTPStabilityMode.DEFAULT
         )
-
-
-def _filter_semconv_client_duration_attrs(
-    attrs,
-    sem_conv_opt_in_mode=_HTTPStabilityMode.DEFAULT,
-):
-    return _filter_semconv_duration_attrs(
-        attrs,
-        _client_duration_attrs_old,
-        _client_duration_attrs_new,
-        sem_conv_opt_in_mode,
-    )
-
-
-def _filter_semconv_server_duration_attrs(
-    attrs,
-    sem_conv_opt_in_mode,
-):
-    return _filter_semconv_duration_attrs(
-        attrs,
-        _server_duration_attrs_old,
-        _OpenTelemetrySemanticConventionStability.server_duration_attrs_new_effective,
-        sem_conv_opt_in_mode,
-    )
 
 
 def _filter_semconv_duration_attrs(
@@ -241,44 +217,22 @@ def _filter_semconv_duration_attrs(
     return filtered_attrs
 
 
-def _filter_semconv_active_server_request_count_attr(
+def _filter_semconv_active_request_count_attr(
     attrs,
+    old_attrs,
+    new_attrs,
     sem_conv_opt_in_mode=_HTTPStabilityMode.DEFAULT,
 ):
-
     filtered_attrs = {}
     if _report_old(sem_conv_opt_in_mode):
         for key, val in attrs.items():
-            if key in _server_active_requests_count_attrs_old:
+            if key in old_attrs:
                 filtered_attrs[key] = val
     if _report_new(sem_conv_opt_in_mode):
         for key, val in attrs.items():
-            if (
-                key
-                in _OpenTelemetrySemanticConventionStability.server_active_requests_count_attrs_new_effective
-            ):
+            if key in new_attrs:
                 filtered_attrs[key] = val
     return filtered_attrs
-
-
-def _server_active_requests_count_attrs_new_effective():
-    return (
-        _server_active_requests_count_attrs_new_with_server_attributes
-        if os.environ.get(
-            "OTEL_PYTHON_HTTP_SERVER_ACTIVE_REQUESTS_COUNT_SERVER_ATTRIBUTES_ENABLED"
-        )
-        else _server_active_requests_count_attrs_new
-    )
-
-
-def _server_duration_attrs_new_effective():
-    return (
-        _server_duration_attrs_new_with_server_attributes
-        if os.environ.get(
-            "OTEL_PYTHON_HTTP_SERVER_REQUEST_DURATION_SERVER_ATTRIBUTES_ENABLED"
-        )
-        else _server_duration_attrs_new
-    )
 
 
 def set_string_attribute(result, key, value):

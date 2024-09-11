@@ -83,7 +83,9 @@ from requests.sessions import Session
 from requests.structures import CaseInsensitiveDict
 
 from opentelemetry.instrumentation._semconv import (
-    _filter_semconv_client_duration_attrs,
+    _client_duration_attrs_new,
+    _client_duration_attrs_old,
+    _filter_semconv_duration_attrs,
     _get_schema_url,
     _HTTPStabilityMode,
     _OpenTelemetrySemanticConventionStability,
@@ -306,8 +308,10 @@ def _instrument(
                 metric_labels[ERROR_TYPE] = type(exception).__qualname__
 
             if duration_histogram_old is not None:
-                duration_attrs_old = _filter_semconv_client_duration_attrs(
+                duration_attrs_old = _filter_semconv_duration_attrs(
                     metric_labels,
+                    _client_duration_attrs_old,
+                    _client_duration_attrs_new,
                     _HTTPStabilityMode.DEFAULT,
                 )
                 duration_histogram_old.record(
@@ -315,8 +319,10 @@ def _instrument(
                     attributes=duration_attrs_old,
                 )
             if duration_histogram_new is not None:
-                duration_attrs_new = _filter_semconv_client_duration_attrs(
+                duration_attrs_new = _filter_semconv_duration_attrs(
                     metric_labels,
+                    _client_duration_attrs_old,
+                    _client_duration_attrs_new,
                     _HTTPStabilityMode.HTTP,
                 )
                 duration_histogram_new.record(

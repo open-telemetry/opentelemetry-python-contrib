@@ -86,7 +86,9 @@ from urllib.request import (  # pylint: disable=no-name-in-module,import-error
 )
 
 from opentelemetry.instrumentation._semconv import (
-    _filter_semconv_client_duration_attrs,
+    _client_duration_attrs_new,
+    _client_duration_attrs_old,
+    _filter_semconv_duration_attrs,
     _get_schema_url,
     _HTTPStabilityMode,
     _OpenTelemetrySemanticConventionStability,
@@ -301,11 +303,16 @@ def _instrument(
                 span.set_attribute(ERROR_TYPE, type(exception).__qualname__)
                 labels[ERROR_TYPE] = type(exception).__qualname__
 
-            duration_attrs_old = _filter_semconv_client_duration_attrs(
+            duration_attrs_old = _filter_semconv_duration_attrs(
                 labels,
+                _client_duration_attrs_old,
+                _client_duration_attrs_new,
+                sem_conv_opt_in_mode=_HTTPStabilityMode.DEFAULT,
             )
-            duration_attrs_new = _filter_semconv_client_duration_attrs(
+            duration_attrs_new = _filter_semconv_duration_attrs(
                 labels,
+                _client_duration_attrs_old,
+                _client_duration_attrs_new,
                 sem_conv_opt_in_mode=_HTTPStabilityMode.HTTP,
             )
 
