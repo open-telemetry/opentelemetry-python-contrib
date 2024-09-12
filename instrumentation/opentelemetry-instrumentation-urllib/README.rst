@@ -40,7 +40,7 @@ The hooks can be configured as follows:
     def response_hook(span, request_obj, response)
         pass
 
-    URLLibInstrumentor.instrument(
+    URLLibInstrumentor().instrument(
         request_hook=request_hook, response_hook=response_hook
     )
 
