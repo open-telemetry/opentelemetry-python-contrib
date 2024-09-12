@@ -7,6 +7,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## Unreleased
 
+- `opentelemetry-instrumentation-fastapi` Add autoinstrumentation mechanism tests.
+  ([#2860](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/2860))
+
 ## Version 1.27.0/0.48b0 ()
 
 ### Added
