@@ -218,7 +218,7 @@ def instrument_connection(
         enable_commenter=enable_commenter,
         commenter_options=commenter_options,
     )
-    db_integration.get_connection_attributes(connection)
+    db_integration.get_connection_attributes(connection=connection)
     return get_traced_connection_proxy(connection, db_integration)
 
 
@@ -285,10 +285,10 @@ class DatabaseApiIntegration:
     ):
         """Add object proxy to connection object."""
         connection = connect_method(*args, **kwargs)
-        self.get_connection_attributes(kwargs, connection)
+        self.get_connection_attributes(connection=connection, kwargs=kwargs)
         return get_traced_connection_proxy(connection, self)
 
-    def get_connection_attributes(self, kwargs, connection):
+    def get_connection_attributes(self, connection, kwargs={}):
         # Populate span fields using kwargs and connection
         for key, value in self.connection_attributes.items():
             # First set from kwargs

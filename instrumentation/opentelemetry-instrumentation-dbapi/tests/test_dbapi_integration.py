@@ -21,6 +21,7 @@ from opentelemetry import trace as trace_api
 from opentelemetry.instrumentation import dbapi
 from opentelemetry.sdk import resources
 from opentelemetry.semconv.trace import SpanAttributes
+from opentelemetry.semconv._incubating.attributes.db_attributes import DB_COLLECTION_NAME
 from opentelemetry.test.test_base import TestBase
 
 
@@ -49,11 +50,12 @@ class TestDBApiIntegration(TestBase):
             mock_connect, {}, connection_props
         )
         cursor = mock_connection.cursor()
-        cursor.execute("Test query", ("param1Value", False))
+        expected_query = "Test query FROM test_table"
+        cursor.execute(expected_query, ("param1Value", False))
         spans_list = self.memory_exporter.get_finished_spans()
         self.assertEqual(len(spans_list), 1)
         span = spans_list[0]
-        self.assertEqual(span.name, "Test")
+        self.assertEqual(span.name, "Test test_table")
         self.assertIs(span.kind, trace_api.SpanKind.CLIENT)
 
         self.assertEqual(
@@ -63,7 +65,10 @@ class TestDBApiIntegration(TestBase):
             span.attributes[SpanAttributes.DB_NAME], "testdatabase"
         )
         self.assertEqual(
-            span.attributes[SpanAttributes.DB_STATEMENT], "Test query"
+            span.attributes[SpanAttributes.DB_STATEMENT], expected_query
+        )
+        self.assertEqual(
+            span.attributes[DB_COLLECTION_NAME], "test_table"
         )
         self.assertFalse("db.statement.parameters" in span.attributes)
         self.assertEqual(span.attributes[SpanAttributes.DB_USER], "testuser")
@@ -91,14 +96,16 @@ class TestDBApiIntegration(TestBase):
         cursor.execute("/* leading comment */ query")
         cursor.execute("/* leading comment */ query /* trailing comment */")
         cursor.execute("query /* trailing comment */")
+        cursor.execute("SELECT * FROM test_table")
         spans_list = self.memory_exporter.get_finished_spans()
-        self.assertEqual(len(spans_list), 6)
+        self.assertEqual(len(spans_list), 7)
         self.assertEqual(spans_list[0].name, "Test")
         self.assertEqual(spans_list[1].name, "multi")
         self.assertEqual(spans_list[2].name, "tab")
         self.assertEqual(spans_list[3].name, "query")
         self.assertEqual(spans_list[4].name, "query")
         self.assertEqual(spans_list[5].name, "query")
+        self.assertEqual(spans_list[6].name, "SELECT test_table")
 
     def test_span_succeeded_with_capture_of_statement_parameters(self):
         connection_props = {
