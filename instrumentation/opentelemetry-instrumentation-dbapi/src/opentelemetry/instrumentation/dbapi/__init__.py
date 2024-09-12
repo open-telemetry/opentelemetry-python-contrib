@@ -292,7 +292,8 @@ class DatabaseApiIntegration:
         # Populate span fields using kwargs and connection
         for key, value in self.connection_attributes.items():
             # First set from kwargs
-            self.connection_props[key] = kwargs.get(value)
+            if value in kwargs:
+                self.connection_props[key] = kwargs.get(value)
 
             # Then override from connection object
             # Allow attributes nested in connection object
@@ -378,7 +379,10 @@ class CursorTracer:
     ):
         if not span.is_recording():
             return
+
         statement = self.get_statement(cursor, args)
+        collection_name = self.get_collection_name(statement)
+
         span.set_attribute(
             SpanAttributes.DB_SYSTEM, self._db_api_integration.database_system
         )
@@ -386,7 +390,8 @@ class CursorTracer:
             SpanAttributes.DB_NAME, self._db_api_integration.database
         )
         span.set_attribute(SpanAttributes.DB_STATEMENT, statement)
-        span.set_attribute(DB_COLLECTION_NAME, self.get_collection_name(statement))
+        if collection_name:
+            span.set_attribute(DB_COLLECTION_NAME, collection_name)
 
         for (
             attribute_key,
