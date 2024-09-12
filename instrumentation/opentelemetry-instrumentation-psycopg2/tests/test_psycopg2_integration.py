@@ -55,7 +55,6 @@ class MockConnection:
 
     def __init__(self, *args, **kwargs):
         self.cursor_factory = kwargs.pop("cursor_factory", None)
-        self._initialized = True
 
     def cursor(self):
         if self.cursor_factory:
@@ -64,17 +63,6 @@ class MockConnection:
 
     def get_dsn_parameters(self):  # pylint: disable=no-self-use
         return {"dbname": "test"}
-
-    def __setattr__(self, name, value):
-        """
-        This method is overridden to prevent adding new attributes to the MockConnection object.
-        At runtime, the psycopg2 connection object does not have attribute
-        _is_instrumented_by_opentelemetry, it will throw AttributeError when setting this
-        attribute.
-        """
-        if hasattr(self, '_initialized') and not hasattr(self, name):
-            raise AttributeError(f"Cannot add new attribute '{name}' to MockConnection")
-        super().__setattr__(name, value)
 
 
 class TestPostgresqlIntegration(TestBase):
@@ -203,6 +191,7 @@ class TestPostgresqlIntegration(TestBase):
         self.assertEqual(len(spans_list), 0)
 
         cnx = Psycopg2Instrumentor().instrument_connection(cnx)
+        self.assertFalse(hasattr(cnx, "_is_instrumented_by_opentelemetry"))
         cursor = cnx.cursor()
         cursor.execute(query)
 
@@ -221,6 +210,7 @@ class TestPostgresqlIntegration(TestBase):
 
         Psycopg2Instrumentor().instrument()
         cnx = Psycopg2Instrumentor().instrument_connection(cnx)
+        self.assertFalse(hasattr(cnx, "_is_instrumented_by_opentelemetry"))
         cursor = cnx.cursor()
         cursor.execute(query)
 
