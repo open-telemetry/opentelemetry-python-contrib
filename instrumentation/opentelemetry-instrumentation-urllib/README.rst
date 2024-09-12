@@ -41,7 +41,7 @@ The hooks can be configured as follows:
         pass
 
     URLLibInstrumentor.instrument(
-        request_hook=request_hook, response_hook=response_hook)
+        request_hook=request_hook, response_hook=response_hook
     )
 
 Exclude lists
