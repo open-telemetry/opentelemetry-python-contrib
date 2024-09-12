@@ -20,8 +20,10 @@ from opentelemetry import context
 from opentelemetry import trace as trace_api
 from opentelemetry.instrumentation import dbapi
 from opentelemetry.sdk import resources
+from opentelemetry.semconv._incubating.attributes.db_attributes import (
+    DB_COLLECTION_NAME,
+)
 from opentelemetry.semconv.trace import SpanAttributes
-from opentelemetry.semconv._incubating.attributes.db_attributes import DB_COLLECTION_NAME
 from opentelemetry.test.test_base import TestBase
 
 
@@ -67,9 +69,7 @@ class TestDBApiIntegration(TestBase):
         self.assertEqual(
             span.attributes[SpanAttributes.DB_STATEMENT], expected_query
         )
-        self.assertEqual(
-            span.attributes[DB_COLLECTION_NAME], "test_table"
-        )
+        self.assertEqual(span.attributes[DB_COLLECTION_NAME], "test_table")
         self.assertFalse("db.statement.parameters" in span.attributes)
         self.assertEqual(span.attributes[SpanAttributes.DB_USER], "testuser")
         self.assertEqual(

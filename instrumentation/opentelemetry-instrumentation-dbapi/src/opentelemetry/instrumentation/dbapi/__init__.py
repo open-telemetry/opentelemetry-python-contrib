@@ -51,8 +51,10 @@ from opentelemetry.instrumentation.utils import (
     _get_opentelemetry_values,
     unwrap,
 )
+from opentelemetry.semconv._incubating.attributes.db_attributes import (
+    DB_COLLECTION_NAME,
+)
 from opentelemetry.semconv.trace import SpanAttributes
-from opentelemetry.semconv._incubating.attributes.db_attributes import DB_COLLECTION_NAME
 from opentelemetry.trace import SpanKind, TracerProvider, get_tracer
 
 _logger = logging.getLogger(__name__)
@@ -288,11 +290,11 @@ class DatabaseApiIntegration:
         self.get_connection_attributes(connection=connection, kwargs=kwargs)
         return get_traced_connection_proxy(connection, self)
 
-    def get_connection_attributes(self, connection, kwargs={}):
+    def get_connection_attributes(self, connection, kwargs=None):
         # Populate span fields using kwargs and connection
         for key, value in self.connection_attributes.items():
             # First set from kwargs
-            if value in kwargs:
+            if kwargs and value in kwargs:
                 self.connection_props[key] = kwargs.get(value)
 
             # Then override from connection object
@@ -405,7 +407,9 @@ class CursorTracer:
     def get_span_name(self, statement):
         operation_name = self.get_operation_name(statement)
         collection_name = CursorTracer.get_collection_name(statement)
-        return " ".join(name for name in (operation_name, collection_name) if name)
+        return " ".join(
+            name for name in (operation_name, collection_name) if name
+        )
 
     def get_operation_name(self, statement):
         # Strip leading comments so we get the operation name.
@@ -414,9 +418,11 @@ class CursorTracer:
     @staticmethod
     def get_collection_name(statement):
         collection_name = ""
-        match = re.search(r"\b(?:FROM|JOIN|INTO|UPDATE|TABLE)\s+([\w`']+)", statement)
+        match = re.search(
+            r"\b(?:FROM|JOIN|INTO|UPDATE|TABLE)\s+([\w`']+)", statement
+        )
         if match:
-            collection_name = match.group(1).strip('`\'')
+            collection_name = match.group(1).strip("`'")
 
         return collection_name
 
