@@ -249,7 +249,6 @@ from packaging import version as package_version
 
 import opentelemetry.instrumentation.wsgi as otel_wsgi
 from opentelemetry import context, trace
-from opentelemetry._util.importlib_metadata import version
 from opentelemetry.instrumentation._semconv import (
     _get_schema_url,
     _HTTPStabilityMode,
@@ -272,6 +271,7 @@ from opentelemetry.semconv.metrics.http_metrics import (
     HTTP_SERVER_REQUEST_DURATION,
 )
 from opentelemetry.semconv.trace import SpanAttributes
+from opentelemetry.util._importlib_metadata import version
 from opentelemetry.util.http import (
     get_excluded_urls,
     parse_excluded_urls,
