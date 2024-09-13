@@ -16,12 +16,13 @@
 
 import unittest
 from timeit import default_timer
-from unittest.mock import patch
+from unittest.mock import Mock, patch
 
 import fastapi
 from fastapi.middleware.httpsredirect import HTTPSRedirectMiddleware
 from fastapi.responses import JSONResponse
 from fastapi.testclient import TestClient
+from pkg_resources import DistributionNotFound, iter_entry_points
 
 import opentelemetry.instrumentation.fastapi as otel_fastapi
 from opentelemetry import trace
@@ -34,6 +35,9 @@ from opentelemetry.instrumentation._semconv import (
     _server_duration_attrs_old,
 )
 from opentelemetry.instrumentation.asgi import OpenTelemetryMiddleware
+from opentelemetry.instrumentation.auto_instrumentation._load import (
+    _load_instrumentors,
+)
 from opentelemetry.sdk.metrics.export import (
     HistogramDataPoint,
     NumberDataPoint,
@@ -1024,12 +1028,64 @@ class TestFastAPIManualInstrumentationHooks(TestBaseManualFastAPI):
             )
 
 
+def get_distribution_with_fastapi(*args, **kwargs):
+    dist = args[0]
+    if dist == "fastapi~=0.58":
+        # Value does not matter. Only whether an exception is thrown
+        return None
+    raise DistributionNotFound()
+
+
+def get_distribution_without_fastapi(*args, **kwargs):
+    raise DistributionNotFound()
+
+
 class TestAutoInstrumentation(TestBaseAutoFastAPI):
     """Test the auto-instrumented variant
 
     Extending the manual instrumentation as most test cases apply
     to both.
     """
+
+    def test_entry_point_exists(self):
+        eps = iter_entry_points("opentelemetry_instrumentor")
+        ep = next(eps)
+        self.assertEqual(ep.dist.key, "opentelemetry-instrumentation-fastapi")
+        self.assertEqual(
+            ep.module_name, "opentelemetry.instrumentation.fastapi"
+        )
+        self.assertEqual(ep.attrs, ("FastAPIInstrumentor",))
+        self.assertEqual(ep.name, "fastapi")
+        self.assertIsNone(next(eps, None))
+
+    @patch("opentelemetry.instrumentation.dependencies.get_distribution")
+    def test_instruments_with_fastapi_installed(self, mock_get_distribution):
+        mock_get_distribution.side_effect = get_distribution_with_fastapi
+        mock_distro = Mock()
+        _load_instrumentors(mock_distro)
+        mock_get_distribution.assert_called_once_with("fastapi~=0.58")
+        self.assertEqual(len(mock_distro.load_instrumentor.call_args_list), 1)
+        args = mock_distro.load_instrumentor.call_args.args
+        ep = args[0]
+        self.assertEqual(ep.dist.key, "opentelemetry-instrumentation-fastapi")
+        self.assertEqual(
+            ep.module_name, "opentelemetry.instrumentation.fastapi"
+        )
+        self.assertEqual(ep.attrs, ("FastAPIInstrumentor",))
+        self.assertEqual(ep.name, "fastapi")
+
+    @patch("opentelemetry.instrumentation.dependencies.get_distribution")
+    def test_instruments_without_fastapi_installed(
+        self, mock_get_distribution
+    ):
+        mock_get_distribution.side_effect = get_distribution_without_fastapi
+        mock_distro = Mock()
+        _load_instrumentors(mock_distro)
+        mock_get_distribution.assert_called_once_with("fastapi~=0.58")
+        with self.assertRaises(DistributionNotFound):
+            mock_get_distribution("fastapi~=0.58")
+        self.assertEqual(len(mock_distro.load_instrumentor.call_args_list), 0)
+        mock_distro.load_instrumentor.assert_not_called()
 
     def _create_app(self):
         # instrumentation is handled by the instrument call

@@ -33,7 +33,7 @@ dependencies = [
 
 [project.optional-dependencies]
 instruments = [
-  "grpcio ~= 1.27",
+  "grpcio >= 1.42.0",
 ]
 
 [project.entry-points.opentelemetry_instrumentor]
