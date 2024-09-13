@@ -12,13 +12,16 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from opentelemetry.util._importlib_metadata import (
-    Distribution, PackageNotFoundError, version
-)
 from logging import getLogger
 from typing import Collection, Optional, Union
 
 from packaging.requirements import InvalidRequirement, Requirement
+
+from opentelemetry.util._importlib_metadata import (
+    Distribution,
+    PackageNotFoundError,
+    version,
+)
 
 logger = getLogger(__name__)
 

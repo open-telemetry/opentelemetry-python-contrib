@@ -12,9 +12,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from opentelemetry.util._importlib_metadata import (
-    EntryPoint, distributions, entry_points
-)
 from logging import getLogger
 from os import environ
 
@@ -28,6 +25,11 @@ from opentelemetry.instrumentation.environment_variables import (
     OTEL_PYTHON_DISTRO,
 )
 from opentelemetry.instrumentation.version import __version__
+from opentelemetry.util._importlib_metadata import (
+    EntryPoint,
+    distributions,
+    entry_points,
+)
 
 _logger = getLogger(__name__)
 
