@@ -57,7 +57,7 @@ python3 -m build --outdir ${distdir}
 
 cd $distdir
 
-pkg_tar_gz_file=${pkg_name//-/_}-${pkg_version}.tar.gz
+pkg_tar_gz_file=`echo $pkg_name | sed 's/-/_/g'`-${pkg_version}.tar.gz
 
 echo "Checking if $pkg_tar_gz_file exists in dist/ directory."
 
