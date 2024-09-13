@@ -30,7 +30,7 @@ pkg_name=${pkg_name_and_version%==*}
 pkg_version=${pkg_name_and_version#opentelemetry-*==}
 
 # Get the latest versions of packaging tools
-python3 -m pip install --upgrade pip setuptools wheel packaging
+python3 -m pip install --upgrade pip build setuptools wheel packaging
 
 # Validate version against PEP 440 conventions: https://packaging.pypa.io/en/latest/version.html
 python3 -c "from packaging.version import Version; Version('${pkg_version}')"
