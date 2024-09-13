@@ -59,6 +59,11 @@ cd $distdir
 
 pkg_tar_gz_file=${pkg_name}-${pkg_version}.tar.gz
 
+echo "Checking if $pkg_tar_gz_file exists in dist/ directory."
+
+# print the list of files in current directory
+echo $(ls)
+
 if ! [ -f $pkg_tar_gz_file ]; then
   echo 'Error! Tag version does not match version built using latest package files.'
   exit 1
