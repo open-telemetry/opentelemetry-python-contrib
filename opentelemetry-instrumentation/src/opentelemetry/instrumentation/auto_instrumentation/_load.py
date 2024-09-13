@@ -49,7 +49,7 @@ class _EntryPointDistFinder:
         if dist:
             return dist
 
-        return self._mapping.get(self.key_for(entry_point))
+        return self._mapping.get(self._key_for(entry_point))
 
     @staticmethod
     def _key_for(entry_point: EntryPoint):
