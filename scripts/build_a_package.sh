@@ -20,7 +20,6 @@
 
 set -ev
 
-REF=$1
 if [ -z $PACKAGE_INFO ]; then
   echo 'Failed to run script, missing package info.'
   exit 1
