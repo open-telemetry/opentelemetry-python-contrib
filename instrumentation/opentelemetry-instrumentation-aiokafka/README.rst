@@ -1,4 +1,4 @@
-OpenTelemetry aiokafka integration
+OpenTelemetry aiokafka instrumentation
 ==================================
 
 |pypi|
