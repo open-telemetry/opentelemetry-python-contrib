@@ -245,11 +245,11 @@ from timeit import default_timer
 from typing import Collection
 
 import flask
-from opentelemetry._util.importlib_metadata import version
 from packaging import version as package_version
 
 import opentelemetry.instrumentation.wsgi as otel_wsgi
 from opentelemetry import context, trace
+from opentelemetry._util.importlib_metadata import version
 from opentelemetry.instrumentation._semconv import (
     _get_schema_url,
     _HTTPStabilityMode,
