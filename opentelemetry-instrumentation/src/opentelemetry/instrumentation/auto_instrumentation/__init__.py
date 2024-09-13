@@ -13,7 +13,6 @@
 # limitations under the License.
 
 from argparse import REMAINDER, ArgumentParser
-from opentelemetry.util._importlib_metadata import entry_points
 from logging import getLogger
 from os import environ, execl, getcwd
 from os.path import abspath, dirname, pathsep
@@ -21,6 +20,7 @@ from re import sub
 from shutil import which
 
 from opentelemetry.instrumentation.version import __version__
+from opentelemetry.util._importlib_metadata import entry_points
 
 _logger = getLogger(__name__)
 

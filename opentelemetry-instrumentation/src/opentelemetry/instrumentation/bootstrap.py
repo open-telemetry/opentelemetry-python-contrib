@@ -15,9 +15,6 @@
 import argparse
 import logging
 import sys
-from opentelemetry.util._importlib_metadata import (
-    PackageNotFoundError, version
-)
 from subprocess import (
     PIPE,
     CalledProcessError,
@@ -33,6 +30,10 @@ from opentelemetry.instrumentation.bootstrap_gen import (
     libraries,
 )
 from opentelemetry.instrumentation.version import __version__
+from opentelemetry.util._importlib_metadata import (
+    PackageNotFoundError,
+    version,
+)
 
 logger = logging.getLogger(__name__)
 
