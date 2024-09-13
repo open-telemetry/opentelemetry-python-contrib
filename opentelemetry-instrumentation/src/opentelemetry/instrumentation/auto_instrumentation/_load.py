@@ -12,6 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+from functools import cached_property
 from logging import getLogger
 from os import environ
 
@@ -35,26 +36,21 @@ _logger = getLogger(__name__)
 
 
 class _EntryPointDistFinder:
-    def __int__(self):
-        self._mapping = None
+    @cached_property
+    def _mapping(self):
+        return {
+            self._key_for(ep): dist
+            for dist in distributions()
+            for ep in dist.entry_points
+        }
 
     def dist_for(self, entry_point: EntryPoint):
         dist = getattr(entry_point, "dist", None)
         if dist:
             return dist
 
-        if self._mapping is None:
-            self._mapping = {
-                self._key_for(ep): dist
-                for ep in dist.entry_points
-                for dist in distributions()
-            }
-
-        return self._mapping.get(self._key_for(entry_point))
-
-    @staticmethod
-    def _key_for(entry_point: EntryPoint):
-        return f"{entry_point.group}:{entry_point.name}:{entry_point.value}"
+        key = f"{entry_point.group}:{entry_point.name}:{entry_point.value}"
+        return self._mapping.get(key)
 
 
 def _load_distro() -> BaseDistro:
