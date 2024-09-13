@@ -14,9 +14,8 @@
 
 # pylint: disable=protected-access
 
-from opentelemetry.util._importlib_metadata import Distribution, requires
-from packaging.requirements import Requirement
 import pytest
+from packaging.requirements import Requirement
 
 from opentelemetry.instrumentation.dependencies import (
     DependencyConflict,
@@ -24,6 +23,7 @@ from opentelemetry.instrumentation.dependencies import (
     get_dist_dependency_conflicts,
 )
 from opentelemetry.test.test_base import TestBase
+from opentelemetry.util._importlib_metadata import Distribution
 
 
 class TestDependencyConflicts(TestBase):
@@ -66,20 +66,23 @@ class TestDependencyConflicts(TestBase):
         )
 
     def test_get_dist_dependency_conflicts(self):
-        def mock_requires(extras=()):
-            if "instruments" in extras:
-                return requires(
-                    'test-pkg ~= 1.0; extra == "instruments"'
-                )
-            return []
+        class MockDistribution(Distribution):
+            def locate_file(self, path):
+                pass
 
-        dist = Distribution()
-        dist.requires = mock_requires
+            def read_text(self, filename):
+                pass
+
+            @property
+            def requires(self):
+                return ['test-pkg ~= 1.0; extra == "instruments"']
+
+        dist = MockDistribution()
 
         conflict = get_dist_dependency_conflicts(dist)
         self.assertTrue(conflict is not None)
         self.assertTrue(isinstance(conflict, DependencyConflict))
         self.assertEqual(
             str(conflict),
-            'DependencyConflict: requested: "test-pkg~=1.0" but found: "None"',
+            'DependencyConflict: requested: "test-pkg~=1.0; extra == "instruments"" but found: "None"',
         )
