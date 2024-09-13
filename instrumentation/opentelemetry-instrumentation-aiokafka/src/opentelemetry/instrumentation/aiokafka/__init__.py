@@ -81,6 +81,7 @@ from opentelemetry.instrumentation.aiokafka.utils import (
 from opentelemetry.instrumentation.aiokafka.version import __version__
 from opentelemetry.instrumentation.instrumentor import BaseInstrumentor
 from opentelemetry.instrumentation.utils import unwrap
+from opentelemetry.semconv.schemas import Schemas
 
 
 class AIOKafkaInstrumentor(BaseInstrumentor):
@@ -108,7 +109,7 @@ class AIOKafkaInstrumentor(BaseInstrumentor):
             __name__,
             __version__,
             tracer_provider=tracer_provider,
-            schema_url="https://opentelemetry.io/schemas/1.11.0",
+            schema_url=Schemas.V1_27_0.value,
         )
 
         wrap_function_wrapper(

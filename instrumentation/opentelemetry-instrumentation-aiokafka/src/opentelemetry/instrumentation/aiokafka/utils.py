@@ -8,7 +8,8 @@ from aiokafka import ConsumerRecord
 from opentelemetry import context, propagate, trace
 from opentelemetry.context import Context
 from opentelemetry.propagators import textmap
-from opentelemetry.semconv.trace import SpanAttributes
+from opentelemetry.semconv._incubating.attributes import messaging_attributes
+from opentelemetry.semconv.attributes import server_attributes
 from opentelemetry.trace import Tracer
 from opentelemetry.trace.span import Span
 
@@ -19,6 +20,16 @@ def _extract_bootstrap_servers(
     client: aiokafka.AIOKafkaClient,
 ) -> Union[str, List[str]]:
     return client._bootstrap_servers
+
+
+def _extract_client_id(client: aiokafka.AIOKafkaClient) -> str:
+    return client._client_id
+
+
+def _extract_consumer_group(
+    consumer: aiokafka.AIOKafkaConsumer,
+) -> Optional[str]:
+    return consumer._group_id
 
 
 def _extract_argument(
@@ -128,23 +139,108 @@ _aiokafka_getter = AIOKafkaContextGetter()
 _aiokafka_setter = AIOKafkaContextSetter()
 
 
-def _enrich_span(
+def _enrich_base_span(
     span: Span,
+    *,
     bootstrap_servers: Union[str, List[str]],
+    client_id: str,
+    topic: str,
+) -> None:
+    span.set_attribute(
+        messaging_attributes.MESSAGING_SYSTEM,
+        messaging_attributes.MessagingSystemValues.KAFKA.value,
+    )
+    span.set_attribute(
+        server_attributes.SERVER_ADDRESS, json.dumps(bootstrap_servers)
+    )
+    span.set_attribute(messaging_attributes.MESSAGING_CLIENT_ID, client_id)
+    span.set_attribute(messaging_attributes.MESSAGING_DESTINATION_NAME, topic)
+
+
+def _enrich_send_span(
+    span: Span,
+    *,
+    bootstrap_servers: Union[str, List[str]],
+    client_id: str,
     topic: str,
     partition: Optional[int],
+    key: Optional[str],
 ) -> None:
     if not span.is_recording():
         return
 
-    span.set_attribute(SpanAttributes.MESSAGING_SYSTEM, "kafka")
-    span.set_attribute(SpanAttributes.MESSAGING_DESTINATION, topic)
+    _enrich_base_span(
+        span,
+        bootstrap_servers=bootstrap_servers,
+        client_id=client_id,
+        topic=topic,
+    )
 
     if partition is not None:
-        span.set_attribute(SpanAttributes.MESSAGING_KAFKA_PARTITION, partition)
+        span.set_attribute(
+            messaging_attributes.MESSAGING_DESTINATION_PARTITION_ID,
+            str(partition),
+        )
+
+    span.set_attribute(messaging_attributes.MESSAGING_OPERATION_NAME, "send")
+    span.set_attribute(
+        messaging_attributes.MESSAGING_OPERATION_TYPE,
+        messaging_attributes.MessagingOperationTypeValues.PUBLISH.value,
+    )
+
+    if key is not None:
+        span.set_attribute(
+            messaging_attributes.MESSAGING_KAFKA_MESSAGE_KEY, str(key)
+        )
+
+
+def _enrich_anext_span(
+    span: Span,
+    *,
+    bootstrap_servers: Union[str, List[str]],
+    client_id: str,
+    consumer_group: Optional[str],
+    topic: str,
+    partition: Optional[int],
+    key: Optional[str],
+    offset: int,
+) -> None:
+    if not span.is_recording():
+        return
+
+    _enrich_base_span(
+        span,
+        bootstrap_servers=bootstrap_servers,
+        client_id=client_id,
+        topic=topic,
+    )
+
+    if consumer_group is not None:
+        span.set_attribute(
+            messaging_attributes.MESSAGING_CONSUMER_GROUP_NAME, consumer_group
+        )
+
+    if partition is not None:
+        span.set_attribute(
+            messaging_attributes.MESSAGING_DESTINATION_PARTITION_ID,
+            str(partition),
+        )
 
     span.set_attribute(
-        SpanAttributes.MESSAGING_URL, json.dumps(bootstrap_servers)
+        messaging_attributes.MESSAGING_OPERATION_NAME, "receive"
+    )
+    span.set_attribute(
+        messaging_attributes.MESSAGING_OPERATION_TYPE,
+        messaging_attributes.MessagingOperationTypeValues.RECEIVE.value,
+    )
+
+    if key is not None:
+        span.set_attribute(
+            messaging_attributes.MESSAGING_KAFKA_MESSAGE_KEY, key
+        )
+
+    span.set_attribute(
+        messaging_attributes.MESSAGING_KAFKA_MESSAGE_OFFSET, offset
     )
 
 
@@ -168,12 +264,21 @@ def _wrap_send(
 
         topic = _extract_send_topic(args, kwargs)
         bootstrap_servers = _extract_bootstrap_servers(instance.client)
+        client_id = _extract_client_id(instance.client)
+        key = _extract_send_key(args, kwargs)
         partition = await _extract_send_partition(instance, args, kwargs)
         span_name = _get_span_name("send", topic)
         with tracer.start_as_current_span(
             span_name, kind=trace.SpanKind.PRODUCER
         ) as span:
-            _enrich_span(span, bootstrap_servers, topic, partition)
+            _enrich_send_span(
+                span,
+                bootstrap_servers=bootstrap_servers,
+                client_id=client_id,
+                topic=topic,
+                partition=partition,
+                key=key,
+            )
             propagate.inject(
                 headers,
                 context=trace.set_span_in_context(span),
@@ -196,6 +301,8 @@ async def _create_consumer_span(
     record: ConsumerRecord,
     extracted_context: Context,
     bootstrap_servers: Union[str, List[str]],
+    client_id: str,
+    consumer_group: Optional[str],
     args: Tuple[Any],
     kwargs: Dict[str, Any],
 ):
@@ -207,7 +314,16 @@ async def _create_consumer_span(
     ) as span:
         new_context = trace.set_span_in_context(span, extracted_context)
         token = context.attach(new_context)
-        _enrich_span(span, bootstrap_servers, record.topic, record.partition)
+        _enrich_anext_span(
+            span,
+            bootstrap_servers=bootstrap_servers,
+            client_id=client_id,
+            consumer_group=consumer_group,
+            topic=record.topic,
+            partition=record.partition,
+            key=record.key,
+            offset=record.offset,
+        )
         try:
             if callable(async_consume_hook):
                 await async_consume_hook(span, record, args, kwargs)
@@ -229,6 +345,8 @@ def _wrap_anext(
 
         if record:
             bootstrap_servers = _extract_bootstrap_servers(instance._client)
+            client_id = _extract_client_id(instance._client)
+            consumer_group = _extract_consumer_group(instance)
 
             extracted_context = propagate.extract(
                 record.headers, getter=_aiokafka_getter
@@ -239,6 +357,8 @@ def _wrap_anext(
                 record,
                 extracted_context,
                 bootstrap_servers,
+                client_id,
+                consumer_group,
                 args,
                 kwargs,
             )

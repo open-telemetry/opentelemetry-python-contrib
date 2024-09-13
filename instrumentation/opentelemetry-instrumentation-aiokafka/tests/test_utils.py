@@ -59,7 +59,9 @@ class TestUtils(IsolatedAsyncioTestCase):
     @mock.patch(
         "opentelemetry.instrumentation.aiokafka.utils._extract_send_partition"
     )
-    @mock.patch("opentelemetry.instrumentation.aiokafka.utils._enrich_span")
+    @mock.patch(
+        "opentelemetry.instrumentation.aiokafka.utils._enrich_send_span"
+    )
     @mock.patch("opentelemetry.trace.set_span_in_context")
     @mock.patch("opentelemetry.propagate.inject")
     async def test_wrap_send_with_topic_as_arg(
@@ -84,7 +86,9 @@ class TestUtils(IsolatedAsyncioTestCase):
     @mock.patch(
         "opentelemetry.instrumentation.aiokafka.utils._extract_send_partition"
     )
-    @mock.patch("opentelemetry.instrumentation.aiokafka.utils._enrich_span")
+    @mock.patch(
+        "opentelemetry.instrumentation.aiokafka.utils._enrich_send_span"
+    )
     @mock.patch("opentelemetry.trace.set_span_in_context")
     @mock.patch("opentelemetry.propagate.inject")
     async def test_wrap_send_with_topic_as_kwarg(
@@ -137,9 +141,11 @@ class TestUtils(IsolatedAsyncioTestCase):
         span = tracer.start_as_current_span().__enter__.return_value
         enrich_span.assert_called_once_with(
             span,
-            extract_bootstrap_servers.return_value,
-            self.topic_name,
-            extract_send_partition.return_value,
+            bootstrap_servers=extract_bootstrap_servers.return_value,
+            client_id=kafka_producer.client._client_id,
+            topic=self.topic_name,
+            partition=extract_send_partition.return_value,
+            key=None,
         )
 
         set_span_in_context.assert_called_once_with(span)
@@ -162,8 +168,16 @@ class TestUtils(IsolatedAsyncioTestCase):
     @mock.patch(
         "opentelemetry.instrumentation.aiokafka.utils._extract_bootstrap_servers"
     )
+    @mock.patch(
+        "opentelemetry.instrumentation.aiokafka.utils._extract_client_id"
+    )
+    @mock.patch(
+        "opentelemetry.instrumentation.aiokafka.utils._extract_consumer_group"
+    )
     async def test_wrap_next(
         self,
+        extract_consumer_group: mock.MagicMock,
+        extract_client_id: mock.MagicMock,
         extract_bootstrap_servers: mock.MagicMock,
         _create_consumer_span: mock.MagicMock,
         extract: mock.MagicMock,
@@ -183,6 +197,12 @@ class TestUtils(IsolatedAsyncioTestCase):
         )
         bootstrap_servers = extract_bootstrap_servers.return_value
 
+        extract_client_id.assert_called_once_with(kafka_consumer._client)
+        client_id = extract_client_id.return_value
+
+        extract_consumer_group.assert_called_once_with(kafka_consumer)
+        consumer_group = extract_consumer_group.return_value
+
         original_next_callback.assert_awaited_once_with(
             *self.args, **self.kwargs
         )
@@ -199,13 +219,17 @@ class TestUtils(IsolatedAsyncioTestCase):
             record,
             context,
             bootstrap_servers,
+            client_id,
+            consumer_group,
             self.args,
             self.kwargs,
         )
 
     @mock.patch("opentelemetry.trace.set_span_in_context")
     @mock.patch("opentelemetry.context.attach")
-    @mock.patch("opentelemetry.instrumentation.aiokafka.utils._enrich_span")
+    @mock.patch(
+        "opentelemetry.instrumentation.aiokafka.utils._enrich_anext_span"
+    )
     @mock.patch("opentelemetry.context.detach")
     async def test_create_consumer_span(
         self,
@@ -219,6 +243,8 @@ class TestUtils(IsolatedAsyncioTestCase):
         bootstrap_servers = mock.MagicMock()
         extracted_context = mock.MagicMock()
         record = mock.MagicMock()
+        client_id = mock.MagicMock()
+        consumer_group = mock.MagicMock()
 
         await _create_consumer_span(
             tracer,
@@ -226,6 +252,8 @@ class TestUtils(IsolatedAsyncioTestCase):
             record,
             extracted_context,
             bootstrap_servers,
+            client_id,
+            consumer_group,
             self.args,
             self.kwargs,
         )
@@ -242,7 +270,14 @@ class TestUtils(IsolatedAsyncioTestCase):
         attach.assert_called_once_with(set_span_in_context.return_value)
 
         enrich_span.assert_called_once_with(
-            span, bootstrap_servers, record.topic, record.partition
+            span,
+            bootstrap_servers=bootstrap_servers,
+            client_id=client_id,
+            consumer_group=consumer_group,
+            topic=record.topic,
+            partition=record.partition,
+            key=record.key,
+            offset=record.offset,
         )
         consume_hook.assert_awaited_once_with(
             span, record, self.args, self.kwargs
