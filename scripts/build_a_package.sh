@@ -20,12 +20,13 @@
 
 set -ev
 
-if [ -z $GITHUB_REF ]; then
-  echo 'Failed to run script, missing workflow env variable GITHUB_REF.'
+REF=$1
+if [ -z $PACKAGE_INFO ]; then
+  echo 'Failed to run script, missing package info.'
   exit 1
 fi
 
-pkg_name_and_version=${GITHUB_REF#refs/tags/*}
+pkg_name_and_version=${PACKAGE_INFO#refs/tags/*}
 pkg_name=${pkg_name_and_version%==*}
 pkg_version=${pkg_name_and_version#opentelemetry-*==}
 
