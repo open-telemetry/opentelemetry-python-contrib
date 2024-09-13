@@ -20,6 +20,8 @@ from flask import Flask, request
 
 from opentelemetry import trace
 from opentelemetry.instrumentation._semconv import (
+    OTEL_PYTHON_HTTP_SERVER_ACTIVE_REQUESTS_COUNT_SERVER_ATTRIBUTES_ENABLED,
+    OTEL_PYTHON_HTTP_SERVER_REQUEST_DURATION_SERVER_ATTRIBUTES_ENABLED,
     OTEL_SEMCONV_STABILITY_OPT_IN,
     _OpenTelemetrySemanticConventionStability,
     _server_active_requests_count_attrs_new,
@@ -514,22 +516,25 @@ class TestProgrammatic(InstrumentationTest, WsgiTestBase):
                 self.assertTrue(len(scope_metric.metrics) != 0)
                 for metric in scope_metric.metrics:
                     self.assertIn(metric.name, _expected_metric_names_new)
-                    data_points = list(metric.data.data_points)
-                    self.assertEqual(len(data_points), 1)
-                    for point in data_points:
-                        if isinstance(point, HistogramDataPoint):
-                            self.assertEqual(point.count, 3)
-                            self.assertAlmostEqual(
-                                duration_s, point.sum, places=2
-                            )
-                            histogram_data_point_seen = True
-                        if isinstance(point, NumberDataPoint):
-                            number_data_point_seen = True
-                        for attr in point.attributes:
-                            self.assertIn(
-                                attr,
-                                _recommended_metrics_attrs_new[metric.name],
-                            )
+                    with self.subTest(metric=metric.name):
+                        data_points = list(metric.data.data_points)
+                        self.assertEqual(len(data_points), 1)
+                        for point in data_points:
+                            if isinstance(point, HistogramDataPoint):
+                                self.assertEqual(point.count, 3)
+                                self.assertAlmostEqual(
+                                    duration_s, point.sum, places=2
+                                )
+                                histogram_data_point_seen = True
+                            if isinstance(point, NumberDataPoint):
+                                number_data_point_seen = True
+                            for attr in point.attributes:
+                                self.assertIn(
+                                    attr,
+                                    _recommended_metrics_attrs_new[
+                                        metric.name
+                                    ],
+                                )
         self.assertTrue(number_data_point_seen and histogram_data_point_seen)
 
     def test_flask_metric_values(self):
@@ -609,6 +614,35 @@ class TestProgrammatic(InstrumentationTest, WsgiTestBase):
         expected_requests_count_attributes = {
             "http.request.method": "GET",
             "url.scheme": "http",
+        }
+        self._assert_basic_metric(
+            expected_duration_attributes,
+            expected_requests_count_attributes,
+        )
+
+    @patch.dict(
+        "os.environ",
+        {
+            OTEL_PYTHON_HTTP_SERVER_REQUEST_DURATION_SERVER_ATTRIBUTES_ENABLED: "1",
+            OTEL_PYTHON_HTTP_SERVER_ACTIVE_REQUESTS_COUNT_SERVER_ATTRIBUTES_ENABLED: "1",
+        },
+    )
+    def test_basic_metric_success_new_semconv_server_address(self):
+        self.client.get("/hello/756")
+        expected_duration_attributes = {
+            "http.request.method": "GET",
+            "url.scheme": "http",
+            "http.route": "/hello/<int:helloid>",
+            "network.protocol.version": "1.1",
+            "http.response.status_code": 200,
+            "server.address": "localhost",
+            "server.port": 80,
+        }
+        expected_requests_count_attributes = {
+            "http.request.method": "GET",
+            "url.scheme": "http",
+            "server.address": "localhost",
+            "server.port": 80,
         }
         self._assert_basic_metric(
             expected_duration_attributes,
