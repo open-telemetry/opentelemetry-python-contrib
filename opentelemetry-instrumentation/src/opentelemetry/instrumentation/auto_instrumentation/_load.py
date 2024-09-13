@@ -49,8 +49,11 @@ class _EntryPointDistFinder:
         if dist:
             return dist
 
-        key = f"{entry_point.group}:{entry_point.name}:{entry_point.value}"
-        return self._mapping.get(key)
+        return self._mapping.get(self.key_for(entry_point))
+
+    @staticmethod
+    def _key_for(entry_point: EntryPoint):
+        return f"{entry_point.group}:{entry_point.name}:{entry_point.value}"
 
 
 def _load_distro() -> BaseDistro:
