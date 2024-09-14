@@ -1,0 +1,176 @@
+name: Prepare package release branch
+on:
+  workflow_dispatch:
+    inputs:
+      package:
+        type: choice
+        options:
+        - opentelemetry-instrumentation-openai
+        description: 'Package to be released'
+        required: true
+
+jobs:
+  prereqs:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Verify prerequisites
+        run: |
+          if [[ $GITHUB_REF_NAME != main ]]; then
+            echo this workflow should only be run against main
+            exit 1
+          fi
+
+          path=./$(./scripts/eachdist.py find-package --package ${PACKAGE_NAME})
+          changelog=$path/CHANGELOG.md
+
+          if ! grep --quiet "^## Unreleased$" $changelog; then
+            echo the change log is missing an \"Unreleased\" section
+            exit 1
+          fi
+
+          version_dev=$(./scripts/eachdist.py version --package ${{ inputs.package }})
+
+          if [[ ! $version_dev =~ ^([0-9]+)\.([0-9]+)[\.|b]{1}([0-9]+).*.dev$ ]]; then
+            echo "unexpected version: $version"
+            exit 1
+          fi
+
+          version=${version_dev%.dev}
+
+          version_file=$(find $path -type f -name "version.py")
+          file_count=$(echo "$version_file" | wc -l
+
+          if [ "$file_count" -ne 1 ]; then
+            echo "Error: expected one version.py file, found $file_count"
+            echo "$version_file"
+            exit 1
+
+          echo "version=$version" >> $GITHUB_OUTPUT
+          echo "changelog=$changelog" >> $GITHUB_OUTPUT
+          echo "version_file=$version_file" >> $GITHUB_OUTPUT
+
+  create-pull-request-against-release-branch:
+    runs-on: ubuntu-latest
+    needs: prereqs
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Create package release branch
+        env:
+          PACKAGE_NAME: ${{ github.event.inputs.package }}
+          VERSION: ${{ needs.prereqs.outputs.version }}
+          CHANGELOG: ${{ needs.prereqs.outputs.changelog }}
+          VERSION_FILE: ${{ needs.prereqs.outputs.version_file }}
+        run: |
+          release_branch_name="package-release/$PACKAGE_NAME/v$VERSION"
+
+          git push origin HEAD:$release_branch_name
+
+          echo "RELEASE_BRANCH_NAME=$release_branch_name" >> $GITHUB_ENV
+
+      - name: Update package version
+        run: |
+          # replace the version in the version.py file (1.2.3dev -> 1.2.3)
+          sed -i -E "s/__version__\s*=\s*\"${VERSION}\.dev\"/__version__ = \"${VERSION}\"/g" $VERSION_FILE
+
+      - name: Set up Python 3.9
+        uses: actions/setup-python@v5
+        with:
+          python-version: 3.9
+      - name: Install tox
+        run: pip install tox
+      - name: run tox
+        run: tox -e generate
+
+      - name: Update the change log with the approximate release date
+        run: |
+          date=$(date "+%Y-%m-%d")
+          sed -Ei "s/^## Unreleased$/## Version ${VERSION} ($date)/" ${CHANGELOG}
+
+      - name: Use CLA approved github bot
+        run: .github/scripts/use-cla-approved-github-bot.sh
+
+      - name: Create pull request against the release branch
+        env:
+          # TODO not using secrets.GITHUB_TOKEN since pull requests from that token do not run workflows
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          message="Prepare release ${PACKAGE_NAME} ${VERSION}"
+          branch="opentelemetrybot/${RELEASE_BRANCH_NAME}"
+
+          git commit -a -m "$message"
+          git push origin HEAD:$branch
+          gh pr create --title "[$RELEASE_BRANCH_NAME] $message" \
+                       --body "$message." \
+                       --head $branch \
+                       --base $RELEASE_BRANCH_NAME
+
+  create-pull-request-against-main:
+    runs-on: ubuntu-latest
+    needs: prereqs
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set environment variables
+        run: |
+          version=${{ needs.prereqs.outputs.version }}
+          if [[ version =~ ^([0-9]+)\.([0-9]+)\.([0-9]+) ]]; then
+            # 1.2.3 or 1.2.3rc1
+            major="${BASH_REMATCH[1]}"
+            minor="${BASH_REMATCH[2]}"
+            next_version="$major.$((minor + 1)).0"
+          elif [[ version =~ ^([0-9]+)\.([0-9]+)b([0-9]+)$ ]]; then
+            # 0.1b1
+            major="${BASH_REMATCH[1]}"
+            minor="${BASH_REMATCH[2]}"
+            next_version="$major.$((minor + 1))b0"
+          else
+            echo "unexpected version: $version"
+            exit 1
+          fi
+
+          echo "VERSION=$version" >> $GITHUB_ENV
+          echo "NEXT_VERSION=$next_version.dev" >> $GITHUB_ENV
+          echo "PACKAGE_NAME=${{ github.event.inputs.package }}" >> $GITHUB_ENV
+          echo "VERSION_FILE=${{ needs.prereqs.outputs.version_file }}" >> $GITHUB_ENV
+
+      - name: Update version
+        run: |
+          # replace the version in the version.py file (1.2.3dev -> 1.2.3)
+          sed -i -E "s/__version__\s*=\s*\"${VERSION}\.dev\"/__version__ = \"${VERSION}\"/g" $VERSION_FILE
+
+      - name: Set up Python 3.9
+        uses: actions/setup-python@v5
+        with:
+          python-version: 3.9
+      - name: Install tox
+        run: pip install tox
+      - name: run tox
+        run: tox -e generate
+
+      - name: Update the change log on main
+        run: |
+          # the actual release date on main will be updated at the end of the release workflow
+          date=$(date "+%Y-%m-%d")
+          sed -Ei "s/^## Unreleased$/## Unreleased\n\n## Version ${VERSION} ($date)/" ${CHANGELOG}
+
+      - name: Use CLA approved github bot
+        run: .github/scripts/use-cla-approved-github-bot.sh
+
+      - name: Create pull request against main
+        env:
+          # not using secrets.GITHUB_TOKEN since pull requests from that token do not run workflows TODO
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          message="Update ${PACKAGE_NAME} version to ${NEXT_VERSION}"
+          body="Update `${PACKAGE_NAME}`version to \`${NEXT_VERSION}\`."
+          branch="opentelemetrybot/update-version-to-${PACKAGE_NAME}-${NEXT_VERSION}"
+
+          git commit -a -m "$message"
+          git push origin HEAD:$branch
+          gh pr create --title "$message" \
+                       --body "$body" \
+                       --head $branch \
+                       --base main

@@ -266,6 +266,17 @@ def parse_args(args=None):
         required=False,
         help="Name of a specific package to get the version for",
     )
+
+    findparser = subparsers.add_parser(
+        "find-package", help="Find package path.",
+    )
+    findparser.set_defaults(func=find_package_args)
+    findparser.add_argument(
+        "--package",
+        "-p",
+        required=True,
+        help="Name of the package to find",
+    )
     return parser.parse_args(args)
 
 
@@ -748,6 +759,20 @@ def version_args(args):
                     if "__version__" in line:
                         print(line.split('"')[1])
                         return
+
+    print("package not found")
+    sys.exit(1)
+
+def find_package_args(args):
+    root = find_projectroot()
+    for package in find_targets_unordered(root):
+        if args.package == package.name:
+            relative_path = package.relative_to(root)
+            print(relative_path)
+            return
+
+    print("package not found")
+    sys.exit(1)
 
 def main():
     args = parse_args()
