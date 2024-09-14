@@ -10,3 +10,4 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - `opentelemetry-instrumentation-openai` Add initial openai instrumentation.
   ([#TODO](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/TODO))
 
+## Version 2.0.0b7 (2024-09-14)
