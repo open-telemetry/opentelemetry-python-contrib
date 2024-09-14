@@ -260,7 +260,12 @@ def parse_args(args=None):
         See description of exec for available options."""
         ),
     )
-
+    versionparser.add_argument(
+        "--package",
+        "-p",
+        required=False,
+        help="Name of a specific package to get the version for",
+    )
     return parser.parse_args(args)
 
 
@@ -478,7 +483,7 @@ def install_args(args):
             ),
         )
     )
-    
+
     if args.with_dev_deps:
         rootpath = find_projectroot()
         runsubprocess(
@@ -726,8 +731,23 @@ def format_args(args):
 def version_args(args):
     cfg = ConfigParser()
     cfg.read(str(find_projectroot() / "eachdist.ini"))
-    print(cfg[args.mode]["version"])
 
+    if not args.package:
+        print(cfg[args.mode]["version"])
+        return
+
+    root = find_projectroot()
+    for package in find_targets_unordered(root):
+        if args.package == package.name:
+            version_file = find("version.py", package)
+            if version_file is None:
+                print(f"file missing: {package}/version.py")
+                return
+            with open(version_file, encoding="utf-8") as file:
+                for line in file:
+                    if "__version__" in line:
+                        print(line.split('"')[1])
+                        return
 
 def main():
     args = parse_args()
