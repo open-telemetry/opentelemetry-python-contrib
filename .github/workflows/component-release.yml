@@ -153,15 +153,29 @@ jobs:
             # copy the portion above the release, up to and including the heading
             sed -n "0,/^## Version ${PACKAGE_VERSION} ($date)/p" ${PACKAGE_CHANGELOG} > /tmp/CHANGELOG.md
 
+            echo "!!!!!!!!!!!!!!!!!!!!!!!!!! 1"
+
+            cat /tmp/CHANGELOG.md
+
             # copy the release notes
             cat /tmp/CHANGELOG_SECTION.md >> /tmp/CHANGELOG.md
+
+            echo "!!!!!!!!!!!!!!!!!!!!!!!!!! 2"
+
+            cat /tmp/CHANGELOG.md
 
             # copy the portion below the release
             sed -n "0,/^## Version ${PACKAGE_VERSION} /d;0,/^## Version /{/^## Version/!d};p" ${PACKAGE_CHANGELOG} \
               >> /tmp/CHANGELOG.md
 
+            echo "!!!!!!!!!!!!!!!!!!!!!!!!!! 3"
+
+            cat /tmp/CHANGELOG_SECTION.md
+
             # update the real CHANGELOG.md
             cp /tmp/CHANGELOG.md ${PACKAGE_CHANGELOG}
+
+            echo "!!!!!!!!!!!!!!!!!!!!!!!!!! end"
           else
             # this was a patch release, so the version does not exist already in the CHANGELOG.md
 
