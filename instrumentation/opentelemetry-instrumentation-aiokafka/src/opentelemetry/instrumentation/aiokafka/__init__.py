@@ -67,6 +67,7 @@ for example:
 API
 ___
 """
+from asyncio import iscoroutinefunction
 from typing import Collection
 
 import aiokafka
@@ -102,8 +103,14 @@ class AIOKafkaInstrumentor(BaseInstrumentor):
                 ``async_consume_hook``: a callable to be executed just after consuming a message
         """
         tracer_provider = kwargs.get("tracer_provider")
+
         async_produce_hook = kwargs.get("async_produce_hook")
+        if not iscoroutinefunction(async_produce_hook):
+            async_produce_hook = None
+
         async_consume_hook = kwargs.get("async_consume_hook")
+        if not iscoroutinefunction(async_consume_hook):
+            async_consume_hook = None
 
         tracer = trace.get_tracer(
             __name__,

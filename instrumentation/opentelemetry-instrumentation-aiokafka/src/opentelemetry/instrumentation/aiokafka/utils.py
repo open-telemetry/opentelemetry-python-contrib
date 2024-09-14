@@ -288,7 +288,7 @@ def _wrap_send(
                 setter=_aiokafka_setter,
             )
             try:
-                if callable(async_produce_hook):
+                if async_produce_hook is not None:
                     await async_produce_hook(span, args, kwargs)
             except Exception as hook_exception:  # pylint: disable=W0703
                 _LOG.exception(hook_exception)
@@ -328,7 +328,7 @@ async def _create_consumer_span(
             offset=record.offset,
         )
         try:
-            if callable(async_consume_hook):
+            if async_consume_hook is not None:
                 await async_consume_hook(span, record, args, kwargs)
         except Exception as hook_exception:  # pylint: disable=W0703
             _LOG.exception(hook_exception)
