@@ -20,14 +20,18 @@
 
 set -ev
 
-if [ -z $GITHUB_REF ]; then
-  echo 'Failed to run script, missing workflow env variable GITHUB_REF.'
+if [ $PACKAGE_NAME ]; then
+  pkg_name=${PACKAGE_NAME}
+  pkg_version=${PACKAGE_VERSION}
+elif [ $GITHUB_REF ]; then
+  pkg_name_and_version=${GITHUB_REF#refs/tags/*}
+  pkg_name=${pkg_name_and_version%==*}
+  pkg_version=${pkg_name_and_version#opentelemetry-*==}
+else
+  echo 'Failed to run script, missing workflow env variable GITHUB_REF or PACKAGE_NAME and PACKAGE_VERSION.'
   exit 1
 fi
 
-pkg_name_and_version=${GITHUB_REF#refs/tags/*}
-pkg_name=${pkg_name_and_version%==*}
-pkg_version=${pkg_name_and_version#opentelemetry-*==}
 
 # Get the latest versions of packaging tools
 python3 -m pip install --upgrade pip build setuptools wheel packaging
