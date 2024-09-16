@@ -1,5 +1,5 @@
 OpenTelemetry aiokafka instrumentation
-==================================
+=======================================
 
 |pypi|
 
