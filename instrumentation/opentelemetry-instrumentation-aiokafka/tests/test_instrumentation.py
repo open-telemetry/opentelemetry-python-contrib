@@ -14,7 +14,7 @@
 
 import uuid
 from typing import Any, List, Sequence, Tuple
-from unittest import IsolatedAsyncioTestCase, mock
+from unittest import IsolatedAsyncioTestCase, TestCase, mock
 
 from aiokafka import (
     AIOKafkaConsumer,
@@ -33,7 +33,28 @@ from opentelemetry.test.test_base import TestBase
 from opentelemetry.trace import SpanKind, format_trace_id, set_span_in_context
 
 
-class TestAIOKafka(TestBase, IsolatedAsyncioTestCase):
+class TestAIOKafkaInstrumentor(TestCase):
+    def test_instrument_api(self) -> None:
+        instrumentation = AIOKafkaInstrumentor()
+
+        instrumentation.instrument()
+        self.assertTrue(
+            isinstance(AIOKafkaProducer.send, BoundFunctionWrapper)
+        )
+        self.assertTrue(
+            isinstance(AIOKafkaConsumer.getone, BoundFunctionWrapper)
+        )
+
+        instrumentation.uninstrument()
+        self.assertFalse(
+            isinstance(AIOKafkaProducer.send, BoundFunctionWrapper)
+        )
+        self.assertFalse(
+            isinstance(AIOKafkaConsumer.getone, BoundFunctionWrapper)
+        )
+
+
+class TestAIOKafkaInstrumentation(TestBase, IsolatedAsyncioTestCase):
     @staticmethod
     def consumer_record_factory(
         number: int, headers: Tuple[Tuple[str, bytes], ...]
@@ -78,25 +99,6 @@ class TestAIOKafka(TestBase, IsolatedAsyncioTestCase):
         await producer.start()
 
         return producer
-
-    def test_instrument_api(self) -> None:
-        instrumentation = AIOKafkaInstrumentor()
-
-        instrumentation.instrument()
-        self.assertTrue(
-            isinstance(AIOKafkaProducer.send, BoundFunctionWrapper)
-        )
-        self.assertTrue(
-            isinstance(AIOKafkaConsumer.getone, BoundFunctionWrapper)
-        )
-
-        instrumentation.uninstrument()
-        self.assertFalse(
-            isinstance(AIOKafkaProducer.send, BoundFunctionWrapper)
-        )
-        self.assertFalse(
-            isinstance(AIOKafkaConsumer.getone, BoundFunctionWrapper)
-        )
 
     async def test_getone(self) -> None:
         AIOKafkaInstrumentor().uninstrument()
