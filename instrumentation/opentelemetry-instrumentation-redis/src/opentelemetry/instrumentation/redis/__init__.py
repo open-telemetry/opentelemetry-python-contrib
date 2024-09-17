@@ -197,13 +197,14 @@ def _instrument(
                 span.set_attribute(SpanAttributes.DB_STATEMENT, query)
                 _set_connection_attributes(span, instance)
                 span.set_attribute("db.redis.args_length", len(args))
+                if span.name == "redis.create_index":
+                    _add_create_attributes(span, args)
             if callable(request_hook):
                 request_hook(span, instance, args, kwargs)
             response = func(*args, **kwargs)
-            if span.name == "redis.search":
-                _add_search_attributes(span, response, args)
-            if span.name == "redis.create_index":
-                _add_create_attributes(span, args)
+            if span.is_recording():
+                if span.name == "redis.search":
+                    _add_search_attributes(span, response, args)
             if callable(response_hook):
                 response_hook(span, instance, response)
             return response
