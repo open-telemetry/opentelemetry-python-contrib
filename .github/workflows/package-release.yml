@@ -103,7 +103,6 @@ jobs:
           TWINE_PASSWORD: ${{ secrets.pypi_password }}
         run: |
           twine upload --skip-existing --verbose dist/*
-        continue-on-error: true
 
       - name: Generate release notes
         env:
