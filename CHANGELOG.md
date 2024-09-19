@@ -13,6 +13,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   ([#2860](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/2860))
 - `opentelemetry-instrumentation-aiokafka` Add instrumentor and auto instrumentation support for aiokafka
   ([#2082](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/2082))
+- `opentelemetry-instrumentation-redis` Add additional attributes for methods create_index and search, rename those spans
+  ([#2635](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/2635))
 
 ## Version 1.27.0/0.48b0 ()
 
