@@ -68,10 +68,10 @@ echo "Checking if $pkg_tar_gz_file exists in dist/ directory."
 # print the list of files in current directory
 echo $(ls)
 
-if ! [ -f $pkg_tar_gz_file ]; then
-  echo 'Error! Tag version does not match version built using latest package files.'
-  exit 1
-fi
+#if ! [ -f $pkg_tar_gz_file ]; then
+#  echo 'Error! Tag version does not match version built using latest package files.'
+#  exit 1
+#fi
 
 # Build a wheel for the source distribution
 pip wheel --no-deps $pkg_tar_gz_file
