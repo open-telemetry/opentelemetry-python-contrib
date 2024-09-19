@@ -123,7 +123,7 @@ jobs:
       - name: Create pull request against the release branch
         env:
           # not using secrets.GITHUB_TOKEN since pull requests from that token do not run workflows
-          GITHUB_TOKEN: ${{ secrets.OPENTELEMETRYBOT_GITHUB_TOKEN }}
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
           message="Prepare release for ${PACKAGE_NAME} v${VERSION}"
           branch="opentelemetrybot/prepare-${RELEASE_BRANCH_NAME}"
@@ -175,7 +175,7 @@ jobs:
       - name: Create pull request against main
         env:
           # not using secrets.GITHUB_TOKEN since pull requests from that token do not run workflows
-          GITHUB_TOKEN: ${{ secrets.OPENTELEMETRYBOT_GITHUB_TOKEN }}
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
           message="Update ${PACKAGE_NAME} version to v${NEXT_VERSION}"
           body="Update \`${PACKAGE_NAME}\` version to v\`${NEXT_VERSION}\`."

@@ -101,9 +101,9 @@ jobs:
       - name: Publish to PyPI
         env:
           TWINE_USERNAME: '__token__'
-          TWINE_PASSWORD: ${{ secrets.pypi_password }}
+          TWINE_PASSWORD: ${{ secrets.test_pypi_token }}
         run: |
-          twine upload --skip-existing --verbose dist/*
+          twine upload --repository testpypi --skip-existing --verbose dist/*
 
       - name: Generate release notes
         env:
@@ -135,7 +135,7 @@ jobs:
       - name: Create pull request against main
         env:
           # not using secrets.GITHUB_TOKEN since pull requests from that token do not run workflows
-          GITHUB_TOKEN: ${{ secrets.OPENTELEMETRYBOT_GITHUB_TOKEN }}
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
           message="Copy changelog updates from $GITHUB_REF_NAME"
           body="Copy changelog updates from \`$GITHUB_REF_NAME\`."

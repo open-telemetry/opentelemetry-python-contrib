@@ -98,7 +98,7 @@ jobs:
       - name: Create pull request
         env:
           # not using secrets.GITHUB_TOKEN since pull requests from that token do not run workflows
-          GITHUB_TOKEN: ${{ secrets.OPENTELEMETRYBOT_GITHUB_TOKEN }}
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
           message="Prepare patch release for ${PACKAGE_NAME} v${NEXT_VERSION}"
           branch="opentelemetrybot/prepare-patch-${GITHUB_REF_NAME}"

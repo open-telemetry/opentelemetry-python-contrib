@@ -3,7 +3,7 @@ requires = ["hatchling"]
 build-backend = "hatchling.build"
 
 [project]
-name = "opentelemetry-resource-detector-azure"
+name = "lmolkova-opentelemetry-resource-detector-azure"
 dynamic = ["version"]
 description = "Azure Resource Detector for OpenTelemetry"
 readme = "README.rst"

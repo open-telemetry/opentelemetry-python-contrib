@@ -3,8 +3,8 @@ OpenTelemetry Resource detectors for Azure
 
 |pypi|
 
-.. |pypi| image:: https://badge.fury.io/py/opentelemetry-resource-detector-azure.svg
-   :target: https://pypi.org/project/opentelemetry-resource-detector-azure/
+.. |pypi| image:: https://badge.fury.io/py/lmolkova-opentelemetry-resource-detector-azure.svg
+   :target: https://pypi.org/project/lmolkova-opentelemetry-resource-detector-azure/
 
 This library contains OpenTelemetry `Resource Detectors <https://opentelemetry.io/docs/specs/otel/resource/sdk/#detecting-resource-information-from-the-environment>`_ for the following Azure resources:
  * `Azure App Service <https://azure.microsoft.com/en-us/products/app-service>`_
@@ -16,11 +16,11 @@ Installation
 
 ::
 
-    pip install opentelemetry-resource-detector-azure
+    pip install lmolkova-opentelemetry-resource-detector-azure
 
 ---------------------------
 
-Usage example for ``opentelemetry-resource-detector-azure``
+Usage example for ``lmolkova-opentelemetry-resource-detector-azure``
 
 .. code-block:: python
 
