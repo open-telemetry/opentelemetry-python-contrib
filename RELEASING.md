@@ -15,8 +15,12 @@
 ### Preparing a major or minor release for individual package
 
 > [!NOTE]
-> Per-package release is supported only for packages included in the corresponding workflow. Libraries that support per-package release are currently
-> excluded from the general release.
+> Per-package release is supported for the following packages only:
+> - opentelemetry-propagator-aws-xray
+> - opentelemetry-resource-detector-azure
+> - opentelemetry-sdk-extension-aws
+>
+> These libraries are also excluded from the general release.
 
 Package release preparation is handled by the [`[Package] Prepare release`](./.github/workflows/package-prepare-release.yml) workflow that allows
 to pick a specific package to release. It follows the same versioning strategy and process as the general release.
@@ -62,8 +66,12 @@ The workflow can only be run against long-term release branch such as `package-r
 ### Releasing individual package
 
 > [!NOTE]
-> Per-package release is supported only for packages included in the corresponding workflow. Libraries that support per-package release are currently
-> excluded from the general patch release.
+> Per-package patch release is supported for the following packages only:
+> - opentelemetry-propagator-aws-xray
+> - opentelemetry-resource-detector-azure
+> - opentelemetry-sdk-extension-aws
+>
+> These libraries are also excluded from the general patch release.
 
 Per-package patch release preparation is handled by the [`[Package] Release`](./.github/workflows/package-release.yml) workflow that allows
 to pick a specific package to release.

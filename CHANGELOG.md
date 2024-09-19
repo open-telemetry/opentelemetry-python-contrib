@@ -6,10 +6,8 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 > [!NOTE]
-> The following components are released independently and maintain individual CHANGELOG files:
-> - [opentelemetry-resource-detector-azure](./resource/opentelemetry-resource-detector-azure/CHANGELOG.md)
-> - [opentelemetry-sdk-extension-aws](./sdk-extension/opentelemetry-sdk-extension-aws/CHANGELOG.md)
-> - [opentelemetry-propagator-aws-xray](./propagator/opentelemetry-propagator-aws-xray/CHANGELOG.md)
+> Some following components are released independently and maintain individual CHANGELOG files.
+> Use [this search for a list of all CHANGELOG.md files in this repo](https://github.com/search?q=repo%3Aopen-telemetry%2Fopentelemetry-python-contrib+path%3A**%2FCHANGELOG.md&type=code).
 
 ## Unreleased
 
