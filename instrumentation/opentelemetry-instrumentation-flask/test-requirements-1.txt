@@ -1,4 +1,4 @@
-asgiref==3.7.2
+asgiref==3.8.1
 click==8.1.7
 Deprecated==1.2.14
 Flask==2.2.0
@@ -15,7 +15,7 @@ tomli==2.0.1
 typing_extensions==4.9.0
 Werkzeug==2.3.8
 wrapt==1.16.0
-zipp==3.17.0
+zipp==3.19.2
 -e opentelemetry-instrumentation
 -e instrumentation/opentelemetry-instrumentation-wsgi
 -e util/opentelemetry-util-http

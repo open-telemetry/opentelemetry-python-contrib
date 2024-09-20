@@ -31,6 +31,30 @@ Usage
 Configuration
 -------------
 
+Request/Response hooks
+**********************
+
+The requests instrumentation supports extending tracing behavior with the help of
+request and response hooks. These are functions that are called back by the instrumentation
+right after a Span is created for a request and right before the span is finished processing a response respectively.
+The hooks can be configured as follows:
+
+.. code:: python
+
+    # `request_obj` is an instance of requests.PreparedRequest
+    def request_hook(span, request_obj):
+        pass
+
+    # `request_obj` is an instance of requests.PreparedRequest
+    # `response` is an instance of requests.Response
+    def response_hook(span, request_obj, response)
+        pass
+
+    RequestsInstrumentor().instrument(
+        request_hook=request_hook, response_hook=response_hook)
+    )
+
+
 Exclude lists
 *************
 To exclude certain URLs from being tracked, set the environment variable ``OTEL_PYTHON_REQUESTS_EXCLUDED_URLS``
@@ -68,7 +92,7 @@ from opentelemetry.instrumentation._semconv import (
     _OpenTelemetryStabilitySignalType,
     _report_new,
     _report_old,
-    _set_http_host,
+    _set_http_host_client,
     _set_http_method,
     _set_http_net_peer_name_client,
     _set_http_network_protocol_version,
@@ -164,13 +188,19 @@ def _instrument(
 
         span_attributes = {}
         _set_http_method(
-            span_attributes, method, span_name, sem_conv_opt_in_mode
+            span_attributes,
+            method,
+            sanitize_method(method),
+            sem_conv_opt_in_mode,
         )
         _set_http_url(span_attributes, url, sem_conv_opt_in_mode)
 
         metric_labels = {}
         _set_http_method(
-            metric_labels, method, span_name, sem_conv_opt_in_mode
+            metric_labels,
+            method,
+            sanitize_method(method),
+            sem_conv_opt_in_mode,
         )
 
         try:
@@ -182,14 +212,14 @@ def _instrument(
                         metric_labels, parsed_url.scheme, sem_conv_opt_in_mode
                     )
             if parsed_url.hostname:
-                _set_http_host(
+                _set_http_host_client(
                     metric_labels, parsed_url.hostname, sem_conv_opt_in_mode
                 )
                 _set_http_net_peer_name_client(
                     metric_labels, parsed_url.hostname, sem_conv_opt_in_mode
                 )
                 if _report_new(sem_conv_opt_in_mode):
-                    _set_http_host(
+                    _set_http_host_client(
                         span_attributes,
                         parsed_url.hostname,
                         sem_conv_opt_in_mode,
@@ -341,7 +371,7 @@ def get_default_span_name(method):
     Returns:
         span name
     """
-    method = sanitize_method(method.upper().strip())
+    method = sanitize_method(method.strip())
     if method == "_OTHER":
         return "HTTP"
     return method

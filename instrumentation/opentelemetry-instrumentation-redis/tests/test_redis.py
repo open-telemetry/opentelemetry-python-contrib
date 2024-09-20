@@ -12,11 +12,16 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 import asyncio
-from unittest import mock
+from unittest import IsolatedAsyncioTestCase, mock
 from unittest.mock import AsyncMock
 
+import fakeredis
+import pytest
 import redis
 import redis.asyncio
+from fakeredis.aioredis import FakeRedis
+from redis.exceptions import ConnectionError as redis_ConnectionError
+from redis.exceptions import WatchError
 
 from opentelemetry import trace
 from opentelemetry.instrumentation.redis import RedisInstrumentor
@@ -432,3 +437,110 @@ class TestRedis(TestBase):
             span.attributes[SpanAttributes.NET_TRANSPORT],
             NetTransportValues.IP_TCP.value,
         )
+
+    def test_connection_error(self):
+        server = fakeredis.FakeServer()
+        server.connected = False
+        redis_client = fakeredis.FakeStrictRedis(server=server)
+        try:
+            redis_client.set("foo", "bar")
+        except redis_ConnectionError:
+            pass
+
+        spans = self.memory_exporter.get_finished_spans()
+        self.assertEqual(len(spans), 1)
+        span = spans[0]
+
+        self.assertEqual(span.name, "SET")
+        self.assertEqual(span.kind, SpanKind.CLIENT)
+        self.assertEqual(span.status.status_code, trace.StatusCode.ERROR)
+
+    def test_response_error(self):
+        redis_client = fakeredis.FakeStrictRedis()
+        redis_client.lpush("mylist", "value")
+        try:
+            redis_client.incr(
+                "mylist"
+            )  # Trying to increment a list, which is invalid
+        except redis.ResponseError:
+            pass
+
+        spans = self.memory_exporter.get_finished_spans()
+        self.assertEqual(len(spans), 2)
+
+        span = spans[0]
+        self.assertEqual(span.name, "LPUSH")
+        self.assertEqual(span.kind, SpanKind.CLIENT)
+        self.assertEqual(span.status.status_code, trace.StatusCode.UNSET)
+
+        span = spans[1]
+        self.assertEqual(span.name, "INCRBY")
+        self.assertEqual(span.kind, SpanKind.CLIENT)
+        self.assertEqual(span.status.status_code, trace.StatusCode.ERROR)
+
+    def test_watch_error_sync(self):
+        def redis_operations():
+            with pytest.raises(WatchError):
+                redis_client = fakeredis.FakeStrictRedis()
+                pipe = redis_client.pipeline(transaction=True)
+                pipe.watch("a")
+                redis_client.set("a", "bad")  # This will cause the WatchError
+                pipe.multi()
+                pipe.set("a", "1")
+                pipe.execute()
+
+        redis_operations()
+
+        spans = self.memory_exporter.get_finished_spans()
+        self.assertEqual(len(spans), 3)
+
+        # there should be 3 tests, we start watch operation and have 2 set operation on same key
+        self.assertEqual(len(spans), 3)
+
+        self.assertEqual(spans[0].attributes.get("db.statement"), "WATCH ?")
+        self.assertEqual(spans[0].kind, SpanKind.CLIENT)
+        self.assertEqual(spans[0].status.status_code, trace.StatusCode.UNSET)
+
+        for span in spans[1:]:
+            self.assertEqual(span.attributes.get("db.statement"), "SET ? ?")
+            self.assertEqual(span.kind, SpanKind.CLIENT)
+            self.assertEqual(span.status.status_code, trace.StatusCode.UNSET)
+
+
+class TestRedisAsync(TestBase, IsolatedAsyncioTestCase):
+    def setUp(self):
+        super().setUp()
+        RedisInstrumentor().instrument(tracer_provider=self.tracer_provider)
+
+    def tearDown(self):
+        super().tearDown()
+        RedisInstrumentor().uninstrument()
+
+    @pytest.mark.asyncio
+    async def test_watch_error_async(self):
+        async def redis_operations():
+            with pytest.raises(WatchError):
+                redis_client = FakeRedis()
+                async with redis_client.pipeline(transaction=False) as pipe:
+                    await pipe.watch("a")
+                    await redis_client.set("a", "bad")
+                    pipe.multi()
+                    await pipe.set("a", "1")
+                    await pipe.execute()
+
+        await redis_operations()
+
+        spans = self.memory_exporter.get_finished_spans()
+
+        # there should be 3 tests, we start watch operation and have 2 set operation on same key
+        self.assertEqual(len(spans), 3)
+
+        self.assertEqual(spans[0].attributes.get("db.statement"), "WATCH ?")
+        self.assertEqual(spans[0].kind, SpanKind.CLIENT)
+        self.assertEqual(spans[0].status.status_code, trace.StatusCode.UNSET)
+
+        for span in spans[1:]:
+            self.assertEqual(span.attributes.get("db.statement"), "SET ? ?")
+            self.assertEqual(span.kind, SpanKind.CLIENT)
+            self.assertEqual(span.status.status_code, trace.StatusCode.UNSET)
+

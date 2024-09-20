@@ -1,5 +1,5 @@
 amqp==5.2.0
-asgiref==3.7.2
+asgiref==3.8.1
 billiard==4.2.0
 celery==5.3.6
 click==8.1.7
@@ -23,6 +23,6 @@ tzdata==2024.1
 vine==5.1.0
 wcwidth==0.2.13
 wrapt==1.16.0
-zipp==3.17.0
+zipp==3.19.2
 -e opentelemetry-instrumentation
 -e instrumentation/opentelemetry-instrumentation-celery

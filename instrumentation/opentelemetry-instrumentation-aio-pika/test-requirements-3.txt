@@ -1,6 +1,6 @@
 aio-pika==9.4.1
 aiormq==6.8.0
-asgiref==3.7.2
+asgiref==3.8.1
 Deprecated==1.2.14
 idna==3.7
 importlib-metadata==6.11.0
@@ -15,6 +15,6 @@ tomli==2.0.1
 typing_extensions==4.9.0
 wrapt==1.16.0
 yarl==1.9.4
-zipp==3.17.0
+zipp==3.19.2
 -e opentelemetry-instrumentation
 -e instrumentation/opentelemetry-instrumentation-aio-pika
