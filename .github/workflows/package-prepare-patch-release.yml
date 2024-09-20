@@ -74,7 +74,7 @@ jobs:
 
       - name: Update version
         run: |
-          # replace the version in the version.py file (1.2.3dev -> 1.3.3.dev)
+          # replace the version in the version.py file (1.2.3 -> 1.2.4)
           sed -i -E "s/__version__\s*=\s*\"${VERSION}\"/__version__ = \"${NEXT_VERSION}\"/g" $VERSION_FILE
 
       - name: Set up Python 3.9
@@ -90,7 +90,7 @@ jobs:
         run: |
           # the actual release date on main will be updated at the end of the release workflow
           date=$(date "+%Y-%m-%d")
-          sed -Ei "s/^## Unreleased$/## Unreleased\n\n## Version ${VERSION} ($date)/" ${CHANGELOG}
+          sed -Ei "s/^## Unreleased$/## Unreleased\n\n## Version ${NEXT_VERSION} ($date)/" ${CHANGELOG}
 
       - name: Use CLA approved github bot
         run: .github/scripts/use-cla-approved-github-bot.sh
@@ -101,7 +101,7 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
           message="Prepare patch release for ${PACKAGE_NAME} v${NEXT_VERSION}"
-          branch="opentelemetrybot/prepare-patch-${GITHUB_REF_NAME}"
+          branch="opentelemetrybot/patch-${PACKAGE_NAME}-version-to-v${NEXT_VERSION}"
 
           git commit -a -m "$message"
           git push origin HEAD:$branch
