@@ -66,7 +66,7 @@ pkg_tar_gz_file=`echo $pkg_name | sed 's/-/_/g'`-${pkg_version}.tar.gz
 echo "Checking if $pkg_tar_gz_file exists in dist/ directory."
 
 # print the list of files in current directory
-echo $(ls)
+echo "$(ls)"
 
 #if ! [ -f $pkg_tar_gz_file ]; then
 #  echo 'Error! Tag version does not match version built using latest package files.'
