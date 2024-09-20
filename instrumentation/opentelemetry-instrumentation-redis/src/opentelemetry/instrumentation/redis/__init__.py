@@ -127,15 +127,15 @@ _REDIS_CLUSTER_VERSION = (4, 1, 0)
 _REDIS_ASYNCIO_CLUSTER_VERSION = (4, 3, 2)
 
 
-def _set_connection_attributes(span, conn):
-    if hasattr(conn, "nodes_manager") and hasattr(
-        conn.nodes_manager.default_node, "redis_connection"
+def _set_connection_attributes(span, instance):
+    if hasattr(instance, "nodes_manager") and hasattr(
+        instance.nodes_manager.default_node, "redis_connection"
     ):
-        conn = conn.nodes_manager.default_node.redis_connection
-    if not span.is_recording() or not hasattr(conn, "connection_pool"):
+        instance = instance.nodes_manager.default_node.redis_connection
+    if not span.is_recording() or not hasattr(instance, "connection_pool"):
         return
     for key, value in _extract_conn_attributes(
-        conn.connection_pool.connection_kwargs
+        instance.connection_pool.connection_kwargs
     ).items():
         span.set_attribute(key, value)
 
