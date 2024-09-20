@@ -75,7 +75,7 @@ def _sys_pip_install(package):
         print(error)
 
 
-def _pip_check():
+def _pip_check(libraries):
     """Ensures none of the instrumentations have dependency conflicts.
     Clean check reported as:
     'No broken requirements found.'
@@ -113,7 +113,7 @@ def _is_installed(req):
     return True
 
 
-def _find_installed_libraries():
+def _find_installed_libraries(default_instrumentations, libraries):
     for lib in default_instrumentations:
         yield lib
 
@@ -122,18 +122,24 @@ def _find_installed_libraries():
             yield lib["instrumentation"]
 
 
-def _run_requirements():
+def _run_requirements(default_instrumentations, libraries):
     logger.setLevel(logging.ERROR)
-    print("\n".join(_find_installed_libraries()))
+    print(
+        "\n".join(
+            _find_installed_libraries(default_instrumentations, libraries)
+        )
+    )
 
 
-def _run_install():
-    for lib in _find_installed_libraries():
+def _run_install(default_instrumentations, libraries):
+    for lib in _find_installed_libraries(default_instrumentations, libraries):
         _sys_pip_install(lib)
     _pip_check()
 
 
-def run() -> None:
+def run(
+    default_instrumentations=default_instrumentations, libraries=libraries
+) -> None:
     action_install = "install"
     action_requirements = "requirements"
 
@@ -167,4 +173,4 @@ def run() -> None:
         action_install: _run_install,
         action_requirements: _run_requirements,
     }[args.action]
-    cmd()
+    cmd(default_instrumentations, libraries)
