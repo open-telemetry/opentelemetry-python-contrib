@@ -1073,7 +1073,9 @@ class TestAutoInstrumentation(TestBaseAutoFastAPI):
         self.assertEqual(ep.name, "fastapi")
 
     @patch("opentelemetry.instrumentation.dependencies.version")
-    def test_instruments_with_old_fastapi_installed(self, mock_version):
+    def test_instruments_with_old_fastapi_installed(
+        self, mock_version
+    ):  # pylint: disable=no-self-use
         mock_version.side_effect = mock_version_with_old_fastapi
         mock_distro = Mock()
         _load_instrumentors(mock_distro)
@@ -1081,7 +1083,9 @@ class TestAutoInstrumentation(TestBaseAutoFastAPI):
         mock_distro.load_instrumentor.assert_not_called()
 
     @patch("opentelemetry.instrumentation.dependencies.version")
-    def test_instruments_without_fastapi_installed(self, mock_version):
+    def test_instruments_without_fastapi_installed(
+        self, mock_version
+    ):  # pylint: disable=no-self-use
         mock_version.side_effect = mock_version_without_fastapi
         mock_distro = Mock()
         _load_instrumentors(mock_distro)
