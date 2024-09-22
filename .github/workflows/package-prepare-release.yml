@@ -34,8 +34,13 @@ jobs:
           path=./$(./scripts/eachdist.py find-package --package ${{ inputs.package }})
           changelog=$path/CHANGELOG.md
 
+          if [ ! -f $changelog ]; then
+            echo "missing $changelog file"
+            exit 1
+          fi
+
           if ! grep --quiet "^## Unreleased$" $changelog; then
-            echo the change log is missing an \"Unreleased\" section
+            echo the $changelog is missing an \"Unreleased\" section
             exit 1
           fi
 

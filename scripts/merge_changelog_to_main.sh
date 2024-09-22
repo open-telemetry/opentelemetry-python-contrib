@@ -3,6 +3,8 @@
 # This script copies release notes for the current version from CHANGELOG.md file
 # and stores them in a temporary file for later use in the release workflow
 
+# This script is called from the release workflows (package-release.yml and release.yml).
+
 set -ev
 
 if [[ -z $PRIOR_VERSION_WHEN_PATCH ]]; then

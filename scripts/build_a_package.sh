@@ -14,9 +14,9 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-# This script builds wheels for a single package when triggered from a push to
-# a tag as part of a GitHub workflow (See .github/publish-a-package.yml). The
-# wheel is then published to PyPI.
+# This script builds wheels for a single package when triggered from per-package release
+# GitHub workflow (see .github/package-release.yml).
+# The wheel is then published to PyPI by the workflow.
 
 set -ev
 
@@ -68,10 +68,10 @@ echo "Checking if $pkg_tar_gz_file exists in dist/ directory."
 # print the list of files in current directory
 echo "$(ls)"
 
-#if ! [ -f $pkg_tar_gz_file ]; then
-#  echo 'Error! Tag version does not match version built using latest package files.'
-#  exit 1
-#fi
+if ! [ -f $pkg_tar_gz_file ]; then
+  echo 'Error! Tag version does not match version built using latest package files.'
+  exit 1
+fi
 
 # Build a wheel for the source distribution
 pip wheel --no-deps $pkg_tar_gz_file

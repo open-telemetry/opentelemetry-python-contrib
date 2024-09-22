@@ -73,7 +73,7 @@ The workflow can only be run against long-term release branch such as `package-r
 >
 > These libraries are also excluded from the general patch release.
 
-Per-package patch release preparation is handled by the [`[Package] Release`](./.github/workflows/package-release.yml) workflow that allows
+Per-package release is handled by the [`[Package] Release`](./.github/workflows/package-release.yml) workflow that allows
 to pick a specific package to release.
 
 The workflow can only be run against long-term release branch such as `package-release/{package-name}/v{major}.{minor}.x` or `package-release/{package-name}/v{major}.{minor}bx`.
