@@ -42,7 +42,7 @@ jobs:
 
           echo "STABLE_VERSION=$stable_version" >> $GITHUB_ENV
           echo "UNSTABLE_VERSION=$unstable_version" >> $GITHUB_ENV
-
+          echo "CHANGELOG=CHANGELOG.md" >> $GITHUB_ENV
           echo "PRIOR_VERSION_WHEN_PATCH=$prior_version_when_patch" >> $GITHUB_ENV
 
       - run: |
@@ -101,9 +101,7 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
-          CHANGELOG=CHANGELOG.md
-          VERSION=${STABLE_VERSION}\/${UNSTABLE_VERSION}
-
+          echo "VERSION=${STABLE_VERSION}\/${UNSTABLE_VERSION}" >> $GITHUB_ENV
           ./scripts/generate_release_notes.sh
 
       - name: Create GitHub release
@@ -125,9 +123,8 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
-          VERSION=${STABLE_VERSION}\/${UNSTABLE_VERSION}
-          CHANGELOG=CHANGELOG.md
-          RELEASE_TAG=$STABLE_VERSION
+          echo "VERSION=${STABLE_VERSION}\/${UNSTABLE_VERSION}" >> $GITHUB_ENV
+          echo "RELEASE_TAG=$STABLE_VERSION" >> $GITHUB_ENV
           ./scripts/merge_changelog_to_main.sh
 
       - name: Use CLA approved github bot
