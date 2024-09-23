@@ -9,9 +9,20 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- `opentelemetry-instrumentation-fastapi` Add autoinstrumentation mechanism tests.
+  ([#2860](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/2860))
+- `opentelemetry-instrumentation-aiokafka` Add instrumentor and auto instrumentation support for aiokafka
+  ([#2082](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/2082))
+
+## Version 1.27.0/0.48b0 ()
+
+### Added
+
 - `opentelemetry-instrumentation-kafka-python` Instrument temporary fork, kafka-python-ng
   inside kafka-python's instrumentation
   ([#2537](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/2537))
+- `opentelemetry-instrumentation-asgi`, `opentelemetry-instrumentation-fastapi` Add ability to disable internal HTTP send and receive spans
+  ([#2802](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/2802))
 
 ### Breaking changes
 
@@ -44,6 +55,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   ([#2563](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/2563))
 - `opentelemetry-instrumentation` fix `http.host` new http semantic convention mapping to depend on `kind` of span
   ([#2814](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/2814))
+- `opentelemetry-instrumentation` Fix the description of `http.server.duration` and `http.server.request.duration`
+  ([#2753](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/2753))
+- `opentelemetry-instrumentation-grpc` Fix grpc supported version
+  ([#2845](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/2845))
 
 ## Version 1.26.0/0.47b0 (2024-07-23)
 
