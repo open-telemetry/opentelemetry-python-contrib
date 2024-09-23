@@ -178,6 +178,7 @@ API
 
 from __future__ import annotations
 
+import re
 import logging
 from typing import Collection, Literal
 
@@ -233,6 +234,7 @@ class FastAPIInstrumentor(BaseInstrumentor):
         http_capture_headers_server_response: list[str] | None = None,
         http_capture_headers_sanitize_fields: list[str] | None = None,
         exclude_spans: list[Literal["receive", "send"]] | None = None,
+        render_path_parameters: bool = True,
     ):
         """Instrument an uninstrumented FastAPI application.
 
@@ -253,6 +255,7 @@ class FastAPIInstrumentor(BaseInstrumentor):
             http_capture_headers_server_response: Optional list of HTTP headers to capture from the response.
             http_capture_headers_sanitize_fields: Optional list of HTTP headers to sanitize.
             exclude_spans: Optionally exclude HTTP `send` and/or `receive` spans from the trace.
+            render_path_parameters: Optional boolean to enable or disable rendering path parameters in the span name.
         """
         if not hasattr(app, "_is_instrumented_by_opentelemetry"):
             app._is_instrumented_by_opentelemetry = False
@@ -283,7 +286,7 @@ class FastAPIInstrumentor(BaseInstrumentor):
             app.add_middleware(
                 OpenTelemetryMiddleware,
                 excluded_urls=excluded_urls,
-                default_span_details=_get_default_span_details,
+                default_span_details=create_span_details_function(render_path_parameters),
                 server_request_hook=server_request_hook,
                 client_request_hook=client_request_hook,
                 client_response_hook=client_response_hook,
@@ -345,6 +348,7 @@ class FastAPIInstrumentor(BaseInstrumentor):
         )
         _InstrumentedFastAPI._meter_provider = kwargs.get("meter_provider")
         _InstrumentedFastAPI._exclude_spans = kwargs.get("exclude_spans")
+        _InstrumentedFastAPI._render_path_parameters = kwargs.get("render_path_parameters")
         fastapi.FastAPI = _InstrumentedFastAPI
 
     def _uninstrument(self, **kwargs):
@@ -363,6 +367,7 @@ class _InstrumentedFastAPI(fastapi.FastAPI):
     _client_response_hook: ClientResponseHook = None
     _instrumented_fastapi_apps = set()
     _sem_conv_opt_in_mode = _HTTPStabilityMode.DEFAULT
+    _render_path_parameters = False
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
@@ -385,7 +390,7 @@ class _InstrumentedFastAPI(fastapi.FastAPI):
         self.add_middleware(
             OpenTelemetryMiddleware,
             excluded_urls=_InstrumentedFastAPI._excluded_urls,
-            default_span_details=_get_default_span_details,
+            default_span_details=create_span_details_function(_InstrumentedFastAPI._render_path_parameters),
             server_request_hook=_InstrumentedFastAPI._server_request_hook,
             client_request_hook=_InstrumentedFastAPI._client_request_hook,
             client_response_hook=_InstrumentedFastAPI._client_response_hook,
@@ -431,26 +436,47 @@ def _get_route_details(scope):
     return route
 
 
-def _get_default_span_details(scope):
+def create_span_details_function(render_path_parameters):
+
+    def span_details(scope):
+        return _get_default_span_details(scope, render_path_parameters)
+
+    return span_details
+
+
+def _get_default_span_details(scope, render_path_parameters: bool = False):
     """
     Callback to retrieve span name and attributes from scope.
 
     Args:
         scope: A Starlette scope
+        render_path_parameters: A boolean flag to indicate whether to render path parameters.
     Returns:
         A tuple of span name and attributes
     """
     route = _get_route_details(scope)
     method = sanitize_method(scope.get("method", "").strip())
     attributes = {}
+
     if method == "_OTHER":
         method = "HTTP"
+
     if route:
+        # Here we can replace path parameters with actual values
+        if render_path_parameters:
+            path_params = scope.get("path_params", {})
+            pattern = re.compile(r"\{(\w+)\}")
+            route = pattern.sub(
+                lambda match: str(
+                    path_params.get(match.group(1), match.group(0))), route)
+
         attributes[SpanAttributes.HTTP_ROUTE] = route
+
     if method and route:  # http
         span_name = f"{method} {route}"
     elif route:  # websocket
         span_name = route
     else:  # fallback
         span_name = method
+
     return span_name, attributes
