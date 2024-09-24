@@ -97,8 +97,11 @@ class TestDBApiIntegration(TestBase):
         cursor.execute("/* leading comment */ query /* trailing comment */")
         cursor.execute("query /* trailing comment */")
         cursor.execute("SELECT * FROM test_table")
+        cursor.execute("SELECT * FROM schema.test_table")
+        cursor.execute("SELECT * FROM `schema`.`test_table`")
+        cursor.execute("SELECT * FROM 'schema'.'test_table'")
         spans_list = self.memory_exporter.get_finished_spans()
-        self.assertEqual(len(spans_list), 7)
+        self.assertEqual(len(spans_list), 9)
         self.assertEqual(spans_list[0].name, "Test")
         self.assertEqual(spans_list[1].name, "multi")
         self.assertEqual(spans_list[2].name, "tab")
@@ -106,6 +109,9 @@ class TestDBApiIntegration(TestBase):
         self.assertEqual(spans_list[4].name, "query")
         self.assertEqual(spans_list[5].name, "query")
         self.assertEqual(spans_list[6].name, "SELECT test_table")
+        self.assertEqual(spans_list[7].name, "SELECT schema.test_table")
+        self.assertEqual(spans_list[8].name, "SELECT schema.test_table")
+        self.assertEqual(spans_list[9].name, "SELECT schema.test_table")
 
     def test_span_succeeded_with_capture_of_statement_parameters(self):
         connection_props = {
