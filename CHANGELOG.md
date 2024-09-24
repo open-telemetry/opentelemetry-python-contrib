@@ -13,6 +13,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   ([#2860](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/2860))
 - `opentelemetry-instrumentation-aiokafka` Add instrumentor and auto instrumentation support for aiokafka
   ([#2082](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/2082))
+- `opentelemetry-instrumentation-dbapi` Add db.collection.name, use connection kwargs for connection attributes
+  ([#2869](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/2869))
 
 ## Version 1.27.0/0.48b0 ()
 
@@ -23,8 +25,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   ([#2537](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/2537))
 - `opentelemetry-instrumentation-asgi`, `opentelemetry-instrumentation-fastapi` Add ability to disable internal HTTP send and receive spans
   ([#2802](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/2802))
-- `opentelemetry-instrumentation-dbapi` Add db.collection.name, use connection kwargs for connection attributes
-  ([#2869](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/2869))
 
 ### Breaking changes
 
