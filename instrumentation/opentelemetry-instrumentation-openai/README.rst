@@ -15,7 +15,7 @@ Installation
 
 ::
 
-    pip install opentelemetry-instrumentation-openai
+    pip install opentelemetry-instrumentation-openai-v2
 
 
 References

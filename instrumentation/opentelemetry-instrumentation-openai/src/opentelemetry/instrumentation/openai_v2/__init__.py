@@ -46,7 +46,7 @@ from typing import Collection
 from wrapt import wrap_function_wrapper
 
 from opentelemetry.instrumentation.instrumentor import BaseInstrumentor
-from opentelemetry.instrumentation.openai.package import _instruments
+from opentelemetry.instrumentation.openai_v2.package import _instruments
 from opentelemetry.semconv.schemas import Schemas
 from opentelemetry.trace import get_tracer
 
