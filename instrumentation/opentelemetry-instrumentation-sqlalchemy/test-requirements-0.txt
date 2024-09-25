@@ -1,4 +1,4 @@
-asgiref==3.7.2
+asgiref==3.8.1
 cffi==1.17.0
 Deprecated==1.2.14
 importlib-metadata==6.11.0

@@ -1,4 +1,4 @@
-asgiref==3.7.2
+asgiref==3.8.1
 cassandra-driver==3.29.0
 pyasyncore==1.0.4  # for python 3.13 (should removed when cassandra-driver replaces asyncore with recommended asyncio)
 click==8.1.7

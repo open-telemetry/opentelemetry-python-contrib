@@ -1,6 +1,6 @@
 aio-pika==7.2.0
 aiormq==6.2.3
-asgiref==3.7.2
+asgiref==3.8.1
 Deprecated==1.2.14
 idna==3.7
 importlib-metadata==6.11.0
