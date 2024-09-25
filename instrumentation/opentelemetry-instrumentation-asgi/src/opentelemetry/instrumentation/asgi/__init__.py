@@ -284,9 +284,9 @@ class ASGIGetter(Getter[dict]):
         # ASGI header keys are in lower case
         key = key.lower()
         decoded = [
-            _value.decode("utf8")
+            _decode_header_item(_value)
             for (_key, _value) in headers
-            if _key.decode("utf8").lower() == key
+            if _decode_header_item(_key).lower() == key
         ]
         if not decoded:
             return None
@@ -294,7 +294,7 @@ class ASGIGetter(Getter[dict]):
 
     def keys(self, carrier: dict) -> typing.List[str]:
         headers = carrier.get("headers") or []
-        return [_key.decode("utf8") for (_key, _value) in headers]
+        return [_decode_header_item(_key) for (_key, _value) in headers]
 
 
 asgi_getter = ASGIGetter()
@@ -410,7 +410,9 @@ def collect_custom_headers_attributes(
     if raw_headers:
         for key, value in raw_headers:
             # Decode headers before processing.
-            headers[key.decode()].append(value.decode())
+            headers[_decode_header_item(key)].append(
+                _decode_header_item(value)
+            )
 
     return sanitize.sanitize_header_values(
         headers,
@@ -979,3 +981,13 @@ def _parse_active_request_count_attrs(
         _server_active_requests_count_attrs_new,
         sem_conv_opt_in_mode,
     )
+
+
+def _decode_header_item(value):
+    try:
+        return value.decode("utf-8")
+    except ValueError:
+        # ASGI header encoding specs, see:
+        # - https://asgi.readthedocs.io/en/latest/specs/www.html#wsgi-encoding-differences (see: WSGI encoding differences)
+        # - https://docs.python.org/3/library/codecs.html#text-encodings (see: Text Encodings)
+        return value.decode("unicode_escape")
