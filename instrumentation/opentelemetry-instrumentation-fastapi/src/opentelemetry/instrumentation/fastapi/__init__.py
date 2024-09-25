@@ -234,7 +234,7 @@ class FastAPIInstrumentor(BaseInstrumentor):
         http_capture_headers_server_response: list[str] | None = None,
         http_capture_headers_sanitize_fields: list[str] | None = None,
         exclude_spans: list[Literal["receive", "send"]] | None = None,
-        render_path_parameters: bool = True,
+        render_path_parameters: bool = False,
     ):
         """Instrument an uninstrumented FastAPI application.
 
