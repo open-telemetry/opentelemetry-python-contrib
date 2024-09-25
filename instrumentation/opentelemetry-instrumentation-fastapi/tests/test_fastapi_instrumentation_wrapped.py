@@ -62,3 +62,59 @@ class TestWrappedApplication(TestBase):
         self.assertEqual(
             parent_span.context.span_id, span_list[3].context.span_id
         )
+
+
+class TestFastAPIRenderPathParameters(TestWrappedApplication):
+
+    def setUp(self):
+        super().setUp()
+        # Create a FastAPI app with a path parameter
+        @self.app.get("/user/{username}")
+        async def read_user(username: str):
+            return {"username": username}
+
+        # Instrument the app
+        otel_fastapi.FastAPIInstrumentor().instrument_app(
+            self.app, render_path_parameters=True)
+
+    def test_render_path_parameters(self):
+        """Test that path parameters are rendered correctly in spans."""
+
+        # Make a request to the endpoint with a path parameter
+        response = self.client.get("/user/johndoe")
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.json(), {"username": "johndoe"})
+
+        # Retrieve the spans generated
+        spans = self.memory_exporter.get_finished_spans()
+        self.assertEqual(len(spans), 3)  # Adjust based on expected spans
+
+        # Check that the span for the request contains the expected attributes
+        server_span = [
+            span for span in spans if span.kind == trace.SpanKind.SERVER
+        ][0]
+
+        # Verify that the path parameter is rendered correctly
+        self.assertIn("http.route", server_span.attributes)
+        self.assertEqual(server_span.attributes["http.route"],
+                         "/user/{username}")
+
+        # Optionally, check if the username is also included in the span attributes
+        self.assertIn("http.path_parameters.username", server_span.attributes)
+        self.assertEqual(
+            server_span.attributes["http.path_parameters.username"], "johndoe")
+        
+        # Retrieve the spans generated
+        spans = self.memory_exporter.get_finished_spans()
+
+        # Assert that at least one span was created
+        self.assertGreater(len(spans), 0, "No spans were generated.")
+
+        # Assert that the span name is as expected
+        expected_span_name = "GET /user/johndoe"  # Adjust this based on your implementation
+        self.assertEqual(spans[0].name, expected_span_name, f"Expected span name to be '{expected_span_name}', but got '{spans[0].name}'")
+
+    def tearDown(self):
+        super().tearDown()
+        with self.disable_logging():
+            otel_fastapi.FastAPIInstrumentor().uninstrument_app(self.app)
