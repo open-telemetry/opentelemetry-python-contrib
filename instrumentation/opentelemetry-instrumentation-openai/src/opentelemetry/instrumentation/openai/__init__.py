@@ -47,6 +47,7 @@ from wrapt import wrap_function_wrapper
 
 from opentelemetry.instrumentation.instrumentor import BaseInstrumentor
 from opentelemetry.instrumentation.openai.package import _instruments
+from opentelemetry.semconv.schemas import Schemas
 from opentelemetry.trace import get_tracer
 
 from .patch import chat_completions_create
@@ -64,7 +65,7 @@ class OpenAIInstrumentor(BaseInstrumentor):
             __name__,
             "",
             tracer_provider,
-            schema_url="https://opentelemetry.io/schemas/1.27.0",
+            schema_url=Schemas.V1_27_0,
         )
         wrap_function_wrapper(
             module="openai.resources.chat.completions",

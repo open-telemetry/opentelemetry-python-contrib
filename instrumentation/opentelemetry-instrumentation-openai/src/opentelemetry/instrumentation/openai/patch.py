@@ -24,7 +24,6 @@ from opentelemetry.semconv.attributes import (
 from opentelemetry.trace import Span, SpanKind, Tracer
 from opentelemetry.trace.status import Status, StatusCode
 
-from .span_attributes import LLMSpanAttributes
 from .utils import (
     extract_content,
     extract_tools_prompt,
@@ -49,13 +48,10 @@ def chat_completions_create(tracer: Tracer):
             llm_prompts.append(tools_prompt if tools_prompt else item)
 
         span_attributes = {**get_llm_request_attributes(kwargs)}
-
-        attributes = LLMSpanAttributes(**span_attributes)
-
-        span_name = f"{attributes.gen_ai_operation_name} {attributes.gen_ai_request_model}"
+        span_name = f"{span_attributes[GenAIAttributes.GEN_AI_OPERATION_NAME]} {span_attributes[GenAIAttributes.GEN_AI_REQUEST_MODEL]}"
 
         span = tracer.start_span(name=span_name, kind=SpanKind.CLIENT)
-        _set_input_attributes(span, attributes)
+        _set_input_attributes(span, span_attributes)
         set_event_prompt(span, json.dumps(llm_prompts))
 
         try:
@@ -84,8 +80,8 @@ def chat_completions_create(tracer: Tracer):
 
 
 @silently_fail
-def _set_input_attributes(span, attributes: LLMSpanAttributes):
-    for field, value in attributes.model_dump(by_alias=True).items():
+def _set_input_attributes(span, attributes):
+    for field, value in attributes.items():
         set_span_attribute(span, field, value)
 
 
@@ -219,7 +215,7 @@ class StreamWrapper:
             if exc_type is not None:
                 self.span.set_status(Status(StatusCode.ERROR, str(exc_val)))
                 self.span.set_attribute(
-                    ErrorAttributes.ERROR_TYPE, exc_type.__name__
+                    ErrorAttributes.ERROR_TYPE, exc_type.__qualname__
                 )
         finally:
             self.cleanup()
