@@ -38,11 +38,11 @@ jobs:
 
           version=$(./scripts/eachdist.py version --package ${{ inputs.package }})
 
-          version_file=$(find $path -type f -name "version.py")
+          version_file=$(find $path -type f -path "version*.py")
           file_count=$(echo "$version_file" | wc -l)
 
           if [ "$file_count" -ne 1 ]; then
-            echo "Error: expected one version.py file, found $file_count"
+            echo "Error: expected one version file, found $file_count"
             echo "$version_file"
             exit 1
           fi
@@ -79,7 +79,7 @@ jobs:
 
       - name: Update version
         run: |
-          # replace the version in the version.py file (1.2.3 -> 1.2.4)
+          # replace the version in the version file (1.2.3 -> 1.2.4)
           sed -i -E "s/__version__\s*=\s*\"${VERSION}\"/__version__ = \"${NEXT_VERSION}\"/g" $VERSION_FILE
 
       - name: Set up Python 3.9
