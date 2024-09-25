@@ -12,5 +12,4 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-
-_instruments = ("grpcio >= 1.42.0",)
+__version__ = "0.49b0.dev"

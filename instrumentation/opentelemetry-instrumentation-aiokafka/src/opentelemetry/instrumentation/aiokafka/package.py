@@ -13,4 +13,4 @@
 # limitations under the License.
 
 
-_instruments = ("grpcio >= 1.42.0",)
+_instruments = ("aiokafka >= 0.8, < 1.0",)
