@@ -729,7 +729,7 @@ class SystemMetricsInstrumentor(BaseInstrumentor):
         """Observer callback for runtime CPU utilization"""
         proc_cpu_percent = self._proc.cpu_percent()
         yield Observation(
-            proc_cpu_percent,
+            proc_cpu_percent / 100,
             self._runtime_cpu_utilization_labels.copy(),
         )
 

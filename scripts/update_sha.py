@@ -22,7 +22,12 @@ from ruamel.yaml import YAML
 API_URL = (
     "https://api.github.com/repos/open-telemetry/opentelemetry-python/commits/"
 )
-WORKFLOW_FILE = ".github/workflows/test.yml"
+workflow_files = [
+    ".github/workflows/test_0.yml"
+    ".github/workflows/test_1.yml"
+    ".github/workflows/misc_0.yml"
+    ".github/workflows/lint_0.yml"
+]
 
 
 def get_sha(branch):
@@ -35,11 +40,12 @@ def get_sha(branch):
 def update_sha(sha):
     yaml = YAML()
     yaml.preserve_quotes = True
-    with open(WORKFLOW_FILE, "r") as file:
-        workflow = yaml.load(file)
-    workflow["env"]["CORE_REPO_SHA"] = sha
-    with open(WORKFLOW_FILE, "w") as file:
-        yaml.dump(workflow, file)
+    for workflow_file in workflow_files:
+        with open(workflow_file, "r") as file:
+            workflow = yaml.load(file)
+        workflow["env"]["CORE_REPO_SHA"] = sha
+        with open(workflow_file, "w") as file:
+            yaml.dump(workflow, file)
 
 
 def main():

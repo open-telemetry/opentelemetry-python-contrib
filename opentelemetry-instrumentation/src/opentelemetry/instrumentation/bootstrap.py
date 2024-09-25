@@ -119,7 +119,7 @@ def _find_installed_libraries():
 
 def _run_requirements():
     logger.setLevel(logging.ERROR)
-    print("\n".join(_find_installed_libraries()), end="")
+    print("\n".join(_find_installed_libraries()))
 
 
 def _run_install():

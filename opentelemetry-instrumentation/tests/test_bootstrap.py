@@ -77,7 +77,7 @@ class TestBootstrap(TestCase):
             bootstrap.run()
             self.assertEqual(
                 fake_out.getvalue(),
-                "\n".join(self.installed_libraries),
+                "\n".join(self.installed_libraries) + "\n",
             )
 
     @patch("sys.argv", ["bootstrap", "-a", "install"])

@@ -29,6 +29,8 @@ The hooks can be configured as follows:
 
 .. code:: python
 
+    from opentelemetry.instrumentation.urllib import URLLibInstrumentor
+
     # `request_obj` is an instance of urllib.request.Request
     def request_hook(span, request_obj):
         pass
@@ -38,8 +40,8 @@ The hooks can be configured as follows:
     def response_hook(span, request_obj, response)
         pass
 
-    URLLibInstrumentor.instrument(
-        request_hook=request_hook, response_hook=response_hook)
+    URLLibInstrumentor().instrument(
+        request_hook=request_hook, response_hook=response_hook
     )
 
 Exclude lists

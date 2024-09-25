@@ -1,5 +1,5 @@
 amqp==5.2.0
-asgiref==3.7.2
+asgiref==3.8.1
 billiard==4.2.0
 celery==5.3.6
 click==8.1.7
