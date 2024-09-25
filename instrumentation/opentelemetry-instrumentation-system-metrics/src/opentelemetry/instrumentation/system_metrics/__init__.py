@@ -398,11 +398,12 @@ class SystemMetricsInstrumentor(BaseInstrumentor):
             )
 
         if "process.open_file_descriptor.count" in self._config:
-            self._meter.create_observable_up_down_counter(
-                name="process.open_file_descriptor.count",
-                callbacks=[self._get_open_file_descriptors],
-                description="Number of file descriptors in use by the process.",
-            )
+            if sys.platform != "win32":
+                self._meter.create_observable_up_down_counter(
+                    name="process.open_file_descriptor.count",
+                    callbacks=[self._get_open_file_descriptors],
+                    description="Number of file descriptors in use by the process.",
+                )
 
     def _uninstrument(self, **__):
         pass
