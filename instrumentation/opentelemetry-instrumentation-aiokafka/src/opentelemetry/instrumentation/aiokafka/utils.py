@@ -335,7 +335,7 @@ async def _create_consumer_span(
         context.detach(token)
 
 
-def _wrap_anext(
+def _wrap_getone(
     tracer: Tracer, async_consume_hook: ConsumeHookT
 ) -> Callable[..., Awaitable[aiokafka.ConsumerRecord]]:
     async def _traced_next(
