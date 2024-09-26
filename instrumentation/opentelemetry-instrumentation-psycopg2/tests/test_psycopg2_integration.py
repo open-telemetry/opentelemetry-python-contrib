@@ -283,3 +283,30 @@ class TestPostgresqlIntegration(TestBase):
         cursor.execute(query)
         spans_list = self.memory_exporter.get_finished_spans()
         self.assertEqual(len(spans_list), 0)
+
+    # pylint: disable=unused-argument
+    def test_duplicated_instrumentation_works(self):
+        cnx = psycopg2.connect(database="test")
+        query = "SELECT * FROM test"
+        cursor = cnx.cursor()
+        cursor.execute(query)
+
+        spans_list = self.memory_exporter.get_finished_spans()
+        self.assertEqual(len(spans_list), 0)
+
+        Psycopg2Instrumentor().instrument()
+        Psycopg2Instrumentor().instrument()
+        cnx = Psycopg2Instrumentor().instrument_connection(cnx)
+        self.assertFalse(hasattr(cnx, "_is_instrumented_by_opentelemetry"))
+        cursor = cnx.cursor()
+        cursor.execute(query)
+
+        spans_list = self.memory_exporter.get_finished_spans()
+        self.assertEqual(len(spans_list), 1)
+
+        cnx = Psycopg2Instrumentor().uninstrument_connection(cnx)
+        cursor = cnx.cursor()
+        cursor.execute(query)
+
+        spans_list = self.memory_exporter.get_finished_spans()
+        self.assertEqual(len(spans_list), 1)

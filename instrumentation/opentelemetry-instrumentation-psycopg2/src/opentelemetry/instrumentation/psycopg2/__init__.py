@@ -105,13 +105,12 @@ import logging
 import typing
 from typing import Collection
 
-from wrapt import ObjectProxy
-
 import psycopg2
 from psycopg2.extensions import (
     cursor as pg_cursor,  # pylint: disable=no-name-in-module
 )
 from psycopg2.sql import Composed  # pylint: disable=no-name-in-module
+from wrapt import ObjectProxy
 
 from opentelemetry.instrumentation import dbapi
 from opentelemetry.instrumentation.instrumentor import BaseInstrumentor
@@ -181,7 +180,8 @@ class Psycopg2Instrumentor(BaseInstrumentor):
         return dbapi.get_traced_connection_proxy(connection, db_integration)
 
     # TODO(owais): check if core dbapi can do this for all dbapi implementations e.g, pymysql and mysql
-    def uninstrument_connection(self, connection):
+    @staticmethod
+    def uninstrument_connection(connection):
         connection.cursor_factory = getattr(
             connection, _OTEL_CURSOR_FACTORY_KEY, None
         )
