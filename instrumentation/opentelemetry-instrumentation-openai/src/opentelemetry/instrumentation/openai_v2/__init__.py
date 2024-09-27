@@ -65,7 +65,7 @@ class OpenAIInstrumentor(BaseInstrumentor):
             __name__,
             "",
             tracer_provider,
-            schema_url=Schemas.V1_27_0,
+            schema_url=Schemas.V1_27_0.value,
         )
         wrap_function_wrapper(
             module="openai.resources.chat.completions",

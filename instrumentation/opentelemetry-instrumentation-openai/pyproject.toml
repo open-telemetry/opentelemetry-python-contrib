@@ -5,7 +5,7 @@ build-backend = "hatchling.build"
 [project]
 name = "opentelemetry-instrumentation-openai-v2"
 dynamic = ["version"]
-description = "OpenTelemetry OpenAI instrumentation"
+description = "OpenTelemetry Official OpenAI instrumentation"
 readme = "README.rst"
 license = "Apache-2.0"
 requires-python = ">=3.8"
@@ -26,8 +26,8 @@ classifiers = [
 ]
 dependencies = [
   "opentelemetry-api ~= 1.12",
-  "opentelemetry-instrumentation == 0.48b0.dev",
-  "opentelemetry-semantic-conventions == 0.48b0.dev"
+  "opentelemetry-instrumentation ~= 0.48b0",
+  "opentelemetry-semantic-conventions ~= 0.48b0"
 
 ]
 

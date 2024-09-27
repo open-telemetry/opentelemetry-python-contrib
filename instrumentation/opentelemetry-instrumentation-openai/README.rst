@@ -3,8 +3,8 @@ OpenTelemetry OpenAI Instrumentation
 
 |pypi|
 
-.. |pypi| image:: https://badge.fury.io/py/opentelemetry-instrumentation-openai.svg
-   :target: https://pypi.org/project/opentelemetry-instrumentation-openai/
+.. |pypi| image:: https://badge.fury.io/py/opentelemetry-instrumentation-openai-v2.svg
+   :target: https://pypi.org/project/opentelemetry-instrumentation-openai-v2/
 
 Instrumentation with OpenAI that supports the openai library and is
 specified to trace_integration using 'OpenAI'.
