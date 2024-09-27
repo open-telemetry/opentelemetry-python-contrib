@@ -10,9 +10,7 @@ from opentelemetry.semconv._incubating.attributes import (
 @pytest.mark.vcr()
 def test_chat_completion(exporter, openai_client):
     llm_model_value = "gpt-4"
-    messages_value = [
-        {"role": "user", "content": "Say this is a test three times"}
-    ]
+    messages_value = [{"role": "user", "content": "Say this is a test"}]
 
     kwargs = {
         "model": llm_model_value,
@@ -22,6 +20,8 @@ def test_chat_completion(exporter, openai_client):
 
     response = openai_client.chat.completions.create(**kwargs)
     spans = exporter.get_finished_spans()
+    # ignore by default added spans etc: http spans.
+    # we are only interested in the last span which is the chat completion span
     chat_completion_span = spans[-1]
     # assert that the span name is correct
     assert chat_completion_span.name == f"chat {llm_model_value}"
@@ -81,9 +81,7 @@ def test_chat_completion(exporter, openai_client):
 @pytest.mark.vcr()
 def test_chat_completion_streaming(exporter, openai_client):
     llm_model_value = "gpt-4"
-    messages_value = [
-        {"role": "user", "content": "Say this is a test three times"}
-    ]
+    messages_value = [{"role": "user", "content": "Say this is a test"}]
 
     kwargs = {
         "model": llm_model_value,
@@ -108,6 +106,8 @@ def test_chat_completion_streaming(exporter, openai_client):
             response_stream_id = chunk.id
 
     spans = exporter.get_finished_spans()
+    # ignore by default added spans etc: http spans.
+    # we are only interested in the last span which is the chat completion span
     streaming_span = spans[-1]
 
     assert streaming_span.name == f"chat {llm_model_value}"

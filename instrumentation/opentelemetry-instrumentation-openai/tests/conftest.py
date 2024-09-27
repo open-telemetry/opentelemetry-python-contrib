@@ -44,9 +44,22 @@ def openai_client():
 
 @pytest.fixture(scope="module")
 def vcr_config():
-    return {"filter_headers": ["authorization", "api-key"]}
+    return {
+        "filter_headers": ["authorization", "api-key"],
+        "decode_compressed_response": True,
+        "before_record_response": scrub_response_headers,
+    }
 
 
 @pytest.fixture(scope="session", autouse=True)
 def instrument():
     OpenAIInstrumentor().instrument()
+
+
+def scrub_response_headers(response):
+    """
+    This scrubs sensitive response headers. Note they are case-sensitive!
+    """
+    response["headers"]["openai-organization"] = "test_organization"
+    response["headers"]["Set-Cookie"] = "test_set_cookie"
+    return response
