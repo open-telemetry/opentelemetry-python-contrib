@@ -404,16 +404,19 @@ class CursorTracer:
         if self._db_api_integration.capture_parameters and len(args) > 1:
             span.set_attribute("db.statement.parameters", str(args[1]))
 
-    def get_span_name(self, statement):
-        operation_name = self.get_operation_name(statement)
+    def get_span_name(self, cursor, args):
+        operation_name = self.get_operation_name(cursor, args)
+        statement = self.get_statement(cursor, args)
         collection_name = CursorTracer.get_collection_name(statement)
         return " ".join(
             name for name in (operation_name, collection_name) if name
         )
 
-    def get_operation_name(self, statement):
-        # Strip leading comments so we get the operation name.
-        return self._leading_comment_remover.sub("", statement).split()[0]
+    def get_operation_name(self, cursor, args):
+        if args and isinstance(args[0], str):
+            # Strip leading comments so we get the operation name.
+            return self._leading_comment_remover.sub("", args[0]).split()[0]
+        return ""
 
     @staticmethod
     def get_collection_name(statement):
@@ -440,7 +443,7 @@ class CursorTracer:
         **kwargs: typing.Dict[typing.Any, typing.Any],
     ):
         statement = self.get_statement(cursor, args)
-        name = self.get_span_name(statement)
+        name = self.get_span_name(cursor, args)
         if not name:
             name = (
                 self._db_api_integration.database
