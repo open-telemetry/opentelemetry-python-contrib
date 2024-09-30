@@ -442,7 +442,6 @@ class CursorTracer:
         *args: typing.Tuple[typing.Any, typing.Any],
         **kwargs: typing.Dict[typing.Any, typing.Any],
     ):
-        statement = self.get_statement(cursor, args)
         name = self.get_span_name(cursor, args)
         if not name:
             name = (
