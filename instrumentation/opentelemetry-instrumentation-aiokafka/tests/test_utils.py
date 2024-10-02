@@ -23,7 +23,7 @@ from opentelemetry.instrumentation.aiokafka.utils import (
     _create_consumer_span,
     _extract_send_partition,
     _get_span_name,
-    _wrap_anext,
+    _wrap_getone,
     _wrap_send,
 )
 from opentelemetry.trace import SpanKind
@@ -187,7 +187,7 @@ class TestUtils(IsolatedAsyncioTestCase):
         original_next_callback = mock.AsyncMock()
         kafka_consumer = mock.MagicMock()
 
-        wrapped_next = _wrap_anext(tracer, consume_hook)
+        wrapped_next = _wrap_getone(tracer, consume_hook)
         record = await wrapped_next(
             original_next_callback, kafka_consumer, self.args, self.kwargs
         )
