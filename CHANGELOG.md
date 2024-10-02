@@ -16,13 +16,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - `opentelemetry-instrumentation-redis` Add additional attributes for methods create_index and search, rename those spans
   ([#2635](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/2635))
 
-
 ### Fixed
 
 - `opentelemetry-instrumentation-aiokafka` Wrap `AIOKafkaConsumer.getone()` instead of `AIOKafkaConsumer.__anext__`
   ([#2874](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/2874))
 
-## Version 1.27.0/0.48b0 ()
+## Version 1.27.0/0.48b0 (2024-08-28)
 
 ### Added
 
