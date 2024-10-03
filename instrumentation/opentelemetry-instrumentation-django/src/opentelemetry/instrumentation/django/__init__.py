@@ -389,16 +389,23 @@ class DjangoInstrumentor(BaseInstrumentor):
         is_sql_commentor_enabled = kwargs.pop("is_sql_commentor_enabled", None)
 
         otel_position = environ.get("OTEL_PYTHON_DJANGO_MIDDLEWARE_POSITION")
-        middleware_position = int(otel_position) if otel_position is not None else kwargs.pop("middleware_position", 0)
+        try:
+            middleware_position = int(otel_position)
+        except (ValueError, TypeError):
+            _logger.debug(
+                "The middleware_position you provided (%s) is not an integer. Defaulting to 0.",
+                otel_position,
+            )
+            middleware_position = kwargs.pop("middleware_position", 0)
         
         if len(settings_middleware) < middleware_position:
             _logger.debug(
-                "The middleware_position you provided (%d) is greater than the current number of middlewares (%d). \
-                    Since the number of middlewares is less than the total number of middlewares, the Otel middleware will be appended at the end of the middleware chain.",
+                "The middleware_position you provided (%s) is greater than the number of middlewares (%s). Defaulting "
+                "the middleware_position to 0.",
                 middleware_position,
                 len(settings_middleware),
             )
-            middleware_position = len(settings_middleware)
+            middleware_position = 0
         if is_sql_commentor_enabled:
             settings_middleware.insert(
                 middleware_position, self._sql_commenter_middleware
