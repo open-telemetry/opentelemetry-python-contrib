@@ -24,7 +24,7 @@ services:
       POSTGRES_PASSWORD: testpassword
       POSTGRES_DB: opentelemetry-tests
   otredis:
-      image: redis:4.0-alpine
+      image: redis/redis-stack:7.2.0-v12
       ports:
         - "127.0.0.1:6379:6379"
   otrediscluster:
