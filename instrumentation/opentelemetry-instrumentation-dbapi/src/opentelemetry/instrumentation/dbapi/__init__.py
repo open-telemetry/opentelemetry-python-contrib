@@ -423,7 +423,7 @@ class CursorTracer:
         collection_name = ""
         match = re.search(r"\b(?:FROM|JOIN|INTO|UPDATE|TABLE)\s+(['`]?(\w+)['`]?(?:\s*\.\s*['`]?(\w+)['`]?)?)", statement)
         if match:
-            collection_name = match.group(1).replace("'`", "")
+            collection_name = match.group(1)
 
         return collection_name
 
