@@ -7,7 +7,21 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## Unreleased
 
-## Version 1.27.0/0.48b0 ()
+### Added
+
+- `opentelemetry-instrumentation-fastapi` Add autoinstrumentation mechanism tests.
+  ([#2860](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/2860))
+- `opentelemetry-instrumentation-aiokafka` Add instrumentor and auto instrumentation support for aiokafka
+  ([#2082](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/2082))
+- `opentelemetry-instrumentation-redis` Add additional attributes for methods create_index and search, rename those spans
+  ([#2635](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/2635))
+
+### Fixed
+
+- `opentelemetry-instrumentation-aiokafka` Wrap `AIOKafkaConsumer.getone()` instead of `AIOKafkaConsumer.__anext__`
+  ([#2874](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/2874))
+
+## Version 1.27.0/0.48b0 (2024-08-28)
 
 ### Added
 
@@ -16,6 +30,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   ([#2537](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/2537))
 - `opentelemetry-instrumentation-asgi`, `opentelemetry-instrumentation-fastapi` Add ability to disable internal HTTP send and receive spans
   ([#2802](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/2802))
+- `opentelemetry-instrumentation-asgi` Add fallback decoding for ASGI headers
+  ([#2837](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/2837))
 
 ### Breaking changes
 
