@@ -76,9 +76,20 @@ class _QueryWrapper:
         with_db_driver = getattr(
             conf.settings, "SQLCOMMENTER_WITH_DB_DRIVER", True
         )
+        with_action = getattr(
+            conf.settings, "SQLCOMMENTER_WITH_ACTION", True
+        )
 
         db_driver = context["connection"].settings_dict.get("ENGINE", "")
         resolver_match = self.request.resolver_match
+
+        # app_name is the application namespace for the URL pattern that matches the URL.
+        # See https://docs.djangoproject.com/en/stable/ref/urlresolvers/#django.urls.ResolverMatch.app_name
+        app_name = (
+            (resolver_match.app_name or None)
+            if resolver_match and with_app_name 
+            else None
+        )
 
         sql = _add_sql_comment(
             sql,
@@ -88,6 +99,7 @@ class _QueryWrapper:
                 if resolver_match and with_controller
                 else None
             ),
+            action=self.request.method if with_action else None,
             # route is the pattern that matched a request with a controller i.e. the regex
             # See https://docs.djangoproject.com/en/stable/ref/urlresolvers/#django.urls.ResolverMatch.route
             # getattr() because the attribute doesn't exist in Django < 2.2.
@@ -98,11 +110,8 @@ class _QueryWrapper:
             ),
             # app_name is the application namespace for the URL pattern that matches the URL.
             # See https://docs.djangoproject.com/en/stable/ref/urlresolvers/#django.urls.ResolverMatch.app_name
-            app_name=(
-                (resolver_match.app_name or None)
-                if resolver_match and with_app_name
-                else None
-            ),
+            app_name=app_name,
+            application=app_name,
             # Framework centric information.
             framework=f"django:{_django_version}" if with_framework else None,
             # Information about the database and driver.
