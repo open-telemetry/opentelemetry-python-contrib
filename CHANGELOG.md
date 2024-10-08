@@ -15,8 +15,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   ([#2082](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/2082))
 - `opentelemetry-instrumentation-fastapi` Add path parameter rendering feature.
   ([#2879](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/2879))
+- `opentelemetry-instrumentation-redis` Add additional attributes for methods create_index and search, rename those spans
+  ([#2635](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/2635))
 
-## Version 1.27.0/0.48b0 ()
+### Fixed
+
+- `opentelemetry-instrumentation-aiokafka` Wrap `AIOKafkaConsumer.getone()` instead of `AIOKafkaConsumer.__anext__`
+  ([#2874](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/2874))
+
+## Version 1.27.0/0.48b0 (2024-08-28)
 
 ### Added
 
