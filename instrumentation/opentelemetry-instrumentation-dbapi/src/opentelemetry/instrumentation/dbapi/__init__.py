@@ -53,6 +53,9 @@ from opentelemetry.instrumentation.utils import (
 )
 from opentelemetry.semconv.trace import SpanAttributes
 from opentelemetry.trace import SpanKind, TracerProvider, get_tracer
+from timeit import default_timer
+from opentelemetry.metrics import MeterProvider,get_meter
+from opentelemetry.semconv.metrics import MetricInstruments
 
 _logger = logging.getLogger(__name__)
 
@@ -63,6 +66,7 @@ def trace_integration(
     database_system: str,
     connection_attributes: typing.Dict = None,
     tracer_provider: typing.Optional[TracerProvider] = None,
+    meter_provider: typing.Optional[MeterProvider] = None,
     capture_parameters: bool = False,
     enable_commenter: bool = False,
     db_api_integration_factory=None,
@@ -92,6 +96,7 @@ def trace_integration(
         connection_attributes,
         version=__version__,
         tracer_provider=tracer_provider,
+        meter_provider=meter_provider,
         capture_parameters=capture_parameters,
         enable_commenter=enable_commenter,
         db_api_integration_factory=db_api_integration_factory,
@@ -110,6 +115,7 @@ def wrap_connect(
     enable_commenter: bool = False,
     db_api_integration_factory=None,
     commenter_options: dict = None,
+    meter_provider: typing.Optional[MeterProvider] = None,
 ):
     """Integrate with DB API library.
     https://www.python.org/dev/peps/pep-0249/
@@ -151,6 +157,7 @@ def wrap_connect(
             enable_commenter=enable_commenter,
             commenter_options=commenter_options,
             connect_module=connect_module,
+            meter_provider=meter_provider,
         )
         return db_integration.wrapped_connection(wrapped, args, kwargs)
 
@@ -182,6 +189,7 @@ def instrument_connection(
     connection_attributes: typing.Dict = None,
     version: str = "",
     tracer_provider: typing.Optional[TracerProvider] = None,
+    meter_provider: typing.Optional[MeterProvider] = None,
     capture_parameters: bool = False,
     enable_commenter: bool = False,
     commenter_options: dict = None,
@@ -216,6 +224,7 @@ def instrument_connection(
         capture_parameters=capture_parameters,
         enable_commenter=enable_commenter,
         commenter_options=commenter_options,
+        meter_provider=meter_provider,
     )
     db_integration.get_connection_attributes(connection)
     return get_traced_connection_proxy(connection, db_integration)
@@ -245,6 +254,7 @@ class DatabaseApiIntegration:
         connection_attributes=None,
         version: str = "",
         tracer_provider: typing.Optional[TracerProvider] = None,
+        meter_provider: typing.Optional[MeterProvider] = None,
         capture_parameters: bool = False,
         enable_commenter: bool = False,
         commenter_options: dict = None,
@@ -265,6 +275,11 @@ class DatabaseApiIntegration:
             instrumenting_library_version=self._version,
             tracer_provider=tracer_provider,
             schema_url="https://opentelemetry.io/schemas/1.11.0",
+        )
+        self.meter = get_meter(
+            self.name,
+            version=self._version,
+            meter_provider=meter_provider,
         )
         self.capture_parameters = capture_parameters
         self.enable_commenter = enable_commenter
@@ -319,6 +334,30 @@ class DatabaseApiIntegration:
         port = self.connection_props.get("port")
         if port is not None:
             self.span_attributes[SpanAttributes.NET_PEER_PORT] = port
+
+        create_time_histogram = self.meter.create_histogram(
+            name=MetricInstruments.db.client.connections.create_time,
+            unit="ms",
+            description="Take time to create a new connection."
+        )
+
+        wait_time_histogram = self.meter.create_histogram(
+            name=MetricInstruments.db.client.connections.wait_time,
+            unit="ms",
+            description="Take time to obtain an open connection from the pool"
+        )
+
+        use_time_histogram = self.meter.create_histogram(
+            name=MetricInstruments.db.client.connections.use_time,
+            unit="ms",
+            description="time between borrowing a connection and returning it to the pool"
+        )
+
+        start_time = default_timer()
+        elapsed_time = round((default_timer() - start_time) * 1000)
+        create_time_histogram.record(elapsed_time,attributes=self.connection_attributes)
+        wait_time_histogram.record(elapsed_time,attributes=self.connection_attributes)
+        use_time_histogram.record(elapsed_time,attributes=self.connection_attributes)
 
 
 def get_traced_connection_proxy(
