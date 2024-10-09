@@ -405,29 +405,49 @@ class _InstrumentedFastAPI(fastapi.FastAPI):
             _InstrumentedFastAPI._instrumented_fastapi_apps.remove(self)
 
 
-def _get_route_details(scope):
+def _get_route_details(scope, app=None):
     """
-    Function to retrieve Starlette route from scope.
-
-    TODO: there is currently no way to retrieve http.route from
-    a starlette application from scope.
-    See: https://github.com/encode/starlette/pull/804
+    Function to retrieve the full route path, handling mounted sub-applications (Mount) recursively.
 
     Args:
-        scope: A Starlette scope
+        scope: A FastAPI/Starlette scope
+        app: The FastAPI/Starlette app or sub-app (defaults to the app in scope)
     Returns:
-        A string containing the route or None
+        A string containing the full route path or None
     """
-    app = scope["app"]
+    if app is None:
+        app = scope["app"]
+
     route = None
 
+    # Iterate through the app's routes
     for starlette_route in app.routes:
         match, _ = starlette_route.matches(scope)
+
+        # If we match a Mount (e.g., a sub-application)
+        if isinstance(starlette_route, fastapi.routing.Mount):
+            # Temporarily adjust the path in the scope to remove the mount prefix
+            original_path = scope["path"]
+            scope["path"] = scope["path"][len(starlette_route.path) :]
+
+            # Recursively match the sub-application
+            sub_route = _get_route_details(scope, app=starlette_route.app)
+
+            # Restore the original path in the scope after recursion
+            scope["path"] = original_path
+
+            if sub_route:
+                # Combine the Mount path and the sub-route path
+                route = starlette_route.path + sub_route
+                break
+
+        # Handle regular routes (non-mount case)
         if match == Match.FULL:
-            route = starlette_route.path
+            route = starlette_route.path  # Capture the full route template
             break
         if match == Match.PARTIAL:
-            route = starlette_route.path
+            route = starlette_route.path  # Fallback, though this is rare in FastAPI
+
     return route
 
 
