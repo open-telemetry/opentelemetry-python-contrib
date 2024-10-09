@@ -12,4 +12,9 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-__version__ = "1.1.0.dev"
+
+_instruments = tuple()
+
+_supports_metrics = False
+
+_semconv_status = "migration"
