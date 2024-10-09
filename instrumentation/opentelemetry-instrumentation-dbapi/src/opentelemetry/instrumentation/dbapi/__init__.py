@@ -51,6 +51,9 @@ from opentelemetry.instrumentation.utils import (
     _get_opentelemetry_values,
     unwrap,
 )
+from opentelemetry.semconv._incubating.attributes.db_attributes import (
+    DB_COLLECTION_NAME,
+)
 from opentelemetry.semconv.trace import SpanAttributes
 from opentelemetry.trace import SpanKind, TracerProvider, get_tracer
 
@@ -217,7 +220,7 @@ def instrument_connection(
         enable_commenter=enable_commenter,
         commenter_options=commenter_options,
     )
-    db_integration.get_connection_attributes(connection)
+    db_integration.get_connection_attributes(connection=connection)
     return get_traced_connection_proxy(connection, db_integration)
 
 
@@ -284,12 +287,17 @@ class DatabaseApiIntegration:
     ):
         """Add object proxy to connection object."""
         connection = connect_method(*args, **kwargs)
-        self.get_connection_attributes(connection)
+        self.get_connection_attributes(connection=connection, kwargs=kwargs)
         return get_traced_connection_proxy(connection, self)
 
-    def get_connection_attributes(self, connection):
-        # Populate span fields using connection
+    def get_connection_attributes(self, connection, kwargs=None):
+        # Populate span fields using kwargs and connection
         for key, value in self.connection_attributes.items():
+            # First set from kwargs
+            if kwargs and value in kwargs:
+                self.connection_props[key] = kwargs.get(value)
+
+            # Then override from connection object
             # Allow attributes nested in connection object
             attribute = functools.reduce(
                 lambda attribute, attribute_value: getattr(
@@ -373,7 +381,10 @@ class CursorTracer:
     ):
         if not span.is_recording():
             return
+
         statement = self.get_statement(cursor, args)
+        collection_name = self.get_collection_name(statement)
+
         span.set_attribute(
             SpanAttributes.DB_SYSTEM, self._db_api_integration.database_system
         )
@@ -381,6 +392,8 @@ class CursorTracer:
             SpanAttributes.DB_NAME, self._db_api_integration.database
         )
         span.set_attribute(SpanAttributes.DB_STATEMENT, statement)
+        if collection_name:
+            span.set_attribute(DB_COLLECTION_NAME, collection_name)
 
         for (
             attribute_key,
@@ -391,11 +404,31 @@ class CursorTracer:
         if self._db_api_integration.capture_parameters and len(args) > 1:
             span.set_attribute("db.statement.parameters", str(args[1]))
 
-    def get_operation_name(self, cursor, args):  # pylint: disable=no-self-use
+    def get_span_name(self, cursor, args):
+        operation_name = self.get_operation_name(cursor, args)
+        statement = self.get_statement(cursor, args)
+        collection_name = CursorTracer.get_collection_name(statement)
+        return " ".join(
+            name for name in (operation_name, collection_name) if name
+        )
+
+    def get_operation_name(self, cursor, args):
         if args and isinstance(args[0], str):
             # Strip leading comments so we get the operation name.
             return self._leading_comment_remover.sub("", args[0]).split()[0]
         return ""
+
+    @staticmethod
+    def get_collection_name(statement):
+        collection_name = ""
+        match = re.search(
+            r"\b(?:FROM|JOIN|INTO|UPDATE|TABLE)\s+(['`]?(\w+)['`]?(?:\s*\.\s*['`]?(\w+)['`]?)?)",
+            statement,
+        )
+        if match:
+            collection_name = match.group(1)
+
+        return collection_name
 
     def get_statement(self, cursor, args):  # pylint: disable=no-self-use
         if not args:
@@ -412,7 +445,7 @@ class CursorTracer:
         *args: typing.Tuple[typing.Any, typing.Any],
         **kwargs: typing.Dict[typing.Any, typing.Any],
     ):
-        name = self.get_operation_name(cursor, args)
+        name = self.get_span_name(cursor, args)
         if not name:
             name = (
                 self._db_api_integration.database

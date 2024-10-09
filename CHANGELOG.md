@@ -19,6 +19,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   ([#2082](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/2082))
 - `opentelemetry-instrumentation-redis` Add additional attributes for methods create_index and search, rename those spans
   ([#2635](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/2635))
+- `opentelemetry-instrumentation-dbapi` Add db.collection.name, use connection kwargs for connection attributes
+  ([#2869](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/2869))
 
 ### Fixed
 
