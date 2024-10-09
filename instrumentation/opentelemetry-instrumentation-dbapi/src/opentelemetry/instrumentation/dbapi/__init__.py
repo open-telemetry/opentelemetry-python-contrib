@@ -410,7 +410,7 @@ class CursorTracer:
             return statement.decode("utf8", "replace")
         return statement
 
-    def traced_execution(
+    def traced_execution(  # pylint: disable=too-many-branches
         self,
         cursor,
         query_method: typing.Callable[..., typing.Any],
@@ -478,6 +478,10 @@ class CursorTracer:
                         if db_driver == "MySQLdb":
                             mysqlc_version = (
                                 self._db_api_integration.connect_module._mysql.get_client_info()
+                            )
+                        if db_driver == "pymysql":
+                            mysqlc_version = (
+                                self._db_api_integration.connect_module.get_client_info()
                             )
 
                         commenter_data.update(
