@@ -427,21 +427,47 @@ class CursorTracer:
             if args and self._commenter_enabled:
                 try:
                     args_list = list(args)
-                    if hasattr(self._connect_module, "__libpq_version__"):
-                        libpq_version = self._connect_module.__libpq_version__
-                    else:
-                        libpq_version = (
-                            self._connect_module.pq.__build_version__
-                        )
-
+                    db_driver = self._db_api_integration.connect_module.__name__
                     commenter_data = {
-                        # Psycopg2/framework information
-                        "db_driver": f"psycopg2:{self._connect_module.__version__.split(' ')[0]}",
+                        # TODO MySQLdb attribute
+                        "db_driver": f"{db_driver}:{self._connect_module.__version__.split(' ')[0]}",
                         "dbapi_threadsafety": self._connect_module.threadsafety,
                         "dbapi_level": self._connect_module.apilevel,
-                        "libpq_version": libpq_version,
                         "driver_paramstyle": self._connect_module.paramstyle,
                     }
+
+                    if self._db_api_integration.database_system == "postgresql":
+                        if hasattr(self._connect_module, "__libpq_version__"):
+                            libpq_version = self._connect_module.__libpq_version__
+                        else:
+                            libpq_version = (
+                                self._connect_module.pq.__build_version__
+                            )
+                        commenter_data.update(
+                            {
+                                "libpq_version": libpq_version,
+                            }
+                        )
+
+                    elif self._db_api_integration.database_system == "mysql":
+                        db_driver = self._db_api_integration.connect_module.__name__
+                        
+                        mysqlc_version = ""
+                        if db_driver == "mysql.connector":
+                            # TODO Version of mysql.connector not same as mysql C API
+                            mysqlc_version = self._db_api_integration.connect_module.__version__
+                        elif db_driver == "MySQLdb":
+                            # TODO
+                            mysqlc_version = "TODO"
+
+                        commenter_data.update(
+                            {
+                                "mysqlc_version": mysqlc_version,
+                            }
+                        )
+
+                    _logger.debug("Using commenter_data: %s", commenter_data)
+
                     if self._commenter_options.get(
                         "opentelemetry_values", True
                     ):
