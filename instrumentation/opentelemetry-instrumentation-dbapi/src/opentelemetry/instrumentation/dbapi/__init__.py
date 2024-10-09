@@ -53,6 +53,11 @@ from opentelemetry.instrumentation.utils import (
 )
 from opentelemetry.semconv.trace import SpanAttributes
 from opentelemetry.trace import SpanKind, TracerProvider, get_tracer
+from opentelemetry.util._importlib_metadata import version
+
+_DB_DRIVER_ALIASES = {
+    "MySQLdb": "mysqlclient",
+}
 
 _logger = logging.getLogger(__name__)
 
@@ -428,9 +433,14 @@ class CursorTracer:
                 try:
                     args_list = list(args)
                     db_driver = self._db_api_integration.connect_module.__name__
+                    db_version = ""
+                    if db_driver in _DB_DRIVER_ALIASES.keys():
+                        db_version = version(_DB_DRIVER_ALIASES[db_driver])
+                    else:
+                        db_version = self._db_api_integration.connect_module.__version__
+
                     commenter_data = {
-                        # TODO MySQLdb attribute
-                        "db_driver": f"{db_driver}:{self._connect_module.__version__.split(' ')[0]}",
+                        "db_driver": f"{db_driver}:{db_version.split(' ')[0]}",
                         "dbapi_threadsafety": self._connect_module.threadsafety,
                         "dbapi_level": self._connect_module.apilevel,
                         "driver_paramstyle": self._connect_module.paramstyle,
