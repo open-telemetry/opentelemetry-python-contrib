@@ -53,7 +53,7 @@ from opentelemetry.instrumentation.utils import (
 )
 from opentelemetry.semconv.trace import SpanAttributes
 from opentelemetry.trace import SpanKind, TracerProvider, get_tracer
-from opentelemetry.util._importlib_metadata import version
+from opentelemetry.util._importlib_metadata import version as util_version
 
 _DB_DRIVER_ALIASES = {
     "MySQLdb": "mysqlclient",
@@ -432,12 +432,18 @@ class CursorTracer:
             if args and self._commenter_enabled:
                 try:
                     args_list = list(args)
-                    db_driver = self._db_api_integration.connect_module.__name__
+                    db_driver = (
+                        self._db_api_integration.connect_module.__name__
+                    )
                     db_version = ""
-                    if db_driver in _DB_DRIVER_ALIASES.keys():
-                        db_version = version(_DB_DRIVER_ALIASES[db_driver])
+                    if db_driver in _DB_DRIVER_ALIASES:
+                        db_version = util_version(
+                            _DB_DRIVER_ALIASES[db_driver]
+                        )
                     else:
-                        db_version = self._db_api_integration.connect_module.__version__
+                        db_version = (
+                            self._db_api_integration.connect_module.__version__
+                        )
 
                     commenter_data = {
                         "db_driver": f"{db_driver}:{db_version.split(' ')[0]}",
@@ -446,9 +452,14 @@ class CursorTracer:
                         "driver_paramstyle": self._connect_module.paramstyle,
                     }
 
-                    if self._db_api_integration.database_system == "postgresql":
+                    if (
+                        self._db_api_integration.database_system
+                        == "postgresql"
+                    ):
                         if hasattr(self._connect_module, "__libpq_version__"):
-                            libpq_version = self._connect_module.__libpq_version__
+                            libpq_version = (
+                                self._connect_module.__libpq_version__
+                            )
                         else:
                             libpq_version = (
                                 self._connect_module.pq.__build_version__
@@ -458,20 +469,22 @@ class CursorTracer:
                                 "libpq_version": libpq_version,
                             }
                         )
-                    elif self._db_api_integration.database_system == "mysql":                       
+                    elif self._db_api_integration.database_system == "mysql":
                         mysqlc_version = ""
                         if db_driver == "mysql.connector":
-                            mysqlc_version = cursor._cnx._cmysql.get_client_info()
+                            mysqlc_version = (
+                                cursor._cnx._cmysql.get_client_info()
+                            )
                         if db_driver == "MySQLdb":
-                            mysqlc_version = self._db_api_integration.connect_module._mysql.get_client_info()
+                            mysqlc_version = (
+                                self._db_api_integration.connect_module._mysql.get_client_info()
+                            )
 
                         commenter_data.update(
                             {
                                 "mysql_client_version": mysqlc_version,
                             }
                         )
-
-                    _logger.debug("Using commenter_data: %s", commenter_data)
 
                     if self._commenter_options.get(
                         "opentelemetry_values", True
