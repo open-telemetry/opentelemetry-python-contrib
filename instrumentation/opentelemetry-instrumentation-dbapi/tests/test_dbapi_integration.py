@@ -252,6 +252,7 @@ class TestDBApiIntegration(TestBase):
 
     def test_executemany_comment(self):
         connect_module = mock.MagicMock()
+        connect_module.__name__ = mock.MagicMock()
         connect_module.__version__ = mock.MagicMock()
         connect_module.__libpq_version__ = 123
         connect_module.apilevel = 123
@@ -260,7 +261,7 @@ class TestDBApiIntegration(TestBase):
 
         db_integration = dbapi.DatabaseApiIntegration(
             "testname",
-            "testcomponent",
+            "postgresql",
             enable_commenter=True,
             commenter_options={"db_driver": False, "dbapi_level": False},
             connect_module=connect_module,
@@ -277,6 +278,7 @@ class TestDBApiIntegration(TestBase):
 
     def test_compatible_build_version_psycopg_psycopg2_libpq(self):
         connect_module = mock.MagicMock()
+        connect_module.__name__ = mock.MagicMock()
         connect_module.__version__ = mock.MagicMock()
         connect_module.pq = mock.MagicMock()
         connect_module.pq.__build_version__ = 123
@@ -286,7 +288,7 @@ class TestDBApiIntegration(TestBase):
 
         db_integration = dbapi.DatabaseApiIntegration(
             "testname",
-            "testcomponent",
+            "postgresql",
             enable_commenter=True,
             commenter_options={"db_driver": False, "dbapi_level": False},
             connect_module=connect_module,
@@ -303,6 +305,7 @@ class TestDBApiIntegration(TestBase):
 
     def test_executemany_flask_integration_comment(self):
         connect_module = mock.MagicMock()
+        connect_module.__name__ = mock.MagicMock()
         connect_module.__version__ = mock.MagicMock()
         connect_module.__libpq_version__ = 123
         connect_module.apilevel = 123
@@ -311,7 +314,7 @@ class TestDBApiIntegration(TestBase):
 
         db_integration = dbapi.DatabaseApiIntegration(
             "testname",
-            "testcomponent",
+            "postgresql",
             enable_commenter=True,
             commenter_options={"db_driver": False, "dbapi_level": False},
             connect_module=connect_module,
