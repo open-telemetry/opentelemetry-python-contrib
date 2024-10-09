@@ -25,6 +25,7 @@ from redis.exceptions import WatchError
 
 from opentelemetry import trace
 from opentelemetry.instrumentation.redis import RedisInstrumentor
+from opentelemetry.instrumentation.utils import suppress_instrumentation
 from opentelemetry.semconv.trace import (
     DbSystemValues,
     NetTransportValues,
@@ -70,6 +71,40 @@ class TestRedis(TestBase):
                 self.assertTrue(mock_span.is_recording.called)
                 self.assertFalse(mock_span.set_attribute.called)
                 self.assertFalse(mock_span.set_status.called)
+
+    def test_suppress_instrumentation_no_span(self):
+        redis_client = redis.Redis()
+
+        with mock.patch.object(redis_client, "connection"):
+            redis_client.get("key")
+        spans = self.memory_exporter.get_finished_spans()
+
+        self.assertEqual(len(spans), 1)
+        self.memory_exporter.clear()
+
+        with suppress_instrumentation():
+            with mock.patch.object(redis_client, "connection"):
+                redis_client.get("key")
+            spans = self.memory_exporter.get_finished_spans()
+
+        self.assertEqual(len(spans), 0)
+
+    def test_suppress_async_instrumentation_no_span(self):
+        redis_client = redis.asyncio.Redis()
+
+        with mock.patch.object(redis_client, "connection", AsyncMock()):
+            asyncio.run(redis_client.get("key"))
+        spans = self.memory_exporter.get_finished_spans()
+
+        self.assertEqual(len(spans), 1)
+        self.memory_exporter.clear()
+
+        with suppress_instrumentation():
+            with mock.patch.object(redis_client, "connection", AsyncMock()):
+                asyncio.run(redis_client.get("key"))
+            spans = self.memory_exporter.get_finished_spans()
+
+        self.assertEqual(len(spans), 0)
 
     def test_instrument_uninstrument(self):
         redis_client = redis.Redis()
