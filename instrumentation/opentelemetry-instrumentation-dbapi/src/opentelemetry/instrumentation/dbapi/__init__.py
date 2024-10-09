@@ -458,21 +458,16 @@ class CursorTracer:
                                 "libpq_version": libpq_version,
                             }
                         )
-
-                    elif self._db_api_integration.database_system == "mysql":
-                        db_driver = self._db_api_integration.connect_module.__name__
-                        
+                    elif self._db_api_integration.database_system == "mysql":                       
                         mysqlc_version = ""
                         if db_driver == "mysql.connector":
-                            # TODO Version of mysql.connector not same as mysql C API
-                            mysqlc_version = self._db_api_integration.connect_module.__version__
-                        elif db_driver == "MySQLdb":
-                            # TODO
-                            mysqlc_version = "TODO"
+                            mysqlc_version = cursor._cnx._cmysql.get_client_info()
+                        if db_driver == "MySQLdb":
+                            mysqlc_version = self._db_api_integration.connect_module._mysql.get_client_info()
 
                         commenter_data.update(
                             {
-                                "mysqlc_version": mysqlc_version,
+                                "mysql_client_version": mysqlc_version,
                             }
                         )
 
