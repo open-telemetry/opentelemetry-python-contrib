@@ -24,6 +24,7 @@ from opentelemetry.semconv.trace import SpanAttributes
 from opentelemetry.test.test_base import TestBase
 
 
+# pylint: disable=too-many-public-methods
 class TestDBApiIntegration(TestBase):
     def setUp(self):
         super().setUp()
@@ -301,6 +302,59 @@ class TestDBApiIntegration(TestBase):
         self.assertRegex(
             cursor.query,
             r"Select 1 /\*dbapi_threadsafety=123,driver_paramstyle='test',libpq_version=123,traceparent='\d{1,2}-[a-zA-Z0-9_]{32}-[a-zA-Z0-9_]{16}-\d{1,2}'\*/;",
+        )
+
+    def test_executemany_psycopg2_integration_comment(self):
+        connect_module = mock.MagicMock()
+        connect_module.__name__ = "psycopg2"
+        connect_module.__version__ = "1.2.3"
+        connect_module.__libpq_version__ = 123
+        connect_module.apilevel = 123
+        connect_module.threadsafety = 123
+        connect_module.paramstyle = "test"
+
+        db_integration = dbapi.DatabaseApiIntegration(
+            "testname",
+            "postgresql",
+            enable_commenter=True,
+            commenter_options={"db_driver": True, "dbapi_level": False},
+            connect_module=connect_module,
+        )
+        mock_connection = db_integration.wrapped_connection(
+            mock_connect, {}, {}
+        )
+        cursor = mock_connection.cursor()
+        cursor.executemany("Select 1;")
+        self.assertRegex(
+            cursor.query,
+            r"Select 1 /\*db_driver='psycopg2%%3A1.2.3',dbapi_threadsafety=123,driver_paramstyle='test',libpq_version=123,traceparent='\d{1,2}-[a-zA-Z0-9_]{32}-[a-zA-Z0-9_]{16}-\d{1,2}'\*/;",
+        )
+
+    def test_executemany_psycopg_integration_comment(self):
+        connect_module = mock.MagicMock()
+        connect_module.__name__ = "psycopg"
+        connect_module.__version__ = "1.2.3"
+        connect_module.pq = mock.MagicMock()
+        connect_module.pq.__build_version__ = 123
+        connect_module.apilevel = 123
+        connect_module.threadsafety = 123
+        connect_module.paramstyle = "test"
+
+        db_integration = dbapi.DatabaseApiIntegration(
+            "testname",
+            "postgresql",
+            enable_commenter=True,
+            commenter_options={"db_driver": True, "dbapi_level": False},
+            connect_module=connect_module,
+        )
+        mock_connection = db_integration.wrapped_connection(
+            mock_connect, {}, {}
+        )
+        cursor = mock_connection.cursor()
+        cursor.executemany("Select 1;")
+        self.assertRegex(
+            cursor.query,
+            r"Select 1 /\*db_driver='psycopg%%3A1.2.3',dbapi_threadsafety=123,driver_paramstyle='test',libpq_version=123,traceparent='\d{1,2}-[a-zA-Z0-9_]{32}-[a-zA-Z0-9_]{16}-\d{1,2}'\*/;",
         )
 
     def test_executemany_mysqlconnector_integration_comment(self):
