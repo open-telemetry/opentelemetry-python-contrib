@@ -329,6 +329,41 @@ class TestDBApiIntegration(TestBase):
             r"Select 1 /\*db_driver='mysql.connector%%3A1.2.3',dbapi_threadsafety=123,driver_paramstyle='test',mysql_client_version='1.2.3',traceparent='\d{1,2}-[a-zA-Z0-9_]{32}-[a-zA-Z0-9_]{16}-\d{1,2}'\*/;",
         )
 
+    @mock.patch("opentelemetry.instrumentation.dbapi.util_version")
+    def test_executemany_mysqlclient_integration_comment(
+        self,
+        mock_dbapi_util_version,
+    ):
+        mock_dbapi_util_version.return_value = "1.2.3"
+        connect_module = mock.MagicMock()
+        connect_module.__name__ = "MySQLdb"
+        connect_module.__version__ = "1.2.3"
+        connect_module.apilevel = 123
+        connect_module.threadsafety = 123
+        connect_module.paramstyle = "test"
+        connect_module._mysql = mock.MagicMock()
+        connect_module._mysql.get_client_info = mock.MagicMock(
+            return_value="123"
+        )
+
+        db_integration = dbapi.DatabaseApiIntegration(
+            "testname",
+            "mysql",
+            enable_commenter=True,
+            commenter_options={"db_driver": True, "dbapi_level": False},
+            connect_module=connect_module,
+        )
+
+        mock_connection = db_integration.wrapped_connection(
+            mock_connect, {}, {}
+        )
+        cursor = mock_connection.cursor()
+        cursor.executemany("Select 1;")
+        self.assertRegex(
+            cursor.query,
+            r"Select 1 /\*db_driver='MySQLdb%%3A1.2.3',dbapi_threadsafety=123,driver_paramstyle='test',mysql_client_version='123',traceparent='\d{1,2}-[a-zA-Z0-9_]{32}-[a-zA-Z0-9_]{16}-\d{1,2}'\*/;",
+        )
+
     def test_executemany_flask_integration_comment(self):
         connect_module = mock.MagicMock()
         connect_module.__name__ = "test"
