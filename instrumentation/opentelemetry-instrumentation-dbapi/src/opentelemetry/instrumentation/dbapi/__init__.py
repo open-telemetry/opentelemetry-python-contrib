@@ -53,6 +53,11 @@ from opentelemetry.instrumentation.utils import (
 )
 from opentelemetry.semconv.trace import SpanAttributes
 from opentelemetry.trace import SpanKind, TracerProvider, get_tracer
+from opentelemetry.util._importlib_metadata import version as util_version
+
+_DB_DRIVER_ALIASES = {
+    "MySQLdb": "mysqlclient",
+}
 
 _logger = logging.getLogger(__name__)
 
@@ -405,7 +410,7 @@ class CursorTracer:
             return statement.decode("utf8", "replace")
         return statement
 
-    def traced_execution(
+    def traced_execution(  # pylint: disable=too-many-branches
         self,
         cursor,
         query_method: typing.Callable[..., typing.Any],
@@ -427,21 +432,64 @@ class CursorTracer:
             if args and self._commenter_enabled:
                 try:
                     args_list = list(args)
-                    if hasattr(self._connect_module, "__libpq_version__"):
-                        libpq_version = self._connect_module.__libpq_version__
+                    db_driver = (
+                        self._db_api_integration.connect_module.__name__
+                    )
+                    db_version = ""
+                    if db_driver in _DB_DRIVER_ALIASES:
+                        db_version = util_version(
+                            _DB_DRIVER_ALIASES[db_driver]
+                        )
                     else:
-                        libpq_version = (
-                            self._connect_module.pq.__build_version__
+                        db_version = (
+                            self._db_api_integration.connect_module.__version__
                         )
 
                     commenter_data = {
-                        # Psycopg2/framework information
-                        "db_driver": f"psycopg2:{self._connect_module.__version__.split(' ')[0]}",
+                        "db_driver": f"{db_driver}:{db_version.split(' ')[0]}",
                         "dbapi_threadsafety": self._connect_module.threadsafety,
                         "dbapi_level": self._connect_module.apilevel,
-                        "libpq_version": libpq_version,
                         "driver_paramstyle": self._connect_module.paramstyle,
                     }
+
+                    if (
+                        self._db_api_integration.database_system
+                        == "postgresql"
+                    ):
+                        if hasattr(self._connect_module, "__libpq_version__"):
+                            libpq_version = (
+                                self._connect_module.__libpq_version__
+                            )
+                        else:
+                            libpq_version = (
+                                self._connect_module.pq.__build_version__
+                            )
+                        commenter_data.update(
+                            {
+                                "libpq_version": libpq_version,
+                            }
+                        )
+                    elif self._db_api_integration.database_system == "mysql":
+                        mysqlc_version = ""
+                        if db_driver == "mysql.connector":
+                            mysqlc_version = (
+                                cursor._cnx._cmysql.get_client_info()
+                            )
+                        if db_driver == "MySQLdb":
+                            mysqlc_version = (
+                                self._db_api_integration.connect_module._mysql.get_client_info()
+                            )
+                        if db_driver == "pymysql":
+                            mysqlc_version = (
+                                self._db_api_integration.connect_module.get_client_info()
+                            )
+
+                        commenter_data.update(
+                            {
+                                "mysql_client_version": mysqlc_version,
+                            }
+                        )
+
                     if self._commenter_options.get(
                         "opentelemetry_values", True
                     ):
