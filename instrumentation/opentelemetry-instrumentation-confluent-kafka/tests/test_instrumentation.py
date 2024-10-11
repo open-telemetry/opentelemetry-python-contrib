@@ -288,7 +288,10 @@ class TestConfluentKafka(TestBase):
         span_list = self.memory_exporter.get_finished_spans()
         self.assertEqual(len(span_list), 1)
         span = span_list[0]
-        self.assertEqual(span.attributes[SpanAttributes.MESSAGING_DESTINATION], expected_topic)
+        self.assertEqual(
+            span.attributes[SpanAttributes.MESSAGING_DESTINATION],
+            expected_topic,
+        )
 
 
     def test_producer_poll(self) -> None:
@@ -307,7 +310,6 @@ class TestConfluentKafka(TestBase):
         msg = producer.poll()
         self.assertIsNotNone(msg)
         self._assert_topic("topic-1")
-
 
     def test_producer_flush(self) -> None:
         instrumentation = ConfluentKafkaInstrumentor()
