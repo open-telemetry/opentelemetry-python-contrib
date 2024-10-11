@@ -280,6 +280,52 @@ class DatabaseApiIntegration:
         self.name = ""
         self.database = ""
         self.connect_module = connect_module
+        self.commenter_data = self.calculate_commenter_data()
+
+    def calculate_commenter_data(
+        self,
+    ):
+        commenter_data = {}
+        if not self.enable_commenter:
+            return commenter_data
+
+        db_driver = self.connect_module.__name__
+        db_version = ""
+        if db_driver in _DB_DRIVER_ALIASES:
+            db_version = util_version(_DB_DRIVER_ALIASES[db_driver])
+        else:
+            db_version = self.connect_module.__version__
+        commenter_data = {
+            "db_driver": f"{db_driver}:{db_version.split(' ')[0]}",
+            "dbapi_threadsafety": self.connect_module.threadsafety,
+            "dbapi_level": self.connect_module.apilevel,
+            "driver_paramstyle": self.connect_module.paramstyle,
+        }
+
+        if self.database_system == "postgresql":
+            if hasattr(self.connect_module, "__libpq_version__"):
+                libpq_version = self.connect_module.__libpq_version__
+            else:
+                libpq_version = self.connect_module.pq.__build_version__
+            commenter_data.update(
+                {
+                    "libpq_version": libpq_version,
+                }
+            )
+        elif self.database_system == "mysql":
+            mysqlc_version = ""
+            if db_driver == "MySQLdb":
+                mysqlc_version = self.connect_module._mysql.get_client_info()
+            elif db_driver == "pymysql":
+                mysqlc_version = self.connect_module.get_client_info()
+
+            commenter_data.update(
+                {
+                    "mysql_client_version": mysqlc_version,
+                }
+            )
+
+        return commenter_data
 
     def wrapped_connection(
         self,
@@ -410,7 +456,7 @@ class CursorTracer:
             return statement.decode("utf8", "replace")
         return statement
 
-    def traced_execution(  # pylint: disable=too-many-branches
+    def traced_execution(
         self,
         cursor,
         query_method: typing.Callable[..., typing.Any],
@@ -432,64 +478,23 @@ class CursorTracer:
             if args and self._commenter_enabled:
                 try:
                     args_list = list(args)
-                    db_driver = (
-                        self._db_api_integration.connect_module.__name__
-                    )
-                    db_version = ""
-                    if db_driver in _DB_DRIVER_ALIASES:
-                        db_version = util_version(
-                            _DB_DRIVER_ALIASES[db_driver]
-                        )
-                    else:
-                        db_version = (
-                            self._db_api_integration.connect_module.__version__
-                        )
 
-                    commenter_data = {
-                        "db_driver": f"{db_driver}:{db_version.split(' ')[0]}",
-                        "dbapi_threadsafety": self._connect_module.threadsafety,
-                        "dbapi_level": self._connect_module.apilevel,
-                        "driver_paramstyle": self._connect_module.paramstyle,
-                    }
-
+                    # lazy capture of mysql-connector client version using cursor
                     if (
-                        self._db_api_integration.database_system
-                        == "postgresql"
+                        self._db_api_integration.database_system == "mysql"
+                        and self._db_api_integration.connect_module.__name__
+                        == "mysql.connector"
+                        and not self._db_api_integration.commenter_data[
+                            "mysql_client_version"
+                        ]
                     ):
-                        if hasattr(self._connect_module, "__libpq_version__"):
-                            libpq_version = (
-                                self._connect_module.__libpq_version__
-                            )
-                        else:
-                            libpq_version = (
-                                self._connect_module.pq.__build_version__
-                            )
-                        commenter_data.update(
-                            {
-                                "libpq_version": libpq_version,
-                            }
-                        )
-                    elif self._db_api_integration.database_system == "mysql":
-                        mysqlc_version = ""
-                        if db_driver == "mysql.connector":
-                            mysqlc_version = (
-                                cursor._cnx._cmysql.get_client_info()
-                            )
-                        if db_driver == "MySQLdb":
-                            mysqlc_version = (
-                                self._db_api_integration.connect_module._mysql.get_client_info()
-                            )
-                        if db_driver == "pymysql":
-                            mysqlc_version = (
-                                self._db_api_integration.connect_module.get_client_info()
-                            )
+                        self._db_api_integration.commenter_data[
+                            "mysql_client_version"
+                        ] = cursor._cnx._cmysql.get_client_info()
 
-                        commenter_data.update(
-                            {
-                                "mysql_client_version": mysqlc_version,
-                            }
-                        )
-
+                    commenter_data = dict(
+                        self._db_api_integration.commenter_data
+                    )
                     if self._commenter_options.get(
                         "opentelemetry_values", True
                     ):
