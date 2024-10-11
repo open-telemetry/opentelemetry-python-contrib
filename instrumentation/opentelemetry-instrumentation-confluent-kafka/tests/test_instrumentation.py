@@ -284,6 +284,13 @@ class TestConfluentKafka(TestBase):
                     expected_attribute_value, span.attributes[attribute_key]
                 )
 
+    def _assert_topic(self, expected_topic: str) -> None:
+        span_list = self.memory_exporter.get_finished_spans()
+        self.assertEqual(len(span_list), 1)
+        span = span_list[0]
+        self.assertEqual(span.attributes[SpanAttributes.MESSAGING_DESTINATION], expected_topic)
+
+
     def test_producer_poll(self) -> None:
         instrumentation = ConfluentKafkaInstrumentor()
         message_queue = []
@@ -299,6 +306,8 @@ class TestConfluentKafka(TestBase):
         producer.produce(topic="topic-1", key="key-1", value="value-1")
         msg = producer.poll()
         self.assertIsNotNone(msg)
+        self._assert_topic("topic-1")
+
 
     def test_producer_flush(self) -> None:
         instrumentation = ConfluentKafkaInstrumentor()
@@ -315,3 +324,4 @@ class TestConfluentKafka(TestBase):
         producer.produce(topic="topic-1", key="key-1", value="value-1")
         msg = producer.flush()
         self.assertIsNotNone(msg)
+        self._assert_topic("topic-1")
