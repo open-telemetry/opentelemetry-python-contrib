@@ -293,7 +293,6 @@ class TestConfluentKafka(TestBase):
             expected_topic,
         )
 
-
     def test_producer_poll(self) -> None:
         instrumentation = ConfluentKafkaInstrumentor()
         message_queue = []
