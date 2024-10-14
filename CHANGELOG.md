@@ -5,6 +5,10 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+> [!NOTE]
+> The following components are released independently and maintain individual CHANGELOG files.
+> Use [this search for a list of all CHANGELOG.md files in this repo](https://github.com/search?q=repo%3Aopen-telemetry%2Fopentelemetry-python-contrib+path%3A**%2FCHANGELOG.md&type=code).
+
 ## Unreleased
 
 ### Added
@@ -13,14 +17,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   ([#2860](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/2860))
 - `opentelemetry-instrumentation-aiokafka` Add instrumentor and auto instrumentation support for aiokafka
   ([#2082](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/2082))
-
+- `opentelemetry-instrumentation-redis` Add additional attributes for methods create_index and search, rename those spans
+  ([#2635](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/2635))
 
 ### Fixed
 
 - `opentelemetry-instrumentation-aiokafka` Wrap `AIOKafkaConsumer.getone()` instead of `AIOKafkaConsumer.__anext__`
   ([#2874](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/2874))
 
-## Version 1.27.0/0.48b0 ()
+## Version 1.27.0/0.48b0 (2024-08-28)
 
 ### Added
 

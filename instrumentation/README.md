@@ -43,6 +43,7 @@
 | [opentelemetry-instrumentation-sqlite3](./opentelemetry-instrumentation-sqlite3) | sqlite3 | No | experimental
 | [opentelemetry-instrumentation-starlette](./opentelemetry-instrumentation-starlette) | starlette ~= 0.13.0 | Yes | experimental
 | [opentelemetry-instrumentation-system-metrics](./opentelemetry-instrumentation-system-metrics) | psutil >= 5 | No | experimental
+| [opentelemetry-instrumentation-test](./opentelemetry-instrumentation-test) | test | No | migration
 | [opentelemetry-instrumentation-threading](./opentelemetry-instrumentation-threading) | threading | No | experimental
 | [opentelemetry-instrumentation-tornado](./opentelemetry-instrumentation-tornado) | tornado >= 5.1.1 | Yes | experimental
 | [opentelemetry-instrumentation-tortoiseorm](./opentelemetry-instrumentation-tortoiseorm) | tortoise-orm >= 0.17.0 | No | experimental

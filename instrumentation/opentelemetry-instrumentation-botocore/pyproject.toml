@@ -29,7 +29,7 @@ dependencies = [
   "opentelemetry-api ~= 1.12",
   "opentelemetry-instrumentation == 0.49b0.dev",
   "opentelemetry-semantic-conventions == 0.49b0.dev",
-  "opentelemetry-propagator-aws-xray ~= 1.0.1",
+  "opentelemetry-propagator-aws-xray ~= 1.0",
 ]
 
 [project.optional-dependencies]
