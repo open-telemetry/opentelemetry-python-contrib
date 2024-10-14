@@ -84,7 +84,7 @@ class TestFunctionalPyMysql(TestBase):
         stmt = "CREATE TABLE IF NOT EXISTS test (id INT)"
         with self._tracer.start_as_current_span("rootSpan"):
             self._cursor.execute(stmt)
-        self.validate_spans("CREATE")
+        self.validate_spans("CREATE test")
 
     def test_execute_with_cursor_context_manager(self):
         """Should create a child span for execute with cursor context"""
@@ -92,7 +92,7 @@ class TestFunctionalPyMysql(TestBase):
         with self._tracer.start_as_current_span("rootSpan"):
             with self._connection.cursor() as cursor:
                 cursor.execute(stmt)
-        self.validate_spans("CREATE")
+        self.validate_spans("CREATE test")
 
     def test_executemany(self):
         """Should create a child span for executemany"""
@@ -100,7 +100,7 @@ class TestFunctionalPyMysql(TestBase):
         with self._tracer.start_as_current_span("rootSpan"):
             data = (("1",), ("2",), ("3",))
             self._cursor.executemany(stmt, data)
-        self.validate_spans("INSERT")
+        self.validate_spans("INSERT test")
 
     def test_callproc(self):
         """Should create a child span for callproc"""
@@ -116,7 +116,7 @@ class TestFunctionalPyMysql(TestBase):
             data = (("4",), ("5",), ("6",))
             self._cursor.executemany(stmt, data)
             self._connection.commit()
-        self.validate_spans("INSERT")
+        self.validate_spans("INSERT test")
 
     def test_rollback(self):
         stmt = "INSERT INTO test (id) VALUES (%s)"
@@ -124,4 +124,4 @@ class TestFunctionalPyMysql(TestBase):
             data = (("7",), ("8",), ("9",))
             self._cursor.executemany(stmt, data)
             self._connection.rollback()
-        self.validate_spans("INSERT")
+        self.validate_spans("INSERT test")
