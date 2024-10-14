@@ -11,5 +11,13 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
+import pkg_resources
 
-__version__ = "1.1.0.dev"
+# IMPORTANT: Only the TEst module needs this because it is always the first
+# package that uses the `{rootdir}/*/tests/` path and gets installed by
+# `eachdist.py` and according to `eachdist.ini`.
+
+# Naming the tests module as a namespace package ensures that
+# relative imports will resolve properly for subsequent test packages,
+# as it enables searching for a composite of multiple test modules.
+pkg_resources.declare_namespace(__name__)
