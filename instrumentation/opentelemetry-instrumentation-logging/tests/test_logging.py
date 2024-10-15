@@ -39,7 +39,7 @@ from opentelemetry.instrumentation.logging import (  # pylint: disable=no-name-i
     LoggingInstrumentor,
 )
 from opentelemetry.test.test_base import TestBase
-from opentelemetry.trace import ProxyTracer, get_tracer, get_current_span, SpanContext, TraceFlags
+from opentelemetry.trace import NoOpTracerProvider, ProxyTracer, get_tracer, get_current_span, SpanContext, TraceFlags
 
 from handlers.opentelemetry_structlog.src.exporter import StructlogHandler
 from handlers.opentelemetry_loguru.src.exporter import LoguruHandler, _STD_TO_OTEL
@@ -514,3 +514,18 @@ class TestLoguruHandler(TestBase):
         handler.sink(message)
 
 
+
+    def test_no_op_tracer_provider(self):
+        LoggingInstrumentor().uninstrument()
+        LoggingInstrumentor().instrument(tracer_provider=NoOpTracerProvider())
+
+        with self.caplog.at_level(level=logging.INFO):
+            logger = logging.getLogger("test logger")
+            logger.info("hello")
+
+            self.assertEqual(len(self.caplog.records), 1)
+            record = self.caplog.records[0]
+            self.assertEqual(record.otelSpanID, "0")
+            self.assertEqual(record.otelTraceID, "0")
+            self.assertEqual(record.otelServiceName, "")
+            self.assertEqual(record.otelTraceSampled, False)

@@ -144,6 +144,10 @@ class AutoInstrumentedConsumer(Consumer):
     ):  # pylint: disable=useless-super-delegation
         return super().consume(*args, **kwargs)
 
+    # This method is deliberately implemented in order to allow wrapt to wrap this function
+    def close(self):  # pylint: disable=useless-super-delegation
+        return super().close()
+
 
 class ProxiedProducer(Producer):
     def __init__(self, producer: Producer, tracer: Tracer):
@@ -151,10 +155,13 @@ class ProxiedProducer(Producer):
         self._tracer = tracer
 
     def flush(self, timeout=-1):
-        self._producer.flush(timeout)
+        return self._producer.flush(timeout)
 
     def poll(self, timeout=-1):
-        self._producer.poll(timeout)
+        return self._producer.poll(timeout)
+
+    def purge(self, in_queue=True, in_flight=True, blocking=True):
+        self._producer.purge(in_queue, in_flight, blocking)
 
     def produce(
         self, topic, value=None, *args, **kwargs
@@ -177,6 +184,11 @@ class ProxiedConsumer(Consumer):
         self._tracer = tracer
         self._current_consume_span = None
         self._current_context_token = None
+
+    def close(self):
+        return ConfluentKafkaInstrumentor.wrap_close(
+            self._consumer.close, self
+        )
 
     def committed(self, partitions, timeout=-1):
         return self._consumer.committed(partitions, timeout)
@@ -300,6 +312,9 @@ class ConfluentKafkaInstrumentor(BaseInstrumentor):
                 func, instance, self._tracer, args, kwargs
             )
 
+        def _inner_wrap_close(func, instance):
+            return ConfluentKafkaInstrumentor.wrap_close(func, instance)
+
         wrapt.wrap_function_wrapper(
             AutoInstrumentedProducer,
             "produce",
@@ -316,6 +331,12 @@ class ConfluentKafkaInstrumentor(BaseInstrumentor):
             AutoInstrumentedConsumer,
             "consume",
             _inner_wrap_consume,
+        )
+
+        wrapt.wrap_function_wrapper(
+            AutoInstrumentedConsumer,
+            "close",
+            _inner_wrap_close,
         )
 
     def _uninstrument(self, **kwargs):
@@ -400,3 +421,9 @@ class ConfluentKafkaInstrumentor(BaseInstrumentor):
         )
 
         return records
+
+    @staticmethod
+    def wrap_close(func, instance):
+        if instance._current_consume_span:
+            _end_current_consume_span(instance)
+        func()

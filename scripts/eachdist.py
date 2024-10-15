@@ -198,7 +198,6 @@ def parse_args(args=None):
 
     setup_instparser(instparser)
     instparser.add_argument("--editable", "-e", action="store_true")
-    instparser.add_argument("--with-test-deps", action="store_true")
     instparser.add_argument("--with-dev-deps", action="store_true")
     instparser.add_argument("--eager-upgrades", action="store_true")
 
@@ -211,7 +210,6 @@ def parse_args(args=None):
         editable=True,
         with_dev_deps=True,
         eager_upgrades=True,
-        with_test_deps=True,
     )
 
     lintparser = subparsers.add_parser(
@@ -262,7 +260,23 @@ def parse_args(args=None):
         See description of exec for available options."""
         ),
     )
+    versionparser.add_argument(
+        "--package",
+        "-p",
+        required=False,
+        help="Name of a specific package to get the version for",
+    )
 
+    findparser = subparsers.add_parser(
+        "find-package", help="Find package path.",
+    )
+    findparser.set_defaults(func=find_package_args)
+    findparser.add_argument(
+        "--package",
+        "-p",
+        required=True,
+        help="Name of the package to find",
+    )
     return parser.parse_args(args)
 
 
@@ -467,16 +481,7 @@ def install_args(args):
             check=True,
         )
 
-    allfmt = "-e 'file://{}" if args.editable else "'file://{}"
-    # packages should provide an extra_requires that is named
-    # 'test', to denote test dependencies.
-    extras = []
-    if args.with_test_deps:
-        extras.append("test")
-    if extras:
-        allfmt += f"[{','.join(extras)}]"
-    # note the trailing single quote, to close the quote opened above.
-    allfmt += "'"
+    allfmt = "-e 'file://{}'" if args.editable else "'file://{}'"
 
     execute_args(
         parse_subargs(
@@ -489,6 +494,7 @@ def install_args(args):
             ),
         )
     )
+
     if args.with_dev_deps:
         rootpath = find_projectroot()
         runsubprocess(
@@ -736,8 +742,37 @@ def format_args(args):
 def version_args(args):
     cfg = ConfigParser()
     cfg.read(str(find_projectroot() / "eachdist.ini"))
-    print(cfg[args.mode]["version"])
 
+    if not args.package:
+        print(cfg[args.mode]["version"])
+        return
+
+    root = find_projectroot()
+    for package in find_targets_unordered(root):
+        if args.package == package.name:
+            version_file = find("version.py", package)
+            if version_file is None:
+                print(f"file missing: {package}/version.py")
+                return
+            with open(version_file, encoding="utf-8") as file:
+                for line in file:
+                    if "__version__" in line:
+                        print(line.split('"')[1])
+                        return
+
+    print("package not found")
+    sys.exit(1)
+
+def find_package_args(args):
+    root = find_projectroot()
+    for package in find_targets_unordered(root):
+        if args.package == package.name:
+            relative_path = package.relative_to(root)
+            print(relative_path)
+            return
+
+    print("package not found")
+    sys.exit(1)
 
 def main():
     args = parse_args()

@@ -76,6 +76,7 @@ from urllib.parse import urlencode
 
 from wrapt import wrap_function_wrapper
 
+from opentelemetry import context as context_api
 from opentelemetry.context.context import Context
 from opentelemetry.instrumentation.aws_lambda.package import _instruments
 from opentelemetry.instrumentation.aws_lambda.version import __version__
@@ -83,10 +84,6 @@ from opentelemetry.instrumentation.instrumentor import BaseInstrumentor
 from opentelemetry.instrumentation.utils import unwrap
 from opentelemetry.metrics import MeterProvider, get_meter_provider
 from opentelemetry.propagate import get_global_textmap
-from opentelemetry.propagators.aws.aws_xray_propagator import (
-    TRACE_HEADER_KEY,
-    AwsXRayPropagator,
-)
 from opentelemetry.semconv.resource import ResourceAttributes
 from opentelemetry.semconv.trace import SpanAttributes
 from opentelemetry.trace import (
@@ -96,7 +93,6 @@ from opentelemetry.trace import (
     get_tracer,
     get_tracer_provider,
 )
-from opentelemetry.trace.propagation import get_current_span
 from opentelemetry.trace.status import Status, StatusCode
 
 logger = logging.getLogger(__name__)
@@ -106,9 +102,6 @@ _X_AMZN_TRACE_ID = "_X_AMZN_TRACE_ID"
 ORIG_HANDLER = "ORIG_HANDLER"
 OTEL_INSTRUMENTATION_AWS_LAMBDA_FLUSH_TIMEOUT = (
     "OTEL_INSTRUMENTATION_AWS_LAMBDA_FLUSH_TIMEOUT"
-)
-OTEL_LAMBDA_DISABLE_AWS_CONTEXT_PROPAGATION = (
-    "OTEL_LAMBDA_DISABLE_AWS_CONTEXT_PROPAGATION"
 )
 
 
@@ -145,7 +138,6 @@ def _default_event_context_extractor(lambda_event: Any) -> Context:
 def _determine_parent_context(
     lambda_event: Any,
     event_context_extractor: Callable[[Any], Context],
-    disable_aws_context_propagation: bool = False,
 ) -> Context:
     """Determine the parent context for the current Lambda invocation.
 
@@ -159,36 +151,14 @@ def _determine_parent_context(
             Event as input and extracts an OTel Context from it. By default,
             the context is extracted from the HTTP headers of an API Gateway
             request.
-        disable_aws_context_propagation: By default, this instrumentation
-            will try to read the context from the `_X_AMZN_TRACE_ID` environment
-            variable set by Lambda, set this to `True` to disable this behavior.
     Returns:
         A Context with configuration found in the carrier.
     """
-    parent_context = None
 
-    if not disable_aws_context_propagation:
-        xray_env_var = os.environ.get(_X_AMZN_TRACE_ID)
+    if event_context_extractor is None:
+        return _default_event_context_extractor(lambda_event)
 
-        if xray_env_var:
-            parent_context = AwsXRayPropagator().extract(
-                {TRACE_HEADER_KEY: xray_env_var}
-            )
-
-    if (
-        parent_context
-        and get_current_span(parent_context)
-        .get_span_context()
-        .trace_flags.sampled
-    ):
-        return parent_context
-
-    if event_context_extractor:
-        parent_context = event_context_extractor(lambda_event)
-    else:
-        parent_context = _default_event_context_extractor(lambda_event)
-
-    return parent_context
+    return event_context_extractor(lambda_event)
 
 
 def _set_api_gateway_v1_proxy_attributes(
@@ -286,14 +256,15 @@ def _instrument(
     flush_timeout,
     event_context_extractor: Callable[[Any], Context],
     tracer_provider: TracerProvider = None,
-    disable_aws_context_propagation: bool = False,
     meter_provider: MeterProvider = None,
 ):
+
     # pylint: disable=too-many-locals
     # pylint: disable=too-many-statements
     def _instrumented_lambda_handler_call(  # noqa pylint: disable=too-many-branches
         call_wrapped, instance, args, kwargs
     ):
+
         orig_handler_name = ".".join(
             [wrapped_module_name, wrapped_function_name]
         )
@@ -303,12 +274,13 @@ def _instrument(
         parent_context = _determine_parent_context(
             lambda_event,
             event_context_extractor,
-            disable_aws_context_propagation,
         )
 
-        span_kind = None
         try:
-            if lambda_event["Records"][0]["eventSource"] in {
+            event_source = lambda_event["Records"][0].get(
+                "eventSource"
+            ) or lambda_event["Records"][0].get("EventSource")
+            if event_source in {
                 "aws:sqs",
                 "aws:s3",
                 "aws:sns",
@@ -332,64 +304,74 @@ def _instrument(
             schema_url="https://opentelemetry.io/schemas/1.11.0",
         )
 
-        with tracer.start_as_current_span(
-            name=orig_handler_name,
-            context=parent_context,
-            kind=span_kind,
-        ) as span:
-            if span.is_recording():
-                lambda_context = args[1]
-                # NOTE: The specs mention an exception here, allowing the
-                # `ResourceAttributes.FAAS_ID` attribute to be set as a span
-                # attribute instead of a resource attribute.
-                #
-                # See more:
-                # https://github.com/open-telemetry/opentelemetry-specification/blob/main/specification/trace/semantic_conventions/faas.md#example
-                span.set_attribute(
-                    ResourceAttributes.FAAS_ID,
-                    lambda_context.invoked_function_arn,
-                )
-                span.set_attribute(
-                    SpanAttributes.FAAS_EXECUTION,
-                    lambda_context.aws_request_id,
-                )
-
-                # NOTE: `cloud.account.id` can be parsed from the ARN as the fifth item when splitting on `:`
-                #
-                # See more:
-                # https://github.com/open-telemetry/semantic-conventions/blob/main/docs/faas/aws-lambda.md#all-triggers
-                account_id = lambda_context.invoked_function_arn.split(":")[4]
-                span.set_attribute(
-                    ResourceAttributes.CLOUD_ACCOUNT_ID,
-                    account_id,
-                )
-
-            exception = None
-            try:
-                result = call_wrapped(*args, **kwargs)
-            except Exception as exc:  # pylint: disable=W0703
-                exception = exc
-                span.set_status(Status(StatusCode.ERROR))
-                span.record_exception(exception)
-
-            # If the request came from an API Gateway, extract http attributes from the event
-            # https://github.com/open-telemetry/opentelemetry-specification/blob/main/specification/trace/semantic_conventions/instrumentation/aws-lambda.md#api-gateway
-            # https://github.com/open-telemetry/opentelemetry-specification/blob/main/specification/trace/semantic_conventions/http.md#http-server-semantic-conventions
-            if isinstance(lambda_event, dict) and lambda_event.get(
-                "requestContext"
-            ):
-                span.set_attribute(SpanAttributes.FAAS_TRIGGER, "http")
-
-                if lambda_event.get("version") == "2.0":
-                    _set_api_gateway_v2_proxy_attributes(lambda_event, span)
-                else:
-                    _set_api_gateway_v1_proxy_attributes(lambda_event, span)
-
-                if isinstance(result, dict) and result.get("statusCode"):
+        token = context_api.attach(parent_context)
+        try:
+            with tracer.start_as_current_span(
+                name=orig_handler_name,
+                kind=span_kind,
+            ) as span:
+                if span.is_recording():
+                    lambda_context = args[1]
+                    # NOTE: The specs mention an exception here, allowing the
+                    # `SpanAttributes.CLOUD_RESOURCE_ID` attribute to be set as a span
+                    # attribute instead of a resource attribute.
+                    #
+                    # See more:
+                    # https://github.com/open-telemetry/semantic-conventions/blob/main/docs/faas/aws-lambda.md#resource-detector
                     span.set_attribute(
-                        SpanAttributes.HTTP_STATUS_CODE,
-                        result.get("statusCode"),
+                        SpanAttributes.CLOUD_RESOURCE_ID,
+                        lambda_context.invoked_function_arn,
                     )
+                    span.set_attribute(
+                        SpanAttributes.FAAS_INVOCATION_ID,
+                        lambda_context.aws_request_id,
+                    )
+
+                    # NOTE: `cloud.account.id` can be parsed from the ARN as the fifth item when splitting on `:`
+                    #
+                    # See more:
+                    # https://github.com/open-telemetry/semantic-conventions/blob/main/docs/faas/aws-lambda.md#all-triggers
+                    account_id = lambda_context.invoked_function_arn.split(
+                        ":"
+                    )[4]
+                    span.set_attribute(
+                        ResourceAttributes.CLOUD_ACCOUNT_ID,
+                        account_id,
+                    )
+
+                exception = None
+                result = None
+                try:
+                    result = call_wrapped(*args, **kwargs)
+                except Exception as exc:  # pylint: disable=W0703
+                    exception = exc
+                    span.set_status(Status(StatusCode.ERROR))
+                    span.record_exception(exception)
+
+                # If the request came from an API Gateway, extract http attributes from the event
+                # https://github.com/open-telemetry/opentelemetry-specification/blob/main/specification/trace/semantic_conventions/instrumentation/aws-lambda.md#api-gateway
+                # https://github.com/open-telemetry/opentelemetry-specification/blob/main/specification/trace/semantic_conventions/http.md#http-server-semantic-conventions
+                if isinstance(lambda_event, dict) and lambda_event.get(
+                    "requestContext"
+                ):
+                    span.set_attribute(SpanAttributes.FAAS_TRIGGER, "http")
+
+                    if lambda_event.get("version") == "2.0":
+                        _set_api_gateway_v2_proxy_attributes(
+                            lambda_event, span
+                        )
+                    else:
+                        _set_api_gateway_v1_proxy_attributes(
+                            lambda_event, span
+                        )
+
+                    if isinstance(result, dict) and result.get("statusCode"):
+                        span.set_attribute(
+                            SpanAttributes.HTTP_STATUS_CODE,
+                            result.get("statusCode"),
+                        )
+        finally:
+            context_api.detach(token)
 
         now = time.time()
         _tracer_provider = tracer_provider or get_tracer_provider()
@@ -438,7 +420,7 @@ class AwsLambdaInstrumentor(BaseInstrumentor):
         """Instruments Lambda Handlers on AWS Lambda.
 
         See more:
-        https://github.com/open-telemetry/opentelemetry-specification/blob/main/specification/trace/semantic_conventions/instrumentation/aws-lambda.md#instrumenting-aws-lambda
+        https://github.com/open-telemetry/semantic-conventions/blob/main/docs/faas/aws-lambda.md
 
         Args:
             **kwargs: Optional arguments
@@ -448,11 +430,16 @@ class AwsLambdaInstrumentor(BaseInstrumentor):
                     Event as input and extracts an OTel Context from it. By default,
                     the context is extracted from the HTTP headers of an API Gateway
                     request.
-                ``disable_aws_context_propagation``: By default, this instrumentation
-                    will try to read the context from the `_X_AMZN_TRACE_ID` environment
-                    variable set by Lambda, set this to `True` to disable this behavior.
         """
         lambda_handler = os.environ.get(ORIG_HANDLER, os.environ.get(_HANDLER))
+        if not lambda_handler:
+            logger.warning(
+                (
+                    "Could not find the ORIG_HANDLER or _HANDLER in the environment variables. ",
+                    "This instrumentation requires the OpenTelemetry Lambda extension installed.",
+                )
+            )
+            return
         # pylint: disable=attribute-defined-outside-init
         (
             self._wrapped_module_name,
@@ -472,16 +459,6 @@ class AwsLambdaInstrumentor(BaseInstrumentor):
                 flush_timeout_env,
             )
 
-        disable_aws_context_propagation = kwargs.get(
-            "disable_aws_context_propagation", False
-        ) or os.getenv(
-            OTEL_LAMBDA_DISABLE_AWS_CONTEXT_PROPAGATION, "False"
-        ).strip().lower() in (
-            "true",
-            "1",
-            "t",
-        )
-
         _instrument(
             self._wrapped_module_name,
             self._wrapped_function_name,
@@ -490,7 +467,6 @@ class AwsLambdaInstrumentor(BaseInstrumentor):
                 "event_context_extractor", _default_event_context_extractor
             ),
             tracer_provider=kwargs.get("tracer_provider"),
-            disable_aws_context_propagation=disable_aws_context_propagation,
             meter_provider=kwargs.get("meter_provider"),
         )
 
