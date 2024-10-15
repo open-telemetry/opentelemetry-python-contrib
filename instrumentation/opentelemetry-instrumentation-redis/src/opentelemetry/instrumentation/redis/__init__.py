@@ -106,7 +106,10 @@ from opentelemetry.instrumentation.redis.util import (
     _value_or_none,
 )
 from opentelemetry.instrumentation.redis.version import __version__
-from opentelemetry.instrumentation.utils import unwrap
+from opentelemetry.instrumentation.utils import (
+    is_instrumentation_enabled,
+    unwrap,
+)
 from opentelemetry.semconv.trace import SpanAttributes
 from opentelemetry.trace import Span, StatusCode
 
@@ -188,6 +191,10 @@ def _instrument(
     response_hook: _ResponseHookT = None,
 ):
     def _traced_execute_command(func, instance, args, kwargs):
+
+        if not is_instrumentation_enabled():
+            return func(*args, **kwargs)
+
         query = _format_command_args(args)
         name = _build_span_name(instance, args)
         with tracer.start_as_current_span(
@@ -210,6 +217,10 @@ def _instrument(
             return response
 
     def _traced_execute_pipeline(func, instance, args, kwargs):
+
+        if not is_instrumentation_enabled():
+            return func(*args, **kwargs)
+
         (
             command_stack,
             resource,
@@ -326,6 +337,10 @@ def _instrument(
         )
 
     async def _async_traced_execute_command(func, instance, args, kwargs):
+
+        if not is_instrumentation_enabled():
+            return await func(*args, **kwargs)
+
         query = _format_command_args(args)
         name = _build_span_name(instance, args)
 
@@ -344,6 +359,10 @@ def _instrument(
             return response
 
     async def _async_traced_execute_pipeline(func, instance, args, kwargs):
+
+        if not is_instrumentation_enabled():
+            return await func(*args, **kwargs)
+
         (
             command_stack,
             resource,
