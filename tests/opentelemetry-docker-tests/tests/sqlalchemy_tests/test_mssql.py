@@ -29,6 +29,7 @@ MSSQL_CONFIG = {
     "password": os.getenv("TEST_MSSQL_PASSWORD", "yourStrong(!)Password"),
     "database": os.getenv("TEST_MSSQL_DATABASE", "opentelemetry-tests"),
     "driver": os.getenv("TEST_MSSQL_DRIVER", "ODBC+Driver+17+for+SQL+Server"),
+    "trusted_connection": os.getenv("TEST_MSSQL_TRUSTED_CONNECTION", "yes"),
 }
 
 
@@ -40,7 +41,7 @@ class MssqlConnectorTestCase(SQLAlchemyTestMixin):
     VENDOR = "mssql"
     SQL_DB = "opentelemetry-tests"
     ENGINE_ARGS = {
-        "url": "mssql+pyodbc://%(user)s:%(password)s@%(host)s:%(port)s/%(database)s?driver=%(driver)s"
+        "url": "mssql+pyodbc://%(user)s:%(password)s@%(host)s:%(port)s/%(database)s?driver=%(driver)s&TrustServerCertificate=%(trusted_connection)s"
         % MSSQL_CONFIG
     }
 
