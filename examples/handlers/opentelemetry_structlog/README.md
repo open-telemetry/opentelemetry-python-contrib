@@ -53,7 +53,7 @@ logger_provider = LoggerProvider(
 )
 set_logger_provider(logger_provider)
 
-# Replace the standard logging configuration with Loguru
+# Replace the standard logging configuration with structlog
 structlog_handler = StructlogHandler(service_name="flask-structlog-demo", server_hostname="instance-1", exporter=OTLPLogExporter(insecure=True)) 
 structlog_handler._logger_provider = logger_provider
 structlog_logger = structlog.wrap_logger(structlog.get_logger(), processors=[structlog_handler])  # Add  StructlogHandler to the logger
