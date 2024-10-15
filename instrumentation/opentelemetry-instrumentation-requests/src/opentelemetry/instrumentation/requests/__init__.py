@@ -31,6 +31,30 @@ Usage
 Configuration
 -------------
 
+Request/Response hooks
+**********************
+
+The requests instrumentation supports extending tracing behavior with the help of
+request and response hooks. These are functions that are called back by the instrumentation
+right after a Span is created for a request and right before the span is finished processing a response respectively.
+The hooks can be configured as follows:
+
+.. code:: python
+
+    # `request_obj` is an instance of requests.PreparedRequest
+    def request_hook(span, request_obj):
+        pass
+
+    # `request_obj` is an instance of requests.PreparedRequest
+    # `response` is an instance of requests.Response
+    def response_hook(span, request_obj, response)
+        pass
+
+    RequestsInstrumentor().instrument(
+        request_hook=request_hook, response_hook=response_hook)
+    )
+
+
 Exclude lists
 *************
 To exclude certain URLs from being tracked, set the environment variable ``OTEL_PYTHON_REQUESTS_EXCLUDED_URLS``
@@ -59,22 +83,20 @@ from requests.sessions import Session
 from requests.structures import CaseInsensitiveDict
 
 from opentelemetry.instrumentation._semconv import (
-    _METRIC_ATTRIBUTES_CLIENT_DURATION_NAME,
-    _SPAN_ATTRIBUTES_ERROR_TYPE,
-    _SPAN_ATTRIBUTES_NETWORK_PEER_ADDRESS,
-    _SPAN_ATTRIBUTES_NETWORK_PEER_PORT,
-    _filter_duration_attrs,
+    _client_duration_attrs_new,
+    _client_duration_attrs_old,
+    _filter_semconv_duration_attrs,
     _get_schema_url,
+    _HTTPStabilityMode,
     _OpenTelemetrySemanticConventionStability,
-    _OpenTelemetryStabilityMode,
     _OpenTelemetryStabilitySignalType,
     _report_new,
     _report_old,
-    _set_http_hostname,
+    _set_http_host_client,
     _set_http_method,
-    _set_http_net_peer_name,
+    _set_http_net_peer_name_client,
     _set_http_network_protocol_version,
-    _set_http_port,
+    _set_http_peer_port_client,
     _set_http_scheme,
     _set_http_status_code,
     _set_http_url,
@@ -89,7 +111,15 @@ from opentelemetry.instrumentation.utils import (
 )
 from opentelemetry.metrics import Histogram, get_meter
 from opentelemetry.propagate import inject
+from opentelemetry.semconv.attributes.error_attributes import ERROR_TYPE
+from opentelemetry.semconv.attributes.network_attributes import (
+    NETWORK_PEER_ADDRESS,
+    NETWORK_PEER_PORT,
+)
 from opentelemetry.semconv.metrics import MetricInstruments
+from opentelemetry.semconv.metrics.http_metrics import (
+    HTTP_CLIENT_REQUEST_DURATION,
+)
 from opentelemetry.trace import SpanKind, Tracer, get_tracer
 from opentelemetry.trace.span import Span
 from opentelemetry.trace.status import StatusCode
@@ -117,7 +147,7 @@ def _instrument(
     request_hook: _RequestHookT = None,
     response_hook: _ResponseHookT = None,
     excluded_urls: ExcludeList = None,
-    sem_conv_opt_in_mode: _OpenTelemetryStabilityMode = _OpenTelemetryStabilityMode.DEFAULT,
+    sem_conv_opt_in_mode: _HTTPStabilityMode = _HTTPStabilityMode.DEFAULT,
 ):
     """Enables tracing of all requests calls that go through
     :code:`requests.session.Session.request` (this includes
@@ -158,50 +188,54 @@ def _instrument(
 
         span_attributes = {}
         _set_http_method(
-            span_attributes, method, span_name, sem_conv_opt_in_mode
+            span_attributes,
+            method,
+            sanitize_method(method),
+            sem_conv_opt_in_mode,
         )
         _set_http_url(span_attributes, url, sem_conv_opt_in_mode)
 
         metric_labels = {}
         _set_http_method(
-            metric_labels, method, span_name, sem_conv_opt_in_mode
+            metric_labels,
+            method,
+            sanitize_method(method),
+            sem_conv_opt_in_mode,
         )
 
         try:
             parsed_url = urlparse(url)
             if parsed_url.scheme:
-                _set_http_scheme(
-                    metric_labels, parsed_url.scheme, sem_conv_opt_in_mode
-                )
+                if _report_old(sem_conv_opt_in_mode):
+                    # TODO: Support opt-in for url.scheme in new semconv
+                    _set_http_scheme(
+                        metric_labels, parsed_url.scheme, sem_conv_opt_in_mode
+                    )
             if parsed_url.hostname:
-                _set_http_hostname(
+                _set_http_host_client(
                     metric_labels, parsed_url.hostname, sem_conv_opt_in_mode
                 )
-                _set_http_net_peer_name(
+                _set_http_net_peer_name_client(
                     metric_labels, parsed_url.hostname, sem_conv_opt_in_mode
                 )
                 if _report_new(sem_conv_opt_in_mode):
-                    _set_http_hostname(
+                    _set_http_host_client(
                         span_attributes,
                         parsed_url.hostname,
                         sem_conv_opt_in_mode,
                     )
                     # Use semconv library when available
-                    span_attributes[
-                        _SPAN_ATTRIBUTES_NETWORK_PEER_ADDRESS
-                    ] = parsed_url.hostname
+                    span_attributes[NETWORK_PEER_ADDRESS] = parsed_url.hostname
             if parsed_url.port:
-                _set_http_port(
+                _set_http_peer_port_client(
                     metric_labels, parsed_url.port, sem_conv_opt_in_mode
                 )
                 if _report_new(sem_conv_opt_in_mode):
-                    _set_http_port(
+                    _set_http_peer_port_client(
                         span_attributes, parsed_url.port, sem_conv_opt_in_mode
                     )
                     # Use semconv library when available
-                    span_attributes[
-                        _SPAN_ATTRIBUTES_NETWORK_PEER_PORT
-                    ] = parsed_url.port
+                    span_attributes[NETWORK_PEER_PORT] = parsed_url.port
         except ValueError:
             pass
 
@@ -225,9 +259,7 @@ def _instrument(
                     exception = exc
                     result = getattr(exc, "response", None)
                 finally:
-                    elapsed_time = max(
-                        round((default_timer() - start_time) * 1000), 0
-                    )
+                    elapsed_time = max(default_timer() - start_time, 0)
 
             if isinstance(result, Response):
                 span_attributes = {}
@@ -248,12 +280,8 @@ def _instrument(
                         _report_new(sem_conv_opt_in_mode)
                         and status_code is StatusCode.ERROR
                     ):
-                        span_attributes[_SPAN_ATTRIBUTES_ERROR_TYPE] = str(
-                            result.status_code
-                        )
-                        metric_labels[_SPAN_ATTRIBUTES_ERROR_TYPE] = str(
-                            result.status_code
-                        )
+                        span_attributes[ERROR_TYPE] = str(result.status_code)
+                        metric_labels[ERROR_TYPE] = str(result.status_code)
 
                 if result.raw is not None:
                     version = getattr(result.raw, "version", None)
@@ -276,24 +304,26 @@ def _instrument(
                     response_hook(span, request, result)
 
             if exception is not None and _report_new(sem_conv_opt_in_mode):
-                span.set_attribute(
-                    _SPAN_ATTRIBUTES_ERROR_TYPE, type(exception).__qualname__
-                )
-                metric_labels[_SPAN_ATTRIBUTES_ERROR_TYPE] = type(
-                    exception
-                ).__qualname__
+                span.set_attribute(ERROR_TYPE, type(exception).__qualname__)
+                metric_labels[ERROR_TYPE] = type(exception).__qualname__
 
             if duration_histogram_old is not None:
-                duration_attrs_old = _filter_duration_attrs(
-                    metric_labels, _OpenTelemetryStabilityMode.DEFAULT
+                duration_attrs_old = _filter_semconv_duration_attrs(
+                    metric_labels,
+                    _client_duration_attrs_old,
+                    _client_duration_attrs_new,
+                    _HTTPStabilityMode.DEFAULT,
                 )
                 duration_histogram_old.record(
                     max(round(elapsed_time * 1000), 0),
                     attributes=duration_attrs_old,
                 )
             if duration_histogram_new is not None:
-                duration_attrs_new = _filter_duration_attrs(
-                    metric_labels, _OpenTelemetryStabilityMode.HTTP
+                duration_attrs_new = _filter_semconv_duration_attrs(
+                    metric_labels,
+                    _client_duration_attrs_old,
+                    _client_duration_attrs_new,
+                    _HTTPStabilityMode.HTTP,
                 )
                 duration_histogram_new.record(
                     elapsed_time, attributes=duration_attrs_new
@@ -341,7 +371,10 @@ def get_default_span_name(method):
     Returns:
         span name
     """
-    return sanitize_method(method.upper().strip())
+    method = sanitize_method(method.strip())
+    if method == "_OTHER":
+        return "HTTP"
+    return method
 
 
 class RequestsInstrumentor(BaseInstrumentor):
@@ -392,7 +425,7 @@ class RequestsInstrumentor(BaseInstrumentor):
         duration_histogram_new = None
         if _report_new(semconv_opt_in_mode):
             duration_histogram_new = meter.create_histogram(
-                name=_METRIC_ATTRIBUTES_CLIENT_DURATION_NAME,
+                name=HTTP_CLIENT_REQUEST_DURATION,
                 unit="s",
                 description="Duration of HTTP client requests.",
             )
@@ -402,9 +435,11 @@ class RequestsInstrumentor(BaseInstrumentor):
             duration_histogram_new,
             request_hook=kwargs.get("request_hook"),
             response_hook=kwargs.get("response_hook"),
-            excluded_urls=_excluded_urls_from_env
-            if excluded_urls is None
-            else parse_excluded_urls(excluded_urls),
+            excluded_urls=(
+                _excluded_urls_from_env
+                if excluded_urls is None
+                else parse_excluded_urls(excluded_urls)
+            ),
             sem_conv_opt_in_mode=semconv_opt_in_mode,
         )
 
