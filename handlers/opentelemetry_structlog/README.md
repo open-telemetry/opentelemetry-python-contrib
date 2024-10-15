@@ -1,1 +1,0 @@
-# Structlog handler for OpenTelemetry
