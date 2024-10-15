@@ -13,33 +13,25 @@
 # limitations under the License.
 
 import logging
+from datetime import datetime, timezone
 from typing import Optional
 from unittest import mock
 
+# Imports for StructlogHandler tests
+from unittest.mock import MagicMock, Mock, patch
+
 import pytest
 
-# Imports for StructlogHandler tests
-from unittest.mock import Mock
-from handlers.opentelemetry_structlog.src.exporter import LogExporter
-
-from datetime import datetime, timezone
-
-from unittest.mock import MagicMock, patch
-
-
-
+from handlers.opentelemetry_structlog.src.exporter import (
+    LogExporter,
+    StructlogHandler,
+)
 from opentelemetry.instrumentation.logging import (  # pylint: disable=no-name-in-module
     DEFAULT_LOGGING_FORMAT,
     LoggingInstrumentor,
 )
 from opentelemetry.test.test_base import TestBase
-from opentelemetry.trace import (
-    ProxyTracer,
-    get_tracer,
-)
-
-from handlers.opentelemetry_structlog.src.exporter import StructlogHandler
-
+from opentelemetry.trace import ProxyTracer, get_tracer
 
 
 class FakeTracerProvider:
@@ -115,7 +107,9 @@ class TestLoggingInstrumentor(TestBase):
             span_id = format(span.get_span_context().span_id, "016x")
             trace_id = format(span.get_span_context().trace_id, "032x")
             trace_sampled = span.get_span_context().trace_flags.sampled
-            self.assert_trace_context_injected(span_id, trace_id, trace_sampled)
+            self.assert_trace_context_injected(
+                span_id, trace_id, trace_sampled
+            )
 
     def test_trace_context_injection_without_span(self):
         self.assert_trace_context_injected("0", "0", False)
@@ -160,7 +154,9 @@ class TestLoggingInstrumentor(TestBase):
         env_patch.stop()
 
     @mock.patch("logging.basicConfig")
-    def test_custom_format_and_level_api(self, basic_config_mock):  # pylint: disable=no-self-use
+    def test_custom_format_and_level_api(
+        self, basic_config_mock
+    ):  # pylint: disable=no-self-use
         LoggingInstrumentor().uninstrument()
         LoggingInstrumentor().instrument(
             set_logging_format=True,
@@ -199,7 +195,9 @@ class TestLoggingInstrumentor(TestBase):
             span_id = format(span.get_span_context().span_id, "016x")
             trace_id = format(span.get_span_context().trace_id, "032x")
             trace_sampled = span.get_span_context().trace_flags.sampled
-            self.assert_trace_context_injected(span_id, trace_id, trace_sampled)
+            self.assert_trace_context_injected(
+                span_id, trace_id, trace_sampled
+            )
 
         LoggingInstrumentor().uninstrument()
 
@@ -217,6 +215,21 @@ class TestLoggingInstrumentor(TestBase):
                 self.assertFalse(hasattr(record, "otelTraceID"))
                 self.assertFalse(hasattr(record, "otelServiceName"))
                 self.assertFalse(hasattr(record, "otelTraceSampled"))
+
+    def test_no_op_tracer_provider(self):
+        LoggingInstrumentor().uninstrument()
+        LoggingInstrumentor().instrument(tracer_provider=NoOpTracerProvider())
+
+        with self.caplog.at_level(level=logging.INFO):
+            logger = logging.getLogger("test logger")
+            logger.info("hello")
+
+            self.assertEqual(len(self.caplog.records), 1)
+            record = self.caplog.records[0]
+            self.assertEqual(record.otelSpanID, "0")
+            self.assertEqual(record.otelTraceID, "0")
+            self.assertEqual(record.otelServiceName, "")
+            self.assertEqual(record.otelTraceSampled, False)
 
 
 # StructlogHandler Tests
@@ -243,7 +256,9 @@ class TestStructlogHandler(TestBase):
             # Mock the LogExporter dependency
             mock_exporter = Mock(spec=LogExporter)
             # Instantiate the StructlogHandler with mock dependencies
-            exporter = StructlogHandler("test_service", "test_host", mock_exporter)
+            exporter = StructlogHandler(
+                "test_service", "test_host", mock_exporter
+            )
             return exporter
 
     def test_initialization(self):
@@ -272,7 +287,9 @@ class TestStructlogHandler(TestBase):
         # Mocking an exception event
         exception = (ValueError, ValueError("mock error"), None)
         event_dict = {"exception": exception}
-        parsed_exception = self.structlog_exporter()._parse_exception(event_dict)
+        parsed_exception = self.structlog_exporter()._parse_exception(
+            event_dict
+        )
         assert (
             parsed_exception["exception.type"] == "ValueError"
         ), "Exception type should be parsed"
@@ -285,7 +302,9 @@ class TestStructlogHandler(TestBase):
         fixed_datetime = datetime(2020, 1, 1, tzinfo=timezone.utc)
         event_dict = {"timestamp": fixed_datetime}
         timestamp = self.structlog_exporter()._parse_timestamp(event_dict)
-        expected_timestamp = 1577836800000000000  # Expected nanoseconds since epoch
+        expected_timestamp = (
+            1577836800000000000  # Expected nanoseconds since epoch
+        )
         assert (
             timestamp == expected_timestamp
         ), "Timestamp should be correctly parsed to nanoseconds"
@@ -294,7 +313,9 @@ class TestStructlogHandler(TestBase):
         # Mock the logger and exporter
         exporter = MagicMock()
         logger = MagicMock()
-        exporter_instance = StructlogHandler("test_service", "test_host", exporter)
+        exporter_instance = StructlogHandler(
+            "test_service", "test_host", exporter
+        )
         exporter_instance._logger = logger
 
         # Define an event dictionary
@@ -316,11 +337,17 @@ class TestStructlogHandler(TestBase):
         """Verify that event_dict translates correctly into a LogRecord with the correct attributes."""
         exporter = MagicMock()
         logger = MagicMock()
-        exporter_instance = StructlogHandler("test_service", "test_host", exporter)
+        exporter_instance = StructlogHandler(
+            "test_service", "test_host", exporter
+        )
         exporter_instance._logger = logger
 
         timestamp = datetime.now(timezone.utc).isoformat()
-        event_dict = {"level": "info", "event": "test event", "timestamp": timestamp}
+        event_dict = {
+            "level": "info",
+            "event": "test event",
+            "timestamp": timestamp,
+        }
         # Get the StructlogHandler instance
 
         # Assuming StructlogHandler has a method to process and possibly log the event_dict directly.
@@ -387,16 +414,22 @@ class TestStructlogHandler(TestBase):
             exporter_instance = self.structlog_exporter()
 
             with patch.object(exporter_instance, "_logger") as mocked_logger:
-                exporter_instance(event_dict=event_dict, logger=None, name=None)
+                exporter_instance(
+                    event_dict=event_dict, logger=None, name=None
+                )
                 calls = mocked_logger.emit.call_args_list
                 log_record = calls[0][0][0]
 
                 # Assert that the log record has the correct trace context
                 actual_span_id = format(log_record.span_id, "016x")
-                assert actual_span_id == span_id, "Span ID should be propagated"
+                assert (
+                    actual_span_id == span_id
+                ), "Span ID should be propagated"
 
                 actual_trace_id = format(log_record.trace_id, "032x")
-                assert actual_trace_id == trace_id, "Trace ID should be propagated"
+                assert (
+                    actual_trace_id == trace_id
+                ), "Trace ID should be propagated"
 
                 assert (
                     log_record.trace_flags == trace_sampled
