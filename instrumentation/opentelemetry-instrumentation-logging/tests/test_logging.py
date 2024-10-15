@@ -31,7 +31,7 @@ from opentelemetry.instrumentation.logging import (  # pylint: disable=no-name-i
     LoggingInstrumentor,
 )
 from opentelemetry.test.test_base import TestBase
-from opentelemetry.trace import ProxyTracer, get_tracer
+from opentelemetry.trace import NoOpTracerProvider, ProxyTracer, get_tracer
 
 
 class FakeTracerProvider:
@@ -326,9 +326,7 @@ class TestStructlogHandler(TestBase):
         }
 
         # Call the __call__ method of StructlogHandler
-        processed_event = exporter_instance(
-            logger=None, name=None, event_dict=event_dict
-        )
+        _ = exporter_instance(logger=None, name=None, event_dict=event_dict)
 
         # Assert that the logger's emit method was called with the processed event
         logger.emit.assert_called_once()
