@@ -5,15 +5,19 @@ from datetime import datetime, timezone
 from typing import Dict
 
 import structlog
-from opentelemetry._logs import std_to_otel
-from opentelemetry.sdk._logs._internal import LoggerProvider, LogRecord
-from opentelemetry.sdk._logs._internal.export import BatchLogRecordProcessor, LogExporter
-from opentelemetry.sdk.resources import Resource
-from opentelemetry.semconv.trace import SpanAttributes
-from opentelemetry.trace import get_current_span
 from structlog._frames import _format_exception
 from structlog._log_levels import NAME_TO_LEVEL
 from structlog.processors import _figure_out_exc_info
+
+from opentelemetry._logs import std_to_otel
+from opentelemetry.sdk._logs._internal import LoggerProvider, LogRecord
+from opentelemetry.sdk._logs._internal.export import (
+    BatchLogRecordProcessor,
+    LogExporter,
+)
+from opentelemetry.sdk.resources import Resource
+from opentelemetry.semconv.trace import SpanAttributes
+from opentelemetry.trace import get_current_span
 
 _EXCLUDE_ATTRS = {"exception", "timestamp"}
 
@@ -112,7 +116,11 @@ class StructlogHandler:
             body=event_dict["event"],
             resource=self._logger.resource,
             attributes={
-                **{k: v for k, v in event_dict.items() if k not in _EXCLUDE_ATTRS},
+                **{
+                    k: v
+                    for k, v in event_dict.items()
+                    if k not in _EXCLUDE_ATTRS
+                },
                 **extra_attrs,
             },
         )
@@ -122,7 +130,9 @@ class StructlogHandler:
         return int(event_dict["timestamp"].timestamp() * 1e9)
 
     @staticmethod
-    def _parse_exception(event_dict: structlog.typing.EventDict) -> Dict[str, str]:
+    def _parse_exception(
+        event_dict: structlog.typing.EventDict,
+    ) -> Dict[str, str]:
         # taken from: https://github.com/open-telemetry/opentelemetry-python/blob/c4d17e9f14f3cafb6757b96eefabdc7ed4891306/opentelemetry-sdk/src/opentelemetry/sdk/_logs/_internal/__init__.py#L458-L475
         attributes: Dict[str, str] = {}
         exception = event_dict.get("exception", None)

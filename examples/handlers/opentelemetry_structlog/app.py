@@ -1,16 +1,17 @@
-from random import randint
-from flask import Flask, request
-import structlog
 import sys
+from random import randint
+
+import structlog
+from flask import Flask, request
 
 sys.path.insert(0, "../../..")
 from handlers.opentelemetry_structlog.src.exporter import StructlogHandler
+from opentelemetry._logs import set_logger_provider
 from opentelemetry.exporter.otlp.proto.grpc._log_exporter import (
     OTLPLogExporter,
 )
 from opentelemetry.sdk._logs import LoggerProvider
 from opentelemetry.sdk.resources import Resource
-from opentelemetry._logs import set_logger_provider
 
 logger_provider = LoggerProvider(
     resource=Resource.create(
@@ -43,7 +44,10 @@ def roll_dice():
     result = str(roll())
     if player:
         structlog_logger.warning(
-            "Player %s is rolling the dice: %s", player, result, level="warning"
+            "Player %s is rolling the dice: %s",
+            player,
+            result,
+            level="warning",
         )
     else:
         structlog_logger.warning(
