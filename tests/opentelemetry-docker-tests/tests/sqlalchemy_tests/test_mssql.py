@@ -28,7 +28,7 @@ MSSQL_CONFIG = {
     "user": os.getenv("TEST_MSSQL_USER", "sa"),
     "password": os.getenv("TEST_MSSQL_PASSWORD", "yourStrong(!)Password"),
     "database": os.getenv("TEST_MSSQL_DATABASE", "opentelemetry-tests"),
-    "driver": os.getenv("TEST_MSSQL_DRIVER", "ODBC+Driver+17+for+SQL+Server"),
+    "driver": os.getenv("TEST_MSSQL_DRIVER", "ODBC+Driver+18+for+SQL+Server"),
     "trusted_connection": os.getenv("TEST_MSSQL_TRUSTED_CONNECTION", "yes"),
 }
 
