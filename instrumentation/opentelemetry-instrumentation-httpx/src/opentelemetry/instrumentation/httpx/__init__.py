@@ -738,10 +738,6 @@ class HTTPXClientInstrumentor(BaseInstrumentor):
         self._async_request_hook = kwargs.get("async_request_hook")
         self._async_response_hook = kwargs.get("async_response_hook")
 
-        if getattr(self, "__instrumented", False):
-            print("already instrumented")
-            return
-
         _OpenTelemetrySemanticConventionStability._initialize()
         self._sem_conv_opt_in_mode = _OpenTelemetrySemanticConventionStability._get_opentelemetry_stability_opt_in_mode(
             _OpenTelemetryStabilitySignalType.HTTP,
@@ -763,8 +759,6 @@ class HTTPXClientInstrumentor(BaseInstrumentor):
             "AsyncHTTPTransport.handle_async_request",
             self._handle_async_request_wrapper,
         )
-
-        self.__instrumented = True
 
     def _uninstrument(self, **kwargs):
         import httpx
