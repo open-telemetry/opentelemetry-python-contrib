@@ -177,7 +177,7 @@ class MySQLClientInstrumentor(BaseInstrumentor):
             _CONNECTION_ATTRIBUTES,
             version=__version__,
             tracer_provider=tracer_provider,
-            enable_commenter=enable_sqlcommenter,
+            enable_commenter=enable_commenter,
             commenter_options=commenter_options,
         )
 
