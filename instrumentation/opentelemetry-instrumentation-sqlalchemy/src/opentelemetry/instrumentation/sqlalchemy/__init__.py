@@ -137,6 +137,7 @@ class SQLAlchemyInstrumentor(BaseInstrumentor):
                 ``meter_provider``: a MeterProvider, defaults to global
                 ``enable_commenter``: bool to enable sqlcommenter, defaults to False
                 ``commenter_options``: dict of sqlcommenter config, defaults to {}
+                ``attrs_provider``: a zero-argument callable that returns attributes to be added to all spans, defaults to None
 
         Returns:
             An instrumented engine if passed in as an argument or list of instrumented engines, None otherwise.
@@ -165,25 +166,26 @@ class SQLAlchemyInstrumentor(BaseInstrumentor):
 
         enable_commenter = kwargs.get("enable_commenter", False)
         commenter_options = kwargs.get("commenter_options", {})
+        attrs_provider = kwargs.get("attrs_provider")
 
         _w(
             "sqlalchemy",
             "create_engine",
             _wrap_create_engine(
-                tracer, connections_usage, enable_commenter, commenter_options
+                tracer, connections_usage, enable_commenter, commenter_options, attrs_provider
             ),
         )
         _w(
             "sqlalchemy.engine",
             "create_engine",
             _wrap_create_engine(
-                tracer, connections_usage, enable_commenter, commenter_options
+                tracer, connections_usage, enable_commenter, commenter_options, attrs_provider
             ),
         )
         _w(
             "sqlalchemy.engine.base",
             "Engine.connect",
-            _wrap_connect(tracer),
+            _wrap_connect(tracer, attrs_provider),
         )
         if parse_version(sqlalchemy.__version__).release >= (1, 4):
             _w(
@@ -194,6 +196,7 @@ class SQLAlchemyInstrumentor(BaseInstrumentor):
                     connections_usage,
                     enable_commenter,
                     commenter_options,
+                    attrs_provider,
                 ),
             )
         if kwargs.get("engine") is not None:
@@ -203,6 +206,7 @@ class SQLAlchemyInstrumentor(BaseInstrumentor):
                 connections_usage,
                 kwargs.get("enable_commenter", False),
                 kwargs.get("commenter_options", {}),
+                kwargs.get("attrs_provider"),
             )
         if kwargs.get("engines") is not None and isinstance(
             kwargs.get("engines"), Sequence
@@ -214,6 +218,7 @@ class SQLAlchemyInstrumentor(BaseInstrumentor):
                     connections_usage,
                     kwargs.get("enable_commenter", False),
                     kwargs.get("commenter_options", {}),
+                    kwargs.get("attrs_provider"),
                 )
                 for engine in kwargs.get("engines")
             ]
