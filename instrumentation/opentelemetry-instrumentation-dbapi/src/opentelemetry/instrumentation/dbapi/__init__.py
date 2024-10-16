@@ -289,12 +289,20 @@ class DatabaseApiIntegration:
         if not self.enable_commenter:
             return commenter_data
 
-        db_driver = self.connect_module.__name__
+        try:
+            db_driver = self.connect_module.__name__
+        except AttributeError:
+            db_driver = "unknown"
+
         db_version = ""
         if db_driver in _DB_DRIVER_ALIASES:
             db_version = util_version(_DB_DRIVER_ALIASES[db_driver])
         else:
-            db_version = self.connect_module.__version__
+            try:
+                db_version = self.connect_module.__version__
+            except AttributeError:
+                db_driver = "unknown"
+
         commenter_data = {
             "db_driver": f"{db_driver}:{db_version.split(' ')[0]}",
             "dbapi_threadsafety": self.connect_module.threadsafety,
