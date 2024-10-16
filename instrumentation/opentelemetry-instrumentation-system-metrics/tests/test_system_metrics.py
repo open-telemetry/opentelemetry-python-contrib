@@ -118,12 +118,13 @@ class TestSystemMetrics(TestBase):
             f"process.runtime.{self.implementation}.thread_count",
             f"process.runtime.{self.implementation}.context_switches",
             f"process.runtime.{self.implementation}.cpu.utilization",
+            "process.open_file_descriptor.count",
         ]
 
         if self.implementation == "pypy":
-            self.assertEqual(len(metric_names), 20)
-        else:
             self.assertEqual(len(metric_names), 21)
+        else:
+            self.assertEqual(len(metric_names), 22)
         observer_names.append(
             f"process.runtime.{self.implementation}.gc_count",
         )
@@ -838,7 +839,18 @@ class TestSystemMetrics(TestBase):
     def test_runtime_cpu_percent(self, mock_process_cpu_percent):
         mock_process_cpu_percent.configure_mock(**{"return_value": 42})
 
-        expected = [_SystemMetricsResult({}, 42)]
+        expected = [_SystemMetricsResult({}, 0.42)]
         self._test_metrics(
             f"process.runtime.{self.implementation}.cpu.utilization", expected
         )
+
+    @mock.patch("psutil.Process.num_fds")
+    def test_open_file_descriptor_count(self, mock_process_num_fds):
+        mock_process_num_fds.configure_mock(**{"return_value": 3})
+
+        expected = [_SystemMetricsResult({}, 3)]
+        self._test_metrics(
+            "process.open_file_descriptor.count",
+            expected,
+        )
+        mock_process_num_fds.assert_called()

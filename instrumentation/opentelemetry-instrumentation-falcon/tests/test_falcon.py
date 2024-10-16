@@ -16,20 +16,20 @@ from timeit import default_timer
 from unittest.mock import Mock, patch
 
 import pytest
-from falcon import __version__ as _falcon_verison
+from falcon import __version__ as _falcon_version
 from falcon import testing
 from packaging import version as package_version
 
 from opentelemetry import trace
+from opentelemetry.instrumentation._semconv import (
+    _server_active_requests_count_attrs_old,
+    _server_duration_attrs_old,
+)
 from opentelemetry.instrumentation.falcon import FalconInstrumentor
 from opentelemetry.instrumentation.propagators import (
     TraceResponsePropagator,
     get_global_response_propagator,
     set_global_response_propagator,
-)
-from opentelemetry.instrumentation.wsgi import (
-    _active_requests_count_attrs,
-    _duration_attrs,
 )
 from opentelemetry.sdk.metrics.export import (
     HistogramDataPoint,
@@ -53,8 +53,8 @@ _expected_metric_names = [
     "http.server.duration",
 ]
 _recommended_attrs = {
-    "http.server.active_requests": _active_requests_count_attrs,
-    "http.server.duration": _duration_attrs,
+    "http.server.active_requests": _server_active_requests_count_attrs_old,
+    "http.server.duration": _server_duration_attrs_old,
 }
 
 
@@ -125,7 +125,7 @@ class TestFalconInstrumentation(TestFalconBase, WsgiTestBase):
                 SpanAttributes.NET_HOST_PORT: 80,
                 SpanAttributes.HTTP_HOST: "falconframework.org",
                 SpanAttributes.HTTP_TARGET: "/",
-                SpanAttributes.NET_PEER_PORT: "65133",
+                SpanAttributes.NET_PEER_PORT: 65133,
                 SpanAttributes.HTTP_FLAVOR: "1.1",
                 "falcon.resource": "HelloWorldResource",
                 SpanAttributes.HTTP_STATUS_CODE: 201,
@@ -156,7 +156,7 @@ class TestFalconInstrumentation(TestFalconBase, WsgiTestBase):
                 SpanAttributes.NET_HOST_PORT: 80,
                 SpanAttributes.HTTP_HOST: "falconframework.org",
                 SpanAttributes.HTTP_TARGET: "/",
-                SpanAttributes.NET_PEER_PORT: "65133",
+                SpanAttributes.NET_PEER_PORT: 65133,
                 SpanAttributes.HTTP_FLAVOR: "1.1",
                 SpanAttributes.HTTP_STATUS_CODE: 404,
             },
@@ -193,7 +193,7 @@ class TestFalconInstrumentation(TestFalconBase, WsgiTestBase):
                 SpanAttributes.NET_HOST_PORT: 80,
                 SpanAttributes.HTTP_HOST: "falconframework.org",
                 SpanAttributes.HTTP_TARGET: "/",
-                SpanAttributes.NET_PEER_PORT: "65133",
+                SpanAttributes.NET_PEER_PORT: 65133,
                 SpanAttributes.HTTP_FLAVOR: "1.1",
                 SpanAttributes.HTTP_STATUS_CODE: 500,
             },
@@ -226,7 +226,7 @@ class TestFalconInstrumentation(TestFalconBase, WsgiTestBase):
                 SpanAttributes.NET_HOST_PORT: 80,
                 SpanAttributes.HTTP_HOST: "falconframework.org",
                 SpanAttributes.HTTP_TARGET: "/",
-                SpanAttributes.NET_PEER_PORT: "65133",
+                SpanAttributes.NET_PEER_PORT: 65133,
                 SpanAttributes.HTTP_FLAVOR: "1.1",
                 "falcon.resource": "UserResource",
                 SpanAttributes.HTTP_STATUS_CODE: 200,
@@ -336,6 +336,7 @@ class TestFalconInstrumentation(TestFalconBase, WsgiTestBase):
             "http.flavor": "1.1",
             "http.server_name": "falconframework.org",
             "net.host.port": 80,
+            "net.host.name": "falconframework.org",
             "http.status_code": 404,
         }
         expected_requests_count_attributes = {
@@ -523,7 +524,7 @@ class TestCustomRequestResponseHeaders(TestFalconBase):
                 self.assertNotIn(key, span.attributes)
 
     @pytest.mark.skipif(
-        condition=package_version.parse(_falcon_verison)
+        condition=package_version.parse(_falcon_version)
         < package_version.parse("2.0.0"),
         reason="falcon<2 does not implement custom response headers",
     )
@@ -558,7 +559,7 @@ class TestCustomRequestResponseHeaders(TestFalconBase):
             self.assertNotIn(key, span.attributes)
 
     @pytest.mark.skipif(
-        condition=package_version.parse(_falcon_verison)
+        condition=package_version.parse(_falcon_version)
         < package_version.parse("2.0.0"),
         reason="falcon<2 does not implement custom response headers",
     )
