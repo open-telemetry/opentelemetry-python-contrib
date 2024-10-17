@@ -23,6 +23,7 @@ from opentelemetry.instrumentation.environment_variables import (
     OTEL_PYTHON_DISTRO,
 )
 from opentelemetry.instrumentation.version import __version__
+from opentelemetry.util._importlib_metadata import entry_points
 
 
 class TestLoad(TestCase):
@@ -314,3 +315,19 @@ class TestLoad(TestCase):
             ]
         )
         distro_mock.load_instrumentor.assert_called_once()
+
+    def test_load_instrumentors_no_entry_point_mocks(self):
+        distro_mock = Mock()
+        _load._load_instrumentors(distro_mock)
+        # this has no specific assert because it is run for every instrumentation
+        self.assertTrue(True)
+
+    def test_entry_point_dist_finder(self):
+        entry_point_finder = _load._EntryPointDistFinder()
+        self.assertTrue(entry_point_finder._mapping)
+        entry_point = list(
+            entry_points(group="opentelemetry_environment_variables")
+        )[0]
+        self.assertTrue(entry_point)
+        entry_point_dist = entry_point_finder.dist_for(entry_point)
+        self.assertEqual(entry_point.dist, entry_point_dist)
