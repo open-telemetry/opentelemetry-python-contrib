@@ -77,6 +77,7 @@ API
 ---
 """
 import asyncio
+import functools
 import sys
 from asyncio import futures
 from timeit import default_timer
@@ -231,14 +232,17 @@ class AsyncioInstrumentor(BaseInstrumentor):
     def trace_to_thread(self, func: callable):
         """Trace a function."""
         start = default_timer()
+        func_name = getattr(func, '__name__', None)
+        if func_name is None and isinstance(func, functools.partial):
+            func_name = func.func.__name__
         span = (
             self._tracer.start_span(
-                f"{ASYNCIO_PREFIX} to_thread-" + func.__name__
+                f"{ASYNCIO_PREFIX} to_thread-" + func_name
             )
-            if func.__name__ in self._to_thread_name_to_trace
+            if func_name in self._to_thread_name_to_trace
             else None
         )
-        attr = {"type": "to_thread", "name": func.__name__}
+        attr = {"type": "to_thread", "name": func_name}
         exception = None
         try:
             attr["state"] = "finished"
