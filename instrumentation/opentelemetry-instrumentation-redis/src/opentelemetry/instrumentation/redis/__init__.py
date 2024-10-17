@@ -102,6 +102,8 @@ from opentelemetry.instrumentation.redis.package import _instruments
 from opentelemetry.instrumentation.redis.util import (
     _extract_conn_attributes,
     _format_command_args,
+    _set_span_attribute_if_value,
+    _value_or_none,
 )
 from opentelemetry.instrumentation.redis.version import __version__
 from opentelemetry.instrumentation.utils import unwrap
@@ -126,6 +128,8 @@ if redis.VERSION >= _REDIS_ASYNCIO_VERSION:
 _REDIS_CLUSTER_VERSION = (4, 1, 0)
 _REDIS_ASYNCIO_CLUSTER_VERSION = (4, 3, 2)
 
+_FIELD_TYPES = ["NUMERIC", "TEXT", "GEO", "TAG", "VECTOR"]
+
 
 def _set_connection_attributes(span, conn):
     if not span.is_recording() or not hasattr(conn, "connection_pool"):
@@ -138,7 +142,12 @@ def _set_connection_attributes(span, conn):
 
 def _build_span_name(instance, cmd_args):
     if len(cmd_args) > 0 and cmd_args[0]:
-        name = cmd_args[0]
+        if cmd_args[0] == "FT.SEARCH":
+            name = "redis.search"
+        elif cmd_args[0] == "FT.CREATE":
+            name = "redis.create_index"
+        else:
+            name = cmd_args[0]
     else:
         name = instance.connection_pool.connection_kwargs.get("db", 0)
     return name
@@ -181,7 +190,6 @@ def _instrument(
     def _traced_execute_command(func, instance, args, kwargs):
         query = _format_command_args(args)
         name = _build_span_name(instance, args)
-
         with tracer.start_as_current_span(
             name, kind=trace.SpanKind.CLIENT
         ) as span:
@@ -189,9 +197,14 @@ def _instrument(
                 span.set_attribute(SpanAttributes.DB_STATEMENT, query)
                 _set_connection_attributes(span, instance)
                 span.set_attribute("db.redis.args_length", len(args))
+                if span.name == "redis.create_index":
+                    _add_create_attributes(span, args)
             if callable(request_hook):
                 request_hook(span, instance, args, kwargs)
             response = func(*args, **kwargs)
+            if span.is_recording():
+                if span.name == "redis.search":
+                    _add_search_attributes(span, response, args)
             if callable(response_hook):
                 response_hook(span, instance, response)
             return response
@@ -202,9 +215,7 @@ def _instrument(
             resource,
             span_name,
         ) = _build_span_meta_data_for_pipeline(instance)
-
         exception = None
-
         with tracer.start_as_current_span(
             span_name, kind=trace.SpanKind.CLIENT
         ) as span:
@@ -229,6 +240,60 @@ def _instrument(
             raise exception
 
         return response
+
+    def _add_create_attributes(span, args):
+        _set_span_attribute_if_value(
+            span, "redis.create_index.index", _value_or_none(args, 1)
+        )
+        # According to: https://github.com/redis/redis-py/blob/master/redis/commands/search/commands.py#L155 schema is last argument for execute command
+        try:
+            schema_index = args.index("SCHEMA")
+        except ValueError:
+            return
+        schema = args[schema_index:]
+        field_attribute = ""
+        # Schema in format:
+        # [first_field_name, first_field_type, first_field_some_attribute1, first_field_some_attribute2, second_field_name, ...]
+        field_attribute = "".join(
+            f"Field(name: {schema[index - 1]}, type: {schema[index]});"
+            for index in range(1, len(schema))
+            if schema[index] in _FIELD_TYPES
+        )
+        _set_span_attribute_if_value(
+            span,
+            "redis.create_index.fields",
+            field_attribute,
+        )
+
+    def _add_search_attributes(span, response, args):
+        _set_span_attribute_if_value(
+            span, "redis.search.index", _value_or_none(args, 1)
+        )
+        _set_span_attribute_if_value(
+            span, "redis.search.query", _value_or_none(args, 2)
+        )
+        # Parse response from search
+        # https://redis.io/docs/latest/commands/ft.search/
+        # Response in format:
+        # [number_of_returned_documents, index_of_first_returned_doc, first_doc(as a list), index_of_second_returned_doc, second_doc(as a list) ...]
+        # Returned documents in array format:
+        # [first_field_name, first_field_value, second_field_name, second_field_value ...]
+        number_of_returned_documents = _value_or_none(response, 0)
+        _set_span_attribute_if_value(
+            span, "redis.search.total", number_of_returned_documents
+        )
+        if "NOCONTENT" in args or not number_of_returned_documents:
+            return
+        for document_number in range(number_of_returned_documents):
+            document_index = _value_or_none(response, 1 + 2 * document_number)
+            if document_index:
+                document = response[2 + 2 * document_number]
+                for attribute_name_index in range(0, len(document), 2):
+                    _set_span_attribute_if_value(
+                        span,
+                        f"redis.search.xdoc_{document_index}.{document[attribute_name_index]}",
+                        document[attribute_name_index + 1],
+                    )
 
     pipeline_class = (
         "BasePipeline" if redis.VERSION < (3, 0, 0) else "Pipeline"

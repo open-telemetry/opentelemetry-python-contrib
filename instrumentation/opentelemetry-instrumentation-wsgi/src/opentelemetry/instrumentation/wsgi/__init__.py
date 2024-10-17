@@ -231,7 +231,7 @@ from opentelemetry.instrumentation._semconv import (
     _set_http_net_host,
     _set_http_net_host_port,
     _set_http_net_peer_name_server,
-    _set_http_peer_ip,
+    _set_http_peer_ip_server,
     _set_http_peer_port_server,
     _set_http_scheme,
     _set_http_target,
@@ -360,7 +360,7 @@ def collect_request_attributes(
 
     remote_addr = environ.get("REMOTE_ADDR")
     if remote_addr:
-        _set_http_peer_ip(result, remote_addr, sem_conv_opt_in_mode)
+        _set_http_peer_ip_server(result, remote_addr, sem_conv_opt_in_mode)
 
     peer_port = environ.get("REMOTE_PORT")
     if peer_port:
@@ -571,14 +571,14 @@ class OpenTelemetryMiddleware:
             self.duration_histogram_old = self.meter.create_histogram(
                 name=MetricInstruments.HTTP_SERVER_DURATION,
                 unit="ms",
-                description="measures the duration of the inbound HTTP request",
+                description="Measures the duration of inbound HTTP requests.",
             )
         self.duration_histogram_new = None
         if _report_new(sem_conv_opt_in_mode):
             self.duration_histogram_new = self.meter.create_histogram(
                 name=HTTP_SERVER_REQUEST_DURATION,
                 unit="s",
-                description="measures the duration of the inbound HTTP request",
+                description="Duration of HTTP server requests.",
             )
         # We don't need a separate active request counter for old/new semantic conventions
         # because the new attributes are a subset of the old attributes

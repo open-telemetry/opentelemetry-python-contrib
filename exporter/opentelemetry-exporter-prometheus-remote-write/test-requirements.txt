@@ -1,4 +1,4 @@
-asgiref==3.7.2
+asgiref==3.8.1
 certifi==2024.7.4
 charset-normalizer==3.3.2
 # We can drop this after bumping baseline to pypy-39
@@ -16,7 +16,7 @@ pytest==7.4.4
 python-snappy==0.7.1
 requests==2.32.3
 tomli==2.0.1
-typing_extensions==4.10.0
+typing_extensions==4.12.2
 urllib3==2.2.2
 wrapt==1.16.0
 zipp==3.19.2

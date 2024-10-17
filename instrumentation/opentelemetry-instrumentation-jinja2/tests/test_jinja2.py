@@ -143,7 +143,7 @@ class TestJinja2Instrumentor(TestBase):
     def test_file_template_with_root(self):
         with self.tracer.start_as_current_span("root"):
             loader = jinja2.loaders.FileSystemLoader(TMPL_DIR)
-            env = jinja2.Environment(loader=loader)
+            env = jinja2.Environment(loader=loader, autoescape=True)
             template = env.get_template("template.html")
             self.assertEqual(
                 template.render(name="Jinja"), "Message: Hello Jinja!"
@@ -164,7 +164,7 @@ class TestJinja2Instrumentor(TestBase):
 
     def test_file_template(self):
         loader = jinja2.loaders.FileSystemLoader(TMPL_DIR)
-        env = jinja2.Environment(loader=loader)
+        env = jinja2.Environment(loader=loader, autoescape=True)
         template = env.get_template("template.html")
         self.assertEqual(
             template.render(name="Jinja"), "Message: Hello Jinja!"
@@ -219,3 +219,14 @@ class TestJinja2Instrumentor(TestBase):
         self.assertEqual(len(spans), 0)
 
         Jinja2Instrumentor().instrument()
+
+    def test_no_op_tracer_provider(self):
+        self.memory_exporter.clear()
+        Jinja2Instrumentor().uninstrument()
+        Jinja2Instrumentor().instrument(
+            tracer_provider=trace_api.NoOpTracerProvider()
+        )
+        template = jinja2.environment.Template("Hello {{name}}!")
+        self.assertEqual(template.render(name="Jinja"), "Hello Jinja!")
+        spans = self.memory_exporter.get_finished_spans()
+        self.assertEqual(len(spans), 0)

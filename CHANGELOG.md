@@ -5,26 +5,73 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+> [!NOTE]
+> The following components are released independently and maintain individual CHANGELOG files.
+> Use [this search for a list of all CHANGELOG.md files in this repo](https://github.com/search?q=repo%3Aopen-telemetry%2Fopentelemetry-python-contrib+path%3A**%2FCHANGELOG.md&type=code).
+
 ## Unreleased
 
-## Added
+### Added
 
-## Breaking changes
+- `opentelemetry-instrumentation-fastapi` Add autoinstrumentation mechanism tests.
+  ([#2860](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/2860))
+- `opentelemetry-instrumentation-aiokafka` Add instrumentor and auto instrumentation support for aiokafka
+  ([#2082](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/2082))
+- `opentelemetry-instrumentation-redis` Add additional attributes for methods create_index and search, rename those spans
+  ([#2635](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/2635))
 
-## Fixed
+### Fixed
 
+- `opentelemetry-instrumentation-aiokafka` Wrap `AIOKafkaConsumer.getone()` instead of `AIOKafkaConsumer.__anext__`
+  ([#2874](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/2874))
+
+## Version 1.27.0/0.48b0 (2024-08-28)
+
+### Added
+
+- `opentelemetry-instrumentation-kafka-python` Instrument temporary fork, kafka-python-ng
+  inside kafka-python's instrumentation
+  ([#2537](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/2537))
+- `opentelemetry-instrumentation-asgi`, `opentelemetry-instrumentation-fastapi` Add ability to disable internal HTTP send and receive spans
+  ([#2802](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/2802))
+- `opentelemetry-instrumentation-asgi` Add fallback decoding for ASGI headers
+  ([#2837](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/2837))
+
+### Breaking changes
+
+- `opentelemetry-bootstrap` Remove `opentelemetry-instrumentation-aws-lambda` from the defaults instrumentations
+  ([#2786](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/2786))
+
+### Fixed
+
+- `opentelemetry-instrumentation-httpx` fix handling of async hooks
+  ([#2823](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/2823))
+- `opentelemetry-instrumentation-system-metrics` fix `process.runtime.cpu.utilization` values to be shown in range of 0 to 1
+  ([#2812](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/2812))
+- `opentelemetry-instrumentation-fastapi` fix `fastapi` auto-instrumentation by removing `fastapi-slim` support, `fastapi-slim` itself is discontinued from maintainers
+  ([#2783](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/2783))
 - `opentelemetry-instrumentation-aws-lambda` Avoid exception when a handler is not present.
   ([#2750](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/2750))
 - `opentelemetry-instrumentation-django` Fix regression - `http.target` re-added back to old semconv duration metrics
   ([#2746](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/2746))
+- `opentelemetry-instrumentation-asgi` do not set `url.full` attribute for server spans
+  ([#2735](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/2735))
 - `opentelemetry-instrumentation-grpc` Fixes the issue with the gRPC instrumentation not working with the 1.63.0 and higher version of gRPC
   ([#2483](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/2484))
-- `opentelemetry-instrumentation-fastapi` Fix fastapi-slim support
-  ([#2756](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/2756))
 - `opentelemetry-instrumentation-aws-lambda` Fixing w3c baggage support
   ([#2589](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/2589))
 - `opentelemetry-instrumentation-celery` propagates baggage
   ([#2385](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/2385))
+- `opentelemetry-instrumentation-asyncio` Fixes async generator coroutines not being awaited
+  ([#2792](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/2792))
+- `opentelemetry-instrumentation-tornado` Handle http client exception and record exception info into span
+  ([#2563](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/2563))
+- `opentelemetry-instrumentation` fix `http.host` new http semantic convention mapping to depend on `kind` of span
+  ([#2814](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/2814))
+- `opentelemetry-instrumentation` Fix the description of `http.server.duration` and `http.server.request.duration`
+  ([#2753](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/2753))
+- `opentelemetry-instrumentation-grpc` Fix grpc supported version
+  ([#2845](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/2845))
 
 ## Version 1.26.0/0.47b0 (2024-07-23)
 
@@ -216,6 +263,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   ([#2367](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/2367))
 
 
+### Added
+- `opentelemetry-instrumentation-fastapi` Add support for configuring header extraction via runtime constructor parameters
+  ([#2241](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/2241))
+
 ## Version 1.23.0/0.44b0 (2024-02-23)
 
 - Drop support for 3.7
@@ -236,6 +287,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Added
 
 - `opentelemetry-instrumentation-psycopg` Initial release for psycopg 3.x
+- `opentelemetry-instrumentation-asgi` Add support for configuring ASGI middleware header extraction via runtime constructor parameters
+  ([#2026](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/2026))
 
 ## Version 1.22.0/0.43b0 (2023-12-14)
 
@@ -275,8 +328,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   ([#1948](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/1948))
 - Added schema_url (`"https://opentelemetry.io/schemas/1.11.0"`) to all metrics and traces
   ([#1977](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/1977))
-- Add support for configuring ASGI middleware header extraction via runtime constructor parameters
-  ([#2026](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/2026))
 
 ### Fixed
 
