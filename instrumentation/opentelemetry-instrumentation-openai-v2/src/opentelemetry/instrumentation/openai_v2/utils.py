@@ -140,14 +140,15 @@ def non_numerical_value_is_set(value: Optional[Union[bool, str]]):
 
 def get_llm_request_attributes(
     kwargs,
-    model=None,
     operation_name=GenAIAttributes.GenAiOperationNameValues.CHAT.value,
 ):
 
     return {
         GenAIAttributes.GEN_AI_OPERATION_NAME: operation_name,
         GenAIAttributes.GEN_AI_SYSTEM: GenAIAttributes.GenAiSystemValues.OPENAI.value,
-        GenAIAttributes.GEN_AI_REQUEST_MODEL: model or kwargs.get("model"),
+        GenAIAttributes.GEN_AI_REQUEST_MODEL: kwargs.get(
+            "model", "gpt-3.5-turbo"
+        ),
         GenAIAttributes.GEN_AI_REQUEST_TEMPERATURE: kwargs.get("temperature"),
         GenAIAttributes.GEN_AI_REQUEST_TOP_P: kwargs.get("p")
         or kwargs.get("top_p"),
