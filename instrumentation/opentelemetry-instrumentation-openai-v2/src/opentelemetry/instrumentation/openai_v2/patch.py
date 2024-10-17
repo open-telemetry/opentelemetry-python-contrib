@@ -51,8 +51,9 @@ def chat_completions_create(tracer: Tracer):
         span_name = f"{span_attributes[GenAIAttributes.GEN_AI_OPERATION_NAME]} {span_attributes[GenAIAttributes.GEN_AI_REQUEST_MODEL]}"
 
         span = tracer.start_span(name=span_name, kind=SpanKind.CLIENT)
-        _set_input_attributes(span, span_attributes)
-        set_event_prompt(span, json.dumps(llm_prompts))
+        if span.is_recording():
+            _set_input_attributes(span, span_attributes)
+            set_event_prompt(span, json.dumps(llm_prompts))
 
         try:
             result = wrapped(*args, **kwargs)

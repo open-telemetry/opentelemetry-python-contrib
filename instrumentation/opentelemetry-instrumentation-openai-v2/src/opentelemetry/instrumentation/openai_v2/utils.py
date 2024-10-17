@@ -21,7 +21,6 @@ from openai import NOT_GIVEN
 from opentelemetry.semconv._incubating.attributes import (
     gen_ai_attributes as GenAIAttributes,
 )
-from opentelemetry.trace import Span
 
 
 def silently_fail(func):
@@ -101,7 +100,7 @@ def extract_tools_prompt(item):
     return calls
 
 
-def set_event_prompt(span: Span, prompt):
+def set_event_prompt(span, prompt):
     span.add_event(
         name="gen_ai.content.prompt",
         attributes={
@@ -110,12 +109,12 @@ def set_event_prompt(span: Span, prompt):
     )
 
 
-def set_span_attributes(span: Span, attributes: dict):
+def set_span_attributes(span, attributes: dict):
     for field, value in attributes.model_dump(by_alias=True).items():
         set_span_attribute(span, field, value)
 
 
-def set_event_completion(span: Span, result_content):
+def set_event_completion(span, result_content):
     span.add_event(
         name="gen_ai.content.completion",
         attributes={
@@ -124,7 +123,7 @@ def set_event_completion(span: Span, result_content):
     )
 
 
-def set_span_attribute(span: Span, name, value):
+def set_span_attribute(span, name, value):
     if non_numerical_value_is_set(value) is False:
         return
 
