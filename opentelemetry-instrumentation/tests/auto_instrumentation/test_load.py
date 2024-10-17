@@ -23,7 +23,7 @@ from opentelemetry.instrumentation.environment_variables import (
     OTEL_PYTHON_DISTRO,
 )
 from opentelemetry.instrumentation.version import __version__
-from opentelemetry.util._importlib_metadata import entry_points
+from opentelemetry.util._importlib_metadata import EntryPoint, entry_points
 
 
 class TestLoad(TestCase):
@@ -329,5 +329,23 @@ class TestLoad(TestCase):
             entry_points(group="opentelemetry_environment_variables")
         )[0]
         self.assertTrue(entry_point)
+        self.assertTrue(entry_point.dist)
+
+        # this will not hit cache
         entry_point_dist = entry_point_finder.dist_for(entry_point)
+        self.assertTrue(entry_point_dist)
+        # dist are not comparable so we are sure we are not hitting the cache
         self.assertEqual(entry_point.dist, entry_point_dist)
+
+        # this will hit cache
+        entry_point_without_dist = EntryPoint(
+            name=entry_point.name,
+            group=entry_point.group,
+            value=entry_point.value,
+        )
+        self.assertIsNone(entry_point_without_dist.dist)
+        new_entry_point_dist = entry_point_finder.dist_for(
+            entry_point_without_dist
+        )
+        # dist are not comparable, being truthy is enough
+        self.assertTrue(new_entry_point_dist)
