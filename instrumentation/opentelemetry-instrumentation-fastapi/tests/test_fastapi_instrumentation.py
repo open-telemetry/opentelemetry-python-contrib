@@ -22,7 +22,6 @@ import fastapi
 from fastapi.middleware.httpsredirect import HTTPSRedirectMiddleware
 from fastapi.responses import JSONResponse
 from fastapi.testclient import TestClient
-from pkg_resources import DistributionNotFound, iter_entry_points
 
 import opentelemetry.instrumentation.fastapi as otel_fastapi
 from opentelemetry import trace
@@ -55,6 +54,10 @@ from opentelemetry.semconv.attributes.url_attributes import URL_SCHEME
 from opentelemetry.semconv.trace import SpanAttributes
 from opentelemetry.test.globals_test import reset_trace_globals
 from opentelemetry.test.test_base import TestBase
+from opentelemetry.util._importlib_metadata import (
+    PackageNotFoundError,
+    entry_points,
+)
 from opentelemetry.util.http import (
     OTEL_INSTRUMENTATION_HTTP_CAPTURE_HEADERS_SANITIZE_FIELDS,
     OTEL_INSTRUMENTATION_HTTP_CAPTURE_HEADERS_SERVER_REQUEST,
@@ -1028,16 +1031,24 @@ class TestFastAPIManualInstrumentationHooks(TestBaseManualFastAPI):
             )
 
 
-def get_distribution_with_fastapi(*args, **kwargs):
-    dist = args[0]
-    if dist == "fastapi~=0.58":
-        # Value does not matter. Only whether an exception is thrown
-        return None
-    raise DistributionNotFound()
+def mock_version_with_fastapi(*args, **kwargs):
+    req_name = args[0]
+    if req_name == "fastapi":
+        # TODO: Value now matters
+        return "0.58"
+    raise PackageNotFoundError()
 
 
-def get_distribution_without_fastapi(*args, **kwargs):
-    raise DistributionNotFound()
+def mock_version_with_old_fastapi(*args, **kwargs):
+    req_name = args[0]
+    if req_name == "fastapi":
+        # TODO: Value now matters
+        return "0.57"
+    raise PackageNotFoundError()
+
+
+def mock_version_without_fastapi(*args, **kwargs):
+    raise PackageNotFoundError()
 
 
 class TestAutoInstrumentation(TestBaseAutoFastAPI):
@@ -1048,43 +1059,37 @@ class TestAutoInstrumentation(TestBaseAutoFastAPI):
     """
 
     def test_entry_point_exists(self):
-        eps = iter_entry_points("opentelemetry_instrumentor")
-        ep = next(eps)
-        self.assertEqual(ep.dist.key, "opentelemetry-instrumentation-fastapi")
-        self.assertEqual(
-            ep.module_name, "opentelemetry.instrumentation.fastapi"
-        )
-        self.assertEqual(ep.attrs, ("FastAPIInstrumentor",))
+        (ep,) = entry_points(group="opentelemetry_instrumentor")
         self.assertEqual(ep.name, "fastapi")
-        self.assertIsNone(next(eps, None))
 
-    @patch("opentelemetry.instrumentation.dependencies.get_distribution")
-    def test_instruments_with_fastapi_installed(self, mock_get_distribution):
-        mock_get_distribution.side_effect = get_distribution_with_fastapi
+    @patch("opentelemetry.instrumentation.dependencies.version")
+    def test_instruments_with_fastapi_installed(self, mock_version):
+        mock_version.side_effect = mock_version_with_fastapi
         mock_distro = Mock()
         _load_instrumentors(mock_distro)
-        mock_get_distribution.assert_called_once_with("fastapi~=0.58")
+        mock_version.assert_called_once_with("fastapi")
         self.assertEqual(len(mock_distro.load_instrumentor.call_args_list), 1)
-        args = mock_distro.load_instrumentor.call_args.args
-        ep = args[0]
-        self.assertEqual(ep.dist.key, "opentelemetry-instrumentation-fastapi")
-        self.assertEqual(
-            ep.module_name, "opentelemetry.instrumentation.fastapi"
-        )
-        self.assertEqual(ep.attrs, ("FastAPIInstrumentor",))
+        (ep,) = mock_distro.load_instrumentor.call_args.args
         self.assertEqual(ep.name, "fastapi")
 
-    @patch("opentelemetry.instrumentation.dependencies.get_distribution")
-    def test_instruments_without_fastapi_installed(
-        self, mock_get_distribution
-    ):
-        mock_get_distribution.side_effect = get_distribution_without_fastapi
+    @patch("opentelemetry.instrumentation.dependencies.version")
+    def test_instruments_with_old_fastapi_installed(
+        self, mock_version
+    ):  # pylint: disable=no-self-use
+        mock_version.side_effect = mock_version_with_old_fastapi
         mock_distro = Mock()
         _load_instrumentors(mock_distro)
-        mock_get_distribution.assert_called_once_with("fastapi~=0.58")
-        with self.assertRaises(DistributionNotFound):
-            mock_get_distribution("fastapi~=0.58")
-        self.assertEqual(len(mock_distro.load_instrumentor.call_args_list), 0)
+        mock_version.assert_called_once_with("fastapi")
+        mock_distro.load_instrumentor.assert_not_called()
+
+    @patch("opentelemetry.instrumentation.dependencies.version")
+    def test_instruments_without_fastapi_installed(
+        self, mock_version
+    ):  # pylint: disable=no-self-use
+        mock_version.side_effect = mock_version_without_fastapi
+        mock_distro = Mock()
+        _load_instrumentors(mock_distro)
+        mock_version.assert_called_once_with("fastapi")
         mock_distro.load_instrumentor.assert_not_called()
 
     def _create_app(self):

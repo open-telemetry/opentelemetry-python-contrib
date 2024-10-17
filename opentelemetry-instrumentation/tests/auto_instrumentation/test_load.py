@@ -23,6 +23,7 @@ from opentelemetry.instrumentation.environment_variables import (
     OTEL_PYTHON_DISTRO,
 )
 from opentelemetry.instrumentation.version import __version__
+from opentelemetry.util._importlib_metadata import EntryPoint, entry_points
 
 
 class TestLoad(TestCase):
@@ -30,7 +31,7 @@ class TestLoad(TestCase):
         "os.environ", {OTEL_PYTHON_CONFIGURATOR: "custom_configurator2"}
     )
     @patch(
-        "opentelemetry.instrumentation.auto_instrumentation._load.iter_entry_points"
+        "opentelemetry.instrumentation.auto_instrumentation._load.entry_points"
     )
     def test_load_configurators(
         self, iter_mock
@@ -61,7 +62,7 @@ class TestLoad(TestCase):
         "os.environ", {OTEL_PYTHON_CONFIGURATOR: "custom_configurator2"}
     )
     @patch(
-        "opentelemetry.instrumentation.auto_instrumentation._load.iter_entry_points"
+        "opentelemetry.instrumentation.auto_instrumentation._load.entry_points"
     )
     def test_load_configurators_no_ep(
         self, iter_mock
@@ -74,7 +75,7 @@ class TestLoad(TestCase):
         "os.environ", {OTEL_PYTHON_CONFIGURATOR: "custom_configurator2"}
     )
     @patch(
-        "opentelemetry.instrumentation.auto_instrumentation._load.iter_entry_points"
+        "opentelemetry.instrumentation.auto_instrumentation._load.entry_points"
     )
     def test_load_configurators_error(self, iter_mock):
         # Add multiple entry points but only specify the 2nd in the environment variable.
@@ -101,7 +102,7 @@ class TestLoad(TestCase):
         "opentelemetry.instrumentation.auto_instrumentation._load.isinstance"
     )
     @patch(
-        "opentelemetry.instrumentation.auto_instrumentation._load.iter_entry_points"
+        "opentelemetry.instrumentation.auto_instrumentation._load.entry_points"
     )
     def test_load_distro(self, iter_mock, isinstance_mock):
         # Add multiple entry points but only specify the 2nd in the environment variable.
@@ -134,7 +135,7 @@ class TestLoad(TestCase):
         "opentelemetry.instrumentation.auto_instrumentation._load.DefaultDistro"
     )
     @patch(
-        "opentelemetry.instrumentation.auto_instrumentation._load.iter_entry_points"
+        "opentelemetry.instrumentation.auto_instrumentation._load.entry_points"
     )
     def test_load_distro_not_distro(
         self, iter_mock, default_distro_mock, isinstance_mock
@@ -166,7 +167,7 @@ class TestLoad(TestCase):
         "opentelemetry.instrumentation.auto_instrumentation._load.DefaultDistro"
     )
     @patch(
-        "opentelemetry.instrumentation.auto_instrumentation._load.iter_entry_points"
+        "opentelemetry.instrumentation.auto_instrumentation._load.entry_points"
     )
     def test_load_distro_no_ep(self, iter_mock, default_distro_mock):
         iter_mock.return_value = ()
@@ -181,7 +182,7 @@ class TestLoad(TestCase):
         "opentelemetry.instrumentation.auto_instrumentation._load.isinstance"
     )
     @patch(
-        "opentelemetry.instrumentation.auto_instrumentation._load.iter_entry_points"
+        "opentelemetry.instrumentation.auto_instrumentation._load.entry_points"
     )
     def test_load_distro_error(self, iter_mock, isinstance_mock):
         ep_mock1 = Mock()
@@ -211,7 +212,7 @@ class TestLoad(TestCase):
         "opentelemetry.instrumentation.auto_instrumentation._load.get_dist_dependency_conflicts"
     )
     @patch(
-        "opentelemetry.instrumentation.auto_instrumentation._load.iter_entry_points"
+        "opentelemetry.instrumentation.auto_instrumentation._load.entry_points"
     )
     def test_load_instrumentors(self, iter_mock, dep_mock):
         # Mock opentelemetry_pre_instrument entry points
@@ -285,7 +286,7 @@ class TestLoad(TestCase):
         "opentelemetry.instrumentation.auto_instrumentation._load.get_dist_dependency_conflicts"
     )
     @patch(
-        "opentelemetry.instrumentation.auto_instrumentation._load.iter_entry_points"
+        "opentelemetry.instrumentation.auto_instrumentation._load.entry_points"
     )
     def test_load_instrumentors_dep_conflict(
         self, iter_mock, dep_mock
@@ -314,3 +315,37 @@ class TestLoad(TestCase):
             ]
         )
         distro_mock.load_instrumentor.assert_called_once()
+
+    def test_load_instrumentors_no_entry_point_mocks(self):
+        distro_mock = Mock()
+        _load._load_instrumentors(distro_mock)
+        # this has no specific assert because it is run for every instrumentation
+        self.assertTrue(distro_mock)
+
+    def test_entry_point_dist_finder(self):
+        entry_point_finder = _load._EntryPointDistFinder()
+        self.assertTrue(entry_point_finder._mapping)
+        entry_point = list(
+            entry_points(group="opentelemetry_environment_variables")
+        )[0]
+        self.assertTrue(entry_point)
+        self.assertTrue(entry_point.dist)
+
+        # this will not hit cache
+        entry_point_dist = entry_point_finder.dist_for(entry_point)
+        self.assertTrue(entry_point_dist)
+        # dist are not comparable so we are sure we are not hitting the cache
+        self.assertEqual(entry_point.dist, entry_point_dist)
+
+        # this will hit cache
+        entry_point_without_dist = EntryPoint(
+            name=entry_point.name,
+            group=entry_point.group,
+            value=entry_point.value,
+        )
+        self.assertIsNone(entry_point_without_dist.dist)
+        new_entry_point_dist = entry_point_finder.dist_for(
+            entry_point_without_dist
+        )
+        # dist are not comparable, being truthy is enough
+        self.assertTrue(new_entry_point_dist)
