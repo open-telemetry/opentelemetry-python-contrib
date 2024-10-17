@@ -16,8 +16,8 @@ env:
 
 jobs:
 
-  py38-test-instrumentation-openai_ubuntu-latest:
-    name: instrumentation-openai 3.8 Ubuntu
+  py38-test-instrumentation-openai-v2_ubuntu-latest:
+    name: instrumentation-openai-v2 3.8 Ubuntu
     runs-on: ubuntu-latest
     steps:
       - name: Checkout repo @ SHA - ${{ github.sha }}
@@ -32,10 +32,10 @@ jobs:
         run: pip install tox
 
       - name: Run tests
-        run: tox -e py38-test-instrumentation-openai -- -ra
+        run: tox -e py38-test-instrumentation-openai-v2 -- -ra
 
-  py39-test-instrumentation-openai_ubuntu-latest:
-    name: instrumentation-openai 3.9 Ubuntu
+  py39-test-instrumentation-openai-v2_ubuntu-latest:
+    name: instrumentation-openai-v2 3.9 Ubuntu
     runs-on: ubuntu-latest
     steps:
       - name: Checkout repo @ SHA - ${{ github.sha }}
@@ -50,10 +50,10 @@ jobs:
         run: pip install tox
 
       - name: Run tests
-        run: tox -e py39-test-instrumentation-openai -- -ra
+        run: tox -e py39-test-instrumentation-openai-v2 -- -ra
 
-  py310-test-instrumentation-openai_ubuntu-latest:
-    name: instrumentation-openai 3.10 Ubuntu
+  py310-test-instrumentation-openai-v2_ubuntu-latest:
+    name: instrumentation-openai-v2 3.10 Ubuntu
     runs-on: ubuntu-latest
     steps:
       - name: Checkout repo @ SHA - ${{ github.sha }}
@@ -68,10 +68,10 @@ jobs:
         run: pip install tox
 
       - name: Run tests
-        run: tox -e py310-test-instrumentation-openai -- -ra
+        run: tox -e py310-test-instrumentation-openai-v2 -- -ra
 
-  py311-test-instrumentation-openai_ubuntu-latest:
-    name: instrumentation-openai 3.11 Ubuntu
+  py311-test-instrumentation-openai-v2_ubuntu-latest:
+    name: instrumentation-openai-v2 3.11 Ubuntu
     runs-on: ubuntu-latest
     steps:
       - name: Checkout repo @ SHA - ${{ github.sha }}
@@ -86,10 +86,10 @@ jobs:
         run: pip install tox
 
       - name: Run tests
-        run: tox -e py311-test-instrumentation-openai -- -ra
+        run: tox -e py311-test-instrumentation-openai-v2 -- -ra
 
-  py312-test-instrumentation-openai_ubuntu-latest:
-    name: instrumentation-openai 3.12 Ubuntu
+  py312-test-instrumentation-openai-v2_ubuntu-latest:
+    name: instrumentation-openai-v2 3.12 Ubuntu
     runs-on: ubuntu-latest
     steps:
       - name: Checkout repo @ SHA - ${{ github.sha }}
@@ -104,10 +104,10 @@ jobs:
         run: pip install tox
 
       - name: Run tests
-        run: tox -e py312-test-instrumentation-openai -- -ra
+        run: tox -e py312-test-instrumentation-openai-v2 -- -ra
 
-  pypy3-test-instrumentation-openai_ubuntu-latest:
-    name: instrumentation-openai pypy-3.8 Ubuntu
+  pypy3-test-instrumentation-openai-v2_ubuntu-latest:
+    name: instrumentation-openai-v2 pypy-3.8 Ubuntu
     runs-on: ubuntu-latest
     steps:
       - name: Checkout repo @ SHA - ${{ github.sha }}
@@ -122,7 +122,7 @@ jobs:
         run: pip install tox
 
       - name: Run tests
-        run: tox -e pypy3-test-instrumentation-openai -- -ra
+        run: tox -e pypy3-test-instrumentation-openai-v2 -- -ra
 
   py38-test-resource-detector-container_ubuntu-latest:
     name: resource-detector-container 3.8 Ubuntu
