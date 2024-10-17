@@ -13,4 +13,4 @@
 # limitations under the License.
 
 
-_instruments = ("openai >= 0.27.0",)
+_instruments = ("openai >= 1.0.0",)

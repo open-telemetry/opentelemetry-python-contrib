@@ -1,4 +1,4 @@
-openai==1.37.1
+openai==1.0.0
 Deprecated==1.2.14
 importlib-metadata==6.11.0
 packaging==24.0

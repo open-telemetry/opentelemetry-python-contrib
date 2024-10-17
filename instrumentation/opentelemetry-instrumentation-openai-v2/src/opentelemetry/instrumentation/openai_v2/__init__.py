@@ -47,6 +47,7 @@ from wrapt import wrap_function_wrapper
 
 from opentelemetry.instrumentation.instrumentor import BaseInstrumentor
 from opentelemetry.instrumentation.openai_v2.package import _instruments
+from opentelemetry.instrumentation.utils import unwrap
 from opentelemetry.semconv.schemas import Schemas
 from opentelemetry.trace import get_tracer
 
@@ -74,4 +75,4 @@ class OpenAIInstrumentor(BaseInstrumentor):
         )
 
     def _uninstrument(self, **kwargs):
-        unwrap(openai.resources.chat.completions.Completions, "create")
+        unwrap("openai.resources.chat.completions.Completions", "create")
