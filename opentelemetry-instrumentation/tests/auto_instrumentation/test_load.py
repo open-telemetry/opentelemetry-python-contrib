@@ -320,7 +320,7 @@ class TestLoad(TestCase):
         distro_mock = Mock()
         _load._load_instrumentors(distro_mock)
         # this has no specific assert because it is run for every instrumentation
-        self.assertTrue(True)
+        self.assertTrue(distro_mock)
 
     def test_entry_point_dist_finder(self):
         entry_point_finder = _load._EntryPointDistFinder()
