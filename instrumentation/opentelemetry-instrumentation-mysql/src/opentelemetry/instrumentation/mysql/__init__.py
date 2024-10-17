@@ -39,6 +39,9 @@ SQLCOMMENTER
 You can optionally configure mysql-connector instrumentation to enable sqlcommenter which enriches
 the query with contextual information.
 
+Usage
+-----
+
 .. code:: python
 
     import mysql.connector
@@ -52,10 +55,12 @@ the query with contextual information.
     cursor.close()
     cnx.close()
 
+
 For example,
 ::
    Invoking cursor.execute("INSERT INTO test (testField) VALUES (123)") will lead to sql query "INSERT INTO test (testField) VALUES (123)" but when SQLCommenter is enabled
    the query will get appended with some configurable tags like "INSERT INTO test (testField) VALUES (123) /*tag=value*/;"
+
 
 SQLCommenter Configurations
 ***************************
