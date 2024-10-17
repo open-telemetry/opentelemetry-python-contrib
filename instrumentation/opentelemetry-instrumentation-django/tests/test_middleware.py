@@ -193,7 +193,7 @@ class TestMiddleware(WsgiTestBase):
             middleware_position=middleware_position
         )
         self.assertEqual(
-            middleware[len(middleware) - 1],
+            middleware[0],
             "opentelemetry.instrumentation.django.middleware.otel_middleware._DjangoMiddleware",
         )
 
