@@ -193,6 +193,7 @@ API
 
 import logging
 import typing
+from asyncio import iscoroutinefunction
 from types import TracebackType
 
 import httpx
@@ -928,6 +929,20 @@ class HTTPXClientInstrumentor(BaseInstrumentor):
                 "Attempting to instrument Httpx client while already instrumented"
             )
             return
+
+        if iscoroutinefunction(request_hook):
+            self._async_request_hook = request_hook
+            self._request_hook = None
+        else:
+            self._request_hook = request_hook
+            self._async_request_hook = None
+
+        if iscoroutinefunction(response_hook):
+            self._async_response_hook = response_hook
+            self._response_hook = None
+        else:
+            self._response_hook = response_hook
+            self._async_response_hook = None
 
         if hasattr(client._transport, "handle_request"):
             wrap_function_wrapper(
