@@ -15,7 +15,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
-- `opentelemetry-instrumentation-openai` Instrumentation for OpenAI >= 0.27.0
+- `opentelemetry-instrumentation-openai-v2` Instrumentation for OpenAI >= 0.27.0
   ([#2759](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/2759))
 
 ### Added

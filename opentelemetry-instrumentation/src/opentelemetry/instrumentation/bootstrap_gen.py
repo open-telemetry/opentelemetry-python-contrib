@@ -121,7 +121,7 @@ libraries = [
         "instrumentation": "opentelemetry-instrumentation-mysqlclient==0.49b0.dev",
     },
     {
-        "library": "openai >= 0.27.0",
+        "library": "openai >= 1.0.0",
         "instrumentation": "opentelemetry-instrumentation-openai-v2==2.0.0.dev",
     },
     {
