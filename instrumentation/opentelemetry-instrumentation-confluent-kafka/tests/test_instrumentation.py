@@ -110,6 +110,50 @@ class TestConfluentKafka(TestBase):
         self.assertEqual(context_getter.get(carrier_list, "key1"), ["val1"])
         self.assertEqual(["key1"], context_getter.keys(carrier_list))
 
+    def test_produce(self) -> None:
+        instrumentation = ConfluentKafkaInstrumentor()
+        expected_spans = [
+            {
+                "name": "topic-10 publish",
+                "attributes": {
+                    SpanAttributes.MESSAGING_OPERATION: "publish",
+                    SpanAttributes.MESSAGING_SYSTEM: "kafka",
+                    SpanAttributes.MESSAGING_DESTINATION: "topic-10",
+                    SpanAttributes.MESSAGING_DESTINATION_KIND: MessagingDestinationKindValues.QUEUE.value,
+                },
+            },
+            {
+                "name": "topic-11 publish",
+                "attributes": {
+                    SpanAttributes.MESSAGING_OPERATION: "publish",
+                    SpanAttributes.MESSAGING_SYSTEM: "kafka",
+                    SpanAttributes.MESSAGING_DESTINATION: "topic-11",
+                    SpanAttributes.MESSAGING_DESTINATION_KIND: MessagingDestinationKindValues.QUEUE.value,
+                },
+            },
+            {
+                "name": "topic-12 publish",
+                "attributes": {
+                    SpanAttributes.MESSAGING_OPERATION: "publish",
+                    SpanAttributes.MESSAGING_KAFKA_PARTITION: 5,
+                    SpanAttributes.MESSAGING_SYSTEM: "kafka",
+                    SpanAttributes.MESSAGING_DESTINATION: "topic-12",
+                    SpanAttributes.MESSAGING_DESTINATION_KIND: MessagingDestinationKindValues.QUEUE.value,
+                },
+            },
+        ]
+
+        producer = Producer({"bootstrap.servers": "localhost:29092"})
+
+        self.memory_exporter.clear()
+        producer = instrumentation.instrument_producer(producer)
+        producer.produce(topic="topic-10", key="key-10", value="value-10")
+        producer.produce("topic-11", key="key-11", value="value-11")
+        producer.produce("topic-12", key="key-12", value="value-12", partition=5)
+
+        span_list = self.memory_exporter.get_finished_spans()
+        self._compare_spans(span_list, expected_spans)
+
     def test_poll(self) -> None:
         instrumentation = ConfluentKafkaInstrumentor()
         mocked_messages = [

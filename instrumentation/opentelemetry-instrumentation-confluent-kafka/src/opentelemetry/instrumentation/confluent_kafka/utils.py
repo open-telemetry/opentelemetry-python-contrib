@@ -25,11 +25,18 @@ class KafkaPropertiesExtractor:
         return kwargs.get(key, default_value)
 
     @staticmethod
-    def extract_produce_topic(args):
+    def extract_produce_topic(args, kwargs):
         """extract topic from `produce` method arguments in Producer class"""
-        if len(args) > 0:
-            return args[0]
-        return "unknown"
+        return KafkaPropertiesExtractor._extract_argument(
+            "topic", 0, "unknown", args, kwargs
+        )
+
+    @staticmethod
+    def extract_produce_partition(args, kwargs):
+        """extract partition from `produce` method arguments in Producer class"""
+        return KafkaPropertiesExtractor._extract_argument(
+            "partition", 3, None, args, kwargs
+        )
 
     @staticmethod
     def extract_produce_headers(args, kwargs):
@@ -116,7 +123,7 @@ def _enrich_span(
     topic,
     partition: Optional[int] = None,
     offset: Optional[int] = None,
-    operation: Optional[MessagingOperationValues] = None,
+    operation: Optional[str] = None,
 ):
     if not span.is_recording():
         return
@@ -133,7 +140,7 @@ def _enrich_span(
     )
 
     if operation:
-        span.set_attribute(SpanAttributes.MESSAGING_OPERATION, operation.value)
+        span.set_attribute(SpanAttributes.MESSAGING_OPERATION, operation)
     else:
         span.set_attribute(SpanAttributes.MESSAGING_TEMP_DESTINATION, True)
 
