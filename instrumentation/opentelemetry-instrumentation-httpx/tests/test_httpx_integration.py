@@ -21,6 +21,7 @@ from unittest import mock
 
 import httpx
 import respx
+from wrapt import ObjectProxy
 
 import opentelemetry.instrumentation.httpx
 from opentelemetry import trace
@@ -168,6 +169,10 @@ class BaseTestCases:
 
             HTTPXClientInstrumentor().instrument()
 
+        def print_spans(self, spans):
+            for span in spans:
+                print(span.name, span.attributes)
+
         # pylint: disable=invalid-name
         def tearDown(self):
             super().tearDown()
@@ -181,7 +186,9 @@ class BaseTestCases:
             if exporter is None:
                 exporter = self.memory_exporter
             span_list = exporter.get_finished_spans()
-            self.assertEqual(num_spans, len(span_list))
+            self.assertEqual(
+                num_spans, len(span_list), self.print_spans(span_list)
+            )
             if num_spans == 0:
                 return None
             if num_spans == 1:
@@ -760,14 +767,25 @@ class BaseTestCases:
                 ),
             }
 
-        def assert_proxy_mounts(self, mounts, num_mounts, transport_type):
+        def assert_proxy_mounts(self, mounts, num_mounts, transport_type=None):
             self.assertEqual(len(mounts), num_mounts)
             for transport in mounts:
                 with self.subTest(transport):
-                    self.assertIsInstance(
-                        transport,
-                        transport_type,
-                    )
+                    if transport_type:
+                        self.assertIsInstance(
+                            transport,
+                            transport_type,
+                        )
+                    else:
+                        handler = getattr(transport, "handle_request", None)
+                        if not handler:
+                            handler = getattr(
+                                transport, "handle_async_request"
+                            )
+                        self.assertTrue(
+                            isinstance(handler, ObjectProxy)
+                            and getattr(handler, "__wrapped__")
+                        )
 
         def test_custom_tracer_provider(self):
             resource = resources.Resource.create({})
@@ -990,8 +1008,24 @@ class BaseTestCases:
             self.assert_proxy_mounts(
                 client._mounts.values(),
                 2,
-                (SyncOpenTelemetryTransport, AsyncOpenTelemetryTransport),
             )
+
+        def print_handler(self, client):
+            transport = client._transport
+            handler = getattr(
+                transport,
+                "handle_request",
+                getattr(transport, "handle_async_request", None),
+            )
+            print(
+                handler,
+                (
+                    getattr(handler, "__wrapped__", "no wrapped")
+                    if handler
+                    else "no handler"
+                ),
+            )
+            return handler
 
         def test_instrument_client_with_proxy(self):
             HTTPXClientInstrumentor().uninstrument()
@@ -1009,7 +1043,6 @@ class BaseTestCases:
             self.assert_proxy_mounts(
                 client._mounts.values(),
                 2,
-                (SyncOpenTelemetryTransport, AsyncOpenTelemetryTransport),
             )
             HTTPXClientInstrumentor().uninstrument_client(client)
 
@@ -1019,13 +1052,13 @@ class BaseTestCases:
             self.assert_proxy_mounts(
                 client._mounts.values(),
                 2,
-                (SyncOpenTelemetryTransport, AsyncOpenTelemetryTransport),
             )
 
             HTTPXClientInstrumentor().uninstrument_client(client)
             result = self.perform_request(self.URL, client=client)
 
             self.assertEqual(result.text, "Hello!")
+            # FIXME: this does fail if uninstrument() has been called before and is a change of behaviour from before
             self.assert_span(num_spans=0)
             self.assert_proxy_mounts(
                 client._mounts.values(),
