@@ -9,7 +9,6 @@ cryptography==43.0.1
 Deprecated==1.2.14
 docker==7.0.0
 idna==3.7
-importlib-metadata==6.11.0
 iniconfig==2.0.0
 Jinja2==3.1.4
 jmespath==1.0.1
