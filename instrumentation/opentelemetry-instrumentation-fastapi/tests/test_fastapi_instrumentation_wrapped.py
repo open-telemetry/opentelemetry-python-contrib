@@ -79,8 +79,9 @@ class TestWrappedApplication(TestBase):
         spans = self.memory_exporter.get_finished_spans()
         expected_span_name = "GET /foobar"
         self.assertEqual(
-            spans[0].name, 'GET /foobar',
-            f"Expected span name to be '{expected_span_name}', but got '{spans[0].name}'"
+            spans[0].name,
+            "GET /foobar",
+            f"Expected span name to be '{expected_span_name}', but got '{spans[0].name}'",
         )
 
         # Make a request to the endpoint with a path parameter
@@ -99,13 +100,15 @@ class TestWrappedApplication(TestBase):
 
         # Verify that the path parameter is rendered correctly
         self.assertIn("http.route", server_span.attributes)
-        self.assertEqual(server_span.attributes["http.route"],
-                         "/user/{username}")
+        self.assertEqual(
+            server_span.attributes["http.route"], "/user/{username}"
+        )
 
         # Optionally, check if the username is also included in the span attributes
         self.assertIn("http.path_parameters.username", server_span.attributes)
         self.assertEqual(
-            server_span.attributes["http.path_parameters.username"], "johndoe")
+            server_span.attributes["http.path_parameters.username"], "johndoe"
+        )
 
         # Retrieve the spans generated
         spans = self.memory_exporter.get_finished_spans()
@@ -114,8 +117,11 @@ class TestWrappedApplication(TestBase):
         self.assertGreater(len(spans), 0, "No spans were generated.")
 
         # Assert that the span name is as expected
-        expected_span_name = "GET /user/johndoe"  # Adjust this based on your implementation
+        expected_span_name = (
+            "GET /user/johndoe"  # Adjust this based on your implementation
+        )
         self.assertEqual(
-            spans[0].name, expected_span_name,
-            f"Expected span name to be '{expected_span_name}', but got '{spans[0].name}'"
+            spans[0].name,
+            expected_span_name,
+            f"Expected span name to be '{expected_span_name}', but got '{spans[0].name}'",
         )
