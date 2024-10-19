@@ -65,15 +65,17 @@ def chat_completions_create(tracer: Tracer):
                     tool_calls=kwargs.get("tools") is not None,
                 )
             else:
-                _set_response_attributes(span, result)
+                if span.is_recording():
+                    _set_response_attributes(span, result)
                 span.end()
                 return result
 
         except Exception as error:
             span.set_status(Status(StatusCode.ERROR, str(error)))
-            span.set_attribute(
-                ErrorAttributes.ERROR_TYPE, type(error).__qualname__
-            )
+            if span.is_recording():
+                span.set_attribute(
+                    ErrorAttributes.ERROR_TYPE, type(error).__qualname__
+                )
             span.end()
             raise
 
