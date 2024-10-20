@@ -409,6 +409,10 @@ def _get_route_details(scope, app=None):
     """
     Function to retrieve the full route path, handling mounted sub-applications (Mount) recursively.
 
+    TODO: there is currently no way to retrieve http.route from
+    a starlette application from scope.
+    See: https://github.com/encode/starlette/pull/804
+
     Args:
         scope: A FastAPI/Starlette scope
         app: The FastAPI/Starlette app or sub-app (defaults to the app in scope)
