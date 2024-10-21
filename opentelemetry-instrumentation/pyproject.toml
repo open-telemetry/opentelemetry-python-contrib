@@ -28,8 +28,8 @@ classifiers = [
 dependencies = [
   "opentelemetry-api ~= 1.4",
   "opentelemetry-semantic-conventions >= 0.48b0",
-  "setuptools >= 16.0",
   "wrapt >= 1.0.0, < 2.0.0",
+  "packaging >= 18.0",
 ]
 
 [project.scripts]

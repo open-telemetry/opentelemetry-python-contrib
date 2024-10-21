@@ -32,7 +32,6 @@ dependencies = [
   "opentelemetry-semantic-conventions == 0.49b0.dev",
   "opentelemetry-util-http == 0.49b0.dev",
   "packaging >= 21.0",
-  "importlib-metadata >= 4.0",
 ]
 
 [project.optional-dependencies]
