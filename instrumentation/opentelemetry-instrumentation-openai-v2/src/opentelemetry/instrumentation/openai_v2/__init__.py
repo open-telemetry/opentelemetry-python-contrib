@@ -75,4 +75,6 @@ class OpenAIInstrumentor(BaseInstrumentor):
         )
 
     def _uninstrument(self, **kwargs):
-        unwrap("openai.resources.chat.completions.Completions", "create")
+        import openai
+
+        unwrap(openai, "resources.chat.completions.Completions.create")
