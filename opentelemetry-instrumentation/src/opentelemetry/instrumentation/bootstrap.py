@@ -26,8 +26,10 @@ from subprocess import (
 from packaging.requirements import Requirement
 
 from opentelemetry.instrumentation.bootstrap_gen import (
-    default_instrumentations,
-    libraries,
+    default_instrumentations as gen_default_instrumentations,
+)
+from opentelemetry.instrumentation.bootstrap_gen import (
+    libraries as gen_libraries,
 )
 from opentelemetry.instrumentation.version import __version__
 from opentelemetry.util._importlib_metadata import (
@@ -138,7 +140,8 @@ def _run_install(default_instrumentations, libraries):
 
 
 def run(
-    default_instrumentations=default_instrumentations, libraries=libraries
+    default_instrumentations=gen_default_instrumentations,
+    libraries=gen_libraries,
 ) -> None:
     action_install = "install"
     action_requirements = "requirements"
