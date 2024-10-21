@@ -16,8 +16,8 @@ env:
 
 jobs:
 
-  lint-instrumentation-openai:
-    name: instrumentation-openai
+  lint-instrumentation-openai-v2:
+    name: instrumentation-openai-v2
     runs-on: ubuntu-latest
     steps:
       - name: Checkout repo @ SHA - ${{ github.sha }}
@@ -32,7 +32,7 @@ jobs:
         run: pip install tox
 
       - name: Run tests
-        run: tox -e lint-instrumentation-openai
+        run: tox -e lint-instrumentation-openai-v2
 
   lint-resource-detector-container:
     name: resource-detector-container
