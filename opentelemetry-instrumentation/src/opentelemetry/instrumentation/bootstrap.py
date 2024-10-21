@@ -137,7 +137,7 @@ def _run_requirements(default_instrumentations, libraries):
 def _run_install(default_instrumentations, libraries):
     for lib in _find_installed_libraries(default_instrumentations, libraries):
         _sys_pip_install(lib)
-    _pip_check()
+    _pip_check(libraries)
 
 
 def run(
