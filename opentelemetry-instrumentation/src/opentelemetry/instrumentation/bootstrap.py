@@ -22,6 +22,7 @@ from subprocess import (
     SubprocessError,
     check_call,
 )
+from typing import Optional
 
 from packaging.requirements import Requirement
 
@@ -140,8 +141,8 @@ def _run_install(default_instrumentations, libraries):
 
 
 def run(
-    default_instrumentations=gen_default_instrumentations,
-    libraries=gen_libraries,
+    default_instrumentations: Optional[list] = None,
+    libraries: Optional[list] = None,
 ) -> None:
     action_install = "install"
     action_requirements = "requirements"
@@ -171,6 +172,12 @@ def run(
         """,
     )
     args = parser.parse_args()
+
+    if libraries is None:
+        libraries = gen_libraries
+
+    if default_instrumentations is None:
+        default_instrumentations = gen_default_instrumentations
 
     cmd = {
         action_install: _run_install,
