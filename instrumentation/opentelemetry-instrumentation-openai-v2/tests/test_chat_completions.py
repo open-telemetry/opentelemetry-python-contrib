@@ -20,9 +20,7 @@ def test_chat_completion(exporter, openai_client):
 
     response = openai_client.chat.completions.create(**kwargs)
     spans = exporter.get_finished_spans()
-    # ignore by default added spans etc: http spans.
-    # we are only interested in the last span which is the chat completion span
-    chat_completion_span = spans[-1]
+    chat_completion_span = spans[0]
     # assert that the span name is correct
     assert chat_completion_span.name == f"chat {llm_model_value}"
 
@@ -34,7 +32,6 @@ def test_chat_completion(exporter, openai_client):
     response_id = attributes[GenAIAttributes.GEN_AI_RESPONSE_ID]
     input_tokens = attributes[GenAIAttributes.GEN_AI_USAGE_INPUT_TOKENS]
     output_tokens = attributes[GenAIAttributes.GEN_AI_USAGE_OUTPUT_TOKENS]
-
     # assert that the attributes are correct
     assert (
         operation_name == GenAIAttributes.GenAiOperationNameValues.CHAT.value
@@ -106,9 +103,7 @@ def test_chat_completion_streaming(exporter, openai_client):
             response_stream_id = chunk.id
 
     spans = exporter.get_finished_spans()
-    # ignore by default added spans etc: http spans.
-    # we are only interested in the last span which is the chat completion span
-    streaming_span = spans[-1]
+    streaming_span = spans[0]
 
     assert streaming_span.name == f"chat {llm_model_value}"
     attributes = streaming_span.attributes
