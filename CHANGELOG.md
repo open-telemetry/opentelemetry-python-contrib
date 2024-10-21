@@ -48,6 +48,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- Add Python 3.13 support
+  ([#2724](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/2724))
 - `opentelemetry-instrumentation-httpx` fix handling of async hooks
   ([#2823](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/2823))
 - `opentelemetry-instrumentation-system-metrics` fix `process.runtime.cpu.utilization` values to be shown in range of 0 to 1
