@@ -253,7 +253,7 @@ class TestUtils(unittest.TestCase):
         self.assertIsNone(get_value(_SUPPRESS_HTTP_INSTRUMENTATION_KEY))
 
 
-class UnwrapTestCase:
+class UnwrapTestCase(unittest.TestCase):
     @staticmethod
     def _wrap_method():
         return wrap_function_wrapper(
