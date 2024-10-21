@@ -252,13 +252,15 @@ class TestUtils(unittest.TestCase):
 
         self.assertIsNone(get_value(_SUPPRESS_HTTP_INSTRUMENTATION_KEY))
 
+
+class UnwrapTestCase:
     @staticmethod
     def _wrap_method():
         return wrap_function_wrapper(
             WrappedClass, "method", WrappedClass.wrapper_method
         )
 
-    def test_unwrap_can_unwrap_object_attribute(self):
+    def test_can_unwrap_object_attribute(self):
         self._wrap_method()
         instance = WrappedClass()
         self.assertTrue(isinstance(instance.method, ObjectProxy))
@@ -266,7 +268,7 @@ class TestUtils(unittest.TestCase):
         unwrap(WrappedClass, "method")
         self.assertFalse(isinstance(instance.method, ObjectProxy))
 
-    def test_unwrap_can_unwrap_object_attribute_as_string(self):
+    def test_can_unwrap_object_attribute_as_string(self):
         self._wrap_method()
         instance = WrappedClass()
         self.assertTrue(isinstance(instance.method, ObjectProxy))
@@ -274,7 +276,7 @@ class TestUtils(unittest.TestCase):
         unwrap("tests.test_utils.WrappedClass", "method")
         self.assertFalse(isinstance(instance.method, ObjectProxy))
 
-    def test_unwrap_raises_import_error_if_path_not_well_formed(self):
+    def test_raises_import_error_if_path_not_well_formed(self):
         self._wrap_method()
         instance = WrappedClass()
         self.assertTrue(isinstance(instance.method, ObjectProxy))
@@ -287,7 +289,7 @@ class TestUtils(unittest.TestCase):
         unwrap(WrappedClass, "method")
         self.assertFalse(isinstance(instance.method, ObjectProxy))
 
-    def test_unwrap_raises_import_error_if_cannot_find_module(self):
+    def test_raises_import_error_if_cannot_find_module(self):
         self._wrap_method()
         instance = WrappedClass()
         self.assertTrue(isinstance(instance.method, ObjectProxy))
@@ -298,7 +300,7 @@ class TestUtils(unittest.TestCase):
         unwrap(WrappedClass, "method")
         self.assertFalse(isinstance(instance.method, ObjectProxy))
 
-    def test_unwrap_raises_import_error_if_cannot_find_object(self):
+    def test_raises_import_error_if_cannot_find_object(self):
         self._wrap_method()
         instance = WrappedClass()
         self.assertTrue(isinstance(instance.method, ObjectProxy))
@@ -311,11 +313,12 @@ class TestUtils(unittest.TestCase):
         unwrap(WrappedClass, "method")
         self.assertFalse(isinstance(instance.method, ObjectProxy))
 
+    # pylint: disable=no-self-use
     def test_does_nothing_if_cannot_find_attribute(self):
         instance = WrappedClass()
         unwrap(instance, "method_not_found")
 
-    def test_unwrap_does_nothing_if_attribute_is_not_from_wrapt(self):
+    def test_does_nothing_if_attribute_is_not_from_wrapt(self):
         instance = WrappedClass()
         self.assertFalse(isinstance(instance.method, ObjectProxy))
         unwrap(WrappedClass, "method")
