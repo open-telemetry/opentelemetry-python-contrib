@@ -24,6 +24,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - `opentelemetry-instrumentation-aiokafka` Wrap `AIOKafkaConsumer.getone()` instead of `AIOKafkaConsumer.__anext__`
   ([#2874](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/2874))
+- `opentelemetry-instrumentation-pymongo` Fix type-related errors in certain usages of the PyMongo span `DB_MONGODB_COLLECTION` attribute and trace error status descriptions
+  ([#2010](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/2010))
 
 ### Breaking changes
 
