@@ -522,7 +522,7 @@ def parse_subargs(parentargs, args):
 def lint_args(args):
     runsubprocess(
         args.dry_run,
-        ("ruff", "check", ".") + (() if args.check_only else ("--fix",)),
+        ("ruff", "check") + (() if args.check_only else ("--fix",)),
         check=True,
     )
     runsubprocess(
