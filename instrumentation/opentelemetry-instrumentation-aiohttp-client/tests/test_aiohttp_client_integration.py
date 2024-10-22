@@ -24,7 +24,6 @@ import aiohttp
 import aiohttp.test_utils
 import yarl
 from http_server_mock import HttpServerMock
-from pkg_resources import iter_entry_points
 
 from opentelemetry import trace as trace_api
 from opentelemetry.instrumentation import aiohttp_client
@@ -47,6 +46,7 @@ from opentelemetry.semconv.attributes.url_attributes import URL_FULL
 from opentelemetry.semconv.trace import SpanAttributes
 from opentelemetry.test.test_base import TestBase
 from opentelemetry.trace import Span, StatusCode
+from opentelemetry.util._importlib_metadata import entry_points
 
 
 def run_with_test_server(
@@ -886,9 +886,9 @@ class TestAioHttpClientInstrumentor(TestBase):
 
 class TestLoadingAioHttpInstrumentor(unittest.TestCase):
     def test_loading_instrumentor(self):
-        entry_points = iter_entry_points(
-            "opentelemetry_instrumentor", "aiohttp-client"
+        (entry_point,) = entry_points(
+            group="opentelemetry_instrumentor", name="aiohttp-client"
         )
 
-        instrumentor = next(entry_points).load()()
+        instrumentor = entry_point.load()()
         self.assertIsInstance(instrumentor, AioHttpClientInstrumentor)
