@@ -54,6 +54,7 @@ def chat_completions_create(tracer: Tracer):
             name=span_name, kind=SpanKind.CLIENT, attributes=span_attributes
         )
         if span.is_recording():
+            _set_input_attributes(span, span_attributes)
             set_event_prompt(span, json.dumps(llm_prompts))
 
         try:
@@ -81,6 +82,12 @@ def chat_completions_create(tracer: Tracer):
             raise
 
     return traced_method
+
+
+@silently_fail
+def _set_input_attributes(span, attributes):
+    for field, value in attributes.items():
+        set_span_attribute(span, field, value)
 
 
 @silently_fail
