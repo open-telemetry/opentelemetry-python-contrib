@@ -206,7 +206,7 @@ class BaseTestCases:
             self.assertEqual(span.name, "GET")
 
             self.assertEqual(
-                span.attributes,
+                dict(span.attributes),
                 {
                     SpanAttributes.HTTP_METHOD: "GET",
                     SpanAttributes.HTTP_URL: self.URL,
@@ -230,7 +230,7 @@ class BaseTestCases:
             self.assertIs(span.kind, trace.SpanKind.CLIENT)
             self.assertEqual(span.name, "HTTP")
             self.assertEqual(
-                span.attributes,
+                dict(span.attributes),
                 {
                     SpanAttributes.HTTP_METHOD: "_OTHER",
                     SpanAttributes.HTTP_URL: self.URL,
@@ -254,7 +254,7 @@ class BaseTestCases:
             self.assertIs(span.kind, trace.SpanKind.CLIENT)
             self.assertEqual(span.name, "HTTP")
             self.assertEqual(
-                span.attributes,
+                dict(span.attributes),
                 {
                     HTTP_REQUEST_METHOD: "_OTHER",
                     URL_FULL: self.URL,
@@ -294,7 +294,7 @@ class BaseTestCases:
                 SpanAttributes.SCHEMA_URL,
             )
             self.assertEqual(
-                span.attributes,
+                dict(span.attributes),
                 {
                     HTTP_REQUEST_METHOD: "GET",
                     URL_FULL: url,
@@ -329,7 +329,7 @@ class BaseTestCases:
             )
 
             self.assertEqual(
-                span.attributes,
+                dict(span.attributes),
                 {
                     SpanAttributes.HTTP_METHOD: "GET",
                     HTTP_REQUEST_METHOD: "GET",
@@ -456,7 +456,7 @@ class BaseTestCases:
 
             span = self.assert_span()
             self.assertEqual(
-                span.attributes,
+                dict(span.attributes),
                 {
                     SpanAttributes.HTTP_METHOD: "GET",
                     SpanAttributes.HTTP_URL: self.URL,
@@ -512,7 +512,7 @@ class BaseTestCases:
 
             span = self.assert_span()
             self.assertEqual(
-                span.attributes,
+                dict(span.attributes),
                 {
                     HTTP_REQUEST_METHOD: "GET",
                     URL_FULL: url,
@@ -533,7 +533,7 @@ class BaseTestCases:
 
             span = self.assert_span()
             self.assertEqual(
-                span.attributes,
+                dict(span.attributes),
                 {
                     SpanAttributes.HTTP_METHOD: "GET",
                     HTTP_REQUEST_METHOD: "GET",
@@ -634,7 +634,7 @@ class BaseTestCases:
             self.assertEqual(result.text, "Hello!")
             span = self.assert_span()
             self.assertEqual(
-                span.attributes,
+                dict(span.attributes),
                 {
                     SpanAttributes.HTTP_METHOD: "GET",
                     SpanAttributes.HTTP_URL: self.URL,
@@ -811,7 +811,7 @@ class BaseTestCases:
             self.assertEqual(result.text, "Hello!")
             span = self.assert_span()
             self.assertEqual(
-                span.attributes,
+                dict(span.attributes),
                 {
                     SpanAttributes.HTTP_METHOD: "GET",
                     SpanAttributes.HTTP_URL: self.URL,
@@ -832,7 +832,7 @@ class BaseTestCases:
             self.assertEqual(result.text, "Hello!")
             span = self.assert_span()
             self.assertEqual(
-                span.attributes,
+                dict(span.attributes),
                 {
                     SpanAttributes.HTTP_METHOD: "GET",
                     SpanAttributes.HTTP_URL: self.URL,
