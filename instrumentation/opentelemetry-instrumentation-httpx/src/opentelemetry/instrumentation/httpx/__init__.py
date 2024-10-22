@@ -11,6 +11,7 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
+# pylint: disable=too-many-lines
 """
 Usage
 -----
@@ -785,13 +786,11 @@ class HTTPXClientInstrumentor(BaseInstrumentor):
         )
 
     def _uninstrument(self, **kwargs):
-        import httpx
-
         unwrap(httpx.HTTPTransport, "handle_request")
         unwrap(httpx.AsyncHTTPTransport, "handle_async_request")
 
-    def _handle_request_wrapper(
-        self,
+    @staticmethod
+    def _handle_request_wrapper(  # pylint: disable=too-many-locals
         wrapped,
         instance,
         args,
@@ -864,8 +863,8 @@ class HTTPXClientInstrumentor(BaseInstrumentor):
 
         return response
 
-    async def _handle_async_request_wrapper(
-        self,
+    @staticmethod
+    async def _handle_async_request_wrapper(  # pylint: disable=too-many-locals
         wrapped,
         instance,
         args,
@@ -982,14 +981,14 @@ class HTTPXClientInstrumentor(BaseInstrumentor):
             async_request_hook = request_hook
             request_hook = None
         else:
-            request_hook = request_hook
+            # request_hook already set
             async_request_hook = None
 
         if iscoroutinefunction(response_hook):
             async_response_hook = response_hook
             response_hook = None
         else:
-            response_hook = response_hook
+            # response_hook already set
             async_response_hook = None
 
         if hasattr(client._transport, "handle_request"):
