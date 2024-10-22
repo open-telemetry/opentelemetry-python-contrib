@@ -28,6 +28,9 @@ jobs:
         uses: actions/setup-python@v5
         with:
           python-version: "{{ job_data.python_version }}"
+          {%- if job_data.python_version == "3.13" %}
+          allow-prereleases: true
+          {%- endif %}
 
       - name: Install tox
         run: pip install tox
