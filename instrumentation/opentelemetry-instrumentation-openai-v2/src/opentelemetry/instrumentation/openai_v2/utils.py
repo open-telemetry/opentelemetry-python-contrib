@@ -143,7 +143,7 @@ def get_llm_request_attributes(
     operation_name=GenAIAttributes.GenAiOperationNameValues.CHAT.value,
 ):
 
-    return {
+    attributes = {
         GenAIAttributes.GEN_AI_OPERATION_NAME: operation_name,
         GenAIAttributes.GEN_AI_SYSTEM: GenAIAttributes.GenAiSystemValues.OPENAI.value,
         GenAIAttributes.GEN_AI_REQUEST_MODEL: kwargs.get(
@@ -160,3 +160,6 @@ def get_llm_request_attributes(
             "frequency_penalty"
         ),
     }
+
+    # filter out None values
+    return {k: v for k, v in attributes.items() if v is not None}

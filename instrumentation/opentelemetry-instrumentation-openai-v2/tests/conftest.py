@@ -56,6 +56,11 @@ def instrument():
     OpenAIInstrumentor().instrument()
 
 
+@pytest.fixture(scope="session", autouse=True)
+def uninstrument():
+    OpenAIInstrumentor().uninstrument()
+
+
 def scrub_response_headers(response):
     """
     This scrubs sensitive response headers. Note they are case-sensitive!
