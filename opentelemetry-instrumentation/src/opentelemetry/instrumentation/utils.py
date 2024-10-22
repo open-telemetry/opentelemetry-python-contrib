@@ -16,7 +16,7 @@ import urllib.parse
 from contextlib import contextmanager
 from importlib import import_module
 from re import escape, sub
-from typing import Dict, Iterable, Sequence
+from typing import Dict, Iterable, Sequence, Union
 
 from wrapt import ObjectProxy
 
@@ -81,7 +81,7 @@ def http_status_to_status_code(
     return StatusCode.ERROR
 
 
-def unwrap(obj, attr: str):
+def unwrap(obj: Union[object, str], attr: str):
     """Given a function that was wrapped by wrapt.wrap_function_wrapper, unwrap it
 
     The object containing the function to unwrap may be passed as dotted module path string.
