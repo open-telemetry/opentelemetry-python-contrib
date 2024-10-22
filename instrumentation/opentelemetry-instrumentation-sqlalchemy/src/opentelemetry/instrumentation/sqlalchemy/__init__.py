@@ -98,10 +98,11 @@ API
 from collections.abc import Sequence
 from typing import Collection
 
+import sqlalchemy
 from packaging.version import parse as parse_version
+from sqlalchemy.engine.base import Engine
 from wrapt import wrap_function_wrapper as _w
 
-import sqlalchemy
 from opentelemetry.instrumentation.instrumentor import BaseInstrumentor
 from opentelemetry.instrumentation.sqlalchemy.engine import (
     EngineTracer,
@@ -115,7 +116,6 @@ from opentelemetry.instrumentation.utils import unwrap
 from opentelemetry.metrics import get_meter
 from opentelemetry.semconv.metrics import MetricInstruments
 from opentelemetry.trace import get_tracer
-from sqlalchemy.engine.base import Engine
 
 
 class SQLAlchemyInstrumentor(BaseInstrumentor):

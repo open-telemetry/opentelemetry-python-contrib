@@ -78,6 +78,8 @@ for example:
 from logging import getLogger
 from typing import Callable, Collection
 
+from pymongo import monitoring
+
 from opentelemetry.instrumentation.instrumentor import BaseInstrumentor
 from opentelemetry.instrumentation.pymongo.package import _instruments
 from opentelemetry.instrumentation.pymongo.utils import (
@@ -89,7 +91,6 @@ from opentelemetry.semconv.trace import DbSystemValues, SpanAttributes
 from opentelemetry.trace import SpanKind, get_tracer
 from opentelemetry.trace.span import Span
 from opentelemetry.trace.status import Status, StatusCode
-from pymongo import monitoring
 
 _LOG = getLogger(__name__)
 

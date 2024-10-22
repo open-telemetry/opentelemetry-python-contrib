@@ -188,6 +188,9 @@ API
 import platform
 from typing import Collection
 
+from pyramid.config import Configurator
+from pyramid.path import caller_package
+from pyramid.settings import aslist
 from wrapt import wrap_function_wrapper as _wrap
 
 from opentelemetry.instrumentation.instrumentor import BaseInstrumentor
@@ -198,9 +201,6 @@ from opentelemetry.instrumentation.pyramid.callbacks import (
 )
 from opentelemetry.instrumentation.pyramid.package import _instruments
 from opentelemetry.instrumentation.utils import unwrap
-from pyramid.config import Configurator
-from pyramid.path import caller_package
-from pyramid.settings import aslist
 
 # test_automatic.TestAutomatic.test_tween_list needs trace_tween_factory to be
 # imported in this module. The next line is necessary to avoid a lint error

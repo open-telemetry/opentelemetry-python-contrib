@@ -17,6 +17,7 @@ import logging
 
 import grpc
 from grpc.aio import ClientCallDetails, Metadata
+
 from opentelemetry.instrumentation.grpc._client import (
     OpenTelemetryClientInterceptor,
     _carrier_setter,

@@ -100,10 +100,10 @@ ___
 
 from typing import Collection
 
-import wrapt
-
 import confluent_kafka
+import wrapt
 from confluent_kafka import Consumer, Producer
+
 from opentelemetry import context, propagate, trace
 from opentelemetry.instrumentation.instrumentor import BaseInstrumentor
 from opentelemetry.instrumentation.utils import unwrap

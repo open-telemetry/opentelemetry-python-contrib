@@ -172,6 +172,9 @@ API
 
 from typing import Collection
 
+from starlette import applications
+from starlette.routing import Match
+
 from opentelemetry.instrumentation.asgi import OpenTelemetryMiddleware
 from opentelemetry.instrumentation.asgi.types import (
     ClientRequestHook,
@@ -185,8 +188,6 @@ from opentelemetry.metrics import get_meter
 from opentelemetry.semconv.trace import SpanAttributes
 from opentelemetry.trace import get_tracer
 from opentelemetry.util.http import get_excluded_urls
-from starlette import applications
-from starlette.routing import Match
 
 _excluded_urls = get_excluded_urls("STARLETTE")
 

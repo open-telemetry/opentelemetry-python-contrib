@@ -90,9 +90,9 @@ from dataclasses import dataclass
 from timeit import default_timer
 from typing import Collection
 
+import urllib3.connectionpool
 import wrapt
 
-import urllib3.connectionpool
 from opentelemetry.instrumentation._semconv import (
     _client_duration_attrs_new,
     _client_duration_attrs_old,

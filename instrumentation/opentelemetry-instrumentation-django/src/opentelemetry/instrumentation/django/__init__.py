@@ -242,6 +242,7 @@ from typing import Collection
 from django import VERSION as django_version
 from django.conf import settings
 from django.core.exceptions import ImproperlyConfigured
+
 from opentelemetry.instrumentation._semconv import (
     _get_schema_url,
     _OpenTelemetrySemanticConventionStability,

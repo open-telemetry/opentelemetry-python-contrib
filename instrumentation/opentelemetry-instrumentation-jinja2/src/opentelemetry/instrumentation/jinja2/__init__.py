@@ -42,9 +42,9 @@ API
 import logging
 from typing import Collection
 
+import jinja2
 from wrapt import wrap_function_wrapper as _wrap
 
-import jinja2
 from opentelemetry.instrumentation.instrumentor import BaseInstrumentor
 from opentelemetry.instrumentation.jinja2.package import _instruments
 from opentelemetry.instrumentation.jinja2.version import __version__

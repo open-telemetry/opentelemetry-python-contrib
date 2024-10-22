@@ -65,8 +65,8 @@ from typing import Collection, Iterable
 
 from billiard import VERSION
 from billiard.einfo import ExceptionInfo
-
 from celery import signals  # pylint: disable=no-name-in-module
+
 from opentelemetry import context as context_api
 from opentelemetry import trace
 from opentelemetry.instrumentation.celery import utils

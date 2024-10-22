@@ -33,9 +33,9 @@ API
 import logging
 import typing
 
+import aiopg
 import wrapt
 
-import aiopg
 from opentelemetry.instrumentation.aiopg.aiopg_integration import (
     AiopgIntegration,
     AsyncProxyObject,

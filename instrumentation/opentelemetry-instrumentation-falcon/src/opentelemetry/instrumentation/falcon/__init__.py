@@ -188,9 +188,9 @@ from time import time_ns
 from timeit import default_timer
 from typing import Collection
 
+import falcon
 from packaging import version as package_version
 
-import falcon
 import opentelemetry.instrumentation.wsgi as otel_wsgi
 from opentelemetry import context, trace
 from opentelemetry.instrumentation.falcon.package import _instruments

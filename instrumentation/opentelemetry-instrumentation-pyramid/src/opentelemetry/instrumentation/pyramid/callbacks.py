@@ -16,6 +16,11 @@ from logging import getLogger
 from time import time_ns
 from timeit import default_timer
 
+from pyramid.events import BeforeTraversal
+from pyramid.httpexceptions import HTTPException, HTTPServerError
+from pyramid.settings import asbool
+from pyramid.tweens import EXCVIEW
+
 import opentelemetry.instrumentation.wsgi as otel_wsgi
 from opentelemetry import context, trace
 from opentelemetry.instrumentation.propagators import (
@@ -28,10 +33,6 @@ from opentelemetry.semconv.metrics import MetricInstruments
 from opentelemetry.semconv.trace import SpanAttributes
 from opentelemetry.trace.status import Status, StatusCode
 from opentelemetry.util.http import get_excluded_urls
-from pyramid.events import BeforeTraversal
-from pyramid.httpexceptions import HTTPException, HTTPServerError
-from pyramid.settings import asbool
-from pyramid.tweens import EXCVIEW
 
 TWEEN_NAME = "opentelemetry.instrumentation.pyramid.trace_tween_factory"
 SETTING_TRACE_ENABLED = "opentelemetry-pyramid.trace_enabled"

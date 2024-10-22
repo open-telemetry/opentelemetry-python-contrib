@@ -15,13 +15,14 @@
 import functools
 from time import time_ns
 
+from tornado.httpclient import HTTPError, HTTPRequest
+
 from opentelemetry import trace
 from opentelemetry.instrumentation.utils import http_status_to_status_code
 from opentelemetry.propagate import inject
 from opentelemetry.semconv.trace import SpanAttributes
 from opentelemetry.trace.status import Status, StatusCode
 from opentelemetry.util.http import remove_url_credentials
-from tornado.httpclient import HTTPError, HTTPRequest
 
 
 def _normalize_request(args, kwargs):

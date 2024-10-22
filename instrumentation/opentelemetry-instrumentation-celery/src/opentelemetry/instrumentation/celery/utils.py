@@ -17,6 +17,7 @@ from typing import ContextManager, Optional, Tuple
 
 from celery import registry  # pylint: disable=no-name-in-module
 from celery.app.task import Task
+
 from opentelemetry.semconv.trace import SpanAttributes
 from opentelemetry.trace import Span
 

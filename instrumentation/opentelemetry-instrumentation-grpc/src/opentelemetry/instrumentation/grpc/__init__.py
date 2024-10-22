@@ -277,9 +277,9 @@ services ``GRPCTestServer`` and ``GRPCHealthServer``.
 import os
 from typing import Callable, Collection, List, Union
 
+import grpc  # pylint:disable=import-self
 from wrapt import wrap_function_wrapper as _wrap
 
-import grpc  # pylint:disable=import-self
 from opentelemetry import trace
 from opentelemetry.instrumentation.grpc.filters import (
     any_of,

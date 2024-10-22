@@ -106,10 +106,6 @@ import typing
 from typing import Collection
 
 import psycopg  # pylint: disable=import-self
-from opentelemetry.instrumentation import dbapi
-from opentelemetry.instrumentation.instrumentor import BaseInstrumentor
-from opentelemetry.instrumentation.psycopg.package import _instruments
-from opentelemetry.instrumentation.psycopg.version import __version__
 from psycopg import (
     AsyncCursor as pg_async_cursor,  # pylint: disable=import-self,no-name-in-module
 )
@@ -117,6 +113,11 @@ from psycopg import (
     Cursor as pg_cursor,  # pylint: disable=no-name-in-module,import-self
 )
 from psycopg.sql import Composed  # pylint: disable=no-name-in-module
+
+from opentelemetry.instrumentation import dbapi
+from opentelemetry.instrumentation.instrumentor import BaseInstrumentor
+from opentelemetry.instrumentation.psycopg.package import _instruments
+from opentelemetry.instrumentation.psycopg.version import __version__
 
 _logger = logging.getLogger(__name__)
 _OTEL_CURSOR_FACTORY_KEY = "_otel_orig_cursor_factory"

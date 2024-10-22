@@ -15,6 +15,7 @@ from typing import Any, Callable, Optional
 
 from aio_pika import Queue
 from aio_pika.abc import AbstractIncomingMessage
+
 from opentelemetry import context, propagate, trace
 from opentelemetry.instrumentation.aio_pika.span_builder import SpanBuilder
 from opentelemetry.instrumentation.utils import is_instrumentation_enabled

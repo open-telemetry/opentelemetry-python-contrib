@@ -41,6 +41,7 @@ API
 from typing import Collection
 
 import mysql.connector
+
 from opentelemetry.instrumentation import dbapi
 from opentelemetry.instrumentation.instrumentor import BaseInstrumentor
 from opentelemetry.instrumentation.mysql.package import _instruments

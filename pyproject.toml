@@ -29,6 +29,8 @@ ignore = [
 "docs/**/*.*" = ["A001"]
 
 [tool.ruff.lint.isort]
+detect-same-package = false # to not consider instrumentation packages as first-party
+known-first-party = ["opentelemetry"]
 known-third-party = [
   "psutil",
   "pytest",
@@ -36,4 +38,4 @@ known-third-party = [
   "redis_opentracing",
   "opencensus",
 ]
-known-first-party = ["opentelemetry", "opentelemetry_example_app"]
+

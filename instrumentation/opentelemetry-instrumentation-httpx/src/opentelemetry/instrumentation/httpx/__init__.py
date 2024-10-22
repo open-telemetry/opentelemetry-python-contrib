@@ -197,6 +197,7 @@ from asyncio import iscoroutinefunction
 from types import TracebackType
 
 import httpx
+
 from opentelemetry.instrumentation._semconv import (
     _get_schema_url,
     _HTTPStabilityMode,

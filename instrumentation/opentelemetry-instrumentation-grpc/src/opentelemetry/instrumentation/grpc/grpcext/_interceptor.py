@@ -20,6 +20,7 @@
 import collections
 
 import grpc
+
 from opentelemetry.instrumentation.grpc import grpcext
 
 

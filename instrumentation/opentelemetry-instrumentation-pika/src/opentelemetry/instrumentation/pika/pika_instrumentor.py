@@ -16,10 +16,15 @@
 from logging import getLogger
 from typing import Any, Collection, Dict, Optional
 
+import pika
 import wrapt
 from packaging import version
+from pika.adapters import BlockingConnection
+from pika.adapters.blocking_connection import (
+    BlockingChannel,
+    _QueueConsumerGeneratorInfo,
+)
 
-import pika
 from opentelemetry import trace
 from opentelemetry.instrumentation.instrumentor import BaseInstrumentor
 from opentelemetry.instrumentation.pika import utils
@@ -27,11 +32,6 @@ from opentelemetry.instrumentation.pika.package import _instruments
 from opentelemetry.instrumentation.pika.version import __version__
 from opentelemetry.instrumentation.utils import unwrap
 from opentelemetry.trace import Tracer, TracerProvider
-from pika.adapters import BlockingConnection
-from pika.adapters.blocking_connection import (
-    BlockingChannel,
-    _QueueConsumerGeneratorInfo,
-)
 
 _LOG = getLogger(__name__)
 _CTX_KEY = "__otel_task_span"

@@ -24,6 +24,7 @@ from collections import OrderedDict
 from typing import Callable, MutableMapping
 
 import grpc
+
 from opentelemetry import trace
 from opentelemetry.instrumentation.grpc import grpcext
 from opentelemetry.instrumentation.grpc._utilities import RpcInfo

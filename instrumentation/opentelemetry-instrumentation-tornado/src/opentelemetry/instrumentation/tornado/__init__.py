@@ -159,10 +159,10 @@ from time import time_ns
 from timeit import default_timer
 from typing import Collection, Dict
 
+import tornado.web
 import wrapt
 from wrapt import wrap_function_wrapper
 
-import tornado.web
 from opentelemetry import context, trace
 from opentelemetry.instrumentation.instrumentor import BaseInstrumentor
 from opentelemetry.instrumentation.propagators import (

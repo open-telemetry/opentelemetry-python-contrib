@@ -39,9 +39,9 @@ API
 
 from typing import Collection
 
+import cassandra.cluster
 from wrapt import wrap_function_wrapper
 
-import cassandra.cluster
 from opentelemetry import trace
 from opentelemetry.instrumentation.cassandra.package import _instruments
 from opentelemetry.instrumentation.cassandra.version import __version__

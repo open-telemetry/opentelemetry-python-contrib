@@ -20,6 +20,7 @@ from typing import Callable
 
 from django import VERSION as django_version
 from django.http import HttpRequest, HttpResponse
+
 from opentelemetry.context import detach
 from opentelemetry.instrumentation._semconv import (
     _filter_semconv_active_request_count_attr,

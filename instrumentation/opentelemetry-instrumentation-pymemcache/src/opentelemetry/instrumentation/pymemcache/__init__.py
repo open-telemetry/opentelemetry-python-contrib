@@ -40,9 +40,9 @@ API
 import logging
 from typing import Collection
 
+import pymemcache
 from wrapt import wrap_function_wrapper as _wrap
 
-import pymemcache
 from opentelemetry.instrumentation.instrumentor import BaseInstrumentor
 from opentelemetry.instrumentation.pymemcache.package import _instruments
 from opentelemetry.instrumentation.pymemcache.version import __version__

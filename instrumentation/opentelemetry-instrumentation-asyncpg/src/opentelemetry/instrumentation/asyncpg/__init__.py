@@ -37,9 +37,9 @@ API
 import re
 from typing import Collection
 
+import asyncpg
 import wrapt
 
-import asyncpg
 from opentelemetry import trace
 from opentelemetry.instrumentation.asyncpg.package import _instruments
 from opentelemetry.instrumentation.asyncpg.version import __version__

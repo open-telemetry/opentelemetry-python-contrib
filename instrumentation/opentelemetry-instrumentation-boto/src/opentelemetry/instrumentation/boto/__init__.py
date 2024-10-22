@@ -45,9 +45,9 @@ import logging
 from inspect import currentframe
 from typing import Collection
 
+from boto.connection import AWSAuthConnection, AWSQueryConnection
 from wrapt import wrap_function_wrapper
 
-from boto.connection import AWSAuthConnection, AWSQueryConnection
 from opentelemetry.instrumentation.boto.package import _instruments
 from opentelemetry.instrumentation.boto.version import __version__
 from opentelemetry.instrumentation.instrumentor import BaseInstrumentor

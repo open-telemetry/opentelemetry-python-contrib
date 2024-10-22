@@ -1,6 +1,12 @@
 from logging import getLogger
 from typing import Any, Callable, List, Optional
 
+from pika.adapters.blocking_connection import (
+    _ConsumerDeliveryEvt,
+    _QueueConsumerGeneratorInfo,
+)
+from pika.channel import Channel
+from pika.spec import Basic, BasicProperties
 from wrapt import ObjectProxy
 
 from opentelemetry import context, propagate, trace
@@ -12,12 +18,6 @@ from opentelemetry.semconv.trace import (
 )
 from opentelemetry.trace import SpanKind, Tracer
 from opentelemetry.trace.span import Span
-from pika.adapters.blocking_connection import (
-    _ConsumerDeliveryEvt,
-    _QueueConsumerGeneratorInfo,
-)
-from pika.channel import Channel
-from pika.spec import Basic, BasicProperties
 
 _LOG = getLogger(__name__)
 

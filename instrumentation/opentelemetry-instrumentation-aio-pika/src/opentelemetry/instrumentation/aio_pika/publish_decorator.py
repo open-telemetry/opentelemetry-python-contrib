@@ -14,9 +14,9 @@
 from typing import Callable, Optional
 
 import aiormq
-
 from aio_pika import Exchange
 from aio_pika.abc import AbstractMessage
+
 from opentelemetry import propagate, trace
 from opentelemetry.instrumentation.aio_pika.span_builder import SpanBuilder
 from opentelemetry.trace import Span, Tracer

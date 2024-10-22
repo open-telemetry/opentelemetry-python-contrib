@@ -12,10 +12,10 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import wrapt
-
 import grpc
 import grpc.aio
+import wrapt
+
 from opentelemetry.semconv.trace import SpanAttributes
 
 from ._server import OpenTelemetryServerInterceptor, _wrap_rpc_behavior
