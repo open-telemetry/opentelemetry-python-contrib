@@ -40,7 +40,6 @@ API
 ---
 """
 
-
 from typing import Collection
 
 from wrapt import wrap_function_wrapper
@@ -55,7 +54,6 @@ from .patch import chat_completions_create
 
 
 class OpenAIInstrumentor(BaseInstrumentor):
-
     def instrumentation_dependencies(self) -> Collection[str]:
         return _instruments
 

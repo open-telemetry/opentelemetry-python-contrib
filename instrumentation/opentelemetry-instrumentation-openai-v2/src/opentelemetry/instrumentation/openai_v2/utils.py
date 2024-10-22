@@ -142,7 +142,6 @@ def get_llm_request_attributes(
     kwargs,
     operation_name=GenAIAttributes.GenAiOperationNameValues.CHAT.value,
 ):
-
     attributes = {
         GenAIAttributes.GEN_AI_OPERATION_NAME: operation_name,
         GenAIAttributes.GEN_AI_SYSTEM: GenAIAttributes.GenAiSystemValues.OPENAI.value,
