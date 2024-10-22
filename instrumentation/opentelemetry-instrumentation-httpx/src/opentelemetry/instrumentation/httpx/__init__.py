@@ -734,8 +734,12 @@ class HTTPXClientInstrumentor(BaseInstrumentor):
                 ``async_response_hook``: Async``response_hook`` for ``httpx.AsyncClient``
         """
         tracer_provider = kwargs.get("tracer_provider")
-        self._request_hook = kwargs.get("request_hook")
-        self._response_hook = kwargs.get("response_hook")
+        _request_hook = kwargs.get("request_hook")
+        self._request_hook = _request_hook if callable(_request_hook) else None
+        _response_hook = kwargs.get("response_hook")
+        self._response_hook = (
+            _response_hook if callable(_response_hook) else None
+        )
         _async_request_hook = kwargs.get("async_request_hook")
         self._async_request_hook = (
             _async_request_hook
