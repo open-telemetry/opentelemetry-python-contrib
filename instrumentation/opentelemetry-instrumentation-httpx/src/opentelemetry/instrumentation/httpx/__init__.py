@@ -194,6 +194,7 @@ API
 import logging
 import typing
 from asyncio import iscoroutinefunction
+from functools import partial
 from types import TracebackType
 
 import httpx
@@ -734,45 +735,53 @@ class HTTPXClientInstrumentor(BaseInstrumentor):
                 ``async_response_hook``: Async``response_hook`` for ``httpx.AsyncClient``
         """
         tracer_provider = kwargs.get("tracer_provider")
-        _request_hook = kwargs.get("request_hook")
-        self._request_hook = _request_hook if callable(_request_hook) else None
-        _response_hook = kwargs.get("response_hook")
-        self._response_hook = (
-            _response_hook if callable(_response_hook) else None
-        )
-        _async_request_hook = kwargs.get("async_request_hook")
-        self._async_request_hook = (
-            _async_request_hook
-            if iscoroutinefunction(_async_request_hook)
+        request_hook = kwargs.get("request_hook")
+        response_hook = kwargs.get("response_hook")
+        async_request_hook = kwargs.get("async_request_hook")
+        async_request_hook = (
+            async_request_hook
+            if iscoroutinefunction(async_request_hook)
             else None
         )
-        _async_response_hook = kwargs.get("async_response_hook")
-        self._async_response_hook = (
-            _async_response_hook
-            if iscoroutinefunction(_async_response_hook)
+        async_response_hook = kwargs.get("async_response_hook")
+        async_response_hook = (
+            async_response_hook
+            if iscoroutinefunction(async_response_hook)
             else None
         )
 
         _OpenTelemetrySemanticConventionStability._initialize()
-        self._sem_conv_opt_in_mode = _OpenTelemetrySemanticConventionStability._get_opentelemetry_stability_opt_in_mode(
+        sem_conv_opt_in_mode = _OpenTelemetrySemanticConventionStability._get_opentelemetry_stability_opt_in_mode(
             _OpenTelemetryStabilitySignalType.HTTP,
         )
-        self._tracer = get_tracer(
+        tracer = get_tracer(
             __name__,
             instrumenting_library_version=__version__,
             tracer_provider=tracer_provider,
-            schema_url=_get_schema_url(self._sem_conv_opt_in_mode),
+            schema_url=_get_schema_url(sem_conv_opt_in_mode),
         )
 
         wrap_function_wrapper(
             "httpx",
             "HTTPTransport.handle_request",
-            self._handle_request_wrapper,
+            partial(
+                self._handle_request_wrapper,
+                tracer=tracer,
+                sem_conv_opt_in_mode=sem_conv_opt_in_mode,
+                request_hook=request_hook,
+                response_hook=response_hook,
+            ),
         )
         wrap_function_wrapper(
             "httpx",
             "AsyncHTTPTransport.handle_async_request",
-            self._handle_async_request_wrapper,
+            partial(
+                self._handle_async_request_wrapper,
+                tracer=tracer,
+                sem_conv_opt_in_mode=sem_conv_opt_in_mode,
+                async_request_hook=async_request_hook,
+                async_response_hook=async_response_hook,
+            ),
         )
 
     def _uninstrument(self, **kwargs):
@@ -781,7 +790,17 @@ class HTTPXClientInstrumentor(BaseInstrumentor):
         unwrap(httpx.HTTPTransport, "handle_request")
         unwrap(httpx.AsyncHTTPTransport, "handle_async_request")
 
-    def _handle_request_wrapper(self, wrapped, instance, args, kwargs):
+    def _handle_request_wrapper(
+        self,
+        wrapped,
+        instance,
+        args,
+        kwargs,
+        tracer,
+        sem_conv_opt_in_mode,
+        request_hook,
+        response_hook,
+    ):
         if not is_http_instrumentation_enabled():
             return wrapped(*args, **kwargs)
 
@@ -796,17 +815,17 @@ class HTTPXClientInstrumentor(BaseInstrumentor):
             span_attributes,
             url,
             method_original,
-            self._sem_conv_opt_in_mode,
+            sem_conv_opt_in_mode,
         )
 
         request_info = RequestInfo(method, url, headers, stream, extensions)
 
-        with self._tracer.start_as_current_span(
+        with tracer.start_as_current_span(
             span_name, kind=SpanKind.CLIENT, attributes=span_attributes
         ) as span:
             exception = None
-            if callable(self._request_hook):
-                self._request_hook(span, request_info)
+            if callable(request_hook):
+                request_hook(span, request_info)
 
             _inject_propagation_headers(headers, args, kwargs)
 
@@ -827,19 +846,17 @@ class HTTPXClientInstrumentor(BaseInstrumentor):
                         span,
                         status_code,
                         http_version,
-                        self._sem_conv_opt_in_mode,
+                        sem_conv_opt_in_mode,
                     )
-                if callable(self._response_hook):
-                    self._response_hook(
+                if callable(response_hook):
+                    response_hook(
                         span,
                         request_info,
                         ResponseInfo(status_code, headers, stream, extensions),
                     )
 
             if exception:
-                if span.is_recording() and _report_new(
-                    self._sem_conv_opt_in_mode
-                ):
+                if span.is_recording() and _report_new(sem_conv_opt_in_mode):
                     span.set_attribute(
                         ERROR_TYPE, type(exception).__qualname__
                     )
@@ -848,7 +865,15 @@ class HTTPXClientInstrumentor(BaseInstrumentor):
         return response
 
     async def _handle_async_request_wrapper(
-        self, wrapped, instance, args, kwargs
+        self,
+        wrapped,
+        instance,
+        args,
+        kwargs,
+        tracer,
+        sem_conv_opt_in_mode,
+        async_request_hook,
+        async_response_hook,
     ):
         if not is_http_instrumentation_enabled():
             return await wrapped(*args, **kwargs)
@@ -864,17 +889,17 @@ class HTTPXClientInstrumentor(BaseInstrumentor):
             span_attributes,
             url,
             method_original,
-            self._sem_conv_opt_in_mode,
+            sem_conv_opt_in_mode,
         )
 
         request_info = RequestInfo(method, url, headers, stream, extensions)
 
-        with self._tracer.start_as_current_span(
+        with tracer.start_as_current_span(
             span_name, kind=SpanKind.CLIENT, attributes=span_attributes
         ) as span:
             exception = None
-            if callable(self._async_request_hook):
-                await self._async_request_hook(span, request_info)
+            if callable(async_request_hook):
+                await async_request_hook(span, request_info)
 
             _inject_propagation_headers(headers, args, kwargs)
 
@@ -895,20 +920,18 @@ class HTTPXClientInstrumentor(BaseInstrumentor):
                         span,
                         status_code,
                         http_version,
-                        self._sem_conv_opt_in_mode,
+                        sem_conv_opt_in_mode,
                     )
 
-                if callable(self._async_response_hook):
-                    await self._async_response_hook(
+                if callable(async_response_hook):
+                    await async_response_hook(
                         span,
                         request_info,
                         ResponseInfo(status_code, headers, stream, extensions),
                     )
 
             if exception:
-                if span.is_recording() and _report_new(
-                    self._sem_conv_opt_in_mode
-                ):
+                if span.is_recording() and _report_new(sem_conv_opt_in_mode):
                     span.set_attribute(
                         ERROR_TYPE, type(exception).__qualname__
                     )
@@ -944,59 +967,81 @@ class HTTPXClientInstrumentor(BaseInstrumentor):
             )
             return
 
-        # FIXME: sharing state in the instrumentor instance maybe it's not that great, need to pass tracer and semconv to each
-        # instance separately
         _OpenTelemetrySemanticConventionStability._initialize()
-        self._sem_conv_opt_in_mode = _OpenTelemetrySemanticConventionStability._get_opentelemetry_stability_opt_in_mode(
+        sem_conv_opt_in_mode = _OpenTelemetrySemanticConventionStability._get_opentelemetry_stability_opt_in_mode(
             _OpenTelemetryStabilitySignalType.HTTP,
         )
-        self._tracer = get_tracer(
+        tracer = get_tracer(
             __name__,
             instrumenting_library_version=__version__,
             tracer_provider=tracer_provider,
-            schema_url=_get_schema_url(self._sem_conv_opt_in_mode),
+            schema_url=_get_schema_url(sem_conv_opt_in_mode),
         )
 
         if iscoroutinefunction(request_hook):
-            self._async_request_hook = request_hook
-            self._request_hook = None
+            async_request_hook = request_hook
+            request_hook = None
         else:
-            self._request_hook = request_hook
-            self._async_request_hook = None
+            request_hook = request_hook
+            async_request_hook = None
 
         if iscoroutinefunction(response_hook):
-            self._async_response_hook = response_hook
-            self._response_hook = None
+            async_response_hook = response_hook
+            response_hook = None
         else:
-            self._response_hook = response_hook
-            self._async_response_hook = None
+            response_hook = response_hook
+            async_response_hook = None
 
         if hasattr(client._transport, "handle_request"):
             wrap_function_wrapper(
                 client._transport,
                 "handle_request",
-                self._handle_request_wrapper,
+                partial(
+                    self._handle_request_wrapper,
+                    tracer=tracer,
+                    sem_conv_opt_in_mode=sem_conv_opt_in_mode,
+                    request_hook=request_hook,
+                    response_hook=response_hook,
+                ),
             )
             for transport in client._mounts.values():
                 # FIXME: check it's not wrapped already?
                 wrap_function_wrapper(
                     transport,
                     "handle_request",
-                    self._handle_request_wrapper,
+                    partial(
+                        self._handle_request_wrapper,
+                        tracer=tracer,
+                        sem_conv_opt_in_mode=sem_conv_opt_in_mode,
+                        request_hook=request_hook,
+                        response_hook=response_hook,
+                    ),
                 )
             client._is_instrumented_by_opentelemetry = True
         if hasattr(client._transport, "handle_async_request"):
             wrap_function_wrapper(
                 client._transport,
                 "handle_async_request",
-                self._handle_async_request_wrapper,
+                partial(
+                    self._handle_async_request_wrapper,
+                    tracer=tracer,
+                    sem_conv_opt_in_mode=sem_conv_opt_in_mode,
+                    async_request_hook=async_request_hook,
+                    async_response_hook=async_response_hook,
+                ),
             )
             for transport in client._mounts.values():
                 # FIXME: check it's not wrapped already?
                 wrap_function_wrapper(
                     transport,
                     "handle_async_request",
-                    self._handle_async_request_wrapper,
+                    partial(
+                        self._handle_async_request_wrapper,
+                        tracer=tracer,
+                        sem_conv_opt_in_mode=sem_conv_opt_in_mode,
+                        async_request_hook=async_request_hook,
+                        async_response_hook=async_response_hook,
+                    ),
                 )
             client._is_instrumented_by_opentelemetry = True
 
