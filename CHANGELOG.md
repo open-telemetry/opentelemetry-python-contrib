@@ -78,6 +78,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   ([#2753](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/2753))
 - `opentelemetry-instrumentation-grpc` Fix grpc supported version
   ([#2845](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/2845))
+- `opentelemetry-instrumentation-redis` handle connection attributes of redis.cluster.RedisCluster
+  ([#2626](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/2626)
 
 ## Version 1.26.0/0.47b0 (2024-07-23)
 
