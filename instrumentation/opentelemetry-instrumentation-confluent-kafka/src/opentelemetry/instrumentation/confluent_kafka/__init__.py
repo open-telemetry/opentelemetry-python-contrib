@@ -354,7 +354,9 @@ class ConfluentKafkaInstrumentor(BaseInstrumentor):
                 headers = []
                 kwargs["headers"] = headers
 
-            topic = KafkaPropertiesExtractor.extract_produce_topic(args)
+            topic = KafkaPropertiesExtractor.extract_produce_topic(
+                args, kwargs
+            )
             _enrich_span(
                 span,
                 topic,
