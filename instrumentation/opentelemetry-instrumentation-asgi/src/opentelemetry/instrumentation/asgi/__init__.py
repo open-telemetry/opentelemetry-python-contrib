@@ -301,9 +301,7 @@ asgi_getter = ASGIGetter()
 
 
 class ASGISetter(Setter[dict]):
-    def set(
-        self, carrier: dict, key: str, value: str
-    ) -> None:  # pylint: disable=no-self-use
+    def set(self, carrier: dict, key: str, value: str) -> None:  # pylint: disable=no-self-use
         """Sets response header values on an ASGI scope according to `the spec <https://asgi.readthedocs.io/en/latest/specs/www.html#response-start-send-event>`_.
 
         Args:

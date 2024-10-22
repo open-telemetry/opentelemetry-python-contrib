@@ -81,11 +81,11 @@ for example:
 import logging
 from typing import Any, Callable, Collection, Dict, Optional, Tuple
 
+from wrapt import wrap_function_wrapper
+
 from botocore.client import BaseClient
 from botocore.endpoint import Endpoint
 from botocore.exceptions import ClientError
-from wrapt import wrap_function_wrapper
-
 from opentelemetry.instrumentation.botocore.extensions import _find_extension
 from opentelemetry.instrumentation.botocore.extensions.types import (
     _AwsSdkCallContext,

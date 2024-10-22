@@ -19,7 +19,6 @@ from typing import Any, Type, TypeVar
 from django import conf, get_version
 from django.db import connections
 from django.db.backends.utils import CursorDebugWrapper
-
 from opentelemetry.instrumentation.sqlcommenter_utils import _add_sql_comment
 from opentelemetry.instrumentation.utils import _get_opentelemetry_values
 from opentelemetry.trace.propagation.tracecontext import (

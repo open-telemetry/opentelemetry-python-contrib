@@ -404,7 +404,6 @@ class TestUrllibMetricsInstrumentation(TestBase):
     )
     def test_metric_uninstrument(self):
         with request.urlopen(self.URL):
-
             self.assertEqual(
                 len(
                     (
@@ -452,7 +451,6 @@ class TestUrllibMetricsInstrumentation(TestBase):
             )
 
         with request.urlopen(self.URL):
-
             self.assertEqual(
                 len(
                     (
@@ -502,7 +500,6 @@ class TestUrllibMetricsInstrumentation(TestBase):
         URLLibInstrumentor().uninstrument()
 
         with request.urlopen(self.URL):
-
             self.assertEqual(
                 len(
                     (

@@ -17,11 +17,9 @@
 
 """Implementation of gRPC Python interceptors."""
 
-
 import collections
 
 import grpc
-
 from opentelemetry.instrumentation.grpc import grpcext
 
 

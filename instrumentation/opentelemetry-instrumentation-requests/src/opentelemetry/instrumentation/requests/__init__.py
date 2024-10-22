@@ -78,10 +78,6 @@ from timeit import default_timer
 from typing import Callable, Collection, Optional
 from urllib.parse import urlparse
 
-from requests.models import PreparedRequest, Response
-from requests.sessions import Session
-from requests.structures import CaseInsensitiveDict
-
 from opentelemetry.instrumentation._semconv import (
     _client_duration_attrs_new,
     _client_duration_attrs_old,
@@ -131,6 +127,9 @@ from opentelemetry.util.http import (
     sanitize_method,
 )
 from opentelemetry.util.http.httplib import set_ip_on_next_http_connection
+from requests.models import PreparedRequest, Response
+from requests.sessions import Session
+from requests.structures import CaseInsensitiveDict
 
 _excluded_urls_from_env = get_excluded_urls("REQUESTS")
 

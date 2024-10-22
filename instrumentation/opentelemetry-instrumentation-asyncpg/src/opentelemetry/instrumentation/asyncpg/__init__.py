@@ -37,9 +37,9 @@ API
 import re
 from typing import Collection
 
-import asyncpg
 import wrapt
 
+import asyncpg
 from opentelemetry import trace
 from opentelemetry.instrumentation.asyncpg.package import _instruments
 from opentelemetry.instrumentation.asyncpg.version import __version__
@@ -96,7 +96,6 @@ def _hydrate_span_from_args(connection, query, parameters) -> dict:
 
 
 class AsyncPGInstrumentor(BaseInstrumentor):
-
     _leading_comment_remover = re.compile(r"^/\*.*?\*/")
     _tracer = None
 

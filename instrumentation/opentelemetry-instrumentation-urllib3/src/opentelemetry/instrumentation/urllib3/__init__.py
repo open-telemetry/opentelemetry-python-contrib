@@ -90,9 +90,9 @@ from dataclasses import dataclass
 from timeit import default_timer
 from typing import Collection
 
-import urllib3.connectionpool
 import wrapt
 
+import urllib3.connectionpool
 from opentelemetry.instrumentation._semconv import (
     _client_duration_attrs_new,
     _client_duration_attrs_old,
@@ -463,7 +463,6 @@ def _set_status_code_attribute(
     metric_attributes: dict = None,
     sem_conv_opt_in_mode: _HTTPStabilityMode = _HTTPStabilityMode.DEFAULT,
 ) -> None:
-
     status_code_str = str(status_code)
     try:
         status_code = int(status_code)
@@ -490,7 +489,6 @@ def _set_metric_attributes(
     method: str,
     sem_conv_opt_in_mode: _HTTPStabilityMode = _HTTPStabilityMode.DEFAULT,
 ) -> None:
-
     _set_http_host_client(
         metric_attributes, instance.host, sem_conv_opt_in_mode
     )

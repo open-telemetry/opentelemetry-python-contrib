@@ -106,15 +106,14 @@ import typing
 from typing import Collection
 
 import psycopg2
-from psycopg2.extensions import (
-    cursor as pg_cursor,  # pylint: disable=no-name-in-module
-)
-from psycopg2.sql import Composed  # pylint: disable=no-name-in-module
-
 from opentelemetry.instrumentation import dbapi
 from opentelemetry.instrumentation.instrumentor import BaseInstrumentor
 from opentelemetry.instrumentation.psycopg2.package import _instruments
 from opentelemetry.instrumentation.psycopg2.version import __version__
+from psycopg2.extensions import (
+    cursor as pg_cursor,  # pylint: disable=no-name-in-module
+)
+from psycopg2.sql import Composed  # pylint: disable=no-name-in-module
 
 _logger = logging.getLogger(__name__)
 _OTEL_CURSOR_FACTORY_KEY = "_otel_orig_cursor_factory"

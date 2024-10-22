@@ -16,16 +16,15 @@ import re
 import weakref
 
 import sqlalchemy
-from sqlalchemy.event import (  # pylint: disable=no-name-in-module
-    listen,
-    remove,
-)
-
 from opentelemetry import trace
 from opentelemetry.instrumentation.sqlcommenter_utils import _add_sql_comment
 from opentelemetry.instrumentation.utils import _get_opentelemetry_values
 from opentelemetry.semconv.trace import NetTransportValues, SpanAttributes
 from opentelemetry.trace.status import Status, StatusCode
+from sqlalchemy.event import (  # pylint: disable=no-name-in-module
+    listen,
+    remove,
+)
 
 
 def _normalize_vendor(vendor):

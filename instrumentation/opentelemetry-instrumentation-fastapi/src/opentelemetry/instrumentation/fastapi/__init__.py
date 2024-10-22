@@ -181,9 +181,9 @@ from __future__ import annotations
 import logging
 from typing import Collection, Literal
 
-import fastapi
 from starlette.routing import Match
 
+import fastapi
 from opentelemetry.instrumentation._semconv import (
     _get_schema_url,
     _HTTPStabilityMode,

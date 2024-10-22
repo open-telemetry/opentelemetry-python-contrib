@@ -4,7 +4,6 @@ from typing import Any, Awaitable, Callable, Dict, List, Optional, Tuple, Union
 
 import aiokafka
 from aiokafka import ConsumerRecord
-
 from opentelemetry import context, propagate, trace
 from opentelemetry.context import Context
 from opentelemetry.propagators import textmap

@@ -17,15 +17,13 @@ from time import time_ns
 
 import redis
 import redis.asyncio
-
-from redis.exceptions import ResponseError
-from redis.commands.search.indexDefinition import IndexDefinition, IndexType
-from redis.commands.search.aggregation import AggregateRequest
-from redis.commands.search.query import Query
 from redis.commands.search.field import (
     TextField,
     VectorField,
 )
+from redis.commands.search.indexDefinition import IndexDefinition, IndexType
+from redis.commands.search.query import Query
+from redis.exceptions import ResponseError
 
 from opentelemetry import trace
 from opentelemetry.instrumentation.redis import RedisInstrumentor
@@ -644,39 +642,49 @@ class TestRedisearchInstrument(TestBase):
             self.redis_client.ft("idx:test_vss").dropindex(True)
         except ResponseError:
             print("No such index")
-        item = {"name": "test",
-                "value": "test_value",
-                "embeddings": [0.1] * 256}
+        item = {
+            "name": "test",
+            "value": "test_value",
+            "embeddings": [0.1] * 256,
+        }
         pipeline = self.redis_client.pipeline()
-        pipeline.json().set(f"test:001", "$", item)
+        pipeline.json().set("test:001", "$", item)
         res = pipeline.execute()
         assert False not in res
 
     def create_index(self):
-        schema =  ( 
-                    TextField("$.name", no_stem=True, as_name="name"),
-                    TextField("$.value", no_stem=True, as_name="value"),
-                    VectorField("$.embeddings",
-                                "FLAT",
-                                {
-                                    "TYPE": "FLOAT32",
-                                    "DIM": self.embedding_dim,
-                                    "DISTANCE_METRIC": "COSINE",
-                                },
-                                as_name="vector",),
-                    )
-        definition = IndexDefinition(prefix=["test:"], index_type=IndexType.JSON)
-        res = self.redis_client.ft("idx:test_vss").create_index(fields=schema, definition=definition)
+        schema = (
+            TextField("$.name", no_stem=True, as_name="name"),
+            TextField("$.value", no_stem=True, as_name="value"),
+            VectorField(
+                "$.embeddings",
+                "FLAT",
+                {
+                    "TYPE": "FLOAT32",
+                    "DIM": self.embedding_dim,
+                    "DISTANCE_METRIC": "COSINE",
+                },
+                as_name="vector",
+            ),
+        )
+        definition = IndexDefinition(
+            prefix=["test:"], index_type=IndexType.JSON
+        )
+        res = self.redis_client.ft("idx:test_vss").create_index(
+            fields=schema, definition=definition
+        )
         assert "OK" in str(res)
 
     def test_redis_create_index(self):
         spans = self.memory_exporter.get_finished_spans()
-        span = next(span for span in spans if span.name == "redis.create_index")
+        span = next(
+            span for span in spans if span.name == "redis.create_index"
+        )
         assert "redis.create_index.fields" in span.attributes
 
     def test_redis_query(self):
         query = "@name:test"
-        res = self.redis_client.ft("idx:test_vss").search(Query(query))
+        self.redis_client.ft("idx:test_vss").search(Query(query))
 
         spans = self.memory_exporter.get_finished_spans()
         span = next(span for span in spans if span.name == "redis.search")

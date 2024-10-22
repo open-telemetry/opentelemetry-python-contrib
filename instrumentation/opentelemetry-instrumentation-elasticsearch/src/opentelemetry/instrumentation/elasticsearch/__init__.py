@@ -95,10 +95,10 @@ from logging import getLogger
 from os import environ
 from typing import Collection
 
-import elasticsearch
-import elasticsearch.exceptions
 from wrapt import wrap_function_wrapper as _wrap
 
+import elasticsearch
+import elasticsearch.exceptions
 from opentelemetry.instrumentation.elasticsearch.package import _instruments
 from opentelemetry.instrumentation.elasticsearch.version import __version__
 from opentelemetry.instrumentation.instrumentor import BaseInstrumentor

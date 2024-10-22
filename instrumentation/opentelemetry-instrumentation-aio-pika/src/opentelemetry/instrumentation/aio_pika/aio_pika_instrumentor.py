@@ -14,9 +14,9 @@
 from typing import Any, Callable, Collection
 
 import wrapt
+
 from aio_pika import Exchange, Queue
 from aio_pika.abc import AbstractIncomingMessage
-
 from opentelemetry import trace
 from opentelemetry.instrumentation.aio_pika.callback_decorator import (
     CallbackDecorator,
@@ -40,7 +40,7 @@ class AioPikaInstrumentor(BaseInstrumentor):
             async def consume(
                 callback: Callable[[AbstractIncomingMessage], Any],
                 *fargs,
-                **fkwargs
+                **fkwargs,
             ):
                 decorated_callback = CallbackDecorator(
                     tracer, instance

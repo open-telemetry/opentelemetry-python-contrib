@@ -67,12 +67,13 @@ for example:
 API
 ___
 """
+
 from asyncio import iscoroutinefunction
 from typing import Collection
 
-import aiokafka
 from wrapt import wrap_function_wrapper
 
+import aiokafka
 from opentelemetry import trace
 from opentelemetry.instrumentation.aiokafka.package import _instruments
 from opentelemetry.instrumentation.aiokafka.utils import (

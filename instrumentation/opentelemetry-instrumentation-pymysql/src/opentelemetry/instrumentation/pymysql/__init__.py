@@ -43,7 +43,6 @@ API
 from typing import Collection
 
 import pymysql
-
 from opentelemetry.instrumentation import dbapi
 from opentelemetry.instrumentation.instrumentor import BaseInstrumentor
 from opentelemetry.instrumentation.pymysql.package import _instruments

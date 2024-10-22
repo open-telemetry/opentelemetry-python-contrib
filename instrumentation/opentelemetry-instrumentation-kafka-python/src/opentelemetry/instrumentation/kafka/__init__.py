@@ -67,12 +67,13 @@ for example:
 API
 ___
 """
+
 from importlib.metadata import PackageNotFoundError, distribution
 from typing import Collection
 
-import kafka
 from wrapt import wrap_function_wrapper
 
+import kafka
 from opentelemetry import trace
 from opentelemetry.instrumentation.instrumentor import BaseInstrumentor
 from opentelemetry.instrumentation.kafka.package import (

@@ -43,9 +43,8 @@ Run instrumented actor
     multiply.send(43, 51)
 
 """
-from typing import Collection
 
-from remoulade import Middleware, broker
+from typing import Collection
 
 from opentelemetry import trace
 from opentelemetry.instrumentation.instrumentor import BaseInstrumentor
@@ -54,6 +53,7 @@ from opentelemetry.instrumentation.remoulade.package import _instruments
 from opentelemetry.instrumentation.remoulade.version import __version__
 from opentelemetry.propagate import extract, inject
 from opentelemetry.semconv.trace import SpanAttributes
+from remoulade import Middleware, broker
 
 _REMOULADE_MESSAGE_TAG_KEY = "remoulade.action"
 _REMOULADE_MESSAGE_SEND = "send"

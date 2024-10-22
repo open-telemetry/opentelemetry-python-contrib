@@ -188,9 +188,9 @@ from time import time_ns
 from timeit import default_timer
 from typing import Collection
 
-import falcon
 from packaging import version as package_version
 
+import falcon
 import opentelemetry.instrumentation.wsgi as otel_wsgi
 from opentelemetry import context, trace
 from opentelemetry.instrumentation.falcon.package import _instruments
@@ -296,9 +296,7 @@ class _InstrumentedFalconAPI(getattr(falcon, _instrument_app)):
         if self in _InstrumentedFalconAPI._instrumented_falcon_apps:
             _InstrumentedFalconAPI._instrumented_falcon_apps.remove(self)
 
-    def _handle_exception(
-        self, arg1, arg2, arg3, arg4
-    ):  # pylint: disable=C0103
+    def _handle_exception(self, arg1, arg2, arg3, arg4):  # pylint: disable=C0103
         # Falcon 3 does not execute middleware within the context of the exception
         # so we capture the exception here and save it into the env dict
 
@@ -437,9 +435,7 @@ class _TraceMiddleware:
         resource_name = resource.__class__.__name__
         span.set_attribute("falcon.resource", resource_name)
 
-    def process_response(
-        self, req, resp, resource, req_succeeded=None
-    ):  # pylint:disable=R0201,R0912
+    def process_response(self, req, resp, resource, req_succeeded=None):  # pylint:disable=R0201,R0912
         span = req.env.get(_ENVIRON_SPAN_KEY)
 
         if not span or not span.is_recording():
