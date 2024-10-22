@@ -167,10 +167,6 @@ class BaseTestCases:
                 )
             )
 
-        def print_spans(self, spans):
-            for span in spans:
-                print(span.name, span.attributes)
-
         # pylint: disable=invalid-name
         def tearDown(self):
             super().tearDown()
@@ -184,9 +180,7 @@ class BaseTestCases:
             if exporter is None:
                 exporter = self.memory_exporter
             span_list = exporter.get_finished_spans()
-            self.assertEqual(
-                num_spans, len(span_list), self.print_spans(span_list)
-            )
+            self.assertEqual(num_spans, len(span_list))
             if num_spans == 0:
                 return None
             if num_spans == 1:
@@ -993,23 +987,6 @@ class BaseTestCases:
                 client._mounts.values(),
                 2,
             )
-
-        def print_handler(self, client):
-            transport = client._transport
-            handler = getattr(
-                transport,
-                "handle_request",
-                getattr(transport, "handle_async_request", None),
-            )
-            print(
-                handler,
-                (
-                    getattr(handler, "__wrapped__", "no wrapped")
-                    if handler
-                    else "no handler"
-                ),
-            )
-            return handler
 
         def test_instrument_client_with_proxy(self):
             proxy_mounts = self.create_proxy_mounts()
