@@ -744,7 +744,6 @@ class BaseTestCases:
         def setUp(self):
             super().setUp()
             self.client = self.create_client()
-            # FIXME: calling instrument() instead fixes 13*2 tests :(
             HTTPXClientInstrumentor().instrument_client(self.client)
 
         def tearDown(self):
