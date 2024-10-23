@@ -38,6 +38,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - Deprecation of pkg_resource in favor of importlib.metadata
   ([#2871](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/2871))
+- `opentelemetry-instrumentation` Don't fail distro loading if instrumentor raises ImportError, instead skip them
+  ([#2923](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/2923))
 
 ## Version 1.27.0/0.48b0 (2024-08-28)
 
