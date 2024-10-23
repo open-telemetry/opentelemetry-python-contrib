@@ -1182,6 +1182,21 @@ class TestSyncInstrumentationIntegration(BaseTestCases.BaseInstrumentorTest):
     def create_proxy_transport(self, url):
         return httpx.HTTPTransport(proxy=httpx.Proxy(url))
 
+    def test_can_instrument_subclassed_client(self):
+        class CustomClient(httpx.Client):
+            pass
+
+        client = CustomClient()
+        self.assertFalse(
+            isinstance(client._transport.handle_request, ObjectProxy)
+        )
+
+        HTTPXClientInstrumentor().instrument()
+
+        self.assertTrue(
+            isinstance(client._transport.handle_request, ObjectProxy)
+        )
+
 
 class TestAsyncInstrumentationIntegration(BaseTestCases.BaseInstrumentorTest):
     response_hook = staticmethod(_async_response_hook)
@@ -1257,3 +1272,18 @@ class TestAsyncInstrumentationIntegration(BaseTestCases.BaseInstrumentorTest):
         self.assertEqual(result.text, "Hello!")
         span = self.assert_span()
         self.assertEqual(span.name, "GET")
+
+    def test_can_instrument_subclassed_async_client(self):
+        class CustomAsyncClient(httpx.AsyncClient):
+            pass
+
+        client = CustomAsyncClient()
+        self.assertFalse(
+            isinstance(client._transport.handle_async_request, ObjectProxy)
+        )
+
+        HTTPXClientInstrumentor().instrument()
+
+        self.assertTrue(
+            isinstance(client._transport.handle_async_request, ObjectProxy)
+        )
