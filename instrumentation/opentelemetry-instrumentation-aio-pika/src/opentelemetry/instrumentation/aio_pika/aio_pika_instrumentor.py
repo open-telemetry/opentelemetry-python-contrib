@@ -40,7 +40,7 @@ class AioPikaInstrumentor(BaseInstrumentor):
             async def consume(
                 callback: Callable[[AbstractIncomingMessage], Any],
                 *fargs,
-                **fkwargs
+                **fkwargs,
             ):
                 decorated_callback = CallbackDecorator(
                     tracer, instance

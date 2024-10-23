@@ -15,6 +15,7 @@
 """
 Some utils used by the redis integration
 """
+
 from opentelemetry.semconv.trace import (
     DbSystemValues,
     NetTransportValues,

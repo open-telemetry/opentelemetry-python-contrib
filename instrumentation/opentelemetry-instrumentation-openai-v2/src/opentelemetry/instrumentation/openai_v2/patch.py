@@ -40,7 +40,6 @@ def chat_completions_create(tracer: Tracer):
     """Wrap the `create` method of the `ChatCompletion` class to trace it."""
 
     def traced_method(wrapped, instance, args, kwargs):
-
         llm_prompts = []
 
         for item in kwargs.get("messages", []):
