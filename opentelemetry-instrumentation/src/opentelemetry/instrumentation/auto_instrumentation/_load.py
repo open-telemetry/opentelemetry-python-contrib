@@ -115,7 +115,7 @@ def _load_instrumentors(distro):
             _logger.debug("Instrumented %s", entry_point.name)
         except ImportError:
             # in scenarios using the kubernetes operator to do autoinstrumentation some
-            # instrumentors may fail to load (usually requiring binary extensions)
+            # instrumentors (usually requiring binary extensions) may fail to load
             # because the injected autoinstrumentation code does not match the application
             # environment regarding python version, libc, etc... In this case it's better
             # to skip the single instrumentation rather than failing to load everything
