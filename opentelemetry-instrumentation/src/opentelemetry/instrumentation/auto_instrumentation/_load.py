@@ -113,6 +113,17 @@ def _load_instrumentors(distro):
             # tell instrumentation to not run dep checks again as we already did it above
             distro.load_instrumentor(entry_point, skip_dep_check=True)
             _logger.debug("Instrumented %s", entry_point.name)
+        except ImportError:
+            # in scenarios using the kubernetes operator to do autoinstrumentation some
+            # instrumentors may fail to load (usually requiring binary extensions)
+            # because the injected autoinstrumentation code does not match the application
+            # environment regarding python version, libc, etc... In this case it's better
+            # to skip the single instrumentation rather than failing to load everything
+            # so treat differently ImportError than the rest of exceptions
+            _logger.exception(
+                "Importing of %s failed, skipping it", entry_point.name
+            )
+            continue
         except Exception as exc:  # pylint: disable=broad-except
             _logger.exception("Instrumenting of %s failed", entry_point.name)
             raise exc
