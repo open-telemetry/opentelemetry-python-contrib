@@ -238,6 +238,7 @@ Note:
 API
 ---
 """
+
 import weakref
 from logging import getLogger
 from time import time_ns
@@ -245,7 +246,6 @@ from timeit import default_timer
 from typing import Collection
 
 import flask
-import importlib_metadata as metadata
 from packaging import version as package_version
 
 import opentelemetry.instrumentation.wsgi as otel_wsgi
@@ -272,6 +272,7 @@ from opentelemetry.semconv.metrics.http_metrics import (
     HTTP_SERVER_REQUEST_DURATION,
 )
 from opentelemetry.semconv.trace import SpanAttributes
+from opentelemetry.util._importlib_metadata import version
 from opentelemetry.util.http import (
     get_excluded_urls,
     parse_excluded_urls,
@@ -288,7 +289,7 @@ _ENVIRON_TOKEN = "opentelemetry-flask.token"
 
 _excluded_urls_from_env = get_excluded_urls("FLASK")
 
-flask_version = metadata.version("flask")
+flask_version = version("flask")
 
 if package_version.parse(flask_version) >= package_version.parse("2.2.0"):
 

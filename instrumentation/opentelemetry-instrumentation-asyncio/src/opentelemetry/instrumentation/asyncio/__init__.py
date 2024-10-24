@@ -76,6 +76,7 @@ asyncio metric types
 API
 ---
 """
+
 import asyncio
 import sys
 from asyncio import futures
@@ -163,7 +164,6 @@ class AsyncioInstrumentor(BaseInstrumentor):
         """
 
         def wrap_coro_or_future(method, instance, args, kwargs):
-
             # If the first argument is a coroutine or future,
             # we decorate it with a span and return the task.
             if args and len(args) > 0:
