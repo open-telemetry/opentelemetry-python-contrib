@@ -258,13 +258,11 @@ def _instrument(
     tracer_provider: TracerProvider = None,
     meter_provider: MeterProvider = None,
 ):
-
     # pylint: disable=too-many-locals
     # pylint: disable=too-many-statements
     def _instrumented_lambda_handler_call(  # noqa pylint: disable=too-many-branches
         call_wrapped, instance, args, kwargs
     ):
-
         orig_handler_name = ".".join(
             [wrapped_module_name, wrapped_function_name]
         )

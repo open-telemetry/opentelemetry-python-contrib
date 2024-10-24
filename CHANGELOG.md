@@ -11,15 +11,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## Unreleased
 
-## Version 1.27.0/0.49b0 ()
-
 ### Added
 
 - `opentelemetry-instrumentation-openai-v2` Instrumentation for OpenAI >= 0.27.0
   ([#2759](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/2759))
-
-### Added
-
 - `opentelemetry-instrumentation-fastapi` Add autoinstrumentation mechanism tests.
   ([#2860](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/2860))
 - `opentelemetry-instrumentation-aiokafka` Add instrumentor and auto instrumentation support for aiokafka

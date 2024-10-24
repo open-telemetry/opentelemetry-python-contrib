@@ -137,7 +137,9 @@ def _load_configurators():
                 configurator_name is None
                 or configurator_name == entry_point.name
             ):
-                entry_point.load()().configure(auto_instrumentation_version=__version__)  # type: ignore
+                entry_point.load()().configure(
+                    auto_instrumentation_version=__version__
+                )  # type: ignore
                 configured = entry_point.name
             else:
                 _logger.warning(
