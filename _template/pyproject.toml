@@ -35,7 +35,7 @@ dependencies = [
 [project.entry-points.opentelemetry_instrumentor]
 # REPLACE ME: the entrypoint for the instrumentor e.g
 # sqlalchemy = "opentelemetry.instrumentation.sqlalchemy:SQLAlchemyInstrumentor"
-<REPLACE ME> = "opentelemetry.instrumentation.<REPLACE>"
+REPLACE_ME = "opentelemetry.instrumentation.<REPLACE>"
 
 [project.urls]
 # url of the instrumentation e.g

@@ -29,14 +29,14 @@ from opentelemetry.exporter.prometheus_remote_write.gen.types_pb2 import (  # py
     Sample,
     TimeSeries,
 )
-from opentelemetry.sdk.metrics import Counter
-from opentelemetry.sdk.metrics import Histogram as ClientHistogram
 from opentelemetry.sdk.metrics import (
+    Counter,
     ObservableCounter,
     ObservableGauge,
     ObservableUpDownCounter,
     UpDownCounter,
 )
+from opentelemetry.sdk.metrics import Histogram as ClientHistogram
 from opentelemetry.sdk.metrics.export import (
     AggregationTemporality,
     Gauge,
