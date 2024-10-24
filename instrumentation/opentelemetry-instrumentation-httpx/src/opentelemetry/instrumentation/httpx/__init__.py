@@ -190,6 +190,7 @@ Or if you are using the transport classes directly:
 API
 ---
 """
+
 import logging
 import typing
 from asyncio import iscoroutinefunction
@@ -306,7 +307,7 @@ def _inject_propagation_headers(headers, args, kwargs):
 def _extract_response(
     response: typing.Union[
         httpx.Response, typing.Tuple[int, Headers, httpx.SyncByteStream, dict]
-    ]
+    ],
 ) -> typing.Tuple[int, Headers, httpx.SyncByteStream, dict, str]:
     if isinstance(response, httpx.Response):
         status_code = response.status_code
@@ -557,7 +558,9 @@ class AsyncOpenTelemetryTransport(httpx.AsyncBaseTransport):
         await self._transport.__aexit__(exc_type, exc_value, traceback)
 
     # pylint: disable=R0914
-    async def handle_async_request(self, *args, **kwargs) -> typing.Union[
+    async def handle_async_request(
+        self, *args, **kwargs
+    ) -> typing.Union[
         typing.Tuple[int, "Headers", httpx.AsyncByteStream, dict],
         httpx.Response,
     ]:
@@ -849,7 +852,7 @@ class HTTPXClientInstrumentor(BaseInstrumentor):
 
     @staticmethod
     def uninstrument_client(
-        client: typing.Union[httpx.Client, httpx.AsyncClient]
+        client: typing.Union[httpx.Client, httpx.AsyncClient],
     ):
         """Disables instrumentation for the given client instance
 

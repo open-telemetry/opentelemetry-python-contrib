@@ -69,23 +69,27 @@ class SpanBuilder:
     def set_message(self, message: AbstractMessage):
         properties = message.properties
         if properties.message_id:
-            self._attributes[
-                SpanAttributes.MESSAGING_MESSAGE_ID
-            ] = properties.message_id
+            self._attributes[SpanAttributes.MESSAGING_MESSAGE_ID] = (
+                properties.message_id
+            )
         if properties.correlation_id:
-            self._attributes[
-                SpanAttributes.MESSAGING_CONVERSATION_ID
-            ] = properties.correlation_id
+            self._attributes[SpanAttributes.MESSAGING_CONVERSATION_ID] = (
+                properties.correlation_id
+            )
 
     def build(self) -> Optional[Span]:
         if not is_instrumentation_enabled():
             return None
         if self._operation:
-            self._attributes[SpanAttributes.MESSAGING_OPERATION] = self._operation.value
+            self._attributes[SpanAttributes.MESSAGING_OPERATION] = (
+                self._operation.value
+            )
         else:
             self._attributes[SpanAttributes.MESSAGING_TEMP_DESTINATION] = True
         span = self._tracer.start_span(
-            self._generate_span_name(), kind=self._kind, attributes=self._attributes
+            self._generate_span_name(),
+            kind=self._kind,
+            attributes=self._attributes,
         )
         return span
 
