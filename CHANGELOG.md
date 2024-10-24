@@ -21,6 +21,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   ([#2082](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/2082))
 - `opentelemetry-instrumentation-redis` Add additional attributes for methods create_index and search, rename those spans
   ([#2635](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/2635))
+- `opentelemetry-instrumentation` Add support for string based dotted module paths in unwrap
+  ([#2919](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/2919))
 
 ### Fixed
 
@@ -80,6 +82,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   ([#2753](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/2753))
 - `opentelemetry-instrumentation-grpc` Fix grpc supported version
   ([#2845](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/2845))
+- `opentelemetry-instrumentation-asyncio` fix `AttributeError` in
+  `AsyncioInstrumentor.trace_to_thread` when `func` is a `functools.partial` instance
+  ([#2911](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/2911))
 
 ## Version 1.26.0/0.47b0 (2024-07-23)
 
