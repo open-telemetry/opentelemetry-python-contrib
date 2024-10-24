@@ -15,6 +15,7 @@
 """
 Enter the names of the coroutines to be traced through the environment variable below, separated by commas.
 """
+
 OTEL_PYTHON_ASYNCIO_COROUTINE_NAMES_TO_TRACE = (
     "OTEL_PYTHON_ASYNCIO_COROUTINE_NAMES_TO_TRACE"
 )

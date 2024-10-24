@@ -32,9 +32,7 @@ class MockInstrumetor(BaseInstrumentor):
 
 
 class MockEntryPoint(EntryPoint):
-    def __init__(
-        self, name, value, group
-    ):  # pylint: disable=super-init-not-called
+    def __init__(self, name, value, group):  # pylint: disable=super-init-not-called
         pass
 
     def load(self, *args, **kwargs):  # pylint: disable=signature-differs
