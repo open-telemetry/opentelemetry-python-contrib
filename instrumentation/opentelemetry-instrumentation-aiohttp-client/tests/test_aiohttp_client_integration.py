@@ -71,7 +71,6 @@ def run_with_test_server(
 
 
 class TestAioHttpIntegration(TestBase):
-
     _test_status_codes = (
         (HTTPStatus.OK, StatusCode.UNSET),
         (HTTPStatus.TEMPORARY_REDIRECT, StatusCode.UNSET),

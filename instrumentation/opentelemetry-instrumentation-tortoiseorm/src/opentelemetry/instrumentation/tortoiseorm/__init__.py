@@ -39,6 +39,7 @@ Usage
 API
 ---
 """
+
 from typing import Collection
 
 import wrapt
