@@ -310,6 +310,70 @@ class TestLoad(TestCase):
         )
         distro_mock.load_instrumentor.assert_called_once()
 
+    @patch(
+        "opentelemetry.instrumentation.auto_instrumentation._load.get_dist_dependency_conflicts"
+    )
+    @patch(
+        "opentelemetry.instrumentation.auto_instrumentation._load.entry_points"
+    )
+    def test_load_instrumentors_import_error_does_not_stop_everything(
+        self, iter_mock, dep_mock
+    ):
+        ep_mock1 = Mock(name="instr1")
+        ep_mock2 = Mock(name="instr2")
+
+        distro_mock = Mock()
+        distro_mock.load_instrumentor.side_effect = [ImportError, None]
+
+        # Mock entry points in order
+        iter_mock.side_effect = [
+            (),
+            (ep_mock1, ep_mock2),
+            (),
+        ]
+        dep_mock.return_value = None
+
+        _load._load_instrumentors(distro_mock)
+
+        distro_mock.load_instrumentor.assert_has_calls(
+            [
+                call(ep_mock1, skip_dep_check=True),
+                call(ep_mock2, skip_dep_check=True),
+            ]
+        )
+        self.assertEqual(distro_mock.load_instrumentor.call_count, 2)
+
+    @patch(
+        "opentelemetry.instrumentation.auto_instrumentation._load.get_dist_dependency_conflicts"
+    )
+    @patch(
+        "opentelemetry.instrumentation.auto_instrumentation._load.entry_points"
+    )
+    def test_load_instrumentors_raises_exception(self, iter_mock, dep_mock):
+        ep_mock1 = Mock(name="instr1")
+        ep_mock2 = Mock(name="instr2")
+
+        distro_mock = Mock()
+        distro_mock.load_instrumentor.side_effect = [ValueError, None]
+
+        # Mock entry points in order
+        iter_mock.side_effect = [
+            (),
+            (ep_mock1, ep_mock2),
+            (),
+        ]
+        dep_mock.return_value = None
+
+        with self.assertRaises(ValueError):
+            _load._load_instrumentors(distro_mock)
+
+        distro_mock.load_instrumentor.assert_has_calls(
+            [
+                call(ep_mock1, skip_dep_check=True),
+            ]
+        )
+        self.assertEqual(distro_mock.load_instrumentor.call_count, 1)
+
     def test_load_instrumentors_no_entry_point_mocks(self):
         distro_mock = Mock()
         _load._load_instrumentors(distro_mock)
