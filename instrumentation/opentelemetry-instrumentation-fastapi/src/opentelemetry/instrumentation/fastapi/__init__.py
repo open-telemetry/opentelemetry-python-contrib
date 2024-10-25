@@ -450,7 +450,9 @@ def _get_route_details(scope, app=None):
             route = starlette_route.path  # Capture the full route template
             break
         if match == Match.PARTIAL:
-            route = starlette_route.path  # Fallback, though this is rare in FastAPI
+            route = (
+                starlette_route.path
+            ) # Fallback, though this is rare in FastAPI
 
     return route
 
