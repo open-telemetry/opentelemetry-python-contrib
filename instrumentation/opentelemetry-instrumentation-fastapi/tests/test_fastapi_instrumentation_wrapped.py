@@ -20,6 +20,7 @@ from opentelemetry.test.test_base import TestBase
 
 
 class TestWrappedApplication(TestBase):
+
     def setUp(self):
         super().setUp()
 
@@ -29,7 +30,13 @@ class TestWrappedApplication(TestBase):
         async def _():
             return {"message": "hello world"}
 
-        otel_fastapi.FastAPIInstrumentor().instrument_app(self.app)
+        @self.app.get("/user/{username}")
+        async def _(username: str):
+            return {"username": username}
+
+        otel_fastapi.FastAPIInstrumentor().instrument_app(
+            self.app, render_path_parameters=True
+        )
         self.client = TestClient(self.app)
         self.tracer = self.tracer_provider.get_tracer(__name__)
 
@@ -61,4 +68,60 @@ class TestWrappedApplication(TestBase):
         self.assertEqual(trace.SpanKind.SERVER, span_list[3].kind)
         self.assertEqual(
             parent_span.context.span_id, span_list[3].context.span_id
+        )
+
+    def test_render_path_parameters(self):
+        """Test that path parameters are rendered correctly in spans."""
+
+        # Make sure non-path parameters are not affected
+        resp = self.client.get("/foobar")
+        self.assertEqual(resp.status_code, 200)
+        spans = self.memory_exporter.get_finished_spans()
+        expected_span_name = "GET /foobar"
+        self.assertEqual(
+            spans[0].name,
+            "GET /foobar",
+            f"Expected span name to be '{expected_span_name}', but got '{spans[0].name}'",
+        )
+
+        # Make a request to the endpoint with a path parameter
+        resp = self.client.get("/user/johndoe")
+        self.assertEqual(resp.status_code, 200)
+        self.assertEqual(resp.json(), {"username": "johndoe"})
+
+        # Retrieve the spans generated
+        spans = self.memory_exporter.get_finished_spans()
+        self.assertEqual(len(spans), 3)  # Adjust based on expected spans
+
+        # Check that the span for the request contains the expected attributes
+        server_span = [
+            span for span in spans if span.kind == trace.SpanKind.SERVER
+        ][0]
+
+        # Verify that the path parameter is rendered correctly
+        self.assertIn("http.route", server_span.attributes)
+        self.assertEqual(
+            server_span.attributes["http.route"], "/user/{username}"
+        )
+
+        # Optionally, check if the username is also included in the span attributes
+        self.assertIn("http.path_parameters.username", server_span.attributes)
+        self.assertEqual(
+            server_span.attributes["http.path_parameters.username"], "johndoe"
+        )
+
+        # Retrieve the spans generated
+        spans = self.memory_exporter.get_finished_spans()
+
+        # Assert that at least one span was created
+        self.assertGreater(len(spans), 0, "No spans were generated.")
+
+        # Assert that the span name is as expected
+        expected_span_name = (
+            "GET /user/johndoe"  # Adjust this based on your implementation
+        )
+        self.assertEqual(
+            spans[0].name,
+            expected_span_name,
+            f"Expected span name to be '{expected_span_name}', but got '{spans[0].name}'",
         )
