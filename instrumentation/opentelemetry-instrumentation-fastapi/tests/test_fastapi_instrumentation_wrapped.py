@@ -77,10 +77,10 @@ class TestWrappedApplication(TestBase):
         resp = self.client.get("/foobar")
         self.assertEqual(resp.status_code, 200)
         spans = self.memory_exporter.get_finished_spans()
-        expected_span_name = "GET /foobar"
+        expected_span_name = "GET /foobar http send"
         self.assertEqual(
             spans[0].name,
-            "GET /foobar",
+            expected_span_name,
             f"Expected span name to be '{expected_span_name}', but got '{spans[0].name}'",
         )
 
