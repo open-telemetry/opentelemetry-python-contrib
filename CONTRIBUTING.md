@@ -227,7 +227,7 @@ tox -e py312-test-instrumentation-aiopg
 Some of the tox targets install packages from the [OpenTelemetry Python Core Repository](https://github.com/open-telemetry/opentelemetry-python) via pip. The version of the packages installed defaults to the main branch in that repository when tox is run locally. It is possible to install packages tagged with a specific git commit hash by setting an environment variable before running tox as per the following example:
 
 ```sh
-CORE_REPO_SHA=c49ad57bfe35cfc69bfa863d74058ca9bec55fc3 tox
+CORE_REPO_SHA=966750aad4ba2a9c123b4f14785958ffe50b54ae tox
 ```
 
 The continuous integration overrides that environment variable with as per the configuration [here](https://github.com/open-telemetry/opentelemetry-python-contrib/blob/main/.github/workflows/test_0.yml#L14).

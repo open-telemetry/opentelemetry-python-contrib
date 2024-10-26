@@ -24,7 +24,7 @@ Usage
 .. code:: python
 
     from openai import OpenAI
-    from opentelemetry.instrumentation.openai import OpenAIInstrumentor
+    from opentelemetry.instrumentation.openai_v2 import OpenAIInstrumentor
 
     OpenAIInstrumentor().instrument()
 
@@ -44,6 +44,7 @@ from typing import Collection
 
 from wrapt import wrap_function_wrapper
 
+from opentelemetry._events import get_event_logger
 from opentelemetry.instrumentation.instrumentor import BaseInstrumentor
 from opentelemetry.instrumentation.openai_v2.package import _instruments
 from opentelemetry.instrumentation.utils import unwrap
@@ -64,12 +65,19 @@ class OpenAIInstrumentor(BaseInstrumentor):
             __name__,
             "",
             tracer_provider,
-            schema_url=Schemas.V1_27_0.value,
+            schema_url=Schemas.V1_28_0.value,
+        )
+        event_provider = kwargs.get("event_provider")
+        event_logger = get_event_logger(
+            __name__,
+            "",
+            schema_url=Schemas.V1_28_0.value,
+            event_logger_provider=event_provider,
         )
         wrap_function_wrapper(
             module="openai.resources.chat.completions",
             name="Completions.create",
-            wrapper=chat_completions_create(tracer),
+            wrapper=chat_completions_create(tracer, event_logger),
         )
 
     def _uninstrument(self, **kwargs):

@@ -1,4 +1,4 @@
-openai==1.26.0 
+openai==1.26.0
 pydantic==2.8.2
 Deprecated==1.2.14
 importlib-metadata==6.11.0

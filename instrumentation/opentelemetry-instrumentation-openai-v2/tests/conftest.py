@@ -5,8 +5,14 @@ import os
 import pytest
 from openai import OpenAI
 
-from opentelemetry import trace
+from opentelemetry import _events, _logs, trace
 from opentelemetry.instrumentation.openai_v2 import OpenAIInstrumentor
+from opentelemetry.sdk._events import EventLoggerProvider
+from opentelemetry.sdk._logs import LoggerProvider
+from opentelemetry.sdk._logs.export import (
+    InMemoryLogExporter,
+    SimpleLogRecordProcessor,
+)
 from opentelemetry.sdk.trace import TracerProvider
 from opentelemetry.sdk.trace.export import SimpleSpanProcessor
 from opentelemetry.sdk.trace.export.in_memory_span_exporter import (
@@ -15,7 +21,7 @@ from opentelemetry.sdk.trace.export.in_memory_span_exporter import (
 
 
 @pytest.fixture(scope="session")
-def exporter():
+def span_exporter():
     exporter = InMemorySpanExporter()
     processor = SimpleSpanProcessor(exporter)
 
@@ -26,9 +32,26 @@ def exporter():
     return exporter
 
 
+@pytest.fixture(scope="session")
+def log_exporter():
+    exporter = InMemoryLogExporter()
+    processor = SimpleLogRecordProcessor(exporter)
+
+    provider = LoggerProvider()
+    provider.add_log_record_processor(processor)
+
+    event_provider = EventLoggerProvider(provider)
+
+    _logs.set_logger_provider(provider)
+    _events.set_event_logger_provider(event_provider)
+
+    return exporter
+
+
 @pytest.fixture(autouse=True)
-def clear_exporter(exporter):
-    exporter.clear()
+def clear_exporter(span_exporter, log_exporter):
+    span_exporter.clear()
+    log_exporter.clear()
 
 
 @pytest.fixture(autouse=True)
@@ -58,7 +81,8 @@ def instrument():
 
 @pytest.fixture(scope="session", autouse=True)
 def uninstrument():
-    OpenAIInstrumentor().uninstrument()
+    # OpenAIInstrumentor().uninstrument()
+    pass
 
 
 def scrub_response_headers(response):
