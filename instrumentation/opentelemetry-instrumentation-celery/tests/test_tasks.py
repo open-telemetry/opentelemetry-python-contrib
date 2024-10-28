@@ -15,8 +15,11 @@
 import threading
 import time
 
+from wrapt import wrap_function_wrapper
+
 from opentelemetry import baggage, context
-from opentelemetry.instrumentation.celery import CeleryInstrumentor
+from opentelemetry.instrumentation.celery import CeleryInstrumentor, utils
+from opentelemetry.instrumentation.utils import unwrap
 from opentelemetry.semconv.trace import SpanAttributes
 from opentelemetry.test.test_base import TestBase
 from opentelemetry.trace import SpanKind, StatusCode
@@ -184,6 +187,40 @@ class TestCeleryInstrumentation(TestBase):
             time.sleep(0.05)
 
         self.assertEqual(task.result, {"key": "value"})
+
+    def _retrieve_context_wrapper_none_token(
+        self, wrapped, instance, args, kwargs
+    ):
+        ctx = wrapped(*args, **kwargs)
+        if ctx is None:
+            return ctx
+        span, activation, _ = ctx
+        return span, activation, None
+
+    def test_task_not_instrumented_does_not_raise(self):
+        wrap_function_wrapper(
+            utils,
+            "retrieve_context",
+            self._retrieve_context_wrapper_none_token,
+        )
+
+        CeleryInstrumentor().instrument()
+
+        result = task_add.delay(1, 2)
+
+        timeout = time.time() + 60 * 1  # 1 minutes from now
+        while not result.ready():
+            if time.time() > timeout:
+                break
+            time.sleep(0.05)
+
+        spans = self.sorted_spans(self.memory_exporter.get_finished_spans())
+        self.assertEqual(len(spans), 2)
+
+        # TODO: assert we don't have "TypeError: expected an instance of Token, got None" in logs
+        self.assertTrue(result)
+
+        unwrap(utils, "retrieve_context")
 
 
 class TestCelerySignatureTask(TestBase):
