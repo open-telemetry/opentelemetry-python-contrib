@@ -1,11 +1,41 @@
-[tool.black]
+[tool.ruff]
+# https://docs.astral.sh/ruff/configuration/
+target-version = "py38"
 line-length = 79
-exclude = '''
-(
-  \.git
-  | \.tox
-  | venv
-  | build
-  | dist
-)
-'''
+extend-exclude = [
+  "_template",
+  "*_pb2*.py*",
+]
+output-format = "concise"
+
+[tool.ruff.lint]
+# https://docs.astral.sh/ruff/linter/#rule-selection
+# pylint: https://github.com/astral-sh/ruff/issues/970
+select = [
+  "I",   # isort
+  "F",   # pyflakes
+  "E",   # pycodestyle errors
+  "W",   # pycodestyle warnings
+  "PLC", # pylint convention
+  "PLE", # pylint error
+  "Q",   # flake8-quotes
+  "A",   # flake8-builtins
+]
+ignore = [
+  "E501", # line-too-long
+]
+
+[tool.ruff.lint.per-file-ignores]
+"docs/**/*.*" = ["A001"]
+
+[tool.ruff.lint.isort]
+detect-same-package = false # to not consider instrumentation packages as first-party
+known-first-party = ["opentelemetry"]
+known-third-party = [
+  "psutil",
+  "pytest",
+  "redis",
+  "redis_opentracing",
+  "opencensus",
+]
+

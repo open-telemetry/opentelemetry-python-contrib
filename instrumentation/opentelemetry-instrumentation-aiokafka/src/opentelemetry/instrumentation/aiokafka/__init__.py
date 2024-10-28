@@ -67,6 +67,7 @@ for example:
 API
 ___
 """
+
 from asyncio import iscoroutinefunction
 from typing import Collection
 
@@ -76,7 +77,7 @@ from wrapt import wrap_function_wrapper
 from opentelemetry import trace
 from opentelemetry.instrumentation.aiokafka.package import _instruments
 from opentelemetry.instrumentation.aiokafka.utils import (
-    _wrap_anext,
+    _wrap_getone,
     _wrap_send,
 )
 from opentelemetry.instrumentation.aiokafka.version import __version__
@@ -126,10 +127,10 @@ class AIOKafkaInstrumentor(BaseInstrumentor):
         )
         wrap_function_wrapper(
             aiokafka.AIOKafkaConsumer,
-            "__anext__",
-            _wrap_anext(tracer, async_consume_hook),
+            "getone",
+            _wrap_getone(tracer, async_consume_hook),
         )
 
     def _uninstrument(self, **kwargs):
         unwrap(aiokafka.AIOKafkaProducer, "send")
-        unwrap(aiokafka.AIOKafkaConsumer, "__anext__")
+        unwrap(aiokafka.AIOKafkaConsumer, "getone")

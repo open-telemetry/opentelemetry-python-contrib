@@ -35,7 +35,7 @@ message_attributes_setter = MessageAttributesSetter()
 
 
 def inject_propagation_context(
-    carrier: MutableMapping[str, Any]
+    carrier: MutableMapping[str, Any],
 ) -> MutableMapping[str, Any]:
     if carrier is None:
         carrier = {}

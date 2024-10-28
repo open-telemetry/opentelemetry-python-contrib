@@ -48,6 +48,14 @@ async def http_app_with_custom_headers(scope, receive, send):
                         b"my-custom-regex-value-3,my-custom-regex-value-4",
                     ),
                     (b"my-secret-header", b"my-secret-value"),
+                    (
+                        b"non-utf8-header",
+                        b"Moto Z\xb2",
+                    ),
+                    (
+                        b"Moto-Z\xb2-non-utf8-header-key",
+                        b"Moto Z\xb2",
+                    ),
                 ],
             }
         )
@@ -130,6 +138,14 @@ class TestCustomHeaders(AsyncAsgiTestBase):
                 (b"Regex-Test-Header-1", b"Regex Test Value 1"),
                 (b"regex-test-header-2", b"RegexTestValue2,RegexTestValue3"),
                 (b"My-Secret-Header", b"My Secret Value"),
+                (
+                    b"non-utf8-header",
+                    b"Moto Z\xb2",
+                ),
+                (
+                    b"Moto-Z\xb2-non-utf8-header-key",
+                    b"Moto Z\xb2",
+                ),
             ]
         )
         self.seed_app(self.app)
@@ -147,6 +163,8 @@ class TestCustomHeaders(AsyncAsgiTestBase):
             "http.request.header.regex_test_header_2": (
                 "RegexTestValue2,RegexTestValue3",
             ),
+            "http.request.header.non_utf8_header": ("Moto Z²",),
+            "http.request.header.moto_z²_non_utf8_header_key": ("Moto Z²",),
             "http.request.header.my_secret_header": ("[REDACTED]",),
         }
         for span in span_list:
@@ -223,6 +241,8 @@ class TestCustomHeaders(AsyncAsgiTestBase):
                 "my-custom-regex-value-3,my-custom-regex-value-4",
             ),
             "http.response.header.my_secret_header": ("[REDACTED]",),
+            "http.response.header.non_utf8_header": ("Moto Z²",),
+            "http.response.header.moto_z²_non_utf8_header_key": ("Moto Z²",),
         }
         for span in span_list:
             if span.kind == SpanKind.SERVER:
@@ -418,8 +438,8 @@ class TestCustomHeaders(AsyncAsgiTestBase):
 
 
 SANITIZE_FIELDS_TEST_VALUE = ".*my-secret.*"
-SERVER_REQUEST_TEST_VALUE = "Custom-Test-Header-1,Custom-Test-Header-2,Custom-Test-Header-3,Regex-Test-Header-.*,Regex-Invalid-Test-Header-.*,.*my-secret.*"
-SERVER_RESPONSE_TEST_VALUE = "Custom-Test-Header-1,Custom-Test-Header-2,Custom-Test-Header-3,my-custom-regex-header-.*,invalid-regex-header-.*,.*my-secret.*"
+SERVER_REQUEST_TEST_VALUE = "Custom-Test-Header-1,Custom-Test-Header-2,Custom-Test-Header-3,Regex-Test-Header-.*,Regex-Invalid-Test-Header-.*,.*my-secret.*,non-utf8-header,Moto-Z²-non-utf8-header-key"
+SERVER_RESPONSE_TEST_VALUE = "Custom-Test-Header-1,Custom-Test-Header-2,Custom-Test-Header-3,my-custom-regex-header-.*,invalid-regex-header-.*,.*my-secret.*,non-utf8-header,Moto-Z²-non-utf8-header-key"
 
 
 class TestCustomHeadersEnv(TestCustomHeaders):
