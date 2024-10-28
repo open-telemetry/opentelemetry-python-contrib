@@ -94,6 +94,7 @@ Usage
 API
 ---
 """
+
 from collections.abc import Sequence
 from typing import Collection
 

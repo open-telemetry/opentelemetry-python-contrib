@@ -185,10 +185,12 @@ class PsycopgInstrumentor(BaseInstrumentor):
         """ "Disable Psycopg instrumentation"""
         dbapi.unwrap_connect(psycopg, "connect")  # pylint: disable=no-member
         dbapi.unwrap_connect(
-            psycopg.Connection, "connect"  # pylint: disable=no-member
+            psycopg.Connection,
+            "connect",  # pylint: disable=no-member
         )
         dbapi.unwrap_connect(
-            psycopg.AsyncConnection, "connect"  # pylint: disable=no-member
+            psycopg.AsyncConnection,
+            "connect",  # pylint: disable=no-member
         )
 
     # TODO(owais): check if core dbapi can do this for all dbapi implementations e.g, pymysql and mysql
