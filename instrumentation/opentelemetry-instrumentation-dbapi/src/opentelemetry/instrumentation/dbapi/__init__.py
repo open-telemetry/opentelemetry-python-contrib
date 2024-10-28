@@ -423,7 +423,6 @@ class CursorTracer:
         with self._db_api_integration._tracer.start_as_current_span(
             name, kind=SpanKind.CLIENT
         ) as span:
-            self._populate_span(span, cursor, *args)
             if args and self._commenter_enabled:
                 try:
                     args_list = list(args)
@@ -464,6 +463,9 @@ class CursorTracer:
                     _logger.exception(
                         "Exception while generating sql comment: %s", exc
                     )
+
+            self._populate_span(span, cursor, *args)
+
             return query_method(*args, **kwargs)
 
 
