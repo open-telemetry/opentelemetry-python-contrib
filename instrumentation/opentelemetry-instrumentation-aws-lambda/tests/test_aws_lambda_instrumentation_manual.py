@@ -70,9 +70,7 @@ MOCK_LAMBDA_CONTEXT_ATTRIBUTES = {
     SpanAttributes.FAAS_INVOCATION_ID: MOCK_LAMBDA_CONTEXT.aws_request_id,
     ResourceAttributes.CLOUD_ACCOUNT_ID: MOCK_LAMBDA_CONTEXT.invoked_function_arn.split(
         ":"
-    )[
-        4
-    ],
+    )[4],
 }
 
 MOCK_XRAY_TRACE_ID = 0x5FB7331105E8BB83207FA31D4D9CDB4C

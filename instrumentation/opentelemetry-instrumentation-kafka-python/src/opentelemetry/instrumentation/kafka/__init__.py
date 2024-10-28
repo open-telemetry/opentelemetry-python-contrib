@@ -67,6 +67,7 @@ for example:
 API
 ___
 """
+
 from importlib.metadata import PackageNotFoundError, distribution
 from typing import Collection
 

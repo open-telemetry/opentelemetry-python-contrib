@@ -911,7 +911,6 @@ class BaseTestCases:
             self.assert_span(num_spans=1)
 
         def test_instrumentation_without_client(self):
-
             HTTPXClientInstrumentor().instrument()
             results = [
                 httpx.get(self.URL),

@@ -152,7 +152,6 @@ API
 ---
 """
 
-
 from collections import namedtuple
 from functools import partial
 from logging import getLogger

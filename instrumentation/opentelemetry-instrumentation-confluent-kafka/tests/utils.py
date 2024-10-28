@@ -8,9 +8,7 @@ class MockConsumer(Consumer):
         self._queue = queue
         super().__init__(config)
 
-    def consume(
-        self, num_messages=1, *args, **kwargs
-    ):  # pylint: disable=keyword-arg-before-vararg
+    def consume(self, num_messages=1, *args, **kwargs):  # pylint: disable=keyword-arg-before-vararg
         messages = self._queue[:num_messages]
         self._queue = self._queue[num_messages:]
         return messages
@@ -62,9 +60,7 @@ class MockedProducer(Producer):
         self._queue = queue
         super().__init__(config)
 
-    def produce(
-        self, *args, **kwargs
-    ):  # pylint: disable=keyword-arg-before-vararg
+    def produce(self, *args, **kwargs):  # pylint: disable=keyword-arg-before-vararg
         self._queue.append(
             MockedMessage(
                 topic=kwargs.get("topic"),

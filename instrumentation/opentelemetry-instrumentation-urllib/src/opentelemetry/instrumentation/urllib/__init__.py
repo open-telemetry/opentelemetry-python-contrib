@@ -197,9 +197,7 @@ class URLLibInstrumentor(BaseInstrumentor):
     def _uninstrument(self, **kwargs):
         _uninstrument()
 
-    def uninstrument_opener(
-        self, opener: OpenerDirector
-    ):  # pylint: disable=no-self-use
+    def uninstrument_opener(self, opener: OpenerDirector):  # pylint: disable=no-self-use
         """uninstrument_opener a specific instance of urllib.request.OpenerDirector"""
         _uninstrument_from(opener, restore_as_bound_func=True)
 
@@ -376,7 +374,6 @@ def _set_status_code_attribute(
     metric_attributes: dict = None,
     sem_conv_opt_in_mode: _HTTPStabilityMode = _HTTPStabilityMode.DEFAULT,
 ) -> None:
-
     status_code_str = str(status_code)
     try:
         status_code = int(status_code)

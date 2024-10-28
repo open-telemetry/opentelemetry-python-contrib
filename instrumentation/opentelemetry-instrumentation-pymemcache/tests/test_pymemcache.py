@@ -52,9 +52,7 @@ pymemcache_version_gt_341 = pymemcache_version > get_package_version.parse(
 )
 
 
-class PymemcacheClientTestCase(
-    TestBase
-):  # pylint: disable=too-many-public-methods
+class PymemcacheClientTestCase(TestBase):  # pylint: disable=too-many-public-methods
     """Tests for a patched pymemcache.client.base.Client."""
 
     def setUp(self):

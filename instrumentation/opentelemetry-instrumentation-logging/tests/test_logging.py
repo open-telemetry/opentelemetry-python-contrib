@@ -146,9 +146,7 @@ class TestLoggingInstrumentor(TestBase):
         env_patch.stop()
 
     @mock.patch("logging.basicConfig")
-    def test_custom_format_and_level_api(
-        self, basic_config_mock
-    ):  # pylint: disable=no-self-use
+    def test_custom_format_and_level_api(self, basic_config_mock):  # pylint: disable=no-self-use
         LoggingInstrumentor().uninstrument()
         LoggingInstrumentor().instrument(
             set_logging_format=True,

@@ -4,7 +4,6 @@ pyasyncore==1.0.4  # for python 3.13 (should removed when cassandra-driver repla
 click==8.1.7
 Deprecated==1.2.14
 geomet==0.2.1.post1
-importlib-metadata==6.11.0
 iniconfig==2.0.0
 packaging==24.0
 pluggy==1.5.0

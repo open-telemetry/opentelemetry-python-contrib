@@ -136,6 +136,4 @@ integration is enabled before you set the logging format. This is important beca
 are not injected into the log record objects. This means any attempted log statements made after setting the logging format and before enabling this integration
 will result in KeyError exceptions. Such exceptions are automatically swallowed by the logging module and do not result in crashes but you may still lose out
 on important log messages.
-""".format(
-    default_logging_format=DEFAULT_LOGGING_FORMAT
-)
+""".format(default_logging_format=DEFAULT_LOGGING_FORMAT)

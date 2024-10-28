@@ -18,7 +18,6 @@ from opentelemetry.util.http import (
 
 
 class MultiMapping(Mapping):
-
     def __init__(self, *items: Tuple[str, str]):
         self._items = items
 

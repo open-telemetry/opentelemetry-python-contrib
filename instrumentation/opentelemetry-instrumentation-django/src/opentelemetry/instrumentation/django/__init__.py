@@ -285,6 +285,30 @@ def _get_django_middleware_setting() -> str:
     return "MIDDLEWARE"
 
 
+def _get_django_otel_middleware_position(
+    middleware_length, default_middleware_position=0
+):
+    otel_position = environ.get("OTEL_PYTHON_DJANGO_MIDDLEWARE_POSITION")
+    try:
+        middleware_position = int(otel_position)
+    except (ValueError, TypeError):
+        _logger.debug(
+            "Invalid OTEL_PYTHON_DJANGO_MIDDLEWARE_POSITION value: (%s). Using default position: %d.",
+            otel_position,
+            default_middleware_position,
+        )
+        middleware_position = default_middleware_position
+
+    if middleware_position < 0 or middleware_position > middleware_length:
+        _logger.debug(
+            "Middleware position %d is out of range (0-%d). Using 0 as the position",
+            middleware_position,
+            middleware_length,
+        )
+        middleware_position = 0
+    return middleware_position
+
+
 class DjangoInstrumentor(BaseInstrumentor):
     """An instrumentor for Django
 
@@ -388,10 +412,18 @@ class DjangoInstrumentor(BaseInstrumentor):
 
         is_sql_commentor_enabled = kwargs.pop("is_sql_commentor_enabled", None)
 
-        if is_sql_commentor_enabled:
-            settings_middleware.insert(0, self._sql_commenter_middleware)
+        middleware_position = _get_django_otel_middleware_position(
+            len(settings_middleware), kwargs.pop("middleware_position", 0)
+        )
 
-        settings_middleware.insert(0, self._opentelemetry_middleware)
+        if is_sql_commentor_enabled:
+            settings_middleware.insert(
+                middleware_position, self._sql_commenter_middleware
+            )
+
+        settings_middleware.insert(
+            middleware_position, self._opentelemetry_middleware
+        )
 
         setattr(settings, _middleware_setting, settings_middleware)
 

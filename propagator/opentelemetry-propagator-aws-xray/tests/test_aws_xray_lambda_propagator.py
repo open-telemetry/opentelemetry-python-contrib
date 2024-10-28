@@ -37,9 +37,7 @@ from opentelemetry.util._importlib_metadata import entry_points
 
 
 class AwsXRayLambdaPropagatorTest(TestCase):
-
     def test_extract_no_environment_variable(self):
-
         actual_context = get_current_span(
             AwsXRayLambdaPropagator().extract(
                 {}, context=get_current(), getter=DefaultGetter()
@@ -54,9 +52,7 @@ class AwsXRayLambdaPropagatorTest(TestCase):
         self.assertEqual(actual_context.trace_state, TraceState.get_default())
 
     def test_extract_no_environment_variable_valid_context(self):
-
         with use_span(NonRecordingSpan(SpanContext(1, 2, False))):
-
             actual_context = get_current_span(
                 AwsXRayLambdaPropagator().extract(
                     {}, context=get_current(), getter=DefaultGetter()
@@ -82,7 +78,6 @@ class AwsXRayLambdaPropagatorTest(TestCase):
         },
     )
     def test_extract_from_environment_variable(self):
-
         actual_context = get_current_span(
             AwsXRayLambdaPropagator().extract(
                 {}, context=get_current(), getter=DefaultGetter()
@@ -108,7 +103,6 @@ class AwsXRayLambdaPropagatorTest(TestCase):
         },
     )
     def test_add_link_from_environment_variable(self):
-
         propagator = AwsXRayLambdaPropagator()
 
         default_getter = DefaultGetter()

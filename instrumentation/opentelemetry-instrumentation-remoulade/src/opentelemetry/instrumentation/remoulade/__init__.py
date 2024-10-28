@@ -43,6 +43,7 @@ Run instrumented actor
     multiply.send(43, 51)
 
 """
+
 from typing import Collection
 
 from remoulade import Middleware, broker

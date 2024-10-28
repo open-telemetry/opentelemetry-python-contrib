@@ -29,6 +29,7 @@
 | [opentelemetry-instrumentation-logging](./opentelemetry-instrumentation-logging) | logging | No | experimental
 | [opentelemetry-instrumentation-mysql](./opentelemetry-instrumentation-mysql) | mysql-connector-python >= 8.0, < 10.0 | No | experimental
 | [opentelemetry-instrumentation-mysqlclient](./opentelemetry-instrumentation-mysqlclient) | mysqlclient < 3 | No | experimental
+| [opentelemetry-instrumentation-openai-v2](./opentelemetry-instrumentation-openai-v2) | openai >= 1.26.0 | No | experimental
 | [opentelemetry-instrumentation-pika](./opentelemetry-instrumentation-pika) | pika >= 0.12.0 | No | experimental
 | [opentelemetry-instrumentation-psycopg](./opentelemetry-instrumentation-psycopg) | psycopg >= 3.1.0 | No | experimental
 | [opentelemetry-instrumentation-psycopg2](./opentelemetry-instrumentation-psycopg2) | psycopg2 >= 2.7.3.1 | No | experimental
@@ -43,6 +44,7 @@
 | [opentelemetry-instrumentation-sqlite3](./opentelemetry-instrumentation-sqlite3) | sqlite3 | No | experimental
 | [opentelemetry-instrumentation-starlette](./opentelemetry-instrumentation-starlette) | starlette ~= 0.13.0 | Yes | experimental
 | [opentelemetry-instrumentation-system-metrics](./opentelemetry-instrumentation-system-metrics) | psutil >= 5 | No | experimental
+| [opentelemetry-instrumentation-test](./opentelemetry-instrumentation-test) | test | No | migration
 | [opentelemetry-instrumentation-threading](./opentelemetry-instrumentation-threading) | threading | No | experimental
 | [opentelemetry-instrumentation-tornado](./opentelemetry-instrumentation-tornado) | tornado >= 5.1.1 | Yes | experimental
 | [opentelemetry-instrumentation-tortoiseorm](./opentelemetry-instrumentation-tortoiseorm) | tortoise-orm >= 0.17.0 | No | experimental

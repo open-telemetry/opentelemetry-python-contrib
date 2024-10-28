@@ -169,6 +169,7 @@ Note:
 API
 ---
 """
+
 from typing import Collection
 
 from starlette import applications

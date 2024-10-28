@@ -121,6 +121,10 @@ libraries = [
         "instrumentation": "opentelemetry-instrumentation-mysqlclient==0.49b0.dev",
     },
     {
+        "library": "openai >= 1.0.0",
+        "instrumentation": "opentelemetry-instrumentation-openai-v2==2.0.0.dev",
+    },
+    {
         "library": "pika >= 0.12.0",
         "instrumentation": "opentelemetry-instrumentation-pika==0.49b0.dev",
     },
@@ -194,6 +198,7 @@ default_instrumentations = [
     "opentelemetry-instrumentation-dbapi==0.49b0.dev",
     "opentelemetry-instrumentation-logging==0.49b0.dev",
     "opentelemetry-instrumentation-sqlite3==0.49b0.dev",
+    "opentelemetry-instrumentation-test==1.0.0b.dev",
     "opentelemetry-instrumentation-threading==0.49b0.dev",
     "opentelemetry-instrumentation-urllib==0.49b0.dev",
     "opentelemetry-instrumentation-wsgi==0.49b0.dev",
