@@ -37,7 +37,9 @@ from .utils import (
 )
 
 
-def chat_completions_create(tracer: Tracer, event_logger: EventLogger):
+def chat_completions_create(
+    tracer: Tracer, event_logger: EventLogger, capture_content: bool
+):
     """Wrap the `create` method of the `ChatCompletion` class to trace it."""
 
     def traced_method(wrapped, instance, args, kwargs):
@@ -53,20 +55,22 @@ def chat_completions_create(tracer: Tracer, event_logger: EventLogger):
             if span.is_recording():
                 for message in kwargs.get("messages", []):
                     event_logger.emit(
-                        message_to_event(message, span.get_span_context())
+                        message_to_event(
+                            message, span.get_span_context(), capture_content
+                        )
                     )
 
             try:
                 result = wrapped(*args, **kwargs)
                 if is_streaming(kwargs):
                     return StreamWrapper(
-                        result,
-                        span,
-                        event_logger,
+                        result, span, event_logger, capture_content
                     )
                 else:
                     if span.is_recording():
-                        _set_response_attributes(span, result, event_logger)
+                        _set_response_attributes(
+                            span, result, event_logger, capture_content
+                        )
                     span.end()
                     return result
 
@@ -83,7 +87,9 @@ def chat_completions_create(tracer: Tracer, event_logger: EventLogger):
 
 
 @silently_fail
-def _set_response_attributes(span, result, event_logger: EventLogger):
+def _set_response_attributes(
+    span, result, event_logger: EventLogger, capture_content: bool
+):
     if not span.is_recording():
         return
 
@@ -95,7 +101,9 @@ def _set_response_attributes(span, result, event_logger: EventLogger):
         choices = result.choices
         for choice in choices:
             event_logger.emit(
-                choice_to_event(choice, span_ctx=span.get_span_context())
+                choice_to_event(
+                    choice, span.get_span_context(), capture_content
+                )
             )
 
         finish_reasons = []
@@ -182,11 +190,13 @@ class StreamWrapper:
         stream: Stream,
         span: Span,
         event_logger: EventLogger,
+        capture_content: bool,
     ):
         self.stream = stream
         self.span = span
         self.choice_buffers = []
         self._span_started = False
+        self.capture_content = capture_content
 
         self.event_logger = event_logger
         self.setup()
@@ -238,18 +248,20 @@ class StreamWrapper:
                 choice = self.choice_buffers[c]
 
                 message = {"role": "assistant"}
-                if choice.text_content:
+                if self.capture_content and choice.text_content:
                     message["content"] = "".join(choice.text_content)
                 if choice.tool_calls_buffers:
                     tool_calls = []
                     for tool_call in choice.tool_calls_buffers:
+                        function = {"name": tool_call.function_name}
+                        if self.capture_content:
+                            function["arguments"] = "".join(
+                                tool_call.arguments
+                            )
                         tool_call_dict = {
                             "id": tool_call.tool_call_id,
                             "type": "function",
-                            "function": {
-                                "name": tool_call.function_name,
-                                "arguments": "".join(tool_call.arguments),
-                            },
+                            "function": function,
                         }
                         tool_calls.append(tool_call_dict)
                     message["tool_calls"] = tool_calls

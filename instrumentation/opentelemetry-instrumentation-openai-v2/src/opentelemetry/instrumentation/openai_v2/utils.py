@@ -13,7 +13,8 @@
 # limitations under the License.
 
 import logging
-from typing import Any, Optional, Tuple, Union
+from os import environ
+from typing import Optional, Union
 from urllib.parse import urlparse
 
 from httpx import URL
@@ -26,6 +27,18 @@ from opentelemetry.semconv._incubating.attributes import (
 from opentelemetry.semconv._incubating.attributes import (
     server_attributes as ServerAttributes,
 )
+
+OTEL_INSTRUMENTATION_OPENAI_CAPTURE_MESSAGE_CONTENT = (
+    "OTEL_INSTRUMENTATION_OPENAI_CAPTURE_MESSAGE_CONTENT"
+)
+
+
+def is_content_enabled() -> bool:
+    capture_content = environ.get(
+        OTEL_INSTRUMENTATION_OPENAI_CAPTURE_MESSAGE_CONTENT, None
+    )
+
+    return bool(capture_content)
 
 
 def silently_fail(func):
@@ -48,20 +61,7 @@ def silently_fail(func):
     return wrapper
 
 
-def extract_content_from_prompt_message(message) -> Tuple[str, Any]:
-    content = get_property_value(message, "content")
-    if content:
-        return ("content", content)
-
-    tool_calls = extract_tool_calls(message)
-    if tool_calls:
-        return ("tool_calls", tool_calls)
-
-    else:
-        return None
-
-
-def extract_tool_calls(item):
+def extract_tool_calls(item, capture_content):
     tool_calls = get_property_value(item, "tool_calls")
     if tool_calls is None:
         return
@@ -82,7 +82,7 @@ def extract_tool_calls(item):
                 tool_call_dict["function"]["name"] = name
 
             arguments = get_property_value(func, "arguments")
-            if arguments:
+            if capture_content and arguments:
                 tool_call_dict["function"]["arguments"] = arguments.replace(
                     "\n", ""
                 )
@@ -120,7 +120,7 @@ def get_property_value(obj, property_name):
     return getattr(obj, property_name, None)
 
 
-def message_to_event(message, span_ctx):
+def message_to_event(message, span_ctx, capture_content):
     attributes = {
         GenAIAttributes.GEN_AI_SYSTEM: GenAIAttributes.GenAiSystemValues.OPENAI.value
     }
@@ -128,10 +128,10 @@ def message_to_event(message, span_ctx):
     content = get_property_value(message, "content")
 
     body = {}
-    if content:
+    if capture_content and content:
         body["content"] = content
     if role == "assistant":
-        tool_calls = extract_tool_calls(message)
+        tool_calls = extract_tool_calls(message, capture_content)
         if tool_calls:
             body = {"tool_calls": tool_calls}
     elif role == "tool":
@@ -142,14 +142,14 @@ def message_to_event(message, span_ctx):
     return Event(
         name=f"gen_ai.{role}.message",
         attributes=attributes,
-        body=body,
+        body=body if body else None,
         trace_id=span_ctx.trace_id,
         span_id=span_ctx.span_id,
         trace_flags=span_ctx.trace_flags,
     )
 
 
-def choice_to_event(choice, span_ctx):
+def choice_to_event(choice, span_ctx, capture_content):
     attributes = {
         GenAIAttributes.GEN_AI_SYSTEM: GenAIAttributes.GenAiSystemValues.OPENAI.value
     }
@@ -165,11 +165,11 @@ def choice_to_event(choice, span_ctx):
             if choice.message and choice.message.role
             else "assistant"
         }
-        tool_calls = extract_tool_calls(choice.message)
+        tool_calls = extract_tool_calls(choice.message, capture_content)
         if tool_calls:
             message["tool_calls"] = tool_calls
         content = get_property_value(choice.message, "content")
-        if content:
+        if capture_content and content:
             message["content"] = content
         body["message"] = message
 

@@ -1,4 +1,3 @@
-import json
 from typing import Optional
 
 import pytest
@@ -19,11 +18,11 @@ from opentelemetry.semconv._incubating.attributes import (
     server_attributes as ServerAttributes,
 )
 
-# TODO: ENABLE CONTENT FLAG!!!!!!
-
 
 @pytest.mark.vcr()
-def test_chat_completion(span_exporter, log_exporter, openai_client):
+def test_chat_completion_with_content(
+    span_exporter, log_exporter, openai_client, instrument_with_content
+):
     llm_model_value = "gpt-4o-mini"
     messages_value = [{"role": "user", "content": "Say this is a test"}]
 
@@ -53,9 +52,7 @@ def test_chat_completion(span_exporter, log_exporter, openai_client):
     assert_message_in_logs(logs[1], "gen_ai.choice", choice_event, spans[0])
 
 
-def test_chat_completion_bad_endpoint(
-    span_exporter
-):
+def test_chat_completion_bad_endpoint(span_exporter, instrument_no_content):
     llm_model_value = "gpt-4o-mini"
     messages_value = [{"role": "user", "content": "Say this is a test"}]
 
@@ -83,8 +80,9 @@ def test_chat_completion_bad_endpoint(
 
 
 @pytest.mark.vcr()
-def test_chat_completion_404(span_exporter, openai_client):
-
+def test_chat_completion_404(
+    span_exporter, openai_client, instrument_no_content
+):
     llm_model_value = "this-model-does-not-exist"
     messages_value = [{"role": "user", "content": "Say this is a test"}]
 
@@ -109,7 +107,7 @@ def test_chat_completion_404(span_exporter, openai_client):
 
 @pytest.mark.vcr()
 def test_chat_completion_extra_params(
-    span_exporter, openai_client
+    span_exporter, openai_client, instrument_no_content
 ):
     llm_model_value = "gpt-4o-mini"
     messages_value = [{"role": "user", "content": "Say this is a test"}]
@@ -141,7 +139,7 @@ def test_chat_completion_extra_params(
 
 @pytest.mark.vcr()
 def test_chat_completion_multiple_choices(
-    span_exporter, log_exporter, openai_client
+    span_exporter, log_exporter, openai_client, instrument_with_content
 ):
     llm_model_value = "gpt-4o-mini"
     messages_value = [{"role": "user", "content": "Say this is a test"}]
@@ -183,8 +181,23 @@ def test_chat_completion_multiple_choices(
 
 
 @pytest.mark.vcr()
-def test_chat_completion_tool_calls(
-    span_exporter, log_exporter, openai_client
+def test_chat_completion_tool_calls_with_content(
+    span_exporter, log_exporter, openai_client, instrument_with_content
+):
+    chat_completion_tool_call(span_exporter, log_exporter, openai_client, True)
+
+
+@pytest.mark.vcr()
+def test_chat_completion_tool_calls_no_content(
+    span_exporter, log_exporter, openai_client, instrument_no_content
+):
+    chat_completion_tool_call(
+        span_exporter, log_exporter, openai_client, False
+    )
+
+
+def chat_completion_tool_call(
+    span_exporter, log_exporter, openai_client, expect_content
 ):
     llm_model_value = "gpt-4o-mini"
     messages_value = [
@@ -246,15 +259,33 @@ def test_chat_completion_tool_calls(
     assert len(logs) == 9  # 3 logs for first completion, 6 for second
 
     # call one
-    system_message = {"content": messages_value[0]["content"]}
+    system_message = (
+        {"content": messages_value[0]["content"]} if expect_content else None
+    )
     assert_message_in_logs(
         logs[0], "gen_ai.system.message", system_message, spans[0]
     )
 
-    user_message = {"content": messages_value[1]["content"]}
+    user_message = (
+        {"content": messages_value[1]["content"]} if expect_content else None
+    )
     assert_message_in_logs(
         logs[1], "gen_ai.user.message", user_message, spans[0]
     )
+
+    function_call_0 = {"name": "get_current_weather"}
+    function_call_1 = {"name": "get_current_weather"}
+    if expect_content:
+        function_call_0["arguments"] = (
+            response_0.choices[0]
+            .message.tool_calls[0]
+            .function.arguments.replace("\n", "")
+        )
+        function_call_1["arguments"] = (
+            response_0.choices[0]
+            .message.tool_calls[1]
+            .function.arguments.replace("\n", "")
+        )
 
     choice_event = {
         "index": 0,
@@ -265,22 +296,12 @@ def test_chat_completion_tool_calls(
                 {
                     "id": response_0.choices[0].message.tool_calls[0].id,
                     "type": "function",
-                    "function": {
-                        "name": "get_current_weather",
-                        "arguments": response_0.choices[0]
-                        .message.tool_calls[0]
-                        .function.arguments.replace("\n", ""),
-                    },
+                    "function": function_call_0,
                 },
                 {
                     "id": response_0.choices[0].message.tool_calls[1].id,
                     "type": "function",
-                    "function": {
-                        "name": "get_current_weather",
-                        "arguments": response_0.choices[0]
-                        .message.tool_calls[1]
-                        .function.arguments.replace("\n", ""),
-                    },
+                    "function": function_call_1,
                 },
             ],
         },
@@ -288,51 +309,65 @@ def test_chat_completion_tool_calls(
     assert_message_in_logs(logs[2], "gen_ai.choice", choice_event, spans[0])
 
     # call two
-    system_message = {"content": messages_value[0]["content"]}
+    system_message = (
+        {"content": messages_value[0]["content"]} if expect_content else None
+    )
     assert_message_in_logs(
         logs[3], "gen_ai.system.message", system_message, spans[1]
     )
 
-    user_message = {"content": messages_value[1]["content"]}
+    user_message = (
+        {"content": messages_value[1]["content"]} if expect_content else None
+    )
     assert_message_in_logs(
         logs[4], "gen_ai.user.message", user_message, spans[1]
     )
 
     assistant_tool_call = {"tool_calls": messages_value[2]["tool_calls"]}
+    if not expect_content:
+        assistant_tool_call["tool_calls"][0]["function"]["arguments"] = None
+        assistant_tool_call["tool_calls"][1]["function"]["arguments"] = None
+
     assert_message_in_logs(
         logs[5], "gen_ai.assistant.message", assistant_tool_call, spans[1]
     )
 
     tool_message_0 = {
-        "content": tool_call_result_0["content"],
         "id": tool_call_result_0["tool_call_id"],
+        "content": tool_call_result_0["content"] if expect_content else None,
     }
+
     assert_message_in_logs(
         logs[6], "gen_ai.tool.message", tool_message_0, spans[1]
     )
 
     tool_message_1 = {
-        "content": tool_call_result_1["content"],
         "id": tool_call_result_1["tool_call_id"],
+        "content": tool_call_result_1["content"] if expect_content else None,
     }
+
     assert_message_in_logs(
         logs[7], "gen_ai.tool.message", tool_message_1, spans[1]
     )
 
+    message = {
+        "role": "assistant",
+        "content": response_1.choices[0].message.content
+        if expect_content
+        else None,
+    }
     choice = {
         "index": 0,
         "finish_reason": "stop",
-        "message": {
-            "role": "assistant",
-            "content": response_1.choices[0].message.content,
-        },
+        "message": message,
     }
     assert_message_in_logs(logs[8], "gen_ai.choice", choice, spans[1])
 
 
 @pytest.mark.vcr()
-def test_chat_completion_streaming(span_exporter, log_exporter, openai_client):
-
+def test_chat_completion_streaming(
+    span_exporter, log_exporter, openai_client, instrument_with_content
+):
     llm_model_value = "gpt-4"
     messages_value = [{"role": "user", "content": "Say this is a test"}]
 
@@ -386,7 +421,7 @@ def test_chat_completion_streaming(span_exporter, log_exporter, openai_client):
 
 @pytest.mark.vcr()
 def test_chat_completion_streaming_not_complete(
-    span_exporter, log_exporter, openai_client
+    span_exporter, log_exporter, openai_client, instrument_with_content
 ):
     llm_model_value = "gpt-4"
     messages_value = [{"role": "user", "content": "Say this is a test"}]
@@ -437,7 +472,7 @@ def test_chat_completion_streaming_not_complete(
 
 @pytest.mark.vcr()
 def test_chat_completion_multiple_choices_streaming(
-    span_exporter, log_exporter, openai_client
+    span_exporter, log_exporter, openai_client, instrument_with_content
 ):
     llm_model_value = "gpt-4o-mini"
     messages_value = [
@@ -524,8 +559,25 @@ def test_chat_completion_multiple_choices_streaming(
 
 
 @pytest.mark.vcr()
-def test_chat_completion_multiple_tools_streaming(
-    span_exporter, log_exporter, openai_client
+def test_chat_completion_multiple_tools_streaming_with_content(
+    span_exporter, log_exporter, openai_client, instrument_with_content
+):
+    chat_completion_multiple_tools_streaming(
+        span_exporter, log_exporter, openai_client, True
+    )
+
+
+@pytest.mark.vcr()
+def test_chat_completion_multiple_tools_streaming_no_content(
+    span_exporter, log_exporter, openai_client, instrument_no_content
+):
+    chat_completion_multiple_tools_streaming(
+        span_exporter, log_exporter, openai_client, False
+    )
+
+
+def chat_completion_multiple_tools_streaming(
+    span_exporter, log_exporter, openai_client, expect_content
 ):
     llm_model_value = "gpt-4o-mini"
     messages_value = [
@@ -586,14 +638,18 @@ def test_chat_completion_multiple_tools_streaming(
     logs = log_exporter.get_finished_logs()
     assert len(logs) == 3
 
-    system_message = {"content": messages_value[0]["content"]}
+    system_message = (
+        {"content": messages_value[0]["content"]} if expect_content else None
+    )
     assert_message_in_logs(
         logs[0], "gen_ai.system.message", system_message, spans[0]
     )
 
-    user_message = {
-        "content": "What's the weather in Seattle and San Francisco today?"
-    }
+    user_message = (
+        {"content": "What's the weather in Seattle and San Francisco today?"}
+        if expect_content
+        else None
+    )
     assert_message_in_logs(
         logs[1], "gen_ai.user.message", user_message, spans[0]
     )
@@ -609,7 +665,9 @@ def test_chat_completion_multiple_tools_streaming(
                     "type": "function",
                     "function": {
                         "name": tool_names[0],
-                        "arguments": tool_args[0].replace("\n", ""),
+                        "arguments": tool_args[0].replace("\n", "")
+                        if expect_content
+                        else None,
                     },
                 },
                 {
@@ -617,7 +675,9 @@ def test_chat_completion_multiple_tools_streaming(
                     "type": "function",
                     "function": {
                         "name": tool_names[1],
-                        "arguments": tool_args[1].replace("\n", ""),
+                        "arguments": tool_args[1].replace("\n", "")
+                        if expect_content
+                        else None,
                     },
                 },
             ],
@@ -632,10 +692,28 @@ def assert_message_in_logs(log, event_name, expected_content, parent_span):
         log.log_record.attributes[GenAIAttributes.GEN_AI_SYSTEM]
         == GenAIAttributes.GenAiSystemValues.OPENAI.value
     )
-    assert json.dumps(log.log_record.body, sort_keys=True) == json.dumps(
-        expected_content, sort_keys=True
-    )
+
+    if not expected_content:
+        assert not log.log_record.body
+    else:
+        assert dict(log.log_record.body) == remove_none_values(
+            expected_content
+        )
     assert_log_parent(log, parent_span)
+
+
+def remove_none_values(d):
+    result = {}
+    for k, v in d.items():
+        if v is None:
+            continue
+        elif isinstance(v, dict):
+            result[k] = remove_none_values(v)
+        elif isinstance(v, list):
+            result[k] = [remove_none_values(i) for i in v]
+        else:
+            result[k] = v
+    return result
 
 
 def assert_completion_attributes(
