@@ -58,6 +58,7 @@ Usage
 
 For example,
 ::
+
    Invoking cursor.execute("INSERT INTO test (testField) VALUES (123)") will lead to sql query "INSERT INTO test (testField) VALUES (123)" but when SQLCommenter is enabled
    the query will get appended with some configurable tags like "INSERT INTO test (testField) VALUES (123) /*tag=value*/;"
 
