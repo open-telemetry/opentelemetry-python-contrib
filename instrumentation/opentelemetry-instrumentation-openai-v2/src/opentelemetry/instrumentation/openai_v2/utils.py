@@ -51,7 +51,7 @@ def silently_fail(func):
     def wrapper(*args, **kwargs):
         try:
             return func(*args, **kwargs)
-        except Exception as exception:
+        except Exception as exception:  # pylint: disable=broad-exception-caught
             logger.warning(
                 "Failed to execute %s, error: %s",
                 func.__name__,
@@ -64,7 +64,7 @@ def silently_fail(func):
 def extract_tool_calls(item, capture_content):
     tool_calls = get_property_value(item, "tool_calls")
     if tool_calls is None:
-        return
+        return None
 
     calls = []
     for tool_call in tool_calls:
@@ -88,9 +88,7 @@ def extract_tool_calls(item, capture_content):
             arguments = get_property_value(func, "arguments")
             if capture_content and arguments:
                 if isinstance(arguments, str):
-                    arguments = arguments.replace(
-                        "\n", ""
-                    )
+                    arguments = arguments.replace("\n", "")
                 tool_call_dict["function"]["arguments"] = arguments
 
         calls.append(tool_call_dict)
@@ -108,12 +106,9 @@ def set_server_address_and_port(client_instance, attributes):
         attributes[ServerAttributes.SERVER_ADDRESS] = base_url.host
         port = base_url.port
     elif isinstance(base_url, str):
-        try:
-            url = urlparse(base_url)
-            attributes[ServerAttributes.SERVER_ADDRESS] = url.hostname
-            port = url.port
-        except Exception:
-            pass
+        url = urlparse(base_url)
+        attributes[ServerAttributes.SERVER_ADDRESS] = url.hostname
+        port = url.port
 
     if port and port != 443 and port > 0:
         attributes[ServerAttributes.SERVER_PORT] = port

@@ -22,27 +22,27 @@ from opentelemetry.sdk.trace.export.in_memory_span_exporter import (
 )
 
 
-@pytest.fixture(scope="function")
-def span_exporter():
+@pytest.fixture(scope="function", name="span_exporter")
+def fixture_span_exporter():
     exporter = InMemorySpanExporter()
     yield exporter
 
 
-@pytest.fixture(scope="function")
-def log_exporter():
+@pytest.fixture(scope="function", name="log_exporter")
+def fixture_log_exporter():
     exporter = InMemoryLogExporter()
     yield exporter
 
 
-@pytest.fixture(scope="function")
-def tracer_provider(span_exporter):
+@pytest.fixture(scope="function", name="tracer_provider")
+def fixture_tracer_provider(span_exporter):
     provider = TracerProvider()
     provider.add_span_processor(SimpleSpanProcessor(span_exporter))
     return provider
 
 
-@pytest.fixture(scope="function")
-def event_logger_provider(log_exporter):
+@pytest.fixture(scope="function", name="event_logger_provider")
+def fixture_event_logger_provider(log_exporter):
     provider = LoggerProvider()
     provider.add_log_record_processor(SimpleLogRecordProcessor(log_exporter))
     event_logger_provider = EventLoggerProvider(provider)
@@ -74,7 +74,8 @@ def vcr_config():
 def instrument_no_content(tracer_provider, event_logger_provider):
     instrumentor = OpenAIInstrumentor()
     instrumentor.instrument(
-        tracer_provider=tracer_provider, event_logger_provider=event_logger_provider
+        tracer_provider=tracer_provider,
+        event_logger_provider=event_logger_provider,
     )
 
     yield instrumentor
@@ -88,7 +89,8 @@ def instrument_with_content(tracer_provider, event_logger_provider):
     )
     instrumentor = OpenAIInstrumentor()
     instrumentor.instrument(
-        tracer_provider=tracer_provider, event_logger_provider=event_logger_provider
+        tracer_provider=tracer_provider,
+        event_logger_provider=event_logger_provider,
     )
 
     yield instrumentor

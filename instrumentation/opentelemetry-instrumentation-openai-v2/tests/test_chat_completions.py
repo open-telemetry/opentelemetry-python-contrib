@@ -58,6 +58,7 @@ def test_chat_completion_bad_endpoint(span_exporter, instrument_no_content):
 
     client = OpenAI(base_url="http://localhost:4242")
 
+    exception = None
     try:
         client.chat.completions.create(
             messages=messages_value,
@@ -65,7 +66,7 @@ def test_chat_completion_bad_endpoint(span_exporter, instrument_no_content):
             timeout=0.1,
         )
         assert False, "Expected an exception"
-    except Exception as ex:
+    except Exception as ex:  # pylint: disable=broad-exception-caught
         exception = ex
 
     spans = span_exporter.get_finished_spans()
@@ -86,6 +87,7 @@ def test_chat_completion_404(
     llm_model_value = "this-model-does-not-exist"
     messages_value = [{"role": "user", "content": "Say this is a test"}]
 
+    exception = None
     try:
         openai_client.chat.completions.create(
             messages=messages_value,
@@ -93,7 +95,7 @@ def test_chat_completion_404(
             timeout=0.1,
         )
         assert False, "Expected an exception"
-    except Exception as ex:
+    except Exception as ex:  # pylint: disable=broad-exception-caught
         exception = ex
 
     spans = span_exporter.get_finished_spans()
@@ -436,10 +438,10 @@ def test_chat_completion_streaming_not_complete(
     response_stream_id = None
     response_stream_result = ""
     response = openai_client.chat.completions.create(**kwargs)
-    for i, chunk in enumerate(response):
+    for idx, chunk in enumerate(response):
         if chunk.choices:
             response_stream_result += chunk.choices[0].delta.content or ""
-        if i == 1:
+        if idx == 1:
             # fake a stop
             break
 
@@ -702,17 +704,17 @@ def assert_message_in_logs(log, event_name, expected_content, parent_span):
     assert_log_parent(log, parent_span)
 
 
-def remove_none_values(d):
+def remove_none_values(body):
     result = {}
-    for k, v in d.items():
-        if v is None:
+    for key, value in body.items():
+        if value is None:
             continue
-        elif isinstance(v, dict):
-            result[k] = remove_none_values(v)
-        elif isinstance(v, list):
-            result[k] = [remove_none_values(i) for i in v]
+        elif isinstance(value, dict):
+            result[key] = remove_none_values(value)
+        elif isinstance(value, list):
+            result[key] = [remove_none_values(i) for i in value]
         else:
-            result[k] = v
+            result[key] = value
     return result
 
 

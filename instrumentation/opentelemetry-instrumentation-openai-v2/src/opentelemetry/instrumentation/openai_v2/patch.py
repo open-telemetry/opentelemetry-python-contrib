@@ -66,13 +66,13 @@ def chat_completions_create(
                     return StreamWrapper(
                         result, span, event_logger, capture_content
                     )
-                else:
-                    if span.is_recording():
-                        _set_response_attributes(
-                            span, result, event_logger, capture_content
-                        )
-                    span.end()
-                    return result
+
+                if span.is_recording():
+                    _set_response_attributes(
+                        span, result, event_logger, capture_content
+                    )
+                span.end()
+                return result
 
             except Exception as error:
                 span.set_status(Status(StatusCode.ERROR, str(error)))
@@ -161,7 +161,7 @@ class ChoiceBuffer:
     def append_tool_call(self, tool_call):
         idx = tool_call.index
         # make sure we have enough tool call buffers
-        for i in range(len(self.tool_calls_buffers), idx + 1):
+        for _ in range(len(self.tool_calls_buffers), idx + 1):
             self.tool_calls_buffers.append(None)
 
         if not self.tool_calls_buffers[idx]:
@@ -241,9 +241,7 @@ class StreamWrapper:
                 self.finish_reasons,
             )
 
-            for c in range(len(self.choice_buffers)):
-                choice = self.choice_buffers[c]
-
+            for idx, choice in enumerate(self.choice_buffers):
                 message = {"role": "assistant"}
                 if self.capture_content and choice.text_content:
                     message["content"] = "".join(choice.text_content)
@@ -264,7 +262,7 @@ class StreamWrapper:
                     message["tool_calls"] = tool_calls
 
                 body = {
-                    "index": c,
+                    "index": idx,
                     "finish_reason": choice.finish_reason or "error",
                     "message": message,
                 }
@@ -356,8 +354,8 @@ class StreamWrapper:
                 continue
 
             # make sure we have enough choice buffers
-            for i in range(len(self.choice_buffers), choice.index + 1):
-                self.choice_buffers.append(ChoiceBuffer(i))
+            for idx in range(len(self.choice_buffers), choice.index + 1):
+                self.choice_buffers.append(ChoiceBuffer(idx))
 
             if choice.finish_reason:
                 self.choice_buffers[
