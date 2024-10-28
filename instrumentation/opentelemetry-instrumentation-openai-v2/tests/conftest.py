@@ -19,40 +19,30 @@ from opentelemetry.sdk.trace.export.in_memory_span_exporter import (
     InMemorySpanExporter,
 )
 
-
-@pytest.fixture(scope="session")
+@pytest.fixture(scope="function")
 def span_exporter():
     exporter = InMemorySpanExporter()
-    processor = SimpleSpanProcessor(exporter)
-
-    provider = TracerProvider()
-    provider.add_span_processor(processor)
-    trace.set_tracer_provider(provider)
-
-    return exporter
+    yield exporter
 
 
-@pytest.fixture(scope="session")
+@pytest.fixture(scope="function")
 def log_exporter():
     exporter = InMemoryLogExporter()
-    processor = SimpleLogRecordProcessor(exporter)
+    yield exporter
 
+@pytest.fixture(scope="function")
+def tracer_provider(span_exporter):
+    provider = TracerProvider()
+    provider.add_span_processor(SimpleSpanProcessor(span_exporter))
+    return provider
+
+@pytest.fixture(scope="function")
+def event_provider(log_exporter):
     provider = LoggerProvider()
-    provider.add_log_record_processor(processor)
-
+    provider.add_log_record_processor(SimpleLogRecordProcessor(log_exporter))
     event_provider = EventLoggerProvider(provider)
 
-    _logs.set_logger_provider(provider)
-    _events.set_event_logger_provider(event_provider)
-
-    return exporter
-
-
-@pytest.fixture(autouse=True)
-def clear_exporter(span_exporter, log_exporter):
-    span_exporter.clear()
-    log_exporter.clear()
-
+    return event_provider
 
 @pytest.fixture(autouse=True)
 def environment():
@@ -74,15 +64,13 @@ def vcr_config():
     }
 
 
-@pytest.fixture(scope="session", autouse=True)
-def instrument():
-    OpenAIInstrumentor().instrument()
+@pytest.fixture(scope="function", autouse=True)
+def instrument(tracer_provider, event_provider):
+    instrumentor = OpenAIInstrumentor()
+    instrumentor.instrument(tracer_provider=tracer_provider, event_provider=event_provider)
 
-
-@pytest.fixture(scope="session", autouse=True)
-def uninstrument():
-    # OpenAIInstrumentor().uninstrument()
-    pass
+    yield instrumentor
+    instrumentor.uninstrument()
 
 
 def scrub_response_headers(response):

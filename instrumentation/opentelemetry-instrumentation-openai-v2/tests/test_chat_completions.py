@@ -54,7 +54,7 @@ def test_chat_completion(span_exporter, log_exporter, openai_client):
 
 
 def test_chat_completion_bad_endpoint(
-    span_exporter, log_exporter, openai_client
+    span_exporter
 ):
     llm_model_value = "gpt-4o-mini"
     messages_value = [{"role": "user", "content": "Say this is a test"}]
@@ -83,7 +83,8 @@ def test_chat_completion_bad_endpoint(
 
 
 @pytest.mark.vcr()
-def test_chat_completion_404(span_exporter, log_exporter, openai_client):
+def test_chat_completion_404(span_exporter, openai_client):
+
     llm_model_value = "this-model-does-not-exist"
     messages_value = [{"role": "user", "content": "Say this is a test"}]
 
@@ -108,7 +109,7 @@ def test_chat_completion_404(span_exporter, log_exporter, openai_client):
 
 @pytest.mark.vcr()
 def test_chat_completion_extra_params(
-    span_exporter, log_exporter, openai_client
+    span_exporter, openai_client
 ):
     llm_model_value = "gpt-4o-mini"
     messages_value = [{"role": "user", "content": "Say this is a test"}]
@@ -331,6 +332,7 @@ def test_chat_completion_tool_calls(
 
 @pytest.mark.vcr()
 def test_chat_completion_streaming(span_exporter, log_exporter, openai_client):
+
     llm_model_value = "gpt-4"
     messages_value = [{"role": "user", "content": "Say this is a test"}]
 
