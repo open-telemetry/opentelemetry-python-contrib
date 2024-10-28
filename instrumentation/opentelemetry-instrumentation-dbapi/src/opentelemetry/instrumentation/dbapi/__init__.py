@@ -301,7 +301,7 @@ class DatabaseApiIntegration:
             try:
                 db_version = self.connect_module.__version__
             except AttributeError:
-                db_driver = "unknown"
+                db_version = "unknown"
 
         commenter_data = {
             "db_driver": f"{db_driver}:{db_version.split(' ')[0]}",
