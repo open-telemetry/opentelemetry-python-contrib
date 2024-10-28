@@ -42,12 +42,12 @@ def tracer_provider(span_exporter):
 
 
 @pytest.fixture(scope="function")
-def event_provider(log_exporter):
+def event_logger_provider(log_exporter):
     provider = LoggerProvider()
     provider.add_log_record_processor(SimpleLogRecordProcessor(log_exporter))
-    event_provider = EventLoggerProvider(provider)
+    event_logger_provider = EventLoggerProvider(provider)
 
-    return event_provider
+    return event_logger_provider
 
 
 @pytest.fixture(autouse=True)
@@ -71,10 +71,10 @@ def vcr_config():
 
 
 @pytest.fixture(scope="function")
-def instrument_no_content(tracer_provider, event_provider):
+def instrument_no_content(tracer_provider, event_logger_provider):
     instrumentor = OpenAIInstrumentor()
     instrumentor.instrument(
-        tracer_provider=tracer_provider, event_provider=event_provider
+        tracer_provider=tracer_provider, event_logger_provider=event_logger_provider
     )
 
     yield instrumentor
@@ -82,13 +82,13 @@ def instrument_no_content(tracer_provider, event_provider):
 
 
 @pytest.fixture(scope="function")
-def instrument_with_content(tracer_provider, event_provider):
+def instrument_with_content(tracer_provider, event_logger_provider):
     os.environ.update(
         {OTEL_INSTRUMENTATION_OPENAI_CAPTURE_MESSAGE_CONTENT: "True"}
     )
     instrumentor = OpenAIInstrumentor()
     instrumentor.instrument(
-        tracer_provider=tracer_provider, event_provider=event_provider
+        tracer_provider=tracer_provider, event_logger_provider=event_logger_provider
     )
 
     yield instrumentor

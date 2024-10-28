@@ -68,10 +68,14 @@ def extract_tool_calls(item, capture_content):
 
     calls = []
     for tool_call in tool_calls:
-        tool_call_dict = {
-            "id": get_property_value(tool_call, "id"),
-            "type": get_property_value(tool_call, "type"),
-        }
+        tool_call_dict = {}
+        id = get_property_value(tool_call, "id")
+        if id:
+            tool_call_dict["id"] = id
+
+        type = get_property_value(tool_call, "type")
+        if type:
+            tool_call_dict["type"] = type
 
         func = get_property_value(tool_call, "function")
         if func:
@@ -83,9 +87,11 @@ def extract_tool_calls(item, capture_content):
 
             arguments = get_property_value(func, "arguments")
             if capture_content and arguments:
-                tool_call_dict["function"]["arguments"] = arguments.replace(
-                    "\n", ""
-                )
+                if isinstance(arguments, str):
+                    arguments = arguments.replace(
+                        "\n", ""
+                    )
+                tool_call_dict["function"]["arguments"] = arguments
 
         calls.append(tool_call_dict)
     return calls
@@ -163,7 +169,7 @@ def choice_to_event(choice, span_ctx, capture_content):
         message = {
             "role": choice.message.role
             if choice.message and choice.message.role
-            else "assistant"
+            else None
         }
         tool_calls = extract_tool_calls(choice.message, capture_content)
         if tool_calls:

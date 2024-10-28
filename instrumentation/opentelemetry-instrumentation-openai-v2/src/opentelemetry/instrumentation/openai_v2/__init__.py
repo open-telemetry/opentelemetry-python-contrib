@@ -68,12 +68,12 @@ class OpenAIInstrumentor(BaseInstrumentor):
             tracer_provider,
             schema_url=Schemas.V1_28_0.value,
         )
-        event_provider = kwargs.get("event_provider")
+        event_logger_provider = kwargs.get("event_logger_provider")
         event_logger = get_event_logger(
             __name__,
             "",
             schema_url=Schemas.V1_28_0.value,
-            event_logger_provider=event_provider,
+            event_logger_provider=event_logger_provider,
         )
 
         wrap_function_wrapper(

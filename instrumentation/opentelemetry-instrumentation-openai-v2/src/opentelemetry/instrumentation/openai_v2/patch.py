@@ -90,9 +90,6 @@ def chat_completions_create(
 def _set_response_attributes(
     span, result, event_logger: EventLogger, capture_content: bool
 ):
-    if not span.is_recording():
-        return
-
     set_span_attribute(
         span, GenAIAttributes.GEN_AI_RESPONSE_MODEL, result.model
     )
