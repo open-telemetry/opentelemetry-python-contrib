@@ -934,7 +934,7 @@ class HTTPXClientInstrumentor(BaseInstrumentor):
                     span.set_attribute(
                         ERROR_TYPE, type(exception).__qualname__
                     )
-                raise exception
+                raise exception.with_traceback(exception.__traceback__)
 
         return response
 
