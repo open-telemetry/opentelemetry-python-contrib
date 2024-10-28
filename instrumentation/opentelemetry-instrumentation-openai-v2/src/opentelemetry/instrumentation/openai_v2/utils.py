@@ -69,13 +69,13 @@ def extract_tool_calls(item, capture_content):
     calls = []
     for tool_call in tool_calls:
         tool_call_dict = {}
-        id = get_property_value(tool_call, "id")
-        if id:
-            tool_call_dict["id"] = id
+        call_id = get_property_value(tool_call, "id")
+        if call_id:
+            tool_call_dict["id"] = call_id
 
-        type = get_property_value(tool_call, "type")
-        if type:
-            tool_call_dict["type"] = type
+        tool_type = get_property_value(tool_call, "type")
+        if tool_type:
+            tool_call_dict["type"] = tool_type
 
         func = get_property_value(tool_call, "function")
         if func:
