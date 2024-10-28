@@ -1018,7 +1018,6 @@ class BaseTestCases:
             result = self.perform_request(self.URL, client=client)
 
             self.assertEqual(result.text, "Hello!")
-            # FIXME: this does fail if uninstrument() has been called before and is a change of behaviour from before
             self.assert_span(num_spans=0)
             self.assert_proxy_mounts(
                 client._mounts.values(),
