@@ -188,20 +188,20 @@ class TestCeleryInstrumentation(TestBase):
 
         self.assertEqual(task.result, {"key": "value"})
 
-    def _retrieve_context_wrapper_none_token(
-        self, wrapped, instance, args, kwargs
-    ):
-        ctx = wrapped(*args, **kwargs)
-        if ctx is None:
-            return ctx
-        span, activation, _ = ctx
-        return span, activation, None
-
     def test_task_not_instrumented_does_not_raise(self):
+        def _retrieve_context_wrapper_none_token(
+            wrapped, instance, args, kwargs
+        ):
+            ctx = wrapped(*args, **kwargs)
+            if ctx is None:
+                return ctx
+            span, activation, _ = ctx
+            return span, activation, None
+
         wrap_function_wrapper(
             utils,
             "retrieve_context",
-            self._retrieve_context_wrapper_none_token,
+            _retrieve_context_wrapper_none_token,
         )
 
         CeleryInstrumentor().instrument()
