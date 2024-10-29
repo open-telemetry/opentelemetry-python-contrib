@@ -309,7 +309,9 @@ class TestDBApiIntegration(TestBase):
         )
 
         cursor_span_id = re.search(r"[a-zA-Z0-9_]{16}", cursor.query).group()
-        db_statement_span_id = re.search(r"[a-zA-Z0-9_]{16}", span.attributes[SpanAttributes.DB_STATEMENT]).group()
+        db_statement_span_id = re.search(
+            r"[a-zA-Z0-9_]{16}", span.attributes[SpanAttributes.DB_STATEMENT]
+        ).group()
         self.assertEqual(cursor_span_id, db_statement_span_id)
 
     def test_compatible_build_version_psycopg_psycopg2_libpq(self):
