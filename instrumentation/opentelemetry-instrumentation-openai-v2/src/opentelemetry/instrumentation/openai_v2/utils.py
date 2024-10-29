@@ -37,7 +37,7 @@ def is_content_enabled() -> bool:
         OTEL_INSTRUMENTATION_OPENAI_CAPTURE_MESSAGE_CONTENT, None
     )
 
-    return bool(capture_content)
+    return capture_content.lower() == "true" if capture_content else False
 
 
 def extract_tool_calls(item, capture_content):
