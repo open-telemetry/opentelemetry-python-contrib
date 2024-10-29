@@ -33,7 +33,6 @@ from .utils import (
     is_streaming,
     message_to_event,
     set_span_attribute,
-    silently_fail,
 )
 
 
@@ -86,7 +85,6 @@ def chat_completions_create(
     return traced_method
 
 
-@silently_fail
 def _set_response_attributes(
     span, result, event_logger: EventLogger, capture_content: bool
 ):

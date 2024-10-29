@@ -12,7 +12,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import logging
 from os import environ
 from typing import Optional, Union
 from urllib.parse import urlparse
@@ -32,34 +31,12 @@ OTEL_INSTRUMENTATION_OPENAI_CAPTURE_MESSAGE_CONTENT = (
     "OTEL_INSTRUMENTATION_OPENAI_CAPTURE_MESSAGE_CONTENT"
 )
 
-
 def is_content_enabled() -> bool:
     capture_content = environ.get(
         OTEL_INSTRUMENTATION_OPENAI_CAPTURE_MESSAGE_CONTENT, None
     )
 
     return bool(capture_content)
-
-
-def silently_fail(func):
-    """
-    A decorator that catches exceptions thrown by the decorated function and logs them as warnings.
-    """
-
-    logger = logging.getLogger(func.__module__)
-
-    def wrapper(*args, **kwargs):
-        try:
-            return func(*args, **kwargs)
-        except Exception as exception:  # pylint: disable=broad-exception-caught
-            logger.warning(
-                "Failed to execute %s, error: %s",
-                func.__name__,
-                str(exception),
-            )
-
-    return wrapper
-
 
 def extract_tool_calls(item, capture_content):
     tool_calls = get_property_value(item, "tool_calls")
