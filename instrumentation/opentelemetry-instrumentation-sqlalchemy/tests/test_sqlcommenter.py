@@ -12,12 +12,14 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 import logging
+import re
 
 import pytest
 from sqlalchemy import create_engine
 
 from opentelemetry import context
 from opentelemetry.instrumentation.sqlalchemy import SQLAlchemyInstrumentor
+from opentelemetry.semconv.trace import SpanAttributes
 from opentelemetry.test.test_base import TestBase
 
 
@@ -55,6 +57,38 @@ class TestSqlalchemyInstrumentationWithSQLCommenter(TestBase):
             self.caplog.records[-2].getMessage(),
             r"SELECT  1 /\*db_driver='(.*)',traceparent='\d{1,2}-[a-zA-Z0-9_]{32}-[a-zA-Z0-9_]{16}-\d{1,2}'\*/;",
         )
+
+    def test_sqlcommenter_enabled_matches_db_statement_attribute(self):
+        engine = create_engine("sqlite:///:memory:")
+        SQLAlchemyInstrumentor().instrument(
+            engine=engine,
+            tracer_provider=self.tracer_provider,
+            enable_commenter=True,
+            commenter_options={"db_framework": False},
+        )
+        cnx = engine.connect()
+        cnx.execute("SELECT  1;").fetchall()
+        query_log = self.caplog.records[-2].getMessage()
+        self.assertRegex(
+            query_log,
+            r"SELECT  1 /\*db_driver='(.*)',traceparent='\d{1,2}-[a-zA-Z0-9_]{32}-[a-zA-Z0-9_]{16}-\d{1,2}'\*/;",
+        )
+        spans = self.memory_exporter.get_finished_spans()
+        self.assertEqual(len(spans), 2)
+        # first span is connection to db
+        self.assertEqual(spans[0].name, "connect")
+        # second span is query itself
+        query_span = spans[1]
+        self.assertRegex(
+            query_span.attributes[SpanAttributes.DB_STATEMENT],
+            r"SELECT  1 /\*db_driver='(.*)',traceparent='\d{1,2}-[a-zA-Z0-9_]{32}-[a-zA-Z0-9_]{16}-\d{1,2}'\*/;",
+        )
+        cnx_span_id = re.search(r"[a-zA-Z0-9_]{16}", query_log).group()
+        db_statement_span_id = re.search(
+            r"[a-zA-Z0-9_]{16}",
+            query_span.attributes[SpanAttributes.DB_STATEMENT],
+        ).group()
+        self.assertEqual(cnx_span_id, db_statement_span_id)
 
     def test_sqlcommenter_enabled_otel_values_false(self):
         engine = create_engine("sqlite:///:memory:")
