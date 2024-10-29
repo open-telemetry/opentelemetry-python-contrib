@@ -31,12 +31,14 @@ OTEL_INSTRUMENTATION_OPENAI_CAPTURE_MESSAGE_CONTENT = (
     "OTEL_INSTRUMENTATION_OPENAI_CAPTURE_MESSAGE_CONTENT"
 )
 
+
 def is_content_enabled() -> bool:
     capture_content = environ.get(
         OTEL_INSTRUMENTATION_OPENAI_CAPTURE_MESSAGE_CONTENT, None
     )
 
     return bool(capture_content)
+
 
 def extract_tool_calls(item, capture_content):
     tool_calls = get_property_value(item, "tool_calls")
