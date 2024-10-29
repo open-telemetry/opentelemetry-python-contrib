@@ -1004,7 +1004,6 @@ class HTTPXClientInstrumentor(BaseInstrumentor):
                 ),
             )
             for transport in client._mounts.values():
-                # FIXME: check it's not wrapped already?
                 wrap_function_wrapper(
                     transport,
                     "handle_request",
@@ -1030,7 +1029,6 @@ class HTTPXClientInstrumentor(BaseInstrumentor):
                 ),
             )
             for transport in client._mounts.values():
-                # FIXME: check it's not wrapped already?
                 wrap_function_wrapper(
                     transport,
                     "handle_async_request",
