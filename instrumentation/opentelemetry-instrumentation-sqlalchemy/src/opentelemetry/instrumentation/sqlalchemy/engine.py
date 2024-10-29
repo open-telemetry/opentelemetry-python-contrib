@@ -218,11 +218,6 @@ class EngineTracer:
             kind=trace.SpanKind.CLIENT,
         )
         with trace.use_span(span, end_on_exit=False):
-            if span.is_recording():
-                span.set_attribute(SpanAttributes.DB_STATEMENT, statement)
-                span.set_attribute(SpanAttributes.DB_SYSTEM, self.vendor)
-                for key, value in attrs.items():
-                    span.set_attribute(key, value)
             if self.enable_commenter:
                 commenter_data = {
                     "db_driver": conn.engine.driver,
@@ -241,6 +236,11 @@ class EngineTracer:
                 }
 
                 statement = _add_sql_comment(statement, **commenter_data)
+            if span.is_recording():
+                span.set_attribute(SpanAttributes.DB_STATEMENT, statement)
+                span.set_attribute(SpanAttributes.DB_SYSTEM, self.vendor)
+                for key, value in attrs.items():
+                    span.set_attribute(key, value)
 
         context._otel_span = span
 
