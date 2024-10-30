@@ -34,6 +34,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   ([#2922](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/2922))
 - `opentelemetry-instrumentation-celery` Don't detach context without a None token
   ([#2927](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/2927))
+- `opentelemetry-exporter-prometheus-remote-write`: sort labels before exporting
+  ([#2940](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/2940))
+- `opentelemetry-instrumentation-dbapi` sqlcommenter key values created from PostgreSQL, MySQL systems
+  ([#2897](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/2897))
 
 ### Breaking changes
 
@@ -41,6 +45,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   ([#2871](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/2871))
 - `opentelemetry-instrumentation` Don't fail distro loading if instrumentor raises ImportError, instead skip them
   ([#2923](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/2923))
+- `opentelemetry-instrumentation-httpx` Rewrote instrumentation to use wrapt instead of subclassing
+  ([#2909](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/2909))
 
 ## Version 1.27.0/0.48b0 (2024-08-28)
 

@@ -16,7 +16,7 @@ import logging
 import re
 from collections import defaultdict
 from itertools import chain
-from typing import Dict, Sequence
+from typing import Dict, Mapping, Sequence
 
 import requests
 import snappy
@@ -253,12 +253,14 @@ class PrometheusRemoteWriteMetricsExporter(MetricExporter):
         return self._convert_to_timeseries(sample_sets, resource_labels)
 
     def _convert_to_timeseries(
-        self, sample_sets: Sequence[tuple], resource_labels: Sequence
+        self, sample_sets: Mapping[tuple, Sequence], resource_labels: Sequence
     ) -> Sequence[TimeSeries]:
         timeseries = []
         for labels, samples in sample_sets.items():
             ts = TimeSeries()
-            for label_name, label_value in chain(resource_labels, labels):
+            for label_name, label_value in sorted(
+                chain(resource_labels, labels)
+            ):
                 # Previous implementation did not str() the names...
                 ts.labels.append(self._label(label_name, str(label_value)))
             for value, timestamp in samples:
