@@ -68,5 +68,6 @@ components:
     - codeboten
 
   instrumentation/genai/:
+    - karthikscale3
     - lmolkova
     - lzchen
