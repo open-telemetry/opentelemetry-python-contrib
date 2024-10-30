@@ -34,6 +34,7 @@ Please also read the [OpenTelemetry Contributor Guide](https://github.com/open-t
   * [Testing against a different Core repo branch/commit](#testing-against-a-different-core-repo-branchcommit)
 * [Style Guide](#style-guide)
 * [Guideline for instrumentations](#guideline-for-instrumentations)
+* [Guidance for GenAI instrumentations](#guideline-for-genai-instrumentations)
 * [Expectations from contributors](#expectations-from-contributors)
 
 ## Find a Buddy and get Started Quickly
@@ -271,6 +272,10 @@ Below is a checklist of things to be mindful of when implementing a new instrume
   - For synchronous tests, the typical test case class is inherited from `opentelemetry.test.test_base.TestBase`. However, if you want to write asynchronous tests, the test case class should inherit also from `IsolatedAsyncioTestCase`. Adding asynchronous tests to a common test class can lead to tests passing without actually running, which can be misleading.
   - ex. <https://github.com/open-telemetry/opentelemetry-python-contrib/blob/60fb936b7e5371b3e5587074906c49fb873cbd76/instrumentation/opentelemetry-instrumentation-grpc/tests/test_aio_server_interceptor.py#L84>
 - All instrumentations have the same version. If you are going to develop a new instrumentation it would probably have `X.Y.dev` version and depends on `opentelemetry-instrumentation` and `opentelemetry-semantic-conventions` for the same version. That means that if you want to install your instrumentation you need to install its dependencies from this repo and the core repo also from git.
+
+## Guidance for GenAI instrumentations
+
+Instrumentations that relate to [generative AI](https://opentelemetry.io/docs/specs/semconv/gen-ai/) systems will be placed in [genai](./instrumentation/genai) folder. This section covers contributions related to those instrumentations. Please note that the [guidelines for instrumentations](#guideline-for-instrumentations) and [expectations from contributors](#expectations-from-contributors) still apply. If you would like to be tagged in PRs related to these instrumentations, please submit a PR to add your github alias to [component_owners.yml](.github/component_owners.yml) under the corresponding instrumentation folder(s). If you would like to be able to approve PRs related to these instrumentations, you must join [opentelemetry-python-contrib-approvers](https://github.com/orgs/open-telemetry/teams/opentelemetry-python-contrib-approvers) team. Please ask one of the [Python contrib maintainers](https://github.com/orgs/open-telemetry/teams/opentelemetry-python-contrib-maintainers) to be accepted into the team. For tracking issues related to generative AI, please filter/add a label for [gen-ai](https://github.com/open-telemetry/opentelemetry-python-contrib/issues?q=is%3Aopen+is%3Aissue+label%3Agen-ai) to filter for/create issues. If you do not see an issue related to an instrumentation you would like to contribute, please create a new tracking issue so the community is aware of it's progress.
 
 ## Expectations from contributors
 
