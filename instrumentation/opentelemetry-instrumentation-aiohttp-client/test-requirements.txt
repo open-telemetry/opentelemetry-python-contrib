@@ -11,7 +11,6 @@ Flask==3.0.2
 frozenlist==1.4.1
 http_server_mock==1.7
 idna==3.7
-importlib-metadata==6.11.0
 iniconfig==2.0.0
 itsdangerous==2.1.2
 Jinja2==3.1.4

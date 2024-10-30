@@ -90,6 +90,7 @@ for example:
 API
 ---
 """
+
 import typing
 from typing import Any, Collection
 
