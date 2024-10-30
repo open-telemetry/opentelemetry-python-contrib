@@ -282,6 +282,19 @@ class DatabaseApiIntegration:
         self.connect_module = connect_module
         self.commenter_data = self.calculate_commenter_data()
 
+    def _get_db_version(
+        self,
+        db_driver,
+    ):
+        if db_driver in _DB_DRIVER_ALIASES:
+            return util_version(_DB_DRIVER_ALIASES[db_driver])
+        db_version = ""
+        try:
+            db_version = self.connect_module.__version__
+        except AttributeError:
+            db_version = "unknown"
+        return db_version
+
     def calculate_commenter_data(
         self,
     ):
@@ -289,25 +302,22 @@ class DatabaseApiIntegration:
         if not self.enable_commenter:
             return commenter_data
 
-        try:
-            db_driver = self.connect_module.__name__
-        except AttributeError:
-            db_driver = "unknown"
-
-        db_version = ""
-        if db_driver in _DB_DRIVER_ALIASES:
-            db_version = util_version(_DB_DRIVER_ALIASES[db_driver])
-        else:
-            try:
-                db_version = self.connect_module.__version__
-            except AttributeError:
-                db_driver = "unknown"
+        db_driver = getattr(self.connect_module, "__name__", "unknown")
+        db_version = self._get_db_version(db_driver)
 
         commenter_data = {
             "db_driver": f"{db_driver}:{db_version.split(' ')[0]}",
-            "dbapi_threadsafety": self.connect_module.threadsafety,
-            "dbapi_level": self.connect_module.apilevel,
-            "driver_paramstyle": self.connect_module.paramstyle,
+            # PEP 249-compliant drivers should have the following attributes.
+            # We can assume apilevel "1.0" if not given.
+            # We use "unknown" for others to prevent uncaught AttributeError.
+            # https://peps.python.org/pep-0249/#globals
+            "dbapi_threadsafety": getattr(
+                self.connect_module, "threadsafety", "unknown"
+            ),
+            "dbapi_level": getattr(self.connect_module, "apilevel", "1.0"),
+            "driver_paramstyle": getattr(
+                self.connect_module, "paramstyle", "unknown"
+            ),
         }
 
         if self.database_system == "postgresql":

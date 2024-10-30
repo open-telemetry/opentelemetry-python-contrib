@@ -277,6 +277,35 @@ class TestDBApiIntegration(TestBase):
             r"Select 1 /\*dbapi_threadsafety=123,driver_paramstyle='test',libpq_version=123,traceparent='\d{1,2}-[a-zA-Z0-9_]{32}-[a-zA-Z0-9_]{16}-\d{1,2}'\*/;",
         )
 
+    def test_executemany_comment_non_pep_249_compliant(self):
+        class MockConnectModule:
+            def __getattr__(self, name):
+                if name == "__name__":
+                    return "test"
+                if name == "__version__":
+                    return mock.MagicMock()
+                if name == "__libpq_version__":
+                    return 123
+                raise AttributeError("attribute missing")
+
+        connect_module = MockConnectModule()
+        db_integration = dbapi.DatabaseApiIntegration(
+            "testname",
+            "postgresql",
+            enable_commenter=True,
+            connect_module=connect_module,
+            commenter_options={"db_driver": False},
+        )
+        mock_connection = db_integration.wrapped_connection(
+            mock_connect, {}, {}
+        )
+        cursor = mock_connection.cursor()
+        cursor.executemany("Select 1;")
+        self.assertRegex(
+            cursor.query,
+            r"Select 1 /\*dbapi_level='1.0',dbapi_threadsafety='unknown',driver_paramstyle='unknown',libpq_version=123,traceparent='\d{1,2}-[a-zA-Z0-9_]{32}-[a-zA-Z0-9_]{16}-\d{1,2}'\*/;",
+        )
+
     def test_compatible_build_version_psycopg_psycopg2_libpq(self):
         connect_module = mock.MagicMock()
         connect_module.__name__ = "test"

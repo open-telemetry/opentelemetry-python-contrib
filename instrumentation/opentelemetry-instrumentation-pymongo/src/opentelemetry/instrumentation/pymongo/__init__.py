@@ -74,6 +74,7 @@ for example:
     collection.find_one()
 
 """
+
 from logging import getLogger
 from typing import Callable, Collection
 
