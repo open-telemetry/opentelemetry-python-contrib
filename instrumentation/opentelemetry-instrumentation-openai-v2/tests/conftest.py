@@ -5,8 +5,16 @@ import os
 import pytest
 from openai import OpenAI
 
-from opentelemetry import trace
 from opentelemetry.instrumentation.openai_v2 import OpenAIInstrumentor
+from opentelemetry.instrumentation.openai_v2.utils import (
+    OTEL_INSTRUMENTATION_OPENAI_CAPTURE_MESSAGE_CONTENT,
+)
+from opentelemetry.sdk._events import EventLoggerProvider
+from opentelemetry.sdk._logs import LoggerProvider
+from opentelemetry.sdk._logs.export import (
+    InMemoryLogExporter,
+    SimpleLogRecordProcessor,
+)
 from opentelemetry.sdk.trace import TracerProvider
 from opentelemetry.sdk.trace.export import SimpleSpanProcessor
 from opentelemetry.sdk.trace.export.in_memory_span_exporter import (
@@ -14,21 +22,32 @@ from opentelemetry.sdk.trace.export.in_memory_span_exporter import (
 )
 
 
-@pytest.fixture(scope="session")
-def exporter():
+@pytest.fixture(scope="function", name="span_exporter")
+def fixture_span_exporter():
     exporter = InMemorySpanExporter()
-    processor = SimpleSpanProcessor(exporter)
+    yield exporter
 
+
+@pytest.fixture(scope="function", name="log_exporter")
+def fixture_log_exporter():
+    exporter = InMemoryLogExporter()
+    yield exporter
+
+
+@pytest.fixture(scope="function", name="tracer_provider")
+def fixture_tracer_provider(span_exporter):
     provider = TracerProvider()
-    provider.add_span_processor(processor)
-    trace.set_tracer_provider(provider)
-
-    return exporter
+    provider.add_span_processor(SimpleSpanProcessor(span_exporter))
+    return provider
 
 
-@pytest.fixture(autouse=True)
-def clear_exporter(exporter):
-    exporter.clear()
+@pytest.fixture(scope="function", name="event_logger_provider")
+def fixture_event_logger_provider(log_exporter):
+    provider = LoggerProvider()
+    provider.add_log_record_processor(SimpleLogRecordProcessor(log_exporter))
+    event_logger_provider = EventLoggerProvider(provider)
+
+    return event_logger_provider
 
 
 @pytest.fixture(autouse=True)
@@ -51,14 +70,32 @@ def vcr_config():
     }
 
 
-@pytest.fixture(scope="session", autouse=True)
-def instrument():
-    OpenAIInstrumentor().instrument()
+@pytest.fixture(scope="function")
+def instrument_no_content(tracer_provider, event_logger_provider):
+    instrumentor = OpenAIInstrumentor()
+    instrumentor.instrument(
+        tracer_provider=tracer_provider,
+        event_logger_provider=event_logger_provider,
+    )
+
+    yield instrumentor
+    instrumentor.uninstrument()
 
 
-@pytest.fixture(scope="session", autouse=True)
-def uninstrument():
-    OpenAIInstrumentor().uninstrument()
+@pytest.fixture(scope="function")
+def instrument_with_content(tracer_provider, event_logger_provider):
+    os.environ.update(
+        {OTEL_INSTRUMENTATION_OPENAI_CAPTURE_MESSAGE_CONTENT: "True"}
+    )
+    instrumentor = OpenAIInstrumentor()
+    instrumentor.instrument(
+        tracer_provider=tracer_provider,
+        event_logger_provider=event_logger_provider,
+    )
+
+    yield instrumentor
+    os.environ.pop(OTEL_INSTRUMENTATION_OPENAI_CAPTURE_MESSAGE_CONTENT, None)
+    instrumentor.uninstrument()
 
 
 def scrub_response_headers(response):
