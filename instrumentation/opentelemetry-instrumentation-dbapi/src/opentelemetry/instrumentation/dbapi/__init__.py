@@ -307,9 +307,17 @@ class DatabaseApiIntegration:
 
         commenter_data = {
             "db_driver": f"{db_driver}:{db_version.split(' ')[0]}",
-            "dbapi_threadsafety": self.connect_module.threadsafety,
-            "dbapi_level": self.connect_module.apilevel,
-            "driver_paramstyle": self.connect_module.paramstyle,
+            # PEP 249-compliant drivers should have the following attributes.
+            # We can assume apilevel "1.0" if not given.
+            # We use "unknown" for others to prevent uncaught AttributeError.
+            # https://peps.python.org/pep-0249/#globals
+            "dbapi_threadsafety": getattr(
+                self.connect_module, "threadsafety", "unknown"
+            ),
+            "dbapi_level": getattr(self.connect_module, "apilevel", "1.0"),
+            "driver_paramstyle": getattr(
+                self.connect_module, "paramstyle", "unknown"
+            ),
         }
 
         if self.database_system == "postgresql":
