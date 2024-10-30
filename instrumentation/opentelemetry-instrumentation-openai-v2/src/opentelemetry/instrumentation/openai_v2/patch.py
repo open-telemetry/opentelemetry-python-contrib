@@ -54,9 +54,7 @@ def chat_completions_create(
             if span.is_recording():
                 for message in kwargs.get("messages", []):
                     event_logger.emit(
-                        message_to_event(
-                            message, span.get_span_context(), capture_content
-                        )
+                        message_to_event(message, capture_content)
                     )
 
             try:
@@ -95,11 +93,7 @@ def _set_response_attributes(
     if getattr(result, "choices", None):
         choices = result.choices
         for choice in choices:
-            event_logger.emit(
-                choice_to_event(
-                    choice, span.get_span_context(), capture_content
-                )
-            )
+            event_logger.emit(choice_to_event(choice, capture_content))
 
         finish_reasons = []
         for choice in choices:
@@ -268,6 +262,8 @@ class StreamWrapper:
                 event_attributes = {
                     GenAIAttributes.GEN_AI_SYSTEM: GenAIAttributes.GenAiSystemValues.OPENAI.value
                 }
+
+                # this span is not current, so we need to manually set the context on event
                 span_ctx = self.span.get_span_context()
                 self.event_logger.emit(
                     Event(

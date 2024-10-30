@@ -100,7 +100,7 @@ def get_property_value(obj, property_name):
     return getattr(obj, property_name, None)
 
 
-def message_to_event(message, span_ctx, capture_content):
+def message_to_event(message, capture_content):
     attributes = {
         GenAIAttributes.GEN_AI_SYSTEM: GenAIAttributes.GenAiSystemValues.OPENAI.value
     }
@@ -123,13 +123,10 @@ def message_to_event(message, span_ctx, capture_content):
         name=f"gen_ai.{role}.message",
         attributes=attributes,
         body=body if body else None,
-        trace_id=span_ctx.trace_id,
-        span_id=span_ctx.span_id,
-        trace_flags=span_ctx.trace_flags,
     )
 
 
-def choice_to_event(choice, span_ctx, capture_content):
+def choice_to_event(choice, capture_content):
     attributes = {
         GenAIAttributes.GEN_AI_SYSTEM: GenAIAttributes.GenAiSystemValues.OPENAI.value
     }
@@ -157,9 +154,6 @@ def choice_to_event(choice, span_ctx, capture_content):
         name="gen_ai.choice",
         attributes=attributes,
         body=body,
-        trace_id=span_ctx.trace_id,
-        span_id=span_ctx.span_id,
-        trace_flags=span_ctx.trace_flags,
     )
 
 
