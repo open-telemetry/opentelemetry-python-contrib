@@ -36,6 +36,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   ([#2927](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/2927))
 - `opentelemetry-exporter-prometheus-remote-write`: sort labels before exporting
   ([#2940](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/2940))
+- `opentelemetry-instrumentation-dbapi` sqlcommenter key values created from PostgreSQL, MySQL systems
+  ([#2897](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/2897))
 
 ### Breaking changes
 
