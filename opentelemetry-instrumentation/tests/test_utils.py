@@ -15,6 +15,8 @@
 import unittest
 from http import HTTPStatus
 
+from wrapt import ObjectProxy, wrap_function_wrapper
+
 from opentelemetry.context import (
     _SUPPRESS_HTTP_INSTRUMENTATION_KEY,
     _SUPPRESS_INSTRUMENTATION_KEY,
@@ -29,8 +31,17 @@ from opentelemetry.instrumentation.utils import (
     is_instrumentation_enabled,
     suppress_http_instrumentation,
     suppress_instrumentation,
+    unwrap,
 )
 from opentelemetry.trace import StatusCode
+
+
+class WrappedClass:
+    def method(self):
+        pass
+
+    def wrapper_method(self):
+        pass
 
 
 class TestUtils(unittest.TestCase):
@@ -240,3 +251,75 @@ class TestUtils(unittest.TestCase):
             self.assertTrue(get_value(_SUPPRESS_HTTP_INSTRUMENTATION_KEY))
 
         self.assertIsNone(get_value(_SUPPRESS_HTTP_INSTRUMENTATION_KEY))
+
+
+class UnwrapTestCase(unittest.TestCase):
+    @staticmethod
+    def _wrap_method():
+        return wrap_function_wrapper(
+            WrappedClass, "method", WrappedClass.wrapper_method
+        )
+
+    def test_can_unwrap_object_attribute(self):
+        self._wrap_method()
+        instance = WrappedClass()
+        self.assertTrue(isinstance(instance.method, ObjectProxy))
+
+        unwrap(WrappedClass, "method")
+        self.assertFalse(isinstance(instance.method, ObjectProxy))
+
+    def test_can_unwrap_object_attribute_as_string(self):
+        self._wrap_method()
+        instance = WrappedClass()
+        self.assertTrue(isinstance(instance.method, ObjectProxy))
+
+        unwrap("tests.test_utils.WrappedClass", "method")
+        self.assertFalse(isinstance(instance.method, ObjectProxy))
+
+    def test_raises_import_error_if_path_not_well_formed(self):
+        self._wrap_method()
+        instance = WrappedClass()
+        self.assertTrue(isinstance(instance.method, ObjectProxy))
+
+        with self.assertRaisesRegex(
+            ImportError, "Cannot parse '' as dotted import path"
+        ):
+            unwrap("", "method")
+
+        unwrap(WrappedClass, "method")
+        self.assertFalse(isinstance(instance.method, ObjectProxy))
+
+    def test_raises_import_error_if_cannot_find_module(self):
+        self._wrap_method()
+        instance = WrappedClass()
+        self.assertTrue(isinstance(instance.method, ObjectProxy))
+
+        with self.assertRaisesRegex(ImportError, "No module named 'does'"):
+            unwrap("does.not.exist.WrappedClass", "method")
+
+        unwrap(WrappedClass, "method")
+        self.assertFalse(isinstance(instance.method, ObjectProxy))
+
+    def test_raises_import_error_if_cannot_find_object(self):
+        self._wrap_method()
+        instance = WrappedClass()
+        self.assertTrue(isinstance(instance.method, ObjectProxy))
+
+        with self.assertRaisesRegex(
+            ImportError, "Cannot import 'NotWrappedClass' from"
+        ):
+            unwrap("tests.test_utils.NotWrappedClass", "method")
+
+        unwrap(WrappedClass, "method")
+        self.assertFalse(isinstance(instance.method, ObjectProxy))
+
+    # pylint: disable=no-self-use
+    def test_does_nothing_if_cannot_find_attribute(self):
+        instance = WrappedClass()
+        unwrap(instance, "method_not_found")
+
+    def test_does_nothing_if_attribute_is_not_from_wrapt(self):
+        instance = WrappedClass()
+        self.assertFalse(isinstance(instance.method, ObjectProxy))
+        unwrap(WrappedClass, "method")
+        self.assertFalse(isinstance(instance.method, ObjectProxy))

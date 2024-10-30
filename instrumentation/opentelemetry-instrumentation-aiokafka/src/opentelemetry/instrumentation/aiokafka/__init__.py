@@ -67,6 +67,7 @@ for example:
 API
 ___
 """
+
 from asyncio import iscoroutinefunction
 from typing import Collection
 

@@ -23,6 +23,7 @@ from opentelemetry.instrumentation.environment_variables import (
     OTEL_PYTHON_DISTRO,
 )
 from opentelemetry.instrumentation.version import __version__
+from opentelemetry.util._importlib_metadata import EntryPoint, entry_points
 
 
 class TestLoad(TestCase):
@@ -30,11 +31,9 @@ class TestLoad(TestCase):
         "os.environ", {OTEL_PYTHON_CONFIGURATOR: "custom_configurator2"}
     )
     @patch(
-        "opentelemetry.instrumentation.auto_instrumentation._load.iter_entry_points"
+        "opentelemetry.instrumentation.auto_instrumentation._load.entry_points"
     )
-    def test_load_configurators(
-        self, iter_mock
-    ):  # pylint: disable=no-self-use
+    def test_load_configurators(self, iter_mock):  # pylint: disable=no-self-use
         # Add multiple entry points but only specify the 2nd in the environment variable.
         ep_mock1 = Mock()
         ep_mock1.name = "custom_configurator1"
@@ -61,11 +60,9 @@ class TestLoad(TestCase):
         "os.environ", {OTEL_PYTHON_CONFIGURATOR: "custom_configurator2"}
     )
     @patch(
-        "opentelemetry.instrumentation.auto_instrumentation._load.iter_entry_points"
+        "opentelemetry.instrumentation.auto_instrumentation._load.entry_points"
     )
-    def test_load_configurators_no_ep(
-        self, iter_mock
-    ):  # pylint: disable=no-self-use
+    def test_load_configurators_no_ep(self, iter_mock):  # pylint: disable=no-self-use
         iter_mock.return_value = ()
         # Confirm method does not crash if not entry points exist.
         _load._load_configurators()
@@ -74,7 +71,7 @@ class TestLoad(TestCase):
         "os.environ", {OTEL_PYTHON_CONFIGURATOR: "custom_configurator2"}
     )
     @patch(
-        "opentelemetry.instrumentation.auto_instrumentation._load.iter_entry_points"
+        "opentelemetry.instrumentation.auto_instrumentation._load.entry_points"
     )
     def test_load_configurators_error(self, iter_mock):
         # Add multiple entry points but only specify the 2nd in the environment variable.
@@ -101,7 +98,7 @@ class TestLoad(TestCase):
         "opentelemetry.instrumentation.auto_instrumentation._load.isinstance"
     )
     @patch(
-        "opentelemetry.instrumentation.auto_instrumentation._load.iter_entry_points"
+        "opentelemetry.instrumentation.auto_instrumentation._load.entry_points"
     )
     def test_load_distro(self, iter_mock, isinstance_mock):
         # Add multiple entry points but only specify the 2nd in the environment variable.
@@ -134,7 +131,7 @@ class TestLoad(TestCase):
         "opentelemetry.instrumentation.auto_instrumentation._load.DefaultDistro"
     )
     @patch(
-        "opentelemetry.instrumentation.auto_instrumentation._load.iter_entry_points"
+        "opentelemetry.instrumentation.auto_instrumentation._load.entry_points"
     )
     def test_load_distro_not_distro(
         self, iter_mock, default_distro_mock, isinstance_mock
@@ -166,7 +163,7 @@ class TestLoad(TestCase):
         "opentelemetry.instrumentation.auto_instrumentation._load.DefaultDistro"
     )
     @patch(
-        "opentelemetry.instrumentation.auto_instrumentation._load.iter_entry_points"
+        "opentelemetry.instrumentation.auto_instrumentation._load.entry_points"
     )
     def test_load_distro_no_ep(self, iter_mock, default_distro_mock):
         iter_mock.return_value = ()
@@ -181,7 +178,7 @@ class TestLoad(TestCase):
         "opentelemetry.instrumentation.auto_instrumentation._load.isinstance"
     )
     @patch(
-        "opentelemetry.instrumentation.auto_instrumentation._load.iter_entry_points"
+        "opentelemetry.instrumentation.auto_instrumentation._load.entry_points"
     )
     def test_load_distro_error(self, iter_mock, isinstance_mock):
         ep_mock1 = Mock()
@@ -211,7 +208,7 @@ class TestLoad(TestCase):
         "opentelemetry.instrumentation.auto_instrumentation._load.get_dist_dependency_conflicts"
     )
     @patch(
-        "opentelemetry.instrumentation.auto_instrumentation._load.iter_entry_points"
+        "opentelemetry.instrumentation.auto_instrumentation._load.entry_points"
     )
     def test_load_instrumentors(self, iter_mock, dep_mock):
         # Mock opentelemetry_pre_instrument entry points
@@ -285,11 +282,9 @@ class TestLoad(TestCase):
         "opentelemetry.instrumentation.auto_instrumentation._load.get_dist_dependency_conflicts"
     )
     @patch(
-        "opentelemetry.instrumentation.auto_instrumentation._load.iter_entry_points"
+        "opentelemetry.instrumentation.auto_instrumentation._load.entry_points"
     )
-    def test_load_instrumentors_dep_conflict(
-        self, iter_mock, dep_mock
-    ):  # pylint: disable=no-self-use
+    def test_load_instrumentors_dep_conflict(self, iter_mock, dep_mock):  # pylint: disable=no-self-use
         ep_mock1 = Mock()
         ep_mock1.name = "instr1"
 
@@ -314,3 +309,101 @@ class TestLoad(TestCase):
             ]
         )
         distro_mock.load_instrumentor.assert_called_once()
+
+    @patch(
+        "opentelemetry.instrumentation.auto_instrumentation._load.get_dist_dependency_conflicts"
+    )
+    @patch(
+        "opentelemetry.instrumentation.auto_instrumentation._load.entry_points"
+    )
+    def test_load_instrumentors_import_error_does_not_stop_everything(
+        self, iter_mock, dep_mock
+    ):
+        ep_mock1 = Mock(name="instr1")
+        ep_mock2 = Mock(name="instr2")
+
+        distro_mock = Mock()
+        distro_mock.load_instrumentor.side_effect = [ImportError, None]
+
+        # Mock entry points in order
+        iter_mock.side_effect = [
+            (),
+            (ep_mock1, ep_mock2),
+            (),
+        ]
+        dep_mock.return_value = None
+
+        _load._load_instrumentors(distro_mock)
+
+        distro_mock.load_instrumentor.assert_has_calls(
+            [
+                call(ep_mock1, skip_dep_check=True),
+                call(ep_mock2, skip_dep_check=True),
+            ]
+        )
+        self.assertEqual(distro_mock.load_instrumentor.call_count, 2)
+
+    @patch(
+        "opentelemetry.instrumentation.auto_instrumentation._load.get_dist_dependency_conflicts"
+    )
+    @patch(
+        "opentelemetry.instrumentation.auto_instrumentation._load.entry_points"
+    )
+    def test_load_instrumentors_raises_exception(self, iter_mock, dep_mock):
+        ep_mock1 = Mock(name="instr1")
+        ep_mock2 = Mock(name="instr2")
+
+        distro_mock = Mock()
+        distro_mock.load_instrumentor.side_effect = [ValueError, None]
+
+        # Mock entry points in order
+        iter_mock.side_effect = [
+            (),
+            (ep_mock1, ep_mock2),
+            (),
+        ]
+        dep_mock.return_value = None
+
+        with self.assertRaises(ValueError):
+            _load._load_instrumentors(distro_mock)
+
+        distro_mock.load_instrumentor.assert_has_calls(
+            [
+                call(ep_mock1, skip_dep_check=True),
+            ]
+        )
+        self.assertEqual(distro_mock.load_instrumentor.call_count, 1)
+
+    def test_load_instrumentors_no_entry_point_mocks(self):
+        distro_mock = Mock()
+        _load._load_instrumentors(distro_mock)
+        # this has no specific assert because it is run for every instrumentation
+        self.assertTrue(distro_mock)
+
+    def test_entry_point_dist_finder(self):
+        entry_point_finder = _load._EntryPointDistFinder()
+        self.assertTrue(entry_point_finder._mapping)
+        entry_point = list(
+            entry_points(group="opentelemetry_environment_variables")
+        )[0]
+        self.assertTrue(entry_point)
+        self.assertTrue(entry_point.dist)
+
+        # this will not hit cache
+        entry_point_dist = entry_point_finder.dist_for(entry_point)
+        self.assertTrue(entry_point_dist)
+        # dist are not comparable so we are sure we are not hitting the cache
+        self.assertEqual(entry_point.dist, entry_point_dist)
+
+        # this will hit cache
+        entry_point_without_dist = EntryPoint(
+            name=entry_point.name,
+            group=entry_point.group,
+            value=entry_point.value,
+        )
+        self.assertIsNone(entry_point_without_dist.dist)
+        new_entry_point_dist = entry_point_finder.dist_for(
+            entry_point_without_dist
+        )
+        # dist are not comparable, being truthy is enough
+        self.assertTrue(new_entry_point_dist)

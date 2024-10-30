@@ -20,9 +20,8 @@ OpenTelemetry Base Distribution (Distro)
 from abc import ABC, abstractmethod
 from logging import getLogger
 
-from pkg_resources import EntryPoint
-
 from opentelemetry.instrumentation.instrumentor import BaseInstrumentor
+from opentelemetry.util._importlib_metadata import EntryPoint
 
 _LOG = getLogger(__name__)
 
@@ -33,7 +32,6 @@ class BaseDistro(ABC):
     _instance = None
 
     def __new__(cls, *args, **kwargs):
-
         if cls._instance is None:
             cls._instance = object.__new__(cls, *args, **kwargs)
 

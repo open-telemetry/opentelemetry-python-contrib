@@ -190,7 +190,7 @@ class SystemMetricsInstrumentor(BaseInstrumentor):
                 name="system.cpu.time",
                 callbacks=[self._get_system_cpu_time],
                 description="System CPU time",
-                unit="seconds",
+                unit="s",
             )
 
         if "system.cpu.utilization" in self._config:
@@ -206,7 +206,7 @@ class SystemMetricsInstrumentor(BaseInstrumentor):
                 name="system.memory.usage",
                 callbacks=[self._get_system_memory_usage],
                 description="System memory usage",
-                unit="bytes",
+                unit="By",
             )
 
         if "system.memory.utilization" in self._config:
@@ -257,7 +257,7 @@ class SystemMetricsInstrumentor(BaseInstrumentor):
                 name="system.disk.io",
                 callbacks=[self._get_system_disk_io],
                 description="System disk IO",
-                unit="bytes",
+                unit="By",
             )
 
         if "system.disk.operations" in self._config:
@@ -273,7 +273,7 @@ class SystemMetricsInstrumentor(BaseInstrumentor):
                 name="system.disk.time",
                 callbacks=[self._get_system_disk_time],
                 description="System disk time",
-                unit="seconds",
+                unit="s",
             )
 
         # TODO Add _get_system_filesystem_usage
@@ -282,7 +282,7 @@ class SystemMetricsInstrumentor(BaseInstrumentor):
         #     callback=self._get_system_filesystem_usage,
         #     name="system.filesystem.usage",
         #     description="System filesystem usage",
-        #     unit="bytes",
+        #     unit="By",
         #     value_type=int,
         # )
 
@@ -327,7 +327,7 @@ class SystemMetricsInstrumentor(BaseInstrumentor):
                 name="system.network.io",
                 callbacks=[self._get_system_network_io],
                 description="System network io",
-                unit="bytes",
+                unit="By",
             )
 
         if "system.network.connections" in self._config:
@@ -350,7 +350,7 @@ class SystemMetricsInstrumentor(BaseInstrumentor):
                 name=f"process.runtime.{self._python_implementation}.memory",
                 callbacks=[self._get_runtime_memory],
                 description=f"Runtime {self._python_implementation} memory",
-                unit="bytes",
+                unit="By",
             )
 
         if "process.runtime.cpu.time" in self._config:
@@ -358,7 +358,7 @@ class SystemMetricsInstrumentor(BaseInstrumentor):
                 name=f"process.runtime.{self._python_implementation}.cpu_time",
                 callbacks=[self._get_runtime_cpu_time],
                 description=f"Runtime {self._python_implementation} CPU time",
-                unit="seconds",
+                unit="s",
             )
 
         if "process.runtime.gc_count" in self._config:
@@ -371,7 +371,7 @@ class SystemMetricsInstrumentor(BaseInstrumentor):
                     name=f"process.runtime.{self._python_implementation}.gc_count",
                     callbacks=[self._get_runtime_gc_count],
                     description=f"Runtime {self._python_implementation} GC count",
-                    unit="bytes",
+                    unit="By",
                 )
 
         if "process.runtime.thread_count" in self._config:
