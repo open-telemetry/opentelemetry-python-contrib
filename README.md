@@ -133,7 +133,6 @@ Emeritus Approvers:
 Maintainers ([@open-telemetry/python-maintainers](https://github.com/orgs/open-telemetry/teams/python-maintainers)):
 
 - [Aaron Abbott](https://github.com/aabmass), Google
-- [Diego Hurtado](https://github.com/ocelotl), Lightstep
 - [Leighton Chen](https://github.com/lzchen), Microsoft
 - [Riccardo Magliocchetti](https://github.com/xrmx), Elastic
 - [Shalev Roda](https://github.com/shalevr), Cisco
@@ -141,6 +140,7 @@ Maintainers ([@open-telemetry/python-maintainers](https://github.com/orgs/open-t
 Emeritus Maintainers:
 
 - [Alex Boten](https://github.com/codeboten), Lightstep
+- [Diego Hurtado](https://github.com/ocelotl), Lightstep
 - [Owais Lone](https://github.com/owais), Splunk
 - [Yusuke Tsutsumi](https://github.com/toumorokoshi), Google
 
