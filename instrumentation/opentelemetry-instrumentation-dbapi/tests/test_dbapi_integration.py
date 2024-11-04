@@ -277,7 +277,7 @@ class TestDBApiIntegration(TestBase):
             cursor.query,
             r"Select 1 /\*dbapi_threadsafety=123,driver_paramstyle='test',libpq_version=123,traceparent='\d{1,2}-[a-zA-Z0-9_]{32}-[a-zA-Z0-9_]{16}-\d{1,2}'\*/;",
         )
-          
+
     def test_executemany_comment_non_pep_249_compliant(self):
         class MockConnectModule:
             def __getattr__(self, name):
@@ -317,7 +317,7 @@ class TestDBApiIntegration(TestBase):
 
         db_integration = dbapi.DatabaseApiIntegration(
             "testname",
-            "testcomponent",
+            "postgresql",
             enable_commenter=True,
             commenter_options={"db_driver": False, "dbapi_level": False},
             connect_module=connect_module,
@@ -344,7 +344,7 @@ class TestDBApiIntegration(TestBase):
             r"[a-zA-Z0-9_]{16}", span.attributes[SpanAttributes.DB_STATEMENT]
         ).group()
         self.assertEqual(cursor_span_id, db_statement_span_id)
-        
+
     def test_compatible_build_version_psycopg_psycopg2_libpq(self):
         connect_module = mock.MagicMock()
         connect_module.__name__ = "test"
