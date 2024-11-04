@@ -7,7 +7,7 @@ from openai import OpenAI
 
 from opentelemetry.instrumentation.openai_v2 import OpenAIInstrumentor
 from opentelemetry.instrumentation.openai_v2.utils import (
-    OTEL_INSTRUMENTATION_OPENAI_CAPTURE_MESSAGE_CONTENT,
+    OTEL_INSTRUMENTATION_GENAI_CAPTURE_MESSAGE_CONTENT,
 )
 from opentelemetry.sdk._events import EventLoggerProvider
 from opentelemetry.sdk._logs import LoggerProvider
@@ -85,7 +85,7 @@ def instrument_no_content(tracer_provider, event_logger_provider):
 @pytest.fixture(scope="function")
 def instrument_with_content(tracer_provider, event_logger_provider):
     os.environ.update(
-        {OTEL_INSTRUMENTATION_OPENAI_CAPTURE_MESSAGE_CONTENT: "True"}
+        {OTEL_INSTRUMENTATION_GENAI_CAPTURE_MESSAGE_CONTENT: "True"}
     )
     instrumentor = OpenAIInstrumentor()
     instrumentor.instrument(
@@ -94,7 +94,7 @@ def instrument_with_content(tracer_provider, event_logger_provider):
     )
 
     yield instrumentor
-    os.environ.pop(OTEL_INSTRUMENTATION_OPENAI_CAPTURE_MESSAGE_CONTENT, None)
+    os.environ.pop(OTEL_INSTRUMENTATION_GENAI_CAPTURE_MESSAGE_CONTENT, None)
     instrumentor.uninstrument()
 
 
