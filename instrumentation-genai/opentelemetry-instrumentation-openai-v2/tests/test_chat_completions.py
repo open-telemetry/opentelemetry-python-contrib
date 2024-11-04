@@ -16,7 +16,7 @@
 from typing import Optional
 
 import pytest
-from openai import (OpenAI, APIConnectionError, NotFoundError)
+from openai import APIConnectionError, NotFoundError, OpenAI
 from openai.resources.chat.completions import ChatCompletion
 
 from opentelemetry.sdk.trace import ReadableSpan
@@ -85,7 +85,9 @@ def test_chat_completion_bad_endpoint(span_exporter, instrument_no_content):
         spans[0], llm_model_value, server_address="localhost"
     )
     assert 4242 == spans[0].attributes[ServerAttributes.SERVER_PORT]
-    assert "APIConnectionError" == spans[0].attributes[ErrorAttributes.ERROR_TYPE]
+    assert (
+        "APIConnectionError" == spans[0].attributes[ErrorAttributes.ERROR_TYPE]
+    )
 
 
 @pytest.mark.vcr()

@@ -2,9 +2,9 @@
 
 import json
 import os
-import yaml
 
 import pytest
+import yaml
 from openai import OpenAI
 
 from opentelemetry.instrumentation.openai_v2 import OpenAIInstrumentor
@@ -152,7 +152,9 @@ class PrettyPrintJSONBody:
     @staticmethod
     def serialize(cassette_dict):
         cassette_dict = convert_body_to_literal(cassette_dict)
-        return yaml.dump(cassette_dict, default_flow_style=False, allow_unicode=True)
+        return yaml.dump(
+            cassette_dict, default_flow_style=False, allow_unicode=True
+        )
 
     @staticmethod
     def deserialize(cassette_string):
@@ -163,6 +165,7 @@ class PrettyPrintJSONBody:
 def fixture_vcr(vcr):
     vcr.register_serializer("yaml", PrettyPrintJSONBody)
     return vcr
+
 
 def scrub_response_headers(response):
     """
