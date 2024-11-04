@@ -713,6 +713,7 @@ def assert_message_in_logs(log, event_name, expected_content, parent_span):
     if not expected_content:
         assert not log.log_record.body
     else:
+        assert log.log_record.body
         assert dict(log.log_record.body) == remove_none_values(
             expected_content
         )
