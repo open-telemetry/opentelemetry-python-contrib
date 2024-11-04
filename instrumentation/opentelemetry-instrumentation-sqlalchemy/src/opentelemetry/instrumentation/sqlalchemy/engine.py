@@ -218,25 +218,28 @@ class EngineTracer:
             kind=trace.SpanKind.CLIENT,
         )
         with trace.use_span(span, end_on_exit=False):
-            if self.enable_commenter:
-                commenter_data = {
-                    "db_driver": conn.engine.driver,
-                    # Driver/framework centric information.
-                    "db_framework": f"sqlalchemy:{sqlalchemy.__version__}",
-                }
-
-                if self.commenter_options.get("opentelemetry_values", True):
-                    commenter_data.update(**_get_opentelemetry_values())
-
-                # Filter down to just the requested attributes.
-                commenter_data = {
-                    k: v
-                    for k, v in commenter_data.items()
-                    if self.commenter_options.get(k, True)
-                }
-
-                statement = _add_sql_comment(statement, **commenter_data)
             if span.is_recording():
+                if self.enable_commenter:
+                    commenter_data = {
+                        "db_driver": conn.engine.driver,
+                        # Driver/framework centric information.
+                        "db_framework": f"sqlalchemy:{sqlalchemy.__version__}",
+                    }
+
+                    if self.commenter_options.get(
+                        "opentelemetry_values", True
+                    ):
+                        commenter_data.update(**_get_opentelemetry_values())
+
+                    # Filter down to just the requested attributes.
+                    commenter_data = {
+                        k: v
+                        for k, v in commenter_data.items()
+                        if self.commenter_options.get(k, True)
+                    }
+
+                    statement = _add_sql_comment(statement, **commenter_data)
+
                 span.set_attribute(SpanAttributes.DB_STATEMENT, statement)
                 span.set_attribute(SpanAttributes.DB_SYSTEM, self.vendor)
                 for key, value in attrs.items():
