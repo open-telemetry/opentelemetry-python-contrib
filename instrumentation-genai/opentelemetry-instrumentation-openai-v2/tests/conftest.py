@@ -114,7 +114,7 @@ yaml.add_representer(LiteralBlockScalar, literal_block_scalar_presenter)
 
 
 def process_string_value(string_value):
-    """Pretty-prints JSON or returns long strings as a LiteralString"""
+    """Pretty-prints JSON or returns long strings as a LiteralBlockScalar"""
     try:
         json_data = json.loads(string_value)
         return LiteralBlockScalar(json.dumps(json_data, indent=2))
