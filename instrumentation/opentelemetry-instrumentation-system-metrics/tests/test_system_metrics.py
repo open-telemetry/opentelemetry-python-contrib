@@ -14,6 +14,7 @@
 
 # pylint: disable=protected-access
 
+import sys
 from collections import namedtuple
 from platform import python_implementation
 from unittest import mock, skipIf
@@ -118,20 +119,29 @@ class TestSystemMetrics(TestBase):
             f"process.runtime.{self.implementation}.thread_count",
             f"process.runtime.{self.implementation}.context_switches",
             f"process.runtime.{self.implementation}.cpu.utilization",
-            "process.open_file_descriptor.count",
         ]
 
+        on_windows = sys.platform == "win32"
         if self.implementation == "pypy":
-            self.assertEqual(len(metric_names), 21)
+            self.assertEqual(len(metric_names), 20 if on_windows else 21)
         else:
-            self.assertEqual(len(metric_names), 22)
+            self.assertEqual(len(metric_names), 21 if on_windows else 22)
         observer_names.append(
             f"process.runtime.{self.implementation}.gc_count",
         )
+        if not on_windows:
+            observer_names.append(
+                "process.open_file_descriptor.count",
+            )
 
         for observer in metric_names:
             self.assertIn(observer, observer_names)
             observer_names.remove(observer)
+
+        if on_windows:
+            self.assertNotIn(
+                "process.open_file_descriptor.count", observer_names
+            )
 
     def test_runtime_metrics_instrument(self):
         runtime_config = {

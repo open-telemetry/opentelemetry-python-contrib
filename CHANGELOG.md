@@ -38,6 +38,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   ([#2940](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/2940))
 - `opentelemetry-instrumentation-dbapi` sqlcommenter key values created from PostgreSQL, MySQL systems
   ([#2897](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/2897))
+- `opentelemetry-instrumentation-system-metrics`: don't report open file descriptors on Windows
+  ([#2946](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/2946))
 
 ### Breaking changes
 
