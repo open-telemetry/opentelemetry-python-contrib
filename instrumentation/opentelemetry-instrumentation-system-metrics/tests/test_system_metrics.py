@@ -854,6 +854,7 @@ class TestSystemMetrics(TestBase):
             f"process.runtime.{self.implementation}.cpu.utilization", expected
         )
 
+    @skipIf(sys.platform == "win32", "No file descriptors on Windows")
     @mock.patch("psutil.Process.num_fds")
     def test_open_file_descriptor_count(self, mock_process_num_fds):
         mock_process_num_fds.configure_mock(**{"return_value": 3})
