@@ -93,7 +93,9 @@ jobs:
 
   test:
     name: test
-    run: echo "${{ toJson(github) }}"
+    steps:
+      name: test
+      run: echo "${{ toJson(github) }}"
 
   generate-workflows:
     name: generate-workflows
