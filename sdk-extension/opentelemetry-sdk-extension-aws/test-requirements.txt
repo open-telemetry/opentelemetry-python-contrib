@@ -10,4 +10,6 @@ tomli==2.0.1
 typing_extensions==4.12.2
 wrapt==1.16.0
 zipp==3.19.2
+opentelemetry-sdk==1.12  # when updating, also update in pyproject.toml
+
 -e sdk-extension/opentelemetry-sdk-extension-aws
