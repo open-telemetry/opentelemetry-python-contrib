@@ -1771,3 +1771,43 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - `opentelemetry-resource-detector-azure` Suppress instrumentation for `urllib` call
   ([#2178](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/2178))
 - AwsLambdaInstrumentor handles and re-raises function exception ([#2245](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/2245))
+
+### Added
+
+- `opentelemetry-instrumentation-openai-v2` Instrumentation for OpenAI >= 0.27.0
+  ([#2759](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/2759))
+- `opentelemetry-instrumentation-fastapi` Add autoinstrumentation mechanism tests.
+  ([#2860](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/2860))
+- `opentelemetry-instrumentation-aiokafka` Add instrumentor and auto instrumentation support for aiokafka
+  ([#2082](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/2082))
+- `opentelemetry-instrumentation-redis` Add additional attributes for methods create_index and search, rename those spans
+  ([#2635](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/2635))
+- `opentelemetry-instrumentation` Add support for string based dotted module paths in unwrap
+  ([#2919](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/2919))
+
+### Fixed
+
+- `opentelemetry-instrumentation-aiokafka` Wrap `AIOKafkaConsumer.getone()` instead of `AIOKafkaConsumer.__anext__`
+  ([#2874](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/2874))
+- `opentelemetry-instrumentation-confluent-kafka` Fix to allow `topic` to be extracted from `kwargs` in `produce()` 
+  ([#2901])(https://github.com/open-telemetry/opentelemetry-python-contrib/pull/2901)
+- `opentelemetry-instrumentation-system-metrics` Update metric units to conform to UCUM conventions.
+  ([#2922](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/2922))
+- `opentelemetry-instrumentation-celery` Don't detach context without a None token
+  ([#2927](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/2927))
+- `opentelemetry-exporter-prometheus-remote-write`: sort labels before exporting
+  ([#2940](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/2940))
+- `opentelemetry-instrumentation-dbapi` sqlcommenter key values created from PostgreSQL, MySQL systems
+  ([#2897](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/2897))
+- `opentelemetry-instrumentation-system-metrics`: don't report open file descriptors on Windows
+  ([#2946](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/2946))
+
+### Breaking changes
+
+- Deprecation of pkg_resource in favor of importlib.metadata
+  ([#2871](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/2871))
+- `opentelemetry-instrumentation` Don't fail distro loading if instrumentor raises ImportError, instead skip them
+  ([#2923](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/2923))
+- `opentelemetry-instrumentation-httpx` Rewrote instrumentation to use wrapt instead of subclassing
+  ([#2909](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/2909))
+
