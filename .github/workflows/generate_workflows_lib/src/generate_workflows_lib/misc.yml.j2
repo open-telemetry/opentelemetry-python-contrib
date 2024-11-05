@@ -28,7 +28,7 @@ jobs:
     {%- if job_data == "public-symbols-check" %}
     if: |
       !contains(github.event.pull_request.labels.*.name, 'Approve Public API check')
-      && github.actor != 'opentelemetrybot' && github.event_name == 'pull_request'
+      && github.event.pull_request.user.login != 'opentelemetrybot' && github.event_name == 'pull_request'
     {%- endif %}
     steps:
       - name: Checkout repo @ SHA - ${% raw %}{{ github.sha }}{% endraw %}
