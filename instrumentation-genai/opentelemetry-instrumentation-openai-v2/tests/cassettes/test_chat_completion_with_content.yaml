@@ -1,7 +1,16 @@
 interactions:
 - request:
-    body: '{"messages": [{"role": "user", "content": "Say this is a test"}], "model":
-      "gpt-4", "stream": false}'
+    body: |-
+      {
+        "messages": [
+          {
+            "role": "user",
+            "content": "Say this is a test"
+          }
+        ],
+        "model": "gpt-4o-mini",
+        "stream": false
+      }
     headers:
       accept:
       - application/json
@@ -10,13 +19,13 @@ interactions:
       connection:
       - keep-alive
       content-length:
-      - '100'
+      - '106'
       content-type:
       - application/json
       host:
       - api.openai.com
       user-agent:
-      - OpenAI/Python 1.47.0
+      - OpenAI/Python 1.26.0
       x-stainless-arch:
       - arm64
       x-stainless-async:
@@ -26,34 +35,57 @@ interactions:
       x-stainless-os:
       - MacOS
       x-stainless-package-version:
-      - 1.47.0
+      - 1.26.0
       x-stainless-runtime:
       - CPython
       x-stainless-runtime-version:
-      - 3.11.5
+      - 3.12.6
     method: POST
     uri: https://api.openai.com/v1/chat/completions
   response:
     body:
-      string: "{\n  \"id\": \"chatcmpl-AC6ajKKHHpvf6x2Qm35t6m3QE8qli\",\n  \"object\":
-        \"chat.completion\",\n  \"created\": 1727448637,\n  \"model\": \"gpt-4-0613\",\n
-        \ \"choices\": [\n    {\n      \"index\": 0,\n      \"message\": {\n        \"role\":
-        \"assistant\",\n        \"content\": \"This is a test.\",\n        \"refusal\":
-        null\n      },\n      \"logprobs\": null,\n      \"finish_reason\": \"stop\"\n
-        \   }\n  ],\n  \"usage\": {\n    \"prompt_tokens\": 12,\n    \"completion_tokens\":
-        5,\n    \"total_tokens\": 17,\n    \"completion_tokens_details\": {\n      \"reasoning_tokens\":
-        0\n    }\n  },\n  \"system_fingerprint\": null\n}\n"
+      string: |-
+        {
+          "id": "chatcmpl-APfFJNBzCZVUpMJMK5KBhu4D6yVAc",
+          "object": "chat.completion",
+          "created": 1730680113,
+          "model": "gpt-4o-mini-2024-07-18",
+          "choices": [
+            {
+              "index": 0,
+              "message": {
+                "role": "assistant",
+                "content": "This is a test! How can I assist you today?",
+                "refusal": null
+              },
+              "logprobs": null,
+              "finish_reason": "stop"
+            }
+          ],
+          "usage": {
+            "prompt_tokens": 12,
+            "completion_tokens": 12,
+            "total_tokens": 24,
+            "prompt_tokens_details": {
+              "cached_tokens": 0
+            },
+            "completion_tokens_details": {
+              "reasoning_tokens": 0
+            }
+          },
+          "system_fingerprint": "fp_0ba0d124f1"
+        }
     headers:
       CF-Cache-Status:
       - DYNAMIC
       CF-RAY:
-      - 8c9c4e9b7fb674d8-PMO
+      - 8dd07c16eae44a1d-SIN
       Connection:
       - keep-alive
       Content-Type:
       - application/json
       Date:
-      - Fri, 27 Sep 2024 14:50:37 GMT
+      - Mon, 04 Nov 2024 00:28:34 GMT
       Server:
       - cloudflare
       Set-Cookie: test_set_cookie
@@ -63,11 +95,13 @@ interactions:
       - nosniff
       access-control-expose-headers:
       - X-Request-ID
+      alt-svc:
+      - h3=":443"; ma=86400
       content-length:
-      - '551'
+      - '666'
       openai-organization: test_organization
       openai-processing-ms:
-      - '434'
+      - '732'
       openai-version:
       - '2020-10-01'
       strict-transport-security:
@@ -75,17 +109,17 @@ interactions:
       x-ratelimit-limit-requests:
       - '10000'
       x-ratelimit-limit-tokens:
-      - '1000000'
+      - '200000'
       x-ratelimit-remaining-requests:
       - '9999'
       x-ratelimit-remaining-tokens:
-      - '999977'
+      - '199977'
       x-ratelimit-reset-requests:
-      - 6ms
+      - 8.64s
       x-ratelimit-reset-tokens:
-      - 1ms
+      - 6ms
       x-request-id:
-      - req_5f2690abaf909a9f047488694d44495e
+      - req_0bb3c9da7d953e477d1947130d2cf1df
     status:
       code: 200
       message: OK

@@ -1,7 +1,15 @@
 interactions:
 - request:
-    body: '{"messages": [{"role": "user", "content": "Say this is a test"}], "model":
-      "this-model-does-not-exist"}'
+    body: |-
+      {
+        "messages": [
+          {
+            "role": "user",
+            "content": "Say this is a test"
+          }
+        ],
+        "model": "this-model-does-not-exist"
+      }
     headers:
       accept:
       - application/json
@@ -16,41 +24,45 @@ interactions:
       host:
       - api.openai.com
       user-agent:
-      - OpenAI/Python 1.52.2
+      - OpenAI/Python 1.26.0
       x-stainless-arch:
-      - other:amd64
+      - arm64
       x-stainless-async:
       - 'false'
       x-stainless-lang:
       - python
       x-stainless-os:
-      - Windows
+      - MacOS
       x-stainless-package-version:
-      - 1.52.2
-      x-stainless-retry-count:
-      - '2'
+      - 1.26.0
       x-stainless-runtime:
       - CPython
       x-stainless-runtime-version:
-      - 3.12.7
+      - 3.12.6
     method: POST
     uri: https://api.openai.com/v1/chat/completions
   response:
     body:
-      string: "{\n    \"error\": {\n        \"message\": \"The model `this-model-does-not-exist`
-        does not exist or you do not have access to it.\",\n        \"type\": \"invalid_request_error\",\n
-        \       \"param\": null,\n        \"code\": \"model_not_found\"\n    }\n}\n"
+      string: |-
+        {
+          "error": {
+            "message": "The model `this-model-does-not-exist` does not exist or you do not have access to it.",
+            "type": "invalid_request_error",
+            "param": null,
+            "code": "model_not_found"
+          }
+        }
     headers:
       CF-Cache-Status:
       - DYNAMIC
       CF-RAY:
-      - 8d88b04c2c5db9eb-SEA
+      - 8dd0709dffd19c8c-SIN
       Connection:
       - keep-alive
       Content-Type:
       - application/json; charset=utf-8
       Date:
-      - Sat, 26 Oct 2024 07:21:17 GMT
+      - Mon, 04 Nov 2024 00:20:44 GMT
       Server:
       - cloudflare
       Set-Cookie: test_set_cookie
@@ -68,7 +80,7 @@ interactions:
       vary:
       - Origin
       x-request-id:
-      - req_8529656422f0360e8bcba8c2b8fe34e9
+      - req_e08854c4f7d5104af6fdc755caed30fc
     status:
       code: 404
       message: Not Found
