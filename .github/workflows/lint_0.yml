@@ -10,7 +10,7 @@ on:
   pull_request:
 
 env:
-  CORE_REPO_SHA: main
+  CORE_REPO_SHA: b9240e73fb4a5c493a753cc9baa865e2d9a817a3
   CONTRIB_REPO_SHA: main
   PIP_EXISTS_ACTION: w
 
