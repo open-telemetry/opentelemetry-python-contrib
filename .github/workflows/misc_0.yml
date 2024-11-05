@@ -91,6 +91,10 @@ jobs:
       - name: Check workflows are up to date
         run: git diff --exit-code || (echo 'Generated code is out of date, run "tox -e generate" and commit the changes in this PR.' && exit 1)
 
+  test:
+    name: test
+    run: echo "${{ toJson(github) }}"
+
   generate-workflows:
     name: generate-workflows
     runs-on: ubuntu-latest
