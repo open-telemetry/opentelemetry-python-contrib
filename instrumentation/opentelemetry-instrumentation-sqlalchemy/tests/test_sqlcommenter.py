@@ -14,7 +14,7 @@
 import logging
 
 import pytest
-from sqlalchemy import create_engine
+from sqlalchemy import create_engine, text
 
 from opentelemetry import context
 from opentelemetry.instrumentation.sqlalchemy import SQLAlchemyInstrumentor
@@ -37,7 +37,7 @@ class TestSqlalchemyInstrumentationWithSQLCommenter(TestBase):
             engine=engine, tracer_provider=self.tracer_provider
         )
         cnx = engine.connect()
-        cnx.execute("SELECT 1;").fetchall()
+        cnx.execute(text("SELECT 1;")).fetchall()
 
         self.assertEqual(self.caplog.records[-2].getMessage(), "SELECT 1;")
 
@@ -50,7 +50,7 @@ class TestSqlalchemyInstrumentationWithSQLCommenter(TestBase):
             commenter_options={"db_framework": False},
         )
         cnx = engine.connect()
-        cnx.execute("SELECT  1;").fetchall()
+        cnx.execute(text("SELECT  1;")).fetchall()
         self.assertRegex(
             self.caplog.records[-2].getMessage(),
             r"SELECT  1 /\*db_driver='(.*)',traceparent='\d{1,2}-[a-zA-Z0-9_]{32}-[a-zA-Z0-9_]{16}-\d{1,2}'\*/;",
@@ -68,7 +68,7 @@ class TestSqlalchemyInstrumentationWithSQLCommenter(TestBase):
             },
         )
         cnx = engine.connect()
-        cnx.execute("SELECT  1;").fetchall()
+        cnx.execute(text("SELECT  1;")).fetchall()
         self.assertRegex(
             self.caplog.records[-2].getMessage(),
             r"SELECT  1 /\*db_driver='(.*)'\*/;",
@@ -90,7 +90,7 @@ class TestSqlalchemyInstrumentationWithSQLCommenter(TestBase):
         )
         context.attach(sqlcommenter_context)
 
-        cnx.execute("SELECT  1;").fetchall()
+        cnx.execute(text("SELECT  1;")).fetchall()
         self.assertRegex(
             self.caplog.records[-2].getMessage(),
             r"SELECT  1 /\*db_driver='(.*)',flask=1,traceparent='\d{1,2}-[a-zA-Z0-9_]{32}-[a-zA-Z0-9_]{16}-\d{1,2}'\*/;",
@@ -105,7 +105,7 @@ class TestSqlalchemyInstrumentationWithSQLCommenter(TestBase):
 
         engine = create_engine("sqlite:///:memory:")
         cnx = engine.connect()
-        cnx.execute("SELECT 1;").fetchall()
+        cnx.execute(text("SELECT 1;")).fetchall()
         self.assertRegex(
             self.caplog.records[-2].getMessage(),
             r"SELECT 1 /\*db_driver='(.*)',traceparent='\d{1,2}-[a-zA-Z0-9_]{32}-[a-zA-Z0-9_]{16}-\d{1,2}'\*/;",
@@ -120,5 +120,5 @@ class TestSqlalchemyInstrumentationWithSQLCommenter(TestBase):
 
         engine = create_engine("sqlite:///:memory:")
         cnx = engine.connect()
-        cnx.execute("SELECT 1;").fetchall()
+        cnx.execute(text("SELECT 1;")).fetchall()
         self.assertEqual(self.caplog.records[-2].getMessage(), "SELECT 1;")
