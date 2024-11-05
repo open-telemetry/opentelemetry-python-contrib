@@ -1,7 +1,17 @@
 interactions:
 - request:
-    body: '{"messages": [{"role": "user", "content": "Say this is a test"}], "model":
-      "gpt-4o-mini", "n": 2, "stream": false}'
+    body: |-
+      {
+        "messages": [
+          {
+            "role": "user",
+            "content": "Say this is a test"
+          }
+        ],
+        "model": "gpt-4o-mini",
+        "n": 2,
+        "stream": false
+      }
     headers:
       accept:
       - application/json
@@ -16,50 +26,77 @@ interactions:
       host:
       - api.openai.com
       user-agent:
-      - OpenAI/Python 1.52.2
+      - OpenAI/Python 1.26.0
       x-stainless-arch:
-      - other:amd64
+      - arm64
       x-stainless-async:
       - 'false'
       x-stainless-lang:
       - python
       x-stainless-os:
-      - Windows
+      - MacOS
       x-stainless-package-version:
-      - 1.52.2
-      x-stainless-retry-count:
-      - '0'
+      - 1.26.0
       x-stainless-runtime:
       - CPython
       x-stainless-runtime-version:
-      - 3.12.7
+      - 3.12.6
     method: POST
     uri: https://api.openai.com/v1/chat/completions
   response:
     body:
-      string: "{\n  \"id\": \"chatcmpl-AMT4dWD9gi2PyDcXBK10harskeREO\",\n  \"object\":
-        \"chat.completion\",\n  \"created\": 1729918339,\n  \"model\": \"gpt-4o-mini-2024-07-18\",\n
-        \ \"choices\": [\n    {\n      \"index\": 0,\n      \"message\": {\n        \"role\":
-        \"assistant\",\n        \"content\": \"This is a test.\",\n        \"refusal\":
-        null\n      },\n      \"logprobs\": null,\n      \"finish_reason\": \"stop\"\n
-        \   },\n    {\n      \"index\": 1,\n      \"message\": {\n        \"role\":
-        \"assistant\",\n        \"content\": \"This is a test. How can I assist you
-        further?\",\n        \"refusal\": null\n      },\n      \"logprobs\": null,\n
-        \     \"finish_reason\": \"stop\"\n    }\n  ],\n  \"usage\": {\n    \"prompt_tokens\":
-        12,\n    \"completion_tokens\": 17,\n    \"total_tokens\": 29,\n    \"prompt_tokens_details\":
-        {\n      \"cached_tokens\": 0\n    },\n    \"completion_tokens_details\":
-        {\n      \"reasoning_tokens\": 0\n    }\n  },\n  \"system_fingerprint\": \"fp_f59a81427f\"\n}\n"
+      string: |-
+        {
+          "id": "chatcmpl-APfFO3w0cNVOphe5Lk9EaYyRaS2pm",
+          "object": "chat.completion",
+          "created": 1730680118,
+          "model": "gpt-4o-mini-2024-07-18",
+          "choices": [
+            {
+              "index": 0,
+              "message": {
+                "role": "assistant",
+                "content": "This is a test.",
+                "refusal": null
+              },
+              "logprobs": null,
+              "finish_reason": "stop"
+            },
+            {
+              "index": 1,
+              "message": {
+                "role": "assistant",
+                "content": "This is a test! How can I assist you further?",
+                "refusal": null
+              },
+              "logprobs": null,
+              "finish_reason": "stop"
+            }
+          ],
+          "usage": {
+            "prompt_tokens": 12,
+            "completion_tokens": 17,
+            "total_tokens": 29,
+            "prompt_tokens_details": {
+              "cached_tokens": 0
+            },
+            "completion_tokens_details": {
+              "reasoning_tokens": 0
+            }
+          },
+          "system_fingerprint": "fp_0ba0d124f1"
+        }
     headers:
       CF-Cache-Status:
       - DYNAMIC
       CF-RAY:
-      - 8d87d6120a899357-SEA
+      - 8dd07c30beda3dd4-SIN
       Connection:
       - keep-alive
       Content-Type:
       - application/json
       Date:
-      - Sat, 26 Oct 2024 04:52:19 GMT
+      - Mon, 04 Nov 2024 00:28:38 GMT
       Server:
       - cloudflare
       Set-Cookie: test_set_cookie
@@ -75,25 +112,25 @@ interactions:
       - '872'
       openai-organization: test_organization
       openai-processing-ms:
-      - '664'
+      - '261'
       openai-version:
       - '2020-10-01'
       strict-transport-security:
       - max-age=31536000; includeSubDomains; preload
       x-ratelimit-limit-requests:
-      - '200'
+      - '10000'
       x-ratelimit-limit-tokens:
-      - '60000'
+      - '200000'
       x-ratelimit-remaining-requests:
-      - '199'
+      - '9997'
       x-ratelimit-remaining-tokens:
-      - '59962'
+      - '199962'
       x-ratelimit-reset-requests:
-      - 7m12s
+      - 21.785s
       x-ratelimit-reset-tokens:
-      - 38ms
+      - 11ms
       x-request-id:
-      - req_d8b7a2507994f22fe0d4511c7e0a3bdc
+      - req_86ab6a7a85f95e2a001cfeb89e0827b1
     status:
       code: 200
       message: OK
