@@ -55,6 +55,8 @@ jobs:
   docs:
     name: docs
     runs-on: ubuntu-latest
+    if: |
+      github.event.pull_request.user.login != 'opentelemetrybot' && github.event_name == 'pull_request'
     steps:
       - name: Checkout repo @ SHA - ${{ github.sha }}
         uses: actions/checkout@v4

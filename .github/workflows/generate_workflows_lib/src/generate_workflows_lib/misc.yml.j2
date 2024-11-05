@@ -30,6 +30,10 @@ jobs:
       !contains(github.event.pull_request.labels.*.name, 'Approve Public API check')
       && github.actor != 'opentelemetrybot' && github.event_name == 'pull_request'
     {%- endif %}
+    {%- if job_data == "docs" %}
+    if: |
+      github.event.pull_request.user.login != 'opentelemetrybot' && github.event_name == 'pull_request'
+    {%- endif %}
     steps:
       - name: Checkout repo @ SHA - ${% raw %}{{ github.sha }}{% endraw %}
         uses: actions/checkout@v4
