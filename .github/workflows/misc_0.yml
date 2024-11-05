@@ -10,7 +10,7 @@ on:
   pull_request:
 
 env:
-  CORE_REPO_SHA: main
+  CORE_REPO_SHA: 6e29e0e5f19ee08eaf683166f2867dd2d383f67e
   CONTRIB_REPO_SHA: main
   PIP_EXISTS_ACTION: w
 
@@ -55,6 +55,8 @@ jobs:
   docs:
     name: docs
     runs-on: ubuntu-latest
+    if: |
+      github.event.pull_request.user.login != 'opentelemetrybot' && github.event_name == 'pull_request'
     steps:
       - name: Checkout repo @ SHA - ${{ github.sha }}
         uses: actions/checkout@v4
@@ -96,7 +98,7 @@ jobs:
     runs-on: ubuntu-latest
     if: |
       !contains(github.event.pull_request.labels.*.name, 'Skip generate-workflows')
-      && github.actor != 'opentelemetrybot' && github.event_name == 'pull_request'
+      && github.event.pull_request.user.login != 'opentelemetrybot' && github.event_name == 'pull_request'
     steps:
       - name: Checkout repo @ SHA - ${{ github.sha }}
         uses: actions/checkout@v4
