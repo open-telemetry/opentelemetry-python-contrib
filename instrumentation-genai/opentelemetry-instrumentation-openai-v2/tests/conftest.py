@@ -1,13 +1,15 @@
 """Unit tests configuration module."""
 
+import json
 import os
 
 import pytest
+import yaml
 from openai import OpenAI
 
 from opentelemetry.instrumentation.openai_v2 import OpenAIInstrumentor
 from opentelemetry.instrumentation.openai_v2.utils import (
-    OTEL_INSTRUMENTATION_OPENAI_CAPTURE_MESSAGE_CONTENT,
+    OTEL_INSTRUMENTATION_GENAI_CAPTURE_MESSAGE_CONTENT,
 )
 from opentelemetry.sdk._events import EventLoggerProvider
 from opentelemetry.sdk._logs import LoggerProvider
@@ -85,7 +87,7 @@ def instrument_no_content(tracer_provider, event_logger_provider):
 @pytest.fixture(scope="function")
 def instrument_with_content(tracer_provider, event_logger_provider):
     os.environ.update(
-        {OTEL_INSTRUMENTATION_OPENAI_CAPTURE_MESSAGE_CONTENT: "True"}
+        {OTEL_INSTRUMENTATION_GENAI_CAPTURE_MESSAGE_CONTENT: "True"}
     )
     instrumentor = OpenAIInstrumentor()
     instrumentor.instrument(
@@ -94,8 +96,75 @@ def instrument_with_content(tracer_provider, event_logger_provider):
     )
 
     yield instrumentor
-    os.environ.pop(OTEL_INSTRUMENTATION_OPENAI_CAPTURE_MESSAGE_CONTENT, None)
+    os.environ.pop(OTEL_INSTRUMENTATION_GENAI_CAPTURE_MESSAGE_CONTENT, None)
     instrumentor.uninstrument()
+
+
+class LiteralBlockScalar(str):
+    """Formats the string as a literal block scalar, preserving whitespace and
+    without interpreting escape characters"""
+
+
+def literal_block_scalar_presenter(dumper, data):
+    """Represents a scalar string as a literal block, via '|' syntax"""
+    return dumper.represent_scalar("tag:yaml.org,2002:str", data, style="|")
+
+
+yaml.add_representer(LiteralBlockScalar, literal_block_scalar_presenter)
+
+
+def process_string_value(string_value):
+    """Pretty-prints JSON or returns long strings as a LiteralBlockScalar"""
+    try:
+        json_data = json.loads(string_value)
+        return LiteralBlockScalar(json.dumps(json_data, indent=2))
+    except (ValueError, TypeError):
+        if len(string_value) > 80:
+            return LiteralBlockScalar(string_value)
+    return string_value
+
+
+def convert_body_to_literal(data):
+    """Searches the data for body strings, attempting to pretty-print JSON"""
+    if isinstance(data, dict):
+        for key, value in data.items():
+            # Handle response body case (e.g., response.body.string)
+            if key == "body" and isinstance(value, dict) and "string" in value:
+                value["string"] = process_string_value(value["string"])
+
+            # Handle request body case (e.g., request.body)
+            elif key == "body" and isinstance(value, str):
+                data[key] = process_string_value(value)
+
+            else:
+                convert_body_to_literal(value)
+
+    elif isinstance(data, list):
+        for idx, choice in enumerate(data):
+            data[idx] = convert_body_to_literal(choice)
+
+    return data
+
+
+class PrettyPrintJSONBody:
+    """This makes request and response body recordings more readable."""
+
+    @staticmethod
+    def serialize(cassette_dict):
+        cassette_dict = convert_body_to_literal(cassette_dict)
+        return yaml.dump(
+            cassette_dict, default_flow_style=False, allow_unicode=True
+        )
+
+    @staticmethod
+    def deserialize(cassette_string):
+        return yaml.load(cassette_string, Loader=yaml.Loader)
+
+
+@pytest.fixture(scope="module")
+def fixture_vcr(vcr):
+    vcr.register_serializer("yaml", PrettyPrintJSONBody)
+    return vcr
 
 
 def scrub_response_headers(response):
