@@ -10,7 +10,7 @@ on:
   pull_request:
 
 env:
-  CORE_REPO_SHA: b9240e73fb4a5c493a753cc9baa865e2d9a817a3
+  CORE_REPO_SHA: main
   CONTRIB_REPO_SHA: main
   PIP_EXISTS_ACTION: w
 
@@ -4011,45 +4011,3 @@ jobs:
 
       - name: Run tests
         run: tox -e pypy3-test-processor-baggage -- -ra
-
-  py312-test-instrumentation-botocore_windows-latest:
-    name: instrumentation-botocore 3.12 Windows
-    runs-on: windows-latest
-    steps:
-      - name: Checkout repo @ SHA - ${{ github.sha }}
-        uses: actions/checkout@v4
-
-      - name: Set up Python 3.12
-        uses: actions/setup-python@v5
-        with:
-          python-version: "3.12"
-
-      - name: Install tox
-        run: pip install tox
-
-      - name: Configure git to support long filenames
-        run: git config --system core.longpaths true
-
-      - name: Run tests
-        run: tox -e py312-test-instrumentation-botocore -- -ra
-
-  py312-test-instrumentation-system-metrics_windows-latest:
-    name: instrumentation-system-metrics 3.12 Windows
-    runs-on: windows-latest
-    steps:
-      - name: Checkout repo @ SHA - ${{ github.sha }}
-        uses: actions/checkout@v4
-
-      - name: Set up Python 3.12
-        uses: actions/setup-python@v5
-        with:
-          python-version: "3.12"
-
-      - name: Install tox
-        run: pip install tox
-
-      - name: Configure git to support long filenames
-        run: git config --system core.longpaths true
-
-      - name: Run tests
-        run: tox -e py312-test-instrumentation-system-metrics -- -ra
