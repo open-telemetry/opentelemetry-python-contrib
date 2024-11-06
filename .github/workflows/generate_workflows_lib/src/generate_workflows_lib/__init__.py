@@ -55,14 +55,6 @@ def get_test_job_datas(tox_envs: list, operating_systems: list) -> list:
         "py312": "3.12",
     }
 
-    # we enable windows testing only for packages with windows specific code paths
-    per_tox_env_os_enablement = {
-        "windows-latest": {
-            "py312-test-instrumentation-botocore",
-            "py312-test-instrumentation-system-metrics",
-        },
-    }
-
     test_job_datas = []
 
     for operating_system in operating_systems:
@@ -78,14 +70,6 @@ def get_test_job_datas(tox_envs: list, operating_systems: list) -> list:
                 groups["python_version"]
             ]
             tox_env = tox_test_env_match.string
-
-            # if we have an entry for the os add only jobs for tox env manually configured
-            packages_manually_enabled = per_tox_env_os_enablement.get(
-                operating_system
-            )
-            if packages_manually_enabled:
-                if tox_env not in packages_manually_enabled:
-                    continue
 
             test_requirements = groups["test_requirements"]
 
