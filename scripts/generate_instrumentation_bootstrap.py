@@ -58,7 +58,10 @@ gen_path = os.path.join(
 # in all environments. Instead, users who need AWS Lambda support can opt-in
 # by manually adding it to their environment.
 # See https://github.com/open-telemetry/opentelemetry-python-contrib/issues/2787
-packages_to_exclude = ["opentelemetry-instrumentation-aws-lambda"]
+packages_to_exclude = [
+    "opentelemetry-instrumentation-aws-lambda",
+    "opentelemetry-instrumentation-test",
+]
 
 
 def main():
