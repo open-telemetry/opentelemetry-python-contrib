@@ -19,7 +19,7 @@
 > - opentelemetry-propagator-aws-xray
 > - opentelemetry-resource-detector-azure
 > - opentelemetry-sdk-extension-aws
->
+> - opentelemetry-instrumentation-openai-v2
 > These libraries are also excluded from the general release.
 
 Package release preparation is handled by the [`[Package] Prepare release`](./.github/workflows/package-prepare-release.yml) workflow that allows
@@ -70,6 +70,7 @@ The workflow can only be run against long-term release branch such as `package-r
 > - opentelemetry-propagator-aws-xray
 > - opentelemetry-resource-detector-azure
 > - opentelemetry-sdk-extension-aws
+> - opentelemetry-instrumentation-openai-v2
 >
 > These libraries are also excluded from the general patch release.
 
