@@ -26,7 +26,7 @@ classifiers = [
 ]
 dependencies = [
   "opentelemetry-sdk ~= 1.21",
-  "opentelemetry-instrumentation ~= 0.43b0",
+  "opentelemetry-instrumentation ~= 0.44b0",
 ]
 
 [project.entry-points.opentelemetry_resource_detector]
