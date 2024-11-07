@@ -12,6 +12,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-_instruments = ("sqlalchemy >= 1.0.0, < 2.0.0",)
+_instruments = ("sqlalchemy >= 1.0.0, < 2.1.0",)
 
 _supports_metrics = True
