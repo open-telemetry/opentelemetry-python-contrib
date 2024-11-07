@@ -161,7 +161,7 @@ libraries = [
         "instrumentation": "opentelemetry-instrumentation-requests==0.50b0.dev",
     },
     {
-        "library": "sqlalchemy >= 1.0.0, < 3.0.0",
+        "library": "sqlalchemy >= 1.0.0, < 2.0.0",
         "instrumentation": "opentelemetry-instrumentation-sqlalchemy==0.50b0.dev",
     },
     {
