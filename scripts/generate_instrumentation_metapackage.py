@@ -29,9 +29,15 @@ _prefix = "opentelemetry-instrumentation-"
 root_path = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 base_instrumentation_path = os.path.join(root_path, "instrumentation")
 
+packages_to_exclude = [
+    "opentelemetry-instrumentation-test",
+]
+
 
 def get_instrumentation_packages():
     for instrumentation in sorted(os.listdir(base_instrumentation_path)):
+        if instrumentation in packages_to_exclude:
+            continue
         instrumentation_path = os.path.join(
             base_instrumentation_path, instrumentation
         )
