@@ -194,7 +194,6 @@ default_instrumentations = [
     "opentelemetry-instrumentation-dbapi==0.49b0",
     "opentelemetry-instrumentation-logging==0.49b0",
     "opentelemetry-instrumentation-sqlite3==0.49b0",
-    "opentelemetry-instrumentation-test==1.0.0b.dev",
     "opentelemetry-instrumentation-threading==0.49b0",
     "opentelemetry-instrumentation-urllib==0.49b0",
     "opentelemetry-instrumentation-wsgi==0.49b0",

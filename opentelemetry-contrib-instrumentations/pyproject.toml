@@ -71,7 +71,6 @@ dependencies = [
     "opentelemetry-instrumentation-sqlite3==0.49b0",
     "opentelemetry-instrumentation-starlette==0.49b0",
     "opentelemetry-instrumentation-system-metrics==0.49b0",
-    "opentelemetry-instrumentation-test==1.0.0b.dev",
     "opentelemetry-instrumentation-threading==0.49b0",
     "opentelemetry-instrumentation-tornado==0.49b0",
     "opentelemetry-instrumentation-tortoiseorm==0.49b0",
