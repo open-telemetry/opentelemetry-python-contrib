@@ -60,7 +60,6 @@ gen_path = os.path.join(
 # See https://github.com/open-telemetry/opentelemetry-python-contrib/issues/2787
 packages_to_exclude = [
     "opentelemetry-instrumentation-aws-lambda",
-    "opentelemetry-instrumentation-test",
 ]
 
 
