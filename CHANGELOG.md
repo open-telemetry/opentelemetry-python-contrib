@@ -20,6 +20,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Breaking changes
 
+- `opentelemetry-instrumentation-sqlalchemy` teach instruments version
+  ([#2971](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/2971))
 - Drop `opentelemetry-instrumentation-test` package from default instrumentation list
   ([#2969](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/2969))
 
