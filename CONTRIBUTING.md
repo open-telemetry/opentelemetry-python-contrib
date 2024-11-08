@@ -298,6 +298,7 @@ When updating the minimum supported Python version remember to:
 
 - Remove the version in `pyproject.toml` trove classifiers
 - Remove the version from `tox.ini`
+- Update github workflows accordingly with `tox -e generate-workflows`
 - Search for `sys.version_info` usage and remove code for unsupported versions
 - Bump `py-version` in `.pylintrc` for Python version dependent checks
 
