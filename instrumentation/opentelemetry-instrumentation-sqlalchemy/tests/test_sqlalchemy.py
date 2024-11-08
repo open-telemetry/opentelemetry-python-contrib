@@ -188,7 +188,7 @@ class TestSqlalchemyInstrumentation(TestBase):
 
         engine = engine_from_config({"sqlalchemy.url": "sqlite:///:memory:"})
         cnx = engine.connect()
-        cnx.execute("SELECT	1 + 1;").fetchall()
+        cnx.execute(text("SELECT	1 + 1;")).fetchall()
         spans = self.memory_exporter.get_finished_spans()
 
         self.assertEqual(len(spans), 2)
