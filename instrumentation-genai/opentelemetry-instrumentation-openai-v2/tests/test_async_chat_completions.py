@@ -196,7 +196,7 @@ async def test_async_chat_completion_multiple_choices(
 async def test_async_chat_completion_tool_calls_with_content(
     span_exporter, log_exporter, async_openai_client, instrument_with_content
 ):
-    chat_completion_tool_call(
+    await chat_completion_tool_call(
         span_exporter, log_exporter, async_openai_client, True
     )
 
@@ -206,7 +206,7 @@ async def test_async_chat_completion_tool_calls_with_content(
 async def test_async_chat_completion_tool_calls_no_content(
     span_exporter, log_exporter, async_openai_client, instrument_no_content
 ):
-    chat_completion_tool_call(
+    await chat_completion_tool_call(
         span_exporter, log_exporter, async_openai_client, False
     )
 
