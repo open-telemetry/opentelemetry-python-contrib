@@ -5,7 +5,7 @@ import os
 
 import pytest
 import yaml
-from openai import OpenAI
+from openai import AsyncOpenAI, OpenAI
 
 from opentelemetry.instrumentation.openai_v2 import OpenAIInstrumentor
 from opentelemetry.instrumentation.openai_v2.utils import (
@@ -61,6 +61,11 @@ def environment():
 @pytest.fixture
 def openai_client():
     return OpenAI()
+
+
+@pytest.fixture
+def async_openai_client():
+    return AsyncOpenAI()
 
 
 @pytest.fixture(scope="module")
