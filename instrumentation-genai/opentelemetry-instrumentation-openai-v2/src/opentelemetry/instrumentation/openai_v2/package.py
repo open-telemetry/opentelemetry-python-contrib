@@ -11,7 +11,6 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-"""
-This library provides a WSGI middleware that can be used on any WSGI framework
-(such as Django / Flask / Web.py) to track requests timing through OpenTelemetry.
-"""
+
+
+_instruments = ("openai >= 1.26.0",)

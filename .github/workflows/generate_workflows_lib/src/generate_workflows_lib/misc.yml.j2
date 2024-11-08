@@ -23,12 +23,16 @@ jobs:
     {%- if job_data == "generate-workflows" %}
     if: |
       !contains(github.event.pull_request.labels.*.name, 'Skip generate-workflows')
-      && github.actor != 'opentelemetrybot' && github.event_name == 'pull_request'
+      && github.event.pull_request.user.login != 'opentelemetrybot' && github.event_name == 'pull_request'
     {%- endif %}
     {%- if job_data == "public-symbols-check" %}
     if: |
       !contains(github.event.pull_request.labels.*.name, 'Approve Public API check')
       && github.actor != 'opentelemetrybot' && github.event_name == 'pull_request'
+    {%- endif %}
+    {%- if job_data == "docs" %}
+    if: |
+      github.event.pull_request.user.login != 'opentelemetrybot' && github.event_name == 'pull_request'
     {%- endif %}
     steps:
       - name: Checkout repo @ SHA - ${% raw %}{{ github.sha }}{% endraw %}
@@ -46,13 +50,11 @@ jobs:
       - name: Checkout pull request
         run: git checkout ${% raw %}{{ github.event.pull_request.head.sha }}{% endraw %}
       {%- endif %}
-      {%- if job_data != "shellcheck" %}
 
       - name: Set up Python 3.10
         uses: actions/setup-python@v5
         with:
           python-version: "3.10"
-      {%- endif %}
 
       - name: Install tox
         run: pip install tox

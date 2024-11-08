@@ -340,7 +340,6 @@ class AwsXRayLambdaPropagator(AwsXRayPropagator):
         context: typing.Optional[Context] = None,
         getter: Getter[CarrierT] = default_getter,
     ) -> Context:
-
         xray_context = super().extract(carrier, context=context, getter=getter)
 
         if trace.get_current_span(context=context).get_span_context().is_valid:

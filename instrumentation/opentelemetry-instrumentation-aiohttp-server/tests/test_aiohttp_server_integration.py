@@ -92,7 +92,6 @@ async def fixture_server_fixture(tracer, aiohttp_server, suppress):
 
 
 def test_checking_instrumentor_pkg_installed():
-
     (instrumentor_entrypoint,) = entry_points(
         group="opentelemetry_instrumentor", name="aiohttp-server"
     )

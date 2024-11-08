@@ -66,3 +66,10 @@ components:
 
   processor/opentelemetry-processor-baggage:
     - codeboten
+
+  instrumentation-genai/:
+    - karthikscale3
+    - lmolkova
+    - lzchen
+    - gyliu513
+    - nirga
