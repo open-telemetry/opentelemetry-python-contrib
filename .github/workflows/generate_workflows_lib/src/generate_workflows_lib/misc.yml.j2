@@ -10,7 +10,7 @@ on:
   pull_request:
 
 env:
-  CORE_REPO_SHA: b9240e73fb4a5c493a753cc9baa865e2d9a817a3
+  CORE_REPO_SHA: main
   CONTRIB_REPO_SHA: main
   PIP_EXISTS_ACTION: w
 
@@ -23,12 +23,16 @@ jobs:
     {%- if job_data == "generate-workflows" %}
     if: |
       !contains(github.event.pull_request.labels.*.name, 'Skip generate-workflows')
-      && github.actor != 'opentelemetrybot' && github.event_name == 'pull_request'
+      && github.event.pull_request.user.login != 'opentelemetrybot' && github.event_name == 'pull_request'
     {%- endif %}
     {%- if job_data == "public-symbols-check" %}
     if: |
       !contains(github.event.pull_request.labels.*.name, 'Approve Public API check')
       && github.actor != 'opentelemetrybot' && github.event_name == 'pull_request'
+    {%- endif %}
+    {%- if job_data == "docs" %}
+    if: |
+      github.event.pull_request.user.login != 'opentelemetrybot' && github.event_name == 'pull_request'
     {%- endif %}
     steps:
       - name: Checkout repo @ SHA - ${% raw %}{{ github.sha }}{% endraw %}
