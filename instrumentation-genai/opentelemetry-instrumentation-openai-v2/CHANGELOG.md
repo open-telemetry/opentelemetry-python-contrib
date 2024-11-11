@@ -7,11 +7,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## Unreleased
 
-- Added a wrapper for `AsyncCompletions.create` inside `src/opentelemetry/instrumentation/openai_v2/__init__.py` to instrument async chat completions
-- Created a new patch function for async chat completions
-- Abstracted handling span exceptions into it's own function as it was getting used in multiple places
-- Adjusted `StreamWrapper` to include async methods for supporting async streaming
-- Added Tests using `pytest-asyncio` fixtures
+- Support for `AsyncOpenAI/AsyncCompletions`
 
 ## Version 2.0b0 (2024-11-08)
 

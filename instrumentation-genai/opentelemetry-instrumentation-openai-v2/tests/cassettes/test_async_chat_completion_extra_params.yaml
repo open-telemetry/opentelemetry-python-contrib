@@ -1,8 +1,20 @@
 interactions:
 - request:
-    body: '{"messages": [{"role": "user", "content": "Say this is a test"}], "model":
-      "gpt-4o-mini", "max_tokens": 50, "seed": 42, "stream": false, "temperature":
-      0.5, "service_tier": "default"}'
+    body: |-
+      {
+        "messages": [
+          {
+            "role": "user",
+            "content": "Say this is a test"
+          }
+        ],
+        "model": "gpt-4o-mini",
+        "max_tokens": 50,
+        "seed": 42,
+        "stream": false,
+        "temperature": 0.5,
+        "service_tier": "default"
+      }
     headers:
       accept:
       - application/json
@@ -36,28 +48,53 @@ interactions:
     uri: https://api.openai.com/v1/chat/completions
   response:
     body:
-      string: "{\n  \"id\": \"chatcmpl-ARJJHh1NYn4MAJ5vmO2u6MC0QWvS3\",\n  \"object\":
-        \"chat.completion\",\n  \"created\": 1731072447,\n  \"model\": \"gpt-4o-mini-2024-07-18\",\n
-        \ \"choices\": [\n    {\n      \"index\": 0,\n      \"message\": {\n        \"role\":
-        \"assistant\",\n        \"content\": \"This is a test. How can I assist you
-        further?\",\n        \"refusal\": null\n      },\n      \"logprobs\": null,\n
-        \     \"finish_reason\": \"stop\"\n    }\n  ],\n  \"usage\": {\n    \"prompt_tokens\":
-        12,\n    \"completion_tokens\": 12,\n    \"total_tokens\": 24,\n    \"prompt_tokens_details\":
-        {\n      \"cached_tokens\": 0,\n      \"audio_tokens\": 0\n    },\n    \"completion_tokens_details\":
-        {\n      \"reasoning_tokens\": 0,\n      \"audio_tokens\": 0,\n      \"accepted_prediction_tokens\":
-        0,\n      \"rejected_prediction_tokens\": 0\n    }\n  },\n  \"service_tier\":
-        \"default\",\n  \"system_fingerprint\": \"fp_0ba0d124f1\"\n}\n"
+      string: |-
+        {
+          "id": "chatcmpl-ASNOJZk6WBJTYWmACy5zBiYnkvXAw",
+          "object": "chat.completion",
+          "created": 1731326463,
+          "model": "gpt-4o-mini-2024-07-18",
+          "choices": [
+            {
+              "index": 0,
+              "message": {
+                "role": "assistant",
+                "content": "This is a test. How can I assist you further?",
+                "refusal": null
+              },
+              "logprobs": null,
+              "finish_reason": "stop"
+            }
+          ],
+          "usage": {
+            "prompt_tokens": 12,
+            "completion_tokens": 12,
+            "total_tokens": 24,
+            "prompt_tokens_details": {
+              "cached_tokens": 0,
+              "audio_tokens": 0
+            },
+            "completion_tokens_details": {
+              "reasoning_tokens": 0,
+              "audio_tokens": 0,
+              "accepted_prediction_tokens": 0,
+              "rejected_prediction_tokens": 0
+            }
+          },
+          "service_tier": "default",
+          "system_fingerprint": "fp_0ba0d124f1"
+        }
     headers:
       CF-Cache-Status:
       - DYNAMIC
       CF-RAY:
-      - 8df5e68e7df7e20d-MRS
+      - 8e0e20191e7670e7-MRS
       Connection:
       - keep-alive
       Content-Type:
       - application/json
       Date:
-      - Fri, 08 Nov 2024 13:27:28 GMT
+      - Mon, 11 Nov 2024 12:01:03 GMT
       Server:
       - cloudflare
       Set-Cookie: test_set_cookie
@@ -73,7 +110,7 @@ interactions:
       - '825'
       openai-organization: test_organization
       openai-processing-ms:
-      - '373'
+      - '483'
       openai-version:
       - '2020-10-01'
       strict-transport-security:
@@ -91,7 +128,7 @@ interactions:
       x-ratelimit-reset-tokens:
       - 0s
       x-request-id:
-      - req_bea7292421fe218c0a9e158dbb7699d7
+      - req_bbcd55fb3044f058ea9f9ae8a388698d
     status:
       code: 200
       message: OK
