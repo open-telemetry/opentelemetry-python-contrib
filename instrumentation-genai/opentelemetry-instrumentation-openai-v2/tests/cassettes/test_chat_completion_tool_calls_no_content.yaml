@@ -42,6 +42,8 @@ interactions:
       - application/json
       accept-encoding:
       - gzip, deflate
+      authorization:
+      - Bearer test_openai_api_key
       connection:
       - keep-alive
       content-length:
@@ -51,7 +53,7 @@ interactions:
       host:
       - api.openai.com
       user-agent:
-      - OpenAI/Python 1.26.0
+      - OpenAI/Python 1.54.3
       x-stainless-arch:
       - arm64
       x-stainless-async:
@@ -61,7 +63,9 @@ interactions:
       x-stainless-os:
       - MacOS
       x-stainless-package-version:
-      - 1.26.0
+      - 1.54.3
+      x-stainless-retry-count:
+      - '0'
       x-stainless-runtime:
       - CPython
       x-stainless-runtime-version:
@@ -72,9 +76,9 @@ interactions:
     body:
       string: |-
         {
-          "id": "chatcmpl-APfFQZB7CuqkWhGyMZegJZRX2Mqv7",
+          "id": "chatcmpl-ASYMW6w3m9qqpHUVhYTbQbw61zMqA",
           "object": "chat.completion",
-          "created": 1730680120,
+          "created": 1731368636,
           "model": "gpt-4o-mini-2024-07-18",
           "choices": [
             {
@@ -84,7 +88,7 @@ interactions:
                 "content": null,
                 "tool_calls": [
                   {
-                    "id": "call_SBoEJuTov3qHLothPvvgZyO6",
+                    "id": "call_eqbDFUdPqay2WjsSzZEiAn0U",
                     "type": "function",
                     "function": {
                       "name": "get_current_weather",
@@ -92,7 +96,7 @@ interactions:
                     }
                   },
                   {
-                    "id": "call_2nL8HxSquLkKxpTENiZ17ynv",
+                    "id": "call_tn3sgasg6GaftTdancBYJNJN",
                     "type": "function",
                     "function": {
                       "name": "get_current_weather",
@@ -111,10 +115,14 @@ interactions:
             "completion_tokens": 51,
             "total_tokens": 126,
             "prompt_tokens_details": {
-              "cached_tokens": 0
+              "cached_tokens": 0,
+              "audio_tokens": 0
             },
             "completion_tokens_details": {
-              "reasoning_tokens": 0
+              "reasoning_tokens": 0,
+              "audio_tokens": 0,
+              "accepted_prediction_tokens": 0,
+              "rejected_prediction_tokens": 0
             }
           },
           "system_fingerprint": "fp_0ba0d124f1"
@@ -123,13 +131,13 @@ interactions:
       CF-Cache-Status:
       - DYNAMIC
       CF-RAY:
-      - 8dd07c3f4ba7ce35-SIN
+      - 8e1225ba6a3440b0-SIN
       Connection:
       - keep-alive
       Content-Type:
       - application/json
       Date:
-      - Mon, 04 Nov 2024 00:28:41 GMT
+      - Mon, 11 Nov 2024 23:43:57 GMT
       Server:
       - cloudflare
       Set-Cookie: test_set_cookie
@@ -142,10 +150,10 @@ interactions:
       alt-svc:
       - h3=":443"; ma=86400
       content-length:
-      - '1180'
-      openai-organization: test_organization
+      - '1308'
+      openai-organization: test_openai_org_id
       openai-processing-ms:
-      - '984'
+      - '761'
       openai-version:
       - '2020-10-01'
       strict-transport-security:
@@ -159,11 +167,11 @@ interactions:
       x-ratelimit-remaining-tokens:
       - '199961'
       x-ratelimit-reset-requests:
-      - 45.38s
+      - 45.694s
       x-ratelimit-reset-tokens:
       - 11ms
       x-request-id:
-      - req_af3dca7532583ed0a68645314bcc9be0
+      - req_f98710550c77b43865572fc1a7a0bc53
     status:
       code: 200
       message: OK
@@ -183,7 +191,7 @@ interactions:
             "role": "assistant",
             "tool_calls": [
               {
-                "id": "call_SBoEJuTov3qHLothPvvgZyO6",
+                "id": "call_eqbDFUdPqay2WjsSzZEiAn0U",
                 "function": {
                   "arguments": "{\"location\": \"Seattle, WA\"}",
                   "name": "get_current_weather"
@@ -191,7 +199,7 @@ interactions:
                 "type": "function"
               },
               {
-                "id": "call_2nL8HxSquLkKxpTENiZ17ynv",
+                "id": "call_tn3sgasg6GaftTdancBYJNJN",
                 "function": {
                   "arguments": "{\"location\": \"San Francisco, CA\"}",
                   "name": "get_current_weather"
@@ -203,12 +211,12 @@ interactions:
           {
             "role": "tool",
             "content": "50 degrees and raining",
-            "tool_call_id": "call_SBoEJuTov3qHLothPvvgZyO6"
+            "tool_call_id": "call_eqbDFUdPqay2WjsSzZEiAn0U"
           },
           {
             "role": "tool",
             "content": "70 degrees and sunny",
-            "tool_call_id": "call_2nL8HxSquLkKxpTENiZ17ynv"
+            "tool_call_id": "call_tn3sgasg6GaftTdancBYJNJN"
           }
         ],
         "model": "gpt-4o-mini"
@@ -218,6 +226,8 @@ interactions:
       - application/json
       accept-encoding:
       - gzip, deflate
+      authorization:
+      - Bearer test_openai_api_key
       connection:
       - keep-alive
       content-length:
@@ -225,12 +235,11 @@ interactions:
       content-type:
       - application/json
       cookie:
-      - __cf_bm=moy9FTa50Ug99_ZQaP2atn.PgzKoQyF7pvWqG_CIf54-1730680121-1.0.1.1-mczyecbBSU5hWl8uat1lcU6ya1g6MY.Oso_vHVilj7O8C2RJrObTEyzD5DAMphUCFqBYVGHMurXg16CMssvuNw;
-        _cfuvid=FpMMQOb0sz4wVuQI7b1RY2KJKVNyHctKOqsWAL4tph0-1730680121454-0.0.1.1-604800000
+      - test_cookie
       host:
       - api.openai.com
       user-agent:
-      - OpenAI/Python 1.26.0
+      - OpenAI/Python 1.54.3
       x-stainless-arch:
       - arm64
       x-stainless-async:
@@ -240,7 +249,9 @@ interactions:
       x-stainless-os:
       - MacOS
       x-stainless-package-version:
-      - 1.26.0
+      - 1.54.3
+      x-stainless-retry-count:
+      - '0'
       x-stainless-runtime:
       - CPython
       x-stainless-runtime-version:
@@ -251,16 +262,16 @@ interactions:
     body:
       string: |-
         {
-          "id": "chatcmpl-APfFRbb22UJc07TGY9KcrrWO5fs9c",
+          "id": "chatcmpl-ASYMYObbcUyZ77rbvypWmcZPIVSf1",
           "object": "chat.completion",
-          "created": 1730680121,
+          "created": 1731368638,
           "model": "gpt-4o-mini-2024-07-18",
           "choices": [
             {
               "index": 0,
               "message": {
                 "role": "assistant",
-                "content": "Today, the weather in Seattle is 50 degrees and raining, while in San Francisco, it's 70 degrees and sunny.",
+                "content": "Today, the weather in Seattle is 50 degrees and raining, while San Francisco is enjoying 70 degrees and sunny weather.",
                 "refusal": null
               },
               "logprobs": null,
@@ -272,10 +283,14 @@ interactions:
             "completion_tokens": 25,
             "total_tokens": 124,
             "prompt_tokens_details": {
-              "cached_tokens": 0
+              "cached_tokens": 0,
+              "audio_tokens": 0
             },
             "completion_tokens_details": {
-              "reasoning_tokens": 0
+              "reasoning_tokens": 0,
+              "audio_tokens": 0,
+              "accepted_prediction_tokens": 0,
+              "rejected_prediction_tokens": 0
             }
           },
           "system_fingerprint": "fp_0ba0d124f1"
@@ -284,13 +299,13 @@ interactions:
       CF-Cache-Status:
       - DYNAMIC
       CF-RAY:
-      - 8dd07c473cc4ce35-SIN
+      - 8e1225c12f6340b0-SIN
       Connection:
       - keep-alive
       Content-Type:
       - application/json
       Date:
-      - Mon, 04 Nov 2024 00:28:42 GMT
+      - Mon, 11 Nov 2024 23:43:58 GMT
       Server:
       - cloudflare
       Set-Cookie: test_set_cookie
@@ -303,10 +318,10 @@ interactions:
       alt-svc:
       - h3=":443"; ma=86400
       content-length:
-      - '731'
-      openai-organization: test_organization
+      - '870'
+      openai-organization: test_openai_org_id
       openai-processing-ms:
-      - '380'
+      - '722'
       openai-version:
       - '2020-10-01'
       strict-transport-security:
@@ -318,13 +333,13 @@ interactions:
       x-ratelimit-remaining-requests:
       - '9993'
       x-ratelimit-remaining-tokens:
-      - '199947'
+      - '199948'
       x-ratelimit-reset-requests:
-      - 52.749s
+      - 53.254s
       x-ratelimit-reset-tokens:
       - 15ms
       x-request-id:
-      - req_f56de3d8b168900542a01b971b367a9f
+      - req_2bb3d10a2a75f5d64a24aef595a0d8dd
     status:
       code: 200
       message: OK
