@@ -37,7 +37,6 @@ def get_instrumentation_packages():
             continue
         pkg_paths.append(pkg_path)
 
-
     for pkg_path in sorted(pkg_paths):
         try:
             version = subprocess.check_output(
