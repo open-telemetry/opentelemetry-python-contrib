@@ -13,6 +13,22 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- `opentelemetry-instrumentation-sqlalchemy` Update unit tests to run with SQLALchemy 2
+  ([#2976](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/2976))
+
+### Fixed
+
+### Breaking changes
+
+- `opentelemetry-instrumentation-sqlalchemy` teach instruments version
+  ([#2971](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/2971))
+- Drop `opentelemetry-instrumentation-test` package from default instrumentation list
+  ([#2969](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/2969))
+
+## Version 1.28.0/0.49b0 (2024-11-05)
+
+### Added
+
 - `opentelemetry-instrumentation-openai-v2` Instrumentation for OpenAI >= 0.27.0
   ([#2759](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/2759))
 - `opentelemetry-instrumentation-fastapi` Add autoinstrumentation mechanism tests.
@@ -30,7 +46,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - `opentelemetry-instrumentation-aiokafka` Wrap `AIOKafkaConsumer.getone()` instead of `AIOKafkaConsumer.__anext__`
   ([#2874](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/2874))
-- `opentelemetry-instrumentation-confluent-kafka` Fix to allow `topic` to be extracted from `kwargs` in `produce()` 
+- `opentelemetry-instrumentation-confluent-kafka` Fix to allow `topic` to be extracted from `kwargs` in `produce()`
   ([#2901])(https://github.com/open-telemetry/opentelemetry-python-contrib/pull/2901)
 - `opentelemetry-instrumentation-system-metrics` Update metric units to conform to UCUM conventions.
   ([#2922](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/2922))
@@ -40,6 +56,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   ([#2940](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/2940))
 - `opentelemetry-instrumentation-dbapi` sqlcommenter key values created from PostgreSQL, MySQL systems
   ([#2897](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/2897))
+- `opentelemetry-instrumentation-system-metrics`: don't report open file descriptors on Windows
+  ([#2946](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/2946))
 
 ### Breaking changes
 

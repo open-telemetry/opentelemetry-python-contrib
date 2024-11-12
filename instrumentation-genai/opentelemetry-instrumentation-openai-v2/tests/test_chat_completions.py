@@ -16,7 +16,7 @@
 from typing import Optional
 
 import pytest
-from openai import OpenAI
+from openai import APIConnectionError, NotFoundError, OpenAI
 from openai.resources.chat.completions import ChatCompletion
 
 from opentelemetry.sdk.trace import ReadableSpan
@@ -73,16 +73,12 @@ def test_chat_completion_bad_endpoint(span_exporter, instrument_no_content):
 
     client = OpenAI(base_url="http://localhost:4242")
 
-    exception = None
-    try:
+    with pytest.raises(APIConnectionError):
         client.chat.completions.create(
             messages=messages_value,
             model=llm_model_value,
             timeout=0.1,
         )
-        assert False, "Expected an exception"
-    except Exception as ex:  # pylint: disable=broad-exception-caught
-        exception = ex
 
     spans = span_exporter.get_finished_spans()
     assert_all_attributes(
@@ -90,8 +86,7 @@ def test_chat_completion_bad_endpoint(span_exporter, instrument_no_content):
     )
     assert 4242 == spans[0].attributes[ServerAttributes.SERVER_PORT]
     assert (
-        type(exception).__qualname__
-        == spans[0].attributes[ErrorAttributes.ERROR_TYPE]
+        "APIConnectionError" == spans[0].attributes[ErrorAttributes.ERROR_TYPE]
     )
 
 
@@ -102,24 +97,16 @@ def test_chat_completion_404(
     llm_model_value = "this-model-does-not-exist"
     messages_value = [{"role": "user", "content": "Say this is a test"}]
 
-    exception = None
-    try:
+    with pytest.raises(NotFoundError):
         openai_client.chat.completions.create(
             messages=messages_value,
             model=llm_model_value,
-            timeout=0.1,
         )
-        assert False, "Expected an exception"
-    except Exception as ex:  # pylint: disable=broad-exception-caught
-        exception = ex
 
     spans = span_exporter.get_finished_spans()
 
     assert_all_attributes(spans[0], llm_model_value)
-    assert (
-        type(exception).__qualname__
-        == spans[0].attributes[ErrorAttributes.ERROR_TYPE]
-    )
+    assert "NotFoundError" == spans[0].attributes[ErrorAttributes.ERROR_TYPE]
 
 
 @pytest.mark.vcr()
