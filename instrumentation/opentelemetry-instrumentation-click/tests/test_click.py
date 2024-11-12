@@ -22,6 +22,7 @@ from opentelemetry.trace.status import StatusCode
 
 
 class ClickTestCase(TestBase):
+    # pylint: disable=unbalanced-tuple-unpacking
     def setUp(self):
         super().setUp()
 
