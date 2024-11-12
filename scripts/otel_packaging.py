@@ -21,14 +21,24 @@ import tomli
 scripts_path = os.path.dirname(os.path.abspath(__file__))
 root_path = os.path.dirname(scripts_path)
 instrumentations_path = os.path.join(root_path, "instrumentation")
+genai_instrumentations_path = os.path.join(root_path, "instrumentation-genai")
 
 
 def get_instrumentation_packages():
-    for pkg in sorted(os.listdir(instrumentations_path)):
+    pkg_paths = []
+    for pkg in os.listdir(instrumentations_path):
         pkg_path = os.path.join(instrumentations_path, pkg)
         if not os.path.isdir(pkg_path):
             continue
+        pkg_paths.append(pkg_path)
+    for pkg in os.listdir(genai_instrumentations_path):
+        pkg_path = os.path.join(genai_instrumentations_path, pkg)
+        if not os.path.isdir(pkg_path):
+            continue
+        pkg_paths.append(pkg_path)
 
+
+    for pkg_path in sorted(pkg_paths):
         try:
             version = subprocess.check_output(
                 "hatch version",
