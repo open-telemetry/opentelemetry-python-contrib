@@ -55,7 +55,7 @@ def fixture_event_logger_provider(log_exporter):
 @pytest.fixture(autouse=True)
 def environment():
     if not os.getenv("OPENAI_API_KEY"):
-        os.environ["OPENAI_API_KEY"] = "test-api-key"
+        os.environ["OPENAI_API_KEY"] = "test_openai_api_key"
 
 
 @pytest.fixture
@@ -71,7 +71,12 @@ def async_openai_client():
 @pytest.fixture(scope="module")
 def vcr_config():
     return {
-        "filter_headers": ["authorization", "api-key"],
+        "filter_headers": [
+            ("cookie", "test_cookie"),
+            ("authorization", "Bearer test_openai_api_key"),
+            ("openai-organization", "test_openai_org_id"),
+            ("openai-project", "test_openai_project_id"),
+        ],
         "decode_compressed_response": True,
         "before_record_response": scrub_response_headers,
     }
@@ -176,6 +181,6 @@ def scrub_response_headers(response):
     """
     This scrubs sensitive response headers. Note they are case-sensitive!
     """
-    response["headers"]["openai-organization"] = "test_organization"
+    response["headers"]["openai-organization"] = "test_openai_org_id"
     response["headers"]["Set-Cookie"] = "test_set_cookie"
     return response
