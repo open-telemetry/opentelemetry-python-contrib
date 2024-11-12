@@ -161,7 +161,7 @@ class PrettyPrintJSONBody:
         return yaml.load(cassette_string, Loader=yaml.Loader)
 
 
-@pytest.fixture(scope="module")
+@pytest.fixture(scope="module", autouse=True)
 def fixture_vcr(vcr):
     vcr.register_serializer("yaml", PrettyPrintJSONBody)
     return vcr
