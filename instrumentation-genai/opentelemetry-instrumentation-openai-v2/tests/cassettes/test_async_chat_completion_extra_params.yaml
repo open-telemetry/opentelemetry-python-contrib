@@ -20,6 +20,8 @@ interactions:
       - application/json
       accept-encoding:
       - gzip, deflate
+      authorization:
+      - Bearer test_openai_api_key
       connection:
       - keep-alive
       content-length:
@@ -50,9 +52,9 @@ interactions:
     body:
       string: |-
         {
-          "id": "chatcmpl-ASNOJZk6WBJTYWmACy5zBiYnkvXAw",
+          "id": "chatcmpl-ASv9WMTAMZY4O1EImv3csZa6Ch7KI",
           "object": "chat.completion",
-          "created": 1731326463,
+          "created": 1731456242,
           "model": "gpt-4o-mini-2024-07-18",
           "choices": [
             {
@@ -88,13 +90,13 @@ interactions:
       CF-Cache-Status:
       - DYNAMIC
       CF-RAY:
-      - 8e0e20191e7670e7-MRS
+      - 8e1a8088f867e167-MRS
       Connection:
       - keep-alive
       Content-Type:
       - application/json
       Date:
-      - Mon, 11 Nov 2024 12:01:03 GMT
+      - Wed, 13 Nov 2024 00:04:02 GMT
       Server:
       - cloudflare
       Set-Cookie: test_set_cookie
@@ -108,9 +110,9 @@ interactions:
       - h3=":443"; ma=86400
       content-length:
       - '825'
-      openai-organization: test_organization
+      openai-organization: test_openai_org_id
       openai-processing-ms:
-      - '483'
+      - '488'
       openai-version:
       - '2020-10-01'
       strict-transport-security:
@@ -128,7 +130,7 @@ interactions:
       x-ratelimit-reset-tokens:
       - 0s
       x-request-id:
-      - req_bbcd55fb3044f058ea9f9ae8a388698d
+      - req_6df08d6267415e8f5db3628a6757edad
     status:
       code: 200
       message: OK

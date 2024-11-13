@@ -17,6 +17,8 @@ interactions:
       - application/json
       accept-encoding:
       - gzip, deflate
+      authorization:
+      - Bearer test_openai_api_key
       connection:
       - keep-alive
       content-length:
@@ -47,16 +49,16 @@ interactions:
     body:
       string: |-
         {
-          "id": "chatcmpl-ASNOJmzXWHqTArL7xMAtIJhIuu46p",
+          "id": "chatcmpl-ASv9XLlMmT7H3cf50dNTesHDBDwX5",
           "object": "chat.completion",
-          "created": 1731326463,
+          "created": 1731456243,
           "model": "gpt-4o-mini-2024-07-18",
           "choices": [
             {
               "index": 0,
               "message": {
                 "role": "assistant",
-                "content": "This is a test! How can I assist you further?",
+                "content": "This is a test.",
                 "refusal": null
               },
               "logprobs": null,
@@ -66,7 +68,7 @@ interactions:
               "index": 1,
               "message": {
                 "role": "assistant",
-                "content": "This is a test. How can I assist you further?",
+                "content": "This is a test.",
                 "refusal": null
               },
               "logprobs": null,
@@ -75,8 +77,8 @@ interactions:
           ],
           "usage": {
             "prompt_tokens": 12,
-            "completion_tokens": 24,
-            "total_tokens": 36,
+            "completion_tokens": 10,
+            "total_tokens": 22,
             "prompt_tokens_details": {
               "cached_tokens": 0,
               "audio_tokens": 0
@@ -94,13 +96,13 @@ interactions:
       CF-Cache-Status:
       - DYNAMIC
       CF-RAY:
-      - 8e0e201e3de30771-MRS
+      - 8e1a808f6d8e0d8b-MRS
       Connection:
       - keep-alive
       Content-Type:
       - application/json
       Date:
-      - Mon, 11 Nov 2024 12:01:04 GMT
+      - Wed, 13 Nov 2024 00:04:04 GMT
       Server:
       - cloudflare
       Set-Cookie: test_set_cookie
@@ -113,10 +115,10 @@ interactions:
       alt-svc:
       - h3=":443"; ma=86400
       content-length:
-      - '1030'
-      openai-organization: test_organization
+      - '970'
+      openai-organization: test_openai_org_id
       openai-processing-ms:
-      - '373'
+      - '306'
       openai-version:
       - '2020-10-01'
       strict-transport-security:
@@ -134,7 +136,7 @@ interactions:
       x-ratelimit-reset-tokens:
       - 0s
       x-request-id:
-      - req_d1f29830c9ae2a48e896be67a1edcfd6
+      - req_1317908e0f9b73276b57d4e171c533ea
     status:
       code: 200
       message: OK

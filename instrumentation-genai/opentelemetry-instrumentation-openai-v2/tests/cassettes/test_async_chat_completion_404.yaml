@@ -15,6 +15,8 @@ interactions:
       - application/json
       accept-encoding:
       - gzip, deflate
+      authorization:
+      - Bearer test_openai_api_key
       connection:
       - keep-alive
       content-length:
@@ -56,13 +58,13 @@ interactions:
       CF-Cache-Status:
       - DYNAMIC
       CF-RAY:
-      - 8e0e20160ec6e17f-MRS
+      - 8e1a80827a861852-MRS
       Connection:
       - keep-alive
       Content-Type:
       - application/json; charset=utf-8
       Date:
-      - Mon, 11 Nov 2024 12:01:02 GMT
+      - Wed, 13 Nov 2024 00:04:01 GMT
       Server:
       - cloudflare
       Set-Cookie: test_set_cookie
@@ -74,13 +76,13 @@ interactions:
       - h3=":443"; ma=86400
       content-length:
       - '231'
-      openai-organization: test_organization
+      openai-organization: test_openai_org_id
       strict-transport-security:
       - max-age=31536000; includeSubDomains; preload
       vary:
       - Origin
       x-request-id:
-      - req_93d359c0eeba1f2be7308d9132e82bf5
+      - req_5cf06a7fabd45ebe21ee38c14c5b2f76
     status:
       code: 404
       message: Not Found
