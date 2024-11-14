@@ -13,4 +13,4 @@
 # limitations under the License.
 
 
-_instruments = ("click < 9.0.0",)
+_instruments = ("click >= 8.1.3, < 9.0.0",)
