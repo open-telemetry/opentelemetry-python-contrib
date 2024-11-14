@@ -38,6 +38,8 @@ API
 ---
 """
 
+import os
+import sys
 from functools import partial
 from logging import getLogger
 from typing import Collection
@@ -51,6 +53,12 @@ from opentelemetry.instrumentation.click.version import __version__
 from opentelemetry.instrumentation.instrumentor import BaseInstrumentor
 from opentelemetry.instrumentation.utils import (
     unwrap,
+)
+from opentelemetry.semconv._incubating.attributes.process_attributes import (
+    PROCESS_COMMAND_ARGS,
+    PROCESS_EXECUTABLE_NAME,
+    PROCESS_EXIT_CODE,
+    PROCESS_PID,
 )
 from opentelemetry.semconv.attributes.error_attributes import ERROR_TYPE
 from opentelemetry.trace.status import StatusCode
@@ -67,7 +75,12 @@ def _command_invoke_wrapper(wrapped, instance, args, kwargs, tracer):
 
     ctx = args[0]
     span_name = ctx.info_name
-    span_attributes = {}
+    span_attributes = {
+        PROCESS_COMMAND_ARGS: sys.argv,
+        PROCESS_EXECUTABLE_NAME: sys.argv[0],
+        PROCESS_EXIT_CODE: 0,
+        PROCESS_PID: os.getpid(),
+    }
 
     with tracer.start_as_current_span(
         name=span_name,
@@ -78,7 +91,11 @@ def _command_invoke_wrapper(wrapped, instance, args, kwargs, tracer):
             return wrapped(*args, **kwargs)
         except Exception as exc:
             span.set_status(StatusCode.ERROR, str(exc))
-            span.set_attribute(ERROR_TYPE, exc.__class__.__qualname__)
+            if span.is_recording():
+                span.set_attribute(ERROR_TYPE, exc.__class__.__qualname__)
+                span.set_attribute(
+                    PROCESS_EXIT_CODE, getattr(exc, "exit_code", 1)
+                )
             raise
 
 
