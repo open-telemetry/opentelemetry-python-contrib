@@ -21,15 +21,12 @@ from opentelemetry._events import Event, EventLogger
 from opentelemetry.semconv._incubating.attributes import (
     gen_ai_attributes as GenAIAttributes,
 )
-from opentelemetry.semconv.attributes import (
-    error_attributes as ErrorAttributes,
-)
 from opentelemetry.trace import Span, SpanKind, Tracer
-from opentelemetry.trace.status import Status, StatusCode
 
 from .utils import (
     choice_to_event,
     get_llm_request_attributes,
+    handle_span_exception,
     is_streaming,
     message_to_event,
     set_span_attribute,
@@ -72,12 +69,49 @@ def chat_completions_create(
                 return result
 
             except Exception as error:
-                span.set_status(Status(StatusCode.ERROR, str(error)))
+                handle_span_exception(span, error)
+                raise
+
+    return traced_method
+
+
+def async_chat_completions_create(
+    tracer: Tracer, event_logger: EventLogger, capture_content: bool
+):
+    """Wrap the `create` method of the `AsyncChatCompletion` class to trace it."""
+
+    async def traced_method(wrapped, instance, args, kwargs):
+        span_attributes = {**get_llm_request_attributes(kwargs, instance)}
+
+        span_name = f"{span_attributes[GenAIAttributes.GEN_AI_OPERATION_NAME]} {span_attributes[GenAIAttributes.GEN_AI_REQUEST_MODEL]}"
+        with tracer.start_as_current_span(
+            name=span_name,
+            kind=SpanKind.CLIENT,
+            attributes=span_attributes,
+            end_on_exit=False,
+        ) as span:
+            if span.is_recording():
+                for message in kwargs.get("messages", []):
+                    event_logger.emit(
+                        message_to_event(message, capture_content)
+                    )
+
+            try:
+                result = await wrapped(*args, **kwargs)
+                if is_streaming(kwargs):
+                    return StreamWrapper(
+                        result, span, event_logger, capture_content
+                    )
+
                 if span.is_recording():
-                    span.set_attribute(
-                        ErrorAttributes.ERROR_TYPE, type(error).__qualname__
+                    _set_response_attributes(
+                        span, result, event_logger, capture_content
                     )
                 span.end()
+                return result
+
+            except Exception as error:
+                handle_span_exception(span, error)
                 raise
 
     return traced_method
@@ -286,10 +320,19 @@ class StreamWrapper:
     def __exit__(self, exc_type, exc_val, exc_tb):
         try:
             if exc_type is not None:
-                self.span.set_status(Status(StatusCode.ERROR, str(exc_val)))
-                self.span.set_attribute(
-                    ErrorAttributes.ERROR_TYPE, exc_type.__qualname__
-                )
+                handle_span_exception(self.span, exc_val)
+        finally:
+            self.cleanup()
+        return False  # Propagate the exception
+
+    async def __aenter__(self):
+        self.setup()
+        return self
+
+    async def __aexit__(self, exc_type, exc_val, exc_tb):
+        try:
+            if exc_type is not None:
+                handle_span_exception(self.span, exc_val)
         finally:
             self.cleanup()
         return False  # Propagate the exception
@@ -301,6 +344,9 @@ class StreamWrapper:
     def __iter__(self):
         return self
 
+    def __aiter__(self):
+        return self
+
     def __next__(self):
         try:
             chunk = next(self.stream)
@@ -310,10 +356,20 @@ class StreamWrapper:
             self.cleanup()
             raise
         except Exception as error:
-            self.span.set_status(Status(StatusCode.ERROR, str(error)))
-            self.span.set_attribute(
-                ErrorAttributes.ERROR_TYPE, type(error).__qualname__
-            )
+            handle_span_exception(self.span, error)
+            self.cleanup()
+            raise
+
+    async def __anext__(self):
+        try:
+            chunk = await self.stream.__anext__()
+            self.process_chunk(chunk)
+            return chunk
+        except StopAsyncIteration:
+            self.cleanup()
+            raise
+        except Exception as error:
+            handle_span_exception(self.span, error)
             self.cleanup()
             raise
 
