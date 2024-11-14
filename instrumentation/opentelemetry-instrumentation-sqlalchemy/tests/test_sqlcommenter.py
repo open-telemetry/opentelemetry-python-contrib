@@ -70,7 +70,7 @@ class TestSqlalchemyInstrumentationWithSQLCommenter(TestBase):
             commenter_options={"db_framework": False},
         )
         cnx = engine.connect()
-        cnx.execute("SELECT  1;").fetchall()
+        cnx.execute(text("SELECT  1;")).fetchall()
         query_log = self.caplog.records[-2].getMessage()
         self.assertRegex(
             query_log,
