@@ -938,8 +938,9 @@ class HTTPXClientInstrumentor(BaseInstrumentor):
 
         return response
 
-    @staticmethod
+    @classmethod
     def instrument_client(
+        cls,
         client: typing.Union[httpx.Client, httpx.AsyncClient],
         tracer_provider: TracerProvider = None,
         request_hook: typing.Union[
@@ -996,7 +997,7 @@ class HTTPXClientInstrumentor(BaseInstrumentor):
                 client._transport,
                 "handle_request",
                 partial(
-                    HTTPXClientInstrumentor._handle_request_wrapper,
+                    cls._handle_request_wrapper,
                     tracer=tracer,
                     sem_conv_opt_in_mode=sem_conv_opt_in_mode,
                     request_hook=request_hook,
@@ -1008,7 +1009,7 @@ class HTTPXClientInstrumentor(BaseInstrumentor):
                     transport,
                     "handle_request",
                     partial(
-                        HTTPXClientInstrumentor._handle_request_wrapper,
+                        cls._handle_request_wrapper,
                         tracer=tracer,
                         sem_conv_opt_in_mode=sem_conv_opt_in_mode,
                         request_hook=request_hook,
@@ -1021,7 +1022,7 @@ class HTTPXClientInstrumentor(BaseInstrumentor):
                 client._transport,
                 "handle_async_request",
                 partial(
-                    HTTPXClientInstrumentor._handle_async_request_wrapper,
+                    cls._handle_async_request_wrapper,
                     tracer=tracer,
                     sem_conv_opt_in_mode=sem_conv_opt_in_mode,
                     async_request_hook=async_request_hook,
@@ -1033,7 +1034,7 @@ class HTTPXClientInstrumentor(BaseInstrumentor):
                     transport,
                     "handle_async_request",
                     partial(
-                        HTTPXClientInstrumentor._handle_async_request_wrapper,
+                        cls._handle_async_request_wrapper,
                         tracer=tracer,
                         sem_conv_opt_in_mode=sem_conv_opt_in_mode,
                         async_request_hook=async_request_hook,
