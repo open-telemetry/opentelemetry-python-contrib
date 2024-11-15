@@ -179,10 +179,14 @@ API
 from __future__ import annotations
 
 import logging
+import types
 from typing import Collection, Literal
 
 import fastapi
+from starlette.applications import Starlette
+from starlette.middleware.error import ServerErrorMiddleware
 from starlette.routing import Match
+from starlette.types import ASGIApp
 
 from opentelemetry.instrumentation._semconv import (
     _get_schema_url,
@@ -280,21 +284,38 @@ class FastAPIInstrumentor(BaseInstrumentor):
                 schema_url=_get_schema_url(sem_conv_opt_in_mode),
             )
 
-            app.add_middleware(
-                OpenTelemetryMiddleware,
-                excluded_urls=excluded_urls,
-                default_span_details=_get_default_span_details,
-                server_request_hook=server_request_hook,
-                client_request_hook=client_request_hook,
-                client_response_hook=client_response_hook,
-                # Pass in tracer/meter to get __name__and __version__ of fastapi instrumentation
-                tracer=tracer,
-                meter=meter,
-                http_capture_headers_server_request=http_capture_headers_server_request,
-                http_capture_headers_server_response=http_capture_headers_server_response,
-                http_capture_headers_sanitize_fields=http_capture_headers_sanitize_fields,
-                exclude_spans=exclude_spans,
-            )
+            # Instead of using `app.add_middleware` we monkey patch `build_middleware_stack` to insert our middleware
+            # as the outermost middleware.
+            # Otherwise `OpenTelemetryMiddleware` would have unhandled exceptions tearing through it and would not be able
+            # to faithfully record what is returned to the client since it technically cannot know what `ServerErrorMiddleware` is going to do.
+
+            def build_middleware_stack(self: Starlette) -> ASGIApp:
+                stack = super().build_middleware_stack()
+                stack = OpenTelemetryMiddleware(
+                    stack,
+                    excluded_urls=excluded_urls,
+                    default_span_details=_get_default_span_details,
+                    server_request_hook=server_request_hook,
+                    client_request_hook=client_request_hook,
+                    client_response_hook=client_response_hook,
+                    # Pass in tracer/meter to get __name__and __version__ of fastapi instrumentation
+                    tracer=tracer,
+                    meter=meter,
+                    http_capture_headers_server_request=http_capture_headers_server_request,
+                    http_capture_headers_server_response=http_capture_headers_server_response,
+                    http_capture_headers_sanitize_fields=http_capture_headers_sanitize_fields,
+                    exclude_spans=exclude_spans,
+                )
+                # Wrap in an outer layer of ServerErrorMiddleware so that any exceptions raised in OpenTelemetryMiddleware
+                # are handled.
+                # This should not happen unless there is a bug in OpenTelemetryMiddleware, but if there is we don't want that
+                # to impact the user's application just because we wrapped the middlewares in this order.
+                stack = ServerErrorMiddleware(stack)
+                return stack
+
+            app._original_build_middleware_stack = app.build_middleware_stack
+            app.build_middleware_stack = types.MethodType(build_middleware_stack, app)
+
             app._is_instrumented_by_opentelemetry = True
             if app not in _InstrumentedFastAPI._instrumented_fastapi_apps:
                 _InstrumentedFastAPI._instrumented_fastapi_apps.add(app)
@@ -305,11 +326,8 @@ class FastAPIInstrumentor(BaseInstrumentor):
 
     @staticmethod
     def uninstrument_app(app: fastapi.FastAPI):
-        app.user_middleware = [
-            x
-            for x in app.user_middleware
-            if x.cls is not OpenTelemetryMiddleware
-        ]
+        app.build_middleware_stack = app._original_build_middleware_stack
+        del app._original_build_middleware_stack
         app.middleware_stack = app.build_middleware_stack()
         app._is_instrumented_by_opentelemetry = False
 
