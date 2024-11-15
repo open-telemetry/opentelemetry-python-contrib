@@ -328,8 +328,12 @@ class FastAPIInstrumentor(BaseInstrumentor):
 
     @staticmethod
     def uninstrument_app(app: fastapi.FastAPI):
-        app.build_middleware_stack = app._original_build_middleware_stack
-        del app._original_build_middleware_stack
+        original_build_middleware_stack = getattr(
+            app, "_original_build_middleware_stack", None
+        )
+        if original_build_middleware_stack:
+            app.build_middleware_stack = original_build_middleware_stack
+            del app._original_build_middleware_stack
         app.middleware_stack = app.build_middleware_stack()
         app._is_instrumented_by_opentelemetry = False
 
