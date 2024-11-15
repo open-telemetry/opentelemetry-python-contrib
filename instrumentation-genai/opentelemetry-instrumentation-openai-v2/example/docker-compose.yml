@@ -1,0 +1,9 @@
+services:
+  opentelemetry-python-openai:
+    container_name: opentelemetry-python-openai
+    build:
+      context: .
+    env_file:
+      - .env
+    environment:
+      OTEL_EXPORTER_OTLP_ENDPOINT: "http://host.docker.internal:4318"
