@@ -204,10 +204,18 @@ class TestBaseFastAPI(TestBase):
         @app.get("/healthzz")
         async def _():
             return {"message": "ok"}
+        
+        @app.get("/error")
+        async def _():
+            raise UnhandledException("This is an unhandled exception")
 
         app.mount("/sub", app=sub_app)
 
         return app
+
+
+class UnhandledException(Exception):
+    pass
 
 
 class TestBaseManualFastAPI(TestBaseFastAPI):
@@ -397,6 +405,26 @@ class TestFastAPIManualInstrumentation(TestBaseManualFastAPI):
         self._client.get("/healthzz")
         spans = self.memory_exporter.get_finished_spans()
         self.assertEqual(len(spans), 0)
+
+    def test_fastapi_unhandled_exception(self):
+        """If the application has an unhandled error the instrumentation should capture that a 500 response is returned."""
+        try:
+            self._client.get("/error")
+        except UnhandledException:
+            pass
+        else:
+            self.fail("Expected UnhandledException")
+
+        spans = self.memory_exporter.get_finished_spans()
+        self.assertEqual(len(spans), 3)
+        for span in spans:
+            self.assertIn("GET /error", span.name)
+            self.assertEqual(
+                span.attributes[SpanAttributes.HTTP_ROUTE], "/error"
+            )
+            self.assertEqual(
+                span.attributes[SpanAttributes.HTTP_STATUS_CODE], 500
+            )
 
     def test_fastapi_excluded_urls_not_env(self):
         """Ensure that given fastapi routes are excluded when passed explicitly (not in the environment)"""
