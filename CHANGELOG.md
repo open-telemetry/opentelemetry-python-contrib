@@ -14,6 +14,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Fixed
 - `opentelemetry-instrumentation-redis` Add missing entry in doc string for `def _instrument`
   ([#3247](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/3247))
+- `opentelemetry-instrumentation-fastapi`: instrument unhandled exceptions
+  ([#3012](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/3012))
 
 ## Version 1.30.0/0.51b0 (2025-02-03)
 
