@@ -13,6 +13,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- Add `opentelemetry-instrumentation-openai-v2` to `opentelemetry-bootstrap`
+  ([#2996](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/2996))
+
 ### Fixed
 
 - `opentelemetry-instrumentation-httpx`: instrument_client is a static method again
