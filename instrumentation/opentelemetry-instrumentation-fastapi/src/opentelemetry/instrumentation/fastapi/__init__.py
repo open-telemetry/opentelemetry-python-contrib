@@ -314,7 +314,9 @@ class FastAPIInstrumentor(BaseInstrumentor):
                 return stack
 
             app._original_build_middleware_stack = app.build_middleware_stack
-            app.build_middleware_stack = types.MethodType(build_middleware_stack, app)
+            app.build_middleware_stack = types.MethodType(
+                build_middleware_stack, app
+            )
 
             app._is_instrumented_by_opentelemetry = True
             if app not in _InstrumentedFastAPI._instrumented_fastapi_apps:
