@@ -184,7 +184,7 @@ from typing import Collection, Literal
 
 import fastapi
 from starlette.applications import Starlette
-from starlette.middleware.error import ServerErrorMiddleware
+from starlette.middleware.errors import ServerErrorMiddleware
 from starlette.routing import Match
 from starlette.types import ASGIApp
 
@@ -290,7 +290,7 @@ class FastAPIInstrumentor(BaseInstrumentor):
             # to faithfully record what is returned to the client since it technically cannot know what `ServerErrorMiddleware` is going to do.
 
             def build_middleware_stack(self: Starlette) -> ASGIApp:
-                stack = super().build_middleware_stack()
+                stack = type(self).build_middleware_stack(self)
                 stack = OpenTelemetryMiddleware(
                     stack,
                     excluded_urls=excluded_urls,
