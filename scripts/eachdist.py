@@ -667,6 +667,9 @@ def update_dependencies(targets, version, packages):
 
 def update_patch_dependencies(targets, version, prev_version, packages):
     print("updating patch dependencies")
+    if "all" in packages:
+        packages.extend(targets)
+
     # PEP 508 allowed specifier operators
     operators = ["==", "!=", "<=", ">=", "<", ">", "===", "~=", "="]
     operators_pattern = "|".join(re.escape(op) for op in operators)
@@ -715,10 +718,12 @@ def release_args(args):
     versions = args.versions
     updated_versions = []
 
+    # remove excluded packages
     excluded = cfg["exclude_release"]["packages"].split()
     targets = [
         target for target in targets if basename(target) not in excluded
     ]
+
     for group in versions.split(","):
         mcfg = cfg[group]
         version = mcfg["version"]
@@ -742,10 +747,18 @@ def patch_release_args(args):
     targets = list(find_targets_unordered(rootpath))
     cfg = ConfigParser()
     cfg.read(str(find_projectroot() / "eachdist.ini"))
+
+    # remove excluded packages
+    excluded = cfg["exclude_release"]["packages"].split()
+    targets = [
+        target for target in targets if basename(target) not in excluded
+    ]
+
     # stable
     mcfg = cfg["stable"]
     packages = mcfg["packages"].split()
     print(f"update stable packages to {args.stable_version}")
+
     update_patch_dependencies(
         targets, args.stable_version, args.stable_version_prev, packages
     )
