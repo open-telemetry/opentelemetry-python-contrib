@@ -10,7 +10,7 @@ on:
   pull_request:
 
 env:
-  CORE_REPO_SHA: a1083d1667583773ade8f4f54e1d96b32c97ddf9
+  CORE_REPO_SHA: opentelemetrybot/prepare-release-1.28.2-0.49b2
   CONTRIB_REPO_SHA: main
   PIP_EXISTS_ACTION: w
 
