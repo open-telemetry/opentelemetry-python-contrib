@@ -1005,7 +1005,7 @@ class HTTPXClientInstrumentor(BaseInstrumentor):
                 ),
             )
             for transport in client._mounts.values():
-                if transport is not None:
+                if hasattr(transport, "handle_request"):
                     wrap_function_wrapper(
                         transport,
                         "handle_request",
@@ -1031,7 +1031,7 @@ class HTTPXClientInstrumentor(BaseInstrumentor):
                 ),
             )
             for transport in client._mounts.values():
-                if transport is not None:
+                if hasattr(transport, "handle_async_request"):
                     wrap_function_wrapper(
                         transport,
                         "handle_async_request",
