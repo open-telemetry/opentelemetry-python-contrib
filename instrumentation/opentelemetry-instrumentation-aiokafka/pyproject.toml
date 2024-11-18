@@ -26,8 +26,8 @@ classifiers = [
 ]
 dependencies = [
   "opentelemetry-api ~= 1.27",
-  "opentelemetry-instrumentation == 0.49b1",
-  "opentelemetry-semantic-conventions == 0.49b1",
+  "opentelemetry-instrumentation == 0.49b2",
+  "opentelemetry-semantic-conventions == 0.49b2",
 ]
 
 [project.optional-dependencies]
