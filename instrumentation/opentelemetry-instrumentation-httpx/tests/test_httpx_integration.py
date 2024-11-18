@@ -725,7 +725,6 @@ class BaseTestCases:
                 spans[1].attributes[SpanAttributes.HTTP_URL], https_url
             )
 
-    @mock.patch.dict("os.environ", {"NO_PROXY": ""}, clear=True)
     class BaseInstrumentorTest(BaseTest, metaclass=abc.ABCMeta):
         @abc.abstractmethod
         def create_client(
@@ -739,6 +738,10 @@ class BaseTestCases:
 
         @abc.abstractmethod
         def create_proxy_transport(self, url: str):
+            pass
+
+        @abc.abstractmethod
+        def get_transport_handler(self, transport):
             pass
 
         def setUp(self):
@@ -769,11 +772,9 @@ class BaseTestCases:
                             transport_type,
                         )
                     else:
-                        handler = getattr(transport, "handle_request", None)
-                        if not handler:
-                            handler = getattr(
-                                transport, "handle_async_request"
-                            )
+                        if transport is None:
+                            continue
+                        handler = self.get_transport_handler(transport)
                         self.assertTrue(
                             isinstance(handler, ObjectProxy)
                             and getattr(handler, "__wrapped__")
@@ -983,6 +984,21 @@ class BaseTestCases:
             self.assertEqual(result.text, "Hello!")
             self.assert_span()
 
+        @mock.patch.dict(
+            "os.environ", {"NO_PROXY": "http://mock/status/200"}, clear=True
+        )
+        def test_instrument_with_no_proxy(self):
+            proxy_mounts = self.create_proxy_mounts()
+            HTTPXClientInstrumentor().instrument()
+            client = self.create_client(mounts=proxy_mounts)
+            self.perform_request(self.URL, client=client)
+            self.assert_span(num_spans=1)
+            print(client._mounts)
+            self.assert_proxy_mounts(
+                client._mounts.values(),
+                3,
+            )
+
         def test_instrument_proxy(self):
             proxy_mounts = self.create_proxy_mounts()
             HTTPXClientInstrumentor().instrument()
@@ -993,6 +1009,25 @@ class BaseTestCases:
                 client._mounts.values(),
                 2,
             )
+
+        @mock.patch.dict("os.environ", {"NO_PROXY": "http://mock"}, clear=True)
+        def test_instrument_client_with_no_proxy(self):
+            proxy_mounts = self.create_proxy_mounts()
+            client = self.create_client(mounts=proxy_mounts)
+            self.assert_proxy_mounts(
+                client._mounts.values(),
+                3,
+                (httpx.HTTPTransport, httpx.AsyncHTTPTransport, type(None)),
+            )
+            HTTPXClientInstrumentor.instrument_client(client)
+            result = self.perform_request(self.URL, client=client)
+            self.assertEqual(result.text, "Hello!")
+            self.assert_span(num_spans=1)
+            self.assert_proxy_mounts(
+                client._mounts.values(),
+                3,
+            )
+            HTTPXClientInstrumentor().uninstrument_client(client)
 
         def test_instrument_client_with_proxy(self):
             proxy_mounts = self.create_proxy_mounts()
@@ -1188,6 +1223,9 @@ class TestSyncInstrumentationIntegration(BaseTestCases.BaseInstrumentorTest):
     def create_proxy_transport(self, url):
         return httpx.HTTPTransport(proxy=httpx.Proxy(url))
 
+    def get_transport_handler(self, transport):
+        return getattr(transport, "handle_request", None)
+
     def test_can_instrument_subclassed_client(self):
         class CustomClient(httpx.Client):
             pass
@@ -1240,6 +1278,9 @@ class TestAsyncInstrumentationIntegration(BaseTestCases.BaseInstrumentorTest):
 
     def create_proxy_transport(self, url):
         return httpx.AsyncHTTPTransport(proxy=httpx.Proxy(url))
+
+    def get_transport_handler(self, transport):
+        return getattr(transport, "handle_async_request", None)
 
     def test_basic_multiple(self):
         # We need to create separate clients because in httpx >= 0.19,
