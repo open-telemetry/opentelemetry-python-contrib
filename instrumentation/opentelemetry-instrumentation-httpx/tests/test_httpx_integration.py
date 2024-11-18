@@ -766,14 +766,14 @@ class BaseTestCases:
             self.assertEqual(len(mounts), num_mounts)
             for transport in mounts:
                 with self.subTest(transport):
+                    if transport is None:
+                        continue
                     if transport_type:
                         self.assertIsInstance(
                             transport,
                             transport_type,
                         )
                     else:
-                        if transport is None:
-                            continue
                         handler = self.get_transport_handler(transport)
                         self.assertTrue(
                             isinstance(handler, ObjectProxy)
@@ -1017,7 +1017,7 @@ class BaseTestCases:
             self.assert_proxy_mounts(
                 client._mounts.values(),
                 3,
-                (httpx.HTTPTransport, httpx.AsyncHTTPTransport, type(None)),
+                (httpx.HTTPTransport, httpx.AsyncHTTPTransport),
             )
             HTTPXClientInstrumentor.instrument_client(client)
             result = self.perform_request(self.URL, client=client)
