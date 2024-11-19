@@ -20,6 +20,7 @@ from platform import python_implementation
 from unittest import mock, skipIf
 
 from opentelemetry.instrumentation.system_metrics import (
+    _DEFAULT_CONFIG,
     SystemMetricsInstrumentor,
 )
 from opentelemetry.sdk.metrics import MeterProvider
@@ -865,3 +866,13 @@ class TestSystemMetrics(TestBase):
             expected,
         )
         mock_process_num_fds.assert_called()
+
+
+class TestConfigSystemMetrics(TestBase):
+    def test_that_correct_config_is_read(self):
+        for k, v in _DEFAULT_CONFIG.items():
+            meter_provider = MeterProvider([InMemoryMetricReader()])
+            instrumentor = SystemMetricsInstrumentor(config={k: v})
+            instrumentor.instrument(meter_provider=meter_provider)
+            meter_provider.force_flush()
+            instrumentor.uninstrument()

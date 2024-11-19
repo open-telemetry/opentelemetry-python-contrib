@@ -595,7 +595,7 @@ class SystemMetricsInstrumentor(BaseInstrumentor):
         """Observer callback for network packets"""
 
         for device, counters in psutil.net_io_counters(pernic=True).items():
-            for metric in self._config["system.network.dropped.packets"]:
+            for metric in self._config["system.network.packets"]:
                 recv_sent = {"receive": "recv", "transmit": "sent"}[metric]
                 if hasattr(counters, f"packets_{recv_sent}"):
                     self._system_network_packets_labels["device"] = device
@@ -626,7 +626,7 @@ class SystemMetricsInstrumentor(BaseInstrumentor):
         """Observer callback for network IO"""
 
         for device, counters in psutil.net_io_counters(pernic=True).items():
-            for metric in self._config["system.network.dropped.packets"]:
+            for metric in self._config["system.network.io"]:
                 recv_sent = {"receive": "recv", "transmit": "sent"}[metric]
                 if hasattr(counters, f"bytes_{recv_sent}"):
                     self._system_network_io_labels["device"] = device
