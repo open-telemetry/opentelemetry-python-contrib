@@ -19,6 +19,16 @@ import wrapt
 
 
 class BaseTracedConnectionProxy(ABC, wrapt.ObjectProxy):
+    """ABC for traced database client connection proxy.
+
+    Child classes are used to wrap Connection objects and
+    generate telemetry based on provided integration settings.
+
+    Child classes must implement cursor(), which should return
+    a traced database client cursor proxy depending on database
+    driver needs.
+    """
+
     # pylint: disable=unused-argument
     def __init__(self, connection, *args, **kwargs):
         wrapt.ObjectProxy.__init__(self, connection)
@@ -45,6 +55,15 @@ class BaseTracedConnectionProxy(ABC, wrapt.ObjectProxy):
 
 # pylint: disable=abstract-method
 class BaseTracedCursorProxy(ABC, wrapt.ObjectProxy):
+    """ABC for traced database client cursor proxy.
+
+    Child classes are used to wrap Cursor objects and
+    generate telemetry based on provided integration settings.
+
+    Child classes must implement __init__(), which should set
+    a CursorTracer depending on database driver needs.
+    """
+
     # pylint: disable=unused-argument
     @abstractmethod
     def __init__(self, cursor, *args, **kwargs):
