@@ -61,15 +61,17 @@ class BaseTracedCursorProxy(ABC, wrapt.ObjectProxy):
     generate telemetry based on provided integration settings.
 
     Child classes must implement __init__(), which should set
-    a CursorTracer depending on database driver needs.
+    class variable _cursor_tracer as a CursorTracer depending
+    on database driver needs.
     """
+
+    _cursor_tracer = None
 
     # pylint: disable=unused-argument
     @abstractmethod
     def __init__(self, cursor, *args, **kwargs):
         """Wrap db client cursor for tracing"""
         wrapt.ObjectProxy.__init__(self, cursor)
-        self._cursor_tracer = None
 
     def callproc(self, *args, **kwargs):
         return self._cursor_tracer.traced_execution(
