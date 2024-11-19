@@ -17,6 +17,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   ([#2976](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/2976))
   - Add `opentelemetry-instrumentation-openai-v2` to `opentelemetry-bootstrap`
   ([#2996](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/2996))
+- `opentelemetry-instrumentation-mysql` Add sqlcommenter support
+  ([#2943](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/2943))
 
 ### Fixed
 
