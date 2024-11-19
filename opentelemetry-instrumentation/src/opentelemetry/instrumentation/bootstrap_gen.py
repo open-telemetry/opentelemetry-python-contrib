@@ -17,6 +17,10 @@
 
 libraries = [
     {
+        "library": "openai >= 1.26.0",
+        "instrumentation": "opentelemetry-instrumentation-openai-v2==2.1b0.dev",
+    },
+    {
         "library": "aio_pika >= 7.2.0, < 10.0.0",
         "instrumentation": "opentelemetry-instrumentation-aio-pika==0.50b0.dev",
     },
@@ -161,7 +165,7 @@ libraries = [
         "instrumentation": "opentelemetry-instrumentation-requests==0.50b0.dev",
     },
     {
-        "library": "sqlalchemy",
+        "library": "sqlalchemy >= 1.0.0, < 2.1.0",
         "instrumentation": "opentelemetry-instrumentation-sqlalchemy==0.50b0.dev",
     },
     {
@@ -194,7 +198,6 @@ default_instrumentations = [
     "opentelemetry-instrumentation-dbapi==0.50b0.dev",
     "opentelemetry-instrumentation-logging==0.50b0.dev",
     "opentelemetry-instrumentation-sqlite3==0.50b0.dev",
-    "opentelemetry-instrumentation-test==1.0.0b.dev",
     "opentelemetry-instrumentation-threading==0.50b0.dev",
     "opentelemetry-instrumentation-urllib==0.50b0.dev",
     "opentelemetry-instrumentation-wsgi==0.50b0.dev",

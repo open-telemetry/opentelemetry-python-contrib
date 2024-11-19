@@ -102,9 +102,9 @@ jobs:
       - name: Publish to PyPI
         env:
           TWINE_USERNAME: '__token__'
-          TWINE_PASSWORD: ${{ secrets.test_pypi_token }}
+          TWINE_PASSWORD: ${{ secrets.pypi_password }}
         run: |
-          twine upload --repository testpypi --skip-existing --verbose dist/*
+          twine upload --skip-existing --verbose dist/*
 
       - name: Generate release notes
         env:

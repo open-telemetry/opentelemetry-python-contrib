@@ -9,7 +9,6 @@ interactions:
           }
         ],
         "model": "gpt-4o-mini",
-        "n": 2,
         "stream": false
       }
     headers:
@@ -22,38 +21,36 @@ interactions:
       connection:
       - keep-alive
       content-length:
-      - '114'
+      - '106'
       content-type:
       - application/json
       host:
       - api.openai.com
       user-agent:
-      - OpenAI/Python 1.54.3
+      - AsyncOpenAI/Python 1.26.0
       x-stainless-arch:
       - arm64
       x-stainless-async:
-      - 'false'
+      - async:asyncio
       x-stainless-lang:
       - python
       x-stainless-os:
       - MacOS
       x-stainless-package-version:
-      - 1.54.3
-      x-stainless-retry-count:
-      - '0'
+      - 1.26.0
       x-stainless-runtime:
       - CPython
       x-stainless-runtime-version:
-      - 3.12.6
+      - 3.12.5
     method: POST
     uri: https://api.openai.com/v1/chat/completions
   response:
     body:
       string: |-
         {
-          "id": "chatcmpl-ASYMUBq69UHDarAz2fsd0O50rv0r1",
+          "id": "chatcmpl-ASv9R2E7Yhb2e7bj4Xl0qm9s3J42Y",
           "object": "chat.completion",
-          "created": 1731368634,
+          "created": 1731456237,
           "model": "gpt-4o-mini-2024-07-18",
           "choices": [
             {
@@ -65,22 +62,12 @@ interactions:
               },
               "logprobs": null,
               "finish_reason": "stop"
-            },
-            {
-              "index": 1,
-              "message": {
-                "role": "assistant",
-                "content": "This is a test. How can I assist you further?",
-                "refusal": null
-              },
-              "logprobs": null,
-              "finish_reason": "stop"
             }
           ],
           "usage": {
             "prompt_tokens": 12,
-            "completion_tokens": 24,
-            "total_tokens": 36,
+            "completion_tokens": 12,
+            "total_tokens": 24,
             "prompt_tokens_details": {
               "cached_tokens": 0,
               "audio_tokens": 0
@@ -98,13 +85,13 @@ interactions:
       CF-Cache-Status:
       - DYNAMIC
       CF-RAY:
-      - 8e1225a91a253e53-SIN
+      - 8e1a80679a8311a6-MRS
       Connection:
       - keep-alive
       Content-Type:
       - application/json
       Date:
-      - Mon, 11 Nov 2024 23:43:54 GMT
+      - Wed, 13 Nov 2024 00:03:58 GMT
       Server:
       - cloudflare
       Set-Cookie: test_set_cookie
@@ -117,28 +104,28 @@ interactions:
       alt-svc:
       - h3=":443"; ma=86400
       content-length:
-      - '1030'
+      - '796'
       openai-organization: test_openai_org_id
       openai-processing-ms:
-      - '399'
+      - '359'
       openai-version:
       - '2020-10-01'
       strict-transport-security:
       - max-age=31536000; includeSubDomains; preload
       x-ratelimit-limit-requests:
-      - '10000'
+      - '30000'
       x-ratelimit-limit-tokens:
-      - '200000'
+      - '150000000'
       x-ratelimit-remaining-requests:
-      - '9997'
+      - '29999'
       x-ratelimit-remaining-tokens:
-      - '199962'
+      - '149999978'
       x-ratelimit-reset-requests:
-      - 22.564s
+      - 2ms
       x-ratelimit-reset-tokens:
-      - 11ms
+      - 0s
       x-request-id:
-      - req_01290a92a1a3d787c7a00bb3836da597
+      - req_41ea134c1fc450d4ca4cf8d0c6a7c53a
     status:
       code: 200
       message: OK
