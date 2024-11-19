@@ -910,9 +910,16 @@ class BaseTestCases:
 
             self.assert_span(num_spans=0)
 
-        def test_instrument_client(self):
+        def test_instrument_client_called_on_the_instance(self):
             client = self.create_client()
             HTTPXClientInstrumentor().instrument_client(client)
+            result = self.perform_request(self.URL, client=client)
+            self.assertEqual(result.text, "Hello!")
+            self.assert_span(num_spans=1)
+
+        def test_instrument_client_called_on_the_class(self):
+            client = self.create_client()
+            HTTPXClientInstrumentor.instrument_client(client)
             result = self.perform_request(self.URL, client=client)
             self.assertEqual(result.text, "Hello!")
             self.assert_span(num_spans=1)

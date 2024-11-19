@@ -11,6 +11,29 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## Unreleased
 
+### Added
+
+- `opentelemetry-instrumentation-sqlalchemy` Update unit tests to run with SQLALchemy 2
+  ([#2976](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/2976))
+  - Add `opentelemetry-instrumentation-openai-v2` to `opentelemetry-bootstrap`
+  ([#2996](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/2996))
+- `opentelemetry-instrumentation-dbapi` Add sqlcomment to `db.statement` attribute
+  ([#2935](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/2935))
+- `opentelemetry-instrumentation-mysqlclient` Add sqlcommenter support
+  ([#2941](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/2941))
+
+### Fixed
+
+- `opentelemetry-instrumentation-httpx`: instrument_client is a static method again
+  ([#3003](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/3003))
+
+### Breaking changes
+
+- `opentelemetry-instrumentation-sqlalchemy` teach instruments version
+  ([#2971](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/2971))
+- Drop `opentelemetry-instrumentation-test` package from default instrumentation list
+  ([#2969](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/2969))
+
 ## Version 1.28.0/0.49b0 (2024-11-05)
 
 ### Added
@@ -25,14 +48,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   ([#2635](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/2635))
 - `opentelemetry-instrumentation` Add support for string based dotted module paths in unwrap
   ([#2919](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/2919))
-- `opentelemetry-instrumentation-mysqlclient` Add sqlcommenter support
-  ([#2941](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/2941))
 
 ### Fixed
 
 - `opentelemetry-instrumentation-aiokafka` Wrap `AIOKafkaConsumer.getone()` instead of `AIOKafkaConsumer.__anext__`
   ([#2874](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/2874))
-- `opentelemetry-instrumentation-confluent-kafka` Fix to allow `topic` to be extracted from `kwargs` in `produce()` 
+- `opentelemetry-instrumentation-confluent-kafka` Fix to allow `topic` to be extracted from `kwargs` in `produce()`
   ([#2901])(https://github.com/open-telemetry/opentelemetry-python-contrib/pull/2901)
 - `opentelemetry-instrumentation-system-metrics` Update metric units to conform to UCUM conventions.
   ([#2922](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/2922))
