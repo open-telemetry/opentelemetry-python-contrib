@@ -19,6 +19,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   ([#2996](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/2996))
 - `opentelemetry-instrumentation-dbapi` Add sqlcomment to `db.statement` attribute
   ([#2935](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/2935))
+- `opentelemetry-instrumentation-sqlalchemy` Add sqlcomment to `db.statement` attribute
+  ([#2937](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/2937))
 - `opentelemetry-instrumentation-mysqlclient` Add sqlcommenter support
   ([#2941](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/2941))
 
