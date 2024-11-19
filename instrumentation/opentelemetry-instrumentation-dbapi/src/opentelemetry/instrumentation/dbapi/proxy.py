@@ -13,12 +13,16 @@
 # limitations under the License.
 
 
-from abc import ABC, abstractmethod
+from abc import ABC, ABCMeta, abstractmethod
 
 import wrapt
 
 
-class BaseTracedConnectionProxy(ABC, wrapt.ObjectProxy):
+class BaseMeta(ABCMeta, type(wrapt.ObjectProxy)):
+    """Metaclass compatibility helper for PyPy for derived classes"""
+
+
+class BaseTracedConnectionProxy(ABC, wrapt.ObjectProxy, metaclass=BaseMeta):
     """ABC for traced database client connection proxy.
 
     Child classes are used to wrap Connection objects and
@@ -54,7 +58,7 @@ class BaseTracedConnectionProxy(ABC, wrapt.ObjectProxy):
 
 
 # pylint: disable=abstract-method
-class BaseTracedCursorProxy(ABC, wrapt.ObjectProxy):
+class BaseTracedCursorProxy(ABC, wrapt.ObjectProxy, metaclass=BaseMeta):
     """ABC for traced database client cursor proxy.
 
     Child classes are used to wrap Cursor objects and
