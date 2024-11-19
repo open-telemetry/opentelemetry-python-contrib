@@ -499,49 +499,54 @@ class CursorTracer:
         with self._db_api_integration._tracer.start_as_current_span(
             name, kind=SpanKind.CLIENT
         ) as span:
-            self._populate_span(span, cursor, *args)
-            if args and self._commenter_enabled:
-                try:
-                    args_list = list(args)
+            if span.is_recording():
+                if args and self._commenter_enabled:
+                    try:
+                        args_list = list(args)
 
-                    # lazy capture of mysql-connector client version using cursor
-                    if (
-                        self._db_api_integration.database_system == "mysql"
-                        and self._db_api_integration.connect_module.__name__
-                        == "mysql.connector"
-                        and not self._db_api_integration.commenter_data[
-                            "mysql_client_version"
-                        ]
-                    ):
-                        self._db_api_integration.commenter_data[
-                            "mysql_client_version"
-                        ] = cursor._cnx._cmysql.get_client_info()
+                        # lazy capture of mysql-connector client version using cursor
+                        if (
+                            self._db_api_integration.database_system == "mysql"
+                            and self._db_api_integration.connect_module.__name__
+                            == "mysql.connector"
+                            and not self._db_api_integration.commenter_data[
+                                "mysql_client_version"
+                            ]
+                        ):
+                            self._db_api_integration.commenter_data[
+                                "mysql_client_version"
+                            ] = cursor._cnx._cmysql.get_client_info()
 
-                    commenter_data = dict(
-                        self._db_api_integration.commenter_data
-                    )
-                    if self._commenter_options.get(
-                        "opentelemetry_values", True
-                    ):
-                        commenter_data.update(**_get_opentelemetry_values())
+                        commenter_data = dict(
+                            self._db_api_integration.commenter_data
+                        )
+                        if self._commenter_options.get(
+                            "opentelemetry_values", True
+                        ):
+                            commenter_data.update(
+                                **_get_opentelemetry_values()
+                            )
 
-                    # Filter down to just the requested attributes.
-                    commenter_data = {
-                        k: v
-                        for k, v in commenter_data.items()
-                        if self._commenter_options.get(k, True)
-                    }
-                    statement = _add_sql_comment(
-                        args_list[0], **commenter_data
-                    )
+                        # Filter down to just the requested attributes.
+                        commenter_data = {
+                            k: v
+                            for k, v in commenter_data.items()
+                            if self._commenter_options.get(k, True)
+                        }
+                        statement = _add_sql_comment(
+                            args_list[0], **commenter_data
+                        )
 
-                    args_list[0] = statement
-                    args = tuple(args_list)
+                        args_list[0] = statement
+                        args = tuple(args_list)
 
-                except Exception as exc:  # pylint: disable=broad-except
-                    _logger.exception(
-                        "Exception while generating sql comment: %s", exc
-                    )
+                    except Exception as exc:  # pylint: disable=broad-except
+                        _logger.exception(
+                            "Exception while generating sql comment: %s", exc
+                        )
+
+                self._populate_span(span, cursor, *args)
+
             return query_method(*args, **kwargs)
 
 
