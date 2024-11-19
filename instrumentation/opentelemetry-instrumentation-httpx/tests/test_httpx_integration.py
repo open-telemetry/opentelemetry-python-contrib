@@ -725,6 +725,7 @@ class BaseTestCases:
                 spans[1].attributes[SpanAttributes.HTTP_URL], https_url
             )
 
+    @mock.patch.dict("os.environ", {"NO_PROXY": ""}, clear=True)
     class BaseInstrumentorTest(BaseTest, metaclass=abc.ABCMeta):
         @abc.abstractmethod
         def create_client(
@@ -994,7 +995,6 @@ class BaseTestCases:
             result = self.perform_request(self.URL, client=client)
             self.assert_span(num_spans=1)
             self.assertEqual(result.text, "Hello!")
-            print(client._mounts)
             self.assert_proxy_mounts(
                 client._mounts.values(),
                 3,
