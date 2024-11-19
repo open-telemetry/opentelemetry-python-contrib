@@ -41,11 +41,14 @@ import functools
 import logging
 import re
 import typing
-from abc import ABC, abstractmethod
 
 import wrapt
 
 from opentelemetry import trace as trace_api
+from opentelemetry.instrumentation.dbapi.proxy import (
+    BaseTracedConnectionProxy,
+    BaseTracedCursorProxy,
+)
 from opentelemetry.instrumentation.dbapi.version import __version__
 from opentelemetry.instrumentation.sqlcommenter_utils import _add_sql_comment
 from opentelemetry.instrumentation.utils import (
@@ -391,31 +394,6 @@ class DatabaseApiIntegration:
             self.span_attributes[SpanAttributes.NET_PEER_PORT] = port
 
 
-class BaseTracedConnectionProxy(ABC, wrapt.ObjectProxy):
-    # pylint: disable=unused-argument
-    def __init__(self, connection, *args, **kwargs):
-        wrapt.ObjectProxy.__init__(self, connection)
-
-    def __getattribute__(self, name):
-        if object.__getattribute__(self, name):
-            return object.__getattribute__(self, name)
-
-        return object.__getattribute__(
-            object.__getattribute__(self, "_connection"), name
-        )
-
-    @abstractmethod
-    def cursor(self, *args, **kwargs):
-        """Returns instrumented database query cursor"""
-
-    def __enter__(self):
-        self.__wrapped__.__enter__()
-        return self
-
-    def __exit__(self, *args, **kwargs):
-        self.__wrapped__.__exit__(*args, **kwargs)
-
-
 def get_traced_connection_proxy(
     connection, db_api_integration, *args, **kwargs
 ):
@@ -548,38 +526,6 @@ class CursorTracer:
                 self._populate_span(span, cursor, *args)
 
             return query_method(*args, **kwargs)
-
-
-# pylint: disable=abstract-method
-class BaseTracedCursorProxy(ABC, wrapt.ObjectProxy):
-    # pylint: disable=unused-argument
-    @abstractmethod
-    def __init__(self, cursor, *args, **kwargs):
-        """Wrap db client cursor for tracing"""
-        wrapt.ObjectProxy.__init__(self, cursor)
-        self._cursor_tracer = None
-
-    def callproc(self, *args, **kwargs):
-        return self._cursor_tracer.traced_execution(
-            self.__wrapped__, self.__wrapped__.callproc, *args, **kwargs
-        )
-
-    def execute(self, *args, **kwargs):
-        return self._cursor_tracer.traced_execution(
-            self.__wrapped__, self.__wrapped__.execute, *args, **kwargs
-        )
-
-    def executemany(self, *args, **kwargs):
-        return self._cursor_tracer.traced_execution(
-            self.__wrapped__, self.__wrapped__.executemany, *args, **kwargs
-        )
-
-    def __enter__(self):
-        self.__wrapped__.__enter__()
-        return self
-
-    def __exit__(self, *args, **kwargs):
-        self.__wrapped__.__exit__(*args, **kwargs)
 
 
 def get_traced_cursor_proxy(cursor, db_api_integration, *args, **kwargs):
