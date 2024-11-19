@@ -63,14 +63,14 @@ _logger = logging.getLogger(__name__)
 
 
 def trace_integration(
-    connect_module: typing.Callable[..., typing.Any],
-    connect_method_name: str,
-    database_system: str,
-    connection_attributes: typing.Dict = None,
-    tracer_provider: typing.Optional[TracerProvider] = None,
-    capture_parameters: bool = False,
-    enable_commenter: bool = False,
-    db_api_integration_factory=None,
+        connect_module: typing.Callable[..., typing.Any],
+        connect_method_name: str,
+        database_system: str,
+        connection_attributes: typing.Dict = None,
+        tracer_provider: typing.Optional[TracerProvider] = None,
+        capture_parameters: bool = False,
+        enable_commenter: bool = False,
+        db_api_integration_factory=None,
 ):
     """Integrate with DB API library.
     https://www.python.org/dev/peps/pep-0249/
@@ -104,17 +104,17 @@ def trace_integration(
 
 
 def wrap_connect(
-    name: str,
-    connect_module: typing.Callable[..., typing.Any],
-    connect_method_name: str,
-    database_system: str,
-    connection_attributes: typing.Dict = None,
-    version: str = "",
-    tracer_provider: typing.Optional[TracerProvider] = None,
-    capture_parameters: bool = False,
-    enable_commenter: bool = False,
-    db_api_integration_factory=None,
-    commenter_options: dict = None,
+        name: str,
+        connect_module: typing.Callable[..., typing.Any],
+        connect_method_name: str,
+        database_system: str,
+        connection_attributes: typing.Dict = None,
+        version: str = "",
+        tracer_provider: typing.Optional[TracerProvider] = None,
+        capture_parameters: bool = False,
+        enable_commenter: bool = False,
+        db_api_integration_factory=None,
+        commenter_options: dict = None,
 ):
     """Integrate with DB API library.
     https://www.python.org/dev/peps/pep-0249/
@@ -136,15 +136,15 @@ def wrap_connect(
 
     """
     db_api_integration_factory = (
-        db_api_integration_factory or DatabaseApiIntegration
+            db_api_integration_factory or DatabaseApiIntegration
     )
 
     # pylint: disable=unused-argument
     def wrap_connect_(
-        wrapped: typing.Callable[..., typing.Any],
-        instance: typing.Any,
-        args: typing.Tuple[typing.Any, typing.Any],
-        kwargs: typing.Dict[typing.Any, typing.Any],
+            wrapped: typing.Callable[..., typing.Any],
+            instance: typing.Any,
+            args: typing.Tuple[typing.Any, typing.Any],
+            kwargs: typing.Dict[typing.Any, typing.Any],
     ):
         db_integration = db_api_integration_factory(
             name,
@@ -168,7 +168,7 @@ def wrap_connect(
 
 
 def unwrap_connect(
-    connect_module: typing.Callable[..., typing.Any], connect_method_name: str
+        connect_module: typing.Callable[..., typing.Any], connect_method_name: str
 ):
     """Disable integration with DB API library.
     https://www.python.org/dev/peps/pep-0249/
@@ -181,15 +181,15 @@ def unwrap_connect(
 
 
 def instrument_connection(
-    name: str,
-    connection,
-    database_system: str,
-    connection_attributes: typing.Dict = None,
-    version: str = "",
-    tracer_provider: typing.Optional[TracerProvider] = None,
-    capture_parameters: bool = False,
-    enable_commenter: bool = False,
-    commenter_options: dict = None,
+        name: str,
+        connection,
+        database_system: str,
+        connection_attributes: typing.Dict = None,
+        version: str = "",
+        tracer_provider: typing.Optional[TracerProvider] = None,
+        capture_parameters: bool = False,
+        enable_commenter: bool = False,
+        commenter_options: dict = None,
 ):
     """Enable instrumentation in a database connection.
 
@@ -244,16 +244,16 @@ def uninstrument_connection(connection):
 
 class DatabaseApiIntegration:
     def __init__(
-        self,
-        name: str,
-        database_system: str,
-        connection_attributes=None,
-        version: str = "",
-        tracer_provider: typing.Optional[TracerProvider] = None,
-        capture_parameters: bool = False,
-        enable_commenter: bool = False,
-        commenter_options: dict = None,
-        connect_module: typing.Callable[..., typing.Any] = None,
+            self,
+            name: str,
+            database_system: str,
+            connection_attributes=None,
+            version: str = "",
+            tracer_provider: typing.Optional[TracerProvider] = None,
+            capture_parameters: bool = False,
+            enable_commenter: bool = False,
+            commenter_options: dict = None,
+            connect_module: typing.Callable[..., typing.Any] = None,
     ):
         self.connection_attributes = connection_attributes
         if self.connection_attributes is None:
@@ -283,8 +283,8 @@ class DatabaseApiIntegration:
         self.commenter_data = self.calculate_commenter_data()
 
     def _get_db_version(
-        self,
-        db_driver,
+            self,
+            db_driver,
     ):
         if db_driver in _DB_DRIVER_ALIASES:
             return util_version(_DB_DRIVER_ALIASES[db_driver])
@@ -296,7 +296,7 @@ class DatabaseApiIntegration:
         return db_version
 
     def calculate_commenter_data(
-        self,
+            self,
     ):
         commenter_data = {}
         if not self.enable_commenter:
@@ -346,10 +346,10 @@ class DatabaseApiIntegration:
         return commenter_data
 
     def wrapped_connection(
-        self,
-        connect_method: typing.Callable[..., typing.Any],
-        args: typing.Tuple[typing.Any, typing.Any],
-        kwargs: typing.Dict[typing.Any, typing.Any],
+            self,
+            connect_method: typing.Callable[..., typing.Any],
+            args: typing.Tuple[typing.Any, typing.Any],
+            kwargs: typing.Dict[typing.Any, typing.Any],
     ):
         """Add object proxy to connection object."""
         connection = connect_method(*args, **kwargs)
@@ -391,7 +391,7 @@ class DatabaseApiIntegration:
 
 
 def get_traced_connection_proxy(
-    connection, db_api_integration, *args, **kwargs
+        connection, db_api_integration, *args, **kwargs
 ):
     # pylint: disable=abstract-method
     class TracedConnectionProxy(wrapt.ObjectProxy):
@@ -435,10 +435,10 @@ class CursorTracer:
         self._leading_comment_remover = re.compile(r"^/\*.*?\*/")
 
     def _populate_span(
-        self,
-        span: trace_api.Span,
-        cursor,
-        *args: typing.Tuple[typing.Any, typing.Any],
+            self,
+            span: trace_api.Span,
+            cursor,
+            *args: typing.Tuple[typing.Any, typing.Any],
     ):
         if not span.is_recording():
             return
@@ -451,9 +451,11 @@ class CursorTracer:
         )
         span.set_attribute(SpanAttributes.DB_STATEMENT, statement)
 
+        span.set_attribute(SpanAttributes.DB_PORT, self._db_api_integration.connection_props.get("port"))
+
         for (
-            attribute_key,
-            attribute_value,
+                attribute_key,
+                attribute_value,
         ) in self._db_api_integration.span_attributes.items():
             span.set_attribute(attribute_key, attribute_value)
 
@@ -475,11 +477,11 @@ class CursorTracer:
         return statement
 
     def traced_execution(
-        self,
-        cursor,
-        query_method: typing.Callable[..., typing.Any],
-        *args: typing.Tuple[typing.Any, typing.Any],
-        **kwargs: typing.Dict[typing.Any, typing.Any],
+            self,
+            cursor,
+            query_method: typing.Callable[..., typing.Any],
+            *args: typing.Tuple[typing.Any, typing.Any],
+            **kwargs: typing.Dict[typing.Any, typing.Any],
     ):
         name = self.get_operation_name(cursor, args)
         if not name:
@@ -490,7 +492,7 @@ class CursorTracer:
             )
 
         with self._db_api_integration._tracer.start_as_current_span(
-            name, kind=SpanKind.CLIENT
+                name, kind=SpanKind.CLIENT
         ) as span:
             self._populate_span(span, cursor, *args)
             if args and self._commenter_enabled:
@@ -499,12 +501,12 @@ class CursorTracer:
 
                     # lazy capture of mysql-connector client version using cursor
                     if (
-                        self._db_api_integration.database_system == "mysql"
-                        and self._db_api_integration.connect_module.__name__
-                        == "mysql.connector"
-                        and not self._db_api_integration.commenter_data[
-                            "mysql_client_version"
-                        ]
+                            self._db_api_integration.database_system == "mysql"
+                            and self._db_api_integration.connect_module.__name__
+                            == "mysql.connector"
+                            and not self._db_api_integration.commenter_data[
+                        "mysql_client_version"
+                    ]
                     ):
                         self._db_api_integration.commenter_data[
                             "mysql_client_version"
@@ -514,7 +516,7 @@ class CursorTracer:
                         self._db_api_integration.commenter_data
                     )
                     if self._commenter_options.get(
-                        "opentelemetry_values", True
+                            "opentelemetry_values", True
                     ):
                         commenter_data.update(**_get_opentelemetry_values())
 

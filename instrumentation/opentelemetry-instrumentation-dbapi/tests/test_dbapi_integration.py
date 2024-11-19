@@ -66,6 +66,9 @@ class TestDBApiIntegration(TestBase):
         self.assertEqual(
             span.attributes[SpanAttributes.DB_STATEMENT], "Test query"
         )
+        self.assertEqual(
+            span.attributes[SpanAttributes.DB_PORT], 123
+        )
         self.assertFalse("db.statement.parameters" in span.attributes)
         self.assertEqual(span.attributes[SpanAttributes.DB_USER], "testuser")
         self.assertEqual(
