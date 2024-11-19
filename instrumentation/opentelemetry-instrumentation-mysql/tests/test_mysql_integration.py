@@ -102,6 +102,42 @@ class TestMysqlIntegration(TestBase):
         spans_list = self.memory_exporter.get_finished_spans()
         self.assertEqual(len(spans_list), 0)
 
+    @mock.patch("opentelemetry.instrumentation.mysql.DatabaseApiIntegration")
+    @mock.patch("mysql.connector.connect")
+    # pylint: disable=unused-argument
+    def test_instrument_connection_enable_commenter(
+        self,
+        mock_connect,
+        mock_mysql_dbapi,
+    ):
+        cnx, query = connect_and_execute_query()
+        cnx = MySQLInstrumentor().instrument_connection(
+            cnx,
+            enable_commenter=True,
+            commenter_options={"foo": True},
+        )
+        cursor = cnx.cursor()
+        cursor.execute(query)
+        kwargs = mock_mysql_dbapi.call_args[1]
+        self.assertEqual(kwargs["enable_commenter"], True)
+        self.assertEqual(kwargs["commenter_options"], {"foo": True})
+
+    @mock.patch("opentelemetry.instrumentation.dbapi.wrap_connect")
+    @mock.patch("mysql.connector.connect")
+    # pylint: disable=unused-argument
+    def test__instrument_enable_commenter(
+        self,
+        mock_connect,
+        mock_wrap_connect,
+    ):
+        MySQLInstrumentor()._instrument(
+            enable_commenter=True,
+            commenter_options={"foo": True},
+        )
+        kwargs = mock_wrap_connect.call_args[1]
+        self.assertEqual(kwargs["enable_commenter"], True)
+        self.assertEqual(kwargs["commenter_options"], {"foo": True})
+
     @mock.patch("mysql.connector.connect")
     # pylint: disable=unused-argument
     def test_uninstrument_connection(self, mock_connect):
