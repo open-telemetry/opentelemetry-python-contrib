@@ -991,8 +991,9 @@ class BaseTestCases:
             proxy_mounts = self.create_proxy_mounts()
             HTTPXClientInstrumentor().instrument()
             client = self.create_client(mounts=proxy_mounts)
-            self.perform_request(self.URL, client=client)
+            result = self.perform_request(self.URL, client=client)
             self.assert_span(num_spans=1)
+            self.assertEqual(result.text, "Hello!")
             print(client._mounts)
             self.assert_proxy_mounts(
                 client._mounts.values(),
@@ -1010,7 +1011,9 @@ class BaseTestCases:
                 2,
             )
 
-        @mock.patch.dict("os.environ", {"NO_PROXY": "http://mock"}, clear=True)
+        @mock.patch.dict(
+            "os.environ", {"NO_PROXY": "http://mock/status/200"}, clear=True
+        )
         def test_instrument_client_with_no_proxy(self):
             proxy_mounts = self.create_proxy_mounts()
             client = self.create_client(mounts=proxy_mounts)
@@ -1027,7 +1030,7 @@ class BaseTestCases:
                 client._mounts.values(),
                 3,
             )
-            HTTPXClientInstrumentor().uninstrument_client(client)
+            HTTPXClientInstrumentor.uninstrument_client(client)
 
         def test_instrument_client_with_proxy(self):
             proxy_mounts = self.create_proxy_mounts()
