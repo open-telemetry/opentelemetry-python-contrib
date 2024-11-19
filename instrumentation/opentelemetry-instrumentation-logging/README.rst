@@ -49,7 +49,6 @@ Enable trace context injection
 
 The integration is opt-in and must be enabled explicitly by setting the environment variable ``OTEL_PYTHON_LOG_CORRELATION`` to ``true``.
 
-The integration always registers the custom factory that injects the tracing context into the log record objects. Setting
 ``OTEL_PYTHON_LOG_CORRELATION`` to ``true`` calls ``logging.basicConfig()`` to set a logging format that actually makes
 use of the injected variables.
 
