@@ -20,6 +20,8 @@ interactions:
       - application/json
       accept-encoding:
       - gzip, deflate
+      authorization:
+      - Bearer test_openai_api_key
       connection:
       - keep-alive
       content-length:
@@ -29,7 +31,7 @@ interactions:
       host:
       - api.openai.com
       user-agent:
-      - OpenAI/Python 1.26.0
+      - OpenAI/Python 1.54.3
       x-stainless-arch:
       - arm64
       x-stainless-async:
@@ -39,7 +41,9 @@ interactions:
       x-stainless-os:
       - MacOS
       x-stainless-package-version:
-      - 1.26.0
+      - 1.54.3
+      x-stainless-retry-count:
+      - '0'
       x-stainless-runtime:
       - CPython
       x-stainless-runtime-version:
@@ -50,9 +54,9 @@ interactions:
     body:
       string: |-
         {
-          "id": "chatcmpl-APfFNvBVQx43PNOIf1dWnEUT5u5fA",
+          "id": "chatcmpl-ASYMT7913Sp58qhZqQgY7g7Ia2J4M",
           "object": "chat.completion",
-          "created": 1730680117,
+          "created": 1731368633,
           "model": "gpt-4o-mini-2024-07-18",
           "choices": [
             {
@@ -71,10 +75,14 @@ interactions:
             "completion_tokens": 12,
             "total_tokens": 24,
             "prompt_tokens_details": {
-              "cached_tokens": 0
+              "cached_tokens": 0,
+              "audio_tokens": 0
             },
             "completion_tokens_details": {
-              "reasoning_tokens": 0
+              "reasoning_tokens": 0,
+              "audio_tokens": 0,
+              "accepted_prediction_tokens": 0,
+              "rejected_prediction_tokens": 0
             }
           },
           "service_tier": "default",
@@ -84,13 +92,13 @@ interactions:
       CF-Cache-Status:
       - DYNAMIC
       CF-RAY:
-      - 8dd07c2d0a5a9f98-SIN
+      - 8e1225a3f8e9ce65-SIN
       Connection:
       - keep-alive
       Content-Type:
       - application/json
       Date:
-      - Mon, 04 Nov 2024 00:28:37 GMT
+      - Mon, 11 Nov 2024 23:43:53 GMT
       Server:
       - cloudflare
       Set-Cookie: test_set_cookie
@@ -103,10 +111,10 @@ interactions:
       alt-svc:
       - h3=":443"; ma=86400
       content-length:
-      - '697'
-      openai-organization: test_organization
+      - '825'
+      openai-organization: test_openai_org_id
       openai-processing-ms:
-      - '228'
+      - '431'
       openai-version:
       - '2020-10-01'
       strict-transport-security:
@@ -120,11 +128,11 @@ interactions:
       x-ratelimit-remaining-tokens:
       - '199943'
       x-ratelimit-reset-requests:
-      - 13.724s
+      - 14.746s
       x-ratelimit-reset-tokens:
       - 16ms
       x-request-id:
-      - req_0ded46a4535c24c36ef58363b7538421
+      - req_81e29a8992ea8001c0240bd990acf0ab
     status:
       code: 200
       message: OK

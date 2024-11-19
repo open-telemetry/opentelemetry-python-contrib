@@ -17,6 +17,10 @@
 
 libraries = [
     {
+        "library": "openai >= 1.26.0",
+        "instrumentation": "opentelemetry-instrumentation-openai-v2==2.1b0.dev",
+    },
+    {
         "library": "aio_pika >= 7.2.0, < 10.0.0",
         "instrumentation": "opentelemetry-instrumentation-aio-pika==0.50b0.dev",
     },
