@@ -869,10 +869,11 @@ class TestSystemMetrics(TestBase):
 
 
 class TestConfigSystemMetrics(TestBase):
+    # pylint:disable=no-self-use
     def test_that_correct_config_is_read(self):
-        for k, v in _DEFAULT_CONFIG.items():
+        for key, value in _DEFAULT_CONFIG.items():
             meter_provider = MeterProvider([InMemoryMetricReader()])
-            instrumentor = SystemMetricsInstrumentor(config={k: v})
+            instrumentor = SystemMetricsInstrumentor(config={key: value})
             instrumentor.instrument(meter_provider=meter_provider)
             meter_provider.force_flush()
             instrumentor.uninstrument()
