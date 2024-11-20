@@ -125,10 +125,10 @@ _DATABASE_SYSTEM = "mysql"
 
 
 class MySQLClientInstrumentor(BaseInstrumentor):
-    def instrumentation_dependencies(self) -> Collection[str]:
+    def instrumentation_dependencies(self) -> Collection[str]:  # pylint: disable=no-self-use
         return _instruments
 
-    def _instrument(self, **kwargs):
+    def _instrument(self, **kwargs):  # pylint: disable=no-self-use
         """Integrate with the mysqlclient library.
         https://github.com/PyMySQL/mysqlclient/
         """
@@ -148,7 +148,7 @@ class MySQLClientInstrumentor(BaseInstrumentor):
             commenter_options=commenter_options,
         )
 
-    def _uninstrument(self, **kwargs):
+    def _uninstrument(self, **kwargs):  # pylint: disable=no-self-use
         """ "Disable mysqlclient instrumentation"""
         dbapi.unwrap_connect(MySQLdb, "connect")
 
