@@ -142,12 +142,51 @@ class TestMySQLClientIntegration(TestBase):
             cnx_proxy = MySQLClientInstrumentor().instrument_connection(
                 mock_connection,
                 enable_commenter=True,
-                commenter_options={"foo": True},
             )
             cnx_proxy.cursor().execute("Select 1;")
             self.assertRegex(
                 mock_cursor.execute.call_args[0][0],
                 r"Select 1 /\*db_driver='MySQLdb%%3Afoobar',dbapi_level='123',dbapi_threadsafety='123',driver_paramstyle='test',mysql_client_version='foobaz',traceparent='\d{1,2}-[a-zA-Z0-9_]{32}-[a-zA-Z0-9_]{16}-\d{1,2}'\*/;",
+            )
+
+    def test_instrument_connection_with_dbapi_sqlcomment_enabled_with_options(
+        self,
+    ):
+        mock_cursor = mock.MagicMock()
+        mock_cursor.execute = mock.MagicMock()
+        mock_connection = mock.MagicMock()
+        mock_connection.cursor.return_value = mock_cursor
+
+        mock_connect_module = mock.MagicMock()
+        mock_connect_module.__name__ = "MySQLdb"
+        mock_connect_module.threadsafety = "123"
+        mock_connect_module.apilevel = "123"
+        mock_connect_module.paramstyle = "test"
+        mock_connect_module._mysql.get_client_info = mock.Mock(
+            return_value="foobaz"
+        )
+        mock_connect_module.connect = mock.Mock(return_value=mock_connection)
+
+        with mock.patch(
+            "opentelemetry.instrumentation.mysqlclient.MySQLdb",
+            mock_connect_module,
+        ), mock.patch(
+            "opentelemetry.instrumentation.dbapi.util_version",
+            return_value="foobar",
+        ):
+            cnx_proxy = MySQLClientInstrumentor().instrument_connection(
+                mock_connection,
+                enable_commenter=True,
+                commenter_options={
+                    "dbapi_level": False,
+                    "dbapi_threadsafety": True,
+                    "driver_paramstyle": False,
+                },
+            )
+            cnx_proxy.cursor().execute("Select 1;")
+            self.assertRegex(
+                mock_cursor.execute.call_args[0][0],
+                r"Select 1 /\*db_driver='MySQLdb%%3Afoobar',dbapi_threadsafety='123',mysql_client_version='foobaz',traceparent='\d{1,2}-[a-zA-Z0-9_]{32}-[a-zA-Z0-9_]{16}-\d{1,2}'\*/;",
             )
 
     def test_instrument_connection_with_dbapi_sqlcomment_not_enabled_default(
@@ -229,7 +268,6 @@ class TestMySQLClientIntegration(TestBase):
         ):
             MySQLClientInstrumentor()._instrument(
                 enable_commenter=True,
-                commenter_options={"foo": True},
             )
             cnx = mock_connect_module.connect(database="test")
             cursor = cnx.cursor()
@@ -237,6 +275,48 @@ class TestMySQLClientIntegration(TestBase):
             self.assertRegex(
                 mock_cursor.execute.call_args[0][0],
                 r"Select 1 /\*db_driver='MySQLdb%%3Afoobar',dbapi_level='123',dbapi_threadsafety='123',driver_paramstyle='test',mysql_client_version='foobaz',traceparent='\d{1,2}-[a-zA-Z0-9_]{32}-[a-zA-Z0-9_]{16}-\d{1,2}'\*/;",
+            )
+
+    def test__instrument_with_dbapi_sqlcomment_enabled_with_options(
+        self,
+    ):
+        mock_cursor = mock.MagicMock()
+        mock_cursor.execute = mock.MagicMock()
+        mock_connection = mock.MagicMock()
+        mock_connection.cursor.return_value = mock_cursor
+
+        mock_connect_module = mock.Mock()
+        mock_connect_module.__name__ = "MySQLdb"
+        mock_connect_module.threadsafety = "123"
+        mock_connect_module.apilevel = "123"
+        mock_connect_module.paramstyle = "test"
+        mock_connect_module._mysql.get_client_info = mock.Mock(
+            return_value="foobaz"
+        )
+
+        mock_connect_module.connect = mock.Mock(return_value=mock_connection)
+
+        with mock.patch(
+            "opentelemetry.instrumentation.mysqlclient.MySQLdb",
+            mock_connect_module,
+        ), mock.patch(
+            "opentelemetry.instrumentation.dbapi.util_version",
+            return_value="foobar",
+        ):
+            MySQLClientInstrumentor()._instrument(
+                enable_commenter=True,
+                commenter_options={
+                    "dbapi_level": False,
+                    "dbapi_threadsafety": True,
+                    "driver_paramstyle": False,
+                },
+            )
+            cnx = mock_connect_module.connect(database="test")
+            cursor = cnx.cursor()
+            cursor.execute("Select 1;")
+            self.assertRegex(
+                mock_cursor.execute.call_args[0][0],
+                r"Select 1 /\*db_driver='MySQLdb%%3Afoobar',dbapi_threadsafety='123',mysql_client_version='foobaz',traceparent='\d{1,2}-[a-zA-Z0-9_]{32}-[a-zA-Z0-9_]{16}-\d{1,2}'\*/;",
             )
 
     def test__instrument_with_dbapi_sqlcomment_not_enabled_default(
