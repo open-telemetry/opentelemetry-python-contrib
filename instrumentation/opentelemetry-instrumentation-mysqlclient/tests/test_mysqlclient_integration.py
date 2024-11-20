@@ -126,7 +126,6 @@ class TestMySQLClientIntegration(TestBase):
         )
         mock_connect_module._mysql.get_client_info.return_value = "foobaz"
         mock_cursor = mock_connect_module.connect().cursor()
-        mock_cursor.execute = mock.MagicMock()
         mock_connection = mock.MagicMock()
         mock_connection.cursor.return_value = mock_cursor
 
@@ -163,7 +162,6 @@ class TestMySQLClientIntegration(TestBase):
         )
         mock_connect_module._mysql.get_client_info.return_value = "foobaz"
         mock_cursor = mock_connect_module.connect().cursor()
-        mock_cursor.execute = mock.MagicMock()
         mock_connection = mock.MagicMock()
         mock_connection.cursor.return_value = mock_cursor
 
@@ -205,7 +203,6 @@ class TestMySQLClientIntegration(TestBase):
         )
         mock_connect_module._mysql.get_client_info.return_value = "foobaz"
         mock_cursor = mock_connect_module.connect().cursor()
-        mock_cursor.execute = mock.MagicMock()
         mock_connection = mock.MagicMock()
         mock_connection.cursor.return_value = mock_cursor
 
@@ -252,7 +249,6 @@ class TestMySQLClientIntegration(TestBase):
         )
         mock_connect_module._mysql.get_client_info.return_value = "foobaz"
         mock_cursor = mock_connect_module.connect().cursor()
-        mock_cursor.execute = mock.MagicMock()
         mock_connection = mock.MagicMock()
         mock_connection.cursor.return_value = mock_cursor
 
@@ -290,7 +286,6 @@ class TestMySQLClientIntegration(TestBase):
         )
         mock_connect_module._mysql.get_client_info.return_value = "foobaz"
         mock_cursor = mock_connect_module.connect().cursor()
-        mock_cursor.execute = mock.MagicMock()
         mock_connection = mock.MagicMock()
         mock_connection.cursor.return_value = mock_cursor
 
@@ -333,7 +328,6 @@ class TestMySQLClientIntegration(TestBase):
         )
         mock_connect_module._mysql.get_client_info.return_value = "foobaz"
         mock_cursor = mock_connect_module.connect().cursor()
-        mock_cursor.execute = mock.MagicMock()
         mock_connection = mock.MagicMock()
         mock_connection.cursor.return_value = mock_cursor
 
