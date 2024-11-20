@@ -45,12 +45,12 @@ Usage
 
 .. code:: python
 
-    import MySQLdb
+    import pymysql
     from opentelemetry.instrumentation.pymysql import PyMySQLInstrumentor
 
     PyMySQLInstrumentor().instrument(enable_commenter=True, commenter_options={})
 
-    cnx = MySQLdb.connect(database="MySQL_Database")
+    cnx = pymysql.connect(database="MySQL_Database")
     cursor = cnx.cursor()
     cursor.execute("INSERT INTO test (testField) VALUES (123)"
     cnx.commit()
@@ -73,7 +73,7 @@ db_driver = True(Default) or False
 
 For example,
 ::
-Enabling this flag will add MySQLdb and its version, e.g. /*MySQLdb%%3A1.2.3*/
+Enabling this flag will add pymysql and its version, e.g. /*pymysql%%3A1.2.3*/
 
 dbapi_threadsafety = True(Default) or False
 
