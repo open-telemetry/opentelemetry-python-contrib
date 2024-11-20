@@ -24,6 +24,7 @@ from opentelemetry.test.test_base import TestBase
 
 
 class TestPyMysqlIntegration(TestBase):
+    # pylint: disable=invalid-name
     def tearDown(self):
         super().tearDown()
         with self.disable_logging():

@@ -128,10 +128,10 @@ _DATABASE_SYSTEM = "mysql"
 
 
 class PyMySQLInstrumentor(BaseInstrumentor):
-    def instrumentation_dependencies(self) -> Collection[str]:
+    def instrumentation_dependencies(self) -> Collection[str]:  # pylint: disable=no-self-use
         return _instruments
 
-    def _instrument(self, **kwargs):
+    def _instrument(self, **kwargs):  # pylint: disable=no-self-use
         """Integrate with the PyMySQL library.
         https://github.com/PyMySQL/PyMySQL/
         """
@@ -151,7 +151,7 @@ class PyMySQLInstrumentor(BaseInstrumentor):
             commenter_options=commenter_options,
         )
 
-    def _uninstrument(self, **kwargs):
+    def _uninstrument(self, **kwargs):  # pylint: disable=no-self-use
         """ "Disable PyMySQL instrumentation"""
         dbapi.unwrap_connect(pymysql, "connect")
 
