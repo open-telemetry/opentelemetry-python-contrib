@@ -179,6 +179,7 @@ class MySQLClientInstrumentor(BaseInstrumentor):
             tracer_provider=tracer_provider,
             enable_commenter=enable_commenter,
             commenter_options=commenter_options,
+            connect_module=MySQLdb,
         )
 
     @staticmethod
