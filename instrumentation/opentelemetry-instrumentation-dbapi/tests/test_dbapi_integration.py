@@ -594,10 +594,7 @@ class TestDBApiIntegration(TestBase):
 
     @mock.patch("opentelemetry.instrumentation.dbapi.DatabaseApiIntegration")
     def test_instrument_connection_kwargs_defaults(self, mock_dbapiint):
-        connection = mock.Mock()
-        # Avoid get_attributes failing because can't concatenate mock
-        connection.database = "-"
-        dbapi.instrument_connection(self.tracer, connection, "-")
+        dbapi.instrument_connection(self.tracer, mock.Mock(), "foo")
         kwargs = mock_dbapiint.call_args[1]
         self.assertEqual(kwargs["connection_attributes"], None)
         self.assertEqual(kwargs["version"], "")
@@ -611,13 +608,10 @@ class TestDBApiIntegration(TestBase):
     def test_instrument_connection_kwargs_provided(self, mock_dbapiint):
         mock_tracer_provider = mock.MagicMock()
         mock_connect_module = mock.MagicMock()
-        connection = mock.Mock()
-        # Avoid get_attributes failing because can't concatenate mock
-        connection.database = "-"
         dbapi.instrument_connection(
             self.tracer,
-            connection,
-            "-",
+            mock.Mock(),
+            "foo",
             connection_attributes={"foo": "bar"},
             version="test",
             tracer_provider=mock_tracer_provider,
@@ -629,11 +623,11 @@ class TestDBApiIntegration(TestBase):
         kwargs = mock_dbapiint.call_args[1]
         self.assertEqual(kwargs["connection_attributes"], {"foo": "bar"})
         self.assertEqual(kwargs["version"], "test")
-        self.assertEqual(kwargs["tracer_provider"], mock_tracer_provider)
+        self.assertIs(kwargs["tracer_provider"], mock_tracer_provider)
         self.assertEqual(kwargs["capture_parameters"], True)
         self.assertEqual(kwargs["enable_commenter"], True)
         self.assertEqual(kwargs["commenter_options"], {"foo": "bar"})
-        self.assertEqual(kwargs["connect_module"], mock_connect_module)
+        self.assertIs(kwargs["connect_module"], mock_connect_module)
 
     def test_uninstrument_connection(self):
         connection = mock.Mock()
