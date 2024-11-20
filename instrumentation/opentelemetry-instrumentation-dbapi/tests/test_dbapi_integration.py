@@ -592,6 +592,49 @@ class TestDBApiIntegration(TestBase):
         connection2 = dbapi.instrument_connection(self.tracer, connection, "-")
         self.assertIs(connection2.__wrapped__, connection)
 
+    @mock.patch("opentelemetry.instrumentation.dbapi.DatabaseApiIntegration")
+    def test_instrument_connection_kwargs_defaults(self, mock_dbapiint):
+        connection = mock.Mock()
+        # Avoid get_attributes failing because can't concatenate mock
+        connection.database = "-"
+        dbapi.instrument_connection(self.tracer, connection, "-")
+        kwargs = mock_dbapiint.call_args[1]
+        self.assertEqual(kwargs["connection_attributes"], None)
+        self.assertEqual(kwargs["version"], "")
+        self.assertEqual(kwargs["tracer_provider"], None)
+        self.assertEqual(kwargs["capture_parameters"], False)
+        self.assertEqual(kwargs["enable_commenter"], False)
+        self.assertEqual(kwargs["commenter_options"], None)
+        self.assertEqual(kwargs["connect_module"], None)
+
+    @mock.patch("opentelemetry.instrumentation.dbapi.DatabaseApiIntegration")
+    def test_instrument_connection_kwargs_provided(self, mock_dbapiint):
+        mock_tracer_provider = mock.MagicMock()
+        mock_connect_module = mock.MagicMock()
+        connection = mock.Mock()
+        # Avoid get_attributes failing because can't concatenate mock
+        connection.database = "-"
+        dbapi.instrument_connection(
+            self.tracer,
+            connection,
+            "-",
+            connection_attributes={"foo": "bar"},
+            version="test",
+            tracer_provider=mock_tracer_provider,
+            capture_parameters=True,
+            enable_commenter=True,
+            commenter_options={"foo": "bar"},
+            connect_module=mock_connect_module,
+        )
+        kwargs = mock_dbapiint.call_args[1]
+        self.assertEqual(kwargs["connection_attributes"], {"foo": "bar"})
+        self.assertEqual(kwargs["version"], "test")
+        self.assertEqual(kwargs["tracer_provider"], mock_tracer_provider)
+        self.assertEqual(kwargs["capture_parameters"], True)
+        self.assertEqual(kwargs["enable_commenter"], True)
+        self.assertEqual(kwargs["commenter_options"], {"foo": "bar"})
+        self.assertEqual(kwargs["connect_module"], mock_connect_module)
+
     def test_uninstrument_connection(self):
         connection = mock.Mock()
         # Set connection.database to avoid a failure because mock can't
