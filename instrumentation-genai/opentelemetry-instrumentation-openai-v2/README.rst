@@ -6,17 +6,21 @@ OpenTelemetry OpenAI Instrumentation
 .. |pypi| image:: https://badge.fury.io/py/opentelemetry-instrumentation-openai-v2.svg
    :target: https://pypi.org/project/opentelemetry-instrumentation-openai-v2/
 
-Instrumentation with OpenAI that supports the OpenAI library and is
-specified to trace_integration using 'OpenAI'.
+This library allows tracing LLM requests and logging of messages made by the
+`OpenAI Python API library <https://pypi.org/project/openai/>`_.
 
 
 Installation
 ------------
 
+If your application is already instrumented with OpenTelemetry, add this
+package to your requirements.
 ::
 
     pip install opentelemetry-instrumentation-openai-v2
 
+If you don't have an OpenAI application, yet, try our `example <example>`_
+which only needs a valid OpenAI API key.
 
 References
 ----------
