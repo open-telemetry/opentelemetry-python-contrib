@@ -23,6 +23,7 @@ from opentelemetry.test.test_base import TestBase
 
 
 class TestMySQLClientIntegration(TestBase):
+    # pylint: disable=invalid-name
     def tearDown(self):
         super().tearDown()
         with self.disable_logging():
@@ -117,20 +118,17 @@ class TestMySQLClientIntegration(TestBase):
         self.assertEqual(kwargs["commenter_options"], {"foo": True})
 
     def test_instrument_connection_with_dbapi_sqlcomment_enabled(self):
-        mock_cursor = mock.MagicMock()
+        mock_connect_module = mock.MagicMock(
+            __name__="MySQLdb",
+            threadsafety="123",
+            apilevel="123",
+            paramstyle="test",
+        )
+        mock_connect_module._mysql.get_client_info.return_value = "foobaz"
+        mock_cursor = mock_connect_module.connect().cursor()
         mock_cursor.execute = mock.MagicMock()
         mock_connection = mock.MagicMock()
         mock_connection.cursor.return_value = mock_cursor
-
-        mock_connect_module = mock.MagicMock()
-        mock_connect_module.__name__ = "MySQLdb"
-        mock_connect_module.threadsafety = "123"
-        mock_connect_module.apilevel = "123"
-        mock_connect_module.paramstyle = "test"
-        mock_connect_module._mysql.get_client_info = mock.Mock(
-            return_value="foobaz"
-        )
-        mock_connect_module.connect = mock.Mock(return_value=mock_connection)
 
         with mock.patch(
             "opentelemetry.instrumentation.mysqlclient.MySQLdb",
@@ -144,28 +142,30 @@ class TestMySQLClientIntegration(TestBase):
                 enable_commenter=True,
             )
             cnx_proxy.cursor().execute("Select 1;")
-            self.assertRegex(
+
+            spans_list = self.memory_exporter.get_finished_spans()
+            span = spans_list[0]
+            span_id = format(span.get_span_context().span_id, "016x")
+            trace_id = format(span.get_span_context().trace_id, "032x")
+            self.assertEqual(
                 mock_cursor.execute.call_args[0][0],
-                r"Select 1 /\*db_driver='MySQLdb%%3Afoobar',dbapi_level='123',dbapi_threadsafety='123',driver_paramstyle='test',mysql_client_version='foobaz',traceparent='\d{1,2}-[a-zA-Z0-9_]{32}-[a-zA-Z0-9_]{16}-\d{1,2}'\*/;",
+                f"Select 1 /*db_driver='MySQLdb%%3Afoobar',dbapi_level='123',dbapi_threadsafety='123',driver_paramstyle='test',mysql_client_version='foobaz',traceparent='00-{trace_id}-{span_id}-01'*/;",
             )
 
     def test_instrument_connection_with_dbapi_sqlcomment_enabled_with_options(
         self,
     ):
-        mock_cursor = mock.MagicMock()
+        mock_connect_module = mock.MagicMock(
+            __name__="MySQLdb",
+            threadsafety="123",
+            apilevel="123",
+            paramstyle="test",
+        )
+        mock_connect_module._mysql.get_client_info.return_value = "foobaz"
+        mock_cursor = mock_connect_module.connect().cursor()
         mock_cursor.execute = mock.MagicMock()
         mock_connection = mock.MagicMock()
         mock_connection.cursor.return_value = mock_cursor
-
-        mock_connect_module = mock.MagicMock()
-        mock_connect_module.__name__ = "MySQLdb"
-        mock_connect_module.threadsafety = "123"
-        mock_connect_module.apilevel = "123"
-        mock_connect_module.paramstyle = "test"
-        mock_connect_module._mysql.get_client_info = mock.Mock(
-            return_value="foobaz"
-        )
-        mock_connect_module.connect = mock.Mock(return_value=mock_connection)
 
         with mock.patch(
             "opentelemetry.instrumentation.mysqlclient.MySQLdb",
@@ -184,29 +184,30 @@ class TestMySQLClientIntegration(TestBase):
                 },
             )
             cnx_proxy.cursor().execute("Select 1;")
-            self.assertRegex(
+
+            spans_list = self.memory_exporter.get_finished_spans()
+            span = spans_list[0]
+            span_id = format(span.get_span_context().span_id, "016x")
+            trace_id = format(span.get_span_context().trace_id, "032x")
+            self.assertEqual(
                 mock_cursor.execute.call_args[0][0],
-                r"Select 1 /\*db_driver='MySQLdb%%3Afoobar',dbapi_threadsafety='123',mysql_client_version='foobaz',traceparent='\d{1,2}-[a-zA-Z0-9_]{32}-[a-zA-Z0-9_]{16}-\d{1,2}'\*/;",
+                f"Select 1 /*db_driver='MySQLdb%%3Afoobar',dbapi_threadsafety='123',mysql_client_version='foobaz',traceparent='00-{trace_id}-{span_id}-01'*/;",
             )
 
     def test_instrument_connection_with_dbapi_sqlcomment_not_enabled_default(
         self,
     ):
-        mock_cursor = mock.MagicMock()
+        mock_connect_module = mock.MagicMock(
+            __name__="MySQLdb",
+            threadsafety="123",
+            apilevel="123",
+            paramstyle="test",
+        )
+        mock_connect_module._mysql.get_client_info.return_value = "foobaz"
+        mock_cursor = mock_connect_module.connect().cursor()
         mock_cursor.execute = mock.MagicMock()
         mock_connection = mock.MagicMock()
         mock_connection.cursor.return_value = mock_cursor
-
-        mock_connect_module = mock.MagicMock()
-        mock_connect_module.__name__ = "MySQLdb"
-        mock_connect_module.threadsafety = "123"
-        mock_connect_module.apilevel = "123"
-        mock_connect_module.paramstyle = "test"
-        mock_connect_module._mysql.get_client_info = mock.Mock(
-            return_value="foobaz"
-        )
-
-        mock_connect_module.connect = mock.Mock(return_value=mock_connection)
 
         with mock.patch(
             "opentelemetry.instrumentation.mysqlclient.MySQLdb",
@@ -219,15 +220,15 @@ class TestMySQLClientIntegration(TestBase):
                 mock_connection,
             )
             cnx_proxy.cursor().execute("Select 1;")
-            self.assertRegex(
+            self.assertEqual(
                 mock_cursor.execute.call_args[0][0],
-                r"Select 1;",
+                "Select 1;",
             )
 
     @mock.patch("opentelemetry.instrumentation.dbapi.wrap_connect")
     @mock.patch("MySQLdb.connect")
     # pylint: disable=unused-argument
-    def test__instrument_enable_commenter_dbapi_kwargs(
+    def test_instrument_enable_commenter_dbapi_kwargs(
         self,
         mock_connect,
         mock_wrap_connect,
@@ -240,24 +241,20 @@ class TestMySQLClientIntegration(TestBase):
         self.assertEqual(kwargs["enable_commenter"], True)
         self.assertEqual(kwargs["commenter_options"], {"foo": True})
 
-    def test__instrument_with_dbapi_sqlcomment_enabled(
+    def test_instrument_with_dbapi_sqlcomment_enabled(
         self,
     ):
-        mock_cursor = mock.MagicMock()
+        mock_connect_module = mock.MagicMock(
+            __name__="MySQLdb",
+            threadsafety="123",
+            apilevel="123",
+            paramstyle="test",
+        )
+        mock_connect_module._mysql.get_client_info.return_value = "foobaz"
+        mock_cursor = mock_connect_module.connect().cursor()
         mock_cursor.execute = mock.MagicMock()
         mock_connection = mock.MagicMock()
         mock_connection.cursor.return_value = mock_cursor
-
-        mock_connect_module = mock.Mock()
-        mock_connect_module.__name__ = "MySQLdb"
-        mock_connect_module.threadsafety = "123"
-        mock_connect_module.apilevel = "123"
-        mock_connect_module.paramstyle = "test"
-        mock_connect_module._mysql.get_client_info = mock.Mock(
-            return_value="foobaz"
-        )
-
-        mock_connect_module.connect = mock.Mock(return_value=mock_connection)
 
         with mock.patch(
             "opentelemetry.instrumentation.mysqlclient.MySQLdb",
@@ -272,29 +269,30 @@ class TestMySQLClientIntegration(TestBase):
             cnx = mock_connect_module.connect(database="test")
             cursor = cnx.cursor()
             cursor.execute("Select 1;")
-            self.assertRegex(
+
+            spans_list = self.memory_exporter.get_finished_spans()
+            span = spans_list[0]
+            span_id = format(span.get_span_context().span_id, "016x")
+            trace_id = format(span.get_span_context().trace_id, "032x")
+            self.assertEqual(
                 mock_cursor.execute.call_args[0][0],
-                r"Select 1 /\*db_driver='MySQLdb%%3Afoobar',dbapi_level='123',dbapi_threadsafety='123',driver_paramstyle='test',mysql_client_version='foobaz',traceparent='\d{1,2}-[a-zA-Z0-9_]{32}-[a-zA-Z0-9_]{16}-\d{1,2}'\*/;",
+                f"Select 1 /*db_driver='MySQLdb%%3Afoobar',dbapi_level='123',dbapi_threadsafety='123',driver_paramstyle='test',mysql_client_version='foobaz',traceparent='00-{trace_id}-{span_id}-01'*/;",
             )
 
-    def test__instrument_with_dbapi_sqlcomment_enabled_with_options(
+    def test_instrument_with_dbapi_sqlcomment_enabled_with_options(
         self,
     ):
-        mock_cursor = mock.MagicMock()
+        mock_connect_module = mock.MagicMock(
+            __name__="MySQLdb",
+            threadsafety="123",
+            apilevel="123",
+            paramstyle="test",
+        )
+        mock_connect_module._mysql.get_client_info.return_value = "foobaz"
+        mock_cursor = mock_connect_module.connect().cursor()
         mock_cursor.execute = mock.MagicMock()
         mock_connection = mock.MagicMock()
         mock_connection.cursor.return_value = mock_cursor
-
-        mock_connect_module = mock.Mock()
-        mock_connect_module.__name__ = "MySQLdb"
-        mock_connect_module.threadsafety = "123"
-        mock_connect_module.apilevel = "123"
-        mock_connect_module.paramstyle = "test"
-        mock_connect_module._mysql.get_client_info = mock.Mock(
-            return_value="foobaz"
-        )
-
-        mock_connect_module.connect = mock.Mock(return_value=mock_connection)
 
         with mock.patch(
             "opentelemetry.instrumentation.mysqlclient.MySQLdb",
@@ -314,29 +312,30 @@ class TestMySQLClientIntegration(TestBase):
             cnx = mock_connect_module.connect(database="test")
             cursor = cnx.cursor()
             cursor.execute("Select 1;")
-            self.assertRegex(
+
+            spans_list = self.memory_exporter.get_finished_spans()
+            span = spans_list[0]
+            span_id = format(span.get_span_context().span_id, "016x")
+            trace_id = format(span.get_span_context().trace_id, "032x")
+            self.assertEqual(
                 mock_cursor.execute.call_args[0][0],
-                r"Select 1 /\*db_driver='MySQLdb%%3Afoobar',dbapi_threadsafety='123',mysql_client_version='foobaz',traceparent='\d{1,2}-[a-zA-Z0-9_]{32}-[a-zA-Z0-9_]{16}-\d{1,2}'\*/;",
+                f"Select 1 /*db_driver='MySQLdb%%3Afoobar',dbapi_threadsafety='123',mysql_client_version='foobaz',traceparent='00-{trace_id}-{span_id}-01'*/;",
             )
 
-    def test__instrument_with_dbapi_sqlcomment_not_enabled_default(
+    def test_instrument_with_dbapi_sqlcomment_not_enabled_default(
         self,
     ):
-        mock_cursor = mock.MagicMock()
+        mock_connect_module = mock.MagicMock(
+            __name__="MySQLdb",
+            threadsafety="123",
+            apilevel="123",
+            paramstyle="test",
+        )
+        mock_connect_module._mysql.get_client_info.return_value = "foobaz"
+        mock_cursor = mock_connect_module.connect().cursor()
         mock_cursor.execute = mock.MagicMock()
         mock_connection = mock.MagicMock()
         mock_connection.cursor.return_value = mock_cursor
-
-        mock_connect_module = mock.Mock()
-        mock_connect_module.__name__ = "MySQLdb"
-        mock_connect_module.threadsafety = "123"
-        mock_connect_module.apilevel = "123"
-        mock_connect_module.paramstyle = "test"
-        mock_connect_module._mysql.get_client_info = mock.Mock(
-            return_value="foobaz"
-        )
-
-        mock_connect_module.connect = mock.Mock(return_value=mock_connection)
 
         with mock.patch(
             "opentelemetry.instrumentation.mysqlclient.MySQLdb",
@@ -349,9 +348,9 @@ class TestMySQLClientIntegration(TestBase):
             cnx = mock_connect_module.connect(database="test")
             cursor = cnx.cursor()
             cursor.execute("Select 1;")
-            self.assertRegex(
+            self.assertEqual(
                 mock_cursor.execute.call_args[0][0],
-                r"Select 1;",
+                "Select 1;",
             )
 
     @mock.patch("MySQLdb.connect")
