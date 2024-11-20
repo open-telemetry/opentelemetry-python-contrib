@@ -1005,17 +1005,18 @@ class HTTPXClientInstrumentor(BaseInstrumentor):
                 ),
             )
             for transport in client._mounts.values():
-                wrap_function_wrapper(
-                    transport,
-                    "handle_request",
-                    partial(
-                        cls._handle_request_wrapper,
-                        tracer=tracer,
-                        sem_conv_opt_in_mode=sem_conv_opt_in_mode,
-                        request_hook=request_hook,
-                        response_hook=response_hook,
-                    ),
-                )
+                if hasattr(transport, "handle_request"):
+                    wrap_function_wrapper(
+                        transport,
+                        "handle_request",
+                        partial(
+                            cls._handle_request_wrapper,
+                            tracer=tracer,
+                            sem_conv_opt_in_mode=sem_conv_opt_in_mode,
+                            request_hook=request_hook,
+                            response_hook=response_hook,
+                        ),
+                    )
             client._is_instrumented_by_opentelemetry = True
         if hasattr(client._transport, "handle_async_request"):
             wrap_function_wrapper(
@@ -1030,17 +1031,18 @@ class HTTPXClientInstrumentor(BaseInstrumentor):
                 ),
             )
             for transport in client._mounts.values():
-                wrap_function_wrapper(
-                    transport,
-                    "handle_async_request",
-                    partial(
-                        cls._handle_async_request_wrapper,
-                        tracer=tracer,
-                        sem_conv_opt_in_mode=sem_conv_opt_in_mode,
-                        async_request_hook=async_request_hook,
-                        async_response_hook=async_response_hook,
-                    ),
-                )
+                if hasattr(transport, "handle_async_request"):
+                    wrap_function_wrapper(
+                        transport,
+                        "handle_async_request",
+                        partial(
+                            cls._handle_async_request_wrapper,
+                            tracer=tracer,
+                            sem_conv_opt_in_mode=sem_conv_opt_in_mode,
+                            async_request_hook=async_request_hook,
+                            async_response_hook=async_response_hook,
+                        ),
+                    )
             client._is_instrumented_by_opentelemetry = True
 
     @staticmethod
