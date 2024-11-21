@@ -86,18 +86,15 @@ async def test_async_chat_completion_no_content(
     logs = log_exporter.get_finished_logs()
     assert len(logs) == 2
 
-    assert_message_in_logs(
-        logs[0], "gen_ai.user.message", None, spans[0]
-    )
+    assert_message_in_logs(logs[0], "gen_ai.user.message", None, spans[0])
 
     choice_event = {
         "index": 0,
         "finish_reason": "stop",
-        "message": {
-            "role": "assistant"
-        },
+        "message": {"role": "assistant"},
     }
     assert_message_in_logs(logs[1], "gen_ai.choice", choice_event, spans[0])
+
 
 @pytest.mark.asyncio()
 async def test_async_chat_completion_bad_endpoint(

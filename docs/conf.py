@@ -67,7 +67,14 @@ resource_dirs = [
     for f in listdir(resource)
     if isdir(join(resource, f))
 ]
-sys.path[:0] = exp_dirs + instr_dirs + instr_genai_dirs + sdk_ext_dirs + prop_dirs + resource_dirs
+sys.path[:0] = (
+    exp_dirs
+    + instr_dirs
+    + instr_genai_dirs
+    + sdk_ext_dirs
+    + prop_dirs
+    + resource_dirs
+)
 
 # -- Project information -----------------------------------------------------
 
