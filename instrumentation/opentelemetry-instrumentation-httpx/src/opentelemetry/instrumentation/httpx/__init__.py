@@ -641,77 +641,6 @@ class AsyncOpenTelemetryTransport(httpx.AsyncBaseTransport):
         await self._transport.aclose()
 
 
-class _InstrumentedClient(httpx.Client):
-    _tracer_provider = None
-    _request_hook = None
-    _response_hook = None
-
-    def __init__(self, *args, **kwargs):
-        super().__init__(*args, **kwargs)
-
-        self._original_transport = self._transport
-        self._original_mounts = self._mounts.copy()
-        self._is_instrumented_by_opentelemetry = True
-
-        self._transport = SyncOpenTelemetryTransport(
-            self._transport,
-            tracer_provider=_InstrumentedClient._tracer_provider,
-            request_hook=_InstrumentedClient._request_hook,
-            response_hook=_InstrumentedClient._response_hook,
-        )
-        self._mounts.update(
-            {
-                url_pattern: (
-                    SyncOpenTelemetryTransport(
-                        transport,
-                        tracer_provider=_InstrumentedClient._tracer_provider,
-                        request_hook=_InstrumentedClient._request_hook,
-                        response_hook=_InstrumentedClient._response_hook,
-                    )
-                    if transport is not None
-                    else transport
-                )
-                for url_pattern, transport in self._original_mounts.items()
-            }
-        )
-
-
-class _InstrumentedAsyncClient(httpx.AsyncClient):
-    _tracer_provider = None
-    _request_hook = None
-    _response_hook = None
-
-    def __init__(self, *args, **kwargs):
-        super().__init__(*args, **kwargs)
-
-        self._original_transport = self._transport
-        self._original_mounts = self._mounts.copy()
-        self._is_instrumented_by_opentelemetry = True
-
-        self._transport = AsyncOpenTelemetryTransport(
-            self._transport,
-            tracer_provider=_InstrumentedAsyncClient._tracer_provider,
-            request_hook=_InstrumentedAsyncClient._request_hook,
-            response_hook=_InstrumentedAsyncClient._response_hook,
-        )
-
-        self._mounts.update(
-            {
-                url_pattern: (
-                    AsyncOpenTelemetryTransport(
-                        transport,
-                        tracer_provider=_InstrumentedAsyncClient._tracer_provider,
-                        request_hook=_InstrumentedAsyncClient._request_hook,
-                        response_hook=_InstrumentedAsyncClient._response_hook,
-                    )
-                    if transport is not None
-                    else transport
-                )
-                for url_pattern, transport in self._original_mounts.items()
-            }
-        )
-
-
 class HTTPXClientInstrumentor(BaseInstrumentor):
     # pylint: disable=protected-access,attribute-defined-outside-init
     """An instrumentor for httpx Client and AsyncClient
@@ -1005,17 +934,18 @@ class HTTPXClientInstrumentor(BaseInstrumentor):
                 ),
             )
             for transport in client._mounts.values():
-                wrap_function_wrapper(
-                    transport,
-                    "handle_request",
-                    partial(
-                        cls._handle_request_wrapper,
-                        tracer=tracer,
-                        sem_conv_opt_in_mode=sem_conv_opt_in_mode,
-                        request_hook=request_hook,
-                        response_hook=response_hook,
-                    ),
-                )
+                if hasattr(transport, "handle_request"):
+                    wrap_function_wrapper(
+                        transport,
+                        "handle_request",
+                        partial(
+                            cls._handle_request_wrapper,
+                            tracer=tracer,
+                            sem_conv_opt_in_mode=sem_conv_opt_in_mode,
+                            request_hook=request_hook,
+                            response_hook=response_hook,
+                        ),
+                    )
             client._is_instrumented_by_opentelemetry = True
         if hasattr(client._transport, "handle_async_request"):
             wrap_function_wrapper(
@@ -1030,17 +960,18 @@ class HTTPXClientInstrumentor(BaseInstrumentor):
                 ),
             )
             for transport in client._mounts.values():
-                wrap_function_wrapper(
-                    transport,
-                    "handle_async_request",
-                    partial(
-                        cls._handle_async_request_wrapper,
-                        tracer=tracer,
-                        sem_conv_opt_in_mode=sem_conv_opt_in_mode,
-                        async_request_hook=async_request_hook,
-                        async_response_hook=async_response_hook,
-                    ),
-                )
+                if hasattr(transport, "handle_async_request"):
+                    wrap_function_wrapper(
+                        transport,
+                        "handle_async_request",
+                        partial(
+                            cls._handle_async_request_wrapper,
+                            tracer=tracer,
+                            sem_conv_opt_in_mode=sem_conv_opt_in_mode,
+                            async_request_hook=async_request_hook,
+                            async_response_hook=async_response_hook,
+                        ),
+                    )
             client._is_instrumented_by_opentelemetry = True
 
     @staticmethod
