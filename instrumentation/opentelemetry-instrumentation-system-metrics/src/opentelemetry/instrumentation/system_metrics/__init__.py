@@ -40,6 +40,7 @@ following metrics are configured:
         "process.runtime.thread_count": None,
         "process.runtime.cpu.utilization": None,
         "process.runtime.context_switches": ["involuntary", "voluntary"],
+        "process.open_file_descriptor.count": None,
     }
 
 Usage
