@@ -23,6 +23,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   ([#2935](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/2935))
 - `opentelemetry-instrumentation-dbapi` instrument_connection accepts optional connect_module
   ([#3027](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/3027))
+- `opentelemetry-instrumentation-mysqlclient` Add sqlcommenter support
+  ([#2941](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/2941))
 
 ### Fixed
 
@@ -37,6 +39,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   ([#2971](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/2971))
 - Drop `opentelemetry-instrumentation-test` package from default instrumentation list
   ([#2969](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/2969))
+- `opentelemetry-instrumentation-httpx`: remove private unused `_InstrumentedClient` and `_InstrumentedAsyncClient` classes
+  ([#3036](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/3036))
 
 ## Version 1.28.0/0.49b0 (2024-11-05)
 
@@ -52,6 +56,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   ([#2635](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/2635))
 - `opentelemetry-instrumentation` Add support for string based dotted module paths in unwrap
   ([#2919](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/2919))
+- `opentelemetry-instrumentation-pymysql` Add sqlcommenter support
+  ([#2942](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/2942))
 
 ### Fixed
 
