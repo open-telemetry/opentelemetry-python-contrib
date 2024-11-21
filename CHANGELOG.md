@@ -34,6 +34,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   ([#3025](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/3025))
 - `opentelemetry-instrumentation-httpx`: Check if mount transport is none before wrap it
   ([#3022](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/3022))
+- Replace all instrumentor unit test `assertEqualSpanInstrumentationInfo` calls with `assertEqualSpanInstrumentationScope` calls
+  ([#3037](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/3037))
 
 ### Breaking changes
 
