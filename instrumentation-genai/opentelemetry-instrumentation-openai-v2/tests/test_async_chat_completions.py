@@ -68,6 +68,37 @@ async def test_async_chat_completion_with_content(
     assert_message_in_logs(logs[1], "gen_ai.choice", choice_event, spans[0])
 
 
+@pytest.mark.vcr()
+@pytest.mark.asyncio()
+async def test_async_chat_completion_no_content(
+    span_exporter, log_exporter, async_openai_client, instrument_no_content
+):
+    llm_model_value = "gpt-4o-mini"
+    messages_value = [{"role": "user", "content": "Say this is a test"}]
+
+    response = await async_openai_client.chat.completions.create(
+        messages=messages_value, model=llm_model_value, stream=False
+    )
+
+    spans = span_exporter.get_finished_spans()
+    assert_completion_attributes(spans[0], llm_model_value, response)
+
+    logs = log_exporter.get_finished_logs()
+    assert len(logs) == 2
+
+    assert_message_in_logs(
+        logs[0], "gen_ai.user.message", None, spans[0]
+    )
+
+    choice_event = {
+        "index": 0,
+        "finish_reason": "stop",
+        "message": {
+            "role": "assistant"
+        },
+    }
+    assert_message_in_logs(logs[1], "gen_ai.choice", choice_event, spans[0])
+
 @pytest.mark.asyncio()
 async def test_async_chat_completion_bad_endpoint(
     span_exporter, instrument_no_content
