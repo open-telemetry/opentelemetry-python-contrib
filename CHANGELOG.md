@@ -56,6 +56,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   ([#2635](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/2635))
 - `opentelemetry-instrumentation` Add support for string based dotted module paths in unwrap
   ([#2919](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/2919))
+- `opentelemetry-instrumentation-pymysql` Add sqlcommenter support
+  ([#2942](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/2942))
 
 ### Fixed
 
