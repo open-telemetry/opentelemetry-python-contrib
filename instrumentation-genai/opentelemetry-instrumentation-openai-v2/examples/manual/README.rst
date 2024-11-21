@@ -1,7 +1,7 @@
 OpenTelemetry OpenAI Instrumentation Example
 ============================================
 
-This is an example of how to instrument OpenAI calls.
+This is an example of how to instrument OpenAI calls when configuring OpenTelemetry SDK and Instrumentations manually.
 
 When `main.py <main.py>`_ is run, it exports traces and logs to an OTLP
 compatible endpoint. Traces include details such as the model used and the
