@@ -30,6 +30,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - `opentelemetry-instrumentation-httpx`: instrument_client is a static method again
   ([#3003](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/3003))
+- `opentelemetry-instrumentation-system_metrics`: fix callbacks reading wrong config
+  ([#3025](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/3025))
 - `opentelemetry-instrumentation-httpx`: Check if mount transport is none before wrap it
   ([#3022](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/3022))
 
@@ -39,6 +41,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   ([#2971](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/2971))
 - Drop `opentelemetry-instrumentation-test` package from default instrumentation list
   ([#2969](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/2969))
+- `opentelemetry-instrumentation-httpx`: remove private unused `_InstrumentedClient` and `_InstrumentedAsyncClient` classes
+  ([#3036](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/3036))
 
 ## Version 1.28.0/0.49b0 (2024-11-05)
 
