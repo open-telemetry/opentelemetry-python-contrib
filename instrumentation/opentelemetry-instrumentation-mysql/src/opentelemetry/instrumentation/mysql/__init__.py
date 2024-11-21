@@ -109,7 +109,6 @@ API
 
 import logging
 import typing
-from importlib import import_module
 
 import mysql.connector
 import wrapt
@@ -193,7 +192,7 @@ class MySQLInstrumentor(BaseInstrumentor):
             tracer_provider=tracer_provider,
             enable_commenter=enable_commenter,
             commenter_options=commenter_options,
-            connect_module=import_module("mysql.connector"),
+            connect_module=mysql.connector,
         )
         db_integration.get_connection_attributes(connection)
         return get_traced_connection_proxy(connection, db_integration)
