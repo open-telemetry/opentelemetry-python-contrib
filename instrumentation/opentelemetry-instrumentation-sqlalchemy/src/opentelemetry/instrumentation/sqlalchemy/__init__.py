@@ -181,13 +181,15 @@ class SQLAlchemyInstrumentor(BaseInstrumentor):
                 tracer, connections_usage, enable_commenter, commenter_options
             ),
         )
-        _w(
-            "sqlalchemy.engine.create",
-            "create_engine",
-            _wrap_create_engine(
-                tracer, connections_usage, enable_commenter, commenter_options
-            ),
-        )
+        # sqlalchemy.engine.create is not present in earlier versions of sqlalchemy (which we support)
+        if parse_version(sqlalchemy.__version__).release >= (1, 4):
+            _w(
+                "sqlalchemy.engine.create",
+                "create_engine",
+                _wrap_create_engine(
+                    tracer, connections_usage, enable_commenter, commenter_options
+                ),
+            )
         _w(
             "sqlalchemy.engine.base",
             "Engine.connect",
@@ -231,7 +233,8 @@ class SQLAlchemyInstrumentor(BaseInstrumentor):
     def _uninstrument(self, **kwargs):
         unwrap(sqlalchemy, "create_engine")
         unwrap(sqlalchemy.engine, "create_engine")
-        unwrap(sqlalchemy.engine.create, "create_engine")
+        if parse_version(sqlalchemy.__version__).release >= (1, 4):
+            unwrap(sqlalchemy.engine.create, "create_engine")
         unwrap(Engine, "connect")
         if parse_version(sqlalchemy.__version__).release >= (1, 4):
             unwrap(sqlalchemy.ext.asyncio, "create_async_engine")
