@@ -15,13 +15,21 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - `opentelemetry-instrumentation-sqlalchemy` Update unit tests to run with SQLALchemy 2
   ([#2976](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/2976))
-  - Add `opentelemetry-instrumentation-openai-v2` to `opentelemetry-bootstrap`
+- Add `opentelemetry-instrumentation-openai-v2` to `opentelemetry-bootstrap`
   ([#2996](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/2996))
+- `opentelemetry-instrumentation-sqlalchemy` Add sqlcomment to `db.statement` attribute
+  ([#2937](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/2937))
+- `opentelemetry-instrumentation-dbapi` Add sqlcomment to `db.statement` attribute
+  ([#2935](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/2935))
+- `opentelemetry-instrumentation-dbapi` instrument_connection accepts optional connect_module
+  ([#3027](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/3027))
 
 ### Fixed
 
 - `opentelemetry-instrumentation-httpx`: instrument_client is a static method again
   ([#3003](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/3003))
+- `opentelemetry-instrumentation-httpx`: Check if mount transport is none before wrap it
+  ([#3022](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/3022))
 
 ### Breaking changes
 
