@@ -194,6 +194,7 @@ def instrument_connection(
     capture_parameters: bool = False,
     enable_commenter: bool = False,
     commenter_options: dict = None,
+    connect_module: typing.Callable[..., typing.Any] = None,
 ):
     """Enable instrumentation in a database connection.
 
@@ -208,6 +209,7 @@ def instrument_connection(
         capture_parameters: Configure if db.statement.parameters should be captured.
         enable_commenter: Flag to enable/disable sqlcommenter.
         commenter_options: Configurations for tags to be appended at the sql query.
+        connect_module: Module name where connect method is available.
 
     Returns:
         An instrumented connection.
@@ -225,6 +227,7 @@ def instrument_connection(
         capture_parameters=capture_parameters,
         enable_commenter=enable_commenter,
         commenter_options=commenter_options,
+        connect_module=connect_module,
     )
     db_integration.get_connection_attributes(connection)
     return get_traced_connection_proxy(connection, db_integration)
