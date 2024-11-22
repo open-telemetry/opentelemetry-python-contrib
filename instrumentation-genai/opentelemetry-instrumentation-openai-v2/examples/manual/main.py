@@ -4,10 +4,10 @@ from openai import OpenAI
 
 # NOTE: OpenTelemetry Python Logs and Events APIs are in beta
 from opentelemetry import _events, _logs, trace
-from opentelemetry.exporter.otlp.proto.http._log_exporter import (
+from opentelemetry.exporter.otlp.proto.grpc._log_exporter import (
     OTLPLogExporter,
 )
-from opentelemetry.exporter.otlp.proto.http.trace_exporter import (
+from opentelemetry.exporter.otlp.proto.grpc.trace_exporter import (
     OTLPSpanExporter,
 )
 from opentelemetry.instrumentation.openai_v2 import OpenAIInstrumentor
