@@ -187,7 +187,10 @@ class SQLAlchemyInstrumentor(BaseInstrumentor):
                 "sqlalchemy.engine.create",
                 "create_engine",
                 _wrap_create_engine(
-                    tracer, connections_usage, enable_commenter, commenter_options
+                    tracer,
+                    connections_usage,
+                    enable_commenter,
+                    commenter_options,
                 ),
             )
         _w(
