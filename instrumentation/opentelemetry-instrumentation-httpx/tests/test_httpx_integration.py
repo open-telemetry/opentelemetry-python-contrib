@@ -216,7 +216,7 @@ class BaseTestCases:
 
             self.assertIs(span.status.status_code, trace.StatusCode.UNSET)
 
-            self.assertEqualSpanInstrumentationInfo(
+            self.assertEqualSpanInstrumentationScope(
                 span, opentelemetry.instrumentation.httpx
             )
 
@@ -240,7 +240,7 @@ class BaseTestCases:
 
             self.assertIs(span.status.status_code, trace.StatusCode.ERROR)
 
-            self.assertEqualSpanInstrumentationInfo(
+            self.assertEqualSpanInstrumentationScope(
                 span, opentelemetry.instrumentation.httpx
             )
 
@@ -269,7 +269,7 @@ class BaseTestCases:
 
             self.assertIs(span.status.status_code, trace.StatusCode.ERROR)
 
-            self.assertEqualSpanInstrumentationInfo(
+            self.assertEqualSpanInstrumentationScope(
                 span, opentelemetry.instrumentation.httpx
             )
 
@@ -309,7 +309,7 @@ class BaseTestCases:
 
             self.assertIs(span.status.status_code, trace.StatusCode.UNSET)
 
-            self.assertEqualSpanInstrumentationInfo(
+            self.assertEqualSpanInstrumentationScope(
                 span, opentelemetry.instrumentation.httpx
             )
 
@@ -350,7 +350,7 @@ class BaseTestCases:
 
             self.assertIs(span.status.status_code, trace.StatusCode.UNSET)
 
-            self.assertEqualSpanInstrumentationInfo(
+            self.assertEqualSpanInstrumentationScope(
                 span, opentelemetry.instrumentation.httpx
             )
 
