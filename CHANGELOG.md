@@ -38,6 +38,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   ([#3022](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/3022))
 - Replace all instrumentor unit test `assertEqualSpanInstrumentationInfo` calls with `assertEqualSpanInstrumentationScope` calls
   ([#3037](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/3037))
+- `opentelemetry-instrumentation-sqlalchemy` Fixes engines from `sqlalchemy.engine_from_config`not being fully instrumented
+  ([#2816](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/2816))
 
 ### Breaking changes
 
@@ -129,8 +131,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   ([#2792](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/2792))
 - `opentelemetry-instrumentation-tornado` Handle http client exception and record exception info into span
   ([#2563](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/2563))
-- `opentelemetry-instrumentation-sqlalchemy` Fixes engines from `sqlalchemy.engine_from_config` not being fully instrumented
-  ([#2816](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/2816))
 - `opentelemetry-instrumentation` fix `http.host` new http semantic convention mapping to depend on `kind` of span
   ([#2814](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/2814))
 - `opentelemetry-instrumentation` Fix the description of `http.server.duration` and `http.server.request.duration`
