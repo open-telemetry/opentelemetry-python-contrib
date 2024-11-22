@@ -26,7 +26,6 @@ Usage
     import pymysql
     from opentelemetry.instrumentation.pymysql import PyMySQLInstrumentor
 
-
     PyMySQLInstrumentor().instrument()
 
     cnx = pymysql.connect(database="MySQL_Database")
@@ -35,6 +34,76 @@ Usage
     cnx.commit()
     cursor.close()
     cnx.close()
+
+SQLCOMMENTER
+*****************************************
+You can optionally configure PyMySQL instrumentation to enable sqlcommenter which enriches
+the query with contextual information.
+
+Usage
+-----
+
+.. code:: python
+
+    import pymysql
+    from opentelemetry.instrumentation.pymysql import PyMySQLInstrumentor
+
+    PyMySQLInstrumentor().instrument(enable_commenter=True, commenter_options={})
+
+    cnx = pymysql.connect(database="MySQL_Database")
+    cursor = cnx.cursor()
+    cursor.execute("INSERT INTO test (testField) VALUES (123)"
+    cnx.commit()
+    cursor.close()
+    cnx.close()
+
+
+For example,
+::
+
+   Invoking cursor.execute("INSERT INTO test (testField) VALUES (123)") will lead to sql query "INSERT INTO test (testField) VALUES (123)" but when SQLCommenter is enabled
+   the query will get appended with some configurable tags like "INSERT INTO test (testField) VALUES (123) /*tag=value*/;"
+
+
+SQLCommenter Configurations
+***************************
+We can configure the tags to be appended to the sqlquery log by adding configuration inside commenter_options(default:{}) keyword
+
+db_driver = True(Default) or False
+
+For example,
+::
+Enabling this flag will add pymysql and its version, e.g. /*pymysql%%3A1.2.3*/
+
+dbapi_threadsafety = True(Default) or False
+
+For example,
+::
+Enabling this flag will add threadsafety /*dbapi_threadsafety=2*/
+
+dbapi_level = True(Default) or False
+
+For example,
+::
+Enabling this flag will add dbapi_level /*dbapi_level='2.0'*/
+
+mysql_client_version = True(Default) or False
+
+For example,
+::
+Enabling this flag will add mysql_client_version /*mysql_client_version='123'*/
+
+driver_paramstyle = True(Default) or False
+
+For example,
+::
+Enabling this flag will add driver_paramstyle /*driver_paramstyle='pyformat'*/
+
+opentelemetry_values = True(Default) or False
+
+For example,
+::
+Enabling this flag will add traceparent values /*traceparent='00-03afa25236b8cd948fa853d67038ac79-405ff022e8247c46-01'*/
 
 API
 ---
@@ -59,14 +128,16 @@ _DATABASE_SYSTEM = "mysql"
 
 
 class PyMySQLInstrumentor(BaseInstrumentor):
-    def instrumentation_dependencies(self) -> Collection[str]:
+    def instrumentation_dependencies(self) -> Collection[str]:  # pylint: disable=no-self-use
         return _instruments
 
-    def _instrument(self, **kwargs):
+    def _instrument(self, **kwargs):  # pylint: disable=no-self-use
         """Integrate with the PyMySQL library.
         https://github.com/PyMySQL/PyMySQL/
         """
         tracer_provider = kwargs.get("tracer_provider")
+        enable_sqlcommenter = kwargs.get("enable_commenter", False)
+        commenter_options = kwargs.get("commenter_options", {})
 
         dbapi.wrap_connect(
             __name__,
@@ -76,14 +147,21 @@ class PyMySQLInstrumentor(BaseInstrumentor):
             _CONNECTION_ATTRIBUTES,
             version=__version__,
             tracer_provider=tracer_provider,
+            enable_commenter=enable_sqlcommenter,
+            commenter_options=commenter_options,
         )
 
-    def _uninstrument(self, **kwargs):
+    def _uninstrument(self, **kwargs):  # pylint: disable=no-self-use
         """ "Disable PyMySQL instrumentation"""
         dbapi.unwrap_connect(pymysql, "connect")
 
     @staticmethod
-    def instrument_connection(connection, tracer_provider=None):
+    def instrument_connection(
+        connection,
+        tracer_provider=None,
+        enable_commenter=None,
+        commenter_options=None,
+    ):
         """Enable instrumentation in a PyMySQL connection.
 
         Args:
@@ -102,6 +180,9 @@ class PyMySQLInstrumentor(BaseInstrumentor):
             _CONNECTION_ATTRIBUTES,
             version=__version__,
             tracer_provider=tracer_provider,
+            enable_commenter=enable_commenter,
+            commenter_options=commenter_options,
+            connect_module=pymysql,
         )
 
     @staticmethod

@@ -158,7 +158,7 @@ class URLLibIntegrationTestBase(abc.ABC):
 
         self.assertIs(span.status.status_code, trace.StatusCode.UNSET)
 
-        self.assertEqualSpanInstrumentationInfo(
+        self.assertEqualSpanInstrumentationScope(
             span, opentelemetry.instrumentation.urllib
         )
 
@@ -182,7 +182,7 @@ class URLLibIntegrationTestBase(abc.ABC):
 
         self.assertIs(span.status.status_code, trace.StatusCode.UNSET)
 
-        self.assertEqualSpanInstrumentationInfo(
+        self.assertEqualSpanInstrumentationScope(
             span, opentelemetry.instrumentation.urllib
         )
 
@@ -209,7 +209,7 @@ class URLLibIntegrationTestBase(abc.ABC):
 
         self.assertIs(span.status.status_code, trace.StatusCode.UNSET)
 
-        self.assertEqualSpanInstrumentationInfo(
+        self.assertEqualSpanInstrumentationScope(
             span, opentelemetry.instrumentation.urllib
         )
 
@@ -344,7 +344,7 @@ class URLLibIntegrationTestBase(abc.ABC):
 
         self.assertIs(span.status.status_code, trace.StatusCode.UNSET)
 
-        self.assertEqualSpanInstrumentationInfo(
+        self.assertEqualSpanInstrumentationScope(
             span, opentelemetry.instrumentation.urllib
         )
 

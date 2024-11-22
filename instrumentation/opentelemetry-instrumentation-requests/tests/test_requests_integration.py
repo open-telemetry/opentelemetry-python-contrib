@@ -166,7 +166,7 @@ class RequestsIntegrationTestBase(abc.ABC):
 
         self.assertIs(span.status.status_code, trace.StatusCode.UNSET)
 
-        self.assertEqualSpanInstrumentationInfo(
+        self.assertEqualSpanInstrumentationScope(
             span, opentelemetry.instrumentation.requests
         )
 
