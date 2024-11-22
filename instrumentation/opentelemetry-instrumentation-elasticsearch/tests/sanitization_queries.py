@@ -44,6 +44,16 @@ filter_query = {
     }
 }
 
+_field_opts = {}
+highlight_query = {
+    "query": {
+        "match": {"content": "search"},
+    },
+    "highlight": {
+        "fields": {"content": _field_opts, "content.morph": _field_opts},
+    },
+}
+
 interval_query_sanitized = {
     "query": {
         "intervals": {
@@ -62,4 +72,9 @@ filter_query_sanitized = {
             "filter": "?",
         }
     }
+}
+
+highlight_query_sanitized = {
+    "query": {"match": {"content": "search"}},
+    "highlight": {"fields": {"content": {}, "content.morph": {}}},
 }
