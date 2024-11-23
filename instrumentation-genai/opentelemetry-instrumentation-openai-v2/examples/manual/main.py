@@ -1,3 +1,4 @@
+# pylint: skip-file
 import os
 
 from openai import OpenAI
