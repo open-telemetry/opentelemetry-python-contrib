@@ -1,5 +1,5 @@
 OpenTelemetry OpenAI Zero-Code Instrumentation Example
-============================================
+======================================================
 
 This is an example of how to instrument OpenAI calls with zero code changes,
 using `opentelemetry-instrument`.
