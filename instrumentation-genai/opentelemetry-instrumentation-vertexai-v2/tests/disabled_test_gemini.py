@@ -1,7 +1,8 @@
 import pytest
 import vertexai
-from opentelemetry.semconv_ai import SpanAttributes
 from vertexai.preview.generative_models import GenerativeModel, Part
+
+from opentelemetry.semconv_ai import SpanAttributes
 
 vertexai.init()
 

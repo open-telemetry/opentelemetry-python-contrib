@@ -18,26 +18,25 @@ import logging
 import os
 import types
 from typing import Collection
-from opentelemetry.instrumentation.vertexai.config import Config
-from opentelemetry.instrumentation.vertexai.utils import dont_throw
+
 from wrapt import wrap_function_wrapper
 
 from opentelemetry import context as context_api
-from opentelemetry.trace import get_tracer, SpanKind
-from opentelemetry.trace.status import Status, StatusCode
-
 from opentelemetry.instrumentation.instrumentor import BaseInstrumentor
 from opentelemetry.instrumentation.utils import (
     _SUPPRESS_INSTRUMENTATION_KEY,
     unwrap,
 )
-
+from opentelemetry.instrumentation.vertexai.config import Config
+from opentelemetry.instrumentation.vertexai.utils import dont_throw
+from opentelemetry.instrumentation.vertexai.version import __version__
 from opentelemetry.semconv_ai import (
     SUPPRESS_LANGUAGE_MODEL_INSTRUMENTATION_KEY,
-    SpanAttributes,
     LLMRequestTypeValues,
+    SpanAttributes,
 )
-from opentelemetry.instrumentation.vertexai.version import __version__
+from opentelemetry.trace import SpanKind, get_tracer
+from opentelemetry.trace.status import Status, StatusCode
 
 logger = logging.getLogger(__name__)
 
