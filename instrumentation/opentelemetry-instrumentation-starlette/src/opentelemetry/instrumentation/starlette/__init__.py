@@ -256,7 +256,11 @@ class StarletteInstrumentor(BaseInstrumentor):
 
     @staticmethod
     def uninstrument_app(app: applications.Starlette):
-        app.user_middleware = [x for x in app.user_middleware if x.cls is not OpenTelemetryMiddleware]
+        app.user_middleware = [
+            x
+            for x in app.user_middleware
+            if x.cls is not OpenTelemetryMiddleware
+        ]
         app.middleware_stack = app.build_middleware_stack()
         app._is_instrumented_by_opentelemetry = False
 
@@ -266,9 +270,15 @@ class StarletteInstrumentor(BaseInstrumentor):
     def _instrument(self, **kwargs: Unpack[InstrumentKwargs]):
         self._original_starlette = applications.Starlette
         _InstrumentedStarlette._tracer_provider = kwargs.get("tracer_provider")
-        _InstrumentedStarlette._server_request_hook = kwargs.get("server_request_hook")
-        _InstrumentedStarlette._client_request_hook = kwargs.get("client_request_hook")
-        _InstrumentedStarlette._client_response_hook = kwargs.get("client_response_hook")
+        _InstrumentedStarlette._server_request_hook = kwargs.get(
+            "server_request_hook"
+        )
+        _InstrumentedStarlette._client_request_hook = kwargs.get(
+            "client_request_hook"
+        )
+        _InstrumentedStarlette._client_response_hook = kwargs.get(
+            "client_response_hook"
+        )
         _InstrumentedStarlette._meter_provider = kwargs.get("_meter_provider")
 
         applications.Starlette = _InstrumentedStarlette
@@ -349,7 +359,9 @@ def _get_route_details(scope: dict[str, Any]) -> str | None:
     return route
 
 
-def _get_default_span_details(scope: dict[str, Any]) -> tuple[str, dict[str, Any]]:
+def _get_default_span_details(
+    scope: dict[str, Any],
+) -> tuple[str, dict[str, Any]]:
     """Callback to retrieve span name and attributes from ASGI scope.
 
     Args:
