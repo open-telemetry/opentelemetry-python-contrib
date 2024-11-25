@@ -1,3 +1,17 @@
+# Copyright The OpenTelemetry Authors
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
 """OpenTelemetry Vertex AI instrumentation"""
 
 import logging
@@ -13,7 +27,10 @@ from opentelemetry.trace import get_tracer, SpanKind
 from opentelemetry.trace.status import Status, StatusCode
 
 from opentelemetry.instrumentation.instrumentor import BaseInstrumentor
-from opentelemetry.instrumentation.utils import _SUPPRESS_INSTRUMENTATION_KEY, unwrap
+from opentelemetry.instrumentation.utils import (
+    _SUPPRESS_INSTRUMENTATION_KEY,
+    unwrap,
+)
 
 from opentelemetry.semconv_ai import (
     SUPPRESS_LANGUAGE_MODEL_INSTRUMENTATION_KEY,
@@ -103,7 +120,9 @@ WRAPPED_METHODS = [
 def should_send_prompts():
     return (
         os.getenv("TRACELOOP_TRACE_CONTENT") or "true"
-    ).lower() == "true" or context_api.get_value("override_enable_content_tracing")
+    ).lower() == "true" or context_api.get_value(
+        "override_enable_content_tracing"
+    )
 
 
 def is_streaming_response(response):
@@ -145,15 +164,23 @@ def _set_input_attributes(span, args, kwargs, llm_model):
         span, SpanAttributes.LLM_REQUEST_TEMPERATURE, kwargs.get("temperature")
     )
     _set_span_attribute(
-        span, SpanAttributes.LLM_REQUEST_MAX_TOKENS, kwargs.get("max_output_tokens")
+        span,
+        SpanAttributes.LLM_REQUEST_MAX_TOKENS,
+        kwargs.get("max_output_tokens"),
     )
-    _set_span_attribute(span, SpanAttributes.LLM_REQUEST_TOP_P, kwargs.get("top_p"))
+    _set_span_attribute(
+        span, SpanAttributes.LLM_REQUEST_TOP_P, kwargs.get("top_p")
+    )
     _set_span_attribute(span, SpanAttributes.LLM_TOP_K, kwargs.get("top_k"))
     _set_span_attribute(
-        span, SpanAttributes.LLM_PRESENCE_PENALTY, kwargs.get("presence_penalty")
+        span,
+        SpanAttributes.LLM_PRESENCE_PENALTY,
+        kwargs.get("presence_penalty"),
     )
     _set_span_attribute(
-        span, SpanAttributes.LLM_FREQUENCY_PENALTY, kwargs.get("frequency_penalty")
+        span,
+        SpanAttributes.LLM_FREQUENCY_PENALTY,
+        kwargs.get("frequency_penalty"),
     )
 
     return
@@ -180,7 +207,9 @@ def _set_response_attributes(span, llm_model, generation_text, token_usage):
             token_usage.prompt_token_count,
         )
 
-    _set_span_attribute(span, f"{SpanAttributes.LLM_COMPLETIONS}.0.role", "assistant")
+    _set_span_attribute(
+        span, f"{SpanAttributes.LLM_COMPLETIONS}.0.role", "assistant"
+    )
     _set_span_attribute(
         span,
         f"{SpanAttributes.LLM_COMPLETIONS}.0.content",
@@ -232,7 +261,10 @@ def _handle_request(span, args, kwargs, llm_model):
 def _handle_response(span, response, llm_model):
     if span.is_recording():
         _set_response_attributes(
-            span, llm_model, response.candidates[0].text, response.usage_metadata
+            span,
+            llm_model,
+            response.candidates[0].text,
+            response.usage_metadata,
         )
 
         span.set_status(Status(StatusCode.OK))
@@ -253,16 +285,18 @@ def _with_tracer_wrapper(func):
 @_with_tracer_wrapper
 async def _awrap(tracer, to_wrap, wrapped, instance, args, kwargs):
     """Instruments and calls every function defined in TO_WRAP."""
-    if context_api.get_value(_SUPPRESS_INSTRUMENTATION_KEY) or context_api.get_value(
-        SUPPRESS_LANGUAGE_MODEL_INSTRUMENTATION_KEY
-    ):
+    if context_api.get_value(
+        _SUPPRESS_INSTRUMENTATION_KEY
+    ) or context_api.get_value(SUPPRESS_LANGUAGE_MODEL_INSTRUMENTATION_KEY):
         return await wrapped(*args, **kwargs)
 
     llm_model = "unknown"
     if hasattr(instance, "_model_id"):
         llm_model = instance._model_id
     if hasattr(instance, "_model_name"):
-        llm_model = instance._model_name.replace("publishers/google/models/", "")
+        llm_model = instance._model_name.replace(
+            "publishers/google/models/", ""
+        )
 
     name = to_wrap.get("span_name")
     span = tracer.start_span(
@@ -293,16 +327,18 @@ async def _awrap(tracer, to_wrap, wrapped, instance, args, kwargs):
 @_with_tracer_wrapper
 def _wrap(tracer, to_wrap, wrapped, instance, args, kwargs):
     """Instruments and calls every function defined in TO_WRAP."""
-    if context_api.get_value(_SUPPRESS_INSTRUMENTATION_KEY) or context_api.get_value(
-        SUPPRESS_LANGUAGE_MODEL_INSTRUMENTATION_KEY
-    ):
+    if context_api.get_value(
+        _SUPPRESS_INSTRUMENTATION_KEY
+    ) or context_api.get_value(SUPPRESS_LANGUAGE_MODEL_INSTRUMENTATION_KEY):
         return wrapped(*args, **kwargs)
 
     llm_model = "unknown"
     if hasattr(instance, "_model_id"):
         llm_model = instance._model_id
     if hasattr(instance, "_model_name"):
-        llm_model = instance._model_name.replace("publishers/google/models/", "")
+        llm_model = instance._model_name.replace(
+            "publishers/google/models/", ""
+        )
 
     name = to_wrap.get("span_name")
     span = tracer.start_span(
