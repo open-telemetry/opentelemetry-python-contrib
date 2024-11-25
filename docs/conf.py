@@ -43,8 +43,8 @@ instr_dirs = [
 instr_genai = "../instrumentation-genai"
 instr_genai_dirs = [
     os.path.abspath("/".join(["../instrumentation-genai", f, "src"]))
-    for f in listdir(instr)
-    if isdir(join(instr, f))
+    for f in listdir(instr_genai)
+    if isdir(join(instr_genai, f))
 ]
 
 prop = "../propagator"
