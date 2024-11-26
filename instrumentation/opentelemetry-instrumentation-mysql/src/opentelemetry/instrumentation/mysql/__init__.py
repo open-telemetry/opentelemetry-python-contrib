@@ -240,8 +240,11 @@ def get_traced_connection_proxy(
 
             # If a mysql-connector cursor was created with prepared=True,
             # then MySQL statements will be prepared and executed natively.
-            # 1:1 sqlcomment and span correlation in instrumentation would
-            # break, so sqlcomment is not supported for this use case.
+            # Adding sqlcommenting would introduce a severe performance
+            # penalty by repeating `Prepare` of statements by mysql-connector
+            # that are made unique by traceparent in sqlcomment. Therefore,
+            # sqlcomment is not supported for this use case. It is not an
+            # issue if prepared=False.
             # This is here because wrapped cursor is created when application
             # side creates cursor. After that, the instrumentor knows what
             # kind of cursor was initialized.
