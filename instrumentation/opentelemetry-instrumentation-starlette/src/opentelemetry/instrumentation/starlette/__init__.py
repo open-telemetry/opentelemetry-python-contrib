@@ -193,14 +193,14 @@ from opentelemetry.trace import TracerProvider, get_tracer
 from opentelemetry.util.http import get_excluded_urls
 
 if TYPE_CHECKING:
-    from typing import NotRequired, TypedDict, Unpack
+    from typing import TypedDict, Unpack
 
-    class InstrumentKwargs(TypedDict):
-        tracer_provider: NotRequired[TracerProvider]
-        meter_provider: NotRequired[MeterProvider]
-        server_request_hook: NotRequired[ServerRequestHook]
-        client_request_hook: NotRequired[ClientRequestHook]
-        client_response_hook: NotRequired[ClientResponseHook]
+    class InstrumentKwargs(TypedDict, total=False):
+        tracer_provider: TracerProvider
+        meter_provider: MeterProvider
+        server_request_hook: ServerRequestHook
+        client_request_hook: ClientRequestHook
+        client_response_hook: ClientResponseHook
 
 
 _excluded_urls = get_excluded_urls("STARLETTE")
@@ -256,11 +256,7 @@ class StarletteInstrumentor(BaseInstrumentor):
 
     @staticmethod
     def uninstrument_app(app: applications.Starlette):
-        app.user_middleware = [
-            x
-            for x in app.user_middleware
-            if x.cls is not OpenTelemetryMiddleware
-        ]
+        app.user_middleware = [x for x in app.user_middleware if x.cls is not OpenTelemetryMiddleware]
         app.middleware_stack = app.build_middleware_stack()
         app._is_instrumented_by_opentelemetry = False
 
@@ -270,15 +266,9 @@ class StarletteInstrumentor(BaseInstrumentor):
     def _instrument(self, **kwargs: Unpack[InstrumentKwargs]):
         self._original_starlette = applications.Starlette
         _InstrumentedStarlette._tracer_provider = kwargs.get("tracer_provider")
-        _InstrumentedStarlette._server_request_hook = kwargs.get(
-            "server_request_hook"
-        )
-        _InstrumentedStarlette._client_request_hook = kwargs.get(
-            "client_request_hook"
-        )
-        _InstrumentedStarlette._client_response_hook = kwargs.get(
-            "client_response_hook"
-        )
+        _InstrumentedStarlette._server_request_hook = kwargs.get("server_request_hook")
+        _InstrumentedStarlette._client_request_hook = kwargs.get("client_request_hook")
+        _InstrumentedStarlette._client_response_hook = kwargs.get("client_response_hook")
         _InstrumentedStarlette._meter_provider = kwargs.get("_meter_provider")
 
         applications.Starlette = _InstrumentedStarlette

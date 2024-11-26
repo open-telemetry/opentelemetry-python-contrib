@@ -13,6 +13,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- `opentelemetry-instrumentation-starlette` Add type hints to the instrumentation
+  ([#3045](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/3045))
 - `opentelemetry-instrumentation-sqlalchemy` Update unit tests to run with SQLALchemy 2
   ([#2976](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/2976))
 - Add `opentelemetry-instrumentation-openai-v2` to `opentelemetry-bootstrap`
