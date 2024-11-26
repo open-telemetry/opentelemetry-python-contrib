@@ -111,7 +111,6 @@ import logging
 import typing
 
 import mysql.connector
-import wrapt
 
 from opentelemetry import trace as trace_api
 from opentelemetry.instrumentation import dbapi
@@ -180,12 +179,9 @@ class MySQLInstrumentor(BaseInstrumentor):
         Returns:
             An instrumented connection.
         """
-        if isinstance(connection, wrapt.ObjectProxy):
-            _logger.warning("Connection already instrumented")
-            return connection
-
-        db_integration = DatabaseApiIntegration(
+        return dbapi.instrument_connection(
             __name__,
+            connection,
             self._DATABASE_SYSTEM,
             self._CONNECTION_ATTRIBUTES,
             version=__version__,
@@ -193,9 +189,9 @@ class MySQLInstrumentor(BaseInstrumentor):
             enable_commenter=enable_commenter,
             commenter_options=commenter_options,
             connect_module=mysql.connector,
+            db_api_integration_factory=DatabaseApiIntegration,
+            get_cnx_proxy=get_traced_connection_proxy,
         )
-        db_integration.get_connection_attributes(connection)
-        return get_traced_connection_proxy(connection, db_integration)
 
     def uninstrument_connection(
         self,
