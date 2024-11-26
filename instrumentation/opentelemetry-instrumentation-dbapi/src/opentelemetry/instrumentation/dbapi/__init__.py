@@ -195,6 +195,8 @@ def instrument_connection(
     enable_commenter: bool = False,
     commenter_options: dict = None,
     connect_module: typing.Callable[..., typing.Any] = None,
+    db_api_integration_factory: typing.ClassVar = None,
+    get_cnx_proxy: typing.Callable[..., typing.Any] = None,
 ):
     """Enable instrumentation in a database connection.
 
@@ -210,6 +212,10 @@ def instrument_connection(
         enable_commenter: Flag to enable/disable sqlcommenter.
         commenter_options: Configurations for tags to be appended at the sql query.
         connect_module: Module name where connect method is available.
+        db_api_integration_factory: The `DatabaseApiIntegration` to use. If none is passed the
+            default one is used.
+        get_cnx_proxy: Method to get traced connextion proxy.  If none is passed the
+            default one is used.
 
     Returns:
         An instrumented connection.
@@ -218,7 +224,11 @@ def instrument_connection(
         _logger.warning("Connection already instrumented")
         return connection
 
-    db_integration = DatabaseApiIntegration(
+    db_api_integration_factory = (
+        db_api_integration_factory or DatabaseApiIntegration
+    )
+
+    db_integration = db_api_integration_factory(
         name,
         database_system,
         connection_attributes=connection_attributes,
@@ -230,7 +240,9 @@ def instrument_connection(
         connect_module=connect_module,
     )
     db_integration.get_connection_attributes(connection)
-    return get_traced_connection_proxy(connection, db_integration)
+
+    get_cnx_proxy = get_cnx_proxy or get_traced_connection_proxy
+    return get_cnx_proxy(connection, db_integration)
 
 
 def uninstrument_connection(connection):
