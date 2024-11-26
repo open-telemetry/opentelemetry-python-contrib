@@ -15,9 +15,9 @@
 import os
 
 from opentelemetry.environment_variables import (
+    OTEL_LOGS_EXPORTER,
     OTEL_METRICS_EXPORTER,
     OTEL_TRACES_EXPORTER,
-    OTEL_LOGS_EXPORTER
 )
 from opentelemetry.instrumentation.distro import BaseDistro
 from opentelemetry.sdk._configuration import _OTelSDKConfigurator
