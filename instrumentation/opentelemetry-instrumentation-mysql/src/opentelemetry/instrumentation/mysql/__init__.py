@@ -245,9 +245,7 @@ def get_traced_connection_proxy(
             # side creates cursor. After that, the instrumentor knows what
             # kind of cursor was initialized.
             if enable_commenter_cursor:
-                is_prepared = self.is_mysql_connector_cursor_prepared(
-                    wrapped_cursor
-                )
+                is_prepared = kwargs.get("prepared", False)
                 if is_prepared:
                     _logger.warning(
                         "sqlcomment is not supported for query statements executed by cursors with native prepared statement support. Disabling sqlcommenting for instrumentation of %s.",
@@ -259,31 +257,6 @@ def get_traced_connection_proxy(
                 db_api_integration,
                 enable_commenter_cursor,
             )
-
-        def is_mysql_connector_cursor_prepared(self, cursor):  # pylint: disable=no-self-use
-            try:
-                from mysql.connector.cursor_cext import (  # pylint: disable=import-outside-toplevel
-                    CMySQLCursorPrepared,
-                    CMySQLCursorPreparedDict,
-                    CMySQLCursorPreparedNamedTuple,
-                    CMySQLCursorPreparedRaw,
-                )
-
-                if type(cursor) in [
-                    CMySQLCursorPrepared,
-                    CMySQLCursorPreparedDict,
-                    CMySQLCursorPreparedNamedTuple,
-                    CMySQLCursorPreparedRaw,
-                ]:
-                    return True
-
-            except ImportError as exc:
-                _logger.warning(
-                    "Could not verify mysql.connector cursor, skipping prepared cursor check: %s",
-                    exc,
-                )
-
-            return False
 
     return TracedConnectionProxy(connection, *args, **kwargs)
 
