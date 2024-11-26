@@ -231,7 +231,7 @@ def get_traced_connection_proxy(
 
             # It's common to have multiple db client cursors per app,
             # so enable_commenter is calculated for the cursor level for
-            # traced query execution.
+            # traced query execution, based on original configuration.
             enable_commenter_cursor = db_api_integration.enable_commenter
 
             # If a mysql-connector cursor was created with prepared=True,
@@ -245,15 +245,9 @@ def get_traced_connection_proxy(
             # side creates cursor. After that, the instrumentor knows what
             # kind of cursor was initialized.
             if enable_commenter_cursor:
-                is_prepared = False
-                if (
-                    db_api_integration.database_system == "mysql"
-                    and db_api_integration.connect_module.__name__
-                    == "mysql.connector"
-                ):
-                    is_prepared = self.is_mysql_connector_cursor_prepared(
-                        wrapped_cursor
-                    )
+                is_prepared = self.is_mysql_connector_cursor_prepared(
+                    wrapped_cursor
+                )
                 if is_prepared:
                     _logger.warning(
                         "sqlcomment is not supported for query statements executed by cursors with native prepared statement support. Disabling sqlcommenting for instrumentation of %s.",
