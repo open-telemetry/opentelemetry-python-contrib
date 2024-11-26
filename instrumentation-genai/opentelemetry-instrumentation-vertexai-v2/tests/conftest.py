@@ -3,7 +3,7 @@
 import pytest
 
 from opentelemetry import trace
-from opentelemetry.instrumentation.vertexai import VertexAIInstrumentor
+from opentelemetry.instrumentation.vertexai_v2 import VertexAIInstrumentor
 from opentelemetry.sdk.trace import TracerProvider
 from opentelemetry.sdk.trace.export import SimpleSpanProcessor
 from opentelemetry.sdk.trace.export.in_memory_span_exporter import (

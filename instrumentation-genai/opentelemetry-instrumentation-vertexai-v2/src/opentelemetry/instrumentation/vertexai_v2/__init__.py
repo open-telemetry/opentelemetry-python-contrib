@@ -24,15 +24,13 @@ from wrapt import wrap_function_wrapper
 from opentelemetry import context as context_api
 from opentelemetry.instrumentation.instrumentor import BaseInstrumentor
 from opentelemetry.instrumentation.utils import (
-    _SUPPRESS_INSTRUMENTATION_KEY,
+    is_instrumentation_enabled,
     unwrap,
 )
-from opentelemetry.instrumentation.vertexai.config import Config
-from opentelemetry.instrumentation.vertexai.utils import dont_throw
-from opentelemetry.instrumentation.vertexai.version import __version__
-from opentelemetry.semconv_ai import (
-    SUPPRESS_LANGUAGE_MODEL_INSTRUMENTATION_KEY,
-    LLMRequestTypeValues,
+from opentelemetry.instrumentation.vertexai_v2.utils import dont_throw
+from opentelemetry.instrumentation.vertexai_v2.version import __version__
+from opentelemetry.semconv._incubating.attributes import gen_ai_attributes
+from opentelemetry.semconv.trace import (
     SpanAttributes,
 )
 from opentelemetry.trace import SpanKind, get_tracer
@@ -42,6 +40,7 @@ logger = logging.getLogger(__name__)
 
 _instruments = ("google-cloud-aiplatform >= 1.38.1",)
 
+# TODO: span_name should no longer be needed as it comes from `{gen_ai.operation.name} {gen_ai.request.model}`
 WRAPPED_METHODS = [
     {
         "package": "vertexai.generative_models",
@@ -155,30 +154,36 @@ def _set_input_attributes(span, args, kwargs, llm_model):
             prompt,
         )
 
-    _set_span_attribute(span, SpanAttributes.LLM_REQUEST_MODEL, llm_model)
+    _set_span_attribute(
+        span, gen_ai_attributes.GEN_AI_REQUEST_MODEL, llm_model
+    )
     _set_span_attribute(
         span, f"{SpanAttributes.LLM_PROMPTS}.0.user", kwargs.get("prompt")
     )
     _set_span_attribute(
-        span, SpanAttributes.LLM_REQUEST_TEMPERATURE, kwargs.get("temperature")
+        span,
+        gen_ai_attributes.GEN_AI_REQUEST_TEMPERATURE,
+        kwargs.get("temperature"),
     )
     _set_span_attribute(
         span,
-        SpanAttributes.LLM_REQUEST_MAX_TOKENS,
+        gen_ai_attributes.GEN_AI_REQUEST_MAX_TOKENS,
         kwargs.get("max_output_tokens"),
     )
     _set_span_attribute(
-        span, SpanAttributes.LLM_REQUEST_TOP_P, kwargs.get("top_p")
+        span, gen_ai_attributes.GEN_AI_REQUEST_TOP_P, kwargs.get("top_p")
     )
-    _set_span_attribute(span, SpanAttributes.LLM_TOP_K, kwargs.get("top_k"))
+    _set_span_attribute(
+        span, gen_ai_attributes.GEN_AI_REQUEST_TOP_K, kwargs.get("top_k")
+    )
     _set_span_attribute(
         span,
-        SpanAttributes.LLM_PRESENCE_PENALTY,
+        gen_ai_attributes.GEN_AI_REQUEST_PRESENCE_PENALTY,
         kwargs.get("presence_penalty"),
     )
     _set_span_attribute(
         span,
-        SpanAttributes.LLM_FREQUENCY_PENALTY,
+        gen_ai_attributes.GEN_AI_REQUEST_FREQUENCY_PENALTY,
         kwargs.get("frequency_penalty"),
     )
 
@@ -187,22 +192,19 @@ def _set_input_attributes(span, args, kwargs, llm_model):
 
 @dont_throw
 def _set_response_attributes(span, llm_model, generation_text, token_usage):
-    _set_span_attribute(span, SpanAttributes.LLM_RESPONSE_MODEL, llm_model)
+    _set_span_attribute(
+        span, gen_ai_attributes.GEN_AI_RESPONSE_MODEL, llm_model
+    )
 
     if token_usage:
         _set_span_attribute(
             span,
-            SpanAttributes.LLM_USAGE_TOTAL_TOKENS,
-            token_usage.total_token_count,
-        )
-        _set_span_attribute(
-            span,
-            SpanAttributes.LLM_USAGE_COMPLETION_TOKENS,
+            gen_ai_attributes.GEN_AI_USAGE_OUTPUT_TOKENS,
             token_usage.candidates_token_count,
         )
         _set_span_attribute(
             span,
-            SpanAttributes.LLM_USAGE_PROMPT_TOKENS,
+            gen_ai_attributes.GEN_AI_USAGE_INPUT_TOKENS,
             token_usage.prompt_token_count,
         )
 
@@ -284,9 +286,7 @@ def _with_tracer_wrapper(func):
 @_with_tracer_wrapper
 async def _awrap(tracer, to_wrap, wrapped, instance, args, kwargs):
     """Instruments and calls every function defined in TO_WRAP."""
-    if context_api.get_value(
-        _SUPPRESS_INSTRUMENTATION_KEY
-    ) or context_api.get_value(SUPPRESS_LANGUAGE_MODEL_INSTRUMENTATION_KEY):
+    if not is_instrumentation_enabled():
         return await wrapped(*args, **kwargs)
 
     llm_model = "unknown"
@@ -297,13 +297,16 @@ async def _awrap(tracer, to_wrap, wrapped, instance, args, kwargs):
             "publishers/google/models/", ""
         )
 
-    name = to_wrap.get("span_name")
+    operation_name = (
+        gen_ai_attributes.GenAiOperationNameValues.TEXT_COMPLETION.value
+    )
+    name = f"{operation_name} {llm_model}"
     span = tracer.start_span(
         name,
         kind=SpanKind.CLIENT,
         attributes={
-            SpanAttributes.LLM_SYSTEM: "VertexAI",
-            SpanAttributes.LLM_REQUEST_TYPE: LLMRequestTypeValues.COMPLETION.value,
+            gen_ai_attributes.GEN_AI_SYSTEM: gen_ai_attributes.GenAiSystemValues.VERTEX_AI.value,
+            gen_ai_attributes.GEN_AI_OPERATION_NAME: operation_name,
         },
     )
 
@@ -326,9 +329,7 @@ async def _awrap(tracer, to_wrap, wrapped, instance, args, kwargs):
 @_with_tracer_wrapper
 def _wrap(tracer, to_wrap, wrapped, instance, args, kwargs):
     """Instruments and calls every function defined in TO_WRAP."""
-    if context_api.get_value(
-        _SUPPRESS_INSTRUMENTATION_KEY
-    ) or context_api.get_value(SUPPRESS_LANGUAGE_MODEL_INSTRUMENTATION_KEY):
+    if not is_instrumentation_enabled():
         return wrapped(*args, **kwargs)
 
     llm_model = "unknown"
@@ -339,13 +340,16 @@ def _wrap(tracer, to_wrap, wrapped, instance, args, kwargs):
             "publishers/google/models/", ""
         )
 
-    name = to_wrap.get("span_name")
+    operation_name = (
+        gen_ai_attributes.GenAiOperationNameValues.TEXT_COMPLETION.value
+    )
+    name = f"{operation_name} {llm_model}"
     span = tracer.start_span(
         name,
         kind=SpanKind.CLIENT,
         attributes={
-            SpanAttributes.LLM_SYSTEM: "VertexAI",
-            SpanAttributes.LLM_REQUEST_TYPE: LLMRequestTypeValues.COMPLETION.value,
+            gen_ai_attributes.GEN_AI_SYSTEM: gen_ai_attributes.GenAiSystemValues.VERTEX_AI.value,
+            gen_ai_attributes.GEN_AI_OPERATION_NAME: operation_name,
         },
     )
 
@@ -370,7 +374,6 @@ class VertexAIInstrumentor(BaseInstrumentor):
 
     def __init__(self, exception_logger=None):
         super().__init__()
-        Config.exception_logger = exception_logger
 
     def instrumentation_dependencies(self) -> Collection[str]:
         return _instruments

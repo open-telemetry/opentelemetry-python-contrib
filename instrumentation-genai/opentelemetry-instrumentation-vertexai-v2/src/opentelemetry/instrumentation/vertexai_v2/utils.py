@@ -15,8 +15,6 @@
 import logging
 import traceback
 
-from opentelemetry.instrumentation.vertexai.config import Config
-
 
 def dont_throw(func):
     """
@@ -31,13 +29,11 @@ def dont_throw(func):
     def wrapper(*args, **kwargs):
         try:
             return func(*args, **kwargs)
-        except Exception as e:
+        except Exception:
             logger.debug(
                 "OpenLLMetry failed to trace in %s, error: %s",
                 func.__name__,
                 traceback.format_exc(),
             )
-            if Config.exception_logger:
-                Config.exception_logger(e)
 
     return wrapper
