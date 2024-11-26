@@ -15,6 +15,7 @@
 import os
 
 from opentelemetry.environment_variables import (
+    OTEL_LOGS_EXPORTER,
     OTEL_METRICS_EXPORTER,
     OTEL_TRACES_EXPORTER,
 )
@@ -37,4 +38,5 @@ class OpenTelemetryDistro(BaseDistro):
     def _configure(self, **kwargs):
         os.environ.setdefault(OTEL_TRACES_EXPORTER, "otlp")
         os.environ.setdefault(OTEL_METRICS_EXPORTER, "otlp")
+        os.environ.setdefault(OTEL_LOGS_EXPORTER, "otlp")
         os.environ.setdefault(OTEL_EXPORTER_OTLP_PROTOCOL, "grpc")
