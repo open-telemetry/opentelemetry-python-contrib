@@ -9,10 +9,12 @@ on:
       CORE_REPO_SHA:
         required: true
         type: string
-
+      CONTRIB_REPO_SHA:
+        required: true
+        type: string
 env:
   CORE_REPO_SHA: ${% raw %}{{ inputs.CORE_REPO_SHA }}{% endraw %}
-  CONTRIB_REPO_SHA: main
+  CONTRIB_REPO_SHA: ${% raw %}{{ inputs.CONTRIB_REPO_SHA }}{% endraw %}
   PIP_EXISTS_ACTION: w
 
 jobs:
