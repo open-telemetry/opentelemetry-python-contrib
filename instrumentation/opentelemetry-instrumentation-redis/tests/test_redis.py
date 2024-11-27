@@ -36,7 +36,7 @@ from opentelemetry.trace import SpanKind
 class TestRedis(TestBase):
     def setUp(self):
         super().setUp()
-        RedisInstrumentor().instrument(tracer_provider=self.tracer_provider)
+        RedisInstrumentor().instrument(_provider=self.tracer_provider)
 
     def tearDown(self):
         super().tearDown()
@@ -391,11 +391,7 @@ class TestRedisAsync(TestBase, IsolatedAsyncioTestCase):
         self.instrumentor = RedisInstrumentor()
         self.client = redis.asyncio.Redis()
 
-    def tearDown(self):
-        super().tearDown()
-        RedisInstrumentor().uninstrument()
-
-    async def _redis_operations(self, client):
+    async def _redis_pipeline_operations(self, client):
         with pytest.raises(WatchError):
             async with client.pipeline(transaction=False) as pipe:
                 await pipe.watch("a")
@@ -406,32 +402,45 @@ class TestRedisAsync(TestBase, IsolatedAsyncioTestCase):
 
     @pytest.mark.asyncio
     async def test_watch_error_async(self):
-        self.instrumentor.instrument(tracer_provider=self.tracer_provider)
+        # this tests also ensures the response_hook is called
+        response_attr = "my.response.attribute"
+        count = 0
+
+        def response_hook(span, conn, args):
+            nonlocal count
+            if span and span.is_recording():
+                span.set_attribute(response_attr, count)
+                count += 1
+
+        self.instrumentor.instrument(
+            tracer_provider=self.tracer_provider, response_hook=response_hook
+        )
         redis_client = redis.asyncio.Redis()
 
-        await self._redis_operations(redis_client)
-
-        spans = self.memory_exporter.get_finished_spans()
+        await self._redis_pipeline_operations(redis_client)
 
         # there should be 3 tests, we start watch operation and have 2 set operation on same key
-        self.assertEqual(len(spans), 3)
+        spans = self.assert_span_count(3)
 
         self.assertEqual(spans[0].attributes.get("db.statement"), "WATCH ?")
         self.assertEqual(spans[0].kind, SpanKind.CLIENT)
         self.assertEqual(spans[0].status.status_code, trace.StatusCode.UNSET)
+        self.assertEqual(spans[0].attributes.get(response_attr), 0)
 
-        for span in spans[1:]:
+        for span_index, span in enumerate(spans[1:], 1):
             self.assertEqual(span.attributes.get("db.statement"), "SET ? ?")
             self.assertEqual(span.kind, SpanKind.CLIENT)
             self.assertEqual(span.status.status_code, trace.StatusCode.UNSET)
+            self.assertEqual(span.attributes.get(response_attr), span_index)
+        RedisInstrumentor().uninstrument()
 
     @pytest.mark.asyncio
     async def test_watch_error_async_only_client(self):
-        self.instrumentor.instrument(
+        self.instrumentor.instrument_connection(
             tracer_provider=self.tracer_provider, client=self.client
         )
         redis_client = redis.asyncio.Redis()
-        await self._redis_operations(redis_client)
+        await self._redis_pipeline_operations(redis_client)
 
         spans = self.memory_exporter.get_finished_spans()
 
@@ -439,7 +448,7 @@ class TestRedisAsync(TestBase, IsolatedAsyncioTestCase):
         self.assertEqual(len(spans), 0)
 
         # now with the instrumented client we should get proper spans
-        await self._redis_operations(self.client)
+        await self._redis_pipeline_operations(self.client)
 
         spans = self.memory_exporter.get_finished_spans()
 
@@ -454,19 +463,83 @@ class TestRedisAsync(TestBase, IsolatedAsyncioTestCase):
             self.assertEqual(span.attributes.get("db.statement"), "SET ? ?")
             self.assertEqual(span.kind, SpanKind.CLIENT)
             self.assertEqual(span.status.status_code, trace.StatusCode.UNSET)
+        RedisInstrumentor().uninstrument_connection(self.client)
+
+    @pytest.mark.asyncio
+    async def test_request_response_hooks(self):
+        request_attr = "my.request.attribute"
+        response_attr = "my.response.attribute"
+
+        def request_hook(span, conn, args, kwargs):
+            if span and span.is_recording():
+                span.set_attribute(request_attr, args[0])
+
+        def response_hook(span, conn, args):
+            if span and span.is_recording():
+                span.set_attribute(response_attr, args)
+
+        self.instrumentor.instrument(
+            tracer_provider=self.tracer_provider,
+            request_hook=request_hook,
+            response_hook=response_hook,
+        )
+        await self.client.set("key", "value")
+
+        spans = self.assert_span_count(1)
+
+        span = spans[0]
+        self.assertEqual(span.attributes.get(request_attr), "SET")
+        self.assertEqual(span.attributes.get(response_attr), True)
+        self.instrumentor.uninstrument()
+
+    @pytest.mark.asyncio
+    async def test_request_response_hooks_connection_only(self):
+        request_attr = "my.request.attribute"
+        response_attr = "my.response.attribute"
+
+        def request_hook(span, conn, args, kwargs):
+            if span and span.is_recording():
+                span.set_attribute(request_attr, args[0])
+
+        def response_hook(span, conn, args):
+            if span and span.is_recording():
+                span.set_attribute(response_attr, args)
+
+        self.instrumentor.instrument_connection(
+            client=self.client,
+            tracer_provider=self.tracer_provider,
+            request_hook=request_hook,
+            response_hook=response_hook,
+        )
+        await self.client.set("key", "value")
+
+        spans = self.assert_span_count(1)
+
+        span = spans[0]
+        self.assertEqual(span.attributes.get(request_attr), "SET")
+        self.assertEqual(span.attributes.get(response_attr), True)
+        # fresh client should not record any spans
+        fresh_client = redis.asyncio.Redis()
+        self.memory_exporter.clear()
+        await fresh_client.set("key", "value")
+        self.assert_span_count(0)
+        self.instrumentor.uninstrument_connection(self.client)
+        # after un-instrumenting the query should not be recorder
+        await self.client.set("key", "value")
+        spans = self.assert_span_count(0)
 
 
 class TestRedisInstance(TestBase):
     def setUp(self):
         super().setUp()
         self.client = redis.Redis()
-        RedisInstrumentor().instrument(
-            tracer_provider=self.tracer_provider, client=self.client
+        RedisInstrumentor().instrument_connection(
+            client=self.client, tracer_provider=self.tracer_provider
         )
 
     def tearDown(self):
         super().tearDown()
-        print("SHOULD TEARDOWN")
+        RedisInstrumentor().uninstrument_connection(self.client)
 
     def test_only_client_instrumented(self):
         redis_client = redis.Redis()
@@ -474,14 +547,12 @@ class TestRedisInstance(TestBase):
         with mock.patch.object(redis_client, "connection"):
             redis_client.get("key")
 
-        spans = self.memory_exporter.get_finished_spans()
-        self.assertEqual(len(spans), 0)
+        spans = self.assert_span_count(0)
 
         # now use the test client
         with mock.patch.object(self.client, "connection"):
             self.client.get("key")
-        spans = self.memory_exporter.get_finished_spans()
-        self.assertEqual(len(spans), 1)
+        spans = self.assert_span_count(1)
         span = spans[0]
         self.assertEqual(span.name, "GET")
         self.assertEqual(span.kind, SpanKind.CLIENT)
@@ -501,15 +572,12 @@ class TestRedisInstance(TestBase):
 
         self.redis_operations(redis_client)
 
-        spans = self.memory_exporter.get_finished_spans()
-        self.assertEqual(len(spans), 0)
+        self.assert_span_count(0)
 
         self.redis_operations(self.client)
 
-        spans = self.memory_exporter.get_finished_spans()
-
         # there should be 3 tests, we start watch operation and have 2 set operation on same key
-        self.assertEqual(len(spans), 3)
+        spans = self.assert_span_count(3)
 
         self.assertEqual(spans[0].attributes.get("db.statement"), "WATCH ?")
         self.assertEqual(spans[0].kind, SpanKind.CLIENT)
