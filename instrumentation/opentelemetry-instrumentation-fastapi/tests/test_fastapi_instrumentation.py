@@ -1132,8 +1132,6 @@ class TestAutoInstrumentation(TestBaseAutoFastAPI):
         while app is not None:
             if isinstance(app, OpenTelemetryMiddleware):
                 count += 1
-            if app is None:
-                break
             app = getattr(app, "app", None)
         self.assertEqual(count, 1)
 
