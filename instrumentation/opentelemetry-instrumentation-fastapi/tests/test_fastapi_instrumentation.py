@@ -176,6 +176,7 @@ class TestBaseFastAPI(TestBase):
         self._client.__enter__()  # pylint: disable=unnecessary-dunder-call
 
     def tearDown(self):
+        self._client.__exit__(None, None, None)  # pylint: disable=unnecessary-dunder-call
         super().tearDown()
         self.env_patch.stop()
         self.exclude_patch.stop()
