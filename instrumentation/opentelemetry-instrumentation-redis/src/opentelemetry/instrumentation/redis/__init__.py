@@ -93,6 +93,7 @@ API
 
 from __future__ import annotations
 
+import logging
 from typing import TYPE_CHECKING, Any, Callable, Collection
 
 import redis
@@ -146,16 +147,25 @@ if TYPE_CHECKING:
 
 
 _DEFAULT_SERVICE = "redis"
-
+_logger = logging.getLogger(__name__)
 
 _REDIS_ASYNCIO_VERSION = (4, 2, 0)
-if redis.VERSION >= _REDIS_ASYNCIO_VERSION:
-    import redis.asyncio
-
 _REDIS_CLUSTER_VERSION = (4, 1, 0)
 _REDIS_ASYNCIO_CLUSTER_VERSION = (4, 3, 2)
 
 _FIELD_TYPES = ["NUMERIC", "TEXT", "GEO", "TAG", "VECTOR"]
+
+_CLIENT_ASYNCIO_SUPPORT = redis.VERSION >= _REDIS_ASYNCIO_VERSION
+_CLIENT_ASYNCIO_CLUSTER_SUPPORT = (
+    redis.VERSION >= _REDIS_ASYNCIO_CLUSTER_VERSION
+)
+_CLIENT_CLUSTER_SUPPORT = redis.VERSION >= _REDIS_CLUSTER_VERSION
+_CLIENT_BEFORE_3_0_0 = redis.VERSION < (3, 0, 0)
+
+if _CLIENT_ASYNCIO_SUPPORT:
+    import redis.asyncio
+
+INSTRUMENTATION_ATTR = "_is_instrumented_by_opentelemetry"
 
 
 def _set_connection_attributes(
@@ -440,10 +450,8 @@ def _instrument(
     _traced_execute_pipeline = _traced_execute_pipeline_factory(
         tracer, request_hook, response_hook
     )
-    pipeline_class = (
-        "BasePipeline" if redis.VERSION < (3, 0, 0) else "Pipeline"
-    )
-    redis_class = "StrictRedis" if redis.VERSION < (3, 0, 0) else "Redis"
+    pipeline_class = "BasePipeline" if _CLIENT_BEFORE_3_0_0 else "Pipeline"
+    redis_class = "StrictRedis" if _CLIENT_BEFORE_3_0_0 else "Redis"
 
     wrap_function_wrapper(
         "redis", f"{redis_class}.execute_command", _traced_execute_command
@@ -505,68 +513,55 @@ def _instrument(
         )
 
 
-def _instrument_client(
+def _instrument_connection(
     client,
     tracer,
     request_hook: _RequestHookT = None,
     response_hook: _ResponseHookT = None,
 ):
-    # first, handle async clients
-    _async_traced_execute_command = _async_traced_execute_factory(
+    # first, handle async clients and cluster clients
+    _async_traced_execute = _async_traced_execute_factory(
         tracer, request_hook, response_hook
     )
     _async_traced_execute_pipeline = _async_traced_execute_pipeline_factory(
         tracer, request_hook, response_hook
     )
 
-    def _async_pipeline_wrapper(func, instance, args, kwargs):
-        result = func(*args, **kwargs)
-        wrap_function_wrapper(
-            result, "execute", _async_traced_execute_pipeline
-        )
-        wrap_function_wrapper(
-            result, "immediate_execute_command", _async_traced_execute_command
-        )
-        return result
+    if _CLIENT_ASYNCIO_SUPPORT and isinstance(client, redis.asyncio.Redis):
 
-    if redis.VERSION >= _REDIS_ASYNCIO_VERSION:
-        client_type = (
-            redis.asyncio.StrictRedis
-            if redis.VERSION < (3, 0, 0)
-            else redis.asyncio.Redis
-        )
-
-        if isinstance(client, client_type):
+        def _async_pipeline_wrapper(func, instance, args, kwargs):
+            result = func(*args, **kwargs)
             wrap_function_wrapper(
-                client, "execute_command", _async_traced_execute_command
+                result, "execute", _async_traced_execute_pipeline
             )
-            wrap_function_wrapper(client, "pipeline", _async_pipeline_wrapper)
-            return
+            wrap_function_wrapper(
+                result, "immediate_execute_command", _async_traced_execute
+            )
+            return result
 
-    def _async_cluster_pipeline_wrapper(func, instance, args, kwargs):
-        result = func(*args, **kwargs)
-        wrap_function_wrapper(
-            result, "execute", _async_traced_execute_pipeline
-        )
-        return result
+        wrap_function_wrapper(client, "execute_command", _async_traced_execute)
+        wrap_function_wrapper(client, "pipeline", _async_pipeline_wrapper)
+        return
 
-    # handle
-    if redis.VERSION >= _REDIS_ASYNCIO_CLUSTER_VERSION and isinstance(
+    if _CLIENT_ASYNCIO_CLUSTER_SUPPORT and isinstance(
         client, redis.asyncio.RedisCluster
     ):
-        wrap_function_wrapper(
-            client, "execute_command", _async_traced_execute_command
-        )
+
+        def _async_cluster_pipeline_wrapper(func, instance, args, kwargs):
+            result = func(*args, **kwargs)
+            wrap_function_wrapper(
+                result, "execute", _async_traced_execute_pipeline
+            )
+            return result
+
+        wrap_function_wrapper(client, "execute_command", _async_traced_execute)
         wrap_function_wrapper(
             client, "pipeline", _async_cluster_pipeline_wrapper
         )
         return
     # for redis.client.Redis, redis.Cluster and v3.0.0 redis.client.StrictRedis
     # the wrappers are the same
-    # client_type = (
-    #     redis.client.StrictRedis if redis.VERSION < (3, 0, 0) else redis.client.Redis
-    # )
-    _traced_execute_command = _traced_execute_factory(
+    _traced_execute = _traced_execute_factory(
         tracer, request_hook, response_hook
     )
     _traced_execute_pipeline = _traced_execute_pipeline_factory(
@@ -577,14 +572,14 @@ def _instrument_client(
         result = func(*args, **kwargs)
         wrap_function_wrapper(result, "execute", _traced_execute_pipeline)
         wrap_function_wrapper(
-            result, "immediate_execute_command", _traced_execute_command
+            result, "immediate_execute_command", _traced_execute
         )
         return result
 
     wrap_function_wrapper(
         client,
         "execute_command",
-        _traced_execute_command,
+        _traced_execute,
     )
     wrap_function_wrapper(
         client,
@@ -599,6 +594,16 @@ class RedisInstrumentor(BaseInstrumentor):
     See `BaseInstrumentor`
     """
 
+    @staticmethod
+    def _get_tracer(**kwargs):
+        tracer_provider = kwargs.get("tracer_provider")
+        return trace.get_tracer(
+            __name__,
+            __version__,
+            tracer_provider=tracer_provider,
+            schema_url="https://opentelemetry.io/schemas/1.11.0",
+        )
+
     def instrumentation_dependencies(self) -> Collection[str]:
         return _instruments
 
@@ -610,30 +615,14 @@ class RedisInstrumentor(BaseInstrumentor):
                 ``tracer_provider``: a TracerProvider, defaults to global.
                 ``response_hook``: An optional callback which is invoked right before the span is finished processing a response.
         """
-        tracer_provider = kwargs.get("tracer_provider")
-        tracer = trace.get_tracer(
-            __name__,
-            __version__,
-            tracer_provider=tracer_provider,
-            schema_url="https://opentelemetry.io/schemas/1.11.0",
+        _instrument(
+            self._get_tracer(**kwargs),
+            request_hook=kwargs.get("request_hook"),
+            response_hook=kwargs.get("response_hook"),
         )
-        redis_client = kwargs.get("client")
-        if redis_client:
-            _instrument_client(
-                redis_client,
-                tracer,
-                request_hook=kwargs.get("request_hook"),
-                response_hook=kwargs.get("response_hook"),
-            )
-        else:
-            _instrument(
-                tracer,
-                request_hook=kwargs.get("request_hook"),
-                response_hook=kwargs.get("response_hook"),
-            )
 
     def _uninstrument(self, **kwargs: Any):
-        if redis.VERSION < (3, 0, 0):
+        if _CLIENT_BEFORE_3_0_0:
             unwrap(redis.StrictRedis, "execute_command")
             unwrap(redis.StrictRedis, "pipeline")
             unwrap(redis.Redis, "pipeline")
@@ -661,3 +650,38 @@ class RedisInstrumentor(BaseInstrumentor):
         if redis.VERSION >= _REDIS_ASYNCIO_CLUSTER_VERSION:
             unwrap(redis.asyncio.cluster.RedisCluster, "execute_command")
             unwrap(redis.asyncio.cluster.ClusterPipeline, "execute")
+
+    @staticmethod
+    def instrument_connection(
+        client, tracer_provider: None, request_hook=None, response_hook=None
+    ):
+        if not hasattr(client, INSTRUMENTATION_ATTR):
+            setattr(client, INSTRUMENTATION_ATTR, False)
+        if not getattr(client, INSTRUMENTATION_ATTR):
+            _instrument_connection(
+                client,
+                RedisInstrumentor._get_tracer(tracer_provider=tracer_provider),
+                request_hook=request_hook,
+                response_hook=response_hook,
+            )
+            setattr(client, INSTRUMENTATION_ATTR, True)
+        else:
+            _logger.warning(
+                "Attempting to instrument Redis connection while already instrumented"
+            )
+
+    @staticmethod
+    def uninstrument_connection(client):
+        if getattr(client, INSTRUMENTATION_ATTR):
+            # for all clients we need to unwrap execute_command and pipeline functions
+            unwrap(client, "execute_command")
+            # pipeline was creating a pipeline and wrapping the functions of the
+            # created instance. any pipeline created before un-instrumenting will
+            # remain instrumented (pipelines should usually have a short span)
+            unwrap(client, "pipeline")
+            pass
+        else:
+            _logger.warning(
+                "Attempting to un-instrument Redis connection that wasn't instrumented"
+            )
+            return
