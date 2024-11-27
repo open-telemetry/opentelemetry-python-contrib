@@ -14,26 +14,32 @@
 
 """OpenTelemetry Vertex AI instrumentation"""
 
+from functools import partial
 import logging
-import os
 import types
-from typing import Collection
+from typing import Collection, Optional
 
 from wrapt import wrap_function_wrapper
 
-from opentelemetry import context as context_api
+from opentelemetry._events import (
+    EventLogger,
+    EventLoggerProvider,
+    Event,
+    get_event_logger,
+)
 from opentelemetry.instrumentation.instrumentor import BaseInstrumentor
 from opentelemetry.instrumentation.utils import (
     is_instrumentation_enabled,
     unwrap,
 )
+from opentelemetry.instrumentation.vertexai_v2.events import (
+    assistant_event,
+    user_event,
+)
 from opentelemetry.instrumentation.vertexai_v2.utils import dont_throw
 from opentelemetry.instrumentation.vertexai_v2.version import __version__
 from opentelemetry.semconv._incubating.attributes import gen_ai_attributes
-from opentelemetry.semconv.trace import (
-    SpanAttributes,
-)
-from opentelemetry.trace import SpanKind, get_tracer
+from opentelemetry.trace import SpanKind, TracerProvider, get_tracer
 from opentelemetry.trace.status import Status, StatusCode
 
 logger = logging.getLogger(__name__)
@@ -116,11 +122,14 @@ WRAPPED_METHODS = [
 
 
 def should_send_prompts():
-    return (
-        os.getenv("TRACELOOP_TRACE_CONTENT") or "true"
-    ).lower() == "true" or context_api.get_value(
-        "override_enable_content_tracing"
-    )
+    # Previously was opt-in by the following check for privacy reasons:
+    #
+    # return (
+    #     os.getenv("TRACELOOP_TRACE_CONTENT") or "true"
+    # ).lower() == "true" or context_api.get_value(
+    #     "override_enable_content_tracing"
+    # )
+    return True
 
 
 def is_streaming_response(response):
@@ -138,7 +147,9 @@ def _set_span_attribute(span, name, value):
     return
 
 
-def _set_input_attributes(span, args, kwargs, llm_model):
+def _set_input_attributes(
+    span, event_logger: EventLogger, args, kwargs, llm_model
+):
     if should_send_prompts() and args is not None and len(args) > 0:
         prompt = ""
         for arg in args:
@@ -148,17 +159,35 @@ def _set_input_attributes(span, args, kwargs, llm_model):
                 for subarg in arg:
                     prompt = f"{prompt}{subarg}\n"
 
-        _set_span_attribute(
-            span,
-            f"{SpanAttributes.LLM_PROMPTS}.0.user",
-            prompt,
-        )
+        # _set_span_attribute(
+        #     span,
+        #     f"{SpanAttributes.LLM_PROMPTS}.0.user",
+        #     prompt,
+        # )
+        if prompt:
+            event_logger.emit(
+                user_event(
+                    gen_ai_system=gen_ai_attributes.GenAiSystemValues.VERTEX_AI.value,
+                    content=prompt,
+                    span_context=span.get_span_context(),
+                )
+            )
+
+        # Copied from openllmetry logic
+        # https://github.com/traceloop/openllmetry/blob/v0.33.12/packages/opentelemetry-instrumentation-vertexai/opentelemetry/instrumentation/vertexai/__init__.py#L141-L143
+        # I guess prompt may be in kwargs instead or in addition?
+        prompt = kwargs.get("prompt")
+        if prompt:
+            event_logger.emit(
+                user_event(
+                    gen_ai_system=gen_ai_attributes.GenAiSystemValues.VERTEX_AI.value,
+                    content=prompt,
+                    span_context=span.get_span_context(),
+                )
+            )
 
     _set_span_attribute(
         span, gen_ai_attributes.GEN_AI_REQUEST_MODEL, llm_model
-    )
-    _set_span_attribute(
-        span, f"{SpanAttributes.LLM_PROMPTS}.0.user", kwargs.get("prompt")
     )
     _set_span_attribute(
         span,
@@ -191,7 +220,9 @@ def _set_input_attributes(span, args, kwargs, llm_model):
 
 
 @dont_throw
-def _set_response_attributes(span, llm_model, generation_text, token_usage):
+def _set_response_attributes(
+    span, event_logger: EventLogger, llm_model, generation_text, token_usage
+):
     _set_span_attribute(
         span, gen_ai_attributes.GEN_AI_RESPONSE_MODEL, llm_model
     )
@@ -208,17 +239,19 @@ def _set_response_attributes(span, llm_model, generation_text, token_usage):
             token_usage.prompt_token_count,
         )
 
-    _set_span_attribute(
-        span, f"{SpanAttributes.LLM_COMPLETIONS}.0.role", "assistant"
-    )
-    _set_span_attribute(
-        span,
-        f"{SpanAttributes.LLM_COMPLETIONS}.0.content",
-        generation_text,
-    )
+    if generation_text:
+        event_logger.emit(
+            assistant_event(
+                gen_ai_system=gen_ai_attributes.GenAiSystemValues.VERTEX_AI.value,
+                content=generation_text,
+                span_context=span.get_span_context(),
+            )
+        )
 
 
-def _build_from_streaming_response(span, response, llm_model):
+def _build_from_streaming_response(
+    span, event_logger: EventLogger, response, llm_model
+):
     complete_response = ""
     token_usage = None
     for item in response:
@@ -229,13 +262,17 @@ def _build_from_streaming_response(span, response, llm_model):
 
         yield item_to_yield
 
-    _set_response_attributes(span, llm_model, complete_response, token_usage)
+    _set_response_attributes(
+        span, event_logger, llm_model, complete_response, token_usage
+    )
 
     span.set_status(Status(StatusCode.OK))
     span.end()
 
 
-async def _abuild_from_streaming_response(span, response, llm_model):
+async def _abuild_from_streaming_response(
+    span, event_logger: EventLogger, response, llm_model
+):
     complete_response = ""
     token_usage = None
     async for item in response:
@@ -246,23 +283,26 @@ async def _abuild_from_streaming_response(span, response, llm_model):
 
         yield item_to_yield
 
-    _set_response_attributes(span, llm_model, complete_response, token_usage)
+    _set_response_attributes(
+        span, event_logger, llm_model, complete_response, token_usage
+    )
 
     span.set_status(Status(StatusCode.OK))
     span.end()
 
 
 @dont_throw
-def _handle_request(span, args, kwargs, llm_model):
+def _handle_request(span, event_logger, args, kwargs, llm_model):
     if span.is_recording():
-        _set_input_attributes(span, args, kwargs, llm_model)
+        _set_input_attributes(span, event_logger, args, kwargs, llm_model)
 
 
 @dont_throw
-def _handle_response(span, response, llm_model):
+def _handle_response(span, event_logger: EventLogger, response, llm_model):
     if span.is_recording():
         _set_response_attributes(
             span,
+            event_logger,
             llm_model,
             response.candidates[0].text,
             response.usage_metadata,
@@ -283,8 +323,10 @@ def _with_tracer_wrapper(func):
     return _with_tracer
 
 
-@_with_tracer_wrapper
-async def _awrap(tracer, to_wrap, wrapped, instance, args, kwargs):
+# @_with_tracer_wrapper
+async def _awrap(
+    tracer, event_logger: EventLogger, to_wrap, wrapped, instance, args, kwargs
+):
     """Instruments and calls every function defined in TO_WRAP."""
     if not is_instrumentation_enabled():
         return await wrapped(*args, **kwargs)
@@ -310,24 +352,30 @@ async def _awrap(tracer, to_wrap, wrapped, instance, args, kwargs):
         },
     )
 
-    _handle_request(span, args, kwargs, llm_model)
+    _handle_request(span, event_logger, args, kwargs, llm_model)
 
     response = await wrapped(*args, **kwargs)
 
     if response:
         if is_streaming_response(response):
-            return _build_from_streaming_response(span, response, llm_model)
+            return _build_from_streaming_response(
+                span, event_logger, response, llm_model
+            )
         elif is_async_streaming_response(response):
-            return _abuild_from_streaming_response(span, response, llm_model)
+            return _abuild_from_streaming_response(
+                span, event_logger, response, llm_model
+            )
         else:
-            _handle_response(span, response, llm_model)
+            _handle_response(span, event_logger, response, llm_model)
 
     span.end()
     return response
 
 
-@_with_tracer_wrapper
-def _wrap(tracer, to_wrap, wrapped, instance, args, kwargs):
+# @_with_tracer_wrapper
+def _wrap(
+    tracer, event_logger: EventLogger, to_wrap, wrapped, instance, args, kwargs
+):
     """Instruments and calls every function defined in TO_WRAP."""
     if not is_instrumentation_enabled():
         return wrapped(*args, **kwargs)
@@ -353,17 +401,21 @@ def _wrap(tracer, to_wrap, wrapped, instance, args, kwargs):
         },
     )
 
-    _handle_request(span, args, kwargs, llm_model)
+    _handle_request(span, event_logger, args, kwargs, llm_model)
 
     response = wrapped(*args, **kwargs)
 
     if response:
         if is_streaming_response(response):
-            return _build_from_streaming_response(span, response, llm_model)
+            return _build_from_streaming_response(
+                span, event_logger, response, llm_model
+            )
         elif is_async_streaming_response(response):
-            return _abuild_from_streaming_response(span, response, llm_model)
+            return _abuild_from_streaming_response(
+                span, event_logger, response, llm_model
+            )
         else:
-            _handle_response(span, response, llm_model)
+            _handle_response(span, event_logger, response, llm_model)
 
     span.end()
     return response
@@ -378,9 +430,21 @@ class VertexAIInstrumentor(BaseInstrumentor):
     def instrumentation_dependencies(self) -> Collection[str]:
         return _instruments
 
-    def _instrument(self, **kwargs):
-        tracer_provider = kwargs.get("tracer_provider")
-        tracer = get_tracer(__name__, __version__, tracer_provider)
+    def _instrument(
+        self,
+        *,
+        tracer_provider: Optional[TracerProvider] = None,
+        event_logger_provider: Optional[EventLoggerProvider] = None,
+        **kwargs,
+    ):
+        tracer = get_tracer(
+            __name__, __version__, tracer_provider=tracer_provider
+        )
+        event_logger = get_event_logger(
+            __name__,
+            version=__version__,
+            event_logger_provider=event_logger_provider,
+        )
         for wrapped_method in WRAPPED_METHODS:
             wrap_package = wrapped_method.get("package")
             wrap_object = wrapped_method.get("object")
@@ -390,9 +454,9 @@ class VertexAIInstrumentor(BaseInstrumentor):
                 wrap_package,
                 f"{wrap_object}.{wrap_method}",
                 (
-                    _awrap(tracer, wrapped_method)
+                    partial(_awrap, tracer, event_logger, wrapped_method)
                     if wrapped_method.get("is_async")
-                    else _wrap(tracer, wrapped_method)
+                    else partial(_wrap, tracer, event_logger, wrapped_method)
                 ),
             )
 
