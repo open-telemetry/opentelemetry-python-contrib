@@ -15,6 +15,7 @@
 # pylint: disable=too-many-lines
 
 import unittest
+from contextlib import ExitStack
 from timeit import default_timer
 from unittest.mock import Mock, patch
 
@@ -173,10 +174,11 @@ class TestBaseFastAPI(TestBase):
         self._client = TestClient(self._app, base_url="https://testserver:443")
         # run the lifespan, initialize the middleware stack
         # this is more in-line with what happens in a real application when the server starts up
-        self._client_teardown = self._client.__enter__()  # pylint: disable=unnecessary-dunder-call
+        self._exit_stack = ExitStack()
+        self._exit_stack.enter_context(self._client)
 
     def tearDown(self):
-        self._client_teardown.__exit__(None, None, None)  # pylint: disable=unnecessary-dunder-call
+        self._exit_stack.close()
         super().tearDown()
         self.env_patch.stop()
         self.exclude_patch.stop()
