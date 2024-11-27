@@ -203,9 +203,9 @@ from opentelemetry.instrumentation.asgi.types import (
 from opentelemetry.instrumentation.fastapi.package import _instruments
 from opentelemetry.instrumentation.fastapi.version import __version__
 from opentelemetry.instrumentation.instrumentor import BaseInstrumentor
-from opentelemetry.metrics import Meter, get_meter
+from opentelemetry.metrics import MeterProvider, get_meter
 from opentelemetry.semconv.trace import SpanAttributes
-from opentelemetry.trace import Tracer, get_tracer
+from opentelemetry.trace import TracerProvider, get_tracer
 from opentelemetry.util.http import (
     get_excluded_urls,
     parse_excluded_urls,
@@ -230,8 +230,8 @@ class FastAPIInstrumentor(BaseInstrumentor):
         server_request_hook: ServerRequestHook = None,
         client_request_hook: ClientRequestHook = None,
         client_response_hook: ClientResponseHook = None,
-        tracer_provider: Tracer | None = None,
-        meter_provider: Meter | None = None,
+        tracer_provider: TracerProvider | None = None,
+        meter_provider: MeterProvider | None = None,
         excluded_urls: str | None = None,
         http_capture_headers_server_request: list[str] | None = None,
         http_capture_headers_server_response: list[str] | None = None,
@@ -362,12 +362,7 @@ class FastAPIInstrumentor(BaseInstrumentor):
         _InstrumentedFastAPI._http_capture_headers_sanitize_fields = (
             kwargs.get("http_capture_headers_sanitize_fields")
         )
-        _excluded_urls = kwargs.get("excluded_urls")
-        _InstrumentedFastAPI._excluded_urls = (
-            _excluded_urls_from_env
-            if _excluded_urls is None
-            else parse_excluded_urls(_excluded_urls)
-        )
+        _InstrumentedFastAPI._excluded_urls = kwargs.get("excluded_urls")
         _InstrumentedFastAPI._meter_provider = kwargs.get("meter_provider")
         _InstrumentedFastAPI._exclude_spans = kwargs.get("exclude_spans")
         fastapi.FastAPI = _InstrumentedFastAPI
