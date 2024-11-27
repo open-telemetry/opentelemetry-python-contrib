@@ -171,7 +171,9 @@ class TestBaseFastAPI(TestBase):
         self._app = self._create_app()
         self._app.add_middleware(HTTPSRedirectMiddleware)
         self._client = TestClient(self._app, base_url="https://testserver:443")
-        self._client.__enter__()  # noqa: C2801  # run the lifespan, initialize the middleware stack
+        # run the lifespan, initialize the middleware stack
+        # this is more in-line with what happens in a real application when the server starts up
+        self._client.__enter__()  # pylint: disable=unnecessary-dunder-call
 
     def tearDown(self):
         super().tearDown()
