@@ -171,7 +171,7 @@ class TestBaseFastAPI(TestBase):
         self._app = self._create_app()
         self._app.add_middleware(HTTPSRedirectMiddleware)
         self._client = TestClient(self._app, base_url="https://testserver:443")
-        self._client.__enter__()  # run the lifespan, initialize the middleware stack
+        self._client.__enter__()  # noqa: C2801  # run the lifespan, initialize the middleware stack
 
     def tearDown(self):
         super().tearDown()
