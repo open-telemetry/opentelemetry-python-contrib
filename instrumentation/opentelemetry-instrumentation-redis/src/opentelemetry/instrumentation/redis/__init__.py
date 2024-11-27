@@ -416,7 +416,7 @@ def _instrument(
         f"{pipeline_class}.immediate_execute_command",
         _traced_execute_command,
     )
-    if redis.VERSION >= _REDIS_CLUSTER_VERSION:
+    if _CLIENT_CLUSTER_SUPPORT:
         wrap_function_wrapper(
             "redis.cluster",
             "RedisCluster.execute_command",
@@ -434,7 +434,7 @@ def _instrument(
     _async_traced_execute_pipeline = _async_traced_execute_pipeline_factory(
         tracer, request_hook, response_hook
     )
-    if redis.VERSION >= _REDIS_ASYNCIO_VERSION:
+    if _CLIENT_ASYNCIO_SUPPORT:
         wrap_function_wrapper(
             "redis.asyncio",
             f"{redis_class}.execute_command",
@@ -450,7 +450,7 @@ def _instrument(
             f"{pipeline_class}.immediate_execute_command",
             _async_traced_execute_command,
         )
-    if redis.VERSION >= _REDIS_ASYNCIO_CLUSTER_VERSION:
+    if _CLIENT_ASYNCIO_CLUSTER_SUPPORT:
         wrap_function_wrapper(
             "redis.asyncio.cluster",
             "RedisCluster.execute_command",
@@ -588,15 +588,15 @@ class RedisInstrumentor(BaseInstrumentor):
             unwrap(redis.Redis, "pipeline")
             unwrap(redis.client.Pipeline, "execute")
             unwrap(redis.client.Pipeline, "immediate_execute_command")
-        if redis.VERSION >= _REDIS_CLUSTER_VERSION:
+        if _CLIENT_CLUSTER_SUPPORT:
             unwrap(redis.cluster.RedisCluster, "execute_command")
             unwrap(redis.cluster.ClusterPipeline, "execute")
-        if redis.VERSION >= _REDIS_ASYNCIO_VERSION:
+        if _CLIENT_ASYNCIO_SUPPORT:
             unwrap(redis.asyncio.Redis, "execute_command")
             unwrap(redis.asyncio.Redis, "pipeline")
             unwrap(redis.asyncio.client.Pipeline, "execute")
             unwrap(redis.asyncio.client.Pipeline, "immediate_execute_command")
-        if redis.VERSION >= _REDIS_ASYNCIO_CLUSTER_VERSION:
+        if _CLIENT_ASYNCIO_CLUSTER_SUPPORT:
             unwrap(redis.asyncio.cluster.RedisCluster, "execute_command")
             unwrap(redis.asyncio.cluster.ClusterPipeline, "execute")
 
