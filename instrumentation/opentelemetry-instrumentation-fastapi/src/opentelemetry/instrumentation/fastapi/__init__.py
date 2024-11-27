@@ -313,7 +313,6 @@ class FastAPIInstrumentor(BaseInstrumentor):
                 app = ServerErrorMiddleware(app)
                 return app
 
-
             app._original_build_middleware_stack = app.build_middleware_stack
             app.build_middleware_stack = types.MethodType(
                 build_middleware_stack, app
