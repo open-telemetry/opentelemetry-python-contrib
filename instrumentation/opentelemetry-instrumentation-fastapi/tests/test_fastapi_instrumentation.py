@@ -1129,7 +1129,7 @@ class TestAutoInstrumentation(TestBaseAutoFastAPI):
         self._instrumentor.instrument_app(self._app)
         count = 0
         app = self._app.middleware_stack
-        while True:
+        while app is not None:
             if isinstance(app, OpenTelemetryMiddleware):
                 count += 1
             if app is None:
