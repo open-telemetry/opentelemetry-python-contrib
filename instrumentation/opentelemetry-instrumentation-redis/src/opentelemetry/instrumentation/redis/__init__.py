@@ -624,8 +624,8 @@ class RedisInstrumentor(BaseInstrumentor):
         if getattr(client, INSTRUMENTATION_ATTR):
             # for all clients we need to unwrap execute_command and pipeline functions
             unwrap(client, "execute_command")
-            # pipeline was creating a pipeline and wrapping the functions of the
-            # created instance. any pipeline created before un-instrumenting will
+            # the method was creating a pipeline and wrapping the functions of the
+            # created instance. any pipelines created before un-instrumenting will
             # remain instrumented (pipelines should usually have a short span)
             unwrap(client, "pipeline")
             pass

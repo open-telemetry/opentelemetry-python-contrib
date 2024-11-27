@@ -37,7 +37,7 @@ from opentelemetry.trace import SpanKind
 class TestRedis(TestBase):
     def setUp(self):
         super().setUp()
-        RedisInstrumentor().instrument(_provider=self.tracer_provider)
+        RedisInstrumentor().instrument(tracer_provider=self.tracer_provider)
 
     def tearDown(self):
         super().tearDown()
