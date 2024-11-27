@@ -19,6 +19,7 @@ import fakeredis
 import pytest
 import redis
 import redis.asyncio
+from fakeredis.aioredis import FakeRedis
 from redis.exceptions import ConnectionError as redis_ConnectionError
 from redis.exceptions import WatchError
 
@@ -359,7 +360,7 @@ class TestRedis(TestBase):
     def test_watch_error_sync(self):
         def redis_operations():
             with pytest.raises(WatchError):
-                redis_client = redis.Redis()
+                redis_client = fakeredis.FakeStrictRedis()
                 pipe = redis_client.pipeline(transaction=True)
                 pipe.watch("a")
                 redis_client.set("a", "bad")  # This will cause the WatchError
@@ -389,7 +390,7 @@ class TestRedisAsync(TestBase, IsolatedAsyncioTestCase):
     def setUp(self):
         super().setUp()
         self.instrumentor = RedisInstrumentor()
-        self.client = redis.asyncio.Redis()
+        self.client = FakeRedis()
 
     async def _redis_pipeline_operations(self, client):
         with pytest.raises(WatchError):
@@ -415,8 +416,7 @@ class TestRedisAsync(TestBase, IsolatedAsyncioTestCase):
         self.instrumentor.instrument(
             tracer_provider=self.tracer_provider, response_hook=response_hook
         )
-        redis_client = redis.asyncio.Redis()
-
+        redis_client = FakeRedis()
         await self._redis_pipeline_operations(redis_client)
 
         # there should be 3 tests, we start watch operation and have 2 set operation on same key
@@ -439,7 +439,7 @@ class TestRedisAsync(TestBase, IsolatedAsyncioTestCase):
         self.instrumentor.instrument_connection(
             tracer_provider=self.tracer_provider, client=self.client
         )
-        redis_client = redis.asyncio.Redis()
+        redis_client = FakeRedis()
         await self._redis_pipeline_operations(redis_client)
 
         spans = self.memory_exporter.get_finished_spans()
@@ -519,7 +519,7 @@ class TestRedisAsync(TestBase, IsolatedAsyncioTestCase):
         self.assertEqual(span.attributes.get(request_attr), "SET")
         self.assertEqual(span.attributes.get(response_attr), True)
         # fresh client should not record any spans
-        fresh_client = redis.asyncio.Redis()
+        fresh_client = FakeRedis()
         self.memory_exporter.clear()
         await fresh_client.set("key", "value")
         self.assert_span_count(0)
@@ -532,7 +532,7 @@ class TestRedisAsync(TestBase, IsolatedAsyncioTestCase):
 class TestRedisInstance(TestBase):
     def setUp(self):
         super().setUp()
-        self.client = redis.Redis()
+        self.client = fakeredis.FakeStrictRedis()
         RedisInstrumentor().instrument_connection(
             client=self.client, tracer_provider=self.tracer_provider
         )
@@ -568,7 +568,7 @@ class TestRedisInstance(TestBase):
             pipe.execute()
 
     def test_watch_error_sync_only_client(self):
-        redis_client = redis.Redis()
+        redis_client = fakeredis.FakeStrictRedis()
 
         self.redis_operations(redis_client)
 
