@@ -63,6 +63,9 @@ For example,
    the query will get appended with some configurable tags like "INSERT INTO test (testField) VALUES (123) /*tag=value*/;"
 
 
+Note that sqlcommenter for mysql-connector is not supported if cursor is initialized with `prepared=True`, which would natively prepare and execute MySQL statements. Adding sqlcommenting would introduce a severe performance penalty by repeating `Prepare` of statements by mysql-connector that are made unique by traceparent in sqlcomment. Therefore, sqlcommenter is not supported for this use case.
+
+
 SQLCommenter Configurations
 ***************************
 We can configure the tags to be appended to the sqlquery log by adding configuration inside commenter_options(default:{}) keyword
