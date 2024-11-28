@@ -15,10 +15,15 @@
 from unittest import mock
 
 import mysql.connector
+import pytest
 
 import opentelemetry.instrumentation.mysql
 from opentelemetry import trace as trace_api
-from opentelemetry.instrumentation.mysql import MySQLInstrumentor
+from opentelemetry.instrumentation.mysql import (
+    MySQLInstrumentor,
+    get_traced_connection_proxy,
+    get_traced_cursor_proxy,
+)
 from opentelemetry.sdk import resources
 from opentelemetry.test.test_base import TestBase
 
@@ -33,6 +38,10 @@ def connect_and_execute_query():
 
 
 class TestMysqlIntegration(TestBase):
+    @pytest.fixture(autouse=True)
+    def inject_fixtures(self, caplog):
+        self.caplog = caplog  # pylint: disable=attribute-defined-outside-init
+
     def tearDown(self):
         super().tearDown()
         with self.disable_logging():
@@ -372,3 +381,87 @@ class TestMysqlIntegration(TestBase):
 
         spans_list = self.memory_exporter.get_finished_spans()
         self.assertEqual(len(spans_list), 1)
+
+    def test_get_traced_cursor_proxy_with_enable_commenter_cursor(self):
+        mock_cursor = mock.Mock()
+        mock_dbapiint = mock.Mock()
+        mock_enable = mock.Mock()
+        proxy = get_traced_cursor_proxy(
+            mock_cursor,
+            mock_dbapiint,
+            mock_enable,
+        )
+        self.assertIs(proxy.__wrapped__, mock_cursor)
+        self.assertIs(proxy._cursor_tracer._db_api_integration, mock_dbapiint)
+        self.assertIs(proxy._cursor_tracer._commenter_enabled, mock_enable)
+
+    def test_get_traced_connection_proxy_not_dbapi_enable_commenter(self):
+        mock_connection = mock.Mock()
+        mock_dbapiint = mock.Mock()
+        mock_dbapiint.enable_commenter = False
+        cnx_proxy = get_traced_connection_proxy(
+            mock_connection,
+            mock_dbapiint,
+        )
+        self.assertIs(cnx_proxy.__wrapped__, mock_connection)
+        cur_proxy = cnx_proxy.cursor()
+        self.assertIs(
+            cur_proxy._cursor_tracer._db_api_integration, mock_dbapiint
+        )
+        self.assertFalse(cur_proxy._cursor_tracer._commenter_enabled)
+
+    def test_get_traced_connection_proxy_dbapi_enable_commenter_none_prepared_cursor(
+        self,
+    ):
+        mock_connection = mock.Mock()
+        mock_dbapiint = mock.Mock()
+        mock_dbapiint.enable_commenter = True
+        cnx_proxy = get_traced_connection_proxy(
+            mock_connection,
+            mock_dbapiint,
+        )
+        self.assertIs(cnx_proxy.__wrapped__, mock_connection)
+        cur_proxy = cnx_proxy.cursor()
+        self.assertIs(
+            cur_proxy._cursor_tracer._db_api_integration, mock_dbapiint
+        )
+        self.assertTrue(cur_proxy._cursor_tracer._commenter_enabled)
+
+    def test_get_traced_connection_proxy_dbapi_enable_commenter_not_prepared_cursor(
+        self,
+    ):
+        mock_connection = mock.Mock()
+        mock_dbapiint = mock.Mock()
+        mock_dbapiint.enable_commenter = True
+        cnx_proxy = get_traced_connection_proxy(
+            mock_connection,
+            mock_dbapiint,
+        )
+        self.assertIs(cnx_proxy.__wrapped__, mock_connection)
+        cur_proxy = cnx_proxy.cursor(prepared=False)
+        self.assertIs(
+            cur_proxy._cursor_tracer._db_api_integration, mock_dbapiint
+        )
+        self.assertTrue(cur_proxy._cursor_tracer._commenter_enabled)
+
+    def test_get_traced_connection_proxy_dbapi_enable_commenter_prepared_cursor(
+        self,
+    ):
+        mock_connection = mock.Mock()
+        mock_dbapiint = mock.Mock()
+        mock_dbapiint.enable_commenter = True
+        mock_dbapiint.connect_module.__name__ = "foo-module"
+        cnx_proxy = get_traced_connection_proxy(
+            mock_connection,
+            mock_dbapiint,
+        )
+        self.assertIs(cnx_proxy.__wrapped__, mock_connection)
+        cur_proxy = cnx_proxy.cursor(prepared=True)
+        self.assertIs(
+            cur_proxy._cursor_tracer._db_api_integration, mock_dbapiint
+        )
+        self.assertFalse(cur_proxy._cursor_tracer._commenter_enabled)
+        assert (
+            self.caplog.records[0].getMessage()
+            == "sqlcomment is not supported for query statements executed by cursors with native prepared statement support. Disabling sqlcommenting for instrumentation of foo-module."
+        )
