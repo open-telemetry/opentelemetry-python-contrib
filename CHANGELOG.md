@@ -13,6 +13,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- `opentelemetry-distro` default to OTLP log exporter.
+  ([#3042](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/3042))
 - `opentelemetry-instrumentation-sqlalchemy` Update unit tests to run with SQLALchemy 2
   ([#2976](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/2976))
 - Add `opentelemetry-instrumentation-openai-v2` to `opentelemetry-bootstrap`
@@ -25,17 +27,25 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   ([#3027](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/3027))
 - `opentelemetry-instrumentation-mysqlclient` Add sqlcommenter support
   ([#2941](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/2941))
+- `opentelemetry-instrumentation-pymysql` Add sqlcommenter support
+  ([#2942](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/2942))
+- `opentelemetry-instrumentation-click`: new instrumentation to trace click commands
+  ([#2994](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/2994))
 - `opentelemetry-instrumentation-mysql` Add sqlcommenter support
   ([#3023](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/3023))
 
 ### Fixed
 
+- `opentelemetry-instrumentation-starlette`: Retrieve `meter_provider` key instead of `_meter_provider` on `_instrument`
+  ([#3048](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/3048))
 - `opentelemetry-instrumentation-httpx`: instrument_client is a static method again
   ([#3003](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/3003))
 - `opentelemetry-instrumentation-system_metrics`: fix callbacks reading wrong config
   ([#3025](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/3025))
 - `opentelemetry-instrumentation-httpx`: Check if mount transport is none before wrap it
   ([#3022](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/3022))
+- Replace all instrumentor unit test `assertEqualSpanInstrumentationInfo` calls with `assertEqualSpanInstrumentationScope` calls
+  ([#3037](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/3037))
 
 ### Breaking changes
 
@@ -60,8 +70,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   ([#2635](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/2635))
 - `opentelemetry-instrumentation` Add support for string based dotted module paths in unwrap
   ([#2919](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/2919))
-- `opentelemetry-instrumentation-pymysql` Add sqlcommenter support
-  ([#2942](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/2942))
 
 ### Fixed
 

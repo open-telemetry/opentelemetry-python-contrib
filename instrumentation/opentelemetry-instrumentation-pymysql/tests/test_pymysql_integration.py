@@ -45,7 +45,7 @@ class TestPyMysqlIntegration(TestBase):
         span = spans_list[0]
 
         # Check version and name in span's instrumentation info
-        self.assertEqualSpanInstrumentationInfo(
+        self.assertEqualSpanInstrumentationScope(
             span, opentelemetry.instrumentation.pymysql
         )
 
