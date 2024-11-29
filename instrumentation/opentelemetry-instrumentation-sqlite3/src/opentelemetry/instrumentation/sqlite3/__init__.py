@@ -39,19 +39,26 @@ API
 ---
 """
 
+from __future__ import annotations
+
 import sqlite3
 from sqlite3 import dbapi2
-from typing import Collection
+from typing import Any, Collection, TypeVar
 
 from opentelemetry.instrumentation import dbapi
 from opentelemetry.instrumentation.instrumentor import BaseInstrumentor
 from opentelemetry.instrumentation.sqlite3.package import _instruments
 from opentelemetry.instrumentation.sqlite3.version import __version__
+from opentelemetry.trace import TracerProvider
 
 # No useful attributes of sqlite3 connection object
 _CONNECTION_ATTRIBUTES = {}
 
 _DATABASE_SYSTEM = "sqlite"
+
+SQLite3Connection = TypeVar(
+    "SQLite3Connection", bound=sqlite3.Connection | None
+)
 
 
 class SQLite3Instrumentor(BaseInstrumentor):
@@ -60,7 +67,7 @@ class SQLite3Instrumentor(BaseInstrumentor):
     def instrumentation_dependencies(self) -> Collection[str]:
         return _instruments
 
-    def _instrument(self, **kwargs):
+    def _instrument(self, **kwargs: Any) -> None:
         """Integrate with SQLite3 Python library.
         https://docs.python.org/3/library/sqlite3.html
         """
@@ -77,13 +84,16 @@ class SQLite3Instrumentor(BaseInstrumentor):
                 tracer_provider=tracer_provider,
             )
 
-    def _uninstrument(self, **kwargs):
+    def _uninstrument(self, **kwargs: Any) -> None:
         """ "Disable SQLite3 instrumentation"""
         for module in self._TO_WRAP:
             dbapi.unwrap_connect(module, "connect")
 
     @staticmethod
-    def instrument_connection(connection, tracer_provider=None):
+    def instrument_connection(
+        connection: SQLite3Connection,
+        tracer_provider: TracerProvider | None = None,
+    ) -> SQLite3Connection:
         """Enable instrumentation in a SQLite connection.
 
         Args:
@@ -105,7 +115,9 @@ class SQLite3Instrumentor(BaseInstrumentor):
         )
 
     @staticmethod
-    def uninstrument_connection(connection):
+    def uninstrument_connection(
+        connection: SQLite3Connection,
+    ) -> SQLite3Connection:
         """Disable instrumentation in a SQLite connection.
 
         Args:

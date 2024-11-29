@@ -13,4 +13,4 @@
 # limitations under the License.
 
 
-_instruments = tuple()
+_instruments: tuple[str, ...] = tuple()
