@@ -24,7 +24,7 @@ which only needs a valid OpenAI API key.
 
 References
 ----------
-* `OpenTelemetry OpenAI Instrumentation <https://opentelemetry-python-contrib.readthedocs.io/en/latest/instrumentation/openai/openai.html>`_
+* `OpenTelemetry OpenAI Instrumentation <https://opentelemetry-python-contrib.readthedocs.io/en/latest/instrumentation-genai/openai.html>`_
 * `OpenTelemetry Project <https://opentelemetry.io/>`_
-* `OpenTelemetry Python Examples <https://github.com/open-telemetry/opentelemetry-python/tree/main/docs/examples>`_
+* `OpenTelemetry Python Examples <https://github.com/open-telemetry/opentelemetry-python-contrib/tree/main/instrumentation-genai/opentelemetry-instrumentation-openai-v2/example>`_
 

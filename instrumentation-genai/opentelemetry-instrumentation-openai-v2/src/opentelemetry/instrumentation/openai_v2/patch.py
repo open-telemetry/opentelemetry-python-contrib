@@ -18,6 +18,10 @@ from typing import Optional
 from openai import Stream
 
 from opentelemetry._events import Event, EventLogger
+from opentelemetry.instrumentation.genai_utils import (
+    get_span_name,
+    handle_span_exception,
+)
 from opentelemetry.semconv._incubating.attributes import (
     gen_ai_attributes as GenAIAttributes,
 )
@@ -41,7 +45,7 @@ def chat_completions_create(
     def traced_method(wrapped, instance, args, kwargs):
         span_attributes = {**get_llm_request_attributes(kwargs, instance)}
 
-        span_name = f"{span_attributes[GenAIAttributes.GEN_AI_OPERATION_NAME]} {span_attributes[GenAIAttributes.GEN_AI_REQUEST_MODEL]}"
+        span_name = get_span_name(span_attributes)
         with tracer.start_as_current_span(
             name=span_name,
             kind=SpanKind.CLIENT,

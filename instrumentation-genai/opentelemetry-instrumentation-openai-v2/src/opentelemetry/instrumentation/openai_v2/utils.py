@@ -216,12 +216,3 @@ def get_llm_request_attributes(
 
     # filter out None values
     return {k: v for k, v in attributes.items() if v is not None}
-
-
-def handle_span_exception(span, error):
-    span.set_status(Status(StatusCode.ERROR, str(error)))
-    if span.is_recording():
-        span.set_attribute(
-            ErrorAttributes.ERROR_TYPE, type(error).__qualname__
-        )
-    span.end()
