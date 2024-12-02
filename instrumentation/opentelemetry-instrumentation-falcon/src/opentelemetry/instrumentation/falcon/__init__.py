@@ -194,13 +194,13 @@ from packaging import version as package_version
 import opentelemetry.instrumentation.wsgi as otel_wsgi
 from opentelemetry import context, trace
 from opentelemetry.instrumentation._semconv import (
+    _get_schema_url,
     _HTTPStabilityMode,
     _OpenTelemetrySemanticConventionStability,
     _OpenTelemetryStabilitySignalType,
     _report_new,
     _report_old,
     _set_status,
-    _get_schema_url,
 )
 from opentelemetry.instrumentation.falcon.package import _instruments
 from opentelemetry.instrumentation.falcon.version import __version__
@@ -372,9 +372,13 @@ class _InstrumentedFalconAPI(getattr(falcon, _instrument_app)):
             context_carrier=env,
             context_getter=otel_wsgi.wsgi_getter,
         )
-        attributes = otel_wsgi.collect_request_attributes(env, self._sem_conv_opt_in_mode)
+        attributes = otel_wsgi.collect_request_attributes(
+            env, self._sem_conv_opt_in_mode
+        )
         active_requests_count_attrs = (
-            otel_wsgi._parse_active_request_count_attrs(attributes, self._sem_conv_opt_in_mode)
+            otel_wsgi._parse_active_request_count_attrs(
+                attributes, self._sem_conv_opt_in_mode
+            )
         )
         self.active_requests_counter.add(1, active_requests_count_attrs)
 

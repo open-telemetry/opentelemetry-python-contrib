@@ -12,7 +12,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 #
-from timeit import default_timer
 from unittest.mock import Mock, patch
 
 import pytest
@@ -225,9 +224,7 @@ class TestFalconInstrumentation(TestFalconBase, WsgiTestBase):
         if new_semconv:
             expected_attributes.update(expected_attributes_new)
 
-        self.assertSpanHasAttributes(
-            span, expected_attributes
-        )
+        self.assertSpanHasAttributes(span, expected_attributes)
         # In falcon<3, NET_PEER_IP is always set by default to 127.0.0.1
         # In falcon>3, NET_PEER_IP is not set to anything by default to
         # https://github.com/falconry/falcon/blob/5233d0abed977d9dab78ebadf305f5abe2eef07c/falcon/testing/helpers.py#L1168-L1172 # noqa
