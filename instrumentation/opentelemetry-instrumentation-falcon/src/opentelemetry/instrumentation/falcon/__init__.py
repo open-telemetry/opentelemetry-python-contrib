@@ -216,6 +216,9 @@ from opentelemetry.instrumentation.utils import (
 from opentelemetry.metrics import get_meter
 from opentelemetry.semconv.attributes.error_attributes import ERROR_TYPE
 from opentelemetry.semconv.metrics import MetricInstruments
+from opentelemetry.semconv.metrics.http_metrics import (
+    HTTP_SERVER_REQUEST_DURATION,
+)
 from opentelemetry.semconv.trace import SpanAttributes
 from opentelemetry.trace.status import StatusCode
 from opentelemetry.util.http import get_excluded_urls, get_traced_request_attrs
@@ -279,11 +282,22 @@ class _InstrumentedFalconAPI(getattr(falcon, _instrument_app)):
             meter_provider,
             schema_url=_get_schema_url(self._sem_conv_opt_in_mode),
         )
-        self.duration_histogram = self._otel_meter.create_histogram(
-            name=MetricInstruments.HTTP_SERVER_DURATION,
-            unit="ms",
-            description="Measures the duration of inbound HTTP requests.",
-        )
+
+        self.duration_histogram_old = None
+        if _report_old(self._sem_conv_opt_in_mode):
+            self.duration_histogram_old = self._otel_meter.create_histogram(
+                name=MetricInstruments.HTTP_SERVER_DURATION,
+                unit="ms",
+                description="Measures the duration of inbound HTTP requests.",
+            )
+        self.duration_histogram_new = None
+        if _report_new(self._sem_conv_opt_in_mode):
+            self.duration_histogram_new = self._otel_meter.create_histogram(
+                name=HTTP_SERVER_REQUEST_DURATION,
+                description="Duration of HTTP server requests.",
+                unit="s",
+            )
+
         self.active_requests_counter = self._otel_meter.create_up_down_counter(
             name=MetricInstruments.HTTP_SERVER_ACTIVE_REQUESTS,
             unit="requests",
@@ -358,11 +372,10 @@ class _InstrumentedFalconAPI(getattr(falcon, _instrument_app)):
             context_carrier=env,
             context_getter=otel_wsgi.wsgi_getter,
         )
-        attributes = otel_wsgi.collect_request_attributes(env)
+        attributes = otel_wsgi.collect_request_attributes(env, self._sem_conv_opt_in_mode)
         active_requests_count_attrs = (
-            otel_wsgi._parse_active_request_count_attrs(attributes)
+            otel_wsgi._parse_active_request_count_attrs(attributes, self._sem_conv_opt_in_mode)
         )
-        duration_attrs = otel_wsgi._parse_duration_attrs(attributes)
         self.active_requests_counter.add(1, active_requests_count_attrs)
 
         if span.is_recording():
@@ -394,12 +407,23 @@ class _InstrumentedFalconAPI(getattr(falcon, _instrument_app)):
             exception = exc
             raise
         finally:
-            if span.is_recording():
-                if _report_old(self._sem_conv_opt_in_mode):
+            duration_s = default_timer() - start
+            if self.duration_histogram_old:
+                duration_attrs = otel_wsgi._parse_duration_attrs(
+                    attributes, _HTTPStabilityMode.DEFAULT
+                )
+                if span.is_recording():
                     duration_attrs[SpanAttributes.HTTP_STATUS_CODE] = (
                         span.attributes.get(SpanAttributes.HTTP_STATUS_CODE)
                     )
-                if _report_new(self._sem_conv_opt_in_mode):
+                self.duration_histogram_old.record(
+                    max(round(duration_s * 1000), 0), duration_attrs
+                )
+            if self.duration_histogram_new:
+                duration_attrs = otel_wsgi._parse_duration_attrs(
+                    attributes, _HTTPStabilityMode.HTTP
+                )
+                if span.is_recording():
                     duration_attrs[
                         SpanAttributes.HTTP_RESPONSE_STATUS_CODE
                     ] = span.attributes.get(
@@ -409,9 +433,10 @@ class _InstrumentedFalconAPI(getattr(falcon, _instrument_app)):
                         duration_attrs[ERROR_TYPE] = span.attributes.get(
                             ERROR_TYPE
                         )
+                self.duration_histogram_new.record(
+                    max(duration_s, 0), duration_attrs
+                )
 
-            duration = max(round((default_timer() - start) * 1000), 0)
-            self.duration_histogram.record(duration, duration_attrs)
             self.active_requests_counter.add(-1, active_requests_count_attrs)
             if exception is None:
                 activation.__exit__(None, None, None)

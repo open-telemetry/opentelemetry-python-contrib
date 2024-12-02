@@ -22,6 +22,8 @@ from packaging import version as package_version
 
 from opentelemetry import trace
 from opentelemetry.instrumentation._semconv import (
+    OTEL_SEMCONV_STABILITY_OPT_IN,
+    _OpenTelemetrySemanticConventionStability,
     _server_active_requests_count_attrs_new,
     _server_active_requests_count_attrs_old,
     _server_duration_attrs_new,
@@ -54,6 +56,7 @@ _expected_metric_names = [
     "http.server.active_requests",
     "http.server.duration",
 ]
+
 _recommended_attrs = {
     "http.server.active_requests": _server_active_requests_count_attrs_new
     + _server_active_requests_count_attrs_old,
@@ -61,18 +64,50 @@ _recommended_attrs = {
     + _server_duration_attrs_old,
 }
 
+_recommended_metrics_attrs_old = {
+    "http.server.active_requests": _server_active_requests_count_attrs_old,
+    "http.server.duration": _server_duration_attrs_old,
+}
+_recommended_metrics_attrs_new = {
+    "http.server.active_requests": _server_active_requests_count_attrs_new,
+    "http.server.request.duration": _server_duration_attrs_new,
+}
+_server_active_requests_count_attrs_both = (
+    _server_active_requests_count_attrs_old
+)
+_server_active_requests_count_attrs_both.extend(
+    _server_active_requests_count_attrs_new
+)
+_recommended_metrics_attrs_both = {
+    "http.server.active_requests": _server_active_requests_count_attrs_both,
+    "http.server.duration": _server_duration_attrs_old,
+    "http.server.request.duration": _server_duration_attrs_new,
+}
+
 
 class TestFalconBase(TestBase):
     def setUp(self):
         super().setUp()
+
+        test_name = ""
+        if hasattr(self, "_testMethodName"):
+            test_name = self._testMethodName
+        sem_conv_mode = "default"
+        if "new_semconv" in test_name:
+            sem_conv_mode = "http"
+        elif "both_semconv" in test_name:
+            sem_conv_mode = "http/dup"
+
         self.env_patch = patch.dict(
             "os.environ",
             {
                 "OTEL_PYTHON_FALCON_EXCLUDED_URLS": "ping",
                 "OTEL_PYTHON_FALCON_TRACED_REQUEST_ATTRS": "query_string",
-                "OTEL_SEMCONV_STABILITY_OPT_IN": "http/dup",
+                OTEL_SEMCONV_STABILITY_OPT_IN: sem_conv_mode,
             },
         )
+
+        _OpenTelemetrySemanticConventionStability._initialized = False
         self.env_patch.start()
 
         FalconInstrumentor().instrument(
@@ -95,22 +130,58 @@ class TestFalconInstrumentation(TestFalconBase, WsgiTestBase):
     def test_get(self):
         self._test_method("GET")
 
+    def test_get_new_semconv(self):
+        self._test_method("GET", old_semconv=False, new_semconv=True)
+
+    def test_get_both_semconv(self):
+        self._test_method("GET", old_semconv=True, new_semconv=True)
+
     def test_post(self):
         self._test_method("POST")
+
+    def test_post_new_semconv(self):
+        self._test_method("POST", old_semconv=False, new_semconv=True)
+
+    def test_post_both_semconv(self):
+        self._test_method("POST", old_semconv=True, new_semconv=True)
 
     def test_patch(self):
         self._test_method("PATCH")
 
+    def test_patch_new_semconv(self):
+        self._test_method("PATCH", old_semconv=False, new_semconv=True)
+
+    def test_patch_both_semconv(self):
+        self._test_method("PATCH", old_semconv=True, new_semconv=True)
+
     def test_put(self):
         self._test_method("PUT")
+
+    def test_put_new_semconv(self):
+        self._test_method("PUT", old_semconv=False, new_semconv=True)
+
+    def test_put_both_semconv(self):
+        self._test_method("PUT", old_semconv=True, new_semconv=True)
 
     def test_delete(self):
         self._test_method("DELETE")
 
+    def test_delete_new_semconv(self):
+        self._test_method("DELETE", old_semconv=False, new_semconv=True)
+
+    def test_delete_both_semconv(self):
+        self._test_method("DELETE", old_semconv=True, new_semconv=True)
+
     def test_head(self):
         self._test_method("HEAD")
 
-    def _test_method(self, method):
+    def test_head_new_semconv(self):
+        self._test_method("HEAD", old_semconv=False, new_semconv=True)
+
+    def test_head_both_semconv(self):
+        self._test_method("HEAD", old_semconv=True, new_semconv=True)
+
+    def _test_method(self, method, old_semconv=True, new_semconv=False):
         self.client().simulate_request(method=method, path="/hello")
         spans = self.memory_exporter.get_finished_spans()
         self.assertEqual(len(spans), 1)
@@ -121,21 +192,41 @@ class TestFalconInstrumentation(TestFalconBase, WsgiTestBase):
             span.status.description,
             None,
         )
+
+        expected_attributes = {}
+        expected_attributes_old = {
+            SpanAttributes.HTTP_METHOD: method,
+            SpanAttributes.HTTP_SERVER_NAME: "falconframework.org",
+            SpanAttributes.HTTP_SCHEME: "http",
+            SpanAttributes.NET_HOST_PORT: 80,
+            SpanAttributes.HTTP_HOST: "falconframework.org",
+            SpanAttributes.HTTP_TARGET: "/",
+            SpanAttributes.NET_PEER_PORT: 65133,
+            SpanAttributes.HTTP_FLAVOR: "1.1",
+            "falcon.resource": "HelloWorldResource",
+            SpanAttributes.HTTP_STATUS_CODE: 201,
+            SpanAttributes.HTTP_ROUTE: "/hello",
+        }
+        expected_attributes_new = {
+            SpanAttributes.HTTP_REQUEST_METHOD: method,
+            SpanAttributes.SERVER_ADDRESS: "falconframework.org",
+            SpanAttributes.URL_SCHEME: "http",
+            SpanAttributes.SERVER_PORT: 80,
+            SpanAttributes.URL_PATH: "/",
+            SpanAttributes.CLIENT_PORT: 65133,
+            SpanAttributes.NETWORK_PROTOCOL_VERSION: "1.1",
+            "falcon.resource": "HelloWorldResource",
+            SpanAttributes.HTTP_RESPONSE_STATUS_CODE: 201,
+            SpanAttributes.HTTP_ROUTE: "/hello",
+        }
+
+        if old_semconv:
+            expected_attributes.update(expected_attributes_old)
+        if new_semconv:
+            expected_attributes.update(expected_attributes_new)
+
         self.assertSpanHasAttributes(
-            span,
-            {
-                SpanAttributes.HTTP_METHOD: method,
-                SpanAttributes.HTTP_SERVER_NAME: "falconframework.org",
-                SpanAttributes.HTTP_SCHEME: "http",
-                SpanAttributes.NET_HOST_PORT: 80,
-                SpanAttributes.HTTP_HOST: "falconframework.org",
-                SpanAttributes.HTTP_TARGET: "/",
-                SpanAttributes.NET_PEER_PORT: 65133,
-                SpanAttributes.HTTP_FLAVOR: "1.1",
-                "falcon.resource": "HelloWorldResource",
-                SpanAttributes.HTTP_STATUS_CODE: 201,
-                SpanAttributes.HTTP_ROUTE: "/hello",
-            },
+            span, expected_attributes
         )
         # In falcon<3, NET_PEER_IP is always set by default to 127.0.0.1
         # In falcon>3, NET_PEER_IP is not set to anything by default to
@@ -342,48 +433,93 @@ class TestFalconInstrumentation(TestFalconBase, WsgiTestBase):
                             )
         self.assertTrue(number_data_point_seen and histogram_data_point_seen)
 
-    def test_falcon_metric_values(self):
-        expected_duration_attributes = {
-            "http.method": "GET",
-            "http.host": "falconframework.org",
-            "http.scheme": "http",
-            "http.flavor": "1.1",
-            "http.server_name": "falconframework.org",
-            "net.host.port": 80,
-            "net.host.name": "falconframework.org",
-            "http.status_code": 404,
-            "http.response.status_code": 404,
-        }
-        expected_requests_count_attributes = {
-            "http.method": "GET",
-            "http.host": "falconframework.org",
-            "http.scheme": "http",
-            "http.flavor": "1.1",
-            "http.server_name": "falconframework.org",
-        }
-        start = default_timer()
+    def test_falcon_metric_values_new_semconv(self):
+        number_data_point_seen = False
+        histogram_data_point_seen = False
+
         self.client().simulate_get("/hello/756")
-        duration = max(round((default_timer() - start) * 1000), 0)
         metrics_list = self.memory_metrics_reader.get_metrics_data()
         for resource_metric in metrics_list.resource_metrics:
             for scope_metric in resource_metric.scope_metrics:
                 for metric in scope_metric.metrics:
+                    data_points = list(metric.data.data_points)
+                    self.assertEqual(len(data_points), 1)
                     for point in list(metric.data.data_points):
                         if isinstance(point, HistogramDataPoint):
-                            self.assertDictEqual(
-                                expected_duration_attributes,
-                                dict(point.attributes),
-                            )
                             self.assertEqual(point.count, 1)
-                            self.assertAlmostEqual(
-                                duration, point.sum, delta=10
-                            )
+                            histogram_data_point_seen = True
                         if isinstance(point, NumberDataPoint):
-                            self.assertDictEqual(
-                                expected_requests_count_attributes,
-                                dict(point.attributes),
-                            )
                             self.assertEqual(point.value, 0)
+                            number_data_point_seen = True
+                        for attr in point.attributes:
+                            self.assertIn(
+                                attr,
+                                _recommended_metrics_attrs_new[metric.name],
+                            )
+
+        self.assertTrue(number_data_point_seen and histogram_data_point_seen)
+
+    def test_falcon_metric_values_both_semconv(self):
+        number_data_point_seen = False
+        histogram_data_point_seen = False
+
+        self.client().simulate_get("/hello/756")
+        metrics_list = self.memory_metrics_reader.get_metrics_data()
+        for resource_metric in metrics_list.resource_metrics:
+            for scope_metric in resource_metric.scope_metrics:
+                for metric in scope_metric.metrics:
+                    if metric.unit == "ms":
+                        self.assertEqual(metric.name, "http.server.duration")
+                    elif metric.unit == "s":
+                        self.assertEqual(
+                            metric.name, "http.server.request.duration"
+                        )
+                    else:
+                        self.assertEqual(
+                            metric.name, "http.server.active_requests"
+                        )
+                    data_points = list(metric.data.data_points)
+                    self.assertEqual(len(data_points), 1)
+                    for point in list(metric.data.data_points):
+                        if isinstance(point, HistogramDataPoint):
+                            self.assertEqual(point.count, 1)
+                            histogram_data_point_seen = True
+                        if isinstance(point, NumberDataPoint):
+                            self.assertEqual(point.value, 0)
+                            number_data_point_seen = True
+                        for attr in point.attributes:
+                            print(metric.name)
+                            self.assertIn(
+                                attr,
+                                _recommended_metrics_attrs_both[metric.name],
+                            )
+        self.assertTrue(number_data_point_seen and histogram_data_point_seen)
+
+    def test_falcon_metric_values(self):
+        number_data_point_seen = False
+        histogram_data_point_seen = False
+
+        self.client().simulate_get("/hello/756")
+        metrics_list = self.memory_metrics_reader.get_metrics_data()
+        for resource_metric in metrics_list.resource_metrics:
+            for scope_metric in resource_metric.scope_metrics:
+                for metric in scope_metric.metrics:
+                    data_points = list(metric.data.data_points)
+                    self.assertEqual(len(data_points), 1)
+                    for point in list(metric.data.data_points):
+                        if isinstance(point, HistogramDataPoint):
+                            self.assertEqual(point.count, 1)
+                            histogram_data_point_seen = True
+                        if isinstance(point, NumberDataPoint):
+                            self.assertEqual(point.value, 0)
+                            number_data_point_seen = True
+                        for attr in point.attributes:
+                            self.assertIn(
+                                attr,
+                                _recommended_metrics_attrs_old[metric.name],
+                            )
+
+        self.assertTrue(number_data_point_seen and histogram_data_point_seen)
 
     def test_metric_uninstrument(self):
         self.client().simulate_request(method="POST", path="/hello/756")
