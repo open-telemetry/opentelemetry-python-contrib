@@ -328,9 +328,9 @@ class AwsXRayPropagator(TextMapPropagator):
         return {TRACE_HEADER_KEY}
 
 
-class AwsXrayLambdaPropagator(AwsXRayPropagator):
+class AwsXRayLambdaPropagator(AwsXRayPropagator):
     """Implementation of the AWS X-Ray Trace Header propagation protocol but
-    with special handling for Lambda's ``_X_AMZN_TRACE_ID` environment
+    with special handling for Lambda's ``_X_AMZN_TRACE_ID`` environment
     variable.
     """
 
@@ -340,7 +340,6 @@ class AwsXrayLambdaPropagator(AwsXRayPropagator):
         context: typing.Optional[Context] = None,
         getter: Getter[CarrierT] = default_getter,
     ) -> Context:
-
         xray_context = super().extract(carrier, context=context, getter=getter)
 
         if trace.get_current_span(context=context).get_span_context().is_valid:

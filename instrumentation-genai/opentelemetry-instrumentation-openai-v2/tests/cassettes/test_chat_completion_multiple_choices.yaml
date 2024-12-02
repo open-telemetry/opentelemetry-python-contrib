@@ -1,0 +1,145 @@
+interactions:
+- request:
+    body: |-
+      {
+        "messages": [
+          {
+            "role": "user",
+            "content": "Say this is a test"
+          }
+        ],
+        "model": "gpt-4o-mini",
+        "n": 2,
+        "stream": false
+      }
+    headers:
+      accept:
+      - application/json
+      accept-encoding:
+      - gzip, deflate
+      authorization:
+      - Bearer test_openai_api_key
+      connection:
+      - keep-alive
+      content-length:
+      - '114'
+      content-type:
+      - application/json
+      host:
+      - api.openai.com
+      user-agent:
+      - OpenAI/Python 1.54.3
+      x-stainless-arch:
+      - arm64
+      x-stainless-async:
+      - 'false'
+      x-stainless-lang:
+      - python
+      x-stainless-os:
+      - MacOS
+      x-stainless-package-version:
+      - 1.54.3
+      x-stainless-retry-count:
+      - '0'
+      x-stainless-runtime:
+      - CPython
+      x-stainless-runtime-version:
+      - 3.12.6
+    method: POST
+    uri: https://api.openai.com/v1/chat/completions
+  response:
+    body:
+      string: |-
+        {
+          "id": "chatcmpl-ASYMUBq69UHDarAz2fsd0O50rv0r1",
+          "object": "chat.completion",
+          "created": 1731368634,
+          "model": "gpt-4o-mini-2024-07-18",
+          "choices": [
+            {
+              "index": 0,
+              "message": {
+                "role": "assistant",
+                "content": "This is a test. How can I assist you further?",
+                "refusal": null
+              },
+              "logprobs": null,
+              "finish_reason": "stop"
+            },
+            {
+              "index": 1,
+              "message": {
+                "role": "assistant",
+                "content": "This is a test. How can I assist you further?",
+                "refusal": null
+              },
+              "logprobs": null,
+              "finish_reason": "stop"
+            }
+          ],
+          "usage": {
+            "prompt_tokens": 12,
+            "completion_tokens": 24,
+            "total_tokens": 36,
+            "prompt_tokens_details": {
+              "cached_tokens": 0,
+              "audio_tokens": 0
+            },
+            "completion_tokens_details": {
+              "reasoning_tokens": 0,
+              "audio_tokens": 0,
+              "accepted_prediction_tokens": 0,
+              "rejected_prediction_tokens": 0
+            }
+          },
+          "system_fingerprint": "fp_0ba0d124f1"
+        }
+    headers:
+      CF-Cache-Status:
+      - DYNAMIC
+      CF-RAY:
+      - 8e1225a91a253e53-SIN
+      Connection:
+      - keep-alive
+      Content-Type:
+      - application/json
+      Date:
+      - Mon, 11 Nov 2024 23:43:54 GMT
+      Server:
+      - cloudflare
+      Set-Cookie: test_set_cookie
+      Transfer-Encoding:
+      - chunked
+      X-Content-Type-Options:
+      - nosniff
+      access-control-expose-headers:
+      - X-Request-ID
+      alt-svc:
+      - h3=":443"; ma=86400
+      content-length:
+      - '1030'
+      openai-organization: test_openai_org_id
+      openai-processing-ms:
+      - '399'
+      openai-version:
+      - '2020-10-01'
+      strict-transport-security:
+      - max-age=31536000; includeSubDomains; preload
+      x-ratelimit-limit-requests:
+      - '10000'
+      x-ratelimit-limit-tokens:
+      - '200000'
+      x-ratelimit-remaining-requests:
+      - '9997'
+      x-ratelimit-remaining-tokens:
+      - '199962'
+      x-ratelimit-reset-requests:
+      - 22.564s
+      x-ratelimit-reset-tokens:
+      - 11ms
+      x-request-id:
+      - req_01290a92a1a3d787c7a00bb3836da597
+    status:
+      code: 200
+      message: OK
+version: 1

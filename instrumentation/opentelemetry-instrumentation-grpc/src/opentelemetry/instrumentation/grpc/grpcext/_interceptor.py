@@ -17,7 +17,6 @@
 
 """Implementation of gRPC Python interceptors."""
 
-
 import collections
 
 import grpc
@@ -272,11 +271,23 @@ class _InterceptorChannel(grpc.Channel):
         self._channel.unsubscribe(*args, **kwargs)
 
     def unary_unary(
-        self, method, request_serializer=None, response_deserializer=None
+        self,
+        method,
+        request_serializer=None,
+        response_deserializer=None,
+        _registered_method=False,
     ):
-        base_callable = self._channel.unary_unary(
-            method, request_serializer, response_deserializer
-        )
+        if _registered_method:
+            base_callable = self._channel.unary_unary(
+                method,
+                request_serializer,
+                response_deserializer,
+                _registered_method,
+            )
+        else:
+            base_callable = self._channel.unary_unary(
+                method, request_serializer, response_deserializer
+            )
         if isinstance(self._interceptor, grpcext.UnaryClientInterceptor):
             return _InterceptorUnaryUnaryMultiCallable(
                 method, base_callable, self._interceptor
@@ -284,11 +295,23 @@ class _InterceptorChannel(grpc.Channel):
         return base_callable
 
     def unary_stream(
-        self, method, request_serializer=None, response_deserializer=None
+        self,
+        method,
+        request_serializer=None,
+        response_deserializer=None,
+        _registered_method=False,
     ):
-        base_callable = self._channel.unary_stream(
-            method, request_serializer, response_deserializer
-        )
+        if _registered_method:
+            base_callable = self._channel.unary_stream(
+                method,
+                request_serializer,
+                response_deserializer,
+                _registered_method,
+            )
+        else:
+            base_callable = self._channel.unary_stream(
+                method, request_serializer, response_deserializer
+            )
         if isinstance(self._interceptor, grpcext.StreamClientInterceptor):
             return _InterceptorUnaryStreamMultiCallable(
                 method, base_callable, self._interceptor
@@ -296,11 +319,23 @@ class _InterceptorChannel(grpc.Channel):
         return base_callable
 
     def stream_unary(
-        self, method, request_serializer=None, response_deserializer=None
+        self,
+        method,
+        request_serializer=None,
+        response_deserializer=None,
+        _registered_method=False,
     ):
-        base_callable = self._channel.stream_unary(
-            method, request_serializer, response_deserializer
-        )
+        if _registered_method:
+            base_callable = self._channel.stream_unary(
+                method,
+                request_serializer,
+                response_deserializer,
+                _registered_method,
+            )
+        else:
+            base_callable = self._channel.stream_unary(
+                method, request_serializer, response_deserializer
+            )
         if isinstance(self._interceptor, grpcext.StreamClientInterceptor):
             return _InterceptorStreamUnaryMultiCallable(
                 method, base_callable, self._interceptor
@@ -308,11 +343,23 @@ class _InterceptorChannel(grpc.Channel):
         return base_callable
 
     def stream_stream(
-        self, method, request_serializer=None, response_deserializer=None
+        self,
+        method,
+        request_serializer=None,
+        response_deserializer=None,
+        _registered_method=False,
     ):
-        base_callable = self._channel.stream_stream(
-            method, request_serializer, response_deserializer
-        )
+        if _registered_method:
+            base_callable = self._channel.stream_stream(
+                method,
+                request_serializer,
+                response_deserializer,
+                _registered_method,
+            )
+        else:
+            base_callable = self._channel.stream_stream(
+                method, request_serializer, response_deserializer
+            )
         if isinstance(self._interceptor, grpcext.StreamClientInterceptor):
             return _InterceptorStreamStreamMultiCallable(
                 method, base_callable, self._interceptor

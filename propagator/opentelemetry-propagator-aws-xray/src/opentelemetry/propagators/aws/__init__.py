@@ -12,6 +12,9 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from opentelemetry.propagators.aws.aws_xray_propagator import AwsXRayPropagator
+from opentelemetry.propagators.aws.aws_xray_propagator import (
+    AwsXRayLambdaPropagator,
+    AwsXRayPropagator,
+)
 
-__all__ = ["AwsXRayPropagator"]
+__all__ = ["AwsXRayPropagator", "AwsXRayLambdaPropagator"]

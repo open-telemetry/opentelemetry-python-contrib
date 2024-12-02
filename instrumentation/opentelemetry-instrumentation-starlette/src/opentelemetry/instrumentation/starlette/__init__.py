@@ -169,6 +169,7 @@ Note:
 API
 ---
 """
+
 from typing import Collection
 
 from starlette import applications
@@ -264,7 +265,7 @@ class StarletteInstrumentor(BaseInstrumentor):
         _InstrumentedStarlette._client_response_hook = kwargs.get(
             "client_response_hook"
         )
-        _InstrumentedStarlette._meter_provider = kwargs.get("_meter_provider")
+        _InstrumentedStarlette._meter_provider = kwargs.get("meter_provider")
 
         applications.Starlette = _InstrumentedStarlette
 

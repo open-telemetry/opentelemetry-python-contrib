@@ -53,6 +53,11 @@ from opentelemetry.instrumentation.utils import (
 )
 from opentelemetry.semconv.trace import SpanAttributes
 from opentelemetry.trace import SpanKind, TracerProvider, get_tracer
+from opentelemetry.util._importlib_metadata import version as util_version
+
+_DB_DRIVER_ALIASES = {
+    "MySQLdb": "mysqlclient",
+}
 
 _logger = logging.getLogger(__name__)
 
@@ -185,6 +190,7 @@ def instrument_connection(
     capture_parameters: bool = False,
     enable_commenter: bool = False,
     commenter_options: dict = None,
+    connect_module: typing.Callable[..., typing.Any] = None,
 ):
     """Enable instrumentation in a database connection.
 
@@ -199,6 +205,7 @@ def instrument_connection(
         capture_parameters: Configure if db.statement.parameters should be captured.
         enable_commenter: Flag to enable/disable sqlcommenter.
         commenter_options: Configurations for tags to be appended at the sql query.
+        connect_module: Module name where connect method is available.
 
     Returns:
         An instrumented connection.
@@ -216,6 +223,7 @@ def instrument_connection(
         capture_parameters=capture_parameters,
         enable_commenter=enable_commenter,
         commenter_options=commenter_options,
+        connect_module=connect_module,
     )
     db_integration.get_connection_attributes(connection)
     return get_traced_connection_proxy(connection, db_integration)
@@ -275,6 +283,70 @@ class DatabaseApiIntegration:
         self.name = ""
         self.database = ""
         self.connect_module = connect_module
+        self.commenter_data = self.calculate_commenter_data()
+
+    def _get_db_version(
+        self,
+        db_driver,
+    ):
+        if db_driver in _DB_DRIVER_ALIASES:
+            return util_version(_DB_DRIVER_ALIASES[db_driver])
+        db_version = ""
+        try:
+            db_version = self.connect_module.__version__
+        except AttributeError:
+            db_version = "unknown"
+        return db_version
+
+    def calculate_commenter_data(
+        self,
+    ):
+        commenter_data = {}
+        if not self.enable_commenter:
+            return commenter_data
+
+        db_driver = getattr(self.connect_module, "__name__", "unknown")
+        db_version = self._get_db_version(db_driver)
+
+        commenter_data = {
+            "db_driver": f"{db_driver}:{db_version.split(' ')[0]}",
+            # PEP 249-compliant drivers should have the following attributes.
+            # We can assume apilevel "1.0" if not given.
+            # We use "unknown" for others to prevent uncaught AttributeError.
+            # https://peps.python.org/pep-0249/#globals
+            "dbapi_threadsafety": getattr(
+                self.connect_module, "threadsafety", "unknown"
+            ),
+            "dbapi_level": getattr(self.connect_module, "apilevel", "1.0"),
+            "driver_paramstyle": getattr(
+                self.connect_module, "paramstyle", "unknown"
+            ),
+        }
+
+        if self.database_system == "postgresql":
+            if hasattr(self.connect_module, "__libpq_version__"):
+                libpq_version = self.connect_module.__libpq_version__
+            else:
+                libpq_version = self.connect_module.pq.__build_version__
+            commenter_data.update(
+                {
+                    "libpq_version": libpq_version,
+                }
+            )
+        elif self.database_system == "mysql":
+            mysqlc_version = ""
+            if db_driver == "MySQLdb":
+                mysqlc_version = self.connect_module._mysql.get_client_info()
+            elif db_driver == "pymysql":
+                mysqlc_version = self.connect_module.get_client_info()
+
+            commenter_data.update(
+                {
+                    "mysql_client_version": mysqlc_version,
+                }
+            )
+
+        return commenter_data
 
     def wrapped_connection(
         self,
@@ -423,47 +495,54 @@ class CursorTracer:
         with self._db_api_integration._tracer.start_as_current_span(
             name, kind=SpanKind.CLIENT
         ) as span:
-            self._populate_span(span, cursor, *args)
-            if args and self._commenter_enabled:
-                try:
-                    args_list = list(args)
-                    if hasattr(self._connect_module, "__libpq_version__"):
-                        libpq_version = self._connect_module.__libpq_version__
-                    else:
-                        libpq_version = (
-                            self._connect_module.pq.__build_version__
+            if span.is_recording():
+                if args and self._commenter_enabled:
+                    try:
+                        args_list = list(args)
+
+                        # lazy capture of mysql-connector client version using cursor
+                        if (
+                            self._db_api_integration.database_system == "mysql"
+                            and self._db_api_integration.connect_module.__name__
+                            == "mysql.connector"
+                            and not self._db_api_integration.commenter_data[
+                                "mysql_client_version"
+                            ]
+                        ):
+                            self._db_api_integration.commenter_data[
+                                "mysql_client_version"
+                            ] = cursor._cnx._cmysql.get_client_info()
+
+                        commenter_data = dict(
+                            self._db_api_integration.commenter_data
+                        )
+                        if self._commenter_options.get(
+                            "opentelemetry_values", True
+                        ):
+                            commenter_data.update(
+                                **_get_opentelemetry_values()
+                            )
+
+                        # Filter down to just the requested attributes.
+                        commenter_data = {
+                            k: v
+                            for k, v in commenter_data.items()
+                            if self._commenter_options.get(k, True)
+                        }
+                        statement = _add_sql_comment(
+                            args_list[0], **commenter_data
                         )
 
-                    commenter_data = {
-                        # Psycopg2/framework information
-                        "db_driver": f"psycopg2:{self._connect_module.__version__.split(' ')[0]}",
-                        "dbapi_threadsafety": self._connect_module.threadsafety,
-                        "dbapi_level": self._connect_module.apilevel,
-                        "libpq_version": libpq_version,
-                        "driver_paramstyle": self._connect_module.paramstyle,
-                    }
-                    if self._commenter_options.get(
-                        "opentelemetry_values", True
-                    ):
-                        commenter_data.update(**_get_opentelemetry_values())
+                        args_list[0] = statement
+                        args = tuple(args_list)
 
-                    # Filter down to just the requested attributes.
-                    commenter_data = {
-                        k: v
-                        for k, v in commenter_data.items()
-                        if self._commenter_options.get(k, True)
-                    }
-                    statement = _add_sql_comment(
-                        args_list[0], **commenter_data
-                    )
+                    except Exception as exc:  # pylint: disable=broad-except
+                        _logger.exception(
+                            "Exception while generating sql comment: %s", exc
+                        )
 
-                    args_list[0] = statement
-                    args = tuple(args_list)
+                self._populate_span(span, cursor, *args)
 
-                except Exception as exc:  # pylint: disable=broad-except
-                    _logger.exception(
-                        "Exception while generating sql comment: %s", exc
-                    )
             return query_method(*args, **kwargs)
 
 
