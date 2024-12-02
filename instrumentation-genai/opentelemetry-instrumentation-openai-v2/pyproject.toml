@@ -39,7 +39,7 @@ instruments = [
 openai = "opentelemetry.instrumentation.openai_v2:OpenAIInstrumentor"
 
 [project.urls]
-Homepage = "https://github.com/open-telemetry/opentelemetry-python-contrib/tree/main/instrumentation/opentelemetry-instrumentation-openai-v2"
+Homepage = "https://github.com/open-telemetry/opentelemetry-python-contrib/tree/main/instrumentation-genai/opentelemetry-instrumentation-openai-v2"
 
 [tool.hatch.version]
 path = "src/opentelemetry/instrumentation/openai_v2/version.py"
