@@ -125,6 +125,7 @@ class TestFalconBase(TestBase):
         self.env_patch.stop()
 
 
+# pylint: disable=too-many-public-methods
 class TestFalconInstrumentation(TestFalconBase, WsgiTestBase):
     def test_get(self):
         self._test_method("GET")
