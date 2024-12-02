@@ -43,7 +43,7 @@ from __future__ import annotations
 
 import sqlite3
 from sqlite3 import dbapi2
-from typing import Any, Collection, TypeVar
+from typing import Any, Collection, TypeVar, Union
 
 from opentelemetry.instrumentation import dbapi
 from opentelemetry.instrumentation.instrumentor import BaseInstrumentor
@@ -57,7 +57,7 @@ _CONNECTION_ATTRIBUTES = {}
 _DATABASE_SYSTEM = "sqlite"
 
 SQLite3Connection = TypeVar(
-    "SQLite3Connection", bound=sqlite3.Connection | None
+    "SQLite3Connection", bound=Union[sqlite3.Connection, None]
 )
 
 
