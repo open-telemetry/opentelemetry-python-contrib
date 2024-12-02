@@ -84,6 +84,10 @@ def vcr_config():
 
 @pytest.fixture(scope="function")
 def instrument_no_content(tracer_provider, event_logger_provider):
+    os.environ.update(
+        {OTEL_INSTRUMENTATION_GENAI_CAPTURE_MESSAGE_CONTENT: "False"}
+    )
+
     instrumentor = OpenAIInstrumentor()
     instrumentor.instrument(
         tracer_provider=tracer_provider,
@@ -91,6 +95,7 @@ def instrument_no_content(tracer_provider, event_logger_provider):
     )
 
     yield instrumentor
+    os.environ.pop(OTEL_INSTRUMENTATION_GENAI_CAPTURE_MESSAGE_CONTENT, None)
     instrumentor.uninstrument()
 
 
