@@ -14,6 +14,7 @@
 
 
 import logging
+import re
 from unittest import mock
 
 from opentelemetry import context
@@ -24,6 +25,7 @@ from opentelemetry.semconv.trace import SpanAttributes
 from opentelemetry.test.test_base import TestBase
 
 
+# pylint: disable=too-many-public-methods
 class TestDBApiIntegration(TestBase):
     def setUp(self):
         super().setUp()
@@ -252,6 +254,7 @@ class TestDBApiIntegration(TestBase):
 
     def test_executemany_comment(self):
         connect_module = mock.MagicMock()
+        connect_module.__name__ = "test"
         connect_module.__version__ = mock.MagicMock()
         connect_module.__libpq_version__ = 123
         connect_module.apilevel = 123
@@ -260,7 +263,7 @@ class TestDBApiIntegration(TestBase):
 
         db_integration = dbapi.DatabaseApiIntegration(
             "testname",
-            "testcomponent",
+            "postgresql",
             enable_commenter=True,
             commenter_options={"db_driver": False, "dbapi_level": False},
             connect_module=connect_module,
@@ -275,8 +278,76 @@ class TestDBApiIntegration(TestBase):
             r"Select 1 /\*dbapi_threadsafety=123,driver_paramstyle='test',libpq_version=123,traceparent='\d{1,2}-[a-zA-Z0-9_]{32}-[a-zA-Z0-9_]{16}-\d{1,2}'\*/;",
         )
 
+    def test_executemany_comment_non_pep_249_compliant(self):
+        class MockConnectModule:
+            def __getattr__(self, name):
+                if name == "__name__":
+                    return "test"
+                if name == "__version__":
+                    return mock.MagicMock()
+                if name == "__libpq_version__":
+                    return 123
+                raise AttributeError("attribute missing")
+
+        connect_module = MockConnectModule()
+        db_integration = dbapi.DatabaseApiIntegration(
+            "testname",
+            "postgresql",
+            enable_commenter=True,
+            connect_module=connect_module,
+            commenter_options={"db_driver": False},
+        )
+        mock_connection = db_integration.wrapped_connection(
+            mock_connect, {}, {}
+        )
+        cursor = mock_connection.cursor()
+        cursor.executemany("Select 1;")
+        self.assertRegex(
+            cursor.query,
+            r"Select 1 /\*dbapi_level='1.0',dbapi_threadsafety='unknown',driver_paramstyle='unknown',libpq_version=123,traceparent='\d{1,2}-[a-zA-Z0-9_]{32}-[a-zA-Z0-9_]{16}-\d{1,2}'\*/;",
+        )
+
+    def test_executemany_comment_matches_db_statement_attribute(self):
+        connect_module = mock.MagicMock()
+        connect_module.__version__ = mock.MagicMock()
+        connect_module.__libpq_version__ = 123
+        connect_module.apilevel = 123
+        connect_module.threadsafety = 123
+        connect_module.paramstyle = "test"
+
+        db_integration = dbapi.DatabaseApiIntegration(
+            "testname",
+            "postgresql",
+            enable_commenter=True,
+            commenter_options={"db_driver": False, "dbapi_level": False},
+            connect_module=connect_module,
+        )
+        mock_connection = db_integration.wrapped_connection(
+            mock_connect, {}, {}
+        )
+        cursor = mock_connection.cursor()
+        cursor.executemany("Select 1;")
+        self.assertRegex(
+            cursor.query,
+            r"Select 1 /\*dbapi_threadsafety=123,driver_paramstyle='test',libpq_version=123,traceparent='\d{1,2}-[a-zA-Z0-9_]{32}-[a-zA-Z0-9_]{16}-\d{1,2}'\*/;",
+        )
+        spans_list = self.memory_exporter.get_finished_spans()
+        self.assertEqual(len(spans_list), 1)
+        span = spans_list[0]
+        self.assertRegex(
+            span.attributes[SpanAttributes.DB_STATEMENT],
+            r"Select 1 /\*dbapi_threadsafety=123,driver_paramstyle='test',libpq_version=123,traceparent='\d{1,2}-[a-zA-Z0-9_]{32}-[a-zA-Z0-9_]{16}-\d{1,2}'\*/",
+        )
+
+        cursor_span_id = re.search(r"[a-zA-Z0-9_]{16}", cursor.query).group()
+        db_statement_span_id = re.search(
+            r"[a-zA-Z0-9_]{16}", span.attributes[SpanAttributes.DB_STATEMENT]
+        ).group()
+        self.assertEqual(cursor_span_id, db_statement_span_id)
+
     def test_compatible_build_version_psycopg_psycopg2_libpq(self):
         connect_module = mock.MagicMock()
+        connect_module.__name__ = "test"
         connect_module.__version__ = mock.MagicMock()
         connect_module.pq = mock.MagicMock()
         connect_module.pq.__build_version__ = 123
@@ -286,7 +357,7 @@ class TestDBApiIntegration(TestBase):
 
         db_integration = dbapi.DatabaseApiIntegration(
             "testname",
-            "testcomponent",
+            "postgresql",
             enable_commenter=True,
             commenter_options={"db_driver": False, "dbapi_level": False},
             connect_module=connect_module,
@@ -301,8 +372,150 @@ class TestDBApiIntegration(TestBase):
             r"Select 1 /\*dbapi_threadsafety=123,driver_paramstyle='test',libpq_version=123,traceparent='\d{1,2}-[a-zA-Z0-9_]{32}-[a-zA-Z0-9_]{16}-\d{1,2}'\*/;",
         )
 
+    def test_executemany_psycopg2_integration_comment(self):
+        connect_module = mock.MagicMock()
+        connect_module.__name__ = "psycopg2"
+        connect_module.__version__ = "1.2.3"
+        connect_module.__libpq_version__ = 123
+        connect_module.apilevel = 123
+        connect_module.threadsafety = 123
+        connect_module.paramstyle = "test"
+
+        db_integration = dbapi.DatabaseApiIntegration(
+            "testname",
+            "postgresql",
+            enable_commenter=True,
+            commenter_options={"db_driver": True, "dbapi_level": False},
+            connect_module=connect_module,
+        )
+        mock_connection = db_integration.wrapped_connection(
+            mock_connect, {}, {}
+        )
+        cursor = mock_connection.cursor()
+        cursor.executemany("Select 1;")
+        self.assertRegex(
+            cursor.query,
+            r"Select 1 /\*db_driver='psycopg2%%3A1.2.3',dbapi_threadsafety=123,driver_paramstyle='test',libpq_version=123,traceparent='\d{1,2}-[a-zA-Z0-9_]{32}-[a-zA-Z0-9_]{16}-\d{1,2}'\*/;",
+        )
+
+    def test_executemany_psycopg_integration_comment(self):
+        connect_module = mock.MagicMock()
+        connect_module.__name__ = "psycopg"
+        connect_module.__version__ = "1.2.3"
+        connect_module.pq = mock.MagicMock()
+        connect_module.pq.__build_version__ = 123
+        connect_module.apilevel = 123
+        connect_module.threadsafety = 123
+        connect_module.paramstyle = "test"
+
+        db_integration = dbapi.DatabaseApiIntegration(
+            "testname",
+            "postgresql",
+            enable_commenter=True,
+            commenter_options={"db_driver": True, "dbapi_level": False},
+            connect_module=connect_module,
+        )
+        mock_connection = db_integration.wrapped_connection(
+            mock_connect, {}, {}
+        )
+        cursor = mock_connection.cursor()
+        cursor.executemany("Select 1;")
+        self.assertRegex(
+            cursor.query,
+            r"Select 1 /\*db_driver='psycopg%%3A1.2.3',dbapi_threadsafety=123,driver_paramstyle='test',libpq_version=123,traceparent='\d{1,2}-[a-zA-Z0-9_]{32}-[a-zA-Z0-9_]{16}-\d{1,2}'\*/;",
+        )
+
+    def test_executemany_mysqlconnector_integration_comment(self):
+        connect_module = mock.MagicMock()
+        connect_module.__name__ = "mysql.connector"
+        connect_module.__version__ = "1.2.3"
+        connect_module.apilevel = 123
+        connect_module.threadsafety = 123
+        connect_module.paramstyle = "test"
+
+        db_integration = dbapi.DatabaseApiIntegration(
+            "testname",
+            "mysql",
+            enable_commenter=True,
+            commenter_options={"db_driver": True, "dbapi_level": False},
+            connect_module=connect_module,
+        )
+
+        mock_connection = db_integration.wrapped_connection(
+            mock_connect, {}, {}
+        )
+        cursor = mock_connection.cursor()
+        cursor.executemany("Select 1;")
+        self.assertRegex(
+            cursor.query,
+            r"Select 1 /\*db_driver='mysql.connector%%3A1.2.3',dbapi_threadsafety=123,driver_paramstyle='test',mysql_client_version='1.2.3',traceparent='\d{1,2}-[a-zA-Z0-9_]{32}-[a-zA-Z0-9_]{16}-\d{1,2}'\*/;",
+        )
+
+    @mock.patch("opentelemetry.instrumentation.dbapi.util_version")
+    def test_executemany_mysqlclient_integration_comment(
+        self,
+        mock_dbapi_util_version,
+    ):
+        mock_dbapi_util_version.return_value = "1.2.3"
+        connect_module = mock.MagicMock()
+        connect_module.__name__ = "MySQLdb"
+        connect_module.__version__ = "1.2.3"
+        connect_module.apilevel = 123
+        connect_module.threadsafety = 123
+        connect_module.paramstyle = "test"
+        connect_module._mysql = mock.MagicMock()
+        connect_module._mysql.get_client_info = mock.MagicMock(
+            return_value="123"
+        )
+
+        db_integration = dbapi.DatabaseApiIntegration(
+            "testname",
+            "mysql",
+            enable_commenter=True,
+            commenter_options={"db_driver": True, "dbapi_level": False},
+            connect_module=connect_module,
+        )
+
+        mock_connection = db_integration.wrapped_connection(
+            mock_connect, {}, {}
+        )
+        cursor = mock_connection.cursor()
+        cursor.executemany("Select 1;")
+        self.assertRegex(
+            cursor.query,
+            r"Select 1 /\*db_driver='MySQLdb%%3A1.2.3',dbapi_threadsafety=123,driver_paramstyle='test',mysql_client_version='123',traceparent='\d{1,2}-[a-zA-Z0-9_]{32}-[a-zA-Z0-9_]{16}-\d{1,2}'\*/;",
+        )
+
+    def test_executemany_pymysql_integration_comment(self):
+        connect_module = mock.MagicMock()
+        connect_module.__name__ = "pymysql"
+        connect_module.__version__ = "1.2.3"
+        connect_module.apilevel = 123
+        connect_module.threadsafety = 123
+        connect_module.paramstyle = "test"
+        connect_module.get_client_info = mock.MagicMock(return_value="123")
+
+        db_integration = dbapi.DatabaseApiIntegration(
+            "testname",
+            "mysql",
+            enable_commenter=True,
+            commenter_options={"db_driver": True, "dbapi_level": False},
+            connect_module=connect_module,
+        )
+
+        mock_connection = db_integration.wrapped_connection(
+            mock_connect, {}, {}
+        )
+        cursor = mock_connection.cursor()
+        cursor.executemany("Select 1;")
+        self.assertRegex(
+            cursor.query,
+            r"Select 1 /\*db_driver='pymysql%%3A1.2.3',dbapi_threadsafety=123,driver_paramstyle='test',mysql_client_version='123',traceparent='\d{1,2}-[a-zA-Z0-9_]{32}-[a-zA-Z0-9_]{16}-\d{1,2}'\*/;",
+        )
+
     def test_executemany_flask_integration_comment(self):
         connect_module = mock.MagicMock()
+        connect_module.__name__ = "test"
         connect_module.__version__ = mock.MagicMock()
         connect_module.__libpq_version__ = 123
         connect_module.apilevel = 123
@@ -311,7 +524,7 @@ class TestDBApiIntegration(TestBase):
 
         db_integration = dbapi.DatabaseApiIntegration(
             "testname",
-            "testcomponent",
+            "postgresql",
             enable_commenter=True,
             commenter_options={"db_driver": False, "dbapi_level": False},
             connect_module=connect_module,
@@ -331,6 +544,11 @@ class TestDBApiIntegration(TestBase):
             cursor.query,
             r"Select 1 /\*dbapi_threadsafety=123,driver_paramstyle='test',flask=1,libpq_version=123,traceparent='\d{1,2}-[a-zA-Z0-9_]{32}-[a-zA-Z0-9_]{16}-\d{1,2}'\*/;",
         )
+
+        clear_context = context.set_value(
+            "SQLCOMMENTER_ORM_TAGS_AND_VALUES", {}, current_context
+        )
+        context.attach(clear_context)
 
     def test_callproc(self):
         db_integration = dbapi.DatabaseApiIntegration(
@@ -374,6 +592,43 @@ class TestDBApiIntegration(TestBase):
         connection2 = dbapi.instrument_connection(self.tracer, connection, "-")
         self.assertIs(connection2.__wrapped__, connection)
 
+    @mock.patch("opentelemetry.instrumentation.dbapi.DatabaseApiIntegration")
+    def test_instrument_connection_kwargs_defaults(self, mock_dbapiint):
+        dbapi.instrument_connection(self.tracer, mock.Mock(), "foo")
+        kwargs = mock_dbapiint.call_args[1]
+        self.assertEqual(kwargs["connection_attributes"], None)
+        self.assertEqual(kwargs["version"], "")
+        self.assertEqual(kwargs["tracer_provider"], None)
+        self.assertEqual(kwargs["capture_parameters"], False)
+        self.assertEqual(kwargs["enable_commenter"], False)
+        self.assertEqual(kwargs["commenter_options"], None)
+        self.assertEqual(kwargs["connect_module"], None)
+
+    @mock.patch("opentelemetry.instrumentation.dbapi.DatabaseApiIntegration")
+    def test_instrument_connection_kwargs_provided(self, mock_dbapiint):
+        mock_tracer_provider = mock.MagicMock()
+        mock_connect_module = mock.MagicMock()
+        dbapi.instrument_connection(
+            self.tracer,
+            mock.Mock(),
+            "foo",
+            connection_attributes={"foo": "bar"},
+            version="test",
+            tracer_provider=mock_tracer_provider,
+            capture_parameters=True,
+            enable_commenter=True,
+            commenter_options={"foo": "bar"},
+            connect_module=mock_connect_module,
+        )
+        kwargs = mock_dbapiint.call_args[1]
+        self.assertEqual(kwargs["connection_attributes"], {"foo": "bar"})
+        self.assertEqual(kwargs["version"], "test")
+        self.assertIs(kwargs["tracer_provider"], mock_tracer_provider)
+        self.assertEqual(kwargs["capture_parameters"], True)
+        self.assertEqual(kwargs["enable_commenter"], True)
+        self.assertEqual(kwargs["commenter_options"], {"foo": "bar"})
+        self.assertIs(kwargs["connect_module"], mock_connect_module)
+
     def test_uninstrument_connection(self):
         connection = mock.Mock()
         # Set connection.database to avoid a failure because mock can't
@@ -415,6 +670,12 @@ class MockCursor:
     def __init__(self) -> None:
         self.query = ""
         self.params = None
+        # Mock mysql.connector modules and method
+        self._cnx = mock.MagicMock()
+        self._cnx._cmysql = mock.MagicMock()
+        self._cnx._cmysql.get_client_info = mock.MagicMock(
+            return_value="1.2.3"
+        )
 
     # pylint: disable=unused-argument, no-self-use
     def execute(self, query, params=None, throw_exception=False):

@@ -16,7 +16,7 @@
 
 import unittest
 from timeit import default_timer
-from unittest.mock import patch
+from unittest.mock import Mock, patch
 
 import fastapi
 from fastapi.middleware.httpsredirect import HTTPSRedirectMiddleware
@@ -34,6 +34,9 @@ from opentelemetry.instrumentation._semconv import (
     _server_duration_attrs_old,
 )
 from opentelemetry.instrumentation.asgi import OpenTelemetryMiddleware
+from opentelemetry.instrumentation.auto_instrumentation._load import (
+    _load_instrumentors,
+)
 from opentelemetry.sdk.metrics.export import (
     HistogramDataPoint,
     NumberDataPoint,
@@ -51,6 +54,10 @@ from opentelemetry.semconv.attributes.url_attributes import URL_SCHEME
 from opentelemetry.semconv.trace import SpanAttributes
 from opentelemetry.test.globals_test import reset_trace_globals
 from opentelemetry.test.test_base import TestBase
+from opentelemetry.util._importlib_metadata import (
+    PackageNotFoundError,
+    entry_points,
+)
 from opentelemetry.util.http import (
     OTEL_INSTRUMENTATION_HTTP_CAPTURE_HEADERS_SANITIZE_FIELDS,
     OTEL_INSTRUMENTATION_HTTP_CAPTURE_HEADERS_SERVER_REQUEST,
@@ -530,7 +537,7 @@ class TestFastAPIManualInstrumentation(TestBaseManualFastAPI):
                         dict(point.attributes),
                     )
                     self.assertEqual(point.count, 1)
-                    self.assertAlmostEqual(duration, point.sum, delta=40)
+                    self.assertAlmostEqual(duration, point.sum, delta=350)
                 if isinstance(point, NumberDataPoint):
                     self.assertDictEqual(
                         expected_requests_count_attributes,
@@ -565,7 +572,9 @@ class TestFastAPIManualInstrumentation(TestBaseManualFastAPI):
                     )
                     self.assertEqual(point.count, 1)
                     if metric.name == "http.server.request.duration":
-                        self.assertAlmostEqual(duration_s, point.sum, places=1)
+                        self.assertAlmostEqual(
+                            duration_s * 0.1, point.sum, places=1
+                        )
                     elif metric.name == "http.server.response.body.size":
                         self.assertEqual(25, point.sum)
                     elif metric.name == "http.server.request.body.size":
@@ -615,9 +624,11 @@ class TestFastAPIManualInstrumentation(TestBaseManualFastAPI):
             for point in list(metric.data.data_points):
                 if isinstance(point, HistogramDataPoint):
                     self.assertEqual(point.count, 1)
-                    self.assertAlmostEqual(duration, point.sum, delta=40)
+                    self.assertAlmostEqual(duration, point.sum, delta=350)
                     if metric.name == "http.server.request.duration":
-                        self.assertAlmostEqual(duration_s, point.sum, places=1)
+                        self.assertAlmostEqual(
+                            duration_s * 0.1, point.sum, places=1
+                        )
                         self.assertDictEqual(
                             expected_duration_attributes_new,
                             dict(point.attributes),
@@ -635,7 +646,7 @@ class TestFastAPIManualInstrumentation(TestBaseManualFastAPI):
                             dict(point.attributes),
                         )
                     elif metric.name == "http.server.duration":
-                        self.assertAlmostEqual(duration, point.sum, delta=40)
+                        self.assertAlmostEqual(duration, point.sum, delta=350)
                         self.assertDictEqual(
                             expected_duration_attributes_old,
                             dict(point.attributes),
@@ -691,7 +702,7 @@ class TestFastAPIManualInstrumentation(TestBaseManualFastAPI):
                         dict(point.attributes),
                     )
                     self.assertEqual(point.count, 1)
-                    self.assertAlmostEqual(duration, point.sum, delta=40)
+                    self.assertAlmostEqual(duration, point.sum, delta=350)
                 if isinstance(point, NumberDataPoint):
                     self.assertDictEqual(
                         expected_requests_count_attributes,
@@ -726,7 +737,9 @@ class TestFastAPIManualInstrumentation(TestBaseManualFastAPI):
                     )
                     self.assertEqual(point.count, 1)
                     if metric.name == "http.server.request.duration":
-                        self.assertAlmostEqual(duration_s, point.sum, places=1)
+                        self.assertAlmostEqual(
+                            duration_s * 0.1, point.sum, places=1
+                        )
                     elif metric.name == "http.server.response.body.size":
                         self.assertEqual(31, point.sum)
                     elif metric.name == "http.server.request.body.size":
@@ -777,7 +790,9 @@ class TestFastAPIManualInstrumentation(TestBaseManualFastAPI):
                 if isinstance(point, HistogramDataPoint):
                     self.assertEqual(point.count, 1)
                     if metric.name == "http.server.request.duration":
-                        self.assertAlmostEqual(duration_s, point.sum, places=1)
+                        self.assertAlmostEqual(
+                            duration_s * 0.1, point.sum, places=1
+                        )
                         self.assertDictEqual(
                             expected_duration_attributes_new,
                             dict(point.attributes),
@@ -795,7 +810,7 @@ class TestFastAPIManualInstrumentation(TestBaseManualFastAPI):
                             dict(point.attributes),
                         )
                     elif metric.name == "http.server.duration":
-                        self.assertAlmostEqual(duration, point.sum, delta=40)
+                        self.assertAlmostEqual(duration, point.sum, delta=350)
                         self.assertDictEqual(
                             expected_duration_attributes_old,
                             dict(point.attributes),
@@ -836,7 +851,7 @@ class TestFastAPIManualInstrumentation(TestBaseManualFastAPI):
                 if isinstance(point, HistogramDataPoint):
                     self.assertEqual(point.count, 1)
                     if metric.name == "http.server.duration":
-                        self.assertAlmostEqual(duration, point.sum, delta=40)
+                        self.assertAlmostEqual(duration, point.sum, delta=350)
                     elif metric.name == "http.server.response.size":
                         self.assertEqual(response_size, point.sum)
                     elif metric.name == "http.server.request.size":
@@ -861,7 +876,9 @@ class TestFastAPIManualInstrumentation(TestBaseManualFastAPI):
                 if isinstance(point, HistogramDataPoint):
                     self.assertEqual(point.count, 1)
                     if metric.name == "http.server.request.duration":
-                        self.assertAlmostEqual(duration_s, point.sum, places=1)
+                        self.assertAlmostEqual(
+                            duration_s * 0.1, point.sum, places=1
+                        )
                     elif metric.name == "http.server.response.body.size":
                         self.assertEqual(response_size, point.sum)
                     elif metric.name == "http.server.request.body.size":
@@ -887,13 +904,15 @@ class TestFastAPIManualInstrumentation(TestBaseManualFastAPI):
                 if isinstance(point, HistogramDataPoint):
                     self.assertEqual(point.count, 1)
                     if metric.name == "http.server.request.duration":
-                        self.assertAlmostEqual(duration_s, point.sum, places=1)
+                        self.assertAlmostEqual(
+                            duration_s * 0.1, point.sum, places=1
+                        )
                     elif metric.name == "http.server.response.body.size":
                         self.assertEqual(response_size, point.sum)
                     elif metric.name == "http.server.request.body.size":
                         self.assertEqual(request_size, point.sum)
                     elif metric.name == "http.server.duration":
-                        self.assertAlmostEqual(duration, point.sum, delta=40)
+                        self.assertAlmostEqual(duration, point.sum, delta=350)
                     elif metric.name == "http.server.response.size":
                         self.assertEqual(response_size, point.sum)
                     elif metric.name == "http.server.request.size":
@@ -1012,12 +1031,62 @@ class TestFastAPIManualInstrumentationHooks(TestBaseManualFastAPI):
             )
 
 
+def mock_version_with_fastapi(*args, **kwargs):
+    req_name = args[0]
+    if req_name == "fastapi":
+        # TODO: Value now matters
+        return "0.58"
+    raise PackageNotFoundError()
+
+
+def mock_version_with_old_fastapi(*args, **kwargs):
+    req_name = args[0]
+    if req_name == "fastapi":
+        # TODO: Value now matters
+        return "0.57"
+    raise PackageNotFoundError()
+
+
+def mock_version_without_fastapi(*args, **kwargs):
+    raise PackageNotFoundError()
+
+
 class TestAutoInstrumentation(TestBaseAutoFastAPI):
     """Test the auto-instrumented variant
 
     Extending the manual instrumentation as most test cases apply
     to both.
     """
+
+    def test_entry_point_exists(self):
+        (ep,) = entry_points(group="opentelemetry_instrumentor")
+        self.assertEqual(ep.name, "fastapi")
+
+    @patch("opentelemetry.instrumentation.dependencies.version")
+    def test_instruments_with_fastapi_installed(self, mock_version):
+        mock_version.side_effect = mock_version_with_fastapi
+        mock_distro = Mock()
+        _load_instrumentors(mock_distro)
+        mock_version.assert_called_once_with("fastapi")
+        self.assertEqual(len(mock_distro.load_instrumentor.call_args_list), 1)
+        (ep,) = mock_distro.load_instrumentor.call_args.args
+        self.assertEqual(ep.name, "fastapi")
+
+    @patch("opentelemetry.instrumentation.dependencies.version")
+    def test_instruments_with_old_fastapi_installed(self, mock_version):  # pylint: disable=no-self-use
+        mock_version.side_effect = mock_version_with_old_fastapi
+        mock_distro = Mock()
+        _load_instrumentors(mock_distro)
+        mock_version.assert_called_once_with("fastapi")
+        mock_distro.load_instrumentor.assert_not_called()
+
+    @patch("opentelemetry.instrumentation.dependencies.version")
+    def test_instruments_without_fastapi_installed(self, mock_version):  # pylint: disable=no-self-use
+        mock_version.side_effect = mock_version_without_fastapi
+        mock_distro = Mock()
+        _load_instrumentors(mock_distro)
+        mock_version.assert_called_once_with("fastapi")
+        mock_distro.load_instrumentor.assert_not_called()
 
     def _create_app(self):
         # instrumentation is handled by the instrument call

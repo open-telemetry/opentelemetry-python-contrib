@@ -281,7 +281,7 @@ class _InstrumentedFalconAPI(getattr(falcon, _instrument_app)):
         self.duration_histogram = self._otel_meter.create_histogram(
             name=MetricInstruments.HTTP_SERVER_DURATION,
             unit="ms",
-            description="Duration of HTTP server requests.",
+            description="Measures the duration of inbound HTTP requests.",
         )
         self.active_requests_counter = self._otel_meter.create_up_down_counter(
             name=MetricInstruments.HTTP_SERVER_ACTIVE_REQUESTS,
@@ -310,9 +310,7 @@ class _InstrumentedFalconAPI(getattr(falcon, _instrument_app)):
         if self in _InstrumentedFalconAPI._instrumented_falcon_apps:
             _InstrumentedFalconAPI._instrumented_falcon_apps.remove(self)
 
-    def _handle_exception(
-        self, arg1, arg2, arg3, arg4
-    ):  # pylint: disable=C0103
+    def _handle_exception(self, arg1, arg2, arg3, arg4):  # pylint: disable=C0103
         # Falcon 3 does not execute middleware within the context of the exception
         # so we capture the exception here and save it into the env dict
 
@@ -465,9 +463,7 @@ class _TraceMiddleware:
         resource_name = resource.__class__.__name__
         span.set_attribute("falcon.resource", resource_name)
 
-    def process_response(
-        self, req, resp, resource, req_succeeded=None
-    ):  # pylint:disable=R0201,R0912
+    def process_response(self, req, resp, resource, req_succeeded=None):  # pylint:disable=R0201,R0912
         span = req.env.get(_ENVIRON_SPAN_KEY)
 
         if not span or not span.is_recording():

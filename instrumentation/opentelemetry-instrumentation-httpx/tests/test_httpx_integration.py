@@ -21,6 +21,7 @@ from unittest import mock
 
 import httpx
 import respx
+from wrapt import ObjectProxy
 
 import opentelemetry.instrumentation.httpx
 from opentelemetry import trace
@@ -171,6 +172,7 @@ class BaseTestCases:
             super().tearDown()
             self.env_patch.stop()
             respx.stop()
+            HTTPXClientInstrumentor().uninstrument()
 
         def assert_span(
             self, exporter: "SpanExporter" = None, num_spans: int = 1
@@ -204,7 +206,7 @@ class BaseTestCases:
             self.assertEqual(span.name, "GET")
 
             self.assertEqual(
-                span.attributes,
+                dict(span.attributes),
                 {
                     SpanAttributes.HTTP_METHOD: "GET",
                     SpanAttributes.HTTP_URL: self.URL,
@@ -214,7 +216,7 @@ class BaseTestCases:
 
             self.assertIs(span.status.status_code, trace.StatusCode.UNSET)
 
-            self.assertEqualSpanInstrumentationInfo(
+            self.assertEqualSpanInstrumentationScope(
                 span, opentelemetry.instrumentation.httpx
             )
 
@@ -228,7 +230,7 @@ class BaseTestCases:
             self.assertIs(span.kind, trace.SpanKind.CLIENT)
             self.assertEqual(span.name, "HTTP")
             self.assertEqual(
-                span.attributes,
+                dict(span.attributes),
                 {
                     SpanAttributes.HTTP_METHOD: "_OTHER",
                     SpanAttributes.HTTP_URL: self.URL,
@@ -238,7 +240,7 @@ class BaseTestCases:
 
             self.assertIs(span.status.status_code, trace.StatusCode.ERROR)
 
-            self.assertEqualSpanInstrumentationInfo(
+            self.assertEqualSpanInstrumentationScope(
                 span, opentelemetry.instrumentation.httpx
             )
 
@@ -252,7 +254,7 @@ class BaseTestCases:
             self.assertIs(span.kind, trace.SpanKind.CLIENT)
             self.assertEqual(span.name, "HTTP")
             self.assertEqual(
-                span.attributes,
+                dict(span.attributes),
                 {
                     HTTP_REQUEST_METHOD: "_OTHER",
                     URL_FULL: self.URL,
@@ -267,7 +269,7 @@ class BaseTestCases:
 
             self.assertIs(span.status.status_code, trace.StatusCode.ERROR)
 
-            self.assertEqualSpanInstrumentationInfo(
+            self.assertEqualSpanInstrumentationScope(
                 span, opentelemetry.instrumentation.httpx
             )
 
@@ -292,7 +294,7 @@ class BaseTestCases:
                 SpanAttributes.SCHEMA_URL,
             )
             self.assertEqual(
-                span.attributes,
+                dict(span.attributes),
                 {
                     HTTP_REQUEST_METHOD: "GET",
                     URL_FULL: url,
@@ -307,7 +309,7 @@ class BaseTestCases:
 
             self.assertIs(span.status.status_code, trace.StatusCode.UNSET)
 
-            self.assertEqualSpanInstrumentationInfo(
+            self.assertEqualSpanInstrumentationScope(
                 span, opentelemetry.instrumentation.httpx
             )
 
@@ -327,7 +329,7 @@ class BaseTestCases:
             )
 
             self.assertEqual(
-                span.attributes,
+                dict(span.attributes),
                 {
                     SpanAttributes.HTTP_METHOD: "GET",
                     HTTP_REQUEST_METHOD: "GET",
@@ -348,7 +350,7 @@ class BaseTestCases:
 
             self.assertIs(span.status.status_code, trace.StatusCode.UNSET)
 
-            self.assertEqualSpanInstrumentationInfo(
+            self.assertEqualSpanInstrumentationScope(
                 span, opentelemetry.instrumentation.httpx
             )
 
@@ -454,7 +456,7 @@ class BaseTestCases:
 
             span = self.assert_span()
             self.assertEqual(
-                span.attributes,
+                dict(span.attributes),
                 {
                     SpanAttributes.HTTP_METHOD: "GET",
                     SpanAttributes.HTTP_URL: self.URL,
@@ -510,7 +512,7 @@ class BaseTestCases:
 
             span = self.assert_span()
             self.assertEqual(
-                span.attributes,
+                dict(span.attributes),
                 {
                     HTTP_REQUEST_METHOD: "GET",
                     URL_FULL: url,
@@ -531,7 +533,7 @@ class BaseTestCases:
 
             span = self.assert_span()
             self.assertEqual(
-                span.attributes,
+                dict(span.attributes),
                 {
                     SpanAttributes.HTTP_METHOD: "GET",
                     HTTP_REQUEST_METHOD: "GET",
@@ -632,7 +634,7 @@ class BaseTestCases:
             self.assertEqual(result.text, "Hello!")
             span = self.assert_span()
             self.assertEqual(
-                span.attributes,
+                dict(span.attributes),
                 {
                     SpanAttributes.HTTP_METHOD: "GET",
                     SpanAttributes.HTTP_URL: self.URL,
@@ -723,6 +725,7 @@ class BaseTestCases:
                 spans[1].attributes[SpanAttributes.HTTP_URL], https_url
             )
 
+    @mock.patch.dict("os.environ", {"NO_PROXY": ""}, clear=True)
     class BaseInstrumentorTest(BaseTest, metaclass=abc.ABCMeta):
         @abc.abstractmethod
         def create_client(
@@ -738,10 +741,16 @@ class BaseTestCases:
         def create_proxy_transport(self, url: str):
             pass
 
+        @abc.abstractmethod
+        def get_transport_handler(self, transport):
+            pass
+
         def setUp(self):
             super().setUp()
-            HTTPXClientInstrumentor().instrument()
             self.client = self.create_client()
+            HTTPXClientInstrumentor().instrument_client(self.client)
+
+        def tearDown(self):
             HTTPXClientInstrumentor().uninstrument()
 
         def create_proxy_mounts(self):
@@ -754,14 +763,23 @@ class BaseTestCases:
                 ),
             }
 
-        def assert_proxy_mounts(self, mounts, num_mounts, transport_type):
+        def assert_proxy_mounts(self, mounts, num_mounts, transport_type=None):
             self.assertEqual(len(mounts), num_mounts)
             for transport in mounts:
                 with self.subTest(transport):
-                    self.assertIsInstance(
-                        transport,
-                        transport_type,
-                    )
+                    if transport is None:
+                        continue
+                    if transport_type:
+                        self.assertIsInstance(
+                            transport,
+                            transport_type,
+                        )
+                    else:
+                        handler = self.get_transport_handler(transport)
+                        self.assertTrue(
+                            isinstance(handler, ObjectProxy)
+                            and getattr(handler, "__wrapped__")
+                        )
 
         def test_custom_tracer_provider(self):
             resource = resources.Resource.create({})
@@ -777,12 +795,17 @@ class BaseTestCases:
             self.assertEqual(result.text, "Hello!")
             span = self.assert_span(exporter=exporter)
             self.assertIs(span.resource, resource)
-            HTTPXClientInstrumentor().uninstrument()
 
         def test_response_hook(self):
+            response_hook_key = (
+                "async_response_hook"
+                if asyncio.iscoroutinefunction(self.response_hook)
+                else "response_hook"
+            )
+            response_hook_kwargs = {response_hook_key: self.response_hook}
             HTTPXClientInstrumentor().instrument(
                 tracer_provider=self.tracer_provider,
-                response_hook=self.response_hook,
+                **response_hook_kwargs,
             )
             client = self.create_client()
             result = self.perform_request(self.URL, client=client)
@@ -790,7 +813,7 @@ class BaseTestCases:
             self.assertEqual(result.text, "Hello!")
             span = self.assert_span()
             self.assertEqual(
-                span.attributes,
+                dict(span.attributes),
                 {
                     SpanAttributes.HTTP_METHOD: "GET",
                     SpanAttributes.HTTP_URL: self.URL,
@@ -798,7 +821,6 @@ class BaseTestCases:
                     HTTP_RESPONSE_BODY: "Hello!",
                 },
             )
-            HTTPXClientInstrumentor().uninstrument()
 
         def test_response_hook_sync_async_kwargs(self):
             HTTPXClientInstrumentor().instrument(
@@ -812,7 +834,7 @@ class BaseTestCases:
             self.assertEqual(result.text, "Hello!")
             span = self.assert_span()
             self.assertEqual(
-                span.attributes,
+                dict(span.attributes),
                 {
                     SpanAttributes.HTTP_METHOD: "GET",
                     SpanAttributes.HTTP_URL: self.URL,
@@ -820,12 +842,17 @@ class BaseTestCases:
                     HTTP_RESPONSE_BODY: "Hello!",
                 },
             )
-            HTTPXClientInstrumentor().uninstrument()
 
         def test_request_hook(self):
+            request_hook_key = (
+                "async_request_hook"
+                if asyncio.iscoroutinefunction(self.request_hook)
+                else "request_hook"
+            )
+            request_hook_kwargs = {request_hook_key: self.request_hook}
             HTTPXClientInstrumentor().instrument(
                 tracer_provider=self.tracer_provider,
-                request_hook=self.request_hook,
+                **request_hook_kwargs,
             )
             client = self.create_client()
             result = self.perform_request(self.URL, client=client)
@@ -833,7 +860,6 @@ class BaseTestCases:
             self.assertEqual(result.text, "Hello!")
             span = self.assert_span()
             self.assertEqual(span.name, "GET" + self.URL)
-            HTTPXClientInstrumentor().uninstrument()
 
         def test_request_hook_sync_async_kwargs(self):
             HTTPXClientInstrumentor().instrument(
@@ -847,7 +873,6 @@ class BaseTestCases:
             self.assertEqual(result.text, "Hello!")
             span = self.assert_span()
             self.assertEqual(span.name, "GET" + self.URL)
-            HTTPXClientInstrumentor().uninstrument()
 
         def test_request_hook_no_span_update(self):
             HTTPXClientInstrumentor().instrument(
@@ -860,7 +885,6 @@ class BaseTestCases:
             self.assertEqual(result.text, "Hello!")
             span = self.assert_span()
             self.assertEqual(span.name, "GET")
-            HTTPXClientInstrumentor().uninstrument()
 
         def test_not_recording(self):
             with mock.patch("opentelemetry.trace.INVALID_SPAN") as mock_span:
@@ -878,7 +902,6 @@ class BaseTestCases:
                 self.assertTrue(mock_span.is_recording.called)
                 self.assertFalse(mock_span.set_attribute.called)
                 self.assertFalse(mock_span.set_status.called)
-                HTTPXClientInstrumentor().uninstrument()
 
         def test_suppress_instrumentation_new_client(self):
             HTTPXClientInstrumentor().instrument()
@@ -888,17 +911,22 @@ class BaseTestCases:
                 self.assertEqual(result.text, "Hello!")
 
             self.assert_span(num_spans=0)
-            HTTPXClientInstrumentor().uninstrument()
 
-        def test_instrument_client(self):
+        def test_instrument_client_called_on_the_instance(self):
             client = self.create_client()
             HTTPXClientInstrumentor().instrument_client(client)
             result = self.perform_request(self.URL, client=client)
             self.assertEqual(result.text, "Hello!")
             self.assert_span(num_spans=1)
 
-        def test_instrumentation_without_client(self):
+        def test_instrument_client_called_on_the_class(self):
+            client = self.create_client()
+            HTTPXClientInstrumentor.instrument_client(client)
+            result = self.perform_request(self.URL, client=client)
+            self.assertEqual(result.text, "Hello!")
+            self.assert_span(num_spans=1)
 
+        def test_instrumentation_without_client(self):
             HTTPXClientInstrumentor().instrument()
             results = [
                 httpx.get(self.URL),
@@ -916,8 +944,6 @@ class BaseTestCases:
                         spans[idx].attributes[SpanAttributes.HTTP_URL],
                         self.URL,
                     )
-
-            HTTPXClientInstrumentor().uninstrument()
 
         def test_uninstrument(self):
             HTTPXClientInstrumentor().instrument()
@@ -959,6 +985,21 @@ class BaseTestCases:
             self.assertEqual(result.text, "Hello!")
             self.assert_span()
 
+        @mock.patch.dict(
+            "os.environ", {"NO_PROXY": "http://mock/status/200"}, clear=True
+        )
+        def test_instrument_with_no_proxy(self):
+            proxy_mounts = self.create_proxy_mounts()
+            HTTPXClientInstrumentor().instrument()
+            client = self.create_client(mounts=proxy_mounts)
+            result = self.perform_request(self.URL, client=client)
+            self.assert_span(num_spans=1)
+            self.assertEqual(result.text, "Hello!")
+            self.assert_proxy_mounts(
+                client._mounts.values(),
+                3,
+            )
+
         def test_instrument_proxy(self):
             proxy_mounts = self.create_proxy_mounts()
             HTTPXClientInstrumentor().instrument()
@@ -968,9 +1009,28 @@ class BaseTestCases:
             self.assert_proxy_mounts(
                 client._mounts.values(),
                 2,
-                (SyncOpenTelemetryTransport, AsyncOpenTelemetryTransport),
             )
-            HTTPXClientInstrumentor().uninstrument()
+
+        @mock.patch.dict(
+            "os.environ", {"NO_PROXY": "http://mock/status/200"}, clear=True
+        )
+        def test_instrument_client_with_no_proxy(self):
+            proxy_mounts = self.create_proxy_mounts()
+            client = self.create_client(mounts=proxy_mounts)
+            self.assert_proxy_mounts(
+                client._mounts.values(),
+                3,
+                (httpx.HTTPTransport, httpx.AsyncHTTPTransport),
+            )
+            HTTPXClientInstrumentor.instrument_client(client)
+            result = self.perform_request(self.URL, client=client)
+            self.assertEqual(result.text, "Hello!")
+            self.assert_span(num_spans=1)
+            self.assert_proxy_mounts(
+                client._mounts.values(),
+                3,
+            )
+            HTTPXClientInstrumentor.uninstrument_client(client)
 
         def test_instrument_client_with_proxy(self):
             proxy_mounts = self.create_proxy_mounts()
@@ -987,7 +1047,6 @@ class BaseTestCases:
             self.assert_proxy_mounts(
                 client._mounts.values(),
                 2,
-                (SyncOpenTelemetryTransport, AsyncOpenTelemetryTransport),
             )
             HTTPXClientInstrumentor().uninstrument_client(client)
 
@@ -998,7 +1057,6 @@ class BaseTestCases:
             self.assert_proxy_mounts(
                 client._mounts.values(),
                 2,
-                (SyncOpenTelemetryTransport, AsyncOpenTelemetryTransport),
             )
 
             HTTPXClientInstrumentor().uninstrument_client(client)
@@ -1168,6 +1226,24 @@ class TestSyncInstrumentationIntegration(BaseTestCases.BaseInstrumentorTest):
     def create_proxy_transport(self, url):
         return httpx.HTTPTransport(proxy=httpx.Proxy(url))
 
+    def get_transport_handler(self, transport):
+        return getattr(transport, "handle_request", None)
+
+    def test_can_instrument_subclassed_client(self):
+        class CustomClient(httpx.Client):
+            pass
+
+        client = CustomClient()
+        self.assertFalse(
+            isinstance(client._transport.handle_request, ObjectProxy)
+        )
+
+        HTTPXClientInstrumentor().instrument()
+
+        self.assertTrue(
+            isinstance(client._transport.handle_request, ObjectProxy)
+        )
+
 
 class TestAsyncInstrumentationIntegration(BaseTestCases.BaseInstrumentorTest):
     response_hook = staticmethod(_async_response_hook)
@@ -1176,10 +1252,8 @@ class TestAsyncInstrumentationIntegration(BaseTestCases.BaseInstrumentorTest):
 
     def setUp(self):
         super().setUp()
-        HTTPXClientInstrumentor().instrument()
-        self.client = self.create_client()
         self.client2 = self.create_client()
-        HTTPXClientInstrumentor().uninstrument()
+        HTTPXClientInstrumentor().instrument_client(self.client2)
 
     def create_client(
         self,
@@ -1208,9 +1282,58 @@ class TestAsyncInstrumentationIntegration(BaseTestCases.BaseInstrumentorTest):
     def create_proxy_transport(self, url):
         return httpx.AsyncHTTPTransport(proxy=httpx.Proxy(url))
 
+    def get_transport_handler(self, transport):
+        return getattr(transport, "handle_async_request", None)
+
     def test_basic_multiple(self):
         # We need to create separate clients because in httpx >= 0.19,
         # closing the client after "with" means the second http call fails
         self.perform_request(self.URL, client=self.client)
         self.perform_request(self.URL, client=self.client2)
         self.assert_span(num_spans=2)
+
+    def test_async_response_hook_does_nothing_if_not_coroutine(self):
+        HTTPXClientInstrumentor().instrument(
+            tracer_provider=self.tracer_provider,
+            async_response_hook=_response_hook,
+        )
+        client = self.create_client()
+        result = self.perform_request(self.URL, client=client)
+
+        self.assertEqual(result.text, "Hello!")
+        span = self.assert_span()
+        self.assertEqual(
+            dict(span.attributes),
+            {
+                SpanAttributes.HTTP_METHOD: "GET",
+                SpanAttributes.HTTP_URL: self.URL,
+                SpanAttributes.HTTP_STATUS_CODE: 200,
+            },
+        )
+
+    def test_async_request_hook_does_nothing_if_not_coroutine(self):
+        HTTPXClientInstrumentor().instrument(
+            tracer_provider=self.tracer_provider,
+            async_request_hook=_request_hook,
+        )
+        client = self.create_client()
+        result = self.perform_request(self.URL, client=client)
+
+        self.assertEqual(result.text, "Hello!")
+        span = self.assert_span()
+        self.assertEqual(span.name, "GET")
+
+    def test_can_instrument_subclassed_async_client(self):
+        class CustomAsyncClient(httpx.AsyncClient):
+            pass
+
+        client = CustomAsyncClient()
+        self.assertFalse(
+            isinstance(client._transport.handle_async_request, ObjectProxy)
+        )
+
+        HTTPXClientInstrumentor().instrument()
+
+        self.assertTrue(
+            isinstance(client._transport.handle_async_request, ObjectProxy)
+        )

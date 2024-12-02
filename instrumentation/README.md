@@ -4,6 +4,7 @@
 | [opentelemetry-instrumentation-aio-pika](./opentelemetry-instrumentation-aio-pika) | aio_pika >= 7.2.0, < 10.0.0 | No | experimental
 | [opentelemetry-instrumentation-aiohttp-client](./opentelemetry-instrumentation-aiohttp-client) | aiohttp ~= 3.0 | No | migration
 | [opentelemetry-instrumentation-aiohttp-server](./opentelemetry-instrumentation-aiohttp-server) | aiohttp ~= 3.0 | No | experimental
+| [opentelemetry-instrumentation-aiokafka](./opentelemetry-instrumentation-aiokafka) | aiokafka >= 0.8, < 1.0 | No | experimental
 | [opentelemetry-instrumentation-aiopg](./opentelemetry-instrumentation-aiopg) | aiopg >= 0.13.0, < 2.0.0 | No | experimental
 | [opentelemetry-instrumentation-asgi](./opentelemetry-instrumentation-asgi) | asgiref ~= 3.0 | Yes | migration
 | [opentelemetry-instrumentation-asyncio](./opentelemetry-instrumentation-asyncio) | asyncio | No | experimental
@@ -14,6 +15,7 @@
 | [opentelemetry-instrumentation-botocore](./opentelemetry-instrumentation-botocore) | botocore ~= 1.0 | No | experimental
 | [opentelemetry-instrumentation-cassandra](./opentelemetry-instrumentation-cassandra) | cassandra-driver ~= 3.25,scylla-driver ~= 3.25 | No | experimental
 | [opentelemetry-instrumentation-celery](./opentelemetry-instrumentation-celery) | celery >= 4.0, < 6.0 | No | experimental
+| [opentelemetry-instrumentation-click](./opentelemetry-instrumentation-click) | click >= 8.1.3, < 9.0.0 | No | experimental
 | [opentelemetry-instrumentation-confluent-kafka](./opentelemetry-instrumentation-confluent-kafka) | confluent-kafka >= 1.8.2, <= 2.4.0 | No | experimental
 | [opentelemetry-instrumentation-dbapi](./opentelemetry-instrumentation-dbapi) | dbapi | No | experimental
 | [opentelemetry-instrumentation-django](./opentelemetry-instrumentation-django) | django >= 1.10 | Yes | experimental
@@ -21,7 +23,7 @@
 | [opentelemetry-instrumentation-falcon](./opentelemetry-instrumentation-falcon) | falcon >= 1.4.1, < 4.0.0 | Yes | experimental
 | [opentelemetry-instrumentation-fastapi](./opentelemetry-instrumentation-fastapi) | fastapi ~= 0.58 | Yes | migration
 | [opentelemetry-instrumentation-flask](./opentelemetry-instrumentation-flask) | flask >= 1.0 | Yes | migration
-| [opentelemetry-instrumentation-grpc](./opentelemetry-instrumentation-grpc) | grpcio ~= 1.27 | No | experimental
+| [opentelemetry-instrumentation-grpc](./opentelemetry-instrumentation-grpc) | grpcio >= 1.42.0 | No | experimental
 | [opentelemetry-instrumentation-httpx](./opentelemetry-instrumentation-httpx) | httpx >= 0.18.0 | No | migration
 | [opentelemetry-instrumentation-jinja2](./opentelemetry-instrumentation-jinja2) | jinja2 >= 2.7, < 4.0 | No | experimental
 | [opentelemetry-instrumentation-kafka-python](./opentelemetry-instrumentation-kafka-python) | kafka-python >= 2.0, < 3.0,kafka-python-ng >= 2.0, < 3.0 | No | experimental
@@ -38,7 +40,7 @@
 | [opentelemetry-instrumentation-redis](./opentelemetry-instrumentation-redis) | redis >= 2.6 | No | experimental
 | [opentelemetry-instrumentation-remoulade](./opentelemetry-instrumentation-remoulade) | remoulade >= 0.50 | No | experimental
 | [opentelemetry-instrumentation-requests](./opentelemetry-instrumentation-requests) | requests ~= 2.0 | Yes | migration
-| [opentelemetry-instrumentation-sqlalchemy](./opentelemetry-instrumentation-sqlalchemy) | sqlalchemy | Yes | experimental
+| [opentelemetry-instrumentation-sqlalchemy](./opentelemetry-instrumentation-sqlalchemy) | sqlalchemy >= 1.0.0, < 2.1.0 | Yes | experimental
 | [opentelemetry-instrumentation-sqlite3](./opentelemetry-instrumentation-sqlite3) | sqlite3 | No | experimental
 | [opentelemetry-instrumentation-starlette](./opentelemetry-instrumentation-starlette) | starlette ~= 0.13.0 | Yes | experimental
 | [opentelemetry-instrumentation-system-metrics](./opentelemetry-instrumentation-system-metrics) | psutil >= 5 | No | experimental

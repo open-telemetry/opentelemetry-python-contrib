@@ -18,6 +18,7 @@ from unittest import mock
 import psycopg2
 
 import opentelemetry.instrumentation.psycopg2
+from opentelemetry import trace
 from opentelemetry.instrumentation.psycopg2 import Psycopg2Instrumentor
 from opentelemetry.sdk import resources
 from opentelemetry.test.test_base import TestBase
@@ -99,7 +100,7 @@ class TestPostgresqlIntegration(TestBase):
         span = spans_list[0]
 
         # Check version and name in span's instrumentation info
-        self.assertEqualSpanInstrumentationInfo(
+        self.assertEqualSpanInstrumentationScope(
             span, opentelemetry.instrumentation.psycopg2
         )
 
@@ -269,3 +270,14 @@ class TestPostgresqlIntegration(TestBase):
         cursor.execute(query)
         kwargs = event_mocked.call_args[1]
         self.assertEqual(kwargs["enable_commenter"], False)
+
+    def test_no_op_tracer_provider(self):
+        Psycopg2Instrumentor().instrument(
+            tracer_provider=trace.NoOpTracerProvider()
+        )
+        cnx = psycopg2.connect(database="test")
+        cursor = cnx.cursor()
+        query = "SELECT * FROM test"
+        cursor.execute(query)
+        spans_list = self.memory_exporter.get_finished_spans()
+        self.assertEqual(len(spans_list), 0)
