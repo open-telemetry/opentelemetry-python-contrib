@@ -200,6 +200,7 @@ from opentelemetry.instrumentation._semconv import (
     _report_new,
     _report_old,
     _set_status,
+    _get_schema_url,
 )
 from opentelemetry.instrumentation.falcon.package import _instruments
 from opentelemetry.instrumentation.falcon.version import __version__
@@ -270,13 +271,13 @@ class _InstrumentedFalconAPI(getattr(falcon, _instrument_app)):
             __name__,
             __version__,
             tracer_provider,
-            schema_url="https://opentelemetry.io/schemas/1.11.0",
+            schema_url=_get_schema_url(self._sem_conv_opt_in_mode),
         )
         self._otel_meter = get_meter(
             __name__,
             __version__,
             meter_provider,
-            schema_url="https://opentelemetry.io/schemas/1.11.0",
+            schema_url=_get_schema_url(self._sem_conv_opt_in_mode),
         )
         self.duration_histogram = self._otel_meter.create_histogram(
             name=MetricInstruments.HTTP_SERVER_DURATION,
