@@ -275,6 +275,8 @@ Below is a checklist of things to be mindful of when implementing a new instrume
 - Most of the instrumentations have the same version. If you are going to develop a new instrumentation it would probably have `X.Y.dev` version and depends on `opentelemetry-instrumentation` and `opentelemetry-semantic-conventions` for a [compatible version](https://peps.python.org/pep-0440/#compatible-release). That means that you may need to install the instrumentation dependencies from this repo and the core repo from git.
 - Documentation
   - When adding a new instrumentation remember to add an entry in `docs/instrumentation/` named `<instrumentation>/<instrumentation>.rst` to have the instrumentation documentation referenced from the index. You can use the entry template available [here](./_template/autodoc_entry.rst)
+- Testing
+  - When adding a new instrumentation remember to update `tox.ini` adding appropriate rules in `envlist`, `command_pre` and `commands` sections
 
 ## Guideline for GenAI instrumentations
 
