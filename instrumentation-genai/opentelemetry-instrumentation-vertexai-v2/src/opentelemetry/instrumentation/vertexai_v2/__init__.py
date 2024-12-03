@@ -14,9 +14,9 @@
 
 """OpenTelemetry Vertex AI instrumentation"""
 
-from functools import partial
 import logging
 import types
+from functools import partial
 from typing import Collection, Optional
 
 from wrapt import wrap_function_wrapper
@@ -24,7 +24,6 @@ from wrapt import wrap_function_wrapper
 from opentelemetry._events import (
     EventLogger,
     EventLoggerProvider,
-    Event,
     get_event_logger,
 )
 from opentelemetry.instrumentation.instrumentor import BaseInstrumentor
@@ -311,19 +310,6 @@ def _handle_response(span, event_logger: EventLogger, response, llm_model):
         span.set_status(Status(StatusCode.OK))
 
 
-def _with_tracer_wrapper(func):
-    """Helper for providing tracer for wrapper functions."""
-
-    def _with_tracer(tracer, to_wrap):
-        def wrapper(wrapped, instance, args, kwargs):
-            return func(tracer, to_wrap, wrapped, instance, args, kwargs)
-
-        return wrapper
-
-    return _with_tracer
-
-
-# @_with_tracer_wrapper
 async def _awrap(
     tracer, event_logger: EventLogger, to_wrap, wrapped, instance, args, kwargs
 ):
@@ -372,7 +358,6 @@ async def _awrap(
     return response
 
 
-# @_with_tracer_wrapper
 def _wrap(
     tracer, event_logger: EventLogger, to_wrap, wrapped, instance, args, kwargs
 ):
