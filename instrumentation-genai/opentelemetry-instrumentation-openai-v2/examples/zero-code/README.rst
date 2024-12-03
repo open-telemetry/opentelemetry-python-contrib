@@ -1,5 +1,5 @@
-OpenTelemetry OpenAI Instrumentation Example
-============================================
+OpenTelemetry OpenAI Zero-Code Instrumentation Example
+======================================================
 
 This is an example of how to instrument OpenAI calls with zero code changes,
 using `opentelemetry-instrument`.
@@ -10,12 +10,21 @@ duration of the chat request. Logs capture the chat request and the generated
 response, providing a comprehensive view of the performance and behavior of
 your OpenAI requests.
 
+Note: `.env <.env>`_ file configures additional environment variables:
+
+- `OTEL_PYTHON_LOGGING_AUTO_INSTRUMENTATION_ENABLED=true` configures
+OpenTelemetry SDK to export logs and events.
+- `OTEL_INSTRUMENTATION_GENAI_CAPTURE_MESSAGE_CONTENT=true` configures
+OpenAI instrumentation to capture prompt and completion contents on
+events.
+- `OTEL_LOGS_EXPORTER=otlp` to specify exporter type.
+
 Setup
 -----
 
 Minimally, update the `.env <.env>`_ file with your "OPENAI_API_KEY". An
 OTLP compatible endpoint should be listening for traces and logs on
-http://localhost:4318. If not, update "OTEL_EXPORTER_OTLP_ENDPOINT" as well.
+http://localhost:4317. If not, update "OTEL_EXPORTER_OTLP_ENDPOINT" as well.
 
 Next, set up a virtual environment like this:
 
