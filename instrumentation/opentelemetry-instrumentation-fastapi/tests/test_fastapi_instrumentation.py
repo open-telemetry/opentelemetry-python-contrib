@@ -210,7 +210,7 @@ class TestBaseFastAPI(TestBase):
         @app.get("/healthzz")
         async def _():
             return {"message": "ok"}
-        
+
         @app.get("/error")
         async def _():
             raise UnhandledException("This is an unhandled exception")
