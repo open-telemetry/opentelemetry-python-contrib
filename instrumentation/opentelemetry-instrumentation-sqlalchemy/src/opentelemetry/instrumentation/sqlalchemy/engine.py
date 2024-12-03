@@ -168,10 +168,23 @@ class EngineTracer:
         self._add_used_to_connection_usage(1)
 
     @classmethod
+    def _dispose_of_event_listener(cls, obj):
+        try:
+            cls._remove_event_listener_params.remove(obj)
+        except ValueError:
+            pass
+
+    @classmethod
     def _register_event_listener(cls, target, identifier, func, *args, **kw):
         listen(target, identifier, func, *args, **kw)
         cls._remove_event_listener_params.append(
             (weakref.ref(target), identifier, func)
+        )
+
+        weakref.finalize(
+            target,
+            cls._dispose_of_event_listener,
+            (weakref.ref(target), identifier, func),
         )
 
     @classmethod
