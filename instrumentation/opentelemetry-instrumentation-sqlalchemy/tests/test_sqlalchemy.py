@@ -428,6 +428,10 @@ class TestSqlalchemyInstrumentation(TestBase):
 
         from sqlalchemy import create_engine
 
+        from opentelemetry.instrumentation.sqlalchemy.engine import (
+            EngineTracer,
+        )
+
         callback = mock.Mock()
 
         def make_shortlived_engine():
@@ -443,3 +447,4 @@ class TestSqlalchemyInstrumentation(TestBase):
 
         gc.collect()
         assert callback.call_count == 5
+        assert len(EngineTracer._remove_event_listener_params) == 0
