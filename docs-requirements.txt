@@ -25,9 +25,11 @@ elasticsearch>=6.0,<9.0
 flask~=2.0
 falcon~=2.0
 grpcio~=1.27
+httpx>=0.18.0
 kafka-python>=2.0,<3.0
 mysql-connector-python~=8.0
 mysqlclient~=2.1.1
+openai >= 1.26.0
 psutil>=5
 psycopg~=3.1.17
 pika>=0.12.0
@@ -39,7 +41,6 @@ remoulade>=0.50
 sqlalchemy>=1.0
 tornado>=5.1.1
 tortoise-orm>=0.17.0
-httpx>=0.18.0
 
 # indirect dependency pins
 markupsafe==2.0.1
