@@ -14,11 +14,13 @@
 
 # pylint: disable=protected-access
 
+import sys
 from collections import namedtuple
 from platform import python_implementation
 from unittest import mock, skipIf
 
 from opentelemetry.instrumentation.system_metrics import (
+    _DEFAULT_CONFIG,
     SystemMetricsInstrumentor,
 )
 from opentelemetry.sdk.metrics import MeterProvider
@@ -118,20 +120,29 @@ class TestSystemMetrics(TestBase):
             f"process.runtime.{self.implementation}.thread_count",
             f"process.runtime.{self.implementation}.context_switches",
             f"process.runtime.{self.implementation}.cpu.utilization",
-            "process.open_file_descriptor.count",
         ]
 
+        on_windows = sys.platform == "win32"
         if self.implementation == "pypy":
-            self.assertEqual(len(metric_names), 21)
+            self.assertEqual(len(metric_names), 20 if on_windows else 21)
         else:
-            self.assertEqual(len(metric_names), 22)
+            self.assertEqual(len(metric_names), 21 if on_windows else 22)
         observer_names.append(
             f"process.runtime.{self.implementation}.gc_count",
         )
+        if not on_windows:
+            observer_names.append(
+                "process.open_file_descriptor.count",
+            )
 
         for observer in metric_names:
             self.assertIn(observer, observer_names)
             observer_names.remove(observer)
+
+        if on_windows:
+            self.assertNotIn(
+                "process.open_file_descriptor.count", observer_names
+            )
 
     def test_runtime_metrics_instrument(self):
         runtime_config = {
@@ -839,11 +850,12 @@ class TestSystemMetrics(TestBase):
     def test_runtime_cpu_percent(self, mock_process_cpu_percent):
         mock_process_cpu_percent.configure_mock(**{"return_value": 42})
 
-        expected = [_SystemMetricsResult({}, 42)]
+        expected = [_SystemMetricsResult({}, 0.42)]
         self._test_metrics(
             f"process.runtime.{self.implementation}.cpu.utilization", expected
         )
 
+    @skipIf(sys.platform == "win32", "No file descriptors on Windows")
     @mock.patch("psutil.Process.num_fds")
     def test_open_file_descriptor_count(self, mock_process_num_fds):
         mock_process_num_fds.configure_mock(**{"return_value": 3})
@@ -854,3 +866,14 @@ class TestSystemMetrics(TestBase):
             expected,
         )
         mock_process_num_fds.assert_called()
+
+
+class TestConfigSystemMetrics(TestBase):
+    # pylint:disable=no-self-use
+    def test_that_correct_config_is_read(self):
+        for key, value in _DEFAULT_CONFIG.items():
+            meter_provider = MeterProvider([InMemoryMetricReader()])
+            instrumentor = SystemMetricsInstrumentor(config={key: value})
+            instrumentor.instrument(meter_provider=meter_provider)
+            meter_provider.force_flush()
+            instrumentor.uninstrument()

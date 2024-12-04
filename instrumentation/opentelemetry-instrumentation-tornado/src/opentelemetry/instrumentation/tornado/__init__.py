@@ -152,7 +152,6 @@ API
 ---
 """
 
-
 from collections import namedtuple
 from functools import partial
 from logging import getLogger
@@ -296,7 +295,7 @@ def _create_server_histograms(meter) -> Dict[str, Histogram]:
         MetricInstruments.HTTP_SERVER_DURATION: meter.create_histogram(
             name=MetricInstruments.HTTP_SERVER_DURATION,
             unit="ms",
-            description="Duration of HTTP server requests.",
+            description="Measures the duration of inbound HTTP requests.",
         ),
         MetricInstruments.HTTP_SERVER_REQUEST_SIZE: meter.create_histogram(
             name=MetricInstruments.HTTP_SERVER_REQUEST_SIZE,

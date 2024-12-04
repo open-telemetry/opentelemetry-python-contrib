@@ -696,9 +696,9 @@ class TestWsgiAttributes(unittest.TestCase):
         self.validate_url("http://127.0.0.1:443/", has_host=False)
 
     def test_request_attributes_with_conflicting_nonstandard_port(self):
-        self.environ[
-            "HTTP_HOST"
-        ] += ":8080"  # Note that we do not correct SERVER_PORT
+        self.environ["HTTP_HOST"] += (
+            ":8080"  # Note that we do not correct SERVER_PORT
+        )
         expected = {
             SpanAttributes.HTTP_HOST: "127.0.0.1:8080",
             SpanAttributes.HTTP_URL: "http://127.0.0.1:8080/",
