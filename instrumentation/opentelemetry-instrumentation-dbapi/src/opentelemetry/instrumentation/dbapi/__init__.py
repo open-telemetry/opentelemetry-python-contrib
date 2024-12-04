@@ -404,8 +404,8 @@ class TracedConnectionProxy(wrapt.ObjectProxy, Generic[ConnectionT]):
         connection: ConnectionT,
         db_api_integration: DatabaseApiIntegration | None = None,
     ):
-        self.db_api_integration = db_api_integration
         wrapt.ObjectProxy.__init__(self, connection)
+        self.db_api_integration = db_api_integration
 
     def __getattribute__(self, name: str):
         if object.__getattribute__(self, name):
@@ -568,8 +568,8 @@ class TracedCursorProxy(wrapt.ObjectProxy, Generic[CursorT]):
         cursor: CursorT,
         db_api_integration: DatabaseApiIntegration,
     ):
-        self._cursor_tracer = CursorTracer[CursorT](db_api_integration)
         wrapt.ObjectProxy.__init__(self, cursor)
+        self._cursor_tracer = CursorTracer[CursorT](db_api_integration)
 
     def execute(self, *args: Any, **kwargs: Any):
         return self._cursor_tracer.traced_execution(
