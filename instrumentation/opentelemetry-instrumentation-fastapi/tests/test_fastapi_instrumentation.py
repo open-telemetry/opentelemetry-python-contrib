@@ -234,6 +234,25 @@ class TestBaseManualFastAPI(TestBaseFastAPI):
 
         super(TestBaseManualFastAPI, cls).setUpClass()
 
+    def test_fastapi_unhandled_exception(self):
+        """If the application has an unhandled error the instrumentation should capture that a 500 response is returned."""
+        try:
+            resp = self._client.get("/error")
+            assert resp.status_code == 500, resp.content  # pragma: no cover, for debugging this test if an exception is _not_ raised
+        except UnhandledException:
+            pass
+        else:
+            self.fail("Expected UnhandledException")
+
+        spans = self.memory_exporter.get_finished_spans()
+        self.assertEqual(len(spans), 3)
+        span = spans[0]
+        assert span.name == "GET /error http send"
+        assert span.attributes[SpanAttributes.HTTP_STATUS_CODE] == 500
+        span = spans[2]
+        assert span.name == "GET /error"
+        assert span.attributes[SpanAttributes.HTTP_TARGET] == "/error"
+
     def test_sub_app_fastapi_call(self):
         """
         This test is to ensure that a span in case of a sub app targeted contains the correct server url
@@ -411,26 +430,6 @@ class TestFastAPIManualInstrumentation(TestBaseManualFastAPI):
         self._client.get("/healthzz")
         spans = self.memory_exporter.get_finished_spans()
         self.assertEqual(len(spans), 0)
-
-    def test_fastapi_unhandled_exception(self):
-        """If the application has an unhandled error the instrumentation should capture that a 500 response is returned."""
-        try:
-            self._client.get("/error")
-        except UnhandledException:
-            pass
-        else:
-            self.fail("Expected UnhandledException")
-
-        spans = self.memory_exporter.get_finished_spans()
-        self.assertEqual(len(spans), 3)
-        for span in spans:
-            self.assertIn("GET /error", span.name)
-            self.assertEqual(
-                span.attributes[SpanAttributes.HTTP_ROUTE], "/error"
-            )
-            self.assertEqual(
-                span.attributes[SpanAttributes.HTTP_STATUS_CODE], 500
-            )
 
     def test_fastapi_excluded_urls_not_env(self):
         """Ensure that given fastapi routes are excluded when passed explicitly (not in the environment)"""
@@ -1009,6 +1008,10 @@ class TestFastAPIManualInstrumentation(TestBaseManualFastAPI):
         @app.get("/healthzz")
         async def _():
             return {"message": "ok"}
+
+        @app.get("/error")
+        async def _():
+            raise UnhandledException("This is an unhandled exception")
 
         app.mount("/sub", app=sub_app)
 
