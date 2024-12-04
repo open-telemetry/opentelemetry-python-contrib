@@ -56,7 +56,7 @@ _CONNECTION_ATTRIBUTES = {}
 
 _DATABASE_SYSTEM = "sqlite"
 
-SQLite3Connection = TypeVar(
+SQLite3Connection = TypeVar(  # pylint: disable=invalid-name
     "SQLite3Connection", bound=Union[sqlite3.Connection, None]
 )
 
