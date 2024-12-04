@@ -11,21 +11,23 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
+import cohere
 
-from typing import Optional, Union
+from typing import List, Optional, Union
 from urllib.parse import urlparse
 
-from opentelemetry._events import Event
+from opentelemetry._events import Event, EventLogger
 from opentelemetry.semconv._incubating.attributes import (
     gen_ai_attributes as GenAIAttributes,
 )
 from opentelemetry.semconv._incubating.attributes import (
     server_attributes as ServerAttributes,
 )
+from opentelemetry.trace import Span
 
 
-def extract_tool_calls(item, capture_content):
-    tool_calls = get_property_value(item, "tool_calls")
+def extract_tool_calls(item: Union[cohere.types.ChatMessageV2, cohere.AssistantMessageResponse], capture_content: bool):
+    tool_calls: Optional[List[cohere.ToolCallV2]] = get_property_value(item, "tool_calls")
     if tool_calls is None:
         return None
 
@@ -65,7 +67,7 @@ def get_property_value(obj, property_name):
     return getattr(obj, property_name, None)
 
 
-def set_server_address_and_port(client_instance, attributes):
+def set_server_address_and_port(client_instance: cohere.client_v2.V2Client, attributes):
     base_client = getattr(client_instance, "_client_wrapper", None)
     base_url = getattr(base_client, "base_url", None)
     if not base_url:
@@ -82,7 +84,7 @@ def set_server_address_and_port(client_instance, attributes):
 
 def get_llm_request_attributes(
     kwargs,
-    client_instance,
+    client_instance: cohere.client_v2.V2Client,
     operation_name=GenAIAttributes.GenAiOperationNameValues.CHAT.value,
 ):
     attributes = {
@@ -116,7 +118,7 @@ def get_llm_request_attributes(
     return {k: v for k, v in attributes.items() if v is not None}
 
 
-def message_to_event(message, capture_content):
+def message_to_event(message: cohere.types.ChatMessageV2, capture_content: bool) -> Event:
     attributes = {
         GenAIAttributes.GEN_AI_SYSTEM: GenAIAttributes.GenAiSystemValues.COHERE.value
     }
@@ -139,4 +141,63 @@ def message_to_event(message, capture_content):
         name=f"gen_ai.{role}.message",
         attributes=attributes,
         body=body if body else None,
+    )
+
+
+def set_response_attributes(
+    span: Span, result: cohere.ChatResponse, event_logger: EventLogger, capture_content: bool
+):
+    event_logger.emit(_response_to_event(result, capture_content))
+
+    span.set_attribute(
+        GenAIAttributes.GEN_AI_RESPONSE_FINISH_REASONS,
+        [result.finish_reason],
+    )
+
+    if getattr(result, "id", None):
+        span.set_attribute(GenAIAttributes.GEN_AI_RESPONSE_ID, result.id)
+
+    # Get the usage
+    if getattr(result, "usage", None):
+        if getattr(result.usage, "tokens"):
+            span.set_attribute(
+                GenAIAttributes.GEN_AI_USAGE_INPUT_TOKENS,
+                result.usage.tokens.input_tokens,
+            )
+            span.set_attribute(
+                GenAIAttributes.GEN_AI_USAGE_OUTPUT_TOKENS,
+                result.usage.tokens.output_tokens,
+            )
+
+
+def _response_to_event(response: cohere.ChatResponse, capture_content):
+    attributes = {
+        GenAIAttributes.GEN_AI_SYSTEM: GenAIAttributes.GenAiSystemValues.COHERE.value
+    }
+
+    body = {
+        "id": response.id,
+        "finish_reason": response.finish_reason or "error",
+    }
+
+    if response.message:
+        message = {
+            "role": (
+                response.message.role
+                if response.message.role and response.message.role != "assistant"
+                else None
+            )
+        }
+        tool_calls = extract_tool_calls(response.message, capture_content)
+        if tool_calls:
+            message["tool_calls"] = tool_calls
+        content: List[cohere.AssistantMessageResponseContentItem] = get_property_value(response.message, "content")
+        if capture_content and content:
+            message["content"] = content
+        body["message"] = message
+
+    return Event(
+        name="gen_ai.choice",
+        attributes=attributes,
+        body=body,
     )

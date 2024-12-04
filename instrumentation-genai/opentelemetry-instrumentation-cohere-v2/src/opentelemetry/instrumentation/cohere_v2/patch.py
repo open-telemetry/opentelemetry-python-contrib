@@ -12,8 +12,8 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from opentelemetry._events import Event, EventLogger
-from opentelemetry.trace import Span, SpanKind, Tracer
+from opentelemetry._events import EventLogger
+from opentelemetry.trace import SpanKind, Tracer
 from opentelemetry.instrumentation.genai_utils import (
     get_span_name,
     handle_span_exception
@@ -22,7 +22,8 @@ from opentelemetry.instrumentation.utils import is_instrumentation_enabled
 from .utils import (
     get_llm_request_attributes,
     message_to_event,
-    set_server_address_and_port
+    set_response_attributes,
+    set_server_address_and_port,
 )
 
 
@@ -52,11 +53,10 @@ def client_chat(
 
             try:
                 result = wrapped(*args, **kwargs)
-                # if span.is_recording():
-                #     _set_response_attributes(
-                #         span, result, event_logger, capture_content
-                #     )
-                span.end()
+                if span.is_recording():
+                    set_response_attributes(
+                        span, result, event_logger, capture_content
+                    )
                 return result
 
             except Exception as error:
