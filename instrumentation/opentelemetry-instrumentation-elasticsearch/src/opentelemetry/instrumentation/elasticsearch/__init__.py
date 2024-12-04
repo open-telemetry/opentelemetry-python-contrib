@@ -11,7 +11,6 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-"""
 This library allows tracing HTTP elasticsearch made by the
 `elasticsearch <https://elasticsearch-py.readthedocs.io/en/master/>`_ library.
 Usage
