@@ -132,10 +132,10 @@ class PostgresqlIntegrationTestMixin:
     def setUp(self):
         super().setUp()
         self.cursor_mock = mock.patch(
-            "opentelemetry.instrumentation.psycopg.Cursor", MockCursor
+            "opentelemetry.instrumentation.psycopg.psycopg.Cursor", MockCursor
         )
         self.cursor_async_mock = mock.patch(
-            "opentelemetry.instrumentation.psycopg.AsyncCursor",
+            "opentelemetry.instrumentation.psycopg.psycopg.AsyncCursor",
             MockAsyncCursor,
         )
         self.connection_mock = mock.patch("psycopg.connect", MockConnection)
