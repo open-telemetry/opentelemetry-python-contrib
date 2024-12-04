@@ -59,7 +59,7 @@ from opentelemetry.util._importlib_metadata import version as util_version
 
 if TYPE_CHECKING:
 
-    class wrapt:
+    class wrapt:  # pylint: disable=invalid-name
         class ObjectProxy:
             def __init__(self, *args: Any, **kwargs: Any) -> None:
                 pass
@@ -403,8 +403,6 @@ class TracedConnectionProxy(wrapt.ObjectProxy, Generic[ConnectionT]):
         self,
         connection: ConnectionT,
         db_api_integration: DatabaseApiIntegration | None = None,
-        *args: Any,
-        **kwargs: Any,
     ):
         self.db_api_integration = db_api_integration
         wrapt.ObjectProxy.__init__(self, connection)
@@ -436,9 +434,7 @@ def get_traced_connection_proxy(
     *args: Any,
     **kwargs: Any,
 ) -> TracedConnectionProxy[ConnectionT]:
-    return TracedConnectionProxy(
-        connection, db_api_integration, *args, **kwargs
-    )
+    return TracedConnectionProxy(connection, db_api_integration)
 
 
 class CursorTracer(Generic[CursorT]):
@@ -571,8 +567,6 @@ class TracedCursorProxy(wrapt.ObjectProxy, Generic[CursorT]):
         self,
         cursor: CursorT,
         db_api_integration: DatabaseApiIntegration,
-        *args: Any,
-        **kwargs: Any,
     ):
         self._cursor_tracer = CursorTracer[CursorT](db_api_integration)
         wrapt.ObjectProxy.__init__(self, cursor)
@@ -606,4 +600,4 @@ def get_traced_cursor_proxy(
     *args: Any,
     **kwargs: Any,
 ) -> TracedCursorProxy[CursorT]:
-    return TracedCursorProxy(cursor, db_api_integration, *args, **kwargs)
+    return TracedCursorProxy(cursor, db_api_integration)
