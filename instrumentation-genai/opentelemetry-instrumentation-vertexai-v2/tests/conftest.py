@@ -1,11 +1,14 @@
 """Unit tests configuration module."""
 
-from os import replace
 import re
 from typing import Any, Mapping, MutableMapping
 
 import pytest
+import vertexai
 from google.auth.credentials import AnonymousCredentials
+from vcr import VCR
+from vcr.record_mode import RecordMode
+from vcr.request import Request
 
 from opentelemetry import trace
 from opentelemetry.instrumentation.vertexai_v2 import VertexAIInstrumentor
@@ -16,11 +19,6 @@ from opentelemetry.sdk.trace.export.in_memory_span_exporter import (
 )
 
 pytest_plugins = []
-
-import vertexai
-from vcr import VCR
-from vcr.record_mode import RecordMode
-from vcr.request import Request
 
 
 @pytest.fixture(scope="session")
@@ -81,7 +79,7 @@ def vcr_config():
     def before_record_cb(request: Request):
         request.headers = filter_headers(request.headers)
         request.uri = re.sub(
-            r"/projects/[^/]+/", f"/projects/fake-project/", request.uri
+            r"/projects/[^/]+/", "/projects/fake-project/", request.uri
         )
         return request
 

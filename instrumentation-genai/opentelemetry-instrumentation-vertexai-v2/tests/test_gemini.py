@@ -7,7 +7,7 @@ from vertexai.preview.generative_models import GenerativeModel, Part
 @pytest.mark.vcr
 def test_vertexai_generate_content(exporter):
     multimodal_model = GenerativeModel("gemini-pro-vision")
-    response = multimodal_model.generate_content(
+    multimodal_model.generate_content(
         [
             Part.from_uri(
                 "gs://generativeai-downloads/images/scones.jpg",
